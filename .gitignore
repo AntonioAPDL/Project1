@@ -111,3 +111,7 @@ Thumbs.db
 .vscode/
 Miniconda3-latest-Linux-x86_64.sh
 _audit_logs/
+
+# Third-party source trees (do not version here)
+nlopt-2.7.0/
+flowMC_old/
