@@ -7,6 +7,42 @@ env/
 venv/
 
 # -------------------------
+# Teaching / student data (NEVER COMMIT)
+# Put any course material under Teaching/ and it will be ignored.
+# -------------------------
+Teaching/
+Courses/
+Class/
+*Grades*
+*grades*
+*attendance*
+*Attendance*
+*roster*
+*Roster*
+*midterm*
+*Midterm*
+*final*
+*Final*
+*quiz*
+*Quiz*
+*students*
+*Students*
+
+# Common exports / gradebook files
+*Grades-STAT-*.csv
+*Grades-STAT-*.xlsx
+*Gradescope*.csv
+*Gradescope*.xlsx
+
+# Known sensitive filenames seen in your repo
+/HW_*STAT_*.ipynb
+/STATS131_attedance_*.ipynb
+/midterm_*.ipynb
+/stat131-*.json
+/processing_checkpoint.json
+/tasks.json
+
+# -------------------------
 # Big data + outputs (project-specific)
 # -------------------------
 prism_data/
@@ -14,6 +50,13 @@ soil_moisture_data/
 frames/
 autobnn_output/
 figures_for_river_ecmwf_nwm/
+plots/
+figures/
+results/
+output/
+outputs/
+*_output/
+Plots_*/
 
 # Project subpaths that look like data dumps (keep code elsewhere in Project/)
 Project/Input/NWS-Coordinates/
@@ -28,6 +71,37 @@ Project/Input/**/*.grib*
 Project/Input/**/*.csv
 Project/Input/**/*.parquet
 Project/Input/**/*.feather
+
+# -------------------------
+# Data files (default ignore)
+# If you truly want to version a small dataset, put it under data_curated/
+# and add a negation rule.
+# -------------------------
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.jld2
+
+!data_curated/**
+!data_curated/**/*
+# (create data_curated/ when you need it)
+
+# -------------------------
+# Figures / media outputs (default ignore)
+# If you want to version selected figures, put them under assets/
+# -------------------------
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.svg
+*.pdf
+!assets/**
+!assets/**/*
+# (create assets/ when you need it)
 
 # -------------------------
 # Massive single-file artifacts
@@ -45,6 +119,31 @@ Project/Input/**/*.feather
 *.zarr
 *.parquet
 *.feather
+
+# Uppercase spreadsheet exports
+*.CSV
+*.TSV
+*.XLS
+*.XLSX
+
+# Versioned archive fragments like .tar.gz.1
+*.tar.*
+*.zip.*
+*.gz.*
+*.bz2.*
+*.xz.*
+
+# Random root clutter seen in this repo
+/1
+/=0.5.0
+/done
+/echo
+/arguments
+/ngrok
+/results.bak
+
+# Always ignore teaching folder
+Teaching/
 
 # Archives
 *.tar
@@ -77,6 +176,7 @@ libpng*/
 proj*/
 geos*/
 gdal*/
+rclone-*/
 
 # -------------------------
 # Python / notebooks
@@ -91,6 +191,7 @@ __pycache__/
 .Rhistory
 .RData
 .Rproj.user/
+*.Rproj
 
 # -------------------------
 # C/C++ build artifacts
@@ -109,9 +210,20 @@ cmake-build-*/
 .DS_Store
 Thumbs.db
 .vscode/
-Miniconda3-latest-Linux-x86_64.sh
+*.code-workspace
+.idea/
+*.swp
+*~
+nohup.out
+*.log
+
+# Local logs
+_git_logs/
 _audit_logs/
 
 # Third-party source trees (do not version here)
 nlopt-2.7.0/
 flowMC_old/
+
+.Renviron
+get-pip.py
