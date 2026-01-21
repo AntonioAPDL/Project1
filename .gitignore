@@ -237,3 +237,7 @@ scratch/
 # Third-party source trees (do not version here)
 nlopt-2.7.0/
 flowMC_old/
+
+# Never commit server credential notebooks
+/servers_info.ipynb
+/scratch/servers_info.ipynb
