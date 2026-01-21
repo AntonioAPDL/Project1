@@ -220,23 +220,3 @@ nohup.out
 # Local logs
 _git_logs/
 _audit_logs/
-
-# Third-party source trees (do not version here)
-nlopt-2.7.0/
-flowMC_old/
-
-# -------------------------
-# Generated / local / sensitive extras
-# -------------------------
-Miniconda3-latest-Linux-x86_64.sh
-delos-*.txt
-*_log.txt
-*.bak
-
-# Generated HTML artifacts (keep source like .Rmd/.md, not compiled .html)
-*.html
-
-.Renviron
-get-pip.py
-/servers_info.ipynb
-scratch/
