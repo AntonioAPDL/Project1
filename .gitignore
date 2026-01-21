@@ -1,0 +1,113 @@
+# -------------------------
+# Environments
+# -------------------------
+imcmc_env/
+.venv/
+env/
+venv/
+
+# -------------------------
+# Big data + outputs (project-specific)
+# -------------------------
+prism_data/
+soil_moisture_data/
+frames/
+autobnn_output/
+figures_for_river_ecmwf_nwm/
+
+# Project subpaths that look like data dumps (keep code elsewhere in Project/)
+Project/Input/NWS-Coordinates/
+Project/Input/**/saved_data.pkl
+Project/Input/**/*.gdb*
+Project/Input/**/*.gpkg
+Project/Input/**/*.shp
+Project/Input/**/*.tif
+Project/Input/**/*.tiff
+Project/Input/**/*.nc
+Project/Input/**/*.grib*
+Project/Input/**/*.csv
+Project/Input/**/*.parquet
+Project/Input/**/*.feather
+
+# -------------------------
+# Massive single-file artifacts
+# -------------------------
+*.RData
+*.rds
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.hdf5
+*.nc
+*.grib
+*.grib2
+*.zarr
+*.parquet
+*.feather
+
+# Archives
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.7z
+*.gz
+*.bz2
+*.xz
+
+# -------------------------
+# Third-party tool / SDK trees (not your project)
+# -------------------------
+boost_1_*/
+cmake-*/
+google-cloud-sdk*/
+aws/
+R-*/
+julia-*/
+eccodes-*/
+icu/
+lapack*/
+fftw-*/
+gsl*/
+openblas*/
+netcdf*/
+zlib*/
+libpng*/
+proj*/
+geos*/
+gdal*/
+
+# -------------------------
+# Python / notebooks
+# -------------------------
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# -------------------------
+# R
+# -------------------------
+.Rhistory
+.RData
+.Rproj.user/
+
+# -------------------------
+# C/C++ build artifacts
+# -------------------------
+*.o
+*.so
+*.a
+*.dll
+*.dylib
+build/
+cmake-build-*/
+
+# -------------------------
+# OS/editor
+# -------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+Miniconda3-latest-Linux-x86_64.sh
+_audit_logs/
