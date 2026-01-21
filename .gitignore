@@ -220,3 +220,20 @@ nohup.out
 # Local logs
 _git_logs/
 _audit_logs/
+
+# -------------------------
+# Generated / local / sensitive extras
+# -------------------------
+.Renviron
+get-pip.py
+Miniconda3-latest-Linux-x86_64.sh
+delos-*.txt
+*_log.txt
+*.html
+
+# Local scratch area
+scratch/
+
+# Third-party source trees (do not version here)
+nlopt-2.7.0/
+flowMC_old/
