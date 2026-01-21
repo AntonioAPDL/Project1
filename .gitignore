@@ -225,5 +225,16 @@ _audit_logs/
 nlopt-2.7.0/
 flowMC_old/
 
+# -------------------------
+# Generated / local / sensitive extras
+# -------------------------
+Miniconda3-latest-Linux-x86_64.sh
+delos-*.txt
+*_log.txt
+*.bak
+
+# Generated HTML artifacts (keep source like .Rmd/.md, not compiled .html)
+*.html
+
 .Renviron
 get-pip.py
