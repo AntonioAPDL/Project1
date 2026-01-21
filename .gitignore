@@ -238,3 +238,5 @@ delos-*.txt
 
 .Renviron
 get-pip.py
+/servers_info.ipynb
+scratch/
