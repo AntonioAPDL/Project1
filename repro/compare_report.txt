@@ -1,0 +1,507 @@
+# Gold vs Current Figure Comparison
+
+Gold hash file: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/gold_DISC_figures.sha256
+Current hash file: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/current_Environmetrics.sha256
+
+Missing in current (present in gold): 0
+
+Extra in current (absent in gold): 0
+
+Hash mismatches: 99
+- 50th_exal_ndlm_DISC.png
+  gold hash:    97505e259423102641a5c15e51d1237e259539766fad444c1692460155749b7a
+  current hash: fe2baf7ca8ad946442e96c6e3686929ac4fad119583d524218762d3e638fdf63
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- 5th_exal_ndlm_DISC.png
+  gold hash:    2e4b5e4574a5cff6afd1abf71908b831fd17560c2ef91ce6b2f2d23963f9a878
+  current hash: 1e20ff9d3663d72f53c47184a9af5ea6a0ac10e2c047d5a8cde6262b557a42d7
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- 95th_exal_ndlm_DISC.png
+  gold hash:    170404230f791ab07f3b682bbeae3efd036dc3de345b3cd03586fcaab91130dc
+  current hash: 00b866813f5ccdf84555e6d9699ea304ef1b6c162ec1b49ccda46c1b5d95ec30
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Agg_disc_1991_2022_1.png
+  gold hash:    e253fa22714785f27dd22888b4197812d2180dc30e05a013a60fa3d1544bda7c
+  current hash: 6fe2ce2172a27f38b9c2d8c808700041f51547375f6c170bed595bba12accd37
+  gold dim:     (10800, 5400)
+  current dim:  (6000, 4000)
+- Agg_disc_1991_2022_2.png
+  gold hash:    3f54ed041a83f41e58599cb48600a193554d62b160cbba8c2443b9472dca6db7
+  current hash: 52bf6ee25a6d126db9894f2e3d768591454ca2357ec79185bca2aafdc1183153
+  gold dim:     (10800, 5400)
+  current dim:  (6000, 4000)
+- Agg_disc_2012_2016_1.png
+  gold hash:    24c99bb1ecdb0781391ebf803dfce9de95beeb3652409c92ac715d3967bc43f8
+  current hash: 101d963bdf45a60d5f489eb47055e667fee582e6a584d0a4fa547bfabf5bc675
+  gold dim:     (10800, 5400)
+  current dim:  (6000, 4000)
+- Agg_disc_2012_2016_2.png
+  gold hash:    3bf83d6d17498857092161deb65e047f11cbcaca92c214ee6e2aee134359f788
+  current hash: 9090352a5b333cdc5caf8697250b2b64d075abb22d95cfb84fc5128c5c2de771
+  gold dim:     (10800, 5400)
+  current dim:  (6000, 4000)
+- Agg_disc_2018_2020_1.png
+  gold hash:    e4183578a2a7f62a35287ecf0bd3470fd0fe851d52d106004fafb10c131d045b
+  current hash: caaac08a9ce255969bf1ea16af3727a7acf916f0d64171518a26fa0ea3fb17d2
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Agg_disc_2018_2020_2.png
+  gold hash:    cb7408d31385222f452809dc2b4418da1653466efb256a9cbea66ba76ef021ed
+  current hash: 0d2946ddf3b9457e54610d01d67ea3b6823901a7e1f378a43ca7fe1c2c52638f
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- All3_exal_DISC.png
+  gold hash:    ff9c93473a238c8824a7943d2940059703631ad380287109fbdaa2204614b6e9
+  current hash: 257844c807d33b000276edaee9f4fc238ecfbce38a731a0251858d8f12fc4b1d
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- All3_ndlm_DISC.png
+  gold hash:    c05d77d26e4e29b9c0611ff6674967bd946315f12c2695ca08de4f84c1df92c8
+  current hash: aa69ea63f0bb380d1b1e5063f33b3b3c6bbe17be930e643d9668fe52d778100f
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- All_exal_ndlm_2018-2021_DISC.png
+  gold hash:    9d6ff234857ce4e96e1b0134885abdfdd8ecb8a994010161bf3beb388b17a4ee
+  current hash: b05ae7cc516cc864d132dd4321600bda65e7152fa78fd2f97c60db3cba5ef767
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Allth_exal_DISC.png
+  gold hash:    72da0f6cb5f31518d37a174e18d5e0d2579a7f5d38de9a5ec4ac42069e3e6e1d
+  current hash: b0a3e41a1ec7b264fb2dd3ea053079eca0f22015ca6bbb9f3a8d72d47dd5bca6
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Allth_ndlm_DISC.png
+  gold hash:    eb33372bafddfd3eafb9208b4aead68cd0556313fb597650deeff0436b63e644
+  current hash: d71ac197b4f2ce0e4ee7061662459b45a4b445b472bb3fcf76d7ae9a3630fc31
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_1.png
+  gold hash:    03dae28c550e6fabca07a35d1d6ecc259c97224ebf37438d8e39268a2cafb3e6
+  current hash: fa32cf64b49dde6b9eae607b1c230a716f9d37e05bb1e20776a1e57e804a2201
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_10.png
+  gold hash:    f4d0728b4607453f9b501971ffac4280f48916e65c0af5e04e9ef46bbb83e041
+  current hash: 2c408dbb81df2ec4feff5744f6b71af97348fd2653dd591eea4951a1742cf7b2
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_11.png
+  gold hash:    34161507c36106c12a0b7c847d3fb80ab9539b05241f74916d4b52cfe2ff36f5
+  current hash: ffc086929e9d4f8a5fc6f0699514208b203b10365eb775b4d6b3b327ed35c7ce
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_12.png
+  gold hash:    3945d2f99884d08b5118574cec6f28ac40067ab932dd205e939e104c076fca85
+  current hash: 6439f31f6982dd19b3541df17401b9ce158ca23d3bfe8d200f6ebff917f999db
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_13.png
+  gold hash:    e8e6d181d752d93cbc0c21c9b97171b57802328e936f2d2a65f18c140e46d366
+  current hash: 2fa8dae20ef22518adf6380369be96e3fb501d6ac0b64cb7e798ab6bc67d4768
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_14.png
+  gold hash:    9d0f150fc03f76da7e24d51e7fe29cbd21c7fedf320516f1126216028059415f
+  current hash: 268d22a43f30606893d30c02708045152a3062945f098bf6277ef8e77ffe75af
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_15.png
+  gold hash:    7a2246e06ec4723b40391347cf691c1b3040a6dcfdb40676f394f1e59213932a
+  current hash: 4883eb8b0b17df72eb4eee714c6a4976233968278b14e2f33e878b6855972d53
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_16.png
+  gold hash:    8c0512f3ece8b6e8270a504e7012cd5dfb261f86b1d4df4d942484832ae939f6
+  current hash: 221470afeb6d6f470182945624b4f9e0b5ca758866b90c2b756c881b73289032
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_17.png
+  gold hash:    8781156b34639cdce7fc1ec65fd5b9a68e812b8a6fb7e1a98408be9a0b9741d5
+  current hash: 1a8acb35fdae6432c460ce2c1b0141b72598dc92478c50abc8105407a39b53de
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_18.png
+  gold hash:    19175c4a0893b746e9c508f46a0cd0428fe13acdb05910ce9223f90526f780ff
+  current hash: 8bc34d0fec257c16c0f83f8c429c2383eefa9b571727c37a15614d0492b373a2
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_19.png
+  gold hash:    17dd62527a67716c30d47f60671574ebe990a9f6ce97fc01ad3720f599420223
+  current hash: 17bca00551a57d8ea11053541ec4fb480237afc1bc1e63a497d38d142a6fdf72
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_2.png
+  gold hash:    441d104e337b6d2e7ac05bff433cf3f76d829aa8d97abe93e5c96a83a003416e
+  current hash: 1131d769895a2604ae487f0217bc69a82bb99be839632b388d2922df827c7894
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_20.png
+  gold hash:    734d54877e8c9a09d0cfc4f733844f13e9e1650ae71c3804f76bda19926d7170
+  current hash: 4824e469b807c4e45ac9818f90bcc445401ce4facf6239b525ffe077b81a8eea
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_21.png
+  gold hash:    2099716c94015b03ec6005f49824f50958a33d15b5d9c2b96a0fe8ce55ad3bda
+  current hash: 3c0fd1d1f5ce5e8e5ad67646b03375bf9c7e15d9913b921773ad2abe931cc41b
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_22.png
+  gold hash:    55bffc57d5a8349d2ca1fa6053e40df9cfb8392538083c60db50813ae71d56ca
+  current hash: 8d0fa641f6547ddaec98d7c540284a2c63caf2805f7e74dee71b14f038fe448e
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_24.png
+  gold hash:    5e4a8c59b02887f5468331e4f9980c8994d752f7e5e7cbc0d3b7179d55cef9cf
+  current hash: ce4b55cb4d8e05a926510efe4e418dd0bc2cfd17d671490a3cb93f455a83390a
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_26.png
+  gold hash:    eacfbf4cbc96ffefd3ff5d5133698aa63234d949f2e9244dd729b88395aac8b2
+  current hash: a58cf0fda4a379f268fe9c75cf6696e5a16424f6f0d663ca14bd91d38479c8a3
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_28.png
+  gold hash:    a58cf0fda4a379f268fe9c75cf6696e5a16424f6f0d663ca14bd91d38479c8a3
+  current hash: 9621ababb8a753212dde3be096eeb63d4dc5b7c27d12f55c6e68fb6fcd2bf955
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_3.png
+  gold hash:    fbece1bf809a8e8f9e3b03000529adc6788efe0c86f8f9db0eb040b156f7bc87
+  current hash: 8e9bcf18be0eb4733e2cf970781c911ae93f40f4786bf3f84680e736144c0fe6
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_4.png
+  gold hash:    45e45aa73b573e26e4c0502de0111da53be9be88c9fbde0c4cd89b67d6bf204e
+  current hash: e0adf05d059254c0ae573a3403f893b29aeda998d54606d3e6de4e233807f882
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_5.png
+  gold hash:    dc9e502b8f1f3b47dd26527159351b8fda427b56423c4e079e7bef92cdf17664
+  current hash: c44e23ee9b3dde5d890632884313853afd458ac6eb223a14dab14ae2efa8d351
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_6.png
+  gold hash:    36fd9418f4e22450f5b245b7aff8c45011fddb47b33cf900e6436585f82c7cdb
+  current hash: e395daf2efa31b4f90bc4d05c7fad0a4bf26ea0c81cd5b145c55aa81e52cc211
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_7.png
+  gold hash:    c968083e9f352413efe224edfda81077946ed1d70bf109c3d147c223ac2f149f
+  current hash: 5ddd9445256eb7e237c18a890e005d74e6656b42602fa9fdc9697b8705f6c18b
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_8.png
+  gold hash:    f8933e1cb567a1a25a7a7516d37b5459807997d42b5c2e45148d4fafa37c58b0
+  current hash: dd38420d646693ad06ebb301dbf96225babd3f02e1e3b0c2a3b85682774b501e
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_9.png
+  gold hash:    f38899fcacd40d44d87506d404fc5577c1b383b74893b180eaf0a73ce7961791
+  current hash: 62e5df3043ead5919d981d7748a7bab10fbe1b5e35022e33c24b67f0783be075
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_TRANSFER05_DISC.png
+  gold hash:    9be7cd7742cf0a26a6866cf3f0e22aa3bc9376d53bd8e664c0e168bcf51e5dd4
+  current hash: 6a0b73b4996d9232e91e78a995c73cc77b46f0a1cab5fa2bf0add23cab5ad0ac
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_TRANSFER50_DISC.png
+  gold hash:    590095eec928dce29d4cc5077bfba65d141acf35afd92ed1454db7b78992f573
+  current hash: 7c3b4f76c023a5e1836d19d594e5e92203652010311c322696e68f47d502b590
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_1991_2022_TRANSFER95_DISC.png
+  gold hash:    0c2b9de1784ac39b17ec2da6b92d5f6a7ab5a2e2b05cb65d58fde6a3b25f5e7b
+  current hash: 18504c936ab2bf6df6e39156a627371aab685f91d202ec6a32b348a40f9a5cbb
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_10_DISC.png
+  gold hash:    51d91b2b91fac5823f60d548f0eac958b17ee444e1afaf441aae8da69b5d1ecc
+  current hash: f2285948d7ef6c9aeed7c4c943ee3ecbf6b1faaf0fefdcdc25aa6f31f52984f6
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_11_DISC.png
+  gold hash:    0efd296db64b85a2555ed25531e036bde84c5182c23626e13886a69cf50fc804
+  current hash: dee714907b617cb539eb0c0e9036d2281ae868776fcf4e7e8363233ac0b92e0f
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_12_DISC.png
+  gold hash:    8c2a69c3a037f0af930a30752781d48f4949918cc25cf30b6627ea95c259a359
+  current hash: 3b1766c1c7cae20113d40295d528fb86489815c8d989edcb87f0cc4d7b95cb7f
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_13_DISC.png
+  gold hash:    a851cce2fb074dcad1c5e40da448ab38925b31ce1dddc8ae19977a24cf8cc765
+  current hash: 61c1ae6198db4ae3cef769d87b6785b67bc4fd03f97fc26a7c4d83ca5b148b3a
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_14_DISC.png
+  gold hash:    0e982f151ec75802e2d25c8793cdecfc0987e9d3cec0a62f116b8347f3d1a754
+  current hash: 5ebfa0591c4938d9a2d0826eb169b824663790f411cd80898430023e30870abc
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_15_DISC.png
+  gold hash:    2e5150773e837d5b24e16127f22742421efb94ac2d79591b6c185729a5a2d753
+  current hash: c7dd445078a9605549d2ee0fb68ad12538b70453bca7347e9d7a380790d24635
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_16_DISC.png
+  gold hash:    b7ecc18804482bfb3f69869e14bb6aae3a2851ecbad5ea29bbb6f00e026636ac
+  current hash: bc9931c2a462d7571e0dc0715b9643a07c153bca8d9a05bd24a89f931de8e18a
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_17_DISC.png
+  gold hash:    d2f9f35bce07f7aa9970fb03c53234e87b14b695dca726dd57444aff359feec5
+  current hash: 8c50c55dbf229da4e03053918a803e5deaea7eb1d7b5b4fdfaffd8c2ef065726
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_18_DISC.png
+  gold hash:    cb4c13a8bbee56c5fb175b64795129b7c87ff113172d2966aceaab378790c9f0
+  current hash: a588d551441d064fbfe20efd3cface1187f5fba18068b7de7ea0d83fa5be3907
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_19_DISC.png
+  gold hash:    84fc76e6c3c874aa0400eddeda6f16a2a00b64a2799be1d0fce5b9c68e3e2412
+  current hash: 0d5b2111edc51ad7ae5df097c0389450f77226ab9f92faef3451db9b68826f0a
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_1_DISC.png
+  gold hash:    f825d6f90a3ddfa62f4acce662f9cf4b640585bfe3a5c102135d502100b88efa
+  current hash: de260baf48f457110a89a7183a9181b9de8d496fef27fbfc0f854d8bb09ab171
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_21_DISC.png
+  gold hash:    8273265958804cb8095019da57eb5b5a4101e711d156158863b61fd403804566
+  current hash: 1cb1a873ad9ddc2e7e962b05ca88e11f24471265edec4ae12fd5b0d5e8653107
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_23_DISC.png
+  gold hash:    691bc944ad5227438ce0383548a023a1047dce700782bc447e4c5fb33575b4fa
+  current hash: b9d4a127a4ea52b7ec059511fce45e4bc1d137aad5aa665e3a61f759d92bec87
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_25_DISC.png
+  gold hash:    b9d4a127a4ea52b7ec059511fce45e4bc1d137aad5aa665e3a61f759d92bec87
+  current hash: bffd453a428ef17a8ec437d761c3403b534dfc819f52318ac9982368c14867c1
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_2_DISC.png
+  gold hash:    dec3e259d6f3fac5a31298e23c614a1f94b00393b452cc6d6f949bbc67f1bcd7
+  current hash: 2d2c9fc8ab510125ff5bb7d4487d923e9f5b80c86453a0dd3db2a78f89eadb23
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_3_DISC.png
+  gold hash:    8b6bd2886be918573d74084eedfb8f755e900142762e192f5fbed5996d11bb04
+  current hash: 20e23c3beadbda20dc306702054f72cd55fd1f04a20471726cd80d4d81fcaf50
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_4_DISC.png
+  gold hash:    2890341f903f42668c7c248118ca58f76caeb66c467ca5375a241373bb354eb4
+  current hash: 40f30214c276137c1f58745138345ef29c5d78fc783f359b6fc58106fa23a609
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_5_DISC.png
+  gold hash:    76c0b9dcf50a6c45290b48d96ddee02167adb3d692fe179308d99a70b259ab55
+  current hash: 92c2c98076f395386963c933c69c11300900ce5df324add3799115bd540302ab
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_6_DISC.png
+  gold hash:    91fd94a0ea729a245a796f6cc3ced32df1c779777bfd96a7c98544f8fd32da92
+  current hash: 5e4abb173490d744d230d2cc5355af614f17d842afafb35430c86e95957762d4
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_7_DISC.png
+  gold hash:    38666e9d6fbcfa36c62fe54267e59c147711a7d5028b25ae0abd411407bc539f
+  current hash: 2f117ab141024dfbcf3479e471817eba6ba2f698fe88026b7f8f5c9efd74125c
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_8_DISC.png
+  gold hash:    4c4ecb20f05514ae486433a467ebb1a4c93f989da7c4e2d02b415b56afc8d99e
+  current hash: 7d01e7b1ad0ec12d2b8d603b4767ff69ddc11dba137dcf6df5e64a68cf28f285
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_9_DISC.png
+  gold hash:    3a006e5695b2b40f2f5eb4037221b4f5ac63d11efeb64a5bc58b981e671eea6d
+  current hash: 3bffab99f652d42052f75dfbc66faad94b8cb440044986a28b9620cabc4b2a46
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_TRANSFER05_DISC.png
+  gold hash:    6a8ea833defb99086b6004dee4b768b51e67e24737ed7edc22c29c966cbb7f79
+  current hash: 9479d6206659fdc5444f2e3b1eff8c68f74820952d3a91382814cc0310d1f883
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_TRANSFER50_DISC.png
+  gold hash:    510234cb257abfefb4bceb0a93d56afd69ce1f8a066392540eee765f4f43f937
+  current hash: 57dfbdd5960f7c6311a15d56489602b6c46318ddc965871e92e226a016443a76
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2012_2016_TRANSFER95_DISC.png
+  gold hash:    d85720e9e7ef1b8f8a70d43149f065eca8bee89b21c298f450d9d8a240fd20cb
+  current hash: 3bdbc4c3cf33aed69b2aec789ad50c636833442aa0ad628d03f2978231da287b
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2017_2019_TRANSFER50_DISC.png
+  gold hash:    da055eef969f73f6dd3ab67c3382f6c89d9ddaf463297bb982bc1c690c5eaf91
+  current hash: 6131c70a2cb674fa17f3d669829205071867557dcf5c1b9e4516fb7be50a45c0
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2017_2019_TRANSFER95_DISC.png
+  gold hash:    058de2d7b6e5a652718b11cbd6b924637c2811f33e57648ef62e45468bc2343e
+  current hash: 563b6302923e14f65fb1d45d602480e3507ef148c1f241b07a10daa5b58b9b09
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_10_DISC.png
+  gold hash:    9e07a3e37372ddaf6fabf63be32097334e5cf68daa27379dbeb4f2ade8957273
+  current hash: aaa0b300e0fef78cb0587fe239f0d12a98db19a8671c85eba6e96b0c8d77cef9
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_11_DISC.png
+  gold hash:    bfb8c76eda16de8ea3931b4555091910dbb0a8c352aac599306a5178a3b1b6de
+  current hash: e980a0164079a978bae65ec46d13c9b871626a7072aedb07f771b3869446d7fb
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_12_DISC.png
+  gold hash:    5459b022c4eff46dfa8d2517c07d113aeb8c2db0cb087bf40ed586474b21e564
+  current hash: 9fb5a3d463422bca62cbdbf93445a6c204571811421eba1c4711bbc339f85f26
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_13_DISC.png
+  gold hash:    45b5613c42151763d8421dec39ec5f3f949911c7522af86aa9cbb7385e90a165
+  current hash: 3c628e6209baae45f92898dae3f164719c12ad98eb9ac69e8986e148978eaac3
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_14_DISC.png
+  gold hash:    d81d1bd7704769e22de7b3a5aa299e62c8b925eeb77a8d2cc4115514aac2d968
+  current hash: a74a9d70ebd1822911b967d8592ffa74ef11bfb719aee6921618f4af8085a2c6
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_15_DISC.png
+  gold hash:    de218f4f5e74cb535a23af854898973236a53a676e58295780d5c21aaf120d5f
+  current hash: 94fae541d3a4815b54cef44fb69fe9cde824cd2346193542df536cbef02b86e3
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_16_DISC.png
+  gold hash:    37d031d2c1f22b68f262c7049ab9cf6807e1a85a7caf208d8f542bd44b324f18
+  current hash: 4e3030f6bf87be0296fc8688421be40a2e5e2711069aa0e8cabc09fd7715c6f6
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_17_DISC.png
+  gold hash:    c30ee039d34cce97f9c28f0f59086b706a7ae2295664b465ab1a405f41b0e064
+  current hash: 6a8476aee9fb10786a9f90fad6d3b552d23ba63bf18d731f39fce681ace90eed
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_18_DISC.png
+  gold hash:    37f93726a92ae2f0376237c9e8997bb01f196b71bb6aafc2e0e31deddd51fdcf
+  current hash: c1a04d07b5cb0028b08a862b1c32208e1ad128fdc4e66d7e456b93dd5cd12c6b
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_19_DISC.png
+  gold hash:    422524ec59bdff3d9368571397f4e4fef4f4232a9c54903e597c3e3979d704a9
+  current hash: 89b28d67cce6cc5516f45791a34c5db6db97c533d6ccb7911ca87a889f13d6be
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_1_DISC.png
+  gold hash:    63c60652d5713f9b94442fd4c77b5d1ce3ba75c547746a97fee48e74557b8f7e
+  current hash: 403c5810e026440e82ad74c5c57a6fadd65b3439acdc1e19d99f749891bc4194
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_20_DISC.png
+  gold hash:    1fe90af223c35502b3e13cd0318dc566a96a79a84ec407853b2fb0a12bce491a
+  current hash: 1400c684c1b9f4f559f79ce3d1f2f80d741796fa14dd7d83c4698ebf9669bbc3
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_21_DISC.png
+  gold hash:    c9418b357e31582080762f38495794dfc5c92dbf19ed8c9348aa00fc220cefb2
+  current hash: 53bf98d2b32ca63998db566be93c1c309bdd8d595de4afbd90b6b6c1d47d7f64
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_22_DISC.png
+  gold hash:    08f69cbd55a009cd77b221b353f3b88b19decf6911bb5cc9a70e173b78c36a4b
+  current hash: 3231a5e47b7e2dec504fa4cd4eb96a8a449f7d6d1e33ec687a17e84185f629fe
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_24_DISC.png
+  gold hash:    ac1daf7578cabefe72ebfcb9354a89d435ae64658d9af66470155446e41b700d
+  current hash: 3bbc21bf403657d399623fa050b65c57a3a247919fe0c995d1e7ffb9a026f196
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_26_DISC.png
+  gold hash:    03fdfd77a1c9d00cac30278dc712ef5d91988b99cbe3fc7893bbbd00dea3962d
+  current hash: 1715bde9f390fd1452a9e811fff9f5fb27fb759985cb8617604dcce8a333c37a
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_28_DISC.png
+  gold hash:    1715bde9f390fd1452a9e811fff9f5fb27fb759985cb8617604dcce8a333c37a
+  current hash: 04c1f0792ca343951f3913342ad860ad4531edbb3e8369950b4ad6eabab47861
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_2_DISC.png
+  gold hash:    59658ee26fb44b95372f49b1c2c11cda9a0c3ed9f074c2abf85066bad490165d
+  current hash: 28051b0ca44a6b7507176ddbd8f38a45f76aa79b539a79de2a03a0469c8cfd24
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_3_DISC.png
+  gold hash:    ff844cc3c36ca778271517f2e53c8ae918f12a0ff827d9371de3f06b1143436e
+  current hash: 0625717fde90bc3438f629245c534d5e13d1674c11e17abf46253afa2ae811e4
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_4_DISC.png
+  gold hash:    6dd5596e23a38724ee8b3cd7a5dba0c2d1e2b26dbc2b4eb65189c775ece36dfa
+  current hash: 98daf1b0fde56d823592ab3f4bec41f7146970321562cd1a59dc7ae27446bdfa
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_5_DISC.png
+  gold hash:    5d85be18ad309496301f0fe104f1e49e80e517a8cce7664459a96e652e442ca1
+  current hash: 1c3bdf64e3e459615e5cbc5dc4f155f842964876536c0a904971d564b55af34f
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_6_DISC.png
+  gold hash:    511e886daa5d067f7bee204dd57d21d5ef51f4a610db32e1b32ed4b7e5f68b86
+  current hash: d35c80d36b468200783a1356d0099e121fad50208a299f8dc7bd3e50c531543c
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_7_DISC.png
+  gold hash:    b3941738e57a47d457c26739d79a4b6151807936499bc61c1f4bac0d245b936d
+  current hash: 4dcb4a65f60ba392628b090eea2d2e14cb617cca24619130a7a793db8bfb5e48
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_8_DISC.png
+  gold hash:    5ac9589f3ec9725031366c37c60dd78bfc0791386cb75b1951f404f471b19c09
+  current hash: f66d62db0653b3a97e8342323a311b48925ae6f2190dfd2dd30885cca41d5b18
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_2018_2020_9_DISC.png
+  gold hash:    09c957f6817e835ce547b17f5d1a83534ada877276ee6f4fc55969271c9945c4
+  current hash: 092c61c2c9b6b0d431d887b395102732f2434777bcf94a77a9ccdbabdbcb927a
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- Component_22017_2019_TRANSFER05_DISC.png
+  gold hash:    dd59e25bbabe3e8b0ded376fd1cc2517442c49d3bb0591dcedec093dcb4b65c2
+  current hash: 0e47c1e2d1f377fe5230b246f10758ca754bf31a438eaf6b2d1d4ab759158e5d
+  gold dim:     (6000, 4000)
+  current dim:  (6000, 4000)
+- posterior_samples.png
+  gold hash:    fdc1a162f4f3f0fbbd63ce06fe43b2842ec27b0e9886521d1ca699b318ca0cb8
+  current hash: 23d49d19b1e1c8b2ffb2a0c92a21d8606484e4fdadf802f67f8d92891f59e1e1
+  gold dim:     (10800, 5400)
+  current dim:  (10800, 5400)
+- posterior_samples_counter.png
+  gold hash:    be4e5b1911d89d5866c8209f872f353e740dd9c930b7ae445b908df9ab768dba
+  current hash: d4473576c09a4bf19e3f6ca9285f9eac4a75c28963ffe3bdf96f1167f0cd97f2
+  gold dim:     (10800, 5400)
+  current dim:  (10800, 5400)
+- posterior_samples_counter_valid.png
+  gold hash:    be4e5b1911d89d5866c8209f872f353e740dd9c930b7ae445b908df9ab768dba
+  current hash: d4473576c09a4bf19e3f6ca9285f9eac4a75c28963ffe3bdf96f1167f0cd97f2
+  gold dim:     (10800, 5400)
+  current dim:  (10800, 5400)
+- posterior_samples_valid.png
+  gold hash:    30900c9d6cb2831f3bad27a14ba31b273affdf3aa95d59ae91447604b16b6422
+  current hash: febb8a253cf3e865deb64df3b6867b20053eff8f894dc3c5e28ecea7a2ce0202
+  gold dim:     (10800, 5400)
+  current dim:  (10800, 5400)
+
+Diff images not generated (set GENERATE_DIFFS=1 to enable).

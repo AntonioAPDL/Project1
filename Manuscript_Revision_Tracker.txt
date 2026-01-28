@@ -1,0 +1,375 @@
+\documentclass[11pt]{article}
+
+% ---------------------------
+% Packages
+% ---------------------------
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tcolorbox}
+\usepackage{pifont}
+
+% ---------------------------
+% Links + Colors
+% ---------------------------
+\definecolor{Accent}{HTML}{0B2545}
+\definecolor{Soft}{HTML}{F4F7FB}
+\definecolor{Warn}{HTML}{8A2C2C}
+\definecolor{Ok}{HTML}{1B5E20}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=Accent,
+  urlcolor=Accent,
+  citecolor=Accent
+}
+
+% ---------------------------
+% Convenience commands
+% ---------------------------
+\newcommand{\cb}{\(\square\)\ }               % unchecked box
+\newcommand{\cbdone}{\(\blacksquare\)\ }      % checked box
+\newcommand{\prioH}{\textbf{\textcolor{Warn}{High}}}
+\newcommand{\prioM}{\textbf{Medium}}
+\newcommand{\prioL}{\textbf{\textcolor{Ok}{Low}}}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% ---------------------------
+% Title
+% ---------------------------
+\title{\vspace{-1.2em}\textbf{Manuscript Revision Tracker (New Submission)}\\
+\large Bayesian Quantile-Based Correction and Synthesis of River Flow Forecasts \\
+\small Environmetrics decision letter (ID: 5228655) --- Actionable checklist}
+\author{}
+\date{\vspace{-1.2em}}
+
+\begin{document}
+\maketitle
+\vspace{-0.5em}
+
+
+% ============================================================
+\section*{1. Executive diagnosis}
+\begin{tcolorbox}[colback=Soft,colframe=Accent,boxrule=0.6pt,arc=2mm]
+\textbf{Main reasons for rejection-with-invitation-to-resubmit:}
+\begin{enumerate}[leftmargin=1.2em,itemsep=3pt,topsep=2pt]
+\item \textbf{Insufficient validation for a forecasting paper}: unclear in-sample vs out-of-sample; no rigorous cross-validation; evaluation limited to a short period/event; missing proper forecast verification summaries.
+\item \textbf{No compelling benchmarking / ablation}: few (or no) competing alternatives; unclear contribution of hierarchical components; no evidence extended asymmetric Laplace (exAL) meaningfully helps vs standard AL.
+\item \textbf{Missing forecast distribution scoring and reporting}: if CRPS is used in estimation/selection, reviewers expect CRPS (and quantile score) \emph{reported} for forecasting; diagnostics by regime/event type.
+\item \textbf{Messaging/structure mismatch}: abstract claims ``fast'' but no runtime; introduction mixes meteorological vs hydrological uncertainty; too much math detail not used (PIT section) and over-detailed PFS/quantile-crossing treatment.
+\item \textbf{Usability and reproducibility}: code availability requested; end-user interpretability requires ``bang-for-buck'' narrative.
+\end{enumerate}
+\end{tcolorbox}
+
+% ============================================================
+\section*{2. Highest-priority deliverables (recommended order)}
+\begin{enumerate}[leftmargin=1.2em,itemsep=4pt,topsep=2pt]
+\item \textbf{Define the evaluation protocol}: strict out-of-sample forecasting with time-split CV / rolling-origin evaluation; explicitly state training window, forecast horizon(s), and update strategy.
+\item \textbf{Benchmarking}: compare against (i) simpler statistical baselines, (ii) the original physical forecast ensembles/products, and (iii) AL vs exAL.
+\item \textbf{Ablation study}: remove/disable hierarchical components (trend AR, retrospective AR, state AR, horizon-weighting) to quantify marginal benefit.
+\item \textbf{Forecast scoring + reporting}: CRPS, quantile score (pinball/check), calibration diagnostics; stratify by regime (low/moderate/high flow) and by lead time.
+\item \textbf{Computational claims}: report runtime, scaling (n, horizons, #quantiles), memory, and feasibility of re-estimation/updating over months/years.
+\item \textbf{Restructure paper}: introduction uncertainty taxonomy; align Section 2 models with Section 3 results; reduce unused math; clarify in-sample vs forecasting sections/titles.
+\item \textbf{Release code}: minimal reproducible pipeline; link in paper + repository artifact DOI if possible.
+\end{enumerate}
+
+% ============================================================
+\section*{3. Point-to-point to-do list (complete mapping)}
+\setlength{\LTpre}{6pt}
+\setlength{\LTpost}{6pt}
+
+\begin{longtable}{P{0.9cm} P{1.7cm} P{1.35cm} P{4.5cm} P{5.1cm}}
+\toprule
+\textbf{ID} & \textbf{Priority} & \textbf{Status} & \textbf{What they said (condensed)} & \textbf{Concrete action + deliverable} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Priority} & \textbf{Status} & \textbf{What they said (condensed)} & \textbf{Concrete action + deliverable} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+
+% ---------------------------
+% Handling editor items
+% ---------------------------
+E1 & \prioH & \cb &
+Abstract claims ``fast''; no verification; asks about computational time/complexity; re-estimation feasibility over months/years. &
+\textbf{Action:} Add a dedicated ``Computational considerations'' subsection.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Report wall-clock runtime for training + forecasting (with hardware specs).
+\item Provide complexity scaling: dominant operations in $n$, horizons $H$, quantiles $K$, states dimension, iterations/particles (as relevant).
+\item Clarify update strategy: online/sequential updating vs periodic refit; what is required operationally.
+\end{itemize}
+\textbf{Deliverables:} (i) runtime table; (ii) brief scaling discussion; (iii) statement in Abstract consistent with evidence. \\
+
+E2 & \prioH & \cb &
+Method not validated properly; no competing alternatives; exAL not validated vs standard AL; needs evidence for end users; compare to statistical models + physical ensembles; show sharper and better calibrated distributions. &
+\textbf{Action:} Add a benchmarking section with explicit baselines.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Statistical baselines: e.g., persistence, AR/ARX, DLM/Gaussian state-space, quantile regression without dynamics, simpler DQLM variant.
+\item Distributional baselines: AL vs exAL (same architecture otherwise).
+\item Physical product baselines: raw ensemble forecast distribution and/or standard post-processing baseline (e.g., EMOS-style).
+\end{itemize}
+\textbf{Deliverables:} head-to-head tables/plots of CRPS + quantile score + calibration; include ``raw ensemble'' and ``best simple'' comparator. \\
+
+E3 & \prioH & \cb &
+Model is detailed; revise with versions removing hierarchical pieces (ablation): e.g., Model C remove AR trend; Model B remove retrospective and/or state AR; identify what gives ``bang for buck''. &
+\textbf{Action:} Run an ablation study where you remove one component at a time.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Define a component list (trend AR, retrospective AR, state AR, horizon weighting, synthesis layer, etc.).
+\item For each ablation, compute out-of-sample scores and summarize delta vs full model.
+\end{itemize}
+\textbf{Deliverables:} (i) ``Ablation matrix'' table; (ii) short narrative: which components matter most and why. \\
+
+E4 & \prioH & \cb &
+Validation: include proper scores for predictive distributions; CRPS used in estimation but not reported; report CRPS for forecasting; show variation by regime; include quantile scores (Gneiting \& Raftery 2007). &
+\textbf{Action:} Standardize scoring/reporting.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Report mean/median CRPS over forecast set, stratified by lead time and regime (low/moderate/high flow; optionally season).
+\item Report quantile score (pinball/check) across $\tau$; optionally integrated quantile score.
+\item Add calibration diagnostics: PIT histograms \emph{if used}, reliability diagrams for quantiles, coverage vs nominal.
+\end{itemize}
+\textbf{Deliverables:} score tables + regime/lead-time plots; align with claims in text. \\
+
+E5 & \prioM & \cb &
+Code availability requested for other basins. &
+\textbf{Action:} Provide a public repo (or archived release) with a minimal reproducible workflow.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Data ingest scripts (USGS + forecast product).
+\item Model fitting + forecasting scripts with config files.
+\item Reproduction script for all figures/tables in paper.
+\end{itemize}
+\textbf{Deliverables:} link in paper; add ``Code availability'' statement. \\
+
+E6 & \prioH & \cb &
+Unclear whether in-sample or out-of-sample; appears fit-to-validation; needs appropriate cross-validation for forecasting unseen data. &
+\textbf{Action:} Redesign evaluation to be strictly out-of-sample.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Use rolling-origin evaluation (walk-forward) or blocked time-series CV.
+\item Clearly state train period, test period, and update schedule (e.g., expanding window with periodic updates).
+\item Separate ``model checking (in-sample)'' from ``forecast verification (out-of-sample)''.
+\end{itemize}
+\textbf{Deliverables:} protocol diagram + explicit pseudo-code/description + results exclusively on held-out data. \\
+
+E7 & \prioM & \cb &
+Horizon-weighted combination of prior forecasts is ``curious''; asks: what if only most recent forecast is used? &
+\textbf{Action:} Add a controlled experiment on horizon weighting.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Compare: (i) latest-only forecast; (ii) weighted multi-horizon; (iii) learned weights vs fixed/heuristic.
+\item Report score differences and discuss interpretation (skill vs bias by lead time).
+\end{itemize}
+\textbf{Deliverables:} small subsection + one figure/table showing impact. \\
+
+% ---------------------------
+% Reviewer 1 major comments
+% ---------------------------
+R1-M1 & \prioM & \cb &
+Introduction mixes meteorological vs hydrological uncertainty; ``cascade of uncertainty'' not distinguished; restructure motivation to separate sources then show Bayesian consolidation. &
+\textbf{Action:} Rewrite introduction to explicitly separate uncertainty sources.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Add a short taxonomy: meteorological forcing uncertainty vs hydrological model/process uncertainty vs observational uncertainty.
+\item Reframe the ``physical models/ensembles'' discussion so weather ensemble under-dispersion is clearly meteorological, not hydrological.
+\item Conclude intro with: what you correct (systematic bias + miscalibration) and why quantiles matter operationally.
+\end{itemize}
+\textbf{Deliverables:} cleaner intro flow + clearer contribution statement. \\
+
+R1-M2 & \prioH & \cb &
+Links between model formulation and results unclear; models A/B/C developed but not explicitly tied to Section 3 results. &
+\textbf{Action:} Enforce a one-to-one mapping between models and reported results.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item At end of Section 2: a compact table listing Model A/B/C, components, intended purpose, and what results/figures correspond.
+\item In Section 3: headings/subheadings explicitly named by model; every figure caption says which model(s).
+\end{itemize}
+\textbf{Deliverables:} ``Model map'' table + reorganized results section. \\
+
+R1-M3 & \prioM & \cb &
+Paper is math-heavy; reduce equations/details not needed; remove PIT section if not used; quantile crossing fix may be unnecessary if not observed; reconsider PFS detail. &
+\textbf{Action:} Trim/relocate technical material.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Keep only equations needed to define the model and estimation; move derivations to Appendix/Supplement.
+\item If PIT is not used in results, either remove it or reintroduce it as a reported calibration diagnostic.
+\item If quantile crossing does not occur, move the remedy to Appendix as a robustness note.
+\item Shorten PFS exposition: emphasize intuition + key formula + algorithm sketch; defer full detail.
+\end{itemize}
+\textbf{Deliverables:} shorter main text; appendix/supplement for proofs/derivations. \\
+
+R1-M4 & \prioH & \cb &
+Forecasting evaluation is limited (seems like one short event 2022-12-25 to 2023-01-22); asks for more evidence: high/low/moderate events, or continuous 2023 to present; use CRPS/PIT for verification. &
+\textbf{Action:} Expand the forecast evaluation dataset and stratification.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Evaluate over a long continuous period (e.g., full 2023--present or multiple years if available).
+\item Provide event-based slices (peaks/floods) and low-flow/drought-like periods.
+\item Report scores and calibration by regime and by season if relevant.
+\end{itemize}
+\textbf{Deliverables:} expanded test set + regime definitions + summary tables/plots. \\
+
+R1-M5 & \prioH & \cb &
+Needs robust discussion of fair forecast assessment using cross-validation. &
+\textbf{Action:} Add a dedicated ``Forecast evaluation design'' section.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Justify time-series CV choice; address leakage; discuss operational realism.
+\item Specify how hyperparameters/models are selected without peeking at test.
+\item If multiple basins possible, discuss generalization protocol.
+\end{itemize}
+\textbf{Deliverables:} explicit CV protocol + selection rules + reproducible design. \\
+
+% ---------------------------
+% Reviewer 1 minor comments
+% ---------------------------
+R1-m1 & \prioL & \cb &
+Note conceptual models are often more practical than physical models for prediction. &
+\textbf{Action:} Add one sentence in introduction acknowledging conceptual models and situating your work relative to them.
+\textbf{Deliverable:} small intro edit + 1 reference if appropriate. \\
+
+R1-m2 & \prioL & \cb &
+Section 2.1: ``flexile quantile estimation'' unfamiliar; consider ``flexible''. &
+\textbf{Action:} Replace term (or define it if deliberate). \textbf{Deliverable:} text edit in Section 2.1. \\
+
+R1-m3 & \prioL & \cb &
+ERA5 rainfall fields are partly from short-run forecasts; not fully deterministic. &
+\textbf{Action:} Add nuance in data description: reanalysis includes model-based components, especially precip.
+\textbf{Deliverable:} 1--2 sentences in Section 2.3 (and cite ERA5 documentation if you use it). \\
+
+R1-m4 & \prioM & \cb &
+Introduce USGS measurements and differences vs reanalysis; consider separate data/methodology section. &
+\textbf{Action:} Improve data section structure.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item Add a clear ``Data'' section describing USGS discharge, forecast products, and any reanalysis covariates.
+\item Explain measurement process at high level and uncertainty/quality flags.
+\end{itemize}
+\textbf{Deliverable:} reorganized Section 2.3 into Data + Method subsections. \\
+
+R1-m5 & \prioM & \cb &
+How is non-zero precipitation handled? Data censoring? &
+\textbf{Action:} Explicitly state precipitation modeling/handling.
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item If censored/zero-inflated, describe likelihood and thresholds.
+\item If transformed (e.g., $\log(1+x)$), state and justify.
+\end{itemize}
+\textbf{Deliverable:} explicit paragraph + (if needed) appendix detail. \\
+
+R1-m6 & \prioM & \cb &
+Weighted lagged forecasts may degrade skill; did authors find beneficial? &
+\textbf{Action:} Same as E7, but ensure you explain empirically whether weighting helps and why.
+\textbf{Deliverable:} add results + interpretation; reconcile with hydromet intuition. \\
+
+R1-m7 & \prioM & \cb &
+Section 3.2 title vague; Section 3 seems about in-sample prediction not forecasting; reorganize headings separating model checking vs forecasting. &
+\textbf{Action:} Rebuild Section 3 structure:
+\begin{itemize}[leftmargin=1.1em,itemsep=2pt,topsep=2pt]
+\item ``In-sample model checking'' (residuals, posterior predictive checks).
+\item ``Out-of-sample forecast verification'' (scores + calibration).
+\item ``Case studies'' (events).
+\end{itemize}
+\textbf{Deliverable:} new headings + clean narrative flow. \\
+
+R1-m8 & \prioL & \cb &
+Tables 1--2: check captions (posterior mean vs median). &
+\textbf{Action:} Make tables consistent with reported summaries.
+\textbf{Deliverable:} caption edits + ensure body uses the same statistic. \\
+
+R1-m9 & \prioL & \cb &
+Figures 8--9: explain constant variance vs variable predictive distributions. &
+\textbf{Action:} Add interpretive captions/text: what drives variance behavior in each figure (model component, regime, observation noise, etc.).
+\textbf{Deliverable:} improved captions + 1--2 paragraphs in results. \\
+
+\end{longtable}
+
+% ============================================================
+\section*{4. Implementation checklist (by manuscript section)}
+\begin{tcolorbox}[colback=Soft,colframe=Accent,boxrule=0.6pt,arc=2mm]
+\textbf{Abstract}
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt,topsep=2pt]
+\item \cb Remove/soften ``fast'' claim or support it with runtime evidence (E1).
+\item \cb State clearly: out-of-sample forecasting protocol + main scores reported (E4, E6).
+\end{itemize}
+
+\textbf{Introduction}
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt,topsep=2pt]
+\item \cb Separate meteorological vs hydrological vs observational uncertainty; restructure cascade discussion (R1-M1).
+\item \cb Add conceptual models note (R1-m1).
+\end{itemize}
+
+\textbf{Data / Methods (Section 2)}
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt,topsep=2pt]
+\item \cb Create a dedicated Data section: USGS, forecast products, reanalysis caveats (R1-m3, R1-m4).
+\item \cb Clarify precipitation handling (R1-m5).
+\item \cb Provide a ``model map'' table linking A/B/C to results (R1-M2).
+\item \cb Trim unused math; move details to appendix; PIT/quantile crossing treatment consistent with usage (R1-M3).
+\end{itemize}
+
+\textbf{Forecast evaluation design (new section recommended)}
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt,topsep=2pt]
+\item \cb Define rolling-origin / blocked CV; avoid leakage; specify selection without test peeking (E6, R1-M5).
+\end{itemize}
+
+\textbf{Results (Section 3)}
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt,topsep=2pt]
+\item \cb Separate in-sample model checking vs out-of-sample verification (R1-m7).
+\item \cb Add benchmarking vs competitors + physical ensembles (E2).
+\item \cb Add ablations and ``bang for buck'' narrative (E3).
+\item \cb Report CRPS + quantile scores; stratify by regime and lead time; include calibration (E4, R1-M4).
+\item \cb Explain key figure behavior (R1-m9) and fix table captions/statistics (R1-m8).
+\end{itemize}
+
+\textbf{Computational + Reproducibility}
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt,topsep=2pt]
+\item \cb Add runtime/complexity + operational update discussion (E1).
+\item \cb Add code availability statement + repo link + reproduction scripts (E5).
+\end{itemize}
+\end{tcolorbox}
+
+% ============================================================
+\section*{5. Experiments matrix (what to run, minimum set)}
+\begin{tcolorbox}[colback=Soft,colframe=Accent,boxrule=0.6pt,arc=2mm]
+\textbf{Minimum experimental set to satisfy the core critiques:}
+\begin{enumerate}[leftmargin=1.2em,itemsep=3pt,topsep=2pt]
+\item \textbf{Out-of-sample protocol:} rolling-origin evaluation over a long continuous period (e.g., all of 2023--present, or longer).
+\item \textbf{Baselines:}
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt,topsep=2pt]
+\item latest-only raw forecast product
+\item weighted multi-horizon raw product (if applicable)
+\item simple statistical baseline (persistence / ARX / Gaussian DLM)
+\item AL version of your model vs exAL version (same structure)
+\end{itemize}
+\item \textbf{Ablations:} remove each hierarchical block one at a time; report delta in scores.
+\item \textbf{Scores:} CRPS + quantile score; calibration diagnostics; stratify by regime and lead time.
+\item \textbf{Runtime:} report training + forecasting wall time for representative configurations.
+\end{enumerate}
+\end{tcolorbox}
+
+% ============================================================
+\section*{6. Resubmission logistics (cover letter + rebuttal)}
+\begin{tcolorbox}[colback=Soft,colframe=Accent,boxrule=0.6pt,arc=2mm]
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt,topsep=2pt]
+\item \cb In cover letter: include title + manuscript ID 5228655.
+\item \cb Provide a point-to-point rebuttal document: one response per ID above (E1--E7, R1-M1--R1-m9), stating (i) what changed, (ii) where in the manuscript, (iii) what new evidence/figure/table was added.
+\item \cb Ensure the manuscript text matches the evidence (especially speed/feasibility and forecasting claims).
+\end{itemize}
+\end{tcolorbox}
+
+% ============================================================
+\section*{7. Notes / scratch space}
+\vspace{0.5em}
+\noindent\textbf{Key decisions to record (fill in as you implement):}
+\begin{itemize}[leftmargin=1.2em,itemsep=4pt,topsep=2pt]
+\item Evaluation period(s): \hrulefill
+\item Forecast horizons used: \hrulefill
+\item Updating strategy (expanding window / sliding window / periodic refit): \hrulefill
+\item Regime definition (thresholds for low/moderate/high): \hrulefill
+\item Baselines included: \hrulefill
+\item Public code link / archive: \hrulefill
+\end{itemize}
+
+\end{document}
