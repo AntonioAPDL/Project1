@@ -260,13 +260,13 @@ inverse_cdf_AL <- function(U, mu, sigma, p) {
          mu - (sigma / p) * log((1 - U) / (1 - p)))
 }
 
-p.fn <- function(p0, gam) {
-  (p0 - as.numeric(gam < 0)) / exp(log.g(gam)) + as.numeric(gam < 0)
+p_fn <- function(p0, gam) {
+  (p0 - as.numeric(gam < 0)) / exp(log_g(gam)) + as.numeric(gam < 0)
 }
 
-C.fn <- function(p0, gam) {
-  temp.p <- p.fn(p0, gam)
-  (as.numeric(gam > 0) - temp.p)^(-1)
+C_fn <- function(p0, gam) {
+  temp_p <- p_fn(p0, gam)
+  (as.numeric(gam > 0) - temp_p)^(-1)
 }
 
 # Generalized function to handle each case
@@ -278,8 +278,8 @@ generate_y_post <- function(p0, xb_matrix, gamma_sample, sigma_sample) {
   for (t in 1:n_cols) {
     s_0 <- rtruncnorm(1, a=0, b=Inf, mean = 0, sd = 1)
     u <- runif(n_rows)
-    y_post[,t] <- xb_matrix[,t] + sigma_sample * abs(gamma_sample) * C.fn(p0, gamma_sample) * s_0 +  
-                  sigma_sample * inverse_cdf_AL(u, 0, 1, p.fn(p0, gamma_sample))
+    y_post[,t] <- xb_matrix[,t] + sigma_sample * abs(gamma_sample) * C_fn(p0, gamma_sample) * s_0 +  
+                  sigma_sample * inverse_cdf_AL(u, 0, 1, p_fn(p0, gamma_sample))
   }
   
   return(y_post)
@@ -462,19 +462,19 @@ for(t in 1:ranges[1]){
     w <- rep(0,7)
     for(s in 1:n.samp){
         diff <- y_post_5[s,t]-q5$quantiles[1,t]
-        w[1] <- exp(-k*CheckLossFn(0.05,diff)/samp.sigma_5_exAL_synth_DISC[1,s])
+        w[1] <- exp(-k*check_loss_fn(0.05,diff)/samp.sigma_5_exAL_synth_DISC[1,s])
         diff <- y_post_50[s,t]-q50$quantiles[1,t]
-        w[2] <- exp(-k*CheckLossFn(0.5,diff)/samp.sigma_50_exAL_synth_DISC[1,s])
+        w[2] <- exp(-k*check_loss_fn(0.5,diff)/samp.sigma_50_exAL_synth_DISC[1,s])
         diff <- y_post_95[s,t]-q95$quantiles[1,t]
-        w[3] <- exp(-k*CheckLossFn(0.95,diff)/samp.sigma_95_exAL_synth_DISC[1,s])
+        w[3] <- exp(-k*check_loss_fn(0.95,diff)/samp.sigma_95_exAL_synth_DISC[1,s])
         diff <- y_post_20[s,t]-q20$quantiles[1,t]
-        w[4] <- exp(-k*CheckLossFn(0.2,diff)/samp.sigma_20_exAL_synth_DISC[1,s])
+        w[4] <- exp(-k*check_loss_fn(0.2,diff)/samp.sigma_20_exAL_synth_DISC[1,s])
         diff <- y_post_35[s,t]-q35$quantiles[1,t]
-        w[5] <- exp(-k*CheckLossFn(0.35,diff)/samp.sigma_35_exAL_synth_DISC[1,s])
+        w[5] <- exp(-k*check_loss_fn(0.35,diff)/samp.sigma_35_exAL_synth_DISC[1,s])
         diff <- y_post_80[s,t]-q80$quantiles[1,t]
-        w[6] <- exp(-k*CheckLossFn(0.80,diff)/samp.sigma_80_exAL_synth_DISC[1,s])
+        w[6] <- exp(-k*check_loss_fn(0.80,diff)/samp.sigma_80_exAL_synth_DISC[1,s])
         diff <- y_post_65[s,t]-q65$quantiles[1,t]
-        w[7] <- exp(-k*CheckLossFn(0.65,diff)/samp.sigma_65_exAL_synth_DISC[1,s])
+        w[7] <- exp(-k*check_loss_fn(0.65,diff)/samp.sigma_65_exAL_synth_DISC[1,s])
         w <- w/sum(w)
         synth_q_f[s,t] <- sum(w*c(q5$quantiles[1,t],q50$quantiles[1,t],q95$quantiles[1,t],
                                   q20$quantiles[1,t],q35$quantiles[1,t],q80$quantiles[1,t],q65$quantiles[1,t]))
@@ -3589,32 +3589,32 @@ inverse_cdf_AL <- function(U, mu, sigma, p) {
          mu - (sigma / p) * log((1 - U) / (1 - p)))
 }
 
-L.fn<-function(p0){ stats::uniroot(function(gam) exp(log.g(gam))-(1-p0), c(-1000,0))$root }
-U.fn<-function(p0){ stats::uniroot(function(gam) exp(log.g(gam))-p0, c(0,1000))$root }
-p.fn<-function(p0,gam){ (p0-as.numeric(gam<0))/exp(log.g(gam))+as.numeric(gam<0)}
-A.fn<-function(p0,gam){ temp.p = p.fn(p0,gam); return((1-2*temp.p)/(temp.p*(1-temp.p))) }
-B.fn<-function(p0,gam){ temp.p = p.fn(p0,gam); return((2)/(temp.p*(1-temp.p))) }
-C.fn<-function(p0,gam){ temp.p = p.fn(p0,gam); return((as.numeric(gam>0)-temp.p)^(-1)) }
-#
+L_fn <- function(p0) {
+  stats::uniroot(function(gam) exp(log_g(gam)) - (1 - p0), c(-1000, 0))$root
+}
 
-# set.seed(777) 
-# p0 <- 0.5
-# j <- 1; 
-# t <- 1; s <- 1;
-# y_post <- matrix(NA_real_,nrow = dim(samp.theta_50_exAL_synth$samp_theta)[3], ncol = dim(samp.theta_50_exAL_synth$samp_theta)[2])
-# for(t in 1:dim(samp.theta_50_exAL_synth$samp_theta)[2]){
-#   for(s in 1:dim(samp.theta_50_exAL_synth$samp_theta)[3]){
-#     y_post[s,t] <- 
-#   } 
-# }
-# u <- runif(1)
-# th_jt <- samp.theta_50_exAL_synth$samp_theta[,t,s]
-# stj <- samp.sts_50_exAL_synth[j,t,s]
-# gamj <- samp.gamma_50_exAL_synth[j,s]
-# sigj <- samp.sigma_50_exAL_synth[j,s]
-# p_exAL <- p.fn(p0, gamj)
-# mu <- t(FF[,j,t])%*%(th_jt) + sigj*abs(gamj)*C.fn(p0, gamj)*stj
-# inverse_cdf_AL(u, mu, sigj, p_exAL)
+U_fn <- function(p0) {
+  stats::uniroot(function(gam) exp(log_g(gam)) - p0, c(0, 1000))$root
+}
+
+p_fn <- function(p0, gam) {
+  (p0 - as.numeric(gam < 0)) / exp(log_g(gam)) + as.numeric(gam < 0)
+}
+
+A_fn <- function(p0, gam) {
+  temp_p <- p_fn(p0, gam)
+  (1 - 2 * temp_p) / (temp_p * (1 - temp_p))
+}
+
+B_fn <- function(p0, gam) {
+  temp_p <- p_fn(p0, gam)
+  2 / (temp_p * (1 - temp_p))
+}
+
+C_fn <- function(p0, gam) {
+  temp_p <- p_fn(p0, gam)
+  (as.numeric(gam > 0) - temp_p)^(-1)
+}
 
 
 # Set index for parameters
@@ -3630,13 +3630,13 @@ inverse_cdf_AL <- function(U, mu, sigma, p) {
 }
 
 # Define auxiliary functions
-p.fn <- function(p0, gam) {
-  (p0 - as.numeric(gam < 0)) / exp(log.g(gam)) + as.numeric(gam < 0)
+p_fn <- function(p0, gam) {
+  (p0 - as.numeric(gam < 0)) / exp(log_g(gam)) + as.numeric(gam < 0)
 }
 
-C.fn <- function(p0, gam) {
-  temp.p <- p.fn(p0, gam)
-  (as.numeric(gam > 0) - temp.p)^(-1)
+C_fn <- function(p0, gam) {
+  temp_p <- p_fn(p0, gam)
+  (as.numeric(gam > 0) - temp_p)^(-1)
 }
 
 # Define quantile levels
@@ -3669,7 +3669,7 @@ compute_y_post <- function(p0, samp_theta, samp_sts, samp_gamma, samp_sigma, FF,
   stj <- samp_sts[j, , ]                     # [time steps x samples]
   gamj <- samp_gamma[j, ]                    # [samples]
   sigj <- samp_sigma[j, ]                    # [samples]
-  p_exAL <- p.fn(p0, gamj)
+  p_exAL <- p_fn(p0, gamj)
 
   # Reshape FF to align dimensions for matrix multiplication across time steps
   TT <- dim(samp_theta$samp_theta)[2]        # Number of time steps
@@ -3680,7 +3680,7 @@ compute_y_post <- function(p0, samp_theta, samp_sts, samp_gamma, samp_sigma, FF,
   XB <- do.call(rbind, result_list)          # [time steps x samples]
 
   # Compute `mu` using the XB result and additional parameters
-  mu <- XB + sigj * abs(gamj) * C.fn(p0, gamj) * stj
+  mu <- XB + sigj * abs(gamj) * C_fn(p0, gamj) * stj
 
   # Compute posterior samples
   inverse_cdf_AL(u_values, mu, sigj, p_exAL)
@@ -3874,13 +3874,13 @@ inverse_cdf_AL <- function(U, mu, sigma, p) {
          mu - (sigma / p) * log((1 - U) / (1 - p)))
 }
 ############################################################################
-p.fn <- function(p0, gam) {
-  (p0 - as.numeric(gam < 0)) / exp(log.g(gam)) + as.numeric(gam < 0)
+p_fn <- function(p0, gam) {
+  (p0 - as.numeric(gam < 0)) / exp(log_g(gam)) + as.numeric(gam < 0)
 }
 ############################################################################
-C.fn <- function(p0, gam) {
-  temp.p <- p.fn(p0, gam)
-  (as.numeric(gam > 0) - temp.p)^(-1)
+C_fn <- function(p0, gam) {
+  temp_p <- p_fn(p0, gam)
+  (as.numeric(gam > 0) - temp_p)^(-1)
 }
 ############################################################################
 # Generalized function to handle each case
@@ -3892,8 +3892,8 @@ generate_y_post <- function(p0, xb_matrix, gamma_sample, sigma_sample) {
   for (t in 1:n_cols) {
     s_0 <- rtruncnorm(1, a=0, b=Inf, mean = 0, sd = 1)
     u <- runif(n_rows)
-    y_post[,t] <- xb_matrix[,t] + sigma_sample * abs(gamma_sample) * C.fn(p0, gamma_sample) * s_0 +  
-                  sigma_sample * inverse_cdf_AL(u, 0, 1, p.fn(p0, gamma_sample))
+    y_post[,t] <- xb_matrix[,t] + sigma_sample * abs(gamma_sample) * C_fn(p0, gamma_sample) * s_0 +  
+                  sigma_sample * inverse_cdf_AL(u, 0, 1, p_fn(p0, gamma_sample))
   }
 
   return(y_post)

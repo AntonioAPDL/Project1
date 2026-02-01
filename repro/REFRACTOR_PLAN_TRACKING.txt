@@ -36,14 +36,11 @@ Deliverables:
 Validation:
 - Run the modular script and confirm outputs still look correct.
 Status:
-- In progress (2026-01-30)
+- Completed (2026-01-30)
 Completed in Phase 1:
   - Consolidated package loading into 00_setup.R
   - Removed library() calls from other modules
   - Added section headers to all modules
-Remaining in Phase 1:
-  - Naming normalization is deferred to Phase 2+ (would require variable renames).
-  - Review redundant comments/dead commented blocks only if clearly safe (no changes made yet).
 Notes:
 - Keep all object names identical to avoid downstream breakage.
 
@@ -122,3 +119,4 @@ Progress log (append updates here)
 - 2026-01-30: Phase 1 started. Consolidated library loading into 00_setup.R, removed library() in other modules, and added headers to all modules.
 - 2026-01-30: Phase 2 completed (paths/constants centralized). Phase 3 completed (utils_data/plot added; standardization uses helper). Phase 4 completed (check_inputs added and runner updated).
 - 2026-01-30: Phase 5 completed (module doc headers, SCRIPT_RUNNER_STATUS.md and README.md updated).
+- 2026-01-30: Phase 1 naming normalization + comment cleanup: standardized helper function names (log_g/L_fn/U_fn/p_fn/A_fn/B_fn/C_fn/check_loss_fn), updated local helper blocks in 40_figures.R, removed redundant commented test block, and normalized temp_p naming.

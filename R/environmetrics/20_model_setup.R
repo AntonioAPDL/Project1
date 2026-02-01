@@ -178,8 +178,8 @@ if (use_covariates) {
 
 
 
-L = L.fn(p0)
-U = U.fn(p0)
+L = L_fn(p0)
+U = U_fn(p0)
 
 FF_list <- vector("list", J)
 GG_list <- vector("list", J)
@@ -257,13 +257,13 @@ new.gamsig.out = list(E.gam = gam0,
                       E.sigma = sig0, 
                       V.sig = E2,
                       E.inv.sigma = 1/sig0, 
-                      E.c2.invb.absgam2.sigma = sig0 * (C.fn(p0, gam0)^2) * (abs(gam0)^2)/B.fn(p0, gam0), 
-                      E.c.invb.absgam = C.fn(p0, gam0) * abs(gam0)/B.fn(p0, gam0),  
-                      E.c.a.invb.absgam = C.fn(p0, gam0) * A.fn(p0, gam0) * abs(gam0)/B.fn(p0, gam0), 
-                      E.a2.invb.inv.sigma = (A.fn(p0,gam0)^2)/(B.fn(p0, gam0) * sig0), 
-                      E.invb.inv.sigma = 1/(sig0 * B.fn(p0, gam0)), 
-                      E.a.invb.inv.sigma = A.fn(p0, gam0)/(B.fn(p0, gam0) * sig0),
-                      E.log.sig.b = log( sig0*B.fn(p0, gam0) ),
+                      E.c2.invb.absgam2.sigma = sig0 * (C_fn(p0, gam0)^2) * (abs(gam0)^2)/B_fn(p0, gam0), 
+                      E.c.invb.absgam = C_fn(p0, gam0) * abs(gam0)/B_fn(p0, gam0),  
+                      E.c.a.invb.absgam = C_fn(p0, gam0) * A_fn(p0, gam0) * abs(gam0)/B_fn(p0, gam0), 
+                      E.a2.invb.inv.sigma = (A_fn(p0,gam0)^2)/(B_fn(p0, gam0) * sig0), 
+                      E.invb.inv.sigma = 1/(sig0 * B_fn(p0, gam0)), 
+                      E.a.invb.inv.sigma = A_fn(p0, gam0)/(B_fn(p0, gam0) * sig0),
+                      E.log.sig.b = log( sig0*B_fn(p0, gam0) ),
                       E.log.sig = log(sig0),
                       E.prior.sig.gam = array(0, c(J+1,1)),
                       entrop = array(0, c(J+1,1))  )
@@ -423,7 +423,7 @@ if(!Climate_Center){
   dq_transf <- function(theta_s,theta_g){
       sig <- exp(theta_s)
       gam <- LL+(-LL+UU)*exp(-exp(theta_g))
-          a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam); p.fn(p0,gam)
+          a = A_fn(p0,gam); b = B_fn(p0,gam); c = C_fn(p0,gam); p_fn(p0,gam)
 
       # Prior
       yy <- log(PriorGammaDens(gam, prior_g)) - (prior_s[1] + 1) * log(sig) - prior_s[2]/sig
@@ -451,7 +451,7 @@ if(!Climate_Center){
   dq_transf <- function(theta_s,theta_g){
       sig <- exp(theta_s)
       gam <- LL+(-LL+UU)*exp(-exp(theta_g))
-          a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+          a = A_fn(p0,gam); b = B_fn(p0,gam); c = C_fn(p0,gam);
 
       # Prior
       yy <- log(PriorGammaDens(gam, prior_g)) - (prior_s[1] + 1) * log(sig) - prior_s[2]/sig
@@ -503,28 +503,28 @@ if(!Climate_Center){
 
   f.exp.theta_g <- function(theta){
     sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
-    a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+    a = A_fn(p0,gam); b = B_fn(p0,gam); c = C_fn(p0,gam);
     yy <- exp(theta[2])
     return(yy)
   }
 
   f.log.sig.b <- function(theta){
     sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
-    a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+    a = A_fn(p0,gam); b = B_fn(p0,gam); c = C_fn(p0,gam);
     yy <- log(sig*b)
     return(yy)
   }
 
   f.log.sig <- function(theta){
     sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
-    a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+    a = A_fn(p0,gam); b = B_fn(p0,gam); c = C_fn(p0,gam);
     yy <- log(sig)
     return(yy)
   }
 
   f.prior.sig.gam <- function(theta){
     sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
-    a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+    a = A_fn(p0,gam); b = B_fn(p0,gam); c = C_fn(p0,gam);
     yy <- crch::dtt(gam, location = prior_g[1], scale = prior_g[2], df = prior_g[3], left = L, right = U, log = TRUE)
     yy <- yy + nimble::dinvgamma(sig, shape = prior_s[1], scale =  prior_s[2], log = TRUE)
     return(yy)
@@ -533,7 +533,7 @@ if(!Climate_Center){
 
   f.c2.s.abs.g2.inv.b <- function(theta){
     sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
-    a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+    a = A_fn(p0,gam); b = B_fn(p0,gam); c = C_fn(p0,gam);
     yy <- c^2*sig*abs(gam)^2/b
     return(yy)
   }
@@ -546,35 +546,35 @@ if(!Climate_Center){
 
   f.c.abs.g.inv.b <- function(theta){
     gam = LL+(-LL+UU)*exp(-exp(theta[2]))
-    b = B.fn(p0,gam); c = C.fn(p0,gam);
+    b = B_fn(p0,gam); c = C_fn(p0,gam);
     yy <- c*abs(gam)/b
     return(yy)
   }
 
   f.c.abs.g.a.inv.b <- function(theta){
     sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
-    a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+    a = A_fn(p0,gam); b = B_fn(p0,gam); c = C_fn(p0,gam);
     yy <- c*abs(gam)*a/b
     return(yy)
   }
 
   f.inv.s.inv.b <- function(theta){
     sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
-    a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+    a = A_fn(p0,gam); b = B_fn(p0,gam); c = C_fn(p0,gam);
     yy <- 1/sig/b
     return(yy)
   }
 
   f.a.inv.s.inv.b <- function(theta){
     sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
-    a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+    a = A_fn(p0,gam); b = B_fn(p0,gam); c = C_fn(p0,gam);
     yy <- a/sig/b
     return(yy)
   }
 
   f.a2.inv.s.inv.b <- function(theta){
     sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
-    a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+    a = A_fn(p0,gam); b = B_fn(p0,gam); c = C_fn(p0,gam);
     yy <- a^2/sig/b
     return(yy)
   }

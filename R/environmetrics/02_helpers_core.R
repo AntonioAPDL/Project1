@@ -9,14 +9,14 @@
 ###############################################################################
 
 # Function to check if a matrix is positive definite
-is.positive.definite <- function(x) {
+is_positive_definite <- function(x) {
   eigenvalues <- eigen(x)$values
   return(all(eigenvalues > 0))
 }
 
 # Function to compute inverse or square root of inverse using Cholesky Decomposition
 compute_cholesky <- function(q, compute_sqrt_inverse = FALSE) {
-  if (!is.positive.definite(q)) {
+  if (!is_positive_definite(q)) {
     stop("The matrix is not positive definite.")
   }
   
@@ -43,17 +43,40 @@ compute_cholesky <- function(q, compute_sqrt_inverse = FALSE) {
     return(list(inverse = inv_q, sqrt_inverse = sqrt_inv_q, check = is_correct))
   }
 }
-#
-log.g<-function(gam){	log(2)+stats::pnorm(-abs(gam),log=T)+0.5*gam^2 }
-L.fn<-function(p0){ stats::uniroot(function(gam) exp(log.g(gam))-(1-p0), c(-1000,0))$root }
-U.fn<-function(p0){ stats::uniroot(function(gam) exp(log.g(gam))-p0, c(0,1000))$root }
-p.fn<-function(p0,gam){ (p0-as.numeric(gam<0))/exp(log.g(gam))+as.numeric(gam<0)}
-A.fn<-function(p0,gam){ temp.p = p.fn(p0,gam); return((1-2*temp.p)/(temp.p*(1-temp.p))) }
-B.fn<-function(p0,gam){ temp.p = p.fn(p0,gam); return((2)/(temp.p*(1-temp.p))) }
-C.fn<-function(p0,gam){ temp.p = p.fn(p0,gam); return((as.numeric(gam>0)-temp.p)^(-1)) }
-#
-CheckLossFn = function(p0,diff){diff*p0 - diff*as.numeric(diff<0)}
-#
+log_g <- function(gam) {
+  log(2) + stats::pnorm(-abs(gam), log = TRUE) + 0.5 * gam^2
+}
+
+L_fn <- function(p0) {
+  stats::uniroot(function(gam) exp(log_g(gam)) - (1 - p0), c(-1000, 0))$root
+}
+
+U_fn <- function(p0) {
+  stats::uniroot(function(gam) exp(log_g(gam)) - p0, c(0, 1000))$root
+}
+
+p_fn <- function(p0, gam) {
+  (p0 - as.numeric(gam < 0)) / exp(log_g(gam)) + as.numeric(gam < 0)
+}
+
+A_fn <- function(p0, gam) {
+  temp_p <- p_fn(p0, gam)
+  (1 - 2 * temp_p) / (temp_p * (1 - temp_p))
+}
+
+B_fn <- function(p0, gam) {
+  temp_p <- p_fn(p0, gam)
+  2 / (temp_p * (1 - temp_p))
+}
+
+C_fn <- function(p0, gam) {
+  temp_p <- p_fn(p0, gam)
+  (as.numeric(gam > 0) - temp_p)^(-1)
+}
+
+check_loss_fn <- function(p0, diff) {
+  diff * p0 - diff * as.numeric(diff < 0)
+}
 dlm_df = function(y, model, df, dim.df, s.priors = list(l0=1,S0=10), just.lik=FALSE){
   ### Gets the     Time Series Length / Replicate number
   y = check_ts(y)
