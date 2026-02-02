@@ -136,16 +136,13 @@ X_ext[,4] <- c(0,X[1:(TT-1),1])^2
 X_ext[,5] <- c(0,0,X[1:(TT-2),1])^2
 
 ########### Standarized added covariates
-sd1  <- sd(X_ext[,1]) 
-sd2  <- sd(X_ext[,2]) 
-sd3  <- sd(X_ext[,3]) 
-sd4  <- sd(X_ext[,4]) 
-sd5  <- sd(X_ext[,5]) 
-X_ext[,1] <- standardize_with_sd(X_ext[,1], sd1)$values
-X_ext[,2] <- standardize_with_sd(X_ext[,2], sd2)$values
-X_ext[,3] <- standardize_with_sd(X_ext[,3], sd3)$values
-X_ext[,4] <- standardize_with_sd(X_ext[,4], sd4)$values
-X_ext[,5] <- standardize_with_sd(X_ext[,5], sd5)$values
+sds_ext <- apply(X_ext, 2, sd)
+X_ext <- sweep(X_ext, 2, sds_ext, FUN = "/")
+sd1 <- sds_ext[1]
+sd2 <- sds_ext[2]
+sd3 <- sds_ext[3]
+sd4 <- sds_ext[4]
+sd5 <- sds_ext[5]
 ###############################################
 ###############################################
 ###############################################
@@ -160,22 +157,17 @@ X_ext_f[,5] <- c(X[(TT-1),1],X[TT,1],X_f[1:(ranges[1]-2),1])^2
 ## STANDARDIZATION ##
 #####################
 ##### Standarized original covs
-sd_ppt  <- sd(X[,1]) 
-sd_soil <- sd(X[,2]) 
-sd_pca  <- sd(X[,3]) 
-X[,1] <- standardize_with_sd(X[,1], sd_ppt)$values
-X[,2] <- standardize_with_sd(X[,2], sd_soil)$values
-X[,3] <- standardize_with_sd(X[,3], sd_pca)$values
+sds_main <- apply(X[, 1:3, drop = FALSE], 2, sd)
+X[, 1:3] <- sweep(X[, 1:3, drop = FALSE], 2, sds_main, FUN = "/")
+sd_ppt <- sds_main[1]
+sd_soil <- sds_main[2]
+sd_pca <- sds_main[3]
 X <- cbind(X,X_ext)
 ###### Standarized future covs using historical sds
-X_f[,1] <- standardize_with_sd(X_f[,1], sd_ppt)$values
-X_f[,2] <- standardize_with_sd(X_f[,2], sd_soil)$values
-X_f[,3] <- standardize_with_sd(X_f[,3], sd_pca)$values
-X_ext_f[,1] <- standardize_with_sd(X_ext_f[,1], sd1)$values
-X_ext_f[,2] <- standardize_with_sd(X_ext_f[,2], sd2)$values
-X_ext_f[,3] <- standardize_with_sd(X_ext_f[,3], sd3)$values
-X_ext_f[,4] <- standardize_with_sd(X_ext_f[,4], sd4)$values
-X_ext_f[,5] <- standardize_with_sd(X_ext_f[,5], sd5)$values
+X_f[,1] <- X_f[,1] / sd_ppt
+X_f[,2] <- X_f[,2] / sd_soil
+X_f[,3] <- X_f[,3] / sd_pca
+X_ext_f <- sweep(X_ext_f, 2, sds_ext, FUN = "/")
 X_f <- cbind(X_f,X_ext_f)
 
 
