@@ -1,0 +1,128 @@
+# Script vs Canonical Comparison
+
+Canonical dir: /data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce
+Current dir: /data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce_script
+Mode: pixel
+
+Matched: 120
+Missing: 0
+Extra: 5
+Mismatched: 27
+
+## Extra
+- Environmetrics_reproduceplot_50th_quantile_DISC.png
+- Environmetrics_reproduceplot_5th_quantile_DISC.png
+- Environmetrics_reproduceplot_95th_quantile_DISC.png
+- tef_20_plot_DISC.png
+- tef_5_50_95_plot_DISC.png
+
+## Pixel Mismatched
+- 80_component_1991_2022.png
+  canonical: dim=(4200, 2100) size=1675561
+  current:   dim=(4200, 2100) size=1500793
+  diff: max_abs=255.000 mean_abs=200.135
+- 80_component_2012_2016.png
+  canonical: dim=(4200, 2100) size=687907
+  current:   dim=(4200, 2100) size=633999
+  diff: max_abs=255.000 mean_abs=243.844
+- 80_component_2017_2019.png
+  canonical: dim=(4200, 2100) size=596834
+  current:   dim=(4200, 2100) size=548644
+  diff: max_abs=255.000 mean_abs=244.624
+- Agg_disc_1991_2022_1.png
+  canonical: dim=(6000, 4000) size=2714776
+  current:   dim=(10800, 5400) size=3835397
+  diff: max_abs=-1.000 mean_abs=-1.000
+- Agg_disc_1991_2022_2.png
+  canonical: dim=(6000, 4000) size=2853290
+  current:   dim=(10800, 5400) size=4200929
+  diff: max_abs=-1.000 mean_abs=-1.000
+- Agg_disc_2012_2016_1.png
+  canonical: dim=(6000, 4000) size=1385746
+  current:   dim=(10800, 5400) size=2735822
+  diff: max_abs=-1.000 mean_abs=-1.000
+- Agg_disc_2012_2016_2.png
+  canonical: dim=(6000, 4000) size=1253180
+  current:   dim=(10800, 5400) size=2685228
+  diff: max_abs=-1.000 mean_abs=-1.000
+- Agg_disc_2017_2019_1.png
+  canonical: dim=(10800, 5400) size=2817493
+  current:   dim=(10800, 5400) size=2469684
+  diff: max_abs=255.000 mean_abs=243.114
+- Agg_disc_2017_2019_2.png
+  canonical: dim=(10800, 5400) size=3179840
+  current:   dim=(10800, 5400) size=2763709
+  diff: max_abs=255.000 mean_abs=241.595
+- All_exal_2012-2016_DISC.png
+  canonical: dim=(10800, 5400) size=3772234
+  current:   dim=(10800, 5400) size=3534298
+  diff: max_abs=255.000 mean_abs=237.416
+- All_exal_2017-2019_DISC.png
+  canonical: dim=(10800, 5400) size=4242356
+  current:   dim=(10800, 5400) size=3901821
+  diff: max_abs=255.000 mean_abs=237.771
+- forecats.png
+  canonical: dim=(10800, 5400) size=4658797
+  current:   dim=(10800, 5400) size=3927632
+  diff: max_abs=255.000 mean_abs=235.001
+- posterior_samples.png
+  canonical: dim=(10800, 5400) size=25171485
+  current:   dim=(10800, 5400) size=13899105
+  diff: max_abs=255.000 mean_abs=187.716
+- posterior_samples_counter.png
+  canonical: dim=(10800, 5400) size=18549246
+  current:   dim=(10800, 5400) size=11678433
+  diff: max_abs=255.000 mean_abs=209.105
+- posterior_samples_counter_valid.png
+  canonical: dim=(10800, 5400) size=18549246
+  current:   dim=(10800, 5400) size=11678433
+  diff: max_abs=255.000 mean_abs=209.105
+- posterior_samples_valid.png
+  canonical: dim=(10800, 5400) size=20303523
+  current:   dim=(10800, 5400) size=11859946
+  diff: max_abs=255.000 mean_abs=191.018
+- precip_soilmoisture_climatePC1_faceted_labeled.png
+  canonical: dim=(10800, 7200) size=2609144
+  current:   dim=(10800, 7200) size=2155068
+  diff: max_abs=255.000 mean_abs=217.548
+- sem_component_1991_2022.png
+  canonical: dim=(4200, 2100) size=1707576
+  current:   dim=(4200, 2100) size=1535777
+  diff: max_abs=255.000 mean_abs=200.223
+- sem_component_2012_2016.png
+  canonical: dim=(4200, 2100) size=661005
+  current:   dim=(4200, 2100) size=619217
+  diff: max_abs=255.000 mean_abs=244.477
+- sem_component_2017_2019.png
+  canonical: dim=(4200, 2100) size=567480
+  current:   dim=(4200, 2100) size=534812
+  diff: max_abs=255.000 mean_abs=245.553
+- trend_component_1991_2022.png
+  canonical: dim=(4200, 2100) size=1690552
+  current:   dim=(4200, 2100) size=1518271
+  diff: max_abs=255.000 mean_abs=194.573
+- trend_component_2012_2016.png
+  canonical: dim=(4200, 2100) size=1094336
+  current:   dim=(4200, 2100) size=943968
+  diff: max_abs=255.000 mean_abs=237.477
+- trend_component_2017_2019.png
+  canonical: dim=(4200, 2100) size=663160
+  current:   dim=(4200, 2100) size=608836
+  diff: max_abs=255.000 mean_abs=238.173
+- usgs.png
+  canonical: dim=(10800, 5400) size=1775813
+  current:   dim=(10800, 5400) size=1553339
+  diff: max_abs=255.000 mean_abs=216.795
+- yearly_component_1991_2022.png
+  canonical: dim=(4200, 2100) size=1841963
+  current:   dim=(4200, 2100) size=1651075
+  diff: max_abs=255.000 mean_abs=199.170
+- yearly_component_2012_2016.png
+  canonical: dim=(4200, 2100) size=769529
+  current:   dim=(4200, 2100) size=701843
+  diff: max_abs=255.000 mean_abs=244.151
+- yearly_component_2017_2019.png
+  canonical: dim=(4200, 2100) size=667268
+  current:   dim=(4200, 2100) size=610421
+  diff: max_abs=255.000 mean_abs=245.321
+

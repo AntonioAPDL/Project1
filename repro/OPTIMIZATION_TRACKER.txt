@@ -1,0 +1,117 @@
+Optimization Tracker (living doc)
+Project: /data/muscat_data/jaguir26/project1_ucsc_phd
+Purpose: Single source of truth for optimization plan, decisions, and changes.
+Last updated: 2026-02-02
+
+Scope
+- Target: modularized R pipeline under R/environmetrics/ and runner scripts.
+- Goal: improve performance and maintainability without changing outputs/behavior.
+- Canonical behavior: outputs must match the current reference outputs.
+
+Global Rules (non-negotiable)
+1) No semantic changes: exact outputs must remain identical.
+2) One optimization chunk per commit; validate after each chunk.
+3) Do not change algorithmic logic unless explicitly approved.
+4) Preserve randomness behavior: set.seed stays in one place; no extra RNG calls.
+5) Avoid reordering computations that change floating-point accumulation unless proven safe.
+6) No new dependencies unless justified and approved.
+
+Optimization Principles
+- Prefer vectorization and matrix operations when output is identical.
+- Prefer apply/lapply/map over manual loops when identical and readable.
+- Pre-allocate all large objects (no growing inside loops).
+- Cache repeated computations; avoid recomputation inside loops.
+- Avoid repeated I/O; read once and reuse.
+- Use Rcpp only for heavy post-processing bottlenecks that are proven hotspots.
+- If Rcpp is used:
+  - Keep interfaces minimal and deterministic.
+  - Provide unit-level validation vs R implementation.
+  - Keep the R version as reference fallback.
+
+Module-by-Module Optimization Plan
+
+Module: scripts/run_environmetrics_figures.R
+Current role: Orchestrates execution order and output paths.
+Potential hotspots: none (mostly orchestration).
+Planned optimizations:
+- Add profiling hooks and per-section timers (no runtime change).
+- Add optional PROFILE=TRUE flag to log timings.
+Status: Planned.
+
+Module: R/environmetrics/10_data_inputs.R
+Current role: Ingest data files and preprocess inputs.
+Potential hotspots:
+- repeated read.csv/readRDS or repeated transforms.
+Planned optimizations:
+- Cache file reads; ensure each dataset is read once.
+- Precompute recurrent transforms (e.g., standardized series) once.
+- Avoid repeated factor conversions in loops.
+Status: Planned.
+
+Module: R/environmetrics/20_model_setup.R
+Current role: Model setup, parameter transformations, priors.
+Potential hotspots:
+- repeated calls to A_fn/B_fn/C_fn/p_fn/log_g in loops.
+- repeated matrix inversions/linear algebra.
+Planned optimizations:
+- Cache A_fn/B_fn/C_fn/p_fn outputs for reused gam, p0.
+- Use crossprod/tcrossprod where equivalent.
+- Pre-allocate arrays and reuse buffers.
+Status: Planned.
+
+Module: R/environmetrics/30_univariate_and_misc.R
+Current role: Univariate logic and misc summaries.
+Potential hotspots:
+- loops over time/samples for post-processing.
+Planned optimizations:
+- Vectorize loop calculations where exact equivalence can be proven.
+- Avoid redundant computations inside nested loops.
+Status: Planned.
+
+Module: R/environmetrics/40_figures.R
+Current role: Figure generation and heavy post-processing.
+Potential hotspots:
+- posterior sample generation loops.
+- repeated quantile plot loops.
+Planned optimizations:
+- Cache repeated values (e.g., quantile parameters).
+- Vectorize transforms over matrices.
+- Use apply/lapply for repeated plotting blocks.
+- Consolidate repeated plot settings into shared helpers.
+Status: Planned.
+
+Module: R/environmetrics/utils_data.R
+Current role: common data helpers.
+Potential optimizations:
+- Ensure helpers are pure and vectorized.
+- Add explicit input checks to avoid silent coercion cost.
+Status: Planned.
+
+Module: R/environmetrics/utils_plot.R
+Current role: plot helpers.
+Potential optimizations:
+- Standardize device args; avoid recomputation of style parameters.
+Status: Planned.
+
+Module: R/environmetrics/02_helpers_core.R
+Current role: low-level helpers (e.g., log_g, A_fn, etc.).
+Potential optimizations:
+- Minimize overhead in frequently called helpers.
+- Ensure consistent numeric types.
+Status: Planned.
+
+Rcpp Guidelines (Only if proven necessary)
+- Only for post-processing bottlenecks with clear profiling evidence.
+- Provide identical outputs to R version (bitwise if possible).
+- Keep a feature flag to choose R or Rcpp path.
+- Document build requirements and entrypoints.
+
+Validation & Gate
+- After each optimization chunk:
+  - Run pipeline on a controlled sample (if allowed).
+  - Compare outputs manually (user-driven).
+  - Log changes in this tracker with date, file list, and outcome.
+
+Progress Log
+- 2026-02-02: Optimization plan created. No code changes.
+
