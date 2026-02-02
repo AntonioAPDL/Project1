@@ -195,32 +195,29 @@ for (j in 1:J) {
 }
 
 ########### For every j
-for (j in 1:(J+1)) {
-  if (!is.na(gam.init[j,])) {
-    if (gam.init[j,] < L | gam.init[j,] > U) {
-      stop(sprintf("gam.init must be between %s and %s for %s quantile", 
-                    round(L, 3), round(U, 3), p0))
-    }
-  } 
+bad_gam <- !is.na(gam.init[, 1]) & (gam.init[, 1] < L | gam.init[, 1] > U)
+if (any(bad_gam)) {
+  stop(sprintf(
+    "gam.init must be between %s and %s for %s quantile",
+    round(L, 3), round(U, 3), p0
+  ))
 }
 ###########################################################################################
 ########### For every j
-for (j in 1:(J+1)) {
-  if (is.na(PriorSigma[j,1]) || is.na(PriorSigma[j,2])) {
-    m_sigma = 1
-    v_sigma = 1e+10
-    PriorSigma[j,1] = (m_sigma^2)/(v_sigma) + 2 
-    PriorSigma[j,2] = (m_sigma^3)/(v_sigma) + m_sigma 
-  }
+m_sigma <- 1
+v_sigma <- 1e+10
+idx_sigma <- is.na(PriorSigma[, 1]) | is.na(PriorSigma[, 2])
+if (any(idx_sigma)) {
+  PriorSigma[idx_sigma, 1] <- (m_sigma^2) / v_sigma + 2
+  PriorSigma[idx_sigma, 2] <- (m_sigma^3) / v_sigma + m_sigma
 }
 ###########################################################################################
 ########### For every j
-for (j in 1:(J+1)) {
-  if (is.na(PriorGamma[j,1]) || is.na(PriorGamma[j,2]) || is.na(PriorGamma[j,3])) {
-    PriorGamma[j,1]  = 0
-    PriorGamma[j,2]  = 1e+10
-    PriorGamma[j,3] = 1
-  }
+idx_gamma <- is.na(PriorGamma[, 1]) | is.na(PriorGamma[, 2]) | is.na(PriorGamma[, 3])
+if (any(idx_gamma)) {
+  PriorGamma[idx_gamma, 1] <- 0
+  PriorGamma[idx_gamma, 2] <- 1e+10
+  PriorGamma[idx_gamma, 3] <- 1
 }
 ###########################################################################################
 ########### For every j
