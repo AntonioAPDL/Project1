@@ -13,6 +13,7 @@ if (RUN_ID == "") {
 }
 OUT_DIR <- file.path(OUT_PARENT, RUN_ID)
 SEED <- 777
+PROFILE <- isTRUE(as.logical(Sys.getenv("PROFILE", "FALSE")))
 
 # Deterministic settings (match notebook)
 set.seed(SEED)
@@ -32,6 +33,7 @@ git_hash <- tryCatch(system("git rev-parse HEAD", intern = TRUE), error = functi
 cat(sprintf("GIT_COMMIT: %s\n", git_hash))
 cat(sprintf("OUT_DIR: %s\n", OUT_DIR))
 cat(sprintf("SEED: %s\n", SEED))
+cat(sprintf("PROFILE: %s\n", PROFILE))
 
 # capture session info
 session_path <- file.path(log_dir, "sessionInfo.txt")
@@ -112,6 +114,22 @@ log_step <- function(msg) {
   cat(sprintf("[%s] %s\n", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), msg))
 }
 
+profile_dir <- NULL
+timings_path <- NULL
+if (PROFILE) {
+  profile_dir <- file.path(PROJECT_ROOT, "repro", "logs", "profile", RUN_ID)
+  dir.create(profile_dir, showWarnings = FALSE, recursive = TRUE)
+  timings_path <- file.path(profile_dir, "timings.csv")
+  writeLines("section,start,end,elapsed_sec", timings_path)
+}
+
+log_timing <- function(section, start_time, end_time) {
+  if (!PROFILE) return(invisible(NULL))
+  elapsed <- as.numeric(difftime(end_time, start_time, units = "secs"))
+  line <- sprintf("%s,%s,%s,%.6f", section, start_time, end_time, elapsed)
+  write(line, file = timings_path, append = TRUE)
+}
+
 ## Pre-check: paths and inputs (fast, no parsing)
 paths_file <- file.path(modules_dir, "00_paths.R")
 if (file.exists(paths_file)) {
@@ -127,8 +145,11 @@ if (file.exists(paths_file)) {
 
 for (mod in modules) {
   log_step(paste("START", mod))
+  t0 <- Sys.time()
   source(file.path(modules_dir, mod))
+  t1 <- Sys.time()
   log_step(paste("END", mod))
+  log_timing(mod, t0, t1)
 }
 
 cat(sprintf("END: %s\n", format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
