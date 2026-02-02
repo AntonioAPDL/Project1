@@ -244,3 +244,6 @@ If Rcpp is introduced:
 - 2026-01-30: Modularized pipeline completed (see REFRACTOR_PLAN_TRACKING).
 - 2026-01-30: Helper naming normalization + comment cleanup committed (helpers + figures).
 - 2026-02-02: Optimization tracker created and committed.
+- 2026-02-02: Added optional profiling timings to runner (PROFILE flag, timings.csv output).
+- 2026-02-02: Optimized standardization in 10_data_inputs.R (vectorized scaling, cached sds).
+- 2026-02-02: Vectorized prior default checks in 20_model_setup.R.
