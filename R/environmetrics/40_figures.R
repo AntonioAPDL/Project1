@@ -145,10 +145,14 @@ for(j in 1:(J-1)){
 
 
 prepare_quantile_data <- function(v_d) {
+  if (exists("fast_prepare_quantile_data", mode = "function")) {
+    return(fast_prepare_quantile_data(v_d, probs = c(0.975, 0.5, 0.025), type = 7L, na.rm = FALSE))
+  }
+
   v_d_transposed <- aperm(v_d, c(3, 1, 2))
   q_d_transposed <- apply(v_d_transposed, 2:3, function(x) quantile(x, probs = c(0.975, 0.5, 0.025)))
   q_d <- aperm(q_d_transposed, c(2, 3, 1))
-  return(q_d)
+  q_d
 }
 
 q_d_discrep1_quantiles <- prepare_quantile_data(xb_discrep1)
@@ -403,7 +407,7 @@ plot_exp_truth_data <- function(idx, Y, truth, y_post_95, y_post_5, y_post_50, y
 
 # Applying quantile computations and mean for each case
 compute_quantiles_means <- function(y_post) {
-  quantiles <- apply(y_post, 2, quantile, probs = c(0.05, 0.5, 0.95))
+  quantiles <- fast_col_quantiles_t(y_post, probs = c(0.05, 0.5, 0.95))
   mean_values <- colMeans(y_post)
   return(list(quantiles = quantiles, means = mean_values))
 }
@@ -440,7 +444,7 @@ plot_exp_truth_data(idx, Y, truth_raw, y_post_95, y_post_5, y_post_50, y_post_20
 
 # Applying quantile computations and mean for each case
 compute_quantiles_means <- function(y_post, q0) {
-  quantiles <- apply(y_post, 2, quantile, probs = c(q0, 0.025,0.5,0.975))
+  quantiles <- fast_col_quantiles_t(y_post, probs = c(q0, 0.025, 0.5, 0.975))
   mean_values <- colMeans(y_post)
   return(list(quantiles = quantiles, means = mean_values))
 }
@@ -481,7 +485,7 @@ for(t in 1:ranges[1]){
     } 
 }
 
-q_synth <- apply(synth_q_f, 2, quantile, probs = c(0.025, 0.5, 0.975))
+q_synth <- fast_col_quantiles_t(synth_q_f, probs = c(0.025, 0.5, 0.975))
 m_synth <- colMeans((synth_q_f))
 
 ################################################################################################################################################
@@ -714,32 +718,32 @@ lines(new.theta.out_95_exAL_synth_DISC$exps[1,idx1], col = 'darkblue', lwd = 2)
 
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[6,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[6, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'purple', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'purple', lwd = 1.5)
 lines(idx_f, result[3,], col = 'purple', lty = 2, lwd = 1)
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[5,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[5, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'purple', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'purple', lwd = 1.5)
 lines(idx_f, result[3,], col = 'purple', lty = 2, lwd = 1)
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[4,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[4, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'green', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'darkgreen', lwd = 1.5)
 lines(idx_f, result[3,], col = 'green', lty = 2, lwd = 1)
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[3,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[3, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'purple', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'purple', lwd = 1.5)
 lines(idx_f, result[3,], col = 'purple', lty = 2, lwd = 1)
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[2,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[2, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'purple', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'purple', lwd = 1.5)
 lines(idx_f, result[3,], col = 'purple', lty = 2, lwd = 1)
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[1,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[1, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'red', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'darkred', lwd = 1.5)
 lines(idx_f, result[3,], col = 'red', lty = 2, lwd = 1)
@@ -747,45 +751,45 @@ lines(idx_f, result[3,], col = 'red', lty = 2, lwd = 1)
 idx <- (TT-iii):(TT)
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[1,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'red', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'darkred', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'red', lty = 2, lwd = 0.5)
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[2,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[2, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'purple', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'purple', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'purple', lty = 2, lwd = 0.5)
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[3,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[3, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'purple', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'purple', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'purple', lty = 2, lwd = 0.5)
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[4,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[4, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'green', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'darkgreen', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'green', lty = 2, lwd = 0.5)
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[5,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[5, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'purple', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'purple', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'purple', lty = 2, lwd = 0.5)
 
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[6,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[6, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'purple', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'purple', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'purple', lty = 2, lwd = 0.5)
 
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[7,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[7, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'blue', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'darkblue', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'blue', lty = 2, lwd = 0.5)
@@ -946,7 +950,7 @@ q_exps[7,] <- estim_dqlm
 lines(new.theta.out_95_exAL_synth_DISC$exps[1,idx1], col = 'darkblue', lwd = 2)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[7,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[7, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'blue', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'darkblue', lwd = 1.5)
 lines(idx_f, result[3,], col = 'blue', lty = 2, lwd = 1)
@@ -962,7 +966,7 @@ lines(idx_f, result[3,], col = 'blue', lty = 2, lwd = 1)
 # lines(idx_f, result[2,], col = 'purple', lwd = 1.5)
 # lines(idx_f, result[3,], col = 'purple', lty = 2, lwd = 1)
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[4,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[4, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'green', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'darkgreen', lwd = 1.5)
 lines(idx_f, result[3,], col = 'green', lty = 2, lwd = 1)
@@ -977,7 +981,7 @@ lines(idx_f, result[3,], col = 'green', lty = 2, lwd = 1)
 # lines(idx_f, result[2,], col = 'purple', lwd = 1.5)
 # lines(idx_f, result[3,], col = 'purple', lty = 2, lwd = 1)
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[1,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[1, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'red', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'darkred', lwd = 1.5)
 lines(idx_f, result[3,], col = 'red', lty = 2, lwd = 1)
@@ -985,7 +989,7 @@ lines(idx_f, result[3,], col = 'red', lty = 2, lwd = 1)
 idx <- (TT-iii):(TT)
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[1,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'red', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'darkred', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'red', lty = 2, lwd = 0.5)
@@ -1003,7 +1007,7 @@ lines(1:length(idx), result[3,idx], col = 'red', lty = 2, lwd = 0.5)
 # lines(1:length(idx), result[3,idx], col = 'purple', lty = 2, lwd = 0.5)
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[4,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[4, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'green', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'darkgreen', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'green', lty = 2, lwd = 0.5)
@@ -1023,7 +1027,7 @@ lines(1:length(idx), result[3,idx], col = 'green', lty = 2, lwd = 0.5)
 
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[7,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[7, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'blue', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'darkblue', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'blue', lty = 2, lwd = 0.5)
@@ -1252,11 +1256,11 @@ lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.5), col 
 percs <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.65, 0.8, 0.95)
 for (i in 1:length(percs)) {
     pp<- percs[i]
-    result <- apply(xbs_ndlm_retro[1,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+    result <- fast_row_quantiles_t(xbs_ndlm_retro[1, , ], probs = c(0.025, 0.5, 0.975))
     lines(1:length(idx), result[1,idx] + sd_ndlm * qnorm(pp), col = 'orange', lty = 2, lwd = 0.5)
     lines(1:length(idx), result[2,idx] + sd_ndlm * qnorm(pp), col = 'darkorange', lwd = 0.5)
     lines(1:length(idx), result[3,idx] + sd_ndlm * qnorm(pp), col = 'orange', lty = 2, lwd = 0.5)
-    result <- apply(xbs_ndlm[1,,] + sd_ndlm * qnorm(pp), 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+    result <- fast_row_quantiles_t(xbs_ndlm[1, , ] + sd_ndlm * qnorm(pp), probs = c(0.025, 0.5, 0.975))
     lines(idx_f, result[1,], col = 'orange', lty = 2, lwd = 1)
     lines(idx_f, result[2,], col = 'orange', lwd = 1.5)
     lines(idx_f, result[3,], col = 'orange', lty = 2, lwd = 1)
@@ -1459,11 +1463,11 @@ lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.5), col 
 percs <- c(0.05, 0.5, 0.95)
 for (i in 1:length(percs)) {
     pp <- percs[i]
-    result <- apply(xbs_ndlm_retro[1,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+    result <- fast_row_quantiles_t(xbs_ndlm_retro[1, , ], probs = c(0.025, 0.5, 0.975))
     lines(1:length(idx), result[1,idx] + sd_ndlm * qnorm(pp), col = 'orange', lty = 2, lwd = 0.5)
     lines(1:length(idx), result[2,idx] + sd_ndlm * qnorm(pp), col = 'darkorange', lwd = 0.5)
     lines(1:length(idx), result[3,idx] + sd_ndlm * qnorm(pp), col = 'orange', lty = 2, lwd = 0.5)
-    result <- apply(xbs_ndlm[1,,] + sd_ndlm * qnorm(pp), 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+    result <- fast_row_quantiles_t(xbs_ndlm[1, , ] + sd_ndlm * qnorm(pp), probs = c(0.025, 0.5, 0.975))
     lines(idx_f, result[1,], col = 'orange', lty = 2, lwd = 1)
     lines(idx_f, result[2,], col = 'orange', lwd = 1.5)
     lines(idx_f, result[3,], col = 'orange', lty = 2, lwd = 1)
@@ -1543,14 +1547,14 @@ q_exps[7,] <- estim_dqlm
 lines(new.theta.out_95_exAL_synth_DISC$exps[1,idx1], col = 'darkblue', lwd = 2)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[7,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[7, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'blue', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'darkblue', lwd = 1.5)
 lines(idx_f, result[3,], col = 'blue', lty = 2, lwd = 1)
 
 # Adding quantile bands (orange) for NDLM estimation
 sd_ndlm <- mean(sqrt(samp.sigma_50_NDLM_synth_DISC[1,]))
-result <- apply(xbs_ndlm[1,,] + sd_ndlm * qnorm(0.95), 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_ndlm[1, , ] + sd_ndlm * qnorm(0.95), probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'orange', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'darkorange', lwd = 1.5)
 lines(idx_f, result[3,], col = 'orange', lty = 2, lwd = 1)
@@ -1571,13 +1575,13 @@ lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.95), col
 idx <- (TT-iii):(TT)
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[7,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[7, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'blue', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'darkblue', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'blue', lty = 2, lwd = 0.5)
 
 # Adding retrospective NDLM estimation (orange)
-result <- apply(xbs_ndlm_retro[1,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_ndlm_retro[1, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx] + sd_ndlm * qnorm(0.95), col = 'orange', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx] + sd_ndlm * qnorm(0.95), col = 'darkorange', lwd = 0.5)
 lines(1:length(idx), result[3,idx] + sd_ndlm * qnorm(0.95), col = 'orange', lty = 2, lwd = 0.5)
@@ -1658,14 +1662,14 @@ q_exps[7,] <- estim_dqlm
 lines(new.theta.out_50_exAL_synth_DISC$exps[1,idx1], col = 'darkgreen', lwd = 2)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[4,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[4, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'green', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'darkgreen', lwd = 1.5)
 lines(idx_f, result[3,], col = 'green', lty = 2, lwd = 1)
 
 # Adding quantile bands (orange) for NDLM estimation
 sd_ndlm <- mean(sqrt(samp.sigma_50_NDLM_synth_DISC[1,]))
-result <- apply(xbs_ndlm[1,,] + sd_ndlm * qnorm(0.5), 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_ndlm[1, , ] + sd_ndlm * qnorm(0.5), probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'orange', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'orange', lwd = 1.5)
 lines(idx_f, result[3,], col = 'orange', lty = 2, lwd = 1)
@@ -1686,13 +1690,13 @@ lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.5), col 
 idx <- (TT-iii):(TT)
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[4,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[4, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'green', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'darkgreen', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'green', lty = 2, lwd = 0.5)
 
 # Adding retrospective NDLM estimation (orange)
-result <- apply(xbs_ndlm_retro[1,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_ndlm_retro[1, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx] + sd_ndlm * qnorm(0.5), col = 'orange', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx] + sd_ndlm * qnorm(0.5), col = 'darkorange', lwd = 0.5)
 lines(1:length(idx), result[3,idx] + sd_ndlm * qnorm(0.5), col = 'orange', lty = 2, lwd = 0.5)
@@ -1771,14 +1775,14 @@ q_exps[7,] <- estim_dqlm
 lines(new.theta.out_5_exAL_synth_DISC$exps[1,idx1], col = 'darkred', lwd = 2)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(xbs[1,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs[1, , ], probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'red', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'darkred', lwd = 1.5)
 lines(idx_f, result[3,], col = 'red', lty = 2, lwd = 1)
 
 # Adding quantile bands (orange) for NDLM estimation
 sd_ndlm <- mean(sqrt(samp.sigma_50_NDLM_synth_DISC[1,]))
-result <- apply(xbs_ndlm[1,,] + sd_ndlm * qnorm(0.05), 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_ndlm[1, , ] + sd_ndlm * qnorm(0.05), probs = c(0.025, 0.5, 0.975))
 lines(idx_f, result[1,], col = 'orange', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'orange', lwd = 1.5)
 lines(idx_f, result[3,], col = 'orange', lty = 2, lwd = 1)
@@ -1796,13 +1800,13 @@ lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.05), col
 idx <- (TT-iii):(TT)
 
 # Adding retrospective quantile estimation (blue)
-result <- apply(xbs_retro[1,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx], col = 'red', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx], col = 'darkred', lwd = 0.5)
 lines(1:length(idx), result[3,idx], col = 'red', lty = 2, lwd = 0.5)
 
 # Adding retrospective NDLM estimation (orange)
-result <- apply(xbs_ndlm_retro[1,,], 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(xbs_ndlm_retro[1, , ], probs = c(0.025, 0.5, 0.975))
 lines(1:length(idx), result[1,idx] + sd_ndlm * qnorm(0.05), col = 'orange', lty = 2, lwd = 0.5)
 lines(1:length(idx), result[2,idx] + sd_ndlm * qnorm(0.05), col = 'darkorange', lwd = 0.5)
 lines(1:length(idx), result[3,idx] + sd_ndlm * qnorm(0.05), col = 'orange', lty = 2, lwd = 0.5)
@@ -1954,10 +1958,14 @@ print(all_quantiles, n = Inf)
 
 
 prepare_quantile_data <- function(v_d) {
+  if (exists("fast_prepare_quantile_data", mode = "function")) {
+    return(fast_prepare_quantile_data(v_d, probs = c(0.975, 0.5, 0.025), type = 7L, na.rm = FALSE))
+  }
+
   v_d_transposed <- aperm(v_d, c(3, 1, 2))
   q_d_transposed <- apply(v_d_transposed, 2:3, function(x) quantile(x, probs = c(0.975, 0.5, 0.025)))
   q_d <- aperm(q_d_transposed, c(2, 3, 1))
-  return(q_d)
+  q_d
 }
 q_d_50 <- prepare_quantile_data(samp.theta_50_exAL_synth_DISC$samp_theta)
 q_d_05 <- prepare_quantile_data(samp.theta_5_exAL_synth_DISC$samp_theta)
@@ -1999,7 +2007,7 @@ points(idx, Y[1,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
 ######################################################################################
 ## 50th Quantile
 ########
-result <- apply(xbs_retro[4,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[4, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'green', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkgreen', lwd=0.5)
 lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
@@ -2007,7 +2015,7 @@ lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
 ######################################################################################
 ## 5th Quantile
 ########
-result <- apply(xbs_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'red', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkred', lwd=0.5)
 lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
@@ -2015,7 +2023,7 @@ lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
 ######################################################################################
 ## 95th Quantile
 ########
-result <- apply(xbs_retro[7,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[7, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'blue', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkblue', lwd=0.5)
 lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
@@ -2023,7 +2031,7 @@ lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
 ######################################################################################
 ## NDLM
 ########
-result <- apply(xbs_ndlm_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_ndlm_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'orange', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkorange', lwd=0.5)
 lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
@@ -2033,7 +2041,7 @@ lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
 ######################################################################################
 ## 80th Quantile
 ########
-result <- apply(xbs_retro[6,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[6, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -2041,7 +2049,7 @@ lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 ## 65th Quantile
 ########
-result <- apply(xbs_retro[5,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[5, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -2049,7 +2057,7 @@ lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 ## 35th Quantile
 ########
-result <- apply(xbs_retro[3,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[3, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -2057,7 +2065,7 @@ lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 ## 20th Quantile
 ########
-result <- apply(xbs_retro[2,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[2, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -2100,7 +2108,7 @@ points(idx, Y[1,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
 ######################################################################################
 ## 50th Quantile
 ########
-result <- apply(xbs_retro[4,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[4, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'green', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkgreen', lwd=0.5)
 lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
@@ -2108,7 +2116,7 @@ lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
 ######################################################################################
 ## 5th Quantile
 ########
-result <- apply(xbs_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'red', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkred', lwd=0.5)
 lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
@@ -2116,7 +2124,7 @@ lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
 ######################################################################################
 ## 95th Quantile
 ########
-result <- apply(xbs_retro[7,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[7, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'blue', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkblue', lwd=0.5)
 lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
@@ -2124,7 +2132,7 @@ lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
 ######################################################################################
 ## NDLM
 ########
-result <- apply(xbs_ndlm_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_ndlm_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'orange', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkorange', lwd=0.5)
 lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
@@ -2134,7 +2142,7 @@ lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
 ######################################################################################
 ## 80th Quantile
 ########
-result <- apply(xbs_retro[6,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[6, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -2142,7 +2150,7 @@ lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 ## 65th Quantile
 ########
-result <- apply(xbs_retro[5,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[5, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -2150,7 +2158,7 @@ lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 ## 35th Quantile
 ########
-result <- apply(xbs_retro[3,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[3, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -2158,7 +2166,7 @@ lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 ## 20th Quantile
 ########
-result <- apply(xbs_retro[2,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[2, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -2204,7 +2212,7 @@ points(idx, Y[1,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
 ######################################################################################
 ## 50th Quantile
 ########
-result <- apply(xbs_retro[4,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[4, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'green', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkgreen', lwd=0.5)
 lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
@@ -2212,7 +2220,7 @@ lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
 ######################################################################################
 ## 5th Quantile
 ########
-result <- apply(xbs_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'red', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkred', lwd=0.5)
 lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
@@ -2220,7 +2228,7 @@ lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
 ######################################################################################
 ## 95th Quantile
 ########
-result <- apply(xbs_retro[7,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[7, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'blue', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkblue', lwd=0.5)
 lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
@@ -2228,7 +2236,7 @@ lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
 ######################################################################################
 ## NDLM
 ########
-result <- apply(xbs_ndlm_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_ndlm_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'orange', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkorange', lwd=0.5)
 lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
@@ -2277,7 +2285,7 @@ points(idx, Y[1,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
 ######################################################################################
 ## 50th Quantile
 ########
-result <- apply(xbs_retro[4,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[4, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'green', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkgreen', lwd=0.5)
 lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
@@ -2285,7 +2293,7 @@ lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
 ######################################################################################
 ## 5th Quantile
 ########
-result <- apply(xbs_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'red', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkred', lwd=0.5)
 lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
@@ -2293,7 +2301,7 @@ lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
 ######################################################################################
 ## 95th Quantile
 ########
-result <- apply(xbs_retro[7,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[7, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'blue', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkblue', lwd=0.5)
 lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
@@ -2343,7 +2351,7 @@ points(idx, Y[1,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
 ######################################################################################
 ## 50th Quantile
 ########
-result <- apply(xbs_retro[4,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[4, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'green', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkgreen', lwd=0.5)
 lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
@@ -2351,7 +2359,7 @@ lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
 ######################################################################################
 ## 5th Quantile
 ########
-result <- apply(xbs_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'red', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkred', lwd=0.5)
 lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
@@ -2359,7 +2367,7 @@ lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
 ######################################################################################
 ## 95th Quantile
 ########
-result <- apply(xbs_retro[7,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[7, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'blue', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkblue', lwd=0.5)
 lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
@@ -2367,7 +2375,7 @@ lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
 ######################################################################################
 ## NDLM
 ########
-result <- apply(xbs_ndlm_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_ndlm_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'orange', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkorange', lwd=0.5)
 lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
@@ -2409,7 +2417,7 @@ points(idx, Y[1,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
 ######################################################################################
 ## 50th Quantile
 ########
-result <- apply(xbs_retro[4,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[4, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'green', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkgreen', lwd=0.5)
 lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
@@ -2417,7 +2425,7 @@ lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
 ######################################################################################
 ## 5th Quantile
 ########
-result <- apply(xbs_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'red', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkred', lwd=0.5)
 lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
@@ -2425,7 +2433,7 @@ lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
 ######################################################################################
 ## 95th Quantile
 ########
-result <- apply(xbs_retro[7,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[7, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'blue', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkblue', lwd=0.5)
 lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
@@ -2433,7 +2441,7 @@ lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
 ######################################################################################
 ## NDLM
 ########
-result <- apply(xbs_ndlm_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_ndlm_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'orange', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkorange', lwd=0.5)
 lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
@@ -2489,7 +2497,7 @@ points(idx, Y[1,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
 ######################################################################################
 ## 50th Quantile
 ########
-result <- apply(xbs_retro[4,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[4, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'green', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkgreen', lwd=0.5)
 lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
@@ -2497,7 +2505,7 @@ lines(idx, result[3,idx],col = 'green', lty = 2, lwd=0.5)
 ######################################################################################
 ## 5th Quantile
 ########
-result <- apply(xbs_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'red', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkred', lwd=0.5)
 lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
@@ -2505,7 +2513,7 @@ lines(idx, result[3,idx],col = 'red', lty = 2, lwd=0.5)
 ######################################################################################
 ## 95th Quantile
 ########
-result <- apply(xbs_retro[7,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[7, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'blue', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkblue', lwd=0.5)
 lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
@@ -2513,7 +2521,7 @@ lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
 ######################################################################################
 ## NDLM
 ########
-result <- apply(xbs_ndlm_retro[1,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_ndlm_retro[1, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'orange', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'darkorange', lwd=0.5)
 lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
@@ -2521,7 +2529,7 @@ lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
 ######################################################################################
 ## 80th Quantile
 ########
-result <- apply(xbs_retro[6,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[6, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -2529,7 +2537,7 @@ lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 ## 65th Quantile
 ########
-result <- apply(xbs_retro[5,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[5, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -2537,7 +2545,7 @@ lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 ## 35th Quantile
 ########
-result <- apply(xbs_retro[3,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[3, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -2545,7 +2553,7 @@ lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 ## 20th Quantile
 ########
-result <- apply(xbs_retro[2,,], 1, function(x) quantile(x, probs = percentiles))
+result <- fast_row_quantiles_t(xbs_retro[2, , ], probs = percentiles)
 lines(idx, result[1,idx], ylim = c(0,6),col = 'purple', lty = 2, lwd=0.5)
 lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
@@ -3728,34 +3736,34 @@ for(s in 1:n.samp){
 } 
 lines(exp(Y[1,idx]))
 
-q50 <- apply(y_post_50, 2, quantile, probs = c(0.5, 0.025, 0.5, 0.975))
+q50 <- fast_col_quantiles_t(y_post_50, probs = c(0.5, 0.025, 0.5, 0.975))
 m50 <- colMeans((y_post_50))
-q5 <- apply(y_post_5, 2, quantile, probs = c(0.05, 0.025, 0.5, 0.975))
+q5 <- fast_col_quantiles_t(y_post_5, probs = c(0.05, 0.025, 0.5, 0.975))
 m5 <- colMeans((y_post_5))
-q95 <- apply(y_post_95, 2, quantile, probs = c(0.95, 0.025, 0.5, 0.975))
+q95 <- fast_col_quantiles_t(y_post_95, probs = c(0.95, 0.025, 0.5, 0.975))
 m95 <- colMeans((y_post_95))
-q20 <- apply(y_post_20, 2, quantile, probs = c(0.2, 0.025, 0.5, 0.975))
+q20 <- fast_col_quantiles_t(y_post_20, probs = c(0.2, 0.025, 0.5, 0.975))
 m20 <- colMeans((y_post_20))
-q35 <- apply(y_post_35, 2, quantile, probs = c(0.35, 0.025, 0.5, 0.975))
+q35 <- fast_col_quantiles_t(y_post_35, probs = c(0.35, 0.025, 0.5, 0.975))
 m35 <- colMeans((y_post_35))
-q65 <- apply(y_post_65, 2, quantile, probs = c(0.65, 0.025, 0.5, 0.975))
+q65 <- fast_col_quantiles_t(y_post_65, probs = c(0.65, 0.025, 0.5, 0.975))
 m65 <- colMeans((y_post_65))
-q80 <- apply(y_post_80, 2, quantile, probs = c(0.8, 0.025, 0.5, 0.975))
+q80 <- fast_col_quantiles_t(y_post_80, probs = c(0.8, 0.025, 0.5, 0.975))
 m80 <- colMeans((y_post_80))
 
-exp_q50 <- apply(exp_y_post_50, 2, quantile, probs = c(0.5, 0.025, 0.5, 0.975))
+exp_q50 <- fast_col_quantiles_t(exp_y_post_50, probs = c(0.5, 0.025, 0.5, 0.975))
 exp_m50 <- colMeans((exp_y_post_50))
-exp_q5 <- apply(exp_y_post_5, 2, quantile, probs = c(0.05, 0.025, 0.5, 0.975))
+exp_q5 <- fast_col_quantiles_t(exp_y_post_5, probs = c(0.05, 0.025, 0.5, 0.975))
 exp_m5 <- colMeans((exp_y_post_5))
-exp_q95 <- apply(exp_y_post_95, 2, quantile, probs = c(0.95, 0.025, 0.5, 0.975))
+exp_q95 <- fast_col_quantiles_t(exp_y_post_95, probs = c(0.95, 0.025, 0.5, 0.975))
 exp_m95 <- colMeans((exp_y_post_95))
-exp_q20 <- apply(exp_y_post_20, 2, quantile, probs = c(0.2, 0.025, 0.5, 0.975))
+exp_q20 <- fast_col_quantiles_t(exp_y_post_20, probs = c(0.2, 0.025, 0.5, 0.975))
 exp_m20 <- colMeans((exp_y_post_20))
-exp_q35 <- apply(exp_y_post_35, 2, quantile, probs = c(0.35, 0.025, 0.5, 0.975))
+exp_q35 <- fast_col_quantiles_t(exp_y_post_35, probs = c(0.35, 0.025, 0.5, 0.975))
 exp_m35 <- colMeans((exp_y_post_35))
-exp_q65 <- apply(exp_y_post_65, 2, quantile, probs = c(0.65, 0.025, 0.5, 0.975))
+exp_q65 <- fast_col_quantiles_t(exp_y_post_65, probs = c(0.65, 0.025, 0.5, 0.975))
 exp_m65 <- colMeans((exp_y_post_65))
-exp_q80 <- apply(exp_y_post_80, 2, quantile, probs = c(0.8, 0.025, 0.5, 0.975))
+exp_q80 <- fast_col_quantiles_t(exp_y_post_80, probs = c(0.8, 0.025, 0.5, 0.975))
 exp_m80 <- colMeans((exp_y_post_80))
 
 
@@ -4150,19 +4158,19 @@ for (i in 1:n.q) {
 }
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(exp(xbs[7,,]), 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(exp(xbs[7, , ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'blue', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkblue', lwd = 1.5)
 lines(result[3,], col = 'blue', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(exp(xbs[1,,]), 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(exp(xbs[1, , ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'red', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkred', lwd = 1.5)
 lines(result[3,], col = 'red', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(exp(xbs[4,,]), 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(exp(xbs[4, , ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'green', lty = 2, lwd = 1)
 lines(result[2,], col = 'forestgreen', lwd = 1.5)
 lines(result[3,], col = 'green', lty = 2, lwd = 1)
@@ -4295,19 +4303,19 @@ for (i in 1:n.q) {
 }
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(exp(xbs[7,,]), 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(exp(xbs[7, , ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'blue', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkblue', lwd = 1.5)
 lines(result[3,], col = 'blue', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(exp(xbs[1,,]), 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(exp(xbs[1, , ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'red', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkred', lwd = 1.5)
 lines(result[3,], col = 'red', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(exp(xbs[4,,]), 1, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_row_quantiles_t(exp(xbs[4, , ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'green', lty = 2, lwd = 1)
 lines(result[2,], col = 'forestgreen', lwd = 1.5)
 lines(result[3,], col = 'green', lty = 2, lwd = 1)
@@ -4323,19 +4331,19 @@ lines(result[3,], col = 'green', lty = 2, lwd = 1)
 #    lines(exp(y_reps_f_95[s,]), col = 'gray', lwd = 0.1)
 # }
 
-result <- apply(exp(y_reps_f_95), 2, function(x) quantile(x, probs = c(0.95)))
+result <- fast_col_quantiles_t(exp(y_reps_f_95), probs = 0.95)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_80), 2, function(x) quantile(x, probs = c(0.80)))
+result <- fast_col_quantiles_t(exp(y_reps_f_80), probs = 0.80)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_65), 2, function(x) quantile(x, probs = c(0.65)))
+result <- fast_col_quantiles_t(exp(y_reps_f_65), probs = 0.65)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_50), 2, function(x) quantile(x, probs = c(0.50)))
+result <- fast_col_quantiles_t(exp(y_reps_f_50), probs = 0.50)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_35), 2, function(x) quantile(x, probs = c(0.35)))
+result <- fast_col_quantiles_t(exp(y_reps_f_35), probs = 0.35)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_20), 2, function(x) quantile(x, probs = c(0.20)))
+result <- fast_col_quantiles_t(exp(y_reps_f_20), probs = 0.20)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_5), 2, function(x) quantile(x, probs = c(0.05)))
+result <- fast_col_quantiles_t(exp(y_reps_f_5), probs = 0.05)[1, ]
 lines(result, col = 'black', lwd = 0.5)
 
 
@@ -4606,12 +4614,14 @@ df_covariates <- data.frame(
 df_plot <- df_covariates
 colnames(df_plot) <- c("Date", "Precipitation", "Soil_Moisture", "Climate_PC1")
 
-# 2. Convert to long format for ggplot
-df_long <- tidyr::pivot_longer(
-  df_plot,
-  cols = c("Precipitation", "Soil_Moisture", "Climate_PC1"),
-  names_to = "Variable",
-  values_to = "Value"
+# 2. Convert to long format for ggplot (avoid slow pivot_longer)
+df_long <- fast_long_by_row(
+  mat = df_plot[, c("Precipitation", "Soil_Moisture", "Climate_PC1")],
+  row_values = df_plot$Date,
+  col_values = c("Precipitation", "Soil_Moisture", "Climate_PC1"),
+  row_name = "Date",
+  col_name = "Variable",
+  value_name = "Value"
 )
 
 
@@ -4675,12 +4685,14 @@ df_retro <- data.frame(
   NWS = Y[3,]
 )
 
-# Reshape to long format for ggplot
-df_retro_long <- pivot_longer(
-  df_retro,
-  cols = c("GloFAS", "NWS"),
-  names_to = "Source",
-  values_to = "Value"
+# Reshape to long format for ggplot (avoid slow pivot_longer)
+df_retro_long <- fast_long_by_row(
+  mat = df_retro[, c("GloFAS", "NWS")],
+  row_values = df_retro$Date,
+  col_values = c("GloFAS", "NWS"),
+  row_name = "Date",
+  col_name = "Source",
+  value_name = "Value"
 )
 
 # Set factor order for consistent legend/order
@@ -4802,11 +4814,11 @@ p <- ggplot() +
     y = min(usgs_plot_df$value, na.rm = TRUE) - 0.15, # a bit below min y
     label = "Dec 25",
     color = "gray40",
-    size = 3.5,
-    fontface = "bold",
-    vjust = 4,,
-    hjust = -0.1 
-  ) +
+	    size = 3.5,
+	    fontface = "bold",
+	    vjust = 4,
+	    hjust = -0.1 
+	  ) +
 
   # USGS before
     # Add flood stage horizontal lines
@@ -4844,19 +4856,13 @@ p <- ggplot() +
   ) +
   # GloFAS ensembles after
   geom_line(
-    data = pivot_longer(
-      data.frame(Date = glofas_dates, ensembles[[1]]),
-      cols = -Date, names_to = "member", values_to = "value"
-    ),
+    data = fast_long_ensembles(ensembles[[1]], glofas_dates),
     aes(x = Date, y = value, group = member),
     color = glofas_color, alpha = 0.22, linewidth = 0.5, show.legend = FALSE
   ) +
   # NWS ensembles after
   geom_line(
-    data = pivot_longer(
-      data.frame(Date = nws_dates, ensembles[[2]]),
-      cols = -Date, names_to = "member", values_to = "value"
-    ),
+    data = fast_long_ensembles(ensembles[[2]], nws_dates),
     aes(x = Date, y = value, group = member),
     color = nws_color, alpha = 0.22, linewidth = 0.5, show.legend = FALSE
   ) +
@@ -4950,33 +4956,49 @@ idx <- idx_sub
 fit_dates <- as.Date(timestamps[idx])
 forecast_dates <- seq(fit_dates[length(fit_dates)] + 1, by = "1 day", length.out = ranges[1])
 
-# 2. Posterior samples, tidy for ggplot (long format)
-df_post_fit <- as.data.frame(synth)
-colnames(df_post_fit) <- as.character(fit_dates)
-df_post_fit$sample <- 1:nrow(df_post_fit)
-df_post_fit <- pivot_longer(df_post_fit, -sample, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Fit")
+# 2. Posterior samples, tidy for ggplot (long format; avoid pivot_longer)
+df_post_fit <- fast_long_by_row(
+  mat = synth,
+  row_values = seq_len(nrow(synth)),
+  col_values = fit_dates,
+  row_name = "sample",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_post_fit$Type <- "Fit"
 
-df_post_forecast <- as.data.frame(synth_f)
-colnames(df_post_forecast) <- as.character(forecast_dates)
-df_post_forecast$sample <- 1:nrow(df_post_forecast)
-df_post_forecast <- pivot_longer(df_post_forecast, -sample, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Forecast")
+df_post_forecast <- fast_long_by_row(
+  mat = synth_f,
+  row_values = seq_len(nrow(synth_f)),
+  col_values = forecast_dates,
+  row_name = "sample",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_post_forecast$Type <- "Forecast"
 
 df_post <- bind_rows(df_post_fit, df_post_forecast)
 
-# 3. Quantile curves
-df_q_fit <- as.data.frame(synth_q)
-colnames(df_q_fit) <- as.character(fit_dates)
-df_q_fit$quantile <- 1:nrow(df_q_fit)
-df_q_fit <- pivot_longer(df_q_fit, -quantile, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Fit")
+# 3. Quantile curves (avoid pivot_longer)
+df_q_fit <- fast_long_by_row(
+  mat = synth_q,
+  row_values = seq_len(nrow(synth_q)),
+  col_values = fit_dates,
+  row_name = "quantile",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_q_fit$Type <- "Fit"
 
-df_q_forecast <- as.data.frame(synth_f_q)
-colnames(df_q_forecast) <- as.character(forecast_dates)
-df_q_forecast$quantile <- 1:nrow(df_q_forecast)
-df_q_forecast <- pivot_longer(df_q_forecast, -quantile, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Forecast")
+df_q_forecast <- fast_long_by_row(
+  mat = synth_f_q,
+  row_values = seq_len(nrow(synth_f_q)),
+  col_values = forecast_dates,
+  row_name = "quantile",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_q_forecast$Type <- "Forecast"
 
 df_q <- bind_rows(df_q_fit, df_q_forecast)
 
@@ -5091,19 +5113,13 @@ geom_point(
 ) +
 # GloFAS ensembles after (gray)
 geom_line(
-  data = pivot_longer(
-    data.frame(Date = glofas_dates, ensembles[[1]]),
-    cols = -Date, names_to = "member", values_to = "value"
-  ),
+  data = fast_long_ensembles(ensembles[[1]], glofas_dates),
   aes(x = Date, y = value, group = member),
   color = "gray", alpha = 0.22, linewidth = 0.5, show.legend = FALSE
 ) +
 # NWS ensembles after (gray)
 geom_line(
-  data = pivot_longer(
-    data.frame(Date = nws_dates, ensembles[[2]]),
-    cols = -Date, names_to = "member", values_to = "value"
-  ),
+  data = fast_long_ensembles(ensembles[[2]], nws_dates),
   aes(x = Date, y = value, group = member),
   color = "gray", alpha = 0.22, linewidth = 0.5, show.legend = FALSE
 ) +
@@ -5140,33 +5156,49 @@ ggsave(
 fit_dates <- as.Date(timestamps[idx])
 forecast_dates <- seq(fit_dates[length(fit_dates)] + 1, by = "1 day", length.out = ranges[1])
 
-# 1. Posterior samples: historical (fit) and forecast
-df_post_fit <- as.data.frame(log(synth_hist_uni))
-colnames(df_post_fit) <- as.character(fit_dates)
-df_post_fit$sample <- 1:nrow(df_post_fit)
-df_post_fit <- pivot_longer(df_post_fit, -sample, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Fit")
+# 1. Posterior samples: historical (fit) and forecast (avoid pivot_longer)
+df_post_fit <- fast_long_by_row(
+  mat = log(synth_hist_uni),
+  row_values = seq_len(nrow(synth_hist_uni)),
+  col_values = fit_dates,
+  row_name = "sample",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_post_fit$Type <- "Fit"
 
-df_post_forecast <- as.data.frame(log(synth_f2))
-colnames(df_post_forecast) <- as.character(forecast_dates)
-df_post_forecast$sample <- 1:nrow(df_post_forecast)
-df_post_forecast <- pivot_longer(df_post_forecast, -sample, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Forecast")
+df_post_forecast <- fast_long_by_row(
+  mat = log(synth_f2),
+  row_values = seq_len(nrow(synth_f2)),
+  col_values = forecast_dates,
+  row_name = "sample",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_post_forecast$Type <- "Forecast"
 
 df_post <- bind_rows(df_post_fit, df_post_forecast)
 
-# 2. Quantile curves: historical (fit) and forecast
-df_q_fit <- as.data.frame(log(synth_hist_uni_q))
-colnames(df_q_fit) <- as.character(fit_dates)
-df_q_fit$quantile <- 1:nrow(df_q_fit)
-df_q_fit <- pivot_longer(df_q_fit, -quantile, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Fit")
+# 2. Quantile curves: historical (fit) and forecast (avoid pivot_longer)
+df_q_fit <- fast_long_by_row(
+  mat = log(synth_hist_uni_q),
+  row_values = seq_len(nrow(synth_hist_uni_q)),
+  col_values = fit_dates,
+  row_name = "quantile",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_q_fit$Type <- "Fit"
 
-df_q_forecast <- as.data.frame(log(synth_f2_q))
-colnames(df_q_forecast) <- as.character(forecast_dates)
-df_q_forecast$quantile <- 1:nrow(df_q_forecast)
-df_q_forecast <- pivot_longer(df_q_forecast, -quantile, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Forecast")
+df_q_forecast <- fast_long_by_row(
+  mat = log(synth_f2_q),
+  row_values = seq_len(nrow(synth_f2_q)),
+  col_values = forecast_dates,
+  row_name = "quantile",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_q_forecast$Type <- "Forecast"
 
 df_q <- bind_rows(df_q_fit, df_q_forecast)
 
@@ -5301,7 +5333,7 @@ percentiles <- c(0.025, 0.5, 0.975)
 get_quantile_trajectory <- function(arr, qidx, dates, idx, quantile_name) {
   mat <- arr[qidx, idx, , drop = FALSE]
   mat <- matrix(mat, nrow = length(idx), ncol = dim(arr)[3])
-  qt_res <- t(apply(mat, 1, function(x) quantile(x, probs = percentiles)))
+  qt_res <- t(fast_row_quantiles_t(mat, probs = percentiles))
   colnames(qt_res) <- c("Lower", "Median", "Upper")
   data.frame(
     Date = dates,
@@ -5463,7 +5495,7 @@ percentiles <- c(0.025, 0.5, 0.975)
 get_quantile_trajectory <- function(arr, qidx, dates, idx, quantile_name) {
   mat <- arr[qidx, idx, , drop = FALSE]
   mat <- matrix(mat, nrow = length(idx), ncol = dim(arr)[3])
-  qt_res <- t(apply(mat, 1, function(x) quantile(x, probs = percentiles)))
+  qt_res <- t(fast_row_quantiles_t(mat, probs = percentiles))
   colnames(qt_res) <- c("Lower", "Median", "Upper")
   data.frame(
     Date = dates,
@@ -5625,7 +5657,7 @@ percentiles <- c(0.025, 0.5, 0.975)
 get_quantile_trajectory <- function(arr, qidx, dates, idx, quantile_name) {
   mat <- arr[qidx, idx, , drop = FALSE]
   mat <- matrix(mat, nrow = length(idx), ncol = dim(arr)[3])
-  qt_res <- t(apply(mat, 1, function(x) quantile(x, probs = percentiles)))
+  qt_res <- t(fast_row_quantiles_t(mat, probs = percentiles))
   colnames(qt_res) <- c("Lower", "Median", "Upper")
   data.frame(
     Date = dates,
@@ -6698,8 +6730,8 @@ synthesize_quantiles <- function(y_reps, percentiles, M = 10000) {
 # Usage:
 output_f <- synthesize_quantiles(y_reps_f, percentiles = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95))
 
-q_estim_output_f <- apply(output_f, 2, function(x) quantile(x, probs = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95) ) )
-q_estim_synth_f <- apply(log(synth_f), 2, function(x) quantile(x, probs = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95) ) )
+q_estim_output_f <- fast_col_quantiles_t(output_f, probs = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95))
+q_estim_synth_f <- fast_col_quantiles_t(log(synth_f), probs = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95))
 
 n_T <- dim(output_f)[2]
 plot(rep(0,n_T), ylim = c(-1,3), type = 'line')
@@ -6719,8 +6751,8 @@ for(i in 1:7){
 # Usage:
 output <- synthesize_quantiles(y_reps, percentiles = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95))
 
-q_estim_output <- apply(output, 2, function(x) quantile(x, probs = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95) ) )
-q_estim_synth <- apply(log(synth), 2, function(x) quantile(x, probs = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95) ) )
+q_estim_output <- fast_col_quantiles_t(output, probs = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95))
+q_estim_synth <- fast_col_quantiles_t(log(synth), probs = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95))
 
 n_T <- dim(output)[2]
 plot(rep(0,n_T), ylim = c(-1,3), type = 'line')
@@ -6752,33 +6784,49 @@ output_q <- t(output_q)
 fit_dates <- as.Date(timestamps[idx])
 forecast_dates <- seq(fit_dates[length(fit_dates)] + 1, by = "1 day", length.out = ranges[1])
 
-# 2. Posterior samples, tidy for ggplot (long format)
-df_post_fit <- as.data.frame(output)
-colnames(df_post_fit) <- as.character(fit_dates)
-df_post_fit$sample <- 1:nrow(df_post_fit)
-df_post_fit <- pivot_longer(df_post_fit, -sample, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Fit")
+# 2. Posterior samples, tidy for ggplot (long format; avoid pivot_longer)
+df_post_fit <- fast_long_by_row(
+  mat = output,
+  row_values = seq_len(nrow(output)),
+  col_values = fit_dates,
+  row_name = "sample",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_post_fit$Type <- "Fit"
 
-df_post_forecast <- as.data.frame(output_f)
-colnames(df_post_forecast) <- as.character(forecast_dates)
-df_post_forecast$sample <- 1:nrow(df_post_forecast)
-df_post_forecast <- pivot_longer(df_post_forecast, -sample, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Forecast")
+df_post_forecast <- fast_long_by_row(
+  mat = output_f,
+  row_values = seq_len(nrow(output_f)),
+  col_values = forecast_dates,
+  row_name = "sample",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_post_forecast$Type <- "Forecast"
 
 df_post <- bind_rows(df_post_fit, df_post_forecast)
 
-# 3. Quantile curves
-df_q_fit <- as.data.frame(output_q)
-colnames(df_q_fit) <- as.character(fit_dates)
-df_q_fit$quantile <- 1:nrow(df_q_fit)
-df_q_fit <- pivot_longer(df_q_fit, -quantile, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Fit")
+# 3. Quantile curves (avoid pivot_longer)
+df_q_fit <- fast_long_by_row(
+  mat = output_q,
+  row_values = seq_len(nrow(output_q)),
+  col_values = fit_dates,
+  row_name = "quantile",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_q_fit$Type <- "Fit"
 
-df_q_forecast <- as.data.frame(output_f_q)
-colnames(df_q_forecast) <- as.character(forecast_dates)
-df_q_forecast$quantile <- 1:nrow(df_q_forecast)
-df_q_forecast <- pivot_longer(df_q_forecast, -quantile, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Forecast")
+df_q_forecast <- fast_long_by_row(
+  mat = output_f_q,
+  row_values = seq_len(nrow(output_f_q)),
+  col_values = forecast_dates,
+  row_name = "quantile",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_q_forecast$Type <- "Forecast"
 
 df_q <- bind_rows(df_q_fit, df_q_forecast)
 
@@ -6893,19 +6941,13 @@ geom_point(
 ) +
 # GloFAS ensembles after (gray)
 geom_line(
-  data = pivot_longer(
-    data.frame(Date = glofas_dates, ensembles[[1]]),
-    cols = -Date, names_to = "member", values_to = "value"
-  ),
+  data = fast_long_ensembles(ensembles[[1]], glofas_dates),
   aes(x = Date, y = value, group = member),
   color = "gray", alpha = 0.22, linewidth = 0.5, show.legend = FALSE
 ) +
 # NWS ensembles after (gray)
 geom_line(
-  data = pivot_longer(
-    data.frame(Date = nws_dates, ensembles[[2]]),
-    cols = -Date, names_to = "member", values_to = "value"
-  ),
+  data = fast_long_ensembles(ensembles[[2]], nws_dates),
   aes(x = Date, y = value, group = member),
   color = "gray", alpha = 0.22, linewidth = 0.5, show.legend = FALSE
 ) +
@@ -6952,33 +6994,49 @@ output_q <- t(output_q)
 fit_dates <- as.Date(timestamps[idx])
 forecast_dates <- seq(fit_dates[length(fit_dates)] + 1, by = "1 day", length.out = ranges[1])
 
-# 1. Posterior samples: historical (fit) and forecast
-df_post_fit <- as.data.frame(log(synth_hist_uni))
-colnames(df_post_fit) <- as.character(fit_dates)
-df_post_fit$sample <- 1:nrow(df_post_fit)
-df_post_fit <- pivot_longer(df_post_fit, -sample, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Fit")
+# 1. Posterior samples: historical (fit) and forecast (avoid pivot_longer)
+df_post_fit <- fast_long_by_row(
+  mat = log(synth_hist_uni),
+  row_values = seq_len(nrow(synth_hist_uni)),
+  col_values = fit_dates,
+  row_name = "sample",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_post_fit$Type <- "Fit"
 
-df_post_forecast <- as.data.frame(log(synth_f2))
-colnames(df_post_forecast) <- as.character(forecast_dates)
-df_post_forecast$sample <- 1:nrow(df_post_forecast)
-df_post_forecast <- pivot_longer(df_post_forecast, -sample, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Forecast")
+df_post_forecast <- fast_long_by_row(
+  mat = log(synth_f2),
+  row_values = seq_len(nrow(synth_f2)),
+  col_values = forecast_dates,
+  row_name = "sample",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_post_forecast$Type <- "Forecast"
 
 df_post <- bind_rows(df_post_fit, df_post_forecast)
 
-# 2. Quantile curves: historical (fit) and forecast
-df_q_fit <- as.data.frame(log(synth_hist_uni_q))
-colnames(df_q_fit) <- as.character(fit_dates)
-df_q_fit$quantile <- 1:nrow(df_q_fit)
-df_q_fit <- pivot_longer(df_q_fit, -quantile, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Fit")
+# 2. Quantile curves: historical (fit) and forecast (avoid pivot_longer)
+df_q_fit <- fast_long_by_row(
+  mat = log(synth_hist_uni_q),
+  row_values = seq_len(nrow(synth_hist_uni_q)),
+  col_values = fit_dates,
+  row_name = "quantile",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_q_fit$Type <- "Fit"
 
-df_q_forecast <- as.data.frame(log(synth_f2_q))
-colnames(df_q_forecast) <- as.character(forecast_dates)
-df_q_forecast$quantile <- 1:nrow(df_q_forecast)
-df_q_forecast <- pivot_longer(df_q_forecast, -quantile, names_to = "Date", values_to = "Value") %>%
-  mutate(Date = as.Date(Date), Type = "Forecast")
+df_q_forecast <- fast_long_by_row(
+  mat = log(synth_f2_q),
+  row_values = seq_len(nrow(synth_f2_q)),
+  col_values = forecast_dates,
+  row_name = "quantile",
+  col_name = "Date",
+  value_name = "Value"
+)
+df_q_forecast$Type <- "Forecast"
 
 df_q <- bind_rows(df_q_fit, df_q_forecast)
 

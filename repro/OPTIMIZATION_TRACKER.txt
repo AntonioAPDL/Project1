@@ -228,7 +228,7 @@ Stage 4 — Only if still needed: optional parallelism or Rcpp (last resort)
 - Quantiles: validate equivalence by spot-checking a small subset against `quantile(type = 7)` before committing.
 - Long tables: validate row ordering and types (Date/sample) to ensure identical ggplot layering.
 
-**Status:** Planned
+**Status:** Implemented (pending validation)
 
 ---
 
@@ -289,3 +289,4 @@ If Rcpp is introduced:
 - 2026-02-02: Added optional profiling timings to runner (PROFILE flag, timings.csv output).
 - 2026-02-02: Optimized standardization in 10_data_inputs.R (vectorized scaling, cached sds).
 - 2026-02-02: Vectorized prior default checks in 20_model_setup.R.
+- 2026-02-03: Implemented Stage 1 quantile helpers + Stage 2 pivot_longer replacements in `R/environmetrics/40_figures.R` using helpers in `R/environmetrics/utils_data.R` (pending commit/validation).
