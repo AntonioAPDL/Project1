@@ -176,15 +176,57 @@ For each module: **Role → likely hotspots → safe optimization steps → vali
 - repeated quantile computations over large matrices
 - repeated ggplot construction overhead
 
-**Planned steps**
-- Cache any repeated “derived arrays” used in multiple figures.
-- Replace repeated `apply(..., 2, quantile, ...)` patterns with:
-  - `matrixStats`-style approaches **only if no new deps**, otherwise implement careful base-R versions.
-- Consolidate common ggplot theme elements into one helper.
-- Reduce redundant data reshaping (avoid repeated `pivot_longer` if possible).
+**Planned steps (prioritized)**
+
+Stage 0 — Measure internal hotspots (no behavior changes)
+- Add lightweight section timers inside `40_figures.R` (behind `PROFILE=TRUE`) so we can rank hotspots *within* this module:
+  - quantile extraction blocks
+  - posterior sampling blocks
+  - long-format construction blocks (current `pivot_longer`)
+  - each major figure block
+
+Stage 1 — Quantiles first (primary priority; high impact, low risk)
+- Replace slow patterns like:
+  - `apply(mat, 1, function(x) quantile(x, probs = ...))`
+  - `apply(mat, 2, quantile, probs = ...)`
+  - `apply(aperm(v, ...), 2:3, function(x) quantile(x, ...))`
+  with fast deterministic equivalents.
+- Preferred implementation:
+  - Use `matrixStats::rowQuantiles` / `matrixStats::colQuantiles` via `matrixStats::...` (no need to attach package).
+  - Force `type = 7` and `na.rm = FALSE` to match base `quantile()` defaults.
+- Implement helpers in `R/environmetrics/utils_data.R` and call them from `40_figures.R`:
+  - `fast_row_quantiles_t(mat, probs)` -> returns `nprobs x nrow(mat)` (matches existing plotting expectations).
+  - `fast_col_quantiles(mat, probs)` -> returns `nprobs x ncol(mat)` (or a clearly documented shape).
+  - `fast_prepare_quantile_data(v_d, probs)` -> drop-in replacement for `prepare_quantile_data()`:
+    - reshape 3D arrays once and compute quantiles in one call (avoid nested apply).
+
+Stage 2 — Fix `pivot_longer()` from the root (secondary priority; high impact)
+- Replace `pivot_longer()` on very large posterior matrices with a deterministic, base-R long-table builder.
+- Goal: preserve the same row ordering that `pivot_longer()` produces (sample-major), so plotting order is unchanged.
+- Implement helpers in `R/environmetrics/utils_data.R`:
+  - `long_samples_from_matrix(mat, dates, type_label)`:
+    - `sample = rep(1:nrow(mat), each = ncol(mat))`
+    - `Date = rep(dates, times = nrow(mat))`
+    - `Value = as.vector(t(mat))`
+  - `long_quantiles_from_matrix(mat, dates, type_label, id_name = "quantile")`:
+    - same deterministic ordering for quantile curves
+- Keep `pivot_longer()` only where data is small enough that runtime is negligible.
+
+Stage 3 — Cache repeated derived objects (medium impact, low risk)
+- Introduce a private cache environment inside `40_figures.R` (or a small cache helper) to avoid recomputation:
+  - quantile bands for `xbs` / `xbs_retro` for common probs
+  - long data frames used by multiple plots
+  - derived arrays reused across multiple figures
+
+Stage 4 — Only if still needed: optional parallelism or Rcpp (last resort)
+- Parallelism: only for *independent* blocks after all heavy deterministic precomputation is complete; must be off by default.
+- Rcpp: only for proven tight numeric loops that remain after Stage 1–3.
+  - Must keep R fallback and deterministic validation versus R implementation.
 
 **Validation notes**
 - plot rendering can be sensitive (fonts/devices); do not change device defaults unless required.
+- Quantiles: validate equivalence by spot-checking a small subset against `quantile(type = 7)` before committing.
+- Long tables: validate row ordering and types (Date/sample) to ensure identical ggplot layering.
 
 **Status:** Planned
 
