@@ -2,8 +2,8 @@
 
 Project: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Owner: Antonio (jaguir26)  
-Last updated: 2026-02-02  
-Status: Ready to implement (modularization + docs committed)
+Last updated: 2026-02-03  
+Status: In progress (quantiles/reshape optimized; next: hotspot profiling-driven)
 
 ## 0. Objective
 
@@ -57,7 +57,9 @@ After each optimization commit:
 - Comparison method (choose one, document):
   - byte-level hashes, OR
   - pixel-level equality for images + strict equality for serialized numeric artifacts
-- If anything differs: revert/adjust before proceeding.
+- If anything differs: triage before proceeding.
+  - If the diff affects any paper figure or numeric summary: revert/adjust before continuing.
+  - If the diff appears limited to rendering/device differences but is visually identical: record it explicitly (file list + nature of diff) and continue only if approved by owner.
 
 **C. Record**
 Update the Progress Log with:
@@ -289,4 +291,18 @@ If Rcpp is introduced:
 - 2026-02-02: Added optional profiling timings to runner (PROFILE flag, timings.csv output).
 - 2026-02-02: Optimized standardization in 10_data_inputs.R (vectorized scaling, cached sds).
 - 2026-02-02: Vectorized prior default checks in 20_model_setup.R.
-- 2026-02-03: Implemented Stage 1 quantile helpers + Stage 2 pivot_longer replacements in `R/environmetrics/40_figures.R` using helpers in `R/environmetrics/utils_data.R` (pending commit/validation).
+- 2026-02-03: Implemented Stage 1 quantile helpers + Stage 2 `pivot_longer()` replacements in `R/environmetrics/40_figures.R` using helpers in `R/environmetrics/utils_data.R`.
+  - Commit: `9910e40` (branch: `fix/notebooks-forecast-inventory`)
+  - Files: `R/environmetrics/utils_data.R`, `R/environmetrics/40_figures.R`
+  - Run validation:
+    - RUN_ID: `20260203_121109` (PROFILE=TRUE)
+    - Total runtime: 1:45:56 (30_univariate: ~41m55s; 40_figures: ~63m38s)
+    - Output inventory:
+      - Canonical PNG count: 147 (under `Environmetrics_reproduce/`)
+      - Script-run PNG count: 152 (under `Environmetrics_reproduce_script_runs/20260203_121109/`)
+      - Missing canonical: 0
+      - Extra (5): `Environmetrics_reproduceplot_50th_quantile_DISC.png`, `Environmetrics_reproduceplot_5th_quantile_DISC.png`, `Environmetrics_reproduceplot_95th_quantile_DISC.png`, `tef_20_plot_DISC.png`, `tef_5_50_95_plot_DISC.png`
+  - Known non-bitwise differences (figures still visually validated by owner):
+    - Some PNGs differ by color mode and/or dimensions (e.g., RGB vs RGBA; 6000x4000 vs 10800x5400).
+    - A small subset of figures show pixel-level differences despite same dimensions; root cause likely plotting-device/font/anti-aliasing or data ordering differences.
+    - Policy (current): proceed with optimizations, but keep recording diffs; re-tighten determinism later if strict pixel identity becomes required.
