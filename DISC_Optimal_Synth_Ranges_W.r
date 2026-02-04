@@ -1236,9 +1236,6 @@ PriorGammaDens <- function(gamma, prior) {
             log = FALSE)
 }
 
-LL <- L+0.001
-UU <- U-0.001
-
   print(c(n.samp, 222))
   flush.console()
 update_gamma_sigma<-function( y, nn, prior_g, prior_s, 
@@ -1255,8 +1252,11 @@ update_gamma_sigma<-function( y, nn, prior_g, prior_s,
 if(!Climate_Center){
   dq_transf <- function(theta_s,theta_g){
       sig <- exp(theta_s)
-      gam <- LL+(-LL+UU)*exp(-exp(theta_g))
-          a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam); p.fn(p0,gam)
+      pi <- plogis(theta_g)
+      # Keep gamma strictly inside (L,U) to avoid evaluating A/B/C at the boundary.
+      pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+      gam <- L + (U - L) * pi
+      a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam); p.fn(p0,gam)
 
       # Prior
       yy <- log(PriorGammaDens(gam, prior_g)) - (prior_s[1] + 1) * log(sig) - prior_s[2]/sig
@@ -1269,8 +1269,8 @@ if(!Climate_Center){
                       + 2*c*abs(gam)*sts*a
                       + (uts*a^2)/sig )/b
       
-      # Jacobian
-      yy <- yy + theta_s + theta_g - exp(theta_g)                   
+      # Jacobian (u=log sigma, gamma=L+(U-L)*logistic(xi))
+      yy <- yy + theta_s + log(U - L) + log(pi) + log1p(-pi)
       return(yy)
   }
 }else{
@@ -1283,7 +1283,10 @@ if(!Climate_Center){
 
   dq_transf <- function(theta_s,theta_g){
       sig <- exp(theta_s)
-      gam <- LL+(-LL+UU)*exp(-exp(theta_g))
+      pi <- plogis(theta_g)
+      # Keep gamma strictly inside (L,U) to avoid evaluating A/B/C at the boundary.
+      pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+      gam <- L + (U - L) * pi
           a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
 
       # Prior
@@ -1303,14 +1306,16 @@ if(!Climate_Center){
                       + sig*inv.uts_f*(c^2)*(abs(gam)^2)*sts2_f
                       + 2*c*abs(gam)*sts_f*a
                       + (uts_f*a^2)/sig )/b
-      # Jacobian
-      yy <- yy + theta_s + theta_g - exp(theta_g)                   
+      # Jacobian (u=log sigma, gamma=L+(U-L)*logistic(xi))
+      yy <- yy + theta_s + log(U - L) + log(pi) + log1p(-pi)
       return(yy)
   }
 }
 
   theta_s_init <- log(s_init)
-  theta_g_init <- log(log((-L+U)/(-L+g_init)))
+  pi_init <- (g_init - L) / (U - L)
+  pi_init <- pmin(pmax(pi_init, 1e-12), 1 - 1e-12)
+  theta_g_init <- qlogis(pi_init)
   initial_values <- c(theta_s_init, theta_g_init)
 
   # Optimization step
@@ -1334,29 +1339,25 @@ if(!Climate_Center){
     return(e)
   }
 
-  f.exp.theta_g <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
-    a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
-    yy <- exp(theta[2])
-    return(yy)
-  }
-
   f.log.sig.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- log(sig*b)
     return(yy)
   }
 
   f.log.sig <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- log(sig)
     return(yy)
   }
 
   f.prior.sig.gam <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- crch::dtt(gam, location = prior_g[1], scale = prior_g[2], df = prior_g[3], left = L, right = U, log = TRUE)
     yy <- yy + nimble::dinvgamma(sig, shape = prior_s[1], scale =  prior_s[2], log = TRUE)
@@ -1365,7 +1366,8 @@ if(!Climate_Center){
 
 
   f.c2.s.abs.g2.inv.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- c^2*sig*abs(gam)^2/b
     return(yy)
@@ -1378,35 +1380,40 @@ if(!Climate_Center){
   }
 
   f.c.abs.g.inv.b <- function(theta){
-    gam = LL+(-LL+UU)*exp(-exp(theta[2]))
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    gam = L + (U - L) * pi
     b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- c*abs(gam)/b
     return(yy)
   }
 
   f.c.abs.g.a.inv.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- c*abs(gam)*a/b
     return(yy)
   }
 
   f.inv.s.inv.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- 1/sig/b
     return(yy)
   }
 
   f.a.inv.s.inv.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- a/sig/b
     return(yy)
   }
 
   f.a2.inv.s.inv.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- a^2/sig/b
     return(yy)
@@ -1419,7 +1426,8 @@ if(!Climate_Center){
   }
 
   f.gam <- function(theta){
-    gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    gam = L + (U - L) * pi
     yy <- gam
     return(yy)
   }
@@ -1441,9 +1449,14 @@ if(!Climate_Center){
   E.log.sig.b = Expected_f(f.log.sig.b, LD_mu[1], LD_mu[2])
   E.log.sig = Expected_f(f.log.sig, LD_mu[1], LD_mu[2])
   E.prior.sig.gam = Expected_f(f.prior.sig.gam, LD_mu[1], LD_mu[2])
-  E.exp.theta_g =  Expected_f(f.exp.theta_g, LD_mu[1], LD_mu[2])
+  f.log_jac <- function(theta){
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    yy <- theta[1] + log(U - L) + log(pi) + log1p(-pi)
+    return(yy)
+  }
+  E.log.jac = Expected_f(f.log_jac, LD_mu[1], LD_mu[2])
 
-  entrop <- log(2*pi*exp(1)) + 0.5*determinant(as.matrix(LD_S), logarithm = TRUE)$modulus[1]-(log(-LL+UU)+sum(LD_mu)-E.exp.theta_g)
+  entrop <- log(2*pi*exp(1)) + 0.5*determinant(as.matrix(LD_S), logarithm = TRUE)$modulus[1] + E.log.jac
 
   return(list(E.sigma=E.sig,E.inv.sigma=E.inv.sigma,E.gam=E.gam,
               E.c2.invb.absgam2.sigma = E.c2.invb.absgam2.sigma, E.c.invb.absgam = E.c.invb.absgam,
@@ -2158,7 +2171,9 @@ for (j in 1:(J+1)) {
         theta_g <- gamsig.dummy$E.theta[2]
         # Normal Aproximation
         samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = gamsig.dummy$Hess.LD)
-        samp.gamma[j,] = LL+(-LL+UU)*exp(-exp(samp.LD[,2]))
+        pi <- plogis(samp.LD[,2])
+        pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+        samp.gamma[j,] = L + (U - L) * pi
         samp.sigma[j,] = exp(samp.LD[,1]) 
         ########################
         ########################
@@ -2260,7 +2275,9 @@ for (j in 1:(J+1)) {
         ########################
         # Normal Aproximation
         samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = gamsig.dummy$Hess.LD)
-        samp.gamma[j,] = LL+(-LL+UU)*exp(-exp(samp.LD[,2]))
+        pi <- plogis(samp.LD[,2])
+        pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+        samp.gamma[j,] = L + (U - L) * pi
         samp.sigma[j,] = exp(samp.LD[,1]) 
         ########################
         ########################

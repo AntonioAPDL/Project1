@@ -62,3 +62,38 @@ In a representative run (n=20,000 draws per grid point, `OMP_NUM_THREADS=1`):
 
 Decision: **keep `sample_truncnorm_icdf` as the canonical implementation** for the runner.
 
+---
+
+## D1 — \u03b3 transform mismatch vs LaTeX (resolved)
+
+### What was happening (pre-fix)
+
+The LaTeX document parameterizes the Laplace approximation on \((u,\u03be)\in\mathbb{R}^2\) with
+\[
+u=\log\sigma,\qquad \gamma=L+(U-L)\,\pi(\u03be),\quad \pi(\u03be)=\frac{1}{1+e^{-\u03be}},
+\]
+and log-Jacobian \(\log|J| = u + \log(U-L) + \log \pi(\u03be) + \log(1-\pi(\u03be))\)
+(`main.tex:eq:transform_u_xi`, `eq:jacobian_u_xi`).
+
+In contrast, `update_gamma_sigma` in the runner used:
+- \(\gamma = LL + (UU-LL)\exp(-\exp(\theta_g))\) with `LL=L+0.001`, `UU=U-0.001`,
+- log-Jacobian contribution `theta_s + theta_g - exp(theta_g)` (plus constants),
+which did not match the LaTeX mapping.
+
+### Fix applied
+
+In `DISC_Optimal_Synth_Ranges_W.r:update_gamma_sigma`:
+- Replaced the \(\exp(-\exp)\) mapping with the LaTeX logistic mapping:
+  \[
+  \gamma = L+(U-L)\,\pi(\theta_g),\quad \pi=\mathrm{plogis}(\theta_g).
+  \]
+- Updated the log-Jacobian term in the transformed objective accordingly:
+  \[
+  u + \log(U-L) + \log \pi + \log(1-\pi).
+  \]
+  Implemented using `log(pi) + log1p(-pi)` for numerical stability.
+- Removed `LL`/`UU` tightening; instead, clip \(\pi\) to \([10^{-12},1-10^{-12}]\) to ensure \(\gamma\in(L,U)\)
+  strictly (avoids evaluating \(A,B,C\) at boundary values where they blow up).
+- Updated the inverse transform used for initialization:
+  `theta_g_init <- qlogis((g_init - L)/(U - L))` (with the same \(\pi\) clipping).
+- Updated the \(\gamma\) transform used for Laplace draws (`samp.gamma <- ...`) to the new mapping.
