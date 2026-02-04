@@ -4,6 +4,7 @@
 #include <boost/math/special_functions/erf.hpp>
 #include <Rcpp.h>
 #include <chrono>
+#include <limits>
 #include <omp.h>
 
 // Standard normal CDF
@@ -30,16 +31,25 @@ double rtruncnorm(boost::random::mt19937& gen, double mean, double sd) {
 }
 
 // [[Rcpp::export]]
-Rcpp::NumericMatrix sample_truncnorm(int n_samp, int TT, Rcpp::NumericVector sts_mu, Rcpp::NumericVector sts_sig2) {
+Rcpp::NumericMatrix sample_truncnorm_icdf(int n_samp, int TT, Rcpp::NumericVector sts_mu, Rcpp::NumericVector sts_sig2) {
     if (sts_mu.size() != TT || sts_sig2.size() != TT) {
         Rcpp::stop("Length of sts_mu and sts_sig2 must be equal to TT");
     }
     Rcpp::NumericMatrix samples(n_samp, TT);
 
+    // Reproducible (w.r.t. R's set.seed) thread-local RNG seeding.
+    // Note: reproducibility also depends on a fixed OpenMP thread count/scheduling.
+    Rcpp::RNGScope rng_scope;
+    int n_threads = omp_get_max_threads();
+    std::vector<unsigned int> seeds(n_threads);
+    for (int thread = 0; thread < n_threads; ++thread) {
+        seeds[thread] = static_cast<unsigned int>(R::runif(0.0, 1.0) * std::numeric_limits<unsigned int>::max());
+    }
+
     #pragma omp parallel
     {
-        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count() + omp_get_thread_num();
-        boost::random::mt19937 gen(seed);
+        int thread = omp_get_thread_num();
+        boost::random::mt19937 gen(seeds[thread]);
 
         // Pre-calculate the standard deviations
         std::vector<double> std_devs(TT);
@@ -47,7 +57,7 @@ Rcpp::NumericMatrix sample_truncnorm(int n_samp, int TT, Rcpp::NumericVector sts
             std_devs[t] = std::sqrt(sts_sig2[t]);
         }
 
-        #pragma omp for collapse(2)
+        #pragma omp for collapse(2) schedule(static)
         for (int t = 0; t < TT; ++t) {
             for (int i = 0; i < n_samp; ++i) {
                 double mean = sts_mu[t];
@@ -58,4 +68,10 @@ Rcpp::NumericMatrix sample_truncnorm(int n_samp, int TT, Rcpp::NumericVector sts
     }
 
     return samples;
+}
+
+// Backward-compatible alias (icdf sampler).
+// [[Rcpp::export]]
+Rcpp::NumericMatrix sample_truncnorm(int n_samp, int TT, Rcpp::NumericVector sts_mu, Rcpp::NumericVector sts_sig2) {
+    return sample_truncnorm_icdf(n_samp, TT, sts_mu, sts_sig2);
 }

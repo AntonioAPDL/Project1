@@ -2116,7 +2116,7 @@ for (j in 1:(J+1)) {
     # Generalized Inverse Gausian Sampling
     samp.uts[j,,] = t(sample_gig_devroye_vector(n.samp, uts.dummy$uts.lambda, uts.dummy$uts.psi, uts.dummy$uts.chi))
     # Truncated normal
-    samp.sts[j,,] = t(sample_truncnorm(n.samp, TT_sub, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
+    samp.sts[j,,] = t(sample_truncnorm_icdf(n.samp, TT_sub, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
     ########################
     ########################
     ########################
@@ -2202,7 +2202,7 @@ for (j in 1:(J+1)) {
         # Generalized Inverse Gausian Sampling
         samp.uts_ens[[j-1]][,i,]  = t(sample_gig_devroye_vector(n.samp, uts.dummy$uts.lambda, uts.dummy$uts.psi, uts.dummy$uts.chi))
         # Truncated normal
-        samp.sts_ens[[j-1]][,i,]  = t(sample_truncnorm(n.samp, k_forecast, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
+        samp.sts_ens[[j-1]][,i,]  = t(sample_truncnorm_icdf(n.samp, k_forecast, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
         ########################
         ########################
         ########################
