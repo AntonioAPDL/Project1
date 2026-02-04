@@ -318,3 +318,12 @@ If Rcpp is introduced:
     - Replaced `apply(..., function(x) quantile(...))` with `fast_col_quantiles_t(...)` for the same probs (reduces R-level function-call overhead).
     - Added profiling markers around synthesis calls.
   - Validation: full pipeline re-run still required after this change set (owner run + output inspection).
+
+- 2026-02-04: Figures deterministic speedups (pending full-run validation).
+  - Files: `R/environmetrics/40_figures.R`
+  - `R/environmetrics/40_figures.R`:
+    - Vectorized the deterministic synth-weights block (`synth_q_f`) to eliminate a nested `for(t) for(s)` loop while preserving the same math.
+    - Optimized `compute_jsd()` grid construction by replacing `expand.grid()` with an equivalent numeric `cbind(rep(...))` matrix (keeps `dmvnorm()` for identical density values).
+    - Vectorized the `synthesize_quantiles()` inner dense-grid loop (removes `for(m in 1:M)` with 10,000 scalar `approx()` calls; replaces with 1 `approx()` call per quantile row and exact indexing/blending). Verified `identical()` on a synthetic test harness.
+    - Added profiling markers around the synth-weights and JSD blocks.
+  - Validation: full pipeline re-run still required after this change set (owner run + output inspection).

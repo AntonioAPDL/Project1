@@ -462,28 +462,41 @@ n.samp <- dim(samp.theta_50_exAL_synth_DISC$samp_theta)[3]
 synth_f <- matrix(NA_real_, nrow = n.samp, ncol = ranges[1])
 synth_q_f <- matrix(NA_real_, nrow = n.samp, ncol = ranges[1])
 k <- 10
-for(t in 1:ranges[1]){
-    w <- rep(0,7)
-    for(s in 1:n.samp){
-        diff <- y_post_5[s,t]-q5$quantiles[1,t]
-        w[1] <- exp(-k*check_loss_fn(0.05,diff)/samp.sigma_5_exAL_synth_DISC[1,s])
-        diff <- y_post_50[s,t]-q50$quantiles[1,t]
-        w[2] <- exp(-k*check_loss_fn(0.5,diff)/samp.sigma_50_exAL_synth_DISC[1,s])
-        diff <- y_post_95[s,t]-q95$quantiles[1,t]
-        w[3] <- exp(-k*check_loss_fn(0.95,diff)/samp.sigma_95_exAL_synth_DISC[1,s])
-        diff <- y_post_20[s,t]-q20$quantiles[1,t]
-        w[4] <- exp(-k*check_loss_fn(0.2,diff)/samp.sigma_20_exAL_synth_DISC[1,s])
-        diff <- y_post_35[s,t]-q35$quantiles[1,t]
-        w[5] <- exp(-k*check_loss_fn(0.35,diff)/samp.sigma_35_exAL_synth_DISC[1,s])
-        diff <- y_post_80[s,t]-q80$quantiles[1,t]
-        w[6] <- exp(-k*check_loss_fn(0.80,diff)/samp.sigma_80_exAL_synth_DISC[1,s])
-        diff <- y_post_65[s,t]-q65$quantiles[1,t]
-        w[7] <- exp(-k*check_loss_fn(0.65,diff)/samp.sigma_65_exAL_synth_DISC[1,s])
-        w <- w/sum(w)
-        synth_q_f[s,t] <- sum(w*c(q5$quantiles[1,t],q50$quantiles[1,t],q95$quantiles[1,t],
-                                  q20$quantiles[1,t],q35$quantiles[1,t],q80$quantiles[1,t],q65$quantiles[1,t]))
-    } 
-}
+sigma_5  <- samp.sigma_5_exAL_synth_DISC[1, ]
+sigma_20 <- samp.sigma_20_exAL_synth_DISC[1, ]
+sigma_35 <- samp.sigma_35_exAL_synth_DISC[1, ]
+sigma_50 <- samp.sigma_50_exAL_synth_DISC[1, ]
+sigma_65 <- samp.sigma_65_exAL_synth_DISC[1, ]
+sigma_80 <- samp.sigma_80_exAL_synth_DISC[1, ]
+sigma_95 <- samp.sigma_95_exAL_synth_DISC[1, ]
+
+q_refs <- rbind(
+  q5$quantiles[1, ],
+  q50$quantiles[1, ],
+  q95$quantiles[1, ],
+  q20$quantiles[1, ],
+  q35$quantiles[1, ],
+  q80$quantiles[1, ],
+  q65$quantiles[1, ]
+)
+
+profile_section("figures.synth_weights", {
+  for (t in 1:ranges[1]) {
+    w1 <- exp(-k * check_loss_fn(0.05, y_post_5[, t]  - q5$quantiles[1, t])  / sigma_5)
+    w2 <- exp(-k * check_loss_fn(0.50, y_post_50[, t] - q50$quantiles[1, t]) / sigma_50)
+    w3 <- exp(-k * check_loss_fn(0.95, y_post_95[, t] - q95$quantiles[1, t]) / sigma_95)
+    w4 <- exp(-k * check_loss_fn(0.20, y_post_20[, t] - q20$quantiles[1, t]) / sigma_20)
+    w5 <- exp(-k * check_loss_fn(0.35, y_post_35[, t] - q35$quantiles[1, t]) / sigma_35)
+    w6 <- exp(-k * check_loss_fn(0.80, y_post_80[, t] - q80$quantiles[1, t]) / sigma_80)
+    w7 <- exp(-k * check_loss_fn(0.65, y_post_65[, t] - q65$quantiles[1, t]) / sigma_65)
+
+    W <- cbind(w1, w2, w3, w4, w5, w6, w7)
+    W <- W / rowSums(W)
+
+    q_ref <- q_refs[, t]
+    synth_q_f[, t] <- rowSums(W * matrix(q_ref, nrow = n.samp, ncol = 7, byrow = TRUE))
+  }
+})
 
 q_synth <- fast_col_quantiles_t(synth_q_f, probs = c(0.025, 0.5, 0.975))
 m_synth <- colMeans((synth_q_f))
@@ -3421,11 +3434,21 @@ compute_jsd <- function(p_sample, gridsize = c(100, 100, 100)) {
   # Step 5: Evaluate the PDF for q on the same grid as kde_p
   grid_points <- kde_p$eval.points  # Grid points used in kde_p
 
-  # Create a matrix of all grid points where the densities are evaluated
-  grid_matrix <- expand.grid(grid_points[[1]], grid_points[[2]], grid_points[[3]])
+  # Create a matrix of all grid points where the densities are evaluated.
+  # Avoid expand.grid() here: it builds a 1e6-row data.frame for gridsize=c(100,100,100),
+  # which is slower and allocates more than necessary. Keep row order identical to expand.grid:
+  # Var1 varies fastest, then Var2, then Var3.
+  x1 <- grid_points[[1]]
+  x2 <- grid_points[[2]]
+  x3 <- grid_points[[3]]
+  grid_matrix <- cbind(
+    rep(x1, times = length(x2) * length(x3)),
+    rep(rep(x2, each = length(x1)), times = length(x3)),
+    rep(x3, each = length(x1) * length(x2))
+  )
 
   # Calculate the density for the standard normal on the same grid
-  pdf_q <- dmvnorm(as.matrix(grid_matrix), mean = mean_q, sigma = cov_q)
+  pdf_q <- dmvnorm(grid_matrix, mean = mean_q, sigma = cov_q)
   pdf_q <- array(pdf_q, dim = dim_p)  # Reshape to match the dimension of pdf_p
   # cat("Dimensions of pdf_q:", dim(pdf_q), "\n")  # Print the dimensions of pdf_q
 
@@ -3481,7 +3504,10 @@ results <- list()
 
 for (i in 1:length(sample_list)) {
   cat("Computing JSD for:", sample_names[i], "\n")
-  js_divergence <- compute_jsd(sample_list[[i]], gridsize = c(100, 100, 100))
+  js_divergence <- profile_section(
+    paste0("figures.compute_jsd.", i),
+    compute_jsd(sample_list[[i]], gridsize = c(100, 100, 100))
+  )
   cat("Jensen-Shannon divergence for", sample_names[i], "is", js_divergence, "\n\n")
   results[[sample_names[i]]] <- js_divergence
 }
@@ -6693,23 +6719,40 @@ synthesize_quantiles <- function(y_reps, percentiles, M = 10000) {
       adjusted_samples[k, ] <- sort(adj_vec)  # Sort immediately after adjustment
     }
     
-    # Step 4: Quantile function construction & Step 5: Initial synthesis
+    # Step 4: Quantile function construction on a dense grid (vectorized).
+    # Preserve exact behavior by evaluating approx() at the same u_grid_dense points,
+    # but avoid calling approx() 10,000 times per t (one per u).
+    q_dense <- vapply(
+      1:n_p0,
+      function(k) approx(pp, adjusted_samples[k, ], xout = u_grid_dense, rule = 2)$y,
+      numeric(M)
+    )
+    # q_dense is [M x n_p0]; transpose to [n_p0 x M] for row-wise indexing
+    q_dense <- t(q_dense)
+
+    # Step 5: Initial synthesis (linear blend between adjacent quantile functions)
     q_init <- numeric(M)
-    for (m in 1:M) {
-      u <- u_grid_dense[m]
-      
-      # Find interval [τ_i, τ_{i+1}] containing u
-      if (u <= percentiles[1]) {
-        q_init[m] <- approx(pp, adjusted_samples[1, ], xout = u, rule = 2)$y
-      } else if (u >= percentiles[n_p0]) {
-        q_init[m] <- approx(pp, adjusted_samples[n_p0, ], xout = u, rule = 2)$y
-      } else {
-        i <- max(which(percentiles <= u))
-        w <- (u - percentiles[i]) / (percentiles[i+1] - percentiles[i])
-        q_i <- approx(pp, adjusted_samples[i, ], xout = u, rule = 2)$y
-        q_i1 <- approx(pp, adjusted_samples[i+1, ], xout = u, rule = 2)$y
-        q_init[m] <- (1 - w)*q_i + w*q_i1  # Linear blend
-      }
+
+    # Match boundary conditions from the original scalar loop
+    mask_low <- u_grid_dense <= percentiles[1]
+    mask_high <- u_grid_dense >= percentiles[n_p0]
+    mask_mid <- !(mask_low | mask_high)
+
+    if (any(mask_low)) {
+      q_init[mask_low] <- q_dense[1, mask_low]
+    }
+    if (any(mask_high)) {
+      q_init[mask_high] <- q_dense[n_p0, mask_high]
+    }
+
+    if (any(mask_mid)) {
+      pos <- which(mask_mid)
+      u_mid <- u_grid_dense[pos]
+      i <- findInterval(u_mid, percentiles)
+      w <- (u_mid - percentiles[i]) / (percentiles[i + 1] - percentiles[i])
+      q_i <- q_dense[cbind(i, pos)]
+      q_i1 <- q_dense[cbind(i + 1, pos)]
+      q_init[pos] <- (1 - w) * q_i + w * q_i1
     }
     
     # Step 6: Monotone rearrangement
