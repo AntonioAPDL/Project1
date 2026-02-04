@@ -48,3 +48,27 @@ library(dplyr)
 library(tidyr)
 library(scales)
 library(lubridate)
+
+# =============================================================================
+# Lightweight profiling helpers (used by modules; controlled by PROFILE flag)
+# =============================================================================
+is_profile_enabled <- function() {
+  exists("PROFILE", inherits = TRUE) && isTRUE(get("PROFILE", inherits = TRUE))
+}
+
+profile_section <- function(section, expr) {
+  expr <- substitute(expr)
+  if (!is_profile_enabled()) {
+    return(eval(expr, envir = parent.frame()))
+  }
+  t0 <- Sys.time()
+  on.exit({
+    t1 <- Sys.time()
+    if (exists("log_timing", inherits = TRUE)) {
+      # Avoid commas in section labels (CSV output in runner)
+      safe_section <- gsub(",", ";", section, fixed = TRUE)
+      log_timing(safe_section, t0, t1)
+    }
+  }, add = TRUE)
+  eval(expr, envir = parent.frame())
+}

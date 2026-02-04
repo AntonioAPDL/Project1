@@ -2,7 +2,7 @@
 
 Project: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Owner: Antonio (jaguir26)  
-Last updated: 2026-02-03  
+Last updated: 2026-02-04  
 Status: In progress (quantiles/reshape optimized; next: hotspot profiling-driven)
 
 ## 0. Objective
@@ -306,3 +306,15 @@ If Rcpp is introduced:
     - Some PNGs differ by color mode and/or dimensions (e.g., RGB vs RGBA; 6000x4000 vs 10800x5400).
     - A small subset of figures show pixel-level differences despite same dimensions; root cause likely plotting-device/font/anti-aliasing or data ordering differences.
     - Policy (current): proceed with optimizations, but keep recording diffs; re-tighten determinism later if strict pixel identity becomes required.
+
+- 2026-02-04: Univariate deterministic speedups + profiling hooks (pending full-run validation).
+  - Files: `R/environmetrics/00_setup.R`, `R/environmetrics/30_univariate_and_misc.R`
+  - `R/environmetrics/00_setup.R`:
+    - Added `profile_section()` helper (controlled by `PROFILE=TRUE`) so modules can self-time internal hotspots via the runner’s `log_timing()`.
+  - `R/environmetrics/30_univariate_and_misc.R`:
+    - Cached forecast-step state covariance projections (`W_list_*`) to avoid repeated `Gx %*% sC %*% t(Gx)` inside tight loops.
+    - Cached per-sample `gamma_*`/`sigma_*` once per outer-sample loop; reuse across all forecast horizons.
+    - Removed redundant `readRDS()` immediately after `saveRDS()` (still writes the file, but reuses in-memory objects).
+    - Replaced `apply(..., function(x) quantile(...))` with `fast_col_quantiles_t(...)` for the same probs (reduces R-level function-call overhead).
+    - Added profiling markers around synthesis calls.
+  - Validation: full pipeline re-run still required after this change set (owner run + output inspection).

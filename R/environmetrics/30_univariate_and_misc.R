@@ -81,15 +81,15 @@ synthesize_samples <- function(y_reps, q_s, k = 1) {
         q_lo <- q_s[idx]
         q_hi <- q_s[idx + 1]
         w <- (u - q_lo) / (q_hi - q_lo)
-        y_lower <- quantile(y_reps[idx, , t_idx], probs = u)
-        y_upper <- quantile(y_reps[idx+1, , t_idx], probs = u)
+        y_lower <- quantile(y_reps[idx, , t_idx], probs = u, type = 7L, names = FALSE)
+        y_upper <- quantile(y_reps[idx + 1, , t_idx], probs = u, type = 7L, names = FALSE)
         result <- (1 - w) * y_lower + w * y_upper
         out[i, t_idx] <- result
       }else{
         if(idx == 0){
-          out[i, t_idx] <- quantile(y_reps[idx+1, , t_idx], probs = u)
+          out[i, t_idx] <- quantile(y_reps[idx + 1, , t_idx], probs = u, type = 7L, names = FALSE)
         }else{
-          out[i, t_idx] <- quantile(y_reps[idx, , t_idx], probs = u)
+          out[i, t_idx] <- quantile(y_reps[idx, , t_idx], probs = u, type = 7L, names = FALSE)
         }
       }
     }
@@ -497,169 +497,168 @@ y_forecast <- array(NA_real_,c(7,n.samp,ranges[1]))
 FF_f <- matrix(FF[1:(p+ppx),1,1], ncol = 1) 
 FF_f[p+1] <- 1 
 
+# Precompute W_k = Gx_k %*% sC_T %*% t(Gx_k) for each quantile and forecast time k.
+# This preserves exact behavior (same RNG calls/order) but avoids repeated matrix multiplications inside loops.
+compute_W_list <- function(sC_T) {
+  lapply(seq_len(ranges[1]), function(k) {
+    G <- Gx[,,k]
+    G %*% sC_T %*% t(G)
+  })
+}
+
+sC_5_T  <- new.theta.out_5_exAL_synth_DISC_uni$sC[,,TT]  * c
+sC_20_T <- new.theta.out_20_exAL_synth_DISC_uni$sC[,,TT] * c
+sC_35_T <- new.theta.out_35_exAL_synth_DISC_uni$sC[,,TT] * c
+sC_50_T <- new.theta.out_50_exAL_synth_DISC_uni$sC[,,TT] * c
+sC_65_T <- new.theta.out_65_exAL_synth_DISC_uni$sC[,,TT] * c
+sC_80_T <- new.theta.out_80_exAL_synth_DISC_uni$sC[,,TT] * c
+sC_95_T <- new.theta.out_95_exAL_synth_DISC_uni$sC[,,TT] * c
+
+W_list_5  <- compute_W_list(sC_5_T)
+W_list_20 <- compute_W_list(sC_20_T)
+W_list_35 <- compute_W_list(sC_35_T)
+W_list_50 <- compute_W_list(sC_50_T)
+W_list_65 <- compute_W_list(sC_65_T)
+W_list_80 <- compute_W_list(sC_80_T)
+W_list_95 <- compute_W_list(sC_95_T)
+
 
 for(i in 1:n.samp){
     sm_k1 <- samp.theta_5_exAL_synth_DISC_uni[,TT,i]
-    W <- Gx[,,1]%*%new.theta.out_5_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,1])*c
-    e <- rmvnorm(n = 1, sigma = W)
+    e <- rmvnorm(n = 1, sigma = W_list_5[[1]])
     sm_k1 <- Gx[,,1] %*% sm_k1 +t(e)
     xb_forecast[1,i,1] <- sum((FF_f)*sm_k1)
     
     sm_k2 <- samp.theta_20_exAL_synth_DISC_uni[,TT,i]
-    W <- Gx[,,1]%*%new.theta.out_20_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,1])*c
-    e <- rmvnorm(n = 1, sigma = W)
+    e <- rmvnorm(n = 1, sigma = W_list_20[[1]])
     sm_k2 <- Gx[,,1] %*% sm_k2 +t(e)
     xb_forecast[2,i,1] <- sum((FF_f)*sm_k2)
 
     sm_k3 <- samp.theta_35_exAL_synth_DISC_uni[,TT,i]
-    W <- Gx[,,1]%*%new.theta.out_35_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,1])*c
-    e <- rmvnorm(n = 1, sigma = W)
+    e <- rmvnorm(n = 1, sigma = W_list_35[[1]])
     sm_k3 <- Gx[,,1] %*% sm_k3 +t(e)
     xb_forecast[3,i,1] <- sum((FF_f)*sm_k3)
     
     sm_k4 <- samp.theta_50_exAL_synth_DISC_uni[,TT,i]
-    W <- Gx[,,1]%*%new.theta.out_50_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,1])*c
-    e <- rmvnorm(n = 1, sigma = W)
+    e <- rmvnorm(n = 1, sigma = W_list_50[[1]])
     sm_k4 <- Gx[,,1] %*% sm_k4 +t(e)
     xb_forecast[4,i,1] <- sum((FF_f)*sm_k4)
     
     sm_k5 <- samp.theta_65_exAL_synth_DISC_uni[,TT,i]
-    W <- Gx[,,1]%*%new.theta.out_65_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,1])*c
-    e <- rmvnorm(n = 1, sigma = W)
+    e <- rmvnorm(n = 1, sigma = W_list_65[[1]])
     sm_k5 <- Gx[,,1] %*% sm_k5 +t(e)
     xb_forecast[5,i,1] <- sum((FF_f)*sm_k5)
     
     sm_k6 <- samp.theta_80_exAL_synth_DISC_uni[,TT,i]
-    W <- Gx[,,1]%*%new.theta.out_80_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,1])*c
-    e <- rmvnorm(n = 1, sigma = W)
+    e <- rmvnorm(n = 1, sigma = W_list_80[[1]])
     sm_k6 <- Gx[,,1] %*% sm_k6 +t(e)
     xb_forecast[6,i,1] <- sum((FF_f)*sm_k6)
 
     sm_k7 <- samp.theta_95_exAL_synth_DISC_uni[,TT,i]
-    W <- Gx[,,1]%*%new.theta.out_95_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,1])*c
-    e <- rmvnorm(n = 1, sigma = W)
+    e <- rmvnorm(n = 1, sigma = W_list_95[[1]])
     sm_k7 <- Gx[,,1] %*% sm_k7 +t(e)
     xb_forecast[7,i,1] <- sum((FF_f)*sm_k7)
+
+    # Cache per-sample params once (used for all k)
+    gamma_95 <- samp.gamma_95_exAL_synth_DISC_uni[1,i]
+    sigma_95 <- samp.sigma_95_exAL_synth_DISC_uni[1,i]
+    gamma_80 <- samp.gamma_80_exAL_synth_DISC_uni[1,i]
+    sigma_80 <- samp.sigma_80_exAL_synth_DISC_uni[1,i]
+    gamma_65 <- samp.gamma_65_exAL_synth_DISC_uni[1,i]
+    sigma_65 <- samp.sigma_65_exAL_synth_DISC_uni[1,i]
+    gamma_50 <- samp.gamma_50_exAL_synth_DISC_uni[1,i]
+    sigma_50 <- samp.sigma_50_exAL_synth_DISC_uni[1,i]
+    gamma_35 <- samp.gamma_35_exAL_synth_DISC_uni[1,i]
+    sigma_35 <- samp.sigma_35_exAL_synth_DISC_uni[1,i]
+    gamma_20 <- samp.gamma_20_exAL_synth_DISC_uni[1,i]
+    sigma_20 <- samp.sigma_20_exAL_synth_DISC_uni[1,i]
+    gamma_5 <- samp.gamma_5_exAL_synth_DISC_uni[1,i]
+    sigma_5 <- samp.sigma_5_exAL_synth_DISC_uni[1,i]
     
-    gamma <- samp.gamma_95_exAL_synth_DISC_uni[1,i]
-    sigma <- samp.sigma_95_exAL_synth_DISC_uni[1,i]
     p00 <- 0.95
     mu <- xb_forecast[7,i,1]
-    y_forecast[7,i,1] <- rexal(1, p00, mu, sigma, gamma) 
+    y_forecast[7,i,1] <- rexal(1, p00, mu, sigma_95, gamma_95) 
 
-    gamma <- samp.gamma_80_exAL_synth_DISC_uni[1,i]
-    sigma <- samp.sigma_80_exAL_synth_DISC_uni[1,i]
     p00 <- 0.8
     mu <- xb_forecast[6,i,1]
-    y_forecast[6,i,1] <- rexal(1, p00, mu, sigma, gamma) 
+    y_forecast[6,i,1] <- rexal(1, p00, mu, sigma_80, gamma_80) 
 
-    gamma <- samp.gamma_65_exAL_synth_DISC_uni[1,i]
-    sigma <- samp.sigma_65_exAL_synth_DISC_uni[1,i]
     p00 <- 0.65
     mu <- xb_forecast[5,i,1]
-    y_forecast[5,i,1] <- rexal(1, p00, mu, sigma, gamma) 
+    y_forecast[5,i,1] <- rexal(1, p00, mu, sigma_65, gamma_65) 
 
-    gamma <- samp.gamma_50_exAL_synth_DISC_uni[1,i]
-    sigma <- samp.sigma_50_exAL_synth_DISC_uni[1,i]
     p00 <- 0.5
     mu <- xb_forecast[4,i,1]
-    y_forecast[4,i,1] <- rexal(1, p00, mu, sigma, gamma) 
+    y_forecast[4,i,1] <- rexal(1, p00, mu, sigma_50, gamma_50) 
 
-    gamma <- samp.gamma_35_exAL_synth_DISC_uni[1,i]
-    sigma <- samp.sigma_35_exAL_synth_DISC_uni[1,i]
     p00 <- 0.35
     mu <- xb_forecast[3,i,1]
-    y_forecast[3,i,1] <- rexal(1, p00, mu, sigma, gamma) 
+    y_forecast[3,i,1] <- rexal(1, p00, mu, sigma_35, gamma_35) 
 
-    gamma <- samp.gamma_20_exAL_synth_DISC_uni[1,i]
-    sigma <- samp.sigma_20_exAL_synth_DISC_uni[1,i]
     p00 <- 0.20
     mu <- xb_forecast[2,i,1]
-    y_forecast[2,i,1] <- rexal(1, p00, mu, sigma, gamma) 
+    y_forecast[2,i,1] <- rexal(1, p00, mu, sigma_20, gamma_20) 
 
-    gamma <- samp.gamma_5_exAL_synth_DISC_uni[1,i]
-    sigma <- samp.sigma_5_exAL_synth_DISC_uni[1,i]
     p00 <- 0.05
     mu <- xb_forecast[1,i,1]
-    y_forecast[1,i,1] <- rexal(1, p00, mu, sigma, gamma) 
+    y_forecast[1,i,1] <- rexal(1, p00, mu, sigma_5, gamma_5) 
         
     for(k in 2:ranges[1]){
-        W <- Gx[,,k]%*%new.theta.out_5_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,k])
-        e <- rmvnorm(n = 1, sigma = W)
+        e <- rmvnorm(n = 1, sigma = W_list_5[[k]])
         sm_k1 <- Gx[,,k] %*% sm_k1 +t(e)
         xb_forecast[1,i,k] <- sum((FF_f)*sm_k1)
 
-        W <- Gx[,,k]%*%new.theta.out_20_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,k])
-        e <- rmvnorm(n = 1, sigma = W)
+        e <- rmvnorm(n = 1, sigma = W_list_20[[k]])
         sm_k2 <- Gx[,,k] %*% sm_k2 +t(e)
         xb_forecast[2,i,k] <- sum((FF_f)*sm_k2)
 
-        W <- Gx[,,k]%*%new.theta.out_35_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,k])
-        e <- rmvnorm(n = 1, sigma = W)
+        e <- rmvnorm(n = 1, sigma = W_list_35[[k]])
         sm_k3 <- Gx[,,k] %*% sm_k3 +t(e)
         xb_forecast[3,i,k] <- sum((FF_f)*sm_k3)
 
-        W <- Gx[,,k]%*%new.theta.out_50_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,k])
-        e <- rmvnorm(n = 1, sigma = W)
+        e <- rmvnorm(n = 1, sigma = W_list_50[[k]])
         sm_k4 <- Gx[,,k] %*% sm_k4 +t(e)
         xb_forecast[4,i,k] <- sum((FF_f)*sm_k4)
 
-        W <- Gx[,,k]%*%new.theta.out_65_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,k])
-        e <- rmvnorm(n = 1, sigma = W)
+        e <- rmvnorm(n = 1, sigma = W_list_65[[k]])
         sm_k5 <- Gx[,,k] %*% sm_k5 +t(e)
         xb_forecast[5,i,k] <- sum((FF_f)*sm_k5)
 
-        W <- Gx[,,k]%*%new.theta.out_80_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,k])
-        e <- rmvnorm(n = 1, sigma = W)
+        e <- rmvnorm(n = 1, sigma = W_list_80[[k]])
         sm_k6 <- Gx[,,k] %*% sm_k6 +t(e)
         xb_forecast[6,i,k] <- sum((FF_f)*sm_k6)
         
-        W <- Gx[,,k]%*%new.theta.out_95_exAL_synth_DISC_uni$sC[,,TT]%*%t(Gx[,,k])
-        e <- rmvnorm(n = 1, sigma = W)
+        e <- rmvnorm(n = 1, sigma = W_list_95[[k]])
         sm_k7 <- Gx[,,k] %*% sm_k7 +t(e)
         xb_forecast[7,i,k] <- sum((FF_f)*sm_k7)
 
-        gamma <- samp.gamma_95_exAL_synth_DISC_uni[1,i]
-        sigma <- samp.sigma_95_exAL_synth_DISC_uni[1,i]
         p00 <- 0.95
         mu <- xb_forecast[7,i,k]
-        y_forecast[7,i,k] <- rexal(1, p00, mu, sigma, gamma) 
+        y_forecast[7,i,k] <- rexal(1, p00, mu, sigma_95, gamma_95) 
 
-        gamma <- samp.gamma_80_exAL_synth_DISC_uni[1,i]
-        sigma <- samp.sigma_80_exAL_synth_DISC_uni[1,i]
         p00 <- 0.8
         mu <- xb_forecast[6,i,k]
-        y_forecast[6,i,k] <- rexal(1, p00, mu, sigma, gamma) 
+        y_forecast[6,i,k] <- rexal(1, p00, mu, sigma_80, gamma_80) 
 
-        gamma <- samp.gamma_65_exAL_synth_DISC_uni[1,i]
-        sigma <- samp.sigma_65_exAL_synth_DISC_uni[1,i]
         p00 <- 0.65
         mu <- xb_forecast[5,i,k]
-        y_forecast[5,i,k] <- rexal(1, p00, mu, sigma, gamma) 
+        y_forecast[5,i,k] <- rexal(1, p00, mu, sigma_65, gamma_65) 
 
-        gamma <- samp.gamma_50_exAL_synth_DISC_uni[1,i]
-        sigma <- samp.sigma_50_exAL_synth_DISC_uni[1,i]
         p00 <- 0.5
         mu <- xb_forecast[4,i,k]
-        y_forecast[4,i,k] <- rexal(1, p00, mu, sigma, gamma) 
+        y_forecast[4,i,k] <- rexal(1, p00, mu, sigma_50, gamma_50) 
 
-        gamma <- samp.gamma_35_exAL_synth_DISC_uni[1,i]
-        sigma <- samp.sigma_35_exAL_synth_DISC_uni[1,i]
         p00 <- 0.35
         mu <- xb_forecast[3,i,k]
-        y_forecast[3,i,k] <- rexal(1, p00, mu, sigma, gamma) 
+        y_forecast[3,i,k] <- rexal(1, p00, mu, sigma_35, gamma_35) 
 
-        gamma <- samp.gamma_20_exAL_synth_DISC_uni[1,i]
-        sigma <- samp.sigma_20_exAL_synth_DISC_uni[1,i]
         p00 <- 0.20
         mu <- xb_forecast[2,i,k]
-        y_forecast[2,i,k] <- rexal(1, p00, mu, sigma, gamma) 
+        y_forecast[2,i,k] <- rexal(1, p00, mu, sigma_20, gamma_20) 
 
-        gamma <- samp.gamma_5_exAL_synth_DISC_uni[1,i]
-        sigma <- samp.sigma_5_exAL_synth_DISC_uni[1,i]
         p00 <- 0.05
         mu <- xb_forecast[1,i,k]
-        y_forecast[1,i,k] <- rexal(1, p00, mu, sigma, gamma) 
+        y_forecast[1,i,k] <- rexal(1, p00, mu, sigma_5, gamma_5) 
 
 
     }
@@ -753,14 +752,14 @@ y_hist_uni[7,,] <- y_reps_95
 # Save the array to your current directory
 saveRDS(y_hist_uni, file = "y_hist_uni.rds")
 
-y_reps_hist_uni <- readRDS("y_hist_uni.rds")
+y_reps_hist_uni <- y_hist_uni
 
 q_s    <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95)
 n.q     <- length(q_s)
 n.samp  <- n.samp
 n.times <- ranges[1]
 
-synth_hist_uni <- synthesize_samples(exp(y_reps_hist_uni), q_s)
+synth_hist_uni <- profile_section("univariate.synthesize_hist", synthesize_samples(exp(y_reps_hist_uni), q_s))
 dim(synth_hist_uni)
 
 synth_hist_uni_q <- colQuantiles(synth_hist_uni, probs = q_s, type = 8)
@@ -799,14 +798,14 @@ y_forecast[7,,] <- y_reps_f_95
 # Save the array to your current directory
 saveRDS(y_forecast, file = "y_forecast_uni.rds")
 
-y_reps_uni <- readRDS("y_forecast_uni.rds")
+y_reps_uni <- y_forecast
 
 q_s    <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95)
 n.q     <- length(q_s)
 n.samp  <- n.samp
 n.times <- ranges[1]
 
-synth_f2 <- synthesize_samples(exp(y_reps_uni), q_s)
+synth_f2 <- profile_section("univariate.synthesize_forecast", synthesize_samples(exp(y_reps_uni), q_s))
 dim(synth_f2)
 
 synth_f2_q <- colQuantiles(synth_f2, probs = q_s, type = 8)
@@ -833,38 +832,38 @@ for (i in 1:n.q) {
 }
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(exp(xb_forecast[7,,]), 2, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_col_quantiles_t(exp(xb_forecast[7, , ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'blue', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkblue', lwd = 1.5)
 lines(result[3,], col = 'blue', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(exp(xb_forecast[1,,]), 2, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_col_quantiles_t(exp(xb_forecast[1, , ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'red', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkred', lwd = 1.5)
 lines(result[3,], col = 'red', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- apply(exp(xb_forecast[4,,]), 2, function(x) quantile(x, probs = c(0.025, 0.5, 0.975)))
+result <- fast_col_quantiles_t(exp(xb_forecast[4, , ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'green', lty = 2, lwd = 1)
 lines(result[2,], col = 'forestgreen', lwd = 1.5)
 lines(result[3,], col = 'green', lty = 2, lwd = 1)
 
 
-result <- apply(exp(y_reps_f_95), 2, function(x) quantile(x, probs = c(0.95)))
-lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_80), 2, function(x) quantile(x, probs = c(0.80)))
-lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_65), 2, function(x) quantile(x, probs = c(0.65)))
-lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_50), 2, function(x) quantile(x, probs = c(0.50)))
-lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_35), 2, function(x) quantile(x, probs = c(0.35)))
-lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_20), 2, function(x) quantile(x, probs = c(0.20)))
-lines(result, col = 'black', lwd = 0.5)
-result <- apply(exp(y_reps_f_5), 2, function(x) quantile(x, probs = c(0.05)))
-lines(result, col = 'black', lwd = 0.5)
+result <- fast_col_quantiles_t(exp(y_reps_f_95), probs = 0.95)
+lines(as.numeric(result), col = 'black', lwd = 0.5)
+result <- fast_col_quantiles_t(exp(y_reps_f_80), probs = 0.80)
+lines(as.numeric(result), col = 'black', lwd = 0.5)
+result <- fast_col_quantiles_t(exp(y_reps_f_65), probs = 0.65)
+lines(as.numeric(result), col = 'black', lwd = 0.5)
+result <- fast_col_quantiles_t(exp(y_reps_f_50), probs = 0.50)
+lines(as.numeric(result), col = 'black', lwd = 0.5)
+result <- fast_col_quantiles_t(exp(y_reps_f_35), probs = 0.35)
+lines(as.numeric(result), col = 'black', lwd = 0.5)
+result <- fast_col_quantiles_t(exp(y_reps_f_20), probs = 0.20)
+lines(as.numeric(result), col = 'black', lwd = 0.5)
+result <- fast_col_quantiles_t(exp(y_reps_f_5), probs = 0.05)
+lines(as.numeric(result), col = 'black', lwd = 0.5)
 
 points(SL$data0, lwd = 0.8, pch = 16)
 
