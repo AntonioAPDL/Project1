@@ -97,3 +97,18 @@ In `DISC_Optimal_Synth_Ranges_W.r:update_gamma_sigma`:
 - Updated the inverse transform used for initialization:
   `theta_g_init <- qlogis((g_init - L)/(U - L))` (with the same \(\pi\) clipping).
 - Updated the \(\gamma\) transform used for Laplace draws (`samp.gamma <- ...`) to the new mapping.
+
+---
+
+## D3/D4/D5 — documentation alignment in `main.tex` (implemented)
+
+The LaTeX document `exDQLM---Ensemble/main.tex` has been updated (doc-only) to match the implementation details used
+in `DISC_Optimal_Synth_Ranges_W.r` / `DISC_kalman_synth.cpp`:
+
+- **Historical evolution covariance (D3):** added an implementation note near the Kalman recursions documenting the
+  component-wise discount-factor specialization for \(\bm W_\tau\).
+- **Forecast-period evolution covariance (D4):** added an implementation note + equation (`eq:forecast_W_plugin`)
+  stating the convex-combination plug-in update used in the runner (`epsilon`, `c_factor`, `ww`, and `W_T` mapping).
+- **\(\gamma\) boundary safeguard (D5):** added a brief numerical note near the logistic transform clarifying that
+  clipping \(\pi(\xi)\) away from \(\{0,1\}\) is an optional floating-point safeguard, consistent with the intended
+  open interval \(\gamma\in(L,U)\).
