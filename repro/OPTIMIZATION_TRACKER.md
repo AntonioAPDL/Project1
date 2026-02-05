@@ -135,6 +135,7 @@ New helper modules under `R/disc_w/`:
 | Substage | Goal | Status | Commit | Validation | Result |
 |---:|---|---|---|---|---|
 | 2.1 | Define canonical ensemble spec + validator/converter (no call site changes) | PASS | `8dcee4e` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 2.2 | Route ensemble bookkeeping through canonical E (single call site) | PASS | (this commit) | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 
 ---
 

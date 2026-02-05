@@ -4,11 +4,11 @@ disc_w_ens_spec <- function() {
     object = "disc_w_ensemble",
     axes = c("time", "member"),
     ordering = c("time", "member"),
-    element_type = "numeric_matrix",
-    container = "list_of_matrices",
+    element_type = "numeric_matrix_like",
+    container = "list_of_matrix_like",
     notes = c(
       "Canonical ensemble representation for DISC Wishart/ensemble workflow.",
-      "Each ensemble j is a numeric matrix with rows = time/lead index, cols = member index.",
+      "Each ensemble j is matrix-like (matrix or data.frame of numeric columns) with rows = time/lead index, cols = member index.",
       "The list index j preserves the original ordering used by the script (e.g., 1=glofas, 2=nws)."
     )
   )
@@ -28,7 +28,7 @@ disc_w_validate_ensemble <- function(E, spec = disc_w_ens_spec(), strict = TRUE)
   }
 
   if (!is.list(E$data) || length(E$data) < 1) {
-    stop("Ensemble E$data must be a non-empty list of matrices.", call. = FALSE)
+    stop("Ensemble E$data must be a non-empty list of matrix-like objects.", call. = FALSE)
   }
 
   J <- length(E$data)
@@ -45,10 +45,13 @@ disc_w_validate_ensemble <- function(E, spec = disc_w_ens_spec(), strict = TRUE)
 
   for (j in seq_len(J)) {
     mj <- E$data[[j]]
-    if (!is.matrix(mj)) {
-      stop(sprintf("Ensemble E$data[[%d]] must be a matrix.", j), call. = FALSE)
+    if (!is.matrix(mj) && !is.data.frame(mj)) {
+      stop(sprintf("Ensemble E$data[[%d]] must be matrix-like.", j), call. = FALSE)
     }
-    if (!is.numeric(mj)) {
+    if (is.data.frame(mj) && !all(vapply(mj, is.numeric, logical(1)))) {
+      stop(sprintf("Ensemble E$data[[%d]] must have numeric columns.", j), call. = FALSE)
+    }
+    if (is.matrix(mj) && !is.numeric(mj)) {
       stop(sprintf("Ensemble E$data[[%d]] must be numeric.", j), call. = FALSE)
     }
     d <- dim(mj)
@@ -72,12 +75,12 @@ disc_w_as_ensemble <- function(x, spec = disc_w_ens_spec(), strict = TRUE) {
     return(x)
   }
 
-  if (is.matrix(x)) {
+  if (is.matrix(x) || is.data.frame(x)) {
     x <- list(x)
   }
 
   if (!is.list(x) || length(x) < 1) {
-    stop("Cannot convert to ensemble: expected a matrix or list of matrices.", call. = FALSE)
+    stop("Cannot convert to ensemble: expected a matrix-like object or list of matrix-like objects.", call. = FALSE)
   }
 
   J <- length(x)
@@ -85,10 +88,13 @@ disc_w_as_ensemble <- function(x, spec = disc_w_ens_spec(), strict = TRUE) {
   ranges <- rep(NA_real_, J)
   for (j in seq_len(J)) {
     mj <- x[[j]]
-    if (!is.matrix(mj)) {
-      stop(sprintf("Cannot convert to ensemble: element %d is not a matrix.", j), call. = FALSE)
+    if (!is.matrix(mj) && !is.data.frame(mj)) {
+      stop(sprintf("Cannot convert to ensemble: element %d is not matrix-like.", j), call. = FALSE)
     }
-    if (!is.numeric(mj)) {
+    if (is.data.frame(mj) && !all(vapply(mj, is.numeric, logical(1)))) {
+      stop(sprintf("Cannot convert to ensemble: element %d must have numeric columns.", j), call. = FALSE)
+    }
+    if (is.matrix(mj) && !is.numeric(mj)) {
       stop(sprintf("Cannot convert to ensemble: element %d matrix is not numeric.", j), call. = FALSE)
     }
     num_mem[j] <- dim(mj)[2]

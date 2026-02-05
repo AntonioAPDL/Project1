@@ -1,12 +1,11 @@
 disc_w_build_ensembles <- function(glofas_forecast, nws_forecast) {
-  ensembles <- list(glofas_forecast[, -c(1)], nws_forecast[, -c(1)])
-  J <- length(ensembles)
-  num_mem <- rep(NA_real_, J)
-  ranges <- rep(NA_real_, J)
-  for (j in 1:J) {
-    num_mem[j] <- dim(ensembles[[j]])[2]
-    ranges[j] <- dim(ensembles[[j]])[1]
-  }
+  raw_ensembles <- list(glofas_forecast[, -c(1)], nws_forecast[, -c(1)])
+  E <- disc_w_as_ensemble(raw_ensembles, strict = DISC_DEBUG)
+
+  ensembles <- E$data
+  J <- E$J
+  num_mem <- E$num_mem
+  ranges <- E$ranges
 
   row_means_list <- vector("list", J + 1)
   row_means_list[[1]] <- rep(NA_real_, ranges[1])
