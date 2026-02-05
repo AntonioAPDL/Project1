@@ -111,8 +111,8 @@ Notes:
 | 1.2 | Paths + input inventory helper | PASS | `d1768e0` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 1.3 | Loader helpers (I/O only) | PASS | `076d97a` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 1.4 | Covariate construction + standardization helpers | PASS | `cefb155` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 1.5 | Ensemble bookkeeping helpers | PASS | (pending commit) | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 1.6 | Save-state / naming helper | TODO |  |  |  |
+| 1.5 | Ensemble bookkeeping helpers | PASS | `d139d3a` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 1.6 | Save-state / naming helper | PASS | (pending commit) | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 
 ---
 
@@ -123,6 +123,7 @@ Notes:
 - **Bugfix to enable Stage 0**: avoided clobbering the mathematical constant `pi` during sampling (renamed a local variable used for the logistic transform), which previously broke `update_sts` entropy calculations in SIMS mode.
 - **Thread-safety**: forced `sample_gig_devroye_vector(...)` to run single-threaded because it uses `R::runif` internally.
 - **Equivalence protocol**: always restore the locked Stage 0 initial `.RData` from `repro/baseline_runs/20260204_174008_p0_0.5_seed_777/inputs/` before running the baseline check, because the workflow updates the `.RData` state in-place.
+- **Stage 1.6 save-state extraction**: uses an environment helper (`disc_w_save_state(..., env=parent.frame())`) to preserve dynamic `assign()` + `save()` semantics without an impractically large argument list.
 
 ---
 
