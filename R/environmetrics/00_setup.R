@@ -83,10 +83,28 @@ is_profile_detail_enabled <- function() {
   exists("PROFILE_DETAIL", inherits = TRUE) && isTRUE(get("PROFILE_DETAIL", inherits = TRUE))
 }
 
+get_profile_detail_section_filter <- function() {
+  if (exists("PROFILE_DETAIL_SECTION", inherits = TRUE)) {
+    val <- get("PROFILE_DETAIL_SECTION", inherits = TRUE)
+    if (is.character(val) && length(val) == 1L && nzchar(val)) {
+      return(val)
+    }
+  }
+  Sys.getenv("PROFILE_DETAIL_SECTION", "")
+}
+
 profile_detail_section <- function(section, expr) {
   expr <- substitute(expr)
   if (!is_profile_detail_enabled()) {
     return(eval(expr, envir = parent.frame()))
+  }
+
+  filter <- get_profile_detail_section_filter()
+  if (nzchar(filter)) {
+    allowed <- trimws(strsplit(filter, ",", fixed = TRUE)[[1]])
+    if (!(section %in% allowed)) {
+      return(eval(expr, envir = parent.frame()))
+    }
   }
 
   profile_dir <- if (exists("profile_dir", inherits = TRUE)) get("profile_dir", inherits = TRUE) else tempdir()

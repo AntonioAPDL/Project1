@@ -103,7 +103,8 @@ load_rdata_with_retry <- function(path, attempts = 3L, sleep_sec = 0.5) {
   last_err <- NULL
   for (i in seq_len(attempts)) {
     ok <- tryCatch({
-      load(path)
+      # Ensure loaded objects persist in the caller's scope (this module's run env).
+      load(path, envir = parent.frame())
       TRUE
     }, error = function(e) {
       last_err <<- e

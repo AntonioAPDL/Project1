@@ -345,9 +345,11 @@ If Rcpp is introduced:
       - Measures `ggsave()` wall time and device flush time via `dev.off()` wrappers (calls originals exactly once).
     - Added optional detailed profiling under `PROFILE_DETAIL=TRUE` (sampling profiler via `Rprof()`):
       - Used by `profile_detail_section()` in `R/environmetrics/00_setup.R`.
+      - Optional filter: set `PROFILE_DETAIL_SECTION` (comma-separated) to restrict Rprof to specific wrapped sections.
   - Univariate (`R/environmetrics/30_univariate_and_misc.R`):
     - Added `load_rdata_with_retry()` and timed each `.RData` load via `profile_section(...)`.
     - This provides visibility into load bottlenecks and reduces flakiness due to transient filesystem hiccups.
+    - Correctness fix: `load()` now uses `envir = parent.frame()` so loaded objects persist in the module run env.
   - Figures (`R/environmetrics/40_figures.R`):
     - Added internal `profile_section(...)` timers around major heavy blocks:
       - `figures.elbo_traces`
@@ -355,19 +357,16 @@ If Rcpp is introduced:
       - `figures.discrep1_quantiles`, `figures.discrep2_quantiles`
       - `figures.sample_xbs_sm_ens`
       - `figures.sort_xbs_forecast`
-      - `figures.build_y_reps_f`, `figures.sort_y_reps_hist`, `figures.build_y_reps_hist`
-      - `figures.read_y_reps_f_rds`, `figures.synthesize_samples_y_reps_f`, `figures.sort_synth_f`
+      - `figures.components_1991_2022`, `figures.agg_disc_1991_2022`
+      - `figures.components_2012_2016`, `figures.agg_disc_2012_2016`
+      - `figures.components_2018_2020`, `figures.agg_disc_2018_2020`
       - `figures.sample_xbs_retro`, `figures.sort_xbs_retro`
-  - Profiling run:
-    - RUN_ID: `20260205_024926` (PROFILE=TRUE)
-    - Total wall time: ~1h32m44s
-    - Top timers (sum elapsed; note: nested timings are *not* additive):
-      - `40_figures.R`: ~3434s
-      - `30_univariate_and_misc.R`: ~2096s
-      - `figures.build_xbs_discrep`: ~238s
-      - `figures.build_y_reps_hist` (saveRDS): ~120s
-      - `figures.sample_xbs_retro`: ~90s
-      - `.RData` load timings: ~67–84s each for DISC and UNI_VAR artifacts
-    - I/O timings (sum elapsed):
-      - `png.dev.off`: ~209s (n=126)
-      - `ggsave`: ~178s (n=31)
+      - `figures.build_y_post_forecast`
+      - `figures.sort_y_reps_f`, `figures.save_y_reps_f_rds`
+      - `figures.read_y_reps_f_rds`, `figures.synthesize_samples_y_reps_f`, `figures.sort_synth_f`
+      - `figures.save_y_reps_f_new_rds`, `figures.read_y_reps_f_new_rds`, `figures.synthesize_samples_y_reps_f_exp`, `figures.sort_synth_f_exp`
+      - `figures.sort_y_reps_hist`, `figures.save_y_reps_hist_rds`
+      - `figures.save_y_reps_new_rds`, `figures.read_y_reps_new_rds`, `figures.synthesize_samples_y_reps_hist`, `figures.sort_synth_hist`
+  - Next profiling run (after this instrumentation update):
+    - Run with `PROFILE=TRUE` to collect `timings.csv` + `io_timings.csv`.
+    - Optional: `PROFILE_DETAIL=TRUE PROFILE_DETAIL_SECTION=figures.build_xbs_discrep` to get an `Rprof` sample profile for that block only.

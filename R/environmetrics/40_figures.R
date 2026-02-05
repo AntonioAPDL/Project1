@@ -557,12 +557,13 @@ lines((length(idx)+1):(length(idx)+length(truth)),exp(q_synth[1,]), lwd = 0.6, c
 
 
 
-xbs_retro <- array(NA_real_, c(7,TT,n.samp))
-xbs_ndlm_retro <- array(NA_real_, c(1,TT,n.samp))
+profile_section("figures.sample_xbs_retro", {
+  xbs_retro <- array(NA_real_, c(7, TT, n.samp))
+  xbs_ndlm_retro <- array(NA_real_, c(1, TT, n.samp))
 
-idx <- 1:TT
-for(j in 1:J){
-    for(t in idx){
+  idx <- 1:TT
+  for (j in 1:J) {
+    for (t in idx) {
         ###############################################################################
         Mu <- new.theta.out_50_NDLM_synth_DISC$sm[,t]
         Sigma <- new.theta.out_50_NDLM_synth_DISC$sC[,,t]
@@ -621,17 +622,20 @@ for(j in 1:J){
         ###############################################################################
 
     }
-}
+  }
+})
 
-for(t in 1:ranges[1]){
-    xbs_retro[1,t,] <- sort(xbs_retro[1,t,])
-    xbs_retro[2,t,] <- sort(xbs_retro[2,t,])
-    xbs_retro[3,t,] <- sort(xbs_retro[3,t,])
-    xbs_retro[4,t,] <- sort(xbs_retro[4,t,])
-    xbs_retro[5,t,] <- sort(xbs_retro[5,t,])
-    xbs_retro[6,t,] <- sort(xbs_retro[6,t,])
-    xbs_retro[7,t,] <- sort(xbs_retro[7,t,])
-}
+profile_section("figures.sort_xbs_retro", {
+  for (t in 1:ranges[1]) {
+    xbs_retro[1, t, ] <- sort(xbs_retro[1, t, ])
+    xbs_retro[2, t, ] <- sort(xbs_retro[2, t, ])
+    xbs_retro[3, t, ] <- sort(xbs_retro[3, t, ])
+    xbs_retro[4, t, ] <- sort(xbs_retro[4, t, ])
+    xbs_retro[5, t, ] <- sort(xbs_retro[5, t, ])
+    xbs_retro[6, t, ] <- sort(xbs_retro[6, t, ])
+    xbs_retro[7, t, ] <- sort(xbs_retro[7, t, ])
+  }
+})
 
 truth<- San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date>=as.Date('2022-12-26')]
 # truth <- truth[1:ranges[1]]
@@ -2714,28 +2718,32 @@ plot_quantile_component <- function(q_d_50, q_d_05, q_d_95, q_d_20, q_d_35, q_d_
   dev.off() 
 }
 
-par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
+profile_section("figures.components_1991_2022", {
+  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
 
-idx <- ceiling(TT/10):TT
-components <- c(1:dim(q_d_50)[1])
-figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Component_1991_2022_", 1:length(components), ".png")
+  idx <- ceiling(TT/10):TT
+  components <- c(1:dim(q_d_50)[1])
+  figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Component_1991_2022_", 1:length(components), ".png")
 
-for (i in 1:length(components)) {
-  par(mar = c(4, 4, 2, 1) + 0.1)  
-  plot_quantile_component(q_d_50, q_d_05, q_d_95, 
-                        q_d_20, q_d_35, q_d_65, q_d_80,
-                        Y, idx, 
-                        components[i], num_ticks = 8,figure_names[i])
-}
+  for (i in 1:length(components)) {
+    par(mar = c(4, 4, 2, 1) + 0.1)
+    plot_quantile_component(
+      q_d_50, q_d_05, q_d_95,
+      q_d_20, q_d_35, q_d_65, q_d_80,
+      Y, idx,
+      components[i], num_ticks = 8, figure_names[i]
+    )
+  }
+})
 
-par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
+profile_section("figures.agg_disc_1991_2022", {
+  par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
 
+  num_ticks <- 8
+  idx <- ceiling(TT/10):TT
+  figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_1991_2022_", 1:J, ".png")
 
-num_ticks <- 8
-idx <- ceiling(TT/10):TT
-figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_1991_2022_", 1:J, ".png")
-
-for(j in 1:J){
+  for (j in 1:J) {
 png(figure_names[j], width = 6000, height = 4000, res = 600)  
 par(mar = c(4, 4, 2, 1) + 0.1)  # Ensure consistent margins in the function
 
@@ -2783,6 +2791,7 @@ text(x = tick_positions, y = par("usr")[3] - 0.05 * diff(par("usr")[3:4]),
 mtext("Forest Green: 50th Quantile | Dark Red: 5th Quantile | Dark Blue: 95th Quantile | Orange: Average", side = 1, outer = TRUE, line = 2, cex = 0.8)
 dev.off() 
 }
+})
 
 
 # Function to plot with quantiles and dates on x-axis
@@ -3073,28 +3082,32 @@ plot_quantile_component <- function(q_d_50, q_d_05, q_d_95, q_d_20, q_d_35, q_d_
   dev.off() 
 }
 
-par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
+profile_section("figures.components_2012_2016", {
+  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
 
-# idx <- ceiling(TT/10):TT
-idx <- time_cuts[1]:time_cuts[2]
-components <- c(1, 2, 4, 6, 8, 9:dim(q_d_50)[1])
-figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Component_2012_2016_", 1:length(components), "_DISC.png")
-for (i in 1:length(components)) {
-  par(mar = c(4, 4, 2, 1) + 0.1)  
-  plot_quantile_component(q_d_50, q_d_05, q_d_95, 
-                        q_d_20, q_d_35, q_d_65, q_d_80,
-                        Y, idx, 
-                        components[i], num_ticks = 35,figure_names)
-}
+  # idx <- ceiling(TT/10):TT
+  idx <- time_cuts[1]:time_cuts[2]
+  components <- c(1, 2, 4, 6, 8, 9:dim(q_d_50)[1])
+  figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Component_2012_2016_", 1:length(components), "_DISC.png")
+  for (i in 1:length(components)) {
+    par(mar = c(4, 4, 2, 1) + 0.1)
+    plot_quantile_component(
+      q_d_50, q_d_05, q_d_95,
+      q_d_20, q_d_35, q_d_65, q_d_80,
+      Y, idx,
+      components[i], num_ticks = 35, figure_names
+    )
+  }
+})
 
-par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
+profile_section("figures.agg_disc_2012_2016", {
+  par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
 
+  num_ticks <- 8
+  idx <- time_cuts[1]:time_cuts[2]
+  figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_2012_2016_", 1:J, ".png")
 
-num_ticks <- 8
-idx <- time_cuts[1]:time_cuts[2]
-figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_2012_2016_", 1:J, ".png")
-
-for(j in 1:J){
+  for (j in 1:J) {
 png(figure_names[j], width = 6000, height = 4000, res = 600)  
 par(mar = c(4, 4, 2, 1) + 0.1)  # Ensure consistent margins in the function
 
@@ -3142,6 +3155,7 @@ text(x = tick_positions, y = par("usr")[3] - 0.05 * diff(par("usr")[3:4]),
 mtext("Forest Green: 50th Quantile | Dark Red: 5th Quantile | Dark Blue: 95th Quantile | Orange: Average", side = 1, outer = TRUE, line = 2, cex = 0.8)
 dev.off() 
 }
+})
 
 
 # Function to plot with quantiles and dates on x-axis
@@ -3281,28 +3295,32 @@ plot_quantile_component <- function(q_d_50, q_d_05, q_d_95, q_d_20, q_d_35, q_d_
   dev.off() 
 }
 
-par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
+profile_section("figures.components_2018_2020", {
+  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
 
-# idx <- ceiling(TT/10):TT
-idx <- time_cuts[3]:time_cuts[4]
-components <- c(1:dim(q_d_50)[1])
-figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Component_2018_2020_", 1:length(components), "_DISC.png")
-for (i in 1:length(components)) {
-  par(mar = c(4, 4, 2, 1) + 0.1)  
-  plot_quantile_component(q_d_50, q_d_05, q_d_95, 
-                        q_d_20, q_d_35, q_d_65, q_d_80,
-                        Y, idx, 
-                        components[i], num_ticks = 25,figure_names)
-}
+  # idx <- ceiling(TT/10):TT
+  idx <- time_cuts[3]:time_cuts[4]
+  components <- c(1:dim(q_d_50)[1])
+  figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Component_2018_2020_", 1:length(components), "_DISC.png")
+  for (i in 1:length(components)) {
+    par(mar = c(4, 4, 2, 1) + 0.1)
+    plot_quantile_component(
+      q_d_50, q_d_05, q_d_95,
+      q_d_20, q_d_35, q_d_65, q_d_80,
+      Y, idx,
+      components[i], num_ticks = 25, figure_names
+    )
+  }
+})
 
-par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
+profile_section("figures.agg_disc_2018_2020", {
+  par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
 
+  num_ticks <- 8
+  idx <- time_cuts[3]:time_cuts[4]
+  figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_2018_2020_", 1:J, ".png")
 
-num_ticks <- 8
-idx <- time_cuts[3]:time_cuts[4]
-figure_names <- paste0("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_2018_2020_", 1:J, ".png")
-
-for(j in 1:J){
+  for (j in 1:J) {
 png(figure_names[j], width = 6000, height = 4000, res = 600)  
 par(mar = c(4, 4, 2, 1) + 0.1)  # Ensure consistent margins in the function
 
@@ -3350,6 +3368,7 @@ text(x = tick_positions, y = par("usr")[3] - 0.05 * diff(par("usr")[3:4]),
 mtext("Forest Green: 50th Quantile | Dark Red: 5th Quantile | Dark Blue: 95th Quantile | Orange: Average", side = 1, outer = TRUE, line = 2, cex = 0.8)
 dev.off() 
 }
+})
 
 
 # Function to plot with quantiles and dates on x-axis
@@ -3946,55 +3965,57 @@ generate_y_post <- function(p0, xb_matrix, gamma_sample, sigma_sample) {
   return(y_post)
 }
 ############################################################################
-# Case 1: p0 = 0.05
-p0_05 <- 0.05
-xb_05_f <- t(xbs[1,,])
-gam_05_f <- samp.gamma_5_exAL_synth_DISC[1,]
-sig_05_f <- samp.sigma_5_exAL_synth_DISC[1,]
-y_post_5_f <- (generate_y_post(p0_05, xb_05_f, gam_05_f, sig_05_f))
-exp_y_post_5_f <- exp(generate_y_post(p0_05, xb_05_f, gam_05_f, sig_05_f))
-# Case 2: p0 = 0.5
-p0_50 <- 0.5
-xb_50_f <- t(xbs[4,,])
-gam_50_f <- samp.gamma_50_exAL_synth_DISC[1,]
-sig_50_f <- samp.sigma_50_exAL_synth_DISC[1,]
-y_post_50_f <- (generate_y_post(p0_50, xb_50_f, gam_50_f, sig_50_f))
-exp_y_post_50_f <- exp(generate_y_post(p0_50, xb_50_f, gam_50_f, sig_50_f))
-# Case 3: p0 = 0.95
-p0_95 <- 0.95
-xb_95_f <- t(xbs[7,,])
-gam_95_f <- samp.gamma_95_exAL_synth_DISC[1,]
-sig_95_f <- samp.sigma_95_exAL_synth_DISC[1,]
-y_post_95_f <- (generate_y_post(p0_95, xb_95_f, gam_95_f, sig_95_f))
-exp_y_post_95_f <- exp(generate_y_post(p0_95, xb_95_f, gam_95_f, sig_95_f))
-# Case 4: p0 = 0.20
-p0_20 <- 0.20
-xb_20_f <- t(xbs[2,,])
-gam_20_f <- samp.gamma_20_exAL_synth_DISC[1,]
-sig_20_f <- samp.sigma_20_exAL_synth_DISC[1,]
-y_post_20_f <- (generate_y_post(p0_20, xb_20_f, gam_20_f, sig_20_f))
-exp_y_post_20_f <- exp(generate_y_post(p0_20, xb_20_f, gam_20_f, sig_20_f))
-# Case 5: p0 = 0.80
-p0_80 <- 0.80
-xb_80_f <- t(xbs[6,,])
-gam_80_f <- samp.gamma_80_exAL_synth_DISC[1,]
-sig_80_f <- samp.sigma_80_exAL_synth_DISC[1,]
-y_post_80_f <- (generate_y_post(p0_80, xb_80_f, gam_80_f, sig_80_f))
-exp_y_post_80_f <- exp(generate_y_post(p0_80, xb_80_f, gam_80_f, sig_80_f))
-# Case 6: p0 = 0.35
-p0_35 <- 0.35
-xb_35_f <- t(xbs[3,,])
-gam_35_f <- samp.gamma_35_exAL_synth_DISC[1,]
-sig_35_f <- samp.sigma_35_exAL_synth_DISC[1,]
-y_post_35_f <- (generate_y_post(p0_35, xb_35_f, gam_35_f, sig_35_f))
-exp_y_post_35_f <- exp(generate_y_post(p0_35, xb_35_f, gam_35_f, sig_35_f))
-# Case 7: p0 = 0.65
-p0_65 <- 0.65
-xb_65_f <- t(xbs[5,,])
-gam_65_f <- samp.gamma_65_exAL_synth_DISC[1,]
-sig_65_f <- samp.sigma_65_exAL_synth_DISC[1,]
-y_post_65_f <- (generate_y_post(p0_65, xb_65_f, gam_65_f, sig_65_f))
-exp_y_post_65_f <- exp(generate_y_post(p0_65, xb_65_f, gam_65_f, sig_65_f))
+profile_section("figures.build_y_post_forecast", {
+  # Case 1: p0 = 0.05
+  p0_05 <- 0.05
+  xb_05_f <- t(xbs[1, , ])
+  gam_05_f <- samp.gamma_5_exAL_synth_DISC[1, ]
+  sig_05_f <- samp.sigma_5_exAL_synth_DISC[1, ]
+  y_post_5_f <- (generate_y_post(p0_05, xb_05_f, gam_05_f, sig_05_f))
+  exp_y_post_5_f <- exp(generate_y_post(p0_05, xb_05_f, gam_05_f, sig_05_f))
+  # Case 2: p0 = 0.5
+  p0_50 <- 0.5
+  xb_50_f <- t(xbs[4, , ])
+  gam_50_f <- samp.gamma_50_exAL_synth_DISC[1, ]
+  sig_50_f <- samp.sigma_50_exAL_synth_DISC[1, ]
+  y_post_50_f <- (generate_y_post(p0_50, xb_50_f, gam_50_f, sig_50_f))
+  exp_y_post_50_f <- exp(generate_y_post(p0_50, xb_50_f, gam_50_f, sig_50_f))
+  # Case 3: p0 = 0.95
+  p0_95 <- 0.95
+  xb_95_f <- t(xbs[7, , ])
+  gam_95_f <- samp.gamma_95_exAL_synth_DISC[1, ]
+  sig_95_f <- samp.sigma_95_exAL_synth_DISC[1, ]
+  y_post_95_f <- (generate_y_post(p0_95, xb_95_f, gam_95_f, sig_95_f))
+  exp_y_post_95_f <- exp(generate_y_post(p0_95, xb_95_f, gam_95_f, sig_95_f))
+  # Case 4: p0 = 0.20
+  p0_20 <- 0.20
+  xb_20_f <- t(xbs[2, , ])
+  gam_20_f <- samp.gamma_20_exAL_synth_DISC[1, ]
+  sig_20_f <- samp.sigma_20_exAL_synth_DISC[1, ]
+  y_post_20_f <- (generate_y_post(p0_20, xb_20_f, gam_20_f, sig_20_f))
+  exp_y_post_20_f <- exp(generate_y_post(p0_20, xb_20_f, gam_20_f, sig_20_f))
+  # Case 5: p0 = 0.80
+  p0_80 <- 0.80
+  xb_80_f <- t(xbs[6, , ])
+  gam_80_f <- samp.gamma_80_exAL_synth_DISC[1, ]
+  sig_80_f <- samp.sigma_80_exAL_synth_DISC[1, ]
+  y_post_80_f <- (generate_y_post(p0_80, xb_80_f, gam_80_f, sig_80_f))
+  exp_y_post_80_f <- exp(generate_y_post(p0_80, xb_80_f, gam_80_f, sig_80_f))
+  # Case 6: p0 = 0.35
+  p0_35 <- 0.35
+  xb_35_f <- t(xbs[3, , ])
+  gam_35_f <- samp.gamma_35_exAL_synth_DISC[1, ]
+  sig_35_f <- samp.sigma_35_exAL_synth_DISC[1, ]
+  y_post_35_f <- (generate_y_post(p0_35, xb_35_f, gam_35_f, sig_35_f))
+  exp_y_post_35_f <- exp(generate_y_post(p0_35, xb_35_f, gam_35_f, sig_35_f))
+  # Case 7: p0 = 0.65
+  p0_65 <- 0.65
+  xb_65_f <- t(xbs[5, , ])
+  gam_65_f <- samp.gamma_65_exAL_synth_DISC[1, ]
+  sig_65_f <- samp.sigma_65_exAL_synth_DISC[1, ]
+  y_post_65_f <- (generate_y_post(p0_65, xb_65_f, gam_65_f, sig_65_f))
+  exp_y_post_65_f <- exp(generate_y_post(p0_65, xb_65_f, gam_65_f, sig_65_f))
+})
 ############################################################################
 n_rows_5 <- dim(xb_05_f)[1]
 n_cols_5 <- dim(xb_05_f)[2]
@@ -4011,18 +4032,22 @@ y_reps_f[3,,] <- exp_y_post_35_f[,]
 y_reps_f[5,,] <- exp_y_post_80_f[,]
 y_reps_f[6,,] <- exp_y_post_65_f[,]
 
-for(t in 1:ranges[1]){
-    y_reps_f[1,,t] <- sort(exp_y_post_5_f[,t])
-    y_reps_f[4,,t] <- sort(exp_y_post_50_f[,t])
-    y_reps_f[7,,t] <- sort(exp_y_post_95_f[,t])
-    y_reps_f[2,,t] <- sort(exp_y_post_20_f[,t])
-    y_reps_f[3,,t] <- sort(exp_y_post_35_f[,t])
-    y_reps_f[5,,t] <- sort(exp_y_post_80_f[,t])
-    y_reps_f[6,,t] <- sort(exp_y_post_65_f[,t])
-}
+profile_section("figures.sort_y_reps_f", {
+  for (t in 1:ranges[1]) {
+    y_reps_f[1, , t] <- sort(exp_y_post_5_f[, t])
+    y_reps_f[4, , t] <- sort(exp_y_post_50_f[, t])
+    y_reps_f[7, , t] <- sort(exp_y_post_95_f[, t])
+    y_reps_f[2, , t] <- sort(exp_y_post_20_f[, t])
+    y_reps_f[3, , t] <- sort(exp_y_post_35_f[, t])
+    y_reps_f[5, , t] <- sort(exp_y_post_80_f[, t])
+    y_reps_f[6, , t] <- sort(exp_y_post_65_f[, t])
+  }
+})
 
-# Save the array to your current directory
-saveRDS(y_reps_f, file = "y_reps_f.rds")
+profile_section("figures.save_y_reps_f_rds", {
+  # Save the array to your current directory
+  saveRDS(y_reps_f, file = "y_reps_f.rds")
+})
 
 print("Array y_reps_f saved as y_reps_f.rds in the current directory.")
 
@@ -4037,19 +4062,23 @@ y_reps[3,,] <- exp_y_post_35[,]
 y_reps[5,,] <- exp_y_post_80[,]
 y_reps[6,,] <- exp_y_post_65[,]
 
-for(t in 1:TT){
-    y_reps[1,,t] <- sort(exp_y_post_5[,t])
-    y_reps[4,,t] <- sort(exp_y_post_50[,t])
-    y_reps[7,,t] <- sort(exp_y_post_95[,t])
-    y_reps[2,,t] <- sort(exp_y_post_20[,t])
-    y_reps[3,,t] <- sort(exp_y_post_35[,t])
-    y_reps[5,,t] <- sort(exp_y_post_80[,t])
-    y_reps[6,,t] <- sort(exp_y_post_65[,t])
-}
+profile_section("figures.sort_y_reps_hist", {
+  for (t in 1:TT) {
+    y_reps[1, , t] <- sort(exp_y_post_5[, t])
+    y_reps[4, , t] <- sort(exp_y_post_50[, t])
+    y_reps[7, , t] <- sort(exp_y_post_95[, t])
+    y_reps[2, , t] <- sort(exp_y_post_20[, t])
+    y_reps[3, , t] <- sort(exp_y_post_35[, t])
+    y_reps[5, , t] <- sort(exp_y_post_80[, t])
+    y_reps[6, , t] <- sort(exp_y_post_65[, t])
+  }
+})
 
 
-# Save the array to your current directory
-saveRDS(y_reps, file = "y_reps.rds")
+profile_section("figures.save_y_reps_hist_rds", {
+  # Save the array to your current directory
+  saveRDS(y_reps, file = "y_reps.rds")
+})
 
 print("Array y_reps saved as y_reps.rds in the current directory.")
 
@@ -4148,15 +4177,15 @@ synthesize_samples <- function(y_reps, q_s, n_cores = detectCores() - 1) {
 # # Linear interpolation
 # result <- (1 - w) * y_lower + w * y_upper
 
-y_reps_f <- readRDS("y_reps_f.rds")
+	y_reps_f <- profile_section("figures.read_y_reps_f_rds", readRDS("y_reps_f.rds"))
 
 q_s    <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95)
 n.q     <- length(q_s)
 n.samp  <- n.samp
 n.times <- ranges[1]
 
-synth_f <- synthesize_samples(y_reps_f, q_s)
-dim(synth_f)
+	synth_f <- profile_section("figures.synthesize_samples_y_reps_f", synthesize_samples(y_reps_f, q_s))
+	dim(synth_f)
 
 synth_f_q <- colQuantiles(synth_f, probs = q_s, type = 8)
 synth_f_q <- t(synth_f_q)
@@ -4176,10 +4205,12 @@ dim(synth_f_q)
 # synth_f_q2 <- t(synth_f_q)
 # dim(synth_f_q2)
 
-for (t in 1:ranges[1]) {
-    synth_f[,t] <- sort(synth_f[,t])
-    # synth_f2[,t] <- sort(synth_f2[,t])
-}
+	profile_section("figures.sort_synth_f", {
+	  for (t in 1:ranges[1]) {
+	    synth_f[, t] <- sort(synth_f[, t])
+	    # synth_f2[,t] <- sort(synth_f2[,t])
+	  }
+	})
 
 plot.ts(rep(0,ranges[1]), ylim = c(0,10))
 
@@ -4304,27 +4335,31 @@ y_reps_f_new[6,,] <- y_reps_f_80
 y_reps_f_new[7,,] <- y_reps_f_95 
 
 # Save the array to your current directory
-saveRDS(y_reps_f_new, file = "y_reps_f_new.rds")
+profile_section("figures.save_y_reps_f_new_rds", {
+  saveRDS(y_reps_f_new, file = "y_reps_f_new.rds")
+})
 
 
 
-y_reps_f <- readRDS("y_reps_f_new.rds")
+y_reps_f <- profile_section("figures.read_y_reps_f_new_rds", readRDS("y_reps_f_new.rds"))
 
 q_s    <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95)
 n.q     <- length(q_s)
 n.samp  <- n.samp
 n.times <- ranges[1]
 
-synth_f <- synthesize_samples(exp(y_reps_f), q_s)
+synth_f <- profile_section("figures.synthesize_samples_y_reps_f_exp", synthesize_samples(exp(y_reps_f), q_s))
 dim(synth_f)
 
 synth_f_q <- colQuantiles(synth_f, probs = q_s, type = 8)
 synth_f_q <- t(synth_f_q)
 dim(synth_f_q)
 
-for (t in 1:ranges[1]) {
-    synth_f[,t] <- sort(synth_f[,t])
-}
+profile_section("figures.sort_synth_f_exp", {
+  for (t in 1:ranges[1]) {
+    synth_f[, t] <- sort(synth_f[, t])
+  }
+})
 
 plot.ts(rep(0,ranges[1]), ylim = c(0,10))
 
@@ -4468,14 +4503,16 @@ y_reps_new[6,,] <- y_reps_80
 y_reps_new[7,,] <- y_reps_95 
 
 # Save the array to your current directory
-saveRDS(y_reps_new, file = "y_reps_new.rds")
+profile_section("figures.save_y_reps_new_rds", {
+  saveRDS(y_reps_new, file = "y_reps_new.rds")
+})
 
-y_reps <- readRDS("y_reps_new.rds")
+y_reps <- profile_section("figures.read_y_reps_new_rds", readRDS("y_reps_new.rds"))
 
 q_s    <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95)
 n.q     <- length(q_s)
 
-synth <- synthesize_samples(exp(y_reps[,,]), q_s)
+synth <- profile_section("figures.synthesize_samples_y_reps_hist", synthesize_samples(exp(y_reps[, , ]), q_s))
 dim(synth)
 
 synth_q <- colQuantiles(synth, probs = q_s, type = 8)
@@ -4483,9 +4520,11 @@ synth_q <- t(synth_q)
 dim(synth_q)
 
 
-for (t in 1:length(idx_sub)) {
-    synth[,t] <- sort(synth[,t])
-}
+profile_section("figures.sort_synth_hist", {
+  for (t in 1:length(idx_sub)) {
+    synth[, t] <- sort(synth[, t])
+  }
+})
 
 idx <- idx_sub
 plot.ts(rep(0,length(idx)), ylim = c(0,10))
