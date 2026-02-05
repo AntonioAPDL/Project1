@@ -338,29 +338,7 @@ is.exdqlm = function(m){ return(inherits(m,"exdqlm")) }
 disc_w_paths <- disc_w_resolve_paths()
 parameters_path <- disc_w_paths$parameters_path
 
-# Check if the file exists
-if (!file.exists(parameters_path)) {
-  stop("The parameters file does not exist at the specified path: ", parameters_path)
-}
-
-lines <- readLines(parameters_path)
-
-# Check if the lines variable is empty or not as expected
-if (length(lines) == 0) {
-  stop("No content found in the parameters file: ", parameters_path)
-}
-
-# Process each line and assign variables
-for (line in lines) {
-  # Remove leading and trailing whitespaces
-  line <- trimws(line)
-  
-  # Skip empty lines and comments
-  if (nchar(line) == 0 || grepl("^#", line)) next
-  
-  # Evaluate and assign
-  eval(parse(text = line))
-}
+disc_w_load_parameters(parameters_path, env = environment())
 #
 dlm_df = function(y, model, df, dim.df, s.priors = list(l0=1,S0=10), just.lik=FALSE){
   ### Gets the Time Series Length / Replicate number
@@ -680,8 +658,9 @@ preallocate_matrix_list <- function(column_counts, num_rows) {
 }
 
 # Read and process ELI_lon data
-ELI_lon <- read.csv(disc_w_paths$cov_1_eli_path)
-merged_sst_data <- read.csv(disc_w_paths$cov_2_oni_path)
+covariates <- disc_w_read_covariates(disc_w_paths$cov_1_eli_path, disc_w_paths$cov_2_oni_path)
+ELI_lon <- covariates$ELI_lon
+merged_sst_data <- covariates$merged_sst_data
 ELI_lon$time <- as.Date(ELI_lon$time)
 adjustment_years <- 170
 ELI_lon$time <- ELI_lon$time - years(adjustment_years)
@@ -698,11 +677,12 @@ San_Lorenzo_Daily_USGS_R$time <- San_Lorenzo_Daily_USGS_R$timestamp
 ###########################################################################################
 ####################################### Forecasts ######################################### 
 ###########################################################################################
-nws_forecast <- read.csv(disc_w_paths$nws_forecast_path)
+forecasts <- disc_w_read_forecasts(disc_w_paths$nws_forecast_path, disc_w_paths$glofas_forecast_path)
+nws_forecast <- forecasts$nws_forecast
 nws_forecast[,-1] <- log(nws_forecast[,-1])
 num_ens_nws <- dim(nws_forecast)[2]-1
 
-glofas_forecast <- read.csv(disc_w_paths$glofas_forecast_path)
+glofas_forecast <- forecasts$glofas_forecast
 glofas_forecast$target_date <- as.Date(glofas_forecast$target_date)
 specific_date <- as.Date("2022-12-26")
 glofas_forecast <- glofas_forecast[glofas_forecast$target_date >= specific_date, ]
@@ -735,7 +715,7 @@ mean_forecast <- do.call(rbind, row_means_list)
 ## PPT ##
 #########
 file_path <- disc_w_paths$prism_ppt_path
-ppt_data <- read_csv(file_path, show_col_types = FALSE)
+ppt_data <- disc_w_read_prism_ppt(file_path)
 ppt_data$Date <- as.Date(ppt_data$Date)
 colnames(ppt_data) <- c('time','ppt')
 X_ppt <- ppt_data[ppt_data$time <= '2022-12-25',]
@@ -748,7 +728,7 @@ X_ppt_f <- ppt_data[start_date_idx:end_date_idx,c('ppt','time')]
 ## SOIL ##
 ##########
 csv_file_path <- disc_w_paths$soil_moisture_path
-soil_moisture_data <- read.csv(csv_file_path)
+soil_moisture_data <- disc_w_read_soil_moisture(csv_file_path)
 soil_moisture_data$Date <- as.Date(soil_moisture_data$Date)
 colnames(soil_moisture_data) <- c('time','soil')
 X_soil <- soil_moisture_data[soil_moisture_data$time <= '2022-12-25',]
@@ -761,7 +741,7 @@ X_soil_f <- soil_moisture_data[start_date_idx:end_date_idx,c('soil','time')]
 ## PCA ##
 #########
 components_file_path <- disc_w_paths$pca_components_path
-principal_components_df <- read_csv(components_file_path, show_col_types = FALSE)
+principal_components_df <- disc_w_read_pca_components(components_file_path)
 colnames(principal_components_df) <- c('time','Static_PCA')
 X_pca <- principal_components_df[principal_components_df$time <= '2022-12-25',]
 
@@ -782,7 +762,7 @@ X_f <- merge(X_f, X_pca_f, by = "time")
 ## Retrosp ##
 #############
 data_path <- disc_w_paths$retros_path
-streamflow_data <- read_csv(data_path, show_col_types = FALSE)
+streamflow_data <- disc_w_read_retro_streamflow(data_path)
 time_series_matrix <- as.matrix(streamflow_data[, c('USGS', 'GloFAS', 'NWS3.0')])
 timestamps <- as.Date(streamflow_data$Date)
 Y_usgs <- data.frame(time = timestamps, time_series_matrix)
@@ -1544,7 +1524,7 @@ fast <- 0
 if(USE_PREV){
   if(p0==0.05){
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_5_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_5_exAL_synth_DISC
     new.sts.out = new.sts.out_5_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_5_exAL_synth_DISC
@@ -1553,7 +1533,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_5_exAL_synth_DISC
   }else if (p0==0.2) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_20_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_20_exAL_synth_DISC
     new.sts.out = new.sts.out_20_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_20_exAL_synth_DISC
@@ -1562,7 +1542,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_20_exAL_synth_DISC
   }else if (p0==0.35) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_35_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_35_exAL_synth_DISC
     new.sts.out = new.sts.out_35_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_35_exAL_synth_DISC
@@ -1571,7 +1551,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_35_exAL_synth_DISC
   }else if (p0==0.5) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_50_exAL_synth_DISC
     new.sts.out = new.sts.out_50_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_50_exAL_synth_DISC
@@ -1580,7 +1560,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_50_exAL_synth_DISC
   }else if (p0==0.65) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_65_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_65_exAL_synth_DISC
     new.sts.out = new.sts.out_65_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_65_exAL_synth_DISC
@@ -1589,7 +1569,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_65_exAL_synth_DISC
   }else if (p0==0.8) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_80_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_80_exAL_synth_DISC
     new.sts.out = new.sts.out_80_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_80_exAL_synth_DISC
@@ -1598,7 +1578,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_80_exAL_synth_DISC
   }else if (p0==0.95) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_95_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_95_exAL_synth_DISC
     new.sts.out = new.sts.out_95_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_95_exAL_synth_DISC
