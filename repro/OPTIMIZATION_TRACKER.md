@@ -98,7 +98,7 @@ Notes:
 | Stage | Goal | Status | Validation | Equivalence method |
 |---:|---|---|---|---|
 | 0 | Baseline + reproducibility lock-in | DONE | `bash repro/run_stage0_baseline.sh 0.5 777` | SHA256 of primary output `.RData` |
-| 1 | Modularize helpers (no semantic change) | IN PROGRESS | rerun Stage 0 command | output SHA256 must equal locked hash |
+| 1 | Modularize helpers (no semantic change) | DONE | rerun Stage 0 command | output SHA256 must equal locked hash |
 | 2 | Normalize ensemble representation | TODO | rerun Stage 0 command | compare baseline `outputs.sha256` |
 | 3 | Documentation | TODO | N/A | N/A |
 | 4 | Safe performance optimization | TODO | rerun Stage 0 command | compare baseline `outputs.sha256` + timing log |
@@ -112,7 +112,21 @@ Notes:
 | 1.3 | Loader helpers (I/O only) | PASS | `076d97a` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 1.4 | Covariate construction + standardization helpers | PASS | `cefb155` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 1.5 | Ensemble bookkeeping helpers | PASS | `d139d3a` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 1.6 | Save-state / naming helper | PASS | (pending commit) | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 1.6 | Save-state / naming helper | PASS | `c4a25ae` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+
+---
+
+## Stage 1 summary (modularization)
+
+New helper modules under `R/disc_w/`:
+- `00_debug.R`: `DISC_DEBUG`-guarded `disc_assert()` (no-op unless enabled).
+- `01_paths_inputs.R`: `disc_w_resolve_paths()` (centralized absolute paths + output dir).
+- `02_io_loaders.R`: loader helpers (parameters, covariates, forecasts, PRISM/soil/PCA/retro, `.RData` load).
+- `03_covariates_standardize.R`: covariate construction + standardization + retro response build.
+- `04_ensemble_bookkeeping.R`: ensemble list/ranges/members + `mean_forecast` construction.
+- `05_save_state.R`: dynamic naming/`assign()` + `.RData` save (preserves prior semantics via `env` helper).
+
+`DISC_Optimal_Synth_Ranges_W.r` remains the orchestrator entrypoint and now delegates the extracted blocks to these helpers.
 
 ---
 
