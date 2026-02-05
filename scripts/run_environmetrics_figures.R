@@ -14,6 +14,7 @@ if (RUN_ID == "") {
 OUT_DIR <- file.path(OUT_PARENT, RUN_ID)
 SEED <- 777
 PROFILE <- isTRUE(as.logical(Sys.getenv("PROFILE", "FALSE")))
+PROFILE_DETAIL <- isTRUE(as.logical(Sys.getenv("PROFILE_DETAIL", "FALSE")))
 
 # Deterministic settings (match notebook)
 set.seed(SEED)
@@ -34,6 +35,7 @@ cat(sprintf("GIT_COMMIT: %s\n", git_hash))
 cat(sprintf("OUT_DIR: %s\n", OUT_DIR))
 cat(sprintf("SEED: %s\n", SEED))
 cat(sprintf("PROFILE: %s\n", PROFILE))
+cat(sprintf("PROFILE_DETAIL: %s\n", PROFILE_DETAIL))
 
 # capture session info
 session_path <- file.path(log_dir, "sessionInfo.txt")
@@ -60,27 +62,64 @@ if (!exists("ggsave_original", inherits = FALSE)) {
 }
 
 ggsave <- function(filename, plot = ggplot2::last_plot(), ...) {
-  do.call(ggsave_original, c(list(filename = redirect_path(filename), plot = plot), list(...)))
+  out_path <- redirect_path(filename)
+  t0 <- Sys.time()
+  on.exit({
+    t1 <- Sys.time()
+    log_io_timing("ggsave", out_path, t0, t1)
+  }, add = TRUE)
+  do.call(ggsave_original, c(list(filename = out_path, plot = plot), list(...)))
 }
 
+last_device_file <- NULL
+last_device_kind <- NULL
+
 png <- function(filename, ...) {
-  do.call(grDevices::png, c(list(filename = redirect_path(filename)), list(...)))
+  out_path <- redirect_path(filename)
+  last_device_file <<- out_path
+  last_device_kind <<- "png"
+  do.call(grDevices::png, c(list(filename = out_path), list(...)))
 }
 
 pdf <- function(file, ...) {
-  do.call(grDevices::pdf, c(list(file = redirect_path(file)), list(...)))
+  out_path <- redirect_path(file)
+  last_device_file <<- out_path
+  last_device_kind <<- "pdf"
+  do.call(grDevices::pdf, c(list(file = out_path), list(...)))
 }
 
 jpeg <- function(filename, ...) {
-  do.call(grDevices::jpeg, c(list(filename = redirect_path(filename)), list(...)))
+  out_path <- redirect_path(filename)
+  last_device_file <<- out_path
+  last_device_kind <<- "jpeg"
+  do.call(grDevices::jpeg, c(list(filename = out_path), list(...)))
 }
 
 tiff <- function(filename, ...) {
-  do.call(grDevices::tiff, c(list(filename = redirect_path(filename)), list(...)))
+  out_path <- redirect_path(filename)
+  last_device_file <<- out_path
+  last_device_kind <<- "tiff"
+  do.call(grDevices::tiff, c(list(filename = out_path), list(...)))
 }
 
 svg <- function(filename, ...) {
-  do.call(grDevices::svg, c(list(filename = redirect_path(filename)), list(...)))
+  out_path <- redirect_path(filename)
+  last_device_file <<- out_path
+  last_device_kind <<- "svg"
+  do.call(grDevices::svg, c(list(filename = out_path), list(...)))
+}
+
+dev_off_original <- grDevices::dev.off
+dev.off <- function(...) {
+  t0 <- Sys.time()
+  on.exit({
+    t1 <- Sys.time()
+    kind <- if (!is.null(last_device_kind)) paste0(last_device_kind, ".dev.off") else "dev.off"
+    log_io_timing(kind, last_device_file, t0, t1)
+    last_device_file <<- NULL
+    last_device_kind <<- NULL
+  }, add = TRUE)
+  dev_off_original(...)
 }
 
 # -------------------------
@@ -116,11 +155,14 @@ log_step <- function(msg) {
 
 profile_dir <- NULL
 timings_path <- NULL
+io_timings_path <- NULL
 if (PROFILE) {
   profile_dir <- file.path(PROJECT_ROOT, "repro", "logs", "profile", RUN_ID)
   dir.create(profile_dir, showWarnings = FALSE, recursive = TRUE)
   timings_path <- file.path(profile_dir, "timings.csv")
   writeLines("section,start,end,elapsed_sec", timings_path)
+  io_timings_path <- file.path(profile_dir, "io_timings.csv")
+  writeLines("kind,file,start,end,elapsed_sec,file_bytes", io_timings_path)
 }
 
 log_timing <- function(section, start_time, end_time) {
@@ -128,6 +170,18 @@ log_timing <- function(section, start_time, end_time) {
   elapsed <- as.numeric(difftime(end_time, start_time, units = "secs"))
   line <- sprintf("%s,%s,%s,%.6f", section, start_time, end_time, elapsed)
   write(line, file = timings_path, append = TRUE)
+}
+
+log_io_timing <- function(kind, file, start_time, end_time) {
+  if (!PROFILE) return(invisible(NULL))
+  elapsed <- as.numeric(difftime(end_time, start_time, units = "secs"))
+  file_bytes <- NA_integer_
+  if (!is.null(file) && !is.na(file) && nzchar(file) && file.exists(file)) {
+    file_bytes <- as.integer(file.info(file)$size)
+  }
+  safe_file <- if (is.null(file) || is.na(file)) "" else file
+  line <- sprintf("%s,%s,%s,%s,%.6f,%s", kind, safe_file, start_time, end_time, elapsed, file_bytes)
+  write(line, file = io_timings_path, append = TRUE)
 }
 
 ## Pre-check: paths and inputs (fast, no parsing)

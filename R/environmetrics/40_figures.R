@@ -10,103 +10,107 @@
 #   - Many save calls use absolute canonical paths; runner redirects to OUT_DIR.
 ###############################################################################
 
-png("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/All_ELBOS_DISC.png", width = 6000, height = 4000, res = 600)
-par(mfrow = c(1, 8), mar = c(2, 2, 2, 1), oma = c(0, 0, 3, 0))
+profile_section("figures.elbo_traces", {
+  png("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/All_ELBOS_DISC.png", width = 6000, height = 4000, res = 600)
+  par(mfrow = c(1, 8), mar = c(2, 2, 2, 1), oma = c(0, 0, 3, 0))
 
-l <- -2500
-u <- -2300
-a <- c(seq.elbo_50_NDLM_synth_DISC)
-a[1:1]=NaN
-plot.ts(a, main = "NDLM", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
-a <- c(seq.elbo_5_exAL_synth_DISC)
-a[1:1]=NaN
-plot.ts(a, main = "exAL05", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
-a <- c(seq.elbo_20_exAL_synth_DISC)
-a[1:1]=NaN
-plot.ts(a, main = "exAL20", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
-a <- c(seq.elbo_35_exAL_synth_DISC)
-a[1:1]=NaN
-plot.ts(a, main = "exAL35", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
-a <- c(seq.elbo_50_exAL_synth_DISC)
-a[1:1]=NaN
-plot.ts(a, main = "exAL50", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
-a <- c(seq.elbo_65_exAL_synth_DISC)
-a[1:1]=NaN
-plot.ts(a, main = "exAL65", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
-a <- c(seq.elbo_80_exAL_synth_DISC)
-a[1:1]=NaN
-plot.ts(a, main = "exAL80", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
-a <- c(seq.elbo_95_exAL_synth_DISC)
-a[1:1]=NaN
-plot.ts(a, main = "exAL95", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
-mtext("ELBO traces", side = 3, outer = TRUE, line = 0, cex = 0.8)
+  l <- -2500
+  u <- -2300
+  a <- c(seq.elbo_50_NDLM_synth_DISC)
+  a[1:1]=NaN
+  plot.ts(a, main = "NDLM", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
+  a <- c(seq.elbo_5_exAL_synth_DISC)
+  a[1:1]=NaN
+  plot.ts(a, main = "exAL05", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
+  a <- c(seq.elbo_20_exAL_synth_DISC)
+  a[1:1]=NaN
+  plot.ts(a, main = "exAL20", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
+  a <- c(seq.elbo_35_exAL_synth_DISC)
+  a[1:1]=NaN
+  plot.ts(a, main = "exAL35", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
+  a <- c(seq.elbo_50_exAL_synth_DISC)
+  a[1:1]=NaN
+  plot.ts(a, main = "exAL50", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
+  a <- c(seq.elbo_65_exAL_synth_DISC)
+  a[1:1]=NaN
+  plot.ts(a, main = "exAL65", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
+  a <- c(seq.elbo_80_exAL_synth_DISC)
+  a[1:1]=NaN
+  plot.ts(a, main = "exAL80", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
+  a <- c(seq.elbo_95_exAL_synth_DISC)
+  a[1:1]=NaN
+  plot.ts(a, main = "exAL95", xlab = "Iteration", ylab = "ELBO", lwd=2, ylim = c(l,u))
+  mtext("ELBO traces", side = 3, outer = TRUE, line = 0, cex = 0.8)
 
-dev.off()
+  dev.off()
+})
 
 
-p <- 7
+profile_detail_section("figures.build_xbs_discrep", {
+  profile_section("figures.build_xbs_discrep", {
+    p <- 7
 
-ks <- -diff(c(ranges,0))
-xbs <- array(NA_real_, c(7,ranges[1],n.samp))
-xbs_ndlm <- array(NA_real_, c(1,ranges[1],n.samp))
+    ks <- -diff(c(ranges,0))
+    xbs <- array(NA_real_, c(7,ranges[1],n.samp))
+    xbs_ndlm <- array(NA_real_, c(1,ranges[1],n.samp))
 
-xb_discrep1 <- array(NA_real_ , c(7,TT,n.samp))
-xb_discrep2 <- array(NA_real_ , c(7,TT,n.samp))
+    xb_discrep1 <- array(NA_real_ , c(7,TT,n.samp))
+    xb_discrep2 <- array(NA_real_ , c(7,TT,n.samp))
 
-F_constant_disc <- FF[1:7,1,1]
+    F_constant_disc <- FF[1:7,1,1]
 
-idx <- c(0)
-for(j in 1:(J-1)){
-    idx <- 1:ks[J-j+1] + idx[length(idx)]
-    for(s in 1:n.samp){
-        FF_s <- FF_list[[j]]
-        theta_s <- samp.theta_ens_5_exAL_synth_DISC[[j]]$samp_theta
-        if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-        xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-        xbs[1,idx,s] <- xb[1,]
+    idx <- c(0)
+    for(j in 1:(J-1)){
+        idx <- 1:ks[J-j+1] + idx[length(idx)]
+        for(s in 1:n.samp){
+            FF_s <- FF_list[[j]]
+            theta_s <- samp.theta_ens_5_exAL_synth_DISC[[j]]$samp_theta
+            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
+            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
+            xbs[1,idx,s] <- xb[1,]
 
-        theta_s <- samp.theta_ens_20_exAL_synth_DISC[[j]]$samp_theta
-        if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-        xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-        xbs[2,idx,s] <- xb[1,]
+            theta_s <- samp.theta_ens_20_exAL_synth_DISC[[j]]$samp_theta
+            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
+            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
+            xbs[2,idx,s] <- xb[1,]
 
-        theta_s <- samp.theta_ens_35_exAL_synth_DISC[[j]]$samp_theta
-        if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-        xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-        xbs[3,idx,s] <- xb[1,]
+            theta_s <- samp.theta_ens_35_exAL_synth_DISC[[j]]$samp_theta
+            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
+            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
+            xbs[3,idx,s] <- xb[1,]
 
-        theta_s <- samp.theta_ens_50_exAL_synth_DISC[[j]]$samp_theta
-        if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-        xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-        xbs[4,idx,s] <- xb[1,]
+            theta_s <- samp.theta_ens_50_exAL_synth_DISC[[j]]$samp_theta
+            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
+            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
+            xbs[4,idx,s] <- xb[1,]
 
-        theta_s <- samp.theta_ens_65_exAL_synth_DISC[[j]]$samp_theta
-        if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-        xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-        xbs[5,idx,s] <- xb[1,]
+            theta_s <- samp.theta_ens_65_exAL_synth_DISC[[j]]$samp_theta
+            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
+            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
+            xbs[5,idx,s] <- xb[1,]
 
-        theta_s <- samp.theta_ens_80_exAL_synth_DISC[[j]]$samp_theta
-        if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-        xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-        xbs[6,idx,s] <- xb[1,]
+            theta_s <- samp.theta_ens_80_exAL_synth_DISC[[j]]$samp_theta
+            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
+            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
+            xbs[6,idx,s] <- xb[1,]
 
-        theta_s <- samp.theta_ens_95_exAL_synth_DISC[[j]]$samp_theta
-        if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-        xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-        xbs[7,idx,s] <- xb[1,]
-        ###########################################################################
-        ###########################################################################
+            theta_s <- samp.theta_ens_95_exAL_synth_DISC[[j]]$samp_theta
+            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
+            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
+            xbs[7,idx,s] <- xb[1,]
+            ###########################################################################
+            ###########################################################################
 
-        if(j==1){        
-        theta_samp <- samp.theta_5_exAL_synth_DISC$samp_theta
-        d1_s <- F_constant_disc%*%theta_samp[8:14,,s]
-        d2_s <- F_constant_disc%*%theta_samp[15:21,,s]
-        xb_discrep1[1,,s] <- d1_s
-        xb_discrep2[1,,s] <- d2_s
+            if(j==1){
+            theta_samp <- samp.theta_5_exAL_synth_DISC$samp_theta
+            d1_s <- F_constant_disc%*%theta_samp[8:14,,s]
+            d2_s <- F_constant_disc%*%theta_samp[15:21,,s]
+            xb_discrep1[1,,s] <- d1_s
+            xb_discrep2[1,,s] <- d2_s
 
-        theta_samp <- samp.theta_20_exAL_synth_DISC$samp_theta
-        d1_s <- F_constant_disc%*%theta_samp[8:14,,s]
-        d2_s <- F_constant_disc%*%theta_samp[15:21,,s]
+            theta_samp <- samp.theta_20_exAL_synth_DISC$samp_theta
+            d1_s <- F_constant_disc%*%theta_samp[8:14,,s]
+            d2_s <- F_constant_disc%*%theta_samp[15:21,,s]
         xb_discrep1[2,,s] <- d1_s
         xb_discrep2[2,,s] <- d2_s
 
@@ -155,14 +159,15 @@ prepare_quantile_data <- function(v_d) {
   q_d
 }
 
-q_d_discrep1_quantiles <- prepare_quantile_data(xb_discrep1)
-q_d_discrep2_quantiles <- prepare_quantile_data(xb_discrep2)
+    q_d_discrep1_quantiles <- profile_section("figures.discrep1_quantiles", prepare_quantile_data(xb_discrep1))
+    q_d_discrep2_quantiles <- profile_section("figures.discrep2_quantiles", prepare_quantile_data(xb_discrep2))
 
 
 
 eps <- 0.0
 
-for(j in J:J){
+    profile_section("figures.sample_xbs_sm_ens", {
+    for(j in J:J){
 
     idx <- 1:ks[J-j+1] + idx[length(idx)]
     tt <- 1
@@ -225,10 +230,12 @@ for(j in J:J){
         xbs[7,t,] <- xbs_samp
         tt <- tt+1
     }
-}
+  }
+    })
 
 
-for(t in 1:ranges[1]){
+    profile_section("figures.sort_xbs_forecast", {
+    for(t in 1:ranges[1]){
     xbs[1,t,] <- sort(xbs[1,t,])
     xbs[2,t,] <- sort(xbs[2,t,])
     xbs[3,t,] <- sort(xbs[3,t,])
@@ -237,6 +244,12 @@ for(t in 1:ranges[1]){
     xbs[6,t,] <- sort(xbs[6,t,])
     xbs[7,t,] <- sort(xbs[7,t,])
 }
+ 
+    })
+
+  })
+})
+
 
 
 idx <- c(0)

@@ -72,3 +72,47 @@ profile_section <- function(section, expr) {
   }, add = TRUE)
   eval(expr, envir = parent.frame())
 }
+
+# =============================================================================
+# Optional detailed profiling (sampling profiler via Rprof)
+# - Enabled only when PROFILE_DETAIL=TRUE in the runner env.
+# - Designed to wrap a few heavy blocks (do not use for many short sections).
+# - Writes outputs under repro/logs/profile/<RUN_ID>/ when available.
+# =============================================================================
+is_profile_detail_enabled <- function() {
+  exists("PROFILE_DETAIL", inherits = TRUE) && isTRUE(get("PROFILE_DETAIL", inherits = TRUE))
+}
+
+profile_detail_section <- function(section, expr) {
+  expr <- substitute(expr)
+  if (!is_profile_detail_enabled()) {
+    return(eval(expr, envir = parent.frame()))
+  }
+
+  profile_dir <- if (exists("profile_dir", inherits = TRUE)) get("profile_dir", inherits = TRUE) else tempdir()
+  dir.create(profile_dir, showWarnings = FALSE, recursive = TRUE)
+  safe <- gsub("[^A-Za-z0-9_.-]+", "_", section)
+  rprof_path <- file.path(profile_dir, paste0("rprof_", safe, ".out"))
+  summary_path <- file.path(profile_dir, paste0("rprof_", safe, "_summary.txt"))
+
+  Rprof(rprof_path, interval = 0.01)
+  on.exit({
+    Rprof(NULL)
+    summ <- tryCatch(summaryRprof(rprof_path), error = function(e) NULL)
+    if (!is.null(summ)) {
+      lines <- c(
+        paste0("section: ", section),
+        paste0("generated: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S")),
+        "",
+        "== by.self (top 50) ==",
+        capture.output(utils::head(summ$by.self, 50)),
+        "",
+        "== by.total (top 50) ==",
+        capture.output(utils::head(summ$by.total, 50))
+      )
+      writeLines(lines, summary_path)
+    }
+  }, add = TRUE)
+
+  eval(expr, envir = parent.frame())
+}

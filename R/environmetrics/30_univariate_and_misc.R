@@ -98,37 +98,54 @@ synthesize_samples <- function(y_reps, q_s, k = 1) {
 }
 
 file_path <- UNI_VAR_05
-load(file_path)
+load_rdata_with_retry <- function(path, attempts = 3L, sleep_sec = 0.5) {
+  stopifnot(is.character(path), length(path) == 1L, attempts >= 1L)
+  last_err <- NULL
+  for (i in seq_len(attempts)) {
+    ok <- tryCatch({
+      load(path)
+      TRUE
+    }, error = function(e) {
+      last_err <<- e
+      FALSE
+    })
+    if (ok) return(invisible(TRUE))
+    Sys.sleep(sleep_sec)
+  }
+  stop(last_err)
+}
+
+profile_section("univariate.load_vars_05", load_rdata_with_retry(file_path))
 
 
 
 file_path <- UNI_VAR_50
-load(file_path)
+profile_section("univariate.load_vars_50", load_rdata_with_retry(file_path))
 
 
 
 file_path <- UNI_VAR_95
-load(file_path)
+profile_section("univariate.load_vars_95", load_rdata_with_retry(file_path))
 
 
 
 file_path <- UNI_VAR_20
-load(file_path)
+profile_section("univariate.load_vars_20", load_rdata_with_retry(file_path))
 
 
 
 file_path <- UNI_VAR_35
-load(file_path)
+profile_section("univariate.load_vars_35", load_rdata_with_retry(file_path))
 
 
 
 file_path <- UNI_VAR_65
-load(file_path)
+profile_section("univariate.load_vars_65", load_rdata_with_retry(file_path))
 
 
 
 file_path <- UNI_VAR_80
-load(file_path)
+profile_section("univariate.load_vars_80", load_rdata_with_retry(file_path))
 
 
 n.samp <- 2000
@@ -875,7 +892,7 @@ dim(synth_f2)
 
 p <- 7
 file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_NDLM_synth_DISC.RData"
-load(file_path)
+profile_section("univariate.load_disc_vars_ndlm_50", load_rdata_with_retry(file_path))
 
 par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
 time_cuts <- which(timestamps %in% c("2012-08-01","2016-05-01","2016-09-15","2019-08-01") )
@@ -979,42 +996,42 @@ dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]])
 dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]])
 
 file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_5_exAL_synth_DISC.RData"
-load(file_path)
+profile_section("univariate.load_disc_vars_exal_05", load_rdata_with_retry(file_path))
 
 
 
 file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_exAL_synth_DISC.RData"
-load(file_path)
+profile_section("univariate.load_disc_vars_exal_50", load_rdata_with_retry(file_path))
 
 
 
 file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_95_exAL_synth_DISC.RData"
-load(file_path)
+profile_section("univariate.load_disc_vars_exal_95", load_rdata_with_retry(file_path))
 
 
 
 file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_20_exAL_synth_DISC.RData"
-load(file_path)
+profile_section("univariate.load_disc_vars_exal_20", load_rdata_with_retry(file_path))
 
 
 
 file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_35_exAL_synth_DISC.RData"
-load(file_path)
+profile_section("univariate.load_disc_vars_exal_35", load_rdata_with_retry(file_path))
 
 
 
 file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_65_exAL_synth_DISC.RData"
-load(file_path)
+profile_section("univariate.load_disc_vars_exal_65", load_rdata_with_retry(file_path))
 
 
 
 file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_80_exAL_synth_DISC.RData"
-load(file_path)
+profile_section("univariate.load_disc_vars_exal_80", load_rdata_with_retry(file_path))
 
 
 
 file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_NDLM_synth_DISC.RData"
-load(file_path)
+profile_section("univariate.load_disc_vars_ndlm_50_repeat", load_rdata_with_retry(file_path))
 
 
 n.samp <- 2000
