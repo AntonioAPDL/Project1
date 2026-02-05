@@ -97,10 +97,12 @@ double sample_gig_devroye(double p, double a, double b) {
 
 // [[Rcpp::export]]
 Rcpp::NumericMatrix sample_gig_devroye_vector(int n_samples, double p, double a, Rcpp::NumericVector b_vec) {
+    // Uses R's RNG (R::runif) internally; keep this single-threaded for
+    // determinism and thread-safety.
+    Rcpp::RNGScope rng_scope;
     int TT = b_vec.size();
     Rcpp::NumericMatrix samples(n_samples, TT);
 
-    #pragma omp parallel for collapse(2)
     for (int t = 0; t < TT; ++t) {
         for (int i = 0; i < n_samples; ++i) {
             samples(i, t) = sample_gig_devroye(p, a, b_vec[t]);

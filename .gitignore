@@ -120,6 +120,9 @@ Project/Input/**/*.feather
 *.parquet
 *.feather
 
+# Repro harness artifacts (generated locally; keep out of git)
+repro/baseline_runs/
+
 # Uppercase spreadsheet exports
 *.CSV
 *.TSV

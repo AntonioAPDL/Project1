@@ -2171,9 +2171,9 @@ for (j in 1:(J+1)) {
         theta_g <- gamsig.dummy$E.theta[2]
         # Normal Aproximation
         samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = gamsig.dummy$Hess.LD)
-        pi <- plogis(samp.LD[,2])
-        pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
-        samp.gamma[j,] = L + (U - L) * pi
+        pi_gamma <- plogis(samp.LD[,2])
+        pi_gamma <- pmin(pmax(pi_gamma, 1e-12), 1 - 1e-12)
+        samp.gamma[j,] = L + (U - L) * pi_gamma
         samp.sigma[j,] = exp(samp.LD[,1]) 
         ########################
         ########################
@@ -2275,9 +2275,9 @@ for (j in 1:(J+1)) {
         ########################
         # Normal Aproximation
         samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = gamsig.dummy$Hess.LD)
-        pi <- plogis(samp.LD[,2])
-        pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
-        samp.gamma[j,] = L + (U - L) * pi
+        pi_gamma <- plogis(samp.LD[,2])
+        pi_gamma <- pmin(pmax(pi_gamma, 1e-12), 1 - 1e-12)
+        samp.gamma[j,] = L + (U - L) * pi_gamma
         samp.sigma[j,] = exp(samp.LD[,1]) 
         ########################
         ########################
