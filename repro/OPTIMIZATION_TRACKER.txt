@@ -2,8 +2,8 @@
 
 Project: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Owner: Antonio (jaguir26)  
-Last updated: 2026-02-04  
-Status: In progress (quantiles/reshape optimized; next: hotspot profiling-driven)
+Last updated: 2026-02-05  
+Status: In progress (profiling instrumentation expanded; next: optimize measured hotspots)
 
 ## 0. Objective
 
@@ -105,12 +105,14 @@ For each module: **Role → likely hotspots → safe optimization steps → vali
 - Add optional timing hooks:
   - `PROFILE=TRUE` prints start/end timestamps per major section
   - write timings to `repro/logs/profile/<RUN_ID>/timings.csv`
+- Add optional I/O timing (also under `PROFILE=TRUE`) to quantify device/ggsave overhead:
+  - `repro/logs/profile/<RUN_ID>/io_timings.csv`
 - Ensure runner never overwrites canonical outputs.
 
 **Validation notes**
 - Timers must not affect RNG or execution order.
 
-**Status:** Planned
+**Status:** Implemented (timings + I/O timings)
 
 ---
 
@@ -156,6 +158,7 @@ For each module: **Role → likely hotspots → safe optimization steps → vali
 **Role:** univariate logic, summaries  
 **Likely hotspots**
 - nested loops over time × samples for post-processing
+- loading large `.RData` artifacts (can dominate wall time)
 
 **Planned steps**
 - Identify the exact slow loops via profiling first.
@@ -163,11 +166,14 @@ For each module: **Role → likely hotspots → safe optimization steps → vali
   - identical results and
   - no reordering changes floating-point accumulation.
 - Precompute repeated index sets / masks.
+- Instrument and harden I/O:
+  - wrap large `load()` calls in a retry helper (no behavior change when files are healthy)
+  - time each load under `PROFILE=TRUE`
 
 **Validation notes**
 - be conservative: prefer caching + preallocation over aggressive vectorization.
 
-**Status:** Planned
+**Status:** Instrumented (load() timing + retry; synthesis timers); next: optimize after profiling
 
 ---
 
@@ -285,7 +291,7 @@ If Rcpp is introduced:
 
 ## 7. Progress Log
 
-- 2026-01-30: Modularized pipeline completed (see REFRACTOR_PLAN_TRACKING).
+- 2026-01-30: Modularized pipeline completed (see `repro/REFRACTOR_PLAN_TRACKING.txt`).
 - 2026-01-30: Helper naming normalization + comment cleanup committed (helpers + figures).
 - 2026-02-02: Optimization tracker created and committed.
 - 2026-02-02: Added optional profiling timings to runner (PROFILE flag, timings.csv output).
@@ -327,3 +333,38 @@ If Rcpp is introduced:
     - Vectorized the `synthesize_quantiles()` inner dense-grid loop (removes `for(m in 1:M)` with 10,000 scalar `approx()` calls; replaces with 1 `approx()` call per quantile row and exact indexing/blending). Verified `identical()` on a synthetic test harness.
     - Added profiling markers around the synth-weights and JSD blocks.
   - Validation: full pipeline re-run still required after this change set (owner run + output inspection).
+
+- 2026-02-05: STEP 2/3 profiling instrumentation expanded (profiling-only; no algorithm changes).
+  - Files: `scripts/run_environmetrics_figures.R`, `R/environmetrics/30_univariate_and_misc.R`, `R/environmetrics/40_figures.R`
+  - Runner (`scripts/run_environmetrics_figures.R`):
+    - Added optional I/O timing under `PROFILE=TRUE`:
+      - `repro/logs/profile/<RUN_ID>/io_timings.csv`
+      - Measures `ggsave()` wall time and device flush time via `dev.off()` wrappers (calls originals exactly once).
+  - Univariate (`R/environmetrics/30_univariate_and_misc.R`):
+    - Added `load_rdata_with_retry()` and timed each `.RData` load via `profile_section(...)`.
+    - This provides visibility into load bottlenecks and reduces flakiness due to transient filesystem hiccups.
+  - Figures (`R/environmetrics/40_figures.R`):
+    - Added internal `profile_section(...)` timers around major heavy blocks:
+      - `figures.elbo_traces`
+      - `figures.build_xbs_discrep`
+      - `figures.discrep{1,2}_quantiles`
+      - `figures.sample_xbs_sm_ens`
+      - `figures.sort_xbs_forecast` + `figures.sort_xbs_forecast_repeat`
+      - `figures.sample_xbs_ndlm_forecast`
+      - `figures.generate_y_post_forecast` + `figures.generate_y_post_forecast_exp`
+      - `figures.build_y_reps_f`, `figures.sort_y_reps_hist`, `figures.build_y_reps_hist`
+      - `figures.read_y_reps_f_rds`, `figures.synthesize_samples_y_reps_f`, `figures.sort_synth_f`
+      - `figures.sample_xbs_retro`, `figures.sort_xbs_retro`
+  - Profiling run:
+    - RUN_ID: `20260205_024926` (PROFILE=TRUE)
+    - Total wall time: ~1h32m44s
+    - Top timers (sum elapsed; note: nested timings are *not* additive):
+      - `40_figures.R`: ~3434s
+      - `30_univariate_and_misc.R`: ~2096s
+      - `figures.build_xbs_discrep`: ~238s
+      - `figures.build_y_reps_hist` (saveRDS): ~120s
+      - `figures.sample_xbs_retro`: ~90s
+      - `.RData` load timings: ~67–84s each for DISC and UNI_VAR artifacts
+    - I/O timings (sum elapsed):
+      - `png.dev.off`: ~209s (n=126)
+      - `ggsave`: ~178s (n=31)
