@@ -110,8 +110,8 @@ Notes:
 | 1.1 | Scaffolding (`R/disc_w/`, `DISC_DEBUG`, `disc_assert`) | PASS | `aa8f9cd` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 1.2 | Paths + input inventory helper | PASS | `d1768e0` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 1.3 | Loader helpers (I/O only) | PASS | `076d97a` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 1.4 | Covariate construction + standardization helpers | PASS | (pending commit) | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 1.5 | Ensemble bookkeeping helpers | TODO |  |  |  |
+| 1.4 | Covariate construction + standardization helpers | PASS | `cefb155` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 1.5 | Ensemble bookkeeping helpers | PASS | (pending commit) | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 1.6 | Save-state / naming helper | TODO |  |  |  |
 
 ---
