@@ -99,7 +99,7 @@ Notes:
 |---:|---|---|---|---|
 | 0 | Baseline + reproducibility lock-in | DONE | `bash repro/run_stage0_baseline.sh 0.5 777` | SHA256 of primary output `.RData` |
 | 1 | Modularize helpers (no semantic change) | DONE | rerun Stage 0 command | output SHA256 must equal locked hash |
-| 2 | Normalize ensemble representation | TODO | rerun Stage 0 command | compare baseline `outputs.sha256` |
+| 2 | Normalize ensemble representation | IN PROGRESS | rerun Stage 0 command | output SHA256 must equal locked hash |
 | 3 | Documentation | TODO | N/A | N/A |
 | 4 | Safe performance optimization | TODO | rerun Stage 0 command | compare baseline `outputs.sha256` + timing log |
 
@@ -127,6 +127,14 @@ New helper modules under `R/disc_w/`:
 - `05_save_state.R`: dynamic naming/`assign()` + `.RData` save (preserves prior semantics via `env` helper).
 
 `DISC_Optimal_Synth_Ranges_W.r` remains the orchestrator entrypoint and now delegates the extracted blocks to these helpers.
+
+---
+
+## Stage 2 sub-stages (ensemble normalization)
+
+| Substage | Goal | Status | Commit | Validation | Result |
+|---:|---|---|---|---|---|
+| 2.1 | Define canonical ensemble spec + validator/converter (no call site changes) | PASS | `8dcee4e` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 
 ---
 
