@@ -31,6 +31,9 @@ Notes:
 
 ```bash
 cd /data/muscat_data/jaguir26/project1_ucsc_phd
+# Restore locked initial state (required for equivalence vs the locked hash):
+cp --reflink=auto repro/baseline_runs/20260204_174008_p0_0.5_seed_777/inputs/DISC_variables_50_exAL_synth_DISC.RData \
+  DISC_variables_50_exAL_synth_DISC.RData
 bash repro/run_stage0_baseline.sh 0.5 777
 ```
 
@@ -95,10 +98,21 @@ Notes:
 | Stage | Goal | Status | Validation | Equivalence method |
 |---:|---|---|---|---|
 | 0 | Baseline + reproducibility lock-in | DONE | `bash repro/run_stage0_baseline.sh 0.5 777` | SHA256 of primary output `.RData` |
-| 1 | Modularize helpers (no semantic change) | TODO | rerun Stage 0 command | compare baseline `outputs.sha256` (and optionally `waldo`) |
+| 1 | Modularize helpers (no semantic change) | IN PROGRESS | rerun Stage 0 command | output SHA256 must equal locked hash |
 | 2 | Normalize ensemble representation | TODO | rerun Stage 0 command | compare baseline `outputs.sha256` |
 | 3 | Documentation | TODO | N/A | N/A |
 | 4 | Safe performance optimization | TODO | rerun Stage 0 command | compare baseline `outputs.sha256` + timing log |
+
+### Stage 1 sub-stages
+
+| Substage | Goal | Status | Commit | Validation | Result |
+|---:|---|---|---|---|---|
+| 1.1 | Scaffolding (`R/disc_w/`, `DISC_DEBUG`, `disc_assert`) | PASS | (pending commit) | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 1.2 | Paths + input inventory helper | TODO |  |  |  |
+| 1.3 | Loader helpers (I/O only) | TODO |  |  |  |
+| 1.4 | Covariate construction + standardization helpers | TODO |  |  |  |
+| 1.5 | Ensemble bookkeeping helpers | TODO |  |  |  |
+| 1.6 | Save-state / naming helper | TODO |  |  |  |
 
 ---
 
@@ -108,6 +122,7 @@ Notes:
 - **Repeatability**: `repro/run_stage0_baseline.sh` restores the mutable input/output `.RData` between run 1 and run 2 so both runs start from identical state.
 - **Bugfix to enable Stage 0**: avoided clobbering the mathematical constant `pi` during sampling (renamed a local variable used for the logistic transform), which previously broke `update_sts` entropy calculations in SIMS mode.
 - **Thread-safety**: forced `sample_gig_devroye_vector(...)` to run single-threaded because it uses `R::runif` internally.
+- **Equivalence protocol**: always restore the locked Stage 0 initial `.RData` from `repro/baseline_runs/20260204_174008_p0_0.5_seed_777/inputs/` before running the baseline check, because the workflow updates the `.RData` state in-place.
 
 ---
 

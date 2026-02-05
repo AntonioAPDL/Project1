@@ -33,6 +33,9 @@ library(ks)
 library(MASS)
 library(FNN)
 
+DISC_DEBUG <- FALSE
+source("R/disc_w/_init.R")
+
 n.samp <- 2000
 print(c(n.samp))
 flush.console()
