@@ -1,3 +1,15 @@
+# disc_w/06_ensemble_spec.R
+#
+# Canonical in-memory ensemble “contract” for the Wishart/ensemble workflow.
+#
+# Note on “matrix-like” elements:
+# - Forecast inputs are commonly `data.frame`s from `read.csv(...)`.
+# - In this workflow, downstream operations (`rowMeans`, `dim`, arithmetic, `sum`)
+#   behave consistently for numeric data.frames, so we allow matrix-like inputs
+#   to preserve existing types and avoid incidental coercions.
+
+# disc_w_ens_spec()
+# Returns a small metadata list describing the canonical ensemble contract.
 disc_w_ens_spec <- function() {
   list(
     version = 1L,
@@ -14,6 +26,10 @@ disc_w_ens_spec <- function() {
   )
 }
 
+# disc_w_validate_ensemble(E, spec, strict)
+# Structural/dimension validation for a canonical ensemble object.
+# - When `strict` is FALSE: no-op (returns invisibly TRUE).
+# - When `strict` is TRUE: enforces list structure + dimension consistency.
 disc_w_validate_ensemble <- function(E, spec = disc_w_ens_spec(), strict = TRUE) {
   if (!isTRUE(strict)) {
     return(invisible(TRUE))
@@ -69,6 +85,10 @@ disc_w_validate_ensemble <- function(E, spec = disc_w_ens_spec(), strict = TRUE)
   invisible(TRUE)
 }
 
+# disc_w_as_ensemble(x, spec, strict)
+# Converter into the canonical ensemble representation.
+# - Accepts matrix, numeric data.frame, or list of matrix-like elements.
+# - Preserves element ordering and does not coerce types.
 disc_w_as_ensemble <- function(x, spec = disc_w_ens_spec(), strict = TRUE) {
   if (is.list(x) && identical(x$type, "disc_w_ensemble")) {
     disc_w_validate_ensemble(x, spec = spec, strict = strict)

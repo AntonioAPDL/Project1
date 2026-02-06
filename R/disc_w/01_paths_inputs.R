@@ -1,3 +1,12 @@
+# disc_w/01_paths_inputs.R
+#
+# Centralized input/output path inventory for the DISC Wishart/ensemble workflow.
+# This is intentionally minimal: it returns the same absolute paths the original
+# script used, as a named list.
+
+# disc_w_resolve_paths()
+# Returns a named list of absolute input paths + `output_dir`.
+# When `DISC_DEBUG` is TRUE, performs lightweight type assertions on paths.
 disc_w_resolve_paths <- function() {
   paths <- list(
     parameters_path = "/data/muscat_data/jaguir26/projects/Project/Input/exAL/parameters/parameters.txt",

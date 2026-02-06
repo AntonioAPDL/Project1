@@ -1,3 +1,15 @@
+# disc_w/03_covariates_standardize.R
+#
+# Covariate + retrospective-response construction for the Wishart/ensemble workflow.
+# Extracted from `DISC_Optimal_Synth_Ranges_W.r` with the intent of *zero semantic
+# change*: ordering, transformations, and standardization must remain identical.
+
+# disc_w_build_covariates_and_retro(disc_w_paths, ranges)
+# Inputs:
+# - `disc_w_paths`: named list from `disc_w_resolve_paths()`.
+# - `ranges`: numeric vector (length J) of forecast ranges per ensemble source.
+# Output:
+# - list(X, X_f, Y, TT, J) matching the original orchestrator variables.
 disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
   #########
   ## PPT ##

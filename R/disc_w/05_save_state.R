@@ -1,3 +1,12 @@
+# disc_w/05_save_state.R
+#
+# Save-state helpers for `DISC_Optimal_Synth_Ranges_W.r`.
+# The workflow dynamically names many variables via `assign()` and then saves a
+# subset into `DISC_variables_<...>.RData`. This module preserves those semantics
+# without changing object creation or save ordering.
+
+# disc_w_save_variables(var_names, filename, dir_path, env)
+# Saves the objects listed in `var_names` (character vector) from `env`.
 disc_w_save_variables <- function(var_names, filename, dir_path, env = parent.frame()) {
   file_path <- file.path(dir_path, filename)
   save(list = var_names, file = file_path, envir = env)
@@ -5,6 +14,11 @@ disc_w_save_variables <- function(var_names, filename, dir_path, env = parent.fr
   invisible(file_path)
 }
 
+# disc_w_save_state(p0, ending, disc_w_paths, env)
+# Reproduces the original save-state block:
+# - constructs dynamic names (suffix + ending)
+# - assigns derived variables into `env`
+# - saves the selected variables into `DISC_variables_<...>.RData`
 disc_w_save_state <- function(p0, ending, disc_w_paths, env = parent.frame()) {
   result_suffix <- sprintf("%.0f", p0 * 100)
 
