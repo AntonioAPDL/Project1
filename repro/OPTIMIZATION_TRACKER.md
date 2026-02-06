@@ -101,7 +101,7 @@ Notes:
 | 1 | Modularize helpers (no semantic change) | DONE | rerun Stage 0 command | output SHA256 must equal locked hash |
 | 2 | Normalize ensemble representation | DONE | rerun Stage 0 command | output SHA256 must equal locked hash |
 | 3 | Documentation | DONE | N/A | N/A |
-| 4 | Safe performance optimization | TODO | rerun Stage 0 command | compare baseline `outputs.sha256` + timing log |
+| 4 | Safe performance optimization | IN PROGRESS | rerun Stage 0 command | compare baseline `outputs.sha256` + timing log |
 
 ### Stage 1 sub-stages
 
@@ -150,7 +150,20 @@ Stage 2 notes:
 | 3.0 | Tracker bookkeeping fix | PASS | `7c01862` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 3.1 | Workflow runbook doc (`docs/DISC_W_WORKFLOW.md`) | PASS | `f693a00` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 3.2 | Inline module headers + function doc comments (`R/disc_w/*.R`) | PASS | `2022e13` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 3.3 | Tracker Stage 3 finalize | PASS | (this commit) | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 3.3 | Tracker Stage 3 finalize | PASS | `767c163` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+
+---
+
+## Stage 4 sub-stages (safe performance optimization)
+
+| Substage | Goal | Status | Commit | Validation | Result |
+|---:|---|---|---|---|---|
+| 4.0 | Tracker hygiene + Stage 4 scaffold | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.1 | Add timing harness (`repro/run_stage4_timing.sh`, `repro/perf/`) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.2 | Optional profiling hook (`DISC_RPROF=1`) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.3 | Hotspot report (record timing + profiling summary) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.4 | Micro-optimization 1 (hash-safe) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.5 | Micro-optimization 2 (hash-safe) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 
 ---
 
@@ -162,6 +175,7 @@ Stage 2 notes:
 - **Thread-safety**: forced `sample_gig_devroye_vector(...)` to run single-threaded because it uses `R::runif` internally.
 - **Equivalence protocol**: always restore the locked Stage 0 initial `.RData` from `repro/baseline_runs/20260204_174008_p0_0.5_seed_777/inputs/` before running the baseline check, because the workflow updates the `.RData` state in-place.
 - **Stage 1.6 save-state extraction**: uses an environment helper (`disc_w_save_state(..., env=parent.frame())`) to preserve dynamic `assign()` + `save()` semantics without an impractically large argument list.
+- **Repo state**: `stash@{0}` contains unrelated untracked cutoff YAML files (`config/forecats_pipeline.cutoff_*.latest.yaml`). Do not apply/pop this stash during Stage 4.
 
 ---
 
