@@ -41,6 +41,14 @@ fi
 
 cp --reflink=auto "${locked_rdata_path}" "${disc_rdata_path}"
 
+# Match the Stage 0 baseline environment by exporting thread controls *before*
+# launching R (some BLAS/OpenMP backends read these at process startup).
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
+export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
+export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
+
 # Time a single deterministic run.
 /usr/bin/time -v -o "${run_dir}/time_v.txt" \
   Rscript --vanilla scripts/run_DISC_Optimal_Synth_Ranges_W.R "${p0}" "${seed}" \

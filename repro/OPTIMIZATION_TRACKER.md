@@ -160,8 +160,8 @@ Stage 2 notes:
 |---:|---|---|---|---|---|
 | 4.0 | Tracker hygiene + Stage 4 scaffold | PASS | `92cadef` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.1 | Add timing harness (`repro/run_stage4_timing.sh`, `repro/perf/`) | PASS | `d955387` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 4.2 | Optional profiling hook (`DISC_RPROF=1`) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 4.3 | Hotspot report (record timing + profiling summary) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.2 | Optional profiling hook (`DISC_RPROF=1`) | PASS | `7308ec4` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.3 | Hotspot report (record timing + profiling summary) | PASS | *(this commit)* | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.4 | Micro-optimization 1 (hash-safe) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.5 | Micro-optimization 2 (hash-safe) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 
@@ -176,9 +176,38 @@ Stage 2 notes:
 - **Equivalence protocol**: always restore the locked Stage 0 initial `.RData` from `repro/baseline_runs/20260204_174008_p0_0.5_seed_777/inputs/` before running the baseline check, because the workflow updates the `.RData` state in-place.
 - **Stage 1.6 save-state extraction**: uses an environment helper (`disc_w_save_state(..., env=parent.frame())`) to preserve dynamic `assign()` + `save()` semantics without an impractically large argument list.
 - **Repo state**: `stash@{0}` contains unrelated untracked cutoff YAML files (`config/forecats_pipeline.cutoff_*.latest.yaml`). Do not apply/pop this stash during Stage 4.
+- **Timing determinism (Stage 4)**: export `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS` (etc.) *in the shell* before launching `Rscript` for timing runs, because some BLAS/OpenMP backends read these at process start (setting them inside R can be too late).
 
 ---
 
 ## Performance log
 
-(Populate after Stage 0 is locked in and Stage 4 begins.)
+### 2026-02-05 — timing + profiling (p0=0.5, seed=777)
+
+Timing (deterministic env; `repro/perf/20260205_224726_p0_0.5_seed_777/`, git `7308ec4`)
+- Command: `bash repro/run_stage4_timing.sh 0.5 777`
+- Output SHA256: `88dd2101b08f452b054ca191965802ce4b24d09bab407970c9f32d3657cdd56c` (`DISC_variables_50_exAL_synth_DISC.RData`)
+- `/usr/bin/time -v`:
+  - Elapsed: `17:17.46`
+  - User: `951.84s`
+  - Sys: `46.59s`
+  - Max RSS: `23408972 kB`
+
+Profiling (`DISC_RPROF=1`, output SHA256 unchanged)
+- `summaryRprof("repro/perf/Rprof.out")` (sample interval `0.02s`) top 10 by **total** time:
+
+  | function | total.time | total.pct | self.time | self.pct |
+  |---|---:|---:|---:|---:|
+  | eval | 891.06 | 100.00 | 0.02 | 0.00 |
+  | source | 891.06 | 100.00 | 0.00 | 0.00 |
+  | withVisible | 891.06 | 100.00 | 0.00 | 0.00 |
+  | objective_deltas | 882.50 | 99.04 | 2.66 | 0.30 |
+  | disc_w_save_state | 522.28 | 58.61 | 0.00 | 0.00 |
+  | save | 522.12 | 58.60 | 522.08 | 58.59 |
+  | disc_w_save_variables | 522.12 | 58.60 | 0.00 | 0.00 |
+  | .Call | 161.36 | 18.11 | 161.16 | 18.09 |
+  | standardGeneric | 99.56 | 11.17 | 2.84 | 0.32 |
+  | t | 95.60 | 10.73 | 3.50 | 0.39 |
+
+Hotspot note:
+- `save()` dominates wall time; it is a hard constraint because output `.RData` must remain byte-identical.
