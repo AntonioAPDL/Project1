@@ -28,4 +28,9 @@ RNGkind("Mersenne-Twister", "Inversion", "Rejection")
 
 # Keep the contract: call the existing entrypoint without editing it.
 # `commandArgs(trailingOnly=TRUE)` inside the sourced script will see the same args.
+if (Sys.getenv("DISC_RPROF", "") == "1") {
+  dir.create("repro/perf", recursive = TRUE, showWarnings = FALSE)
+  Rprof("repro/perf/Rprof.out")
+  on.exit(Rprof(NULL), add = TRUE)
+}
 source("DISC_Optimal_Synth_Ranges_W.r", chdir = TRUE)
