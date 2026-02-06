@@ -161,8 +161,8 @@ Stage 2 notes:
 | 4.0 | Tracker hygiene + Stage 4 scaffold | PASS | `92cadef` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.1 | Add timing harness (`repro/run_stage4_timing.sh`, `repro/perf/`) | PASS | `d955387` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.2 | Optional profiling hook (`DISC_RPROF=1`) | PASS | `7308ec4` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 4.3 | Hotspot report (record timing + profiling summary) | PASS | *(this commit)* | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 4.4 | Micro-optimization 1 (hash-safe) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.3 | Hotspot report (record timing + profiling summary) | PASS | `090b1e8` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.4 | Micro-optimization 1 (hash-safe) | PASS | *(this commit)* | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.5 | Micro-optimization 2 (hash-safe) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 
 ---
@@ -211,3 +211,15 @@ Profiling (`DISC_RPROF=1`, output SHA256 unchanged)
 
 Hotspot note:
 - `save()` dominates wall time; it is a hard constraint because output `.RData` must remain byte-identical.
+
+### 2026-02-06 — micro-opt 1 timing (p0=0.5, seed=777)
+
+Micro-opt 1: reduce allocation/`do.call(rbind, ...)` overhead when assembling `mean_forecast` in `disc_w_build_ensembles()`.
+
+Timing (deterministic env; `repro/perf/20260206_002046_p0_0.5_seed_777/`)
+- Output SHA256 unchanged: `88dd2101b08f452b054ca191965802ce4b24d09bab407970c9f32d3657cdd56c`
+- `/usr/bin/time -v`:
+  - Elapsed: `16:07.84` (prev `17:17.46`, delta `-1:09.62`)
+  - User: `898.32s`
+  - Sys: `36.92s`
+  - Max RSS: `23409716 kB`

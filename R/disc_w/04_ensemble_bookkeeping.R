@@ -24,13 +24,10 @@ disc_w_build_ensembles <- function(glofas_forecast, nws_forecast) {
   num_mem <- E$num_mem
   ranges <- E$ranges
 
-  row_means_list <- vector("list", J + 1)
-  row_means_list[[1]] <- rep(NA_real_, ranges[1])
+  mean_forecast <- matrix(NA_real_, nrow = J + 1, ncol = ranges[1])
   for (j in 1:J) {
-    row_means_list[[j + 1]] <- rep(NA_real_, ranges[1])
-    row_means_list[[j + 1]][1:ranges[j]] <- rowMeans(ensembles[[j]])
+    mean_forecast[j + 1, 1:ranges[j]] <- rowMeans(ensembles[[j]])
   }
-  mean_forecast <- do.call(rbind, row_means_list)
 
   list(
     ensembles = ensembles,
