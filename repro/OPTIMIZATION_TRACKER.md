@@ -163,7 +163,7 @@ Stage 2 notes:
 | 4.2 | Optional profiling hook (`DISC_RPROF=1`) | PASS | `7308ec4` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.3 | Hotspot report (record timing + profiling summary) | PASS | `090b1e8` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.4 | Micro-optimization 1 (hash-safe) | PASS | `15cbd74` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 4.5 | Micro-optimization 2 (hash-safe) | PASS | *(this commit)* | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.5 | Micro-optimization 2 (hash-safe) | PASS | `61059e8` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 
 ---
 
@@ -235,3 +235,9 @@ Timing (deterministic env; `repro/perf/20260206_013429_p0_0.5_seed_777/`)
   - User: `886.19s`
   - Sys: `37.76s`
   - Max RSS: `23411108 kB`
+
+### Stage 4 wrap-up
+
+- Elapsed: `17:17.46` → `15:51.39` (delta `-86.07s`, ~`8.3%` faster).
+- Dominant hotspot remains `save()` (~`58.6%` self time in `summaryRprof()`), constrained by the byte-identical `.RData` output requirement.
+- Reference perf dirs: `repro/perf/20260205_224726_p0_0.5_seed_777/`, `repro/perf/20260206_002046_p0_0.5_seed_777/`, `repro/perf/20260206_013429_p0_0.5_seed_777/`.
