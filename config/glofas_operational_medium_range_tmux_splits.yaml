@@ -1,0 +1,43 @@
+# GloFAS operational medium-range download splits used for parallel tmux sessions.
+#
+# These are the date ranges handed to:
+#   glofas_operational_mediumrange_download_point.py --run --intervals-file <...>
+#
+# NOTE: The actual downloaded GRIBs and logs live under:
+#   data/glofas_operational_medium_range/   (ignored by git)
+#
+# Sessions observed on jerez (user jaguir26):
+#   glofas_optA, glofas_optB, glofas_optC, glofas_optD
+
+dataset: "cems-glofas-forecast"
+system_version: "operational"
+
+sessions:
+  glofas_optA:
+    intervals:
+      - start: "2021-03-19"
+        end: "2021-05-25"
+      - start: "2022-07-15"
+        end: "2022-09-23"
+    stdout_log: "data/glofas_operational_medium_range/logs/optA_stdout.log"
+
+  glofas_optB:
+    intervals:
+      - start: "2021-05-28"
+        end: "2021-08-04"
+      - start: "2022-05-05"
+        end: "2022-07-13"
+    stdout_log: "data/glofas_operational_medium_range/logs/optB_stdout.log"
+
+  glofas_optC:
+    intervals:
+      - start: "2021-08-05"
+        end: "2021-12-31"
+    stdout_log: "data/glofas_operational_medium_range/logs/optC_stdout.log"
+
+  glofas_optD:
+    intervals:
+      - start: "2022-09-24"
+        end: "2023-01-31"
+    stdout_log: "data/glofas_operational_medium_range/logs/optD_stdout.log"
+
