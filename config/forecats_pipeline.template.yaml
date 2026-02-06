@@ -1,0 +1,132 @@
+# Forecats pipeline configuration (TEMPLATE)
+#
+# Copy to config/forecats_pipeline.yaml and edit values as needed.
+#
+# Goals:
+# - Given a cutoff_date (last observed/retrospective day), build a self-contained
+#   bundle of inputs and generate the figure similar to Environmetrics_reproduce/forecats.png.
+#
+# Notes:
+# - All flow values in the bundle are stored in *raw cms* (m^3/s).
+# - Weighting for forecasts is performed on log1p(cms) scale (as in your notebooks),
+#   then inverted back to cms for storage.
+
+run:
+  # If empty, scripts will generate a timestamp-based run_id.
+  run_id: ""
+  out_root: "data/forecats_inputs"
+  overwrite: false
+
+site:
+  usgs_site: "11160500"
+  # Target lat/lon used for GloFAS point extraction (degrees).
+  # (These can be derived from USGS metadata too, but keep them explicit.)
+  lat: 37.0443931
+  lon: -122.072464
+  usgs:
+    # NWIS daily value parameters (defaults match your existing pipeline).
+    parameterCd: "00060"  # discharge
+    statCd: "00003"       # mean
+    start_date: "1979-01-01"
+
+dates:
+  # Last date included in retros/observations for the "before" panel.
+  cutoff_date: "2022-12-25"
+  # Plot window (inclusive).
+  plot_start: "2022-12-07"
+  plot_end: "2023-01-22"
+
+transforms:
+  # Plot scale: the current paper figure uses log(log1p(cms)).
+  plot_scale: "log_log1p_cms"   # options: raw_cms | log1p_cms | log_log1p_cms
+
+inputs:
+  retros:
+    # Current simplest mode: use an existing combined retros CSV and truncate to cutoff_date.
+    # Expected columns for the legacy file: Date, USGS, GloFAS, NWS3.0
+    source: "csv"   # options: csv
+    path: "retros_2022-12-25.csv"
+    scale: "log1p_cms"  # options: raw_cms | log1p_cms
+
+  glofas:
+    # Choose one:
+    # - grib: build from downloaded GRIBs (preferred long-term).
+    # - csv:  reuse an existing preweighted file (fastest; for debugging/compat).
+    source: "grib"  # options: grib | csv
+
+    grib:
+      grib_root: "data/glofas_operational_medium_range/grib"
+      var: "dis24"         # GRIB shortName for "river_discharge_in_the_last_24_hours"
+      data_types:
+        control: "cf"
+        perturbed: "pf"
+      # If true, pick the closest non-NaN river cell in the bbox on a reference issue_date.
+      # The chosen cell is stored in the bundle meta and reused across issue_dates.
+      nearest_valid_cell: true
+
+    weighting:
+      # weighting scheme:
+      # - notebook: weights = lead_time_hours ** power, normalized within (target_date, member)
+      # - paper:    weights = 1 / (r_days + 1) ** alpha, where r_days = cutoff_date - issue_date
+      scheme: "paper"  # options: notebook | paper
+      alpha: 1.0          # paper-mode only (ignored in notebook-mode)
+      power: -1.001
+      # target_date = issue_date + lead_time - shift_days
+      shift_days: 1
+
+  nws:
+    # Choose one:
+    # - pickle: build from results.pkl (raw).
+    # - csv:    reuse an existing preweighted file (fastest; for debugging/compat).
+    # Prefer "pickle" for a fully reproducible pipeline from raw NWS outputs.
+    # Keep "csv" only for legacy/debug comparisons.
+    source: "pickle"  # options: pickle | csv
+
+    csv:
+      path: "nws_forecast.csv"
+      scale: "log1p_cms"  # options: raw_cms | log1p_cms
+
+    pickle:
+      path: "results.pkl"
+      # If true, parse issue cycle hour from filename (t00z/t12z). If false, treat as 00Z
+      # (matches the simplified parsing used in parts of Retro-Analysis.ipynb).
+      parse_issue_hour: false
+      issue_lookback_days: 40
+
+    weighting:
+      # weighting scheme:
+      # - notebook: weight = 1 / (lead_time_hours ** exponent[member])
+      # - paper:    weight = 1 / (r_days + 1) ** alpha, where r_days = cutoff_date - issue_date
+      scheme: "paper"  # options: notebook | paper
+      alpha: 1.0          # paper-mode only (ignored in notebook-mode)
+      # notebook-mode only (member indices are 1..7):
+      exponents:
+        "1": 0.0
+        "2": 0.3
+        "3": 0.6
+        "4": 0.9
+        "5": 1.2
+        "6": 1.5
+        "7": 1.8
+
+plot:
+  title: "Observed and Retrospective River Flow\nwith GloFAS and NWS Forecast Ensembles"
+  # Flood thresholds (discharge) drawn as horizontal dashed lines.
+  # Values can be given in cfs (recommended) or cms, and will be converted/translated
+  # to the configured plot_scale.
+  # NOTE: These are *flow* thresholds, not stage heights.
+  flood_levels:
+    - label: "Major Flooding"
+      value: 15000
+      unit: "cfs"
+    - label: "Minor Flooding"
+      value: 6750
+      unit: "cfs"
+  # Optional vertical markers (dates in YYYY-MM-DD).
+  markers:
+    - date: "2022-12-25"
+      label: "Cutoff"
+      color: "gray40"
+    - date: "2023-01-09"
+      label: "Jan 9: Flood"
+      color: "#4a235a"

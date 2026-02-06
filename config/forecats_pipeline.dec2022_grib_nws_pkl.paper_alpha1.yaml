@@ -1,0 +1,67 @@
+# Dec 2022 paper-mode sweep: alpha=1.0 (paper default).
+#
+# Run:
+#   Rscript scripts/forecats_pipeline.R --config config/forecats_pipeline.dec2022_grib_nws_pkl.paper_alpha1.yaml
+
+run:
+  run_id: "20260205_153947_dec2022_paper_alpha1"
+  out_root: "data/forecats_inputs"
+  overwrite: false
+
+site:
+  usgs_site: "11160500"
+  lat: 37.0443931
+  lon: -122.072464
+  usgs:
+    parameterCd: "00060"
+    statCd: "00003"
+    start_date: "1979-01-01"
+
+dates:
+  cutoff_date: "2022-12-25"
+  plot_start: "2022-12-07"
+  plot_end: "2023-01-22"
+
+transforms:
+  plot_scale: "log_log1p_cms"
+
+inputs:
+  retros:
+    source: "csv"
+    path: "retros_2022-12-25.csv"
+    scale: "log1p_cms"
+
+  glofas:
+    source: "grib"
+    grib:
+      grib_root: "data/glofas_operational_medium_range/grib"
+      var: "dis24"
+      data_types:
+        control: "cf"
+        perturbed: "pf"
+      nearest_valid_cell: true
+    weighting:
+      scheme: "paper"
+      alpha: 1.0
+      shift_days: 1
+
+  nws:
+    source: "pickle"
+    pickle:
+      path: "results.pkl"
+      parse_issue_hour: false
+      issue_lookback_days: 40
+    weighting:
+      scheme: "paper"
+      alpha: 1.0
+
+plot:
+  title: "Observed and Retrospective River Flow\nwith GloFAS and NWS Forecast Ensembles"
+  markers:
+    - date: "2022-12-25"
+      label: "Cutoff"
+      color: "gray40"
+    - date: "2023-01-09"
+      label: "Jan 9: Flood"
+      color: "#4a235a"
+

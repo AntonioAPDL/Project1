@@ -45,6 +45,10 @@ Class/
 # -------------------------
 # Big data + outputs (project-specific)
 # -------------------------
+data/forecats_inputs/
+data/glofas_operational_medium_range/
+repro/logs/
+repro/forecats_alignment/
 prism_data/
 soil_moisture_data/
 frames/
@@ -111,6 +115,7 @@ Project/Input/**/*.feather
 *.pkl
 *.pickle
 *.joblib
+*.npz
 *.h5
 *.hdf5
 *.nc
@@ -144,6 +149,9 @@ repro/baseline_runs/
 /arguments
 /ngrok
 /results.bak
+
+# Temp files created during interactive sessions
+tmp_glofas_intervals_test.txt
 
 # Always ignore teaching folder
 Teaching/
