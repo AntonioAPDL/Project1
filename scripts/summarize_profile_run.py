@@ -265,9 +265,12 @@ def main() -> None:
 
     project_root = Path(args.project_root).resolve()
     run_id = args.run_id
-    out_path = Path(args.out)
-    if str(out_path) == "":
+    if not args.out:
         out_path = project_root / "repro" / "logs" / "profile" / run_id / "profile_summary.md"
+    else:
+        out_path = Path(args.out)
+        if out_path.is_dir():
+            raise IsADirectoryError(f"--out points to a directory, expected a file path: {out_path}")
 
     summarize_run(project_root=project_root, run_id=run_id, out_path=out_path)
     print(str(out_path))
@@ -275,4 +278,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

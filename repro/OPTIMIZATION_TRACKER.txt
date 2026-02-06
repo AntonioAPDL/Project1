@@ -370,3 +370,20 @@ If Rcpp is introduced:
   - Next profiling run (after this instrumentation update):
     - Run with `PROFILE=TRUE` to collect `timings.csv` + `io_timings.csv`.
     - Optional: `PROFILE_DETAIL=TRUE PROFILE_DETAIL_SECTION=figures.build_xbs_discrep` to get an `Rprof` sample profile for that block only.
+
+- 2026-02-05: STEP 3 profiling run completed (timers + I/O timings; no optimizations).
+  - Commit: `dff1460` (branch: `fix/notebooks-forecast-inventory`)
+  - RUN_ID: `20260205_160747_step3_profile` (PROFILE=TRUE, PROFILE_DETAIL=FALSE, single-threaded env vars)
+  - Summary: `repro/logs/profile/20260205_160747_step3_profile/profile_summary.md` (generated via `python3 scripts/summarize_profile_run.py --run-id <RUN_ID>`)
+  - Wall time: ~1.20h (from `run_log.txt`)
+  - Top modules:
+    - `40_figures.R`: ~48.27m
+    - `30_univariate_and_misc.R`: ~23.46m
+  - Top internal hotspots (inclusive timers; ranking signal):
+    - `figures.build_xbs_discrep`: ~2.25m
+    - `figures.save_y_reps_hist_rds`: ~1.92m
+    - `figures.sample_xbs_retro`: ~1.45m
+    - `univariate.load_disc_vars_exal_*`: ~1.3–1.5m each
+  - I/O diagnostics (overlapping):
+    - `png.dev.off`: ~3.48m total (n=126; max ~4.74s)
+    - `ggsave`: ~2.92m total (n=31; max ~18.75s)
