@@ -21,7 +21,7 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
   X_ppt <- ppt_data[ppt_data$time <= "2022-12-25", ]
 
   start_date_idx <- which(ppt_data$time == "2022-12-26")
-  end_date_idx <- which(ppt_data$time == "2022-12-26") + ranges[1]
+  end_date_idx <- start_date_idx + ranges[1]
   X_ppt_f <- ppt_data[start_date_idx:end_date_idx, c("ppt", "time")]
 
   ##########
@@ -34,7 +34,7 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
   X_soil <- soil_moisture_data[soil_moisture_data$time <= "2022-12-25", ]
 
   start_date_idx <- which(soil_moisture_data$time == "2022-12-26")
-  end_date_idx <- which(soil_moisture_data$time == "2022-12-26") + ranges[1]
+  end_date_idx <- start_date_idx + ranges[1]
   X_soil_f <- soil_moisture_data[start_date_idx:end_date_idx, c("soil", "time")]
 
   #########
@@ -46,7 +46,7 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
   X_pca <- principal_components_df[principal_components_df$time <= "2022-12-25", ]
 
   start_date_idx <- which(principal_components_df$time == "2022-12-26")
-  end_date_idx <- which(principal_components_df$time == "2022-12-26") + ranges[1]
+  end_date_idx <- start_date_idx + ranges[1]
   X_pca_f <- principal_components_df[start_date_idx:end_date_idx, c("Static_PCA", "time")]
 
   ###########

@@ -101,7 +101,7 @@ Notes:
 | 1 | Modularize helpers (no semantic change) | DONE | rerun Stage 0 command | output SHA256 must equal locked hash |
 | 2 | Normalize ensemble representation | DONE | rerun Stage 0 command | output SHA256 must equal locked hash |
 | 3 | Documentation | DONE | N/A | N/A |
-| 4 | Safe performance optimization | IN PROGRESS | rerun Stage 0 command | compare baseline `outputs.sha256` + timing log |
+| 4 | Safe performance optimization | DONE | rerun Stage 0 command | compare baseline `outputs.sha256` + timing log |
 
 ### Stage 1 sub-stages
 
@@ -162,8 +162,8 @@ Stage 2 notes:
 | 4.1 | Add timing harness (`repro/run_stage4_timing.sh`, `repro/perf/`) | PASS | `d955387` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.2 | Optional profiling hook (`DISC_RPROF=1`) | PASS | `7308ec4` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.3 | Hotspot report (record timing + profiling summary) | PASS | `090b1e8` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 4.4 | Micro-optimization 1 (hash-safe) | PASS | *(this commit)* | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
-| 4.5 | Micro-optimization 2 (hash-safe) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.4 | Micro-optimization 1 (hash-safe) | PASS | `15cbd74` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.5 | Micro-optimization 2 (hash-safe) | PASS | *(this commit)* | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 
 ---
 
@@ -223,3 +223,15 @@ Timing (deterministic env; `repro/perf/20260206_002046_p0_0.5_seed_777/`)
   - User: `898.32s`
   - Sys: `36.92s`
   - Max RSS: `23409716 kB`
+
+### 2026-02-06 — micro-opt 2 timing (p0=0.5, seed=777)
+
+Micro-opt 2: avoid repeated `which(time == "2022-12-26")` lookups when building forecast-period covariates (same indices, fewer scans).
+
+Timing (deterministic env; `repro/perf/20260206_013429_p0_0.5_seed_777/`)
+- Output SHA256 unchanged: `88dd2101b08f452b054ca191965802ce4b24d09bab407970c9f32d3657cdd56c`
+- `/usr/bin/time -v`:
+  - Elapsed: `15:51.39` (prev `16:07.84`, delta `-0:16.45`)
+  - User: `886.19s`
+  - Sys: `37.76s`
+  - Max RSS: `23411108 kB`
