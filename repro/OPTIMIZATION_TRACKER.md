@@ -100,7 +100,7 @@ Notes:
 | 0 | Baseline + reproducibility lock-in | DONE | `bash repro/run_stage0_baseline.sh 0.5 777` | SHA256 of primary output `.RData` |
 | 1 | Modularize helpers (no semantic change) | DONE | rerun Stage 0 command | output SHA256 must equal locked hash |
 | 2 | Normalize ensemble representation | DONE | rerun Stage 0 command | output SHA256 must equal locked hash |
-| 3 | Documentation | IN PROGRESS | N/A | N/A |
+| 3 | Documentation | DONE | N/A | N/A |
 | 4 | Safe performance optimization | TODO | rerun Stage 0 command | compare baseline `outputs.sha256` + timing log |
 
 ### Stage 1 sub-stages
@@ -140,6 +140,17 @@ New helper modules under `R/disc_w/`:
 
 Stage 2 notes:
 - Remaining call sites to migrate: none (per `rg -n "num_mem|ranges|ensembles <-|disc_w_build_ensembles" DISC_Optimal_Synth_Ranges_W.r R/disc_w`).
+
+---
+
+## Stage 3 sub-stages (documentation)
+
+| Substage | Goal | Status | Commit | Validation | Result |
+|---:|---|---|---|---|---|
+| 3.0 | Tracker bookkeeping fix | PASS | `7c01862` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 3.1 | Workflow runbook doc (`docs/DISC_W_WORKFLOW.md`) | PASS | `f693a00` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 3.2 | Inline module headers + function doc comments (`R/disc_w/*.R`) | PASS | `2022e13` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 3.3 | Tracker Stage 3 finalize | PASS | (this commit) | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 
 ---
 
