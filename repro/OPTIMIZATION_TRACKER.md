@@ -158,7 +158,7 @@ Stage 2 notes:
 
 | Substage | Goal | Status | Commit | Validation | Result |
 |---:|---|---|---|---|---|
-| 4.0 | Tracker hygiene + Stage 4 scaffold | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
+| 4.0 | Tracker hygiene + Stage 4 scaffold | PASS | `92cadef` | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.1 | Add timing harness (`repro/run_stage4_timing.sh`, `repro/perf/`) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.2 | Optional profiling hook (`DISC_RPROF=1`) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
 | 4.3 | Hotspot report (record timing + profiling summary) | TODO |  | `bash repro/run_stage0_baseline.sh 0.5 777` | output SHA256 = `88dd2101…` |
