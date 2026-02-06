@@ -59,93 +59,53 @@ profile_detail_section("figures.build_xbs_discrep", {
 
     F_constant_disc <- FF[1:7,1,1]
 
-    idx <- c(0)
-    for(j in 1:(J-1)){
-        idx <- 1:ks[J-j+1] + idx[length(idx)]
-        for(s in 1:n.samp){
-            FF_s <- FF_list[[j]]
-            theta_s <- samp.theta_ens_5_exAL_synth_DISC[[j]]$samp_theta
-            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-            xbs[1,idx,s] <- xb[1,]
+	    idx <- c(0)
+	    for (j in 1:(J - 1)) {
+	        idx <- 1:ks[J - j + 1] + idx[length(idx)]
 
-            theta_s <- samp.theta_ens_20_exAL_synth_DISC[[j]]$samp_theta
-            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-            xbs[2,idx,s] <- xb[1,]
+	        FF_s <- FF_list[[j]]
+	        F_s <- as.numeric(FF_s[1:p, 1])
+	        segment_len <- length(idx)
 
-            theta_s <- samp.theta_ens_35_exAL_synth_DISC[[j]]$samp_theta
-            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-            xbs[3,idx,s] <- xb[1,]
+	        fill_xbs_segment <- function(theta_arr, out_row) {
+	            if (j == J) {
+	                theta_arr <- aperm(theta_arr, c(1, 3, 2))
+	            }
 
-            theta_s <- samp.theta_ens_50_exAL_synth_DISC[[j]]$samp_theta
-            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-            xbs[4,idx,s] <- xb[1,]
+	            theta_mat <- matrix(theta_arr[1:p, , ], nrow = p)
+	            xb_vec <- as.vector(crossprod(F_s, theta_mat))
+	            xb_mat <- matrix(xb_vec, nrow = segment_len, ncol = n.samp)
+	            xbs[out_row, idx, ] <- xb_mat
+	        }
 
-            theta_s <- samp.theta_ens_65_exAL_synth_DISC[[j]]$samp_theta
-            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-            xbs[5,idx,s] <- xb[1,]
+	        fill_xbs_segment(samp.theta_ens_5_exAL_synth_DISC[[j]]$samp_theta, 1)
+	        fill_xbs_segment(samp.theta_ens_20_exAL_synth_DISC[[j]]$samp_theta, 2)
+	        fill_xbs_segment(samp.theta_ens_35_exAL_synth_DISC[[j]]$samp_theta, 3)
+	        fill_xbs_segment(samp.theta_ens_50_exAL_synth_DISC[[j]]$samp_theta, 4)
+	        fill_xbs_segment(samp.theta_ens_65_exAL_synth_DISC[[j]]$samp_theta, 5)
+	        fill_xbs_segment(samp.theta_ens_80_exAL_synth_DISC[[j]]$samp_theta, 6)
+	        fill_xbs_segment(samp.theta_ens_95_exAL_synth_DISC[[j]]$samp_theta, 7)
 
-            theta_s <- samp.theta_ens_80_exAL_synth_DISC[[j]]$samp_theta
-            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-            xbs[6,idx,s] <- xb[1,]
+	        if (j == 1) {
+	            fill_discrep <- function(theta_arr, out_row) {
+	                theta_d1 <- matrix(theta_arr[8:14, , ], nrow = p)
+	                d1_vec <- as.vector(crossprod(F_constant_disc, theta_d1))
+	                xb_discrep1[out_row, , ] <- matrix(d1_vec, nrow = TT, ncol = n.samp)
 
-            theta_s <- samp.theta_ens_95_exAL_synth_DISC[[j]]$samp_theta
-            if(j==J){theta_s <- aperm(theta_s, c(1,3,2))}
-            xb <- t(FF_s[1:p,])%*%theta_s[1:p,,s]
-            xbs[7,idx,s] <- xb[1,]
-            ###########################################################################
-            ###########################################################################
+	                theta_d2 <- matrix(theta_arr[15:21, , ], nrow = p)
+	                d2_vec <- as.vector(crossprod(F_constant_disc, theta_d2))
+	                xb_discrep2[out_row, , ] <- matrix(d2_vec, nrow = TT, ncol = n.samp)
+	            }
 
-            if(j==1){
-            theta_samp <- samp.theta_5_exAL_synth_DISC$samp_theta
-            d1_s <- F_constant_disc%*%theta_samp[8:14,,s]
-            d2_s <- F_constant_disc%*%theta_samp[15:21,,s]
-            xb_discrep1[1,,s] <- d1_s
-            xb_discrep2[1,,s] <- d2_s
-
-            theta_samp <- samp.theta_20_exAL_synth_DISC$samp_theta
-            d1_s <- F_constant_disc%*%theta_samp[8:14,,s]
-            d2_s <- F_constant_disc%*%theta_samp[15:21,,s]
-        xb_discrep1[2,,s] <- d1_s
-        xb_discrep2[2,,s] <- d2_s
-
-        theta_samp <- samp.theta_35_exAL_synth_DISC$samp_theta
-        d1_s <- F_constant_disc%*%theta_samp[8:14,,s]
-        d2_s <- F_constant_disc%*%theta_samp[15:21,,s]
-        xb_discrep1[3,,s] <- d1_s
-        xb_discrep2[3,,s] <- d2_s
-        
-        theta_samp <- samp.theta_50_exAL_synth_DISC$samp_theta
-        d1_s <- F_constant_disc%*%theta_samp[8:14,,s]
-        d2_s <- F_constant_disc%*%theta_samp[15:21,,s]
-        xb_discrep1[4,,s] <- d1_s
-        xb_discrep2[4,,s] <- d2_s
-
-        theta_samp <- samp.theta_65_exAL_synth_DISC$samp_theta
-        d1_s <- F_constant_disc%*%theta_samp[8:14,,s]
-        d2_s <- F_constant_disc%*%theta_samp[15:21,,s]
-        xb_discrep1[5,,s] <- d1_s
-        xb_discrep2[5,,s] <- d2_s
-
-        theta_samp <- samp.theta_80_exAL_synth_DISC$samp_theta
-        d1_s <- F_constant_disc%*%theta_samp[8:14,,s]
-        d2_s <- F_constant_disc%*%theta_samp[15:21,,s]
-        xb_discrep1[6,,s] <- d1_s
-        xb_discrep2[6,,s] <- d2_s
-
-        theta_samp <- samp.theta_95_exAL_synth_DISC$samp_theta
-        d1_s <- F_constant_disc%*%theta_samp[8:14,,s]
-        d2_s <- F_constant_disc%*%theta_samp[15:21,,s]
-        xb_discrep1[7,,s] <- d1_s
-        xb_discrep2[7,,s] <- d2_s
-        }
-    }
-}
+	            fill_discrep(samp.theta_5_exAL_synth_DISC$samp_theta, 1)
+	            fill_discrep(samp.theta_20_exAL_synth_DISC$samp_theta, 2)
+	            fill_discrep(samp.theta_35_exAL_synth_DISC$samp_theta, 3)
+	            fill_discrep(samp.theta_50_exAL_synth_DISC$samp_theta, 4)
+	            fill_discrep(samp.theta_65_exAL_synth_DISC$samp_theta, 5)
+	            fill_discrep(samp.theta_80_exAL_synth_DISC$samp_theta, 6)
+	            fill_discrep(samp.theta_95_exAL_synth_DISC$samp_theta, 7)
+	        }
+	    }
 
 
 prepare_quantile_data <- function(v_d) {
@@ -523,12 +483,9 @@ plot.ts(rep(0, length(idx)+30), ylab="", ylim=c(-1.5,2.5))
 lines((Y[1,idx]), ylab="")
 points((Y[1,idx]), ylab="", pch = 19)
 
-for(s in 1:n.samp){
-    lines((length(idx)+1):(length(idx)+length(truth)),synth_f[s,], lwd = 0.1, col='gray')
-} 
-for(s in 1:n.samp){
-    lines((length(idx)+1):(length(idx)+length(truth)),synth_q_f[s,], lwd = 0.1, col='purple')
-} 
+x_future <- (length(idx)+1):(length(idx)+length(truth))
+matlines(x_future, t(synth_f), lwd = 0.1, col='gray')
+matlines(x_future, t(synth_q_f), lwd = 0.1, col='purple')
 
 points((length(idx)+1):(length(idx)+length(truth)), (truth), ylab="", col='darkred', pch = 19)
 
@@ -545,12 +502,9 @@ plot.ts(rep(0, length(idx)+30), ylab="", ylim=c(0,6))
 lines(exp(Y[1,idx]), ylab="")
 points(exp(Y[1,idx]), ylab="", pch = 19)
 
-for(s in 1:n.samp){
-    lines((length(idx)+1):(length(idx)+length(truth)),exp(synth_f[s,]), lwd = 0.1, col='gray')
-} 
-for(s in 1:n.samp){
-    lines((length(idx)+1):(length(idx)+length(truth)),exp(synth_q_f[s,]), lwd = 0.1, col='purple')
-} 
+x_future <- (length(idx)+1):(length(idx)+length(truth))
+matlines(x_future, t(exp(synth_f)), lwd = 0.1, col='gray')
+matlines(x_future, t(exp(synth_q_f)), lwd = 0.1, col='purple')
 points((length(idx)+1):(length(idx)+length(truth)),(truth), ylab="", col='darkred', pch = 19)
 lines((length(idx)+1):(length(idx)+length(truth)),exp(q_synth[3,]), lwd = 0.6, col='black')
 lines((length(idx)+1):(length(idx)+length(truth)),exp(q_synth[1,]), lwd = 0.6, col='black')
@@ -561,69 +515,73 @@ profile_section("figures.sample_xbs_retro", {
   xbs_retro <- array(NA_real_, c(7, TT, n.samp))
   xbs_ndlm_retro <- array(NA_real_, c(1, TT, n.samp))
 
-  idx <- 1:TT
-  for (j in 1:J) {
-    for (t in idx) {
-        ###############################################################################
-        Mu <- new.theta.out_50_NDLM_synth_DISC$sm[,t]
-        Sigma <- new.theta.out_50_NDLM_synth_DISC$sC[,,t]
-        Ft <- FF[,1,t]
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu, sd = sqrt(t(Ft)%*%Sigma%*%Ft))
-        xbs_ndlm_retro[1,t,] <- xbs_samp
-        ###############################################################################
-        ###############################################################################
-        Mu <- new.theta.out_95_exAL_synth_DISC$sm[,t]
-        Sigma <- new.theta.out_95_exAL_synth_DISC$sC[,,t]
-        Ft <- FF[,1,t]
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu, sd = sqrt(t(Ft)%*%Sigma%*%Ft))
-        xbs_retro[7,t,] <- xbs_samp
-        ###############################################################################
-        ###############################################################################
-        Mu <- new.theta.out_80_exAL_synth_DISC$sm[,t]
-        Sigma <- new.theta.out_80_exAL_synth_DISC$sC[,,t]
-        Ft <- FF[,1,t]
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu, sd = sqrt(t(Ft)%*%Sigma%*%Ft))
-        xbs_retro[6,t,] <- xbs_samp
-        ###############################################################################
-        ###############################################################################
-        Mu <- new.theta.out_65_exAL_synth_DISC$sm[,t]
-        Sigma <- new.theta.out_65_exAL_synth_DISC$sC[,,t]
-        Ft <- FF[,1,t]
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu, sd = sqrt(t(Ft)%*%Sigma%*%Ft))
-        xbs_retro[5,t,] <- xbs_samp
-        ###############################################################################
-        ###############################################################################
-        Mu <- new.theta.out_50_exAL_synth_DISC$sm[,t]
-        Sigma <- new.theta.out_50_exAL_synth_DISC$sC[,,t]
-        Ft <- FF[,1,t]
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu, sd = sqrt(t(Ft)%*%Sigma%*%Ft))
-        xbs_retro[4,t,] <- xbs_samp
-        ###############################################################################
-        ###############################################################################
-        Mu <- new.theta.out_35_exAL_synth_DISC$sm[,t]
-        Sigma <- new.theta.out_35_exAL_synth_DISC$sC[,,t]
-        Ft <- FF[,1,t]
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu, sd = sqrt(t(Ft)%*%Sigma%*%Ft))
-        xbs_retro[3,t,] <- xbs_samp
-        ###############################################################################
-        ###############################################################################
-        Mu <- new.theta.out_20_exAL_synth_DISC$sm[,t]
-        Sigma <- new.theta.out_20_exAL_synth_DISC$sC[,,t]
-        Ft <- FF[,1,t]
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu, sd = sqrt(t(Ft)%*%Sigma%*%Ft))
-        xbs_retro[2,t,] <- xbs_samp
-        ###############################################################################
-        ###############################################################################
-        Mu <- new.theta.out_5_exAL_synth_DISC$sm[,t]
-        Sigma <- new.theta.out_5_exAL_synth_DISC$sC[,,t]
-        Ft <- FF[,1,t]
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu, sd = sqrt(t(Ft)%*%Sigma%*%Ft))
-        xbs_retro[1,t,] <- xbs_samp
-        ###############################################################################
+	  idx <- 1:TT
+	  for (j in 1:J) {
+	    for (t in idx) {
+	        Ft <- FF[, 1, t]
 
-    }
-  }
-})
+	        Mu <- new.theta.out_50_NDLM_synth_DISC$sm[, t]
+	        Sigma <- new.theta.out_50_NDLM_synth_DISC$sC[, , t]
+	        mean_ndlm <- as.numeric(t(Ft) %*% Mu)
+	        sd_ndlm <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+
+	        Mu <- new.theta.out_95_exAL_synth_DISC$sm[, t]
+	        Sigma <- new.theta.out_95_exAL_synth_DISC$sC[, , t]
+	        mean_95 <- as.numeric(t(Ft) %*% Mu)
+	        sd_95 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+
+	        Mu <- new.theta.out_80_exAL_synth_DISC$sm[, t]
+	        Sigma <- new.theta.out_80_exAL_synth_DISC$sC[, , t]
+	        mean_80 <- as.numeric(t(Ft) %*% Mu)
+	        sd_80 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+
+	        Mu <- new.theta.out_65_exAL_synth_DISC$sm[, t]
+	        Sigma <- new.theta.out_65_exAL_synth_DISC$sC[, , t]
+	        mean_65 <- as.numeric(t(Ft) %*% Mu)
+	        sd_65 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+
+	        Mu <- new.theta.out_50_exAL_synth_DISC$sm[, t]
+	        Sigma <- new.theta.out_50_exAL_synth_DISC$sC[, , t]
+	        mean_50 <- as.numeric(t(Ft) %*% Mu)
+	        sd_50 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+
+	        Mu <- new.theta.out_35_exAL_synth_DISC$sm[, t]
+	        Sigma <- new.theta.out_35_exAL_synth_DISC$sC[, , t]
+	        mean_35 <- as.numeric(t(Ft) %*% Mu)
+	        sd_35 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+
+	        Mu <- new.theta.out_20_exAL_synth_DISC$sm[, t]
+	        Sigma <- new.theta.out_20_exAL_synth_DISC$sC[, , t]
+	        mean_20 <- as.numeric(t(Ft) %*% Mu)
+	        sd_20 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+
+	        Mu <- new.theta.out_5_exAL_synth_DISC$sm[, t]
+	        Sigma <- new.theta.out_5_exAL_synth_DISC$sC[, , t]
+	        mean_5 <- as.numeric(t(Ft) %*% Mu)
+	        sd_5 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+
+	        means <- c(mean_ndlm, mean_95, mean_80, mean_65, mean_50, mean_35, mean_20, mean_5)
+	        sds <- c(sd_ndlm, sd_95, sd_80, sd_65, sd_50, sd_35, sd_20, sd_5)
+
+	        draws <- rnorm(
+	          n = n.samp * length(means),
+	          mean = rep(means, each = n.samp),
+	          sd = rep(sds, each = n.samp)
+	        )
+	        draws_mat <- matrix(draws, nrow = n.samp, ncol = length(means))
+
+	        xbs_ndlm_retro[1, t, ] <- draws_mat[, 1]
+	        xbs_retro[7, t, ] <- draws_mat[, 2]
+	        xbs_retro[6, t, ] <- draws_mat[, 3]
+	        xbs_retro[5, t, ] <- draws_mat[, 4]
+	        xbs_retro[4, t, ] <- draws_mat[, 5]
+	        xbs_retro[3, t, ] <- draws_mat[, 6]
+	        xbs_retro[2, t, ] <- draws_mat[, 7]
+	        xbs_retro[1, t, ] <- draws_mat[, 8]
+
+	    }
+	  }
+	})
 
 profile_section("figures.sort_xbs_retro", {
   for (t in 1:ranges[1]) {
@@ -3714,6 +3672,7 @@ p0_65 <- 0.65
 p0_80 <- 0.80
 p0_95 <- 0.95
 
+profile_section("figures.posterior_y_post_samples", {
 # Generate uniform values for inverse sampling, with dimensions [time steps x samples]
 n_rows_50 <- dim(samp.theta_50_exAL_synth_DISC$samp_theta)[3]  # Samples
 n_cols_50 <- dim(samp.theta_50_exAL_synth_DISC$samp_theta)[2]  # Time steps
@@ -3787,11 +3746,9 @@ exp_y_post_95 <- exp(y_post_95)
 idx <- (TT-500):(TT)
 n.samp <- dim(samp.theta_50_exAL_synth_DISC$samp_theta)[3]
 plot.ts(exp(Y[1,idx]), ylim = c(0,7))
-for(s in 1:n.samp){
-    lines(exp_y_post_50[s,idx], lwd = 0.1, col='forestgreen')
-    lines(exp_y_post_95[s,idx], lwd = 0.1, col='darkblue')
-    lines(exp_y_post_5[s,idx], lwd = 0.1, col='darkred')
-} 
+matlines(t(exp_y_post_50[,idx]), lwd = 0.1, col='forestgreen')
+matlines(t(exp_y_post_95[,idx]), lwd = 0.1, col='darkblue')
+matlines(t(exp_y_post_5[,idx]), lwd = 0.1, col='darkred')
 lines(exp(Y[1,idx]))
 
 q50 <- fast_col_quantiles_t(y_post_50, probs = c(0.5, 0.025, 0.5, 0.975))
@@ -3838,9 +3795,7 @@ plot_posterior_samples <- function(y_post, q, quantile_label, p0, color_post, co
        col = 'black', lwd = 1.5, xlab = "Date", ylab = "log(Streamflow)", 
        main = paste(quantile_label, "Qntl.: Post. Pred. Samp."))
   
-  for (s in 1:n.samp) {
-    lines(timestamps[idx], y_post[s, idx], lwd = 0.1, col = color_post)
-  }
+  matlines(timestamps[idx], t(y_post[, idx]), lwd = 0.1, col = color_post)
   
   lines(timestamps[idx], q[1, idx], lwd = 1, col = color_quantile)  # Post. Pred. Quantile
   lines(timestamps[idx], exp(Y[1, idx]), lwd = 1.5, col = 'black')  # True Obs. Streamflow
@@ -3869,11 +3824,9 @@ plot(timestamps[idx], exp(Y[1, idx]), type = "l", ylim = ylim_range,
      col = 'black', lwd = 1.5, xlab = "Date", ylab = "log(Streamflow)", 
      main = "Post. Pred. Samp.: 50th, 95th, and 5th Qntls.")
 
-for (s in 1:n.samp) {
-  lines(timestamps[idx], exp_y_post_50[s, idx], lwd = 0.1, col = 'forestgreen')
-  lines(timestamps[idx], exp_y_post_95[s, idx], lwd = 0.1, col = 'darkblue')
-  lines(timestamps[idx], exp_y_post_5[s, idx], lwd = 0.1, col = 'darkred')
-}
+matlines(timestamps[idx], t(exp_y_post_50[, idx]), lwd = 0.1, col = 'forestgreen')
+matlines(timestamps[idx], t(exp_y_post_95[, idx]), lwd = 0.1, col = 'darkblue')
+matlines(timestamps[idx], t(exp_y_post_5[, idx]), lwd = 0.1, col = 'darkred')
 
 lines(timestamps[idx], exp(Y[1, idx]), lwd = 1.5, col = 'black')  # True Obs. Streamflow
 legend(x = "topright", inset = c(0.2, 0), legend = c("50th Post. Pred. Samp.", "95th Post. Pred. Samp.", "5th Post. Pred. Samp.", "log(Streamflow)"),
@@ -3895,11 +3848,9 @@ plot(timestamps[idx], exp(Y[1, idx]), type = "l", ylim = ylim_range,
      col = 'black', lwd = 1.5, xlab = "Date", ylab = "log(Streamflow)", 
      main = "Post. Pred. Samp.: 50th, 95th, and 5th Qntls.")
 
-for (s in 1:n.samp) {
-  lines(timestamps[idx], exp_y_post_50[s, idx], lwd = 0.1, col = 'forestgreen')
-  lines(timestamps[idx], exp_y_post_95[s, idx], lwd = 0.1, col = 'darkblue')
-  lines(timestamps[idx], exp_y_post_5[s, idx], lwd = 0.1, col = 'darkred')
-}
+matlines(timestamps[idx], t(exp_y_post_50[, idx]), lwd = 0.1, col = 'forestgreen')
+matlines(timestamps[idx], t(exp_y_post_95[, idx]), lwd = 0.1, col = 'darkblue')
+matlines(timestamps[idx], t(exp_y_post_5[, idx]), lwd = 0.1, col = 'darkred')
 
 lines(timestamps[idx], exp(Y[1, idx]), lwd = 1.5, col = 'black')  # True Obs. Streamflow
 legend(x = "topright", inset = c(0.2, 0), legend = c("50th Post. Pred. Samp.", "95th Post. Pred. Samp.", "5th Post. Pred. Samp.", "log(Streamflow)"),
@@ -3919,15 +3870,15 @@ idx <- (TT-500):(TT)
 n.samp <- dim(samp.theta_95_exAL_synth_DISC$samp_theta)[3]
 
 plot.ts(exp(Y[1,idx]), ylim = c(0,7))
-for(s in 1:n.samp){
-    lines(exp_y_post_95[s,idx], lwd = 0.1, col='darkblue')
-} 
+matlines(t(exp_y_post_95[, idx]), lwd = 0.1, col='darkblue')
 lines(exp_q95[2,idx], lwd = 0.8, col='gray')
 lines(exp_q95[3,idx], lwd = 0.8, col='gray')
 lines(exp_q95[4,idx], lwd = 1, col='gray')
 lines(t(exp_m95)[idx], lwd = 1, col='purple')
 lines(exp(new.theta.out_95_exAL_synth_DISC$exps[1,idx]), lwd = 1.5, col='orange')
 lines(exp(Y[1,idx]))
+
+})
 
 
 
@@ -4217,9 +4168,7 @@ plot.ts(rep(0,ranges[1]), ylim = c(0,10))
 SL <- San_Lorenzo_Daily_USGS_R[San_Lorenzo_Daily_USGS_R$Date >= timestamps[1] , ]
 SL <- SL[(TT+1):(TT+ranges[1]) , ]
 
-for (s in 1:dim(synth_f)[1]) {
-   lines(synth_f[s,], col = 'pink', lwd = 0.5)
-}
+matlines(t(synth_f), col = 'pink', lwd = 0.5)
 
 points(SL$data0, lwd = 0.8)
 
@@ -4257,6 +4206,7 @@ lines(result[3,], col = 'green', lty = 2, lwd = 1)
 
 y_reps_f_new <- array(NA_real_,c(7,n.samp,ranges[1]))
 
+profile_section("figures.build_y_reps_f_new", {
 xxx <- 1
 for(t in 1:ranges[1]){
     for(s in 1:n.samp){
@@ -4333,6 +4283,7 @@ y_reps_f_new[4,,] <- y_reps_f_50
 y_reps_f_new[5,,] <- y_reps_f_65  
 y_reps_f_new[6,,] <- y_reps_f_80  
 y_reps_f_new[7,,] <- y_reps_f_95 
+})
 
 # Save the array to your current directory
 profile_section("figures.save_y_reps_f_new_rds", {
@@ -4366,9 +4317,7 @@ plot.ts(rep(0,ranges[1]), ylim = c(0,10))
 SL <- San_Lorenzo_Daily_USGS_R[San_Lorenzo_Daily_USGS_R$Date >= timestamps[1] , ]
 SL <- SL[(TT+1):(TT+ranges[1]) , ]
 
-for (s in 1:dim(synth_f)[1]) {
-   lines(synth_f[s,], col = 'pink', lwd = 0.5)
-}
+matlines(t(synth_f), col = 'pink', lwd = 0.5)
 
 points(SL$data0, lwd = 0.8)
 
@@ -4427,6 +4376,7 @@ dim(xbs)
 
 idx_sub <- (TT-19+1):(TT)
 
+profile_section("figures.build_y_reps_new", {
 y_reps_new <- array(NA_real_,c(7,n.samp,length(idx_sub)))
 
 xxx <- 1
@@ -4501,6 +4451,7 @@ y_reps_new[4,,] <- y_reps_50
 y_reps_new[5,,] <- y_reps_65  
 y_reps_new[6,,] <- y_reps_80  
 y_reps_new[7,,] <- y_reps_95 
+})
 
 # Save the array to your current directory
 profile_section("figures.save_y_reps_new_rds", {
@@ -4531,9 +4482,7 @@ plot.ts(rep(0,length(idx)), ylim = c(0,10))
 
 SL <- San_Lorenzo_Daily_USGS_R[San_Lorenzo_Daily_USGS_R$Date >= timestamps[1] , ]
 
-for (s in 1:n.samp) {
-   lines(synth[s,], col = 'pink', lwd = 0.1)
-}
+matlines(t(synth), col = 'pink', lwd = 0.1)
 
 points(SL$data0[idx], lwd = 0.8)
 

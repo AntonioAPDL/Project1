@@ -387,3 +387,22 @@ If Rcpp is introduced:
   - I/O diagnostics (overlapping):
     - `png.dev.off`: ~3.48m total (n=126; max ~4.74s)
     - `ggsave`: ~2.92m total (n=31; max ~18.75s)
+
+- 2026-02-06: STEP 4 targeted hotspot optimizations (post-processing; measured hotspots only).
+  - Files: `R/environmetrics/40_figures.R`, `scripts/dev/test_build_xbs_discrep_equivalence.R`, `scripts/dev/test_sample_xbs_retro_rng_stability.R`
+  - `R/environmetrics/40_figures.R`:
+    - Optimized `figures.build_xbs_discrep` (measured hotspot):
+      - Removed the inner `for (s in 1:n.samp)` loop.
+      - Rewrote the `F' * theta` multiplications using a single `crossprod()` per segment/quantile by flattening `theta` to a matrix and reshaping back to `(segment_len x n.samp)`.
+      - Same approach for discrepancy blocks (`rows 8:14` and `15:21`) under `j == 1`.
+      - Validation: unit-style equivalence test asserts max abs diff <= `1e-12` vs the loop implementation on synthetic arrays (differences are at floating-point epsilon scale).
+    - Optimized `figures.sample_xbs_retro` (measured hotspot) while preserving RNG:
+      - Kept the outer `for (j in 1:J)` loop intact (do NOT remove; it changes RNG stream).
+      - Within each `(j, t)` iteration: compute means/sds once, then generate the 8 blocks of `rnorm(n.samp, ...)` draws via a single `rnorm(8*n.samp, mean=..., sd=...)` call.
+      - Validation: RNG stability test asserts **identical** draws vs sequential `rnorm()` calls under the same seed/RNGkind.
+    - Plot rendering micro-optimizations:
+      - Replaced per-sample base `lines()` loops with `matlines()` for large sample bundles (`synth_f` / `synth`).
+      - Expected to be output-identical (same input data, same aesthetics); owner performs the final visual check as the gate.
+  - New dev checks (fast; no heavy data required):
+    - `Rscript scripts/dev/test_build_xbs_discrep_equivalence.R`
+    - `Rscript scripts/dev/test_sample_xbs_retro_rng_stability.R`
