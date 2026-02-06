@@ -93,7 +93,7 @@ auto_run_id <- function(cfg, cutoff_date) {
   ts <- format(Sys.time(), "%Y%m%d_%H%M%S")
   scale <- short_scale_for_id(cfg$transforms$plot_scale %||% "log_log1p_cms")
 
-  g_scheme <- cfg$inputs$glofas$weighting$scheme %||% "paper"
+  g_scheme <- cfg$inputs$glofas$weighting$scheme %||% "latest"
   g_alpha <- cfg$inputs$glofas$weighting$alpha %||% 1.0
   g_power <- cfg$inputs$glofas$weighting$power %||% -1.001
   g_tag <- if (g_scheme == "paper") paste0("a", fmt_num_for_id(g_alpha)) else if (g_scheme == "notebook") {
@@ -102,17 +102,24 @@ auto_run_id <- function(cfg, cutoff_date) {
     g_scheme
   }
 
-  n_scheme <- cfg$inputs$nws$weighting$scheme %||% "paper"
+  n_scheme <- cfg$inputs$nws$weighting$scheme %||% "latest"
   n_alpha <- cfg$inputs$nws$weighting$alpha %||% 1.0
   n_tag <- if (n_scheme == "paper") paste0("a", fmt_num_for_id(n_alpha)) else {
     n_scheme
   }
 
+  part <- function(prefix, scheme, tag) {
+    if (is.null(tag) || tag == "" || tag == scheme) {
+      return(paste0(prefix, "-", scheme))
+    }
+    paste0(prefix, "-", scheme, "-", tag)
+  }
+
   id <- paste0(
     ts,
     "_cutoff", format(cutoff_date, "%Y-%m-%d"),
-    "_glofas-", g_scheme, "-", g_tag,
-    "_nws-", n_scheme, "-", n_tag,
+    "_", part("glofas", g_scheme, g_tag),
+    "_", part("nws", n_scheme, n_tag),
     "_scale-", scale
   )
   slugify_id(id)
@@ -277,7 +284,7 @@ main <- function(config_path) {
       var <- glofas_cfg$grib$var %||% "dis24"
       control_dtype <- glofas_cfg$grib$data_types$control %||% "cf"
       pert_dtype <- glofas_cfg$grib$data_types$perturbed %||% "pf"
-      scheme <- glofas_cfg$weighting$scheme %||% "paper"
+      scheme <- glofas_cfg$weighting$scheme %||% "latest"
       power <- glofas_cfg$weighting$power %||% -1.001
       alpha <- glofas_cfg$weighting$alpha %||% 1.0
       shift_days <- glofas_cfg$weighting$shift_days %||% 1
@@ -356,7 +363,7 @@ main <- function(config_path) {
       pkl_path <- as_abs_path(nws_cfg$pickle$path)
       parse_hour <- isTRUE(nws_cfg$pickle$parse_issue_hour)
       lookback_days <- nws_cfg$pickle$issue_lookback_days %||% 40
-      scheme <- nws_cfg$weighting$scheme %||% "paper"
+      scheme <- nws_cfg$weighting$scheme %||% "latest"
       alpha <- nws_cfg$weighting$alpha %||% 1.0
       exps <- nws_cfg$weighting$exponents
       exp_spec <- ""

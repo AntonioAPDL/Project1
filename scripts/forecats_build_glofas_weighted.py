@@ -274,7 +274,7 @@ def main() -> int:
     )
     ap.add_argument(
         "--weighting-scheme",
-        default="paper",
+        default="latest",
         choices=["notebook", "paper", "latest"],
         help=(
             "Weighting scheme: "

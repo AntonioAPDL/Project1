@@ -676,7 +676,10 @@ The template is the best source of truth; this section documents the intent.
 
 - `inputs.glofas.source`: `grib` (preferred) or `csv` (debug)
 - `inputs.glofas.grib.grib_root`: root containing `issue_date=...` folders
-- `inputs.glofas.weighting.scheme`: `notebook` (lead-time) or `paper` (age-based)
+- `inputs.glofas.weighting.scheme`:
+  - `latest` (no weighting; pick most recent issue_date per target_date/member) **[default if omitted]**
+  - `paper` (age-based)
+  - `notebook` (lead-time)
 - `inputs.glofas.weighting.power`: notebook-mode lead-time weighting power (negative favors shorter leads)
 - `inputs.glofas.weighting.alpha`: paper-mode exponent (weights ~ (r_days+1)^-alpha)
 - `inputs.glofas.weighting.shift_days`: target-date shift; keep at 1 unless you re-derive conventions
@@ -685,7 +688,10 @@ The template is the best source of truth; this section documents the intent.
 - `inputs.nws.pickle.path`: path to `results.pkl`
 - `inputs.nws.pickle.issue_lookback_days`: speed knob; increase if you suspect longer required lookback
 - `inputs.nws.pickle.parse_issue_hour`: if true, use t00z/t12z cycles; if false, treat as 00Z (compat)
-- `inputs.nws.weighting.scheme`: `notebook` (lead-time) or `paper` (age-based)
+- `inputs.nws.weighting.scheme`:
+  - `latest` (no weighting; pick most recent issue_datetime per target_date/ensemble) **[default if omitted]**
+  - `paper` (age-based)
+  - `notebook` (lead-time)
 - `inputs.nws.weighting.exponents`: notebook-mode per-member exponent map
 - `inputs.nws.weighting.alpha`: paper-mode exponent (weights ~ (r_days+1)^-alpha)
 

@@ -68,7 +68,8 @@ inputs:
       # weighting scheme:
       # - notebook: weights = lead_time_hours ** power, normalized within (target_date, member)
       # - paper:    weights = 1 / (r_days + 1) ** alpha, where r_days = cutoff_date - issue_date
-      scheme: "paper"  # options: notebook | paper
+      # - latest:   no weighting; pick the most recent issue_date per (target_date, member)
+      scheme: "latest"  # options: latest | paper | notebook
       alpha: 1.0          # paper-mode only (ignored in notebook-mode)
       power: -1.001
       # target_date = issue_date + lead_time - shift_days
@@ -97,7 +98,8 @@ inputs:
       # weighting scheme:
       # - notebook: weight = 1 / (lead_time_hours ** exponent[member])
       # - paper:    weight = 1 / (r_days + 1) ** alpha, where r_days = cutoff_date - issue_date
-      scheme: "paper"  # options: notebook | paper
+      # - latest:   no weighting; pick the most recent issue_datetime per (target_date, target_hour, ensemble)
+      scheme: "latest"  # options: latest | paper | notebook
       alpha: 1.0          # paper-mode only (ignored in notebook-mode)
       # notebook-mode only (member indices are 1..7):
       exponents:
