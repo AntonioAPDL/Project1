@@ -16,6 +16,7 @@
 \usepackage{array}
 \usepackage{tcolorbox}
 \usepackage{pifont}
+\usepackage{amssymb}
 
 % ---------------------------
 % Links + Colors
@@ -78,7 +79,7 @@
 \item \textbf{Benchmarking}: compare against (i) simpler statistical baselines, (ii) the original physical forecast ensembles/products, and (iii) AL vs exAL.
 \item \textbf{Ablation study}: remove/disable hierarchical components (trend AR, retrospective AR, state AR, horizon-weighting) to quantify marginal benefit.
 \item \textbf{Forecast scoring + reporting}: CRPS, quantile score (pinball/check), calibration diagnostics; stratify by regime (low/moderate/high flow) and by lead time.
-\item \textbf{Computational claims}: report runtime, scaling (n, horizons, #quantiles), memory, and feasibility of re-estimation/updating over months/years.
+\item \textbf{Computational claims}: report runtime, scaling (n, horizons, \#quantiles), memory, and feasibility of re-estimation/updating over months/years.
 \item \textbf{Restructure paper}: introduction uncertainty taxonomy; align Section 2 models with Section 3 results; reduce unused math; clarify in-sample vs forecasting sections/titles.
 \item \textbf{Release code}: minimal reproducible pipeline; link in paper + repository artifact DOI if possible.
 \end{enumerate}

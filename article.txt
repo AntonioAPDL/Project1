@@ -134,23 +134,23 @@ We extend \textbf{Model A} as expressed in \eqref{A5} and \eqref{A6} in to incor
     \text{All states in } \textbf{Model A}:&&\boldsymbol{\alpha}_t | \boldsymbol{\alpha}_{t-1} &\sim \mathcal{N} \Big( \Tilde{\mathbf{G}}_t \boldsymbol{\alpha}_{t-1}, \Tilde{\mathbf{W}}_t \Big) \label{B3}\\
     \text{Discrepancy States}:&& \boldsymbol{\delta}^j_t | \boldsymbol{\delta}^j_{t-1} &\sim \mathcal{N} \Big( \boldsymbol{\mathbf{G}}_t \boldsymbol{\delta}^j_{t-1}, \mathbf{W}^{\delta^j}_t \Big), \quad 1 \leq j \leq J. \label{B4}
 \end{align} 
-Here, \( z^{j}_t \in {\mathbb{R}} \), denotes the retrospective analysis from the \( j \)-th forecasting agency at time \( t \), and $\boldsymbol{\delta}^j_t \in {\mathbb{R}}^J$ denotes the forecasters' quantile-discrepancy state vector, whose \( r \)-th component is denoted by $\delta^{j,r}_t$. As in \textbf{Model A}, the term \( \Tilde{\mathbf{F}}'_t \boldsymbol{\alpha}_t \) represents the $p_0$-th quantile at time \( t \) for the USGS measurements, and can be also expressed as \( \mathbf{F}'_t \boldsymbol{\theta}_t + \zeta_t \) as in \eqref{A1}.  Moreover, in \eqref{B2}, $\Tilde{\mathbf{F}}'_t \boldsymbol{\alpha}_t+\mathbf{F}'_t \boldsymbol{\delta}^j_t $ represents the quantile at the $p_0$-th level for the \( j \)-th retrospective analysis, and can be rewritten as $ \mathbf{F}'_t ( \boldsymbol{\theta}_t+\boldsymbol{\delta}^j_t ) + \zeta_t$.  This last expression highlights the role of $\boldsymbol{\delta}^j_t$ as the parameter vector that corrects for component-specific discrepancies with respect to the state $\boldsymbol{\theta}_t$. The motivation of endowing the discrepancy term with a structured dynamic as described in \eqref{B4} is twofold. First, it allows for a richer analysis of the observed discrepancies between climate agency estimates and measurements than when modeled as a constant. For example, a climate agency's retrospective analysis might show smaller discrepancies with respect to the measurements during dry seasons, while their discrepancies might be larger during rainy seasons. Second, the further correction of forecast ensembles, discussed in Subsection~\ref{subsec:ensemble}, depends on our ability to learn the  behavior of the discrepancies over time and spread them into the future. For similar blending techniques using discrepancies in forecast products, see \cite{salazar2011comparing,beltran} 
+Here, \( z^{j}_t \in {\mathbb{R}} \), denotes the retrospective analysis from the \( j \)-th forecasting agency at time \( t \), and $\boldsymbol{\delta}^j_t \in {\mathbb{R}}^p$ denotes the forecasters' quantile-discrepancy state vector, whose \( r \)-th component is denoted by $\delta^{j,r}_t$. As in \textbf{Model A}, the term \( \Tilde{\mathbf{F}}'_t \boldsymbol{\alpha}_t \) represents the $p_0$-th quantile at time \( t \) for the USGS measurements, and can be also expressed as \( \mathbf{F}'_t \boldsymbol{\theta}_t + \zeta_t \) as in \eqref{A1}.  Moreover, in \eqref{B2}, $\Tilde{\mathbf{F}}'_t \boldsymbol{\alpha}_t+\mathbf{F}'_t \boldsymbol{\delta}^j_t $ represents the quantile at the $p_0$-th level for the \( j \)-th retrospective analysis, and can be rewritten as $ \mathbf{F}'_t ( \boldsymbol{\theta}_t+\boldsymbol{\delta}^j_t ) + \zeta_t$.  This last expression highlights the role of $\boldsymbol{\delta}^j_t$ as the parameter vector that corrects for component-specific discrepancies with respect to the state $\boldsymbol{\theta}_t$. The motivation of endowing the discrepancy term with a structured dynamic as described in \eqref{B4} is twofold. First, it allows for a richer analysis of the observed discrepancies between climate agency estimates and measurements than when modeled as a constant. For example, a climate agency's retrospective analysis might show smaller discrepancies with respect to the measurements during dry seasons, while their discrepancies might be larger during rainy seasons. Second, the further correction of forecast ensembles, discussed in Subsection~\ref{subsec:ensemble}, depends on our ability to learn the  behavior of the discrepancies over time and spread them into the future. For similar blending techniques using discrepancies in forecast products, see \cite{salazar2011comparing,beltran} 
 and \cite{lemos2009spatio}. In addition, we consider \( \sigma^j > 0\) and \( \gamma^j \in [L, U]\), for $j \in \{0, 1, ..., J \}$ denoting the scale and skewness parameters, respectively. Each pair (\( \sigma^{(\cdot)}, \gamma^{(\cdot)} \)) is specific to a particular data source, either the observed measurements or the retrospective analysis from a given agency. We model these parameters separately because retrospective products from different climate agencies are generated using distinct methodologies, leading to differences in scale and shape that are difficult to capture with a single shared pair of parameters. This approach aims to aid the model to account for source-specific variability and improve the accuracy of quantile estimation and uncertainty quantification across all sources.
 
 Furthermore, a more compact representation of \textbf{Model B} for \(1 \leq t \leq T\) can be expressed using previous notation as follows:
 \begin{align}
-     \text{Output}:&& y^o_t | \boldsymbol{\mu}_t, \sigma^o, \gamma^o &\sim exAL_{p_0} \Big( \textbf{h}_{t,1}' \boldsymbol{\mu}_t, \sigma^o, \gamma^o \Big) \\ \label{B5}
-    \text{Retrospective}:&& z^j_t | \boldsymbol{\mu}_t, \sigma^j, \gamma^j &\sim exAL_{p_0} \Big( \textbf{h}_{t,j+1}' \boldsymbol{\mu}_t, \sigma^j, \gamma^j \Big), \quad 1 \leq j \leq J \\ \label{B6}
+     \text{Output}:&& y^o_t | \boldsymbol{\mu}_t, \sigma^o, \gamma^o &\sim exAL_{p_0} \Big( \textbf{h}_{t,1}' \boldsymbol{\mu}_t, \sigma^o, \gamma^o \Big) \label{B5} \\
+    \text{Retrospective}:&& z^j_t | \boldsymbol{\mu}_t, \sigma^j, \gamma^j &\sim exAL_{p_0} \Big( \textbf{h}_{t,j+1}' \boldsymbol{\mu}_t, \sigma^j, \gamma^j \Big), \quad 1 \leq j \leq J \label{B6} \\
     \text{All states}:&& \boldsymbol{\mu}_t | \boldsymbol{\mu}_{t-1} &\sim \mathcal{N} \Big( \boldsymbol{D}_t \boldsymbol{\mu}_{t-1}, \boldsymbol{\Lambda}_t \Big),  \label{B7}
 \end{align} 
 where, \(  \boldsymbol{\mu}_t = \begin{bmatrix} \boldsymbol{\theta}_t \\ \boldsymbol{\delta}_t \\ \zeta_t \\ \boldsymbol{\psi}_t \end{bmatrix}, \,
-\textbf{H}_t &= \begin{bmatrix} 
+\textbf{H}_t = \begin{bmatrix} 
     \mathbf{F}_t & \begin{bmatrix} \mathbf{F}_t \stackrel{J \; \text{times}}{\dots} \mathbf{F}_t \end{bmatrix} \\
     \mathbf{0}_{pJ} &  \text{BlockDiag} \big( \mathbf{F}_t, \stackrel{J \; \text{times}}{\dots}, \mathbf{F}_t  \big) \\
     1 & \mathbf{1}_{J}' \\
     0 & \mathbf{0}_{J}'
 \end{bmatrix}, \,
-\boldsymbol{D}_t = \text{BlockDiag} \Big( \mathbf{G}_t, \stackrel{J+1 \; \text{times}}{\dots}, \mathbf{G}_t, \mathbf{G}^{\text{trans}}_t \Big), \newline
+\boldsymbol{D}_t = \text{BlockDiag} \Big( \mathbf{G}_t, \stackrel{J+1 \; \text{times}}{\dots}, \mathbf{G}_t, \mathbf{G}^{\text{trans}}_t \Big),
 \boldsymbol{\Lambda}_t = \text{BlockDiag} \Big( \mathbf{W}^\theta_t, \mathbf{W}^{\delta^1}, \dots, \mathbf{W}^{\delta^J}_t, w^\zeta_t, \mathbf{W}^{\boldsymbol{\psi}}_t \Big) 
 \). Here, $\textbf{h}_{t,k}$ denotes the k-th column of $\boldsymbol{\text{H}}_t$, and  \( \boldsymbol{\delta}_t \in {\mathbb{R}}^{pJ} \) denotes all $J$  concatenated discrepancy vectors at time $t$. It is important to highlight the conditional independence assumption between \( y^o_t \), the observed measurement, and the retrospective analysis \( z^{j}_t \), as well as between retrospective analyses. This assumption simplifies the modeling process but can be relaxed to account for correlations between these variables, providing a more comprehensive understanding of the relationships between observations and climate agency analyses. Such correlated extension can be addressed by the exDQLM multivariate extension proposed by \citet{barata2021dqlm}.
 
@@ -162,11 +162,11 @@ Ensemble forecast products are real-time predictive datasets generated by climat
 We extend \textbf{Model B} to a forecasting period, $t>T$, by incorporating the forecast ensemble products as follows. We denote \(K_{(j)}\) as the horizon length of the forecasts produced by the $j$-th forecaster, and assume we order the forecasters by horizon length, that is \(K_{(1)} \geq \ldots \geq K_{(J)} \). Moreover, assume the $j$-th forecaster's ensemble comprises $I_j \geq 1$ members. And denote the $j$-th forecaster $i$-th ensemble member $k$-step-ahead prediction generated at time $T$ as $y^{j,i}_T(k) \in {\mathbb{R}}$. We define \textbf{Model C} as \textbf{Model B} for $t \leq T$, and for the forecasting period, $t>T$, we express it as follows for \(1 \leq j \leq J\)
 , \(1 \leq i \leq I_j\), \(1 \leq k \leq K_{(j)}\): 
 \begin{align} 
-    \text{Forecasts }:&& y^{j,i}_T(k) | \boldsymbol{\beta}_{T+k}, \sigma^j, \gamma^j &\sim exAL_{p_0} \Big( \textbf{e}_{T+k,j+1}' \boldsymbol{\beta}_{T+k}, \, \sigma^j, \, \gamma^j \Big) \\ \label{C1}
+    \text{Forecasts }:&& y^{j,i}_T(k) | \boldsymbol{\beta}_{T+k}, \sigma^j, \gamma^j &\sim exAL_{p_0} \Big( \textbf{e}_{T+k,j+1}' \boldsymbol{\beta}_{T+k}, \, \sigma^j, \, \gamma^j \Big) \label{C1} \\
     \text{Trend, Seasonal and Discrepancy States}:&& \boldsymbol{\beta}_{T+k} | \boldsymbol{\beta}_{T+k-1} &\sim \mathcal{N} \Big( \textbf{M}_{T+k} \boldsymbol{\beta}_{T+k-1}, \, \mathbf{W}_{T+k} \Big),  \label{C2} \\
     \text{Stochastic Covariance}:&& \mathbf{W}_{T+k} &\sim \text{InvWishart}(\nu_{T+k}, S_{T+k})
 \end{align} 
-where, \( \text{ for } T+1+K_{(j+1)} &\leq t \leq T+K_{(j)}, \quad 
+where, \( \text{ for } T+1+K_{(j+1)} \leq t \leq T+K_{(j)}, \quad 
 \boldsymbol{\beta}_t = \begin{bmatrix} 
     \boldsymbol{\theta}_t \\ \boldsymbol{\delta}^f_t 
 \end{bmatrix}, \quad
@@ -358,9 +358,9 @@ We choose discount factors componentwise to reflect each component’s time scal
 \centering
 \renewcommand{\arraystretch}{1.08}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} l
-  S[table-format=-1.3] l
-  S[table-format=-1.3] l
-  S[table-format=-1.3] l
+  c l
+  c l
+  c l
   }
 \toprule
 \multirow{2}{*}{\textbf{Quantile}} &
@@ -393,9 +393,9 @@ We choose discount factors componentwise to reflect each component’s time scal
 \centering
 \renewcommand{\arraystretch}{1.08}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} l
-  S[table-format=1.5] l
-  S[table-format=1.5] l
-  S[table-format=1.5] l
+  c l
+  c l
+  c l
   }
 \toprule
 \multirow{2}{*}{\textbf{Quantile}} &
@@ -471,7 +471,7 @@ No quantile crossing was observed in our results, despite fitting models indepen
 \begin{threeparttable}
 \caption{Posterior Means and 95\% Credible Intervals for Covariate Effects}
 \label{tab:components_23_31}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} l c S[table-format=-1.3] l }
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} l c c l }
 \toprule
 \textbf{Covariate} & \textbf{Quantile} & \textbf{Mean} & \textbf{95\% CI} \\
 \midrule
@@ -628,12 +628,12 @@ Foundation grant MMS2050012.
 A^j = A(\gamma^j;p_0), \quad B^j = B(\gamma^j;p_0), \quad C^j = C(\gamma^j;p_0), \text{ as defined in Section~\ref{subsec:exal}}
 \)
 \vspace{0.1cm}
-\hline
+\State \rule{\linewidth}{0.2pt}
 \vspace{0.1cm}
 
 
 \State \textbf{Step 0: Set initial values} and sample size $N$.
-\State Initialize $\{ (v^j)^{(0)}_{1:T}$, $(s^j)^{(0)}_{1:T}$, $(\boldsymbol{\alpha})^{(0)}_{1:T}, $(\sigma^j)^{(0)}$, $(\gamma^j)^{(0)}\}_{j=0}^J$
+\State Initialize $\{ (v^j)^{(0)}_{1:T}$, $(s^j)^{(0)}_{1:T}$, $(\boldsymbol{\alpha})^{(0)}_{1:T}$, $(\sigma^j)^{(0)}$, $(\gamma^j)^{(0)}\}_{j=0}^J$
 \For{$n = 1$ to $N$}
     \State \textbf{Step 1: Update $\boldsymbol{\alpha}_t$}
     \State Use Algorithm~\ref{alg:Alg2}
@@ -687,9 +687,9 @@ A^j = A(\gamma^j;p_0), \quad B^j = B(\gamma^j;p_0), \quad C^j = C(\gamma^j;p_0),
 \State \( \mathbf{v}_t = \big[  v^j_t   \big], \quad  \mathbf{s}_t = \big[ 
 s^j_t  \big] , \quad \mathbf{\sigma} = \big[ \sigma^j  \big]
 \)
-\State \text{where } \odot \text{ is the Hadamard product}
+\State where $\odot$ is the Hadamard product
 \vspace{0.1cm}
-\hline
+\State \rule{\linewidth}{0.2pt}
 \vspace{0.1cm}
 
 \State \textbf{Step 1: Forward Filtering}
@@ -739,7 +739,7 @@ s^j_t  \big] , \quad \mathbf{\sigma} = \big[ \sigma^j  \big]
 A^j = A(\gamma^j;p_0), \quad B^j = B(\gamma^j;p_0), \quad C^j = C(\gamma^j;p_0), \text{ as defined in Section~\ref{subsec:exal}}
 \)
 \vspace{0.1cm}
-\hline
+\State \rule{\linewidth}{0.2pt}
 \vspace{0.1cm}
 
 \State \textbf{Step 0: Set initial values}
@@ -787,9 +787,9 @@ A^j = A(\gamma^j;p_0), \quad B^j = B(\gamma^j;p_0), \quad C^j = C(\gamma^j;p_0),
 \State \( \mathbf{v}_t = \big[ \left\langle v^j_t  \right\rangle \big], \quad  \mathbf{s}_t = \big[ \left\langle
 s^j_t  \right\rangle \big] , \quad \mathbf{\sigma} = \big[ \left\langle \sigma^j  \right\rangle \big]
 \)
-\State \text{where } \odot \text{ is the Hadamard product}
+\State where $\odot$ is the Hadamard product
 \vspace{0.1cm}
-\hline
+\State \rule{\linewidth}{0.2pt}
 \vspace{0.1cm}
 
 \State \textbf{Step 1: Forward Filtering}
