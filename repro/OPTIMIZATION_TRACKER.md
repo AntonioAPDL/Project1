@@ -86,10 +86,12 @@ Golden hashes:
 - Recorded per-baseline directory in `run1/outputs.sha256` and verified identical to `run2/outputs.sha256`.
 
 Latest locked baseline (p0=0.5, seed=777):
-- `repro/baseline_runs/20260204_174008_p0_0.5_seed_777/`
+- Seed baseline capture: `repro/baseline_runs/20260204_174008_p0_0.5_seed_777/`
+- Final closeout validation run: `repro/baseline_runs/20260206_124259_p0_0.5_seed_777/`
 - Primary output hash (identical across run1/run2): `88dd2101b08f452b054ca191965802ce4b24d09bab407970c9f32d3657cdd56c` for `DISC_variables_50_exAL_synth_DISC.RData`
 Notes:
 - `console.txt` differs between run1/run2 due to wall-clock timing messages; we treat it as provenance, not an equivalence target.
+- Incomplete run `repro/baseline_runs/20260206_120030_p0_0.5_seed_777/` is superseded by the successful closeout validation run above.
 
 ---
 
@@ -241,3 +243,17 @@ Timing (deterministic env; `repro/perf/20260206_013429_p0_0.5_seed_777/`)
 - Elapsed: `17:17.46` → `15:51.39` (delta `-86.07s`, ~`8.3%` faster).
 - Dominant hotspot remains `save()` (~`58.6%` self time in `summaryRprof()`), constrained by the byte-identical `.RData` output requirement.
 - Reference perf dirs: `repro/perf/20260205_224726_p0_0.5_seed_777/`, `repro/perf/20260206_002046_p0_0.5_seed_777/`, `repro/perf/20260206_013429_p0_0.5_seed_777/`.
+
+### 2026-02-06 — final closeout validation (Stage 0 rerun, p0=0.5, seed=777)
+
+Validation run:
+- `repro/baseline_runs/20260206_124259_p0_0.5_seed_777/`
+
+Result:
+- `run1/outputs.sha256` == `run2/outputs.sha256` (PASS)
+- `meta/outputs_diff.txt` size is 0 bytes
+- Both runs match locked hash:
+  - `88dd2101b08f452b054ca191965802ce4b24d09bab407970c9f32d3657cdd56c`
+
+Closeout note:
+- This run is the canonical final reproducibility artifact for DISC_W refactor/optimization closeout.

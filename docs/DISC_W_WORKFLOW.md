@@ -32,6 +32,12 @@ cp --reflink=auto repro/baseline_runs/20260204_174008_p0_0.5_seed_777/inputs/DIS
 bash repro/run_stage0_baseline.sh 0.5 777
 ```
 
+Latest canonical validation artifact:
+- `repro/baseline_runs/20260206_124259_p0_0.5_seed_777/`
+- Status: `PASS: outputs.sha256 identical`
+- Primary output hash:
+  - `88dd2101b08f452b054ca191965802ce4b24d09bab407970c9f32d3657cdd56c`
+
 ## Inputs / outputs inventory
 
 The workflow reads multiple external and repo-local inputs and writes an updated VB state back to disk.
@@ -104,4 +110,3 @@ For equivalence checks, always restore the locked initial state first (see the â
 Typical failure modes caught by strict checks:
 - non-numeric ensemble columns (e.g., factors/characters)
 - inconsistent `ranges/num_mem` vs `dim()` of the underlying forecast matrices
-
