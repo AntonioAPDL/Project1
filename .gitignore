@@ -247,6 +247,7 @@ delos-*.txt
 
 # Local scratch area
 scratch/
+tmp/
 
 # Third-party source trees (do not version here)
 nlopt-2.7.0/
