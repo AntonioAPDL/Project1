@@ -9,6 +9,39 @@ Rscript --vanilla scripts/unified_run.R --config <yaml> [--dry-run]
 - `--config` is required.
 - `--dry-run` validates config, writes `resolved_config.yaml` and `run_manifest.yaml`, and exits.
 
+## Production Heavy Run Harness
+
+Committed heavy config:
+
+- `config/unified_runs/heavy_site11160500_cutoff20221225.yaml`
+
+Heavy runner:
+
+- `repro/run_unified_heavy.sh`
+
+Run commands:
+
+```bash
+bash repro/run_unified_heavy.sh
+```
+
+```bash
+FORECATS=1 bash repro/run_unified_heavy.sh
+```
+
+```bash
+RUN_TWICE=1 bash repro/run_unified_heavy.sh
+```
+
+Notes:
+
+- Required external file: `/data/muscat_data/jaguir26/projects/Project/Input/exAL/parameters/parameters.txt`
+- Legacy fit/post CSV inputs are `retros_2022-12-25.csv`, `nws_forecast.csv`, and `weighted_time_series.csv`.
+- Those legacy CSVs are treated as `log1p_cms`; unified adapters convert and assert scale contracts before fit/post legacy `log(...)` paths.
+- The heavy runner creates run-scoped CSV copies under `repro/runs/<RUN_ID>/inputs/`; if a numeric column has non-finite values, it applies a deterministic nearest-finite repair before adapter conversion so the strict adapter contract remains enforceable.
+- The heavy runner writes a resolved config for each run under `repro/runs/<RUN_ID>/resolved_config.yaml` with run-scoped overrides (run_id, optional canonical run, optional forecats auto-enable).
+- If `FORECATS=1` and no matching existing bundle is found under `data/forecats_inputs/site=11160500/cutoff_date=2022-12-25/`, the heavy run proceeds with `forecats` disabled and writes an explicit skip reason into run report outputs.
+
 ## Config template
 
 Start from:

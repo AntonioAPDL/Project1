@@ -129,6 +129,7 @@ Project/Input/**/*.feather
 
 # Repro harness artifacts (generated locally; keep out of git)
 repro/baseline_runs/
+repro/runs/
 
 # Uppercase spreadsheet exports
 *.CSV
