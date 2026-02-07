@@ -1,33 +1,51 @@
 # Script Runner Status
 
-Date: 2026-01-29 13:31:46
+Date: 2026-02-07
 
-Reference notebook (logic truth):
-- repro/recovery/Environmetrics_Figures__OLDEST.ipynb
+## Primary orchestration status
 
-Canonical output folder (compute gold):
-- Environmetrics_reproduce/  (PNG count: 147)
+Unified workflow entrypoint is active:
 
-Runner (headless, no comparisons):
-- scripts/run_environmetrics_figures.R
+- `scripts/unified_run.R`
 
-Background helper:
-- scripts/run_environmetrics_figures_bg.sh
+It supports:
 
-Linearized script (expected path):
-- repro/recovery/Environmetrics_Figures__OLDEST_linearized.R
+- YAML config loading + fast-fail validation
+- manifest initialization/update
+- stage toggles (`forecats`, `fit`, `post`, `validate`, `report`)
+- write-audit gating
+- scale adapters for legacy fit/post bridges
+- validation + report outputs under run root
 
-Extraction helper (do not run automatically):
-- scripts/extract_ipynb_to_R.sh
+## Current output contract
 
-Notes:
-- No automatic comparisons are performed; user will inspect outputs manually.
-- Runner writes outputs to: Environmetrics_reproduce_script_runs/YYYYMMDD_HHMMSS/
-- Logs are written to: repro/logs/script_runs/YYYYMMDD_HHMMSS/
+Unified runs write only to:
 
-Commands:
-1) Generate linearized script (only if missing):
-   scripts/extract_ipynb_to_R.sh
+- `repro/runs/<RUN_ID>/...`
 
-2) Launch background run:
-   scripts/run_environmetrics_figures_bg.sh
+Legacy script runners are preserved but deprecated for orchestration:
+
+- `scripts/run_DISC_Optimal_Synth_Ranges_W.R`
+- `scripts/run_environmetrics_figures.R`
+
+## Validation automation
+
+Manifest-driven validation/report is implemented via:
+
+- `R/unified/stages/stage_validate.R`
+- `R/unified/stages/stage_report.R`
+
+Compare tooling path mismatch is resolved by passing manifest/current paths explicitly and supporting `--manifest` in:
+
+- `repro/compare_to_canonical.py`
+
+## Profiling summary
+
+Profile summary integration is manifest-driven and uses:
+
+- `scripts/summarize_profile_run.py` with `--profile-dir` and `--run-log-path` overrides
+
+## Operational notes
+
+- Stage closure evidence is tracked in `repro/STAGE_CLOSURE_STAGE*.md`.
+- Unified implementation checklist is tracked in `repro/UNIFIED_WORKFLOW_IMPLEMENTATION_CHECKLIST.md`.

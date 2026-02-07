@@ -40,6 +40,7 @@ repo_root <- normalizePath(getwd(), mustWork = TRUE)
 
 source(file.path(repo_root, "R", "unified", "utils_hash.R"))
 source(file.path(repo_root, "R", "unified", "utils_scale.R"))
+source(file.path(repo_root, "R", "unified", "utils_env_capture.R"))
 source(file.path(repo_root, "R", "unified", "config.R"))
 source(file.path(repo_root, "R", "unified", "determinism.R"))
 source(file.path(repo_root, "R", "unified", "manifest.R"))
@@ -80,6 +81,10 @@ writeLines(yaml::as.yaml(cfg, indent.mapping.sequence = TRUE), con = resolved_co
 
 repro_record <- unified_apply_seed(seed = cfg$run$seed, mode = cfg$run$repro_mode)
 manifest <- unified_manifest_init(cfg, run_id = run_id, run_root = run_root, repo_root = repo_root, repro_record = repro_record)
+env_artifacts <- unified_capture_env_artifacts(run_root)
+for (nm in names(env_artifacts)) {
+  manifest <- unified_manifest_add_artifact(manifest, env_artifacts[[nm]], storage_scale = "text")
+}
 manifest_path <- file.path(run_root, "run_manifest.yaml")
 unified_manifest_write(manifest, manifest_path)
 

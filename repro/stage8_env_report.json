@@ -1,0 +1,25 @@
+{
+  "stage": 8,
+  "status": "pass",
+  "checks": {
+    "env_artifacts_written": true,
+    "manifest_records_env_artifacts": true,
+    "env_drift_check_with_canonical": true,
+    "report_includes_env_drift_status": true,
+    "env_lock_strategy_documented": true,
+    "unified_readme_updated": true,
+    "script_runner_status_updated": true
+  },
+  "evidence": {
+    "env_capture_utility": "R/unified/utils_env_capture.R",
+    "unified_runner_integration": "scripts/unified_run.R",
+    "validation_env_drift": "R/unified/stages/stage_validate.R",
+    "report_env_drift": "R/unified/stages/stage_report.R",
+    "env_lock_strategy_doc": "repro/ENV_LOCK_STRATEGY.md",
+    "unified_readme": "repro/UNIFIED_WORKFLOW_README.md",
+    "script_runner_status": "repro/SCRIPT_RUNNER_STATUS.md",
+    "sample_manifest": "repro/runs/stage8_check_b/run_manifest.yaml",
+    "sample_env_drift_report": "repro/runs/stage8_check_b/validate/env_drift_report.json",
+    "sample_summary_json": "repro/runs/stage8_check_b/report/summary.json"
+  }
+}

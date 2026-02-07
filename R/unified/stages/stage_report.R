@@ -6,10 +6,14 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
 
   compare_report_path <- manifest$validation$compare_report_path
   compare_metrics <- list(matched = NA_integer_, missing = NA_integer_, extra = NA_integer_, mismatched = NA_integer_)
+  env_drift_status <- NA_character_
   if (!is.null(compare_report_path) && file.exists(compare_report_path) && requireNamespace("jsonlite", quietly = TRUE)) {
     cmp <- tryCatch(jsonlite::read_json(compare_report_path, simplifyVector = TRUE), error = function(e) NULL)
     if (!is.null(cmp) && !is.null(cmp$metrics)) {
       compare_metrics <- as.list(cmp$metrics)
+    }
+    if (!is.null(cmp) && !is.null(cmp$env_drift) && !is.null(cmp$env_drift$status)) {
+      env_drift_status <- as.character(cmp$env_drift$status)
     }
   }
 
@@ -56,11 +60,12 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     stages_enabled = names(cfg$stages)[vapply(cfg$stages, isTRUE, logical(1))],
     input_hashes = input_hashes,
     drift_metrics = compare_metrics,
+    env_drift_status = env_drift_status,
     validation_status = manifest$validation$status,
     change_approval_status = manifest$change_approval$status,
     write_audit_clean = write_audit_clean,
     compare_report_path = compare_report_path,
-    profile_summary_path = profile_summary_path,
+    profile_summary_path = if (is.null(profile_summary_path)) NA_character_ else profile_summary_path,
     artifacts_recorded = length(manifest$artifacts)
   )
 
@@ -83,6 +88,7 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     sprintf("- compare_report: `%s`", compare_report_path),
     sprintf("- drift metrics: matched=%s missing=%s extra=%s mismatched=%s",
             compare_metrics$matched, compare_metrics$missing, compare_metrics$extra, compare_metrics$mismatched),
+    sprintf("- env_drift_status: `%s`", env_drift_status),
     sprintf("- write_audit_clean: `%s`", write_audit_clean),
     sprintf("- change_approval.status: `%s`", manifest$change_approval$status),
     "",

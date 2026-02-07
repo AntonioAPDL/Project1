@@ -97,6 +97,18 @@ unified_stage_validate <- function(cfg, run_root, repo_root, manifest) {
     command_output_tail = utils::tail(cmd_out, 20)
   )
 
+  env_drift_path <- file.path(validate_root, "env_drift_report.json")
+  if (!is.null(canonical_run_id) && nzchar(canonical_run_id)) {
+    current_env_dir <- file.path(run_root, "env")
+    canonical_env_dir <- file.path(cfg$run$run_root, canonical_run_id, "env")
+    env_report <- unified_env_drift_report(current_env_dir, canonical_env_dir, out_json_path = env_drift_path)
+    report$env_drift <- env_report
+    if (identical(env_report$status, "fail")) {
+      status <- "fail"
+      report$status <- "fail"
+    }
+  }
+
   if (requireNamespace("jsonlite", quietly = TRUE)) {
     jsonlite::write_json(report, path = report_json, auto_unbox = TRUE, pretty = TRUE)
   } else {
