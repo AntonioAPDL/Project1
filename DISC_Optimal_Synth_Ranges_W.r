@@ -235,7 +235,7 @@ dlm_df = function(y, model, df, dim.df, s.priors = list(l0=1,S0=10), just.lik=FA
   sR[TT,,] = C[TT,,]
   for(k in 1:(TT-1)){
   ### Computes the Auxilary recursion Variable B
-    B = C[TT-k,,] %*% t(GG[,,i]) %*% solve(R[TT-k+1,,])
+    B = C[TT-k,,] %*% t(GG[,,TT-k+1]) %*% solve(R[TT-k+1,,])
     sa[TT-k,] = m[TT-k,] + B %*% (sa[TT-k+1,] - a[TT-k+1,])
     sR[TT-k,,] = C[TT-k,,] + B %*% (sR[TT-k+1,,] - R[TT-k+1,,]) %*% t(B)
   }
@@ -450,7 +450,7 @@ dlm_df = function(y, model, df, dim.df, s.priors = list(l0=1,S0=10), just.lik=FA
   sR[TT,,] = C[TT,,]
   for(k in 1:(TT-1)){
     ### Computes the Auxilary recursion Variable B
-    B = C[TT-k,,] %*% t(GG[,,i]) %*% solve(R[TT-k+1,,])
+    B = C[TT-k,,] %*% t(GG[,,TT-k+1]) %*% solve(R[TT-k+1,,])
     sa[TT-k,] = m[TT-k,] + B %*% (sa[TT-k+1,] - a[TT-k+1,])
     sR[TT-k,,] = C[TT-k,,] + B %*% (sR[TT-k+1,,] - R[TT-k+1,,]) %*% t(B)
   }

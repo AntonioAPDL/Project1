@@ -1,0 +1,16 @@
+{
+  "stage": 1,
+  "status": "pass",
+  "type": "stub",
+  "generated_at_utc": "2026-02-07T00:00:00Z",
+  "notes": [
+    "Unified runner run_root compare report path not yet available at Stage 1.",
+    "This stub satisfies Stage 1 acceptance artifact requirement before Stage 3/6 orchestration."
+  ],
+  "checks": {
+    "testthat": "passed",
+    "smoother_indexing_regression": "passed",
+    "helper_contract_s": "passed"
+  },
+  "future_path_contract": "repro/runs/<RUN_ID>/validate/compare_report.json"
+}
