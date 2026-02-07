@@ -91,6 +91,7 @@ plot_forecats_bundle <- function(bundle_dir) {
   # -------------------------
   usgs <- readr::read_csv(usgs_path, show_col_types = FALSE) %>%
     mutate(date = as.Date(date)) %>%
+    mutate(discharge_cms = as.numeric(discharge_cms)) %>%
     filter(date >= plot_start & date <= plot_end) %>%
     mutate(
       obs_type = ifelse(date >= forecast_start, "After", "Before"),
@@ -99,6 +100,11 @@ plot_forecats_bundle <- function(bundle_dir) {
 
   retros <- readr::read_csv(retros_path, show_col_types = FALSE) %>%
     mutate(date = as.Date(date)) %>%
+    mutate(
+      usgs_cms = as.numeric(usgs_cms),
+      glofas_cms = as.numeric(glofas_cms),
+      nws_cms = as.numeric(nws_cms)
+    ) %>%
     filter(date >= plot_start & date < forecast_start)
 
   retros_long <- retros %>%
@@ -119,6 +125,7 @@ plot_forecats_bundle <- function(bundle_dir) {
       pivot_longer(cols = -target_date, names_to = "member", values_to = "cms") %>%
       mutate(
         provider = provider_label,
+        cms = as.numeric(cms),
         value = transform_flow(cms, plot_scale)
       )
     long

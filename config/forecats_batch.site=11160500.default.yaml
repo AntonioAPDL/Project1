@@ -1,0 +1,110 @@
+# Batch "forecats.png" rendering config (San Lorenzo Big Trees / USGS 11160500).
+#
+# This is the cohort-level spec used to:
+#   1) audit readiness (GloFAS GRIB availability, output existence),
+#   2) build forecast caches (GloFAS from GRIB, NWS from results.pkl),
+#   3) render *one forecats.png per cutoff_date* across all configured intervals.
+#
+# Default semantics:
+# - "paper-mode" overall intent (aggregate all usable forecasts),
+# - BUT defaults to scheme=latest (i.e., no weighting; use most-recent forecast per target time).
+# - No bias/scale correction.
+# - All stored flows are raw cms (m^3/s). Plotting can transform via plot_scale.
+#
+# Recommended workflow (after GloFAS downloads are complete):
+#   Rscript scripts/forecats_batch.R --config config/forecats_batch.site=11160500.default.yaml --mode audit
+#   Rscript scripts/forecats_batch.R --config config/forecats_batch.site=11160500.default.yaml --mode build-forecasts
+#   Rscript scripts/forecats_batch.R --config config/forecats_batch.site=11160500.default.yaml --mode render
+#
+# Parallel rendering (example, 4 shards):
+#   for i in 0 1 2 3; do
+#     tmux new -d -s forecats_figs_$i \\
+#       \"cd /data/muscat_data/jaguir26/project1_ucsc_phd && \\
+#        Rscript scripts/forecats_batch.R --config config/forecats_batch.site=11160500.default.yaml --mode render --shard-count 4 --shard-index $i\"
+#   done
+
+run:
+  # All per-date outputs live under:
+  #   <out_root>/site=<site>/cutoff_date=<YYYY-MM-DD>/run_id=<run_id>/
+  out_root: "data/forecats_inputs"
+
+  # Shared caches and batch manifests live under:
+  #   <cache_root>/site=<site>/run_id=<run_id>/
+  cache_root: "data/forecats_cache"
+
+  # Stable cohort/run identifier (keep constant for a full-batch render).
+  # Change when changing major semantics (scheme, plot_scale, window, etc).
+  run_id: "20260206_paper_default_latest"
+
+  overwrite: false
+
+site:
+  usgs_site: "11160500"
+  lat: 37.0443931
+  lon: -122.072464
+  usgs:
+    parameterCd: "00060"
+    statCd: "00003"
+    start_date: "1979-01-01"
+
+dates:
+  # These are the NWM-valid issue_date windows (inclusive).
+  intervals:
+    - start: "2019-11-05"
+      end: "2020-03-11"
+    - start: "2020-03-17"
+      end: "2020-07-28"
+    - start: "2020-07-30"
+      end: "2020-11-13"
+    - start: "2020-11-15"
+      end: "2022-07-13"
+    - start: "2022-07-15"
+      end: "2023-01-31"
+
+  # Plot window around each cutoff_date.
+  # The plot uses:
+  #   plot_start = cutoff_date - plot_pre_days
+  #   plot_end   = cutoff_date + plot_post_days
+  plot_pre_days: 18
+  plot_post_days: 28
+
+transforms:
+  plot_scale: "log_log1p_cms"
+
+inputs:
+  retros:
+    path: "retros_2023-06-01.csv"
+    scale: "log1p_cms"
+
+  glofas:
+    grib_root: "data/glofas_operational_medium_range/grib"
+    var: "dis24"
+    data_types:
+      control: "cf"
+      perturbed: "pf"
+    nearest_valid_cell: true
+    shift_days: 1
+    weighting:
+      scheme: "latest"   # latest | paper | notebook
+      alpha: 1.0
+      power: -1.001
+
+  nws:
+    pkl_path: "results.pkl"
+    parse_issue_hour: false
+    issue_lookback_days: 40
+    weighting:
+      scheme: "latest"   # latest | paper | notebook
+      alpha: 1.0
+      exponents: {}
+
+plot:
+  title: "Observed and Retrospective River Flow\\nwith GloFAS and NWS Forecast Ensembles"
+  # Optional flood levels (these default for 11160500 if omitted).
+  flood_levels:
+    - label: "Major Flooding"
+      value: 15000
+      unit: "cfs"
+    - label: "Minor Flooding"
+      value: 6750
+      unit: "cfs"

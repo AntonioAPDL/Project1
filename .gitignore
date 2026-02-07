@@ -46,9 +46,11 @@ Class/
 # Big data + outputs (project-specific)
 # -------------------------
 data/forecats_inputs/
+data/forecats_cache/
 data/glofas_operational_medium_range/
 repro/logs/
 repro/forecats_alignment/
+repro/reports/
 prism_data/
 soil_moisture_data/
 frames/
