@@ -8,12 +8,40 @@
 #include <cmath>
 #include <chrono>
 #include <limits>
+#include <cstdint>
 
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::depends(BH)]]
 
 using namespace Rcpp;
 using namespace arma;
+
+namespace {
+std::uint64_t g_sampling_exal_base_seed = 777ULL;
+
+inline std::uint64_t splitmix64(std::uint64_t x) {
+    x += 0x9e3779b97f4a7c15ULL;
+    x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+    return x ^ (x >> 31);
+}
+
+inline unsigned int derive_seed(std::uint64_t stream_id, std::uint64_t index_id) {
+    std::uint64_t mixed = splitmix64(g_sampling_exal_base_seed ^ (stream_id * 0x9e3779b97f4a7c15ULL) ^ index_id);
+    return static_cast<unsigned int>(mixed & 0xffffffffULL);
+}
+}  // namespace
+
+// [[Rcpp::export]]
+void set_sampling_exal_seed(double seed) {
+    if (!R_finite(seed)) {
+        Rcpp::stop("set_sampling_exal_seed: seed must be finite");
+    }
+    if (seed < 0) {
+        seed = -seed;
+    }
+    g_sampling_exal_base_seed = static_cast<std::uint64_t>(std::llround(seed));
+}
 
 double psi(double x, double alpha, double lambda) {
     return -alpha * (cosh(x) - 1) - lambda * (exp(x) - x - 1);
@@ -131,19 +159,10 @@ Rcpp::NumericMatrix sample_truncnorm_reject(int n_samp, int TT, Rcpp::NumericVec
     }
     Rcpp::NumericMatrix samples(n_samp, TT);
 
-    // Reproducible (w.r.t. R's set.seed) thread-local RNG seeding.
-    // Note: reproducibility also depends on a fixed OpenMP thread count/scheduling.
-    Rcpp::RNGScope rng_scope;
-    int n_threads = omp_get_max_threads();
-    std::vector<unsigned int> seeds(n_threads);
-    for (int thread = 0; thread < n_threads; ++thread) {
-        seeds[thread] = static_cast<unsigned int>(R::runif(0.0, 1.0) * std::numeric_limits<unsigned int>::max());
-    }
-
     #pragma omp parallel
     {
         int thread = omp_get_thread_num();
-        boost::random::mt19937 gen(seeds[thread]);
+        boost::random::mt19937 gen(derive_seed(1001ULL, static_cast<std::uint64_t>(thread)));
 
         #pragma omp for collapse(2) schedule(static)
         for (int t = 0; t < TT; ++t) {
@@ -200,7 +219,8 @@ arma::cube sample_multivariate_normal(int n_samp, int TT, arma::cube sC, arma::m
     
     #pragma omp parallel
     {
-        boost::random::mt19937 gen(omp_get_thread_num());
+        int thread = omp_get_thread_num();
+        boost::random::mt19937 gen(derive_seed(2001ULL, static_cast<std::uint64_t>(thread)));
         boost::random::normal_distribution<> normal_dist(0.0, 1.0);
         
         #pragma omp for
@@ -228,7 +248,8 @@ arma::cube samp_post_pred(int n_samp, int TT, int p, int J, arma::cube samp_thet
     
     #pragma omp parallel
     {
-        boost::random::mt19937 gen(omp_get_thread_num());
+        int thread = omp_get_thread_num();
+        boost::random::mt19937 gen(derive_seed(3001ULL, static_cast<std::uint64_t>(thread)));
         
         #pragma omp for collapse(2)
         for (int j = 0; j <= J; ++j) {
@@ -273,7 +294,8 @@ Rcpp::List samp_post_pred_synth(int n_samp, int k_forecast, int p_ens, int J, ar
 
     #pragma omp parallel
     {
-        boost::random::mt19937 gen(omp_get_thread_num());
+        int thread = omp_get_thread_num();
+        boost::random::mt19937 gen(derive_seed(4001ULL, static_cast<std::uint64_t>(thread)));
         
         #pragma omp for
         for (int j = 0; j < J; ++j) {
@@ -349,7 +371,8 @@ arma::cube samp_post_pred_extended(int n_samp, int TT, int p, int J,
     
     #pragma omp parallel
     {
-        boost::random::mt19937 gen(omp_get_thread_num());
+        int thread = omp_get_thread_num();
+        boost::random::mt19937 gen(derive_seed(5001ULL, static_cast<std::uint64_t>(thread)));
         boost::random::normal_distribution<> normal_dist(0.0, 1.0);
         
         #pragma omp for collapse(2)
@@ -396,7 +419,8 @@ arma::cube DISC_sample_multivariate_normal(int n_samp, int TT, arma::cube sC, ar
     
     #pragma omp parallel
     {
-        boost::random::mt19937 gen(omp_get_thread_num());
+        int thread = omp_get_thread_num();
+        boost::random::mt19937 gen(derive_seed(6001ULL, static_cast<std::uint64_t>(thread)));
         boost::random::normal_distribution<> normal_dist(0.0, 1.0);
         
         #pragma omp for

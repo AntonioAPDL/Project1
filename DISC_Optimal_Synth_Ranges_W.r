@@ -56,6 +56,17 @@ Rcpp::sourceCpp("/data/muscat_data/jaguir26/project1_ucsc_phd/sampling_exal.cpp"
 Rcpp::sourceCpp("/data/muscat_data/jaguir26/project1_ucsc_phd/sampling_truncnorm.cpp")
 Rcpp::sourceCpp("/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_kalman_synth.cpp")
 
+disc_base_seed <- suppressWarnings(as.numeric(Sys.getenv("DISC_BASE_SEED", "777")))
+if (!is.finite(disc_base_seed)) {
+  disc_base_seed <- 777
+}
+if (exists("set_sampling_exal_seed", mode = "function")) {
+  set_sampling_exal_seed(disc_base_seed)
+}
+if (exists("set_sampling_truncnorm_seed", mode = "function")) {
+  set_sampling_truncnorm_seed(disc_base_seed)
+}
+
 print(c(n.samp, 444))
 flush.console()
 

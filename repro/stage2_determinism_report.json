@@ -1,0 +1,28 @@
+{
+  "stage": 2,
+  "status": "pass",
+  "checks": {
+    "cpp_seed_api": [
+      "set_sampling_exal_seed",
+      "set_sampling_truncnorm_seed"
+    ],
+    "thread_id_rng_dependence_removed": true,
+    "strict_mode_testthat": "passed"
+  },
+  "strict_policy": {
+    "threads": {
+      "OMP_NUM_THREADS": 1,
+      "OPENBLAS_NUM_THREADS": 1,
+      "MKL_NUM_THREADS": 1,
+      "VECLIB_MAXIMUM_THREADS": 1,
+      "NUMEXPR_NUM_THREADS": 1,
+      "mc.cores": 1
+    },
+    "rng_kind_fit": "Mersenne-Twister/Inversion/Rejection",
+    "rng_kind_post": "Mersenne-Twister/Inversion/Rejection"
+  },
+  "notes": [
+    "Legacy post script RNGkind remains unchanged; unified policy is provided via unified determinism helpers and wrappers.",
+    "Manifest recording of mode/thread/rng is completed in Stage 3 manifest foundation."
+  ]
+}
