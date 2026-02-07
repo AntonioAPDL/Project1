@@ -107,12 +107,18 @@ def _parse_wall_time(run_log_path: Path) -> Tuple[Optional[datetime], Optional[d
     return (start, end)
 
 
-def summarize_run(project_root: Path, run_id: str, out_path: Path) -> None:
-    profile_dir = project_root / "repro" / "logs" / "profile" / run_id
+def summarize_run(
+    project_root: Path,
+    run_id: str,
+    out_path: Path,
+    profile_dir_override: Optional[Path] = None,
+    run_log_override: Optional[Path] = None,
+) -> None:
+    profile_dir = profile_dir_override if profile_dir_override is not None else (project_root / "repro" / "logs" / "profile" / run_id)
     timings_path = profile_dir / "timings.csv"
     io_path = profile_dir / "io_timings.csv"
 
-    run_log_path = project_root / "repro" / "logs" / "script_runs" / run_id / "run_log.txt"
+    run_log_path = run_log_override if run_log_override is not None else (project_root / "repro" / "logs" / "script_runs" / run_id / "run_log.txt")
 
     if not timings_path.exists():
         raise FileNotFoundError(f"Missing timings file: {timings_path}")
@@ -261,6 +267,16 @@ def main() -> None:
         default="",
         help="Output markdown path. Default: repro/logs/profile/<RUN_ID>/profile_summary.md",
     )
+    parser.add_argument(
+        "--profile-dir",
+        default="",
+        help="Optional explicit profile directory (overrides repro/logs/profile/<RUN_ID>).",
+    )
+    parser.add_argument(
+        "--run-log-path",
+        default="",
+        help="Optional explicit run_log.txt path (overrides repro/logs/script_runs/<RUN_ID>/run_log.txt).",
+    )
     args = parser.parse_args()
 
     project_root = Path(args.project_root).resolve()
@@ -272,7 +288,16 @@ def main() -> None:
         if out_path.is_dir():
             raise IsADirectoryError(f"--out points to a directory, expected a file path: {out_path}")
 
-    summarize_run(project_root=project_root, run_id=run_id, out_path=out_path)
+    profile_dir_override = Path(args.profile_dir).resolve() if args.profile_dir else None
+    run_log_override = Path(args.run_log_path).resolve() if args.run_log_path else None
+
+    summarize_run(
+        project_root=project_root,
+        run_id=run_id,
+        out_path=out_path,
+        profile_dir_override=profile_dir_override,
+        run_log_override=run_log_override,
+    )
     print(str(out_path))
 
 

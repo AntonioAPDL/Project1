@@ -194,7 +194,11 @@ profile_dir <- NULL
 timings_path <- NULL
 io_timings_path <- NULL
 if (PROFILE) {
-  profile_dir <- file.path(PROJECT_ROOT, "repro", "logs", "profile", RUN_ID)
+  profile_dir <- if (nzchar(UNIFIED_RUN_ROOT)) {
+    file.path(UNIFIED_RUN_ROOT, "post", "profile", RUN_ID)
+  } else {
+    file.path(PROJECT_ROOT, "repro", "logs", "profile", RUN_ID)
+  }
   dir.create(profile_dir, showWarnings = FALSE, recursive = TRUE)
   timings_path <- file.path(profile_dir, "timings.csv")
   writeLines("section,start,end,elapsed_sec", timings_path)

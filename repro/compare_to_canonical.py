@@ -10,6 +10,7 @@ import hashlib
 import os
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+import json
 
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
@@ -120,6 +121,7 @@ def compare_by_filename(canon_dir: Path, curr_dir: Path) -> Tuple[List[str], Lis
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--manifest", default="")
     parser.add_argument("--canonical-dir", default="Environmetrics_reproduce")
     parser.add_argument("--current-dir", default="Environmetrics_reproduce_script")
     parser.add_argument("--canonical-sha", default="repro/canonical_Environmetrics_reproduce.sha256")
@@ -132,6 +134,29 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path("/data/muscat_data/jaguir26/project1_ucsc_phd")
+    if args.manifest:
+        manifest_path = Path(args.manifest)
+        if not manifest_path.is_absolute():
+            manifest_path = (root / manifest_path).resolve()
+        if manifest_path.exists():
+            try:
+                import yaml  # type: ignore
+
+                manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+            except Exception:
+                manifest = None
+            if isinstance(manifest, dict):
+                run_root = manifest.get("run_root")
+                run_id = manifest.get("run_id")
+                if run_root and run_id:
+                    args.current_dir = str(Path(run_root) / "post" / "outputs" / str(run_id))
+                    if args.current_sha == "repro/current_Environmetrics_reproduce_script.sha256":
+                        args.current_sha = str(Path(run_root) / "validate" / "current.sha256")
+                    if args.report == "repro/compare_report_script_vs_canonical.txt":
+                        args.report = str(Path(run_root) / "validate" / "compare_report.txt")
+                    if args.diff_dir == "repro/diff":
+                        args.diff_dir = str(Path(run_root) / "validate" / "diff")
+
     canon_dir = (root / args.canonical_dir) if not Path(args.canonical_dir).is_absolute() else Path(args.canonical_dir)
     curr_dir = (root / args.current_dir) if not Path(args.current_dir).is_absolute() else Path(args.current_dir)
     canon_sha_path = (root / args.canonical_sha) if not Path(args.canonical_sha).is_absolute() else Path(args.canonical_sha)

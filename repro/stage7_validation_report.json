@@ -1,0 +1,20 @@
+{
+  "stage": 7,
+  "status": "pass",
+  "checks": {
+    "manifest_driven_compare": true,
+    "current_dir_from_manifest": true,
+    "summary_md_json_generated": true,
+    "drift_metrics_in_summary": true,
+    "profile_summary_hook_manifest_driven": true
+  },
+  "evidence": {
+    "validate_stage": "R/unified/stages/stage_validate.R",
+    "report_stage": "R/unified/stages/stage_report.R",
+    "compare_tool_manifest_option": "repro/compare_to_canonical.py",
+    "profile_summary_overrides": "scripts/summarize_profile_run.py",
+    "sample_run_summary_md": "repro/runs/stage7run/report/summary.md",
+    "sample_run_summary_json": "repro/runs/stage7run/report/summary.json",
+    "sample_compare_report_json": "repro/runs/stage7run/validate/compare_report.json"
+  }
+}
