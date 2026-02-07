@@ -1,0 +1,23 @@
+{
+  "stage": 5,
+  "status": "pass",
+  "checks": {
+    "scale_enum_supported": [
+      "raw_cms",
+      "log_cms",
+      "log1p_cms",
+      "log_log_cms",
+      "log_log1p_cms"
+    ],
+    "unknown_scale_fast_fail": true,
+    "positive_guardrails_before_legacy_log": true,
+    "scale_history_recording": true
+  },
+  "evidence": {
+    "scale_utils": "R/unified/utils_scale.R",
+    "fit_adapter_stage": "R/unified/stages/stage_fit.R",
+    "post_adapter_stage": "R/unified/stages/stage_post.R",
+    "manifest_scale_history_api": "R/unified/manifest.R",
+    "adapter_tests": "tests/testthat/test_scale_contract_adapters.R"
+  }
+}
