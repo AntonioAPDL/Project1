@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+message("DEPRECATED entrypoint for unified workflow orchestration. Prefer: scripts/unified_run.R")
+
 # Headless runner for Environmetrics figures (no comparisons, no nbconvert).
 
 # -------------------------

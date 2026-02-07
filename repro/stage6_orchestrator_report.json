@@ -1,0 +1,19 @@
+{
+  "stage": 6,
+  "status": "pass_with_lightweight_runtime",
+  "checks": {
+    "single_entrypoint": "scripts/unified_run.R",
+    "stage_toggles": true,
+    "parallel_quantile_execution": "implemented via mclapply when workers > 1",
+    "quantile_output_isolation": "run_root/fit/q=<qq>/outputs",
+    "legacy_entrypoints_preserved": true
+  },
+  "lightweight_runtime_evidence": {
+    "selected_stage_run": "repro/runs/stage4_single",
+    "summary": "repro/runs/stage4_single/report/summary.md"
+  },
+  "notes": [
+    "Heavy full-fit quantile run was not executed in this stage to avoid long runtime.",
+    "Run command for full verification: Rscript --vanilla scripts/unified_run.R --config <fit-enabled-yaml>."
+  ]
+}

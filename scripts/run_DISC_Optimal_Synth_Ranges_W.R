@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+message("DEPRECATED entrypoint for unified workflow orchestration. Prefer: scripts/unified_run.R")
+
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 1) {
   stop("Usage: Rscript scripts/run_DISC_Optimal_Synth_Ranges_W.R <p0> [seed]", call. = FALSE)
