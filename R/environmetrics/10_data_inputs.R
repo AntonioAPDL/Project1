@@ -136,8 +136,9 @@ X_ext[,4] <- c(0,X[1:(TT-1),1])^2
 X_ext[,5] <- c(0,0,X[1:(TT-2),1])^2
 
 ########### Standarized added covariates
-sds_ext <- apply(X_ext, 2, sd)
-X_ext <- sweep(X_ext, 2, sds_ext, FUN = "/")
+ext_scaled <- standardize_matrix_cols(X_ext)
+X_ext <- ext_scaled$values
+sds_ext <- ext_scaled$sds
 sd1 <- sds_ext[1]
 sd2 <- sds_ext[2]
 sd3 <- sds_ext[3]
@@ -157,8 +158,9 @@ X_ext_f[,5] <- c(X[(TT-1),1],X[TT,1],X_f[1:(ranges[1]-2),1])^2
 ## STANDARDIZATION ##
 #####################
 ##### Standarized original covs
-sds_main <- apply(X[, 1:3, drop = FALSE], 2, sd)
-X[, 1:3] <- sweep(X[, 1:3, drop = FALSE], 2, sds_main, FUN = "/")
+main_scaled <- standardize_matrix_cols(X[, 1:3, drop = FALSE])
+X[, 1:3] <- main_scaled$values
+sds_main <- main_scaled$sds
 sd_ppt <- sds_main[1]
 sd_soil <- sds_main[2]
 sd_pca <- sds_main[3]

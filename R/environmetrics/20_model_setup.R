@@ -223,6 +223,10 @@ if (any(idx_gamma)) {
 ########### For every j
 gam0 = gam.init 
 sig0 = sig.init 
+A0 <- A_fn(p0, gam0)
+B0 <- B_fn(p0, gam0)
+C0 <- C_fn(p0, gam0)
+abs_gam0 <- abs(gam0)
 
 fill_with_value <- function(matrix_list, value) {
   for (i in seq_along(matrix_list)) {
@@ -254,13 +258,13 @@ new.gamsig.out = list(E.gam = gam0,
                       E.sigma = sig0, 
                       V.sig = E2,
                       E.inv.sigma = 1/sig0, 
-                      E.c2.invb.absgam2.sigma = sig0 * (C_fn(p0, gam0)^2) * (abs(gam0)^2)/B_fn(p0, gam0), 
-                      E.c.invb.absgam = C_fn(p0, gam0) * abs(gam0)/B_fn(p0, gam0),  
-                      E.c.a.invb.absgam = C_fn(p0, gam0) * A_fn(p0, gam0) * abs(gam0)/B_fn(p0, gam0), 
-                      E.a2.invb.inv.sigma = (A_fn(p0,gam0)^2)/(B_fn(p0, gam0) * sig0), 
-                      E.invb.inv.sigma = 1/(sig0 * B_fn(p0, gam0)), 
-                      E.a.invb.inv.sigma = A_fn(p0, gam0)/(B_fn(p0, gam0) * sig0),
-                      E.log.sig.b = log( sig0*B_fn(p0, gam0) ),
+                      E.c2.invb.absgam2.sigma = sig0 * (C0^2) * (abs_gam0^2) / B0, 
+                      E.c.invb.absgam = C0 * abs_gam0 / B0,  
+                      E.c.a.invb.absgam = C0 * A0 * abs_gam0 / B0, 
+                      E.a2.invb.inv.sigma = (A0^2) / (B0 * sig0), 
+                      E.invb.inv.sigma = 1 / (sig0 * B0), 
+                      E.a.invb.inv.sigma = A0 / (B0 * sig0),
+                      E.log.sig.b = log(sig0 * B0),
                       E.log.sig = log(sig0),
                       E.prior.sig.gam = array(0, c(J+1,1)),
                       entrop = array(0, c(J+1,1))  )
