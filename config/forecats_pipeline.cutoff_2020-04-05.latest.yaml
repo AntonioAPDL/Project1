@@ -1,0 +1,66 @@
+# Example cutoff run (paper defaults + "latest" forecasts; no weighting).
+#
+# Notes:
+# - Uses retros_2023-06-01.csv for retrospective series (covers all example dates).
+# - Requires GloFAS GRIBs present under: data/glofas_operational_medium_range/grib/issue_date=2020-04-05/
+#
+# Run:
+#   Rscript scripts/forecats_pipeline.R --config config/forecats_pipeline.cutoff_2020-04-05.latest.yaml
+
+run:
+  run_id: ""
+  out_root: "data/forecats_inputs"
+  overwrite: false
+
+site:
+  usgs_site: "11160500"
+  lat: 37.0443931
+  lon: -122.072464
+  usgs:
+    parameterCd: "00060"
+    statCd: "00003"
+    start_date: "1979-01-01"
+
+dates:
+  cutoff_date: "2020-04-05"
+  plot_start: "2020-03-18"
+  plot_end: "2020-05-03"
+
+transforms:
+  plot_scale: "log_log1p_cms"
+
+inputs:
+  retros:
+    source: "csv"
+    path: "retros_2023-06-01.csv"
+    scale: "log1p_cms"
+
+  glofas:
+    source: "grib"
+    grib:
+      grib_root: "data/glofas_operational_medium_range/grib"
+      var: "dis24"
+      data_types:
+        control: "cf"
+        perturbed: "pf"
+      nearest_valid_cell: true
+    weighting:
+      scheme: "latest"
+      shift_days: 1
+
+  nws:
+    source: "pickle"
+    pickle:
+      path: "results.pkl"
+      parse_issue_hour: false
+      issue_lookback_days: 40
+    weighting:
+      scheme: "latest"
+
+plot:
+  title: "Observed and Retrospective River Flow\nwith GloFAS and NWS Forecast Ensembles"
+  markers:
+    - date: "2020-04-05"
+      label: "Cutoff"
+      color: "gray40"
+

@@ -1,0 +1,12 @@
+# Project path configuration
+# repo_root is resolved relative to this file.
+repo_root: ".."
+# data_root is resolved relative to repo_root.
+# Use "." for data stored at the repo root.
+data_root: "."
+# output_root is resolved relative to repo_root.
+output_root: "outputs"
+# logs_root is resolved relative to repo_root.
+logs_root: "logs"
+# Optional additional roots to scan for inventory.
+extra_data_roots: []

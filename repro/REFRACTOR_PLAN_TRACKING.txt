@@ -1,0 +1,122 @@
+Refactor Plan Tracker (living doc)
+Project: /data/muscat_data/jaguir26/project1_ucsc_phd
+Last updated: 2026-01-30
+
+Purpose
+- Maintain a single source of truth for the refactor roadmap.
+- Proceed phase-by-phase; update this file after each phase is implemented.
+- Preserve behavior/output fidelity throughout.
+
+Global invariants (do not violate)
+- No algorithmic changes until structure is stable and verified.
+- Univariate block always runs.
+- Canonical notebook remains: repro/recovery/Environmetrics_Figures__OLDEST.ipynb
+- Runner remains: scripts/run_environmetrics_figures.R
+- Outputs go only to Environmetrics_reproduce_script_runs/<RUN_ID>/
+
+Current modular structure (baseline)
+- R/environmetrics/00_setup.R
+- R/environmetrics/01_config.R
+- R/environmetrics/02_helpers_core.R
+- R/environmetrics/10_data_inputs.R
+- R/environmetrics/20_model_setup.R
+- R/environmetrics/30_univariate_and_misc.R
+- R/environmetrics/40_figures.R
+
+Phase 1 — Readability + structure cleanup (no logic changes)
+Goals:
+- Improve readability and consistency without altering behavior.
+Tasks:
+1) Consolidate package loading to a single location (00_setup.R only).
+2) Add consistent section headers in each module.
+3) Normalize naming style (choose snake_case or lowerCamelCase; apply consistently).
+4) Remove redundant comments or dead commented blocks only if clearly unused and safe.
+Deliverables:
+- Cleaned modules with consistent formatting and headers.
+Validation:
+- Run the modular script and confirm outputs still look correct.
+Status:
+- Completed (2026-01-30)
+Completed in Phase 1:
+  - Consolidated package loading into 00_setup.R
+  - Removed library() calls from other modules
+  - Added section headers to all modules
+Notes:
+- Keep all object names identical to avoid downstream breakage.
+
+Phase 2 — Centralize configuration + paths
+Goals:
+- Make paths and constants editable in one place.
+Tasks:
+1) Add R/environmetrics/00_paths.R with PROJECT_ROOT + input/output paths.
+2) Add R/environmetrics/00_constants.R with p0, deltas, harmonics, n.samp, lam1/lam2, etc.
+3) Replace hard-coded paths in modules with file.path(PROJECT_ROOT, ...).
+Deliverables:
+- New path/constants modules, updated references across modules.
+Validation:
+- Run modular script; outputs in timestamped run folder.
+Status:
+- Completed (2026-01-30)
+Completed in Phase 2:
+  - Added R/environmetrics/00_paths.R (centralized paths)
+  - Added R/environmetrics/00_constants.R (centralized constants)
+  - Updated data inputs + univariate file paths to use centralized paths
+Notes:
+- Do not change any filenames or output naming patterns.
+
+Phase 3 — Extract repeated helpers (safe refactor)
+Goals:
+- Reduce duplication and make logic easier to read.
+Tasks:
+1) Create R/environmetrics/utils_plot.R with save helpers (no behavioral change).
+2) Create R/environmetrics/utils_data.R with standardization helpers.
+3) Replace repeated blocks with helper calls.
+Deliverables:
+- New helper modules, updated call sites.
+Validation:
+- Run modular script; outputs unchanged.
+Status:
+- Completed (2026-01-30)
+Completed in Phase 3:
+  - Added R/environmetrics/utils_data.R and used standardize_with_sd in 10_data_inputs.R
+  - Added R/environmetrics/utils_plot.R (helper available for future use)
+Notes:
+- Ensure helper functions are pure and do not alter global state.
+
+Phase 4 — Formalize execution + input checks
+Goals:
+- Make execution robust and easier to validate.
+Tasks:
+1) Add scripts/check_inputs.R to verify required files exist (no downloads).
+2) Update runner to call check_inputs before run (optional).
+Deliverables:
+- scripts/check_inputs.R + runner update (optional).
+Validation:
+- check_inputs reports missing inputs clearly.
+Status:
+- Completed (2026-01-30)
+Completed in Phase 4:
+  - Added scripts/check_inputs.R (fast existence checks)
+  - Runner now calls check_inputs before execution
+Notes:
+- Keep checks fast; do not parse large RData/RDS.
+
+Phase 5 — Documentation + style polish
+Goals:
+- Make the pipeline auditable by collaborators.
+Tasks:
+1) Add doc headers in each module (Inputs / Outputs / Dependencies).
+2) Update SCRIPT_RUNNER_STATUS.md with module descriptions.
+3) Add a quick “How to run” section in README.md.
+Deliverables:
+- Updated docs.
+Validation:
+- Documentation consistency only.
+Status:
+ - Completed (2026-01-30)
+
+Progress log (append updates here)
+- 2026-01-30: Phase 1 started. Consolidated library loading into 00_setup.R, removed library() in other modules, and added headers to all modules.
+- 2026-01-30: Phase 2 completed (paths/constants centralized). Phase 3 completed (utils_data/plot added; standardization uses helper). Phase 4 completed (check_inputs added and runner updated).
+- 2026-01-30: Phase 5 completed (module doc headers, SCRIPT_RUNNER_STATUS.md and README.md updated).
+- 2026-01-30: Phase 1 naming normalization + comment cleanup: standardized helper function names (log_g/L_fn/U_fn/p_fn/A_fn/B_fn/C_fn/check_loss_fn), updated local helper blocks in 40_figures.R, removed redundant commented test block, and normalized temp_p naming.

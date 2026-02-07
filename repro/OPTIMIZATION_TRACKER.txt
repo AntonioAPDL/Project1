@@ -1,0 +1,408 @@
+# Optimization Tracker (Living Doc)
+
+Project: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
+Owner: Antonio (jaguir26)  
+Last updated: 2026-02-05  
+Status: In progress (profiling instrumentation expanded; next: optimize measured hotspots)
+
+## 0. Objective
+
+Optimize the modularized Environmetrics figure-generation pipeline **module-by-module** to improve runtime and maintainability **without changing behavior or outputs**.
+
+**Canonical behavior** = current reference notebook/script outputs (as defined in repo docs).  
+All optimizations must preserve:
+- identical output files (same filenames and content as currently accepted),
+- identical numeric results (bitwise where feasible; otherwise within strict tolerance only if explicitly approved).
+
+## 1. Scope
+
+**Target code**
+- `R/environmetrics/` modules
+- runner scripts (e.g. `scripts/run_environmetrics_figures.R`)
+
+**Out of scope (for now)**
+- algorithmic changes, new models, alternative statistical procedures
+- “faster but different” approximations
+- re-tuning seeds or randomness
+- reformat-only commits (unless required for correctness)
+
+## 2. Global Rules (Non-negotiable)
+
+1) **No semantic changes.** Output set and behavior must remain identical.  
+2) **One optimization chunk per commit.** No bundling unrelated changes.  
+3) **No algorithmic logic changes** unless explicitly approved *and documented in this file*.  
+4) **RNG invariants:** seed set in exactly one place; do not introduce additional RNG calls.  
+5) **Floating point stability:** avoid reordering ops that change accumulation unless proven identical.  
+6) **No new dependencies** unless justified (and documented) and the benefits outweigh cost/risk.  
+7) **No “cleanup” disguised as optimization.** Every diff must be tied to a measured hotspot or clear overhead.  
+8) **Instrumentation is allowed** if it does not change results and is behind a flag.
+9) **Univariate section always runs.** No skip flag for optimization work.
+
+## 3. Baseline & Validation Protocol
+
+### 3.1 Baseline artifacts (must exist and be treated as read-only)
+- Reference notebook: `repro/recovery/Environmetrics_Figures__OLDEST.ipynb`
+- Canonical output folder: `Environmetrics_reproduce/`
+- Runner + scripts produce outputs in isolated run folders (never overwrite canonical).
+
+### 3.2 Validation gate (per commit)
+After each optimization commit:
+
+**A. Run once**
+- Run the pipeline on the standard configuration (univariate included).
+- Outputs must go to a new run directory (timestamped).
+
+**B. Compare**
+- Compare the produced outputs vs canonical output set.
+- Comparison method (choose one, document):
+  - byte-level hashes, OR
+  - pixel-level equality for images + strict equality for serialized numeric artifacts
+- If anything differs: triage before proceeding.
+  - If the diff affects any paper figure or numeric summary: revert/adjust before continuing.
+  - If the diff appears limited to rendering/device differences but is visually identical: record it explicitly (file list + nature of diff) and continue only if approved by owner.
+
+**C. Record**
+Update the Progress Log with:
+- commit hash
+- files changed
+- what was optimized
+- benchmark timing summary (if measured)
+- validation result (PASS/FAIL)
+
+### 3.3 Instrumentation standard (recommended)
+- Add per-section timers behind `PROFILE=TRUE`.
+- Timers must not change results and must be off by default.
+
+## 4. Optimization Workflow (How we will work)
+
+### 4.1 Identify hotspots first
+Before optimizing a module:
+1) Run with `PROFILE=TRUE` (or `Rprof` / `profvis` if available).
+2) Identify top time consumers with file+line references.
+3) Only then implement changes targeted to those hotspots.
+
+### 4.2 Allowed optimization types (low risk first)
+Priority order:
+1) eliminate repeated I/O
+2) cache repeated pure computations
+3) pre-allocate / avoid growth in loops
+4) replace slow base ops with equivalent fast primitives (`crossprod`, `tcrossprod`)
+5) vectorize (only when provably identical)
+6) parallelism (only if deterministic, off by default, later)
+7) Rcpp (only for proven bottlenecks; must keep R fallback)
+
+## 5. Module Plan (Actionable)
+
+For each module: **Role → likely hotspots → safe optimization steps → validation notes.**
+
+---
+
+### Module: `scripts/run_environmetrics_figures.R`
+**Role:** orchestration, config, output paths  
+**Likely hotspots:** none (orchestration only)
+
+**Planned steps**
+- Add optional timing hooks:
+  - `PROFILE=TRUE` prints start/end timestamps per major section
+  - write timings to `repro/logs/profile/<RUN_ID>/timings.csv`
+- Add optional I/O timing (also under `PROFILE=TRUE`) to quantify device/ggsave overhead:
+  - `repro/logs/profile/<RUN_ID>/io_timings.csv`
+- Add optional detailed sampling profiler (off by default):
+  - `PROFILE_DETAIL=TRUE` enables `Rprof()` for selected heavy sections via `profile_detail_section()`
+  - Outputs: `repro/logs/profile/<RUN_ID>/rprof_<SECTION>.out` and `rprof_<SECTION>_summary.txt`
+- Ensure runner never overwrites canonical outputs.
+
+**Validation notes**
+- Timers must not affect RNG or execution order.
+
+**Status:** Implemented (timings + I/O timings)
+
+---
+
+### Module: `R/environmetrics/10_data_inputs.R`
+**Role:** read inputs, preprocess and standardize  
+**Likely hotspots**
+- repeated `read.csv/readRDS/readr::read_*`
+- repeated transforms inside loops (standardization, factor conversion)
+
+**Planned steps**
+- Introduce a local cache list/environment inside the run:
+  - `cache$get("key")` / `cache$set("key", value)`
+- Ensure each dataset read once per run.
+- Precompute standardized series once; reuse downstream.
+- Avoid repeated `as.factor`/`factor` inside loops.
+
+**Validation notes**
+- caching must not change types/attributes used downstream.
+
+**Status:** Planned
+
+---
+
+### Module: `R/environmetrics/20_model_setup.R`
+**Role:** setup priors, transforms, parameter helper calls  
+**Likely hotspots**
+- repeated calls to core helper functions: `A_fn/B_fn/C_fn/p_fn/log_g`
+- repeated linear algebra allocations and inversions
+
+**Planned steps**
+- Memoize pure helper results for repeated `(p, gam, ...)` tuples.
+- Replace `t(X) %*% X` with `crossprod(X)` where identical.
+- Reuse preallocated matrices/vectors in tight loops when possible.
+
+**Validation notes**
+- memoization must respect numeric equality; include key rounding strategy only if safe.
+
+**Status:** Planned
+
+---
+
+### Module: `R/environmetrics/30_univariate_and_misc.R`
+**Role:** univariate logic, summaries  
+**Likely hotspots**
+- nested loops over time × samples for post-processing
+- loading large `.RData` artifacts (can dominate wall time)
+
+**Planned steps**
+- Identify the exact slow loops via profiling first.
+- Replace inner loops with vectorized equivalents only if:
+  - identical results and
+  - no reordering changes floating-point accumulation.
+- Precompute repeated index sets / masks.
+- Instrument and harden I/O:
+  - wrap large `load()` calls in a retry helper (no behavior change when files are healthy)
+  - time each load under `PROFILE=TRUE`
+
+**Validation notes**
+- be conservative: prefer caching + preallocation over aggressive vectorization.
+
+**Status:** Instrumented (load() timing + retry; synthesis timers); next: optimize after profiling
+
+---
+
+### Module: `R/environmetrics/40_figures.R`
+**Role:** figure generation + heavy post-processing  
+**Likely hotspots**
+- posterior simulation loops
+- repeated quantile computations over large matrices
+- repeated ggplot construction overhead
+
+**Planned steps (prioritized)**
+
+Stage 0 — Measure internal hotspots (no behavior changes)
+- Add lightweight section timers inside `40_figures.R` (behind `PROFILE=TRUE`) so we can rank hotspots *within* this module:
+  - quantile extraction blocks
+  - posterior sampling blocks
+  - long-format construction blocks (current `pivot_longer`)
+  - each major figure block
+
+Stage 1 — Quantiles first (primary priority; high impact, low risk)
+- Replace slow patterns like:
+  - `apply(mat, 1, function(x) quantile(x, probs = ...))`
+  - `apply(mat, 2, quantile, probs = ...)`
+  - `apply(aperm(v, ...), 2:3, function(x) quantile(x, ...))`
+  with fast deterministic equivalents.
+- Preferred implementation:
+  - Use `matrixStats::rowQuantiles` / `matrixStats::colQuantiles` via `matrixStats::...` (no need to attach package).
+  - Force `type = 7` and `na.rm = FALSE` to match base `quantile()` defaults.
+- Implement helpers in `R/environmetrics/utils_data.R` and call them from `40_figures.R`:
+  - `fast_row_quantiles_t(mat, probs)` -> returns `nprobs x nrow(mat)` (matches existing plotting expectations).
+  - `fast_col_quantiles(mat, probs)` -> returns `nprobs x ncol(mat)` (or a clearly documented shape).
+  - `fast_prepare_quantile_data(v_d, probs)` -> drop-in replacement for `prepare_quantile_data()`:
+    - reshape 3D arrays once and compute quantiles in one call (avoid nested apply).
+
+Stage 2 — Fix `pivot_longer()` from the root (secondary priority; high impact)
+- Replace `pivot_longer()` on very large posterior matrices with a deterministic, base-R long-table builder.
+- Goal: preserve the same row ordering that `pivot_longer()` produces (sample-major), so plotting order is unchanged.
+- Implement helpers in `R/environmetrics/utils_data.R`:
+  - `long_samples_from_matrix(mat, dates, type_label)`:
+    - `sample = rep(1:nrow(mat), each = ncol(mat))`
+    - `Date = rep(dates, times = nrow(mat))`
+    - `Value = as.vector(t(mat))`
+  - `long_quantiles_from_matrix(mat, dates, type_label, id_name = "quantile")`:
+    - same deterministic ordering for quantile curves
+- Keep `pivot_longer()` only where data is small enough that runtime is negligible.
+
+Stage 3 — Cache repeated derived objects (medium impact, low risk)
+- Introduce a private cache environment inside `40_figures.R` (or a small cache helper) to avoid recomputation:
+  - quantile bands for `xbs` / `xbs_retro` for common probs
+  - long data frames used by multiple plots
+  - derived arrays reused across multiple figures
+
+Stage 4 — Only if still needed: optional parallelism or Rcpp (last resort)
+- Parallelism: only for *independent* blocks after all heavy deterministic precomputation is complete; must be off by default.
+- Rcpp: only for proven tight numeric loops that remain after Stage 1–3.
+  - Must keep R fallback and deterministic validation versus R implementation.
+
+**Validation notes**
+- plot rendering can be sensitive (fonts/devices); do not change device defaults unless required.
+- Quantiles: validate equivalence by spot-checking a small subset against `quantile(type = 7)` before committing.
+- Long tables: validate row ordering and types (Date/sample) to ensure identical ggplot layering.
+
+**Status:** Implemented (pending validation)
+
+---
+
+### Module: `R/environmetrics/02_helpers_core.R`
+**Role:** core numerical helpers (`log_g`, `A_fn`, etc.)  
+**Likely hotspots**
+- frequent scalar calls from loops
+
+**Planned steps**
+- Ensure helpers are vectorized where they already behave vectorized.
+- Avoid repeated argument checks inside tight loops (move checks outside).
+- Ensure consistent numeric types and avoid implicit coercions.
+
+**Validation notes**
+- core helpers are high-risk; only change with profiling proof.
+
+**Status:** Planned
+
+---
+
+### Module: `R/environmetrics/utils_data.R`
+**Role:** shared data utilities  
+**Planned steps**
+- ensure functions are pure, vectorized, and avoid copying large objects.
+- document input/output shapes to reduce downstream conversions.
+
+**Status:** Planned
+
+---
+
+### Module: `R/environmetrics/utils_plot.R`
+**Role:** shared plot utilities  
+**Planned steps**
+- standardize device args and plot sizes in one place.
+- reduce repeated theme construction.
+
+**Status:** Planned
+
+---
+
+## 6. Rcpp Guidelines (Only if necessary)
+
+Rcpp allowed only if:
+- profiling confirms a true CPU hotspot that dominates runtime,
+- the R equivalent remains as a fallback path,
+- outputs match identically (or approved tolerance) with a deterministic test.
+
+If Rcpp is introduced:
+- keep interfaces minimal (`NumericVector`, `NumericMatrix`)
+- avoid parallelism unless deterministic and reproducible
+- add a validation script comparing R vs Rcpp outputs on a fixed input
+
+## 7. Progress Log
+
+- 2026-01-30: Modularized pipeline completed (see `repro/REFRACTOR_PLAN_TRACKING.txt`).
+- 2026-01-30: Helper naming normalization + comment cleanup committed (helpers + figures).
+- 2026-02-02: Optimization tracker created and committed.
+- 2026-02-02: Added optional profiling timings to runner (PROFILE flag, timings.csv output).
+- 2026-02-02: Optimized standardization in 10_data_inputs.R (vectorized scaling, cached sds).
+- 2026-02-02: Vectorized prior default checks in 20_model_setup.R.
+- 2026-02-03: Implemented Stage 1 quantile helpers + Stage 2 `pivot_longer()` replacements in `R/environmetrics/40_figures.R` using helpers in `R/environmetrics/utils_data.R`.
+  - Commit: `9910e40` (branch: `fix/notebooks-forecast-inventory`)
+  - Files: `R/environmetrics/utils_data.R`, `R/environmetrics/40_figures.R`
+  - Run validation:
+    - RUN_ID: `20260203_121109` (PROFILE=TRUE)
+    - Total runtime: 1:45:56 (30_univariate: ~41m55s; 40_figures: ~63m38s)
+    - Output inventory:
+      - Canonical PNG count: 147 (under `Environmetrics_reproduce/`)
+      - Script-run PNG count: 152 (under `Environmetrics_reproduce_script_runs/20260203_121109/`)
+      - Missing canonical: 0
+      - Extra (5): `Environmetrics_reproduceplot_50th_quantile_DISC.png`, `Environmetrics_reproduceplot_5th_quantile_DISC.png`, `Environmetrics_reproduceplot_95th_quantile_DISC.png`, `tef_20_plot_DISC.png`, `tef_5_50_95_plot_DISC.png`
+  - Known non-bitwise differences (figures still visually validated by owner):
+    - Some PNGs differ by color mode and/or dimensions (e.g., RGB vs RGBA; 6000x4000 vs 10800x5400).
+    - A small subset of figures show pixel-level differences despite same dimensions; root cause likely plotting-device/font/anti-aliasing or data ordering differences.
+    - Policy (current): proceed with optimizations, but keep recording diffs; re-tighten determinism later if strict pixel identity becomes required.
+
+- 2026-02-04: Univariate deterministic speedups + profiling hooks (pending full-run validation).
+  - Files: `R/environmetrics/00_setup.R`, `R/environmetrics/30_univariate_and_misc.R`
+  - `R/environmetrics/00_setup.R`:
+    - Added `profile_section()` helper (controlled by `PROFILE=TRUE`) so modules can self-time internal hotspots via the runner’s `log_timing()`.
+  - `R/environmetrics/30_univariate_and_misc.R`:
+    - Cached forecast-step state covariance projections (`W_list_*`) to avoid repeated `Gx %*% sC %*% t(Gx)` inside tight loops.
+    - Cached per-sample `gamma_*`/`sigma_*` once per outer-sample loop; reuse across all forecast horizons.
+    - Removed redundant `readRDS()` immediately after `saveRDS()` (still writes the file, but reuses in-memory objects).
+    - Replaced `apply(..., function(x) quantile(...))` with `fast_col_quantiles_t(...)` for the same probs (reduces R-level function-call overhead).
+    - Added profiling markers around synthesis calls.
+  - Validation: full pipeline re-run still required after this change set (owner run + output inspection).
+
+- 2026-02-04: Figures deterministic speedups (pending full-run validation).
+  - Files: `R/environmetrics/40_figures.R`
+  - `R/environmetrics/40_figures.R`:
+    - Vectorized the deterministic synth-weights block (`synth_q_f`) to eliminate a nested `for(t) for(s)` loop while preserving the same math.
+    - Optimized `compute_jsd()` grid construction by replacing `expand.grid()` with an equivalent numeric `cbind(rep(...))` matrix (keeps `dmvnorm()` for identical density values).
+    - Vectorized the `synthesize_quantiles()` inner dense-grid loop (removes `for(m in 1:M)` with 10,000 scalar `approx()` calls; replaces with 1 `approx()` call per quantile row and exact indexing/blending). Verified `identical()` on a synthetic test harness.
+    - Added profiling markers around the synth-weights and JSD blocks.
+  - Validation: full pipeline re-run still required after this change set (owner run + output inspection).
+
+- 2026-02-05: STEP 2/3 profiling instrumentation expanded (profiling-only; no algorithm changes).
+  - Files: `scripts/run_environmetrics_figures.R`, `R/environmetrics/30_univariate_and_misc.R`, `R/environmetrics/40_figures.R`
+  - Runner (`scripts/run_environmetrics_figures.R`):
+    - Added optional I/O timing under `PROFILE=TRUE`:
+      - `repro/logs/profile/<RUN_ID>/io_timings.csv`
+      - Measures `ggsave()` wall time and device flush time via `dev.off()` wrappers (calls originals exactly once).
+    - Added optional detailed profiling under `PROFILE_DETAIL=TRUE` (sampling profiler via `Rprof()`):
+      - Used by `profile_detail_section()` in `R/environmetrics/00_setup.R`.
+      - Optional filter: set `PROFILE_DETAIL_SECTION` (comma-separated) to restrict Rprof to specific wrapped sections.
+  - Univariate (`R/environmetrics/30_univariate_and_misc.R`):
+    - Added `load_rdata_with_retry()` and timed each `.RData` load via `profile_section(...)`.
+    - This provides visibility into load bottlenecks and reduces flakiness due to transient filesystem hiccups.
+    - Correctness fix: `load()` now uses `envir = parent.frame()` so loaded objects persist in the module run env.
+  - Figures (`R/environmetrics/40_figures.R`):
+    - Added internal `profile_section(...)` timers around major heavy blocks:
+      - `figures.elbo_traces`
+      - `figures.build_xbs_discrep` (also wrapped in `profile_detail_section()` when `PROFILE_DETAIL=TRUE`)
+      - `figures.discrep1_quantiles`, `figures.discrep2_quantiles`
+      - `figures.sample_xbs_sm_ens`
+      - `figures.sort_xbs_forecast`
+      - `figures.components_1991_2022`, `figures.agg_disc_1991_2022`
+      - `figures.components_2012_2016`, `figures.agg_disc_2012_2016`
+      - `figures.components_2018_2020`, `figures.agg_disc_2018_2020`
+      - `figures.sample_xbs_retro`, `figures.sort_xbs_retro`
+      - `figures.build_y_post_forecast`
+      - `figures.sort_y_reps_f`, `figures.save_y_reps_f_rds`
+      - `figures.read_y_reps_f_rds`, `figures.synthesize_samples_y_reps_f`, `figures.sort_synth_f`
+      - `figures.save_y_reps_f_new_rds`, `figures.read_y_reps_f_new_rds`, `figures.synthesize_samples_y_reps_f_exp`, `figures.sort_synth_f_exp`
+      - `figures.sort_y_reps_hist`, `figures.save_y_reps_hist_rds`
+      - `figures.save_y_reps_new_rds`, `figures.read_y_reps_new_rds`, `figures.synthesize_samples_y_reps_hist`, `figures.sort_synth_hist`
+  - Next profiling run (after this instrumentation update):
+    - Run with `PROFILE=TRUE` to collect `timings.csv` + `io_timings.csv`.
+    - Optional: `PROFILE_DETAIL=TRUE PROFILE_DETAIL_SECTION=figures.build_xbs_discrep` to get an `Rprof` sample profile for that block only.
+
+- 2026-02-05: STEP 3 profiling run completed (timers + I/O timings; no optimizations).
+  - Commit: `dff1460` (branch: `fix/notebooks-forecast-inventory`)
+  - RUN_ID: `20260205_160747_step3_profile` (PROFILE=TRUE, PROFILE_DETAIL=FALSE, single-threaded env vars)
+  - Summary: `repro/logs/profile/20260205_160747_step3_profile/profile_summary.md` (generated via `python3 scripts/summarize_profile_run.py --run-id <RUN_ID>`)
+  - Wall time: ~1.20h (from `run_log.txt`)
+  - Top modules:
+    - `40_figures.R`: ~48.27m
+    - `30_univariate_and_misc.R`: ~23.46m
+  - Top internal hotspots (inclusive timers; ranking signal):
+    - `figures.build_xbs_discrep`: ~2.25m
+    - `figures.save_y_reps_hist_rds`: ~1.92m
+    - `figures.sample_xbs_retro`: ~1.45m
+    - `univariate.load_disc_vars_exal_*`: ~1.3–1.5m each
+  - I/O diagnostics (overlapping):
+    - `png.dev.off`: ~3.48m total (n=126; max ~4.74s)
+    - `ggsave`: ~2.92m total (n=31; max ~18.75s)
+
+- 2026-02-06: STEP 4 targeted hotspot optimizations (post-processing; measured hotspots only).
+  - Files: `R/environmetrics/40_figures.R`, `scripts/dev/test_build_xbs_discrep_equivalence.R`, `scripts/dev/test_sample_xbs_retro_rng_stability.R`
+  - `R/environmetrics/40_figures.R`:
+    - Optimized `figures.build_xbs_discrep` (measured hotspot):
+      - Removed the inner `for (s in 1:n.samp)` loop.
+      - Rewrote the `F' * theta` multiplications using a single `crossprod()` per segment/quantile by flattening `theta` to a matrix and reshaping back to `(segment_len x n.samp)`.
+      - Same approach for discrepancy blocks (`rows 8:14` and `15:21`) under `j == 1`.
+      - Validation: unit-style equivalence test asserts max abs diff <= `1e-12` vs the loop implementation on synthetic arrays (differences are at floating-point epsilon scale).
+    - Optimized `figures.sample_xbs_retro` (measured hotspot) while preserving RNG:
+      - Kept the outer `for (j in 1:J)` loop intact (do NOT remove; it changes RNG stream).
+      - Within each `(j, t)` iteration: compute means/sds once, then generate the 8 blocks of `rnorm(n.samp, ...)` draws via a single `rnorm(8*n.samp, mean=..., sd=...)` call.
+      - Validation: RNG stability test asserts **identical** draws vs sequential `rnorm()` calls under the same seed/RNGkind.
+    - Plot rendering micro-optimizations:
+      - Replaced per-sample base `lines()` loops with `matlines()` for large sample bundles (`synth_f` / `synth`).
+      - Expected to be output-identical (same input data, same aesthetics); owner performs the final visual check as the gate.
+  - New dev checks (fast; no heavy data required):
+    - `Rscript scripts/dev/test_build_xbs_discrep_equivalence.R`
+    - `Rscript scripts/dev/test_sample_xbs_retro_rng_stability.R`

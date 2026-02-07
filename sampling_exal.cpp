@@ -7,6 +7,7 @@
 #include <omp.h>
 #include <cmath>
 #include <chrono>
+#include <limits>
 
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::depends(BH)]]
@@ -96,10 +97,12 @@ double sample_gig_devroye(double p, double a, double b) {
 
 // [[Rcpp::export]]
 Rcpp::NumericMatrix sample_gig_devroye_vector(int n_samples, double p, double a, Rcpp::NumericVector b_vec) {
+    // Uses R's RNG (R::runif) internally; keep this single-threaded for
+    // determinism and thread-safety.
+    Rcpp::RNGScope rng_scope;
     int TT = b_vec.size();
     Rcpp::NumericMatrix samples(n_samples, TT);
 
-    #pragma omp parallel for collapse(2)
     for (int t = 0; t < TT; ++t) {
         for (int i = 0; i < n_samples; ++i) {
             samples(i, t) = sample_gig_devroye(p, a, b_vec[t]);
@@ -122,19 +125,33 @@ double rtruncnorm(boost::random::mt19937& gen, double mean, double sd, double a,
 }
 
 // [[Rcpp::export]]
-Rcpp::NumericMatrix sample_truncnorm(int n_samp, int TT, Rcpp::NumericVector sts_mu, Rcpp::NumericVector sts_sig2) {
+Rcpp::NumericMatrix sample_truncnorm_reject(int n_samp, int TT, Rcpp::NumericVector sts_mu, Rcpp::NumericVector sts_sig2) {
     if (sts_mu.size() != TT || sts_sig2.size() != TT) {
         Rcpp::stop("Length of sts_mu and sts_sig2 must be equal to TT");
     }
     Rcpp::NumericMatrix samples(n_samp, TT);
 
-    #pragma omp parallel for collapse(2)
-    for (int t = 0; t < TT; ++t) {
-        for (int i = 0; i < n_samp; ++i) {
-            boost::random::mt19937 gen(omp_get_thread_num());
-            double mean = sts_mu[t];
-            double sd = std::sqrt(sts_sig2[t]);
-            samples(i, t) = rtruncnorm(gen, mean, sd, 0.0, R_PosInf);
+    // Reproducible (w.r.t. R's set.seed) thread-local RNG seeding.
+    // Note: reproducibility also depends on a fixed OpenMP thread count/scheduling.
+    Rcpp::RNGScope rng_scope;
+    int n_threads = omp_get_max_threads();
+    std::vector<unsigned int> seeds(n_threads);
+    for (int thread = 0; thread < n_threads; ++thread) {
+        seeds[thread] = static_cast<unsigned int>(R::runif(0.0, 1.0) * std::numeric_limits<unsigned int>::max());
+    }
+
+    #pragma omp parallel
+    {
+        int thread = omp_get_thread_num();
+        boost::random::mt19937 gen(seeds[thread]);
+
+        #pragma omp for collapse(2) schedule(static)
+        for (int t = 0; t < TT; ++t) {
+            for (int i = 0; i < n_samp; ++i) {
+                double mean = sts_mu[t];
+                double sd = std::sqrt(sts_sig2[t]);
+                samples(i, t) = rtruncnorm(gen, mean, sd, 0.0, R_PosInf);
+            }
         }
     }
 

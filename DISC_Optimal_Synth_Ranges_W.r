@@ -33,6 +33,9 @@ library(ks)
 library(MASS)
 library(FNN)
 
+DISC_DEBUG <- FALSE
+source("R/disc_w/_init.R")
+
 n.samp <- 2000
 print(c(n.samp))
 flush.console()
@@ -332,31 +335,10 @@ check_ts = function(dat){
 #
 is.exdqlm = function(m){ return(inherits(m,"exdqlm")) }
 
-parameters_path <- "/data/muscat_data/jaguir26/projects/Project/Input/exAL/parameters/parameters.txt"
+disc_w_paths <- disc_w_resolve_paths()
+parameters_path <- disc_w_paths$parameters_path
 
-# Check if the file exists
-if (!file.exists(parameters_path)) {
-  stop("The parameters file does not exist at the specified path: ", parameters_path)
-}
-
-lines <- readLines(parameters_path)
-
-# Check if the lines variable is empty or not as expected
-if (length(lines) == 0) {
-  stop("No content found in the parameters file: ", parameters_path)
-}
-
-# Process each line and assign variables
-for (line in lines) {
-  # Remove leading and trailing whitespaces
-  line <- trimws(line)
-  
-  # Skip empty lines and comments
-  if (nchar(line) == 0 || grepl("^#", line)) next
-  
-  # Evaluate and assign
-  eval(parse(text = line))
-}
+disc_w_load_parameters(parameters_path, env = environment())
 #
 dlm_df = function(y, model, df, dim.df, s.priors = list(l0=1,S0=10), just.lik=FALSE){
   ### Gets the Time Series Length / Replicate number
@@ -676,8 +658,9 @@ preallocate_matrix_list <- function(column_counts, num_rows) {
 }
 
 # Read and process ELI_lon data
-ELI_lon <- read.csv("/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_ELI.csv")
-merged_sst_data <- read.csv("/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_2_ONI.csv")
+covariates <- disc_w_read_covariates(disc_w_paths$cov_1_eli_path, disc_w_paths$cov_2_oni_path)
+ELI_lon <- covariates$ELI_lon
+merged_sst_data <- covariates$merged_sst_data
 ELI_lon$time <- as.Date(ELI_lon$time)
 adjustment_years <- 170
 ELI_lon$time <- ELI_lon$time - years(adjustment_years)
@@ -694,11 +677,12 @@ San_Lorenzo_Daily_USGS_R$time <- San_Lorenzo_Daily_USGS_R$timestamp
 ###########################################################################################
 ####################################### Forecasts ######################################### 
 ###########################################################################################
-nws_forecast <- read.csv('/data/muscat_data/jaguir26/project1_ucsc_phd/nws_forecast.csv')
+forecasts <- disc_w_read_forecasts(disc_w_paths$nws_forecast_path, disc_w_paths$glofas_forecast_path)
+nws_forecast <- forecasts$nws_forecast
 nws_forecast[,-1] <- log(nws_forecast[,-1])
 num_ens_nws <- dim(nws_forecast)[2]-1
 
-glofas_forecast <- read.csv('/data/muscat_data/jaguir26/project1_ucsc_phd/weighted_time_series.csv')
+glofas_forecast <- forecasts$glofas_forecast
 glofas_forecast$target_date <- as.Date(glofas_forecast$target_date)
 specific_date <- as.Date("2022-12-26")
 glofas_forecast <- glofas_forecast[glofas_forecast$target_date >= specific_date, ]
@@ -706,145 +690,23 @@ glofas_forecast[,-1] <- log(glofas_forecast[,-1])
 
 num_ens_glofas <- dim(glofas_forecast)[2]-1
 
-ensembles <- list(glofas_forecast[,-c(1)], nws_forecast[,-c(1)])
-J <- length(ensembles)
-num_mem <- rep(NA_real_, J)
-ranges <- rep(NA_real_, J)
-for(j in 1:J){
-  num_mem[j] <- dim(ensembles[[j]])[2]
-  ranges[j] <- dim(ensembles[[j]])[1]
-}
-
-row_means_list <- vector("list", J + 1)
-row_means_list[[1]] <- rep(NA_real_, ranges[1])
-for (j in 1:J) {
-  row_means_list[[j + 1]] <- rep(NA_real_, ranges[1])
-  row_means_list[[j + 1]][1:ranges[j]] <- rowMeans(ensembles[[j]])
-}
-mean_forecast <- do.call(rbind, row_means_list)
+ensemble_bundle <- disc_w_build_ensembles(glofas_forecast, nws_forecast)
+ensembles <- ensemble_bundle$ensembles
+J <- ensemble_bundle$J
+num_mem <- ensemble_bundle$num_mem
+ranges <- ensemble_bundle$ranges
+mean_forecast <- ensemble_bundle$mean_forecast
 
 ###########################################################################################
 ####################################### Covs, Retros, More ################################ 
 ###########################################################################################
 
-#########
-## PPT ##
-#########
-file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/prism_precipitation_santa_cruz_1987_2023.csv"
-ppt_data <- read_csv(file_path, show_col_types = FALSE)
-ppt_data$Date <- as.Date(ppt_data$Date)
-colnames(ppt_data) <- c('time','ppt')
-X_ppt <- ppt_data[ppt_data$time <= '2022-12-25',]
-
-start_date_idx <- which(ppt_data$time == '2022-12-26')
-end_date_idx <- which(ppt_data$time == '2022-12-26') + ranges[1]
-X_ppt_f <- ppt_data[start_date_idx:end_date_idx,c('ppt','time')]
-
-##########
-## SOIL ##
-##########
-csv_file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv"
-soil_moisture_data <- read.csv(csv_file_path)
-soil_moisture_data$Date <- as.Date(soil_moisture_data$Date)
-colnames(soil_moisture_data) <- c('time','soil')
-X_soil <- soil_moisture_data[soil_moisture_data$time <= '2022-12-25',]
-
-start_date_idx <- which(soil_moisture_data$time == '2022-12-26')
-end_date_idx <- which(soil_moisture_data$time == '2022-12-26') + ranges[1]
-X_soil_f <- soil_moisture_data[start_date_idx:end_date_idx,c('soil','time')]
-
-#########
-## PCA ##
-#########
-components_file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/pca.csv"
-principal_components_df <- read_csv(components_file_path, show_col_types = FALSE)
-colnames(principal_components_df) <- c('time','Static_PCA')
-X_pca <- principal_components_df[principal_components_df$time <= '2022-12-25',]
-
-start_date_idx <- which(principal_components_df$time == '2022-12-26')
-end_date_idx <- which(principal_components_df$time == '2022-12-26') + ranges[1]
-X_pca_f <- principal_components_df[start_date_idx:end_date_idx,c('Static_PCA','time')]
-
-###########
-## Merge ##
-###########
-X <- merge(X_ppt, X_soil, by = "time")
-X <- merge(X, X_pca, by = "time")
-
-X_f <- merge(X_ppt_f, X_soil_f, by = "time")
-X_f <- merge(X_f, X_pca_f, by = "time")
-
-#############
-## Retrosp ##
-#############
-data_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/retros_2022-12-25.csv"
-streamflow_data <- read_csv(data_path, show_col_types = FALSE)
-time_series_matrix <- as.matrix(streamflow_data[, c('USGS', 'GloFAS', 'NWS3.0')])
-timestamps <- as.Date(streamflow_data$Date)
-Y_usgs <- data.frame(time = timestamps, time_series_matrix)
-all_data <- merge(X, Y_usgs, by = "time")
-Y <- t(as.matrix(all_data[, c('USGS', 'GloFAS', 'NWS3.0')]))
-Y <- log(Y) #log-log, since already logged
-TT <- dim(Y)[2]
-J <- dim(Y)[1] - 1
-timestamps <- all_data[, 'time']
-
-
-# Remove constant?
-#############################
-## Add Constant at the end ##
-#############################
-X <- cbind(all_data[,c('ppt','soil','Static_PCA')], rep(1, TT))
-X_f <- cbind(X_f[,-1], rep(1, ranges[1]))
-########### Adding covariates
-X_ext <- matrix(NA_real_, ncol = 5, nrow = TT)
-X_ext[,1] <- c(0,X[1:(TT-1),1])
-X_ext[,2] <- c(0,0,X[1:(TT-2),1])
-X_ext[,3] <- X[1:(TT),1]^2
-X_ext[,4] <- c(0,X[1:(TT-1),1])^2
-X_ext[,5] <- c(0,0,X[1:(TT-2),1])^2
-########### Standarized added covariates
-sd1  <- sd(X_ext[,1]) 
-sd2  <- sd(X_ext[,2]) 
-sd3  <- sd(X_ext[,3]) 
-sd4  <- sd(X_ext[,4]) 
-sd5  <- sd(X_ext[,5]) 
-X_ext[,1] <- X_ext[,1]/sd1
-X_ext[,2] <- X_ext[,2]/sd2
-X_ext[,3] <- X_ext[,3]/sd3
-X_ext[,4] <- X_ext[,4]/sd4 
-X_ext[,5] <- X_ext[,5]/sd5
-###############################################
-###############################################
-###############################################
-########## Adding covariates at the future
-X_ext_f <- matrix(NA_real_, ncol = 5, nrow = ranges[1])
-X_ext_f[,1] <- c(X[TT,1],X_f[1:(ranges[1]-1),1])
-X_ext_f[,2] <- c(X[(TT-1),1],X[TT,1],X_f[1:(ranges[1]-2),1])
-X_ext_f[,3] <- X_f[,1]^2
-X_ext_f[,4] <- c(X[TT,1],X_f[1:(ranges[1]-1),1])^2
-X_ext_f[,5] <- c(X[(TT-1),1],X[TT,1],X_f[1:(ranges[1]-2),1])^2
-#####################
-## STANDARDIZATION ##
-#####################
-##### Standarized original covs
-sd_ppt  <- sd(X[,1]) 
-sd_soil <- sd(X[,2]) 
-sd_pca  <- sd(X[,3]) 
-X[,1] <- X[,1]/sd_ppt
-X[,2] <- X[,2]/sd_soil
-X[,3] <- X[,3]/sd_pca
-X <- cbind(X,X_ext)
-###### Standarized future covs using historical sds
-X_f[,1] <- X_f[,1]/sd_ppt
-X_f[,2] <- X_f[,2]/sd_soil
-X_f[,3] <- X_f[,3]/sd_pca
-X_ext_f[,1] <- X_ext_f[,1]/sd1
-X_ext_f[,2] <- X_ext_f[,2]/sd2
-X_ext_f[,3] <- X_ext_f[,3]/sd3
-X_ext_f[,4] <- X_ext_f[,4]/sd4
-X_ext_f[,5] <- X_ext_f[,5]/sd5
-X_f <- cbind(X_f,X_ext_f)
+covariate_bundle <- disc_w_build_covariates_and_retro(disc_w_paths, ranges)
+X <- covariate_bundle$X
+X_f <- covariate_bundle$X_f
+Y <- covariate_bundle$Y
+TT <- covariate_bundle$TT
+J <- covariate_bundle$J
 
 if(use_covariates){
   ending <- "_exAL_synth_DISC"
@@ -1236,9 +1098,6 @@ PriorGammaDens <- function(gamma, prior) {
             log = FALSE)
 }
 
-LL <- L+0.001
-UU <- U-0.001
-
   print(c(n.samp, 222))
   flush.console()
 update_gamma_sigma<-function( y, nn, prior_g, prior_s, 
@@ -1255,8 +1114,11 @@ update_gamma_sigma<-function( y, nn, prior_g, prior_s,
 if(!Climate_Center){
   dq_transf <- function(theta_s,theta_g){
       sig <- exp(theta_s)
-      gam <- LL+(-LL+UU)*exp(-exp(theta_g))
-          a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam); p.fn(p0,gam)
+      pi <- plogis(theta_g)
+      # Keep gamma strictly inside (L,U) to avoid evaluating A/B/C at the boundary.
+      pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+      gam <- L + (U - L) * pi
+      a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam); p.fn(p0,gam)
 
       # Prior
       yy <- log(PriorGammaDens(gam, prior_g)) - (prior_s[1] + 1) * log(sig) - prior_s[2]/sig
@@ -1269,8 +1131,8 @@ if(!Climate_Center){
                       + 2*c*abs(gam)*sts*a
                       + (uts*a^2)/sig )/b
       
-      # Jacobian
-      yy <- yy + theta_s + theta_g - exp(theta_g)                   
+      # Jacobian (u=log sigma, gamma=L+(U-L)*logistic(xi))
+      yy <- yy + theta_s + log(U - L) + log(pi) + log1p(-pi)
       return(yy)
   }
 }else{
@@ -1283,7 +1145,10 @@ if(!Climate_Center){
 
   dq_transf <- function(theta_s,theta_g){
       sig <- exp(theta_s)
-      gam <- LL+(-LL+UU)*exp(-exp(theta_g))
+      pi <- plogis(theta_g)
+      # Keep gamma strictly inside (L,U) to avoid evaluating A/B/C at the boundary.
+      pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+      gam <- L + (U - L) * pi
           a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
 
       # Prior
@@ -1303,14 +1168,16 @@ if(!Climate_Center){
                       + sig*inv.uts_f*(c^2)*(abs(gam)^2)*sts2_f
                       + 2*c*abs(gam)*sts_f*a
                       + (uts_f*a^2)/sig )/b
-      # Jacobian
-      yy <- yy + theta_s + theta_g - exp(theta_g)                   
+      # Jacobian (u=log sigma, gamma=L+(U-L)*logistic(xi))
+      yy <- yy + theta_s + log(U - L) + log(pi) + log1p(-pi)
       return(yy)
   }
 }
 
   theta_s_init <- log(s_init)
-  theta_g_init <- log(log((-L+U)/(-L+g_init)))
+  pi_init <- (g_init - L) / (U - L)
+  pi_init <- pmin(pmax(pi_init, 1e-12), 1 - 1e-12)
+  theta_g_init <- qlogis(pi_init)
   initial_values <- c(theta_s_init, theta_g_init)
 
   # Optimization step
@@ -1334,29 +1201,25 @@ if(!Climate_Center){
     return(e)
   }
 
-  f.exp.theta_g <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
-    a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
-    yy <- exp(theta[2])
-    return(yy)
-  }
-
   f.log.sig.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- log(sig*b)
     return(yy)
   }
 
   f.log.sig <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- log(sig)
     return(yy)
   }
 
   f.prior.sig.gam <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- crch::dtt(gam, location = prior_g[1], scale = prior_g[2], df = prior_g[3], left = L, right = U, log = TRUE)
     yy <- yy + nimble::dinvgamma(sig, shape = prior_s[1], scale =  prior_s[2], log = TRUE)
@@ -1365,7 +1228,8 @@ if(!Climate_Center){
 
 
   f.c2.s.abs.g2.inv.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- c^2*sig*abs(gam)^2/b
     return(yy)
@@ -1378,35 +1242,40 @@ if(!Climate_Center){
   }
 
   f.c.abs.g.inv.b <- function(theta){
-    gam = LL+(-LL+UU)*exp(-exp(theta[2]))
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    gam = L + (U - L) * pi
     b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- c*abs(gam)/b
     return(yy)
   }
 
   f.c.abs.g.a.inv.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- c*abs(gam)*a/b
     return(yy)
   }
 
   f.inv.s.inv.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- 1/sig/b
     return(yy)
   }
 
   f.a.inv.s.inv.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- a/sig/b
     return(yy)
   }
 
   f.a2.inv.s.inv.b <- function(theta){
-    sig = exp(theta[1]); gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    sig = exp(theta[1]); gam = L + (U - L) * pi
     a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
     yy <- a^2/sig/b
     return(yy)
@@ -1419,7 +1288,8 @@ if(!Climate_Center){
   }
 
   f.gam <- function(theta){
-    gam = LL+(-LL+UU)*exp(-exp(theta[2]));
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    gam = L + (U - L) * pi
     yy <- gam
     return(yy)
   }
@@ -1441,9 +1311,14 @@ if(!Climate_Center){
   E.log.sig.b = Expected_f(f.log.sig.b, LD_mu[1], LD_mu[2])
   E.log.sig = Expected_f(f.log.sig, LD_mu[1], LD_mu[2])
   E.prior.sig.gam = Expected_f(f.prior.sig.gam, LD_mu[1], LD_mu[2])
-  E.exp.theta_g =  Expected_f(f.exp.theta_g, LD_mu[1], LD_mu[2])
+  f.log_jac <- function(theta){
+    pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+    yy <- theta[1] + log(U - L) + log(pi) + log1p(-pi)
+    return(yy)
+  }
+  E.log.jac = Expected_f(f.log_jac, LD_mu[1], LD_mu[2])
 
-  entrop <- log(2*pi*exp(1)) + 0.5*determinant(as.matrix(LD_S), logarithm = TRUE)$modulus[1]-(log(-LL+UU)+sum(LD_mu)-E.exp.theta_g)
+  entrop <- log(2*pi*exp(1)) + 0.5*determinant(as.matrix(LD_S), logarithm = TRUE)$modulus[1] + E.log.jac
 
   return(list(E.sigma=E.sig,E.inv.sigma=E.inv.sigma,E.gam=E.gam,
               E.c2.invb.absgam2.sigma = E.c2.invb.absgam2.sigma, E.c.invb.absgam = E.c.invb.absgam,
@@ -1527,7 +1402,7 @@ fast <- 0
 if(USE_PREV){
   if(p0==0.05){
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_5_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_5_exAL_synth_DISC
     new.sts.out = new.sts.out_5_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_5_exAL_synth_DISC
@@ -1536,7 +1411,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_5_exAL_synth_DISC
   }else if (p0==0.2) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_20_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_20_exAL_synth_DISC
     new.sts.out = new.sts.out_20_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_20_exAL_synth_DISC
@@ -1545,7 +1420,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_20_exAL_synth_DISC
   }else if (p0==0.35) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_35_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_35_exAL_synth_DISC
     new.sts.out = new.sts.out_35_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_35_exAL_synth_DISC
@@ -1554,7 +1429,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_35_exAL_synth_DISC
   }else if (p0==0.5) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_50_exAL_synth_DISC
     new.sts.out = new.sts.out_50_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_50_exAL_synth_DISC
@@ -1563,7 +1438,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_50_exAL_synth_DISC
   }else if (p0==0.65) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_65_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_65_exAL_synth_DISC
     new.sts.out = new.sts.out_65_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_65_exAL_synth_DISC
@@ -1572,7 +1447,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_65_exAL_synth_DISC
   }else if (p0==0.8) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_80_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_80_exAL_synth_DISC
     new.sts.out = new.sts.out_80_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_80_exAL_synth_DISC
@@ -1581,7 +1456,7 @@ if(USE_PREV){
     new.theta.out = new.theta.out_80_exAL_synth_DISC
   }else if (p0==0.95) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_95_exAL_synth_DISC.RData"
-    load(file_path)
+    disc_w_load_rdata(file_path)
     new.uts.out = new.uts.out_95_exAL_synth_DISC
     new.sts.out = new.sts.out_95_exAL_synth_DISC
     new.uts.out_f = new.uts_ens.out_95_exAL_synth_DISC
@@ -2116,7 +1991,7 @@ for (j in 1:(J+1)) {
     # Generalized Inverse Gausian Sampling
     samp.uts[j,,] = t(sample_gig_devroye_vector(n.samp, uts.dummy$uts.lambda, uts.dummy$uts.psi, uts.dummy$uts.chi))
     # Truncated normal
-    samp.sts[j,,] = t(sample_truncnorm(n.samp, TT_sub, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
+    samp.sts[j,,] = t(sample_truncnorm_icdf(n.samp, TT_sub, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
     ########################
     ########################
     ########################
@@ -2158,7 +2033,9 @@ for (j in 1:(J+1)) {
         theta_g <- gamsig.dummy$E.theta[2]
         # Normal Aproximation
         samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = gamsig.dummy$Hess.LD)
-        samp.gamma[j,] = LL+(-LL+UU)*exp(-exp(samp.LD[,2]))
+        pi_gamma <- plogis(samp.LD[,2])
+        pi_gamma <- pmin(pmax(pi_gamma, 1e-12), 1 - 1e-12)
+        samp.gamma[j,] = L + (U - L) * pi_gamma
         samp.sigma[j,] = exp(samp.LD[,1]) 
         ########################
         ########################
@@ -2202,7 +2079,7 @@ for (j in 1:(J+1)) {
         # Generalized Inverse Gausian Sampling
         samp.uts_ens[[j-1]][,i,]  = t(sample_gig_devroye_vector(n.samp, uts.dummy$uts.lambda, uts.dummy$uts.psi, uts.dummy$uts.chi))
         # Truncated normal
-        samp.sts_ens[[j-1]][,i,]  = t(sample_truncnorm(n.samp, k_forecast, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
+        samp.sts_ens[[j-1]][,i,]  = t(sample_truncnorm_icdf(n.samp, k_forecast, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
         ########################
         ########################
         ########################
@@ -2260,7 +2137,9 @@ for (j in 1:(J+1)) {
         ########################
         # Normal Aproximation
         samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = gamsig.dummy$Hess.LD)
-        samp.gamma[j,] = LL+(-LL+UU)*exp(-exp(samp.LD[,2]))
+        pi_gamma <- plogis(samp.LD[,2])
+        pi_gamma <- pmin(pmax(pi_gamma, 1e-12), 1 - 1e-12)
+        samp.gamma[j,] = L + (U - L) * pi_gamma
         samp.sigma[j,] = exp(samp.LD[,1]) 
         ########################
         ########################
@@ -2308,99 +2187,7 @@ if (verbose) {
   cat(sprintf("Sampling finished:  %s seconds", round(run.time$toc - run.time$tic, 3)), "\n")
 }
 
-save_variables <- function(var_names, filename, dir_path) {
-  file_path <- file.path(dir_path, filename)
-  save_cmd <- paste("save(", paste(var_names, collapse = ", "), ", file = file_path)")
-  eval(parse(text = save_cmd))
-  cat("Variables saved to:", file_path, "\n")
-}
-result_suffix <- sprintf("%.0f", p0 * 100)
-
-
-ext.f_name <- paste0("ext.f_", result_suffix, ending)
-ext.q_name <- paste0("ext.q_", result_suffix, ending)
-ext.f_f_name <- paste0("ext.f_f_", result_suffix, ending)
-ext.q_f_name <- paste0("ext.q_f_", result_suffix, ending)
-
-samp.gamma_name <- paste0("samp.gamma_", result_suffix, ending)
-samp.sigma_name <- paste0("samp.sigma_", result_suffix, ending)
-
-samp.uts_name <- paste0("samp.uts_", result_suffix, ending)
-samp.sts_name <- paste0("samp.sts_", result_suffix, ending)
-samp.uts_ens_name <- paste0("samp.uts_ens_", result_suffix, ending)
-samp.sts_ens_name <- paste0("samp.sts_ens_", result_suffix, ending)
-
-samp.theta_name <- paste0("samp.theta_", result_suffix, ending)
-samp.theta_ens_name <- paste0("samp.theta_ens_", result_suffix, ending)
-
-new.uts.out_name <- paste0("new.uts.out_", result_suffix, ending)
-new.sts.out_name <- paste0("new.sts.out_", result_suffix, ending)
-new.uts.out_ens_name <- paste0("new.uts_ens.out_", result_suffix, ending)
-new.sts.out_ens_name <- paste0("new.sts_ens.out_", result_suffix, ending)
-
-new.gamsig.out_name <- paste0("new.gamsig.out_", result_suffix, ending)
-new.theta.out_name <- paste0("new.theta.out_", result_suffix, ending)
-new.theta.out_ens_name <- paste0("new.theta_ens.out_", result_suffix, ending)
-
-seq.gamma_name <- paste0("seq.gamma_", result_suffix, ending)
-seq.sigma_name <- paste0("seq.sigma_", result_suffix, ending)
-seq.elbo_name <- paste0("seq.elbo_", result_suffix, ending)
-seq.eigen_name <- paste0("seq.eigen", result_suffix, ending)
-
-delta_name <- paste0("delta_", result_suffix, ending)
-
-
-# Create the delta variable with the result suffix
-assign(delta_name, delta)
-
-assign(samp.gamma_name, samp.gamma)
-assign(samp.sigma_name, samp.sigma)
-
-assign(samp.uts_name, samp.uts)
-assign(samp.sts_name, samp.sts)
-assign(samp.uts_ens_name, samp.uts_ens)
-assign(samp.sts_ens_name, samp.sts_ens)
-
-assign(samp.theta_name, result_retro)
-assign(samp.theta_ens_name, result_forecast)
-
-assign(new.uts.out_name, new.uts.out)
-assign(new.sts.out_name, new.sts.out)
-assign(new.uts.out_ens_name, new.uts.out_f)
-assign(new.sts.out_ens_name, new.sts.out_f)
-
-assign(new.gamsig.out_name, new.gamsig.out)
-assign(new.theta.out_name, new.theta.out)
-
-assign(seq.gamma_name, seq.gamma)
-assign(seq.sigma_name, seq.sigma)
-assign(seq.elbo_name, seq.elbo)
-assign(seq.eigen_name, seq.eigen)
-
-assign(ext.f_name, FFF)
-assign(ext.q_name, QQQ)
-assign(ext.f_f_name, FFF_list)
-assign(ext.q_f_name, QQQ_list)
-
-# List of variables to save
-# vars_to_save <- c(samp.gamma_name, samp.sigma_name, samp.uts_name, samp.sts_name, samp.theta_name, samp.post.pred_name, new.uts.out_name, new.sts.out_name, new.gamsig.out_name, new.theta.out_name, seq.gamma_name, seq.sigma_name, seq.elbo_name, delta_name)
-vars_to_save <- c(samp.gamma_name, samp.sigma_name, 
-                  samp.uts_name, samp.sts_name, 
-                  samp.theta_name,
-                  samp.uts_ens_name, samp.sts_ens_name,
-                  samp.theta_ens_name,
-                  new.uts.out_name, new.sts.out_name, 
-                  new.gamsig.out_name, 
-                  new.theta.out_name, 
-                  new.uts.out_ens_name, new.sts.out_ens_name,
-                  seq.gamma_name, seq.sigma_name, 
-                  seq.elbo_name, delta_name,
-                  ext.f_name, ext.q_name,
-                  ext.f_f_name, ext.q_f_name,
-                  seq.eigen_name
-                  )
-# Save the variables
-save_variables(vars_to_save, paste0("DISC_variables_", result_suffix, ending,".RData"), "/data/muscat_data/jaguir26/project1_ucsc_phd")
+disc_w_save_state(p0 = p0, ending = ending, disc_w_paths = disc_w_paths)
 }
 
 errors <- new.theta.out$standard_forecast_errors
