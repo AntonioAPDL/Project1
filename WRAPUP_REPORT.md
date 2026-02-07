@@ -6,6 +6,8 @@
   - `6f10043` `test: add qdesn derivation consistency validators`
   - `72863ff` `opt: environmetrics setup/input helper reuse (no semantic change)`
   - `0995dc1` `build: fix TeX compile blockers and add local latex build fallback`
+  - `6c3bf63` `docs: add final wrap-up report with validation/build status`
+  - `9470cc1` `chore: ignore local tmp build artifacts`
 
 ## A) QDESN derivation consistency audit + fixes
 - Added full derivation audit with variable/shape table and computable vector forms:
