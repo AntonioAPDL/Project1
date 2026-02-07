@@ -1,0 +1,21 @@
+{
+  "stage": 4,
+  "status": "pass",
+  "runs": [
+    "stage4_single",
+    "stage4_conc_a",
+    "stage4_conc_b"
+  ],
+  "checks": {
+    "write_audit_enforced_from_stage": 4,
+    "single_run_pass": true,
+    "concurrent_runs_pass": true,
+    "run_root_isolation": true
+  },
+  "evidence": {
+    "single_run_manifest": "repro/runs/stage4_single/run_manifest.yaml",
+    "single_run_write_audit": "repro/runs/stage4_single/validate/write_audit",
+    "concurrent_run_a_report": "repro/runs/stage4_conc_a/report/summary.md",
+    "concurrent_run_b_report": "repro/runs/stage4_conc_b/report/summary.md"
+  }
+}

@@ -42,6 +42,10 @@ flush.console()
 cut <- 1
 m <- 2
 USE_PREV <- TRUE   
+disc_use_prev_env <- Sys.getenv("DISC_USE_PREV", "")
+if (nzchar(disc_use_prev_env)) {
+  USE_PREV <- tolower(disc_use_prev_env) %in% c("1", "true", "yes", "y")
+}
 
 args <- commandArgs(trailingOnly = TRUE)
 p0 <- as.numeric(args[1])

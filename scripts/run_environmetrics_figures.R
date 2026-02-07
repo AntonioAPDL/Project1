@@ -6,7 +6,12 @@
 # Config
 # -------------------------
 PROJECT_ROOT <- "/data/muscat_data/jaguir26/project1_ucsc_phd"
-OUT_PARENT <- file.path(PROJECT_ROOT, "Environmetrics_reproduce_script_runs")
+UNIFIED_RUN_ROOT <- Sys.getenv("UNIFIED_RUN_ROOT", "")
+OUT_PARENT <- if (nzchar(UNIFIED_RUN_ROOT)) {
+  file.path(UNIFIED_RUN_ROOT, "post", "outputs")
+} else {
+  file.path(PROJECT_ROOT, "Environmetrics_reproduce_script_runs")
+}
 RUN_ID <- Sys.getenv("RUN_ID", "")
 if (RUN_ID == "") {
   RUN_ID <- format(Sys.time(), "%Y%m%d_%H%M%S")
@@ -24,7 +29,11 @@ options(stringsAsFactors = FALSE)
 # -------------------------
 # Logging
 # -------------------------
-log_dir <- file.path(PROJECT_ROOT, "repro", "logs", "script_runs", RUN_ID)
+log_dir <- if (nzchar(UNIFIED_RUN_ROOT)) {
+  file.path(UNIFIED_RUN_ROOT, "post", "logs", RUN_ID)
+} else {
+  file.path(PROJECT_ROOT, "repro", "logs", "script_runs", RUN_ID)
+}
 dir.create(log_dir, showWarnings = FALSE, recursive = TRUE)
 log_path <- file.path(log_dir, "run_log.txt")
 con <- file(log_path, open = "wt")
@@ -120,6 +129,32 @@ dev.off <- function(...) {
     last_device_kind <<- NULL
   }, add = TRUE)
   dev_off_original(...)
+}
+
+if (!exists("saveRDS_original", inherits = FALSE)) {
+  saveRDS_original <- base::saveRDS
+}
+saveRDS <- function(object, file = "", ...) {
+  out_path <- redirect_path(file)
+  t0 <- Sys.time()
+  on.exit({
+    t1 <- Sys.time()
+    log_io_timing("saveRDS", out_path, t0, t1)
+  }, add = TRUE)
+  saveRDS_original(object = object, file = out_path, ...)
+}
+
+if (!exists("write.csv_original", inherits = FALSE)) {
+  write.csv_original <- utils::write.csv
+}
+write.csv <- function(x, file = "", ...) {
+  out_path <- redirect_path(file)
+  t0 <- Sys.time()
+  on.exit({
+    t1 <- Sys.time()
+    log_io_timing("write.csv", out_path, t0, t1)
+  }, add = TRUE)
+  write.csv_original(x = x, file = out_path, ...)
 }
 
 # -------------------------

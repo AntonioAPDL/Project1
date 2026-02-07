@@ -125,6 +125,16 @@ unified_manifest_add_artifact <- function(manifest, path, storage_scale, analysi
   manifest
 }
 
+unified_manifest_add_scale_history <- function(manifest, artifact, from_scale, to_scale, transform) {
+  manifest$scale_history[[length(manifest$scale_history) + 1]] <- list(
+    artifact = artifact,
+    from_scale = from_scale,
+    to_scale = to_scale,
+    transform = transform
+  )
+  manifest
+}
+
 unified_manifest_write <- function(manifest, out_path) {
   if (!requireNamespace("yaml", quietly = TRUE)) {
     stop("Package 'yaml' is required to write unified manifest")

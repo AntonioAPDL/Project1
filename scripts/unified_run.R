@@ -39,9 +39,16 @@ opts <- parse_args(args)
 repo_root <- normalizePath(getwd(), mustWork = TRUE)
 
 source(file.path(repo_root, "R", "unified", "utils_hash.R"))
+source(file.path(repo_root, "R", "unified", "utils_scale.R"))
 source(file.path(repo_root, "R", "unified", "config.R"))
 source(file.path(repo_root, "R", "unified", "determinism.R"))
 source(file.path(repo_root, "R", "unified", "manifest.R"))
+source(file.path(repo_root, "R", "unified", "utils_write_audit.R"))
+source(file.path(repo_root, "R", "unified", "stages", "stage_forecats.R"))
+source(file.path(repo_root, "R", "unified", "stages", "stage_fit.R"))
+source(file.path(repo_root, "R", "unified", "stages", "stage_post.R"))
+source(file.path(repo_root, "R", "unified", "stages", "stage_validate.R"))
+source(file.path(repo_root, "R", "unified", "stages", "stage_report.R"))
 
 cfg <- unified_load_config(opts$config_path, repo_root = repo_root)
 
@@ -93,5 +100,51 @@ if (isTRUE(opts$dry_run) || isTRUE(cfg$run$dry_run)) {
   quit(save = "no", status = 0)
 }
 
-cat("Stage execution scaffold initialized. Full stage execution is implemented in subsequent stages.\n")
+stage_order <- c("forecats", "fit", "post", "validate", "report")
+stage_index <- c(forecats = 1L, fit = 2L, post = 3L, validate = 4L, report = 5L)
+
+run_stage <- function(stage, manifest) {
+  switch(stage,
+    forecats = unified_stage_forecats(cfg, run_root, repo_root, manifest),
+    fit = unified_stage_fit(cfg, run_root, repo_root, manifest),
+    post = unified_stage_post(cfg, run_root, repo_root, manifest),
+    validate = unified_stage_validate(cfg, run_root, repo_root, manifest),
+    report = unified_stage_report(cfg, run_root, repo_root, manifest),
+    stop(sprintf("Unknown stage: %s", stage), call. = FALSE)
+  )
+}
+
+audit_enabled <- isTRUE(cfg$write_audit$enabled)
+audit_threshold <- as.integer(cfg$write_audit$enforce_from_stage)
+allowlist <- unlist(cfg$write_audit$allowlist_outside_run_root, use.names = FALSE)
+
+for (stage in stage_order) {
+  if (!isTRUE(cfg$stages[[stage]])) next
+
+  cat(sprintf("== Running stage: %s ==\n", stage))
+  enforce_audit <- audit_enabled && (stage_index[[stage]] >= audit_threshold)
+  stage_audit_dir <- file.path(run_root, "validate", "write_audit", stage)
+  before_path <- file.path(stage_audit_dir, "fs_before.tsv")
+  after_path <- file.path(stage_audit_dir, "fs_after.tsv")
+  diff_path <- file.path(stage_audit_dir, "fs_diff.patch")
+
+  if (enforce_audit) {
+    unified_write_audit_snapshot(repo_root, run_root, before_path)
+  }
+
+  result <- run_stage(stage, manifest)
+  manifest <- result$manifest
+  unified_manifest_write(manifest, manifest_path)
+
+  if (enforce_audit) {
+    unified_write_audit_snapshot(repo_root, run_root, after_path)
+    unified_write_audit_diff(before_path, after_path, diff_path)
+    unified_write_audit_enforce(diff_path, allowlist = allowlist)
+  }
+}
+
+manifest$timestamps$finished_at_utc <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+unified_manifest_write(manifest, manifest_path)
+
+cat("Unified run complete.\n")
 quit(save = "no", status = 0)
