@@ -43,6 +43,20 @@ compute_cholesky <- function(q, compute_sqrt_inverse = FALSE) {
     return(list(inverse = inv_q, sqrt_inverse = sqrt_inv_q, check = is_correct))
   }
 }
+
+# Stable sort policy for forecast sample slices.
+# Default keeps NA values to preserve vector length during array-slice assignment.
+sort_keep_na <- function(x, keep_na = NULL) {
+  if (is.null(keep_na)) {
+    keep_na_env <- Sys.getenv("ENV_SORT_KEEP_NA", "TRUE")
+    keep_na <- isTRUE(as.logical(keep_na_env))
+  }
+  if (isTRUE(keep_na)) {
+    return(sort(x, na.last = TRUE))
+  }
+  sort(x)
+}
+
 log_g <- function(gam) {
   log(2) + stats::pnorm(-abs(gam), log = TRUE) + 0.5 * gam^2
 }

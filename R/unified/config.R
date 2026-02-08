@@ -71,7 +71,8 @@ unified_config_defaults <- function() {
     post = list(
       figures = TRUE,
       profile = FALSE,
-      profile_detail = FALSE
+      profile_detail = FALSE,
+      sort_keep_na = TRUE
     ),
     validation = list(
       canonical_run_id = NULL,

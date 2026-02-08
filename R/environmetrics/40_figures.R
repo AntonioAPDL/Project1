@@ -196,13 +196,13 @@ eps <- 0.0
 
     profile_section("figures.sort_xbs_forecast", {
     for(t in 1:ranges[1]){
-    xbs[1,t,] <- sort(xbs[1,t,])
-    xbs[2,t,] <- sort(xbs[2,t,])
-    xbs[3,t,] <- sort(xbs[3,t,])
-    xbs[4,t,] <- sort(xbs[4,t,])
-    xbs[5,t,] <- sort(xbs[5,t,])
-    xbs[6,t,] <- sort(xbs[6,t,])
-    xbs[7,t,] <- sort(xbs[7,t,])
+    xbs[1,t,] <- sort_keep_na(xbs[1,t,])
+    xbs[2,t,] <- sort_keep_na(xbs[2,t,])
+    xbs[3,t,] <- sort_keep_na(xbs[3,t,])
+    xbs[4,t,] <- sort_keep_na(xbs[4,t,])
+    xbs[5,t,] <- sort_keep_na(xbs[5,t,])
+    xbs[6,t,] <- sort_keep_na(xbs[6,t,])
+    xbs[7,t,] <- sort_keep_na(xbs[7,t,])
 }
  
     })
@@ -319,13 +319,13 @@ n_cols_5 <- dim(xb_05_f)[2]
 # dim(y_post_35)
 
 for(t in 1:ranges[1]){
-    xbs[1,t,] <- sort(xbs[1,t,])
-    xbs[2,t,] <- sort(xbs[2,t,])
-    xbs[3,t,] <- sort(xbs[3,t,])
-    xbs[4,t,] <- sort(xbs[4,t,])
-    xbs[5,t,] <- sort(xbs[5,t,])
-    xbs[6,t,] <- sort(xbs[6,t,])
-    xbs[7,t,] <- sort(xbs[7,t,])
+    xbs[1,t,] <- sort_keep_na(xbs[1,t,])
+    xbs[2,t,] <- sort_keep_na(xbs[2,t,])
+    xbs[3,t,] <- sort_keep_na(xbs[3,t,])
+    xbs[4,t,] <- sort_keep_na(xbs[4,t,])
+    xbs[5,t,] <- sort_keep_na(xbs[5,t,])
+    xbs[6,t,] <- sort_keep_na(xbs[6,t,])
+    xbs[7,t,] <- sort_keep_na(xbs[7,t,])
 }
 
 # Function to plot lines for multiple forecasts
@@ -585,13 +585,13 @@ profile_section("figures.sample_xbs_retro", {
 
 profile_section("figures.sort_xbs_retro", {
   for (t in 1:ranges[1]) {
-    xbs_retro[1, t, ] <- sort(xbs_retro[1, t, ])
-    xbs_retro[2, t, ] <- sort(xbs_retro[2, t, ])
-    xbs_retro[3, t, ] <- sort(xbs_retro[3, t, ])
-    xbs_retro[4, t, ] <- sort(xbs_retro[4, t, ])
-    xbs_retro[5, t, ] <- sort(xbs_retro[5, t, ])
-    xbs_retro[6, t, ] <- sort(xbs_retro[6, t, ])
-    xbs_retro[7, t, ] <- sort(xbs_retro[7, t, ])
+    xbs_retro[1, t, ] <- sort_keep_na(xbs_retro[1, t, ])
+    xbs_retro[2, t, ] <- sort_keep_na(xbs_retro[2, t, ])
+    xbs_retro[3, t, ] <- sort_keep_na(xbs_retro[3, t, ])
+    xbs_retro[4, t, ] <- sort_keep_na(xbs_retro[4, t, ])
+    xbs_retro[5, t, ] <- sort_keep_na(xbs_retro[5, t, ])
+    xbs_retro[6, t, ] <- sort_keep_na(xbs_retro[6, t, ])
+    xbs_retro[7, t, ] <- sort_keep_na(xbs_retro[7, t, ])
   }
 })
 
