@@ -97,6 +97,13 @@ def pixel_compare_pillow(a: Path, b: Path) -> Tuple[bool, Tuple[int, int], Dict[
     return max_abs == 0, im1.size, {"max_abs": float(max_abs), "mean_abs": float(mean_abs)}
 
 
+PIXEL_EXTS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".gif"}
+
+
+def is_pixel_file(path: Path) -> bool:
+    return path.suffix.lower() in PIXEL_EXTS
+
+
 def write_diff_pillow(a: Path, b: Path, out_path: Path) -> None:
     from PIL import Image, ImageChops
     im1 = Image.open(a).convert("RGB")
@@ -190,8 +197,16 @@ def main() -> int:
                 mismatched.append(name)
 
         if args.mode in ("pixel", "both"):
-            if pillow_ok and c_path.exists() and s_path.exists():
-                same, dims, stats = pixel_compare_pillow(c_path, s_path)
+            # Pixel compare is valid only for image files; non-images are hash-only.
+            if not (is_pixel_file(c_path) and is_pixel_file(s_path)):
+                pass
+            elif pillow_ok and c_path.exists() and s_path.exists():
+                try:
+                    same, dims, stats = pixel_compare_pillow(c_path, s_path)
+                except Exception:
+                    same = False
+                    dims = (-1, -1)
+                    stats = {"max_abs": -1.0, "mean_abs": -1.0}
                 if same:
                     pixel_matched.append(name)
                 else:
@@ -205,7 +220,7 @@ def main() -> int:
                     "mean_abs_diff": f"{stats['mean_abs']:.3f}",
                 }
             else:
-                # no pillow, fallback to hash mismatch as proxy
+                # no pillow, fallback to hash mismatch as proxy for image files
                 if canon_hashes.get(name) != curr_hashes.get(name):
                     pixel_mismatched.append(name)
                 per_file_stats[name] = {
