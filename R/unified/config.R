@@ -72,7 +72,8 @@ unified_config_defaults <- function() {
       figures = TRUE,
       profile = FALSE,
       profile_detail = FALSE,
-      sort_keep_na = TRUE
+      sort_keep_na = TRUE,
+      export_tables = TRUE
     ),
     validation = list(
       canonical_run_id = NULL,
@@ -191,6 +192,11 @@ unified_validate_config <- function(cfg) {
   repro_mode <- unified_get(cfg, c("run", "repro_mode"), default = NULL)
   if (!(repro_mode %in% c("strict", "fast"))) {
     add_err("run.repro_mode must be one of: strict, fast")
+  }
+
+  post_export_tables <- unified_get(cfg, c("post", "export_tables"), default = TRUE)
+  if (!isTRUE(post_export_tables) && !identical(post_export_tables, FALSE)) {
+    add_err("post.export_tables must be boolean (true/false)")
   }
 
   check_required_file <- function(path, key) {

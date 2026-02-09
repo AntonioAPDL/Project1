@@ -23,6 +23,7 @@ SEED <- 777
 PROFILE <- isTRUE(as.logical(Sys.getenv("PROFILE", "FALSE")))
 PROFILE_DETAIL <- isTRUE(as.logical(Sys.getenv("PROFILE_DETAIL", "FALSE")))
 ENV_SORT_KEEP_NA <- isTRUE(as.logical(Sys.getenv("ENV_SORT_KEEP_NA", "TRUE")))
+EXPORT_TABLES <- isTRUE(as.logical(Sys.getenv("EXPORT_TABLES", "TRUE")))
 
 # Deterministic settings (match notebook)
 set.seed(SEED)
@@ -49,6 +50,7 @@ cat(sprintf("SEED: %s\n", SEED))
 cat(sprintf("PROFILE: %s\n", PROFILE))
 cat(sprintf("PROFILE_DETAIL: %s\n", PROFILE_DETAIL))
 cat(sprintf("ENV_SORT_KEEP_NA: %s\n", ENV_SORT_KEEP_NA))
+cat(sprintf("EXPORT_TABLES: %s\n", EXPORT_TABLES))
 
 # capture session info
 session_path <- file.path(log_dir, "sessionInfo.txt")

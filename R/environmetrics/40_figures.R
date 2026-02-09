@@ -1944,6 +1944,24 @@ all_quantiles <- bind_rows(
 # Print the complete table of quantiles
 print(all_quantiles, n = Inf)
 
+posterior_table_exports_enabled <- post_export_tables_enabled(default = TRUE)
+posterior_table_output_dir <- if (exists("OUT_DIR", inherits = TRUE)) {
+  get("OUT_DIR", inherits = TRUE)
+} else {
+  getwd()
+}
+
+if (posterior_table_exports_enabled) {
+  profile_section("figures.export_gamma_sigma_tables", {
+    post_export_gamma_sigma_tables(
+      all_quantiles = all_quantiles,
+      output_dir = posterior_table_output_dir,
+      ci_digits = 3L,
+      write_tex = TRUE
+    )
+  })
+}
+
 
 prepare_quantile_data <- function(v_d) {
   if (exists("fast_prepare_quantile_data", mode = "function")) {
@@ -3985,13 +4003,14 @@ y_reps_f[6,,] <- exp_y_post_65_f[,]
 
 profile_section("figures.sort_y_reps_f", {
   for (t in 1:ranges[1]) {
-    y_reps_f[1, , t] <- sort(exp_y_post_5_f[, t])
-    y_reps_f[4, , t] <- sort(exp_y_post_50_f[, t])
-    y_reps_f[7, , t] <- sort(exp_y_post_95_f[, t])
-    y_reps_f[2, , t] <- sort(exp_y_post_20_f[, t])
-    y_reps_f[3, , t] <- sort(exp_y_post_35_f[, t])
-    y_reps_f[5, , t] <- sort(exp_y_post_80_f[, t])
-    y_reps_f[6, , t] <- sort(exp_y_post_65_f[, t])
+    target_len_f <- length(y_reps_f[1, , t])
+    y_reps_f[1, , t] <- sort_to_len(exp_y_post_5_f[, t], target_len_f, context = sprintf("y_reps_f[1,,%d]", t))
+    y_reps_f[4, , t] <- sort_to_len(exp_y_post_50_f[, t], target_len_f, context = sprintf("y_reps_f[4,,%d]", t))
+    y_reps_f[7, , t] <- sort_to_len(exp_y_post_95_f[, t], target_len_f, context = sprintf("y_reps_f[7,,%d]", t))
+    y_reps_f[2, , t] <- sort_to_len(exp_y_post_20_f[, t], target_len_f, context = sprintf("y_reps_f[2,,%d]", t))
+    y_reps_f[3, , t] <- sort_to_len(exp_y_post_35_f[, t], target_len_f, context = sprintf("y_reps_f[3,,%d]", t))
+    y_reps_f[5, , t] <- sort_to_len(exp_y_post_80_f[, t], target_len_f, context = sprintf("y_reps_f[5,,%d]", t))
+    y_reps_f[6, , t] <- sort_to_len(exp_y_post_65_f[, t], target_len_f, context = sprintf("y_reps_f[6,,%d]", t))
   }
 })
 
@@ -4015,13 +4034,14 @@ y_reps[6,,] <- exp_y_post_65[,]
 
 profile_section("figures.sort_y_reps_hist", {
   for (t in 1:TT) {
-    y_reps[1, , t] <- sort(exp_y_post_5[, t])
-    y_reps[4, , t] <- sort(exp_y_post_50[, t])
-    y_reps[7, , t] <- sort(exp_y_post_95[, t])
-    y_reps[2, , t] <- sort(exp_y_post_20[, t])
-    y_reps[3, , t] <- sort(exp_y_post_35[, t])
-    y_reps[5, , t] <- sort(exp_y_post_80[, t])
-    y_reps[6, , t] <- sort(exp_y_post_65[, t])
+    target_len_hist <- length(y_reps[1, , t])
+    y_reps[1, , t] <- sort_to_len(exp_y_post_5[, t], target_len_hist, context = sprintf("y_reps[1,,%d]", t))
+    y_reps[4, , t] <- sort_to_len(exp_y_post_50[, t], target_len_hist, context = sprintf("y_reps[4,,%d]", t))
+    y_reps[7, , t] <- sort_to_len(exp_y_post_95[, t], target_len_hist, context = sprintf("y_reps[7,,%d]", t))
+    y_reps[2, , t] <- sort_to_len(exp_y_post_20[, t], target_len_hist, context = sprintf("y_reps[2,,%d]", t))
+    y_reps[3, , t] <- sort_to_len(exp_y_post_35[, t], target_len_hist, context = sprintf("y_reps[3,,%d]", t))
+    y_reps[5, , t] <- sort_to_len(exp_y_post_80[, t], target_len_hist, context = sprintf("y_reps[5,,%d]", t))
+    y_reps[6, , t] <- sort_to_len(exp_y_post_65[, t], target_len_hist, context = sprintf("y_reps[6,,%d]", t))
   }
 })
 
@@ -4156,12 +4176,12 @@ dim(synth_f_q)
 # synth_f_q2 <- t(synth_f_q)
 # dim(synth_f_q2)
 
-	profile_section("figures.sort_synth_f", {
-	  for (t in 1:ranges[1]) {
-	    synth_f[, t] <- sort(synth_f[, t])
-	    # synth_f2[,t] <- sort(synth_f2[,t])
-	  }
-	})
+		profile_section("figures.sort_synth_f", {
+		  for (t in 1:ranges[1]) {
+		    synth_f[, t] <- sort_to_len(synth_f[, t], target_len = nrow(synth_f), context = sprintf("synth_f[,%d]", t))
+		    # synth_f2[,t] <- sort(synth_f2[,t])
+		  }
+		})
 
 plot.ts(rep(0,ranges[1]), ylim = c(0,10))
 
@@ -4267,13 +4287,14 @@ y_reps_f_65 <- y_reps_f_new[5,,]
 y_reps_f_80 <- y_reps_f_new[6,,]
 y_reps_f_95 <- y_reps_f_new[7,,]
 for(t in 1:ranges[1]){
-    y_reps_f_5[,t] <- sort(y_reps_f_5[,t])
-    y_reps_f_20[,t] <- sort(y_reps_f_20[,t])
-    y_reps_f_35[,t] <- sort(y_reps_f_35[,t])
-    y_reps_f_50[,t] <- sort(y_reps_f_50[,t])
-    y_reps_f_65[,t] <- sort(y_reps_f_65[,t])
-    y_reps_f_80[,t] <- sort(y_reps_f_80[,t])
-    y_reps_f_95[,t] <- sort(y_reps_f_95[,t])
+    target_len_f_new <- nrow(y_reps_f_5)
+    y_reps_f_5[,t] <- sort_to_len(y_reps_f_5[,t], target_len_f_new, context = sprintf("y_reps_f_5[,%d]", t))
+    y_reps_f_20[,t] <- sort_to_len(y_reps_f_20[,t], target_len_f_new, context = sprintf("y_reps_f_20[,%d]", t))
+    y_reps_f_35[,t] <- sort_to_len(y_reps_f_35[,t], target_len_f_new, context = sprintf("y_reps_f_35[,%d]", t))
+    y_reps_f_50[,t] <- sort_to_len(y_reps_f_50[,t], target_len_f_new, context = sprintf("y_reps_f_50[,%d]", t))
+    y_reps_f_65[,t] <- sort_to_len(y_reps_f_65[,t], target_len_f_new, context = sprintf("y_reps_f_65[,%d]", t))
+    y_reps_f_80[,t] <- sort_to_len(y_reps_f_80[,t], target_len_f_new, context = sprintf("y_reps_f_80[,%d]", t))
+    y_reps_f_95[,t] <- sort_to_len(y_reps_f_95[,t], target_len_f_new, context = sprintf("y_reps_f_95[,%d]", t))
 }
 
 y_reps_f_new[1,,] <- y_reps_f_5  
@@ -4308,7 +4329,7 @@ dim(synth_f_q)
 
 profile_section("figures.sort_synth_f_exp", {
   for (t in 1:ranges[1]) {
-    synth_f[, t] <- sort(synth_f[, t])
+    synth_f[, t] <- sort_to_len(synth_f[, t], target_len = nrow(synth_f), context = sprintf("synth_f_exp[,%d]", t))
   }
 })
 
@@ -4435,13 +4456,14 @@ y_reps_65 <- y_reps_new[5,,]
 y_reps_80 <- y_reps_new[6,,]
 y_reps_95 <- y_reps_new[7,,]
 for(t in 1:length(idx_sub)){
-    y_reps_5[,t] <- sort(y_reps_5[,t])
-    y_reps_20[,t] <- sort(y_reps_20[,t])
-    y_reps_35[,t] <- sort(y_reps_35[,t])
-    y_reps_50[,t] <- sort(y_reps_50[,t])
-    y_reps_65[,t] <- sort(y_reps_65[,t])
-    y_reps_80[,t] <- sort(y_reps_80[,t])
-    y_reps_95[,t] <- sort(y_reps_95[,t])
+    target_len_hist_new <- nrow(y_reps_5)
+    y_reps_5[,t] <- sort_to_len(y_reps_5[,t], target_len_hist_new, context = sprintf("y_reps_5[,%d]", t))
+    y_reps_20[,t] <- sort_to_len(y_reps_20[,t], target_len_hist_new, context = sprintf("y_reps_20[,%d]", t))
+    y_reps_35[,t] <- sort_to_len(y_reps_35[,t], target_len_hist_new, context = sprintf("y_reps_35[,%d]", t))
+    y_reps_50[,t] <- sort_to_len(y_reps_50[,t], target_len_hist_new, context = sprintf("y_reps_50[,%d]", t))
+    y_reps_65[,t] <- sort_to_len(y_reps_65[,t], target_len_hist_new, context = sprintf("y_reps_65[,%d]", t))
+    y_reps_80[,t] <- sort_to_len(y_reps_80[,t], target_len_hist_new, context = sprintf("y_reps_80[,%d]", t))
+    y_reps_95[,t] <- sort_to_len(y_reps_95[,t], target_len_hist_new, context = sprintf("y_reps_95[,%d]", t))
 }
 
 y_reps_new[1,,] <- y_reps_5  
@@ -4473,7 +4495,7 @@ dim(synth_q)
 
 profile_section("figures.sort_synth_hist", {
   for (t in 1:length(idx_sub)) {
-    synth[, t] <- sort(synth[, t])
+    synth[, t] <- sort_to_len(synth[, t], target_len = nrow(synth), context = sprintf("synth_hist[,%d]", t))
   }
 })
 
@@ -6686,6 +6708,22 @@ for(i in indices) {
 summary_df <- do.call(rbind, all_results)
 print(summary_df)
 
+if (posterior_table_exports_enabled) {
+  profile_section("figures.export_covariate_effects_table", {
+    post_export_covariate_effects_table(
+      summary_df = summary_df,
+      output_dir = posterior_table_output_dir,
+      time_index = TT,
+      ci_digits = 3L,
+      write_tex = TRUE
+    )
+    post_write_table_exports_readme(
+      output_dir = posterior_table_output_dir,
+      ci_digits = 3L
+    )
+  })
+}
+
 
 
 synthesize_quantiles <- function(y_reps, percentiles, M = 10000) {
@@ -6717,7 +6755,7 @@ synthesize_quantiles <- function(y_reps, percentiles, M = 10000) {
     for (k in 1:n_p0) {
       shift <- m_adj[k] - v[k]
       adj_vec <- y_reps[k, , t] + shift
-      adjusted_samples[k, ] <- sort(adj_vec)  # Sort immediately after adjustment
+      adjusted_samples[k, ] <- sort_to_len(adj_vec, target_len = n_samp, context = sprintf("adjusted_samples[%d,]", k))
     }
     
     # Step 4: Quantile function construction on a dense grid (vectorized).
@@ -6757,7 +6795,7 @@ synthesize_quantiles <- function(y_reps, percentiles, M = 10000) {
     }
     
     # Step 6: Monotone rearrangement
-    q_sorted <- sort(q_init)  # Enforces global monotonicity
+    q_sorted <- sort_to_len(q_init, target_len = M, context = "q_sorted")  # Enforces global monotonicity
     
     # Step 7: Generate synthesized sample
     output[, t] <- approx(

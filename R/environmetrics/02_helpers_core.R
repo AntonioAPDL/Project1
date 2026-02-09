@@ -57,6 +57,228 @@ sort_keep_na <- function(x, keep_na = NULL) {
   sort(x)
 }
 
+# Sort a vector while guaranteeing exact output length for safe array-slice writes.
+sort_to_len <- function(x, target_len, keep_na = NULL, fill = NA_real_, context = NULL) {
+  if (length(target_len) != 1L || is.na(target_len) || target_len < 0) {
+    stop(sprintf("sort_to_len target_len must be a single non-negative integer; got: %s", paste(target_len, collapse = ",")))
+  }
+
+  target_len <- as.integer(target_len)
+  sorted <- sort_keep_na(as.vector(x), keep_na = keep_na)
+  cur_len <- length(sorted)
+
+  if (cur_len == target_len) {
+    return(sorted)
+  }
+
+  if (cur_len == 0L && target_len > 0L) {
+    if (!is.null(context) && nzchar(context)) {
+      warning(sprintf("sort_to_len received empty input for %s; padding to target length %d", context, target_len), call. = FALSE)
+    }
+    return(rep(fill, target_len))
+  }
+
+  if (cur_len < target_len) {
+    return(c(sorted, rep(fill, target_len - cur_len)))
+  }
+
+  sorted[seq_len(target_len)]
+}
+
+post_export_tables_enabled <- function(default = TRUE) {
+  if (exists("EXPORT_TABLES", inherits = TRUE)) {
+    return(isTRUE(get("EXPORT_TABLES", inherits = TRUE)))
+  }
+  isTRUE(as.logical(Sys.getenv("EXPORT_TABLES", if (isTRUE(default)) "TRUE" else "FALSE")))
+}
+
+post_quantile_label_to_int <- function(x) {
+  x <- as.character(x)
+  x <- gsub("[^0-9]", "", x)
+  out <- suppressWarnings(as.integer(x))
+  out
+}
+
+post_ci_string <- function(lower, upper, digits = 3L) {
+  lower <- as.numeric(lower)
+  upper <- as.numeric(upper)
+  fmt <- paste0("%.", as.integer(digits), "f")
+  out <- rep(NA_character_, length(lower))
+  ok <- is.finite(lower) & is.finite(upper)
+  out[ok] <- sprintf(paste0(fmt, ", ", fmt), lower[ok], upper[ok])
+  out
+}
+
+post_write_csv <- function(df, path) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  write.csv(df, file = path, row.names = FALSE)
+  invisible(path)
+}
+
+post_write_lines <- function(lines, path) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  writeLines(lines, con = path, useBytes = TRUE)
+  invisible(path)
+}
+
+post_source_levels <- c("USGS", "GLOFAS", "NWS")
+post_quantile_levels <- c(5L, 20L, 35L, 50L, 65L, 80L, 95L)
+post_covariate_levels <- c("Precipitation", "Soil Moisture", "PC1", "Intercept", "Lag1", "Lag2", "Lag3", "Lag4", "Lag5")
+
+post_component_to_covariate <- function(component) {
+  component <- as.integer(component)
+  mapping <- c(
+    "23" = "Precipitation",
+    "24" = "Soil Moisture",
+    "25" = "PC1",
+    "26" = "Intercept",
+    "27" = "Lag1",
+    "28" = "Lag2",
+    "29" = "Lag3",
+    "30" = "Lag4",
+    "31" = "Lag5"
+  )
+  out <- unname(mapping[as.character(component)])
+  fallback <- paste0("Component_", component)
+  out[is.na(out)] <- fallback[is.na(out)]
+  out
+}
+
+post_export_gamma_sigma_tables <- function(all_quantiles, output_dir, ci_digits = 3L, write_tex = TRUE) {
+  req_cols <- c("variable", "source", "quantile", "quantile_025", "median", "quantile_975")
+  missing_cols <- setdiff(req_cols, names(all_quantiles))
+  if (length(missing_cols) > 0L) {
+    stop(sprintf("post_export_gamma_sigma_tables missing columns: %s", paste(missing_cols, collapse = ", ")))
+  }
+
+  vars <- tolower(as.character(all_quantiles$variable))
+  keep <- vars %in% c("gamma", "sigma")
+  work <- all_quantiles[keep, req_cols, drop = FALSE]
+  if (nrow(work) == 0L) {
+    empty <- data.frame(
+      quantile = integer(0),
+      source = character(0),
+      stat = character(0),
+      center = numeric(0),
+      q2_5 = numeric(0),
+      q97_5 = numeric(0),
+      ci_str = character(0),
+      stringsAsFactors = FALSE
+    )
+    post_write_csv(empty, file.path(output_dir, "gamma_summary.csv"))
+    post_write_csv(empty, file.path(output_dir, "sigma_summary.csv"))
+    return(list(gamma = empty, sigma = empty))
+  }
+
+  out <- data.frame(
+    quantile = post_quantile_label_to_int(work$quantile),
+    source = toupper(as.character(work$source)),
+    stat = tolower(as.character(work$variable)),
+    center = as.numeric(work$median),
+    q2_5 = as.numeric(work$quantile_025),
+    q97_5 = as.numeric(work$quantile_975),
+    stringsAsFactors = FALSE
+  )
+  out$ci_str <- post_ci_string(out$q2_5, out$q97_5, digits = ci_digits)
+
+  out$source <- factor(out$source, levels = post_source_levels, ordered = TRUE)
+  out$quantile <- as.integer(out$quantile)
+  out <- out[order(out$quantile, out$source, out$stat), c("quantile", "source", "stat", "center", "q2_5", "q97_5", "ci_str")]
+  rownames(out) <- NULL
+  out$source <- as.character(out$source)
+
+  gamma_df <- out[out$stat == "gamma", , drop = FALSE]
+  sigma_df <- out[out$stat == "sigma", , drop = FALSE]
+
+  post_write_csv(gamma_df, file.path(output_dir, "gamma_summary.csv"))
+  post_write_csv(sigma_df, file.path(output_dir, "sigma_summary.csv"))
+
+  if (isTRUE(write_tex)) {
+    gamma_lines <- c(
+      "% quantile & source & center & [q2.5, q97.5] \\\\",
+      if (nrow(gamma_df) == 0L) "% <empty>" else sprintf(
+        "%d & %s & %.6f & [%.6f, %.6f] \\\\",
+        gamma_df$quantile, gamma_df$source, gamma_df$center, gamma_df$q2_5, gamma_df$q97_5
+      )
+    )
+    sigma_lines <- c(
+      "% quantile & source & center & [q2.5, q97.5] \\\\",
+      if (nrow(sigma_df) == 0L) "% <empty>" else sprintf(
+        "%d & %s & %.6f & [%.6f, %.6f] \\\\",
+        sigma_df$quantile, sigma_df$source, sigma_df$center, sigma_df$q2_5, sigma_df$q97_5
+      )
+    )
+    post_write_lines(gamma_lines, file.path(output_dir, "gamma_summary.tex"))
+    post_write_lines(sigma_lines, file.path(output_dir, "sigma_summary.tex"))
+  }
+
+  list(gamma = gamma_df, sigma = sigma_df)
+}
+
+post_export_covariate_effects_table <- function(summary_df, output_dir, time_index = NA_integer_, ci_digits = 3L, write_tex = TRUE) {
+  req_cols <- c("Component", "Quantile", "Lower", "Mean", "Upper")
+  missing_cols <- setdiff(req_cols, names(summary_df))
+  if (length(missing_cols) > 0L) {
+    stop(sprintf("post_export_covariate_effects_table missing columns: %s", paste(missing_cols, collapse = ", ")))
+  }
+
+  out <- data.frame(
+    covariate = post_component_to_covariate(summary_df$Component),
+    quantile = post_quantile_label_to_int(summary_df$Quantile),
+    center = as.numeric(summary_df$Mean),
+    q2_5 = as.numeric(summary_df$Lower),
+    q97_5 = as.numeric(summary_df$Upper),
+    ci_str = NA_character_,
+    time_index = as.integer(time_index),
+    notes = "",
+    stringsAsFactors = FALSE
+  )
+  out$ci_str <- post_ci_string(out$q2_5, out$q97_5, digits = ci_digits)
+
+  out$covariate <- factor(out$covariate, levels = post_covariate_levels, ordered = TRUE)
+  out$quantile <- as.integer(out$quantile)
+  out <- out[order(out$covariate, out$quantile), c("covariate", "quantile", "center", "q2_5", "q97_5", "ci_str", "time_index", "notes")]
+  rownames(out) <- NULL
+  out$covariate <- as.character(out$covariate)
+
+  post_write_csv(out, file.path(output_dir, "covariate_effects_summary.csv"))
+
+  if (isTRUE(write_tex)) {
+    lines <- c(
+      "% covariate & quantile & center & [q2.5, q97.5] \\\\",
+      if (nrow(out) == 0L) "% <empty>" else sprintf(
+        "%s & %d & %.6f & [%.6f, %.6f] \\\\",
+        out$covariate, out$quantile, out$center, out$q2_5, out$q97_5
+      )
+    )
+    post_write_lines(lines, file.path(output_dir, "covariate_effects_summary.tex"))
+  }
+
+  out
+}
+
+post_write_table_exports_readme <- function(output_dir, ci_digits = 3L) {
+  lines <- c(
+    "# Posterior Table Exports",
+    "",
+    "This folder contains machine-readable posterior summary tables generated during post-processing.",
+    "",
+    "Files:",
+    "- gamma_summary.csv: gamma by source x quantile with center=posterior median and 95% CI",
+    "- sigma_summary.csv: sigma by source x quantile with center=posterior median and 95% CI",
+    "- covariate_effects_summary.csv: transfer-function covariate effects with center=posterior mean and 95% CI at final time index",
+    "",
+    "Optional LaTeX snippets:",
+    "- gamma_summary.tex",
+    "- sigma_summary.tex",
+    "- covariate_effects_summary.tex",
+    "",
+    sprintf("CI string precision: %d decimal places.", as.integer(ci_digits)),
+    "The numeric columns are the source of truth for downstream table generation."
+  )
+  post_write_lines(lines, file.path(output_dir, "posterior_table_exports_README.md"))
+}
+
 log_g <- function(gam) {
   log(2) + stats::pnorm(-abs(gam), log = TRUE) + 0.5 * gam^2
 }

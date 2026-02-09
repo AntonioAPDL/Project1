@@ -65,12 +65,15 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   run_id <- cfg$run$run_id
   sort_keep_na <- cfg$post$sort_keep_na
   if (is.null(sort_keep_na)) sort_keep_na <- TRUE
+  export_tables <- cfg$post$export_tables
+  if (is.null(export_tables)) export_tables <- TRUE
   env_overrides <- c(
     UNIFIED_RUN_ROOT = run_root,
     RUN_ID = run_id,
     PROFILE = if (isTRUE(cfg$post$profile)) "TRUE" else "FALSE",
     PROFILE_DETAIL = if (isTRUE(cfg$post$profile_detail)) "TRUE" else "FALSE",
     ENV_SORT_KEEP_NA = if (isTRUE(sort_keep_na)) "TRUE" else "FALSE",
+    EXPORT_TABLES = if (isTRUE(export_tables)) "TRUE" else "FALSE",
     ENV_PROJECT_ROOT = repo_root,
     ENV_RETROS_PATH = adapted_retros,
     ENV_NWS_FORECAST_PATH = adapted_nws,
@@ -101,6 +104,12 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
         manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "image_png", analysis_scale = "n/a")
       } else if (grepl("\\.rds$", f, ignore.case = TRUE)) {
         manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "model_state")
+      } else if (grepl("\\.csv$", f, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "table_csv", analysis_scale = "n/a")
+      } else if (grepl("\\.tex$", f, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_tex", analysis_scale = "n/a")
+      } else if (grepl("\\.md$", f, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_markdown", analysis_scale = "n/a")
       }
     }
   }

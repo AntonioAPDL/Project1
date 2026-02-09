@@ -109,6 +109,36 @@ Key files:
 - `report/summary.json`
 - `env/*`
 
+## Posterior Table Exports
+
+During post stage, table exports are written under:
+
+- `repro/runs/<RUN_ID>/post/outputs/<RUN_ID>/`
+
+Files:
+
+- `gamma_summary.csv`
+- `sigma_summary.csv`
+- `covariate_effects_summary.csv`
+- optional snippets: `gamma_summary.tex`, `sigma_summary.tex`, `covariate_effects_summary.tex`
+- `posterior_table_exports_README.md`
+
+Column contract:
+
+- `gamma_summary.csv` and `sigma_summary.csv`:
+  - `quantile`, `source`, `stat`, `center`, `q2_5`, `q97_5`, `ci_str`
+- `covariate_effects_summary.csv`:
+  - `covariate`, `quantile`, `center`, `q2_5`, `q97_5`, `ci_str`, `time_index`, `notes`
+
+Center policy:
+
+- `gamma` / `sigma`: `center` is posterior median (matches the quantile-based summary currently used in post outputs).
+- covariate effects: `center` is posterior mean (matches the existing component summary block).
+
+Control flag:
+
+- `post.export_tables: true|false` (default `true`) in unified config.
+
 ## Legacy entrypoints
 
 Legacy scripts are preserved and now emit deprecation notices:

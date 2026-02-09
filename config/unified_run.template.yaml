@@ -62,6 +62,7 @@ post:
   figures: true
   profile: false
   profile_detail: false
+  export_tables: true
 
 validation:
   canonical_run_id: null

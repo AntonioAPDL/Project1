@@ -1,0 +1,109 @@
+source(testthat::test_path("..", "..", "R", "environmetrics", "02_helpers_core.R"))
+
+mock_gamma_sigma <- function() {
+  quantiles <- c("95th", "50th", "05th", "20th", "35th", "65th", "80th")
+  sources <- c("NWS", "GLOFAS", "USGS")
+  vars <- c("Gamma", "Sigma")
+
+  grid <- expand.grid(
+    variable = vars,
+    source = sources,
+    quantile = quantiles,
+    stringsAsFactors = FALSE
+  )
+
+  idx <- seq_len(nrow(grid))
+  grid$quantile_025 <- idx / 100
+  grid$median <- idx / 50
+  grid$quantile_975 <- idx / 25
+  grid
+}
+
+test_that("post_export_gamma_sigma_tables writes deterministic schema and ordering", {
+  td <- tempfile("posterior_tables_")
+  dir.create(td, recursive = TRUE, showWarnings = FALSE)
+
+  out <- post_export_gamma_sigma_tables(
+    all_quantiles = mock_gamma_sigma(),
+    output_dir = td,
+    ci_digits = 3L,
+    write_tex = TRUE
+  )
+
+  expect_true(file.exists(file.path(td, "gamma_summary.csv")))
+  expect_true(file.exists(file.path(td, "sigma_summary.csv")))
+  expect_true(file.exists(file.path(td, "gamma_summary.tex")))
+  expect_true(file.exists(file.path(td, "sigma_summary.tex")))
+
+  expect_equal(names(out$gamma), c("quantile", "source", "stat", "center", "q2_5", "q97_5", "ci_str"))
+  expect_equal(names(out$sigma), c("quantile", "source", "stat", "center", "q2_5", "q97_5", "ci_str"))
+  expect_equal(nrow(out$gamma), 21L)
+  expect_equal(nrow(out$sigma), 21L)
+
+  expect_equal(sort(unique(out$gamma$quantile)), c(5L, 20L, 35L, 50L, 65L, 80L, 95L))
+  expect_equal(sort(unique(out$sigma$quantile)), c(5L, 20L, 35L, 50L, 65L, 80L, 95L))
+  expect_equal(unique(out$gamma$source), c("USGS", "GLOFAS", "NWS"))
+  expect_equal(unique(out$sigma$source), c("USGS", "GLOFAS", "NWS"))
+
+  expect_true(all(nzchar(out$gamma$ci_str)))
+  expect_true(all(nzchar(out$sigma$ci_str)))
+})
+
+test_that("post_export_gamma_sigma_tables handles empty input safely", {
+  td <- tempfile("posterior_tables_empty_")
+  dir.create(td, recursive = TRUE, showWarnings = FALSE)
+
+  empty <- data.frame(
+    variable = character(0),
+    source = character(0),
+    quantile = character(0),
+    quantile_025 = numeric(0),
+    median = numeric(0),
+    quantile_975 = numeric(0),
+    stringsAsFactors = FALSE
+  )
+
+  out <- post_export_gamma_sigma_tables(
+    all_quantiles = empty,
+    output_dir = td,
+    write_tex = FALSE
+  )
+
+  expect_equal(nrow(out$gamma), 0L)
+  expect_equal(nrow(out$sigma), 0L)
+  expect_true(file.exists(file.path(td, "gamma_summary.csv")))
+  expect_true(file.exists(file.path(td, "sigma_summary.csv")))
+})
+
+test_that("post_export_covariate_effects_table writes expected columns and stable order", {
+  td <- tempfile("covariate_tables_")
+  dir.create(td, recursive = TRUE, showWarnings = FALSE)
+
+  summary_df <- data.frame(
+    Component = c(25, 23, 24, 23, 24, 25),
+    Quantile = c("95th", "50th", "5th", "95th", "50th", "5th"),
+    Lower = c(-0.03, 2.35, 0.11, 2.91, 0.113, -0.087),
+    Mean = c(-0.02, 2.39, 0.115, 2.95, 0.118, -0.084),
+    Upper = c(-0.01, 2.43, 0.119, 2.98, 0.124, -0.080),
+    stringsAsFactors = FALSE
+  )
+
+  out <- post_export_covariate_effects_table(
+    summary_df = summary_df,
+    output_dir = td,
+    time_index = 999L,
+    ci_digits = 3L,
+    write_tex = TRUE
+  )
+
+  expect_true(file.exists(file.path(td, "covariate_effects_summary.csv")))
+  expect_true(file.exists(file.path(td, "covariate_effects_summary.tex")))
+
+  expect_equal(
+    names(out),
+    c("covariate", "quantile", "center", "q2_5", "q97_5", "ci_str", "time_index", "notes")
+  )
+  expect_equal(unique(out$covariate), c("Precipitation", "Soil Moisture", "PC1"))
+  expect_true(all(out$time_index == 999L))
+  expect_true(all(nzchar(out$ci_str)))
+})
