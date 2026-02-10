@@ -238,6 +238,7 @@ _audit_logs/
 # -------------------------
 # Generated / local / sensitive extras
 # -------------------------
+config/unified_runs/local_overrides.yaml
 .Renviron
 get-pip.py
 Miniconda3-latest-Linux-x86_64.sh

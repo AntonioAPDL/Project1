@@ -1,6 +1,10 @@
 # unified/stages/stage_fit.R
 
 unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
+  oldwd <- getwd()
+  on.exit(setwd(oldwd), add = TRUE)
+  setwd(repo_root)
+
   fit_root <- file.path(run_root, "fit")
   fit_inputs <- file.path(fit_root, "inputs")
   dir.create(fit_inputs, recursive = TRUE, showWarnings = FALSE)
@@ -66,67 +70,154 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
 
   quantiles <- as.numeric(cfg$fit$quantiles)
 
-  run_one_quantile <- function(q) {
-    q_num <- as.integer(round(q * 100))
-    q_label <- sprintf("%02d", q_num)
-    q_root <- file.path(fit_root, sprintf("q=%s", q_label))
-    q_outputs <- file.path(q_root, "outputs")
-    q_logs <- file.path(q_root, "logs")
-    dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
-    dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
+  if (isTRUE(cfg$models$run_exdqlm_multivar)) {
+    run_one_quantile <- function(q) {
+      q_num <- as.integer(round(q * 100))
+      q_label <- sprintf("%02d", q_num)
+      q_root <- file.path(fit_root, sprintf("q=%s", q_label))
+      q_outputs <- file.path(q_root, "outputs")
+      q_logs <- file.path(q_root, "logs")
+      dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
+      dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
 
-    env_overrides <- c(
-      DISC_BASE_SEED = as.character(cfg$run$seed),
-      DISC_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
-      DISC_W_OUTPUT_DIR = q_outputs,
-      DISC_W_PARAMETERS_PATH = parameters_copy,
-      DISC_W_RETROS_PATH = adapted_retros,
-      DISC_W_NWS_PATH = adapted_nws,
-      DISC_W_GLOFAS_PATH = adapted_glofas
-    )
-    env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
+      env_overrides <- c(
+        DISC_BASE_SEED = as.character(cfg$run$seed),
+        DISC_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
+        DISC_W_OUTPUT_DIR = q_outputs,
+        DISC_W_PARAMETERS_PATH = parameters_copy,
+        DISC_W_RETROS_PATH = adapted_retros,
+        DISC_W_NWS_PATH = adapted_nws,
+        DISC_W_GLOFAS_PATH = adapted_glofas
+      )
+      env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
 
-    log_path <- file.path(q_logs, "fit.log")
+      log_path <- file.path(q_logs, "fit.log")
+      cmd_out <- system2(
+        "Rscript",
+        c("--vanilla", file.path("scripts", "run_DISC_Optimal_Synth_Ranges_W.R"), as.character(q), as.character(cfg$run$seed)),
+        stdout = TRUE,
+        stderr = TRUE,
+        env = env_kv
+      )
+      writeLines(cmd_out, log_path, useBytes = TRUE)
+
+      output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_DISC.RData", q_num))
+      list(
+        quantile = q,
+        output_path = output_path,
+        log_path = log_path,
+        status = attr(cmd_out, "status")
+      )
+    }
+
+    workers <- suppressWarnings(as.integer(cfg$run$threads$mc_cores))
+    if (!is.finite(workers) || workers < 1) workers <- 1L
+    workers <- min(workers, length(quantiles))
+
+    results <- if (workers > 1 && .Platform$OS.type != "windows") {
+      parallel::mclapply(quantiles, run_one_quantile, mc.cores = workers)
+    } else {
+      lapply(quantiles, run_one_quantile)
+    }
+
+    for (res in results) {
+      if (!is.null(res$status) && res$status != 0) {
+        stop(sprintf("fit stage failed for quantile %s; see %s", res$quantile, res$log_path), call. = FALSE)
+      }
+      if (file.exists(res$output_path)) {
+        manifest <- unified_manifest_add_artifact(
+          manifest,
+          res$output_path,
+          storage_scale = "model_state",
+          flow_domain = cfg$scale_contract$analysis_scale_fit_internal
+        )
+      }
+    }
+  }
+
+  if (isTRUE(cfg$models$run_exdqlm_univar)) {
+    univar_script <- file.path(repo_root, "OptimalModelSLexAL.r")
+    if (!file.exists(univar_script)) {
+      stop(sprintf("legacy univariate script not found: %s", univar_script), call. = FALSE)
+    }
+
+    for (q in quantiles) {
+      q_num <- as.integer(round(q * 100))
+      q_lab <- sprintf("%02d", q_num)
+
+      q_root <- file.path(fit_root, "exdqlm_univar", sprintf("q=%s", q_lab))
+      q_outputs <- file.path(q_root, "outputs")
+      q_logs <- file.path(q_root, "logs")
+      dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
+      dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
+
+      output_path <- file.path(q_outputs, sprintf("variables_%s_exAL_synth_DISC_uni.RData", q_lab))
+      log_path <- file.path(q_logs, "univar_legacy.log")
+      env_kv <- sprintf("UNIFIED_UNIV_RDATA_OUT=%s", output_path)
+
+      cmd_out <- system2(
+        "Rscript",
+        c("--vanilla", univar_script, as.character(q)),
+        stdout = TRUE,
+        stderr = TRUE,
+        env = env_kv
+      )
+      writeLines(cmd_out, log_path, useBytes = TRUE)
+      status <- attr(cmd_out, "status")
+      if (!is.null(status) && status != 0) {
+        stop(sprintf("legacy univariate fit failed for quantile %s; see %s", q, log_path), call. = FALSE)
+      }
+      if (!file.exists(output_path)) {
+        stop(sprintf("legacy univariate output missing for quantile %s: %s", q, output_path), call. = FALSE)
+      }
+
+      manifest <- unified_manifest_add_artifact(
+        manifest,
+        output_path,
+        storage_scale = "model_state",
+        flow_domain = cfg$scale_contract$analysis_scale_fit_internal
+      )
+    }
+  }
+
+  if (isTRUE(cfg$models$run_ndlm_main)) {
+    ndlm_script <- file.path(repo_root, "DISC_Optimal_Synth_Ranges_NDLM.r")
+    if (!file.exists(ndlm_script)) {
+      stop(sprintf("legacy NDLM script not found: %s", ndlm_script), call. = FALSE)
+    }
+
+    ndlm_root <- file.path(fit_root, "ndlm_main")
+    ndlm_outputs <- file.path(ndlm_root, "outputs")
+    ndlm_logs <- file.path(ndlm_root, "logs")
+    dir.create(ndlm_outputs, recursive = TRUE, showWarnings = FALSE)
+    dir.create(ndlm_logs, recursive = TRUE, showWarnings = FALSE)
+
+    output_path <- file.path(ndlm_outputs, "DISC_variables_50_NDLM_synth_DISC.RData")
+    log_path <- file.path(ndlm_logs, "ndlm_legacy.log")
+    env_kv <- sprintf("UNIFIED_NDLM_RDATA_OUT=%s", output_path)
+
     cmd_out <- system2(
       "Rscript",
-      c("--vanilla", file.path("scripts", "run_DISC_Optimal_Synth_Ranges_W.R"), as.character(q), as.character(cfg$run$seed)),
+      c("--vanilla", ndlm_script),
       stdout = TRUE,
       stderr = TRUE,
       env = env_kv
     )
     writeLines(cmd_out, log_path, useBytes = TRUE)
+    status <- attr(cmd_out, "status")
+    if (!is.null(status) && status != 0) {
+      stop(sprintf("legacy NDLM fit failed; see %s", log_path), call. = FALSE)
+    }
+    if (!file.exists(output_path)) {
+      stop(sprintf("legacy NDLM output missing: %s", output_path), call. = FALSE)
+    }
 
-    output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_DISC.RData", q_num))
-    list(
-      quantile = q,
-      output_path = output_path,
-      log_path = log_path,
-      status = attr(cmd_out, "status")
+    manifest <- unified_manifest_add_artifact(
+      manifest,
+      output_path,
+      storage_scale = "model_state",
+      flow_domain = cfg$scale_contract$analysis_scale_fit_internal
     )
-  }
-
-  workers <- suppressWarnings(as.integer(cfg$run$threads$mc_cores))
-  if (!is.finite(workers) || workers < 1) workers <- 1L
-  workers <- min(workers, length(quantiles))
-
-  results <- if (workers > 1 && .Platform$OS.type != "windows") {
-    parallel::mclapply(quantiles, run_one_quantile, mc.cores = workers)
-  } else {
-    lapply(quantiles, run_one_quantile)
-  }
-
-  for (res in results) {
-    if (!is.null(res$status) && res$status != 0) {
-      stop(sprintf("fit stage failed for quantile %s; see %s", res$quantile, res$log_path), call. = FALSE)
-    }
-    if (file.exists(res$output_path)) {
-      manifest <- unified_manifest_add_artifact(
-        manifest,
-        res$output_path,
-        storage_scale = "model_state",
-        flow_domain = cfg$scale_contract$analysis_scale_fit_internal
-      )
-    }
   }
 
   list(manifest = manifest)

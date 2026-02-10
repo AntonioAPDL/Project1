@@ -23,6 +23,11 @@ stages:
   validate: true
   report: true
 
+models:
+  run_exdqlm_multivar: true
+  run_exdqlm_univar: false
+  run_ndlm_main: false
+
 site:
   usgs_site: "11160500"
   lat: 37.0443931

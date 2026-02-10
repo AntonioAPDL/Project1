@@ -2149,7 +2149,10 @@ run.time = tictoc::toc(quiet = TRUE)
 if (SAVE) {
 
 save_variables <- function(var_names, filename, dir_path) {
-  file_path <- file.path(dir_path, filename)
+  default_out <- file.path(dir_path, filename)
+  out <- Sys.getenv("UNIFIED_NDLM_RDATA_OUT", unset = default_out)
+  file_path <- if (nzchar(out)) out else default_out
+  dir.create(dirname(file_path), recursive = TRUE, showWarnings = FALSE)
   save_cmd <- paste("save(", paste(var_names, collapse = ", "), ", file = file_path)")
   eval(parse(text = save_cmd))
   # cat("Variables saved to:", file_path, "\n")

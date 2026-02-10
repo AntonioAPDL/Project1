@@ -19,7 +19,7 @@ run:
 stages:
   forecats: false
   fit: true
-  post: true
+  post: false
   validate: false
   report: false
 
@@ -67,7 +67,6 @@ post:
   figures: false
   profile: false
   profile_detail: false
-  sort_keep_na: true
   export_tables: false
 
 validation:

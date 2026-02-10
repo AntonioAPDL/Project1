@@ -324,6 +324,32 @@ At each planning/execution checkpoint:
 - Next action:
   - Continue P5 by extending run-scoped manifest-driven inputs to full figure mode and then validate/report stages.
 
+### Progress Update 2026-02-10 11:20 UTC
+- Phase: P2 + P5
+- Change type: governance+hygiene reconciliation
+- Summary: reconciled tracker-vs-history mismatch by committing outstanding P2 bridge files (model toggles + legacy bridge wiring + run-scoped legacy output env overrides) and removed machine-specific `/tmp` default from P5 smoke config.
+- Files touched:
+  - `DISC_Optimal_Synth_Ranges_NDLM.r`
+  - `OptimalModelSLexAL.r`
+  - `R/unified/config.R`
+  - `R/unified/stages/stage_fit.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/smoke_p2_legacy_bridge.yaml`
+  - `config/unified_runs/smoke_p5_post_runscoped.yaml`
+  - `config/unified_runs/local_overrides.example.yaml`
+  - `.gitignore`
+  - `repro/REPO_REALITY_2026-02-09.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/runs/20260209_183637/run_manifest.yaml` (P2 smoke evidence, non-null finished timestamp, univar+NDLM artifacts)
+  - `/tmp/project1_ucsc_phd/repro/runs/20260209_210504/run_manifest.yaml` (P5 strict run-scoped smoke evidence, figures disabled)
+- Validation notes:
+  - No new heavy runs executed in this chunk.
+  - Portability default restored to repo-relative `run_root: "repro/runs"` for P5 smoke config.
+  - Local machine overrides are now documented via `config/unified_runs/local_overrides.example.yaml` with untracked `config/unified_runs/local_overrides.yaml`.
+- Next action:
+  - Run one strict smoke with `post.figures=true` and then one validate/report smoke from run-scoped artifacts (no code changes unless failure evidence requires it).
+
 ## 11) Open Questions (Need Maintainer Confirmation)
 
 1. Confirm D-007: proceed with hybrid sequencing (legacy-bridge early + theory-first modular replacements), or switch to strict theory-rewrite-first before any legacy bridge.

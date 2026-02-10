@@ -1,0 +1,13 @@
+# Local override example for smoke/development runs.
+#
+# Usage (recommended):
+#   1) Copy a runnable config to a local untracked file:
+#        cp config/unified_runs/smoke_p5_post_runscoped.yaml config/unified_runs/local_overrides.yaml
+#   2) Edit only local_overrides.yaml for machine-specific paths (for example run.run_root on /tmp).
+#   3) Run unified runner with the local file:
+#        Rscript --vanilla scripts/unified_run.R --config config/unified_runs/local_overrides.yaml
+#
+# This file is documentation-only and intentionally uses placeholders.
+
+run:
+  run_root: "/tmp/<user>/project1_ucsc_phd/repro/runs"

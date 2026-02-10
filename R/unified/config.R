@@ -29,6 +29,11 @@ unified_config_defaults <- function() {
       validate = TRUE,
       report = TRUE
     ),
+    models = list(
+      run_exdqlm_multivar = TRUE,
+      run_exdqlm_univar = FALSE,
+      run_ndlm_main = FALSE
+    ),
     site = list(
       usgs_site = "11160500",
       lat = 37.0443931,
@@ -197,6 +202,21 @@ unified_validate_config <- function(cfg) {
   post_export_tables <- unified_get(cfg, c("post", "export_tables"), default = TRUE)
   if (!isTRUE(post_export_tables) && !identical(post_export_tables, FALSE)) {
     add_err("post.export_tables must be boolean (true/false)")
+  }
+
+  run_exdqlm_multivar <- unified_get(cfg, c("models", "run_exdqlm_multivar"), default = TRUE)
+  if (!isTRUE(run_exdqlm_multivar) && !identical(run_exdqlm_multivar, FALSE)) {
+    add_err("models.run_exdqlm_multivar must be boolean (true/false)")
+  }
+
+  run_exdqlm_univar <- unified_get(cfg, c("models", "run_exdqlm_univar"), default = FALSE)
+  if (!isTRUE(run_exdqlm_univar) && !identical(run_exdqlm_univar, FALSE)) {
+    add_err("models.run_exdqlm_univar must be boolean (true/false)")
+  }
+
+  run_ndlm_main <- unified_get(cfg, c("models", "run_ndlm_main"), default = FALSE)
+  if (!isTRUE(run_ndlm_main) && !identical(run_ndlm_main, FALSE)) {
+    add_err("models.run_ndlm_main must be boolean (true/false)")
   }
 
   check_required_file <- function(path, key) {
