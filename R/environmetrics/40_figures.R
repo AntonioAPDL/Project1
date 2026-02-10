@@ -50,6 +50,15 @@ profile_detail_section("figures.build_xbs_discrep", {
   profile_section("figures.build_xbs_discrep", {
     p <- 7
 
+    next_idx_block <- function(prev_idx, block_len) {
+      block_len <- as.integer(block_len[[1]])
+      start <- if (length(prev_idx) == 0L) 0L else as.integer(prev_idx[[length(prev_idx)]])
+      if (is.na(block_len) || block_len <= 0L) {
+        return(integer(0))
+      }
+      seq_len(block_len) + start
+    }
+
     ks <- -diff(c(ranges,0))
     xbs <- array(NA_real_, c(7,ranges[1],n.samp))
     xbs_ndlm <- array(NA_real_, c(1,ranges[1],n.samp))
@@ -61,7 +70,10 @@ profile_detail_section("figures.build_xbs_discrep", {
 
 	    idx <- c(0)
 	    for (j in 1:(J - 1)) {
-	        idx <- 1:ks[J - j + 1] + idx[length(idx)]
+	        idx <- next_idx_block(idx, ks[J - j + 1])
+          if (length(idx) == 0L) {
+            next
+          }
 
 	        FF_s <- FF_list[[j]]
 	        F_s <- as.numeric(FF_s[1:p, 1])
@@ -127,9 +139,13 @@ prepare_quantile_data <- function(v_d) {
 eps <- 0.0
 
     profile_section("figures.sample_xbs_sm_ens", {
+    idx <- c(0)
     for(j in J:J){
 
-    idx <- 1:ks[J-j+1] + idx[length(idx)]
+    idx <- next_idx_block(idx, ks[J-j+1])
+    if (length(idx) == 0L) {
+      next
+    }
     tt <- 1
     for(t in (idx) ){
         # print(c(0.05,t,j))
@@ -214,7 +230,10 @@ eps <- 0.0
 
 idx <- c(0)
 for(j in 1:J){
-    idx <- 1:ks[J-j+1] + idx[length(idx)]
+    idx <- next_idx_block(idx, ks[J-j+1])
+    if (length(idx) == 0L) {
+      next
+    }
     tt <- 1
     for(t in idx){
         Mu <- new.theta.out_50_NDLM_synth_DISC$sm_ens[[j]][,tt]
@@ -632,6 +651,23 @@ idx_f <- ((iii+1)+1):((iii+1)+ranges[1])
 
 # Initialize the matrix
 q_exps <- matrix(NA_real_, nrow = 7, ncol=(ranges[1]))
+align_to_len <- function(x, target_len, context = "q_exps") {
+  x <- as.numeric(x)
+  target_len <- as.integer(target_len)
+  if (length(x) == target_len) {
+    return(x)
+  }
+  if (length(x) == 0L) {
+    warning(sprintf("%s is empty; padding with NA to length %d", context, target_len), call. = FALSE)
+    return(rep(NA_real_, target_len))
+  }
+  if (length(x) < target_len) {
+    warning(sprintf("%s length %d < %d; padding with NA", context, length(x), target_len), call. = FALSE)
+    return(c(x, rep(NA_real_, target_len - length(x))))
+  }
+  warning(sprintf("%s length %d > %d; truncating", context, length(x), target_len), call. = FALSE)
+  x[seq_len(target_len)]
+}
 png("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Allth_exal_DISC.png", width = 6000, height = 4000, res = 600)
 # Base plot
 plot.ts((new.theta.out_95_exAL_synth_DISC$exps[2,idx_all]) * 0, ylim = c(-2.5, 2.5),
@@ -653,7 +689,7 @@ d1 <- F_constant_disc%*%new.theta.out_5_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_5_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_5_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[1,] <- estim_dqlm 
+q_exps[1,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[1,]")
 lines(new.theta.out_5_exAL_synth_DISC$exps[1,idx1], col = 'darkred', lwd = 2)
 
 F_constant_disc <- FF[1:7,1,1]
@@ -661,7 +697,7 @@ d1 <- F_constant_disc%*%new.theta.out_20_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_20_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_20_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[2,] <- estim_dqlm 
+q_exps[2,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[2,]")
 lines(new.theta.out_20_exAL_synth_DISC$exps[1,idx1], col = 'purple', lwd = 2)
 
 F_constant_disc <- FF[1:7,1,1]
@@ -669,7 +705,7 @@ d1 <- F_constant_disc%*%new.theta.out_35_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_35_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_35_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[3,] <- estim_dqlm 
+q_exps[3,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[3,]")
 lines(new.theta.out_35_exAL_synth_DISC$exps[1,idx1], col = 'purple', lwd = 2)
 
 F_constant_disc <- FF[1:7,1,1]
@@ -677,7 +713,7 @@ d1 <- F_constant_disc%*%new.theta.out_50_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_50_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_50_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[4,] <- estim_dqlm 
+q_exps[4,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[4,]")
 lines(new.theta.out_50_exAL_synth_DISC$exps[1,idx1], col = 'darkgreen', lwd = 2)
 
 F_constant_disc <- FF[1:7,1,1]
@@ -685,7 +721,7 @@ d1 <- F_constant_disc%*%new.theta.out_65_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_65_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_65_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[5,] <- estim_dqlm 
+q_exps[5,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[5,]")
 lines(new.theta.out_65_exAL_synth_DISC$exps[1,idx1], col = 'purple', lwd = 2)
 
 F_constant_disc <- FF[1:7,1,1]
@@ -693,7 +729,7 @@ d1 <- F_constant_disc%*%new.theta.out_80_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_80_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_80_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[6,] <- estim_dqlm 
+q_exps[6,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[6,]")
 lines(new.theta.out_80_exAL_synth_DISC$exps[1,idx1], col = 'purple', lwd = 2)
 
 F_constant_disc <- FF[1:7,1,1]
@@ -701,7 +737,7 @@ d1 <- F_constant_disc%*%new.theta.out_95_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_95_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_95_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[7,] <- estim_dqlm 
+q_exps[7,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[7,]")
 lines(new.theta.out_95_exAL_synth_DISC$exps[1,idx1], col = 'darkblue', lwd = 2)
 
 
@@ -886,7 +922,7 @@ d1 <- F_constant_disc%*%new.theta.out_5_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_5_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_5_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[1,] <- estim_dqlm 
+q_exps[1,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[1,]")
 lines(new.theta.out_5_exAL_synth_DISC$exps[1,idx1], col = 'darkred', lwd = 2)
 
 # F_constant_disc <- FF[1:7,1,1]
@@ -910,7 +946,7 @@ d1 <- F_constant_disc%*%new.theta.out_50_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_50_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_50_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[4,] <- estim_dqlm 
+q_exps[4,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[4,]")
 lines(new.theta.out_50_exAL_synth_DISC$exps[1,idx1], col = 'darkgreen', lwd = 2)
 
 # F_constant_disc <- FF[1:7,1,1]
@@ -934,7 +970,7 @@ d1 <- F_constant_disc%*%new.theta.out_95_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_95_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_95_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[7,] <- estim_dqlm 
+q_exps[7,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[7,]")
 lines(new.theta.out_95_exAL_synth_DISC$exps[1,idx1], col = 'darkblue', lwd = 2)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
@@ -1531,7 +1567,7 @@ d1 <- F_constant_disc%*%new.theta.out_95_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_95_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_95_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[7,] <- estim_dqlm 
+q_exps[7,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[7,]")
 lines(new.theta.out_95_exAL_synth_DISC$exps[1,idx1], col = 'darkblue', lwd = 2)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
@@ -1646,7 +1682,7 @@ d1 <- F_constant_disc%*%new.theta.out_50_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_50_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_50_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[7,] <- estim_dqlm 
+q_exps[7,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[7,]")
 lines(new.theta.out_50_exAL_synth_DISC$exps[1,idx1], col = 'darkgreen', lwd = 2)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
@@ -1759,7 +1795,7 @@ d1 <- F_constant_disc%*%new.theta.out_5_exAL_synth_DISC$sm_ens[[1]][8:14,]
 d2 <- F_constant_disc%*%new.theta.out_5_exAL_synth_DISC$sm_ens[[2]][8:14,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_5_exAL_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[7,] <- estim_dqlm 
+q_exps[7,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[7,]")
 lines(new.theta.out_5_exAL_synth_DISC$exps[1,idx1], col = 'darkred', lwd = 2)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
@@ -1780,7 +1816,7 @@ d1 <- new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]][8,]
 d2 <- new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]][8,]
 discrep <- c(d1, d2) 
 estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
-q_exps[4,] <- estim_dqlm 
+q_exps[4,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[4,]")
 lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.05), col = "orange", lwd = 2)
 lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.05), col = 'orange', lwd = 2)
 

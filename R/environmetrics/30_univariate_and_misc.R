@@ -965,52 +965,58 @@ lines(idx,Y[1,idx], col = 'gray')
 lines(new.theta.out_50_NDLM_synth_DISC$sm[22,]+(new.theta.out_50_NDLM_synth_DISC$sm[c(1),]), col = 'red')
 lines(idx,new.theta.out_50_NDLM_synth_DISC$sm[22,idx]+(new.theta.out_50_NDLM_synth_DISC$sm[c(2),idx])+(new.theta.out_50_NDLM_synth_DISC$sm[c(1),idx]), col = 'blue')
 
-covs_list <- vector("list", J)
-ranges_per <- ranges-c(ranges[2:(J)],0)
-dim_theta <- p*(J:1)
-for(i in 1:J){
-covs_list[[i]] <- array(NA_real_,c(dim_theta[i],dim_theta[i],ranges_per[(J-i)+1]))
-}
+invisible(try({
+  covs_list <- vector("list", J)
+  ranges_per <- ranges-c(ranges[2:(J)],0)
+  dim_theta <- p*(J:1)
+  for(i in 1:J){
+    covs_list[[i]] <- array(NA_real_,c(dim_theta[i],dim_theta[i],ranges_per[(J-i)+1]))
+  }
 
+  # Precompute dimensions and replication counts
+  dim_theta <- p * (J:1)
+  ranges_per <- ranges - c(ranges[2:J], 0)
+  r_vec <- rev(ranges_per)
 
+  # Hyperparams for prior
+  epsilon <- 1
+  nu <- dim_theta + 1 + epsilon
 
-# Precompute dimensions and replication counts
-dim_theta <- p * (J:1)
-ranges_per <- ranges - c(ranges[2:J], 0)
-r_vec <- rev(ranges_per)
+  # Preallocate the list of 3D arrays (diagonal matrices)
+  covs_list <- mapply(function(n, r) {
+    replicate(r, diag(0.01, n), simplify = "array")
+  }, n = dim_theta, r = r_vec, SIMPLIFY = FALSE)
 
-# Hyperparams for prior 
-epsilon <- 1
-nu <- dim_theta + 1 + epsilon 
+  # Example: inspect the first covariance matrix of the first period.
+  # replicate(..., simplify="array") may return 2D when r == 1.
+  cov2 <- covs_list[[2]]
+  if (length(dim(cov2)) == 3L) {
+    print(cov2[, , 1, drop = FALSE])
+  } else {
+    print(cov2)
+  }
 
-# Preallocate the list of 3D arrays (diagonal matrices)
-covs_list <- mapply(function(n, r) {
-  replicate(r, diag(0.01, n), simplify = "array")
-}, n = dim_theta, r = r_vec, SIMPLIFY = FALSE)
+  GG_T <- (GG[,,TT])
+  #### This Requires to define the prior inside the kalman filtering!
+  sC_T <- new.theta.out_50_NDLM_synth_DISC$sC[,,TT]
+  ####
+  W_T <- ex.df.mat * GG_T%*%sC_T%*%t(GG_T)
 
-# Example: inspect the first covariance matrix of the first period
-print(covs_list[[2]][ , , 1])
+  S_list <- mapply(function(n, factor) {
+    # Extract the top-left submatrix of W_T of size n x n
+    subW <- W_T[1:n, 1:n]
+    # Multiply by factor: (nu - n - 1)
+    subW * factor
+  }, n = dim_theta, factor = nu - dim_theta - 1, SIMPLIFY = FALSE)
 
-GG_T <- (GG[,,TT])
-#### This Requires to define the prior inside the kalman filtering! 
-sC_T <- new.theta.out_50_NDLM_synth_DISC$sC[,,TT] 
-####
-W_T <- ex.df.mat * GG_T%*%sC_T%*%t(GG_T)
+  # Check the result for the first element:
+  print(S_list[[2]])
 
-S_list <- mapply(function(n, factor) {
-  # Extract the top-left submatrix of W_T of size n x n
-  subW <- W_T[1:n, 1:n]
-  # Multiply by factor: (nu - n - 1)
-  subW * factor
-}, n = dim_theta, factor = nu - dim_theta - 1, SIMPLIFY = FALSE)
-
-# Check the result for the first element:
-print(S_list[[2]])
-
-dim(new.theta.out_50_NDLM_synth_DISC$sC_ens[[1]])
-dim(new.theta.out_50_NDLM_synth_DISC$sC_ens[[2]])
-dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]])
-dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]])
+  dim(new.theta.out_50_NDLM_synth_DISC$sC_ens[[1]])
+  dim(new.theta.out_50_NDLM_synth_DISC$sC_ens[[2]])
+  dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]])
+  dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]])
+}, silent = TRUE))
 
 file_path <- DISC_W_VAR_05
 profile_section("univariate.load_disc_vars_exal_05", load_rdata_with_retry(file_path))
