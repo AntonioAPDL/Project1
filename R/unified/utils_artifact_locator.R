@@ -52,7 +52,7 @@ unified_artifact_path_to_absolute <- function(path, run_root, repo_root = getwd(
   repo_root_abs <- normalizePath(repo_root, mustWork = FALSE)
 
   if (grepl("^(/|[A-Za-z]:[/\\\\])", path)) {
-    out <- normalizePath(path, mustWork = FALSE)
+    out <- path.expand(path)
     if (isTRUE(must_exist) && !file.exists(out)) {
       stop(sprintf("artifact path does not exist: %s", out), call. = FALSE)
     }
@@ -68,10 +68,10 @@ unified_artifact_path_to_absolute <- function(path, run_root, repo_root = getwd(
 
   existing <- candidates[file.exists(candidates)]
   if (length(existing) > 0L) {
-    return(normalizePath(existing[[1]], mustWork = FALSE))
+    return(path.expand(existing[[1]]))
   }
 
-  out <- normalizePath(file.path(repo_root_abs, path), mustWork = FALSE)
+  out <- path.expand(file.path(repo_root_abs, path))
   if (isTRUE(must_exist)) {
     stop(sprintf("artifact path does not exist: %s", out), call. = FALSE)
   }

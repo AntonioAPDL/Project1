@@ -26,9 +26,16 @@ split_env_paths <- function(key) {
   if (!nzchar(raw)) {
     return(character(0))
   }
-  vals <- unlist(strsplit(raw, "\n", fixed = TRUE), use.names = FALSE)
+  delim <- if (grepl("\n", raw, fixed = TRUE)) {
+    "\n"
+  } else if (grepl("|", raw, fixed = TRUE)) {
+    "|"
+  } else {
+    ","
+  }
+  vals <- unlist(strsplit(raw, delim, fixed = TRUE), use.names = FALSE)
   vals <- vals[nzchar(vals)]
-  if (length(vals) == 0L) character(0) else normalizePath(vals, mustWork = FALSE)
+  if (length(vals) == 0L) character(0) else path.expand(vals)
 }
 
 to_quantile_label <- function(x) {
@@ -150,7 +157,7 @@ UNIV_RDATA_PATHS <- split_env_paths("UNIFIED_UNIV_RDATA_PATHS")
 DISC_W_RDATA_PATHS <- split_env_paths("UNIFIED_DISC_W_RDATA_PATHS")
 NDLM_RDATA_PATH <- env_or_default("UNIFIED_NDLM_RDATA_PATH", "")
 if (nzchar(NDLM_RDATA_PATH)) {
-  NDLM_RDATA_PATH <- normalizePath(NDLM_RDATA_PATH, mustWork = FALSE)
+  NDLM_RDATA_PATH <- path.expand(NDLM_RDATA_PATH)
 }
 
 UNIV_RDATA_MAP <- index_by_labels(UNIV_RDATA_PATHS, quantile_labels)

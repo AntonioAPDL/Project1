@@ -1,0 +1,91 @@
+config_version: 1
+
+run:
+  run_id: "p5_figures_smoke_20260210_v5"
+  run_root: "repro/runs"
+  repro_mode: "strict"
+  seed: 777
+  overwrite: true
+  dry_run: false
+  git_require_clean: false
+  threads:
+    omp: 1
+    openblas: 1
+    mkl: 1
+    veclib: 1
+    numexpr: 1
+    mc_cores: 1
+
+stages:
+  forecats: false
+  fit: false
+  post: true
+  validate: false
+  report: false
+
+models:
+  run_exdqlm_multivar: true
+  run_exdqlm_univar: true
+  run_ndlm_main: true
+
+site:
+  usgs_site: "11160500"
+  lat: 37.0443931
+  lon: -122.072464
+
+dates:
+  cutoff_date: "2022-12-25"
+  plot_start: "2022-12-07"
+  plot_end: "2023-01-22"
+
+inputs:
+  fit:
+    parameters_path: "/data/muscat_data/jaguir26/projects/Project/Input/exAL/parameters/parameters.txt"
+    retros_path: "retros_2022-12-25.csv"
+    retros_storage_scale: "log1p_cms"
+    nws_forecast_path: "nws_forecast.csv"
+    nws_storage_scale: "log1p_cms"
+    glofas_forecast_path: "glofas_forecast.csv"
+    glofas_storage_scale: "log1p_cms"
+    usgs_mode: "live"
+    usgs_cache_path: null
+  post:
+    use_fit_outputs_from_run: true
+  forecats:
+    mode: "use_existing"
+    pipeline_config_path: "config/forecats_pipeline.template.yaml"
+    existing_bundle_path: null
+
+fit:
+  quantiles: [0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95]
+  warm_start:
+    enabled: false
+    source_run_id: null
+    mode: "resume"
+
+post:
+  figures: true
+  profile: false
+  profile_detail: false
+  sort_keep_na: true
+  export_tables: false
+
+validation:
+  canonical_run_id: null
+  compare:
+    mode: "both"
+    numeric_abs_tol: 0.0
+    numeric_rel_tol: 0.0
+    pixel_max_abs_tol: 0.0
+
+scale_contract:
+  canonical_storage_scale: "raw_cms"
+  legacy_fit_input_scale: "log1p_cms"
+  legacy_post_input_scale: "log1p_cms"
+  analysis_scale_fit_internal: "log_log1p_cms"
+  analysis_scale_post_internal: "log_log1p_cms"
+
+write_audit:
+  enabled: true
+  enforce_from_stage: 4
+  allowlist_outside_run_root: []

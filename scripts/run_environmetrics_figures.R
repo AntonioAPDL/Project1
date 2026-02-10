@@ -14,7 +14,14 @@ env_flag <- function(key, default = "FALSE") {
 split_env_paths <- function(key) {
   raw <- Sys.getenv(key, "")
   if (!nzchar(raw)) return(character(0))
-  parts <- unlist(strsplit(raw, "\n", fixed = TRUE), use.names = FALSE)
+  delim <- if (grepl("\n", raw, fixed = TRUE)) {
+    "\n"
+  } else if (grepl("|", raw, fixed = TRUE)) {
+    "|"
+  } else {
+    ","
+  }
+  parts <- unlist(strsplit(raw, delim, fixed = TRUE), use.names = FALSE)
   parts <- parts[nzchar(parts)]
   if (length(parts) == 0L) character(0) else unique(parts)
 }
@@ -51,7 +58,7 @@ if (nzchar(POST_CACHE_DIR)) {
 DISC_W_RDATA_PATHS <- split_env_paths("UNIFIED_DISC_W_RDATA_PATHS")
 UNIV_RDATA_PATHS <- split_env_paths("UNIFIED_UNIV_RDATA_PATHS")
 NDLM_RDATA_PATH <- Sys.getenv("UNIFIED_NDLM_RDATA_PATH", "")
-if (nzchar(NDLM_RDATA_PATH)) NDLM_RDATA_PATH <- normalizePath(NDLM_RDATA_PATH, mustWork = FALSE)
+if (nzchar(NDLM_RDATA_PATH)) NDLM_RDATA_PATH <- path.expand(NDLM_RDATA_PATH)
 
 options(
   unified.run_root = RUN_ROOT,
@@ -157,10 +164,30 @@ writeLines(capture.output(sessionInfo()), session_path)
 # -------------------------
 # Path redirection helper (force outputs into OUT_DIR)
 # -------------------------
+is_runscoped_target <- function(path) {
+  if (!nzchar(path) || !nzchar(RUN_ROOT)) return(FALSE)
+  path_norm <- normalizePath(path, mustWork = FALSE)
+  run_root_norm <- normalizePath(RUN_ROOT, mustWork = FALSE)
+  cache_norm <- if (nzchar(POST_CACHE_DIR)) normalizePath(POST_CACHE_DIR, mustWork = FALSE) else ""
+
+  startsWith(path_norm, paste0(run_root_norm, .Platform$file.sep)) ||
+    identical(path_norm, run_root_norm) ||
+    (nzchar(cache_norm) && (startsWith(path_norm, paste0(cache_norm, .Platform$file.sep)) || identical(path_norm, cache_norm)))
+}
+
 redirect_path <- function(filename) {
   dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
   if (is.null(filename)) return(filename)
-  file.path(OUT_DIR, basename(filename))
+  filename_chr <- as.character(filename)
+  if (!nzchar(filename_chr)) return(filename_chr)
+
+  # Preserve explicit run-scoped/cache paths so later readRDS/read.csv calls can resolve them.
+  if (is_runscoped_target(filename_chr)) {
+    dir.create(dirname(filename_chr), showWarnings = FALSE, recursive = TRUE)
+    return(normalizePath(filename_chr, mustWork = FALSE))
+  }
+
+  file.path(OUT_DIR, basename(filename_chr))
 }
 
 # Clean only OUT_DIR
@@ -334,10 +361,14 @@ if (file.exists(paths_file)) {
   source(paths_file)
   check_script <- file.path(PROJECT_ROOT, "scripts", "check_inputs.R")
   if (POST_FIGURES && file.exists(check_script)) {
-    source(check_script)
-    log_step("START check_inputs")
-    check_inputs()
-    log_step("END check_inputs")
+    if (STRICT_RUNSCOPED_POST) {
+      log_step("SKIP check_inputs (STRICT_RUNSCOPED_POST=TRUE)")
+    } else {
+      source(check_script)
+      log_step("START check_inputs")
+      check_inputs()
+      log_step("END check_inputs")
+    }
   } else if (!POST_FIGURES) {
     log_step("SKIP check_inputs (POST_FIGURES=FALSE)")
   }

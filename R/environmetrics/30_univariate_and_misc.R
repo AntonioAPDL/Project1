@@ -2,24 +2,40 @@
 concatenate_matrices <- function(FFF_list) {
   concatenated_list <- list()
   J <- length(FFF_list)
-  
+
   if (J == 1) {
     concatenated_list[[1]] <- FFF_list[[1]]
     return(concatenated_list)
   }
-  
+
   start_row <- 1
   for (j in J:2) {
     row_num <- nrow(FFF_list[[j]])
-    concatenated_matrix <- do.call(cbind, lapply(FFF_list[1:J], function(mat) mat[start_row:(start_row + row_num - 1), ]))
+    if (is.na(row_num) || row_num <= 0L) next
+
+    idx <- start_row:(start_row + row_num - 1L)
+    concatenated_matrix <- do.call(
+      cbind,
+      lapply(FFF_list[1:J], function(mat) {
+        out <- matrix(NA_real_, nrow = row_num, ncol = ncol(mat))
+        valid <- idx[idx <= nrow(mat)]
+        if (length(valid) > 0L) {
+          out[seq_along(valid), ] <- mat[valid, , drop = FALSE]
+        }
+        out
+      })
+    )
+
     concatenated_list[[J - j + 1]] <- concatenated_matrix
     start_row <- start_row + row_num
   }
-  
+
   # Handle the last remaining rows from the first matrix
-  row_num <- nrow(FFF_list[[1]]) - start_row + 1
-  concatenated_list[[length(concatenated_list) + 1]] <- FFF_list[[1]][start_row:(start_row + row_num - 1), ]
-  
+  row_num <- nrow(FFF_list[[1]]) - start_row + 1L
+  if (!is.na(row_num) && row_num > 0L) {
+    concatenated_list[[length(concatenated_list) + 1L]] <- FFF_list[[1]][start_row:(start_row + row_num - 1L), , drop = FALSE]
+  }
+
   return(concatenated_list)
 }
 

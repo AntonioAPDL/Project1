@@ -78,11 +78,35 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   q_num <- as.integer(round(quantiles * 100))
   q_labels <- sprintf("%02d", q_num)
 
-  resolve_manifest_paths <- function(patterns, family_name) {
+  resolve_manifest_paths <- function(patterns, family_name, fallback_rel_paths = NULL) {
+    is_under_run_root <- function(path) {
+      startsWith(path.expand(path), paste0(run_root_abs, .Platform$file.sep)) ||
+        identical(path.expand(path), run_root_abs)
+    }
+
     paths <- vapply(patterns, function(pattern) {
       unified_first_artifact_path(manifest, pattern = pattern, must_exist = FALSE)
     }, character(1))
     names(paths) <- names(patterns)
+
+    if (!is.null(fallback_rel_paths)) {
+      for (nm in names(paths)) {
+        rel <- as.character(fallback_rel_paths[[nm]] %||% "")
+        if (!nzchar(rel)) next
+        candidate <- file.path(run_root_abs, rel)
+        if (!file.exists(candidate)) next
+
+        if (!nzchar(paths[[nm]])) {
+          paths[[nm]] <- candidate
+          next
+        }
+
+        if (strict_repro && !is_under_run_root(paths[[nm]])) {
+          paths[[nm]] <- candidate
+        }
+      }
+    }
+
     missing <- names(paths)[!nzchar(paths)]
     if (length(missing) > 0L) {
       msg <- sprintf(
@@ -109,7 +133,11 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
       sprintf("fit/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC\\.RData$", q_labels, q_num),
       q_labels
     )
-    disc_w_paths_abs <- resolve_manifest_paths(patterns, "DISC-W")
+    fallback_rel <- setNames(
+      sprintf("fit/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC.RData", q_labels, q_num),
+      q_labels
+    )
+    disc_w_paths_abs <- resolve_manifest_paths(patterns, "DISC-W", fallback_rel_paths = fallback_rel)
   }
 
   univ_paths_abs <- character(0)
@@ -118,7 +146,11 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
       sprintf("fit/exdqlm_univar/q=%s/outputs/variables_%s_exAL_synth_DISC_uni\\.RData$", q_labels, q_labels),
       q_labels
     )
-    univ_paths_abs <- resolve_manifest_paths(patterns, "univariate")
+    fallback_rel <- setNames(
+      sprintf("fit/exdqlm_univar/q=%s/outputs/variables_%s_exAL_synth_DISC_uni.RData", q_labels, q_labels),
+      q_labels
+    )
+    univ_paths_abs <- resolve_manifest_paths(patterns, "univariate", fallback_rel_paths = fallback_rel)
   }
 
   ndlm_path_abs <- ""
@@ -128,6 +160,19 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
       pattern = "fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC\\.RData$",
       must_exist = FALSE
     )
+
+    ndlm_fallback <- file.path(run_root_abs, "fit", "ndlm_main", "outputs", "DISC_variables_50_NDLM_synth_DISC.RData")
+    ndlm_is_run_scoped <- function(path) {
+      startsWith(path.expand(path), paste0(run_root_abs, .Platform$file.sep)) ||
+        identical(path.expand(path), run_root_abs)
+    }
+
+    if (file.exists(ndlm_fallback)) {
+      if (!nzchar(ndlm_rel) || (strict_repro && !ndlm_is_run_scoped(ndlm_rel))) {
+        ndlm_rel <- ndlm_fallback
+      }
+    }
+
     if (!nzchar(ndlm_rel)) {
       msg <- "post stage missing run-scoped NDLM artifact"
       if (strict_repro) {
@@ -148,7 +193,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   encode_env_list <- function(x) {
     x <- as.character(x)
     if (length(x) == 0L) return("")
-    paste(x, collapse = "\n")
+    paste(x, collapse = ",")
   }
 
   sort_keep_na <- cfg$post$sort_keep_na

@@ -30,17 +30,36 @@ San_Lorenzo_Daily_USGS_R$time <- San_Lorenzo_Daily_USGS_R$timestamp
 ###########################################################################################
 nws_forecast <- read.csv(NWS_FORECAST_PATH)
 nws_forecast[,-1] <- log(nws_forecast[,-1])
-num_ens_nws <- dim(nws_forecast)[2]-1
+nws_value_cols <- setdiff(colnames(nws_forecast), "Date")
+num_ens_nws <- length(nws_value_cols)
 
 glofas_forecast <- read.csv(GLOFAS_FORECAST_PATH)
-glofas_forecast$target_date <- as.Date(glofas_forecast$target_date)
+if (!("target_date" %in% names(glofas_forecast))) {
+  if ("Date" %in% names(glofas_forecast)) {
+    glofas_forecast$target_date <- as.Date(glofas_forecast$Date)
+  } else {
+    stop(
+      sprintf("GLOFAS forecast file must include 'target_date' or 'Date': %s", GLOFAS_FORECAST_PATH),
+      call. = FALSE
+    )
+  }
+} else {
+  glofas_forecast$target_date <- as.Date(glofas_forecast$target_date)
+}
 specific_date <- as.Date("2022-12-26")
 glofas_forecast <- glofas_forecast[glofas_forecast$target_date >= specific_date, ]
-glofas_forecast[,-1] <- log(glofas_forecast[,-1])
+glofas_value_cols <- setdiff(colnames(glofas_forecast), c("target_date", "Date"))
+if (length(glofas_value_cols) == 0L) {
+  stop(sprintf("GLOFAS forecast file has no numeric ensemble columns: %s", GLOFAS_FORECAST_PATH), call. = FALSE)
+}
+glofas_forecast[, glofas_value_cols] <- log(glofas_forecast[, glofas_value_cols, drop = FALSE])
 
-num_ens_glofas <- dim(glofas_forecast)[2]-1
+num_ens_glofas <- length(glofas_value_cols)
 
-ensembles <- list(glofas_forecast[,-c(1)], nws_forecast[,-c(1)])
+ensembles <- list(
+  data.matrix(glofas_forecast[, glofas_value_cols, drop = FALSE]),
+  data.matrix(nws_forecast[, nws_value_cols, drop = FALSE])
+)
 J <- length(ensembles)
 num_mem <- rep(NA_real_, J)
 ranges <- rep(NA_real_, J)
@@ -70,7 +89,7 @@ colnames(ppt_data) <- c('time','ppt')
 X_ppt <- ppt_data[ppt_data$time <= '2022-12-25',]
 
 start_date_idx <- which(ppt_data$time == '2022-12-26')
-end_date_idx <- which(ppt_data$time == '2022-12-26') + ranges[1]
+end_date_idx <- which(ppt_data$time == '2022-12-26') + ranges[1] - 1
 X_ppt_f <- ppt_data[start_date_idx:end_date_idx,c('ppt','time')]
 
 ##########
@@ -82,7 +101,7 @@ colnames(soil_moisture_data) <- c('time','soil')
 X_soil <- soil_moisture_data[soil_moisture_data$time <= '2022-12-25',]
 
 start_date_idx <- which(soil_moisture_data$time == '2022-12-26')
-end_date_idx <- which(soil_moisture_data$time == '2022-12-26') + ranges[1]
+end_date_idx <- which(soil_moisture_data$time == '2022-12-26') + ranges[1] - 1
 X_soil_f <- soil_moisture_data[start_date_idx:end_date_idx,c('soil','time')]
 
 #########
@@ -93,7 +112,7 @@ colnames(principal_components_df) <- c('time','Static_PCA')
 X_pca <- principal_components_df[principal_components_df$time <= '2022-12-25',]
 
 start_date_idx <- which(principal_components_df$time == '2022-12-26')
-end_date_idx <- which(principal_components_df$time == '2022-12-26') + ranges[1]
+end_date_idx <- which(principal_components_df$time == '2022-12-26') + ranges[1] - 1
 X_pca_f <- principal_components_df[start_date_idx:end_date_idx,c('Static_PCA','time')]
 
 ###########
