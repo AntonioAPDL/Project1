@@ -39,6 +39,7 @@ MODEL_RUN_EXDQLM_MULTIVAR <- env_flag("UNIFIED_MODEL_RUN_EXDQLM_MULTIVAR", "TRUE
 MODEL_RUN_EXDQLM_UNIVAR <- env_flag("UNIFIED_MODEL_RUN_EXDQLM_UNIVAR", "FALSE")
 MODEL_RUN_NDLM_MAIN <- env_flag("UNIFIED_MODEL_RUN_NDLM_MAIN", "FALSE")
 POST_FIGURES <- env_flag("UNIFIED_POST_FIGURES", "TRUE")
+POST_SMOKE_FAST <- env_flag("UNIFIED_POST_SMOKE_FAST", "FALSE")
 
 if (STRICT_RUNSCOPED_POST) {
   required <- c("UNIFIED_RUN_ROOT", "UNIFIED_RUN_ID", "UNIFIED_POST_CACHE_DIR")
@@ -124,6 +125,7 @@ cat(sprintf("MODEL_RUN_EXDQLM_MULTIVAR: %s\n", MODEL_RUN_EXDQLM_MULTIVAR))
 cat(sprintf("MODEL_RUN_EXDQLM_UNIVAR: %s\n", MODEL_RUN_EXDQLM_UNIVAR))
 cat(sprintf("MODEL_RUN_NDLM_MAIN: %s\n", MODEL_RUN_NDLM_MAIN))
 cat(sprintf("POST_FIGURES: %s\n", POST_FIGURES))
+cat(sprintf("POST_SMOKE_FAST: %s\n", POST_SMOKE_FAST))
 if (length(DISC_W_RDATA_PATHS) > 0L) {
   cat("DISC_W_RDATA_PATHS:\n")
   cat(paste0(" - ", DISC_W_RDATA_PATHS, collapse = "\n"), "\n")
@@ -302,7 +304,8 @@ core_modules <- c(
   "utils_plot.R"
 )
 modules <- if (POST_FIGURES) {
-  c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures.R")
+  figure_module <- if (POST_SMOKE_FAST) "40_figures_smoke_fast.R" else "40_figures.R"
+  c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", figure_module)
 } else {
   core_modules
 }

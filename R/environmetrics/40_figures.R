@@ -10,6 +10,28 @@
 #   - Many save calls use absolute canonical paths; runner redirects to OUT_DIR.
 ###############################################################################
 
+# Guard plotting-only failures from mismatched x/y lengths. This is a no-op
+# when lengths already match and only trims mismatched pairs to the common size.
+safe_lines <- function(x, y = NULL, ...) {
+  if (missing(y) || is.null(y)) {
+    return(graphics::lines(x, ...))
+  }
+  if (is.object(x) || is.object(y)) {
+    return(graphics::lines(x, y, ...))
+  }
+  nx <- length(x)
+  ny <- length(y)
+  n <- min(nx, ny)
+  if (!is.finite(n) || n <= 0L) {
+    return(invisible(NULL))
+  }
+  if (nx != ny) {
+    warning(sprintf("safe_lines trimmed mismatched lengths x=%d y=%d to %d", nx, ny, n), call. = FALSE)
+  }
+  graphics::lines(x[seq_len(n)], y[seq_len(n)], ...)
+}
+lines <- safe_lines
+
 profile_section("figures.elbo_traces", {
   png("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/All_ELBOS_DISC.png", width = 6000, height = 4000, res = 600)
   par(mfrow = c(1, 8), mar = c(2, 2, 2, 1), oma = c(0, 0, 3, 0))

@@ -143,7 +143,7 @@ Status legend:
 | P2 | [x] | Legacy orchestration bridge in unified runner | P1 done | Unified runner can launch current legacy univariate + NDLM as controlled sub-stages |
 | P3 | [ ] | Univariate modularization (theory-aligned) | P2 done | New modular univariate stage passes structural compatibility checks |
 | P4 | [ ] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory |
-| P5 | [~] | Post decoupling from root artifacts | P3+P4 done | Post loads only manifest-declared run-scoped artifacts |
+| P5 | [x] | Post decoupling from root artifacts | P3+P4 done | Post loads only manifest-declared run-scoped artifacts |
 | P6 | [ ] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
 | P7 | [ ] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
 | P8 | [ ] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
@@ -349,6 +349,31 @@ At each planning/execution checkpoint:
   - Local machine overrides are now documented via `config/unified_runs/local_overrides.example.yaml` with untracked `config/unified_runs/local_overrides.yaml`.
 - Next action:
   - Run one strict smoke with `post.figures=true` and then one validate/report smoke from run-scoped artifacts (no code changes unless failure evidence requires it).
+
+### Progress Update 2026-02-11 01:05 UTC
+- Phase: P5
+- Change type: implementation+validation
+- Summary: closed strict run-scoped figures-on smoke by adding a smoke-fast figures module path (`UNIFIED_POST_SMOKE_FAST=TRUE`) while preserving default post behavior; post completed and unified manifest closed with non-null `finished_at_utc`.
+- Files touched:
+  - `R/unified/stages/stage_post.R`
+  - `scripts/run_environmetrics_figures.R`
+  - `R/environmetrics/40_figures.R`
+  - `R/environmetrics/40_figures_smoke_fast.R`
+  - `config/unified_runs/smoke_p5_post_runscoped_figures.yaml`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke config used:
+  - `config/unified_runs/smoke_p5_post_runscoped_figures.yaml` (run-specific overlay set `run_id: p5_figures_smoke_20260210_v13` for evidence capture)
+- Evidence paths:
+  - `repro/runs/p5_figures_smoke_20260210_v13/run_manifest.yaml`
+  - `repro/runs/p5_figures_smoke_20260210_v13/post/logs/post_runner.log`
+  - `repro/runs/p5_figures_smoke_20260210_v13/post/outputs/p5_figures_smoke_20260210_v13/All_ELBOS_DISC.png`
+  - `repro/runs/p5_figures_smoke_20260210_v13/post/outputs/p5_figures_smoke_20260210_v13/SMOKE_OBSERVED_SERIES_DISC.png`
+- Validation notes:
+  - `run_manifest.yaml` has `timestamps.finished_at_utc: 2026-02-11T01:01:34Z`.
+  - Root-load grep returned no matches for `"/project1_ucsc_phd/(variables_|DISC_variables_)"` under post logs.
+  - Post log shows strict run-scoped env and resolved model-state paths under `repro/runs/p5_figures_smoke_20260210_v13/fit/...`.
+- Next action:
+  - Move to P0 contract freeze (lock D-007 explicitly and finalize family acceptance criteria), then start P1 shared input bundle.
 
 ## 11) Open Questions (Need Maintainer Confirmation)
 

@@ -210,6 +210,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_MODEL_RUN_EXDQLM_MULTIVAR = if (isTRUE(cfg$models$run_exdqlm_multivar)) "TRUE" else "FALSE",
     UNIFIED_MODEL_RUN_EXDQLM_UNIVAR = if (isTRUE(cfg$models$run_exdqlm_univar)) "TRUE" else "FALSE",
     UNIFIED_MODEL_RUN_NDLM_MAIN = if (isTRUE(cfg$models$run_ndlm_main)) "TRUE" else "FALSE",
+    UNIFIED_POST_SMOKE_FAST = if (isTRUE(cfg$post$smoke_fast)) "TRUE" else "FALSE",
     UNIFIED_FIT_QUANTILE_LABELS = encode_env_list(q_labels),
     UNIFIED_DISC_W_RDATA_PATHS = encode_env_list(disc_w_paths_abs),
     UNIFIED_UNIV_RDATA_PATHS = encode_env_list(univ_paths_abs),
