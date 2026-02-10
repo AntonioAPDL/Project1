@@ -1,0 +1,656 @@
+# Unified Multi-Model Workflow Tracker (Living)
+
+Date: 2026-02-10  
+Repo root: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
+Status: Active planning + execution tracker  
+Primary audience: project maintainer + Codex
+
+## 1) Purpose
+
+This document tracks the step-by-step migration to one unified workflow that produces, in a single run graph:
+
+1. Multivariate exDQLM outputs (current DISC-W path).
+2. Univariate exDQLM outputs (currently from legacy `OptimalModelSLexAL.r`).
+3. Multivariate NDLM outputs (currently from legacy `DISC_Optimal_Synth_Ranges_NDLM.r`).
+4. Post-processing outputs, validations, and reports with explicit model-family separation.
+
+This is a living document and must be updated when:
+
+1. A decision changes.
+2. A phase is started/closed.
+3. A risk appears/resolves.
+4. A major implementation deviation is accepted.
+
+## 2) Current Repo Reality Snapshot
+
+## 2.1 What is currently orchestrated by the unified runner
+
+- Unified runner calls stages: `forecats`, `fit`, `post`, `validate`, `report`.
+- Current `fit` stage runs only `scripts/run_DISC_Optimal_Synth_Ranges_W.R` (multivariate exDQLM / DISC-W path).
+- Current `post` stage runs `scripts/run_environmetrics_figures.R`.
+
+Repo references:
+
+- `scripts/unified_run.R`
+- `R/unified/stages/stage_fit.R`
+- `R/unified/stages/stage_post.R`
+
+## 2.2 What is not yet orchestrated as first-class unified model stages
+
+- `OptimalModelSLexAL.r` (univariate exDQLM) is not a unified stage.
+- `DISC_Optimal_Synth_Ranges_NDLM.r` (NDLM) is not a unified stage.
+
+Repo references:
+
+- `run_scripts_SL.py`
+- `DISC_Optimal_Synth_Ranges_NDLM.r`
+- `OptimalModelSLexAL.r`
+
+## 2.3 Current hidden dependency risk in post-processing
+
+Current post modules load root-level pre-generated artifacts for univariate and NDLM.
+
+Repo references:
+
+- `R/environmetrics/00_paths.R`
+- `R/environmetrics/30_univariate_and_misc.R`
+
+Implication:
+
+- A unified run can still depend on stale/non-run-scoped NDLM/univariate artifacts unless decoupled.
+
+## 3) Theory Source-of-Truth Policy (Locked)
+
+All new or corrected model logic must follow these theory repos:
+
+1. NDLM: `/data/muscat_data/jaguir26/NDLM---Ensemble`
+2. Multivariate exDQLM: `/data/muscat_data/jaguir26/exDQLM---Ensemble`
+3. Univariate exDQLM: `/data/muscat_data/jaguir26/univ-exDQLM---Ensemble`
+
+Relevant main theory files:
+
+- `/data/muscat_data/jaguir26/NDLM---Ensemble/docs/derivations/main.tex`
+- `/data/muscat_data/jaguir26/exDQLM---Ensemble/main.tex`
+- `/data/muscat_data/jaguir26/univ-exDQLM---Ensemble/main.tex`
+
+Precedence rule:
+
+1. Theory repo equations/specification.
+2. Unified workflow contracts (config, manifest, stage interfaces).
+3. Legacy script behavior (legacy is reference material, not authority, when conflicting with theory).
+
+## 4) Locked Decisions (from maintainer)
+
+| ID | Decision | Status | Notes |
+|---|---|---|---|
+| D-001 | Default behavior for NDLM/univariate modernization is theory-first from external repos, not legacy-discount parity-first. | Locked | Legacy NDLM/univariate may be wrong in parts; multivariate exDQLM path in this repo is currently considered correct. |
+| D-002 | NDLM implementation scope is VB only (no MCMC parity hooks required now). | Locked | MCMC can be future work item. |
+| D-003 | NDLM output naming will be neutral (`ndlm_main` style), not quantile-labeled `50` compatibility naming. | Locked | Avoid semantic confusion. |
+| D-004 | Univariate modernization must be structurally compatible with current downstream expectations (not byte-identical `.RData`). | Locked | Keep object contracts and shape compatibility. |
+| D-005 | In unified config, NDLM should be mandatory when `models.run_ndlm=true`; default intended as enabled in production mode. | Locked | No silent NDLM skip in full production runs. |
+| D-006 | Post outputs/reports should remain separated by model family; do not merge posterior outputs into a single blended block. | Locked | Shared inputs are allowed; outputs remain clearly separated. |
+| D-007 | Recommended sequencing is hybrid: wire legacy scripts into unified runner early for operational continuity, while replacing them module-by-module with theory-aligned implementations. | Proposed -> Pending confirmation | This minimizes downtime and keeps end-to-end operability while modernizing. |
+| D-008 | Preserve `post/outputs/<RUN_ID>/` nesting until validate contract is explicitly versioned. | Locked | `stage_validate` currently compares against `run_root/post/outputs/<RUN_ID>`; do not break this path contract before validate v2. |
+| D-009 | Preserve current DISC-W fit output contract `fit/q=<QQ>/outputs/...` until family-path cutover. | Locked | Existing fit/post tooling and run artifacts rely on this structure; migration to `fit/exdqlm_multivar/...` is a versioned cutover item. |
+
+## 5) Target End-State Architecture
+
+## 5.1 High-level stage graph
+
+`unified_run -> data_prep_shared -> fit_exdqlm_multivar -> fit_exdqlm_univar -> fit_ndlm_main -> post -> validate -> report`
+
+## 5.2 Output organization (family-separated)
+
+Under `repro/runs/<RUN_ID>/`:
+
+- Manifest v1 compatibility path (current, keep through cutover):
+  - `fit/q=<QQ>/outputs/...` (DISC-W)
+  - `post/outputs/<RUN_ID>/...` (required nested run id)
+  - `validate/...`
+  - `report/...`
+- Manifest v2 target path (after versioned cutover):
+  - `fit/exdqlm_multivar/q=<QQ>/...`
+  - `fit/exdqlm_univar/q=<QQ>/...`
+  - `fit/ndlm_main/...`
+  - `post/outputs/<RUN_ID>/exdqlm_multivar/...`
+  - `post/outputs/<RUN_ID>/exdqlm_univar/...`
+  - `post/outputs/<RUN_ID>/ndlm_main/...`
+- `validate/...`
+- `report/...`
+
+## 5.3 Manifest requirements
+
+Manifest must explicitly label:
+
+1. Which families executed.
+2. Which families were theory-aligned vs legacy-reference mode.
+3. Artifact paths per family.
+4. Version tags for model interfaces.
+
+## 6) Phase Plan and Gates
+
+Status legend:
+
+- `[ ]` not started
+- `[~]` in progress
+- `[x]` completed
+- `[!]` blocked
+
+| Phase | Status | Goal | Entry Criteria | Exit Gate |
+|---|---|---|---|---|
+| P0 | [ ] | Governance + contract freeze | Tracker approved | Contracts document + decision log initialized |
+| P1 | [ ] | Shared input contract + adapters | P0 done | Single run-scoped input bundle consumable by all three families |
+| P2 | [x] | Legacy orchestration bridge in unified runner | P1 done | Unified runner can launch current legacy univariate + NDLM as controlled sub-stages |
+| P3 | [ ] | Univariate modularization (theory-aligned) | P2 done | New modular univariate stage passes structural compatibility checks |
+| P4 | [ ] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory |
+| P5 | [~] | Post decoupling from root artifacts | P3+P4 done | Post loads only manifest-declared run-scoped artifacts |
+| P6 | [ ] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
+| P7 | [ ] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
+| P8 | [ ] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
+
+## 7) Detailed Task Backlog
+
+## 7.1 P0 Tasks
+
+- `T-P0-01`: Create model-family interface contract doc (inputs/outputs/object names).
+- `T-P0-02`: Define acceptance criteria per family (minimal required artifacts + shape checks).
+- `T-P0-03`: Confirm D-007 (hybrid sequencing) as locked or replace it.
+
+## 7.2 P1 Tasks (Shared Inputs)
+
+- `T-P1-01`: Build shared data-prep adapter module that writes run-scoped canonical inputs.
+- `T-P1-02`: Add input manifest entries per source file with hashes/scales.
+- `T-P1-03`: Add fast-fail checks for required per-family inputs.
+- `T-P1-04`: Freeze shared input bundle layout under `repro/runs/<RUN_ID>/inputs/shared/...`; when forecats build mode is enabled, snapshot/copy required forecats outputs into this shared input tree and record hashes in manifest.
+
+## 7.3 P2 Tasks (Legacy Bridge)
+
+- [x] `T-P2-01`: Add unified stage wrapper for legacy univariate script execution.
+- [x] `T-P2-02`: Add unified stage wrapper for legacy NDLM script execution.
+- [x] `T-P2-03`: Ensure run-scoped output capture and explicit legacy-mode labeling in manifest.
+
+## 7.4 P3 Tasks (Univariate Modular, Theory-Aligned)
+
+- `T-P3-01`: Split `OptimalModelSLexAL.r` into modular files (setup/inputs/model/update/save).
+- `T-P3-02`: Reconcile equations with `univ-exDQLM---Ensemble/main.tex`.
+- `T-P3-03`: Add structural compatibility tests against expected post interfaces.
+
+## 7.5 P4 Tasks (NDLM Modular, Theory-Aligned VB)
+
+- `T-P4-01`: Split `DISC_Optimal_Synth_Ranges_NDLM.r` into modular files.
+- `T-P4-02`: Replace forecast-window discount-factor-only path with theory-aligned stochastic `W` treatment (VB only).
+- `T-P4-03`: Update ELBO and VB covariance distribution updates per NDLM derivations.
+- `T-P4-04`: Emit neutral NDLM artifacts (`ndlm_main`) with stable schema.
+
+## 7.6 P5 Tasks (Post Decoupling)
+
+- `T-P5-01`: Remove hardcoded root `.RData` loads in `R/environmetrics/30_univariate_and_misc.R`.
+- `T-P5-02`: Load all family artifacts from manifest paths.
+- `T-P5-03`: Keep family-specific outputs separated in post output tree.
+
+## 7.7 P6-P8 Tasks (Orchestration, Validation, Cutover)
+
+- `T-P6-01`: Add explicit model-family toggles under unified config.
+- `T-P6-02`: Add scheduling policy for parallel exDQLM stages + NDLM isolation.
+- `T-P7-01`: Extend validator to enforce per-family required outputs.
+- `T-P7-02`: Extend report to summarize each family separately.
+- `T-P8-01`: Change defaults to theory-aligned stages; keep legacy as opt-in fallback.
+
+## 8) Risk Register (Live)
+
+| Risk ID | Severity | Description | Mitigation | Owner | Status |
+|---|---|---|---|---|---|
+| R-001 | Critical | NDLM forecast-window covariance mismatch vs theory can invalidate inference. | Prioritize P4 equation-to-code audit + tests before making NDLM default authoritative. | TBD | Open |
+| R-002 | High | Post currently consumes root pre-generated NDLM/univariate artifacts. | Execute P5 decoupling before declaring full autonomy. | TBD | Mitigating (strict run-scoped smoke passed) |
+| R-003 | High | Legacy scripts contain duplicated core functions and fragile patterns. | Modularize with strict tests and narrow wrappers. | TBD | Open |
+| R-004 | Medium | Parallel orchestration may induce file collisions without strict run-scope contracts. | Enforce per-family/per-quantile isolated output roots + write-audit. | TBD | Open |
+| R-005 | Medium | Ambiguity on sequencing can delay implementation. | Lock D-007 or replace with alternate sequence immediately after P0. | Maintainer | Open |
+| R-006 | High | DISC-W warm-start can load root `DISC_variables_*` paths, violating run-scoped reproducibility if enabled. | Keep warm-start disabled by default; if enabled, require run-scoped warm-start source path recorded in manifest before stage execution. | TBD | Open |
+| R-007 | Medium | Post reads `y_reps*.rds` via relative paths, creating working-directory-sensitive behavior. | In P5, enforce absolute/manifest-declared paths for these intermediates and fail fast on unresolved relative reads. | TBD | Mitigating (run-scoped cache path enforced) |
+
+## 9) Validation and Done Criteria
+
+A run is "full PASS" only if all hold:
+
+1. Manifest has non-null `timestamps.finished_at_utc`.
+2. Manifest `validation.status == pass`.
+3. Required artifacts exist for each enabled family.
+4. Post outputs exist in family-separated locations.
+5. Compare report + write-audit artifacts exist and pass gate policies.
+6. Completion report exists and references all family outputs.
+
+## 10) Update Protocol (How to Maintain This Tracker)
+
+At each planning/execution checkpoint:
+
+1. Update phase status table.
+2. Add decision entries if scope/behavior changes.
+3. Add a progress log entry.
+4. Mark completed tasks with evidence paths.
+5. Update risk statuses.
+
+## 10.1 Progress Log Template
+
+```markdown
+### Progress Update YYYY-MM-DD HH:MM UTC
+- Phase: P?
+- Change type: decision|implementation|validation|rollback
+- Summary:
+- Files touched:
+- Evidence paths:
+- New risks:
+- Next action:
+```
+
+## 10.2 Decision Log Template
+
+```markdown
+| Decision ID | Date | Decision | Why | Impacted phases | Status |
+|---|---|---|---|---|---|
+| D-XYZ | YYYY-MM-DD | ... | ... | P? | Proposed/Locked/Superseded |
+```
+
+## 10.3 Progress Log Entries
+
+### Progress Update 2026-02-10 02:24 UTC
+- Phase: P2
+- Change type: implementation
+- Summary: wired optional legacy bridges in unified `fit` stage for univariate exDQLM and NDLM with run-scoped outputs; added config toggles (default OFF) and fit-only smoke config.
+- Files touched:
+  - `R/unified/config.R`
+  - `config/unified_run.template.yaml`
+  - `R/unified/stages/stage_fit.R`
+  - `OptimalModelSLexAL.r`
+  - `DISC_Optimal_Synth_Ranges_NDLM.r`
+  - `config/unified_runs/smoke_p2_legacy_bridge.yaml`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths (expected after smoke run):
+  - `repro/runs/<RUN_ID>/resolved_config.yaml`
+  - `repro/runs/<RUN_ID>/run_manifest.yaml`
+  - `repro/runs/<RUN_ID>/fit/q=50/outputs/DISC_variables_50_exAL_synth_DISC.RData`
+  - `repro/runs/<RUN_ID>/fit/exdqlm_univar/q=50/outputs/variables_50_exAL_synth_DISC_uni.RData`
+  - `repro/runs/<RUN_ID>/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData`
+- New risks: none (no model semantics changed in this chunk).
+- Next action: run smoke config, verify artifact existence + manifest artifact entries for `fit/exdqlm_univar/...` and `fit/ndlm_main/...`, then scope P2 follow-up.
+
+### Progress Update 2026-02-10 03:05 UTC
+- Phase: P2
+- Change type: validation
+- Summary: hardened P2 bridge wiring and passed fit-only smoke gate with run-scoped univariate and NDLM legacy outputs recorded in manifest v1.
+- Files touched:
+  - `R/unified/config.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/smoke_p2_legacy_bridge.yaml`
+  - `R/unified/stages/stage_fit.R`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/runs/20260209_183637/resolved_config.yaml`
+  - `repro/runs/20260209_183637/run_manifest.yaml`
+  - `repro/runs/20260209_183637/fit/exdqlm_univar/q=50/outputs/variables_50_exAL_synth_DISC_uni.RData`
+  - `repro/runs/20260209_183637/fit/exdqlm_univar/q=50/logs/univar_legacy.log`
+  - `repro/runs/20260209_183637/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData`
+  - `repro/runs/20260209_183637/fit/ndlm_main/logs/ndlm_legacy.log`
+  - `repro/runs/20260209_183637/run_manifest.yaml` artifact entries include both paths above
+- New risks: none introduced; default behavior remains unchanged unless model toggles are enabled.
+- Next action: start next chunk after maintainer review/smoke confirmation.
+
+### Progress Update 2026-02-10 05:30 UTC
+- Phase: P5
+- Change type: implementation+validation
+- Summary: post stage now resolves run-scoped model-state artifacts from manifest and passes those paths via env vars; post modules now read run-scoped paths/cache in strict mode and no longer rely on repo-root hardcoded loads in this smoke path.
+- Files touched:
+  - `R/unified/utils_artifact_locator.R`
+  - `scripts/unified_run.R`
+  - `R/unified/stages/stage_post.R`
+  - `scripts/run_environmetrics_figures.R`
+  - `R/environmetrics/00_paths.R`
+  - `R/environmetrics/30_univariate_and_misc.R`
+  - `R/environmetrics/40_figures.R`
+  - `config/unified_runs/smoke_p5_post_runscoped.yaml`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `/tmp/project1_ucsc_phd/repro/runs/20260209_210504/resolved_config.yaml`
+  - `/tmp/project1_ucsc_phd/repro/runs/20260209_210504/run_manifest.yaml`
+  - `/tmp/project1_ucsc_phd/repro/runs/20260209_210504/post/logs/post_runner.log`
+  - `/tmp/project1_ucsc_phd/repro/runs/20260209_210504/post/outputs/20260209_210504/post_smoke_marker.txt`
+  - `/tmp/project1_ucsc_phd/repro/runs/20260209_210504/fit/exdqlm_univar/q=50/outputs/variables_50_exAL_synth_DISC_uni.RData`
+  - `/tmp/project1_ucsc_phd/repro/runs/20260209_210504/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData`
+- Validation notes:
+  - `run_manifest.yaml` has non-null `timestamps.finished_at_utc`.
+  - Strict mode was active (`UNIFIED_REQUIRE_RUNSCOPED_POST=TRUE`) with legacy fallback disabled.
+  - Post log shows resolved run-scoped artifact paths and no repo-root `variables_*/DISC_variables_*` loads.
+- New risks:
+  - None added; this chunk mitigates run-scope path coupling risks (R-002, R-007).
+- Next action:
+  - Continue P5 by extending run-scoped manifest-driven inputs to full figure mode and then validate/report stages.
+
+## 11) Open Questions (Need Maintainer Confirmation)
+
+1. Confirm D-007: proceed with hybrid sequencing (legacy-bridge early + theory-first modular replacements), or switch to strict theory-rewrite-first before any legacy bridge.
+2. Confirm whether NDLM legacy bridge outputs should be explicitly tagged `non_authoritative=true` in manifest until P4 completion.
+3. Confirm minimum accepted artifact schema for `ndlm_main` stage (object names + table exports) for post integration.
+4. Current unified manifest has no per-stage status block (only global `validation.status` + timestamps). Do you want explicit `stages.<name>.status` (`pass|fail|skip`) in manifest v2, or keep current implicit semantics?
+5. Resolved (2026-02-10): config now includes `models.run_exdqlm_multivar` (default `true`), `models.run_exdqlm_univar` (default `false`), and `models.run_ndlm_main` (default `false`) in config v1.
+6. Post currently reads legacy univariate/NDLM/multivariate `.RData` from repo root (`R/environmetrics/30_univariate_and_misc.R`). For P5, should migration enforce hard-fail when those root paths are used, or allow a temporary fallback mode?
+7. `R/environmetrics/40_figures.R` reads `y_reps_f.rds`/`y_reps_f_new.rds`/`y_reps_new.rds` via relative paths. Should P5 force explicit run-scoped absolute paths for these files to eliminate working-directory dependence?
+8. `write_audit.enforce_from_stage` defaults to `4`, which audits only `validate` and `report` in current stage order. Should this be reduced to `2` or `1` for migration phases that need fit/post write isolation proof?
+9. Forecats `build` mode currently writes to `data/forecats_inputs` and `data/forecats_cache` (outside `run_root`). For unified multi-model production runs, should forecats outputs be copied/snapshotted into run root as immutable run inputs?
+
+## 12) Immediate Next Actions (Proposed)
+
+1. Close P0 in one focused pass:
+   - lock D-007,
+   - finalize family contracts,
+   - finalize evidence checklist.
+2. Start P1 (shared inputs) and P2 (legacy bridge) in parallel only if contracts are locked.
+3. Start P3 and P4 as dedicated modernization tracks with explicit theory mapping docs.
+
+## 13) Notes
+
+- Current multivariate exDQLM path (`DISC_Optimal_Synth_Ranges_W.r` + modular DISC-W runner chain) is treated as correct baseline.
+- Univariate and NDLM legacy scripts are treated as candidates for theory-aligned replacement and cleanup.
+- NDLM quantile argument is not semantically meaningful for current intended NDLM path; NDLM is tracked as a single neutral model artifact family.
+
+## 14) Appendix: Contracts (Repo-grounded)
+
+### 14.1 Discovery Report (2026-02-10)
+
+Files inspected (read-only):
+
+- Unified orchestration: `scripts/unified_run.R`, `R/unified/config.R`, `R/unified/manifest.R`, `R/unified/determinism.R`, `R/unified/utils_write_audit.R`
+- Unified stages: `R/unified/stages/stage_forecats.R`, `R/unified/stages/stage_fit.R`, `R/unified/stages/stage_post.R`, `R/unified/stages/stage_validate.R`, `R/unified/stages/stage_report.R`
+- DISC-W fit chain: `scripts/run_DISC_Optimal_Synth_Ranges_W.R`, `DISC_Optimal_Synth_Ranges_W.r`, `R/disc_w/01_paths_inputs.R`, `R/disc_w/05_save_state.R`
+- Post chain: `scripts/run_environmetrics_figures.R`, `R/environmetrics/00_paths.R`, `R/environmetrics/10_data_inputs.R`, `R/environmetrics/30_univariate_and_misc.R`, `R/environmetrics/40_figures.R`
+- Legacy scripts: `OptimalModelSLexAL.r`, `DISC_Optimal_Synth_Ranges_NDLM.r`, `run_scripts_SL.py`
+- Validation/tools/config docs: `repro/compare_to_canonical.py`, `repro/tools/validate_run.sh`, `config/unified_run.template.yaml`, `config/unified_runs/heavy_site11160500_cutoff20221225.yaml`, `repro/UNIFIED_WORKFLOW_README.md`
+- Run artifacts (small text only): `repro/runs/heavy_20260207_211120/*`, `repro/runs/heavy_20260208_040646/*`, `repro/runs/heavy_20260208_183742_postexports/*`, `repro/runs/heavy_20260209_010522/*`
+
+Key findings:
+
+1. Unified stage order is fixed and explicit: `forecats -> fit -> post -> validate -> report` (`scripts/unified_run.R:108-149`).
+2. Current unified `fit` stage orchestrates DISC-W only; univariate and NDLM are not first-class unified stages (`R/unified/stages/stage_fit.R:3-133`).
+3. Legacy univariate and NDLM outputs are still loaded from repo root by post modules (`R/environmetrics/30_univariate_and_misc.R:895-1035`).
+4. Manifest schema is stable (`manifest_version=1`) but has no per-stage status block; skip/fail are inferred from control flow and `validation.status` (`R/unified/manifest.R:51-113`, `scripts/unified_run.R:126-152`).
+5. Post uses relative `readRDS(...)` calls for intermediate files (`R/environmetrics/40_figures.R:4151`, `R/environmetrics/40_figures.R:4316`, `R/environmetrics/40_figures.R:4483`), which is a run-scoping risk unless paths are fully controlled.
+6. NDLM legacy script currently hard-codes `p0 <- 0.5` and writes `DISC_variables_50_NDLM_synth_DISC.RData` to repo root (`DISC_Optimal_Synth_Ranges_NDLM.r:44`, `DISC_Optimal_Synth_Ranges_NDLM.r:2186`).
+7. Univariate legacy script consumes command-line quantile and writes `variables_<q>_exAL_synth_DISC_uni.RData` to repo root (`OptimalModelSLexAL.r:45-46`, `OptimalModelSLexAL.r:2040`).
+
+Ambiguities remaining after discovery:
+
+1. Exact canonical schema for future `ndlm_main` manifest family labeling is not implemented in current manifest v1.
+2. Current post code consumes root model-state artifacts; run-scoped manifest-driven loading contract is not implemented yet.
+3. Current default write-audit threshold (`enforce_from_stage=4`) does not audit fit/post by default.
+
+### 14.2 Unified Runner Contracts (current implementation)
+
+#### 14.2.1 Stage ordering + signatures
+
+| Order | Stage | Function signature | Inputs (config/env) | Required outputs |
+|---|---|---|---|---|
+| 1 | `forecats` | `unified_stage_forecats(cfg, run_root, repo_root, manifest)` | `cfg$inputs$forecats$mode`, `pipeline_config_path`, `existing_bundle_path` (`R/unified/stages/stage_forecats.R:3-18`) | If `use_existing`, optional bundle artifact recorded in manifest; if `build`, log at `run_root/forecats/forecats_pipeline.log` |
+| 2 | `fit` | `unified_stage_fit(cfg, run_root, repo_root, manifest)` | `cfg$fit$quantiles`, `cfg$inputs$fit.*`, `cfg$run$seed`, `cfg$run$threads$mc_cores`, `cfg$scale_contract$legacy_fit_input_scale` (`R/unified/stages/stage_fit.R:8-116`) | `run_root/fit/q=<QQ>/outputs/DISC_variables_<q>_exAL_synth_DISC.RData` |
+| 3 | `post` | `unified_stage_post(cfg, run_root, repo_root, manifest)` | `cfg$post$profile`, `cfg$post$profile_detail`, `cfg$post$sort_keep_na`, `cfg$post$export_tables`, adapted CSV inputs (`R/unified/stages/stage_post.R:65-91`) | `run_root/post/outputs/<RUN_ID>/...` (images/csv/rds/tex/md) |
+| 4 | `validate` | `unified_stage_validate(cfg, run_root, repo_root, manifest)` | `cfg$validation$canonical_run_id`, `cfg$validation$compare$mode` (`R/unified/stages/stage_validate.R:41-71`) | `run_root/validate/compare_report.txt`, `run_root/validate/compare_report.json`, `run_root/validate/diff/*` |
+| 5 | `report` | `unified_stage_report(cfg, run_root, repo_root, manifest)` | `manifest$validation`, `cfg$post$profile`, compare report json (`R/unified/stages/stage_report.R:7-70`) | `run_root/report/summary.md`, `run_root/report/summary.json` (+ optional `profile_summary.md`) |
+
+#### 14.2.2 PASS / FAIL / SKIP representation
+
+1. Stage PASS: stage function returns `list(manifest = manifest)` and does not call `stop(...)`.
+2. Stage FAIL: stage function calls `stop(...)` (or throws), `scripts/unified_run.R` exits non-zero before setting `finished_at_utc`.
+3. Stage SKIP: stage is disabled by config (`cfg$stages[[stage]] == FALSE`) and not executed (`scripts/unified_run.R:126-127`).
+4. Global run PASS: script reaches end, sets `manifest$timestamps$finished_at_utc`, writes manifest, exits status 0 (`scripts/unified_run.R:151-155`).
+5. Global run FAIL: no final timestamp update; manifest often remains with `finished_at_utc: null`.
+
+#### 14.2.3 Config load/validation + manifest lifecycle
+
+1. Config load/merge/validate: `cfg <- unified_load_config(...)` (`scripts/unified_run.R:54`), implemented in `R/unified/config.R:252-269`.
+2. Manifest init and early write: `unified_manifest_init(...)` then `unified_manifest_write(...)` before stage loop (`scripts/unified_run.R:83-89`).
+3. Manifest update cadence: after each stage (`scripts/unified_run.R:140-143`) and once at final closure (`scripts/unified_run.R:151-152`).
+
+Manifest v1 snippet (current, `R/unified/manifest.R:55-112`):
+
+```yaml
+manifest_version: 1
+config_version: 1
+run_id: "<RUN_ID>"
+run_root: "<ABS_RUN_ROOT>"
+timestamps:
+  started_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+  finished_at_utc: null
+validation:
+  compare_report_path: "<run_root>/validate/compare_report.json"
+  write_audit_diff_path: "<run_root>/validate/write_audit/fs_diff.patch"
+  status: "pending"
+```
+
+#### 14.2.4 Manifest v2 minimal freeze (target, doc contract)
+
+```yaml
+manifest_version: 2
+run_id: "<RUN_ID>"
+run_root: "<ABS_RUN_ROOT>"
+
+stages:
+  fit:
+    status: "pass"                # enum: pass|fail|skip
+    started_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+    finished_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+    log_paths:
+      console: "<run_root>/fit/runner_console.txt"
+  post:
+    status: "pass"
+    started_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+    finished_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+    log_paths:
+      console: "<run_root>/post/runner_console.txt"
+  validate:
+    status: "pass"
+    started_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+    finished_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+    log_paths:
+      console: "<run_root>/validate/runner_console.txt"
+  report:
+    status: "pass"
+    started_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+    finished_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+    log_paths:
+      console: "<run_root>/report/runner_console.txt"
+
+families:
+  exdqlm_multivar:
+    enabled: true
+    implementation_mode: "legacy_bridge"   # enum: legacy_bridge|theory_aligned
+    authoritative: true
+  exdqlm_univar:
+    enabled: true
+    implementation_mode: "legacy_bridge"
+    authoritative: false
+  ndlm_main:
+    enabled: true
+    implementation_mode: "legacy_bridge"
+    authoritative: false
+
+artifacts:
+  - family: "exdqlm_multivar"
+    role: "model_state"           # e.g., model_state|table|figure|input_snapshot|log|report
+    format: "rdata"               # e.g., rdata|rds|csv|png|json|yaml|txt|md|tex
+    path: "<ABS_OR_RUN_REL_PATH>"
+    sha256: "<HEX_SHA256>"
+```
+
+### 14.3 Config Schema Contracts (repo-grounded)
+
+#### 14.3.1 Config files in use
+
+1. Unified default template: `config/unified_run.template.yaml`
+2. Operational heavy harness template: `config/unified_runs/heavy_site11160500_cutoff20221225.yaml`
+3. Per-run resolved config (generated): `repro/runs/<RUN_ID>/resolved_config.yaml`
+4. Forecats stage delegated config (when used): `config/forecats_pipeline.template.yaml` passed to `scripts/forecats_pipeline.R`
+
+#### 14.3.2 Key controls + where consumed
+
+| Key | Default | Consumed in |
+|---|---|---|
+| `stages.forecats|fit|post|validate|report` | all `true` in template | stage loop gate (`scripts/unified_run.R:126-127`) |
+| `run.repro_mode` | `strict` | deterministic policy (`R/unified/determinism.R:39-57`) |
+| `run.seed` | `777` | `unified_apply_seed` and fit wrapper seed env (`scripts/unified_run.R:82`, `R/unified/stages/stage_fit.R:79-93`) |
+| `run.threads.mc_cores` | `1` | quantile parallelism (`R/unified/stages/stage_fit.R:108-116`) |
+| `fit.quantiles` | `[0.05,...,0.95]` | per-quantile execution (`R/unified/stages/stage_fit.R:67-76`) |
+| `fit.warm_start.enabled` | `false` | forwarded as `DISC_USE_PREV` env (`R/unified/stages/stage_fit.R:80`) |
+| `inputs.fit.*_path` | `null` | validated in `R/unified/config.R:210-215`; consumed in fit/post adapters |
+| `inputs.fit.*_storage_scale` | `log1p_cms` | adapter conversion in fit/post (`R/unified/stages/stage_fit.R:18-61`, `R/unified/stages/stage_post.R:16-59`) |
+| `post.profile`, `post.profile_detail` | `false` | post runner env vars (`R/unified/stages/stage_post.R:73-74`) |
+| `post.sort_keep_na`, `post.export_tables` | `true` | post runner env vars (`R/unified/stages/stage_post.R:66-77`) |
+| `validation.canonical_run_id` | `null` | compare target selection (`R/unified/stages/stage_validate.R:41-46`) |
+| `validation.compare.mode` | `both` | compare tool arg (`R/unified/stages/stage_validate.R:70`) |
+| `write_audit.enabled`, `write_audit.enforce_from_stage`, `write_audit.allowlist_outside_run_root` | `true`, `4`, `[]` | stage-gated snapshots/enforcement (`scripts/unified_run.R:122-148`) |
+
+#### 14.3.3 Defaults and override precedence
+
+1. Base defaults from `unified_config_defaults()` (`R/unified/config.R:5-100`).
+2. User YAML deep-merged onto defaults (`R/unified/config.R:102-122`, `R/unified/config.R:261`).
+3. Paths normalized against repo root (`R/unified/config.R:160-179`, `R/unified/config.R:262`).
+4. Validation fast-fails on missing files / invalid enums (`R/unified/config.R:181-249`, `R/unified/config.R:264-267`).
+5. Operational harness overrides (heavy runs) are applied by writing a run-specific YAML before invoking unified runner (`repro/run_unified_heavy.sh:59-114`, `repro/run_unified_heavy.sh:230-236`).
+
+#### 14.3.4 Shared input bundle contract (target for P1)
+
+Run-scoped shared input root (all enabled families read from here):
+
+- `repro/runs/<RUN_ID>/inputs/shared/parameters/parameters.txt`
+- `repro/runs/<RUN_ID>/inputs/shared/retros/retros.csv`
+- `repro/runs/<RUN_ID>/inputs/shared/forecasts/nws_forecast.csv`
+- `repro/runs/<RUN_ID>/inputs/shared/forecasts/glofas_forecast.csv`
+- `repro/runs/<RUN_ID>/inputs/shared/covariates/cov_1_ELI.csv`
+- `repro/runs/<RUN_ID>/inputs/shared/covariates/cov_2_ONI.csv`
+
+Config/manifest linkage (repo-grounded):
+
+1. Current config v1 keys that already exist and are consumed:
+   - `inputs.fit.parameters_path`
+   - `inputs.fit.retros_path`
+   - `inputs.fit.nws_forecast_path`
+   - `inputs.fit.glofas_forecast_path`
+2. Current manifest v1 fields that record these source files:
+   - `inputs[]` entries (`R/unified/manifest.R:19-49`, `R/unified/manifest.R:80`)
+   - adapted run-local copies under `fit/inputs` and `post/inputs` are recorded in `artifacts[]` (`R/unified/stages/stage_fit.R:63-65`, `R/unified/stages/stage_post.R:61-63`).
+3. Covariate files are currently hardcoded in post paths (`R/environmetrics/00_paths.R:22-23`) and are not yet represented by unified config keys; adding explicit config/manifest linkage is part of P1/P5 cutover work.
+
+Forecats build-mode snapshot contract:
+
+1. If `stages.forecats=true` and mode is `build`, copy/snapshot the produced bundle artifacts from forecats outputs into `repro/runs/<RUN_ID>/inputs/shared/forecats_bundle/`.
+2. Record each copied/snapshotted forecats input artifact hash in manifest `artifacts[]` with role `input_snapshot`.
+3. Downstream fit/post stages read forecats-derived inputs from `inputs/shared/forecats_bundle/...`, not from mutable global paths.
+
+### 14.4 Artifact Contracts by Model Family
+
+#### 14.4.1 Multivariate exDQLM (DISC-W, current unified fit family)
+
+| Contract item | Current repo-grounded behavior |
+|---|---|
+| Producer | `R/unified/stages/stage_fit.R` calls `Rscript --vanilla scripts/run_DISC_Optimal_Synth_Ranges_W.R <q> <seed>` (`R/unified/stages/stage_fit.R:90-93`) |
+| Run-scoped output file | `repro/runs/<RUN_ID>/fit/q=<QQ>/outputs/DISC_variables_<q>_exAL_synth_DISC.RData` (`R/unified/stages/stage_fit.R:72-100`) |
+| RData object naming pattern | Dynamic names created in `disc_w_save_state`: `samp.gamma_<q>_exAL_synth_DISC`, `samp.sigma_<q>_exAL_synth_DISC`, `new.theta.out_<q>_exAL_synth_DISC`, etc. (`R/disc_w/05_save_state.R:22-110`) |
+| Manifest reference style | `artifacts[]` entries with `storage_scale: model_state` and `flow_domain: cfg$scale_contract$analysis_scale_fit_internal` (`R/unified/stages/stage_fit.R:123-128`) |
+| Post dependency today | Post still loads DISC-W root `.RData` files directly (not run-scoped) in `R/environmetrics/30_univariate_and_misc.R:999-1030` |
+
+#### 14.4.2 Univariate exDQLM (legacy family, not yet unified stage)
+
+| Contract item | Current repo-grounded behavior |
+|---|---|
+| Producer | Legacy script `OptimalModelSLexAL.r` (launched by `run_scripts_SL.py`) with CLI quantile argument (`run_scripts_SL.py:22-29`, `OptimalModelSLexAL.r:45-46`) |
+| Output file path | Root write: `/data/muscat_data/jaguir26/project1_ucsc_phd/variables_<q>_exAL_synth_DISC_uni.RData` (`OptimalModelSLexAL.r:2040`) |
+| Expected object names consumed by post | `new.theta.out_<q>_exAL_synth_DISC_uni`, `samp.theta_<q>_exAL_synth_DISC_uni` and related objects (`R/environmetrics/30_univariate_and_misc.R:154-736`) |
+| Manifest reference today | None (no unified stage writes these artifacts into manifest) |
+
+#### 14.4.3 NDLM (legacy family, not yet unified stage)
+
+| Contract item | Current repo-grounded behavior |
+|---|---|
+| Producer | Legacy script `DISC_Optimal_Synth_Ranges_NDLM.r` with hardcoded `p0 <- 0.5` (`DISC_Optimal_Synth_Ranges_NDLM.r:44`) |
+| Output file path | Root write: `/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_NDLM_synth_DISC.RData` (`DISC_Optimal_Synth_Ranges_NDLM.r:2186`) |
+| Expected object names consumed by post | `new.theta.out_50_NDLM_synth_DISC`, `samp.theta_50_NDLM_synth_DISC`, `samp.sigma_50_NDLM_synth_DISC` (`R/environmetrics/40_figures.R:220-221`, `R/environmetrics/40_figures.R:1235`, `R/environmetrics/40_figures.R:1992`) |
+| Manifest reference today | None (no unified stage writes NDLM artifacts into manifest) |
+
+#### 14.4.4 Manifest mapping proposal constrained to current schema
+
+Current manifest schema does not have a `family` field in `artifacts[]` (`R/unified/manifest.R:115-126`).  
+Implementation-safe mapping for multi-model migration should therefore be path-prefix based:
+
+1. `fit/exdqlm_multivar/q=<QQ>/outputs/*.RData`
+2. `fit/exdqlm_univar/q=<QQ>/outputs/*.RData`
+3. `fit/ndlm_main/outputs/*.RData`
+
+Open question: whether to add explicit `family` field in manifest v2 vs retain path-prefix inference.
+
+### 14.5 Post-Processing Dependency Map (non-run-scoped loads)
+
+| File:line | Load/read pattern | Expected artifacts/objects | Run-scoping risk |
+|---|---|---|---|
+| `R/environmetrics/00_paths.R:39-45` | Defines `UNI_VAR_*` root paths | `variables_<q>_exAL_synth_DISC_uni.RData` | Root dependency |
+| `R/environmetrics/30_univariate_and_misc.R:100-149` | `load(UNI_VAR_05..95)` via `load_rdata_with_retry()` | `new.theta.out_<q>_exAL_synth_DISC_uni`, `samp.theta_<q>_exAL_synth_DISC_uni`, etc. | Root dependency |
+| `R/environmetrics/30_univariate_and_misc.R:895-897` | `load("/.../DISC_variables_50_NDLM_synth_DISC.RData")` | `new.theta.out_50_NDLM_synth_DISC` | Root dependency |
+| `R/environmetrics/30_univariate_and_misc.R:999-1035` | `load("/.../DISC_variables_<q>_exAL_synth_DISC.RData")` | `new.theta.out_<q>_exAL_synth_DISC`, `samp.theta_<q>_exAL_synth_DISC` | Root dependency |
+| `R/environmetrics/40_figures.R:4151` | `readRDS("y_reps_f.rds")` | intermediate posterior arrays | Relative path dependency |
+| `R/environmetrics/40_figures.R:4316` | `readRDS("y_reps_f_new.rds")` | intermediate posterior arrays | Relative path dependency |
+| `R/environmetrics/40_figures.R:4483` | `readRDS("y_reps_new.rds")` | intermediate posterior arrays | Relative path dependency |
+
+Recommendation for P5 contract:
+
+1. Replace root/relative loads with manifest-declared absolute paths.
+2. Stage post should fail fast if required family artifacts are missing from manifest.
+3. Keep family-separated output folders as already decided in D-006.
+
+### 14.6 Legacy Bridge Execution Semantics (current reality)
+
+1. DISC-W bridge (already unified): `stage_fit` runs wrapper `scripts/run_DISC_Optimal_Synth_Ranges_W.R`, which sources legacy script (`source("DISC_Optimal_Synth_Ranges_W.r", chdir=TRUE)`), injecting run-scoped input/output paths through `DISC_W_*` env vars (`R/unified/stages/stage_fit.R:78-96`, `scripts/run_DISC_Optimal_Synth_Ranges_W.R:32-39`, `R/disc_w/01_paths_inputs.R:16-27`).
+2. Post bridge (already unified): `stage_post` runs `scripts/run_environmetrics_figures.R` with env overrides for run root + adapted CSV paths (`R/unified/stages/stage_post.R:70-91`, `scripts/run_environmetrics_figures.R:11-27`).
+3. Univariate legacy execution today: tmux-per-quantile launcher `run_scripts_SL.py` invokes `Rscript /.../OptimalModelSLexAL.r <q>` (`run_scripts_SL.py:12-29`); outputs go to repo root (`OptimalModelSLexAL.r:2040`).
+4. NDLM legacy execution today: no unified wrapper stage exists; script writes to repo root (`DISC_Optimal_Synth_Ranges_NDLM.r:2186`) and assumes root-level input/output paths.
+
+### 14.7 Run-Scoping + Collision Audit (current state)
+
+#### 14.7.1 Hardcoded/root write points
+
+1. Univariate outputs to repo root (`OptimalModelSLexAL.r:2040`).
+2. NDLM outputs to repo root (`DISC_Optimal_Synth_Ranges_NDLM.r:2186`).
+3. DISC-W warm-start loads from root `DISC_variables_*` when enabled (`DISC_Optimal_Synth_Ranges_W.r:1417-1480`).
+4. Post loads model-state `.RData` from root (`R/environmetrics/30_univariate_and_misc.R:895-1035`).
+5. Forecats build mode writes outside run root via delegated script behavior (`R/unified/stages/stage_forecats.R:16-29`).
+
+#### 14.7.2 Current run tree convention to preserve
+
+Current unified outputs use:
+
+- `repro/runs/<RUN_ID>/fit/q=<QQ>/outputs/...`
+- `repro/runs/<RUN_ID>/post/outputs/<RUN_ID>/...`  (nested `<RUN_ID>` is current convention and is consumed by validate stage)
+- `repro/runs/<RUN_ID>/validate/...`
+- `repro/runs/<RUN_ID>/report/...`
+
+`stage_validate` explicitly compares `run_root/post/outputs/<RUN_ID>` (`R/unified/stages/stage_validate.R:38-40`), so this nesting should remain until compare contracts are versioned.
+
+#### 14.7.3 Current vs Target Run Tree (Versioned)
+
+| Current manifest v1 paths (produced today) | Target manifest v2 paths (proposed; phase + backward compatibility) |
+|---|---|
+| **Fit (DISC-W current)**: `repro/runs/<RUN_ID>/fit/q=<QQ>/outputs/DISC_variables_<q>_exAL_synth_DISC.RData` (+ logs at `fit/q=<QQ>/logs/fit.log`) | **Fit families**: `repro/runs/<RUN_ID>/fit/exdqlm_multivar/q=<QQ>/...`, `repro/runs/<RUN_ID>/fit/exdqlm_univar/q=<QQ>/...`, `repro/runs/<RUN_ID>/fit/ndlm_main/...` (introduced P2-P4; compatibility: keep current `fit/q=<QQ>/outputs` + `fit/q=<QQ>/logs` through D-009 cutover) |
+| **Post outputs**: `repro/runs/<RUN_ID>/post/outputs/<RUN_ID>/...` | **Post family separation under required nesting**: `repro/runs/<RUN_ID>/post/outputs/<RUN_ID>/exdqlm_multivar/...`, `.../exdqlm_univar/...`, `.../ndlm_main/...` (introduced P5; compatibility: preserve `post/outputs/<RUN_ID>/` nesting per D-008 until validate v2) |
+| **Validate**: `repro/runs/<RUN_ID>/validate/compare_report.json`, `repro/runs/<RUN_ID>/validate/write_audit/.../fs_diff.patch` | **Validate v2**: same root plus stage-scoped logs/status in manifest `stages.validate.*` (introduced P5-P6; compatibility: keep current file names to avoid breaking `repro/tools/validate_run.sh` and existing reports) |
+| **Report**: `repro/runs/<RUN_ID>/report/summary.md`, `repro/runs/<RUN_ID>/report/summary.json` | **Report v2**: same root paths + family-aware report sections and manifest `stages.report.*` status/log linkage (introduced P6; compatibility: preserve `summary.md/json` filenames) |
+| **Inputs (current mixed)**: stage-local adapters in `fit/inputs/` and `post/inputs/`, plus some external/root dependencies | **Shared run inputs**: `repro/runs/<RUN_ID>/inputs/shared/...` as single source for enabled families (introduced P1 via T-P1-04; compatibility: allow staged adapters to read from shared path while preserving current stage-local filenames during bridge period) |
+| **Forecats build outputs (current)**: external trees under `data/forecats_inputs/...` and `data/forecats_cache/...` | **Forecats snapshot in run root**: copy/snapshot required forecats artifacts into `repro/runs/<RUN_ID>/inputs/shared/forecats_bundle/...` and hash in manifest (introduced P1/P2; compatibility: keep external forecats outputs as source-of-copy until forecats stage is fully run-scoped) |
+
+### 14.8 Parallel Orchestration Policy (current implementation)
+
+1. Quantile parallelism is implemented only in unified fit stage via `parallel::mclapply` over `cfg$fit$quantiles` with `cfg$run$threads$mc_cores` (`R/unified/stages/stage_fit.R:108-116`).
+2. Post/validate/report stages run serially in `scripts/unified_run.R` stage loop (`scripts/unified_run.R:126-149`).
+3. RNG/thread determinism policy is centralized in `R/unified/determinism.R`; strict mode forces single-thread defaults and fixed RNG kind (`R/unified/determinism.R:3-57`).
+4. C++ samplers use derived per-thread seeds from a base seed set by `set_sampling_exal_seed`/`set_sampling_truncnorm_seed` (`sampling_exal.cpp:20-44`, `sampling_truncnorm.cpp:35-59`).
+5. Policy recording in manifest:
+   - `repro.mode`, `repro.seed`, `repro.thread_env`, `repro.r_rng` (`R/unified/manifest.R:65-79`).
+
+Concurrency rule for migration phases:
+
+1. exDQLM multivariate quantiles may stay parallel per current fit stage.
+2. NDLM should remain isolated as a single stage/job (no quantile fanout) until NDLM-v2 contracts are finalized.
+3. Post/validate/report remain serialized and manifest-driven.

@@ -1,10 +1,16 @@
 # unified/stages/stage_post.R
 
 unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
+  run_root_abs <- normalizePath(run_root, mustWork = FALSE)
+  repo_root_abs <- normalizePath(repo_root, mustWork = FALSE)
   post_root <- file.path(run_root, "post")
   post_inputs <- file.path(post_root, "inputs")
+  post_logs <- file.path(post_root, "logs")
+  post_cache_dir <- file.path(run_root_abs, "post", "cache")
   dir.create(post_root, recursive = TRUE, showWarnings = FALSE)
   dir.create(post_inputs, recursive = TRUE, showWarnings = FALSE)
+  dir.create(post_logs, recursive = TRUE, showWarnings = FALSE)
+  dir.create(post_cache_dir, recursive = TRUE, showWarnings = FALSE)
 
   legacy_scale <- cfg$scale_contract$legacy_post_input_scale
   unified_assert_known_scale(legacy_scale, "scale_contract.legacy_post_input_scale")
@@ -63,24 +69,119 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   manifest <- unified_manifest_add_artifact(manifest, adapted_glofas, storage_scale = legacy_scale)
 
   run_id <- cfg$run$run_id
+  repro_mode <- cfg$run$repro_mode
+  if (is.null(repro_mode) || !nzchar(repro_mode)) repro_mode <- "strict"
+  repro_mode <- as.character(repro_mode)
+  strict_repro <- identical(tolower(repro_mode), "strict")
+  allow_legacy_root_fallback <- isTRUE(cfg$post$allow_legacy_root_fallback) && !strict_repro
+  quantiles <- as.numeric(cfg$fit$quantiles)
+  q_num <- as.integer(round(quantiles * 100))
+  q_labels <- sprintf("%02d", q_num)
+
+  resolve_manifest_paths <- function(patterns, family_name) {
+    paths <- vapply(patterns, function(pattern) {
+      unified_first_artifact_path(manifest, pattern = pattern, must_exist = FALSE)
+    }, character(1))
+    names(paths) <- names(patterns)
+    missing <- names(paths)[!nzchar(paths)]
+    if (length(missing) > 0L) {
+      msg <- sprintf(
+        "post stage missing run-scoped %s artifacts for keys: %s",
+        family_name,
+        paste(missing, collapse = ", ")
+      )
+      if (strict_repro) {
+        stop(msg, call. = FALSE)
+      } else {
+        warning(msg, call. = FALSE)
+      }
+    }
+    existing <- paths[nzchar(paths)]
+    if (length(existing) == 0L) {
+      return(character(0))
+    }
+    unified_artifact_paths_to_absolute(existing, run_root = run_root_abs, repo_root = repo_root_abs, must_exist = strict_repro)
+  }
+
+  disc_w_paths_abs <- character(0)
+  if (isTRUE(cfg$models$run_exdqlm_multivar)) {
+    patterns <- setNames(
+      sprintf("fit/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC\\.RData$", q_labels, q_num),
+      q_labels
+    )
+    disc_w_paths_abs <- resolve_manifest_paths(patterns, "DISC-W")
+  }
+
+  univ_paths_abs <- character(0)
+  if (isTRUE(cfg$models$run_exdqlm_univar)) {
+    patterns <- setNames(
+      sprintf("fit/exdqlm_univar/q=%s/outputs/variables_%s_exAL_synth_DISC_uni\\.RData$", q_labels, q_labels),
+      q_labels
+    )
+    univ_paths_abs <- resolve_manifest_paths(patterns, "univariate")
+  }
+
+  ndlm_path_abs <- ""
+  if (isTRUE(cfg$models$run_ndlm_main)) {
+    ndlm_rel <- unified_first_artifact_path(
+      manifest,
+      pattern = "fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC\\.RData$",
+      must_exist = FALSE
+    )
+    if (!nzchar(ndlm_rel)) {
+      msg <- "post stage missing run-scoped NDLM artifact"
+      if (strict_repro) {
+        stop(msg, call. = FALSE)
+      } else {
+        warning(msg, call. = FALSE)
+      }
+    } else {
+      ndlm_path_abs <- unified_artifact_path_to_absolute(
+        ndlm_rel,
+        run_root = run_root_abs,
+        repo_root = repo_root_abs,
+        must_exist = strict_repro
+      )
+    }
+  }
+
+  encode_env_list <- function(x) {
+    x <- as.character(x)
+    if (length(x) == 0L) return("")
+    paste(x, collapse = "\n")
+  }
+
   sort_keep_na <- cfg$post$sort_keep_na
   if (is.null(sort_keep_na)) sort_keep_na <- TRUE
   export_tables <- cfg$post$export_tables
   if (is.null(export_tables)) export_tables <- TRUE
   env_overrides <- c(
-    UNIFIED_RUN_ROOT = run_root,
+    UNIFIED_RUN_ROOT = run_root_abs,
+    UNIFIED_RUN_ID = run_id,
+    UNIFIED_POST_CACHE_DIR = normalizePath(post_cache_dir, mustWork = FALSE),
+    UNIFIED_REPRO_MODE = repro_mode,
+    UNIFIED_REQUIRE_RUNSCOPED_POST = if (strict_repro) "TRUE" else "FALSE",
+    UNIFIED_ALLOW_LEGACY_POST_FALLBACK = if (allow_legacy_root_fallback) "TRUE" else "FALSE",
+    UNIFIED_MODEL_RUN_EXDQLM_MULTIVAR = if (isTRUE(cfg$models$run_exdqlm_multivar)) "TRUE" else "FALSE",
+    UNIFIED_MODEL_RUN_EXDQLM_UNIVAR = if (isTRUE(cfg$models$run_exdqlm_univar)) "TRUE" else "FALSE",
+    UNIFIED_MODEL_RUN_NDLM_MAIN = if (isTRUE(cfg$models$run_ndlm_main)) "TRUE" else "FALSE",
+    UNIFIED_FIT_QUANTILE_LABELS = encode_env_list(q_labels),
+    UNIFIED_DISC_W_RDATA_PATHS = encode_env_list(disc_w_paths_abs),
+    UNIFIED_UNIV_RDATA_PATHS = encode_env_list(univ_paths_abs),
+    UNIFIED_NDLM_RDATA_PATH = ndlm_path_abs,
     RUN_ID = run_id,
     PROFILE = if (isTRUE(cfg$post$profile)) "TRUE" else "FALSE",
     PROFILE_DETAIL = if (isTRUE(cfg$post$profile_detail)) "TRUE" else "FALSE",
+    UNIFIED_POST_FIGURES = if (isTRUE(cfg$post$figures)) "TRUE" else "FALSE",
     ENV_SORT_KEEP_NA = if (isTRUE(sort_keep_na)) "TRUE" else "FALSE",
     EXPORT_TABLES = if (isTRUE(export_tables)) "TRUE" else "FALSE",
-    ENV_PROJECT_ROOT = repo_root,
-    ENV_RETROS_PATH = adapted_retros,
-    ENV_NWS_FORECAST_PATH = adapted_nws,
-    ENV_GLOFAS_FORECAST_PATH = adapted_glofas
+    ENV_PROJECT_ROOT = repo_root_abs,
+    ENV_RETROS_PATH = normalizePath(adapted_retros, mustWork = FALSE),
+    ENV_NWS_FORECAST_PATH = normalizePath(adapted_nws, mustWork = FALSE),
+    ENV_GLOFAS_FORECAST_PATH = normalizePath(adapted_glofas, mustWork = FALSE)
   )
 
-  log_path <- file.path(post_root, "runner_console.txt")
+  log_path <- file.path(post_logs, "post_runner.log")
   env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
   cmd_out <- system2(
     "Rscript",

@@ -7,23 +7,81 @@ message("DEPRECATED entrypoint for unified workflow orchestration. Prefer: scrip
 # -------------------------
 # Config
 # -------------------------
-PROJECT_ROOT <- "/data/muscat_data/jaguir26/project1_ucsc_phd"
-UNIFIED_RUN_ROOT <- Sys.getenv("UNIFIED_RUN_ROOT", "")
-OUT_PARENT <- if (nzchar(UNIFIED_RUN_ROOT)) {
-  file.path(UNIFIED_RUN_ROOT, "post", "outputs")
+env_flag <- function(key, default = "FALSE") {
+  isTRUE(as.logical(Sys.getenv(key, default)))
+}
+
+split_env_paths <- function(key) {
+  raw <- Sys.getenv(key, "")
+  if (!nzchar(raw)) return(character(0))
+  parts <- unlist(strsplit(raw, "\n", fixed = TRUE), use.names = FALSE)
+  parts <- parts[nzchar(parts)]
+  if (length(parts) == 0L) character(0) else unique(parts)
+}
+
+PROJECT_ROOT <- Sys.getenv("ENV_PROJECT_ROOT", "/data/muscat_data/jaguir26/project1_ucsc_phd")
+PROJECT_ROOT <- normalizePath(PROJECT_ROOT, mustWork = FALSE)
+
+RUN_ROOT <- Sys.getenv("UNIFIED_RUN_ROOT", "")
+RUN_ID <- Sys.getenv("UNIFIED_RUN_ID", Sys.getenv("RUN_ID", ""))
+POST_CACHE_DIR <- Sys.getenv("UNIFIED_POST_CACHE_DIR", "")
+UNIFIED_REPRO_MODE <- tolower(Sys.getenv("UNIFIED_REPRO_MODE", ""))
+STRICT_RUNSCOPED_POST <- env_flag("UNIFIED_REQUIRE_RUNSCOPED_POST", "FALSE") || identical(UNIFIED_REPRO_MODE, "strict")
+ALLOW_LEGACY_ROOT_FALLBACK <- env_flag("UNIFIED_ALLOW_LEGACY_POST_FALLBACK", "FALSE")
+MODEL_RUN_EXDQLM_MULTIVAR <- env_flag("UNIFIED_MODEL_RUN_EXDQLM_MULTIVAR", "TRUE")
+MODEL_RUN_EXDQLM_UNIVAR <- env_flag("UNIFIED_MODEL_RUN_EXDQLM_UNIVAR", "FALSE")
+MODEL_RUN_NDLM_MAIN <- env_flag("UNIFIED_MODEL_RUN_NDLM_MAIN", "FALSE")
+POST_FIGURES <- env_flag("UNIFIED_POST_FIGURES", "TRUE")
+
+if (STRICT_RUNSCOPED_POST) {
+  required <- c("UNIFIED_RUN_ROOT", "UNIFIED_RUN_ID", "UNIFIED_POST_CACHE_DIR")
+  required_vals <- vapply(required, function(k) Sys.getenv(k, ""), character(1))
+  missing <- required[!nzchar(required_vals)]
+  if (length(missing) > 0L) {
+    stop(sprintf("Strict run-scoped post requires env vars: %s", paste(missing, collapse = ", ")), call. = FALSE)
+  }
+}
+
+if (nzchar(RUN_ROOT)) RUN_ROOT <- normalizePath(RUN_ROOT, mustWork = FALSE)
+if (nzchar(POST_CACHE_DIR)) {
+  dir.create(POST_CACHE_DIR, recursive = TRUE, showWarnings = FALSE)
+  POST_CACHE_DIR <- normalizePath(POST_CACHE_DIR, mustWork = FALSE)
+}
+
+DISC_W_RDATA_PATHS <- split_env_paths("UNIFIED_DISC_W_RDATA_PATHS")
+UNIV_RDATA_PATHS <- split_env_paths("UNIFIED_UNIV_RDATA_PATHS")
+NDLM_RDATA_PATH <- Sys.getenv("UNIFIED_NDLM_RDATA_PATH", "")
+if (nzchar(NDLM_RDATA_PATH)) NDLM_RDATA_PATH <- normalizePath(NDLM_RDATA_PATH, mustWork = FALSE)
+
+options(
+  unified.run_root = RUN_ROOT,
+  unified.run_id = RUN_ID,
+  unified.post_cache_dir = POST_CACHE_DIR,
+  unified.strict_runscoped_post = STRICT_RUNSCOPED_POST,
+  unified.allow_legacy_root_fallback = ALLOW_LEGACY_ROOT_FALLBACK,
+  unified.disc_w_rdata_paths = DISC_W_RDATA_PATHS,
+  unified.univ_rdata_paths = UNIV_RDATA_PATHS,
+  unified.ndlm_rdata_path = NDLM_RDATA_PATH,
+  unified.model_run_exdqlm_multivar = MODEL_RUN_EXDQLM_MULTIVAR,
+  unified.model_run_exdqlm_univar = MODEL_RUN_EXDQLM_UNIVAR,
+  unified.model_run_ndlm_main = MODEL_RUN_NDLM_MAIN,
+  unified.post_figures = POST_FIGURES
+)
+
+OUT_PARENT <- if (nzchar(RUN_ROOT)) {
+  file.path(RUN_ROOT, "post", "outputs")
 } else {
   file.path(PROJECT_ROOT, "Environmetrics_reproduce_script_runs")
 }
-RUN_ID <- Sys.getenv("RUN_ID", "")
-if (RUN_ID == "") {
+if (!nzchar(RUN_ID)) {
   RUN_ID <- format(Sys.time(), "%Y%m%d_%H%M%S")
 }
 OUT_DIR <- file.path(OUT_PARENT, RUN_ID)
 SEED <- 777
-PROFILE <- isTRUE(as.logical(Sys.getenv("PROFILE", "FALSE")))
-PROFILE_DETAIL <- isTRUE(as.logical(Sys.getenv("PROFILE_DETAIL", "FALSE")))
-ENV_SORT_KEEP_NA <- isTRUE(as.logical(Sys.getenv("ENV_SORT_KEEP_NA", "TRUE")))
-EXPORT_TABLES <- isTRUE(as.logical(Sys.getenv("EXPORT_TABLES", "TRUE")))
+PROFILE <- env_flag("PROFILE", "FALSE")
+PROFILE_DETAIL <- env_flag("PROFILE_DETAIL", "FALSE")
+ENV_SORT_KEEP_NA <- env_flag("ENV_SORT_KEEP_NA", "TRUE")
+EXPORT_TABLES <- env_flag("EXPORT_TABLES", "TRUE")
 
 # Deterministic settings (match notebook)
 set.seed(SEED)
@@ -33,8 +91,8 @@ options(stringsAsFactors = FALSE)
 # -------------------------
 # Logging
 # -------------------------
-log_dir <- if (nzchar(UNIFIED_RUN_ROOT)) {
-  file.path(UNIFIED_RUN_ROOT, "post", "logs", RUN_ID)
+log_dir <- if (nzchar(RUN_ROOT)) {
+  file.path(RUN_ROOT, "post", "logs", RUN_ID)
 } else {
   file.path(PROJECT_ROOT, "repro", "logs", "script_runs", RUN_ID)
 }
@@ -51,6 +109,46 @@ cat(sprintf("PROFILE: %s\n", PROFILE))
 cat(sprintf("PROFILE_DETAIL: %s\n", PROFILE_DETAIL))
 cat(sprintf("ENV_SORT_KEEP_NA: %s\n", ENV_SORT_KEEP_NA))
 cat(sprintf("EXPORT_TABLES: %s\n", EXPORT_TABLES))
+cat(sprintf("RUN_ROOT: %s\n", RUN_ROOT))
+cat(sprintf("POST_CACHE_DIR: %s\n", POST_CACHE_DIR))
+cat(sprintf("STRICT_RUNSCOPED_POST: %s\n", STRICT_RUNSCOPED_POST))
+cat(sprintf("ALLOW_LEGACY_ROOT_FALLBACK: %s\n", ALLOW_LEGACY_ROOT_FALLBACK))
+cat(sprintf("MODEL_RUN_EXDQLM_MULTIVAR: %s\n", MODEL_RUN_EXDQLM_MULTIVAR))
+cat(sprintf("MODEL_RUN_EXDQLM_UNIVAR: %s\n", MODEL_RUN_EXDQLM_UNIVAR))
+cat(sprintf("MODEL_RUN_NDLM_MAIN: %s\n", MODEL_RUN_NDLM_MAIN))
+cat(sprintf("POST_FIGURES: %s\n", POST_FIGURES))
+if (length(DISC_W_RDATA_PATHS) > 0L) {
+  cat("DISC_W_RDATA_PATHS:\n")
+  cat(paste0(" - ", DISC_W_RDATA_PATHS, collapse = "\n"), "\n")
+} else {
+  cat("DISC_W_RDATA_PATHS: <none>\n")
+}
+if (length(UNIV_RDATA_PATHS) > 0L) {
+  cat("UNIV_RDATA_PATHS:\n")
+  cat(paste0(" - ", UNIV_RDATA_PATHS, collapse = "\n"), "\n")
+} else {
+  cat("UNIV_RDATA_PATHS: <none>\n")
+}
+cat(sprintf("NDLM_RDATA_PATH: %s\n", if (nzchar(NDLM_RDATA_PATH)) NDLM_RDATA_PATH else "<none>"))
+
+check_required_paths <- function(paths, label) {
+  if (length(paths) == 0L) {
+    stop(sprintf("No run-scoped %s path(s) were provided.", label), call. = FALSE)
+  }
+  missing <- paths[!file.exists(paths)]
+  if (length(missing) > 0L) {
+    stop(
+      sprintf("Missing run-scoped %s path(s): %s", label, paste(missing, collapse = ", ")),
+      call. = FALSE
+    )
+  }
+}
+
+if (STRICT_RUNSCOPED_POST) {
+  if (MODEL_RUN_EXDQLM_MULTIVAR) check_required_paths(DISC_W_RDATA_PATHS, "DISC-W artifact")
+  if (MODEL_RUN_EXDQLM_UNIVAR) check_required_paths(UNIV_RDATA_PATHS, "univariate artifact")
+  if (MODEL_RUN_NDLM_MAIN) check_required_paths(NDLM_RDATA_PATH, "NDLM artifact")
+}
 
 # capture session info
 session_path <- file.path(log_dir, "sessionInfo.txt")
@@ -167,19 +265,20 @@ write.csv <- function(x, file = "", ...) {
 # Execute modularized notebook export (preserve order)
 # -------------------------
 modules_dir <- file.path(PROJECT_ROOT, "R", "environmetrics")
-modules <- c(
+core_modules <- c(
   "00_paths.R",
   "00_setup.R",
   "00_constants.R",
   "01_config.R",
   "02_helpers_core.R",
   "utils_data.R",
-  "utils_plot.R",
-  "10_data_inputs.R",
-  "20_model_setup.R",
-  "30_univariate_and_misc.R",
-  "40_figures.R"
+  "utils_plot.R"
 )
+modules <- if (POST_FIGURES) {
+  c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures.R")
+} else {
+  core_modules
+}
 
 missing <- modules[!file.exists(file.path(modules_dir, modules))]
 if (length(missing) > 0) {
@@ -198,8 +297,8 @@ profile_dir <- NULL
 timings_path <- NULL
 io_timings_path <- NULL
 if (PROFILE) {
-  profile_dir <- if (nzchar(UNIFIED_RUN_ROOT)) {
-    file.path(UNIFIED_RUN_ROOT, "post", "profile", RUN_ID)
+  profile_dir <- if (nzchar(RUN_ROOT)) {
+    file.path(RUN_ROOT, "post", "profile", RUN_ID)
   } else {
     file.path(PROJECT_ROOT, "repro", "logs", "profile", RUN_ID)
   }
@@ -234,11 +333,13 @@ paths_file <- file.path(modules_dir, "00_paths.R")
 if (file.exists(paths_file)) {
   source(paths_file)
   check_script <- file.path(PROJECT_ROOT, "scripts", "check_inputs.R")
-  if (file.exists(check_script)) {
+  if (POST_FIGURES && file.exists(check_script)) {
     source(check_script)
     log_step("START check_inputs")
     check_inputs()
     log_step("END check_inputs")
+  } else if (!POST_FIGURES) {
+    log_step("SKIP check_inputs (POST_FIGURES=FALSE)")
   }
 }
 
@@ -249,6 +350,23 @@ for (mod in modules) {
   t1 <- Sys.time()
   log_step(paste("END", mod))
   log_timing(mod, t0, t1)
+}
+
+if (!POST_FIGURES) {
+  marker <- file.path(OUT_DIR, "post_smoke_marker.txt")
+  writeLines(
+    c(
+      sprintf("run_id=%s", RUN_ID),
+      sprintf("run_root=%s", RUN_ROOT),
+      sprintf("post_cache_dir=%s", POST_CACHE_DIR),
+      sprintf("strict_runscoped_post=%s", STRICT_RUNSCOPED_POST),
+      sprintf("disc_w_paths=%d", length(DISC_W_RDATA_PATHS)),
+      sprintf("univ_paths=%d", length(UNIV_RDATA_PATHS)),
+      sprintf("ndlm_path_present=%s", nzchar(NDLM_RDATA_PATH))
+    ),
+    marker
+  )
+  log_step(sprintf("WROTE %s", marker))
 }
 
 cat(sprintf("END: %s\n", format(Sys.time(), "%Y-%m-%d %H:%M:%S")))

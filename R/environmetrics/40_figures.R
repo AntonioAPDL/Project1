@@ -4015,8 +4015,7 @@ profile_section("figures.sort_y_reps_f", {
 })
 
 profile_section("figures.save_y_reps_f_rds", {
-  # Save the array to your current directory
-  saveRDS(y_reps_f, file = "y_reps_f.rds")
+  saveRDS(y_reps_f, file = post_cache_path("y_reps_f.rds"))
 })
 
 print("Array y_reps_f saved as y_reps_f.rds in the current directory.")
@@ -4047,8 +4046,7 @@ profile_section("figures.sort_y_reps_hist", {
 
 
 profile_section("figures.save_y_reps_hist_rds", {
-  # Save the array to your current directory
-  saveRDS(y_reps, file = "y_reps.rds")
+  saveRDS(y_reps, file = post_cache_path("y_reps.rds"))
 })
 
 print("Array y_reps saved as y_reps.rds in the current directory.")
@@ -4148,7 +4146,7 @@ synthesize_samples <- function(y_reps, q_s, n_cores = detectCores() - 1) {
 # # Linear interpolation
 # result <- (1 - w) * y_lower + w * y_upper
 
-	y_reps_f <- profile_section("figures.read_y_reps_f_rds", readRDS("y_reps_f.rds"))
+y_reps_f <- profile_section("figures.read_y_reps_f_rds", readRDS(post_cache_path("y_reps_f.rds")))
 
 q_s    <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95)
 n.q     <- length(q_s)
@@ -4306,14 +4304,13 @@ y_reps_f_new[6,,] <- y_reps_f_80
 y_reps_f_new[7,,] <- y_reps_f_95 
 })
 
-# Save the array to your current directory
 profile_section("figures.save_y_reps_f_new_rds", {
-  saveRDS(y_reps_f_new, file = "y_reps_f_new.rds")
+  saveRDS(y_reps_f_new, file = post_cache_path("y_reps_f_new.rds"))
 })
 
 
 
-y_reps_f <- profile_section("figures.read_y_reps_f_new_rds", readRDS("y_reps_f_new.rds"))
+y_reps_f <- profile_section("figures.read_y_reps_f_new_rds", readRDS(post_cache_path("y_reps_f_new.rds")))
 
 q_s    <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95)
 n.q     <- length(q_s)
@@ -4475,12 +4472,11 @@ y_reps_new[6,,] <- y_reps_80
 y_reps_new[7,,] <- y_reps_95 
 })
 
-# Save the array to your current directory
 profile_section("figures.save_y_reps_new_rds", {
-  saveRDS(y_reps_new, file = "y_reps_new.rds")
+  saveRDS(y_reps_new, file = post_cache_path("y_reps_new.rds"))
 })
 
-y_reps <- profile_section("figures.read_y_reps_new_rds", readRDS("y_reps_new.rds"))
+y_reps <- profile_section("figures.read_y_reps_new_rds", readRDS(post_cache_path("y_reps_new.rds")))
 
 q_s    <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95)
 n.q     <- length(q_s)

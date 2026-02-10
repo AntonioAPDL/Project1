@@ -767,8 +767,8 @@ y_hist_uni[5,,] <- y_reps_65
 y_hist_uni[6,,] <- y_reps_80  
 y_hist_uni[7,,] <- y_reps_95 
 
-# Save the array to your current directory
-saveRDS(y_hist_uni, file = "y_hist_uni.rds")
+# Save in run-scoped cache
+saveRDS(y_hist_uni, file = post_cache_path("y_hist_uni.rds"))
 
 y_reps_hist_uni <- y_hist_uni
 
@@ -813,8 +813,8 @@ y_forecast[5,,] <- y_reps_f_65
 y_forecast[6,,] <- y_reps_f_80  
 y_forecast[7,,] <- y_reps_f_95 
 
-# Save the array to your current directory
-saveRDS(y_forecast, file = "y_forecast_uni.rds")
+# Save in run-scoped cache
+saveRDS(y_forecast, file = post_cache_path("y_forecast_uni.rds"))
 
 y_reps_uni <- y_forecast
 
@@ -892,7 +892,7 @@ dim(synth_f2)
 
 
 p <- 7
-file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_NDLM_synth_DISC.RData"
+file_path <- NDLM_VAR_50
 profile_section("univariate.load_disc_vars_ndlm_50", load_rdata_with_retry(file_path))
 
 par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
@@ -996,42 +996,42 @@ dim(new.theta.out_50_NDLM_synth_DISC$sC_ens[[2]])
 dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]])
 dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]])
 
-file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_5_exAL_synth_DISC.RData"
+file_path <- DISC_W_VAR_05
 profile_section("univariate.load_disc_vars_exal_05", load_rdata_with_retry(file_path))
 
 
 
-file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_exAL_synth_DISC.RData"
+file_path <- DISC_W_VAR_50
 profile_section("univariate.load_disc_vars_exal_50", load_rdata_with_retry(file_path))
 
 
 
-file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_95_exAL_synth_DISC.RData"
+file_path <- DISC_W_VAR_95
 profile_section("univariate.load_disc_vars_exal_95", load_rdata_with_retry(file_path))
 
 
 
-file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_20_exAL_synth_DISC.RData"
+file_path <- DISC_W_VAR_20
 profile_section("univariate.load_disc_vars_exal_20", load_rdata_with_retry(file_path))
 
 
 
-file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_35_exAL_synth_DISC.RData"
+file_path <- DISC_W_VAR_35
 profile_section("univariate.load_disc_vars_exal_35", load_rdata_with_retry(file_path))
 
 
 
-file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_65_exAL_synth_DISC.RData"
+file_path <- DISC_W_VAR_65
 profile_section("univariate.load_disc_vars_exal_65", load_rdata_with_retry(file_path))
 
 
 
-file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_80_exAL_synth_DISC.RData"
+file_path <- DISC_W_VAR_80
 profile_section("univariate.load_disc_vars_exal_80", load_rdata_with_retry(file_path))
 
 
 
-file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_NDLM_synth_DISC.RData"
+file_path <- NDLM_VAR_50
 profile_section("univariate.load_disc_vars_ndlm_50_repeat", load_rdata_with_retry(file_path))
 
 
