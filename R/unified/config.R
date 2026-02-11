@@ -24,6 +24,7 @@ unified_config_defaults <- function() {
     ),
     stages = list(
       forecats = TRUE,
+      data_prep_shared = FALSE,
       fit = TRUE,
       post = TRUE,
       validate = TRUE,
@@ -63,7 +64,8 @@ unified_config_defaults <- function() {
         mode = "use_existing",
         pipeline_config_path = "config/forecats_pipeline.template.yaml",
         existing_bundle_path = NULL
-      )
+      ),
+      shared_covariates = list()
     ),
     fit = list(
       quantiles = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95),
@@ -180,6 +182,17 @@ unified_resolve_paths <- function(cfg, repo_root) {
     cfg <- unified_set(cfg, key, resolved)
   }
 
+  shared_covariates <- unified_get(cfg, c("inputs", "shared_covariates"), default = list())
+  if (is.null(shared_covariates)) {
+    shared_covariates <- list()
+  }
+  shared_covariates <- unlist(shared_covariates, use.names = FALSE)
+  shared_covariates <- shared_covariates[nzchar(shared_covariates)]
+  if (length(shared_covariates) > 0L) {
+    shared_covariates <- vapply(shared_covariates, unified_resolve_path, character(1), repo_root = repo_root)
+  }
+  cfg <- unified_set(cfg, c("inputs", "shared_covariates"), as.list(shared_covariates))
+
   cfg
 }
 
@@ -227,11 +240,26 @@ unified_validate_config <- function(cfg) {
     }
   }
 
-  if (isTRUE(unified_get(cfg, c("stages", "fit"), FALSE))) {
+  fit_or_shared <- isTRUE(unified_get(cfg, c("stages", "fit"), FALSE)) ||
+    isTRUE(unified_get(cfg, c("stages", "data_prep_shared"), FALSE))
+  if (fit_or_shared) {
     check_required_file(unified_get(cfg, c("inputs", "fit", "parameters_path")), "inputs.fit.parameters_path")
     check_required_file(unified_get(cfg, c("inputs", "fit", "retros_path")), "inputs.fit.retros_path")
     check_required_file(unified_get(cfg, c("inputs", "fit", "nws_forecast_path")), "inputs.fit.nws_forecast_path")
     check_required_file(unified_get(cfg, c("inputs", "fit", "glofas_forecast_path")), "inputs.fit.glofas_forecast_path")
+  }
+
+  shared_covariates <- unified_get(cfg, c("inputs", "shared_covariates"), default = list())
+  if (is.null(shared_covariates)) {
+    shared_covariates <- list()
+  }
+  shared_covariates <- unlist(shared_covariates, use.names = FALSE)
+  if (length(shared_covariates) > 0L) {
+    for (i in seq_along(shared_covariates)) {
+      cov_path <- as.character(shared_covariates[[i]])
+      if (!nzchar(cov_path)) next
+      check_required_file(cov_path, sprintf("inputs.shared_covariates[%d]", i))
+    }
   }
 
   if (identical(unified_get(cfg, c("inputs", "fit", "usgs_mode"), "live"), "cache")) {

@@ -47,6 +47,7 @@ source(file.path(repo_root, "R", "unified", "determinism.R"))
 source(file.path(repo_root, "R", "unified", "manifest.R"))
 source(file.path(repo_root, "R", "unified", "utils_write_audit.R"))
 source(file.path(repo_root, "R", "unified", "stages", "stage_forecats.R"))
+source(file.path(repo_root, "R", "unified", "stages", "stage_data_prep_shared.R"))
 source(file.path(repo_root, "R", "unified", "stages", "stage_fit.R"))
 source(file.path(repo_root, "R", "unified", "stages", "stage_post.R"))
 source(file.path(repo_root, "R", "unified", "stages", "stage_validate.R"))
@@ -106,12 +107,20 @@ if (isTRUE(opts$dry_run) || isTRUE(cfg$run$dry_run)) {
   quit(save = "no", status = 0)
 }
 
-stage_order <- c("forecats", "fit", "post", "validate", "report")
-stage_index <- c(forecats = 1L, fit = 2L, post = 3L, validate = 4L, report = 5L)
+stage_order <- c("forecats", "data_prep_shared", "fit", "post", "validate", "report")
+stage_index <- c(
+  forecats = 1L,
+  data_prep_shared = 1L,
+  fit = 2L,
+  post = 3L,
+  validate = 4L,
+  report = 5L
+)
 
 run_stage <- function(stage, manifest) {
   switch(stage,
     forecats = unified_stage_forecats(cfg, run_root, repo_root, manifest),
+    data_prep_shared = unified_stage_data_prep_shared(cfg, run_root, repo_root, manifest),
     fit = unified_stage_fit(cfg, run_root, repo_root, manifest),
     post = unified_stage_post(cfg, run_root, repo_root, manifest),
     validate = unified_stage_validate(cfg, run_root, repo_root, manifest),

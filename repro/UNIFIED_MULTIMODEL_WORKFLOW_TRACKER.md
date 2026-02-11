@@ -26,7 +26,8 @@ This is a living document and must be updated when:
 ## 2.1 What is currently orchestrated by the unified runner
 
 - Unified runner calls stages: `forecats`, `fit`, `post`, `validate`, `report`.
-- Current `fit` stage runs only `scripts/run_DISC_Optimal_Synth_Ranges_W.R` (multivariate exDQLM / DISC-W path).
+- Unified runner now also supports `data_prep_shared` stage between `forecats` and `fit`.
+- Current `fit` stage always supports multivariate exDQLM (DISC-W) and can optionally run legacy univariate + legacy NDLM bridges via model toggles.
 - Current `post` stage runs `scripts/run_environmetrics_figures.R`.
 
 Repo references:
@@ -37,8 +38,7 @@ Repo references:
 
 ## 2.2 What is not yet orchestrated as first-class unified model stages
 
-- `OptimalModelSLexAL.r` (univariate exDQLM) is not a unified stage.
-- `DISC_Optimal_Synth_Ranges_NDLM.r` (NDLM) is not a unified stage.
+- `OptimalModelSLexAL.r` (univariate exDQLM) and `DISC_Optimal_Synth_Ranges_NDLM.r` (NDLM) are orchestrated as legacy bridge calls inside unified `fit`, but they are not yet modular first-class theory-aligned stages.
 
 Repo references:
 
@@ -48,7 +48,7 @@ Repo references:
 
 ## 2.3 Current hidden dependency risk in post-processing
 
-Current post modules load root-level pre-generated artifacts for univariate and NDLM.
+Strict post mode now resolves model-state artifacts from run-scoped manifest paths; legacy root fallback remains a controlled non-strict compatibility path.
 
 Repo references:
 
@@ -89,9 +89,10 @@ Precedence rule:
 | D-004 | Univariate modernization must be structurally compatible with current downstream expectations (not byte-identical `.RData`). | Locked | Keep object contracts and shape compatibility. |
 | D-005 | In unified config, NDLM should be mandatory when `models.run_ndlm=true`; default intended as enabled in production mode. | Locked | No silent NDLM skip in full production runs. |
 | D-006 | Post outputs/reports should remain separated by model family; do not merge posterior outputs into a single blended block. | Locked | Shared inputs are allowed; outputs remain clearly separated. |
-| D-007 | Recommended sequencing is hybrid: wire legacy scripts into unified runner early for operational continuity, while replacing them module-by-module with theory-aligned implementations. | Proposed -> Pending confirmation | This minimizes downtime and keeps end-to-end operability while modernizing. |
+| D-007 | Sequencing is hybrid: wire legacy scripts into unified runner early for operational continuity, while replacing them module-by-module with theory-aligned implementations. | Locked | This is now the active and accepted execution strategy. |
 | D-008 | Preserve `post/outputs/<RUN_ID>/` nesting until validate contract is explicitly versioned. | Locked | `stage_validate` currently compares against `run_root/post/outputs/<RUN_ID>`; do not break this path contract before validate v2. |
 | D-009 | Preserve current DISC-W fit output contract `fit/q=<QQ>/outputs/...` until family-path cutover. | Locked | Existing fit/post tooling and run artifacts rely on this structure; migration to `fit/exdqlm_multivar/...` is a versioned cutover item. |
+| D-010 | P5 closure is accepted via strict run-scoped figures-on smoke using smoke-fast path; full heavy figure hardening is a separate follow-up item. | Locked | Requires non-null manifest closure, run-scoped load proof, and PNG outputs under run root. |
 
 ## 5) Target End-State Architecture
 
@@ -138,12 +139,12 @@ Status legend:
 
 | Phase | Status | Goal | Entry Criteria | Exit Gate |
 |---|---|---|---|---|
-| P0 | [ ] | Governance + contract freeze | Tracker approved | Contracts document + decision log initialized |
-| P1 | [ ] | Shared input contract + adapters | P0 done | Single run-scoped input bundle consumable by all three families |
-| P2 | [x] | Legacy orchestration bridge in unified runner | P1 done | Unified runner can launch current legacy univariate + NDLM as controlled sub-stages |
+| P0 | [x] | Governance + contract freeze | Tracker approved | Contracts document + decision log initialized and D-007 locked |
+| P1 | [~] | Shared input contract + adapters | P0 done | Single run-scoped input bundle consumable by all three families |
+| P2 | [x] | Legacy orchestration bridge in unified runner | P0 done | Unified runner can launch current legacy univariate + NDLM as controlled sub-stages |
 | P3 | [ ] | Univariate modularization (theory-aligned) | P2 done | New modular univariate stage passes structural compatibility checks |
 | P4 | [ ] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory |
-| P5 | [x] | Post decoupling from root artifacts | P3+P4 done | Post loads only manifest-declared run-scoped artifacts |
+| P5 | [x] | Post decoupling from root artifacts | P2 done | Post loads only manifest-declared run-scoped artifacts and strict figures-on smoke closes with non-null `finished_at_utc` |
 | P6 | [ ] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
 | P7 | [ ] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
 | P8 | [ ] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
@@ -152,15 +153,15 @@ Status legend:
 
 ## 7.1 P0 Tasks
 
-- `T-P0-01`: Create model-family interface contract doc (inputs/outputs/object names).
-- `T-P0-02`: Define acceptance criteria per family (minimal required artifacts + shape checks).
-- `T-P0-03`: Confirm D-007 (hybrid sequencing) as locked or replace it.
+- [x] `T-P0-01`: Create model-family interface contract doc (inputs/outputs/object names).
+- [x] `T-P0-02`: Define acceptance criteria per family (minimal required artifacts + shape checks).
+- [x] `T-P0-03`: Confirm D-007 (hybrid sequencing) as locked or replace it.
 
 ## 7.2 P1 Tasks (Shared Inputs)
 
-- `T-P1-01`: Build shared data-prep adapter module that writes run-scoped canonical inputs.
-- `T-P1-02`: Add input manifest entries per source file with hashes/scales.
-- `T-P1-03`: Add fast-fail checks for required per-family inputs.
+- [x] `T-P1-01`: Build shared data-prep adapter module that writes run-scoped canonical inputs.
+- [x] `T-P1-02`: Add input manifest entries per source file with hashes/scales.
+- [~] `T-P1-03`: Add fast-fail checks for required per-family inputs.
 - `T-P1-04`: Freeze shared input bundle layout under `repro/runs/<RUN_ID>/inputs/shared/...`; when forecats build mode is enabled, snapshot/copy required forecats outputs into this shared input tree and record hashes in manifest.
 
 ## 7.3 P2 Tasks (Legacy Bridge)
@@ -375,26 +376,63 @@ At each planning/execution checkpoint:
 - Next action:
   - Move to P0 contract freeze (lock D-007 explicitly and finalize family acceptance criteria), then start P1 shared input bundle.
 
-## 11) Open Questions (Need Maintainer Confirmation)
+### Progress Update 2026-02-11 01:20 UTC
+- Phase: P0 + P1
+- Change type: decision+implementation+validation
+- Summary: closed P0 with explicit contract freeze artifacts and started P1 by implementing `data_prep_shared` stage that materializes run-scoped shared inputs and records them in manifest v1-compatible fields.
+- Files touched:
+  - `repro/contracts/UNIFIED_FAMILY_CONTRACTS_v1.md`
+  - `repro/P0_CONTRACT_FREEZE_2026-02-11.md`
+  - `R/unified/stages/stage_data_prep_shared.R`
+  - `scripts/unified_run.R`
+  - `R/unified/config.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/smoke_p1_shared_inputs.yaml`
+  - `repro/P1_SHARED_INPUTS_SMOKE_20260210_171855.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke config used:
+  - `config/unified_runs/smoke_p1_shared_inputs.yaml`
+- Evidence paths:
+  - `repro/runs/20260210_171855/resolved_config.yaml`
+  - `repro/runs/20260210_171855/run_manifest.yaml`
+  - `repro/runs/20260210_171855/inputs/shared/parameters/parameters.txt`
+  - `repro/runs/20260210_171855/inputs/shared/retros/retros.csv`
+  - `repro/runs/20260210_171855/inputs/shared/forecasts/nws_forecast.csv`
+  - `repro/runs/20260210_171855/inputs/shared/forecasts/glofas_forecast.csv`
+  - `repro/runs/20260210_171855/inputs/shared/covariates/cov_1_ELI.csv`
+  - `repro/runs/20260210_171855/inputs/shared/covariates/cov_2_ONI.csv`
+- Validation notes:
+  - `run_manifest.yaml` has non-null `timestamps.finished_at_utc` (`2026-02-11T01:18:57Z`).
+  - Manifest includes shared-input references under both `inputs[]` and `artifacts[]`.
+- Next action:
+  - Complete remaining P1 tasks (forecats snapshot integration + stricter per-family input gating) before beginning P3/P4 modular model replacements.
 
-1. Confirm D-007: proceed with hybrid sequencing (legacy-bridge early + theory-first modular replacements), or switch to strict theory-rewrite-first before any legacy bridge.
-2. Confirm whether NDLM legacy bridge outputs should be explicitly tagged `non_authoritative=true` in manifest until P4 completion.
-3. Confirm minimum accepted artifact schema for `ndlm_main` stage (object names + table exports) for post integration.
-4. Current unified manifest has no per-stage status block (only global `validation.status` + timestamps). Do you want explicit `stages.<name>.status` (`pass|fail|skip`) in manifest v2, or keep current implicit semantics?
-5. Resolved (2026-02-10): config now includes `models.run_exdqlm_multivar` (default `true`), `models.run_exdqlm_univar` (default `false`), and `models.run_ndlm_main` (default `false`) in config v1.
-6. Post currently reads legacy univariate/NDLM/multivariate `.RData` from repo root (`R/environmetrics/30_univariate_and_misc.R`). For P5, should migration enforce hard-fail when those root paths are used, or allow a temporary fallback mode?
-7. `R/environmetrics/40_figures.R` reads `y_reps_f.rds`/`y_reps_f_new.rds`/`y_reps_new.rds` via relative paths. Should P5 force explicit run-scoped absolute paths for these files to eliminate working-directory dependence?
-8. `write_audit.enforce_from_stage` defaults to `4`, which audits only `validate` and `report` in current stage order. Should this be reduced to `2` or `1` for migration phases that need fit/post write isolation proof?
-9. Forecats `build` mode currently writes to `data/forecats_inputs` and `data/forecats_cache` (outside `run_root`). For unified multi-model production runs, should forecats outputs be copied/snapshotted into run root as immutable run inputs?
+## 11) Open Questions / Resolved Defaults
+
+### 11.1 Open
+
+1. Confirm whether NDLM legacy bridge outputs should be explicitly tagged `non_authoritative=true` in manifest until P4 completion.
+2. Confirm minimum accepted artifact schema for `ndlm_main` stage (object names + table exports) for post integration.
+3. Current unified manifest has no per-stage status block (only global `validation.status` + timestamps). Do you want explicit `stages.<name>.status` (`pass|fail|skip`) in manifest v2, or keep current implicit semantics?
+4. `write_audit.enforce_from_stage` defaults to `4`, which audits only `validate` and `report` in current stage order. Should this be reduced to `2` or `1` for migration phases that need fit/post write isolation proof?
+5. Forecats `build` mode currently writes to `data/forecats_inputs` and `data/forecats_cache` (outside `run_root`). For unified multi-model production runs, should forecats outputs be copied/snapshotted into run root as immutable run inputs?
+
+### 11.2 Resolved Defaults
+
+1. D-007 is locked as hybrid sequencing (legacy bridge operational continuity + incremental theory-aligned replacement).
+2. Config v1 includes model toggles:
+   - `models.run_exdqlm_multivar` (default `true`)
+   - `models.run_exdqlm_univar` (default `false`)
+   - `models.run_ndlm_main` (default `false`)
+3. P5 closure is accepted under D-010 with strict run-scoped figures-on smoke-fast proof.
 
 ## 12) Immediate Next Actions (Proposed)
 
-1. Close P0 in one focused pass:
-   - lock D-007,
-   - finalize family contracts,
-   - finalize evidence checklist.
-2. Start P1 (shared inputs) and P2 (legacy bridge) in parallel only if contracts are locked.
-3. Start P3 and P4 as dedicated modernization tracks with explicit theory mapping docs.
+1. Complete remaining P1 work:
+   - forecats snapshot/copy into `inputs/shared/forecats_bundle/...`,
+   - tighten per-family required input gates.
+2. Begin P3/P4 dedicated modernization tracks with explicit equation-to-code mapping docs from theory repos.
+3. Keep P2/P5 bridges stable while migrating family implementations behind the same unified contracts.
 
 ## 13) Notes
 
