@@ -36,6 +36,9 @@ unified_config_defaults <- function() {
       run_ndlm_main = FALSE,
       exdqlm_univar = list(
         implementation_mode = "legacy_bridge"
+      ),
+      ndlm_main = list(
+        implementation_mode = "legacy_bridge"
       )
     ),
     site = list(
@@ -264,6 +267,11 @@ unified_validate_config <- function(cfg) {
   univar_mode <- unified_get(cfg, c("models", "exdqlm_univar", "implementation_mode"), default = "legacy_bridge")
   if (!(univar_mode %in% c("legacy_bridge", "theory_aligned"))) {
     add_err("models.exdqlm_univar.implementation_mode must be one of: legacy_bridge, theory_aligned")
+  }
+
+  ndlm_mode <- unified_get(cfg, c("models", "ndlm_main", "implementation_mode"), default = "legacy_bridge")
+  if (!(ndlm_mode %in% c("legacy_bridge", "theory_aligned"))) {
+    add_err("models.ndlm_main.implementation_mode must be one of: legacy_bridge, theory_aligned")
   }
 
   check_required_file <- function(path, key) {

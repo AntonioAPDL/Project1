@@ -143,7 +143,7 @@ Status legend:
 | P1 | [x] | Shared input contract + adapters | P0 done | Single run-scoped input bundle consumable by all three families with forecats snapshot integration and per-family fast-fail gating |
 | P2 | [x] | Legacy orchestration bridge in unified runner | P0 done | Unified runner can launch current legacy univariate + NDLM as controlled sub-stages |
 | P3 | [~] | Univariate modularization (theory-aligned) | P2 done | New modular univariate stage passes structural compatibility checks |
-| P4 | [ ] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory |
+| P4 | [~] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory |
 | P5 | [x] | Post decoupling from root artifacts | P2 done | Post loads only manifest-declared run-scoped artifacts and strict figures-on smoke closes with non-null `finished_at_utc` |
 | P6 | [ ] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
 | P7 | [ ] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
@@ -178,10 +178,10 @@ Status legend:
 
 ## 7.5 P4 Tasks (NDLM Modular, Theory-Aligned VB)
 
-- `T-P4-01`: Split `DISC_Optimal_Synth_Ranges_NDLM.r` into modular files.
-- `T-P4-02`: Replace forecast-window discount-factor-only path with theory-aligned stochastic `W` treatment (VB only).
-- `T-P4-03`: Update ELBO and VB covariance distribution updates per NDLM derivations.
-- `T-P4-04`: Emit neutral NDLM artifacts (`ndlm_main`) with stable schema.
+- [x] `T-P4-01`: Split `DISC_Optimal_Synth_Ranges_NDLM.r` into modular files.
+- [~] `T-P4-02`: Replace forecast-window discount-factor-only path with theory-aligned stochastic `W` treatment (VB only).
+- [~] `T-P4-03`: Update ELBO and VB covariance distribution updates per NDLM derivations.
+- [x] `T-P4-04`: Emit neutral NDLM artifacts (`ndlm_main`) with stable schema.
 
 ## 7.6 P5 Tasks (Post Decoupling)
 
@@ -201,7 +201,7 @@ Status legend:
 
 | Risk ID | Severity | Description | Mitigation | Owner | Status |
 |---|---|---|---|---|---|
-| R-001 | Critical | NDLM forecast-window covariance mismatch vs theory can invalidate inference. | Prioritize P4 equation-to-code audit + tests before making NDLM default authoritative. | TBD | Open |
+| R-001 | Critical | NDLM forecast-window covariance mismatch vs theory can invalidate inference. | Prioritize P4 equation-to-code audit + tests before making NDLM default authoritative. | TBD | Mitigating (theory-aligned NDLM mode + stochastic `W` smoke path now wired and exercised) |
 | R-002 | High | Post currently consumes root pre-generated NDLM/univariate artifacts. | Execute P5 decoupling before declaring full autonomy. | TBD | Mitigating (strict run-scoped smoke passed) |
 | R-003 | High | Legacy scripts contain duplicated core functions and fragile patterns. | Modularize with strict tests and narrow wrappers. | TBD | Open |
 | R-004 | Medium | Parallel orchestration may induce file collisions without strict run-scope contracts. | Enforce per-family/per-quantile isolated output roots + write-audit. | TBD | Mitigating (P2B fit-stage write-audit pass with empty outside-run-root diff) |
@@ -541,6 +541,43 @@ At each planning/execution checkpoint:
 - Next action:
   - Implement P4 theory-aligned NDLM VB family with forecast-window stochastic `W` handling behind `models.ndlm_main.implementation_mode=theory_aligned`.
 
+### Progress Update 2026-02-11 07:58 UTC
+- Phase: P4
+- Change type: implementation+validation
+- Summary: introduced theory-aligned NDLM family modules and runner behind `models.ndlm_main.implementation_mode=theory_aligned`; extended `stage_fit` NDLM dispatch by implementation mode while preserving legacy defaults and run-scoped artifact hashing.
+- Files touched:
+  - `R/unified/families/ndlm_main/00_constants.R`
+  - `R/unified/families/ndlm_main/01_inputs.R`
+  - `R/unified/families/ndlm_main/02_model_spec.R`
+  - `R/unified/families/ndlm_main/03_vb_updates.R`
+  - `R/unified/families/ndlm_main/04_elbo.R`
+  - `R/unified/families/ndlm_main/05_fitloop.R`
+  - `R/unified/families/ndlm_main/06_save_state.R`
+  - `R/unified/families/ndlm_main/zz_run.R`
+  - `scripts/run_ndlm_main.R`
+  - `R/unified/stages/stage_fit.R`
+  - `R/unified/config.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/smoke_p4_ndlm_theory.yaml`
+  - `repro/P4_NDLM_THEORY_SMOKE_20260210_235222.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke config used:
+  - `config/unified_runs/smoke_p4_ndlm_theory.yaml`
+- Evidence paths:
+  - `repro/runs/20260210_235222/run_manifest.yaml`
+  - `repro/runs/20260210_235222/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData`
+  - `repro/runs/20260210_235222/fit/ndlm_main/logs/ndlm_theory.log`
+  - `repro/runs/20260210_235222/fit/ndlm_main/logs/ndlm_theory_summary.log`
+  - `repro/runs/20260210_235222/validate/write_audit/fit/fs_diff.patch`
+  - `repro/P4_NDLM_THEORY_SMOKE_20260210_235222.md`
+- Validation notes:
+  - `run_manifest.yaml` has non-null `timestamps.finished_at_utc` (`2026-02-11T07:55:22Z`).
+  - Fit write-audit diff is empty (`fs_diff.patch` size `0` bytes) with `enforce_from_stage=2`.
+  - NDLM theory output includes legacy-compatible alias objects required by current post contracts.
+  - Legacy behavior remains default unless `implementation_mode=theory_aligned` is explicitly enabled.
+- Next action:
+  - Close remaining P3/P4 validation gaps with post-compat structural tests and equation-to-code parity checks before default cutover.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
@@ -562,9 +599,9 @@ At each planning/execution checkpoint:
 
 ## 12) Immediate Next Actions (Proposed)
 
-1. Begin P3 and P4 dedicated modernization tracks with explicit equation-to-code mapping docs from theory repos.
+1. Complete P3/P4 parity validation: add structural compatibility tests for post-consumed object contracts and equation-to-code audit notes versus theory repos.
 2. Keep P2/P5 bridges stable while migrating family implementations behind the same unified contracts.
-3. Define P3/P4 smoke criteria that reuse P1 canonical shared-input bundle without introducing new root-path dependencies.
+3. Define P6 orchestration smoke criteria for combined multivar + theory univar + theory NDLM execution under strict write-audit.
 
 ## 13) Notes
 

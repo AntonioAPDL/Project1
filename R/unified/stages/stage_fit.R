@@ -143,6 +143,11 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     c("models", "exdqlm_univar", "implementation_mode"),
     default = "legacy_bridge"
   )
+  ndlm_impl_mode <- unified_get(
+    cfg,
+    c("models", "ndlm_main", "implementation_mode"),
+    default = "legacy_bridge"
+  )
 
   if (isTRUE(cfg$models$run_exdqlm_multivar)) {
     run_one_quantile <- function(q) {
@@ -340,9 +345,16 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         call. = FALSE
       )
     }
-    ndlm_script <- file.path(repo_root, "DISC_Optimal_Synth_Ranges_NDLM.r")
+    ndlm_script <- if (identical(ndlm_impl_mode, "theory_aligned")) {
+      file.path(repo_root, "scripts", "run_ndlm_main.R")
+    } else {
+      file.path(repo_root, "DISC_Optimal_Synth_Ranges_NDLM.r")
+    }
     if (!file.exists(ndlm_script)) {
-      stop(sprintf("legacy NDLM script not found: %s", ndlm_script), call. = FALSE)
+      stop(
+        sprintf("NDLM script not found for implementation_mode=%s: %s", ndlm_impl_mode, ndlm_script),
+        call. = FALSE
+      )
     }
 
     ndlm_root <- file.path(fit_root, "ndlm_main")
@@ -352,7 +364,8 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     dir.create(ndlm_logs, recursive = TRUE, showWarnings = FALSE)
 
     output_path <- file.path(ndlm_outputs, "DISC_variables_50_NDLM_synth_DISC.RData")
-    log_path <- file.path(ndlm_logs, "ndlm_legacy.log")
+    log_name <- if (identical(ndlm_impl_mode, "theory_aligned")) "ndlm_theory.log" else "ndlm_legacy.log"
+    log_path <- file.path(ndlm_logs, log_name)
     env_overrides <- c(
       UNIFIED_NDLM_RDATA_OUT = output_path,
       NDLM_RUN_ROOT = run_root_abs,
@@ -369,13 +382,19 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       NDLM_SOIL_CSV = shared_cov_paths$soil,
       NDLM_PCA_CSV = shared_cov_paths$pca,
       NDLM_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
-      NDLM_PREV_RDATA = output_path
+      NDLM_PREV_RDATA = output_path,
+      NDLM_THEORY_SUMMARY_LOG = file.path(ndlm_logs, "ndlm_theory_summary.log")
     )
     env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
 
+    script_args <- if (identical(ndlm_impl_mode, "theory_aligned")) {
+      c("--vanilla", ndlm_script, as.character(cfg$run$seed))
+    } else {
+      c("--vanilla", ndlm_script)
+    }
     cmd_out <- system2(
       "Rscript",
-      c("--vanilla", ndlm_script),
+      script_args,
       stdout = TRUE,
       stderr = TRUE,
       env = env_kv
@@ -383,10 +402,16 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     writeLines(cmd_out, log_path, useBytes = TRUE)
     status <- attr(cmd_out, "status")
     if (!is.null(status) && status != 0) {
-      stop(sprintf("legacy NDLM fit failed; see %s", log_path), call. = FALSE)
+      stop(
+        sprintf("NDLM fit failed (implementation_mode=%s); see %s", ndlm_impl_mode, log_path),
+        call. = FALSE
+      )
     }
     if (!file.exists(output_path)) {
-      stop(sprintf("legacy NDLM output missing: %s", output_path), call. = FALSE)
+      stop(
+        sprintf("NDLM output missing (implementation_mode=%s): %s", ndlm_impl_mode, output_path),
+        call. = FALSE
+      )
     }
 
     manifest <- unified_manifest_add_artifact(
