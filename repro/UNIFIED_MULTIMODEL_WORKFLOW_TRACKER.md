@@ -142,7 +142,7 @@ Status legend:
 | P0 | [x] | Governance + contract freeze | Tracker approved | Contracts document + decision log initialized and D-007 locked |
 | P1 | [x] | Shared input contract + adapters | P0 done | Single run-scoped input bundle consumable by all three families with forecats snapshot integration and per-family fast-fail gating |
 | P2 | [x] | Legacy orchestration bridge in unified runner | P0 done | Unified runner can launch current legacy univariate + NDLM as controlled sub-stages |
-| P3 | [ ] | Univariate modularization (theory-aligned) | P2 done | New modular univariate stage passes structural compatibility checks |
+| P3 | [~] | Univariate modularization (theory-aligned) | P2 done | New modular univariate stage passes structural compatibility checks |
 | P4 | [ ] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory |
 | P5 | [x] | Post decoupling from root artifacts | P2 done | Post loads only manifest-declared run-scoped artifacts and strict figures-on smoke closes with non-null `finished_at_utc` |
 | P6 | [ ] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
@@ -172,9 +172,9 @@ Status legend:
 
 ## 7.4 P3 Tasks (Univariate Modular, Theory-Aligned)
 
-- `T-P3-01`: Split `OptimalModelSLexAL.r` into modular files (setup/inputs/model/update/save).
-- `T-P3-02`: Reconcile equations with `univ-exDQLM---Ensemble/main.tex`.
-- `T-P3-03`: Add structural compatibility tests against expected post interfaces.
+- [x] `T-P3-01`: Split `OptimalModelSLexAL.r` into modular files (setup/inputs/model/update/save).
+- [x] `T-P3-02`: Reconcile equations with `univ-exDQLM---Ensemble/main.tex`.
+- [~] `T-P3-03`: Add structural compatibility tests against expected post interfaces.
 
 ## 7.5 P4 Tasks (NDLM Modular, Theory-Aligned VB)
 
@@ -504,6 +504,42 @@ At each planning/execution checkpoint:
   - Legacy bridges complete without root writes using run-scoped shared inputs and run-scoped outputs.
 - Next action:
   - Begin P3/P4 theory-aligned modularization using P1 canonical shared-input and P2B/P2C run-scoped bridge guarantees as baseline.
+
+### Progress Update 2026-02-11 07:45 UTC
+- Phase: P3
+- Change type: implementation+validation
+- Summary: introduced first theory-aligned univariate family modules and runner behind `models.exdqlm_univar.implementation_mode=theory_aligned`; wired `stage_fit` to dispatch by implementation mode while preserving legacy defaults and run-scoped artifact hashing.
+- Files touched:
+  - `R/unified/families/exdqlm_univar/00_constants.R`
+  - `R/unified/families/exdqlm_univar/01_inputs.R`
+  - `R/unified/families/exdqlm_univar/02_model_spec.R`
+  - `R/unified/families/exdqlm_univar/03_updates_vb_or_fitloop.R`
+  - `R/unified/families/exdqlm_univar/04_elbo_optional.R`
+  - `R/unified/families/exdqlm_univar/05_save_state.R`
+  - `R/unified/families/exdqlm_univar/zz_run.R`
+  - `scripts/run_exdqlm_univar.R`
+  - `R/unified/stages/stage_fit.R`
+  - `R/unified/config.R`
+  - `R/unified/manifest.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/smoke_p3_univar_theory.yaml`
+  - `repro/P3_UNIVAR_THEORY_SMOKE_20260210_234304.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke config used:
+  - `config/unified_runs/smoke_p3_univar_theory.yaml`
+- Evidence paths:
+  - `repro/runs/20260210_234304/run_manifest.yaml`
+  - `repro/runs/20260210_234304/fit/exdqlm_univar/q=50/outputs/variables_50_exAL_synth_DISC_uni.RData`
+  - `repro/runs/20260210_234304/fit/exdqlm_univar/q=50/logs/univar_theory.log`
+  - `repro/runs/20260210_234304/fit/exdqlm_univar/q=50/logs/univar_theory_summary.log`
+  - `repro/runs/20260210_234304/validate/write_audit/fit/fs_diff.patch`
+  - `repro/P3_UNIVAR_THEORY_SMOKE_20260210_234304.md`
+- Validation notes:
+  - `run_manifest.yaml` has non-null `timestamps.finished_at_utc` (`2026-02-11T07:44:59Z`).
+  - Fit write-audit diff is empty (`fs_diff.patch` size `0` bytes) with `enforce_from_stage=2`.
+  - Legacy behavior remains default unless `implementation_mode=theory_aligned` is explicitly enabled.
+- Next action:
+  - Implement P4 theory-aligned NDLM VB family with forecast-window stochastic `W` handling behind `models.ndlm_main.implementation_mode=theory_aligned`.
 
 ## 11) Open Questions / Resolved Defaults
 

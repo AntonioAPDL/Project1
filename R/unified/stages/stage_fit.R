@@ -138,6 +138,11 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   }
 
   quantiles <- as.numeric(cfg$fit$quantiles)
+  univar_impl_mode <- unified_get(
+    cfg,
+    c("models", "exdqlm_univar", "implementation_mode"),
+    default = "legacy_bridge"
+  )
 
   if (isTRUE(cfg$models$run_exdqlm_multivar)) {
     run_one_quantile <- function(q) {
@@ -222,9 +227,16 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         call. = FALSE
       )
     }
-    univar_script <- file.path(repo_root, "OptimalModelSLexAL.r")
+    univar_script <- if (identical(univar_impl_mode, "theory_aligned")) {
+      file.path(repo_root, "scripts", "run_exdqlm_univar.R")
+    } else {
+      file.path(repo_root, "OptimalModelSLexAL.r")
+    }
     if (!file.exists(univar_script)) {
-      stop(sprintf("legacy univariate script not found: %s", univar_script), call. = FALSE)
+      stop(
+        sprintf("univariate script not found for implementation_mode=%s: %s", univar_impl_mode, univar_script),
+        call. = FALSE
+      )
     }
 
     for (q in quantiles) {
@@ -238,7 +250,8 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
 
       output_path <- file.path(q_outputs, sprintf("variables_%s_exAL_synth_DISC_uni.RData", q_lab))
-      log_path <- file.path(q_logs, "univar_legacy.log")
+      log_name <- if (identical(univar_impl_mode, "theory_aligned")) "univar_theory.log" else "univar_legacy.log"
+      log_path <- file.path(q_logs, log_name)
       env_overrides <- c(
         UNIFIED_UNIV_RDATA_OUT = output_path,
         UNIV_RUN_ROOT = run_root_abs,
@@ -255,13 +268,19 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         UNIV_SOIL_CSV = shared_cov_paths$soil,
         UNIV_PCA_CSV = shared_cov_paths$pca,
         UNIV_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
-        UNIV_PREV_RDATA = output_path
+        UNIV_PREV_RDATA = output_path,
+        UNIV_THEORY_SUMMARY_LOG = file.path(q_logs, "univar_theory_summary.log")
       )
       env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
 
+      script_args <- if (identical(univar_impl_mode, "theory_aligned")) {
+        c("--vanilla", univar_script, as.character(q), as.character(cfg$run$seed))
+      } else {
+        c("--vanilla", univar_script, as.character(q))
+      }
       cmd_out <- system2(
         "Rscript",
-        c("--vanilla", univar_script, as.character(q)),
+        script_args,
         stdout = TRUE,
         stderr = TRUE,
         env = env_kv
@@ -269,10 +288,26 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       writeLines(cmd_out, log_path, useBytes = TRUE)
       status <- attr(cmd_out, "status")
       if (!is.null(status) && status != 0) {
-        stop(sprintf("legacy univariate fit failed for quantile %s; see %s", q, log_path), call. = FALSE)
+        stop(
+          sprintf(
+            "univariate fit failed for quantile %s (implementation_mode=%s); see %s",
+            q,
+            univar_impl_mode,
+            log_path
+          ),
+          call. = FALSE
+        )
       }
       if (!file.exists(output_path)) {
-        stop(sprintf("legacy univariate output missing for quantile %s: %s", q, output_path), call. = FALSE)
+        stop(
+          sprintf(
+            "univariate output missing for quantile %s (implementation_mode=%s): %s",
+            q,
+            univar_impl_mode,
+            output_path
+          ),
+          call. = FALSE
+        )
       }
 
       manifest <- unified_manifest_add_artifact(

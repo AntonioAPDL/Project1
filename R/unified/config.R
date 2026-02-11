@@ -33,7 +33,10 @@ unified_config_defaults <- function() {
     models = list(
       run_exdqlm_multivar = TRUE,
       run_exdqlm_univar = FALSE,
-      run_ndlm_main = FALSE
+      run_ndlm_main = FALSE,
+      exdqlm_univar = list(
+        implementation_mode = "legacy_bridge"
+      )
     ),
     site = list(
       usgs_site = "11160500",
@@ -256,6 +259,11 @@ unified_validate_config <- function(cfg) {
   run_ndlm_main <- unified_get(cfg, c("models", "run_ndlm_main"), default = FALSE)
   if (!isTRUE(run_ndlm_main) && !identical(run_ndlm_main, FALSE)) {
     add_err("models.run_ndlm_main must be boolean (true/false)")
+  }
+
+  univar_mode <- unified_get(cfg, c("models", "exdqlm_univar", "implementation_mode"), default = "legacy_bridge")
+  if (!(univar_mode %in% c("legacy_bridge", "theory_aligned"))) {
+    add_err("models.exdqlm_univar.implementation_mode must be one of: legacy_bridge, theory_aligned")
   }
 
   check_required_file <- function(path, key) {

@@ -51,6 +51,8 @@ unified_collect_input_records <- function(cfg) {
 unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record) {
   git <- unified_git_info(repo_root)
   inputs <- unified_collect_input_records(cfg)
+  univar_mode <- unified_get(cfg, c("models", "exdqlm_univar", "implementation_mode"), default = "legacy_bridge")
+  ndlm_mode <- unified_get(cfg, c("models", "ndlm_main", "implementation_mode"), default = "legacy_bridge")
 
   list(
     manifest_version = 1L,
@@ -75,6 +77,23 @@ unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record
       r_rng = list(
         fit = paste(repro_record$fit_rng, collapse = "/"),
         post = paste(repro_record$post_rng, collapse = "/")
+      )
+    ),
+    families = list(
+      exdqlm_multivar = list(
+        enabled = isTRUE(cfg$models$run_exdqlm_multivar),
+        implementation_mode = "legacy_bridge",
+        authoritative = TRUE
+      ),
+      exdqlm_univar = list(
+        enabled = isTRUE(cfg$models$run_exdqlm_univar),
+        implementation_mode = univar_mode,
+        authoritative = FALSE
+      ),
+      ndlm_main = list(
+        enabled = isTRUE(cfg$models$run_ndlm_main),
+        implementation_mode = ndlm_mode,
+        authoritative = FALSE
       )
     ),
     inputs = inputs,
