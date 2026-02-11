@@ -145,7 +145,7 @@ Status legend:
 | P3 | [~] | Univariate modularization (theory-aligned) | P2 done | New modular univariate stage passes structural compatibility checks |
 | P4 | [~] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory |
 | P5 | [x] | Post decoupling from root artifacts | P2 done | Post loads only manifest-declared run-scoped artifacts and strict figures-on smoke closes with non-null `finished_at_utc` |
-| P6 | [ ] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
+| P6 | [~] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
 | P7 | [ ] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
 | P8 | [ ] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
 
@@ -653,6 +653,49 @@ At each planning/execution checkpoint:
   - Defaults remain unchanged unless `fit.diagnostics.enabled=true`.
 - Next action:
   - Define/execute combined P6 orchestration smoke criteria with multivariate DISC-W + theory univariate + theory NDLM under strict write-audit.
+
+### Progress Update 2026-02-11 20:40 UTC
+- Phase: P6
+- Change type: validation+hardening
+- Summary: executed combined strict orchestration smoke with all three families enabled (DISC-W multivar + theory univar + theory NDLM), strict run-scoped post, contract checks, diagnostics, and write-audit from fit; fixed validate false-negative by honoring explicit `--current-dir` in `compare_to_canonical.py` and re-ran validate/report on the same run manifest.
+- Files touched:
+  - `config/unified_runs/smoke_p6_combined_theory_orchestration.yaml`
+  - `scripts/run_environmetrics_figures.R`
+  - `R/environmetrics/40_figures_smoke_fast.R`
+  - `R/unified/stages/stage_validate.R`
+  - `repro/compare_to_canonical.py`
+  - `repro/P6_COMBINED_ORCHESTRATION_SMOKE_20260211_120855.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke config used:
+  - `config/unified_runs/smoke_p6_combined_theory_orchestration.yaml`
+- Evidence paths:
+  - `repro/runs/20260211_120855/run_manifest.yaml`
+  - `repro/runs/20260211_120855/fit/q=50/outputs/DISC_variables_50_exAL_synth_DISC.RData`
+  - `repro/runs/20260211_120855/fit/exdqlm_univar/q=50/outputs/variables_50_exAL_synth_DISC_uni.RData`
+  - `repro/runs/20260211_120855/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData`
+  - `repro/runs/20260211_120855/fit/contract_checks/exdqlm_univar/q=50/q50_exdqlm_univar_contract_check.json`
+  - `repro/runs/20260211_120855/fit/contract_checks/ndlm_main/ndlm_main_contract_check.json`
+  - `repro/runs/20260211_120855/fit/diagnostics/exdqlm_univar/q=50/q50_exdqlm_univar_diagnostics.json`
+  - `repro/runs/20260211_120855/fit/diagnostics/ndlm_main/ndlm_main_diagnostics.json`
+  - `repro/runs/20260211_120855/post/logs/post_runner.log`
+  - `repro/runs/20260211_120855/post/outputs/20260211_120855/All_ELBOS_DISC.png`
+  - `repro/runs/20260211_120855/post/outputs/20260211_120855/SMOKE_OBSERVED_SERIES_DISC.png`
+  - `repro/runs/20260211_120855/validate/compare_report.json`
+  - `repro/runs/20260211_120855/validate/write_audit/fit/fs_diff.patch`
+  - `repro/runs/20260211_120855/validate/write_audit/post/fs_diff.patch`
+  - `repro/runs/20260211_120855/validate/write_audit/validate/fs_diff.patch`
+  - `repro/runs/20260211_120855/validate/write_audit/report/fs_diff.patch`
+  - `repro/runs/20260211_120855/report/summary.md`
+  - `repro/runs/20260211_120855/report/summary.json`
+  - `repro/P6_COMBINED_ORCHESTRATION_SMOKE_20260211_120855.md`
+- Validation notes:
+  - `run_manifest.yaml` has non-null `timestamps.finished_at_utc` (`2026-02-11T20:36:55Z`).
+  - `run_manifest.yaml` has `validation.status: pass`.
+  - Compare metrics show `matched=4, missing=0, extra=0, mismatched=0`.
+  - Fit/post/validate/report write-audit diffs are all empty (`0` bytes) with `enforce_from_stage=2` and empty allowlist.
+  - Root-load grep over post logs for `/data/muscat_data/jaguir26/project1_ucsc_phd/(variables_|DISC_variables_)` returned no matches.
+- Next action:
+  - Continue P6 hardening with scheduler/isolation policy checks across repeated runs, then move to P7 family-aware validator/report contracts.
 
 ## 11) Open Questions / Resolved Defaults
 

@@ -39,6 +39,10 @@ unified_stage_validate <- function(cfg, run_root, repo_root, manifest) {
   current_dir <- file.path(run_root, "post", "outputs", run_id)
 
   canonical_run_id <- cfg$validation$canonical_run_id
+  if (!is.null(canonical_run_id) && nzchar(canonical_run_id) &&
+      identical(toupper(canonical_run_id), "__SELF__")) {
+    canonical_run_id <- run_id
+  }
   if (!is.null(canonical_run_id) && nzchar(canonical_run_id)) {
     canonical_dir <- file.path(cfg$run$run_root, canonical_run_id, "post", "outputs", canonical_run_id)
   } else {

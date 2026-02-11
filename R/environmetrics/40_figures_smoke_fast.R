@@ -23,9 +23,17 @@ profile_section("figures_smoke_fast.elbo_traces", {
     plot.ts(vals, main = title_txt, xlab = "Iteration", ylab = "ELBO", lwd = 1.5)
   }
 
-  plot_elbo(seq.elbo_50_NDLM_synth_DISC, "NDLM")
-  plot_elbo(seq.elbo_50_exAL_synth_DISC, "exAL50")
-  plot_elbo(seq.elbo_95_exAL_synth_DISC, "exAL95")
+  fetch_elbo <- function(name) {
+    obj <- get0(name, ifnotfound = NULL, inherits = TRUE)
+    if (is.null(obj) || !is.atomic(obj)) {
+      return(numeric(0))
+    }
+    as.numeric(obj)
+  }
+
+  plot_elbo(fetch_elbo("seq.elbo_50_NDLM_synth_DISC"), "NDLM")
+  plot_elbo(fetch_elbo("seq.elbo_50_exAL_synth_DISC"), "exAL50")
+  plot_elbo(fetch_elbo("seq.elbo_95_exAL_synth_DISC"), "exAL95")
   mtext("Smoke Figure Set", side = 3, outer = TRUE, line = -2, cex = 0.9)
 })
 
@@ -49,4 +57,3 @@ profile_section("figures_smoke_fast.observed_series", {
     title(main = "Observed series unavailable (Y missing)")
   }
 })
-

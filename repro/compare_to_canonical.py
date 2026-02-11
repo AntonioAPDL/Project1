@@ -156,7 +156,8 @@ def main() -> int:
                 run_root = manifest.get("run_root")
                 run_id = manifest.get("run_id")
                 if run_root and run_id:
-                    args.current_dir = str(Path(run_root) / "post" / "outputs" / str(run_id))
+                    if args.current_dir == "Environmetrics_reproduce_script":
+                        args.current_dir = str(Path(run_root) / "post" / "outputs" / str(run_id))
                     if args.current_sha == "repro/current_Environmetrics_reproduce_script.sha256":
                         args.current_sha = str(Path(run_root) / "validate" / "current.sha256")
                     if args.report == "repro/compare_report_script_vs_canonical.txt":

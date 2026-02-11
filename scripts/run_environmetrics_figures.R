@@ -304,8 +304,11 @@ core_modules <- c(
   "utils_plot.R"
 )
 modules <- if (POST_FIGURES) {
-  figure_module <- if (POST_SMOKE_FAST) "40_figures_smoke_fast.R" else "40_figures.R"
-  c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", figure_module)
+  if (POST_SMOKE_FAST) {
+    c(core_modules, "10_data_inputs.R", "20_model_setup.R", "40_figures_smoke_fast.R")
+  } else {
+    c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures.R")
+  }
 } else {
   core_modules
 }
