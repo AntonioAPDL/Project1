@@ -91,6 +91,7 @@ unified_stage_validate <- function(cfg, run_root, repo_root, manifest) {
 
   report <- list(
     status = status,
+    profile = unified_get(cfg, c("validation", "profile"), default = "production"),
     run_id = run_id,
     canonical_run_id = canonical_run_id,
     canonical_dir = canonical_dir,

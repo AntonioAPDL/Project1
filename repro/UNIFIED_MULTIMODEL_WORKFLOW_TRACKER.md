@@ -146,7 +146,7 @@ Status legend:
 | P4 | [~] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory |
 | P5 | [x] | Post decoupling from root artifacts | P2 done | Post loads only manifest-declared run-scoped artifacts and strict figures-on smoke closes with non-null `finished_at_utc` |
 | P6 | [~] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
-| P7 | [ ] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
+| P7 | [~] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
 | P8 | [ ] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
 
 ## 7) Detailed Task Backlog
@@ -696,6 +696,42 @@ At each planning/execution checkpoint:
   - Root-load grep over post logs for `/data/muscat_data/jaguir26/project1_ucsc_phd/(variables_|DISC_variables_)` returned no matches.
 - Next action:
   - Continue P6 hardening with scheduler/isolation policy checks across repeated runs, then move to P7 family-aware validator/report contracts.
+
+### Progress Update 2026-02-11 21:48 UTC
+- Phase: P7A
+- Change type: implementation+validation
+- Summary: added smoke-aware validation profile support while preserving production strict defaults, hardened `compare_to_canonical.py` path precedence for explicit CLI dirs, and added regression tests for run_id underscore/path resolution bugs; validated with one end-to-end smoke run including fit+post+validate+report.
+- Files touched:
+  - `R/unified/config.R`
+  - `R/unified/stages/stage_validate.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/smoke_p7_family_validate.yaml`
+  - `repro/compare_to_canonical.py`
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_compare_to_canonical.py`
+  - `repro/P7A_FAMILY_VALIDATE_SMOKE_20260211_131304.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke config used:
+  - `config/unified_runs/smoke_p7_family_validate.yaml`
+- Evidence paths:
+  - `repro/runs/20260211_131304/run_manifest.yaml`
+  - `repro/runs/20260211_131304/validate/compare_report.json`
+  - `repro/runs/20260211_131304/validate/write_audit/fit/fs_diff.patch`
+  - `repro/runs/20260211_131304/validate/write_audit/post/fs_diff.patch`
+  - `repro/runs/20260211_131304/validate/write_audit/validate/fs_diff.patch`
+  - `repro/runs/20260211_131304/validate/write_audit/report/fs_diff.patch`
+  - `repro/runs/20260211_131304/post/logs/post_runner.log`
+  - `repro/runs/20260211_131304/post/outputs/20260211_131304/All_ELBOS_DISC.png`
+  - `repro/runs/20260211_131304/post/outputs/20260211_131304/SMOKE_OBSERVED_SERIES_DISC.png`
+  - `repro/P7A_FAMILY_VALIDATE_SMOKE_20260211_131304.md`
+- Validation notes:
+  - `run_manifest.yaml` has non-null `timestamps.finished_at_utc` (`2026-02-11T21:40:35Z`).
+  - `validation.status` is `pass` and compare metrics are `matched=4, missing=0, extra=0, mismatched=0`.
+  - `bash repro/tools/validate_run.sh 20260211_131304 --profile smoke` returns `RESULT=PASS`.
+  - All write-audit `fs_diff.patch` files for fit/post/validate/report are `0` bytes.
+  - Post root-load grep for `/data/muscat_data/jaguir26/project1_ucsc_phd/(variables_|DISC_variables_)` returned no matches.
+- Next action:
+  - Move to P7B: extend validator/report contracts with per-family required-artifact assertions in production profile while keeping smoke profile lightweight and explicit.
 
 ## 11) Open Questions / Resolved Defaults
 

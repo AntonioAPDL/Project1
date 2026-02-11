@@ -9,8 +9,16 @@ import argparse
 import hashlib
 import os
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Sequence, Set
 import json
+import re
+
+DEFAULT_CANONICAL_DIR = "Environmetrics_reproduce"
+DEFAULT_CURRENT_DIR = "Environmetrics_reproduce_script"
+DEFAULT_CANONICAL_SHA = "repro/canonical_Environmetrics_reproduce.sha256"
+DEFAULT_CURRENT_SHA = "repro/current_Environmetrics_reproduce_script.sha256"
+DEFAULT_REPORT = "repro/compare_report_script_vs_canonical.txt"
+DEFAULT_DIFF_DIR = "repro/diff"
 
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
@@ -126,44 +134,91 @@ def compare_by_filename(canon_dir: Path, curr_dir: Path) -> Tuple[List[str], Lis
     return missing, extra, common
 
 
-def main() -> int:
+def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", default="")
-    parser.add_argument("--canonical-dir", default="Environmetrics_reproduce")
-    parser.add_argument("--current-dir", default="Environmetrics_reproduce_script")
-    parser.add_argument("--canonical-sha", default="repro/canonical_Environmetrics_reproduce.sha256")
-    parser.add_argument("--current-sha", default="repro/current_Environmetrics_reproduce_script.sha256")
-    parser.add_argument("--report", default="repro/compare_report_script_vs_canonical.txt")
-    parser.add_argument("--diff-dir", default="repro/diff")
+    parser.add_argument("--canonical-dir", default=DEFAULT_CANONICAL_DIR)
+    parser.add_argument("--current-dir", default=DEFAULT_CURRENT_DIR)
+    parser.add_argument("--canonical-sha", default=DEFAULT_CANONICAL_SHA)
+    parser.add_argument("--current-sha", default=DEFAULT_CURRENT_SHA)
+    parser.add_argument("--report", default=DEFAULT_REPORT)
+    parser.add_argument("--diff-dir", default=DEFAULT_DIFF_DIR)
     parser.add_argument("--mode", choices=["hash", "pixel", "both"], default="pixel")
     parser.add_argument("--max-diffs", type=int, default=20)
     parser.add_argument("--generate-diffs", action="store_true")
-    args = parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def explicit_cli_flags(argv: Optional[Sequence[str]] = None) -> Set[str]:
+    if argv is None:
+        argv = os.sys.argv[1:]
+    out: Set[str] = set()
+    # Track only long-form flags that control path precedence.
+    tracked = {
+        "--canonical-dir",
+        "--current-dir",
+        "--canonical-sha",
+        "--current-sha",
+        "--report",
+        "--diff-dir",
+    }
+    for token in argv:
+        if token in tracked:
+            out.add(token)
+            continue
+        if token.startswith("--") and "=" in token:
+            key = token.split("=", 1)[0]
+            if key in tracked:
+                out.add(key)
+    return out
+
+
+def resolve_manifest_overrides(args: argparse.Namespace, root: Path, explicit_flags: Set[str]) -> argparse.Namespace:
+    if not args.manifest:
+        return args
+
+    manifest_path = Path(args.manifest)
+    if not manifest_path.is_absolute():
+        manifest_path = (root / manifest_path).resolve()
+    if not manifest_path.exists():
+        return args
+    manifest_text = manifest_path.read_text(encoding="utf-8")
+    try:
+        import yaml  # type: ignore
+        manifest = yaml.safe_load(manifest_text)
+    except Exception:
+        manifest = None
+    if not isinstance(manifest, dict):
+        return args
+
+    run_root = manifest.get("run_root")
+    run_id = manifest.get("run_id")
+    if not isinstance(run_id, str) or not run_id:
+        # Preserve underscores in plain YAML scalars like 20260211_120855
+        match = re.search(r"(?m)^\s*run_id:\s*['\"]?([^'\"\n]+)['\"]?\s*$", manifest_text)
+        if match:
+            run_id = match.group(1).strip()
+    if not (run_root and run_id):
+        return args
+
+    # CLI path arguments are authoritative if explicitly supplied.
+    if "--current-dir" not in explicit_flags and args.current_dir == DEFAULT_CURRENT_DIR:
+        args.current_dir = str(Path(run_root) / "post" / "outputs" / str(run_id))
+    if "--current-sha" not in explicit_flags and args.current_sha == DEFAULT_CURRENT_SHA:
+        args.current_sha = str(Path(run_root) / "validate" / "current.sha256")
+    if "--report" not in explicit_flags and args.report == DEFAULT_REPORT:
+        args.report = str(Path(run_root) / "validate" / "compare_report.txt")
+    if "--diff-dir" not in explicit_flags and args.diff_dir == DEFAULT_DIFF_DIR:
+        args.diff_dir = str(Path(run_root) / "validate" / "diff")
+    return args
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    args = parse_args(argv)
+    explicit_flags = explicit_cli_flags(argv)
 
     root = Path("/data/muscat_data/jaguir26/project1_ucsc_phd")
-    if args.manifest:
-        manifest_path = Path(args.manifest)
-        if not manifest_path.is_absolute():
-            manifest_path = (root / manifest_path).resolve()
-        if manifest_path.exists():
-            try:
-                import yaml  # type: ignore
-
-                manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
-            except Exception:
-                manifest = None
-            if isinstance(manifest, dict):
-                run_root = manifest.get("run_root")
-                run_id = manifest.get("run_id")
-                if run_root and run_id:
-                    if args.current_dir == "Environmetrics_reproduce_script":
-                        args.current_dir = str(Path(run_root) / "post" / "outputs" / str(run_id))
-                    if args.current_sha == "repro/current_Environmetrics_reproduce_script.sha256":
-                        args.current_sha = str(Path(run_root) / "validate" / "current.sha256")
-                    if args.report == "repro/compare_report_script_vs_canonical.txt":
-                        args.report = str(Path(run_root) / "validate" / "compare_report.txt")
-                    if args.diff_dir == "repro/diff":
-                        args.diff_dir = str(Path(run_root) / "validate" / "diff")
+    args = resolve_manifest_overrides(args, root, explicit_flags)
 
     canon_dir = (root / args.canonical_dir) if not Path(args.canonical_dir).is_absolute() else Path(args.canonical_dir)
     curr_dir = (root / args.current_dir) if not Path(args.current_dir).is_absolute() else Path(args.current_dir)

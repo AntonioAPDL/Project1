@@ -111,6 +111,7 @@ unified_config_defaults <- function() {
       export_tables = TRUE
     ),
     validation = list(
+      profile = "production",
       canonical_run_id = NULL,
       compare = list(
         mode = "both",
@@ -424,6 +425,11 @@ unified_validate_config <- function(cfg) {
   diagnostics_psd_tol <- suppressWarnings(as.numeric(unified_get(cfg, c("fit", "diagnostics", "psd_tol"), -1e-10)))
   if (!is.finite(diagnostics_psd_tol)) {
     add_err("fit.diagnostics.psd_tol must be numeric and finite")
+  }
+
+  validation_profile <- unified_get(cfg, c("validation", "profile"), "production")
+  if (!(validation_profile %in% c("production", "smoke"))) {
+    add_err("validation.profile must be one of: production, smoke")
   }
 
   errs
