@@ -174,7 +174,7 @@ Status legend:
 
 - [x] `T-P3-01`: Split `OptimalModelSLexAL.r` into modular files (setup/inputs/model/update/save).
 - [x] `T-P3-02`: Reconcile equations with `univ-exDQLM---Ensemble/main.tex`.
-- [~] `T-P3-03`: Add structural compatibility tests against expected post interfaces.
+- [x] `T-P3-03`: Add structural compatibility tests against expected post interfaces.
 
 ## 7.5 P4 Tasks (NDLM Modular, Theory-Aligned VB)
 
@@ -182,6 +182,7 @@ Status legend:
 - [~] `T-P4-02`: Replace forecast-window discount-factor-only path with theory-aligned stochastic `W` treatment (VB only).
 - [~] `T-P4-03`: Update ELBO and VB covariance distribution updates per NDLM derivations.
 - [x] `T-P4-04`: Emit neutral NDLM artifacts (`ndlm_main`) with stable schema.
+- [x] `T-P4-05`: Add NDLM structural compatibility contract checks against post-consumed aliases.
 
 ## 7.6 P5 Tasks (Post Decoupling)
 
@@ -577,6 +578,44 @@ At each planning/execution checkpoint:
   - Legacy behavior remains default unless `implementation_mode=theory_aligned` is explicitly enabled.
 - Next action:
   - Close remaining P3/P4 validation gaps with post-compat structural tests and equation-to-code parity checks before default cutover.
+
+### Progress Update 2026-02-11 17:58 UTC
+- Phase: P3 + P4 validation
+- Change type: implementation+validation
+- Summary: added fit-stage contract checks (default OFF) for theory-aligned univariate and NDLM outputs, with machine-readable reports and manifest artifact recording; validated with dedicated P3/P4 contract-check smokes under strict fit write-audit.
+- Files touched:
+  - `R/unified/contract_checks.R`
+  - `R/unified/stages/stage_fit.R`
+  - `R/unified/config.R`
+  - `scripts/unified_run.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/smoke_p3_univar_theory_contracts.yaml`
+  - `config/unified_runs/smoke_p4_ndlm_theory_contracts.yaml`
+  - `repro/contracts/FAMILY_POST_OBJECT_CONTRACT_MAP_v1.md`
+  - `repro/P3_UNIVAR_CONTRACTS_SMOKE_20260211_094533.md`
+  - `repro/P4_NDLM_CONTRACTS_SMOKE_20260211_095407.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke configs used:
+  - `config/unified_runs/smoke_p3_univar_theory_contracts.yaml`
+  - `config/unified_runs/smoke_p4_ndlm_theory_contracts.yaml`
+- Evidence paths:
+  - `repro/runs/20260211_094533/run_manifest.yaml`
+  - `repro/runs/20260211_094533/fit/exdqlm_univar/q=50/outputs/variables_50_exAL_synth_DISC_uni.RData`
+  - `repro/runs/20260211_094533/fit/contract_checks/exdqlm_univar/q=50/q50_exdqlm_univar_contract_check.json`
+  - `repro/runs/20260211_094533/validate/write_audit/fit/fs_diff.patch`
+  - `repro/runs/20260211_095407/run_manifest.yaml`
+  - `repro/runs/20260211_095407/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData`
+  - `repro/runs/20260211_095407/fit/contract_checks/ndlm_main/ndlm_main_contract_check.json`
+  - `repro/runs/20260211_095407/validate/write_audit/fit/fs_diff.patch`
+  - `repro/P3_UNIVAR_CONTRACTS_SMOKE_20260211_094533.md`
+  - `repro/P4_NDLM_CONTRACTS_SMOKE_20260211_095407.md`
+- Validation notes:
+  - Both smokes closed with non-null `timestamps.finished_at_utc`.
+  - Contract-check reports are pass for both families and are recorded in manifest artifacts with role `contract_check`.
+  - Fit write-audit diffs are empty (`0` bytes) for both smokes with `enforce_from_stage=2` and empty allowlist.
+  - Default behavior is unchanged unless `fit.contract_checks.enabled=true`.
+- Next action:
+  - Implement equation-to-code parity audit notes plus optional runtime diagnostics invariants (shape/PSD/finite) behind diagnostics toggles before default cutover.
 
 ## 11) Open Questions / Resolved Defaults
 

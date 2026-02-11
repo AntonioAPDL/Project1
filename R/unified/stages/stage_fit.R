@@ -148,6 +148,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     c("models", "ndlm_main", "implementation_mode"),
     default = "legacy_bridge"
   )
+  contract_checks_enabled <- isTRUE(unified_get(cfg, c("fit", "contract_checks", "enabled"), default = FALSE))
+  contract_checks_fail_fast <- isTRUE(unified_get(cfg, c("fit", "contract_checks", "fail_fast"), default = TRUE))
+  contract_checks_write_reports <- isTRUE(unified_get(cfg, c("fit", "contract_checks", "write_reports"), default = TRUE))
 
   if (isTRUE(cfg$models$run_exdqlm_multivar)) {
     run_one_quantile <- function(q) {
@@ -324,6 +327,42 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       if (file.exists(log_path)) {
         manifest <- unified_manifest_add_artifact(manifest, log_path, storage_scale = "text")
       }
+
+      if (contract_checks_enabled && identical(univar_impl_mode, "theory_aligned")) {
+        check_dir <- file.path(fit_root, "contract_checks", "exdqlm_univar", sprintf("q=%s", q_lab))
+        check_result <- unified_contract_check_exdqlm_univar(
+          rdata_path = output_path,
+          q_num = q_num,
+          report_dir = check_dir,
+          write_reports = contract_checks_write_reports
+        )
+        report_paths <- unlist(check_result$report_paths, use.names = FALSE)
+        report_paths <- report_paths[nzchar(report_paths)]
+        if (length(report_paths) > 0L) {
+          for (rp in report_paths) {
+            if (file.exists(rp)) {
+              manifest <- unified_manifest_add_artifact(
+                manifest,
+                rp,
+                storage_scale = "text",
+                role = "contract_check"
+              )
+            }
+          }
+        }
+        if (!identical(check_result$status, "pass")) {
+          err_msg <- sprintf(
+            "univariate contract check failed for q=%s: %s",
+            q_lab,
+            paste(check_result$errors, collapse = " | ")
+          )
+          if (contract_checks_fail_fast) {
+            stop(err_msg, call. = FALSE)
+          } else {
+            warning(err_msg, call. = FALSE)
+          }
+        }
+      }
     }
   }
 
@@ -422,6 +461,42 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     )
     if (file.exists(log_path)) {
       manifest <- unified_manifest_add_artifact(manifest, log_path, storage_scale = "text")
+    }
+
+    if (contract_checks_enabled && identical(ndlm_impl_mode, "theory_aligned")) {
+      check_dir <- file.path(fit_root, "contract_checks", "ndlm_main")
+      summary_log_path <- file.path(ndlm_logs, "ndlm_theory_summary.log")
+      check_result <- unified_contract_check_ndlm_main(
+        rdata_path = output_path,
+        report_dir = check_dir,
+        summary_log_path = summary_log_path,
+        write_reports = contract_checks_write_reports
+      )
+      report_paths <- unlist(check_result$report_paths, use.names = FALSE)
+      report_paths <- report_paths[nzchar(report_paths)]
+      if (length(report_paths) > 0L) {
+        for (rp in report_paths) {
+          if (file.exists(rp)) {
+            manifest <- unified_manifest_add_artifact(
+              manifest,
+              rp,
+              storage_scale = "text",
+              role = "contract_check"
+            )
+          }
+        }
+      }
+      if (!identical(check_result$status, "pass")) {
+        err_msg <- sprintf(
+          "NDLM contract check failed: %s",
+          paste(check_result$errors, collapse = " | ")
+        )
+        if (contract_checks_fail_fast) {
+          stop(err_msg, call. = FALSE)
+        } else {
+          warning(err_msg, call. = FALSE)
+        }
+      }
     }
   }
 

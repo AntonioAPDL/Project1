@@ -88,6 +88,11 @@ unified_config_defaults <- function() {
         enabled = FALSE,
         source_run_id = NULL,
         mode = "resume"
+      ),
+      contract_checks = list(
+        enabled = FALSE,
+        fail_fast = TRUE,
+        write_reports = TRUE
       )
     ),
     post = list(
@@ -373,6 +378,19 @@ unified_validate_config <- function(cfg) {
     if (!(val %in% unified_scale_enum)) {
       add_err(sprintf("%s must be one of [%s]", key, paste(unified_scale_enum, collapse = ", ")))
     }
+  }
+
+  contract_checks_enabled <- unified_get(cfg, c("fit", "contract_checks", "enabled"), FALSE)
+  if (!isTRUE(contract_checks_enabled) && !identical(contract_checks_enabled, FALSE)) {
+    add_err("fit.contract_checks.enabled must be boolean (true/false)")
+  }
+  contract_checks_fail_fast <- unified_get(cfg, c("fit", "contract_checks", "fail_fast"), TRUE)
+  if (!isTRUE(contract_checks_fail_fast) && !identical(contract_checks_fail_fast, FALSE)) {
+    add_err("fit.contract_checks.fail_fast must be boolean (true/false)")
+  }
+  contract_checks_write_reports <- unified_get(cfg, c("fit", "contract_checks", "write_reports"), TRUE)
+  if (!isTRUE(contract_checks_write_reports) && !identical(contract_checks_write_reports, FALSE)) {
+    add_err("fit.contract_checks.write_reports must be boolean (true/false)")
   }
 
   errs
