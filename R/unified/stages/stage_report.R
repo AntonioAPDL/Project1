@@ -51,6 +51,63 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
 
   input_hashes <- lapply(manifest$inputs, function(x) list(path = x$path, sha256 = x$sha256, storage_scale = x$storage_scale))
 
+  quantiles_expected <- suppressWarnings(as.integer(round(as.numeric(cfg$fit$quantiles) * 100)))
+  quantiles_expected <- sort(unique(quantiles_expected[is.finite(quantiles_expected)]))
+  artifact_paths <- unlist(lapply(manifest$artifacts, function(x) {
+    val <- x$path
+    if (is.null(val)) "" else as.character(val)
+  }), use.names = FALSE)
+  artifact_paths <- artifact_paths[nzchar(artifact_paths)]
+
+  extract_quantiles <- function(paths, pattern, prefer_group = 2L) {
+    out <- integer(0)
+    for (p in paths) {
+      m <- regexec(pattern, p, perl = TRUE)
+      reg <- regmatches(p, m)[[1]]
+      if (length(reg) >= prefer_group + 1L && nzchar(reg[[prefer_group + 1L]])) {
+        val <- suppressWarnings(as.integer(reg[[prefer_group + 1L]]))
+        if (is.finite(val)) out <- c(out, val)
+      } else if (length(reg) >= 2L && nzchar(reg[[2L]])) {
+        val <- suppressWarnings(as.integer(reg[[2L]]))
+        if (is.finite(val)) out <- c(out, val)
+      }
+    }
+    sort(unique(out))
+  }
+
+  multivar_found <- extract_quantiles(
+    artifact_paths,
+    "fit/q=([0-9]{2})/outputs/DISC_variables_([0-9]+)_exAL_synth_DISC\\.RData$",
+    prefer_group = 2L
+  )
+  univar_found <- extract_quantiles(
+    artifact_paths,
+    "fit/exdqlm_univar/q=([0-9]{2})/outputs/variables_([0-9]{2})_exAL_synth_DISC_uni\\.RData$",
+    prefer_group = 2L
+  )
+  ndlm_present <- any(grepl(
+    "fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC\\.RData$",
+    artifact_paths,
+    perl = TRUE
+  ))
+
+  families_summary <- list(
+    exdqlm_multivar = list(
+      enabled = isTRUE(cfg$models$run_exdqlm_multivar),
+      quantiles_expected = if (isTRUE(cfg$models$run_exdqlm_multivar)) quantiles_expected else integer(0),
+      quantiles_found = if (isTRUE(cfg$models$run_exdqlm_multivar)) multivar_found else integer(0)
+    ),
+    exdqlm_univar = list(
+      enabled = isTRUE(cfg$models$run_exdqlm_univar),
+      quantiles_expected = if (isTRUE(cfg$models$run_exdqlm_univar)) quantiles_expected else integer(0),
+      quantiles_found = if (isTRUE(cfg$models$run_exdqlm_univar)) univar_found else integer(0)
+    ),
+    ndlm_main = list(
+      enabled = isTRUE(cfg$models$run_ndlm_main),
+      output_present = if (isTRUE(cfg$models$run_ndlm_main)) ndlm_present else FALSE
+    )
+  )
+
   summary_json <- list(
     run_id = cfg$run$run_id,
     run_root = run_root,
@@ -66,7 +123,10 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     write_audit_clean = write_audit_clean,
     compare_report_path = compare_report_path,
     profile_summary_path = if (is.null(profile_summary_path)) NA_character_ else profile_summary_path,
-    artifacts_recorded = length(manifest$artifacts)
+    artifacts_recorded = length(manifest$artifacts),
+    report = list(
+      families = families_summary
+    )
   )
 
   if (requireNamespace("jsonlite", quietly = TRUE)) {
@@ -97,7 +157,13 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     "",
     "## Outputs",
     sprintf("- artifacts_recorded: `%d`", length(manifest$artifacts)),
-    sprintf("- summary_json: `%s`", file.path(report_root, "summary.json"))
+    sprintf("- summary_json: `%s`", file.path(report_root, "summary.json")),
+    sprintf("- families.exdqlm_multivar.enabled: `%s`", families_summary$exdqlm_multivar$enabled),
+    sprintf("- families.exdqlm_multivar.quantiles_found: `%s`", paste(families_summary$exdqlm_multivar$quantiles_found, collapse = ", ")),
+    sprintf("- families.exdqlm_univar.enabled: `%s`", families_summary$exdqlm_univar$enabled),
+    sprintf("- families.exdqlm_univar.quantiles_found: `%s`", paste(families_summary$exdqlm_univar$quantiles_found, collapse = ", ")),
+    sprintf("- families.ndlm_main.enabled: `%s`", families_summary$ndlm_main$enabled),
+    sprintf("- families.ndlm_main.output_present: `%s`", families_summary$ndlm_main$output_present)
   )
 
   if (!is.null(profile_summary_path)) {

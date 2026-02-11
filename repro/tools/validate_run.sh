@@ -4,8 +4,8 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  bash repro/tools/validate_run.sh <RUN_ID> [--profile production|smoke|auto]
-  RUN_ID=<RUN_ID> bash repro/tools/validate_run.sh [--profile production|smoke|auto]
+  bash repro/tools/validate_run.sh <RUN_ID> [--profile production|smoke|auto] [--exit-nonzero]
+  RUN_ID=<RUN_ID> bash repro/tools/validate_run.sh [--profile production|smoke|auto] [--exit-nonzero]
 
 Production profile (default) strict success checklist:
 1) All 7 quantile outputs exist:
@@ -25,6 +25,9 @@ Smoke profile checklist:
 3) expected family artifacts exist for enabled models and requested quantiles
 4) post/validate/report artifacts exist
 5) write_audit fs_diff.patch exists and all detected patches are empty
+
+--exit-nonzero:
+  When provided, exits 1 on RESULT=FAIL (default behavior remains exit 0).
 EOF
 }
 
@@ -75,6 +78,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 PROFILE="production"
 PROFILE_EXPLICIT="false"
+EXIT_NONZERO="false"
 RUN_ID_ARG=""
 
 while [[ $# -gt 0 ]]; do
@@ -84,6 +88,10 @@ while [[ $# -gt 0 ]]; do
       PROFILE="$2"
       PROFILE_EXPLICIT="true"
       shift 2
+      ;;
+    --exit-nonzero)
+      EXIT_NONZERO="true"
+      shift
       ;;
     -h|--help)
       usage
@@ -131,18 +139,20 @@ cfg_quantile_labels_csv=""
 cfg_run_exdqlm_multivar="true"
 cfg_run_exdqlm_univar="false"
 cfg_run_ndlm_main="false"
-if [[ -f "${RESOLVED_CONFIG_PATH}" ]]; then
-  if python3 - <<'PY' >/dev/null 2>&1
-import yaml
-PY
-  then
-    if mapfile -t cfg_vals < <(python3 - "${RESOLVED_CONFIG_PATH}" <<'PY'
+cfg_contract_checks_enabled="false"
+cfg_diagnostics_enabled="false"
+[[ -f "${RESOLVED_CONFIG_PATH}" ]] || die "resolved_config.yaml not found: ${RESOLVED_CONFIG_PATH}"
+if mapfile -t cfg_vals < <(python3 - "${RESOLVED_CONFIG_PATH}" <<'PY'
 import sys
 import yaml
 
 path = sys.argv[1]
-with open(path, "r", encoding="utf-8") as f:
-    doc = yaml.safe_load(f) or {}
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        doc = yaml.safe_load(f) or {}
+except Exception as exc:
+    print(f"ERROR: {exc}", file=sys.stderr)
+    raise
 
 validation = doc.get("validation") or {}
 models = doc.get("models") or {}
@@ -176,18 +186,20 @@ print(",".join(q_labels))
 print(as_bool_word(models.get("run_exdqlm_multivar"), default=True))
 print(as_bool_word(models.get("run_exdqlm_univar"), default=False))
 print(as_bool_word(models.get("run_ndlm_main"), default=False))
+print(as_bool_word((fit.get("contract_checks") or {}).get("enabled"), default=False))
+print(as_bool_word((fit.get("diagnostics") or {}).get("enabled"), default=False))
 PY
-    ); then
-      validation_profile_from_config="${cfg_vals[0]:-}"
-      cfg_quantile_nums_csv="${cfg_vals[1]:-}"
-      cfg_quantile_labels_csv="${cfg_vals[2]:-}"
-      cfg_run_exdqlm_multivar="${cfg_vals[3]:-true}"
-      cfg_run_exdqlm_univar="${cfg_vals[4]:-false}"
-      cfg_run_ndlm_main="${cfg_vals[5]:-false}"
-    else
-      die "Failed to parse ${RESOLVED_CONFIG_PATH}"
-    fi
-  fi
+); then
+  validation_profile_from_config="${cfg_vals[0]:-}"
+  cfg_quantile_nums_csv="${cfg_vals[1]:-}"
+  cfg_quantile_labels_csv="${cfg_vals[2]:-}"
+  cfg_run_exdqlm_multivar="${cfg_vals[3]:-true}"
+  cfg_run_exdqlm_univar="${cfg_vals[4]:-false}"
+  cfg_run_ndlm_main="${cfg_vals[5]:-false}"
+  cfg_contract_checks_enabled="${cfg_vals[6]:-false}"
+  cfg_diagnostics_enabled="${cfg_vals[7]:-false}"
+else
+  die "Failed to parse ${RESOLVED_CONFIG_PATH}"
 fi
 
 PROFILE_EFFECTIVE="${PROFILE}"
@@ -202,18 +214,15 @@ if [[ "${PROFILE_EFFECTIVE}" != "production" && "${PROFILE_EFFECTIVE}" != "smoke
   die "Unsupported validation profile: ${PROFILE_EFFECTIVE} (allowed: production, smoke, auto)"
 fi
 
-require_multivar="true"
-require_univar="false"
-require_ndlm="false"
+require_multivar="${cfg_run_exdqlm_multivar}"
+require_univar="${cfg_run_exdqlm_univar}"
+require_ndlm="${cfg_run_ndlm_main}"
 declare -a EXPECTED_QUANTILES=()
 declare -a EXPECTED_Q_LABELS=()
 if [[ "${PROFILE_EFFECTIVE}" == "production" ]]; then
   EXPECTED_QUANTILES=(5 20 35 50 65 80 95)
   EXPECTED_Q_LABELS=(05 20 35 50 65 80 95)
 else
-  require_multivar="${cfg_run_exdqlm_multivar}"
-  require_univar="${cfg_run_exdqlm_univar}"
-  require_ndlm="${cfg_run_ndlm_main}"
   if [[ -n "${cfg_quantile_nums_csv}" ]]; then
     IFS=',' read -r -a EXPECTED_QUANTILES <<< "${cfg_quantile_nums_csv}"
   else
@@ -246,7 +255,7 @@ quantile_count="${#present_quantiles[@]}"
 
 present_univar_quantiles=()
 missing_univar_quantiles=()
-if [[ "${PROFILE_EFFECTIVE}" == "smoke" && "${require_univar}" == "true" ]]; then
+if [[ "${require_univar}" == "true" ]]; then
   for qlab in "${EXPECTED_Q_LABELS[@]}"; do
     found="$(find "${RUN_ROOT}/fit/exdqlm_univar/q=${qlab}/outputs" -type f -name "variables_${qlab}_exAL_synth_DISC_uni.RData" -print -quit 2>/dev/null || true)"
     if [[ -n "${found}" ]]; then
@@ -258,8 +267,44 @@ if [[ "${PROFILE_EFFECTIVE}" == "smoke" && "${require_univar}" == "true" ]]; the
 fi
 
 ndlm_output_path=""
-if [[ "${PROFILE_EFFECTIVE}" == "smoke" && "${require_ndlm}" == "true" ]]; then
+if [[ "${require_ndlm}" == "true" ]]; then
   ndlm_output_path="$(find "${RUN_ROOT}/fit/ndlm_main/outputs" -type f -name "DISC_variables_50_NDLM_synth_DISC.RData" -print -quit 2>/dev/null || true)"
+fi
+
+contract_univar_reports=()
+missing_contract_univar=()
+if [[ "${cfg_contract_checks_enabled}" == "true" && "${require_univar}" == "true" ]]; then
+  for qlab in "${EXPECTED_Q_LABELS[@]}"; do
+    found="$(find "${RUN_ROOT}/fit/contract_checks/exdqlm_univar/q=${qlab}" -type f -name '*.json' -print -quit 2>/dev/null || true)"
+    if [[ -n "${found}" ]]; then
+      contract_univar_reports+=("${found}")
+    else
+      missing_contract_univar+=("fit/contract_checks/exdqlm_univar/q=${qlab}/*.json")
+    fi
+  done
+fi
+
+contract_ndlm_report=""
+if [[ "${cfg_contract_checks_enabled}" == "true" && "${require_ndlm}" == "true" ]]; then
+  contract_ndlm_report="$(find "${RUN_ROOT}/fit/contract_checks/ndlm_main" -type f -name '*.json' -print -quit 2>/dev/null || true)"
+fi
+
+diag_univar_reports=()
+missing_diag_univar=()
+if [[ "${cfg_diagnostics_enabled}" == "true" && "${require_univar}" == "true" ]]; then
+  for qlab in "${EXPECTED_Q_LABELS[@]}"; do
+    found="$(find "${RUN_ROOT}/fit/diagnostics/exdqlm_univar/q=${qlab}" -type f -name '*.json' -print -quit 2>/dev/null || true)"
+    if [[ -n "${found}" ]]; then
+      diag_univar_reports+=("${found}")
+    else
+      missing_diag_univar+=("fit/diagnostics/exdqlm_univar/q=${qlab}/*.json")
+    fi
+  done
+fi
+
+diag_ndlm_report=""
+if [[ "${cfg_diagnostics_enabled}" == "true" && "${require_ndlm}" == "true" ]]; then
+  diag_ndlm_report="$(find "${RUN_ROOT}/fit/diagnostics/ndlm_main" -type f -name '*.json' -print -quit 2>/dev/null || true)"
 fi
 
 mapfile -t WRITE_AUDIT_PATCHES < <(find "${RUN_ROOT}/validate/write_audit" -type f -name 'fs_diff.patch' 2>/dev/null | sort)
@@ -363,15 +408,35 @@ else
 fi
 
 chk_univar_outputs="true"
-if [[ "${PROFILE_EFFECTIVE}" == "smoke" && "${require_univar}" == "true" ]]; then
+if [[ "${require_univar}" == "true" ]]; then
   [[ "${#missing_univar_quantiles[@]}" -eq 0 ]] || chk_univar_outputs="false"
 fi
 
 chk_ndlm_outputs="true"
-if [[ "${PROFILE_EFFECTIVE}" == "smoke" && "${require_ndlm}" == "true" ]]; then
+if [[ "${require_ndlm}" == "true" ]]; then
   if [[ -z "${ndlm_output_path}" ]]; then
     chk_ndlm_outputs="false"
   fi
+fi
+
+chk_contract_univar="true"
+if [[ "${cfg_contract_checks_enabled}" == "true" && "${require_univar}" == "true" ]]; then
+  [[ "${#missing_contract_univar[@]}" -eq 0 ]] || chk_contract_univar="false"
+fi
+
+chk_contract_ndlm="true"
+if [[ "${cfg_contract_checks_enabled}" == "true" && "${require_ndlm}" == "true" ]]; then
+  [[ -n "${contract_ndlm_report}" ]] || chk_contract_ndlm="false"
+fi
+
+chk_diag_univar="true"
+if [[ "${cfg_diagnostics_enabled}" == "true" && "${require_univar}" == "true" ]]; then
+  [[ "${#missing_diag_univar[@]}" -eq 0 ]] || chk_diag_univar="false"
+fi
+
+chk_diag_ndlm="true"
+if [[ "${cfg_diagnostics_enabled}" == "true" && "${require_ndlm}" == "true" ]]; then
+  [[ -n "${diag_ndlm_report}" ]] || chk_diag_ndlm="false"
 fi
 
 chk_post_outputs="false"
@@ -410,6 +475,12 @@ if [[ "${PROFILE_EFFECTIVE}" == "production" ]]; then
   if [[ "${chk_manifest_exists}" == "true" && \
         "${chk_finished_at}" == "true" && \
         "${chk_quantiles}" == "true" && \
+        "${chk_univar_outputs}" == "true" && \
+        "${chk_ndlm_outputs}" == "true" && \
+        "${chk_contract_univar}" == "true" && \
+        "${chk_contract_ndlm}" == "true" && \
+        "${chk_diag_univar}" == "true" && \
+        "${chk_diag_ndlm}" == "true" && \
         "${chk_post_outputs}" == "true" && \
         "${chk_compare_report}" == "true" && \
         "${chk_write_audit_patch}" == "true" && \
@@ -424,6 +495,10 @@ else
         "${chk_quantiles}" == "true" && \
         "${chk_univar_outputs}" == "true" && \
         "${chk_ndlm_outputs}" == "true" && \
+        "${chk_contract_univar}" == "true" && \
+        "${chk_contract_ndlm}" == "true" && \
+        "${chk_diag_univar}" == "true" && \
+        "${chk_diag_ndlm}" == "true" && \
         "${chk_post_outputs}" == "true" && \
         "${chk_compare_report}" == "true" && \
         "${chk_write_audit_patch}" == "true" && \
@@ -443,6 +518,12 @@ missing_univar_q_csv="$(join_by "," "${missing_univar_quantiles[@]:-}")"
 present_univar_q_csv="$(join_by "," "${present_univar_quantiles[@]:-}")"
 [[ -n "${missing_univar_q_csv}" ]] || missing_univar_q_csv="none"
 [[ -n "${present_univar_q_csv}" ]] || present_univar_q_csv="none"
+missing_contract_univar_csv="$(join_by "," "${missing_contract_univar[@]:-}")"
+[[ -n "${missing_contract_univar_csv}" ]] || missing_contract_univar_csv="none"
+missing_diag_univar_csv="$(join_by "," "${missing_diag_univar[@]:-}")"
+[[ -n "${missing_diag_univar_csv}" ]] || missing_diag_univar_csv="none"
+contract_ndlm_report_out="${contract_ndlm_report:-none}"
+diag_ndlm_report_out="${diag_ndlm_report:-none}"
 write_audit_nonempty_csv="$(join_by "," "${write_audit_nonempty[@]:-}")"
 [[ -n "${write_audit_nonempty_csv}" ]] || write_audit_nonempty_csv="none"
 if [[ "${require_multivar}" == "true" ]]; then
@@ -474,6 +555,10 @@ if [[ "${overall_pass}" != "true" ]]; then
       last_idx=$(( ${#present_quantiles[@]} - 1 ))
       where_stopped="fit (completed q=${present_quantiles[$last_idx]}, next missing q=${missing_quantiles[0]:-unknown})"
     fi
+  elif [[ "${chk_univar_outputs}" != "true" || "${chk_ndlm_outputs}" != "true" || \
+          "${chk_contract_univar}" != "true" || "${chk_contract_ndlm}" != "true" || \
+          "${chk_diag_univar}" != "true" || "${chk_diag_ndlm}" != "true" ]]; then
+    where_stopped="fit (family artifact/contract/diagnostics checks)"
   elif [[ "${chk_post_outputs}" != "true" ]]; then
     where_stopped="post"
   elif [[ "${chk_compare_report}" != "true" || "${chk_write_audit_patch}" != "true" || "${chk_validation_pass}" != "true" ]]; then
@@ -533,8 +618,12 @@ Result: PASS
 - [$(bool_word "${chk_manifest_exists}")] run_manifest.yaml exists
 - [$(bool_word "${chk_finished_at}")] manifest timestamps.finished_at_utc is non-null
 - [$(bool_word "${chk_quantiles}")] expected multivar quantile outputs present
-- [$(bool_word "${chk_univar_outputs}")] expected univar outputs present (smoke profile)
-- [$(bool_word "${chk_ndlm_outputs}")] expected NDLM outputs present (smoke profile)
+- [$(bool_word "${chk_univar_outputs}")] expected univar outputs present (when enabled)
+- [$(bool_word "${chk_ndlm_outputs}")] expected NDLM outputs present (when enabled)
+- [$(bool_word "${chk_contract_univar}")] expected univar contract-check reports present (when enabled)
+- [$(bool_word "${chk_contract_ndlm}")] expected NDLM contract-check reports present (when enabled)
+- [$(bool_word "${chk_diag_univar}")] expected univar diagnostics reports present (when enabled)
+- [$(bool_word "${chk_diag_ndlm}")] expected NDLM diagnostics reports present (when enabled)
 - [$(bool_word "${chk_post_outputs}")] post outputs exist under post/outputs/${RUN_ID}
 - [$(bool_word "${chk_compare_report}")] validate/compare_report.json exists
 - [$(bool_word "${chk_write_audit_patch}")] validate/write_audit fs_diff.patch exists
@@ -556,6 +645,10 @@ Result: PASS
 - present_univar_quantiles: \`${present_univar_q_csv}\`
 - missing_univar_quantiles: \`${missing_univar_q_csv}\`
 - ndlm_output_path: \`${ndlm_output_path:-<not-required-or-missing>}\`
+- missing_contract_univar_reports: \`${missing_contract_univar_csv}\`
+- contract_ndlm_report: \`${contract_ndlm_report_out}\`
+- missing_diag_univar_reports: \`${missing_diag_univar_csv}\`
+- diag_ndlm_report: \`${diag_ndlm_report_out}\`
 - write_audit_nonempty_patches: \`${write_audit_nonempty_csv}\`
 
 ## Top 10 Largest Files (human_size, bytes, path)
@@ -585,8 +678,12 @@ Result: FAIL
 - [$(bool_word "${chk_manifest_exists}")] run_manifest.yaml exists
 - [$(bool_word "${chk_finished_at}")] manifest timestamps.finished_at_utc is non-null
 - [$(bool_word "${chk_quantiles}")] expected multivar quantile outputs present
-- [$(bool_word "${chk_univar_outputs}")] expected univar outputs present (smoke profile)
-- [$(bool_word "${chk_ndlm_outputs}")] expected NDLM outputs present (smoke profile)
+- [$(bool_word "${chk_univar_outputs}")] expected univar outputs present (when enabled)
+- [$(bool_word "${chk_ndlm_outputs}")] expected NDLM outputs present (when enabled)
+- [$(bool_word "${chk_contract_univar}")] expected univar contract-check reports present (when enabled)
+- [$(bool_word "${chk_contract_ndlm}")] expected NDLM contract-check reports present (when enabled)
+- [$(bool_word "${chk_diag_univar}")] expected univar diagnostics reports present (when enabled)
+- [$(bool_word "${chk_diag_ndlm}")] expected NDLM diagnostics reports present (when enabled)
 - [$(bool_word "${chk_post_outputs}")] post outputs exist under post/outputs/${RUN_ID}
 - [$(bool_word "${chk_compare_report}")] validate/compare_report.json exists
 - [$(bool_word "${chk_write_audit_patch}")] validate/write_audit fs_diff.patch exists
@@ -650,6 +747,22 @@ echo "missing_quantiles=${missing_q_csv}"
 echo "present_univar_quantiles=${present_univar_q_csv}"
 echo "missing_univar_quantiles=${missing_univar_q_csv}"
 echo "ndlm_output_path=${ndlm_output_path:-<not-required-or-missing>}"
+echo "require_multivar=${require_multivar}"
+echo "require_univar=${require_univar}"
+echo "require_ndlm=${require_ndlm}"
+echo "fit.contract_checks.enabled=${cfg_contract_checks_enabled}"
+echo "fit.diagnostics.enabled=${cfg_diagnostics_enabled}"
+echo "family_check.multivar=$(bool_word "${chk_quantiles}")"
+echo "family_check.univar_outputs=$(bool_word "${chk_univar_outputs}")"
+echo "family_check.ndlm_output=$(bool_word "${chk_ndlm_outputs}")"
+echo "family_check.univar_contract_reports=$(bool_word "${chk_contract_univar}")"
+echo "family_check.ndlm_contract_report=$(bool_word "${chk_contract_ndlm}")"
+echo "family_check.univar_diagnostics_reports=$(bool_word "${chk_diag_univar}")"
+echo "family_check.ndlm_diagnostics_report=$(bool_word "${chk_diag_ndlm}")"
+echo "missing_contract_univar_reports=${missing_contract_univar_csv}"
+echo "contract_ndlm_report=${contract_ndlm_report_out}"
+echo "missing_diag_univar_reports=${missing_diag_univar_csv}"
+echo "diag_ndlm_report=${diag_ndlm_report_out}"
 echo "post_outputs_dir=${POST_OUTPUTS_DIR}"
 echo "post_outputs_file_count=${post_file_count}"
 echo "compare_report_exists=${chk_compare_report}"
@@ -666,3 +779,7 @@ echo "repo.git.dirty=${repo_dirty}"
 echo "report_written=${report_path}"
 echo "top_10_largest_files:"
 echo "${largest10}"
+
+if [[ "${EXIT_NONZERO}" == "true" && "${overall_pass}" != "true" ]]; then
+  exit 1
+fi

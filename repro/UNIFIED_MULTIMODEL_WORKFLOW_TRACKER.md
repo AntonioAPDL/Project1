@@ -733,6 +733,39 @@ At each planning/execution checkpoint:
 - Next action:
   - Move to P7B: extend validator/report contracts with per-family required-artifact assertions in production profile while keeping smoke profile lightweight and explicit.
 
+### Progress Update 2026-02-11 23:20 UTC
+- Phase: P7B
+- Change type: implementation+validation
+- Summary: made production validator family-aware from `resolved_config.yaml` (per-family fit artifacts + optional contract/diagnostics report enforcement), added deterministic `validate_run.sh` regression tests with `--exit-nonzero`, and added additive `report.families` metadata in `summary.json`.
+- Files touched:
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_validate_run.py`
+  - `R/unified/stages/stage_report.R`
+  - `config/unified_runs/smoke_p7b_production_validate.yaml`
+  - `repro/P7B_PRODUCTION_VALIDATE_SMOKE_20260211_151207.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke config used:
+  - `config/unified_runs/smoke_p7b_production_validate.yaml`
+- Evidence paths:
+  - `repro/runs/20260211_151207/run_manifest.yaml`
+  - `repro/runs/20260211_151207/resolved_config.yaml`
+  - `repro/runs/20260211_151207/validate/compare_report.json`
+  - `repro/runs/20260211_151207/validate/write_audit/fit/fs_diff.patch`
+  - `repro/runs/20260211_151207/validate/write_audit/post/fs_diff.patch`
+  - `repro/runs/20260211_151207/validate/write_audit/validate/fs_diff.patch`
+  - `repro/runs/20260211_151207/validate/write_audit/report/fs_diff.patch`
+  - `repro/runs/20260211_151207/report/summary.json`
+  - `repro/runs/20260211_151207/post/outputs/20260211_151207/post_smoke_marker.txt`
+  - `repro/P7B_PRODUCTION_VALIDATE_SMOKE_20260211_151207.md`
+- Validation notes:
+  - `run_manifest.yaml` has non-null `timestamps.finished_at_utc` (`2026-02-11T23:16:03Z`) and `validation.status: pass`.
+  - `compare_report.json` metrics are `matched=1, missing=0, extra=0, mismatched=0`.
+  - `validate_run.sh` passes in production profile with and without `--exit-nonzero`.
+  - All write-audit `fs_diff.patch` files under `validate/write_audit/{fit,post,validate,report}` are `0` bytes.
+  - `report/summary.json` now contains additive `report.families` metadata for multivar/univar/ndlm.
+- Next action:
+  - Run a production-profile family-enabled validation pass once runtime budget is allocated (7-quantile multivar and optional univar/ndlm), reusing P7B validator gates now enforced by config-driven family toggles.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
