@@ -140,7 +140,7 @@ Status legend:
 | Phase | Status | Goal | Entry Criteria | Exit Gate |
 |---|---|---|---|---|
 | P0 | [x] | Governance + contract freeze | Tracker approved | Contracts document + decision log initialized and D-007 locked |
-| P1 | [~] | Shared input contract + adapters | P0 done | Single run-scoped input bundle consumable by all three families |
+| P1 | [x] | Shared input contract + adapters | P0 done | Single run-scoped input bundle consumable by all three families with forecats snapshot integration and per-family fast-fail gating |
 | P2 | [x] | Legacy orchestration bridge in unified runner | P0 done | Unified runner can launch current legacy univariate + NDLM as controlled sub-stages |
 | P3 | [ ] | Univariate modularization (theory-aligned) | P2 done | New modular univariate stage passes structural compatibility checks |
 | P4 | [ ] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory |
@@ -161,8 +161,8 @@ Status legend:
 
 - [x] `T-P1-01`: Build shared data-prep adapter module that writes run-scoped canonical inputs.
 - [x] `T-P1-02`: Add input manifest entries per source file with hashes/scales.
-- [~] `T-P1-03`: Add fast-fail checks for required per-family inputs.
-- `T-P1-04`: Freeze shared input bundle layout under `repro/runs/<RUN_ID>/inputs/shared/...`; when forecats build mode is enabled, snapshot/copy required forecats outputs into this shared input tree and record hashes in manifest.
+- [x] `T-P1-03`: Add fast-fail checks for required per-family inputs.
+- [x] `T-P1-04`: Freeze shared input bundle layout under `repro/runs/<RUN_ID>/inputs/shared/...`; when forecats build mode is enabled, snapshot/copy required forecats outputs into this shared input tree and record hashes in manifest.
 
 ## 7.3 P2 Tasks (Legacy Bridge)
 
@@ -205,7 +205,7 @@ Status legend:
 | R-002 | High | Post currently consumes root pre-generated NDLM/univariate artifacts. | Execute P5 decoupling before declaring full autonomy. | TBD | Mitigating (strict run-scoped smoke passed) |
 | R-003 | High | Legacy scripts contain duplicated core functions and fragile patterns. | Modularize with strict tests and narrow wrappers. | TBD | Open |
 | R-004 | Medium | Parallel orchestration may induce file collisions without strict run-scope contracts. | Enforce per-family/per-quantile isolated output roots + write-audit. | TBD | Open |
-| R-005 | Medium | Ambiguity on sequencing can delay implementation. | Lock D-007 or replace with alternate sequence immediately after P0. | Maintainer | Open |
+| R-005 | Medium | Ambiguity on sequencing can delay implementation. | Lock D-007 or replace with alternate sequence immediately after P0. | Maintainer | Mitigated (D-007 locked) |
 | R-006 | High | DISC-W warm-start can load root `DISC_variables_*` paths, violating run-scoped reproducibility if enabled. | Keep warm-start disabled by default; if enabled, require run-scoped warm-start source path recorded in manifest before stage execution. | TBD | Open |
 | R-007 | Medium | Post reads `y_reps*.rds` via relative paths, creating working-directory-sensitive behavior. | In P5, enforce absolute/manifest-declared paths for these intermediates and fail fast on unresolved relative reads. | TBD | Mitigating (run-scoped cache path enforced) |
 
@@ -407,6 +407,47 @@ At each planning/execution checkpoint:
 - Next action:
   - Complete remaining P1 tasks (forecats snapshot integration + stricter per-family input gating) before beginning P3/P4 modular model replacements.
 
+### Progress Update 2026-02-11 01:40 UTC
+- Phase: P1
+- Change type: implementation+validation
+- Summary: completed remaining P1 scope by adding strict per-family shared-input fast-fail validation, forecats snapshot integration (`inputs/shared/forecats_bundle`), manifest hashing for snapshot + canonical shared inputs, and shared-input consumption preference from snapshot aliases.
+- Files touched:
+  - `R/unified/inputs_shared_validate.R`
+  - `R/unified/stages/stage_data_prep_shared.R`
+  - `R/unified/stages/stage_forecats.R`
+  - `R/unified/stages/stage_fit.R`
+  - `R/unified/stages/stage_post.R`
+  - `R/unified/config.R`
+  - `R/unified/manifest.R`
+  - `R/unified/utils_hash.R`
+  - `scripts/unified_run.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/smoke_p1_forecats_snapshot.yaml`
+  - `repro/P1_FORECATS_SNAPSHOT_SMOKE_20260210_173759.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke config used:
+  - `config/unified_runs/smoke_p1_forecats_snapshot.yaml`
+- Evidence paths:
+  - `repro/runs/20260210_173759/resolved_config.yaml`
+  - `repro/runs/20260210_173759/run_manifest.yaml`
+  - `repro/runs/20260210_173759/inputs/shared/parameters/parameters.txt`
+  - `repro/runs/20260210_173759/inputs/shared/retros/retros.csv`
+  - `repro/runs/20260210_173759/inputs/shared/forecasts/nws_forecast.csv`
+  - `repro/runs/20260210_173759/inputs/shared/forecasts/glofas_forecast.csv`
+  - `repro/runs/20260210_173759/inputs/shared/covariates/cov_01_ELI.csv`
+  - `repro/runs/20260210_173759/inputs/shared/covariates/cov_02_ONI.csv`
+  - `repro/runs/20260210_173759/inputs/shared/forecats_bundle/meta.yaml`
+  - `repro/runs/20260210_173759/inputs/shared/forecats_bundle/inputs/retros_daily.csv`
+  - `repro/runs/20260210_173759/inputs/shared/forecats_bundle/inputs/nws_weighted_daily.csv`
+  - `repro/runs/20260210_173759/inputs/shared/forecats_bundle/inputs/glofas_weighted_daily.csv`
+  - `repro/P1_FORECATS_SNAPSHOT_SMOKE_20260210_173759.md`
+- Validation notes:
+  - `run_manifest.yaml` has non-null `timestamps.finished_at_utc` (`2026-02-11T01:38:04Z`).
+  - Manifest includes `role: input_snapshot` entries for snapshot copies and `role: shared_input` entries for canonical shared inputs, each with SHA256.
+  - Fast-fail checks now execute at end of `data_prep_shared` and at start of `fit`/`post` when shared inputs are enabled/present.
+- Next action:
+  - Begin P3 and P4 modernization tracks using frozen P0/P1 contracts and keep P2/P5 bridges stable until cutover.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
@@ -428,11 +469,9 @@ At each planning/execution checkpoint:
 
 ## 12) Immediate Next Actions (Proposed)
 
-1. Complete remaining P1 work:
-   - forecats snapshot/copy into `inputs/shared/forecats_bundle/...`,
-   - tighten per-family required input gates.
-2. Begin P3/P4 dedicated modernization tracks with explicit equation-to-code mapping docs from theory repos.
-3. Keep P2/P5 bridges stable while migrating family implementations behind the same unified contracts.
+1. Begin P3 and P4 dedicated modernization tracks with explicit equation-to-code mapping docs from theory repos.
+2. Keep P2/P5 bridges stable while migrating family implementations behind the same unified contracts.
+3. Define P3/P4 smoke criteria that reuse P1 canonical shared-input bundle without introducing new root-path dependencies.
 
 ## 13) Notes
 

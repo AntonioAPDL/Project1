@@ -112,7 +112,14 @@ unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record
   )
 }
 
-unified_manifest_add_artifact <- function(manifest, path, storage_scale, analysis_scale = NULL, flow_domain = NULL) {
+unified_manifest_add_artifact <- function(
+  manifest,
+  path,
+  storage_scale,
+  analysis_scale = NULL,
+  flow_domain = NULL,
+  role = NULL
+) {
   artifact <- list(
     path = path,
     sha256 = if (file.exists(path)) unified_sha256(path) else NA_character_,
@@ -120,6 +127,7 @@ unified_manifest_add_artifact <- function(manifest, path, storage_scale, analysi
   )
   if (!is.null(analysis_scale)) artifact$analysis_scale <- analysis_scale
   if (!is.null(flow_domain)) artifact$flow_domain <- flow_domain
+  if (!is.null(role)) artifact$role <- role
 
   manifest$artifacts[[length(manifest$artifacts) + 1]] <- artifact
   manifest

@@ -55,7 +55,8 @@ unified_config_defaults <- function() {
         glofas_forecast_path = NULL,
         glofas_storage_scale = "log1p_cms",
         usgs_mode = "live",
-        usgs_cache_path = NULL
+        usgs_cache_path = NULL,
+        covariates = list()
       ),
       post = list(
         use_fit_outputs_from_run = TRUE
@@ -63,9 +64,17 @@ unified_config_defaults <- function() {
       forecats = list(
         mode = "use_existing",
         pipeline_config_path = "config/forecats_pipeline.template.yaml",
-        existing_bundle_path = NULL
+        existing_bundle_path = NULL,
+        snapshot = list(
+          enabled = NULL,
+          dest_rel = "inputs/shared/forecats_bundle",
+          copy_list = list()
+        )
       ),
-      shared_covariates = list()
+      shared = list(
+        prefer_forecats_snapshot = TRUE
+      ),
+      shared_covariates = list() # legacy compatibility
     ),
     fit = list(
       quantiles = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95),
@@ -111,6 +120,10 @@ unified_deep_merge <- function(defaults, user) {
     return(defaults)
   }
   if (!is.list(defaults) || !is.list(user)) {
+    return(user)
+  }
+  # YAML sequences (unnamed lists) are replaced as a whole.
+  if (is.null(names(defaults)) || is.null(names(user))) {
     return(user)
   }
 
@@ -193,6 +206,19 @@ unified_resolve_paths <- function(cfg, repo_root) {
   }
   cfg <- unified_set(cfg, c("inputs", "shared_covariates"), as.list(shared_covariates))
 
+  fit_covariates <- unified_get(cfg, c("inputs", "fit", "covariates"), default = list())
+  if (is.null(fit_covariates)) fit_covariates <- list()
+  if (length(fit_covariates) > 0L) {
+    for (i in seq_along(fit_covariates)) {
+      entry <- fit_covariates[[i]]
+      if (!is.list(entry)) next
+      cov_path <- entry$path
+      if (is.null(cov_path) || !nzchar(cov_path)) next
+      fit_covariates[[i]]$path <- unified_resolve_path(cov_path, repo_root)
+    }
+  }
+  cfg <- unified_set(cfg, c("inputs", "fit", "covariates"), fit_covariates)
+
   cfg
 }
 
@@ -262,6 +288,24 @@ unified_validate_config <- function(cfg) {
     }
   }
 
+  fit_covariates <- unified_get(cfg, c("inputs", "fit", "covariates"), default = list())
+  if (is.null(fit_covariates)) fit_covariates <- list()
+  for (i in seq_along(fit_covariates)) {
+    entry <- fit_covariates[[i]]
+    if (!is.list(entry)) {
+      add_err(sprintf("inputs.fit.covariates[%d] must be a map with name/path", i))
+      next
+    }
+    cov_name <- entry$name
+    cov_path <- entry$path
+    cov_name <- if (is.null(cov_name)) "" else as.character(cov_name)
+    cov_path <- if (is.null(cov_path)) "" else as.character(cov_path)
+    if (!nzchar(cov_name)) {
+      add_err(sprintf("inputs.fit.covariates[%d].name is required", i))
+    }
+    check_required_file(cov_path, sprintf("inputs.fit.covariates[%d].path", i))
+  }
+
   if (identical(unified_get(cfg, c("inputs", "fit", "usgs_mode"), "live"), "cache")) {
     check_required_file(unified_get(cfg, c("inputs", "fit", "usgs_cache_path")), "inputs.fit.usgs_cache_path")
   }
@@ -274,6 +318,27 @@ unified_validate_config <- function(cfg) {
     if (identical(forecats_mode, "use_existing")) {
       check_required_file(unified_get(cfg, c("inputs", "forecats", "existing_bundle_path")), "inputs.forecats.existing_bundle_path")
     }
+
+    snapshot_enabled <- unified_get(cfg, c("inputs", "forecats", "snapshot", "enabled"), NULL)
+    if (!is.null(snapshot_enabled) && !isTRUE(snapshot_enabled) && !identical(snapshot_enabled, FALSE)) {
+      add_err("inputs.forecats.snapshot.enabled must be boolean or null")
+    }
+    snapshot_dest <- unified_get(cfg, c("inputs", "forecats", "snapshot", "dest_rel"), "inputs/shared/forecats_bundle")
+    if (is.null(snapshot_dest) || !is.character(snapshot_dest) || !nzchar(snapshot_dest)) {
+      add_err("inputs.forecats.snapshot.dest_rel must be a non-empty string")
+    }
+    snapshot_copy_list <- unified_get(cfg, c("inputs", "forecats", "snapshot", "copy_list"), list())
+    if (!is.null(snapshot_copy_list)) {
+      snapshot_copy_list <- unlist(snapshot_copy_list, use.names = FALSE)
+      if (length(snapshot_copy_list) > 0L && !all(nzchar(as.character(snapshot_copy_list)))) {
+        add_err("inputs.forecats.snapshot.copy_list entries must be non-empty strings")
+      }
+    }
+  }
+
+  prefer_snapshot <- unified_get(cfg, c("inputs", "shared", "prefer_forecats_snapshot"), TRUE)
+  if (!isTRUE(prefer_snapshot) && !identical(prefer_snapshot, FALSE)) {
+    add_err("inputs.shared.prefer_forecats_snapshot must be boolean (true/false)")
   }
 
   scale_keys <- list(

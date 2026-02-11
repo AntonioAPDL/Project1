@@ -12,6 +12,39 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   dir.create(post_logs, recursive = TRUE, showWarnings = FALSE)
   dir.create(post_cache_dir, recursive = TRUE, showWarnings = FALSE)
 
+  shared_paths <- unified_shared_input_paths(run_root)
+  use_shared_inputs <- isTRUE(cfg$stages$data_prep_shared) || dir.exists(shared_paths$root)
+  if (use_shared_inputs) {
+    shared_validation <- unified_validate_required_shared_inputs(
+      run_root = run_root,
+      stage_name = "post",
+      manifest = manifest,
+      enabled_models = cfg$models
+    )
+    source_retros <- shared_validation$paths$retros
+    source_nws <- shared_validation$paths$nws
+    source_glofas <- shared_validation$paths$glofas
+    source_retros_scale <- shared_validation$scales$retros
+    if (is.null(source_retros_scale) || !nzchar(source_retros_scale)) {
+      source_retros_scale <- cfg$inputs$fit$retros_storage_scale
+    }
+    source_nws_scale <- shared_validation$scales$nws
+    if (is.null(source_nws_scale) || !nzchar(source_nws_scale)) {
+      source_nws_scale <- cfg$inputs$fit$nws_storage_scale
+    }
+    source_glofas_scale <- shared_validation$scales$glofas
+    if (is.null(source_glofas_scale) || !nzchar(source_glofas_scale)) {
+      source_glofas_scale <- cfg$inputs$fit$glofas_storage_scale
+    }
+  } else {
+    source_retros <- cfg$inputs$fit$retros_path
+    source_nws <- cfg$inputs$fit$nws_forecast_path
+    source_glofas <- cfg$inputs$fit$glofas_forecast_path
+    source_retros_scale <- cfg$inputs$fit$retros_storage_scale
+    source_nws_scale <- cfg$inputs$fit$nws_storage_scale
+    source_glofas_scale <- cfg$inputs$fit$glofas_storage_scale
+  }
+
   legacy_scale <- cfg$scale_contract$legacy_post_input_scale
   unified_assert_known_scale(legacy_scale, "scale_contract.legacy_post_input_scale")
 
@@ -20,48 +53,48 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   adapted_glofas <- file.path(post_inputs, "glofas_post_adapter.csv")
 
   unified_adapt_csv_scale(
-    input_path = cfg$inputs$fit$retros_path,
+    input_path = source_retros,
     output_path = adapted_retros,
-    from_scale = cfg$inputs$fit$retros_storage_scale,
+    from_scale = source_retros_scale,
     to_scale = legacy_scale,
     positive_required = TRUE
   )
   manifest <- unified_manifest_add_scale_history(
     manifest,
     artifact = "post_input/retros",
-    from_scale = cfg$inputs$fit$retros_storage_scale,
+    from_scale = source_retros_scale,
     to_scale = legacy_scale,
-    transform = sprintf("adapter_%s_to_%s", cfg$inputs$fit$retros_storage_scale, legacy_scale)
+    transform = sprintf("adapter_%s_to_%s", source_retros_scale, legacy_scale)
   )
 
   unified_adapt_csv_scale(
-    input_path = cfg$inputs$fit$nws_forecast_path,
+    input_path = source_nws,
     output_path = adapted_nws,
-    from_scale = cfg$inputs$fit$nws_storage_scale,
+    from_scale = source_nws_scale,
     to_scale = legacy_scale,
     positive_required = TRUE
   )
   manifest <- unified_manifest_add_scale_history(
     manifest,
     artifact = "post_input/nws_forecast",
-    from_scale = cfg$inputs$fit$nws_storage_scale,
+    from_scale = source_nws_scale,
     to_scale = legacy_scale,
-    transform = sprintf("adapter_%s_to_%s", cfg$inputs$fit$nws_storage_scale, legacy_scale)
+    transform = sprintf("adapter_%s_to_%s", source_nws_scale, legacy_scale)
   )
 
   unified_adapt_csv_scale(
-    input_path = cfg$inputs$fit$glofas_forecast_path,
+    input_path = source_glofas,
     output_path = adapted_glofas,
-    from_scale = cfg$inputs$fit$glofas_storage_scale,
+    from_scale = source_glofas_scale,
     to_scale = legacy_scale,
     positive_required = TRUE
   )
   manifest <- unified_manifest_add_scale_history(
     manifest,
     artifact = "post_input/glofas_forecast",
-    from_scale = cfg$inputs$fit$glofas_storage_scale,
+    from_scale = source_glofas_scale,
     to_scale = legacy_scale,
-    transform = sprintf("adapter_%s_to_%s", cfg$inputs$fit$glofas_storage_scale, legacy_scale)
+    transform = sprintf("adapter_%s_to_%s", source_glofas_scale, legacy_scale)
   )
 
   manifest <- unified_manifest_add_artifact(manifest, adapted_retros, storage_scale = legacy_scale)
@@ -91,7 +124,8 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
 
     if (!is.null(fallback_rel_paths)) {
       for (nm in names(paths)) {
-        rel <- as.character(fallback_rel_paths[[nm]] %||% "")
+        rel <- fallback_rel_paths[[nm]]
+        rel <- if (is.null(rel)) "" else as.character(rel)
         if (!nzchar(rel)) next
         candidate <- file.path(run_root_abs, rel)
         if (!file.exists(candidate)) next

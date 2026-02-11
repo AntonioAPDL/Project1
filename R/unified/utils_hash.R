@@ -4,6 +4,9 @@ unified_sha256 <- function(path) {
   if (!file.exists(path)) {
     return(NA_character_)
   }
+  if (dir.exists(path)) {
+    return(NA_character_)
+  }
 
   out <- tryCatch(
     system2("sha256sum", shQuote(path), stdout = TRUE, stderr = TRUE),

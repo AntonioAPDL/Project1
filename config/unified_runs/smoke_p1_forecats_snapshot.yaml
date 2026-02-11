@@ -18,14 +18,14 @@ run:
 
 stages:
   forecats: true
-  data_prep_shared: false
-  fit: true
-  post: true
-  validate: true
-  report: true
+  data_prep_shared: true
+  fit: false
+  post: false
+  validate: false
+  report: false
 
 models:
-  run_exdqlm_multivar: true
+  run_exdqlm_multivar: false
   run_exdqlm_univar: false
   run_ndlm_main: false
 
@@ -41,42 +41,46 @@ dates:
 
 inputs:
   fit:
-    parameters_path: null
-    retros_path: null
+    parameters_path: "/data/muscat_data/jaguir26/projects/Project/Input/exAL/parameters/parameters.txt"
+    retros_path: "retros_2022-12-25.csv"
     retros_storage_scale: "log1p_cms"
-    nws_forecast_path: null
+    nws_forecast_path: "nws_forecast.csv"
     nws_storage_scale: "log1p_cms"
-    glofas_forecast_path: null
+    glofas_forecast_path: "weighted_time_series.csv"
     glofas_storage_scale: "log1p_cms"
     usgs_mode: "live"
     usgs_cache_path: null
-    covariates: []   # optional list of {name, path}
+    covariates:
+      - name: "ELI"
+        path: "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_ELI.csv"
+      - name: "ONI"
+        path: "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_2_ONI.csv"
   post:
     use_fit_outputs_from_run: true
   forecats:
     mode: "use_existing"
     pipeline_config_path: "config/forecats_pipeline.template.yaml"
-    existing_bundle_path: null
+    existing_bundle_path: "data/forecats_inputs/site=11160500/cutoff_date=2022-12-25/run_id=20260204_220255"
     snapshot:
-      enabled: null                # null => default true for mode=build, false for mode=use_existing
+      enabled: true
       dest_rel: "inputs/shared/forecats_bundle"
-      copy_list: []                # optional relative paths from bundle root; empty => minimal default set
+      copy_list: []
   shared:
     prefer_forecats_snapshot: true
-  shared_covariates: []            # legacy compatibility: list of covariate paths
 
 fit:
-  quantiles: [0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95]
+  quantiles: [0.5]
   warm_start:
     enabled: false
     source_run_id: null
     mode: "resume"
 
 post:
-  figures: true
+  figures: false
   profile: false
   profile_detail: false
-  export_tables: true
+  sort_keep_na: true
+  export_tables: false
 
 validation:
   canonical_run_id: null
