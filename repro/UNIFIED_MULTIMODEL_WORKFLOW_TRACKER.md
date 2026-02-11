@@ -204,9 +204,9 @@ Status legend:
 | R-001 | Critical | NDLM forecast-window covariance mismatch vs theory can invalidate inference. | Prioritize P4 equation-to-code audit + tests before making NDLM default authoritative. | TBD | Open |
 | R-002 | High | Post currently consumes root pre-generated NDLM/univariate artifacts. | Execute P5 decoupling before declaring full autonomy. | TBD | Mitigating (strict run-scoped smoke passed) |
 | R-003 | High | Legacy scripts contain duplicated core functions and fragile patterns. | Modularize with strict tests and narrow wrappers. | TBD | Open |
-| R-004 | Medium | Parallel orchestration may induce file collisions without strict run-scope contracts. | Enforce per-family/per-quantile isolated output roots + write-audit. | TBD | Open |
+| R-004 | Medium | Parallel orchestration may induce file collisions without strict run-scope contracts. | Enforce per-family/per-quantile isolated output roots + write-audit. | TBD | Mitigating (P2B fit-stage write-audit pass with empty outside-run-root diff) |
 | R-005 | Medium | Ambiguity on sequencing can delay implementation. | Lock D-007 or replace with alternate sequence immediately after P0. | Maintainer | Mitigated (D-007 locked) |
-| R-006 | High | DISC-W warm-start can load root `DISC_variables_*` paths, violating run-scoped reproducibility if enabled. | Keep warm-start disabled by default; if enabled, require run-scoped warm-start source path recorded in manifest before stage execution. | TBD | Open |
+| R-006 | High | DISC-W warm-start can load root `DISC_variables_*` paths, violating run-scoped reproducibility if enabled. | Keep warm-start disabled by default; if enabled, require run-scoped warm-start source path recorded in manifest before stage execution. | TBD | Mitigating (legacy bridge env routing now run-scoped; warm-start remains disabled by default) |
 | R-007 | Medium | Post reads `y_reps*.rds` via relative paths, creating working-directory-sensitive behavior. | In P5, enforce absolute/manifest-declared paths for these intermediates and fail fast on unresolved relative reads. | TBD | Mitigating (run-scoped cache path enforced) |
 
 ## 9) Validation and Done Criteria
@@ -447,6 +447,34 @@ At each planning/execution checkpoint:
   - Fast-fail checks now execute at end of `data_prep_shared` and at start of `fit`/`post` when shared inputs are enabled/present.
 - Next action:
   - Begin P3 and P4 modernization tracks using frozen P0/P1 contracts and keep P2/P5 bridges stable until cutover.
+
+### Progress Update 2026-02-11 05:58 UTC
+- Phase: P2B
+- Change type: implementation+validation
+- Summary: removed uncontrolled legacy bridge root IO by wiring univariate and NDLM scripts to run-scoped shared input env paths and run-scoped output/log paths under `fit/exdqlm_univar/...` and `fit/ndlm_main/...`; validated with strict fit-stage write-audit (`enforce_from_stage=2`, empty allowlist).
+- Files touched:
+  - `R/unified/stages/stage_fit.R`
+  - `OptimalModelSLexAL.r`
+  - `DISC_Optimal_Synth_Ranges_NDLM.r`
+  - `config/unified_runs/smoke_p2b_no_root_writes.yaml`
+  - `repro/P2B_NO_ROOT_WRITES_SMOKE_20260210_212458.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke config used:
+  - `config/unified_runs/smoke_p2b_no_root_writes.yaml`
+- Evidence paths:
+  - `repro/runs/20260210_212458/run_manifest.yaml`
+  - `repro/runs/20260210_212458/fit/exdqlm_univar/q=50/outputs/variables_50_exAL_synth_DISC_uni.RData`
+  - `repro/runs/20260210_212458/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData`
+  - `repro/runs/20260210_212458/fit/exdqlm_univar/q=50/logs/univar_legacy.log`
+  - `repro/runs/20260210_212458/fit/ndlm_main/logs/ndlm_legacy.log`
+  - `repro/runs/20260210_212458/validate/write_audit/fit/fs_diff.patch`
+  - `repro/P2B_NO_ROOT_WRITES_SMOKE_20260210_212458.md`
+- Validation notes:
+  - `run_manifest.yaml` has non-null `timestamps.finished_at_utc` (`2026-02-11T05:56:49Z`).
+  - Fit-stage write audit passed with `fs_diff.patch` size `0` bytes.
+  - Legacy bridge artifacts are produced and hashed under run root; no new writes outside run root were detected for fit stage.
+- Next action:
+  - Start P3/P4 theory-aligned modularization while preserving P2/P5 run-scoped bridge contracts.
 
 ## 11) Open Questions / Resolved Defaults
 

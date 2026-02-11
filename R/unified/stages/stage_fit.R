@@ -5,6 +5,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   on.exit(setwd(oldwd), add = TRUE)
   setwd(repo_root)
 
+  run_root_abs <- normalizePath(run_root, mustWork = FALSE)
   fit_root <- file.path(run_root, "fit")
   fit_inputs <- file.path(fit_root, "inputs")
   dir.create(fit_inputs, recursive = TRUE, showWarnings = FALSE)
@@ -103,6 +104,39 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   manifest <- unified_manifest_add_artifact(manifest, adapted_nws, storage_scale = legacy_scale)
   manifest <- unified_manifest_add_artifact(manifest, adapted_glofas, storage_scale = legacy_scale)
 
+  shared_cov_paths <- list(
+    eli = "",
+    oni = "",
+    ppt = "",
+    soil = "",
+    pca = ""
+  )
+  if (use_shared_inputs) {
+    sanitize_cov_tag <- function(x) {
+      tag <- gsub("[^A-Za-z0-9]+", "_", as.character(x))
+      tag <- gsub("^_+|_+$", "", tag)
+      if (!nzchar(tag)) "cov" else tag
+    }
+    fit_covariates <- cfg$inputs$fit$covariates
+    if (is.null(fit_covariates)) fit_covariates <- list()
+    if (length(fit_covariates) > 0L) {
+      for (i in seq_along(fit_covariates)) {
+        entry <- fit_covariates[[i]]
+        if (!is.list(entry)) next
+        cov_name <- if (is.null(entry$name)) "" else as.character(entry$name)
+        if (!nzchar(cov_name)) next
+        cov_path <- file.path(shared_paths$covariates_dir, sprintf("cov_%02d_%s.csv", i, sanitize_cov_tag(cov_name)))
+        if (!file.exists(cov_path)) next
+        key <- tolower(cov_name)
+        if (grepl("eli", key, fixed = TRUE)) shared_cov_paths$eli <- cov_path
+        if (grepl("oni", key, fixed = TRUE)) shared_cov_paths$oni <- cov_path
+        if (grepl("ppt", key, fixed = TRUE) || grepl("precip", key, fixed = TRUE)) shared_cov_paths$ppt <- cov_path
+        if (grepl("soil", key, fixed = TRUE)) shared_cov_paths$soil <- cov_path
+        if (grepl("pca", key, fixed = TRUE)) shared_cov_paths$pca <- cov_path
+      }
+    }
+  }
+
   quantiles <- as.numeric(cfg$fit$quantiles)
 
   if (isTRUE(cfg$models$run_exdqlm_multivar)) {
@@ -171,6 +205,23 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   }
 
   if (isTRUE(cfg$models$run_exdqlm_univar)) {
+    if (!use_shared_inputs) {
+      stop(
+        "legacy univariate bridge requires run-scoped shared inputs. Enable stages.data_prep_shared and provide shared bundle inputs.",
+        call. = FALSE
+      )
+    }
+    required_cov_keys <- c("eli", "oni", "ppt", "soil", "pca")
+    missing_cov <- required_cov_keys[!nzchar(unlist(shared_cov_paths[required_cov_keys], use.names = FALSE))]
+    if (length(missing_cov) > 0L) {
+      stop(
+        sprintf(
+          "legacy univariate bridge missing shared covariates in run bundle: %s",
+          paste(missing_cov, collapse = ", ")
+        ),
+        call. = FALSE
+      )
+    }
     univar_script <- file.path(repo_root, "OptimalModelSLexAL.r")
     if (!file.exists(univar_script)) {
       stop(sprintf("legacy univariate script not found: %s", univar_script), call. = FALSE)
@@ -188,7 +239,25 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
 
       output_path <- file.path(q_outputs, sprintf("variables_%s_exAL_synth_DISC_uni.RData", q_lab))
       log_path <- file.path(q_logs, "univar_legacy.log")
-      env_kv <- sprintf("UNIFIED_UNIV_RDATA_OUT=%s", output_path)
+      env_overrides <- c(
+        UNIFIED_UNIV_RDATA_OUT = output_path,
+        UNIV_RUN_ROOT = run_root_abs,
+        UNIV_OUT_DIR = q_outputs,
+        UNIV_SHARED_INPUT_ROOT = shared_paths$root,
+        UNIV_PARAMETERS_TXT = source_parameters,
+        UNIV_RETROS_CSV = source_retros,
+        UNIV_NWS_FORECAST_CSV = source_nws,
+        UNIV_GLOFAS_FORECAST_CSV = source_glofas,
+        UNIV_COVARIATES_DIR = shared_paths$covariates_dir,
+        UNIV_COV1_ELI_CSV = shared_cov_paths$eli,
+        UNIV_COV2_ONI_CSV = shared_cov_paths$oni,
+        UNIV_PPT_CSV = shared_cov_paths$ppt,
+        UNIV_SOIL_CSV = shared_cov_paths$soil,
+        UNIV_PCA_CSV = shared_cov_paths$pca,
+        UNIV_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
+        UNIV_PREV_RDATA = output_path
+      )
+      env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
 
       cmd_out <- system2(
         "Rscript",
@@ -212,10 +281,30 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         storage_scale = "model_state",
         flow_domain = cfg$scale_contract$analysis_scale_fit_internal
       )
+      if (file.exists(log_path)) {
+        manifest <- unified_manifest_add_artifact(manifest, log_path, storage_scale = "text")
+      }
     }
   }
 
   if (isTRUE(cfg$models$run_ndlm_main)) {
+    if (!use_shared_inputs) {
+      stop(
+        "legacy NDLM bridge requires run-scoped shared inputs. Enable stages.data_prep_shared and provide shared bundle inputs.",
+        call. = FALSE
+      )
+    }
+    required_cov_keys <- c("eli", "oni", "ppt", "soil", "pca")
+    missing_cov <- required_cov_keys[!nzchar(unlist(shared_cov_paths[required_cov_keys], use.names = FALSE))]
+    if (length(missing_cov) > 0L) {
+      stop(
+        sprintf(
+          "legacy NDLM bridge missing shared covariates in run bundle: %s",
+          paste(missing_cov, collapse = ", ")
+        ),
+        call. = FALSE
+      )
+    }
     ndlm_script <- file.path(repo_root, "DISC_Optimal_Synth_Ranges_NDLM.r")
     if (!file.exists(ndlm_script)) {
       stop(sprintf("legacy NDLM script not found: %s", ndlm_script), call. = FALSE)
@@ -229,7 +318,25 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
 
     output_path <- file.path(ndlm_outputs, "DISC_variables_50_NDLM_synth_DISC.RData")
     log_path <- file.path(ndlm_logs, "ndlm_legacy.log")
-    env_kv <- sprintf("UNIFIED_NDLM_RDATA_OUT=%s", output_path)
+    env_overrides <- c(
+      UNIFIED_NDLM_RDATA_OUT = output_path,
+      NDLM_RUN_ROOT = run_root_abs,
+      NDLM_OUT_DIR = ndlm_outputs,
+      NDLM_SHARED_INPUT_ROOT = shared_paths$root,
+      NDLM_PARAMETERS_TXT = source_parameters,
+      NDLM_RETROS_CSV = source_retros,
+      NDLM_NWS_FORECAST_CSV = source_nws,
+      NDLM_GLOFAS_FORECAST_CSV = source_glofas,
+      NDLM_COVARIATES_DIR = shared_paths$covariates_dir,
+      NDLM_COV1_ELI_CSV = shared_cov_paths$eli,
+      NDLM_COV2_ONI_CSV = shared_cov_paths$oni,
+      NDLM_PPT_CSV = shared_cov_paths$ppt,
+      NDLM_SOIL_CSV = shared_cov_paths$soil,
+      NDLM_PCA_CSV = shared_cov_paths$pca,
+      NDLM_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
+      NDLM_PREV_RDATA = output_path
+    )
+    env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
 
     cmd_out <- system2(
       "Rscript",
@@ -253,6 +360,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       storage_scale = "model_state",
       flow_domain = cfg$scale_contract$analysis_scale_fit_internal
     )
+    if (file.exists(log_path)) {
+      manifest <- unified_manifest_add_artifact(manifest, log_path, storage_scale = "text")
+    }
   }
 
   list(manifest = manifest)

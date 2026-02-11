@@ -45,6 +45,63 @@ p0 <- 0.5
 harmonics = c(1, 2, 1/6.8068493) 
 # harmonics = c(30, 2, 1/6.8068493)         
 
+env_flag <- function(key, default = FALSE) {
+  raw <- Sys.getenv(key, "")
+  if (!nzchar(raw)) return(default)
+  isTRUE(as.logical(raw))
+}
+
+require_readable_path <- function(path, label) {
+  if (!file.exists(path)) {
+    stop(sprintf("%s does not exist at path: %s", label, path), call. = FALSE)
+  }
+  if (file.access(path, mode = 4L) != 0) {
+    stop(sprintf("%s is not readable: %s", label, path), call. = FALSE)
+  }
+  normalizePath(path, mustWork = FALSE)
+}
+
+resolve_shared_input_path <- function(env_key, shared_rel, default_path, label, shared_root = "") {
+  env_val <- Sys.getenv(env_key, "")
+  if (nzchar(env_val)) {
+    return(require_readable_path(env_val, label))
+  }
+  if (nzchar(shared_root)) {
+    candidate <- file.path(shared_root, shared_rel)
+    if (file.exists(candidate)) {
+      return(require_readable_path(candidate, label))
+    }
+  }
+  require_readable_path(default_path, label)
+}
+
+resolve_covariate_path <- function(env_key, covariates_dir, pattern, default_path, label) {
+  env_val <- Sys.getenv(env_key, "")
+  if (nzchar(env_val)) {
+    return(require_readable_path(env_val, label))
+  }
+  if (nzchar(covariates_dir) && dir.exists(covariates_dir)) {
+    hits <- list.files(covariates_dir, pattern = pattern, ignore.case = TRUE, full.names = TRUE)
+    if (length(hits) > 0L) {
+      return(require_readable_path(hits[[1]], label))
+    }
+  }
+  require_readable_path(default_path, label)
+}
+
+NDLM_SHARED_INPUT_ROOT <- Sys.getenv("NDLM_SHARED_INPUT_ROOT", "")
+if (nzchar(NDLM_SHARED_INPUT_ROOT)) {
+  NDLM_SHARED_INPUT_ROOT <- normalizePath(NDLM_SHARED_INPUT_ROOT, mustWork = FALSE)
+}
+NDLM_COVARIATES_DIR <- Sys.getenv("NDLM_COVARIATES_DIR", "")
+if (!nzchar(NDLM_COVARIATES_DIR) && nzchar(NDLM_SHARED_INPUT_ROOT)) {
+  NDLM_COVARIATES_DIR <- file.path(NDLM_SHARED_INPUT_ROOT, "covariates")
+}
+if (nzchar(NDLM_COVARIATES_DIR)) {
+  NDLM_COVARIATES_DIR <- normalizePath(NDLM_COVARIATES_DIR, mustWork = FALSE)
+}
+USE_PREV <- env_flag("NDLM_USE_PREV", USE_PREV)
+
 # Set environment variables for Boost, Eigen, LAPACK, and BLAS
 Sys.setenv("PKG_CXXFLAGS"="-I/data/muscat_data/jaguir26/libs/eigen -I/data/muscat_data/jaguir26/libs/boost/include -DEIGEN_DONT_VECTORIZE")
 Sys.setenv("PKG_LIBS"="-L/data/muscat_data/jaguir26/libs/lib64 -L/data/muscat_data/jaguir26/libs/boost/lib -llapack -lblas -lboost_random -lboost_system -fopenmp")
@@ -332,7 +389,13 @@ check_ts = function(dat){
 #
 is.exdqlm = function(m){ return(inherits(m,"exdqlm")) }
 
-parameters_path <- "/data/muscat_data/jaguir26/projects/Project/Input/exAL/parameters/parameters.txt"
+parameters_path <- resolve_shared_input_path(
+  env_key = "NDLM_PARAMETERS_TXT",
+  shared_rel = file.path("parameters", "parameters.txt"),
+  default_path = "/data/muscat_data/jaguir26/projects/Project/Input/exAL/parameters/parameters.txt",
+  label = "NDLM parameters file",
+  shared_root = NDLM_SHARED_INPUT_ROOT
+)
 
 # Check if the file exists
 if (!file.exists(parameters_path)) {
@@ -678,8 +741,20 @@ preallocate_matrix_list <- function(column_counts, num_rows) {
 }
 
 # Read and process ELI_lon data
-ELI_lon <- read.csv("/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_ELI.csv")
-merged_sst_data <- read.csv("/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_2_ONI.csv")
+ELI_lon <- read.csv(resolve_covariate_path(
+  env_key = "NDLM_COV1_ELI_CSV",
+  covariates_dir = NDLM_COVARIATES_DIR,
+  pattern = "ELI",
+  default_path = "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_ELI.csv",
+  label = "NDLM covariate ELI"
+))
+merged_sst_data <- read.csv(resolve_covariate_path(
+  env_key = "NDLM_COV2_ONI_CSV",
+  covariates_dir = NDLM_COVARIATES_DIR,
+  pattern = "ONI",
+  default_path = "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_2_ONI.csv",
+  label = "NDLM covariate ONI"
+))
 ELI_lon$time <- as.Date(ELI_lon$time)
 adjustment_years <- 170
 ELI_lon$time <- ELI_lon$time - years(adjustment_years)
@@ -697,11 +772,23 @@ San_Lorenzo_Daily_USGS_R$time <- San_Lorenzo_Daily_USGS_R$timestamp
 ###########################################################################################
 ####################################### Forecasts ######################################### 
 ###########################################################################################
-nws_forecast <- read.csv('/data/muscat_data/jaguir26/project1_ucsc_phd/nws_forecast.csv')
+nws_forecast <- read.csv(resolve_shared_input_path(
+  env_key = "NDLM_NWS_FORECAST_CSV",
+  shared_rel = file.path("forecasts", "nws_forecast.csv"),
+  default_path = "/data/muscat_data/jaguir26/project1_ucsc_phd/nws_forecast.csv",
+  label = "NDLM NWS forecast CSV",
+  shared_root = NDLM_SHARED_INPUT_ROOT
+))
 nws_forecast[,-1] <- log(nws_forecast[,-1])
 num_ens_nws <- dim(nws_forecast)[2]-1
 
-glofas_forecast <- read.csv('/data/muscat_data/jaguir26/project1_ucsc_phd/weighted_time_series.csv')
+glofas_forecast <- read.csv(resolve_shared_input_path(
+  env_key = "NDLM_GLOFAS_FORECAST_CSV",
+  shared_rel = file.path("forecasts", "glofas_forecast.csv"),
+  default_path = "/data/muscat_data/jaguir26/project1_ucsc_phd/weighted_time_series.csv",
+  label = "NDLM GloFAS forecast CSV",
+  shared_root = NDLM_SHARED_INPUT_ROOT
+))
 glofas_forecast$target_date <- as.Date(glofas_forecast$target_date)
 specific_date <- as.Date("2022-12-26")
 glofas_forecast <- glofas_forecast[glofas_forecast$target_date >= specific_date, ]
@@ -733,7 +820,13 @@ mean_forecast <- do.call(rbind, row_means_list)
 #########
 ## PPT ##
 #########
-file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/prism_precipitation_santa_cruz_1987_2023.csv"
+file_path <- resolve_covariate_path(
+  env_key = "NDLM_PPT_CSV",
+  covariates_dir = NDLM_COVARIATES_DIR,
+  pattern = "PPT|PRECIP",
+  default_path = "/data/muscat_data/jaguir26/project1_ucsc_phd/prism_precipitation_santa_cruz_1987_2023.csv",
+  label = "NDLM precipitation covariate"
+)
 ppt_data <- read_csv(file_path, show_col_types = FALSE)
 ppt_data$Date <- as.Date(ppt_data$Date)
 colnames(ppt_data) <- c('time','ppt')
@@ -746,7 +839,13 @@ X_ppt_f <- ppt_data[start_date_idx:end_date_idx,c('ppt','time')]
 ##########
 ## SOIL ##
 ##########
-csv_file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv"
+csv_file_path <- resolve_covariate_path(
+  env_key = "NDLM_SOIL_CSV",
+  covariates_dir = NDLM_COVARIATES_DIR,
+  pattern = "SOIL",
+  default_path = "/data/muscat_data/jaguir26/project1_ucsc_phd/soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv",
+  label = "NDLM soil covariate"
+)
 soil_moisture_data <- read.csv(csv_file_path)
 soil_moisture_data$Date <- as.Date(soil_moisture_data$Date)
 colnames(soil_moisture_data) <- c('time','soil')
@@ -759,7 +858,13 @@ X_soil_f <- soil_moisture_data[start_date_idx:end_date_idx,c('soil','time')]
 #########
 ## PCA ##
 #########
-components_file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/pca.csv"
+components_file_path <- resolve_covariate_path(
+  env_key = "NDLM_PCA_CSV",
+  covariates_dir = NDLM_COVARIATES_DIR,
+  pattern = "PCA",
+  default_path = "/data/muscat_data/jaguir26/project1_ucsc_phd/pca.csv",
+  label = "NDLM PCA covariate"
+)
 principal_components_df <- read_csv(components_file_path, show_col_types = FALSE)
 colnames(principal_components_df) <- c('time','Static_PCA')
 X_pca <- principal_components_df[principal_components_df$time <= '2022-12-25',]
@@ -780,7 +885,13 @@ X_f <- merge(X_f, X_pca_f, by = "time")
 #############
 ## Retrosp ##
 #############
-data_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/retros_2022-12-25.csv"
+data_path <- resolve_shared_input_path(
+  env_key = "NDLM_RETROS_CSV",
+  shared_rel = file.path("retros", "retros.csv"),
+  default_path = "/data/muscat_data/jaguir26/project1_ucsc_phd/retros_2022-12-25.csv",
+  label = "NDLM retros CSV",
+  shared_root = NDLM_SHARED_INPUT_ROOT
+)
 streamflow_data <- read_csv(data_path, show_col_types = FALSE)
 time_series_matrix <- as.matrix(streamflow_data[, c('USGS', 'GloFAS', 'NWS3.0')])
 timestamps <- as.Date(streamflow_data$Date)
@@ -1507,7 +1618,11 @@ a_s <- 1e-6
 b_s <- 1e-6
 
 if(USE_PREV){
-  file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_NDLM_synth_DISC.RData"
+  prev_override <- Sys.getenv("NDLM_PREV_RDATA", "")
+  if (!nzchar(prev_override)) {
+    prev_override <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_NDLM_synth_DISC.RData"
+  }
+  file_path <- require_readable_path(prev_override, "NDLM previous-state RData")
   load(file_path)
   new.theta.out = new.theta.out_50_NDLM_synth_DISC 
 }
@@ -2150,8 +2265,15 @@ if (SAVE) {
 
 save_variables <- function(var_names, filename, dir_path) {
   default_out <- file.path(dir_path, filename)
-  out <- Sys.getenv("UNIFIED_NDLM_RDATA_OUT", unset = default_out)
-  file_path <- if (nzchar(out)) out else default_out
+  out <- Sys.getenv("UNIFIED_NDLM_RDATA_OUT", "")
+  out_dir <- Sys.getenv("NDLM_OUT_DIR", "")
+  file_path <- if (nzchar(out)) {
+    out
+  } else if (nzchar(out_dir)) {
+    file.path(out_dir, filename)
+  } else {
+    default_out
+  }
   dir.create(dirname(file_path), recursive = TRUE, showWarnings = FALSE)
   save_cmd <- paste("save(", paste(var_names, collapse = ", "), ", file = file_path)")
   eval(parse(text = save_cmd))
