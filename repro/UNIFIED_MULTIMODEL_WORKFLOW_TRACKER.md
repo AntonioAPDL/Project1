@@ -476,6 +476,35 @@ At each planning/execution checkpoint:
 - Next action:
   - Start P3/P4 theory-aligned modularization while preserving P2/P5 run-scoped bridge contracts.
 
+### Progress Update 2026-02-11 06:55 UTC
+- Phase: P2C (P1/P2 schema hardening follow-up)
+- Change type: implementation+validation
+- Summary: hardened shared-input schema routing to prevent legacy bridge failures from malformed forecast files by (1) enforcing member-level GloFAS schema checks, (2) adding early NWS non-finite schema checks, and (3) canonicalizing snapshot alias selection so `glofas_forecast.csv` is always member-level while retros stays legacy-compatible.
+- Files touched:
+  - `R/unified/inputs_shared_validate.R`
+  - `R/unified/stages/stage_forecats.R`
+  - `R/unified/stages/stage_data_prep_shared.R`
+  - `config/unified_runs/smoke_p2c_shared_inputs_schema.yaml`
+  - `repro/P2C_SHARED_INPUTS_SCHEMA_SMOKE_20260210_222054.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke config used:
+  - `config/unified_runs/smoke_p2c_shared_inputs_schema.yaml`
+- Evidence paths:
+  - `repro/runs/20260210_222054/run_manifest.yaml`
+  - `repro/runs/20260210_222054/inputs/shared/source_map.txt`
+  - `repro/runs/20260210_222054/inputs/shared/forecats_bundle/snapshot_source_map.txt`
+  - `repro/runs/20260210_222054/fit/exdqlm_univar/q=50/outputs/variables_50_exAL_synth_DISC_uni.RData`
+  - `repro/runs/20260210_222054/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData`
+  - `repro/runs/20260210_222054/validate/write_audit/fit/fs_diff.patch`
+  - `repro/P2C_SHARED_INPUTS_SCHEMA_SMOKE_20260210_222054.md`
+- Validation notes:
+  - `run_manifest.yaml` has non-null `timestamps.finished_at_utc` (`2026-02-11T06:53:15Z`).
+  - Fit-stage write-audit diff is empty (`fs_diff.patch` size `0` bytes) with `enforce_from_stage=2` and empty allowlist.
+  - Canonical shared GloFAS input is sourced from snapshot member-level file and passes schema validation before fit.
+  - Legacy bridges complete without root writes using run-scoped shared inputs and run-scoped outputs.
+- Next action:
+  - Begin P3/P4 theory-aligned modularization using P1 canonical shared-input and P2B/P2C run-scoped bridge guarantees as baseline.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open

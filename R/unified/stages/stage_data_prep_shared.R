@@ -53,15 +53,57 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
   source_retros_scale <- cfg$inputs$fit$retros_storage_scale
   source_nws_scale <- cfg$inputs$fit$nws_storage_scale
   source_glofas_scale <- cfg$inputs$fit$glofas_storage_scale
+  source_mode <- "configured"
+  source_nws_origin <- "configured"
+  source_glofas_origin <- "configured"
 
   if (prefer_snapshot && snapshot_ready) {
-    source_retros <- snapshot_retros
-    source_nws <- snapshot_nws
+    source_mode <- "forecats_snapshot_mixed"
     source_glofas <- snapshot_glofas
-    source_retros_scale <- "raw_cms"
-    source_nws_scale <- "raw_cms"
     source_glofas_scale <- "raw_cms"
+    source_glofas_origin <- "snapshot"
+
+    nws_snapshot_ok <- tryCatch(
+      {
+        unified_validate_forecast_numeric_csv(
+          snapshot_nws,
+          label = "forecats snapshot nws_forecast",
+          stage_name = "data_prep_shared/source_nws_snapshot",
+          min_rows = 10L,
+          min_numeric_cols = 2L
+        )
+        TRUE
+      },
+      error = function(e) {
+        warning(
+          sprintf(
+            "data_prep_shared: forecats snapshot NWS alias failed schema validation; falling back to configured path. Details: %s",
+            conditionMessage(e)
+          ),
+          call. = FALSE
+        )
+        FALSE
+      }
+    )
+    if (isTRUE(nws_snapshot_ok)) {
+      source_nws <- snapshot_nws
+      source_nws_scale <- "raw_cms"
+      source_nws_origin <- "snapshot"
+    }
   }
+
+  unified_validate_glofas_members_csv(
+    source_glofas,
+    stage_name = "data_prep_shared/source_glofas"
+  )
+  if (grepl("weighted_time_series\\.csv$", tolower(basename(source_glofas)))) {
+    unified_validate_weighted_time_series_csv(
+      source_glofas,
+      stage_name = "data_prep_shared/source_glofas",
+      provenance = sprintf("source_mode=%s", source_mode)
+    )
+  }
+  message(sprintf("data_prep_shared: validated GloFAS members schema at %s", source_glofas))
 
   add_shared_file(
     cfg$inputs$fit$parameters_path,
@@ -82,6 +124,29 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
     source_glofas,
     shared_paths$glofas,
     storage_scale = source_glofas_scale
+  )
+
+  source_map_path <- file.path(shared_root, "source_map.txt")
+  writeLines(
+    c(
+      sprintf("source_mode=%s", source_mode),
+      sprintf("source.parameters=%s", cfg$inputs$fit$parameters_path),
+      sprintf("source.retros=%s", source_retros),
+      sprintf("source.retros_origin=configured"),
+      sprintf("source.nws=%s", source_nws),
+      sprintf("source.nws_origin=%s", source_nws_origin),
+      sprintf("source.glofas=%s", source_glofas),
+      sprintf("source.glofas_origin=%s", source_glofas_origin),
+      sprintf("snapshot_root=%s", snapshot_root),
+      sprintf("snapshot_ready=%s", if (snapshot_ready) "TRUE" else "FALSE")
+    ),
+    con = source_map_path
+  )
+  manifest <- unified_manifest_add_artifact(
+    manifest,
+    normalizePath(source_map_path, mustWork = FALSE),
+    storage_scale = "text",
+    role = "shared_input"
   )
 
   fit_covariates <- cfg$inputs$fit$covariates
@@ -130,6 +195,7 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
     enabled_models = cfg$models,
     required_covariates = cov_required
   )
+  message(sprintf("data_prep_shared: shared input validation passed under %s", shared_root))
 
   list(manifest = manifest)
 }
