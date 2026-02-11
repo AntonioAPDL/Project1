@@ -175,6 +175,7 @@ Status legend:
 - [x] `T-P3-01`: Split `OptimalModelSLexAL.r` into modular files (setup/inputs/model/update/save).
 - [x] `T-P3-02`: Reconcile equations with `univ-exDQLM---Ensemble/main.tex`.
 - [x] `T-P3-03`: Add structural compatibility tests against expected post interfaces.
+- [x] `T-P3-04`: Add theory-mode diagnostics (finite/shape/symmetry/PSD sampled checks) and equation-to-code audit notes for univariate modules.
 
 ## 7.5 P4 Tasks (NDLM Modular, Theory-Aligned VB)
 
@@ -183,6 +184,7 @@ Status legend:
 - [~] `T-P4-03`: Update ELBO and VB covariance distribution updates per NDLM derivations.
 - [x] `T-P4-04`: Emit neutral NDLM artifacts (`ndlm_main`) with stable schema.
 - [x] `T-P4-05`: Add NDLM structural compatibility contract checks against post-consumed aliases.
+- [x] `T-P4-06`: Add theory-mode diagnostics (finite/shape/symmetry/PSD sampled checks + summary-log invariants) and equation-to-code audit notes for NDLM modules.
 
 ## 7.6 P5 Tasks (Post Decoupling)
 
@@ -616,6 +618,41 @@ At each planning/execution checkpoint:
   - Default behavior is unchanged unless `fit.contract_checks.enabled=true`.
 - Next action:
   - Implement equation-to-code parity audit notes plus optional runtime diagnostics invariants (shape/PSD/finite) behind diagnostics toggles before default cutover.
+
+### Progress Update 2026-02-11 18:18 UTC
+- Phase: P3 + P4 validation hardening (Commit D)
+- Change type: implementation+validation
+- Summary: added opt-in fit diagnostics framework (default OFF) for theory-aligned univariate and NDLM runners, including deterministic sampled PSD/symmetry/finite checks, diagnostics report artifacts, and equation-to-code audit notes; validated with a single combined theory diagnostics smoke.
+- Files touched:
+  - `R/unified/diagnostics.R`
+  - `R/unified/stages/stage_fit.R`
+  - `R/unified/config.R`
+  - `scripts/unified_run.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/smoke_pD_theory_diagnostics.yaml`
+  - `repro/audits/P3_UNIVAR_THEORY_EQ_TO_CODE_v1.md`
+  - `repro/audits/P4_NDLM_THEORY_EQ_TO_CODE_v1.md`
+  - `repro/PD_THEORY_DIAGNOSTICS_SMOKE_20260211_101249.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Smoke config used:
+  - `config/unified_runs/smoke_pD_theory_diagnostics.yaml`
+- Evidence paths:
+  - `repro/runs/20260211_101249/run_manifest.yaml`
+  - `repro/runs/20260211_101249/fit/exdqlm_univar/q=50/outputs/variables_50_exAL_synth_DISC_uni.RData`
+  - `repro/runs/20260211_101249/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData`
+  - `repro/runs/20260211_101249/fit/diagnostics/exdqlm_univar/q=50/q50_exdqlm_univar_diagnostics.json`
+  - `repro/runs/20260211_101249/fit/diagnostics/ndlm_main/ndlm_main_diagnostics.json`
+  - `repro/runs/20260211_101249/fit/contract_checks/exdqlm_univar/q=50/q50_exdqlm_univar_contract_check.json`
+  - `repro/runs/20260211_101249/fit/contract_checks/ndlm_main/ndlm_main_contract_check.json`
+  - `repro/runs/20260211_101249/validate/write_audit/fit/fs_diff.patch`
+  - `repro/PD_THEORY_DIAGNOSTICS_SMOKE_20260211_101249.md`
+- Validation notes:
+  - `run_manifest.yaml` has non-null `timestamps.finished_at_utc` (`2026-02-11T18:16:50Z`).
+  - Univariate and NDLM diagnostics reports both return `status: pass`.
+  - Fit write-audit diff remains empty (`0` bytes) with `enforce_from_stage=2` and empty allowlist.
+  - Defaults remain unchanged unless `fit.diagnostics.enabled=true`.
+- Next action:
+  - Define/execute combined P6 orchestration smoke criteria with multivariate DISC-W + theory univariate + theory NDLM under strict write-audit.
 
 ## 11) Open Questions / Resolved Defaults
 

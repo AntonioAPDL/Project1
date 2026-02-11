@@ -151,6 +151,32 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   contract_checks_enabled <- isTRUE(unified_get(cfg, c("fit", "contract_checks", "enabled"), default = FALSE))
   contract_checks_fail_fast <- isTRUE(unified_get(cfg, c("fit", "contract_checks", "fail_fast"), default = TRUE))
   contract_checks_write_reports <- isTRUE(unified_get(cfg, c("fit", "contract_checks", "write_reports"), default = TRUE))
+  diagnostics_enabled <- isTRUE(unified_get(cfg, c("fit", "diagnostics", "enabled"), default = FALSE))
+  diagnostics_fail_fast <- isTRUE(unified_get(cfg, c("fit", "diagnostics", "fail_fast"), default = TRUE))
+  diagnostics_write_reports <- isTRUE(unified_get(cfg, c("fit", "diagnostics", "write_reports"), default = TRUE))
+  diagnostics_settings <- list(
+    max_time_checks = as.integer(unified_get(cfg, c("fit", "diagnostics", "max_time_checks"), default = 25L)),
+    seed = as.integer(unified_get(cfg, c("fit", "diagnostics", "seed"), default = cfg$run$seed)),
+    psd_tol = as.numeric(unified_get(cfg, c("fit", "diagnostics", "psd_tol"), default = -1e-10))
+  )
+
+  add_report_artifacts <- function(manifest, report_paths, role) {
+    report_paths <- unlist(report_paths, use.names = FALSE)
+    report_paths <- report_paths[nzchar(report_paths)]
+    if (length(report_paths) > 0L) {
+      for (rp in report_paths) {
+        if (file.exists(rp)) {
+          manifest <- unified_manifest_add_artifact(
+            manifest,
+            rp,
+            storage_scale = "text",
+            role = role
+          )
+        }
+      }
+    }
+    manifest
+  }
 
   if (isTRUE(cfg$models$run_exdqlm_multivar)) {
     run_one_quantile <- function(q) {
@@ -336,20 +362,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
           report_dir = check_dir,
           write_reports = contract_checks_write_reports
         )
-        report_paths <- unlist(check_result$report_paths, use.names = FALSE)
-        report_paths <- report_paths[nzchar(report_paths)]
-        if (length(report_paths) > 0L) {
-          for (rp in report_paths) {
-            if (file.exists(rp)) {
-              manifest <- unified_manifest_add_artifact(
-                manifest,
-                rp,
-                storage_scale = "text",
-                role = "contract_check"
-              )
-            }
-          }
-        }
+        manifest <- add_report_artifacts(manifest, check_result$report_paths, role = "contract_check")
         if (!identical(check_result$status, "pass")) {
           err_msg <- sprintf(
             "univariate contract check failed for q=%s: %s",
@@ -357,6 +370,40 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
             paste(check_result$errors, collapse = " | ")
           )
           if (contract_checks_fail_fast) {
+            stop(err_msg, call. = FALSE)
+          } else {
+            warning(err_msg, call. = FALSE)
+          }
+        }
+      }
+
+      if (diagnostics_enabled && identical(univar_impl_mode, "theory_aligned")) {
+        diag_dir <- file.path(fit_root, "diagnostics", "exdqlm_univar", sprintf("q=%s", q_lab))
+        summary_log_path <- file.path(q_logs, "univar_theory_summary.log")
+        diag_result <- unified_diag_exdqlm_univar_theory(
+          rdata_path = output_path,
+          q_num = q_num,
+          report_dir = diag_dir,
+          summary_log_path = summary_log_path,
+          settings = diagnostics_settings,
+          write_reports = diagnostics_write_reports
+        )
+        manifest <- add_report_artifacts(manifest, diag_result$report_paths, role = "diagnostics")
+        if (!identical(diag_result$status, "pass")) {
+          report_pointer <- unlist(diag_result$report_paths, use.names = FALSE)
+          report_pointer <- report_pointer[nzchar(report_pointer)]
+          pointer_msg <- if (length(report_pointer) > 0L) {
+            sprintf(" (see %s)", report_pointer[[1]])
+          } else {
+            ""
+          }
+          err_msg <- sprintf(
+            "univariate diagnostics failed for q=%s%s: %s",
+            q_lab,
+            pointer_msg,
+            paste(diag_result$errors, collapse = " | ")
+          )
+          if (diagnostics_fail_fast) {
             stop(err_msg, call. = FALSE)
           } else {
             warning(err_msg, call. = FALSE)
@@ -472,26 +519,45 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         summary_log_path = summary_log_path,
         write_reports = contract_checks_write_reports
       )
-      report_paths <- unlist(check_result$report_paths, use.names = FALSE)
-      report_paths <- report_paths[nzchar(report_paths)]
-      if (length(report_paths) > 0L) {
-        for (rp in report_paths) {
-          if (file.exists(rp)) {
-            manifest <- unified_manifest_add_artifact(
-              manifest,
-              rp,
-              storage_scale = "text",
-              role = "contract_check"
-            )
-          }
-        }
-      }
+      manifest <- add_report_artifacts(manifest, check_result$report_paths, role = "contract_check")
       if (!identical(check_result$status, "pass")) {
         err_msg <- sprintf(
           "NDLM contract check failed: %s",
           paste(check_result$errors, collapse = " | ")
         )
         if (contract_checks_fail_fast) {
+          stop(err_msg, call. = FALSE)
+        } else {
+          warning(err_msg, call. = FALSE)
+        }
+      }
+    }
+
+    if (diagnostics_enabled && identical(ndlm_impl_mode, "theory_aligned")) {
+      diag_dir <- file.path(fit_root, "diagnostics", "ndlm_main")
+      summary_log_path <- file.path(ndlm_logs, "ndlm_theory_summary.log")
+      diag_result <- unified_diag_ndlm_main_theory(
+        rdata_path = output_path,
+        report_dir = diag_dir,
+        summary_log_path = summary_log_path,
+        settings = diagnostics_settings,
+        write_reports = diagnostics_write_reports
+      )
+      manifest <- add_report_artifacts(manifest, diag_result$report_paths, role = "diagnostics")
+      if (!identical(diag_result$status, "pass")) {
+        report_pointer <- unlist(diag_result$report_paths, use.names = FALSE)
+        report_pointer <- report_pointer[nzchar(report_pointer)]
+        pointer_msg <- if (length(report_pointer) > 0L) {
+          sprintf(" (see %s)", report_pointer[[1]])
+        } else {
+          ""
+        }
+        err_msg <- sprintf(
+          "NDLM diagnostics failed%s: %s",
+          pointer_msg,
+          paste(diag_result$errors, collapse = " | ")
+        )
+        if (diagnostics_fail_fast) {
           stop(err_msg, call. = FALSE)
         } else {
           warning(err_msg, call. = FALSE)

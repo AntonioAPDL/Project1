@@ -93,6 +93,14 @@ unified_config_defaults <- function() {
         enabled = FALSE,
         fail_fast = TRUE,
         write_reports = TRUE
+      ),
+      diagnostics = list(
+        enabled = FALSE,
+        fail_fast = TRUE,
+        write_reports = TRUE,
+        max_time_checks = 25L,
+        seed = 777L,
+        psd_tol = -1e-10
       )
     ),
     post = list(
@@ -391,6 +399,31 @@ unified_validate_config <- function(cfg) {
   contract_checks_write_reports <- unified_get(cfg, c("fit", "contract_checks", "write_reports"), TRUE)
   if (!isTRUE(contract_checks_write_reports) && !identical(contract_checks_write_reports, FALSE)) {
     add_err("fit.contract_checks.write_reports must be boolean (true/false)")
+  }
+
+  diagnostics_enabled <- unified_get(cfg, c("fit", "diagnostics", "enabled"), FALSE)
+  if (!isTRUE(diagnostics_enabled) && !identical(diagnostics_enabled, FALSE)) {
+    add_err("fit.diagnostics.enabled must be boolean (true/false)")
+  }
+  diagnostics_fail_fast <- unified_get(cfg, c("fit", "diagnostics", "fail_fast"), TRUE)
+  if (!isTRUE(diagnostics_fail_fast) && !identical(diagnostics_fail_fast, FALSE)) {
+    add_err("fit.diagnostics.fail_fast must be boolean (true/false)")
+  }
+  diagnostics_write_reports <- unified_get(cfg, c("fit", "diagnostics", "write_reports"), TRUE)
+  if (!isTRUE(diagnostics_write_reports) && !identical(diagnostics_write_reports, FALSE)) {
+    add_err("fit.diagnostics.write_reports must be boolean (true/false)")
+  }
+  diagnostics_max_time_checks <- suppressWarnings(as.integer(unified_get(cfg, c("fit", "diagnostics", "max_time_checks"), 25L)))
+  if (!is.finite(diagnostics_max_time_checks) || diagnostics_max_time_checks < 1L) {
+    add_err("fit.diagnostics.max_time_checks must be an integer >= 1")
+  }
+  diagnostics_seed <- suppressWarnings(as.integer(unified_get(cfg, c("fit", "diagnostics", "seed"), 777L)))
+  if (!is.finite(diagnostics_seed)) {
+    add_err("fit.diagnostics.seed must be an integer")
+  }
+  diagnostics_psd_tol <- suppressWarnings(as.numeric(unified_get(cfg, c("fit", "diagnostics", "psd_tol"), -1e-10)))
+  if (!is.finite(diagnostics_psd_tol)) {
+    add_err("fit.diagnostics.psd_tol must be numeric and finite")
   }
 
   errs
