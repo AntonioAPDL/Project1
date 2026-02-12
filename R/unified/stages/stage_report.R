@@ -1,5 +1,76 @@
 # unified/stages/stage_report.R
 
+unified_extract_artifact_quantiles <- function(paths, family = c("multivar", "univar")) {
+  family <- match.arg(family)
+  paths <- as.character(paths)
+  paths <- paths[nzchar(paths)]
+  out <- integer(0)
+
+  for (p in paths) {
+    if (family == "multivar") {
+      reg <- regmatches(
+        p,
+        regexec(
+          "fit/q=([0-9]{2})/outputs/DISC_variables_([0-9]+)_exAL_synth_DISC\\.RData$",
+          p,
+          perl = TRUE
+        )
+      )[[1]]
+      if (length(reg) >= 3L) {
+        q_val <- suppressWarnings(as.integer(reg[[3L]]))
+        if (!is.finite(q_val)) {
+          q_val <- suppressWarnings(as.integer(reg[[2L]]))
+        }
+        if (is.finite(q_val)) out <- c(out, q_val)
+      }
+      next
+    }
+
+    # Prefer quantile from directory q=<QQ>; fallback to filename numeric token.
+    reg <- regmatches(
+      p,
+      regexec(
+        "fit/exdqlm_univar/q=([0-9]{2})/outputs/variables_([0-9]+)_exAL_synth_DISC_uni\\.RData$",
+        p,
+        perl = TRUE
+      )
+    )[[1]]
+    if (length(reg) >= 3L) {
+      q_val <- suppressWarnings(as.integer(reg[[2L]]))
+      if (!is.finite(q_val)) {
+        q_val <- suppressWarnings(as.integer(reg[[3L]]))
+      }
+      if (is.finite(q_val)) out <- c(out, q_val)
+      next
+    }
+
+    reg <- regmatches(
+      p,
+      regexec(
+        "fit/exdqlm_univar/.*/variables_([0-9]+)_exAL_synth_DISC_uni\\.RData$",
+        p,
+        perl = TRUE
+      )
+    )[[1]]
+    if (length(reg) >= 2L) {
+      q_val <- suppressWarnings(as.integer(reg[[2L]]))
+      if (is.finite(q_val)) out <- c(out, q_val)
+    }
+  }
+
+  sort(unique(out))
+}
+
+unified_detect_ndlm_output_present <- function(paths) {
+  paths <- as.character(paths)
+  paths <- paths[nzchar(paths)]
+  any(grepl(
+    "fit/ndlm_main/outputs/(DISC_variables_50_NDLM_synth_DISC|ndlm_main_state|ndlm_main[^/]*)\\.RData$",
+    paths,
+    perl = TRUE
+  ))
+}
+
 unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
   report_root <- file.path(run_root, "report")
   dir.create(report_root, recursive = TRUE, showWarnings = FALSE)
@@ -59,37 +130,9 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
   }), use.names = FALSE)
   artifact_paths <- artifact_paths[nzchar(artifact_paths)]
 
-  extract_quantiles <- function(paths, pattern, prefer_group = 2L) {
-    out <- integer(0)
-    for (p in paths) {
-      m <- regexec(pattern, p, perl = TRUE)
-      reg <- regmatches(p, m)[[1]]
-      if (length(reg) >= prefer_group + 1L && nzchar(reg[[prefer_group + 1L]])) {
-        val <- suppressWarnings(as.integer(reg[[prefer_group + 1L]]))
-        if (is.finite(val)) out <- c(out, val)
-      } else if (length(reg) >= 2L && nzchar(reg[[2L]])) {
-        val <- suppressWarnings(as.integer(reg[[2L]]))
-        if (is.finite(val)) out <- c(out, val)
-      }
-    }
-    sort(unique(out))
-  }
-
-  multivar_found <- extract_quantiles(
-    artifact_paths,
-    "fit/q=([0-9]{2})/outputs/DISC_variables_([0-9]+)_exAL_synth_DISC\\.RData$",
-    prefer_group = 2L
-  )
-  univar_found <- extract_quantiles(
-    artifact_paths,
-    "fit/exdqlm_univar/q=([0-9]{2})/outputs/variables_([0-9]{2})_exAL_synth_DISC_uni\\.RData$",
-    prefer_group = 2L
-  )
-  ndlm_present <- any(grepl(
-    "fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC\\.RData$",
-    artifact_paths,
-    perl = TRUE
-  ))
+  multivar_found <- unified_extract_artifact_quantiles(artifact_paths, family = "multivar")
+  univar_found <- unified_extract_artifact_quantiles(artifact_paths, family = "univar")
+  ndlm_present <- unified_detect_ndlm_output_present(artifact_paths)
 
   families_summary <- list(
     exdqlm_multivar = list(

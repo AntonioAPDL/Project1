@@ -766,6 +766,26 @@ At each planning/execution checkpoint:
 - Next action:
   - Run a production-profile family-enabled validation pass once runtime budget is allocated (7-quantile multivar and optional univar/ndlm), reusing P7B validator gates now enforced by config-driven family toggles.
 
+### Progress Update 2026-02-12 00:09 UTC
+- Phase: P7B
+- Change type: hardening+tests
+- Summary: hardened validator/report robustness without changing model semantics by (1) making stage-report univar quantile extraction robust to `variables_5_...` naming with integer-scaled quantile outputs, (2) extending NDLM validator detection to accept legacy and neutral filenames, and (3) improving resolved-config YAML parse failures with explicit PyYAML/import guidance.
+- Files touched:
+  - `R/unified/stages/stage_report.R`
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `bash -n repro/tools/validate_run.sh`
+  - `Rscript -e "parse(file='R/unified/stages/stage_report.R'); cat('R_PARSE_OK\\n')"`
+- Validation notes:
+  - Added regression coverage for NDLM neutral output name acceptance (`ndlm_main_state.RData`).
+  - Added regression coverage for stage-report univar quantile parsing (`q=05` with `variables_5_...`, directory quantile preferred).
+  - Production-vs-smoke quantile rule is now explicitly surfaced in validator output (`quantile_rule=*`).
+- Next action:
+  - Execute the deferred long-budget production-profile family-enabled run to collect full runtime P7B evidence against the hardened validator.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open

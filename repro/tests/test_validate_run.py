@@ -112,6 +112,54 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
 
+    def test_smoke_profile_accepts_neutral_ndlm_output_name(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: false",
+                    "  run_exdqlm_univar: false",
+                    "  run_ndlm_main: true",
+                    "fit:",
+                    "  quantiles: [0.5]",
+                    "validation:",
+                    "  profile: smoke",
+                ]
+            )
+            + "\n",
+        )
+        write_text(self.run_root / "fit" / "ndlm_main" / "outputs" / "ndlm_main_state.RData")
+
+        result = self._run_validate("smoke")
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("RESULT=PASS", result.stdout)
+
+    def test_stage_report_univar_quantile_parsing_handles_single_digit_filenames(self) -> None:
+        script = (
+            "source('R/unified/stages/stage_report.R'); "
+            "p1 <- 'fit/exdqlm_univar/q=05/outputs/variables_5_exAL_synth_DISC_uni.RData'; "
+            "p2 <- 'fit/exdqlm_univar/q=05/outputs/variables_20_exAL_synth_DISC_uni.RData'; "
+            "p3 <- 'fit/exdqlm_univar/legacy/outputs/variables_35_exAL_synth_DISC_uni.RData'; "
+            "o1 <- unified_extract_artifact_quantiles(c(p1, p3), family='univar'); "
+            "o2 <- unified_extract_artifact_quantiles(c(p2), family='univar'); "
+            "cat(sprintf('o1=%s\\n', paste(o1, collapse=','))); "
+            "cat(sprintf('o2=%s\\n', paste(o2, collapse=','))); "
+            "cat(sprintf('class=%s\\n', class(o1)[1]));"
+        )
+        result = subprocess.run(
+            ["Rscript", "-e", script],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("o1=5,35", result.stdout)
+        self.assertIn("o2=5", result.stdout)  # Prefer q=<QQ> directory over filename token.
+        self.assertIn("class=integer", result.stdout)
+
     def test_production_profile_fails_when_only_q50_multivar_exists(self) -> None:
         self._write_common_success_files()
         write_text(

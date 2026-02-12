@@ -10,6 +10,7 @@ Usage:
 Production profile (default) strict success checklist:
 1) All 7 quantile outputs exist:
    DISC_variables_{5,20,35,50,65,80,95}_exAL_synth_DISC.RData
+   (canonical production gate; this is enforced regardless of fit.quantiles)
 2) post outputs exist under post/outputs/<RUN_ID> with at least one file
 3) validate/compare_report.json exists
 4) validate/write_audit/.../fs_diff.patch exists
@@ -144,14 +145,18 @@ cfg_diagnostics_enabled="false"
 [[ -f "${RESOLVED_CONFIG_PATH}" ]] || die "resolved_config.yaml not found: ${RESOLVED_CONFIG_PATH}"
 if mapfile -t cfg_vals < <(python3 - "${RESOLVED_CONFIG_PATH}" <<'PY'
 import sys
-import yaml
+try:
+    import yaml
+except Exception as exc:
+    print(f"ERROR: PyYAML unavailable (import yaml failed): {exc}", file=sys.stderr)
+    raise SystemExit(2)
 
 path = sys.argv[1]
 try:
     with open(path, "r", encoding="utf-8") as f:
         doc = yaml.safe_load(f) or {}
 except Exception as exc:
-    print(f"ERROR: {exc}", file=sys.stderr)
+    print(f"ERROR: Failed to parse YAML at {path}: {exc}", file=sys.stderr)
     raise
 
 validation = doc.get("validation") or {}
@@ -199,7 +204,7 @@ PY
   cfg_contract_checks_enabled="${cfg_vals[6]:-false}"
   cfg_diagnostics_enabled="${cfg_vals[7]:-false}"
 else
-  die "Failed to parse ${RESOLVED_CONFIG_PATH}"
+  die "Failed to parse ${RESOLVED_CONFIG_PATH} (ensure valid YAML and PyYAML import 'yaml' is available)"
 fi
 
 PROFILE_EFFECTIVE="${PROFILE}"
@@ -219,10 +224,14 @@ require_univar="${cfg_run_exdqlm_univar}"
 require_ndlm="${cfg_run_ndlm_main}"
 declare -a EXPECTED_QUANTILES=()
 declare -a EXPECTED_Q_LABELS=()
+quantile_rule_desc=""
 if [[ "${PROFILE_EFFECTIVE}" == "production" ]]; then
+  # Production remains strict: always enforce canonical 7 quantiles.
   EXPECTED_QUANTILES=(5 20 35 50 65 80 95)
   EXPECTED_Q_LABELS=(05 20 35 50 65 80 95)
+  quantile_rule_desc="canonical_7_quantiles_enforced"
 else
+  # Smoke follows requested quantiles from resolved_config; default q=50 when absent.
   if [[ -n "${cfg_quantile_nums_csv}" ]]; then
     IFS=',' read -r -a EXPECTED_QUANTILES <<< "${cfg_quantile_nums_csv}"
   else
@@ -237,6 +246,7 @@ else
       EXPECTED_Q_LABELS+=("$(printf "%02d" "${q}")")
     done
   fi
+  quantile_rule_desc="quantiles_from_resolved_config_or_default_50"
 fi
 
 present_quantiles=()
@@ -267,8 +277,17 @@ if [[ "${require_univar}" == "true" ]]; then
 fi
 
 ndlm_output_path=""
+declare -a NDLM_ACCEPTED_FILENAMES=(
+  "DISC_variables_50_NDLM_synth_DISC.RData"
+  "ndlm_main_state.RData"
+  "ndlm_main_*.RData"
+)
 if [[ "${require_ndlm}" == "true" ]]; then
-  ndlm_output_path="$(find "${RUN_ROOT}/fit/ndlm_main/outputs" -type f -name "DISC_variables_50_NDLM_synth_DISC.RData" -print -quit 2>/dev/null || true)"
+  ndlm_output_path="$(
+    find "${RUN_ROOT}/fit/ndlm_main/outputs" -type f \
+      \( -name "${NDLM_ACCEPTED_FILENAMES[0]}" -o -name "${NDLM_ACCEPTED_FILENAMES[1]}" -o -name "${NDLM_ACCEPTED_FILENAMES[2]}" \) \
+      -print -quit 2>/dev/null || true
+  )"
 fi
 
 contract_univar_reports=()
@@ -740,6 +759,7 @@ fi
 
 echo "RUN_ID=${RUN_ID}"
 echo "profile=${PROFILE_EFFECTIVE}"
+echo "quantile_rule=${quantile_rule_desc}"
 echo "RESULT=$([[ "${overall_pass}" == "true" ]] && echo PASS || echo FAIL)"
 echo "quantile_outputs=${quantile_count}/${quantile_target}"
 echo "present_quantiles=${present_q_csv}"
@@ -747,6 +767,7 @@ echo "missing_quantiles=${missing_q_csv}"
 echo "present_univar_quantiles=${present_univar_q_csv}"
 echo "missing_univar_quantiles=${missing_univar_q_csv}"
 echo "ndlm_output_path=${ndlm_output_path:-<not-required-or-missing>}"
+echo "ndlm_accepted_output_names=$(join_by "," "${NDLM_ACCEPTED_FILENAMES[@]}")"
 echo "require_multivar=${require_multivar}"
 echo "require_univar=${require_univar}"
 echo "require_ndlm=${require_ndlm}"
