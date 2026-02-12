@@ -136,6 +136,37 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
 
+    def test_smoke_profile_accepts_single_digit_q05_univar_filename(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: false",
+                    "  run_exdqlm_univar: true",
+                    "  run_ndlm_main: false",
+                    "fit:",
+                    "  quantiles: [0.05]",
+                    "validation:",
+                    "  profile: smoke",
+                ]
+            )
+            + "\n",
+        )
+        write_text(
+            self.run_root
+            / "fit"
+            / "exdqlm_univar"
+            / "q=05"
+            / "outputs"
+            / "variables_5_exAL_synth_DISC_uni.RData"
+        )
+
+        result = self._run_validate("smoke")
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("RESULT=PASS", result.stdout)
+
     def test_stage_report_univar_quantile_parsing_handles_single_digit_filenames(self) -> None:
         script = (
             "source('R/unified/stages/stage_report.R'); "

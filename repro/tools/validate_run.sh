@@ -267,7 +267,12 @@ present_univar_quantiles=()
 missing_univar_quantiles=()
 if [[ "${require_univar}" == "true" ]]; then
   for qlab in "${EXPECTED_Q_LABELS[@]}"; do
-    found="$(find "${RUN_ROOT}/fit/exdqlm_univar/q=${qlab}/outputs" -type f -name "variables_${qlab}_exAL_synth_DISC_uni.RData" -print -quit 2>/dev/null || true)"
+    qnum_no_lead="$((10#${qlab}))"
+    found="$(
+      find "${RUN_ROOT}/fit/exdqlm_univar/q=${qlab}/outputs" -type f \
+        \( -name "variables_${qlab}_exAL_synth_DISC_uni.RData" -o -name "variables_${qnum_no_lead}_exAL_synth_DISC_uni.RData" \) \
+        -print -quit 2>/dev/null || true
+    )"
     if [[ -n "${found}" ]]; then
       present_univar_quantiles+=("${qlab}")
     else
