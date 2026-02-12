@@ -12,6 +12,7 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
   dir.create(retros_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(forecasts_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(covariates_dir, recursive = TRUE, showWarnings = FALSE)
+  shared_storage_scales <- list()
 
   add_shared_file <- function(src_path, dst_path, storage_scale, role = "shared_input") {
     if (is.null(src_path) || !nzchar(src_path) || !file.exists(src_path)) {
@@ -29,11 +30,56 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
       storage_scale = storage_scale,
       role = role
     )
+    shared_storage_scales[[normalizePath(dst_path, mustWork = FALSE)]] <<- storage_scale
     manifest$inputs[[length(manifest$inputs) + 1L]] <<- list(
       path = normalizePath(dst_path, mustWork = FALSE),
       sha256 = unified_sha256(dst_path),
       storage_scale = storage_scale
     )
+  }
+
+  refresh_shared_manifest_entry <- function(path, role = "shared_input") {
+    npath <- normalizePath(path, mustWork = FALSE)
+    storage_scale <- shared_storage_scales[[npath]]
+    if (is.null(storage_scale) || !nzchar(storage_scale)) {
+      storage_scale <- "table_csv"
+    }
+    manifest <<- unified_manifest_add_artifact(
+      manifest,
+      npath,
+      storage_scale = storage_scale,
+      role = role
+    )
+    manifest$inputs[[length(manifest$inputs) + 1L]] <<- list(
+      path = npath,
+      sha256 = unified_sha256(path),
+      storage_scale = storage_scale
+    )
+  }
+
+  detect_date_info <- function(df, label, path, required) {
+    nm <- names(df)
+    candidates <- nm[grepl("date|time", tolower(nm))]
+    if (length(nm) > 0L) {
+      candidates <- unique(c(candidates, nm[[1L]]))
+    }
+    for (cand in candidates) {
+      vals <- suppressWarnings(as.Date(df[[cand]]))
+      good <- sum(!is.na(vals))
+      if (good >= max(1L, floor(0.8 * length(vals)))) {
+        return(list(col = cand, dates = vals))
+      }
+    }
+    if (isTRUE(required)) {
+      stop(
+        sprintf(
+          "data_prep_shared date filtering requires a parseable date column for %s: %s",
+          label, path
+        ),
+        call. = FALSE
+      )
+    }
+    NULL
   }
 
   snapshot_dest_rel <- cfg$inputs$forecats$snapshot$dest_rel
@@ -184,6 +230,110 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
         )
       }
     }
+  }
+
+  data_start <- unified_get(cfg, c("dates", "data_start"), default = NULL)
+  if (!is.null(data_start) && nzchar(as.character(data_start))) {
+    data_start_date <- suppressWarnings(as.Date(as.character(data_start)))
+    if (is.na(data_start_date)) {
+      stop("dates.data_start must be a valid YYYY-MM-DD date.", call. = FALSE)
+    }
+
+    core_paths <- c(
+      retros = normalizePath(shared_paths$retros, mustWork = FALSE)
+    )
+    forecast_paths <- c(
+      nws = normalizePath(shared_paths$nws, mustWork = FALSE),
+      glofas = normalizePath(shared_paths$glofas, mustWork = FALSE)
+    )
+    cov_paths <- list.files(covariates_dir, pattern = "\\.csv$", full.names = TRUE)
+    cov_paths <- normalizePath(cov_paths, mustWork = FALSE)
+    filter_targets <- c(core_paths, forecast_paths, cov_paths)
+
+    entries <- list()
+    for (p in filter_targets) {
+      is_core <- p %in% unname(core_paths)
+      is_forecast <- p %in% unname(forecast_paths)
+      label <- if (is_core) {
+        names(core_paths)[match(p, unname(core_paths))]
+      } else if (is_forecast) {
+        names(forecast_paths)[match(p, unname(forecast_paths))]
+      } else {
+        sprintf("covariate:%s", basename(p))
+      }
+      df <- unified_read_csv_checked(p, label, "data_prep_shared/filter")
+      date_info <- detect_date_info(df, label, p, required = is_core || is_forecast)
+      if (is.null(date_info)) {
+        warning(sprintf("data_prep_shared: skipping date filter for %s (no parseable date column)", p), call. = FALSE)
+        next
+      }
+      keep <- !is.na(date_info$dates) & date_info$dates >= data_start_date
+      if (!any(keep)) {
+        stop(
+          sprintf("data_prep_shared date filter removed all rows for %s after %s", p, as.character(data_start_date)),
+          call. = FALSE
+        )
+      }
+      entries[[p]] <- list(
+        label = label,
+        is_core = is_core,
+        is_forecast = is_forecast,
+        data = df[keep, , drop = FALSE],
+        dates = as.character(date_info$dates[keep]),
+        date_col = date_info$col
+      )
+    }
+
+    core_entries <- entries[unname(core_paths)]
+    if (length(core_entries) != length(core_paths) || any(vapply(core_entries, is.null, logical(1)))) {
+      stop("data_prep_shared date filtering failed to prepare all core shared inputs.", call. = FALSE)
+    }
+    common_dates <- Reduce(intersect, lapply(core_entries, function(x) x$dates))
+    common_dates <- sort(unique(common_dates))
+    if (length(common_dates) == 0L) {
+      stop(
+        sprintf("data_prep_shared date filtering produced no common date support across core inputs after %s", as.character(data_start_date)),
+        call. = FALSE
+      )
+    }
+
+    summary_lines <- c(
+      sprintf("data_start=%s", as.character(data_start_date)),
+      sprintf("common_dates_count=%d", length(common_dates)),
+      sprintf("common_date_min=%s", common_dates[[1L]]),
+      sprintf("common_date_max=%s", common_dates[[length(common_dates)]])
+    )
+
+    for (p in names(entries)) {
+      ent <- entries[[p]]
+      out_df <- if (isTRUE(ent$is_core)) {
+        idx <- ent$dates %in% common_dates
+        ent$data[idx, , drop = FALSE]
+      } else {
+        ent$data
+      }
+      if (nrow(out_df) == 0L) {
+        stop(sprintf("data_prep_shared date filtering left zero rows for %s after common-date alignment", p), call. = FALSE)
+      }
+      utils::write.csv(out_df, p, row.names = FALSE)
+      refresh_shared_manifest_entry(p, role = "shared_input")
+      summary_lines <- c(
+        summary_lines,
+        sprintf(
+          "%s rows=%d date_col=%s",
+          p, nrow(out_df), ent$date_col
+        )
+      )
+    }
+
+    filter_summary_path <- file.path(shared_root, "data_start_filter_summary.txt")
+    writeLines(summary_lines, filter_summary_path)
+    manifest <- unified_manifest_add_artifact(
+      manifest,
+      normalizePath(filter_summary_path, mustWork = FALSE),
+      storage_scale = "text",
+      role = "shared_input"
+    )
   }
 
   cov_required <- list.files(covariates_dir, full.names = TRUE)

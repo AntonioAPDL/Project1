@@ -13,6 +13,11 @@ unified_config_defaults <- function() {
       overwrite = FALSE,
       dry_run = FALSE,
       git_require_clean = FALSE,
+      io = list(
+        enabled = FALSE,
+        min_free_gb = 20,
+        min_free_inodes_pct = 5
+      ),
       threads = list(
         omp = 1L,
         openblas = 1L,
@@ -49,7 +54,8 @@ unified_config_defaults <- function() {
     dates = list(
       cutoff_date = "2022-12-25",
       plot_start = "2022-12-07",
-      plot_end = "2023-01-22"
+      plot_end = "2023-01-22",
+      data_start = NULL
     ),
     inputs = list(
       fit = list(
@@ -258,6 +264,19 @@ unified_validate_config <- function(cfg) {
     add_err("run.repro_mode must be one of: strict, fast")
   }
 
+  io_enabled <- unified_get(cfg, c("run", "io", "enabled"), default = FALSE)
+  if (!isTRUE(io_enabled) && !identical(io_enabled, FALSE)) {
+    add_err("run.io.enabled must be boolean (true/false)")
+  }
+  io_min_free_gb <- suppressWarnings(as.numeric(unified_get(cfg, c("run", "io", "min_free_gb"), default = 20)))
+  if (!is.finite(io_min_free_gb) || io_min_free_gb < 0) {
+    add_err("run.io.min_free_gb must be numeric and >= 0")
+  }
+  io_min_free_inodes_pct <- suppressWarnings(as.numeric(unified_get(cfg, c("run", "io", "min_free_inodes_pct"), default = 5)))
+  if (!is.finite(io_min_free_inodes_pct) || io_min_free_inodes_pct < 0 || io_min_free_inodes_pct > 100) {
+    add_err("run.io.min_free_inodes_pct must be numeric in [0, 100]")
+  }
+
   post_export_tables <- unified_get(cfg, c("post", "export_tables"), default = TRUE)
   if (!isTRUE(post_export_tables) && !identical(post_export_tables, FALSE)) {
     add_err("post.export_tables must be boolean (true/false)")
@@ -430,6 +449,14 @@ unified_validate_config <- function(cfg) {
   validation_profile <- unified_get(cfg, c("validation", "profile"), "production")
   if (!(validation_profile %in% c("production", "smoke"))) {
     add_err("validation.profile must be one of: production, smoke")
+  }
+
+  data_start <- unified_get(cfg, c("dates", "data_start"), default = NULL)
+  if (!is.null(data_start) && nzchar(as.character(data_start))) {
+    parsed_data_start <- suppressWarnings(as.Date(as.character(data_start)))
+    if (is.na(parsed_data_start)) {
+      add_err("dates.data_start must be null or a valid date string (YYYY-MM-DD)")
+    }
   }
 
   errs

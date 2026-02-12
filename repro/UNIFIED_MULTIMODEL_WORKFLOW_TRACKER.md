@@ -786,6 +786,44 @@ At each planning/execution checkpoint:
 - Next action:
   - Execute the deferred long-budget production-profile family-enabled run to collect full runtime P7B evidence against the hardened validator.
 
+### Progress Update 2026-02-12 07:20 UTC
+- Phase: P7B (ops hardening follow-up)
+- Change type: implementation+validation
+- Summary: added storage/I/O guardrails to fail fast before long fits, introduced atomic model-state save for DISC-W artifact writes to prevent 0-byte outputs on failure, and added a fast debug-small workflow + safe cleanup tooling.
+- Files touched:
+  - `R/unified/preflight.R`
+  - `scripts/unified_run.R`
+  - `R/unified/config.R`
+  - `R/unified/stages/stage_fit.R`
+  - `R/disc_w/05_save_state.R`
+  - `scripts/run_DISC_Optimal_Synth_Ranges_W.R`
+  - `R/unified/stages/stage_data_prep_shared.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/debug_p7b_small.yaml`
+  - `repro/tests/test_preflight_io.py`
+  - `repro/tools/cleanup_runs.sh`
+  - `repro/docs/storage_root_cause.md`
+  - `repro/docs/debug_small_workflow.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/docs/storage_root_cause.md`
+  - `repro/runs/20260211_231702/run_manifest.yaml`
+  - `repro/runs/20260211_231702/inputs/shared/data_start_filter_summary.txt`
+  - `config/unified_runs/debug_p7b_small.yaml`
+  - `repro/docs/debug_small_workflow.md`
+- Validation checks run:
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `bash -n repro/tools/cleanup_runs.sh`
+  - `bash -n repro/tools/validate_run.sh`
+  - `Rscript -e "parse(file='R/unified/preflight.R'); parse(file='R/unified/stages/stage_data_prep_shared.R'); parse(file='R/unified/stages/stage_fit.R'); parse(file='R/disc_w/05_save_state.R'); parse(file='scripts/unified_run.R'); parse(file='scripts/run_DISC_Optimal_Synth_Ranges_W.R'); cat('R_PARSE_OK\\n')"`
+  - `Rscript --vanilla scripts/unified_run.R --config config/unified_runs/debug_p7b_small.yaml` (run_id `20260211_231702`)
+- Validation notes:
+  - Debug-small run closed successfully with non-null `timestamps.finished_at_utc` (`2026-02-12T07:18:11Z`).
+  - New storage preflight checks are config-gated (`run.io.enabled` default `false`) to avoid changing default behavior.
+  - Atomic save wrapper now enforces non-empty final artifacts and cleans up temp files on failure.
+- Next action:
+  - Allocate disk headroom via safe cleanup workflow, then execute one production-profile family-enabled proof run using the hardened preflight and atomic save guardrails.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open

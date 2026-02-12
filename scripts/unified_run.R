@@ -41,6 +41,7 @@ repo_root <- normalizePath(getwd(), mustWork = TRUE)
 source(file.path(repo_root, "R", "unified", "utils_hash.R"))
 source(file.path(repo_root, "R", "unified", "utils_scale.R"))
 source(file.path(repo_root, "R", "unified", "utils_env_capture.R"))
+source(file.path(repo_root, "R", "unified", "preflight.R"))
 source(file.path(repo_root, "R", "unified", "utils_artifact_locator.R"))
 source(file.path(repo_root, "R", "unified", "inputs_shared_validate.R"))
 source(file.path(repo_root, "R", "unified", "contract_checks.R"))
@@ -76,6 +77,16 @@ dir.create(file.path(run_root, "env"), recursive = TRUE, showWarnings = FALSE)
 cfg$run$run_id <- run_id
 cfg$run$resolved_run_root <- run_root
 cfg$run$resolved_config_path <- normalizePath(opts$config_path, mustWork = FALSE)
+
+io_settings <- unified_get_run_io_settings(cfg)
+if (isTRUE(io_settings$enabled)) {
+  unified_require_free_space(
+    path = run_root,
+    min_free_bytes = io_settings$min_free_bytes,
+    min_free_inodes_pct = io_settings$min_free_inodes_pct,
+    context = "unified_run preflight"
+  )
+}
 
 if (!requireNamespace("yaml", quietly = TRUE)) {
   stop("Package 'yaml' is required", call. = FALSE)

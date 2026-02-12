@@ -22,9 +22,18 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   setwd(repo_root)
 
   run_root_abs <- normalizePath(run_root, mustWork = FALSE)
+  io_settings <- unified_get_run_io_settings(cfg)
   fit_root <- file.path(run_root, "fit")
   fit_inputs <- file.path(fit_root, "inputs")
   dir.create(fit_inputs, recursive = TRUE, showWarnings = FALSE)
+  if (isTRUE(io_settings$enabled)) {
+    unified_require_free_space(
+      path = fit_root,
+      min_free_bytes = io_settings$min_free_bytes,
+      min_free_inodes_pct = io_settings$min_free_inodes_pct,
+      context = "stage_fit preflight"
+    )
+  }
 
   shared_paths <- unified_shared_input_paths(run_root)
   use_shared_inputs <- isTRUE(cfg$stages$data_prep_shared) || dir.exists(shared_paths$root)
@@ -203,6 +212,14 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       q_logs <- file.path(q_root, "logs")
       dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
       dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
+      if (isTRUE(io_settings$enabled)) {
+        unified_require_free_space(
+          path = q_outputs,
+          min_free_bytes = io_settings$min_free_bytes,
+          min_free_inodes_pct = io_settings$min_free_inodes_pct,
+          context = sprintf("stage_fit quantile q=%s", q_label)
+        )
+      }
 
       env_overrides <- c(
         DISC_BASE_SEED = as.character(cfg$run$seed),
@@ -308,6 +325,14 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       output_path <- file.path(q_outputs, sprintf("variables_%s_exAL_synth_DISC_uni.RData", q_lab))
       log_name <- if (identical(univar_impl_mode, "theory_aligned")) "univar_theory.log" else "univar_legacy.log"
       log_path <- file.path(q_logs, log_name)
+      if (isTRUE(io_settings$enabled)) {
+        unified_require_free_space(
+          path = q_outputs,
+          min_free_bytes = io_settings$min_free_bytes,
+          min_free_inodes_pct = io_settings$min_free_inodes_pct,
+          context = sprintf("stage_fit univar q=%s", q_lab)
+        )
+      }
       env_overrides <- c(
         UNIFIED_UNIV_RDATA_OUT = output_path,
         UNIV_RUN_ROOT = run_root_abs,
@@ -470,6 +495,14 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     ndlm_logs <- file.path(ndlm_root, "logs")
     dir.create(ndlm_outputs, recursive = TRUE, showWarnings = FALSE)
     dir.create(ndlm_logs, recursive = TRUE, showWarnings = FALSE)
+    if (isTRUE(io_settings$enabled)) {
+      unified_require_free_space(
+        path = ndlm_outputs,
+        min_free_bytes = io_settings$min_free_bytes,
+        min_free_inodes_pct = io_settings$min_free_inodes_pct,
+        context = "stage_fit ndlm_main"
+      )
+    }
 
     output_path <- file.path(ndlm_outputs, "DISC_variables_50_NDLM_synth_DISC.RData")
     log_name <- if (identical(ndlm_impl_mode, "theory_aligned")) "ndlm_theory.log" else "ndlm_legacy.log"

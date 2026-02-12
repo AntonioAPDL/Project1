@@ -9,7 +9,16 @@
 # Saves the objects listed in `var_names` (character vector) from `env`.
 disc_w_save_variables <- function(var_names, filename, dir_path, env = parent.frame()) {
   file_path <- file.path(dir_path, filename)
-  save(list = var_names, file = file_path, envir = env)
+  save_fun <- function(path) save(list = var_names, file = path, envir = env)
+  if (exists("unified_safe_save", mode = "function", inherits = TRUE)) {
+    unified_safe_save(
+      save_fun = save_fun,
+      final_path = file_path,
+      context = sprintf("disc_w_save_variables[%s]", filename)
+    )
+  } else {
+    save_fun(file_path)
+  }
   cat("Variables saved to:", file_path, "\n")
   invisible(file_path)
 }

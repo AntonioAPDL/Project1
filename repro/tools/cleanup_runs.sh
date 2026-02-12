@@ -1,111 +1,164 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${1:-repro/runs}"
-MODE="${2:---dry-run}" # --dry-run (default) | --apply
-KEEP_CSV="${KEEP_RUN_IDS:-}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+RUNS_DIR="${ROOT_DIR}/repro/runs"
+KEEP_LAST=10
+OLDER_THAN_DAYS=30
+APPLY=0
 
-if [[ ! -d "${ROOT}" ]]; then
-  echo "ERROR: run root not found: ${ROOT}" >&2
+usage() {
+  cat <<'EOF'
+Usage: repro/tools/cleanup_runs.sh [--dry-run] [--apply] [--keep-last N] [--older-than-days D] [--runs-dir PATH]
+
+Defaults (safe):
+  --dry-run           (default behavior; no deletions)
+  --keep-last 10
+  --older-than-days 30
+
+Selection rule:
+  Candidate run dir is selected when either:
+    - run status is not PASS (finished_at_utc missing OR validation.status != pass), OR
+    - run directory age is older than threshold days
+  while preserving newest N run directories.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      APPLY=0
+      shift
+      ;;
+    --apply)
+      APPLY=1
+      shift
+      ;;
+    --keep-last)
+      KEEP_LAST="${2:-}"
+      shift 2
+      ;;
+    --older-than-days)
+      OLDER_THAN_DAYS="${2:-}"
+      shift 2
+      ;;
+    --runs-dir)
+      RUNS_DIR="${2:-}"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+if ! [[ "${KEEP_LAST}" =~ ^[0-9]+$ ]]; then
+  echo "--keep-last must be a non-negative integer" >&2
+  exit 2
+fi
+if ! [[ "${OLDER_THAN_DAYS}" =~ ^[0-9]+$ ]]; then
+  echo "--older-than-days must be a non-negative integer" >&2
+  exit 2
+fi
+
+if [[ ! -d "${RUNS_DIR}" ]]; then
+  echo "Runs directory not found: ${RUNS_DIR}" >&2
   exit 1
 fi
 
-FAILED_DIR="${ROOT}/_failed"
-mkdir -p "${FAILED_DIR}"
+mapfile -t RUN_DIRS < <(find "${RUNS_DIR}" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | awk '{print $2}')
+if [[ ${#RUN_DIRS[@]} -eq 0 ]]; then
+  echo "No run directories under ${RUNS_DIR}"
+  exit 0
+fi
 
-IFS=',' read -r -a KEEP_IDS <<< "${KEEP_CSV}"
+declare -A KEEP_MAP=()
+for ((i=0; i<${#RUN_DIRS[@]} && i<KEEP_LAST; i++)); do
+  KEEP_MAP["${RUN_DIRS[$i]}"]=1
+done
 
-should_keep() {
-  local rid="$1"
-  local k
-  for k in "${KEEP_IDS[@]:-}"; do
-    [[ -z "${k}" ]] && continue
-    if [[ "${rid}" == "${k}" ]]; then
-      return 0
-    fi
-  done
-  return 1
-}
+now_epoch="$(date +%s)"
+total_bytes=0
+candidates=()
 
-is_failed_run() {
+status_of_dir() {
   local run_dir="$1"
-  local run_id="$2"
-
-  if [[ -f "${run_dir}/COMPLETION_REPORT.md" ]]; then
-    return 1
+  local manifest="${run_dir}/run_manifest.yaml"
+  if [[ ! -f "${manifest}" ]]; then
+    echo "missing_manifest"
+    return
   fi
-  if [[ -f "${run_dir}/FAILURE_REPORT.md" ]]; then
-    return 0
-  fi
-
-  if [[ -f "${run_dir}/run_manifest.yaml" ]]; then
-    local status
-    status="$(python3 - "${run_dir}/run_manifest.yaml" <<'PY'
-import sys
-from pathlib import Path
+  python3 - "$manifest" <<'PY'
+import sys, yaml
+manifest_path = sys.argv[1]
 try:
-    import yaml
+    with open(manifest_path) as f:
+        data = yaml.safe_load(f) or {}
 except Exception:
-    print("unknown")
+    print("manifest_parse_error")
     raise SystemExit(0)
-p = Path(sys.argv[1])
-try:
-    d = yaml.safe_load(p.read_text()) or {}
-    status = ((d.get("validation") or {}).get("status"))
-    print(status if status is not None else "unknown")
-except Exception:
-    print("unknown")
+ts = (data.get("timestamps") or {}).get("finished_at_utc")
+v = (data.get("validation") or {}).get("status")
+if ts and str(v).lower() == "pass":
+    print("pass")
+else:
+    print("not_pass")
 PY
-)"
-    if [[ "${status}" != "pass" ]]; then
-      return 0
-    fi
-  fi
-
-  return 1
 }
 
-echo "Cleanup mode: ${MODE}"
-echo "Root: ${ROOT}"
-echo "Keep IDs: ${KEEP_CSV:-<none>}"
-
-moved=0
-scanned=0
-
-for run_dir in "${ROOT}"/heavy_* "${ROOT}"/20*; do
-  [[ -d "${run_dir}" ]] || continue
-  run_id="$(basename "${run_dir}")"
-  ((scanned+=1))
-
-  if should_keep "${run_id}"; then
-    echo "KEEP (explicit): ${run_id}"
+for run_dir in "${RUN_DIRS[@]}"; do
+  if [[ -n "${KEEP_MAP[${run_dir}]:-}" ]]; then
     continue
   fi
-  if [[ "${run_id}" == "_failed" || "${run_id}" == "_keep" ]]; then
-    continue
+  status="$(status_of_dir "${run_dir}")"
+  mtime="$(stat -c %Y "${run_dir}")"
+  age_days=$(( (now_epoch - mtime) / 86400 ))
+  choose=0
+  if [[ "${status}" != "pass" ]]; then
+    choose=1
   fi
-
-  if is_failed_run "${run_dir}" "${run_id}"; then
-    target="${FAILED_DIR}/${run_id}"
-    if [[ "${MODE}" == "--apply" ]]; then
-      if [[ -e "${target}" ]]; then
-        echo "SKIP (target exists): ${target}"
-      else
-        mv "${run_dir}" "${target}"
-        echo "MOVED: ${run_id} -> ${target}"
-        ((moved+=1))
-      fi
-    else
-      echo "WOULD_MOVE: ${run_id} -> ${target}"
-    fi
-  else
-    echo "KEEP (pass/unknown-safe): ${run_id}"
+  if [[ "${age_days}" -gt "${OLDER_THAN_DAYS}" ]]; then
+    choose=1
+  fi
+  if [[ "${choose}" -eq 1 ]]; then
+    bytes="$(du -sb "${run_dir}" | awk '{print $1}')"
+    total_bytes=$((total_bytes + bytes))
+    candidates+=("${run_dir}|${status}|${age_days}|${bytes}")
   fi
 done
 
-echo "Scanned runs: ${scanned}"
-if [[ "${MODE}" == "--apply" ]]; then
-  echo "Moved runs: ${moved}"
-else
-  echo "Moved runs: 0 (dry-run)"
+echo "cleanup_runs.sh summary"
+echo "- runs_dir: ${RUNS_DIR}"
+echo "- keep_last: ${KEEP_LAST}"
+echo "- older_than_days: ${OLDER_THAN_DAYS}"
+echo "- mode: $([[ ${APPLY} -eq 1 ]] && echo apply || echo dry-run)"
+echo "- candidates: ${#candidates[@]}"
+echo "- estimated_reclaim_bytes: ${total_bytes}"
+
+if [[ ${#candidates[@]} -eq 0 ]]; then
+  exit 0
 fi
+
+printf '%s\n' "candidate|status|age_days|bytes"
+for row in "${candidates[@]}"; do
+  printf '%s\n' "${row}"
+done
+
+if [[ "${APPLY}" -ne 1 ]]; then
+  echo "Dry-run only. Re-run with --apply to delete candidate run directories."
+  exit 0
+fi
+
+for row in "${candidates[@]}"; do
+  run_dir="${row%%|*}"
+  echo "Deleting ${run_dir}"
+  rm -rf -- "${run_dir}"
+done
+
+echo "Cleanup complete."

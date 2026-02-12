@@ -36,4 +36,9 @@ if (Sys.getenv("DISC_RPROF", "") == "1") {
   Rprof("repro/perf/Rprof.out")
   on.exit(Rprof(NULL), add = TRUE)
 }
+
+preflight_path <- file.path("R", "unified", "preflight.R")
+if (file.exists(preflight_path)) {
+  source(preflight_path)
+}
 source("DISC_Optimal_Synth_Ranges_W.r", chdir = TRUE)
