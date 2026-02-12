@@ -824,6 +824,35 @@ At each planning/execution checkpoint:
 - Next action:
   - Allocate disk headroom via safe cleanup workflow, then execute one production-profile family-enabled proof run using the hardened preflight and atomic save guardrails.
 
+### Progress Update 2026-02-12 20:20 UTC
+- Phase: P7B (production proof run)
+- Change type: operations+validation
+- Summary: added production-proof run config plus storage operations playbook, reclaimed `/data` headroom using policy-driven cleanup reports, and executed exactly one production-profile proof run; run failed at univariate fit preflight after multivar q=05/50/95 completed because free space dropped below configured `run.io.min_free_gb=100`.
+- Files touched:
+  - `repro/tools/cleanup_runs.sh`
+  - `config/unified_runs/production_proof_p7b_family.yaml`
+  - `repro/docs/storage_ops_playbook.md`
+  - `repro/P7B_PRODUCTION_PROOF_RUN_20260212_112137.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Config used:
+  - `config/unified_runs/production_proof_p7b_family.yaml`
+- Evidence paths:
+  - `repro/reports/cleanup_runs/cleanup_20260212_201240.log` (dry-run)
+  - `repro/reports/cleanup_runs/cleanup_20260212_201249.log` (apply)
+  - `repro/runs/20260212_112137/resolved_config.yaml`
+  - `repro/runs/20260212_112137/run_manifest.yaml`
+  - `repro/runs/20260212_112137/fit/q=05/outputs/DISC_variables_5_exAL_synth_DISC.RData`
+  - `repro/runs/20260212_112137/fit/q=50/outputs/DISC_variables_50_exAL_synth_DISC.RData`
+  - `repro/runs/20260212_112137/fit/q=95/outputs/DISC_variables_95_exAL_synth_DISC.RData`
+  - `repro/P7B_PRODUCTION_PROOF_RUN_20260212_112137.md`
+- Validation notes:
+  - Single proof run command executed: `Rscript --vanilla scripts/unified_run.R --config config/unified_runs/production_proof_p7b_family.yaml`.
+  - Run did not close: `timestamps.finished_at_utc: null`, `validation.status: pending`.
+  - Failure was fail-fast I/O preflight (not model semantics): univar q=05 launch blocked at `free_gb: 94.10` vs threshold `100.00`.
+  - `/data` headroom improved before run via cleanup apply (`~98G -> ~104G`), but full multivar footprint still dropped free space below threshold before theory families launched.
+- Next action:
+  - For the next proof attempt, either reclaim additional `/data` headroom to sustain `>=100 GB` throughout fit, or lower proof-config `run.io.min_free_gb` to a measured-safe threshold and rerun once with a new `RUN_ID`.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
