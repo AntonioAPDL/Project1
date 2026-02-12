@@ -1,5 +1,21 @@
 # unified/stages/stage_fit.R
 
+unified_normalize_fit_worker_result <- function(res, context_label = "fit stage worker") {
+  required <- c("quantile", "output_path", "log_path", "status")
+  if (is.list(res) && all(required %in% names(res))) {
+    return(res)
+  }
+
+  res_preview <- tryCatch(paste(utils::head(as.character(res), 5L), collapse = " | "), error = function(e) "")
+  if (!nzchar(res_preview)) {
+    res_preview <- sprintf("<class=%s>", paste(class(res), collapse = "/"))
+  }
+  stop(
+    sprintf("%s returned invalid result: %s", context_label, res_preview),
+    call. = FALSE
+  )
+}
+
 unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   oldwd <- getwd()
   on.exit(setwd(oldwd), add = TRUE)
@@ -200,21 +216,21 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
 
       log_path <- file.path(q_logs, "fit.log")
-      cmd_out <- system2(
+      cmd_status <- suppressWarnings(system2(
         "Rscript",
         c("--vanilla", file.path("scripts", "run_DISC_Optimal_Synth_Ranges_W.R"), as.character(q), as.character(cfg$run$seed)),
-        stdout = TRUE,
-        stderr = TRUE,
+        stdout = log_path,
+        stderr = log_path,
         env = env_kv
-      )
-      writeLines(cmd_out, log_path, useBytes = TRUE)
+      ))
+      if (!is.finite(cmd_status)) cmd_status <- 0L
 
       output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_DISC.RData", q_num))
       list(
         quantile = q,
         output_path = output_path,
         log_path = log_path,
-        status = attr(cmd_out, "status")
+        status = as.integer(cmd_status)
       )
     }
 
@@ -228,18 +244,24 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       lapply(quantiles, run_one_quantile)
     }
 
-    for (res in results) {
+    for (res_raw in results) {
+      res <- unified_normalize_fit_worker_result(res_raw, context_label = "fit stage parallel worker")
       if (!is.null(res$status) && res$status != 0) {
         stop(sprintf("fit stage failed for quantile %s; see %s", res$quantile, res$log_path), call. = FALSE)
       }
-      if (file.exists(res$output_path)) {
-        manifest <- unified_manifest_add_artifact(
-          manifest,
-          res$output_path,
-          storage_scale = "model_state",
-          flow_domain = cfg$scale_contract$analysis_scale_fit_internal
+      file_size <- suppressWarnings(file.info(res$output_path)$size)
+      if (!file.exists(res$output_path) || !is.finite(file_size) || file_size <= 0) {
+        stop(
+          sprintf("fit stage output missing or empty for quantile %s: %s", res$quantile, res$output_path),
+          call. = FALSE
         )
       }
+      manifest <- unified_manifest_add_artifact(
+        manifest,
+        res$output_path,
+        storage_scale = "model_state",
+        flow_domain = cfg$scale_contract$analysis_scale_fit_internal
+      )
     }
   }
 
