@@ -1,0 +1,127 @@
+protected_run_ids:
+- 20260204_164943_p0_0.5_seed_777
+- 20260204_172628_p0_0.5_seed_777
+- 20260204_174008_p0_0.5_seed_777
+- 20260204_215336_p0_0.5_seed_777
+- 20260204_215530_p0_0.5_seed_777
+- 20260204_223908_p0_0.5_seed_777
+- 20260204_232330_p0_0.5_seed_777
+- 20260205_000804_p0_0.5_seed_777
+- 20260205_005624_p0_0.5_seed_777
+- 20260205_014014_p0_0.5_seed_777
+- 20260205_022702_p0_0.5_seed_777
+- 20260205_023715_p0_0.5_seed_777
+- 20260205_032240_p0_0.5_seed_777
+- 20260205_041540_p0_0.5_seed_777
+- 20260205_050020_p0_0.5_seed_777
+- 20260205_115417_p0_0.5_seed_777
+- 20260205_123524_p0_0.5_seed_777
+- 20260205_133117_p0_0.5_seed_777
+- 20260205_134321_p0_0.5_seed_777
+- 20260205_143823_p0_0.5_seed_777
+- 20260205_154401_p0_0.5_seed_777
+- 20260205_162949_p0_0.5_seed_777
+- 20260205_171518_p0_0.5_seed_777
+- 20260205_173902_p0_0.5_seed_777
+- 20260205_174935_p0_0.5_seed_777
+- 20260205_183321_p0_0.5_seed_777
+- 20260205_184548_p0_0.5_seed_777
+- 20260205_190138_p0_0.5_seed_777
+- 20260205_190252_p0_0.5_seed_777
+- 20260205_195559_p0_0.5_seed_777
+- 20260205_204546_p0_0.5_seed_777
+- 20260205_233551_p0_0.5_seed_777
+- 20260206_004632_p0_0.5_seed_777
+- 20260206_015822_p0_0.5_seed_777
+- 20260206_120030_p0_0.5_seed_777
+- 20260206_124259_p0_0.5_seed_777
+- 20260207_120000_example
+- '20260209_183637'
+- '20260209_210504'
+- '20260210_171855'
+- '20260210_173759'
+- '20260210_212458'
+- '20260210_222054'
+- '20260210_234304'
+- '20260210_235222'
+- '20260211_094533'
+- '20260211_095407'
+- '20260211_101249'
+- '20260211_120855'
+- '20260211_131304'
+- '20260211_151207'
+- '20260211_231702'
+- '20260212_112137'
+- heavy_20260207_211120
+- heavy_20260208_040646
+- heavy_20260208_183742_postexports
+- heavy_20260209_010522
+- p5_figures_smoke_20260210_v13
+- prod_p7b_20260212_013645
+- stage3dryrun
+- stage7run
+- stage8_check_b
+notes:
+  20260204_164943_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260204_172628_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260204_174008_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260204_215336_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260204_215530_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260204_223908_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260204_232330_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_000804_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_005624_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_014014_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_022702_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_023715_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_032240_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_041540_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_050020_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_115417_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_123524_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_133117_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_134321_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_143823_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_154401_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_162949_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_171518_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_173902_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_174935_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_183321_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_184548_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_190138_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_190252_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_195559_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_204546_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260205_233551_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260206_004632_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260206_015822_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260206_120030_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260206_124259_p0_0.5_seed_777: baseline reproducibility run (auto-protected)
+  20260207_120000_example: referenced in repo evidence/docs
+  '20260209_183637': referenced in repo evidence/docs
+  '20260209_210504': referenced in repo evidence/docs
+  '20260210_171855': referenced in repo evidence/docs
+  '20260210_173759': referenced in repo evidence/docs
+  '20260210_212458': referenced in repo evidence/docs
+  '20260210_222054': referenced in repo evidence/docs
+  '20260210_234304': referenced in repo evidence/docs
+  '20260210_235222': referenced in repo evidence/docs
+  '20260211_094533': referenced in repo evidence/docs
+  '20260211_095407': referenced in repo evidence/docs
+  '20260211_101249': referenced in repo evidence/docs
+  '20260211_120855': referenced in repo evidence/docs
+  '20260211_131304': referenced in repo evidence/docs
+  '20260211_151207': referenced in repo evidence/docs
+  '20260211_231702': referenced in repo evidence/docs
+  '20260212_112137': referenced in repo evidence/docs
+  heavy_20260207_211120: referenced in repo evidence/docs
+  heavy_20260208_040646: referenced in repo evidence/docs
+  heavy_20260208_183742_postexports: referenced in repo evidence/docs
+  heavy_20260209_010522: referenced in repo evidence/docs
+  p5_figures_smoke_20260210_v13: referenced in repo evidence/docs
+  prod_p7b_20260212_013645: referenced in repo evidence/docs
+  stage3dryrun: referenced in repo evidence/docs
+  stage7run: referenced in repo evidence/docs
+  stage8_check_b: referenced in repo evidence/docs
+baseline_delete_allowlist: []
