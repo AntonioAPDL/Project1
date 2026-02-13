@@ -853,6 +853,125 @@ At each planning/execution checkpoint:
 - Next action:
   - For the next proof attempt, either reclaim additional `/data` headroom to sustain `>=100 GB` throughout fit, or lower proof-config `run.io.min_free_gb` to a measured-safe threshold and rerun once with a new `RUN_ID`.
 
+### Progress Update 2026-02-12 21:59 UTC
+- Phase: P7B (ops resilience follow-up)
+- Change type: implementation+tests+docs
+- Summary: added backward-compatible scoped I/O preflight policy (`legacy` / `fit_start_and_continue` / `fit_start_only`) with run-scoped preflight JSON evidence + fit-stage preflight log summaries; updated production-proof config to use split start/continue thresholds; extended cleanup policy tooling with `--thin-failed`, root `.RData` inventory/prune flags, and optional baseline thinning hook, all dry-run-first.
+- Files touched:
+  - `R/unified/preflight.R`
+  - `R/unified/config.R`
+  - `R/unified/stages/stage_fit.R`
+  - `scripts/unified_run.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/production_proof_p7b_family.yaml`
+  - `repro/tools/cleanup_policy.py`
+  - `repro/tests/test_preflight_io.py`
+  - `repro/tests/test_cleanup_policy.py`
+  - `repro/docs/storage_root_cause.md`
+  - `repro/docs/storage_ops_playbook.md`
+  - `repro/docs/STATUS_SNAPSHOT_FOR_CLEANUP_AND_FORWARD.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `Rscript -e "parse(file='R/unified/preflight.R'); parse(file='R/unified/config.R'); parse(file='R/unified/stages/stage_fit.R'); parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\\n')"`
+  - `python3 -m py_compile repro/tools/cleanup_policy.py repro/tests/test_cleanup_policy.py repro/tests/test_preflight_io.py`
+  - `python3 -m unittest repro.tests.test_preflight_io repro.tests.test_cleanup_policy`
+- Validation notes:
+  - Existing configs remain backward compatible under `run.io.preflight_scope: legacy` (default).
+  - Preflight evidence now lands under `repro/runs/<RUN_ID>/preflight/*.json` and `repro/runs/<RUN_ID>/fit/logs/preflight.log`.
+  - Cleanup dry-run plans now include per-target sizes and blocked thin-failed candidates for protected runs.
+- Next action:
+  - Execute dry-run cleanup planning with `--thin-failed` and inventory flags, then rerun one production-proof attempt after confirmed headroom.
+
+### Progress Update 2026-02-12 22:26 UTC
+- Phase: P7B (storage operations)
+- Change type: operations+validation
+- Summary: completed dry-run-first cleanup planning and apply passes using `repro/tools/cleanup_runs.sh` with logs under `repro/reports/cleanup_runs`; no deletions were applied because all current `repro/runs/*` candidates are protected by YAML/safety guards. Added explicit storage retention policy doc and captured disk inventory + before/after stats.
+- Files touched:
+  - `repro/reports/disk_inventory/disk_inventory_20260212_222348.md`
+  - `repro/reports/cleanup_runs/before_after_20260212_222348.txt`
+  - `repro/reports/cleanup_runs/summary_20260212_222348.md`
+  - `repro/reports/cleanup_runs/20260212_222510_dryrun.log`
+  - `repro/reports/cleanup_runs/20260212_222510_dryrun.json`
+  - `repro/reports/cleanup_runs/20260212_222513_dryrun.log`
+  - `repro/reports/cleanup_runs/20260212_222513_dryrun.json`
+  - `repro/reports/cleanup_runs/20260212_222519_dryrun.log`
+  - `repro/reports/cleanup_runs/20260212_222519_dryrun.json`
+  - `repro/reports/cleanup_runs/20260212_222526_dryrun.log`
+  - `repro/reports/cleanup_runs/20260212_222526_dryrun.json`
+  - `repro/reports/cleanup_runs/20260212_222534_apply.log`
+  - `repro/reports/cleanup_runs/20260212_222534_apply.json`
+  - `repro/reports/cleanup_runs/20260212_222539_apply.log`
+  - `repro/reports/cleanup_runs/20260212_222539_apply.json`
+  - `repro/reports/cleanup_runs/20260212_222543_apply.log`
+  - `repro/reports/cleanup_runs/20260212_222543_apply.json`
+  - `repro/reports/cleanup_runs/validate_run_20260211_151207_20260212_222348.txt`
+  - `repro/docs/storage_retention_policy.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/reports/disk_inventory/disk_inventory_20260212_222348.md`
+  - `repro/reports/cleanup_runs/summary_20260212_222348.md`
+  - `repro/reports/cleanup_runs/before_after_20260212_222348.txt`
+  - `repro/reports/cleanup_runs/validate_run_20260211_151207_20260212_222348.txt`
+- Validation notes:
+  - `/data` before cleanup: `95G` free (`90%` used); after cleanup: `95G` free (`90%` used).
+  - Thin-failed blocked candidate remained protected: `repro/runs/20260212_112137` (`~21.28GB`) with reasons `protected_runs_yaml`, `modified_within_safety_window`, `in_progress_manifest`.
+  - Root `.RData` inventory found 15 candidates; no prune executed in this pass.
+  - Baseline archive (`repro/baseline_runs`) remained untouched (no baseline flags enabled).
+  - Lightweight integrity check passed: `bash repro/tools/validate_run.sh 20260211_151207 --profile smoke` -> `RESULT=PASS`.
+  - Protected reference runs currently present under `repro/runs`: `20260211_120855`, `20260211_131304`, `20260211_151207`, `20260212_112137`.
+- Next action:
+  - To reclaim substantial space, approve either (1) targeted unprotect/thinning of specific failed runs, or (2) baseline thinning allowlist usage, and optionally (3) explicit root `.RData` prune under strict run-scoped post policy.
+
+### Progress Update 2026-02-13 00:39 UTC
+- Phase: P7B (production proof run recovery)
+- Change type: operations+validation
+- Summary: quarantined and safely removed failed run `20260212_112137` after manifest closure-to-fail + unprotect, reclaimed `~21.37GB`, then executed exactly one new production-proof family-enabled run `prod_proof_p7b_20260212_225100` to completion with non-null manifest closure and `validation.status: pass`; added new successful proof run to protected set.
+- Files touched:
+  - `repro/protected_runs.yaml`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+  - run-scoped operational artifacts only under `repro/quarantine/**`, `repro/reports/cleanup_runs/**`, and `repro/runs/prod_proof_p7b_20260212_225100/**`
+- Evidence paths:
+  - `repro/quarantine/failed_runs/20260212_112137/QUARANTINE_INDEX.md`
+  - `repro/reports/cleanup_runs/before_after_20260212_224902.txt`
+  - `repro/reports/cleanup_runs/20260212_225013_dryrun.log`
+  - `repro/reports/cleanup_runs/20260212_225013_dryrun.json`
+  - `repro/reports/cleanup_runs/20260212_225025_apply.log`
+  - `repro/reports/cleanup_runs/20260212_225025_apply.json`
+  - `repro/reports/cleanup_runs/summary_20260212_224902_failed_run_cleanup.md`
+  - `repro/runs/prod_proof_p7b_20260212_225100/run_manifest.yaml`
+  - `repro/runs/prod_proof_p7b_20260212_225100/validate/compare_report.json`
+  - `repro/runs/prod_proof_p7b_20260212_225100/report/summary.md`
+  - `repro/runs/prod_proof_p7b_20260212_225100/report/summary.json`
+  - `repro/runs/prod_proof_p7b_20260212_225100/validate/write_audit/fit/fs_diff.patch`
+  - `repro/runs/prod_proof_p7b_20260212_225100/validate/write_audit/post/fs_diff.patch`
+  - `repro/runs/prod_proof_p7b_20260212_225100/validate/write_audit/validate/fs_diff.patch`
+  - `repro/runs/prod_proof_p7b_20260212_225100/validate/write_audit/report/fs_diff.patch`
+- Validation notes:
+  - Space reclaim gate met: `/data` free increased from `73G` to `95G` (`+22G` approx) during failed-run cleanup apply.
+  - Exactly one new production-proof run command executed for this attempt:
+    - `Rscript --vanilla scripts/unified_run.R --config config/unified_runs/production_proof_p7b_family.yaml`
+  - New proof run closed successfully:
+    - `timestamps.finished_at_utc: 2026-02-13T00:38:11Z`
+    - `validation.status: pass`
+  - Write-audit diffs for `fit/post/validate/report` are all `0` bytes.
+  - `bash repro/tools/validate_run.sh prod_proof_p7b_20260212_225100 --profile production --exit-nonzero` currently returns FAIL because the validator production profile enforces canonical 7 quantiles while this proof config intentionally runs quantiles `5,50,95`; run-manifest validation still passes.
+- Next action:
+  - Decide whether production proof should continue using representative quantile subset `[0.05,0.50,0.95]` (and adjust validator profile gate), or move proof config to canonical 7-quantile production expectations before next run.
+
+### Progress Update 2026-02-13 01:05 UTC
+- Phase: P7B (validator policy alignment)
+- Change type: tooling+tests
+- Summary: resolved production-vs-proof validator mismatch by adding `production_proof` profile to `repro/tools/validate_run.sh`; `production` remains canonical 7-quantile strict and unchanged, while `production_proof` enforces quantiles declared in run `resolved_config.yaml` with all other production-like gates preserved.
+- Files touched:
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation notes:
+  - `production_proof` is intended for bounded proof runs (e.g., q=`[0.05,0.50,0.95]`) and uses `quantile_rule=config_declared_quantiles_enforced`.
+  - `production` still reports `quantile_rule=canonical_7_quantiles_enforced` and fails when only 3 quantiles are present.
+- Next action:
+  - Keep `production` for full canonical runs; use `production_proof` only for storage/time-bounded proof runs.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
