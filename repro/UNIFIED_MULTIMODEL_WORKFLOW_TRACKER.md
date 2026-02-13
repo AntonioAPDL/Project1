@@ -1243,6 +1243,21 @@ At each planning/execution checkpoint:
   - Sorting behavior is unchanged: explicit valid `sort_keys` sorts, otherwise caller row order is preserved.
   - Post artifact capture remains extension-allowlist bounded.
 
+### Progress Update 2026-02-13 23:45 UTC
+- Phase: P7 (post deterministic table export integration closure)
+- Change type: tests
+- Summary: added lightweight integration coverage for deterministic post table exports by exercising on-disk table + manifest generation through `post_export_tables()`/`post_write_table_exports_manifest()` and asserting relative manifest file paths, resolved artifact existence, and byte-stable manifest content across reruns; also added guard assertions that `stage_post` artifact scanning remains allowlist-only and branch-consistent.
+- Files touched:
+  - `repro/tests/test_post_tables_manifest_integration.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `Rscript -e "testthat::test_dir('tests/testthat', reporter='summary')"`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\n')"`
+- Validation notes:
+  - Coverage is lightweight and avoids heavy fit/post runtime while still validating the table-export integration boundary (filesystem outputs + manifest semantics).
+  - No model/fit/posterior semantics were changed.
+
 ### Progress Update 2026-02-13 22:15 UTC
 - Phase: P7 (post deterministic table export hardening)
 - Change type: implementation+tests
