@@ -4,8 +4,8 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  bash repro/tools/validate_run.sh <RUN_ID> [--profile production|smoke|auto] [--exit-nonzero]
-  RUN_ID=<RUN_ID> bash repro/tools/validate_run.sh [--profile production|smoke|auto] [--exit-nonzero]
+  bash repro/tools/validate_run.sh <RUN_ID> [--profile production|production_proof|smoke|auto] [--exit-nonzero]
+  RUN_ID=<RUN_ID> bash repro/tools/validate_run.sh [--profile production|production_proof|smoke|auto] [--exit-nonzero]
 
 Production profile (default) strict success checklist:
 1) All 7 quantile outputs exist:
@@ -26,6 +26,11 @@ Smoke profile checklist:
 3) expected family artifacts exist for enabled models and requested quantiles
 4) post/validate/report artifacts exist
 5) write_audit fs_diff.patch exists and all detected patches are empty
+
+Production-proof profile checklist:
+1) same gates as production for manifest/post/validate/report/family artifacts
+2) expected quantiles are derived from run resolved_config.yaml fit.quantiles
+3) default expected quantile is q=50 only if fit.quantiles is absent
 
 --exit-nonzero:
   When provided, exits 1 on RESULT=FAIL (default behavior remains exit 0).
@@ -215,8 +220,8 @@ if [[ "${PROFILE}" == "auto" ]]; then
     PROFILE_EFFECTIVE="production"
   fi
 fi
-if [[ "${PROFILE_EFFECTIVE}" != "production" && "${PROFILE_EFFECTIVE}" != "smoke" ]]; then
-  die "Unsupported validation profile: ${PROFILE_EFFECTIVE} (allowed: production, smoke, auto)"
+if [[ "${PROFILE_EFFECTIVE}" != "production" && "${PROFILE_EFFECTIVE}" != "production_proof" && "${PROFILE_EFFECTIVE}" != "smoke" ]]; then
+  die "Unsupported validation profile: ${PROFILE_EFFECTIVE} (allowed: production, production_proof, smoke, auto)"
 fi
 
 require_multivar="${cfg_run_exdqlm_multivar}"
@@ -231,7 +236,7 @@ if [[ "${PROFILE_EFFECTIVE}" == "production" ]]; then
   EXPECTED_Q_LABELS=(05 20 35 50 65 80 95)
   quantile_rule_desc="canonical_7_quantiles_enforced"
 else
-  # Smoke follows requested quantiles from resolved_config; default q=50 when absent.
+  # Smoke and production_proof follow requested quantiles from resolved_config; default q=50 when absent.
   if [[ -n "${cfg_quantile_nums_csv}" ]]; then
     IFS=',' read -r -a EXPECTED_QUANTILES <<< "${cfg_quantile_nums_csv}"
   else
@@ -246,7 +251,11 @@ else
       EXPECTED_Q_LABELS+=("$(printf "%02d" "${q}")")
     done
   fi
-  quantile_rule_desc="quantiles_from_resolved_config_or_default_50"
+  if [[ "${PROFILE_EFFECTIVE}" == "production_proof" ]]; then
+    quantile_rule_desc="config_declared_quantiles_enforced"
+  else
+    quantile_rule_desc="quantiles_from_resolved_config_or_default_50"
+  fi
 fi
 
 present_quantiles=()
@@ -427,6 +436,8 @@ if [[ "${require_multivar}" != "true" ]]; then
   chk_quantiles="true"
 elif [[ "${PROFILE_EFFECTIVE}" == "production" ]]; then
   [[ "${quantile_count}" -eq 7 ]] && chk_quantiles="true"
+elif [[ "${PROFILE_EFFECTIVE}" == "production_proof" ]]; then
+  [[ "${quantile_count}" -eq "${#EXPECTED_QUANTILES[@]}" && "${#missing_quantiles[@]}" -eq 0 ]] && chk_quantiles="true"
 else
   [[ "${#missing_quantiles[@]}" -eq 0 ]] && chk_quantiles="true"
 fi
@@ -495,7 +506,7 @@ if [[ "${manifest_validation_status}" == "pass" ]]; then
 fi
 
 overall_pass="false"
-if [[ "${PROFILE_EFFECTIVE}" == "production" ]]; then
+if [[ "${PROFILE_EFFECTIVE}" == "production" || "${PROFILE_EFFECTIVE}" == "production_proof" ]]; then
   if [[ "${chk_manifest_exists}" == "true" && \
         "${chk_finished_at}" == "true" && \
         "${chk_quantiles}" == "true" && \

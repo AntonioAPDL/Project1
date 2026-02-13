@@ -78,6 +78,45 @@ class ValidateRunScriptTests(unittest.TestCase):
             check=False,
         )
 
+    def _write_three_quantile_full_family_artifacts(self) -> None:
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: true",
+                    "  run_exdqlm_univar: true",
+                    "  run_ndlm_main: true",
+                    "fit:",
+                    "  quantiles: [0.05, 0.5, 0.95]",
+                    "  contract_checks:",
+                    "    enabled: true",
+                    "  diagnostics:",
+                    "    enabled: true",
+                    "validation:",
+                    "  profile: production",
+                ]
+            )
+            + "\n",
+        )
+        for q in ("5", "50", "95"):
+            write_text(self.run_root / "fit" / f"q={int(q):02d}" / "outputs" / f"DISC_variables_{q}_exAL_synth_DISC.RData")
+        for qlab in ("05", "50", "95"):
+            write_text(
+                self.run_root / "fit" / "exdqlm_univar" / f"q={qlab}" / "outputs" / f"variables_{qlab}_exAL_synth_DISC_uni.RData"
+            )
+            write_json(
+                self.run_root / "fit" / "contract_checks" / "exdqlm_univar" / f"q={qlab}" / "contract.json",
+                {"status": "pass"},
+            )
+            write_json(
+                self.run_root / "fit" / "diagnostics" / "exdqlm_univar" / f"q={qlab}" / "diag.json",
+                {"status": "pass"},
+            )
+        write_text(self.run_root / "fit" / "ndlm_main" / "outputs" / "DISC_variables_50_NDLM_synth_DISC.RData")
+        write_json(self.run_root / "fit" / "contract_checks" / "ndlm_main" / "contract.json", {"status": "pass"})
+        write_json(self.run_root / "fit" / "diagnostics" / "ndlm_main" / "diag.json", {"status": "pass"})
+
     def test_smoke_profile_passes_q50_for_all_families(self) -> None:
         self._write_common_success_files()
         write_text(
@@ -111,6 +150,36 @@ class ValidateRunScriptTests(unittest.TestCase):
         result = self._run_validate("smoke")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
+
+    def test_production_proof_profile_passes_config_declared_three_quantiles(self) -> None:
+        self._write_common_success_files()
+        self._write_three_quantile_full_family_artifacts()
+
+        result = self._run_validate("production_proof")
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("RESULT=PASS", result.stdout)
+        self.assertIn("quantile_rule=config_declared_quantiles_enforced", result.stdout)
+        self.assertIn("quantile_outputs=3/3", result.stdout)
+
+    def test_production_profile_still_fails_for_three_quantile_setup(self) -> None:
+        self._write_common_success_files()
+        self._write_three_quantile_full_family_artifacts()
+
+        result = self._run_validate("production")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("RESULT=FAIL", result.stdout)
+        self.assertIn("quantile_rule=canonical_7_quantiles_enforced", result.stdout)
+        self.assertIn("missing_quantiles=20,35,65,80", result.stdout)
+
+    def test_production_proof_still_enforces_compare_report_gate(self) -> None:
+        self._write_common_success_files()
+        self._write_three_quantile_full_family_artifacts()
+        (self.run_root / "validate" / "compare_report.json").unlink()
+
+        result = self._run_validate("production_proof")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("RESULT=FAIL", result.stdout)
+        self.assertIn("compare_report_exists=false", result.stdout)
 
     def test_smoke_profile_accepts_neutral_ndlm_output_name(self) -> None:
         self._write_common_success_files()
