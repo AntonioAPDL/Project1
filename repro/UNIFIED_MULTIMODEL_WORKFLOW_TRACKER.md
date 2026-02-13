@@ -1017,15 +1017,32 @@ At each planning/execution checkpoint:
   - `--profile production` on the same proof run fails by design (`quantile_rule=canonical_7_quantiles_enforced`, `RESULT=FAIL`).
   - `--profile production_proof` on the same proof run passes (`quantile_rule=config_declared_quantiles_enforced`, `RESULT=PASS`).
 
+### Progress Update 2026-02-13 07:56 UTC
+- Phase: P7 (family contract metadata hardening)
+- Change type: tooling+tests
+- Summary: closed Open Q11.1 #1 by hardening manifest family metadata defaults: multivar remains authoritative by default, univar/NDLM default to non-authoritative unless explicitly set in config, and implementation modes are now emitted for all families from config with safe fallback.
+- Files touched:
+  - `R/unified/manifest.R`
+  - `repro/tests/test_manifest_metadata.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `bash -n repro/tools/validate_run.sh`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\n')"`
+- Validation notes:
+  - Added deterministic unit coverage for family authoritative defaults and explicit override behavior at manifest init.
+  - Existing manifests remain backward compatible because `families` remains additive metadata.
+- Next action:
+  - Close Open Q11.1 #2 by codifying NDLM minimal artifact schema in contract docs and validator tests.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
 
-1. Confirm whether NDLM legacy bridge outputs should be explicitly tagged `non_authoritative=true` in manifest until P4 completion.
-2. Confirm minimum accepted artifact schema for `ndlm_main` stage (object names + table exports) for post integration.
-3. Current unified manifest has no per-stage status block (only global `validation.status` + timestamps). Do you want explicit `stages.<name>.status` (`pass|fail|skip`) in manifest v2, or keep current implicit semantics?
-4. `write_audit.enforce_from_stage` defaults to `4`, which audits only `validate` and `report` in current stage order. Should this be reduced to `2` or `1` for migration phases that need fit/post write isolation proof?
-5. Forecats `build` mode currently writes to `data/forecats_inputs` and `data/forecats_cache` (outside `run_root`). For unified multi-model production runs, should forecats outputs be copied/snapshotted into run root as immutable run inputs?
+1. Confirm minimum accepted artifact schema for `ndlm_main` stage (object names + table exports) for post integration.
+2. Current unified manifest has no per-stage status block (only global `validation.status` + timestamps). Do you want explicit `stages.<name>.status` (`pass|fail|skip`) in manifest v2, or keep current implicit semantics?
+3. `write_audit.enforce_from_stage` defaults to `4`, which audits only `validate` and `report` in current stage order. Should this be reduced to `2` or `1` for migration phases that need fit/post write isolation proof?
+4. Forecats `build` mode currently writes to `data/forecats_inputs` and `data/forecats_cache` (outside `run_root`). For unified multi-model production runs, should forecats outputs be copied/snapshotted into run root as immutable run inputs?
 
 ### 11.2 Resolved Defaults
 
@@ -1040,6 +1057,10 @@ At each planning/execution checkpoint:
    - `production_proof`: config-declared quantile enforcement with production-like non-quantile gates.
    - `smoke`: lightweight smoke-oriented validation contract.
    - `auto`: deterministic resolution order is `run_manifest.validation.validator_profile` -> `resolved_config.validation.profile` -> `production`.
+5. Manifest family authority defaults are locked for v1 metadata:
+   - `families.exdqlm_multivar.authoritative` defaults to `true`.
+   - `families.exdqlm_univar.authoritative` defaults to `false` unless explicitly set.
+   - `families.ndlm_main.authoritative` defaults to `false` unless explicitly set.
 
 ## 12) Immediate Next Actions (Proposed)
 

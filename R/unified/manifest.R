@@ -51,8 +51,12 @@ unified_collect_input_records <- function(cfg) {
 unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record) {
   git <- unified_git_info(repo_root)
   inputs <- unified_collect_input_records(cfg)
+  multivar_mode <- unified_get(cfg, c("models", "exdqlm_multivar", "implementation_mode"), default = "legacy_bridge")
   univar_mode <- unified_get(cfg, c("models", "exdqlm_univar", "implementation_mode"), default = "legacy_bridge")
   ndlm_mode <- unified_get(cfg, c("models", "ndlm_main", "implementation_mode"), default = "legacy_bridge")
+  multivar_authoritative <- isTRUE(unified_get(cfg, c("models", "exdqlm_multivar", "authoritative"), default = TRUE))
+  univar_authoritative <- isTRUE(unified_get(cfg, c("models", "exdqlm_univar", "authoritative"), default = FALSE))
+  ndlm_authoritative <- isTRUE(unified_get(cfg, c("models", "ndlm_main", "authoritative"), default = FALSE))
 
   list(
     manifest_version = 1L,
@@ -82,18 +86,18 @@ unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record
     families = list(
       exdqlm_multivar = list(
         enabled = isTRUE(cfg$models$run_exdqlm_multivar),
-        implementation_mode = "legacy_bridge",
-        authoritative = TRUE
+        implementation_mode = multivar_mode,
+        authoritative = multivar_authoritative
       ),
       exdqlm_univar = list(
         enabled = isTRUE(cfg$models$run_exdqlm_univar),
         implementation_mode = univar_mode,
-        authoritative = FALSE
+        authoritative = univar_authoritative
       ),
       ndlm_main = list(
         enabled = isTRUE(cfg$models$run_ndlm_main),
         implementation_mode = ndlm_mode,
-        authoritative = FALSE
+        authoritative = ndlm_authoritative
       )
     ),
     inputs = inputs,
