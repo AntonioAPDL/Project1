@@ -299,6 +299,31 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("o2=5", result.stdout)  # Prefer q=<QQ> directory over filename token.
         self.assertIn("class=integer", result.stdout)
 
+    def test_manifest_init_sets_validator_profile_from_config(self) -> None:
+        script = (
+            "source('R/unified/utils_hash.R'); "
+            "source('R/unified/config.R'); "
+            "source('R/unified/manifest.R'); "
+            "cfg <- unified_config_defaults(); "
+            "cfg$validation$profile <- 'production_proof'; "
+            "repro_record <- list(fit_rng = c('Mersenne-Twister', 'Inversion', 'Rejection'), "
+            "post_rng = c('Mersenne-Twister', 'Inversion', 'Rejection')); "
+            "m <- unified_manifest_init(cfg, run_id='ut_manifest', run_root=tempdir(), "
+            f"repo_root='{REPO_ROOT.as_posix()}', repro_record=repro_record); "
+            "cat(sprintf('validator_profile=%s\\n', m$validation$validator_profile)); "
+            "cat(sprintf('validation_status=%s\\n', m$validation$status));"
+        )
+        result = subprocess.run(
+            ["Rscript", "-e", script],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("validator_profile=production_proof", result.stdout)
+        self.assertIn("validation_status=pending", result.stdout)
+
     def test_production_profile_fails_when_only_q50_multivar_exists(self) -> None:
         self._write_common_success_files()
         write_text(

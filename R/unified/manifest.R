@@ -122,6 +122,7 @@ unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record
     validation = list(
       compare_report_path = file.path(run_root, "validate", "compare_report.json"),
       write_audit_diff_path = file.path(run_root, "validate", "write_audit", "fs_diff.patch"),
+      validator_profile = unified_get(cfg, c("validation", "profile"), default = "production"),
       status = "pending"
     ),
     schema_migration = list(
