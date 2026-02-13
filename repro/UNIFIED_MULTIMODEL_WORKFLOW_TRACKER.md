@@ -147,7 +147,7 @@ Status legend:
 | P5 | [x] | Post decoupling from root artifacts | P2 done | Post loads only manifest-declared run-scoped artifacts and strict figures-on smoke closes with non-null `finished_at_utc` |
 | P6 | [~] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
 | P7 | [~] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
-| P8 | [ ] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
+| P8 | [~] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
 
 ## 7) Detailed Task Backlog
 
@@ -199,6 +199,7 @@ Status legend:
 - `T-P7-01`: Extend validator to enforce per-family required outputs.
 - `T-P7-02`: Extend report to summarize each family separately.
 - `T-P8-01`: Change defaults to theory-aligned stages; keep legacy as opt-in fallback.
+- [x] `T-P8-02`: Add end-to-end unified-run smoke integration coverage for post table exports and post artifact allowlist capture.
 
 ## 8) Risk Register (Live)
 
@@ -1277,6 +1278,28 @@ At each planning/execution checkpoint:
   - `post.export_tables` behavior remains config-gated and backward-compatible; default still enabled.
   - Table artifacts are now emitted under `post/outputs/<RUN_ID>/tables/` and are captured by recursive post artifact manifest scanning.
   - Deterministic test coverage now includes CSV byte identity under reordered inputs and explicit NA-retain/NA-drop behavior.
+
+### Progress Update 2026-02-13 23:59 UTC
+- Phase: P8 (end-to-end unified-run smoke closure for post tables)
+- Change type: tests
+- Summary: added a true unified-run integration smoke test that executes `scripts/unified_run.R` through `stage_post` and validates table-export wiring plus run-manifest post artifact allowlist behavior using a lightweight post-runner stub in test scope for deterministic runtime.
+- Files touched:
+  - `repro/tests/test_unified_run_post_tables_smoke.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - test-scoped run root pattern: `repro/_tmp_unittest/post_tables_e2e/<case>/runs/ut_post_tables_smoke/`
+  - expected key files during test execution:
+    - `repro/_tmp_unittest/post_tables_e2e/<case>/runs/ut_post_tables_smoke/run_manifest.yaml`
+    - `repro/_tmp_unittest/post_tables_e2e/<case>/runs/ut_post_tables_smoke/post/outputs/ut_post_tables_smoke/tables/posterior_table_exports_manifest.csv`
+- Validation checks run:
+  - `python3 -m unittest repro.tests.test_unified_run_post_tables_smoke -v`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "testthat::test_dir('tests/testthat', reporter='summary')"`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\\n')"`
+- Validation notes:
+  - No model/fit/posterior semantics changed.
+  - No storage-policy changes.
+  - Test enforces relative table-export manifest file paths and excludes disallowed `.tex`/`.md` post artifact captures from `run_manifest.yaml`.
 
 ## 11) Open Questions / Resolved Defaults
 
