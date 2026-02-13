@@ -193,6 +193,16 @@ post_write_csv_deterministic <- function(df, path, numeric_digits = 10L) {
   invisible(path)
 }
 
+post_path_relative_to_dir <- function(path, output_dir) {
+  path_abs <- normalizePath(path, mustWork = TRUE)
+  dir_abs <- normalizePath(output_dir, mustWork = TRUE)
+  prefix <- paste0(dir_abs, .Platform$file.sep)
+  if (startsWith(path_abs, prefix)) {
+    return(substr(path_abs, nchar(prefix) + 1L, nchar(path_abs)))
+  }
+  basename(path_abs)
+}
+
 post_sha256_file <- function(path) {
   stopifnot(file.exists(path))
 
@@ -271,7 +281,7 @@ post_export_tables <- function(
 
       manifest_rows[[length(manifest_rows) + 1L]] <- data.frame(
         table_name = nm,
-        file_path = path,
+        file_path = post_path_relative_to_dir(path, output_dir),
         nrow = nrow(df),
         ncol = ncol(df),
         sha256 = post_sha256_file(path),

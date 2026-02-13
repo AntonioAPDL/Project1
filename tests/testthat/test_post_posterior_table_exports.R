@@ -147,10 +147,46 @@ test_that("post_export_tables csv bytes are deterministic after stable ordering"
     keep_na = TRUE
   )
 
-  bytes1 <- readBin(m1$file_path[[1L]], what = "raw", n = file.info(m1$file_path[[1L]])$size)
-  bytes2 <- readBin(m2$file_path[[1L]], what = "raw", n = file.info(m2$file_path[[1L]])$size)
+  p1 <- file.path(file.path(td, "one"), m1$file_path[[1L]])
+  p2 <- file.path(file.path(td, "two"), m2$file_path[[1L]])
+  bytes1 <- readBin(p1, what = "raw", n = file.info(p1)$size)
+  bytes2 <- readBin(p2, what = "raw", n = file.info(p2)$size)
   expect_identical(bytes1, bytes2)
   expect_identical(m1$sha256[[1L]], m2$sha256[[1L]])
+  expect_false(startsWith(m1$file_path[[1L]], "/"))
+  expect_false(startsWith(m2$file_path[[1L]], "/"))
+})
+
+test_that("post_export_tables preserves row order when sort_keys is NULL", {
+  td <- tempfile("preserve_order_csv_")
+  dir.create(td, recursive = TRUE, showWarnings = FALSE)
+
+  a <- data.frame(
+    id = c(3, 1, 2),
+    score = c(1.2, 5.4, 2.2),
+    label = c("z", "x", "y"),
+    stringsAsFactors = FALSE
+  )
+  b <- a[c(2, 3, 1), , drop = FALSE]
+
+  m1 <- post_export_tables(
+    tables = list(example = a),
+    output_dir = file.path(td, "one"),
+    formats = "csv",
+    keep_na = TRUE
+  )
+  m2 <- post_export_tables(
+    tables = list(example = b),
+    output_dir = file.path(td, "two"),
+    formats = "csv",
+    keep_na = TRUE
+  )
+
+  p1 <- file.path(file.path(td, "one"), m1$file_path[[1L]])
+  p2 <- file.path(file.path(td, "two"), m2$file_path[[1L]])
+  bytes1 <- readBin(p1, what = "raw", n = file.info(p1)$size)
+  bytes2 <- readBin(p2, what = "raw", n = file.info(p2)$size)
+  expect_false(identical(bytes1, bytes2))
 })
 
 test_that("post_export_tables keep_na policy is explicit and stable", {
@@ -178,8 +214,8 @@ test_that("post_export_tables keep_na policy is explicit and stable", {
     sort_keys = list(tbl = "id")
   )
 
-  keep_df <- read.csv(keep$file_path[[1L]], stringsAsFactors = FALSE)
-  drop_df <- read.csv(drop$file_path[[1L]], stringsAsFactors = FALSE)
+  keep_df <- read.csv(file.path(file.path(td, "keep"), keep$file_path[[1L]]), stringsAsFactors = FALSE)
+  drop_df <- read.csv(file.path(file.path(td, "drop"), drop$file_path[[1L]]), stringsAsFactors = FALSE)
   expect_equal(nrow(keep_df), 3L)
   expect_equal(nrow(drop_df), 2L)
   expect_false(any(is.na(drop_df$value)))
@@ -204,4 +240,5 @@ test_that("post_write_table_exports_manifest writes stable schema with checksum"
     c("table_name", "file_path", "nrow", "ncol", "sha256")
   )
   expect_true(all(nzchar(m_df$sha256)))
+  expect_equal(m_df$file_path[[1L]], "t1.csv")
 })

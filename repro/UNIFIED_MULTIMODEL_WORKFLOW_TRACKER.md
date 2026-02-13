@@ -1207,6 +1207,24 @@ At each planning/execution checkpoint:
   - Malformed YAML auto-fail test now asserts absence of `Traceback` and `File "` tokens in stdout.
   - Total test suite passed with the new coverage additions.
 
+### Progress Update 2026-02-13 22:55 UTC
+- Phase: P7 (post deterministic table export bugfix + guardrails)
+- Change type: implementation+tests
+- Summary: applied gap-only hardening to deterministic post table exports by fixing `ENV_SORT_KEEP_NA` parsing in post figures, removing empty-path exporter inconsistency, enforcing row-order preservation unless explicit `sort_keys` are provided, emitting table-export manifest file paths relative to the tables output dir, and adding recursive post artifact filtering to a safe extension allowlist.
+- Files touched:
+  - `R/environmetrics/40_figures.R`
+  - `R/environmetrics/02_helpers_core.R`
+  - `R/unified/stages/stage_post.R`
+  - `tests/testthat/test_post_posterior_table_exports.R`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `Rscript -e "testthat::test_dir('tests/testthat', reporter='summary')"`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\n')"`
+- Validation notes:
+  - No model/fit/posterior semantics were changed.
+  - Deterministic sorting is now explicit-only (`sort_keys` provided); otherwise row order is preserved as supplied.
+
 ### Progress Update 2026-02-13 22:15 UTC
 - Phase: P7 (post deterministic table export hardening)
 - Change type: implementation+tests
