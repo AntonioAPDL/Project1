@@ -1052,13 +1052,27 @@ At each planning/execution checkpoint:
 - Next action:
   - Close Open Q11.1 #3 by adding additive per-stage status metadata in manifest v1-compatible shape.
 
+### Progress Update 2026-02-13 08:02 UTC
+- Phase: P7 (manifest stage status closure)
+- Change type: tooling+tests
+- Summary: closed Open Q11.1 #3 by adding additive per-stage status metadata under `manifest.stages` (`status`, `started_at_utc`, `finished_at_utc`, `log_path`) and wiring unified runner to mark `skip/pass/fail` with best-effort manifest write on stage errors.
+- Files touched:
+  - `R/unified/manifest.R`
+  - `scripts/unified_run.R`
+  - `repro/tests/test_manifest_stage_status.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation notes:
+  - Stage status metadata is v1-compatible and additive; existing consumers continue using legacy fields unchanged.
+  - New unit coverage validates stage helper transitions for `skip`, `pass`, and `fail` semantics.
+- Next action:
+  - Close Open Q11.1 #4 with explicit write-audit policy guidance (default unchanged, migration profile documented).
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
 
-1. Current unified manifest has no per-stage status block (only global `validation.status` + timestamps). Do you want explicit `stages.<name>.status` (`pass|fail|skip`) in manifest v2, or keep current implicit semantics?
-2. `write_audit.enforce_from_stage` defaults to `4`, which audits only `validate` and `report` in current stage order. Should this be reduced to `2` or `1` for migration phases that need fit/post write isolation proof?
-3. Forecats `build` mode currently writes to `data/forecats_inputs` and `data/forecats_cache` (outside `run_root`). For unified multi-model production runs, should forecats outputs be copied/snapshotted into run root as immutable run inputs?
+1. `write_audit.enforce_from_stage` defaults to `4`, which audits only `validate` and `report` in current stage order. Should this be reduced to `2` or `1` for migration phases that need fit/post write isolation proof?
+2. Forecats `build` mode currently writes to `data/forecats_inputs` and `data/forecats_cache` (outside `run_root`). For unified multi-model production runs, should forecats outputs be copied/snapshotted into run root as immutable run inputs?
 
 ### 11.2 Resolved Defaults
 
@@ -1081,6 +1095,10 @@ At each planning/execution checkpoint:
    - Accepted model-state outputs include `DISC_variables_50_NDLM_synth_DISC.RData`, `ndlm_main_state.RData`, or `ndlm_main_*.RData`.
    - If `fit.contract_checks.enabled=true`, require NDLM contract-check JSON under `fit/contract_checks/ndlm_main/`.
    - If `fit.diagnostics.enabled=true`, require NDLM diagnostics JSON under `fit/diagnostics/ndlm_main/`.
+7. Manifest v1 now includes additive stage-status metadata:
+   - `stages.<name>.status` uses `pass|fail|skip` (with `pending` only transiently during execution).
+   - `stages.<name>.started_at_utc` and `stages.<name>.finished_at_utc` are populated on execution path.
+   - `stages.<name>.log_path` records stage-log intent without changing run pass/fail semantics.
 
 ## 12) Immediate Next Actions (Proposed)
 

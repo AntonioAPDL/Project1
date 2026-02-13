@@ -48,6 +48,93 @@ unified_collect_input_records <- function(cfg) {
   records
 }
 
+unified_manifest_stage_order <- function(cfg = NULL) {
+  canonical <- c("forecats", "data_prep_shared", "fit", "post", "validate", "report")
+  if (is.null(cfg) || is.null(cfg$stages) || is.null(names(cfg$stages))) {
+    return(canonical)
+  }
+  extras <- setdiff(names(cfg$stages), canonical)
+  c(canonical, extras)
+}
+
+unified_manifest_stage_map_init <- function(cfg = NULL) {
+  out <- list()
+  for (stage in unified_manifest_stage_order(cfg)) {
+    out[[stage]] <- list(
+      status = "pending",
+      started_at_utc = NULL,
+      finished_at_utc = NULL,
+      log_path = NULL
+    )
+  }
+  out
+}
+
+unified_manifest_stage_mark_start <- function(manifest, stage, log_path = NULL) {
+  if (is.null(manifest$stages) || !is.list(manifest$stages)) {
+    manifest$stages <- list()
+  }
+  if (is.null(manifest$stages[[stage]]) || !is.list(manifest$stages[[stage]])) {
+    manifest$stages[[stage]] <- list()
+  }
+  manifest$stages[[stage]]$status <- "pending"
+  manifest$stages[[stage]]$started_at_utc <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  manifest$stages[[stage]]$finished_at_utc <- NULL
+  if (!is.null(log_path) && nzchar(as.character(log_path))) {
+    manifest$stages[[stage]]$log_path <- log_path
+  }
+  manifest
+}
+
+unified_manifest_stage_mark_pass <- function(manifest, stage, log_path = NULL) {
+  if (is.null(manifest$stages) || !is.list(manifest$stages)) {
+    manifest$stages <- list()
+  }
+  if (is.null(manifest$stages[[stage]]) || !is.list(manifest$stages[[stage]])) {
+    manifest$stages[[stage]] <- list()
+  }
+  if (is.null(manifest$stages[[stage]]$started_at_utc)) {
+    manifest$stages[[stage]]$started_at_utc <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  }
+  manifest$stages[[stage]]$status <- "pass"
+  manifest$stages[[stage]]$finished_at_utc <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  if (!is.null(log_path) && nzchar(as.character(log_path))) {
+    manifest$stages[[stage]]$log_path <- log_path
+  }
+  manifest
+}
+
+unified_manifest_stage_mark_fail <- function(manifest, stage, log_path = NULL) {
+  if (is.null(manifest$stages) || !is.list(manifest$stages)) {
+    manifest$stages <- list()
+  }
+  if (is.null(manifest$stages[[stage]]) || !is.list(manifest$stages[[stage]])) {
+    manifest$stages[[stage]] <- list()
+  }
+  if (is.null(manifest$stages[[stage]]$started_at_utc)) {
+    manifest$stages[[stage]]$started_at_utc <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  }
+  manifest$stages[[stage]]$status <- "fail"
+  manifest$stages[[stage]]$finished_at_utc <- NULL
+  if (!is.null(log_path) && nzchar(as.character(log_path))) {
+    manifest$stages[[stage]]$log_path <- log_path
+  }
+  manifest
+}
+
+unified_manifest_stage_mark_skip <- function(manifest, stage, log_path = NULL) {
+  if (is.null(manifest$stages) || !is.list(manifest$stages)) {
+    manifest$stages <- list()
+  }
+  manifest$stages[[stage]] <- list(
+    status = "skip",
+    started_at_utc = NULL,
+    finished_at_utc = NULL,
+    log_path = if (!is.null(log_path) && nzchar(as.character(log_path))) log_path else NULL
+  )
+  manifest
+}
+
 unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record) {
   git <- unified_git_info(repo_root)
   inputs <- unified_collect_input_records(cfg)
@@ -83,6 +170,7 @@ unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record
         post = paste(repro_record$post_rng, collapse = "/")
       )
     ),
+    stages = unified_manifest_stage_map_init(cfg),
     families = list(
       exdqlm_multivar = list(
         enabled = isTRUE(cfg$models$run_exdqlm_multivar),

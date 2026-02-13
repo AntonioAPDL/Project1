@@ -80,11 +80,16 @@ cfg$run$resolved_config_path <- normalizePath(opts$config_path, mustWork = FALSE
 
 io_settings <- unified_get_run_io_settings(cfg)
 if (isTRUE(io_settings$enabled)) {
-  unified_require_free_space(
+  preflight_dir <- file.path(run_root, "preflight")
+  preflight_log <- file.path(preflight_dir, "preflight.log")
+  unified_run_io_preflight(
     path = run_root,
-    min_free_bytes = io_settings$min_free_bytes,
-    min_free_inodes_pct = io_settings$min_free_inodes_pct,
-    context = "unified_run preflight"
+    io_settings = io_settings,
+    check_point = "run_start",
+    context = "unified_run preflight",
+    report_dir = preflight_dir,
+    stage_label = "run_start",
+    log_path = preflight_log
   )
 }
 
@@ -97,6 +102,14 @@ writeLines(yaml::as.yaml(cfg, indent.mapping.sequence = TRUE), con = resolved_co
 
 repro_record <- unified_apply_seed(seed = cfg$run$seed, mode = cfg$run$repro_mode)
 manifest <- unified_manifest_init(cfg, run_id = run_id, run_root = run_root, repo_root = repo_root, repro_record = repro_record)
+preflight_dir <- file.path(run_root, "preflight")
+if (dir.exists(preflight_dir)) {
+  preflight_artifacts <- list.files(preflight_dir, pattern = "\\.json$|\\.log$", full.names = TRUE, recursive = FALSE)
+  preflight_artifacts <- preflight_artifacts[file.exists(preflight_artifacts)]
+  for (pf in preflight_artifacts) {
+    manifest <- unified_manifest_add_artifact(manifest, pf, storage_scale = "text", role = "preflight")
+  }
+}
 env_artifacts <- unified_capture_env_artifacts(run_root)
 for (nm in names(env_artifacts)) {
   manifest <- unified_manifest_add_artifact(manifest, env_artifacts[[nm]], storage_scale = "text")
@@ -130,6 +143,20 @@ stage_index <- c(
   validate = 4L,
   report = 5L
 )
+stage_log_paths <- c(
+  forecats = file.path(run_root, "forecats", "forecats_pipeline.log"),
+  data_prep_shared = file.path(run_root, "data_prep_shared", "data_prep_shared.log"),
+  fit = file.path(run_root, "fit", "logs", "fit.log"),
+  post = file.path(run_root, "post", "logs", "post_runner.log"),
+  validate = file.path(run_root, "validate", "validate.log"),
+  report = file.path(run_root, "report", "summary.md")
+)
+
+stage_log_path <- function(stage) {
+  path <- stage_log_paths[[stage]]
+  if (is.null(path) || !nzchar(path)) return(NULL)
+  path
+}
 
 run_stage <- function(stage, manifest) {
   switch(stage,
@@ -148,9 +175,16 @@ audit_threshold <- as.integer(cfg$write_audit$enforce_from_stage)
 allowlist <- unlist(cfg$write_audit$allowlist_outside_run_root, use.names = FALSE)
 
 for (stage in stage_order) {
-  if (!isTRUE(cfg$stages[[stage]])) next
+  if (!isTRUE(cfg$stages[[stage]])) {
+    manifest <- unified_manifest_stage_mark_skip(manifest, stage, log_path = stage_log_path(stage))
+    unified_manifest_write(manifest, manifest_path)
+    next
+  }
 
   cat(sprintf("== Running stage: %s ==\n", stage))
+  manifest <- unified_manifest_stage_mark_start(manifest, stage, log_path = stage_log_path(stage))
+  unified_manifest_write(manifest, manifest_path)
+
   enforce_audit <- audit_enabled && (stage_index[[stage]] >= audit_threshold)
   stage_audit_dir <- file.path(run_root, "validate", "write_audit", stage)
   before_path <- file.path(stage_audit_dir, "fs_before.tsv")
@@ -161,8 +195,22 @@ for (stage in stage_order) {
     unified_write_audit_snapshot(repo_root, run_root, before_path)
   }
 
-  result <- run_stage(stage, manifest)
+  stage_error <- NULL
+  result <- tryCatch(
+    run_stage(stage, manifest),
+    error = function(e) {
+      stage_error <<- e
+      NULL
+    }
+  )
+  if (!is.null(stage_error)) {
+    manifest <- unified_manifest_stage_mark_fail(manifest, stage, log_path = stage_log_path(stage))
+    try(unified_manifest_write(manifest, manifest_path), silent = TRUE)
+    stop(conditionMessage(stage_error), call. = FALSE)
+  }
+
   manifest <- result$manifest
+  manifest <- unified_manifest_stage_mark_pass(manifest, stage, log_path = stage_log_path(stage))
   unified_manifest_write(manifest, manifest_path)
 
   if (enforce_audit) {
