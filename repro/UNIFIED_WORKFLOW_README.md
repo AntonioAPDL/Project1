@@ -48,6 +48,28 @@ Start from:
 
 - `config/unified_run.template.yaml`
 
+## Implementation Modes
+
+Model-family implementation modes are configured under `models.<family>.implementation_mode`.
+
+- Default modes:
+  - `models.exdqlm_univar.implementation_mode: theory_aligned`
+  - `models.ndlm_main.implementation_mode: theory_aligned`
+- Legacy fallback remains supported explicitly with:
+  - `legacy_bridge`
+
+Example legacy override:
+
+```yaml
+models:
+  run_exdqlm_univar: true
+  run_ndlm_main: true
+  exdqlm_univar:
+    implementation_mode: legacy_bridge
+  ndlm_main:
+    implementation_mode: legacy_bridge
+```
+
 ## Strict vs fast
 
 Set in config:

@@ -198,7 +198,7 @@ Status legend:
 - `T-P6-02`: Add scheduling policy for parallel exDQLM stages + NDLM isolation.
 - `T-P7-01`: Extend validator to enforce per-family required outputs.
 - `T-P7-02`: Extend report to summarize each family separately.
-- `T-P8-01`: Change defaults to theory-aligned stages; keep legacy as opt-in fallback.
+- [x] `T-P8-01`: Change defaults to theory-aligned stages; keep legacy as opt-in fallback.
 - [x] `T-P8-02`: Add end-to-end unified-run smoke integration coverage for post table exports and post artifact allowlist capture.
 
 ## 8) Risk Register (Live)
@@ -1301,6 +1301,30 @@ At each planning/execution checkpoint:
   - No storage-policy changes.
   - Test enforces relative table-export manifest file paths and excludes disallowed `.tex`/`.md` post artifact captures from `run_manifest.yaml`.
 
+### Progress Update 2026-02-14 00:05 UTC
+- Phase: P8A
+- Change type: config-policy+tests+docs
+- Summary: completed first P8 cutover step by switching univariate/NDLM implementation-mode defaults to `theory_aligned` while keeping both families disabled by default; retained explicit `legacy_bridge` fallback and added one-time non-fatal deprecation warnings when legacy bridge is selected for an enabled univariate/NDLM family.
+- Files touched:
+  - `R/unified/config.R`
+  - `config/unified_run.template.yaml`
+  - `R/unified/manifest.R`
+  - `R/unified/stages/stage_fit.R`
+  - `repro/tests/test_config_implementation_mode_defaults.py`
+  - `repro/UNIFIED_WORKFLOW_README.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `config/unified_run.template.yaml`
+  - `repro/tests/test_config_implementation_mode_defaults.py`
+- Validation commands run:
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "testthat::test_dir('tests/testthat', reporter='summary')"`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\n')"`
+- Validation notes:
+  - Defaults remain `models.run_exdqlm_univar=false` and `models.run_ndlm_main=false`.
+  - `legacy_bridge` remains accepted as explicit per-family override.
+  - No model/fit/post semantics changed in this chunk.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
@@ -1345,6 +1369,11 @@ None currently tracked.
    - Fit/post shared-input validation logs source-map evidence under `fit/logs/shared_input_source_map.log` and `post/logs/shared_input_source_map.log`.
    - For `production` / `production_proof`, validator now enforces snapshot evidence when config declares `inputs.forecats.mode=build`, `inputs.forecats.snapshot.enabled=true`, and `inputs.shared.prefer_forecats_snapshot=true` (`snapshot_check.*` + `shared_source_*` / `snapshot_source_mode` lines).
    - Validator output reports shared/snapshot source-map paths and provenance fields for auditability.
+10. P8A implementation-mode defaults are locked:
+   - `models.exdqlm_univar.implementation_mode` defaults to `theory_aligned`.
+   - `models.ndlm_main.implementation_mode` defaults to `theory_aligned`.
+   - `models.run_exdqlm_univar` and `models.run_ndlm_main` remain default `false`; no behavior change unless families are enabled.
+   - `legacy_bridge` remains supported as explicit fallback and now emits a non-fatal deprecation warning when selected for an enabled family.
 
 ## 12) Immediate Next Actions (Proposed)
 
