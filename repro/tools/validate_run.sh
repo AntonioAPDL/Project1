@@ -140,6 +140,8 @@ WRITE_AUDIT_PRIMARY="${RUN_ROOT}/validate/write_audit/fs_diff.patch"
 RESOLVED_CONFIG_PATH="${RUN_ROOT}/resolved_config.yaml"
 
 validation_profile_from_config=""
+validation_profile_from_manifest=""
+profile_resolution_source="cli"
 cfg_quantile_nums_csv=""
 cfg_quantile_labels_csv=""
 cfg_run_exdqlm_multivar="true"
@@ -214,10 +216,42 @@ fi
 
 PROFILE_EFFECTIVE="${PROFILE}"
 if [[ "${PROFILE}" == "auto" ]]; then
-  if [[ -n "${validation_profile_from_config}" ]]; then
+  if [[ -f "${MANIFEST_PATH}" ]]; then
+    if mapfile -t manifest_vals < <(python3 - "${MANIFEST_PATH}" <<'PY'
+import sys
+try:
+    import yaml
+except Exception as exc:
+    print(f"ERROR: PyYAML unavailable (import yaml failed): {exc}", file=sys.stderr)
+    raise SystemExit(2)
+
+path = sys.argv[1]
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        doc = yaml.safe_load(f) or {}
+except Exception as exc:
+    print(f"ERROR: Failed to parse YAML at {path}: {exc}", file=sys.stderr)
+    raise
+
+validation = doc.get("validation") or {}
+print(str(validation.get("validator_profile") or ""))
+PY
+    ); then
+      validation_profile_from_manifest="${manifest_vals[0]:-}"
+    else
+      die "Failed to parse ${MANIFEST_PATH} while resolving --profile auto (ensure valid YAML and PyYAML import 'yaml' is available)"
+    fi
+  fi
+
+  if [[ -n "${validation_profile_from_manifest}" ]]; then
+    PROFILE_EFFECTIVE="${validation_profile_from_manifest}"
+    profile_resolution_source="manifest"
+  elif [[ -n "${validation_profile_from_config}" ]]; then
     PROFILE_EFFECTIVE="${validation_profile_from_config}"
+    profile_resolution_source="resolved_config"
   else
     PROFILE_EFFECTIVE="production"
+    profile_resolution_source="default"
   fi
 fi
 if [[ "${PROFILE_EFFECTIVE}" != "production" && "${PROFILE_EFFECTIVE}" != "production_proof" && "${PROFILE_EFFECTIVE}" != "smoke" ]]; then
@@ -775,6 +809,8 @@ fi
 
 echo "RUN_ID=${RUN_ID}"
 echo "profile=${PROFILE_EFFECTIVE}"
+echo "profile_resolved=${PROFILE_EFFECTIVE}"
+echo "profile_source=${profile_resolution_source}"
 echo "quantile_rule=${quantile_rule_desc}"
 echo "RESULT=$([[ "${overall_pass}" == "true" ]] && echo PASS || echo FAIL)"
 echo "quantile_outputs=${quantile_count}/${quantile_target}"

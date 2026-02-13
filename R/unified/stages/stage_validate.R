@@ -122,5 +122,6 @@ unified_stage_validate <- function(cfg, run_root, repo_root, manifest) {
 
   manifest$validation$status <- status
   manifest$validation$compare_report_path <- report_json
+  manifest$validation$validator_profile <- unified_get(cfg, c("validation", "profile"), default = "production")
   list(manifest = manifest)
 }
