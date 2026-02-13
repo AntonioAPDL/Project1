@@ -116,7 +116,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 PROFILE="production"
-PROFILE_EXPLICIT="false"
 EXIT_NONZERO="false"
 RUN_ID_ARG=""
 
@@ -125,7 +124,6 @@ while [[ $# -gt 0 ]]; do
     --profile)
       [[ $# -ge 2 ]] || die "--profile requires an argument"
       PROFILE="$2"
-      PROFILE_EXPLICIT="true"
       shift 2
       ;;
     --exit-nonzero)
@@ -162,9 +160,9 @@ RUN_ID="${RUN_ID_ARG:-${RUN_ID:-}}"
 
 PROFILE_REQUESTED="${PROFILE}"
 PROFILE_EFFECTIVE="${PROFILE}"
-profile_resolution_source="cli"
 profile_reason="cli_profile"
 quantile_rule_desc="<unresolved>"
+PARSED_CONFIG_JSON=""
 
 emit_fail_result() {
   local msg="$1"
@@ -197,22 +195,12 @@ SNAPSHOT_SOURCE_MAP_PATH="${RUN_ROOT}/inputs/shared/forecats_bundle/snapshot_sou
 FIT_SHARED_SOURCE_LOG="${RUN_ROOT}/fit/logs/shared_input_source_map.log"
 POST_SHARED_SOURCE_LOG="${RUN_ROOT}/post/logs/shared_input_source_map.log"
 
-validation_profile_from_config=""
-cfg_quantile_nums_csv=""
-cfg_quantile_labels_csv=""
-cfg_run_exdqlm_multivar="true"
-cfg_run_exdqlm_univar="false"
-cfg_run_ndlm_main="false"
-cfg_contract_checks_enabled="false"
-cfg_diagnostics_enabled="false"
-cfg_forecats_mode="use_existing"
-cfg_forecats_snapshot_enabled="false"
-cfg_prefer_forecats_snapshot="true"
-cfg_validation_smoke_flag="false"
-[[ -f "${RESOLVED_CONFIG_PATH}" ]] || emit_fail_result "resolved_config.yaml not found: ${RESOLVED_CONFIG_PATH}"
-cfg_parse_output=""
-if cfg_parse_output="$(python3 - "${RESOLVED_CONFIG_PATH}" <<'PY'
+parse_resolved_config_single_pass() {
+  local path="$1"
+  python3 - "${path}" <<'PY'
+import json
 import sys
+
 try:
     import yaml
 except Exception as exc:
@@ -225,7 +213,7 @@ try:
         doc = yaml.safe_load(f) or {}
 except Exception as exc:
     print(f"ERROR: Failed to parse YAML at {path}: {exc}", file=sys.stderr)
-    raise
+    raise SystemExit(3)
 
 validation = doc.get("validation") or {}
 models = doc.get("models") or {}
@@ -233,77 +221,161 @@ fit = doc.get("fit") or {}
 inputs = doc.get("inputs") or {}
 forecats = inputs.get("forecats") or {}
 shared = inputs.get("shared") or {}
+
+def as_bool(val, default=False):
+    if val is None:
+        return bool(default)
+    if isinstance(val, str):
+        s = val.strip().lower()
+        if s in ("true", "1", "yes", "y", "on"):
+            return True
+        if s in ("false", "0", "no", "n", "off"):
+            return False
+    return bool(val)
+
+def to_pct_int(v):
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)):
+        num = float(v)
+    elif isinstance(v, str):
+        txt = v.strip()
+        if txt == "":
+            return None
+        try:
+            num = float(txt)
+        except Exception:
+            return None
+    else:
+        return None
+    if 0.0 <= num <= 1.0:
+        return int(round(num * 100.0))
+    return int(round(num))
+
 raw_quantiles = fit.get("quantiles")
 if isinstance(raw_quantiles, (list, tuple)):
-    quantiles = list(raw_quantiles)
+    q_raw = list(raw_quantiles)
 elif raw_quantiles is None:
-    quantiles = []
+    q_raw = []
 else:
-    quantiles = [raw_quantiles]
+    q_raw = [raw_quantiles]
 
-q_nums = []
-q_labels = []
-for q in quantiles:
-    try:
-        q_num = int(round(float(q) * 100))
-    except Exception:
+quantiles_pct = []
+seen = set()
+for q in q_raw:
+    pct = to_pct_int(q)
+    if pct is None:
         continue
-    q_nums.append(str(q_num))
-    q_labels.append(f"{q_num:02d}")
+    if pct in seen:
+        continue
+    seen.add(pct)
+    quantiles_pct.append(pct)
 
-def as_bool_word(val, default=False):
-    if val is None:
-        val = default
-    return "true" if bool(val) else "false"
-
-print(str(validation.get("profile") or ""))
-print(",".join(q_nums))
-print(",".join(q_labels))
-print(as_bool_word(models.get("run_exdqlm_multivar"), default=True))
-print(as_bool_word(models.get("run_exdqlm_univar"), default=False))
-print(as_bool_word(models.get("run_ndlm_main"), default=False))
-print(as_bool_word((fit.get("contract_checks") or {}).get("enabled"), default=False))
-print(as_bool_word((fit.get("diagnostics") or {}).get("enabled"), default=False))
 forecats_mode = str(forecats.get("mode") or "")
 snapshot_cfg = forecats.get("snapshot") or {}
 snapshot_enabled = snapshot_cfg.get("enabled")
 if snapshot_enabled is None:
     snapshot_enabled = (forecats_mode == "build")
-print(forecats_mode)
-print(as_bool_word(snapshot_enabled, default=False))
-print(as_bool_word(shared.get("prefer_forecats_snapshot"), default=True))
-print(as_bool_word(validation.get("smoke"), default=False))
+
+payload = {
+    "validation_profile": str(validation.get("profile") or ""),
+    "validation_smoke": as_bool(validation.get("smoke"), default=False),
+    "quantiles_pct": quantiles_pct,
+    "prefer_forecats_snapshot": as_bool(shared.get("prefer_forecats_snapshot"), default=True),
+    "run_exdqlm_multivar": as_bool(models.get("run_exdqlm_multivar"), default=True),
+    "run_exdqlm_univar": as_bool(models.get("run_exdqlm_univar"), default=False),
+    "run_ndlm_main": as_bool(models.get("run_ndlm_main"), default=False),
+    "fit_contract_checks_enabled": as_bool((fit.get("contract_checks") or {}).get("enabled"), default=False),
+    "fit_diagnostics_enabled": as_bool((fit.get("diagnostics") or {}).get("enabled"), default=False),
+    "forecats_mode": forecats_mode,
+    "forecats_snapshot_enabled": as_bool(snapshot_enabled, default=False),
+}
+
+print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+
+def bool_word(v):
+    return "true" if bool(v) else "false"
+
+ordered_keys = [
+    "validation_profile",
+    "validation_smoke",
+    "quantiles_pct",
+    "prefer_forecats_snapshot",
+    "run_exdqlm_multivar",
+    "run_exdqlm_univar",
+    "run_ndlm_main",
+    "fit_contract_checks_enabled",
+    "fit_diagnostics_enabled",
+    "forecats_mode",
+    "forecats_snapshot_enabled",
+]
+
+for key in ordered_keys:
+    val = payload.get(key)
+    if isinstance(val, list):
+        sval = ",".join(str(x) for x in val)
+    elif isinstance(val, bool):
+        sval = bool_word(val)
+    elif val is None:
+        sval = ""
+    else:
+        sval = str(val)
+    print(f"{key}={sval}")
 PY
-  2>&1)"; then
-  mapfile -t cfg_vals <<< "${cfg_parse_output}"
-  if [[ "${#cfg_vals[@]}" -lt 12 ]]; then
-    emit_fail_result "Failed to parse ${RESOLVED_CONFIG_PATH}: incomplete parser output"
+}
+
+validation_profile_from_config=""
+cfg_quantiles_pct_csv=""
+cfg_run_exdqlm_multivar="true"
+cfg_run_exdqlm_univar="false"
+cfg_run_ndlm_main="false"
+cfg_contract_checks_enabled="false"
+cfg_diagnostics_enabled="false"
+cfg_forecats_mode="use_existing"
+cfg_forecats_snapshot_enabled="false"
+cfg_prefer_forecats_snapshot="true"
+cfg_validation_smoke_flag="false"
+[[ -f "${RESOLVED_CONFIG_PATH}" ]] || emit_fail_result "resolved_config.yaml not found: ${RESOLVED_CONFIG_PATH}"
+cfg_parse_output=""
+if cfg_parse_output="$(parse_resolved_config_single_pass "${RESOLVED_CONFIG_PATH}" 2>&1)"; then
+  first_line="true"
+  while IFS= read -r line; do
+    if [[ "${first_line}" == "true" ]]; then
+      PARSED_CONFIG_JSON="${line}"
+      first_line="false"
+      continue
+    fi
+    key="${line%%=*}"
+    val="${line#*=}"
+    case "${key}" in
+      validation_profile) validation_profile_from_config="${val}" ;;
+      validation_smoke) cfg_validation_smoke_flag="${val}" ;;
+      quantiles_pct) cfg_quantiles_pct_csv="${val}" ;;
+      prefer_forecats_snapshot) cfg_prefer_forecats_snapshot="${val}" ;;
+      run_exdqlm_multivar) cfg_run_exdqlm_multivar="${val}" ;;
+      run_exdqlm_univar) cfg_run_exdqlm_univar="${val}" ;;
+      run_ndlm_main) cfg_run_ndlm_main="${val}" ;;
+      fit_contract_checks_enabled) cfg_contract_checks_enabled="${val}" ;;
+      fit_diagnostics_enabled) cfg_diagnostics_enabled="${val}" ;;
+      forecats_mode) cfg_forecats_mode="${val}" ;;
+      forecats_snapshot_enabled) cfg_forecats_snapshot_enabled="${val}" ;;
+    esac
+  done <<< "${cfg_parse_output}"
+  if [[ -z "${PARSED_CONFIG_JSON}" ]]; then
+    emit_fail_result "Failed to parse ${RESOLVED_CONFIG_PATH}: missing parser JSON payload"
   fi
-  validation_profile_from_config="${cfg_vals[0]:-}"
-  cfg_quantile_nums_csv="${cfg_vals[1]:-}"
-  cfg_quantile_labels_csv="${cfg_vals[2]:-}"
-  cfg_run_exdqlm_multivar="${cfg_vals[3]:-true}"
-  cfg_run_exdqlm_univar="${cfg_vals[4]:-false}"
-  cfg_run_ndlm_main="${cfg_vals[5]:-false}"
-  cfg_contract_checks_enabled="${cfg_vals[6]:-false}"
-  cfg_diagnostics_enabled="${cfg_vals[7]:-false}"
-  cfg_forecats_mode="${cfg_vals[8]:-use_existing}"
-  cfg_forecats_snapshot_enabled="${cfg_vals[9]:-false}"
-  cfg_prefer_forecats_snapshot="${cfg_vals[10]:-true}"
-  cfg_validation_smoke_flag="${cfg_vals[11]:-false}"
 else
   cfg_parse_output="${cfg_parse_output//$'\n'/ }"
   emit_fail_result "Failed to parse ${RESOLVED_CONFIG_PATH} (ensure valid YAML and PyYAML import 'yaml' is available). Details: ${cfg_parse_output}"
 fi
 
 declare -a cfg_quantile_nums=()
-if [[ -n "${cfg_quantile_nums_csv}" ]]; then
-  IFS=',' read -r -a cfg_quantile_nums <<< "${cfg_quantile_nums_csv}"
+if [[ -n "${cfg_quantiles_pct_csv}" ]]; then
+  IFS=',' read -r -a cfg_quantile_nums <<< "${cfg_quantiles_pct_csv}"
 fi
 cfg_quantiles_are_canonical="$(is_canonical_quantile_set "${cfg_quantile_nums[@]:-}")"
 
 if [[ "${PROFILE_REQUESTED}" == "auto" ]]; then
-  profile_resolution_source="auto"
   if [[ -n "${validation_profile_from_config}" ]]; then
     case "${validation_profile_from_config}" in
       production|production_proof|smoke)
@@ -327,12 +399,11 @@ if [[ "${PROFILE_REQUESTED}" == "auto" ]]; then
     profile_reason="auto_quantiles_noncanonical"
   fi
 else
-  profile_resolution_source="cli"
   profile_reason="cli_profile_explicit"
 fi
 
 if [[ "${PROFILE_EFFECTIVE}" != "production" && "${PROFILE_EFFECTIVE}" != "production_proof" && "${PROFILE_EFFECTIVE}" != "smoke" ]]; then
-  die "Unsupported validation profile: ${PROFILE_EFFECTIVE} (allowed: production, production_proof, smoke, auto)"
+  emit_fail_result "Unsupported profile_effective='${PROFILE_EFFECTIVE}'. Allowed: ${ALLOWED_PROFILES_CSV}"
 fi
 
 require_multivar="${cfg_run_exdqlm_multivar}"
@@ -348,20 +419,15 @@ if [[ "${PROFILE_EFFECTIVE}" == "production" ]]; then
   quantile_rule_desc="canonical_7_quantiles_enforced"
 else
   # Smoke and production_proof follow requested quantiles from resolved_config; default q=50 when absent.
-  if [[ -n "${cfg_quantile_nums_csv}" ]]; then
-    IFS=',' read -r -a EXPECTED_QUANTILES <<< "${cfg_quantile_nums_csv}"
+  if [[ -n "${cfg_quantiles_pct_csv}" ]]; then
+    IFS=',' read -r -a EXPECTED_QUANTILES <<< "${cfg_quantiles_pct_csv}"
   else
     EXPECTED_QUANTILES=(50)
   fi
-  if [[ -n "${cfg_quantile_labels_csv}" ]]; then
-    IFS=',' read -r -a EXPECTED_Q_LABELS <<< "${cfg_quantile_labels_csv}"
-  fi
-  if [[ "${#EXPECTED_Q_LABELS[@]}" -ne "${#EXPECTED_QUANTILES[@]}" ]]; then
-    EXPECTED_Q_LABELS=()
-    for q in "${EXPECTED_QUANTILES[@]}"; do
-      EXPECTED_Q_LABELS+=("$(printf "%02d" "${q}")")
-    done
-  fi
+  EXPECTED_Q_LABELS=()
+  for q in "${EXPECTED_QUANTILES[@]}"; do
+    EXPECTED_Q_LABELS+=("$(printf "%02d" "${q}")")
+  done
   if [[ "${PROFILE_EFFECTIVE}" == "production_proof" ]]; then
     quantile_rule_desc="config_declared_quantiles_enforced"
   else
@@ -940,15 +1006,21 @@ ${largest10}
 EOF
 fi
 
+result_word="$([[ "${overall_pass}" == "true" ]] && echo PASS || echo FAIL)"
+error_message=""
+if [[ "${result_word}" == "FAIL" ]]; then
+  error_message="validation_checks_failed: inferred_stop_point=${where_stopped}"
+fi
+
 echo "RUN_ID=${RUN_ID}"
 echo "profile_requested=${PROFILE_REQUESTED}"
 echo "profile_effective=${PROFILE_EFFECTIVE}"
 echo "profile_reason=${profile_reason}"
-echo "profile=${PROFILE_EFFECTIVE}"
-echo "profile_resolved=${PROFILE_EFFECTIVE}"
-echo "profile_source=${profile_resolution_source}"
 echo "quantile_rule=${quantile_rule_desc}"
-echo "RESULT=$([[ "${overall_pass}" == "true" ]] && echo PASS || echo FAIL)"
+echo "RESULT=${result_word}"
+if [[ -n "${error_message}" ]]; then
+  echo "error=${error_message}"
+fi
 echo "quantile_outputs=${quantile_count}/${quantile_target}"
 echo "present_quantiles=${present_q_csv}"
 echo "missing_quantiles=${missing_q_csv}"
@@ -1011,6 +1083,6 @@ echo "report_written=${report_path}"
 echo "top_10_largest_files:"
 echo "${largest10}"
 
-if [[ "${EXIT_NONZERO}" == "true" && "${overall_pass}" != "true" ]]; then
+if [[ "${EXIT_NONZERO}" == "true" && "${result_word}" == "FAIL" ]]; then
   exit 1
 fi

@@ -1174,6 +1174,22 @@ At each planning/execution checkpoint:
   - `auto` selects `production` for canonical 7 quantiles and honors explicit `validation.profile` when declared.
   - Unknown `validation.profile` under `auto` now emits deterministic fail output with allowed-profile guidance.
 
+### Progress Update 2026-02-13 09:44 UTC
+- Phase: P7B (validator auto-selection stabilization)
+- Change type: tooling+tests
+- Summary: stabilized `validate_run.sh` config parsing to a single deterministic resolved-config parse pass (PyYAML import + YAML parse hard-fail surfaced as validator `RESULT=FAIL`), aligned auto-profile output contract (`profile_requested/profile_effective/profile_reason` + `error` on fail), and expanded deterministic regression tests for smoke inference, explicit smoke override, malformed config handling, and `--exit-nonzero` behavior.
+- Files touched:
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `bash -n repro/tools/validate_run.sh`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\n')"`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+- Validation notes:
+  - Auto resolution now follows resolved-config-only semantics and does not rely on run-id heuristics.
+  - Fail outputs now consistently emit `error=...` for both early-parse and gate-failure paths.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
@@ -1194,6 +1210,7 @@ None currently tracked.
    - `smoke`: lightweight smoke-oriented validation contract.
    - `auto`: deterministic conservative resolution from `resolved_config.yaml`:
      - explicit `validation.profile` (`production|production_proof|smoke`) wins,
+     - explicit but unsupported `validation.profile` fails validation (`RESULT=FAIL`) with allowed-profile guidance,
      - else `validation.smoke=true` implies `smoke`,
      - else canonical quantile set implies `production`,
      - else `production_proof`.
