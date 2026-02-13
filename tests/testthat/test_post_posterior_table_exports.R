@@ -27,11 +27,14 @@ test_that("post_export_gamma_sigma_tables writes deterministic schema and orderi
     all_quantiles = mock_gamma_sigma(),
     output_dir = td,
     ci_digits = 3L,
-    write_tex = TRUE
+    write_tex = TRUE,
+    table_formats = c("csv", "rds")
   )
 
   expect_true(file.exists(file.path(td, "gamma_summary.csv")))
   expect_true(file.exists(file.path(td, "sigma_summary.csv")))
+  expect_true(file.exists(file.path(td, "gamma_summary.rds")))
+  expect_true(file.exists(file.path(td, "sigma_summary.rds")))
   expect_true(file.exists(file.path(td, "gamma_summary.tex")))
   expect_true(file.exists(file.path(td, "sigma_summary.tex")))
 
@@ -47,6 +50,12 @@ test_that("post_export_gamma_sigma_tables writes deterministic schema and orderi
 
   expect_true(all(nzchar(out$gamma$ci_str)))
   expect_true(all(nzchar(out$sigma$ci_str)))
+  expect_equal(
+    names(out$manifest),
+    c("table_name", "file_path", "nrow", "ncol", "sha256")
+  )
+  expect_equal(nrow(out$manifest), 4L)
+  expect_true(all(nzchar(out$manifest$sha256)))
 })
 
 test_that("post_export_gamma_sigma_tables handles empty input safely", {
@@ -93,17 +102,106 @@ test_that("post_export_covariate_effects_table writes expected columns and stabl
     output_dir = td,
     time_index = 999L,
     ci_digits = 3L,
-    write_tex = TRUE
+    write_tex = TRUE,
+    table_formats = c("csv")
   )
 
   expect_true(file.exists(file.path(td, "covariate_effects_summary.csv")))
   expect_true(file.exists(file.path(td, "covariate_effects_summary.tex")))
 
   expect_equal(
-    names(out),
+    names(out$table),
     c("covariate", "quantile", "center", "q2_5", "q97_5", "ci_str", "time_index", "notes")
   )
-  expect_equal(unique(out$covariate), c("Precipitation", "Soil Moisture", "PC1"))
-  expect_true(all(out$time_index == 999L))
-  expect_true(all(nzchar(out$ci_str)))
+  expect_equal(unique(out$table$covariate), c("Precipitation", "Soil Moisture", "PC1"))
+  expect_true(all(out$table$time_index == 999L))
+  expect_true(all(nzchar(out$table$ci_str)))
+  expect_equal(nrow(out$manifest), 1L)
+  expect_true(nzchar(out$manifest$sha256[[1L]]))
+})
+
+test_that("post_export_tables csv bytes are deterministic after stable ordering", {
+  td <- tempfile("deterministic_csv_")
+  dir.create(td, recursive = TRUE, showWarnings = FALSE)
+
+  a <- data.frame(
+    id = c(3, 1, 2),
+    score = c(1.2, 5.4, 2.2),
+    label = c("z", "x", "y"),
+    stringsAsFactors = FALSE
+  )
+  b <- a[c(2, 3, 1), , drop = FALSE]
+
+  m1 <- post_export_tables(
+    tables = list(example = a),
+    output_dir = file.path(td, "one"),
+    formats = "csv",
+    sort_keys = list(example = c("id")),
+    keep_na = TRUE
+  )
+  m2 <- post_export_tables(
+    tables = list(example = b),
+    output_dir = file.path(td, "two"),
+    formats = "csv",
+    sort_keys = list(example = c("id")),
+    keep_na = TRUE
+  )
+
+  bytes1 <- readBin(m1$file_path[[1L]], what = "raw", n = file.info(m1$file_path[[1L]])$size)
+  bytes2 <- readBin(m2$file_path[[1L]], what = "raw", n = file.info(m2$file_path[[1L]])$size)
+  expect_identical(bytes1, bytes2)
+  expect_identical(m1$sha256[[1L]], m2$sha256[[1L]])
+})
+
+test_that("post_export_tables keep_na policy is explicit and stable", {
+  td <- tempfile("na_policy_")
+  dir.create(td, recursive = TRUE, showWarnings = FALSE)
+
+  x <- data.frame(
+    id = c(1L, 2L, 3L),
+    value = c(10.0, NA_real_, 20.5),
+    stringsAsFactors = FALSE
+  )
+
+  keep <- post_export_tables(
+    tables = list(tbl = x),
+    output_dir = file.path(td, "keep"),
+    formats = "csv",
+    keep_na = TRUE,
+    sort_keys = list(tbl = "id")
+  )
+  drop <- post_export_tables(
+    tables = list(tbl = x),
+    output_dir = file.path(td, "drop"),
+    formats = "csv",
+    keep_na = FALSE,
+    sort_keys = list(tbl = "id")
+  )
+
+  keep_df <- read.csv(keep$file_path[[1L]], stringsAsFactors = FALSE)
+  drop_df <- read.csv(drop$file_path[[1L]], stringsAsFactors = FALSE)
+  expect_equal(nrow(keep_df), 3L)
+  expect_equal(nrow(drop_df), 2L)
+  expect_false(any(is.na(drop_df$value)))
+})
+
+test_that("post_write_table_exports_manifest writes stable schema with checksum", {
+  td <- tempfile("manifest_export_")
+  dir.create(td, recursive = TRUE, showWarnings = FALSE)
+  m <- post_export_tables(
+    tables = list(
+      t1 = data.frame(a = c(1, 2), b = c("x", "y"), stringsAsFactors = FALSE)
+    ),
+    output_dir = td,
+    formats = c("csv", "rds"),
+    keep_na = TRUE
+  )
+  out_path <- post_write_table_exports_manifest(m, output_dir = td)
+  expect_true(file.exists(out_path))
+  m_df <- read.csv(out_path, stringsAsFactors = FALSE)
+  expect_equal(
+    names(m_df),
+    c("table_name", "file_path", "nrow", "ncol", "sha256")
+  )
+  expect_true(all(nzchar(m_df$sha256)))
 })

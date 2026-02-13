@@ -1207,6 +1207,26 @@ At each planning/execution checkpoint:
   - Malformed YAML auto-fail test now asserts absence of `Traceback` and `File "` tokens in stdout.
   - Total test suite passed with the new coverage additions.
 
+### Progress Update 2026-02-13 22:15 UTC
+- Phase: P7 (post deterministic table export hardening)
+- Change type: implementation+tests
+- Summary: hardened post-stage table exports for deterministic and reliable output generation without model-semantic changes by adding deterministic table-export utilities (stable row/column handling, explicit NA policy, deterministic numeric CSV formatting, per-file sha256 manifest), routing exports to run-scoped `post/outputs/<RUN_ID>/tables/`, wiring configurable table formats (`csv` default, optional `rds`) through post env plumbing, and extending testthat coverage for byte-stable CSV output, NA policy, and checksum-manifest stability.
+- Files touched:
+  - `R/environmetrics/02_helpers_core.R`
+  - `R/environmetrics/40_figures.R`
+  - `R/unified/stages/stage_post.R`
+  - `config/unified_run.template.yaml`
+  - `tests/testthat/test_post_posterior_table_exports.R`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `Rscript -e "testthat::test_dir('tests/testthat', reporter='summary')"`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\n')"`
+- Validation notes:
+  - `post.export_tables` behavior remains config-gated and backward-compatible; default still enabled.
+  - Table artifacts are now emitted under `post/outputs/<RUN_ID>/tables/` and are captured by recursive post artifact manifest scanning.
+  - Deterministic test coverage now includes CSV byte identity under reordered inputs and explicit NA-retain/NA-drop behavior.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
