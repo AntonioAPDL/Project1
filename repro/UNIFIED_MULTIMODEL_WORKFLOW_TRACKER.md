@@ -1145,6 +1145,18 @@ At each planning/execution checkpoint:
 - Next action:
   - Clean tracker duplication and keep a single authoritative Open/Resolved section.
 
+### Progress Update 2026-02-13 08:55 UTC
+- Phase: P7 (tracker hygiene)
+- Change type: docs
+- Summary: cleaned tracker state to keep a single authoritative Open/Resolved block in §11, clarified that appendix discovery ambiguities are historical context (not active open questions), and updated forecats snapshot resolved-default language to match enforced validator gates.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation notes:
+  - Tracker now has one authoritative `## 11) Open Questions / Resolved Defaults` section with `11.1 Open = None currently tracked`.
+  - Forecats snapshot policy text now reflects production/proof enforcement conditions introduced in validator tooling.
+- Next action:
+  - Continue P7 family-aware validator/report hardening toward P8 cutover planning.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
@@ -1183,7 +1195,8 @@ None currently tracked.
 9. Forecats run-scoped snapshot policy is locked:
    - When snapshot bundle exists, shared-input resolution remains run-scoped and provenance is logged in `inputs/shared/source_map.txt`.
    - Fit/post shared-input validation logs source-map evidence under `fit/logs/shared_input_source_map.log` and `post/logs/shared_input_source_map.log`.
-   - Validator output reports shared/snapshot source-map paths and existence flags for auditability.
+   - For `production` / `production_proof`, validator now enforces snapshot evidence when config declares `inputs.forecats.mode=build`, `inputs.forecats.snapshot.enabled=true`, and `inputs.shared.prefer_forecats_snapshot=true` (`snapshot_check.*` + `shared_source_*` / `snapshot_source_mode` lines).
+   - Validator output reports shared/snapshot source-map paths and provenance fields for auditability.
 
 ## 12) Immediate Next Actions (Proposed)
 
@@ -1221,7 +1234,7 @@ Key findings:
 6. NDLM legacy script currently hard-codes `p0 <- 0.5` and writes `DISC_variables_50_NDLM_synth_DISC.RData` to repo root (`DISC_Optimal_Synth_Ranges_NDLM.r:44`, `DISC_Optimal_Synth_Ranges_NDLM.r:2186`).
 7. Univariate legacy script consumes command-line quantile and writes `variables_<q>_exAL_synth_DISC_uni.RData` to repo root (`OptimalModelSLexAL.r:45-46`, `OptimalModelSLexAL.r:2040`).
 
-Ambiguities remaining after discovery:
+Historical ambiguities remaining after 2026-02-10 discovery (superseded by §11 authoritative state):
 
 1. Exact canonical schema for future `ndlm_main` manifest family labeling is not implemented in current manifest v1.
 2. Current post code consumes root model-state artifacts; run-scoped manifest-driven loading contract is not implemented yet.
