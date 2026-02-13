@@ -85,6 +85,34 @@ class ValidateRunScriptTests(unittest.TestCase):
             check=False,
         )
 
+    def _parse_kv_output(self, stdout: str) -> dict[str, str]:
+        parsed: dict[str, str] = {}
+        for line in stdout.splitlines():
+            if "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            parsed[key.strip()] = value.strip()
+        return parsed
+
+    def _assert_output_contract(
+        self,
+        result: subprocess.CompletedProcess[str],
+        profile_requested: str,
+        expected_result: str | None = None,
+    ) -> dict[str, str]:
+        parsed = self._parse_kv_output(result.stdout)
+        self.assertEqual(parsed.get("RUN_ID"), self.run_id, msg=result.stdout + "\n" + result.stderr)
+        self.assertEqual(parsed.get("profile_requested"), profile_requested, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("profile_effective", parsed, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("profile_reason", parsed, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("quantile_rule", parsed, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("RESULT", parsed, msg=result.stdout + "\n" + result.stderr)
+        if expected_result is not None:
+            self.assertEqual(parsed.get("RESULT"), expected_result, msg=result.stdout + "\n" + result.stderr)
+        if parsed.get("RESULT") == "FAIL":
+            self.assertTrue(parsed.get("error"), msg=result.stdout + "\n" + result.stderr)
+        return parsed
+
     def _write_three_quantile_full_family_artifacts(self, include_validation_profile: bool = True) -> None:
         config_lines = [
             "models:",
@@ -158,6 +186,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         write_json(self.run_root / "fit" / "diagnostics" / "ndlm_main" / "diag.json", {"status": "pass"})
 
         result = self._run_validate("smoke")
+        self._assert_output_contract(result, "smoke", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
 
@@ -166,6 +195,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         self._write_three_quantile_full_family_artifacts()
 
         result = self._run_validate("production_proof")
+        self._assert_output_contract(result, "production_proof", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
         self.assertIn("quantile_rule=config_declared_quantiles_enforced", result.stdout)
@@ -176,6 +206,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         self._write_three_quantile_full_family_artifacts()
 
         result = self._run_validate("production")
+        self._assert_output_contract(result, "production", expected_result="FAIL")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RESULT=FAIL", result.stdout)
         self.assertIn("quantile_rule=canonical_7_quantiles_enforced", result.stdout)
@@ -201,6 +232,7 @@ class ValidateRunScriptTests(unittest.TestCase):
             write_text(self.run_root / "fit" / f"q={int(q):02d}" / "outputs" / f"DISC_variables_{q}_exAL_synth_DISC.RData")
 
         result = self._run_validate("auto")
+        self._assert_output_contract(result, "auto", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
         self.assertIn("profile_requested=auto", result.stdout)
@@ -228,6 +260,7 @@ class ValidateRunScriptTests(unittest.TestCase):
             write_text(self.run_root / "fit" / f"q={int(q):02d}" / "outputs" / f"DISC_variables_{q}_exAL_synth_DISC.RData")
 
         result = self._run_validate("auto")
+        self._assert_output_contract(result, "auto", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
         self.assertIn("profile_requested=auto", result.stdout)
@@ -257,6 +290,7 @@ class ValidateRunScriptTests(unittest.TestCase):
             write_text(self.run_root / "fit" / f"q={int(q):02d}" / "outputs" / f"DISC_variables_{q}_exAL_synth_DISC.RData")
 
         result = self._run_validate("auto")
+        self._assert_output_contract(result, "auto", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
         self.assertIn("profile_effective=production_proof", result.stdout)
@@ -286,6 +320,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         write_text(self.run_root / "validate" / "write_audit" / "post" / "fs_diff.patch", "")
 
         result = self._run_validate("auto")
+        self._assert_output_contract(result, "auto", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
         self.assertIn("profile_effective=smoke", result.stdout)
@@ -315,6 +350,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         write_text(self.run_root / "validate" / "write_audit" / "post" / "fs_diff.patch", "")
 
         result = self._run_validate("auto")
+        self._assert_output_contract(result, "auto", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
         self.assertIn("profile_effective=smoke", result.stdout)
@@ -339,6 +375,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         )
 
         result = self._run_validate("auto")
+        self._assert_output_contract(result, "auto", expected_result="FAIL")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RESULT=FAIL", result.stdout)
         self.assertIn("profile_requested=auto", result.stdout)
@@ -351,6 +388,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         write_text(self.run_root / "resolved_config.yaml", "models: [\n")
 
         result = self._run_validate("auto")
+        self._assert_output_contract(result, "auto", expected_result="FAIL")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RESULT=FAIL", result.stdout)
         self.assertIn("profile_requested=auto", result.stdout)
@@ -363,6 +401,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         (self.run_root / "validate" / "compare_report.json").unlink()
 
         result = self._run_validate("production_proof")
+        self._assert_output_contract(result, "production_proof", expected_result="FAIL")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RESULT=FAIL", result.stdout)
         self.assertIn("compare_report_exists=false", result.stdout)
@@ -388,6 +427,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         write_text(self.run_root / "fit" / "ndlm_main" / "outputs" / "ndlm_main_state.RData")
 
         result = self._run_validate("smoke")
+        self._assert_output_contract(result, "smoke", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
 
@@ -419,6 +459,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         )
 
         result = self._run_validate("smoke")
+        self._assert_output_contract(result, "smoke", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
 
@@ -492,6 +533,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         write_text(self.run_root / "fit" / "q=50" / "outputs" / "DISC_variables_50_exAL_synth_DISC.RData")
 
         result = self._run_validate("production")
+        self._assert_output_contract(result, "production", expected_result="FAIL")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RESULT=FAIL", result.stdout)
 
@@ -521,6 +563,7 @@ class ValidateRunScriptTests(unittest.TestCase):
             write_text(self.run_root / "fit" / f"q={q}" / "outputs" / f"DISC_variables_{int(q)}_exAL_synth_DISC.RData")
 
         result = self._run_validate("production")
+        self._assert_output_contract(result, "production", expected_result="FAIL")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RESULT=FAIL", result.stdout)
         self.assertIn("family_check.univar_outputs=FAIL", result.stdout)
@@ -546,6 +589,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         write_text(self.run_root / "fit" / "ndlm_main" / "outputs" / "ndlm_main_20260213.RData")
 
         result = self._run_validate("production_proof")
+        self._assert_output_contract(result, "production_proof", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
         self.assertIn("require_ndlm=true", result.stdout)
@@ -572,6 +616,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         (self.run_root / "fit" / "ndlm_main" / "outputs").mkdir(parents=True, exist_ok=True)
 
         result = self._run_validate("production_proof")
+        self._assert_output_contract(result, "production_proof", expected_result="FAIL")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RESULT=FAIL", result.stdout)
         self.assertIn("require_ndlm=true", result.stdout)
@@ -599,6 +644,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         # Intentionally do not create fit/ndlm_main/outputs to verify clean FAIL reporting.
 
         result = self._run_validate("production_proof")
+        self._assert_output_contract(result, "production_proof", expected_result="FAIL")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RESULT=FAIL", result.stdout)
         self.assertIn("require_ndlm=true", result.stdout)
@@ -631,6 +677,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         (self.run_root / "fit").mkdir(parents=True, exist_ok=True)
 
         result = self._run_validate("smoke")
+        self._assert_output_contract(result, "smoke", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("shared_source_map_exists=true", result.stdout)
         self.assertIn("snapshot_source_map_exists=true", result.stdout)
@@ -664,6 +711,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         )
 
         result = self._run_validate("production_proof")
+        self._assert_output_contract(result, "production_proof", expected_result="FAIL")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RESULT=FAIL", result.stdout)
         self.assertIn("require_snapshot_evidence=true", result.stdout)
@@ -711,6 +759,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         )
 
         result = self._run_validate("production_proof")
+        self._assert_output_contract(result, "production_proof", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
         self.assertIn("require_snapshot_evidence=true", result.stdout)
@@ -721,6 +770,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         write_text(self.run_root / "resolved_config.yaml", "models: [\n")
 
         result = self._run_validate("smoke")
+        self._assert_output_contract(result, "smoke", expected_result="FAIL")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RESULT=FAIL", result.stdout)
         self.assertIn("profile_requested=smoke", result.stdout)
@@ -747,11 +797,13 @@ class ValidateRunScriptTests(unittest.TestCase):
         write_text(self.run_root / "fit" / "q=50" / "outputs" / "DISC_variables_50_exAL_synth_DISC.RData")
 
         result_default_exit = self._run_validate("production", exit_nonzero=False)
+        self._assert_output_contract(result_default_exit, "production", expected_result="FAIL")
         self.assertEqual(result_default_exit.returncode, 0, msg=result_default_exit.stdout + "\n" + result_default_exit.stderr)
         self.assertIn("RESULT=FAIL", result_default_exit.stdout)
         self.assertIn("error=validation_checks_failed:", result_default_exit.stdout)
 
         result_nonzero = self._run_validate("production", exit_nonzero=True)
+        self._assert_output_contract(result_nonzero, "production", expected_result="FAIL")
         self.assertNotEqual(result_nonzero.returncode, 0)
         self.assertIn("RESULT=FAIL", result_nonzero.stdout)
         self.assertIn("error=validation_checks_failed:", result_nonzero.stdout)

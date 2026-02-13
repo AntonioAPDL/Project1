@@ -162,7 +162,6 @@ PROFILE_REQUESTED="${PROFILE}"
 PROFILE_EFFECTIVE="${PROFILE}"
 profile_reason="cli_profile"
 quantile_rule_desc="<unresolved>"
-PARSED_CONFIG_JSON=""
 
 emit_fail_result() {
   local msg="$1"
@@ -198,7 +197,6 @@ POST_SHARED_SOURCE_LOG="${RUN_ROOT}/post/logs/shared_input_source_map.log"
 parse_resolved_config_single_pass() {
   local path="$1"
   python3 - "${path}" <<'PY'
-import json
 import sys
 
 try:
@@ -261,15 +259,11 @@ else:
     q_raw = [raw_quantiles]
 
 quantiles_pct = []
-seen = set()
 for q in q_raw:
     pct = to_pct_int(q)
-    if pct is None:
-        continue
-    if pct in seen:
-        continue
-    seen.add(pct)
-    quantiles_pct.append(pct)
+    if pct is not None:
+        quantiles_pct.append(pct)
+quantiles_pct = sorted(set(quantiles_pct))
 
 forecats_mode = str(forecats.get("mode") or "")
 snapshot_cfg = forecats.get("snapshot") or {}
@@ -290,8 +284,6 @@ payload = {
     "forecats_mode": forecats_mode,
     "forecats_snapshot_enabled": as_bool(snapshot_enabled, default=False),
 }
-
-print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
 
 def bool_word(v):
     return "true" if bool(v) else "false"
@@ -338,13 +330,8 @@ cfg_validation_smoke_flag="false"
 [[ -f "${RESOLVED_CONFIG_PATH}" ]] || emit_fail_result "resolved_config.yaml not found: ${RESOLVED_CONFIG_PATH}"
 cfg_parse_output=""
 if cfg_parse_output="$(parse_resolved_config_single_pass "${RESOLVED_CONFIG_PATH}" 2>&1)"; then
-  first_line="true"
   while IFS= read -r line; do
-    if [[ "${first_line}" == "true" ]]; then
-      PARSED_CONFIG_JSON="${line}"
-      first_line="false"
-      continue
-    fi
+    [[ -n "${line}" ]] || continue
     key="${line%%=*}"
     val="${line#*=}"
     case "${key}" in
@@ -361,19 +348,16 @@ if cfg_parse_output="$(parse_resolved_config_single_pass "${RESOLVED_CONFIG_PATH
       forecats_snapshot_enabled) cfg_forecats_snapshot_enabled="${val}" ;;
     esac
   done <<< "${cfg_parse_output}"
-  if [[ -z "${PARSED_CONFIG_JSON}" ]]; then
-    emit_fail_result "Failed to parse ${RESOLVED_CONFIG_PATH}: missing parser JSON payload"
-  fi
 else
   cfg_parse_output="${cfg_parse_output//$'\n'/ }"
   emit_fail_result "Failed to parse ${RESOLVED_CONFIG_PATH} (ensure valid YAML and PyYAML import 'yaml' is available). Details: ${cfg_parse_output}"
 fi
 
-declare -a cfg_quantile_nums=()
+declare -a cfg_quantiles_pct=()
 if [[ -n "${cfg_quantiles_pct_csv}" ]]; then
-  IFS=',' read -r -a cfg_quantile_nums <<< "${cfg_quantiles_pct_csv}"
+  IFS=',' read -r -a cfg_quantiles_pct <<< "${cfg_quantiles_pct_csv}"
 fi
-cfg_quantiles_are_canonical="$(is_canonical_quantile_set "${cfg_quantile_nums[@]:-}")"
+cfg_quantiles_are_canonical="$(is_canonical_quantile_set "${cfg_quantiles_pct[@]:-}")"
 
 if [[ "${PROFILE_REQUESTED}" == "auto" ]]; then
   if [[ -n "${validation_profile_from_config}" ]]; then
