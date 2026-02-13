@@ -194,8 +194,8 @@ post_write_csv_deterministic <- function(df, path, numeric_digits = 10L) {
 }
 
 post_path_relative_to_dir <- function(path, output_dir) {
-  path_abs <- normalizePath(path, mustWork = TRUE)
   dir_abs <- normalizePath(output_dir, mustWork = TRUE)
+  path_abs <- normalizePath(path, mustWork = FALSE)
   prefix <- paste0(dir_abs, .Platform$file.sep)
   if (startsWith(path_abs, prefix)) {
     return(substr(path_abs, nchar(prefix) + 1L, nchar(path_abs)))

@@ -290,11 +290,12 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     generated <- list.files(out_dir, full.names = TRUE, recursive = TRUE)
     allowed_ext <- "\\.(png|pdf|csv|tsv|txt|json|yaml|yml|rds)$"
     out_dir_abs <- normalizePath(out_dir, mustWork = TRUE)
+    out_dir_prefix <- paste0(out_dir_abs, .Platform$file.sep)
     for (f in generated) {
       if (file.info(f)$isdir) next
       if (!grepl(allowed_ext, f, ignore.case = TRUE)) next
       f_abs <- normalizePath(f, mustWork = FALSE)
-      if (!startsWith(f_abs, paste0(out_dir_abs, "/")) && !identical(f_abs, out_dir_abs)) next
+      if (!startsWith(f_abs, out_dir_prefix) && !identical(f_abs, out_dir_abs)) next
 
       if (grepl("\\.png$", f, ignore.case = TRUE)) {
         manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "image_png", analysis_scale = "n/a")
