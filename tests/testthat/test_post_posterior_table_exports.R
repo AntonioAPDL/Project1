@@ -242,3 +242,14 @@ test_that("post_write_table_exports_manifest writes stable schema with checksum"
   expect_true(all(nzchar(m_df$sha256)))
   expect_equal(m_df$file_path[[1L]], "t1.csv")
 })
+
+test_that("post_path_relative_to_dir derives relative path and falls back to basename", {
+  td <- tempfile("relative_path_helper_")
+  dir.create(td, recursive = TRUE, showWarnings = FALSE)
+
+  in_dir_missing <- file.path(td, "nested", "table.csv")
+  expect_equal(post_path_relative_to_dir(in_dir_missing, td), file.path("nested", "table.csv"))
+
+  outside_missing <- file.path(tempdir(), "outside_path_helper", "table_outside.csv")
+  expect_equal(post_path_relative_to_dir(outside_missing, td), "table_outside.csv")
+})

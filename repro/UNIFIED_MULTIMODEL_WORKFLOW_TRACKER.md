@@ -1225,6 +1225,24 @@ At each planning/execution checkpoint:
   - No model/fit/posterior semantics were changed.
   - Deterministic sorting is now explicit-only (`sort_keys` provided); otherwise row order is preserved as supplied.
 
+### Progress Update 2026-02-13 23:20 UTC
+- Phase: P7 (post deterministic table export residual hardening)
+- Change type: implementation+tests
+- Summary: completed residual gap-only hardening by making table-export relative-path derivation robust for non-existent candidate paths (`normalizePath(..., mustWork=FALSE)` on file path with basename fallback), and by making `stage_post` run-root artifact prefix checks path-separator safe.
+- Files touched:
+  - `R/environmetrics/02_helpers_core.R`
+  - `R/unified/stages/stage_post.R`
+  - `tests/testthat/test_post_posterior_table_exports.R`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `Rscript -e "testthat::test_dir('tests/testthat', reporter='summary')"`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\n')"`
+- Validation notes:
+  - No model/fit/posterior semantics changed.
+  - Sorting behavior is unchanged: explicit valid `sort_keys` sorts, otherwise caller row order is preserved.
+  - Post artifact capture remains extension-allowlist bounded.
+
 ### Progress Update 2026-02-13 22:15 UTC
 - Phase: P7 (post deterministic table export hardening)
 - Change type: implementation+tests
