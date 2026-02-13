@@ -1099,6 +1099,20 @@ At each planning/execution checkpoint:
 - Next action:
   - With Open Q11.1 items closed, continue P7 family-aware validator/report hardening toward P8 cutover planning.
 
+### Progress Update 2026-02-13 08:24 UTC
+- Phase: P7 (validator robustness bugfix)
+- Change type: tooling+tests
+- Summary: fixed validator robustness around NDLM artifact discovery and failure reporting by guarding NDLM output-dir lookup and preventing early termination when `fit/` is absent; missing NDLM outputs now fail cleanly with `RESULT=FAIL` diagnostics instead of blank output.
+- Files touched:
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation notes:
+  - NDLM accepted-name finder now runs only when `fit/ndlm_main/outputs` exists.
+  - Added deterministic regression test for missing NDLM outputs directory under `production_proof`.
+- Next action:
+  - Apply runner-level skip-status bugfix to ensure disabled stages always record `stages.<name>.status=skip` in manifest.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open

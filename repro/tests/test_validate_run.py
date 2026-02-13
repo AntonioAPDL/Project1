@@ -478,6 +478,33 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("family_check.ndlm_output=FAIL", result.stdout)
         self.assertIn("ndlm_output_path=<not-required-or-missing>", result.stdout)
 
+    def test_production_proof_fails_cleanly_when_ndlm_outputs_dir_absent(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: false",
+                    "  run_exdqlm_univar: false",
+                    "  run_ndlm_main: true",
+                    "fit:",
+                    "  quantiles: [0.5]",
+                    "validation:",
+                    "  profile: production_proof",
+                ]
+            )
+            + "\n",
+        )
+        # Intentionally do not create fit/ndlm_main/outputs to verify clean FAIL reporting.
+
+        result = self._run_validate("production_proof")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("RESULT=FAIL", result.stdout)
+        self.assertIn("require_ndlm=true", result.stdout)
+        self.assertIn("family_check.ndlm_output=FAIL", result.stdout)
+        self.assertIn("ndlm_output_path=<not-required-or-missing>", result.stdout)
+
     def test_validator_reports_shared_snapshot_source_map_paths(self) -> None:
         self._write_common_success_files()
         write_text(

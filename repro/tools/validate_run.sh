@@ -329,6 +329,7 @@ if [[ "${require_univar}" == "true" ]]; then
 fi
 
 ndlm_output_path=""
+ndlm_outputs_dir="${RUN_ROOT}/fit/ndlm_main/outputs"
 declare -a NDLM_ACCEPTED_FILENAMES=(
   "DISC_variables_50_NDLM_synth_DISC.RData"
   "ndlm_main_state.RData"
@@ -342,11 +343,13 @@ if [[ "${require_ndlm}" == "true" ]]; then
     fi
     ndlm_find_expr+=(-name "${ndlm_name}")
   done
-  ndlm_output_path="$(
-    find "${RUN_ROOT}/fit/ndlm_main/outputs" -type f \
-      \( "${ndlm_find_expr[@]}" \) \
-      -print -quit 2>/dev/null || true
-  )"
+  if [[ -d "${ndlm_outputs_dir}" ]]; then
+    ndlm_output_path="$(
+      find "${ndlm_outputs_dir}" -type f \
+        \( "${ndlm_find_expr[@]}" \) \
+        -print -quit 2>/dev/null || true
+    )"
+  fi
 fi
 
 contract_univar_reports=()
@@ -654,11 +657,12 @@ heavy_log_path="${RUN_ROOT}/logs/heavy_run.log"
 heavy_log_tail="$(tail -n 120 "${heavy_log_path}" 2>/dev/null || true)"
 
 latest_fit_log="$(
-  find "${RUN_ROOT}/fit" -type f -path '*/q=*/logs/fit.log' 2>/dev/null \
-    | sed -E 's#.*q=([0-9]{2})/logs/fit.log#\1\t&#' \
-    | sort -n \
-    | tail -n 1 \
-    | cut -f2-
+  {
+    find "${RUN_ROOT}/fit" -type f -path '*/q=*/logs/fit.log' 2>/dev/null || true
+  } | sed -E 's#.*q=([0-9]{2})/logs/fit.log#\1\t&#' \
+      | sort -n \
+      | tail -n 1 \
+      | cut -f2-
 )"
 
 latest_fit_tail=""
