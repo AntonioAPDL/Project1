@@ -288,18 +288,30 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   out_dir <- file.path(run_root, "post", "outputs", run_id)
   if (dir.exists(out_dir)) {
     generated <- list.files(out_dir, full.names = TRUE, recursive = TRUE)
+    allowed_ext <- "\\.(png|pdf|csv|tsv|txt|json|yaml|yml|rds)$"
+    out_dir_abs <- normalizePath(out_dir, mustWork = TRUE)
     for (f in generated) {
       if (file.info(f)$isdir) next
+      if (!grepl(allowed_ext, f, ignore.case = TRUE)) next
+      f_abs <- normalizePath(f, mustWork = FALSE)
+      if (!startsWith(f_abs, paste0(out_dir_abs, "/")) && !identical(f_abs, out_dir_abs)) next
+
       if (grepl("\\.png$", f, ignore.case = TRUE)) {
         manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "image_png", analysis_scale = "n/a")
+      } else if (grepl("\\.pdf$", f, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_binary", analysis_scale = "n/a")
       } else if (grepl("\\.rds$", f, ignore.case = TRUE)) {
         manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "model_state")
       } else if (grepl("\\.csv$", f, ignore.case = TRUE)) {
         manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "table_csv", analysis_scale = "n/a")
-      } else if (grepl("\\.tex$", f, ignore.case = TRUE)) {
-        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_tex", analysis_scale = "n/a")
-      } else if (grepl("\\.md$", f, ignore.case = TRUE)) {
-        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_markdown", analysis_scale = "n/a")
+      } else if (grepl("\\.tsv$", f, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "table_tsv", analysis_scale = "n/a")
+      } else if (grepl("\\.json$", f, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_json", analysis_scale = "n/a")
+      } else if (grepl("\\.(yaml|yml)$", f, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_yaml", analysis_scale = "n/a")
+      } else if (grepl("\\.txt$", f, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_plain", analysis_scale = "n/a")
       }
     }
   }

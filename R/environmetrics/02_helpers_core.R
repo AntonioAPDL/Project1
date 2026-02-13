@@ -137,8 +137,9 @@ post_table_row_order <- function(df, sort_keys = NULL) {
   } else {
     keys <- character(0)
   }
+  # Preserve caller-provided row order unless explicit valid sort keys are provided.
   if (length(keys) == 0L) {
-    keys <- names(df)
+    return(seq_len(n))
   }
 
   key_cols <- lapply(keys, function(k) {
