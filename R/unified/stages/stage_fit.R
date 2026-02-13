@@ -163,13 +163,25 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   univar_impl_mode <- unified_get(
     cfg,
     c("models", "exdqlm_univar", "implementation_mode"),
-    default = "legacy_bridge"
+    default = "theory_aligned"
   )
   ndlm_impl_mode <- unified_get(
     cfg,
     c("models", "ndlm_main", "implementation_mode"),
-    default = "legacy_bridge"
+    default = "theory_aligned"
   )
+  if (isTRUE(cfg$models$run_exdqlm_univar) && identical(univar_impl_mode, "legacy_bridge")) {
+    warning(
+      "models.exdqlm_univar.implementation_mode=legacy_bridge is supported but deprecated; prefer theory_aligned.",
+      call. = FALSE
+    )
+  }
+  if (isTRUE(cfg$models$run_ndlm_main) && identical(ndlm_impl_mode, "legacy_bridge")) {
+    warning(
+      "models.ndlm_main.implementation_mode=legacy_bridge is supported but deprecated; prefer theory_aligned.",
+      call. = FALSE
+    )
+  }
   contract_checks_enabled <- isTRUE(unified_get(cfg, c("fit", "contract_checks", "enabled"), default = FALSE))
   contract_checks_fail_fast <- isTRUE(unified_get(cfg, c("fit", "contract_checks", "fail_fast"), default = TRUE))
   contract_checks_write_reports <- isTRUE(unified_get(cfg, c("fit", "contract_checks", "write_reports"), default = TRUE))
