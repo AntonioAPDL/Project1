@@ -1157,6 +1157,23 @@ At each planning/execution checkpoint:
 - Next action:
   - Continue P7 family-aware validator/report hardening toward P8 cutover planning.
 
+### Progress Update 2026-02-13 09:18 UTC
+- Phase: P7B (validator auto-selection hardening)
+- Change type: tooling+tests
+- Summary: hardened `validate_run.sh --profile auto` to use conservative resolved-config-driven profile selection with explicit diagnostics (`profile_requested`, `profile_effective`, `profile_reason`) and canonical quantile set comparison after normalization. Auto now fails cleanly with `RESULT=FAIL` for malformed `resolved_config.yaml` or unknown `validation.profile` values while preserving strict production gates.
+- Files touched:
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `bash -n repro/tools/validate_run.sh`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\n')"`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+- Validation notes:
+  - `auto` selects `production_proof` when quantile set is non-canonical and no explicit validation profile is declared.
+  - `auto` selects `production` for canonical 7 quantiles and honors explicit `validation.profile` when declared.
+  - Unknown `validation.profile` under `auto` now emits deterministic fail output with allowed-profile guidance.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
@@ -1175,7 +1192,11 @@ None currently tracked.
    - `production`: canonical 7-quantile enforcement with strict production gates.
    - `production_proof`: config-declared quantile enforcement with production-like non-quantile gates.
    - `smoke`: lightweight smoke-oriented validation contract.
-   - `auto`: deterministic resolution order is `run_manifest.validation.validator_profile` -> `resolved_config.validation.profile` -> `production`.
+   - `auto`: deterministic conservative resolution from `resolved_config.yaml`:
+     - explicit `validation.profile` (`production|production_proof|smoke`) wins,
+     - else `validation.smoke=true` implies `smoke`,
+     - else canonical quantile set implies `production`,
+     - else `production_proof`.
 5. Manifest family authority defaults are locked for v1 metadata:
    - `families.exdqlm_multivar.authoritative` defaults to `true`.
    - `families.exdqlm_univar.authoritative` defaults to `false` unless explicitly set.

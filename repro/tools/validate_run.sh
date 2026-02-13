@@ -79,6 +79,39 @@ bool_word() {
   fi
 }
 
+declare -a CANONICAL_QUANTILES=(5 20 35 50 65 80 95)
+declare -a CANONICAL_Q_LABELS=(05 20 35 50 65 80 95)
+ALLOWED_PROFILES_CSV="production,production_proof,smoke"
+
+is_canonical_quantile_set() {
+  local -a vals=("$@")
+  local -a normalized=()
+  local v
+  for v in "${vals[@]}"; do
+    if [[ "${v}" =~ ^[0-9]+$ ]]; then
+      normalized+=("$((10#${v}))")
+    fi
+  done
+  if [[ "${#normalized[@]}" -eq 0 ]]; then
+    echo "false"
+    return
+  fi
+  local -a normalized_sorted=()
+  mapfile -t normalized_sorted < <(printf '%s\n' "${normalized[@]}" | sort -n -u)
+  if [[ "${#normalized_sorted[@]}" -ne "${#CANONICAL_QUANTILES[@]}" ]]; then
+    echo "false"
+    return
+  fi
+  local i
+  for i in "${!CANONICAL_QUANTILES[@]}"; do
+    if [[ "${normalized_sorted[$i]}" != "${CANONICAL_QUANTILES[$i]}" ]]; then
+      echo "false"
+      return
+    fi
+  done
+  echo "true"
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
@@ -127,6 +160,27 @@ RUN_ID="${RUN_ID_ARG:-${RUN_ID:-}}"
   exit 1
 }
 
+PROFILE_REQUESTED="${PROFILE}"
+PROFILE_EFFECTIVE="${PROFILE}"
+profile_resolution_source="cli"
+profile_reason="cli_profile"
+quantile_rule_desc="<unresolved>"
+
+emit_fail_result() {
+  local msg="$1"
+  echo "RUN_ID=${RUN_ID}"
+  echo "profile_requested=${PROFILE_REQUESTED}"
+  echo "profile_effective=${PROFILE_EFFECTIVE}"
+  echo "profile_reason=${profile_reason}"
+  echo "quantile_rule=${quantile_rule_desc}"
+  echo "RESULT=FAIL"
+  echo "error=${msg}"
+  if [[ "${EXIT_NONZERO}" == "true" ]]; then
+    exit 1
+  fi
+  exit 0
+}
+
 RUN_ROOT="${REPO_ROOT}/repro/runs/${RUN_ID}"
 [[ -d "${RUN_ROOT}" ]] || die "Run root not found: ${RUN_ROOT}"
 
@@ -144,8 +198,6 @@ FIT_SHARED_SOURCE_LOG="${RUN_ROOT}/fit/logs/shared_input_source_map.log"
 POST_SHARED_SOURCE_LOG="${RUN_ROOT}/post/logs/shared_input_source_map.log"
 
 validation_profile_from_config=""
-validation_profile_from_manifest=""
-profile_resolution_source="cli"
 cfg_quantile_nums_csv=""
 cfg_quantile_labels_csv=""
 cfg_run_exdqlm_multivar="true"
@@ -156,8 +208,10 @@ cfg_diagnostics_enabled="false"
 cfg_forecats_mode="use_existing"
 cfg_forecats_snapshot_enabled="false"
 cfg_prefer_forecats_snapshot="true"
-[[ -f "${RESOLVED_CONFIG_PATH}" ]] || die "resolved_config.yaml not found: ${RESOLVED_CONFIG_PATH}"
-if mapfile -t cfg_vals < <(python3 - "${RESOLVED_CONFIG_PATH}" <<'PY'
+cfg_validation_smoke_flag="false"
+[[ -f "${RESOLVED_CONFIG_PATH}" ]] || emit_fail_result "resolved_config.yaml not found: ${RESOLVED_CONFIG_PATH}"
+cfg_parse_output=""
+if cfg_parse_output="$(python3 - "${RESOLVED_CONFIG_PATH}" <<'PY'
 import sys
 try:
     import yaml
@@ -218,8 +272,13 @@ if snapshot_enabled is None:
 print(forecats_mode)
 print(as_bool_word(snapshot_enabled, default=False))
 print(as_bool_word(shared.get("prefer_forecats_snapshot"), default=True))
+print(as_bool_word(validation.get("smoke"), default=False))
 PY
-); then
+  2>&1)"; then
+  mapfile -t cfg_vals <<< "${cfg_parse_output}"
+  if [[ "${#cfg_vals[@]}" -lt 12 ]]; then
+    emit_fail_result "Failed to parse ${RESOLVED_CONFIG_PATH}: incomplete parser output"
+  fi
   validation_profile_from_config="${cfg_vals[0]:-}"
   cfg_quantile_nums_csv="${cfg_vals[1]:-}"
   cfg_quantile_labels_csv="${cfg_vals[2]:-}"
@@ -231,50 +290,47 @@ PY
   cfg_forecats_mode="${cfg_vals[8]:-use_existing}"
   cfg_forecats_snapshot_enabled="${cfg_vals[9]:-false}"
   cfg_prefer_forecats_snapshot="${cfg_vals[10]:-true}"
+  cfg_validation_smoke_flag="${cfg_vals[11]:-false}"
 else
-  die "Failed to parse ${RESOLVED_CONFIG_PATH} (ensure valid YAML and PyYAML import 'yaml' is available)"
+  cfg_parse_output="${cfg_parse_output//$'\n'/ }"
+  emit_fail_result "Failed to parse ${RESOLVED_CONFIG_PATH} (ensure valid YAML and PyYAML import 'yaml' is available). Details: ${cfg_parse_output}"
 fi
 
-PROFILE_EFFECTIVE="${PROFILE}"
-if [[ "${PROFILE}" == "auto" ]]; then
-  if [[ -f "${MANIFEST_PATH}" ]]; then
-    if mapfile -t manifest_vals < <(python3 - "${MANIFEST_PATH}" <<'PY'
-import sys
-try:
-    import yaml
-except Exception as exc:
-    print(f"ERROR: PyYAML unavailable (import yaml failed): {exc}", file=sys.stderr)
-    raise SystemExit(2)
+declare -a cfg_quantile_nums=()
+if [[ -n "${cfg_quantile_nums_csv}" ]]; then
+  IFS=',' read -r -a cfg_quantile_nums <<< "${cfg_quantile_nums_csv}"
+fi
+cfg_quantiles_are_canonical="$(is_canonical_quantile_set "${cfg_quantile_nums[@]:-}")"
 
-path = sys.argv[1]
-try:
-    with open(path, "r", encoding="utf-8") as f:
-        doc = yaml.safe_load(f) or {}
-except Exception as exc:
-    print(f"ERROR: Failed to parse YAML at {path}: {exc}", file=sys.stderr)
-    raise
-
-validation = doc.get("validation") or {}
-print(str(validation.get("validator_profile") or ""))
-PY
-    ); then
-      validation_profile_from_manifest="${manifest_vals[0]:-}"
-    else
-      die "Failed to parse ${MANIFEST_PATH} while resolving --profile auto (ensure valid YAML and PyYAML import 'yaml' is available)"
-    fi
-  fi
-
-  if [[ -n "${validation_profile_from_manifest}" ]]; then
-    PROFILE_EFFECTIVE="${validation_profile_from_manifest}"
-    profile_resolution_source="manifest"
-  elif [[ -n "${validation_profile_from_config}" ]]; then
-    PROFILE_EFFECTIVE="${validation_profile_from_config}"
-    profile_resolution_source="resolved_config"
-  else
+if [[ "${PROFILE_REQUESTED}" == "auto" ]]; then
+  profile_resolution_source="auto"
+  if [[ -n "${validation_profile_from_config}" ]]; then
+    case "${validation_profile_from_config}" in
+      production|production_proof|smoke)
+        PROFILE_EFFECTIVE="${validation_profile_from_config}"
+        profile_reason="auto_validation.profile_explicit"
+        ;;
+      *)
+        PROFILE_EFFECTIVE="${validation_profile_from_config}"
+        profile_reason="auto_validation.profile_invalid"
+        emit_fail_result "Unknown validation.profile='${validation_profile_from_config}' in ${RESOLVED_CONFIG_PATH}. Allowed: ${ALLOWED_PROFILES_CSV}"
+        ;;
+    esac
+  elif [[ "${cfg_validation_smoke_flag}" == "true" ]]; then
+    PROFILE_EFFECTIVE="smoke"
+    profile_reason="auto_validation.smoke_true"
+  elif [[ "${cfg_quantiles_are_canonical}" == "true" ]]; then
     PROFILE_EFFECTIVE="production"
-    profile_resolution_source="default"
+    profile_reason="auto_quantiles_match_canonical_7"
+  else
+    PROFILE_EFFECTIVE="production_proof"
+    profile_reason="auto_quantiles_noncanonical"
   fi
+else
+  profile_resolution_source="cli"
+  profile_reason="cli_profile_explicit"
 fi
+
 if [[ "${PROFILE_EFFECTIVE}" != "production" && "${PROFILE_EFFECTIVE}" != "production_proof" && "${PROFILE_EFFECTIVE}" != "smoke" ]]; then
   die "Unsupported validation profile: ${PROFILE_EFFECTIVE} (allowed: production, production_proof, smoke, auto)"
 fi
@@ -287,8 +343,8 @@ declare -a EXPECTED_Q_LABELS=()
 quantile_rule_desc=""
 if [[ "${PROFILE_EFFECTIVE}" == "production" ]]; then
   # Production remains strict: always enforce canonical 7 quantiles.
-  EXPECTED_QUANTILES=(5 20 35 50 65 80 95)
-  EXPECTED_Q_LABELS=(05 20 35 50 65 80 95)
+  EXPECTED_QUANTILES=("${CANONICAL_QUANTILES[@]}")
+  EXPECTED_Q_LABELS=("${CANONICAL_Q_LABELS[@]}")
   quantile_rule_desc="canonical_7_quantiles_enforced"
 else
   # Smoke and production_proof follow requested quantiles from resolved_config; default q=50 when absent.
@@ -885,6 +941,9 @@ EOF
 fi
 
 echo "RUN_ID=${RUN_ID}"
+echo "profile_requested=${PROFILE_REQUESTED}"
+echo "profile_effective=${PROFILE_EFFECTIVE}"
+echo "profile_reason=${profile_reason}"
 echo "profile=${PROFILE_EFFECTIVE}"
 echo "profile_resolved=${PROFILE_EFFECTIVE}"
 echo "profile_source=${profile_resolution_source}"
