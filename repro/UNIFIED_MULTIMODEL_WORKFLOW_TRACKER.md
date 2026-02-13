@@ -999,6 +999,24 @@ At each planning/execution checkpoint:
   - New runs now carry `validation.validator_profile` before stage execution begins, so `bash repro/tools/validate_run.sh <RUN_ID> --profile auto --exit-nonzero` resolves deterministically without post-hoc manifest edits.
   - Backward compatibility remains: old runs lacking this field still resolve via `resolved_config.validation.profile` then default `production`.
 
+### Progress Update 2026-02-13 02:35 UTC
+- Phase: P7C (validator policy/evidence closure)
+- Change type: tooling+docs+validation
+- Summary: closed profile-policy ambiguity for proof vs canonical validation by documenting canonical validator commands, making proof config explicitly `validation.profile: production_proof`, and adding a regression test that `--profile auto` prefers manifest metadata over conflicting resolved-config profile.
+- Files touched:
+  - `config/unified_runs/production_proof_p7b_family.yaml`
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_WORKFLOW_README.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/reports/validator/prod_proof_p7b_20260212_225100_auto.txt`
+  - `repro/reports/validator/prod_proof_p7b_20260212_225100_production.txt`
+  - `repro/reports/validator/prod_proof_p7b_20260212_225100_production_proof.txt`
+- Validation notes:
+  - `--profile auto` on proof run resolves from manifest and passes (`profile_source=manifest`, `RESULT=PASS`).
+  - `--profile production` on the same proof run fails by design (`quantile_rule=canonical_7_quantiles_enforced`, `RESULT=FAIL`).
+  - `--profile production_proof` on the same proof run passes (`quantile_rule=config_declared_quantiles_enforced`, `RESULT=PASS`).
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
@@ -1017,6 +1035,11 @@ At each planning/execution checkpoint:
    - `models.run_exdqlm_univar` (default `false`)
    - `models.run_ndlm_main` (default `false`)
 3. P5 closure is accepted under D-010 with strict run-scoped figures-on smoke-fast proof.
+4. Validation profile semantics are locked:
+   - `production`: canonical 7-quantile enforcement with strict production gates.
+   - `production_proof`: config-declared quantile enforcement with production-like non-quantile gates.
+   - `smoke`: lightweight smoke-oriented validation contract.
+   - `auto`: deterministic resolution order is `run_manifest.validation.validator_profile` -> `resolved_config.validation.profile` -> `production`.
 
 ## 12) Immediate Next Actions (Proposed)
 

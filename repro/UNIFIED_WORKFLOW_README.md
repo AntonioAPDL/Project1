@@ -84,6 +84,30 @@ and write:
 - `repro/runs/<RUN_ID>/validate/compare_report.json`
 - `repro/runs/<RUN_ID>/validate/env_drift_report.json` (when canonical run provided)
 
+## Validator Profiles And Commands
+
+Validation profiles:
+
+- `production`: canonical 7-quantile enforcement (`5,20,35,50,65,80,95`) with strict production gates.
+- `production_proof`: config-declared quantile enforcement for bounded proof runs, with all other production-like gates retained.
+- `smoke`: lightweight contract for smoke runs.
+
+Canonical run-scoped commands:
+
+```bash
+# Proof/bounded runs (expected profile resolution: production_proof)
+bash repro/tools/validate_run.sh <RUN_ID> --profile auto --exit-nonzero
+```
+
+```bash
+# Full canonical production runs
+bash repro/tools/validate_run.sh <RUN_ID> --profile production --exit-nonzero
+```
+
+Important:
+
+- Do not run `--profile production` on bounded proof runs (expected `FAIL` by design if not all 7 quantiles exist).
+
 ## Drift approval workflow
 
 Drift is tracked through `change_approval` in `run_manifest.yaml`:
