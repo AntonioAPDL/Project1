@@ -52,3 +52,22 @@ Minimum shape/type expectations used by post:
 - `R/environmetrics/30_univariate_and_misc.R`
 - `R/environmetrics/40_figures.R`
 - `R/unified/contract_checks.R`
+
+## Validator-Minimal Artifact Schema (ndlm_main)
+
+This section defines the validator-side minimum required artifacts for NDLM integration when
+`models.run_ndlm_main=true` (run-scoped contract; no model semantics changes).
+
+Required model-state output under run root:
+
+- `fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData`, or
+- `fit/ndlm_main/outputs/ndlm_main_state.RData`, or
+- `fit/ndlm_main/outputs/ndlm_main_*.RData`
+
+Required when `fit.contract_checks.enabled=true`:
+
+- `fit/contract_checks/ndlm_main/ndlm_main_contract_check.json` (or equivalent JSON report in that folder)
+
+Required when `fit.diagnostics.enabled=true`:
+
+- `fit/diagnostics/ndlm_main/ndlm_main_diagnostics.json` (or equivalent JSON report in that folder)

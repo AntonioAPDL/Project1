@@ -425,6 +425,59 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("RESULT=FAIL", result.stdout)
         self.assertIn("family_check.univar_outputs=FAIL", result.stdout)
 
+    def test_production_proof_passes_with_pattern_ndlm_filename_when_required(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: false",
+                    "  run_exdqlm_univar: false",
+                    "  run_ndlm_main: true",
+                    "fit:",
+                    "  quantiles: [0.5]",
+                    "validation:",
+                    "  profile: production_proof",
+                ]
+            )
+            + "\n",
+        )
+        write_text(self.run_root / "fit" / "ndlm_main" / "outputs" / "ndlm_main_20260213.RData")
+
+        result = self._run_validate("production_proof")
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("RESULT=PASS", result.stdout)
+        self.assertIn("require_ndlm=true", result.stdout)
+        self.assertIn("ndlm_accepted_output_names=", result.stdout)
+
+    def test_production_proof_fails_if_ndlm_enabled_but_missing_output(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: false",
+                    "  run_exdqlm_univar: false",
+                    "  run_ndlm_main: true",
+                    "fit:",
+                    "  quantiles: [0.5]",
+                    "validation:",
+                    "  profile: production_proof",
+                ]
+            )
+            + "\n",
+        )
+        (self.run_root / "fit" / "ndlm_main" / "outputs").mkdir(parents=True, exist_ok=True)
+
+        result = self._run_validate("production_proof")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("RESULT=FAIL", result.stdout)
+        self.assertIn("require_ndlm=true", result.stdout)
+        self.assertIn("family_check.ndlm_output=FAIL", result.stdout)
+        self.assertIn("ndlm_output_path=<not-required-or-missing>", result.stdout)
+
     def test_smoke_profile_fails_hard_on_malformed_resolved_config(self) -> None:
         self._write_common_success_files()
         write_text(self.run_root / "resolved_config.yaml", "models: [\n")

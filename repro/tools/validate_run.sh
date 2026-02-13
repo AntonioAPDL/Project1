@@ -331,9 +331,16 @@ declare -a NDLM_ACCEPTED_FILENAMES=(
   "ndlm_main_*.RData"
 )
 if [[ "${require_ndlm}" == "true" ]]; then
+  ndlm_find_expr=()
+  for ndlm_name in "${NDLM_ACCEPTED_FILENAMES[@]}"; do
+    if [[ "${#ndlm_find_expr[@]}" -gt 0 ]]; then
+      ndlm_find_expr+=(-o)
+    fi
+    ndlm_find_expr+=(-name "${ndlm_name}")
+  done
   ndlm_output_path="$(
     find "${RUN_ROOT}/fit/ndlm_main/outputs" -type f \
-      \( -name "${NDLM_ACCEPTED_FILENAMES[0]}" -o -name "${NDLM_ACCEPTED_FILENAMES[1]}" -o -name "${NDLM_ACCEPTED_FILENAMES[2]}" \) \
+      \( "${ndlm_find_expr[@]}" \) \
       -print -quit 2>/dev/null || true
   )"
 fi
