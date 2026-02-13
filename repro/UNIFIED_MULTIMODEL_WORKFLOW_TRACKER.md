@@ -987,6 +987,18 @@ At each planning/execution checkpoint:
     - `bash repro/tools/validate_run.sh <RUN_ID> --profile auto --exit-nonzero`
   - For historical proof run `prod_proof_p7b_20260212_225100`, `run_manifest.yaml` was backfilled with `validation.validator_profile: production_proof` so `auto` resolves deterministically to proof profile.
 
+### Progress Update 2026-02-13 02:05 UTC
+- Phase: P7B (validator metadata autopopulation)
+- Change type: tooling+tests
+- Summary: removed forward need for manual manifest backfill by emitting `validation.validator_profile` at manifest initialization (`unified_manifest_init`) from `cfg$validation$profile`; this is metadata-only and preserves existing validation gates/semantics.
+- Files touched:
+  - `R/unified/manifest.R`
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation notes:
+  - New runs now carry `validation.validator_profile` before stage execution begins, so `bash repro/tools/validate_run.sh <RUN_ID> --profile auto --exit-nonzero` resolves deterministically without post-hoc manifest edits.
+  - Backward compatibility remains: old runs lacking this field still resolve via `resolved_config.validation.profile` then default `production`.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
