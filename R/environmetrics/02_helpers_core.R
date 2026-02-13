@@ -115,6 +115,173 @@ post_write_csv <- function(df, path) {
   invisible(path)
 }
 
+post_table_formats <- function(default = c("csv")) {
+  raw <- Sys.getenv("EXPORT_TABLE_FORMATS", "")
+  if (!nzchar(raw)) {
+    return(unique(tolower(as.character(default))))
+  }
+  vals <- trimws(unlist(strsplit(raw, ",", fixed = TRUE), use.names = FALSE))
+  vals <- vals[nzchar(vals)]
+  if (length(vals) == 0L) {
+    return(unique(tolower(as.character(default))))
+  }
+  unique(tolower(vals))
+}
+
+post_table_row_order <- function(df, sort_keys = NULL) {
+  n <- nrow(df)
+  if (n <= 1L) return(seq_len(n))
+
+  if (!is.null(sort_keys) && length(sort_keys) > 0L) {
+    keys <- intersect(as.character(sort_keys), names(df))
+  } else {
+    keys <- character(0)
+  }
+  if (length(keys) == 0L) {
+    keys <- names(df)
+  }
+
+  key_cols <- lapply(keys, function(k) {
+    v <- df[[k]]
+    if (inherits(v, "factor")) {
+      as.character(v)
+    } else {
+      v
+    }
+  })
+  do.call(order, c(key_cols, list(na.last = TRUE, method = "radix")))
+}
+
+post_drop_na_rows <- function(df, keep_na = TRUE) {
+  if (isTRUE(keep_na) || nrow(df) == 0L) return(df)
+  df[stats::complete.cases(df), , drop = FALSE]
+}
+
+post_format_numeric_columns <- function(df, digits = 10L) {
+  out <- df
+  for (nm in names(out)) {
+    col <- out[[nm]]
+    if (is.numeric(col) && !is.integer(col)) {
+      vals <- as.numeric(col)
+      out[[nm]] <- ifelse(
+        is.na(vals),
+        NA_character_,
+        formatC(vals, digits = as.integer(digits), format = "fg", flag = "#")
+      )
+    } else if (inherits(col, "factor")) {
+      out[[nm]] <- as.character(col)
+    }
+  }
+  out
+}
+
+post_write_csv_deterministic <- function(df, path, numeric_digits = 10L) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  out <- post_format_numeric_columns(df, digits = numeric_digits)
+  utils::write.table(
+    out,
+    file = path,
+    sep = ",",
+    row.names = FALSE,
+    col.names = TRUE,
+    quote = TRUE,
+    na = "NA",
+    qmethod = "double",
+    eol = "\n"
+  )
+  invisible(path)
+}
+
+post_sha256_file <- function(path) {
+  stopifnot(file.exists(path))
+
+  if (requireNamespace("digest", quietly = TRUE)) {
+    return(digest::digest(file = path, algo = "sha256"))
+  }
+
+  cmd <- Sys.which("sha256sum")
+  if (nzchar(cmd)) {
+    out <- tryCatch(system2(cmd, shQuote(path), stdout = TRUE, stderr = FALSE), error = function(e) character(0))
+    if (length(out) >= 1L) {
+      token <- strsplit(out[[1L]], "[[:space:]]+")[[1L]][1L]
+      if (nzchar(token)) return(token)
+    }
+  }
+
+  stop("Unable to compute sha256 (digest package or sha256sum command required).", call. = FALSE)
+}
+
+post_export_tables <- function(
+  tables,
+  output_dir,
+  file_stems = NULL,
+  formats = c("csv"),
+  keep_na = TRUE,
+  sort_keys = NULL,
+  numeric_digits = 10L
+) {
+  if (is.null(tables) || length(tables) == 0L) {
+    return(data.frame(
+      table_name = character(0),
+      file_path = character(0),
+      nrow = integer(0),
+      ncol = integer(0),
+      sha256 = character(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+  if (is.null(names(tables)) || any(!nzchar(names(tables)))) {
+    stop("post_export_tables requires a named list of tables.", call. = FALSE)
+  }
+
+  formats <- unique(tolower(as.character(formats)))
+  formats <- formats[formats %in% c("csv", "rds")]
+  if (length(formats) == 0L) formats <- "csv"
+
+  manifest_rows <- list()
+
+  for (nm in names(tables)) {
+    df <- as.data.frame(tables[[nm]], stringsAsFactors = FALSE)
+    df <- post_drop_na_rows(df, keep_na = keep_na)
+
+    keys <- NULL
+    if (!is.null(sort_keys) && !is.null(sort_keys[[nm]])) {
+      keys <- sort_keys[[nm]]
+    }
+    ord <- post_table_row_order(df, sort_keys = keys)
+    if (length(ord) > 0L) {
+      df <- df[ord, , drop = FALSE]
+    }
+    rownames(df) <- NULL
+
+    stem <- nm
+    if (!is.null(file_stems) && !is.null(file_stems[[nm]]) && nzchar(file_stems[[nm]])) {
+      stem <- as.character(file_stems[[nm]])
+    }
+
+    for (fmt in formats) {
+      path <- file.path(output_dir, sprintf("%s.%s", stem, fmt))
+      if (identical(fmt, "csv")) {
+        post_write_csv_deterministic(df, path, numeric_digits = numeric_digits)
+      } else if (identical(fmt, "rds")) {
+        dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+        saveRDS(df, path)
+      }
+
+      manifest_rows[[length(manifest_rows) + 1L]] <- data.frame(
+        table_name = nm,
+        file_path = path,
+        nrow = nrow(df),
+        ncol = ncol(df),
+        sha256 = post_sha256_file(path),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+
+  do.call(rbind, manifest_rows)
+}
+
 post_write_lines <- function(lines, path) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   writeLines(lines, con = path, useBytes = TRUE)
@@ -144,7 +311,15 @@ post_component_to_covariate <- function(component) {
   out
 }
 
-post_export_gamma_sigma_tables <- function(all_quantiles, output_dir, ci_digits = 3L, write_tex = TRUE) {
+post_export_gamma_sigma_tables <- function(
+  all_quantiles,
+  output_dir,
+  ci_digits = 3L,
+  write_tex = TRUE,
+  table_formats = c("csv"),
+  keep_na = TRUE,
+  numeric_digits = 10L
+) {
   req_cols <- c("variable", "source", "quantile", "quantile_025", "median", "quantile_975")
   missing_cols <- setdiff(req_cols, names(all_quantiles))
   if (length(missing_cols) > 0L) {
@@ -189,9 +364,15 @@ post_export_gamma_sigma_tables <- function(all_quantiles, output_dir, ci_digits 
 
   gamma_df <- out[out$stat == "gamma", , drop = FALSE]
   sigma_df <- out[out$stat == "sigma", , drop = FALSE]
-
-  post_write_csv(gamma_df, file.path(output_dir, "gamma_summary.csv"))
-  post_write_csv(sigma_df, file.path(output_dir, "sigma_summary.csv"))
+  manifest <- post_export_tables(
+    tables = list(gamma = gamma_df, sigma = sigma_df),
+    output_dir = output_dir,
+    file_stems = list(gamma = "gamma_summary", sigma = "sigma_summary"),
+    formats = table_formats,
+    keep_na = keep_na,
+    sort_keys = list(gamma = c("quantile", "source", "stat"), sigma = c("quantile", "source", "stat")),
+    numeric_digits = numeric_digits
+  )
 
   if (isTRUE(write_tex)) {
     gamma_lines <- c(
@@ -212,10 +393,19 @@ post_export_gamma_sigma_tables <- function(all_quantiles, output_dir, ci_digits 
     post_write_lines(sigma_lines, file.path(output_dir, "sigma_summary.tex"))
   }
 
-  list(gamma = gamma_df, sigma = sigma_df)
+  list(gamma = gamma_df, sigma = sigma_df, manifest = manifest)
 }
 
-post_export_covariate_effects_table <- function(summary_df, output_dir, time_index = NA_integer_, ci_digits = 3L, write_tex = TRUE) {
+post_export_covariate_effects_table <- function(
+  summary_df,
+  output_dir,
+  time_index = NA_integer_,
+  ci_digits = 3L,
+  write_tex = TRUE,
+  table_formats = c("csv"),
+  keep_na = TRUE,
+  numeric_digits = 10L
+) {
   req_cols <- c("Component", "Quantile", "Lower", "Mean", "Upper")
   missing_cols <- setdiff(req_cols, names(summary_df))
   if (length(missing_cols) > 0L) {
@@ -241,7 +431,15 @@ post_export_covariate_effects_table <- function(summary_df, output_dir, time_ind
   rownames(out) <- NULL
   out$covariate <- as.character(out$covariate)
 
-  post_write_csv(out, file.path(output_dir, "covariate_effects_summary.csv"))
+  manifest <- post_export_tables(
+    tables = list(covariate_effects = out),
+    output_dir = output_dir,
+    file_stems = list(covariate_effects = "covariate_effects_summary"),
+    formats = table_formats,
+    keep_na = keep_na,
+    sort_keys = list(covariate_effects = c("covariate", "quantile")),
+    numeric_digits = numeric_digits
+  )
 
   if (isTRUE(write_tex)) {
     lines <- c(
@@ -254,10 +452,17 @@ post_export_covariate_effects_table <- function(summary_df, output_dir, time_ind
     post_write_lines(lines, file.path(output_dir, "covariate_effects_summary.tex"))
   }
 
-  out
+  list(table = out, manifest = manifest)
 }
 
-post_write_table_exports_readme <- function(output_dir, ci_digits = 3L) {
+post_write_table_exports_manifest <- function(manifest_df, output_dir) {
+  if (is.null(manifest_df) || nrow(manifest_df) == 0L) return(invisible(NULL))
+  out_path <- file.path(output_dir, "posterior_table_exports_manifest.csv")
+  post_write_csv_deterministic(manifest_df, out_path, numeric_digits = 15L)
+  invisible(out_path)
+}
+
+post_write_table_exports_readme <- function(output_dir, ci_digits = 3L, table_formats = c("csv")) {
   lines <- c(
     "# Posterior Table Exports",
     "",
@@ -274,6 +479,7 @@ post_write_table_exports_readme <- function(output_dir, ci_digits = 3L) {
     "- covariate_effects_summary.tex",
     "",
     sprintf("CI string precision: %d decimal places.", as.integer(ci_digits)),
+    sprintf("Table formats: %s", paste(unique(table_formats), collapse = ", ")),
     "The numeric columns are the source of truth for downstream table generation."
   )
   post_write_lines(lines, file.path(output_dir, "posterior_table_exports_README.md"))
