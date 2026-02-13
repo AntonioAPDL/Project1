@@ -132,6 +132,7 @@ repro/baseline_runs/
 repro/runs/
 repro/bias_runs/
 repro/bias_event_runs/
+repro/bias_version_runs/
 
 # Uppercase spreadsheet exports
 *.CSV

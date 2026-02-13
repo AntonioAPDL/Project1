@@ -1,0 +1,77 @@
+run:
+  run_id: nws_versions_current_plus_random_h7clean_20260212_1856
+  out_root: repro/bias_version_runs
+  overwrite: false
+inputs:
+  forecats_root: data/forecats_inputs/site=11160500
+  run_id_selector: latest_mtime
+  explicit_run_id: null
+  nws_forecast_file: nws_weighted_daily.csv
+  retros_daily_path: retros_2023-06-01.csv
+  retros_daily_scale: log1p_cms
+  usgs_col: USGS
+  canonical_nws_col: NWS3.0
+  nws_hourly_sources:
+  - key: NWS2.1_source
+    label: NWM retrospective 2.1
+    path: 11160500_nws_retro_old.csv
+    datetime_col: Date
+    value_col: streamflow
+    value_scale: raw_cms
+  - key: NWS3.0_source
+    label: NWM retrospective 3.0
+    path: 11160500_nws_retro.csv
+    datetime_col: Date
+    value_col: streamflow
+    value_scale: raw_cms
+analysis:
+  allow_overlapping_versions: true
+  horizons_days:
+  - 1
+  - 7
+  focus_dates:
+  - '2021-01-23'
+  - '2021-01-27'
+  - '2021-11-12'
+  - '2021-12-10'
+  - '2021-12-17'
+  - '2021-12-21'
+  - '2022-05-10'
+  - '2022-12-25'
+  - '2019-11-15'
+  - '2020-04-15'
+  - '2020-12-06'
+  - '2020-12-09'
+  - '2020-12-23'
+  window_days_before: 14
+  window_days_after: 14
+  local_stat_days: 3
+  version_windows:
+  - version: NWS2.1
+    start: '1979-02-01'
+    end: '2020-12-31'
+    source_key: NWS2.1_source
+  - version: NWS3.0
+    start: '1979-02-01'
+    end: '2023-02-01'
+    source_key: NWS3.0_source
+plots:
+  dpi: 180
+  width: 14
+  height: 9
+  line_width: 0.85
+  marker_size: 2.4
+  y_limits_cms:
+  - -30
+  - 30
+  retro_overlay_start: '2018-01-01'
+  retro_overlay_end: '2023-02-01'
+  source_palette:
+    NWS2.1_source: '#1f77b4'
+    NWS3.0_source: '#d62728'
+    canonical_daily: '#2ca02c'
+  version_palette:
+    NWS1.0: '#1f77b4'
+    NWS2.0: '#ff7f0e'
+    NWS2.1: '#2ca02c'
+    NWS3.0: '#9467bd'
