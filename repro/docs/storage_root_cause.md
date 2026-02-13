@@ -54,3 +54,14 @@
 - Atomic model-state save path to avoid leaving 0-byte final artifacts on write failure.
 - Cleanup helper script with dry-run default:
   - `repro/tools/cleanup_runs.sh`
+
+## Follow-up Policy Update (mid-run resilience)
+- Added run I/O preflight policy scopes (backward compatible):
+  - `legacy`: existing single-threshold behavior at every check.
+  - `fit_start_and_continue`: enforce higher `min_free_gb_start` at fit start, then lower `min_free_gb_continue` for subsequent fit sub-jobs.
+  - `fit_start_only`: enforce start threshold, then warn-only checks during fit unless free space drops below critical floor (5 GB).
+- Preflight checks now emit run-scoped JSON evidence under:
+  - `repro/runs/<RUN_ID>/preflight/<stage>_<timestamp>.json`
+  and stage summaries under:
+  - `repro/runs/<RUN_ID>/fit/logs/preflight.log`
+- This addresses the observed failure mode where multivar artifacts reduced free space from >100 GB to ~94 GB before univar launch.

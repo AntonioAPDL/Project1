@@ -34,6 +34,11 @@ THIN_CACHE_PATTERNS = (
     "post/**/cache",
 )
 PROTECTION_MARKERS = (".canonical.keep", ".run_keep", ".protect_run")
+ROOT_RDATA_PATTERNS = (
+    "DISC_variables_*_exAL_synth_DISC.RData",
+    "DISC_variables_*_NDLM_synth_DISC.RData",
+    "variables_*_exAL_synth_DISC_uni.RData",
+)
 
 
 @dataclass
@@ -61,10 +66,11 @@ class CleanupAction:
     run_id: str
     run_path: str
     is_baseline: bool
-    action: str  # delete_run | thin_run
+    action: str  # delete_run | thin_run | delete_root_rdata
     reason: str
     estimated_reclaim_bytes: int
     targets: List[str] = field(default_factory=list)
+    target_details: List[Dict[str, Any]] = field(default_factory=list)
     top_heavy_files: List[Dict[str, Any]] = field(default_factory=list)
 
 
@@ -80,6 +86,8 @@ class CleanupPlan:
     canonical_ids_detected: List[str]
     protected_ids_detected: List[str]
     baseline_allowlist_detected: List[str]
+    thin_failed_blocked: List[Dict[str, Any]]
+    root_rdata_candidates: List[Dict[str, Any]]
 
 
 def utc_now() -> datetime:
@@ -352,6 +360,64 @@ def sum_existing_sizes(paths: Iterable[Path]) -> int:
     return total
 
 
+def target_details_for_paths(paths: Iterable[Path]) -> List[Dict[str, Any]]:
+    details: List[Dict[str, Any]] = []
+    for p in paths:
+        size = 0
+        try:
+            if p.is_file():
+                size = p.stat().st_size
+            elif p.is_dir():
+                size = get_dir_size_bytes(p)
+            else:
+                continue
+        except OSError:
+            continue
+        details.append(
+            {
+                "path": str(p),
+                "size_bytes": int(size),
+                "size_human": bytes_to_human(int(size)),
+                "kind": "dir" if p.is_dir() else "file",
+            }
+        )
+    details.sort(key=lambda x: int(x["size_bytes"]), reverse=True)
+    return details
+
+
+def is_failed_or_pending_run(rec: RunRecord) -> bool:
+    if rec.is_unfinished:
+        return True
+    status = (rec.validation_status or "").strip().lower()
+    return status in {"pending", "fail", "failed", "error"}
+
+
+def discover_root_rdata_candidates(repo_root: Path) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    seen: Set[str] = set()
+    for pattern in ROOT_RDATA_PATTERNS:
+        for path in sorted(repo_root.glob(pattern)):
+            if not path.is_file():
+                continue
+            path_str = str(path)
+            if path_str in seen:
+                continue
+            seen.add(path_str)
+            try:
+                size = int(path.stat().st_size)
+            except OSError:
+                continue
+            out.append(
+                {
+                    "path": path_str,
+                    "size_bytes": size,
+                    "size_human": bytes_to_human(size),
+                }
+            )
+    out.sort(key=lambda x: int(x["size_bytes"]), reverse=True)
+    return out
+
+
 def apply_base_protection(
     records: Sequence[RunRecord],
     include_baseline: bool,
@@ -405,7 +471,11 @@ def apply_keep_last(records: Sequence[RunRecord], keep_last: int) -> None:
     completed_non_protected = [
         rec
         for rec in records
-        if not rec.protect_reasons and not rec.is_unfinished
+        if (
+            not rec.protect_reasons
+            and not rec.is_unfinished
+            and (rec.validation_status or "").strip().lower() == "pass"
+        )
     ]
     completed_non_protected.sort(key=sort_key, reverse=True)
 
@@ -421,8 +491,12 @@ def build_cleanup_plan(
     older_than_days: int,
     thin_old: bool,
     thin_old_days: int,
+    thin_failed: bool,
+    thin_baseline: bool,
     delete_failed: bool,
     include_baseline: bool,
+    inventory_root_rdata: bool,
+    prune_root_rdata: bool,
     protected_config_path: Path,
 ) -> CleanupPlan:
     protected_ids, _, baseline_allowlist = load_protected_config(protected_config_path)
@@ -439,23 +513,82 @@ def build_cleanup_plan(
 
     actions: List[CleanupAction] = []
     protected_runs: List[RunRecord] = []
+    thin_failed_blocked: List[Dict[str, Any]] = []
 
     for rec in records:
+        rec_failed_or_pending = is_failed_or_pending_run(rec)
         if rec.protect_reasons:
             protected_runs.append(rec)
+            if thin_failed and rec_failed_or_pending:
+                blocked_targets = thin_targets_for_run(Path(rec.path))
+                blocked_reclaim = sum_existing_sizes(blocked_targets)
+                thin_failed_blocked.append(
+                    {
+                        "run_id": rec.run_id,
+                        "path": rec.path,
+                        "is_baseline": rec.is_baseline,
+                        "reason": "protected",
+                        "protect_reasons": rec.protect_reasons,
+                        "estimated_reclaim_bytes": blocked_reclaim,
+                        "estimated_reclaim_human": bytes_to_human(blocked_reclaim),
+                    }
+                )
             continue
 
         rec_age_ok = rec.age_days >= float(older_than_days)
+        if rec.is_baseline:
+            if thin_baseline and rec.run_id in baseline_allowlist and rec.age_days >= float(thin_old_days):
+                targets = thin_targets_for_run(Path(rec.path))
+                target_details = target_details_for_paths(targets)
+                reclaim = sum(int(x["size_bytes"]) for x in target_details)
+                if reclaim > 0:
+                    actions.append(
+                        CleanupAction(
+                            run_id=rec.run_id,
+                            run_path=rec.path,
+                            is_baseline=True,
+                            action="thin_run",
+                            reason=f"thin_baseline_age>={thin_old_days}",
+                            estimated_reclaim_bytes=reclaim,
+                            targets=[str(t) for t in targets],
+                            target_details=target_details,
+                            top_heavy_files=top_heavy_files(Path(rec.path)),
+                        )
+                    )
+            continue
+
+        if thin_failed and rec_failed_or_pending:
+            targets = thin_targets_for_run(Path(rec.path))
+            target_details = target_details_for_paths(targets)
+            reclaim = sum(int(x["size_bytes"]) for x in target_details)
+            if reclaim > 0:
+                actions.append(
+                    CleanupAction(
+                        run_id=rec.run_id,
+                        run_path=rec.path,
+                        is_baseline=rec.is_baseline,
+                        action="thin_run",
+                        reason="thin_failed_status",
+                        estimated_reclaim_bytes=reclaim,
+                        targets=[str(t) for t in targets],
+                        target_details=target_details,
+                        top_heavy_files=top_heavy_files(Path(rec.path)),
+                    )
+                )
+            continue
+
         if rec.is_unfinished:
             if delete_failed and rec_age_ok and not rec.is_recently_modified:
+                details = target_details_for_paths([Path(rec.path)])
                 action = CleanupAction(
                     run_id=rec.run_id,
                     run_path=rec.path,
                     is_baseline=rec.is_baseline,
                     action="delete_run",
                     reason="delete_failed_unfinished",
-                    estimated_reclaim_bytes=rec.size_bytes,
+                    estimated_reclaim_bytes=sum(int(x["size_bytes"]) for x in details) or rec.size_bytes,
                     targets=[rec.path],
+                    target_details=details,
                     top_heavy_files=top_heavy_files(Path(rec.path)),
                 )
                 actions.append(action)
@@ -463,7 +596,8 @@ def build_cleanup_plan(
 
         if thin_old and rec.age_days >= float(thin_old_days):
             targets = thin_targets_for_run(Path(rec.path))
-            reclaim = sum_existing_sizes(targets)
+            target_details = target_details_for_paths(targets)
+            reclaim = sum(int(x["size_bytes"]) for x in target_details)
             if reclaim > 0:
                 actions.append(
                     CleanupAction(
@@ -474,12 +608,14 @@ def build_cleanup_plan(
                         reason=f"thin_old_age>={thin_old_days}",
                         estimated_reclaim_bytes=reclaim,
                         targets=[str(t) for t in targets],
+                        target_details=target_details,
                         top_heavy_files=top_heavy_files(Path(rec.path)),
                     )
                 )
             continue
 
         if rec_age_ok:
+            details = target_details_for_paths([Path(rec.path)])
             actions.append(
                 CleanupAction(
                     run_id=rec.run_id,
@@ -487,13 +623,38 @@ def build_cleanup_plan(
                     is_baseline=rec.is_baseline,
                     action="delete_run",
                     reason=f"age>={older_than_days}",
-                    estimated_reclaim_bytes=rec.size_bytes,
+                    estimated_reclaim_bytes=sum(int(x["size_bytes"]) for x in details) or rec.size_bytes,
                     targets=[rec.path],
+                    target_details=details,
                     top_heavy_files=top_heavy_files(Path(rec.path)),
                 )
             )
 
+    root_rdata_candidates: List[Dict[str, Any]] = []
+    if inventory_root_rdata or prune_root_rdata:
+        root_rdata_candidates = discover_root_rdata_candidates(repo_root)
+
+    if prune_root_rdata and root_rdata_candidates:
+        paths = [Path(x["path"]) for x in root_rdata_candidates]
+        details = target_details_for_paths(paths)
+        reclaim = sum(int(x["size_bytes"]) for x in details)
+        if reclaim > 0:
+            actions.append(
+                CleanupAction(
+                    run_id="__repo_root__",
+                    run_path=str(repo_root),
+                    is_baseline=False,
+                    action="delete_root_rdata",
+                    reason="prune_root_rdata_flag",
+                    estimated_reclaim_bytes=reclaim,
+                    targets=[str(p) for p in paths],
+                    target_details=details,
+                    top_heavy_files=details[:5],
+                )
+            )
+
     actions.sort(key=lambda a: (a.estimated_reclaim_bytes, a.run_id), reverse=True)
+    thin_failed_blocked.sort(key=lambda x: int(x.get("estimated_reclaim_bytes", 0)), reverse=True)
 
     return CleanupPlan(
         mode="dry-run",
@@ -502,8 +663,12 @@ def build_cleanup_plan(
             "older_than_days": older_than_days,
             "thin_old": thin_old,
             "thin_old_days": thin_old_days,
+            "thin_failed": thin_failed,
+            "thin_baseline": thin_baseline,
             "delete_failed": delete_failed,
             "include_baseline": include_baseline,
+            "inventory_root_rdata": inventory_root_rdata,
+            "prune_root_rdata": prune_root_rdata,
             "protected_config_path": str(protected_config_path),
         },
         generated_at_utc=utc_now().isoformat(),
@@ -514,6 +679,8 @@ def build_cleanup_plan(
         canonical_ids_detected=sorted(canonical_ids),
         protected_ids_detected=sorted(protected_ids),
         baseline_allowlist_detected=sorted(baseline_allowlist),
+        thin_failed_blocked=thin_failed_blocked,
+        root_rdata_candidates=root_rdata_candidates,
     )
 
 
@@ -543,6 +710,14 @@ def apply_cleanup_plan(plan: CleanupPlan, apply: bool) -> Dict[str, Any]:
                     target_path.unlink()
                 elif target_path.is_dir():
                     shutil.rmtree(target_path)
+        elif action.action == "delete_root_rdata":
+            for target in action.targets:
+                target_path = Path(target)
+                if not target_path.exists():
+                    continue
+                action_record["removed"].append(str(target_path))
+                if target_path.is_file() or target_path.is_symlink():
+                    target_path.unlink()
         else:
             continue
 
@@ -569,6 +744,8 @@ def format_plan_text(plan: CleanupPlan, apply_result: Dict[str, Any], *, apply: 
     lines.append("detected.canonical_run_ids=" + (",".join(plan.canonical_ids_detected) if plan.canonical_ids_detected else ""))
     lines.append("detected.protected_run_ids=" + (",".join(plan.protected_ids_detected) if plan.protected_ids_detected else ""))
     lines.append("detected.baseline_delete_allowlist=" + (",".join(plan.baseline_allowlist_detected) if plan.baseline_allowlist_detected else ""))
+    lines.append(f"thin_failed_blocked={len(plan.thin_failed_blocked)}")
+    lines.append(f"root_rdata_candidates={len(plan.root_rdata_candidates)}")
     lines.append("")
 
     lines.append("planned_actions:")
@@ -579,10 +756,29 @@ def format_plan_text(plan: CleanupPlan, apply_result: Dict[str, Any], *, apply: 
             f"  {idx}. {action.action} run_id={action.run_id} baseline={action.is_baseline} "
             f"reason={action.reason} reclaim={action.estimated_reclaim_bytes} ({bytes_to_human(action.estimated_reclaim_bytes)})"
         )
-        for target in action.targets:
-            lines.append(f"     target={target}")
+        for detail in action.target_details:
+            lines.append(f"     target={detail['path']} size={detail['size_human']}")
         for heavy in action.top_heavy_files[:5]:
             lines.append(f"     heavy={heavy['size_human']} {heavy['path']}")
+
+    lines.append("")
+    lines.append("thin_failed_blocked_candidates:")
+    if not plan.thin_failed_blocked:
+        lines.append("  - none")
+    for blocked in plan.thin_failed_blocked:
+        lines.append(
+            f"  - run_id={blocked['run_id']} baseline={blocked['is_baseline']} "
+            f"reclaim={blocked['estimated_reclaim_human']} reasons={','.join(blocked['protect_reasons'])}"
+        )
+
+    lines.append("")
+    lines.append("root_rdata_candidates:")
+    if not plan.root_rdata_candidates:
+        lines.append("  - none")
+    for cand in plan.root_rdata_candidates:
+        lines.append(f"  - {cand['size_human']} {cand['path']}")
+    if plan.root_rdata_candidates:
+        lines.append("  note=prune only when strict run-scoped post is confirmed and legacy root loads are not required")
 
     lines.append("")
     lines.append("protected_runs:")
@@ -634,6 +830,8 @@ def write_plan_logs(
             "canonical_ids_detected": plan.canonical_ids_detected,
             "protected_ids_detected": plan.protected_ids_detected,
             "baseline_allowlist_detected": plan.baseline_allowlist_detected,
+            "thin_failed_blocked": plan.thin_failed_blocked,
+            "root_rdata_candidates": plan.root_rdata_candidates,
             "actions": [asdict(a) for a in plan.actions],
             "protected_runs": [asdict(r) for r in plan.protected_runs],
         },
@@ -727,9 +925,13 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--older-than-days", type=int, default=21)
     parser.add_argument("--thin-old", action="store_true")
     parser.add_argument("--thin-old-days", type=int, default=None)
+    parser.add_argument("--thin-failed", action="store_true", help="Thin failed/pending runs by removing heavy fit artifacts only")
+    parser.add_argument("--thin-baseline", action="store_true", help="Allow thinning baseline runs when include-baseline and allowlist permit")
     parser.add_argument("--delete-failed", action="store_true")
     parser.add_argument("--include-baseline", action="store_true")
     parser.add_argument("--include-baseline-runs", action="store_true", help="Backward-compatible alias for --include-baseline")
+    parser.add_argument("--inventory-root-rdata", action="store_true", help="Inventory standalone root *.RData candidates")
+    parser.add_argument("--prune-root-rdata", action="store_true", help="Delete standalone root *.RData candidates (requires --apply)")
     parser.add_argument("--safety-window-hours", type=int, default=SAFETY_WINDOW_HOURS_DEFAULT)
 
     parser.add_argument("--inventory-only", action="store_true", help="Only generate run inventory files")
@@ -766,6 +968,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if keep_last < 0 or args.older_than_days < 0 or thin_old_days < 0:
         print("ERROR: keep/age thresholds must be non-negative integers", file=sys.stderr)
         return 2
+    if args.thin_baseline and not include_baseline:
+        print("ERROR: --thin-baseline requires --include-baseline", file=sys.stderr)
+        return 2
 
     if not runs_dir.exists():
         print(f"ERROR: runs directory not found: {runs_dir}", file=sys.stderr)
@@ -785,8 +990,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         older_than_days=args.older_than_days,
         thin_old=args.thin_old,
         thin_old_days=thin_old_days,
+        thin_failed=args.thin_failed,
+        thin_baseline=args.thin_baseline,
         delete_failed=args.delete_failed,
         include_baseline=include_baseline,
+        inventory_root_rdata=args.inventory_root_rdata or args.prune_root_rdata,
+        prune_root_rdata=args.prune_root_rdata,
         protected_config_path=protected_cfg,
     )
 
@@ -809,6 +1018,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"actions={len(plan.actions)}")
     print(f"estimated_reclaim_bytes={plan.estimated_reclaim_bytes}")
     print(f"estimated_reclaim_human={bytes_to_human(plan.estimated_reclaim_bytes)}")
+    print(f"thin_failed_blocked={len(plan.thin_failed_blocked)}")
+    print(f"root_rdata_candidates={len(plan.root_rdata_candidates)}")
     print(f"log_text={text_log}")
     print(f"log_json={json_log}")
 
@@ -818,6 +1029,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             f"baseline={action.is_baseline} reason={action.reason} "
             f"reclaim={action.estimated_reclaim_bytes} ({bytes_to_human(action.estimated_reclaim_bytes)})"
         )
+
+    if plan.thin_failed_blocked:
+        for blocked in plan.thin_failed_blocked:
+            print(
+                "blocked_thin_failed "
+                f"run_id={blocked['run_id']} reclaim={blocked['estimated_reclaim_human']} "
+                f"reasons={','.join(blocked['protect_reasons'])}"
+            )
+
+    if plan.root_rdata_candidates:
+        print("root_rdata_note=prune only when strict run-scoped post is confirmed")
+        for cand in plan.root_rdata_candidates:
+            print(f"root_rdata_candidate size={cand['size_human']} path={cand['path']}")
 
     if not apply_mode:
         print("Dry-run only. Re-run with --apply to execute the plan.")

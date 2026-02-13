@@ -140,8 +140,12 @@ class CleanupPolicyTests(unittest.TestCase):
             older_than_days=7,
             thin_old=False,
             thin_old_days=7,
+            thin_failed=False,
+            thin_baseline=False,
             delete_failed=True,
             include_baseline=False,
+            inventory_root_rdata=False,
+            prune_root_rdata=False,
             protected_config_path=self.repo_root / "repro" / "protected_runs.yaml",
         )
 
@@ -184,8 +188,12 @@ class CleanupPolicyTests(unittest.TestCase):
             older_than_days=7,
             thin_old=True,
             thin_old_days=7,
+            thin_failed=False,
+            thin_baseline=False,
             delete_failed=False,
             include_baseline=False,
+            inventory_root_rdata=False,
+            prune_root_rdata=False,
             protected_config_path=self.repo_root / "repro" / "protected_runs.yaml",
         )
 
@@ -228,14 +236,121 @@ class CleanupPolicyTests(unittest.TestCase):
             older_than_days=7,
             thin_old=False,
             thin_old_days=7,
+            thin_failed=False,
+            thin_baseline=False,
             delete_failed=False,
             include_baseline=False,
+            inventory_root_rdata=False,
+            prune_root_rdata=False,
             protected_config_path=self.repo_root / "repro" / "protected_runs.yaml",
         )
 
         self.assertEqual(len(plan.actions), 1)
         cleanup_policy.apply_cleanup_plan(plan, apply=False)
         self.assertTrue((run / "fit" / "q=05" / "outputs" / "artifact.RData").exists())
+
+    def test_thin_failed_blocked_by_protected_set(self) -> None:
+        runs = self.repo_root / "repro" / "runs"
+        baseline = self.repo_root / "repro" / "baseline_runs"
+        run = runs / "failed_protected"
+        run.mkdir(parents=True)
+
+        write_manifest(run / "run_manifest.yaml", "failed_protected", None, status="pending")
+        write_resolved_config(run / "resolved_config.yaml", profile="production", multivar=True)
+        write_text(run / "fit" / "q=05" / "outputs" / "state.RData", "state")
+        self._set_age_days(run, 20)
+
+        write_text(
+            self.repo_root / "repro" / "protected_runs.yaml",
+            "protected_run_ids:\n  - failed_protected\nnotes: {}\nbaseline_delete_allowlist: []\n",
+        )
+
+        records = cleanup_policy.collect_run_records(runs, baseline, include_baseline=False, safety_window_hours=6)
+        plan = cleanup_policy.build_cleanup_plan(
+            repo_root=self.repo_root,
+            records=records,
+            keep_last=0,
+            older_than_days=7,
+            thin_old=False,
+            thin_old_days=7,
+            thin_failed=True,
+            thin_baseline=False,
+            delete_failed=False,
+            include_baseline=False,
+            inventory_root_rdata=False,
+            prune_root_rdata=False,
+            protected_config_path=self.repo_root / "repro" / "protected_runs.yaml",
+        )
+
+        self.assertEqual(len(plan.actions), 0)
+        blocked_ids = {x["run_id"] for x in plan.thin_failed_blocked}
+        self.assertIn("failed_protected", blocked_ids)
+
+    def test_root_rdata_inventory_and_prune_action(self) -> None:
+        root_rdata = self.repo_root / "DISC_variables_50_exAL_synth_DISC.RData"
+        write_text(root_rdata, "state")
+        write_text(self.repo_root / "repro" / "protected_runs.yaml", "protected_run_ids: []\nnotes: {}\n")
+
+        plan = cleanup_policy.build_cleanup_plan(
+            repo_root=self.repo_root,
+            records=[],
+            keep_last=0,
+            older_than_days=7,
+            thin_old=False,
+            thin_old_days=7,
+            thin_failed=False,
+            thin_baseline=False,
+            delete_failed=False,
+            include_baseline=False,
+            inventory_root_rdata=True,
+            prune_root_rdata=True,
+            protected_config_path=self.repo_root / "repro" / "protected_runs.yaml",
+        )
+        self.assertTrue(any(c["path"] == str(root_rdata) for c in plan.root_rdata_candidates))
+        prune_actions = [a for a in plan.actions if a.action == "delete_root_rdata"]
+        self.assertEqual(len(prune_actions), 1)
+        self.assertIn(str(root_rdata), prune_actions[0].targets)
+
+    def test_keep_last_success_does_not_protect_failed_completed_run(self) -> None:
+        runs = self.repo_root / "repro" / "runs"
+        baseline = self.repo_root / "repro" / "baseline_runs"
+
+        passed = runs / "passed_new"
+        passed.mkdir(parents=True)
+        write_manifest(passed / "run_manifest.yaml", "passed_new", "2026-02-02T01:00:00Z", status="pass")
+        write_resolved_config(passed / "resolved_config.yaml", profile="production")
+        self._set_age_days(passed, 30)
+
+        failed = runs / "failed_closed"
+        failed.mkdir(parents=True)
+        write_manifest(failed / "run_manifest.yaml", "failed_closed", "2026-02-03T01:00:00Z", status="fail")
+        write_resolved_config(failed / "resolved_config.yaml", profile="production")
+        self._set_age_days(failed, 30)
+
+        write_text(self.repo_root / "repro" / "protected_runs.yaml", "protected_run_ids: []\nnotes: {}\n")
+
+        records = cleanup_policy.collect_run_records(runs, baseline, include_baseline=False, safety_window_hours=0)
+        plan = cleanup_policy.build_cleanup_plan(
+            repo_root=self.repo_root,
+            records=records,
+            keep_last=12,
+            older_than_days=0,
+            thin_old=False,
+            thin_old_days=0,
+            thin_failed=False,
+            thin_baseline=False,
+            delete_failed=True,
+            include_baseline=False,
+            inventory_root_rdata=False,
+            prune_root_rdata=False,
+            protected_config_path=self.repo_root / "repro" / "protected_runs.yaml",
+        )
+
+        protected_ids = {r.run_id for r in plan.protected_runs}
+        self.assertIn("passed_new", protected_ids)
+        self.assertNotIn("failed_closed", protected_ids)
+        action_ids = {a.run_id for a in plan.actions}
+        self.assertIn("failed_closed", action_ids)
 
 
 if __name__ == "__main__":

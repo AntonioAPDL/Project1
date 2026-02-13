@@ -1,7 +1,7 @@
 config_version: 1
 
 run:
-  run_id: null
+  run_id: "prod_proof_p7b_20260212_225100"
   run_root: "repro/runs"
   repro_mode: "strict"
   seed: 777
@@ -10,7 +10,12 @@ run:
   git_require_clean: false
   io:
     enabled: true
-    min_free_gb: 100
+    min_free_gb: 90
+    # Start with comfort headroom, then use a lower hard floor to avoid mid-run aborts
+    # once large multivar artifacts have already been written.
+    preflight_scope: "fit_start_and_continue"
+    min_free_gb_start: 90
+    min_free_gb_continue: 70
     min_free_inodes_pct: 5
   threads:
     omp: 1

@@ -16,6 +16,9 @@ unified_config_defaults <- function() {
       io = list(
         enabled = FALSE,
         min_free_gb = 20,
+        min_free_gb_start = NULL,
+        min_free_gb_continue = NULL,
+        preflight_scope = "legacy",
         min_free_inodes_pct = 5
       ),
       threads = list(
@@ -272,6 +275,27 @@ unified_validate_config <- function(cfg) {
   if (!is.finite(io_min_free_gb) || io_min_free_gb < 0) {
     add_err("run.io.min_free_gb must be numeric and >= 0")
   }
+  read_optional_nonneg <- function(path) {
+    raw <- unified_get(cfg, path, default = NULL)
+    if (is.null(raw)) return(NA_real_)
+    raw_chr <- as.character(raw)
+    if (!nzchar(raw_chr) || tolower(raw_chr) %in% c("null", "na", "~")) return(NA_real_)
+    val <- suppressWarnings(as.numeric(raw_chr))
+    if (!is.finite(val) || val < 0) return(NaN)
+    val
+  }
+  io_min_free_gb_start <- read_optional_nonneg(c("run", "io", "min_free_gb_start"))
+  if (is.nan(io_min_free_gb_start)) {
+    add_err("run.io.min_free_gb_start must be null or numeric >= 0")
+  }
+  io_min_free_gb_continue <- read_optional_nonneg(c("run", "io", "min_free_gb_continue"))
+  if (is.nan(io_min_free_gb_continue)) {
+    add_err("run.io.min_free_gb_continue must be null or numeric >= 0")
+  }
+  io_preflight_scope <- unified_get(cfg, c("run", "io", "preflight_scope"), default = "legacy")
+  if (!(io_preflight_scope %in% c("legacy", "fit_start_and_continue", "fit_start_only"))) {
+    add_err("run.io.preflight_scope must be one of: legacy, fit_start_and_continue, fit_start_only")
+  }
   io_min_free_inodes_pct <- suppressWarnings(as.numeric(unified_get(cfg, c("run", "io", "min_free_inodes_pct"), default = 5)))
   if (!is.finite(io_min_free_inodes_pct) || io_min_free_inodes_pct < 0 || io_min_free_inodes_pct > 100) {
     add_err("run.io.min_free_inodes_pct must be numeric in [0, 100]")
@@ -447,8 +471,8 @@ unified_validate_config <- function(cfg) {
   }
 
   validation_profile <- unified_get(cfg, c("validation", "profile"), "production")
-  if (!(validation_profile %in% c("production", "smoke"))) {
-    add_err("validation.profile must be one of: production, smoke")
+  if (!(validation_profile %in% c("production", "production_proof", "smoke"))) {
+    add_err("validation.profile must be one of: production, production_proof, smoke")
   }
 
   data_start <- unified_get(cfg, c("dates", "data_start"), default = NULL)

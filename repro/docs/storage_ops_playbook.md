@@ -1,15 +1,9 @@
 # Storage Ops Playbook
 
 ## Scope
-This playbook covers safe disk-headroom recovery and proof-run gating for unified workflow runs under:
-
-- `repro/runs/*`
-- optional baseline cleanup only when explicitly enabled
-
-It does **not** change model math. It is operational tooling only.
+Operational workflow only. No model semantics changes.
 
 ## 1) Assess Space
-
 ```bash
 df -h /data /
 df -i /data /
@@ -18,84 +12,82 @@ du -xhd1 /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs | sort -h | tai
 du -xhd1 /data/muscat_data/jaguir26/project1_ucsc_phd/repro/baseline_runs | sort -h | tail -n 30
 ```
 
-Recommended production-proof headroom:
+## 2) Preflight Policy (Run I/O)
+Use scoped thresholds in run config:
 
-- free space: `>= 100 GB`
-- free inodes: `>= 5%`
+- `run.io.preflight_scope: legacy`
+  - Original behavior: one threshold (`min_free_gb`) on every check.
+- `run.io.preflight_scope: fit_start_and_continue`
+  - Fit start enforces `min_free_gb_start` (comfort headroom).
+  - Later fit checks enforce `min_free_gb_continue` (hard safety floor).
+- `run.io.preflight_scope: fit_start_only`
+  - Enforce start threshold, then warn-only in-run checks unless free space is critically low (<5 GB).
 
-These map to `run.io.min_free_gb` and `run.io.min_free_inodes_pct`.
+Evidence emitted to:
 
-## 2) Protect Canonical Runs
+- `repro/runs/<RUN_ID>/preflight/*.json`
+- `repro/runs/<RUN_ID>/fit/logs/preflight.log`
 
-`repro/tools/cleanup_runs.sh` protects runs by default when any of these hold:
+Recommended production-proof thresholds:
 
-1. run_id is referenced by config `validation.canonical_run_id` (except `"__SELF__"`).
-2. run directory includes marker file:
-   - `.canonical.keep`
-   - `.run_keep`
-   - `.protect_run`
-3. run is in the most-recent `--keep-recent N`.
-4. run is in the most-recent successful `--keep-last-success N`.
+- `min_free_gb_start: 100`
+- `min_free_gb_continue: 30` (or `40` if disk pressure remains high)
+- `min_free_inodes_pct: 5`
 
-Baseline runs are never touched unless `--include-baseline-runs` is explicitly set.
+## 3) Protection Rules (Cleanup)
+`repro/tools/cleanup_runs.sh` (Python policy backend) protects by default:
 
-## 3) Dry-Run Cleanup (Required First)
+1. Runs in `repro/protected_runs.yaml`.
+2. Runs referenced by `validation.canonical_run_id` (excluding `__SELF__`).
+3. Runs with marker files: `.canonical.keep`, `.run_keep`, `.protect_run`.
+4. In-progress/recent runs (6-hour safety window).
+5. All baseline runs unless explicitly allowed (`--include-baseline` + allowlist + baseline mode flags).
 
-```bash
-repro/tools/cleanup_runs.sh \
-  --dry-run \
-  --keep-recent 12 \
-  --keep-last-success 12 \
-  --older-than-days 14
-```
-
-The script writes a timestamped report under:
-
-- `repro/reports/cleanup_runs/cleanup_<UTCSTAMP>.log`
-
-Review the deletion plan before apply.
-
-## 4) Apply Cleanup
+## 4) Minimal Safe Reclaim Recipe
+Run dry-run first for each step:
 
 ```bash
-repro/tools/cleanup_runs.sh \
-  --apply \
-  --keep-recent 12 \
-  --keep-last-success 12 \
-  --older-than-days 14
+# Step 1: thin failed/pending runs only (safe-first)
+repro/tools/cleanup_runs.sh --dry-run --thin-failed --keep-last 15 --older-than-days 21
+
+# Step 2: thin old completed non-protected runs
+repro/tools/cleanup_runs.sh --dry-run --thin-old --thin-old-days 21 --keep-last 15
+
+# Step 3: optional root .RData inventory (no deletion)
+repro/tools/cleanup_runs.sh --dry-run --inventory-root-rdata
+
+# Step 4: optional baseline thinning (explicit and allowlist-gated)
+repro/tools/cleanup_runs.sh --dry-run --include-baseline --thin-baseline --thin-old-days 30
 ```
 
-Re-check headroom immediately:
+Apply only after plan review:
 
 ```bash
-df -h /data /
-df -i /data /
+repro/tools/cleanup_runs.sh --apply <same flags as reviewed dry-run>
 ```
 
-## 5) Production Proof Config
+Audit outputs:
 
-Use:
+- `repro/cleanup_logs/<timestamp>_dryrun.log`
+- `repro/cleanup_logs/<timestamp>_dryrun.json`
+- `repro/cleanup_logs/<timestamp>_apply.log`
+- `repro/cleanup_logs/<timestamp>_apply.json`
+
+## 5) Production-Proof Run Config
+Primary config:
 
 - `config/unified_runs/production_proof_p7b_family.yaml`
 
-Key gates:
+Key fields:
 
 - `run.io.enabled: true`
-- `run.io.min_free_gb: 100`
-- `run.io.min_free_inodes_pct: 5`
+- `run.io.preflight_scope: fit_start_and_continue`
+- `run.io.min_free_gb_start: 100`
+- `run.io.min_free_gb_continue: 30`
 - `write_audit.enforce_from_stage: 2`
 - `validation.profile: production`
 
-## 6) Proof Run Command
-
-```bash
-Rscript --vanilla scripts/unified_run.R \
-  --config config/unified_runs/production_proof_p7b_family.yaml
-```
-
-## 7) What NOT to Delete
-
-1. Any run protected by canonical config references.
-2. Any run with a protection marker file.
-3. Recent successful runs retained by policy.
-4. `repro/baseline_runs/*` unless explicitly approved and run with `--include-baseline-runs`.
+## 6) What NOT to Delete
+1. Protected runs (YAML/canonical/marker/in-progress protections).
+2. Baselines unless baseline thinning is explicitly enabled and allowlisted.
+3. Post outputs and validation/report evidence unless a separate policy explicitly allows it.

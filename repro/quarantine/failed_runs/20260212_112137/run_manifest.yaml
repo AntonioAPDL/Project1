@@ -1,0 +1,200 @@
+manifest_version: 1
+config_version: 1
+run_id: 20260212_112137
+run_root: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137
+timestamps:
+  started_at_utc: '2026-02-12T19:21:37Z'
+  finished_at_utc: ~
+git:
+  commit: 1db7e55311c890be0e3740fc603d145230d18bc8
+  branch: feature/export_posterior_tables
+  dirty: yes
+repro:
+  mode: strict
+  seed: 777
+  thread_env:
+    OMP_NUM_THREADS: '1'
+    OPENBLAS_NUM_THREADS: '1'
+    MKL_NUM_THREADS: '1'
+    VECLIB_MAXIMUM_THREADS: '1'
+    NUMEXPR_NUM_THREADS: '1'
+  r_rng:
+    fit: Mersenne-Twister/Inversion/Rejection
+    post: Mersenne-Twister/Inversion/Rejection
+families:
+  exdqlm_multivar:
+    enabled: yes
+    implementation_mode: legacy_bridge
+    authoritative: yes
+  exdqlm_univar:
+    enabled: yes
+    implementation_mode: theory_aligned
+    authoritative: no
+  ndlm_main:
+    enabled: yes
+    implementation_mode: theory_aligned
+    authoritative: no
+inputs:
+  - path: /data/muscat_data/jaguir26/projects/Project/Input/exAL/parameters/parameters.txt
+    sha256: 053751db21f49dc031ad655d23dc66fe54d0ceb90d83fb80cecd7d0c6ef4fb95
+    storage_scale: parameters_text
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/retros_2022-12-25.csv
+    sha256: b5a9f96efad51c16d3a2cf71f69a695a1acffa5bab2ad509538b5461e06ce1d4
+    storage_scale: log1p_cms
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/nws_forecast.csv
+    sha256: 4096a785b2a5c6494c0bf0e9c285015f69f710bc2571fa91cbc3c407e124990a
+    storage_scale: log1p_cms
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/weighted_time_series.csv
+    sha256: 35103f7581d6c85cb145e364fab1f2e9a101cb94d263d6141263f7eda03ab492
+    storage_scale: log1p_cms
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/data/forecats_inputs/site=11160500/cutoff_date=2022-12-25/run_id=20260204_220255
+    sha256: .na.character
+    storage_scale: bundle
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/parameters/parameters.txt
+    sha256: 053751db21f49dc031ad655d23dc66fe54d0ceb90d83fb80cecd7d0c6ef4fb95
+    storage_scale: parameters_text
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/retros/retros.csv
+    sha256: b5a9f96efad51c16d3a2cf71f69a695a1acffa5bab2ad509538b5461e06ce1d4
+    storage_scale: log1p_cms
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecasts/nws_forecast.csv
+    sha256: 08f29b520ac33d2faaf155ed63a9780f0a39c7e7f4728a01c8407fa98aa77275
+    storage_scale: raw_cms
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecasts/glofas_forecast.csv
+    sha256: 1fb6a974828cca00876354a01d756ad523c7054994ff8b25cfc96b8abd312003
+    storage_scale: raw_cms
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/covariates/cov_01_ELI.csv
+    sha256: b70f2a04d50b3d6902e916dbfeaa5bfcdabf5f60562942a0ff2e2c6e9e83bd04
+    storage_scale: table_csv
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/covariates/cov_02_ONI.csv
+    sha256: 7a615fa1dc9a2b5f1f55633b14be1db92eee12d67f2b67ba3c68dc5fc33338aa
+    storage_scale: table_csv
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/covariates/cov_03_PPT.csv
+    sha256: 0cc7352302e59b94ec03a412b929d290168c8295a11b7f47da34a0baed0047c9
+    storage_scale: table_csv
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/covariates/cov_04_SOIL.csv
+    sha256: 65de4ffd01f097c49d9b265298146f25a0eaf7466d499d72ebcb4d75ccdbcf24
+    storage_scale: table_csv
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/covariates/cov_05_PCA.csv
+    sha256: 5c10c4f23d35aa2c0417aa5e83d114218dc9da2a3168b2d15886e9aafeeff328
+    storage_scale: table_csv
+artifacts:
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/env/R_sessionInfo.txt
+    sha256: 4caea302f425d889cf7b618ee448c4e00533b1e944e640ede86d053665818af1
+    storage_scale: text
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/env/R_installed_packages.csv
+    sha256: 23c3d784bd514ac3525f524316c6a59df6033949caa13959af0bbd374b7be625
+    storage_scale: text
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/env/python_pip_freeze.txt
+    sha256: 0a1e856296b93d7b7133abdff51e06367d5f49812f8c7369df7d159213ac0564
+    storage_scale: text
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/env/renviron_snapshot.txt
+    sha256: c22dd037aa438f15da0ce3bb87368afd3d29d996ce1b4fff82f0c30a469f7ac6
+    storage_scale: text
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/env/threads_snapshot.txt
+    sha256: f56e6c0ffa42ff15e3665d45ce9cfe7710ec6a56d81f0464df4a6df2f162cea5
+    storage_scale: text
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecats_bundle/meta.yaml
+    sha256: c4bcf182b8e1f87bb106172cce75527125f732039e4f7dc82ab9aa0605eb7ac7
+    storage_scale: input_snapshot
+    role: input_snapshot
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecats_bundle/inputs/retros_daily.csv
+    sha256: 91a2ca270236bf3e610ecb4c4e45bb498e7743e9399891c1d2d745e9dc2a313a
+    storage_scale: raw_cms
+    role: input_snapshot
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecats_bundle/inputs/nws_weighted_daily.csv
+    sha256: 08f29b520ac33d2faaf155ed63a9780f0a39c7e7f4728a01c8407fa98aa77275
+    storage_scale: raw_cms
+    role: input_snapshot
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecats_bundle/inputs/glofas_weighted_daily.csv
+    sha256: 4e45479c8f49994f846d19597fc1b972ef3116023cd1923c5710587008a1423c
+    storage_scale: raw_cms
+    role: input_snapshot
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecats_bundle/inputs/nws_members.csv
+    sha256: bd2338528b942639d352606f19439162bc3578c27c28e52ab07d8621e6f9d5ad
+    storage_scale: raw_cms
+    role: input_snapshot
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecats_bundle/inputs/glofas_members.csv
+    sha256: 1fb6a974828cca00876354a01d756ad523c7054994ff8b25cfc96b8abd312003
+    storage_scale: raw_cms
+    role: input_snapshot
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecats_bundle/snapshot_source_map.txt
+    sha256: d10137c21cb6035c1fc829aff36deb09f2853b8f8789cefe367b42976cd41a04
+    storage_scale: text
+    role: input_snapshot
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecats_bundle/retros.csv
+    sha256: 91a2ca270236bf3e610ecb4c4e45bb498e7743e9399891c1d2d745e9dc2a313a
+    storage_scale: raw_cms
+    role: input_snapshot
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecats_bundle/nws_forecast.csv
+    sha256: 08f29b520ac33d2faaf155ed63a9780f0a39c7e7f4728a01c8407fa98aa77275
+    storage_scale: raw_cms
+    role: input_snapshot
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecats_bundle/glofas_forecast.csv
+    sha256: 1fb6a974828cca00876354a01d756ad523c7054994ff8b25cfc96b8abd312003
+    storage_scale: raw_cms
+    role: input_snapshot
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/parameters/parameters.txt
+    sha256: 053751db21f49dc031ad655d23dc66fe54d0ceb90d83fb80cecd7d0c6ef4fb95
+    storage_scale: parameters_text
+    role: shared_input
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/retros/retros.csv
+    sha256: b5a9f96efad51c16d3a2cf71f69a695a1acffa5bab2ad509538b5461e06ce1d4
+    storage_scale: log1p_cms
+    role: shared_input
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecasts/nws_forecast.csv
+    sha256: 08f29b520ac33d2faaf155ed63a9780f0a39c7e7f4728a01c8407fa98aa77275
+    storage_scale: raw_cms
+    role: shared_input
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/forecasts/glofas_forecast.csv
+    sha256: 1fb6a974828cca00876354a01d756ad523c7054994ff8b25cfc96b8abd312003
+    storage_scale: raw_cms
+    role: shared_input
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/source_map.txt
+    sha256: 3eb436dd687afda849e31e7e615052a9904b1e7e51483234f290a9324f27b958
+    storage_scale: text
+    role: shared_input
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/covariates/cov_01_ELI.csv
+    sha256: b70f2a04d50b3d6902e916dbfeaa5bfcdabf5f60562942a0ff2e2c6e9e83bd04
+    storage_scale: table_csv
+    role: shared_input
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/covariates/cov_02_ONI.csv
+    sha256: 7a615fa1dc9a2b5f1f55633b14be1db92eee12d67f2b67ba3c68dc5fc33338aa
+    storage_scale: table_csv
+    role: shared_input
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/covariates/cov_03_PPT.csv
+    sha256: 0cc7352302e59b94ec03a412b929d290168c8295a11b7f47da34a0baed0047c9
+    storage_scale: table_csv
+    role: shared_input
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/covariates/cov_04_SOIL.csv
+    sha256: 65de4ffd01f097c49d9b265298146f25a0eaf7466d499d72ebcb4d75ccdbcf24
+    storage_scale: table_csv
+    role: shared_input
+  - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/inputs/shared/covariates/cov_05_PCA.csv
+    sha256: 5c10c4f23d35aa2c0417aa5e83d114218dc9da2a3168b2d15886e9aafeeff328
+    storage_scale: table_csv
+    role: shared_input
+scale_history: []
+change_approval:
+  required: yes
+  status: pending
+  approver: ~
+  approved_at_utc: ~
+  rationale: ~
+  expected_diffs:
+    allowed_path_patterns: []
+    disallowed_path_patterns: []
+  metric_thresholds:
+    numeric_abs_max: 0.0
+    numeric_rel_max: 0.0
+    pixel_max_abs: 0.0
+  evidence_paths:
+    compare_report: ~
+    diff_summary: ~
+validation:
+  compare_report_path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/validate/compare_report.json
+  write_audit_diff_path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/20260212_112137/validate/write_audit/fs_diff.patch
+  status: pending
+schema_migration:
+  previous_manifest_version: ~
+  migration_notes: ~
+

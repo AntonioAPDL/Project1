@@ -25,15 +25,12 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   io_settings <- unified_get_run_io_settings(cfg)
   fit_root <- file.path(run_root, "fit")
   fit_inputs <- file.path(fit_root, "inputs")
+  fit_logs_root <- file.path(fit_root, "logs")
+  preflight_dir <- file.path(run_root, "preflight")
+  fit_preflight_log <- file.path(fit_logs_root, "preflight.log")
   dir.create(fit_inputs, recursive = TRUE, showWarnings = FALSE)
-  if (isTRUE(io_settings$enabled)) {
-    unified_require_free_space(
-      path = fit_root,
-      min_free_bytes = io_settings$min_free_bytes,
-      min_free_inodes_pct = io_settings$min_free_inodes_pct,
-      context = "stage_fit preflight"
-    )
-  }
+  dir.create(fit_logs_root, recursive = TRUE, showWarnings = FALSE)
+  dir.create(preflight_dir, recursive = TRUE, showWarnings = FALSE)
 
   shared_paths <- unified_shared_input_paths(run_root)
   use_shared_inputs <- isTRUE(cfg$stages$data_prep_shared) || dir.exists(shared_paths$root)
@@ -203,6 +200,42 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     manifest
   }
 
+  run_preflight_check <- function(path, check_point, context, stage_label) {
+    if (!isTRUE(io_settings$enabled)) {
+      return(list(status = "disabled", report_path = NULL))
+    }
+    unified_run_io_preflight(
+      path = path,
+      io_settings = io_settings,
+      check_point = check_point,
+      context = context,
+      report_dir = preflight_dir,
+      stage_label = stage_label,
+      log_path = fit_preflight_log
+    )
+  }
+
+  add_preflight_artifact <- function(manifest, preflight_result) {
+    rp <- preflight_result$report_path
+    if (!is.null(rp) && nzchar(rp) && file.exists(rp)) {
+      manifest <- unified_manifest_add_artifact(
+        manifest,
+        rp,
+        storage_scale = "text",
+        role = "preflight"
+      )
+    }
+    manifest
+  }
+
+  fit_preflight <- run_preflight_check(
+    path = fit_root,
+    check_point = "fit_start",
+    context = "stage_fit preflight",
+    stage_label = "fit_start"
+  )
+  manifest <- add_preflight_artifact(manifest, fit_preflight)
+
   if (isTRUE(cfg$models$run_exdqlm_multivar)) {
     run_one_quantile <- function(q) {
       q_num <- as.integer(round(q * 100))
@@ -213,11 +246,11 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
       dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
       if (isTRUE(io_settings$enabled)) {
-        unified_require_free_space(
+        run_preflight_check(
           path = q_outputs,
-          min_free_bytes = io_settings$min_free_bytes,
-          min_free_inodes_pct = io_settings$min_free_inodes_pct,
-          context = sprintf("stage_fit quantile q=%s", q_label)
+          check_point = "continue",
+          context = sprintf("stage_fit quantile q=%s", q_label),
+          stage_label = sprintf("fit_multivar_q%s", q_label)
         )
       }
 
@@ -326,12 +359,13 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       log_name <- if (identical(univar_impl_mode, "theory_aligned")) "univar_theory.log" else "univar_legacy.log"
       log_path <- file.path(q_logs, log_name)
       if (isTRUE(io_settings$enabled)) {
-        unified_require_free_space(
+        preflight_univar <- run_preflight_check(
           path = q_outputs,
-          min_free_bytes = io_settings$min_free_bytes,
-          min_free_inodes_pct = io_settings$min_free_inodes_pct,
-          context = sprintf("stage_fit univar q=%s", q_lab)
+          check_point = "continue",
+          context = sprintf("stage_fit univar q=%s", q_lab),
+          stage_label = sprintf("fit_univar_q%s", q_lab)
         )
+        manifest <- add_preflight_artifact(manifest, preflight_univar)
       }
       env_overrides <- c(
         UNIFIED_UNIV_RDATA_OUT = output_path,
@@ -496,12 +530,13 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     dir.create(ndlm_outputs, recursive = TRUE, showWarnings = FALSE)
     dir.create(ndlm_logs, recursive = TRUE, showWarnings = FALSE)
     if (isTRUE(io_settings$enabled)) {
-      unified_require_free_space(
+      ndlm_preflight <- run_preflight_check(
         path = ndlm_outputs,
-        min_free_bytes = io_settings$min_free_bytes,
-        min_free_inodes_pct = io_settings$min_free_inodes_pct,
-        context = "stage_fit ndlm_main"
+        check_point = "continue",
+        context = "stage_fit ndlm_main",
+        stage_label = "fit_ndlm_main"
       )
+      manifest <- add_preflight_artifact(manifest, ndlm_preflight)
     }
 
     output_path <- file.path(ndlm_outputs, "DISC_variables_50_NDLM_synth_DISC.RData")
@@ -616,6 +651,35 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
           stop(err_msg, call. = FALSE)
         } else {
           warning(err_msg, call. = FALSE)
+        }
+      }
+    }
+  }
+
+  if (file.exists(fit_preflight_log)) {
+    manifest <- unified_manifest_add_artifact(
+      manifest,
+      fit_preflight_log,
+      storage_scale = "text",
+      role = "preflight"
+    )
+  }
+  if (isTRUE(io_settings$enabled) && dir.exists(preflight_dir)) {
+    preflight_reports <- list.files(preflight_dir, pattern = "\\.json$", full.names = TRUE, recursive = FALSE)
+    preflight_reports <- preflight_reports[file.exists(preflight_reports)]
+    if (length(preflight_reports) > 0L) {
+      existing_paths <- unlist(lapply(manifest$artifacts, function(x) {
+        val <- x$path
+        if (is.null(val)) "" else as.character(val)
+      }), use.names = FALSE)
+      for (rp in preflight_reports) {
+        if (!(rp %in% existing_paths)) {
+          manifest <- unified_manifest_add_artifact(
+            manifest,
+            rp,
+            storage_scale = "text",
+            role = "preflight"
+          )
         }
       }
     }
