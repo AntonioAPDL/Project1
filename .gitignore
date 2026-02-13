@@ -131,6 +131,7 @@ Project/Input/**/*.feather
 repro/baseline_runs/
 repro/runs/
 repro/bias_runs/
+repro/bias_event_runs/
 
 # Uppercase spreadsheet exports
 *.CSV

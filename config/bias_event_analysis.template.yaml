@@ -1,0 +1,50 @@
+run:
+  run_id: null
+  out_root: repro/bias_event_runs
+  overwrite: false
+
+inputs:
+  bias_compare_path: repro/bias_runs/bias_20260212_171950/tables/bias_compare.csv
+
+analysis:
+  focus_dates:
+    - "2021-01-23"
+    - "2021-01-27"
+    - "c2021-11-12"
+    - "2021-12-10"
+    - "2021-12-17"
+    - "2021-12-21"
+    - "2022-05-10"
+    - "2022-12-25"
+  horizons_days: [1, 7]
+  window_days_before: 14
+  window_days_after: 14
+  local_stat_days: 3
+  centers: [NWS_NWM, GLOFAS]
+
+plots:
+  dpi: 180
+  width: 14
+  height: 10
+  line_width: 1.0
+  marker_size: 3.0
+  y_limits_cms: [-30, 30]
+  center_palette:
+    NWS_NWM: "#1f77b4"
+    GLOFAS: "#ff7f0e"
+  metric_style:
+    bias_retro_cms:
+      label: Bias retro
+      linestyle: "-"
+      marker: "o"
+      color: "#1b9e77"
+    bias_forecast_cms:
+      label: Bias forecast
+      linestyle: "--"
+      marker: "s"
+      color: "#7570b3"
+    delta_bias_cms:
+      label: Bias delta (forecast-retro)
+      linestyle: ":"
+      marker: "^"
+      color: "#d95f02"
