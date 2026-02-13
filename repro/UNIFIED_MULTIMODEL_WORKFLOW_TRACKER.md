@@ -200,6 +200,7 @@ Status legend:
 - `T-P7-02`: Extend report to summarize each family separately.
 - [x] `T-P8-01`: Change defaults to theory-aligned stages; keep legacy as opt-in fallback.
 - [x] `T-P8-02`: Add end-to-end unified-run smoke integration coverage for post table exports and post artifact allowlist capture.
+- [x] `T-P8-03`: Add canonical production family config (canonical 7 quantiles) plus validator UX/docs regression coverage.
 
 ## 8) Risk Register (Live)
 
@@ -1325,6 +1326,29 @@ At each planning/execution checkpoint:
   - `legacy_bridge` remains accepted as explicit per-family override.
   - No model/fit/post semantics changed in this chunk.
 
+### Progress Update 2026-02-13 23:35 UTC
+- Phase: P8B
+- Change type: config+tests+docs
+- Summary: added canonical production family config (`production_canonical_family.yaml`) with all families enabled, theory-aligned univariate/NDLM modes, canonical quantiles `[0.01,0.05,0.10,0.50,0.90,0.95,0.99]`, strict `validation.profile=production`, and explicit `write_audit.enforce_from_stage=4`; added lightweight regression test coverage for canonical config contract and explicit-production auto-profile resolution; updated README to clarify canonical production vs production-proof usage and validator expectations.
+- Files touched:
+  - `config/unified_runs/production_canonical_family.yaml`
+  - `repro/tests/test_production_canonical_family_config.py`
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_WORKFLOW_README.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `config/unified_runs/production_canonical_family.yaml`
+  - `repro/tests/test_production_canonical_family_config.py`
+  - `repro/tests/test_validate_run.py`
+- Validation commands run:
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "testthat::test_dir('tests/testthat', reporter='summary')"`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\n')"`
+- Validation notes:
+  - `validate_run.sh` logic already matched canonical-vs-proof auto-resolution policy, so no tooling patch was required in this chunk.
+  - Template defaults remain unchanged for family run toggles (`models.run_exdqlm_univar=false`, `models.run_ndlm_main=false`).
+  - Canonical production evidence run was deferred in this chunk (resource-gated; no runtime risk escalation).
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
@@ -1348,6 +1372,7 @@ None currently tracked.
      - else `validation.smoke=true` implies `smoke`,
      - else canonical quantile set implies `production`,
      - else `production_proof`.
+   - Canonical quantile set for `production`/canonical-auto resolution is `[0.01,0.05,0.10,0.50,0.90,0.95,0.99]`.
 5. Manifest family authority defaults are locked for v1 metadata:
    - `families.exdqlm_multivar.authoritative` defaults to `true`.
    - `families.exdqlm_univar.authoritative` defaults to `false` unless explicitly set.

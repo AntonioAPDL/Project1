@@ -110,25 +110,61 @@ and write:
 
 Validation profiles:
 
-- `production`: canonical 7-quantile enforcement (`5,20,35,50,65,80,95`) with strict production gates.
+- `production`: canonical 7-quantile enforcement (`1,5,10,50,90,95,99`) with strict production gates.
 - `production_proof`: config-declared quantile enforcement for bounded proof runs, with all other production-like gates retained.
 - `smoke`: lightweight contract for smoke runs.
 
 Canonical run-scoped commands:
 
 ```bash
-# Proof/bounded runs (expected profile resolution: production_proof)
+# Canonical production runs (expected auto resolution: production)
 bash repro/tools/validate_run.sh <RUN_ID> --profile auto --exit-nonzero
 ```
 
 ```bash
-# Full canonical production runs
+# Proof/bounded runs (expected auto resolution: production_proof)
+bash repro/tools/validate_run.sh <RUN_ID> --profile auto --exit-nonzero
+```
+
+```bash
+# Explicit full canonical production validation
 bash repro/tools/validate_run.sh <RUN_ID> --profile production --exit-nonzero
 ```
 
 Important:
 
 - Do not run `--profile production` on bounded proof runs (expected `FAIL` by design if not all 7 quantiles exist).
+
+## Canonical Production Run (7 Quantiles, All Families)
+
+Committed config:
+
+- `config/unified_runs/production_canonical_family.yaml`
+
+Run command:
+
+```bash
+Rscript --vanilla scripts/unified_run.R --config config/unified_runs/production_canonical_family.yaml
+```
+
+Validator command:
+
+```bash
+bash repro/tools/validate_run.sh <RUN_ID> --profile auto --exit-nonzero
+```
+
+Notes:
+
+- This config enables all three families with theory-aligned univariate/NDLM implementation modes.
+- Canonical quantiles are `[0.01, 0.05, 0.10, 0.50, 0.90, 0.95, 0.99]`.
+
+## Production-Proof Run (Bounded Quantiles)
+
+Committed proof config:
+
+- `config/unified_runs/production_proof_p7b_family.yaml`
+
+Proof runs are non-canonical and intended for bounded gate/orchestration validation, not canonical production equivalence.
 
 ## Write-Audit Policy
 
