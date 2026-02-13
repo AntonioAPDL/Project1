@@ -972,6 +972,21 @@ At each planning/execution checkpoint:
 - Next action:
   - Keep `production` for full canonical runs; use `production_proof` only for storage/time-bounded proof runs.
 
+### Progress Update 2026-02-13 01:20 UTC
+- Phase: P7B (validator auto-selection hardening)
+- Change type: tooling+tests
+- Summary: added deterministic `--profile auto` resolution in `repro/tools/validate_run.sh` with precedence `run_manifest.validation.validator_profile` -> `resolved_config.validation.profile` -> `production` fallback; production strictness remains unchanged.
+- Files touched:
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_validate_run.py`
+  - `R/unified/stages/stage_validate.R`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation notes:
+  - `--profile auto` now emits `profile_resolved=<...>` and `profile_source=manifest|resolved_config|default` for auditability.
+  - Canonical command for run-scoped validation is now:
+    - `bash repro/tools/validate_run.sh <RUN_ID> --profile auto --exit-nonzero`
+  - For historical proof run `prod_proof_p7b_20260212_225100`, `run_manifest.yaml` was backfilled with `validation.validator_profile: production_proof` so `auto` resolves deterministically to proof profile.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
