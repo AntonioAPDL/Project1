@@ -478,6 +478,38 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("family_check.ndlm_output=FAIL", result.stdout)
         self.assertIn("ndlm_output_path=<not-required-or-missing>", result.stdout)
 
+    def test_validator_reports_shared_snapshot_source_map_paths(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: false",
+                    "  run_exdqlm_univar: false",
+                    "  run_ndlm_main: false",
+                    "fit:",
+                    "  quantiles: [0.5]",
+                    "validation:",
+                    "  profile: smoke",
+                ]
+            )
+            + "\n",
+        )
+        write_text(self.run_root / "inputs" / "shared" / "source_map.txt", "source_mode=forecats_snapshot_mixed\n")
+        write_text(
+            self.run_root / "inputs" / "shared" / "forecats_bundle" / "snapshot_source_map.txt",
+            "mode=build\n",
+        )
+        (self.run_root / "fit").mkdir(parents=True, exist_ok=True)
+
+        result = self._run_validate("smoke")
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("shared_source_map_exists=true", result.stdout)
+        self.assertIn("snapshot_source_map_exists=true", result.stdout)
+        self.assertIn("shared_source_map_path=", result.stdout)
+        self.assertIn("snapshot_source_map_path=", result.stdout)
+
     def test_smoke_profile_fails_hard_on_malformed_resolved_config(self) -> None:
         self._write_common_success_files()
         write_text(self.run_root / "resolved_config.yaml", "models: [\n")

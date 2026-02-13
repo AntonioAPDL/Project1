@@ -1082,11 +1082,28 @@ At each planning/execution checkpoint:
 - Next action:
   - Close Open Q11.1 #5 by hardening run-scoped forecats snapshot usage evidence across fit/post/validator outputs.
 
+### Progress Update 2026-02-13 08:08 UTC
+- Phase: P7 (forecats snapshot contract closure)
+- Change type: tooling+tests
+- Summary: closed Open Q11.1 #5 by hardening snapshot usage evidence for fit/post and validator outputs: shared input validation now logs source-map provenance into stage logs, validator output now reports shared/snapshot source-map paths, and regression coverage simulates `forecats` snapshot flow with manifest `input_snapshot` artifacts and snapshot-origin routing in shared source maps.
+- Files touched:
+  - `R/unified/inputs_shared_validate.R`
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_validate_run.py`
+  - `repro/tests/test_forecats_snapshot_contract.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation notes:
+  - `fit/logs/shared_input_source_map.log` and `post/logs/shared_input_source_map.log` now capture source-map paths when shared inputs are validated.
+  - Validator output now prints `shared_source_map_path`, `snapshot_source_map_path`, and corresponding existence flags for auditability.
+  - Snapshot regression test confirms manifest `role=input_snapshot` entries and `inputs/shared/source_map.txt` origin flags (`source.glofas_origin=snapshot`, `source.nws_origin=snapshot`).
+- Next action:
+  - With Open Q11.1 items closed, continue P7 family-aware validator/report hardening toward P8 cutover planning.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
 
-1. Forecats `build` mode currently writes to `data/forecats_inputs` and `data/forecats_cache` (outside `run_root`). For unified multi-model production runs, should forecats outputs be copied/snapshotted into run root as immutable run inputs?
+None currently tracked.
 
 ### 11.2 Resolved Defaults
 
@@ -1117,6 +1134,10 @@ At each planning/execution checkpoint:
    - Keep `write_audit.enforce_from_stage: 4` as production default.
    - Use `write_audit.enforce_from_stage: 2` for migration/proof runs that need fit/post write isolation evidence.
    - Reference overlay config: `config/unified_runs/migration_write_audit_from_fit.yaml`.
+9. Forecats run-scoped snapshot policy is locked:
+   - When snapshot bundle exists, shared-input resolution remains run-scoped and provenance is logged in `inputs/shared/source_map.txt`.
+   - Fit/post shared-input validation logs source-map evidence under `fit/logs/shared_input_source_map.log` and `post/logs/shared_input_source_map.log`.
+   - Validator output reports shared/snapshot source-map paths and existence flags for auditability.
 
 ## 12) Immediate Next Actions (Proposed)
 

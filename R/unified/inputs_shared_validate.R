@@ -285,6 +285,8 @@ unified_validate_required_shared_inputs <- function(
   required_covariates = character(0)
 ) {
   paths <- unified_shared_input_paths(run_root)
+  source_map_path <- file.path(paths$root, "source_map.txt")
+  snapshot_source_map_path <- file.path(paths$root, "forecats_bundle", "snapshot_source_map.txt")
 
   families <- character(0)
   if (isTRUE(enabled_models$run_exdqlm_multivar)) families <- c(families, "exdqlm_multivar")
@@ -427,5 +429,26 @@ unified_validate_required_shared_inputs <- function(
     glofas = unified_manifest_get_artifact_scale(manifest, paths$glofas)
   )
 
-  list(paths = paths, scales = scales, families = families)
+  if (stage_name %in% c("fit", "post")) {
+    stage_logs_dir <- file.path(run_root, stage_name, "logs")
+    dir.create(stage_logs_dir, recursive = TRUE, showWarnings = FALSE)
+    stage_source_log <- file.path(stage_logs_dir, "shared_input_source_map.log")
+    log_lines <- c(
+      sprintf("timestamp_utc=%s", format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")),
+      sprintf("stage=%s", stage_name),
+      sprintf("shared_source_map_path=%s", source_map_path),
+      sprintf("shared_source_map_exists=%s", if (file.exists(source_map_path)) "TRUE" else "FALSE"),
+      sprintf("snapshot_source_map_path=%s", snapshot_source_map_path),
+      sprintf("snapshot_source_map_exists=%s", if (file.exists(snapshot_source_map_path)) "TRUE" else "FALSE")
+    )
+    cat(paste0(log_lines, collapse = "\n"), "\n", file = stage_source_log, append = TRUE)
+  }
+
+  list(
+    paths = paths,
+    scales = scales,
+    families = families,
+    source_map_path = source_map_path,
+    snapshot_source_map_path = snapshot_source_map_path
+  )
 }
