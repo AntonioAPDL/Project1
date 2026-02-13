@@ -175,7 +175,8 @@ audit_threshold <- as.integer(cfg$write_audit$enforce_from_stage)
 allowlist <- unlist(cfg$write_audit$allowlist_outside_run_root, use.names = FALSE)
 
 for (stage in stage_order) {
-  if (!isTRUE(cfg$stages[[stage]])) {
+  enabled_flag <- isTRUE(cfg$stages[[stage]])
+  if (!enabled_flag) {
     manifest <- unified_manifest_stage_mark_skip(manifest, stage, log_path = stage_log_path(stage))
     unified_manifest_write(manifest, manifest_path)
     next

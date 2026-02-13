@@ -1113,6 +1113,20 @@ At each planning/execution checkpoint:
 - Next action:
   - Apply runner-level skip-status bugfix to ensure disabled stages always record `stages.<name>.status=skip` in manifest.
 
+### Progress Update 2026-02-13 08:25 UTC
+- Phase: P7 (runner skip-status bugfix)
+- Change type: tooling+tests
+- Summary: hardened unified runner stage loop to use a single `enabled_flag` branch for disabled stages and added a runner-level regression test that executes a no-stage run and verifies all stage statuses are written as `skip` in `run_manifest.yaml`.
+- Files touched:
+  - `scripts/unified_run.R`
+  - `repro/tests/test_unified_run_stage_skip.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation notes:
+  - Disabled stages now deterministically emit `manifest.stages.<name>.status=skip` with manifest writes in-loop.
+  - Regression test verifies skip-status persistence on real runner execution path (no model stages enabled).
+- Next action:
+  - Implement build-mode snapshot parity evidence + validator enforcement without heavy runs.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
