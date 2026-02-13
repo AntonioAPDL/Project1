@@ -100,6 +100,7 @@ post:
   profile: false
   profile_detail: false
   export_tables: true
+  table_formats: ["csv"]        # supported: csv, rds
 
 validation:
   profile: "production"          # production | production_proof | smoke

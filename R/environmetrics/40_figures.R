@@ -2004,19 +2004,29 @@ print(all_quantiles, n = Inf)
 
 posterior_table_exports_enabled <- post_export_tables_enabled(default = TRUE)
 posterior_table_output_dir <- if (exists("OUT_DIR", inherits = TRUE)) {
-  get("OUT_DIR", inherits = TRUE)
+  file.path(get("OUT_DIR", inherits = TRUE), "tables")
 } else {
-  getwd()
+  file.path(getwd(), "tables")
 }
+posterior_table_formats <- post_table_formats(default = c("csv"))
+posterior_table_keep_na <- if (exists("ENV_SORT_KEEP_NA", inherits = TRUE)) {
+  isTRUE(get("ENV_SORT_KEEP_NA", inherits = TRUE))
+} else {
+  TRUE
+}
+posterior_table_export_manifest <- NULL
 
 if (posterior_table_exports_enabled) {
   profile_section("figures.export_gamma_sigma_tables", {
-    post_export_gamma_sigma_tables(
+    gs_export <- post_export_gamma_sigma_tables(
       all_quantiles = all_quantiles,
       output_dir = posterior_table_output_dir,
       ci_digits = 3L,
-      write_tex = TRUE
+      write_tex = TRUE,
+      table_formats = posterior_table_formats,
+      keep_na = posterior_table_keep_na
     )
+    posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, gs_export$manifest)
   })
 }
 
@@ -6764,16 +6774,24 @@ print(summary_df)
 
 if (posterior_table_exports_enabled) {
   profile_section("figures.export_covariate_effects_table", {
-    post_export_covariate_effects_table(
+    cov_export <- post_export_covariate_effects_table(
       summary_df = summary_df,
       output_dir = posterior_table_output_dir,
       time_index = TT,
       ci_digits = 3L,
-      write_tex = TRUE
+      write_tex = TRUE,
+      table_formats = posterior_table_formats,
+      keep_na = posterior_table_keep_na
+    )
+    posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, cov_export$manifest)
+    post_write_table_exports_manifest(
+      manifest_df = posterior_table_export_manifest,
+      output_dir = posterior_table_output_dir
     )
     post_write_table_exports_readme(
       output_dir = posterior_table_output_dir,
-      ci_digits = 3L
+      ci_digits = 3L,
+      table_formats = posterior_table_formats
     )
   })
 }

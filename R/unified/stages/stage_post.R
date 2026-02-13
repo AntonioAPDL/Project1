@@ -234,6 +234,14 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   if (is.null(sort_keep_na)) sort_keep_na <- TRUE
   export_tables <- cfg$post$export_tables
   if (is.null(export_tables)) export_tables <- TRUE
+  table_formats <- cfg$post$table_formats
+  if (is.null(table_formats) || length(table_formats) == 0L) {
+    table_formats <- "csv"
+  } else {
+    table_formats <- tolower(as.character(table_formats))
+    table_formats <- table_formats[nzchar(table_formats)]
+    if (length(table_formats) == 0L) table_formats <- "csv"
+  }
   env_overrides <- c(
     UNIFIED_RUN_ROOT = run_root_abs,
     UNIFIED_RUN_ID = run_id,
@@ -255,6 +263,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_POST_FIGURES = if (isTRUE(cfg$post$figures)) "TRUE" else "FALSE",
     ENV_SORT_KEEP_NA = if (isTRUE(sort_keep_na)) "TRUE" else "FALSE",
     EXPORT_TABLES = if (isTRUE(export_tables)) "TRUE" else "FALSE",
+    EXPORT_TABLE_FORMATS = paste(unique(table_formats), collapse = ","),
     ENV_PROJECT_ROOT = repo_root_abs,
     ENV_RETROS_PATH = normalizePath(adapted_retros, mustWork = FALSE),
     ENV_NWS_FORECAST_PATH = normalizePath(adapted_nws, mustWork = FALSE),
@@ -278,7 +287,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
 
   out_dir <- file.path(run_root, "post", "outputs", run_id)
   if (dir.exists(out_dir)) {
-    generated <- list.files(out_dir, full.names = TRUE)
+    generated <- list.files(out_dir, full.names = TRUE, recursive = TRUE)
     for (f in generated) {
       if (file.info(f)$isdir) next
       if (grepl("\\.png$", f, ignore.case = TRUE)) {
