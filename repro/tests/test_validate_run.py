@@ -189,6 +189,53 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("profile_resolved=production_proof", result.stdout)
         self.assertIn("profile_source=manifest", result.stdout)
 
+    def test_auto_profile_prefers_manifest_over_conflicting_resolved_config(self) -> None:
+        self._write_common_success_files(validator_profile="production_proof")
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: true",
+                    "  run_exdqlm_univar: true",
+                    "  run_ndlm_main: true",
+                    "fit:",
+                    "  quantiles: [0.05, 0.5, 0.95]",
+                    "  contract_checks:",
+                    "    enabled: true",
+                    "  diagnostics:",
+                    "    enabled: true",
+                    "validation:",
+                    "  profile: production",
+                ]
+            )
+            + "\n",
+        )
+        for q in ("5", "50", "95"):
+            write_text(self.run_root / "fit" / f"q={int(q):02d}" / "outputs" / f"DISC_variables_{q}_exAL_synth_DISC.RData")
+        for qlab in ("05", "50", "95"):
+            write_text(
+                self.run_root / "fit" / "exdqlm_univar" / f"q={qlab}" / "outputs" / f"variables_{qlab}_exAL_synth_DISC_uni.RData"
+            )
+            write_json(
+                self.run_root / "fit" / "contract_checks" / "exdqlm_univar" / f"q={qlab}" / "contract.json",
+                {"status": "pass"},
+            )
+            write_json(
+                self.run_root / "fit" / "diagnostics" / "exdqlm_univar" / f"q={qlab}" / "diag.json",
+                {"status": "pass"},
+            )
+        write_text(self.run_root / "fit" / "ndlm_main" / "outputs" / "DISC_variables_50_NDLM_synth_DISC.RData")
+        write_json(self.run_root / "fit" / "contract_checks" / "ndlm_main" / "contract.json", {"status": "pass"})
+        write_json(self.run_root / "fit" / "diagnostics" / "ndlm_main" / "diag.json", {"status": "pass"})
+
+        result = self._run_validate("auto")
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("RESULT=PASS", result.stdout)
+        self.assertIn("profile_resolved=production_proof", result.stdout)
+        self.assertIn("profile_source=manifest", result.stdout)
+        self.assertIn("quantile_rule=config_declared_quantiles_enforced", result.stdout)
+
     def test_auto_profile_falls_back_to_resolved_config_profile(self) -> None:
         self._write_common_success_files()
         self._write_three_quantile_full_family_artifacts(include_validation_profile=True)

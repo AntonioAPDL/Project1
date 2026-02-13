@@ -109,7 +109,7 @@ post:
   export_tables: false
 
 validation:
-  profile: "production"
+  profile: "production_proof"
   canonical_run_id: "__SELF__"
   compare:
     mode: "both"
