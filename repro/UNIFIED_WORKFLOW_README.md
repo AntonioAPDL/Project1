@@ -108,6 +108,12 @@ Important:
 
 - Do not run `--profile production` on bounded proof runs (expected `FAIL` by design if not all 7 quantiles exist).
 
+## Write-Audit Policy
+
+- Production default: `write_audit.enforce_from_stage: 4` (audit starts at `validate` and includes `report`).
+- Migration/proof recommendation: `write_audit.enforce_from_stage: 2` (audit from `fit` onward for fit/post isolation evidence).
+- Example overlay config: `config/unified_runs/migration_write_audit_from_fit.yaml`.
+
 ## Drift approval workflow
 
 Drift is tracked through `change_approval` in `run_manifest.yaml`:

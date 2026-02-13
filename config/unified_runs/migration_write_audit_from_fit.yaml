@@ -1,0 +1,7 @@
+config_version: 1
+
+# Overlay config for migration/proof runs that require write-audit evidence
+# starting at fit stage while keeping production defaults unchanged elsewhere.
+write_audit:
+  enabled: true
+  enforce_from_stage: 2

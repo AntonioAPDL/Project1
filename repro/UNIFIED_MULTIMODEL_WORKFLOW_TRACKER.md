@@ -1067,12 +1067,26 @@ At each planning/execution checkpoint:
 - Next action:
   - Close Open Q11.1 #4 with explicit write-audit policy guidance (default unchanged, migration profile documented).
 
+### Progress Update 2026-02-13 08:04 UTC
+- Phase: P7 (write-audit policy closure)
+- Change type: docs+config-policy
+- Summary: closed Open Q11.1 #4 without changing defaults by documenting explicit write-audit policy (`enforce_from_stage=4` production default, `=2` migration/proof recommendation) and adding a minimal overlay config for fit-stage audit enforcement.
+- Files touched:
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/migration_write_audit_from_fit.yaml`
+  - `repro/UNIFIED_WORKFLOW_README.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation notes:
+  - No runtime behavior changed; defaults remain production-stable.
+  - Migration/proof audit profile is now explicitly reproducible via committed overlay config.
+- Next action:
+  - Close Open Q11.1 #5 by hardening run-scoped forecats snapshot usage evidence across fit/post/validator outputs.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
 
-1. `write_audit.enforce_from_stage` defaults to `4`, which audits only `validate` and `report` in current stage order. Should this be reduced to `2` or `1` for migration phases that need fit/post write isolation proof?
-2. Forecats `build` mode currently writes to `data/forecats_inputs` and `data/forecats_cache` (outside `run_root`). For unified multi-model production runs, should forecats outputs be copied/snapshotted into run root as immutable run inputs?
+1. Forecats `build` mode currently writes to `data/forecats_inputs` and `data/forecats_cache` (outside `run_root`). For unified multi-model production runs, should forecats outputs be copied/snapshotted into run root as immutable run inputs?
 
 ### 11.2 Resolved Defaults
 
@@ -1099,6 +1113,10 @@ At each planning/execution checkpoint:
    - `stages.<name>.status` uses `pass|fail|skip` (with `pending` only transiently during execution).
    - `stages.<name>.started_at_utc` and `stages.<name>.finished_at_utc` are populated on execution path.
    - `stages.<name>.log_path` records stage-log intent without changing run pass/fail semantics.
+8. Write-audit policy defaults are locked:
+   - Keep `write_audit.enforce_from_stage: 4` as production default.
+   - Use `write_audit.enforce_from_stage: 2` for migration/proof runs that need fit/post write isolation evidence.
+   - Reference overlay config: `config/unified_runs/migration_write_audit_from_fit.yaml`.
 
 ## 12) Immediate Next Actions (Proposed)
 
