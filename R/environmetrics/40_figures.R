@@ -2009,10 +2009,12 @@ posterior_table_output_dir <- if (exists("OUT_DIR", inherits = TRUE)) {
   file.path(getwd(), "tables")
 }
 posterior_table_formats <- post_table_formats(default = c("csv"))
-posterior_table_keep_na <- if (exists("ENV_SORT_KEEP_NA", inherits = TRUE)) {
-  isTRUE(get("ENV_SORT_KEEP_NA", inherits = TRUE))
-} else {
-  TRUE
+posterior_table_keep_na <- TRUE
+posterior_table_keep_na_env <- tolower(trimws(Sys.getenv("ENV_SORT_KEEP_NA", "")))
+if (identical(posterior_table_keep_na_env, "true")) {
+  posterior_table_keep_na <- TRUE
+} else if (identical(posterior_table_keep_na_env, "false")) {
+  posterior_table_keep_na <- FALSE
 }
 posterior_table_export_manifest <- NULL
 

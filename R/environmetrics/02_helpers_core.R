@@ -340,9 +340,16 @@ post_export_gamma_sigma_tables <- function(
       ci_str = character(0),
       stringsAsFactors = FALSE
     )
-    post_write_csv(empty, file.path(output_dir, "gamma_summary.csv"))
-    post_write_csv(empty, file.path(output_dir, "sigma_summary.csv"))
-    return(list(gamma = empty, sigma = empty))
+    manifest <- post_export_tables(
+      tables = list(gamma = empty, sigma = empty),
+      output_dir = output_dir,
+      file_stems = list(gamma = "gamma_summary", sigma = "sigma_summary"),
+      formats = table_formats,
+      keep_na = keep_na,
+      sort_keys = list(gamma = c("quantile", "source", "stat"), sigma = c("quantile", "source", "stat")),
+      numeric_digits = numeric_digits
+    )
+    return(list(gamma = empty, sigma = empty, manifest = manifest))
   }
 
   out <- data.frame(
