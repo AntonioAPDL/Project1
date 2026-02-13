@@ -1127,6 +1127,24 @@ At each planning/execution checkpoint:
 - Next action:
   - Implement build-mode snapshot parity evidence + validator enforcement without heavy runs.
 
+### Progress Update 2026-02-13 08:43 UTC
+- Phase: P7 (forecats build-snapshot parity enforcement)
+- Change type: tooling+tests
+- Summary: hardened validator-side snapshot parity enforcement for production/production_proof profiles when `inputs.forecats.mode=build`, `inputs.forecats.snapshot.enabled=true`, and `inputs.shared.prefer_forecats_snapshot=true`; added deterministic tests for both fail/pass evidence paths and a build-mode snapshot regression that stubs the forecats pipeline command while exercising real stage snapshot + shared-input resolution logic.
+- Files touched:
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_validate_run.py`
+  - `repro/tests/test_forecats_snapshot_contract.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation notes:
+  - Validator now emits and gates on snapshot provenance evidence lines (`require_snapshot_evidence`, `snapshot_check.*`, `shared_source_*`, `snapshot_source_mode`) in production/proof profiles when build-mode parity is required by config.
+  - New regression coverage verifies:
+    - production_proof FAIL when build-mode snapshot evidence is required but absent,
+    - production_proof PASS when `source_map.txt` + `snapshot_source_map.txt` prove snapshot routing,
+    - build-mode forecats snapshot flow records `mode=build`, snapshot aliases, and snapshot-origin shared source map entries without running heavy/network forecats pipeline work.
+- Next action:
+  - Clean tracker duplication and keep a single authoritative Open/Resolved section.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open

@@ -153,6 +153,9 @@ cfg_run_exdqlm_univar="false"
 cfg_run_ndlm_main="false"
 cfg_contract_checks_enabled="false"
 cfg_diagnostics_enabled="false"
+cfg_forecats_mode="use_existing"
+cfg_forecats_snapshot_enabled="false"
+cfg_prefer_forecats_snapshot="true"
 [[ -f "${RESOLVED_CONFIG_PATH}" ]] || die "resolved_config.yaml not found: ${RESOLVED_CONFIG_PATH}"
 if mapfile -t cfg_vals < <(python3 - "${RESOLVED_CONFIG_PATH}" <<'PY'
 import sys
@@ -173,6 +176,9 @@ except Exception as exc:
 validation = doc.get("validation") or {}
 models = doc.get("models") or {}
 fit = doc.get("fit") or {}
+inputs = doc.get("inputs") or {}
+forecats = inputs.get("forecats") or {}
+shared = inputs.get("shared") or {}
 raw_quantiles = fit.get("quantiles")
 if isinstance(raw_quantiles, (list, tuple)):
     quantiles = list(raw_quantiles)
@@ -204,6 +210,14 @@ print(as_bool_word(models.get("run_exdqlm_univar"), default=False))
 print(as_bool_word(models.get("run_ndlm_main"), default=False))
 print(as_bool_word((fit.get("contract_checks") or {}).get("enabled"), default=False))
 print(as_bool_word((fit.get("diagnostics") or {}).get("enabled"), default=False))
+forecats_mode = str(forecats.get("mode") or "")
+snapshot_cfg = forecats.get("snapshot") or {}
+snapshot_enabled = snapshot_cfg.get("enabled")
+if snapshot_enabled is None:
+    snapshot_enabled = (forecats_mode == "build")
+print(forecats_mode)
+print(as_bool_word(snapshot_enabled, default=False))
+print(as_bool_word(shared.get("prefer_forecats_snapshot"), default=True))
 PY
 ); then
   validation_profile_from_config="${cfg_vals[0]:-}"
@@ -214,6 +228,9 @@ PY
   cfg_run_ndlm_main="${cfg_vals[5]:-false}"
   cfg_contract_checks_enabled="${cfg_vals[6]:-false}"
   cfg_diagnostics_enabled="${cfg_vals[7]:-false}"
+  cfg_forecats_mode="${cfg_vals[8]:-use_existing}"
+  cfg_forecats_snapshot_enabled="${cfg_vals[9]:-false}"
+  cfg_prefer_forecats_snapshot="${cfg_vals[10]:-true}"
 else
   die "Failed to parse ${RESOLVED_CONFIG_PATH} (ensure valid YAML and PyYAML import 'yaml' is available)"
 fi
@@ -466,11 +483,55 @@ manifest_finished_at="$(norm_null "${manifest_finished_at}")"
 manifest_validation_status="$(norm_null "${manifest_validation_status}")"
 manifest_git_dirty="$(norm_null "${manifest_git_dirty}")"
 
+shared_source_mode=""
+shared_source_nws_origin=""
+shared_source_glofas_origin=""
+snapshot_source_mode=""
+if [[ -f "${SHARED_SOURCE_MAP_PATH}" ]]; then
+  shared_source_mode="$(awk -F= '/^source_mode=/{print $2; exit}' "${SHARED_SOURCE_MAP_PATH}" 2>/dev/null || true)"
+  shared_source_nws_origin="$(awk -F= '/^source.nws_origin=/{print $2; exit}' "${SHARED_SOURCE_MAP_PATH}" 2>/dev/null || true)"
+  shared_source_glofas_origin="$(awk -F= '/^source.glofas_origin=/{print $2; exit}' "${SHARED_SOURCE_MAP_PATH}" 2>/dev/null || true)"
+fi
+if [[ -f "${SNAPSHOT_SOURCE_MAP_PATH}" ]]; then
+  snapshot_source_mode="$(awk -F= '/^mode=/{print $2; exit}' "${SNAPSHOT_SOURCE_MAP_PATH}" 2>/dev/null || true)"
+fi
+
 repo_git_porcelain="$(git -C "${REPO_ROOT}" status --porcelain=v1 || true)"
 if [[ -n "${repo_git_porcelain}" ]]; then
   repo_dirty="true"
 else
   repo_dirty="false"
+fi
+
+require_snapshot_evidence="false"
+if [[ "${PROFILE_EFFECTIVE}" != "smoke" && \
+      "${cfg_forecats_mode}" == "build" && \
+      "${cfg_forecats_snapshot_enabled}" == "true" && \
+      "${cfg_prefer_forecats_snapshot}" == "true" ]]; then
+  require_snapshot_evidence="true"
+fi
+
+chk_snapshot_shared_map="true"
+chk_snapshot_bundle_map="true"
+chk_snapshot_shared_mode="true"
+chk_snapshot_bundle_mode="true"
+chk_snapshot_origins="true"
+if [[ "${require_snapshot_evidence}" == "true" ]]; then
+  [[ -f "${SHARED_SOURCE_MAP_PATH}" ]] || chk_snapshot_shared_map="false"
+  [[ -f "${SNAPSHOT_SOURCE_MAP_PATH}" ]] || chk_snapshot_bundle_map="false"
+  [[ "${shared_source_mode}" == forecats_snapshot* ]] || chk_snapshot_shared_mode="false"
+  [[ "${snapshot_source_mode}" == "build" ]] || chk_snapshot_bundle_mode="false"
+  if [[ "${shared_source_nws_origin}" != "snapshot" || "${shared_source_glofas_origin}" != "snapshot" ]]; then
+    chk_snapshot_origins="false"
+  fi
+fi
+chk_snapshot_evidence="true"
+if [[ "${chk_snapshot_shared_map}" != "true" || \
+      "${chk_snapshot_bundle_map}" != "true" || \
+      "${chk_snapshot_shared_mode}" != "true" || \
+      "${chk_snapshot_bundle_mode}" != "true" || \
+      "${chk_snapshot_origins}" != "true" ]]; then
+  chk_snapshot_evidence="false"
 fi
 
 chk_manifest_exists="false"
@@ -564,6 +625,7 @@ if [[ "${PROFILE_EFFECTIVE}" == "production" || "${PROFILE_EFFECTIVE}" == "produ
         "${chk_contract_ndlm}" == "true" && \
         "${chk_diag_univar}" == "true" && \
         "${chk_diag_ndlm}" == "true" && \
+        "${chk_snapshot_evidence}" == "true" && \
         "${chk_post_outputs}" == "true" && \
         "${chk_compare_report}" == "true" && \
         "${chk_write_audit_patch}" == "true" && \
@@ -840,6 +902,20 @@ echo "require_univar=${require_univar}"
 echo "require_ndlm=${require_ndlm}"
 echo "fit.contract_checks.enabled=${cfg_contract_checks_enabled}"
 echo "fit.diagnostics.enabled=${cfg_diagnostics_enabled}"
+echo "forecats.mode=${cfg_forecats_mode}"
+echo "forecats.snapshot.enabled=${cfg_forecats_snapshot_enabled}"
+echo "inputs.shared.prefer_forecats_snapshot=${cfg_prefer_forecats_snapshot}"
+echo "require_snapshot_evidence=${require_snapshot_evidence}"
+echo "snapshot_check.shared_map=$(bool_word "${chk_snapshot_shared_map}")"
+echo "snapshot_check.snapshot_map=$(bool_word "${chk_snapshot_bundle_map}")"
+echo "snapshot_check.shared_mode=$(bool_word "${chk_snapshot_shared_mode}")"
+echo "snapshot_check.snapshot_mode=$(bool_word "${chk_snapshot_bundle_mode}")"
+echo "snapshot_check.origins=$(bool_word "${chk_snapshot_origins}")"
+echo "snapshot_check.evidence=$(bool_word "${chk_snapshot_evidence}")"
+echo "shared_source_mode=${shared_source_mode:-<missing>}"
+echo "snapshot_source_mode=${snapshot_source_mode:-<missing>}"
+echo "shared_source_nws_origin=${shared_source_nws_origin:-<missing>}"
+echo "shared_source_glofas_origin=${shared_source_glofas_origin:-<missing>}"
 echo "family_check.multivar=$(bool_word "${chk_quantiles}")"
 echo "family_check.univar_outputs=$(bool_word "${chk_univar_outputs}")"
 echo "family_check.ndlm_output=$(bool_word "${chk_ndlm_outputs}")"

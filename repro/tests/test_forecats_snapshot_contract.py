@@ -160,6 +160,97 @@ class ForecatsSnapshotContractTests(unittest.TestCase):
         self.assertIn("shared_source_map_path=", fit_log)
         self.assertIn("snapshot_source_map_path=", fit_log)
 
+    def test_build_mode_snapshot_records_build_provenance_and_prefers_snapshot_inputs(self) -> None:
+        self._prepare_inputs()
+        run_root_str = str(self.run_root).replace("\\", "/")
+        repo_root_str = str(REPO_ROOT).replace("\\", "/")
+        bundle_root_str = str(self.bundle_root).replace("\\", "/")
+        fake_pipeline_cfg = self.run_root / "fake_forecats_pipeline.yaml"
+        fake_pipeline_cfg.write_text("config: test\n", encoding="utf-8")
+
+        script = "\n".join(
+            [
+                f'source("{REPO_ROOT / "R" / "unified" / "utils_hash.R"}")',
+                f'source("{REPO_ROOT / "R" / "unified" / "config.R"}")',
+                f'source("{REPO_ROOT / "R" / "unified" / "manifest.R"}")',
+                f'source("{REPO_ROOT / "R" / "unified" / "inputs_shared_validate.R"}")',
+                f'source("{REPO_ROOT / "R" / "unified" / "stages" / "stage_forecats.R"}")',
+                f'source("{REPO_ROOT / "R" / "unified" / "stages" / "stage_data_prep_shared.R"}")',
+                "cfg <- unified_config_defaults()",
+                f"cfg$run$run_id <- '{self.run_id}'",
+                "cfg$stages$forecats <- TRUE",
+                "cfg$stages$data_prep_shared <- TRUE",
+                "cfg$inputs$forecats$mode <- 'build'",
+                "cfg$inputs$forecats$snapshot$enabled <- TRUE",
+                "cfg$inputs$shared$prefer_forecats_snapshot <- TRUE",
+                f"cfg$inputs$forecats$pipeline_config_path <- '{fake_pipeline_cfg}'",
+                f"cfg$inputs$fit$parameters_path <- '{self.params_path}'",
+                f"cfg$inputs$fit$retros_path <- '{self.cfg_retros}'",
+                f"cfg$inputs$fit$nws_forecast_path <- '{self.cfg_nws}'",
+                f"cfg$inputs$fit$glofas_forecast_path <- '{self.cfg_glofas}'",
+                f"fake_bundle <- '{bundle_root_str}'",
+                "system2 <- function(command, args, stdout = TRUE, stderr = TRUE) {",
+                "  structure(c(sprintf('Bundle ready: %s', fake_bundle)), status = 0L)",
+                "}",
+                "repro_record <- list(",
+                "  fit_rng = c('Mersenne-Twister', 'Inversion', 'Rejection'),",
+                "  post_rng = c('Mersenne-Twister', 'Inversion', 'Rejection')",
+                ")",
+                "manifest <- unified_manifest_init(",
+                "  cfg = cfg,",
+                f"  run_id = '{self.run_id}',",
+                f"  run_root = '{run_root_str}',",
+                f"  repo_root = '{repo_root_str}',",
+                "  repro_record = repro_record",
+                ")",
+                f"manifest <- unified_stage_forecats(cfg, run_root = '{run_root_str}', repo_root = '{repo_root_str}', manifest = manifest)$manifest",
+                f"manifest <- unified_stage_data_prep_shared(cfg, run_root = '{run_root_str}', repo_root = '{repo_root_str}', manifest = manifest)$manifest",
+                f"shared_check <- unified_validate_required_shared_inputs(run_root = '{run_root_str}', stage_name = 'fit', manifest = manifest, enabled_models = cfg$models)",
+                "input_snapshot_count <- sum(vapply(manifest$artifacts, function(a) identical(a$role, 'input_snapshot'), logical(1)))",
+                f"source_map_path <- file.path('{run_root_str}', 'inputs', 'shared', 'source_map.txt')",
+                f"snapshot_map_path <- file.path('{run_root_str}', 'inputs', 'shared', 'forecats_bundle', 'snapshot_source_map.txt')",
+                "source_map_lines <- if (file.exists(source_map_path)) readLines(source_map_path) else character(0)",
+                "snapshot_map_lines <- if (file.exists(snapshot_map_path)) readLines(snapshot_map_path) else character(0)",
+                "glofas_origin <- source_map_lines[grepl('^source.glofas_origin=', source_map_lines)]",
+                "nws_origin <- source_map_lines[grepl('^source.nws_origin=', source_map_lines)]",
+                "snapshot_mode <- snapshot_map_lines[grepl('^mode=', snapshot_map_lines)]",
+                "snapshot_bundle_root <- snapshot_map_lines[grepl('^bundle_root=', snapshot_map_lines)]",
+                f"fit_source_log <- file.path('{run_root_str}', 'fit', 'logs', 'shared_input_source_map.log')",
+                "cat(sprintf('input_snapshot_count=%d\\n', input_snapshot_count))",
+                "cat(sprintf('source_map_exists=%s\\n', if (file.exists(source_map_path)) 'true' else 'false'))",
+                "cat(sprintf('snapshot_source_map_exists=%s\\n', if (file.exists(snapshot_map_path)) 'true' else 'false'))",
+                "cat(sprintf('snapshot_mode=%s\\n', if (length(snapshot_mode) > 0) snapshot_mode[[1]] else 'missing'))",
+                "cat(sprintf('snapshot_bundle_root=%s\\n', if (length(snapshot_bundle_root) > 0) snapshot_bundle_root[[1]] else 'missing'))",
+                "cat(sprintf('source_glofas_origin=%s\\n', if (length(glofas_origin) > 0) glofas_origin[[1]] else 'missing'))",
+                "cat(sprintf('source_nws_origin=%s\\n', if (length(nws_origin) > 0) nws_origin[[1]] else 'missing'))",
+                "cat(sprintf('snapshot_alias_nws_exists=%s\\n', if (file.exists(file.path(dirname(snapshot_map_path), 'nws_forecast.csv'))) 'true' else 'false'))",
+                "cat(sprintf('snapshot_alias_glofas_exists=%s\\n', if (file.exists(file.path(dirname(snapshot_map_path), 'glofas_forecast.csv'))) 'true' else 'false'))",
+                "cat(sprintf('fit_source_log_exists=%s\\n', if (file.exists(fit_source_log)) 'true' else 'false'))",
+                "cat(sprintf('shared_snapshot_source_map_path_exists=%s\\n', if (file.exists(shared_check$snapshot_source_map_path)) 'true' else 'false'))",
+            ]
+        )
+
+        proc = subprocess.run(
+            ["Rscript", "--vanilla", "-e", script],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stdout + "\n" + proc.stderr)
+        out = {line.split("=", 1)[0]: line.split("=", 1)[1] for line in proc.stdout.splitlines() if "=" in line}
+        self.assertGreater(int(out["input_snapshot_count"]), 0)
+        self.assertEqual(out["source_map_exists"], "true")
+        self.assertEqual(out["snapshot_source_map_exists"], "true")
+        self.assertEqual(out["snapshot_mode"], "mode=build")
+        self.assertTrue(out["snapshot_bundle_root"].startswith("bundle_root="))
+        self.assertEqual(out["source_glofas_origin"], "source.glofas_origin=snapshot")
+        self.assertEqual(out["source_nws_origin"], "source.nws_origin=snapshot")
+        self.assertEqual(out["snapshot_alias_nws_exists"], "true")
+        self.assertEqual(out["snapshot_alias_glofas_exists"], "true")
+        self.assertEqual(out["fit_source_log_exists"], "true")
+        self.assertEqual(out["shared_snapshot_source_map_path_exists"], "true")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -537,6 +537,85 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("shared_source_map_path=", result.stdout)
         self.assertIn("snapshot_source_map_path=", result.stdout)
 
+    def test_production_proof_requires_build_snapshot_evidence_when_config_demands_it(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: false",
+                    "  run_exdqlm_univar: false",
+                    "  run_ndlm_main: false",
+                    "inputs:",
+                    "  forecats:",
+                    "    mode: build",
+                    "    snapshot:",
+                    "      enabled: true",
+                    "  shared:",
+                    "    prefer_forecats_snapshot: true",
+                    "fit:",
+                    "  quantiles: [0.5]",
+                    "validation:",
+                    "  profile: production_proof",
+                ]
+            )
+            + "\n",
+        )
+
+        result = self._run_validate("production_proof")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("RESULT=FAIL", result.stdout)
+        self.assertIn("require_snapshot_evidence=true", result.stdout)
+        self.assertIn("snapshot_check.evidence=FAIL", result.stdout)
+
+    def test_production_proof_passes_with_build_snapshot_evidence_when_config_demands_it(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: false",
+                    "  run_exdqlm_univar: false",
+                    "  run_ndlm_main: false",
+                    "inputs:",
+                    "  forecats:",
+                    "    mode: build",
+                    "    snapshot:",
+                    "      enabled: true",
+                    "  shared:",
+                    "    prefer_forecats_snapshot: true",
+                    "fit:",
+                    "  quantiles: [0.5]",
+                    "validation:",
+                    "  profile: production_proof",
+                ]
+            )
+            + "\n",
+        )
+        write_text(
+            self.run_root / "inputs" / "shared" / "source_map.txt",
+            "\n".join(
+                [
+                    "source_mode=forecats_snapshot_mixed",
+                    "source.nws_origin=snapshot",
+                    "source.glofas_origin=snapshot",
+                ]
+            )
+            + "\n",
+        )
+        write_text(
+            self.run_root / "inputs" / "shared" / "forecats_bundle" / "snapshot_source_map.txt",
+            "mode=build\n",
+        )
+
+        result = self._run_validate("production_proof")
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("RESULT=PASS", result.stdout)
+        self.assertIn("require_snapshot_evidence=true", result.stdout)
+        self.assertIn("snapshot_check.evidence=PASS", result.stdout)
+
     def test_smoke_profile_fails_hard_on_malformed_resolved_config(self) -> None:
         self._write_common_success_files()
         write_text(self.run_root / "resolved_config.yaml", "models: [\n")
