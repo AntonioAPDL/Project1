@@ -247,17 +247,15 @@ class ValidateRunScriptTests(unittest.TestCase):
             "\n".join(
                 [
                     "models:",
-                    "  run_exdqlm_multivar: true",
+                    "  run_exdqlm_multivar: false",
                     "  run_exdqlm_univar: false",
                     "  run_ndlm_main: false",
                     "fit:",
-                    "  quantiles: [0.95, 0.20, 0.50, 0.35, 0.80, 0.65, 0.05]",
+                    "  quantiles: [0.050, '0.5', 0.95, 0.01, 0.99, 0.10, 0.90]",
                 ]
             )
             + "\n",
         )
-        for q in ("5", "20", "35", "50", "65", "80", "95"):
-            write_text(self.run_root / "fit" / f"q={int(q):02d}" / "outputs" / f"DISC_variables_{q}_exAL_synth_DISC.RData")
 
         result = self._run_validate("auto")
         self._assert_output_contract(result, "auto", expected_result="PASS")
@@ -275,19 +273,17 @@ class ValidateRunScriptTests(unittest.TestCase):
             "\n".join(
                 [
                     "models:",
-                    "  run_exdqlm_multivar: true",
+                    "  run_exdqlm_multivar: false",
                     "  run_exdqlm_univar: false",
                     "  run_ndlm_main: false",
                     "fit:",
-                    "  quantiles: [0.95, 0.20, 0.50, 0.35, 0.80, 0.65, 0.05]",
+                    "  quantiles: [0.050, '0.5', 0.95, 0.01, 0.99, 0.10, 0.90]",
                     "validation:",
                     "  profile: production_proof",
                 ]
             )
             + "\n",
         )
-        for q in ("5", "20", "35", "50", "65", "80", "95"):
-            write_text(self.run_root / "fit" / f"q={int(q):02d}" / "outputs" / f"DISC_variables_{q}_exAL_synth_DISC.RData")
 
         result = self._run_validate("auto")
         self._assert_output_contract(result, "auto", expected_result="PASS")
@@ -327,35 +323,32 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("profile_reason=auto_validation.profile_explicit", result.stdout)
         self.assertIn("quantile_rule=quantiles_from_resolved_config_or_default_50", result.stdout)
 
-    def test_auto_profile_uses_validation_smoke_flag_when_profile_absent(self) -> None:
+    def test_auto_profile_does_not_infer_smoke_from_validation_smoke_flag(self) -> None:
         self._write_common_success_files()
         write_text(
             self.run_root / "resolved_config.yaml",
             "\n".join(
                 [
                     "models:",
-                    "  run_exdqlm_multivar: true",
+                    "  run_exdqlm_multivar: false",
                     "  run_exdqlm_univar: false",
                     "  run_ndlm_main: false",
                     "fit:",
-                    "  quantiles: [0.95, 0.20, 0.50, 0.35, 0.80, 0.65, 0.05]",
+                    "  quantiles: [0.05, 0.5, 0.95]",
                     "validation:",
                     "  smoke: true",
                 ]
             )
             + "\n",
         )
-        for q in ("5", "20", "35", "50", "65", "80", "95"):
-            write_text(self.run_root / "fit" / f"q={int(q):02d}" / "outputs" / f"DISC_variables_{q}_exAL_synth_DISC.RData")
-        write_text(self.run_root / "validate" / "write_audit" / "post" / "fs_diff.patch", "")
 
         result = self._run_validate("auto")
         self._assert_output_contract(result, "auto", expected_result="PASS")
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("RESULT=PASS", result.stdout)
-        self.assertIn("profile_effective=smoke", result.stdout)
-        self.assertIn("profile_reason=auto_validation.smoke_true", result.stdout)
-        self.assertIn("quantile_rule=quantiles_from_resolved_config_or_default_50", result.stdout)
+        self.assertIn("profile_effective=production_proof", result.stdout)
+        self.assertIn("profile_reason=auto_quantiles_noncanonical", result.stdout)
+        self.assertIn("quantile_rule=config_declared_quantiles_enforced", result.stdout)
 
     def test_auto_profile_fails_cleanly_on_unknown_validation_profile(self) -> None:
         self._write_common_success_files()
@@ -394,6 +387,27 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("profile_requested=auto", result.stdout)
         self.assertIn("error=Failed to parse", result.stdout)
         self.assertIn("Failed to parse", result.stdout)
+
+    def test_auto_profile_fails_when_fit_quantiles_missing(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: false",
+                    "  run_exdqlm_univar: false",
+                    "  run_ndlm_main: false",
+                ]
+            )
+            + "\n",
+        )
+
+        result = self._run_validate("auto")
+        self._assert_output_contract(result, "auto", expected_result="FAIL")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("RESULT=FAIL", result.stdout)
+        self.assertIn("fit.quantiles missing", result.stdout)
 
     def test_production_proof_still_enforces_compare_report_gate(self) -> None:
         self._write_common_success_files()

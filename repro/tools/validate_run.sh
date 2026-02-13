@@ -81,36 +81,7 @@ bool_word() {
 
 declare -a CANONICAL_QUANTILES=(5 20 35 50 65 80 95)
 declare -a CANONICAL_Q_LABELS=(05 20 35 50 65 80 95)
-ALLOWED_PROFILES_CSV="production,production_proof,smoke"
-
-is_canonical_quantile_set() {
-  local -a vals=("$@")
-  local -a normalized=()
-  local v
-  for v in "${vals[@]}"; do
-    if [[ "${v}" =~ ^[0-9]+$ ]]; then
-      normalized+=("$((10#${v}))")
-    fi
-  done
-  if [[ "${#normalized[@]}" -eq 0 ]]; then
-    echo "false"
-    return
-  fi
-  local -a normalized_sorted=()
-  mapfile -t normalized_sorted < <(printf '%s\n' "${normalized[@]}" | sort -n -u)
-  if [[ "${#normalized_sorted[@]}" -ne "${#CANONICAL_QUANTILES[@]}" ]]; then
-    echo "false"
-    return
-  fi
-  local i
-  for i in "${!CANONICAL_QUANTILES[@]}"; do
-    if [[ "${normalized_sorted[$i]}" != "${CANONICAL_QUANTILES[$i]}" ]]; then
-      echo "false"
-      return
-    fi
-  done
-  echo "true"
-}
+ALLOWED_PROFILES_CSV="production,production_proof,smoke,auto"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -271,10 +242,37 @@ snapshot_enabled = snapshot_cfg.get("enabled")
 if snapshot_enabled is None:
     snapshot_enabled = (forecats_mode == "build")
 
+def normalize_quantiles(raw_q):
+    if isinstance(raw_q, (list, tuple)):
+        vals = list(raw_q)
+    elif raw_q is None:
+        vals = []
+    else:
+        vals = [raw_q]
+
+    out = []
+    for q in vals:
+        try:
+            qf = float(q)
+        except Exception:
+            continue
+        if qf != qf:
+            continue
+        out.append(round(qf, 6))
+    out = sorted(set(out))
+    return [f"{x:.6f}" for x in out]
+
+canonical_auto_quantiles = normalize_quantiles([0.01, 0.05, 0.10, 0.50, 0.90, 0.95, 0.99])
+quantiles_norm = normalize_quantiles(fit.get("quantiles"))
+fit_quantiles_present = ("quantiles" in fit and fit.get("quantiles") is not None)
+
 payload = {
     "validation_profile": str(validation.get("profile") or ""),
     "validation_smoke": as_bool(validation.get("smoke"), default=False),
     "quantiles_pct": quantiles_pct,
+    "quantiles_norm": ",".join(quantiles_norm),
+    "fit_quantiles_present": as_bool(fit_quantiles_present, default=False),
+    "auto_quantiles_canonical": as_bool(quantiles_norm == canonical_auto_quantiles, default=False),
     "prefer_forecats_snapshot": as_bool(shared.get("prefer_forecats_snapshot"), default=True),
     "run_exdqlm_multivar": as_bool(models.get("run_exdqlm_multivar"), default=True),
     "run_exdqlm_univar": as_bool(models.get("run_exdqlm_univar"), default=False),
@@ -292,6 +290,9 @@ ordered_keys = [
     "validation_profile",
     "validation_smoke",
     "quantiles_pct",
+    "quantiles_norm",
+    "fit_quantiles_present",
+    "auto_quantiles_canonical",
     "prefer_forecats_snapshot",
     "run_exdqlm_multivar",
     "run_exdqlm_univar",
@@ -327,6 +328,9 @@ cfg_forecats_mode="use_existing"
 cfg_forecats_snapshot_enabled="false"
 cfg_prefer_forecats_snapshot="true"
 cfg_validation_smoke_flag="false"
+cfg_fit_quantiles_present="false"
+cfg_quantiles_norm_csv=""
+cfg_auto_quantiles_canonical="false"
 [[ -f "${RESOLVED_CONFIG_PATH}" ]] || emit_fail_result "resolved_config.yaml not found: ${RESOLVED_CONFIG_PATH}"
 cfg_parse_output=""
 if cfg_parse_output="$(parse_resolved_config_single_pass "${RESOLVED_CONFIG_PATH}" 2>&1)"; then
@@ -338,6 +342,9 @@ if cfg_parse_output="$(parse_resolved_config_single_pass "${RESOLVED_CONFIG_PATH
       validation_profile) validation_profile_from_config="${val}" ;;
       validation_smoke) cfg_validation_smoke_flag="${val}" ;;
       quantiles_pct) cfg_quantiles_pct_csv="${val}" ;;
+      quantiles_norm) cfg_quantiles_norm_csv="${val}" ;;
+      fit_quantiles_present) cfg_fit_quantiles_present="${val}" ;;
+      auto_quantiles_canonical) cfg_auto_quantiles_canonical="${val}" ;;
       prefer_forecats_snapshot) cfg_prefer_forecats_snapshot="${val}" ;;
       run_exdqlm_multivar) cfg_run_exdqlm_multivar="${val}" ;;
       run_exdqlm_univar) cfg_run_exdqlm_univar="${val}" ;;
@@ -357,14 +364,19 @@ declare -a cfg_quantiles_pct=()
 if [[ -n "${cfg_quantiles_pct_csv}" ]]; then
   IFS=',' read -r -a cfg_quantiles_pct <<< "${cfg_quantiles_pct_csv}"
 fi
-cfg_quantiles_are_canonical="$(is_canonical_quantile_set "${cfg_quantiles_pct[@]:-}")"
 
 if [[ "${PROFILE_REQUESTED}" == "auto" ]]; then
+  auto_needs_inference="true"
   if [[ -n "${validation_profile_from_config}" ]]; then
     case "${validation_profile_from_config}" in
       production|production_proof|smoke)
         PROFILE_EFFECTIVE="${validation_profile_from_config}"
         profile_reason="auto_validation.profile_explicit"
+        auto_needs_inference="false"
+        ;;
+      auto)
+        profile_reason="auto_validation.profile_auto_infer"
+        auto_needs_inference="true"
         ;;
       *)
         PROFILE_EFFECTIVE="${validation_profile_from_config}"
@@ -372,15 +384,21 @@ if [[ "${PROFILE_REQUESTED}" == "auto" ]]; then
         emit_fail_result "Unknown validation.profile='${validation_profile_from_config}' in ${RESOLVED_CONFIG_PATH}. Allowed: ${ALLOWED_PROFILES_CSV}"
         ;;
     esac
-  elif [[ "${cfg_validation_smoke_flag}" == "true" ]]; then
-    PROFILE_EFFECTIVE="smoke"
-    profile_reason="auto_validation.smoke_true"
-  elif [[ "${cfg_quantiles_are_canonical}" == "true" ]]; then
-    PROFILE_EFFECTIVE="production"
-    profile_reason="auto_quantiles_match_canonical_7"
-  else
-    PROFILE_EFFECTIVE="production_proof"
-    profile_reason="auto_quantiles_noncanonical"
+  fi
+  if [[ "${auto_needs_inference}" == "true" ]]; then
+    if [[ "${cfg_fit_quantiles_present}" != "true" ]]; then
+      emit_fail_result "fit.quantiles missing in ${RESOLVED_CONFIG_PATH}; required for --profile auto inference"
+    fi
+    if [[ -z "${cfg_quantiles_norm_csv}" ]]; then
+      emit_fail_result "fit.quantiles present but no parseable numeric entries in ${RESOLVED_CONFIG_PATH}"
+    fi
+    if [[ "${cfg_auto_quantiles_canonical}" == "true" ]]; then
+      PROFILE_EFFECTIVE="production"
+      profile_reason="auto_quantiles_match_canonical_7"
+    else
+      PROFILE_EFFECTIVE="production_proof"
+      profile_reason="auto_quantiles_noncanonical"
+    fi
   fi
 else
   profile_reason="cli_profile_explicit"

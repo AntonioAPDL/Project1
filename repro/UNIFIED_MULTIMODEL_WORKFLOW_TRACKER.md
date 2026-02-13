@@ -1174,6 +1174,23 @@ At each planning/execution checkpoint:
   - `auto` selects `production` for canonical 7 quantiles and honors explicit `validation.profile` when declared.
   - Unknown `validation.profile` under `auto` now emits deterministic fail output with allowed-profile guidance.
 
+### Progress Update 2026-02-13 21:21 UTC
+- Phase: P7B (validator auto-selection hardening)
+- Change type: tooling+tests
+- Summary: closed remaining `--profile auto` gaps in `validate_run.sh` by removing smoke-flag inference, accepting explicit `validation.profile: auto` as infer-continue, requiring `fit.quantiles` for auto inference, and switching canonical auto inference to normalized quantiles `[0.01,0.05,0.10,0.50,0.90,0.95,0.99]` using single-pass Python parsing. Added regression coverage for canonical mixed-type quantiles, no-smoke inference behavior, and missing-quantiles fail path.
+- Files touched:
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `bash -n repro/tools/validate_run.sh`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\n')"`
+- Validation notes:
+  - Auto now uses explicit `validation.profile` only when in `{production,production_proof,smoke}`; explicit `auto` falls through to quantile inference.
+  - Auto no longer infers smoke from `validation.smoke`; smoke remains explicit-profile only.
+  - Missing/empty parseable `fit.quantiles` now fails cleanly under auto.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
