@@ -210,7 +210,7 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("RESULT=FAIL", result.stdout)
         self.assertIn("quantile_rule=canonical_7_quantiles_enforced", result.stdout)
-        self.assertIn("missing_quantiles=20,35,65,80", result.stdout)
+        self.assertIn("missing_quantiles=1,10,90,99", result.stdout)
 
     def test_auto_profile_chooses_production_proof_for_noncanonical_quantiles(self) -> None:
         self._write_common_success_files()
@@ -292,6 +292,34 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("profile_effective=production_proof", result.stdout)
         self.assertIn("profile_reason=auto_validation.profile_explicit", result.stdout)
         self.assertIn("quantile_rule=config_declared_quantiles_enforced", result.stdout)
+
+    def test_auto_profile_honors_explicit_production_validation_profile(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: true",
+                    "  run_exdqlm_univar: false",
+                    "  run_ndlm_main: false",
+                    "fit:",
+                    "  quantiles: [0.01, 0.05, 0.10, 0.50, 0.90, 0.95, 0.99]",
+                    "validation:",
+                    "  profile: production",
+                ]
+            )
+            + "\n",
+        )
+        for q in ("1", "5", "10", "50", "90", "95", "99"):
+            write_text(self.run_root / "fit" / f"q={int(q):02d}" / "outputs" / f"DISC_variables_{q}_exAL_synth_DISC.RData")
+
+        result = self._run_validate("auto")
+        self._assert_output_contract(result, "auto", expected_result="PASS")
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("profile_effective=production", result.stdout)
+        self.assertIn("profile_reason=auto_validation.profile_explicit", result.stdout)
+        self.assertIn("quantile_rule=canonical_7_quantiles_enforced", result.stdout)
 
     def test_auto_profile_honors_explicit_smoke_validation_profile(self) -> None:
         self._write_common_success_files()

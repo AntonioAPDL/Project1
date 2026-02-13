@@ -9,7 +9,7 @@ Usage:
 
 Production profile (default) strict success checklist:
 1) All 7 quantile outputs exist:
-   DISC_variables_{5,20,35,50,65,80,95}_exAL_synth_DISC.RData
+   DISC_variables_{1,5,10,50,90,95,99}_exAL_synth_DISC.RData
    (canonical production gate; this is enforced regardless of fit.quantiles)
 2) post outputs exist under post/outputs/<RUN_ID> with at least one file
 3) validate/compare_report.json exists
@@ -79,8 +79,8 @@ bool_word() {
   fi
 }
 
-declare -a CANONICAL_QUANTILES=(5 20 35 50 65 80 95)
-declare -a CANONICAL_Q_LABELS=(05 20 35 50 65 80 95)
+declare -a CANONICAL_QUANTILES=(1 5 10 50 90 95 99)
+declare -a CANONICAL_Q_LABELS=(01 05 10 50 90 95 99)
 ALLOWED_PROFILES_CSV="production,production_proof,smoke,auto"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
