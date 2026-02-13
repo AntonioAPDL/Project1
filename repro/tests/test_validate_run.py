@@ -374,7 +374,34 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("profile_requested=auto", result.stdout)
         self.assertIn("profile_effective=nonsense", result.stdout)
         self.assertIn("error=Unknown validation.profile='nonsense'", result.stdout)
-        self.assertIn("Allowed: production,production_proof,smoke", result.stdout)
+        self.assertIn("Allowed: production,production_proof,smoke,auto", result.stdout)
+
+    def test_auto_profile_continues_inference_when_validation_profile_is_auto(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: false",
+                    "  run_exdqlm_univar: false",
+                    "  run_ndlm_main: false",
+                    "fit:",
+                    "  quantiles: [0.05, 0.5, 0.95]",
+                    "validation:",
+                    "  profile: auto",
+                ]
+            )
+            + "\n",
+        )
+
+        result = self._run_validate("auto")
+        self._assert_output_contract(result, "auto", expected_result="PASS")
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("RESULT=PASS", result.stdout)
+        self.assertIn("profile_effective=production_proof", result.stdout)
+        self.assertIn("profile_reason=auto_quantiles_noncanonical", result.stdout)
+        self.assertIn("quantile_rule=config_declared_quantiles_enforced", result.stdout)
 
     def test_auto_profile_fails_cleanly_on_malformed_resolved_config(self) -> None:
         self._write_common_success_files()
@@ -387,6 +414,8 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("profile_requested=auto", result.stdout)
         self.assertIn("error=Failed to parse", result.stdout)
         self.assertIn("Failed to parse", result.stdout)
+        self.assertNotIn("Traceback", result.stdout)
+        self.assertNotIn("File \"", result.stdout)
 
     def test_auto_profile_fails_when_fit_quantiles_missing(self) -> None:
         self._write_common_success_files()

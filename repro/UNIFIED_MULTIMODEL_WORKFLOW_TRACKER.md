@@ -1191,6 +1191,22 @@ At each planning/execution checkpoint:
   - Auto no longer infers smoke from `validation.smoke`; smoke remains explicit-profile only.
   - Missing/empty parseable `fit.quantiles` now fails cleanly under auto.
 
+### Progress Update 2026-02-13 21:55 UTC
+- Phase: P7B (validator auto-selection hardening)
+- Change type: tests
+- Summary: completed gap-only follow-up verification against current `af1a416` baseline; implementation already matched auto-selection contract, so only residual test coverage gaps were patched. Added explicit regression for `validation.profile: auto` infer-continue path and strengthened malformed-config assertions to ensure no traceback-like output.
+- Files touched:
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `bash -n repro/tools/validate_run.sh`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\n')"`
+- Validation notes:
+  - Unknown-profile error assertion now matches allowed values including `auto`.
+  - Malformed YAML auto-fail test now asserts absence of `Traceback` and `File "` tokens in stdout.
+  - Total test suite passed with the new coverage additions.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
