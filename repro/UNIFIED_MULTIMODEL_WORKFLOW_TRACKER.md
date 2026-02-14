@@ -1,6 +1,7 @@
 # Unified Multi-Model Workflow Tracker (Living)
 
 Date: 2026-02-10  
+Last verified: 2026-02-14 (active canonical run in progress: `prod_canonical_p8c_20260214_214849_r01`)  
 Repo root: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Status: Active planning + execution tracker  
 Primary audience: project maintainer + Codex
@@ -27,7 +28,7 @@ This is a living document and must be updated when:
 
 - Unified runner calls stages: `forecats`, `fit`, `post`, `validate`, `report`.
 - Unified runner now also supports `data_prep_shared` stage between `forecats` and `fit`.
-- Current `fit` stage always supports multivariate exDQLM (DISC-W) and can optionally run legacy univariate + legacy NDLM bridges via model toggles.
+- Current `fit` stage orchestrates multivariate exDQLM (DISC-W) and can optionally run univariate exDQLM + NDLM via per-family toggles and `implementation_mode` dispatch (`theory_aligned` default; `legacy_bridge` fallback).
 - Current `post` stage runs `scripts/run_environmetrics_figures.R`.
 
 Repo references:
@@ -36,12 +37,18 @@ Repo references:
 - `R/unified/stages/stage_fit.R`
 - `R/unified/stages/stage_post.R`
 
-## 2.2 What is not yet orchestrated as first-class unified model stages
+## 2.2 What remains incomplete in first-class unified model orchestration
 
-- `OptimalModelSLexAL.r` (univariate exDQLM) and `DISC_Optimal_Synth_Ranges_NDLM.r` (NDLM) are orchestrated as legacy bridge calls inside unified `fit`, but they are not yet modular first-class theory-aligned stages.
+- Theory-aligned univariate and NDLM runners are wired in unified `fit` and selected by `models.<family>.implementation_mode`.
+- Legacy scripts (`OptimalModelSLexAL.r`, `DISC_Optimal_Synth_Ranges_NDLM.r`) remain supported as explicit fallback paths when `implementation_mode=legacy_bridge`.
+- Remaining open work is parity/completeness closure (not orchestration presence), especially P4 stochastic `W`/ELBO follow-through and P8 canonical production evidence closure.
 
 Repo references:
 
+- `scripts/run_exdqlm_univar.R`
+- `scripts/run_ndlm_main.R`
+- `R/unified/families/exdqlm_univar/*`
+- `R/unified/families/ndlm_main/*`
 - `run_scripts_SL.py`
 - `DISC_Optimal_Synth_Ranges_NDLM.r`
 - `OptimalModelSLexAL.r`
@@ -57,7 +64,18 @@ Repo references:
 
 Implication:
 
-- A unified run can still depend on stale/non-run-scoped NDLM/univariate artifacts unless decoupled.
+- In strict repro mode, post requires run-scoped model-state artifacts.
+- In non-strict mode, legacy root fallback remains possible only when explicitly enabled for compatibility.
+
+## 2.4 Last Verified Evidence Pointers (2026-02-14)
+
+- Active canonical run (in progress): `repro/runs/prod_canonical_p8c_20260214_214849_r01/run_manifest.yaml`
+- Active canonical runner log: `/tmp/prod_canonical_p8c_20260214_214849_r01_unified_run.log`
+- Stage graph + status wiring: `scripts/unified_run.R`
+- Fit family dispatch + implementation modes: `R/unified/stages/stage_fit.R`
+- Default config + implementation modes: `config/unified_run.template.yaml`, `R/unified/config.R`
+- Canonical production family config: `config/unified_runs/production_canonical_family.yaml`
+- Validator profile resolution (`production|production_proof|smoke|auto`): `repro/tools/validate_run.sh`
 
 ## 3) Theory Source-of-Truth Policy (Locked)
 
@@ -87,7 +105,7 @@ Precedence rule:
 | D-002 | NDLM implementation scope is VB only (no MCMC parity hooks required now). | Locked | MCMC can be future work item. |
 | D-003 | NDLM output naming will be neutral (`ndlm_main` style), not quantile-labeled `50` compatibility naming. | Locked | Avoid semantic confusion. |
 | D-004 | Univariate modernization must be structurally compatible with current downstream expectations (not byte-identical `.RData`). | Locked | Keep object contracts and shape compatibility. |
-| D-005 | In unified config, NDLM should be mandatory when `models.run_ndlm=true`; default intended as enabled in production mode. | Locked | No silent NDLM skip in full production runs. |
+| D-005 | In unified config, NDLM should be mandatory when `models.run_ndlm_main=true`; default intended as enabled in production mode. | Locked | No silent NDLM skip in full production runs. |
 | D-006 | Post outputs/reports should remain separated by model family; do not merge posterior outputs into a single blended block. | Locked | Shared inputs are allowed; outputs remain clearly separated. |
 | D-007 | Sequencing is hybrid: wire legacy scripts into unified runner early for operational continuity, while replacing them module-by-module with theory-aligned implementations. | Locked | This is now the active and accepted execution strategy. |
 | D-008 | Preserve `post/outputs/<RUN_ID>/` nesting until validate contract is explicitly versioned. | Locked | `stage_validate` currently compares against `run_root/post/outputs/<RUN_ID>`; do not break this path contract before validate v2. |
@@ -148,6 +166,7 @@ Status legend:
 | P6 | [~] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
 | P7 | [~] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
 | P8 | [~] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
+| P9 | [~] | Extreme-quantile stabilization (q=0.01 first) | P8C failure evidence captured | Isolated q=0.01 reproducer passes with theory-audited mitigation plan; default semantics unchanged unless explicit opt-in flag is enabled |
 
 ## 7) Detailed Task Backlog
 
@@ -188,6 +207,7 @@ Status legend:
 
 ## 7.6 P5 Tasks (Post Decoupling)
 
+- Note: P5 phase closure was accepted under D-010 via strict run-scoped figures-on smoke-fast proof; the items below remain full-hardening follow-ups where compatibility fallback behavior still exists in non-strict mode.
 - `T-P5-01`: Remove hardcoded root `.RData` loads in `R/environmetrics/30_univariate_and_misc.R`.
 - `T-P5-02`: Load all family artifacts from manifest paths.
 - `T-P5-03`: Keep family-specific outputs separated in post output tree.
@@ -203,6 +223,16 @@ Status legend:
 - [x] `T-P8-03`: Add canonical production family config (canonical 7 quantiles) plus validator UX/docs regression coverage.
 - [~] `T-P8-04`: Complete canonical production evidence run (P8C) with production validator PASS and closed manifest.
 
+## 7.8 P9 Tasks (Extreme-Quantile Stabilization)
+
+- [ ] `T-P9-01`: Stop active failing canonical run cleanly and preserve failure forensics (manifest, runner log, q=01 fit log) before cleanup.
+- [ ] `T-P9-02`: Quarantine/remove failed run artifacts with evidence trail (before/after space + retained key logs) using safe cleanup policy.
+- [ ] `T-P9-03`: Run theory-first audit for failing path at q=0.01 (`objective_deltas` / `update_gamma_sigma`), mapping equations to code and finite-domain requirements.
+- [ ] `T-P9-04`: Build isolated reproducer (`fit.quantiles=[0.01]`, multivar-only, post/validate/report OFF) and reproduce deterministically.
+- [ ] `T-P9-05`: Implement diagnostics-first guardrails (finite/domain checks + precise error context) without default semantic changes.
+- [ ] `T-P9-06`: Evaluate opt-in mitigation candidate `gamma/sigma` warmup-freeze (default OFF), then re-enable updates after configured iterations.
+- [ ] `T-P9-07`: Validate fixes with isolated q=0.01 pass, neighboring q=0.05 sanity pass, and targeted regression tests.
+
 ## 8) Risk Register (Live)
 
 | Risk ID | Severity | Description | Mitigation | Owner | Status |
@@ -214,6 +244,7 @@ Status legend:
 | R-005 | Medium | Ambiguity on sequencing can delay implementation. | Lock D-007 or replace with alternate sequence immediately after P0. | Maintainer | Mitigated (D-007 locked) |
 | R-006 | High | DISC-W warm-start can load root `DISC_variables_*` paths, violating run-scoped reproducibility if enabled. | Keep warm-start disabled by default; if enabled, require run-scoped warm-start source path recorded in manifest before stage execution. | TBD | Mitigating (legacy bridge env routing now run-scoped; warm-start remains disabled by default) |
 | R-007 | Medium | Post reads `y_reps*.rds` via relative paths, creating working-directory-sensitive behavior. | In P5, enforce absolute/manifest-declared paths for these intermediates and fail fast on unresolved relative reads. | TBD | Mitigating (run-scoped cache path enforced) |
+| R-008 | High | Extreme quantile (`q=0.01`) multivar fit can fail with non-finite objective in optimizer (`L-BFGS-B needs finite values of 'fn'`), blocking canonical closure. | P9 theory-first isolation: preserve evidence, reproduce q=0.01 only, add finite/domain guardrails, evaluate opt-in gamma/sigma warmup freeze. | TBD | Open |
 
 ## 9) Validation and Done Criteria
 
@@ -1473,10 +1504,10 @@ None currently tracked.
    - `production_proof`: config-declared quantile enforcement with production-like non-quantile gates.
    - `smoke`: lightweight smoke-oriented validation contract.
    - `auto`: deterministic conservative resolution from `resolved_config.yaml`:
-     - explicit `validation.profile` (`production|production_proof|smoke`) wins,
-     - else `validation.smoke=true` implies `smoke`,
-     - else canonical quantile set implies `production`,
-     - else `production_proof`.
+     - explicit `validation.profile` in `{production,production_proof,smoke}` wins,
+     - explicit `validation.profile=auto` falls through to inference,
+     - otherwise infer by normalized `fit.quantiles`: canonical set -> `production`, non-canonical -> `production_proof`,
+     - missing/invalid `fit.quantiles` in auto mode is a validator FAIL.
    - Canonical quantile set for `production`/canonical-auto resolution is `[0.01,0.05,0.10,0.50,0.90,0.95,0.99]`.
 5. Manifest family authority defaults are locked for v1 metadata:
    - `families.exdqlm_multivar.authoritative` defaults to `true`.
@@ -1507,9 +1538,9 @@ None currently tracked.
 
 ## 12) Immediate Next Actions (Proposed)
 
-1. Complete P3/P4 parity validation: add structural compatibility tests for post-consumed object contracts and equation-to-code audit notes versus theory repos.
-2. Keep P2/P5 bridges stable while migrating family implementations behind the same unified contracts.
-3. Define P6 orchestration smoke criteria for combined multivar + theory univar + theory NDLM execution under strict write-audit.
+1. Execute P9-T01/T02: stop active failing canonical run `prod_canonical_p8c_20260214_214849_r01` cleanly, preserve forensics, and quarantine/cleanup failed artifacts safely.
+2. Execute P9-T03/T04: perform theory-first audit and isolated deterministic reproducer for multivar q=0.01 only.
+3. Execute P9-T05/T06/T07: apply diagnostics-first guardrails, evaluate opt-in gamma/sigma warmup-freeze candidate (default OFF), and validate with q=0.01 then q=0.05 sanity checks.
 
 ## 13) Notes
 
@@ -1520,6 +1551,8 @@ None currently tracked.
 ## 14) Appendix: Contracts (Repo-grounded)
 
 ### 14.1 Discovery Report (2026-02-10)
+
+This subsection is a historical discovery snapshot captured on 2026-02-10. Current authoritative behavior is defined by §§2, 11, and subsequent progress updates.
 
 Files inspected (read-only):
 
@@ -1554,10 +1587,11 @@ Historical ambiguities remaining after 2026-02-10 discovery (superseded by §11 
 | Order | Stage | Function signature | Inputs (config/env) | Required outputs |
 |---|---|---|---|---|
 | 1 | `forecats` | `unified_stage_forecats(cfg, run_root, repo_root, manifest)` | `cfg$inputs$forecats$mode`, `pipeline_config_path`, `existing_bundle_path` (`R/unified/stages/stage_forecats.R:3-18`) | If `use_existing`, optional bundle artifact recorded in manifest; if `build`, log at `run_root/forecats/forecats_pipeline.log` |
-| 2 | `fit` | `unified_stage_fit(cfg, run_root, repo_root, manifest)` | `cfg$fit$quantiles`, `cfg$inputs$fit.*`, `cfg$run$seed`, `cfg$run$threads$mc_cores`, `cfg$scale_contract$legacy_fit_input_scale` (`R/unified/stages/stage_fit.R:8-116`) | `run_root/fit/q=<QQ>/outputs/DISC_variables_<q>_exAL_synth_DISC.RData` |
-| 3 | `post` | `unified_stage_post(cfg, run_root, repo_root, manifest)` | `cfg$post$profile`, `cfg$post$profile_detail`, `cfg$post$sort_keep_na`, `cfg$post$export_tables`, adapted CSV inputs (`R/unified/stages/stage_post.R:65-91`) | `run_root/post/outputs/<RUN_ID>/...` (images/csv/rds/tex/md) |
-| 4 | `validate` | `unified_stage_validate(cfg, run_root, repo_root, manifest)` | `cfg$validation$canonical_run_id`, `cfg$validation$compare$mode` (`R/unified/stages/stage_validate.R:41-71`) | `run_root/validate/compare_report.txt`, `run_root/validate/compare_report.json`, `run_root/validate/diff/*` |
-| 5 | `report` | `unified_stage_report(cfg, run_root, repo_root, manifest)` | `manifest$validation`, `cfg$post$profile`, compare report json (`R/unified/stages/stage_report.R:7-70`) | `run_root/report/summary.md`, `run_root/report/summary.json` (+ optional `profile_summary.md`) |
+| 2 | `data_prep_shared` | `unified_stage_data_prep_shared(cfg, run_root, repo_root, manifest)` | `cfg$inputs$fit.*`, `cfg$inputs$forecats.*`, `cfg$inputs$shared.*` | `run_root/inputs/shared/...` canonical run-scoped shared bundle + source-map/hashes |
+| 3 | `fit` | `unified_stage_fit(cfg, run_root, repo_root, manifest)` | `cfg$fit$quantiles`, `cfg$models.*`, `cfg$inputs$fit.*`, `cfg$run$seed`, `cfg$run$threads$mc_cores`, `cfg$scale_contract$legacy_fit_input_scale` | multivar: `run_root/fit/q=<QQ>/outputs/DISC_variables_<q>_exAL_synth_DISC.RData`; univar (if enabled): `run_root/fit/exdqlm_univar/q=<QQ>/outputs/variables_<QQ>_exAL_synth_DISC_uni.RData`; NDLM (if enabled): `run_root/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData` |
+| 4 | `post` | `unified_stage_post(cfg, run_root, repo_root, manifest)` | `cfg$post$profile`, `cfg$post$profile_detail`, `cfg$post$sort_keep_na`, `cfg$post$export_tables`, run-scoped artifact/env resolution | `run_root/post/outputs/<RUN_ID>/...` (images/csv/rds/txt/json/yaml/tsv/pdf by allowlist) |
+| 5 | `validate` | `unified_stage_validate(cfg, run_root, repo_root, manifest)` | `cfg$validation$canonical_run_id`, `cfg$validation$compare$mode` | `run_root/validate/compare_report.txt`, `run_root/validate/compare_report.json`, `run_root/validate/diff/*` |
+| 6 | `report` | `unified_stage_report(cfg, run_root, repo_root, manifest)` | `manifest$validation`, `cfg$post$profile`, compare report json | `run_root/report/summary.md`, `run_root/report/summary.json` (+ optional `profile_summary.md`) |
 
 #### 14.2.2 PASS / FAIL / SKIP representation
 
@@ -1657,16 +1691,18 @@ artifacts:
 
 | Key | Default | Consumed in |
 |---|---|---|
-| `stages.forecats|fit|post|validate|report` | all `true` in template | stage loop gate (`scripts/unified_run.R:126-127`) |
+| `stages.forecats|data_prep_shared|fit|post|validate|report` | template defaults: `forecats,fit,post,validate,report=true`, `data_prep_shared=false` | stage loop gate + stage status writes (`scripts/unified_run.R`) |
 | `run.repro_mode` | `strict` | deterministic policy (`R/unified/determinism.R:39-57`) |
 | `run.seed` | `777` | `unified_apply_seed` and fit wrapper seed env (`scripts/unified_run.R:82`, `R/unified/stages/stage_fit.R:79-93`) |
 | `run.threads.mc_cores` | `1` | quantile parallelism (`R/unified/stages/stage_fit.R:108-116`) |
 | `fit.quantiles` | `[0.05,...,0.95]` | per-quantile execution (`R/unified/stages/stage_fit.R:67-76`) |
+| `models.exdqlm_univar.implementation_mode`, `models.ndlm_main.implementation_mode` | `theory_aligned` | family runner dispatch (`R/unified/stages/stage_fit.R`) |
 | `fit.warm_start.enabled` | `false` | forwarded as `DISC_USE_PREV` env (`R/unified/stages/stage_fit.R:80`) |
 | `inputs.fit.*_path` | `null` | validated in `R/unified/config.R:210-215`; consumed in fit/post adapters |
 | `inputs.fit.*_storage_scale` | `log1p_cms` | adapter conversion in fit/post (`R/unified/stages/stage_fit.R:18-61`, `R/unified/stages/stage_post.R:16-59`) |
 | `post.profile`, `post.profile_detail` | `false` | post runner env vars (`R/unified/stages/stage_post.R:73-74`) |
 | `post.sort_keep_na`, `post.export_tables` | `true` | post runner env vars (`R/unified/stages/stage_post.R:66-77`) |
+| `validation.profile` | `production` | validator policy intent stored in manifest metadata (`R/unified/manifest.R`) and consumed by external validator |
 | `validation.canonical_run_id` | `null` | compare target selection (`R/unified/stages/stage_validate.R:41-46`) |
 | `validation.compare.mode` | `both` | compare tool arg (`R/unified/stages/stage_validate.R:70`) |
 | `write_audit.enabled`, `write_audit.enforce_from_stage`, `write_audit.allowlist_outside_run_root` | `true`, `4`, `[]` | stage-gated snapshots/enforcement (`scripts/unified_run.R:122-148`) |
@@ -1708,7 +1744,7 @@ Forecats build-mode snapshot contract:
 2. Record each copied/snapshotted forecats input artifact hash in manifest `artifacts[]` with role `input_snapshot`.
 3. Downstream fit/post stages read forecats-derived inputs from `inputs/shared/forecats_bundle/...`, not from mutable global paths.
 
-### 14.4 Artifact Contracts by Model Family
+### 14.4 Artifact Contracts by Model Family (current unified behavior; legacy standalone defaults noted)
 
 #### 14.4.1 Multivariate exDQLM (DISC-W, current unified fit family)
 
@@ -1718,25 +1754,27 @@ Forecats build-mode snapshot contract:
 | Run-scoped output file | `repro/runs/<RUN_ID>/fit/q=<QQ>/outputs/DISC_variables_<q>_exAL_synth_DISC.RData` (`R/unified/stages/stage_fit.R:72-100`) |
 | RData object naming pattern | Dynamic names created in `disc_w_save_state`: `samp.gamma_<q>_exAL_synth_DISC`, `samp.sigma_<q>_exAL_synth_DISC`, `new.theta.out_<q>_exAL_synth_DISC`, etc. (`R/disc_w/05_save_state.R:22-110`) |
 | Manifest reference style | `artifacts[]` entries with `storage_scale: model_state` and `flow_domain: cfg$scale_contract$analysis_scale_fit_internal` (`R/unified/stages/stage_fit.R:123-128`) |
-| Post dependency today | Post still loads DISC-W root `.RData` files directly (not run-scoped) in `R/environmetrics/30_univariate_and_misc.R:999-1030` |
+| Post dependency today | Post receives run-scoped DISC-W paths from manifest via `stage_post`; legacy root fallback is compatibility-only in non-strict mode (`R/unified/stages/stage_post.R`, `R/environmetrics/00_paths.R`) |
 
-#### 14.4.2 Univariate exDQLM (legacy family, not yet unified stage)
-
-| Contract item | Current repo-grounded behavior |
-|---|---|
-| Producer | Legacy script `OptimalModelSLexAL.r` (launched by `run_scripts_SL.py`) with CLI quantile argument (`run_scripts_SL.py:22-29`, `OptimalModelSLexAL.r:45-46`) |
-| Output file path | Root write: `/data/muscat_data/jaguir26/project1_ucsc_phd/variables_<q>_exAL_synth_DISC_uni.RData` (`OptimalModelSLexAL.r:2040`) |
-| Expected object names consumed by post | `new.theta.out_<q>_exAL_synth_DISC_uni`, `samp.theta_<q>_exAL_synth_DISC_uni` and related objects (`R/environmetrics/30_univariate_and_misc.R:154-736`) |
-| Manifest reference today | None (no unified stage writes these artifacts into manifest) |
-
-#### 14.4.3 NDLM (legacy family, not yet unified stage)
+#### 14.4.2 Univariate exDQLM (unified family under `fit` with mode dispatch)
 
 | Contract item | Current repo-grounded behavior |
 |---|---|
-| Producer | Legacy script `DISC_Optimal_Synth_Ranges_NDLM.r` with hardcoded `p0 <- 0.5` (`DISC_Optimal_Synth_Ranges_NDLM.r:44`) |
-| Output file path | Root write: `/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_NDLM_synth_DISC.RData` (`DISC_Optimal_Synth_Ranges_NDLM.r:2186`) |
-| Expected object names consumed by post | `new.theta.out_50_NDLM_synth_DISC`, `samp.theta_50_NDLM_synth_DISC`, `samp.sigma_50_NDLM_synth_DISC` (`R/environmetrics/40_figures.R:220-221`, `R/environmetrics/40_figures.R:1235`, `R/environmetrics/40_figures.R:1992`) |
-| Manifest reference today | None (no unified stage writes NDLM artifacts into manifest) |
+| Producer | `R/unified/stages/stage_fit.R` dispatches by `models.exdqlm_univar.implementation_mode`: theory runner `scripts/run_exdqlm_univar.R` (default) or legacy script `OptimalModelSLexAL.r` |
+| Run-scoped output path | `repro/runs/<RUN_ID>/fit/exdqlm_univar/q=<QQ>/outputs/variables_<QQ>_exAL_synth_DISC_uni.RData` |
+| Expected object names consumed by post | `new.theta.out_<q>_exAL_synth_DISC_uni`, `samp.theta_<q>_exAL_synth_DISC_uni` and related objects (`R/environmetrics/30_univariate_and_misc.R`) |
+| Manifest reference today | Run-scoped model-state artifact is recorded in manifest `artifacts[]` |
+| Legacy standalone default | If `OptimalModelSLexAL.r` is run outside unified wrappers, default output remains root-scoped unless env override is provided |
+
+#### 14.4.3 NDLM (unified family under `fit` with mode dispatch)
+
+| Contract item | Current repo-grounded behavior |
+|---|---|
+| Producer | `R/unified/stages/stage_fit.R` dispatches by `models.ndlm_main.implementation_mode`: theory runner `scripts/run_ndlm_main.R` (default) or legacy script `DISC_Optimal_Synth_Ranges_NDLM.r` |
+| Run-scoped output path | `repro/runs/<RUN_ID>/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData` (validator also accepts neutral aliases such as `ndlm_main_state.RData` / `ndlm_main_*.RData`) |
+| Expected object names consumed by post | `new.theta.out_50_NDLM_synth_DISC`, `samp.theta_50_NDLM_synth_DISC`, `samp.sigma_50_NDLM_synth_DISC` (compat aliases still provided for current post contracts) |
+| Manifest reference today | Run-scoped model-state artifact is recorded in manifest `artifacts[]` |
+| Legacy standalone default | If `DISC_Optimal_Synth_Ranges_NDLM.r` is run outside unified wrappers, default output remains root-scoped unless env override is provided |
 
 #### 14.4.4 Manifest mapping proposal constrained to current schema
 
@@ -1749,46 +1787,47 @@ Implementation-safe mapping for multi-model migration should therefore be path-p
 
 Open question: whether to add explicit `family` field in manifest v2 vs retain path-prefix inference.
 
-### 14.5 Post-Processing Dependency Map (non-run-scoped loads)
+### 14.5 Post-Processing Dependency Map (legacy fallback surfaces; strict mode uses run-scoped env paths)
 
 | File:line | Load/read pattern | Expected artifacts/objects | Run-scoping risk |
 |---|---|---|---|
-| `R/environmetrics/00_paths.R:39-45` | Defines `UNI_VAR_*` root paths | `variables_<q>_exAL_synth_DISC_uni.RData` | Root dependency |
-| `R/environmetrics/30_univariate_and_misc.R:100-149` | `load(UNI_VAR_05..95)` via `load_rdata_with_retry()` | `new.theta.out_<q>_exAL_synth_DISC_uni`, `samp.theta_<q>_exAL_synth_DISC_uni`, etc. | Root dependency |
-| `R/environmetrics/30_univariate_and_misc.R:895-897` | `load("/.../DISC_variables_50_NDLM_synth_DISC.RData")` | `new.theta.out_50_NDLM_synth_DISC` | Root dependency |
-| `R/environmetrics/30_univariate_and_misc.R:999-1035` | `load("/.../DISC_variables_<q>_exAL_synth_DISC.RData")` | `new.theta.out_<q>_exAL_synth_DISC`, `samp.theta_<q>_exAL_synth_DISC` | Root dependency |
+| `R/environmetrics/00_paths.R` | Resolves run-scoped env paths first; root fallback only if strict mode is off and fallback is allowed | univar/NDLM/DISC-W `.RData` | Conditional legacy fallback |
+| `R/environmetrics/30_univariate_and_misc.R` | `load(UNI_VAR_*)` and related model-state loads after path resolution in `00_paths.R` | post-consumed posterior objects | Conditional legacy fallback (non-strict compatibility path) |
 | `R/environmetrics/40_figures.R:4151` | `readRDS("y_reps_f.rds")` | intermediate posterior arrays | Relative path dependency |
 | `R/environmetrics/40_figures.R:4316` | `readRDS("y_reps_f_new.rds")` | intermediate posterior arrays | Relative path dependency |
 | `R/environmetrics/40_figures.R:4483` | `readRDS("y_reps_new.rds")` | intermediate posterior arrays | Relative path dependency |
 
-Recommendation for P5 contract:
+Recommendation for continuing hardening:
 
-1. Replace root/relative loads with manifest-declared absolute paths.
-2. Stage post should fail fast if required family artifacts are missing from manifest.
+1. Keep strict run-scoped mode as default for production runs.
+2. Continue reducing compatibility fallback surface in non-strict paths.
 3. Keep family-separated output folders as already decided in D-006.
 
 ### 14.6 Legacy Bridge Execution Semantics (current reality)
 
 1. DISC-W bridge (already unified): `stage_fit` runs wrapper `scripts/run_DISC_Optimal_Synth_Ranges_W.R`, which sources legacy script (`source("DISC_Optimal_Synth_Ranges_W.r", chdir=TRUE)`), injecting run-scoped input/output paths through `DISC_W_*` env vars (`R/unified/stages/stage_fit.R:78-96`, `scripts/run_DISC_Optimal_Synth_Ranges_W.R:32-39`, `R/disc_w/01_paths_inputs.R:16-27`).
 2. Post bridge (already unified): `stage_post` runs `scripts/run_environmetrics_figures.R` with env overrides for run root + adapted CSV paths (`R/unified/stages/stage_post.R:70-91`, `scripts/run_environmetrics_figures.R:11-27`).
-3. Univariate legacy execution today: tmux-per-quantile launcher `run_scripts_SL.py` invokes `Rscript /.../OptimalModelSLexAL.r <q>` (`run_scripts_SL.py:12-29`); outputs go to repo root (`OptimalModelSLexAL.r:2040`).
-4. NDLM legacy execution today: no unified wrapper stage exists; script writes to repo root (`DISC_Optimal_Synth_Ranges_NDLM.r:2186`) and assumes root-level input/output paths.
+3. Univariate execution in unified runs: `stage_fit` dispatches to `scripts/run_exdqlm_univar.R` (`theory_aligned`) or `OptimalModelSLexAL.r` (`legacy_bridge`) with run-scoped env-overridden inputs/outputs.
+4. NDLM execution in unified runs: `stage_fit` dispatches to `scripts/run_ndlm_main.R` (`theory_aligned`) or `DISC_Optimal_Synth_Ranges_NDLM.r` (`legacy_bridge`) with run-scoped env-overridden inputs/outputs.
+5. Standalone legacy launchers (`run_scripts_SL.py`, direct legacy Rscript usage) remain outside unified-run reproducibility guarantees unless explicitly routed to run-scoped paths.
 
 ### 14.7 Run-Scoping + Collision Audit (current state)
 
 #### 14.7.1 Hardcoded/root write points
 
-1. Univariate outputs to repo root (`OptimalModelSLexAL.r:2040`).
-2. NDLM outputs to repo root (`DISC_Optimal_Synth_Ranges_NDLM.r:2186`).
-3. DISC-W warm-start loads from root `DISC_variables_*` when enabled (`DISC_Optimal_Synth_Ranges_W.r:1417-1480`).
-4. Post loads model-state `.RData` from root (`R/environmetrics/30_univariate_and_misc.R:895-1035`).
-5. Forecats build mode writes outside run root via delegated script behavior (`R/unified/stages/stage_forecats.R:16-29`).
+1. Legacy univariate/NDLM scripts still have root-default output behavior when run standalone.
+2. Unified `stage_fit` overrides legacy script IO paths to run-scoped outputs under `repro/runs/<RUN_ID>/fit/...`.
+3. DISC-W warm-start can still pull root `DISC_variables_*` if warm-start is enabled without run-scoped source control.
+4. Post legacy root fallback remains available only in non-strict mode when explicitly allowed.
+5. Forecats build mode still uses external forecats outputs as source-of-copy, then snapshots required artifacts into run root.
 
 #### 14.7.2 Current run tree convention to preserve
 
 Current unified outputs use:
 
 - `repro/runs/<RUN_ID>/fit/q=<QQ>/outputs/...`
+- `repro/runs/<RUN_ID>/fit/exdqlm_univar/q=<QQ>/outputs/...` (when univar family enabled)
+- `repro/runs/<RUN_ID>/fit/ndlm_main/outputs/...` (when NDLM family enabled)
 - `repro/runs/<RUN_ID>/post/outputs/<RUN_ID>/...`  (nested `<RUN_ID>` is current convention and is consumed by validate stage)
 - `repro/runs/<RUN_ID>/validate/...`
 - `repro/runs/<RUN_ID>/report/...`
@@ -1878,3 +1917,298 @@ Concurrency rule for migration phases:
   - deleted run-generated heavy artifacts are not locally recoverable unless regenerated.
 - Next action:
   - keep active run protections; if needed, perform a smaller second-pass prune of low-value run logs/caches only.
+
+### Progress Update 2026-02-14 06:53 UTC
+- Phase: P8C
+- Change type: operations+validation
+- Summary: salvaged `prod_proof_q3_20260214_010911` without refit by re-running only `post+validate+report` from the run-scoped resolved config via temporary overlay (`fit/forecats/data_prep_shared` disabled); manifest is now closed with `validation.status: pass`. Performed failed-run cleanup tooling dry-run+apply (`--thin-failed`) and confirmed no remaining reclaimable heavy failed-run fit outputs under current `repro/runs` scan.
+- Files touched:
+  - `/tmp/salvage_prod_proof_q3_20260214_010911.yaml` (temp runtime config; not committed)
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+  - run-scoped artifacts under `repro/runs/prod_proof_q3_20260214_010911/**`
+  - cleanup reports under `repro/reports/cleanup_runs/**`
+  - validator reports under `repro/reports/validator/**`
+- Evidence paths:
+  - `repro/runs/prod_proof_q3_20260214_010911/run_manifest.yaml`
+  - `repro/runs/prod_proof_q3_20260214_010911/post/logs/post_runner.log`
+  - `repro/runs/prod_proof_q3_20260214_010911/validate/compare_report.json`
+  - `repro/runs/prod_proof_q3_20260214_010911/report/summary.md`
+  - `repro/runs/prod_proof_q3_20260214_010911/report/summary.json`
+  - `repro/runs/prod_proof_q3_20260214_010911/validate/write_audit/post/fs_diff.patch`
+  - `repro/runs/prod_proof_q3_20260214_010911/validate/write_audit/validate/fs_diff.patch`
+  - `repro/runs/prod_proof_q3_20260214_010911/validate/write_audit/report/fs_diff.patch`
+  - `repro/reports/validator/prod_proof_q3_20260214_010911_auto.txt`
+  - `repro/reports/validator/prod_proof_q3_20260214_010911_production_proof.txt`
+  - `repro/reports/cleanup_runs/thin_failed_dryrun_stdout.txt`
+  - `repro/reports/cleanup_runs/thin_failed_apply_stdout.txt`
+  - `repro/reports/cleanup_runs/20260214_065206_dryrun.log`
+  - `repro/reports/cleanup_runs/20260214_065244_apply.log`
+- Validation notes:
+  - Salvage run closure: `timestamps.finished_at_utc: 2026-02-14T06:51:43Z`.
+  - Manifest validation status: `pass`.
+  - `validate_run.sh` PASS for both `--profile auto` and `--profile production_proof`.
+  - Write-audit patches for post/validate/report are all `0` bytes; historical fit diff remains non-empty from the original interrupted fit window.
+  - `find repro/runs -type f -size +1G` now shows only the retained proof-run multivariate artifacts (`q=05,50,95`).
+- Next action:
+  - Keep canonical run closure as separate workstream; this salvage/proof run is now operationally complete and validated under `production_proof`.
+
+### Progress Update 2026-02-14 07:08 UTC
+- Phase: P8C
+- Change type: operations
+- Summary: on maintainer request, canceled active canonical run (`prod_canonical_p8c_20260214_070148`) to speed iteration, deleted its partial run root outputs, and relaunched a fresh 3-quantile full workflow proof run with quantiles `[0.05, 0.50, 0.95]` under `validation.profile=production_proof`.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+  - deleted run root: `repro/runs/prod_canonical_p8c_20260214_070148/`
+  - new run root: `repro/runs/prod_proof_q3_20260214_070801/`
+  - temp runtime config/log (outside repo): `/tmp/prod_proof_q3_20260214_070801.yaml`, `/tmp/prod_proof_q3_20260214_070801_unified_run.log`
+- Evidence paths:
+  - deleted previous run root confirmation: `repro/runs/prod_canonical_p8c_20260214_070148/` (removed)
+  - new run manifest: `repro/runs/prod_proof_q3_20260214_070801/run_manifest.yaml`
+  - new resolved config: `repro/runs/prod_proof_q3_20260214_070801/resolved_config.yaml`
+  - new fit q05 log: `repro/runs/prod_proof_q3_20260214_070801/fit/q=05/logs/fit.log`
+  - new fit q50 log: `repro/runs/prod_proof_q3_20260214_070801/fit/q=50/logs/fit.log`
+  - new fit q95 log: `repro/runs/prod_proof_q3_20260214_070801/fit/q=95/logs/fit.log`
+- Validation notes:
+  - Relaunch executed in tmux session `q3_run_20260214_070801`.
+  - New run is active and currently in `fit`; no stop condition triggered at launch.
+  - Target quantiles are explicitly limited to `0.05, 0.50, 0.95` for this rerun.
+- Next action:
+  - Continue health checks until run closure, then execute `validate_run.sh` with `--profile auto` and `--profile production_proof`.
+
+### Progress Update 2026-02-14 21:48 UTC
+- Phase: P8C
+- Change type: decision+operations
+- Summary: executed read-only P8C gate and selected Path A (fresh canonical closure run) because blocker thresholds were not met; prepared untracked canonical overlay with unique run id and canonical invariants preserved.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Run id:
+  - `prod_canonical_p8c_20260214_214849_r01`
+- Evidence paths:
+  - `repro/runs/prod_proof_q3_20260214_070801/run_manifest.yaml`
+  - `repro/runs/prod_canonical_p8b_template/run_manifest.yaml`
+  - `repro/runs/prod_canonical_p8c_20260213_162304/run_manifest.yaml`
+  - `config/unified_runs/production_canonical_family.yaml`
+  - `/tmp/prod_canonical_p8c_20260214_214849_r01.yaml`
+- Validation notes:
+  - Gate outputs: `/data` free `337G`, inode usage `4%`, no active unified run workers found.
+  - Canonical config invariants confirmed in overlay: `fit.quantiles=[0.01,0.05,0.10,0.50,0.90,0.95,0.99]`, `validation.profile=production`, all families enabled, `write_audit.enforce_from_stage=4`.
+  - Existing proof run remains closed/pass under `production_proof`; prior canonical attempts remain open/pending.
+- Next action:
+  - Launch canonical run in tmux from `/tmp/prod_canonical_p8c_20260214_214849_r01.yaml`, then run external validator checks (`--profile auto` and `--profile production`) after closure.
+
+### Progress Update 2026-02-14 22:06 UTC
+- Phase: P8C
+- Change type: operations
+- Summary: executed the planned Path A launch after the 21:48 decision gate; canonical run is active in tmux and currently in fit. Clarified runtime overlay location as untracked `/tmp` path.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Run id:
+  - `prod_canonical_p8c_20260214_214849_r01`
+- Evidence paths:
+  - `/tmp/prod_canonical_p8c_20260214_214849_r01.yaml`
+  - `/tmp/prod_canonical_p8c_20260214_214849_r01_unified_run.log`
+  - `repro/runs/prod_canonical_p8c_20260214_214849_r01/run_manifest.yaml`
+  - `repro/runs/prod_canonical_p8c_20260214_214849_r01/resolved_config.yaml`
+  - `repro/runs/prod_canonical_p8c_20260214_214849_r01/fit/q=01/logs/fit.log`
+- Validation notes:
+  - Overlay config is not tracked and is outside repo root (`/tmp/...yaml`).
+  - Manifest stage status at check time: `forecats=pass`, `data_prep_shared=pass`, `fit=pending/running`, `post/validate/report=pending`.
+- Next action:
+  - Continue health checks to closure, then run external validator checks (`--profile auto`, `--profile production`) and capture reports under `repro/reports/validator/`.
+
+### Progress Update 2026-02-14 22:37 UTC
+- Phase: P9
+- Change type: decision+planning
+- Summary: added dedicated P9 extreme-quantile stabilization phase after q=0.01 multivar failure evidence (`L-BFGS-B needs finite values of 'fn'` in q=01 fit log). Locked P9 execution order as theory-first -> isolated reproducer -> diagnostics-first mitigation, with default model semantics preserved unless explicit opt-in flags are enabled.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/runs/prod_canonical_p8c_20260214_214849_r01/run_manifest.yaml`
+  - `repro/runs/prod_canonical_p8c_20260214_214849_r01/fit/q=01/logs/fit.log`
+  - `/tmp/prod_canonical_p8c_20260214_214849_r01_unified_run.log`
+- Validation notes:
+  - No model/fit/post code semantics were changed in this update.
+  - P9 tasks were added to enforce clean stop, safe cleanup, and single-quantile isolation before attempting mitigations.
+- Next action:
+  - Begin P9-T01 by stopping only run-id-scoped processes for `prod_canonical_p8c_20260214_214849_r01`, then preserve forensic artifacts before cleanup and isolation reruns.
+
+## 15) Audit Report (2026-02-14)
+
+### 15.1 Inconsistencies Found and Fixed
+
+- Tracker stated univariate/NDLM were only legacy bridge calls and not first-class unified stages; corrected to reflect current `implementation_mode` dispatch with theory-aligned defaults and legacy fallback.
+- Decision D-005 used stale key `models.run_ndlm`; corrected to `models.run_ndlm_main`.
+- Validation `auto` profile rules in §11.2 were stale (`validation.smoke=true` inference); corrected to match current validator logic (explicit profile wins, else quantile-based inference, missing quantiles fail).
+- Appendix stage-contract table omitted `data_prep_shared` and underreported fit outputs; corrected to include current stage order and family-specific output paths.
+- Appendix artifact and bridge sections labeled legacy-only behaviors as current unified behavior; corrected to distinguish unified run-scoped behavior vs standalone legacy defaults.
+- Post-dependency section implied unconditional root dependence; corrected to conditional non-strict fallback with strict-mode run-scoped enforcement.
+- Immediate-next-actions section was stale relative to active P8C run; updated to current closure and validator gate steps.
+
+### 15.2 Remaining Ambiguities Requiring Explicit Maintainer Decision
+
+- Whether and when to remove non-strict legacy root fallback paths entirely from post modules.
+- P4 theory completeness closure (`T-P4-02`, `T-P4-03`) and final canonical production evidence closure (`T-P8-04`) remain in progress.
+
+## 16) NWS/NWM + GloFAS Version-Compatibility Audit Plan (Compact)
+
+Date added: 2026-02-14  
+Scope: planning checklist only (not a filled final catalog yet)  
+Objective: produce a shareable, version-aware data-location and compatibility tracker for bias-transfer workflows.
+
+### 16.1 One-Page Outline for the Future Shareable Document
+
+Use the structure below for the future "Version Compatibility Tracking" document:
+
+1. Purpose + modeling risk statement.
+2. Data centers and product families in scope:
+   - NWS/NOAA NWM
+   - ECMWF/Copernicus GloFAS
+3. Version timeline per center (chronological table).
+4. Product matrix per version:
+   - Retrospective/reanalysis availability + date coverage.
+   - Ensemble forecast availability + date coverage.
+   - Reforecast/hindcast availability + date coverage (if present).
+5. Operational window mapping:
+   - release date
+   - operational start/end
+   - overlap/transition windows
+6. Data-access registry (authoritative portals, APIs, cloud object stores, update cadence, ownership).
+7. Compatibility matrix:
+   - allowed retrospective->forecast version pairs
+   - disallowed pairs with reason
+8. Validation rules (pre-run gate checks + fail conditions).
+9. Change log:
+   - source verification date
+   - what changed
+   - impact on allowed pairings
+10. Quick links appendix (authoritative URLs only, grouped by center).
+
+### 16.2 TODO Checklist to Build the Document
+
+Status legend: `[ ]` not started, `[~]` in progress, `[x]` done
+
+#### 16.2.1 Shared foundation (both centers)
+
+- [ ] `A-01`: Freeze canonical document ID/path and owner for ongoing updates.
+- [ ] `A-02`: Define uniform version keys (`center`, `system`, `major.minor`, `release_tag`) and date conventions (`UTC`, `YYYY-MM-DD`).
+- [ ] `A-03`: Define "authoritative source" ranking: official operations docs > official dataset pages > archive metadata > third-party summaries.
+- [ ] `A-04`: Create a source-verification log table with `verified_on`, `verified_by`, `evidence_url`, `notes`.
+- [ ] `A-05`: Define red-flag labels: `version_unknown`, `date_gap`, `transition_overlap`, `reforecast_unconfirmed`, `non_authoritative_only`.
+
+#### 16.2.2 NWS / NOAA NWM checklist
+
+- [ ] `NWM-01`: Build complete chronological NWM version timeline relevant to your training/forecast window.
+- [ ] `NWM-02`: For each NWM version, record retrospective/reanalysis datasets and exact coverage dates.
+- [ ] `NWM-03`: For each NWM version, record ensemble forecast products and exact coverage dates.
+- [ ] `NWM-04`: Determine whether reforecast/hindcast datasets exist per version; if yes, record period and archive location.
+- [ ] `NWM-05`: Record operational transition windows (old version end, new version start, overlap if any).
+- [ ] `NWM-06`: Classify each known anchor URL as `authoritative`, `supporting`, or `to_classify`:
+  - `https://planetarycomputer.microsoft.com/dataset/storage/noaa-nwm`
+  - `https://github.com/TomAugspurger/noaa-nwm`
+  - `https://www.weather.gov/media/wrn/calendar/NWS-NODD-Microsoft-NWM-Office-Hours-Notes.pdf`
+  - `https://water.noaa.gov/about/nwm`
+  - `https://registry.opendata.aws/nwm-archive/`
+  - `https://github.com/NOAA-Big-Data-Program/nodd-data-docs/blob/main/nwm/README.md`
+  - `https://aws.amazon.com/marketplace/pp/prodview-g6lcchc7brshw`
+  - `https://www.weather.gov/media/owp/operations/nwps_user_guide.pdf` (explicitly mark relevance)
+- [ ] `NWM-07`: Add storage and access map for each NWM stream (official portal, cloud bucket, format, partitioning, retention behavior).
+- [ ] `NWM-08`: Mark known uncertainty intervals where retrospective and forecast version identity is ambiguous.
+
+#### 16.2.3 ECMWF / Copernicus GloFAS checklist
+
+- [ ] `GLOFAS-01`: Build complete chronological GloFAS version timeline (including legacy versions cited on official pages).
+- [ ] `GLOFAS-02`: For each version, record historical/retrospective dataset coverage dates.
+- [ ] `GLOFAS-03`: For each version, record operational ensemble forecast coverage dates.
+- [ ] `GLOFAS-04`: Confirm and record reforecast/hindcast products (availability, frequency, lead-time design, coverage range).
+- [ ] `GLOFAS-05`: Record release and operational transition dates (including any documented "ingredient" changes).
+- [ ] `GLOFAS-06`: Classify each known anchor URL as `authoritative`, `supporting`, or `to_classify`:
+  - `https://ewds.climate.copernicus.eu/datasets/cems-glofas-historical?tab=overview`
+  - `https://confluence.ecmwf.int/plugins/servlet/mobile?contentId=265028796#content/view/265028624`
+  - `https://ewds.climate.copernicus.eu/datasets/cems-glofas-forecast?tab=overview`
+  - `https://global-flood.emergency.copernicus.eu/general-information/glofas-methods/`
+- [ ] `GLOFAS-07`: Add storage and access map for each stream (portal/API endpoint, dataset identifier, variable table, member metadata).
+- [ ] `GLOFAS-08`: Mark known uncertainty intervals where historical and forecast version identity is ambiguous.
+
+#### 16.2.4 Finalization tasks
+
+- [ ] `F-01`: Create per-center compatibility matrix (`allowed`, `blocked`, `needs_review`) for retrospective->forecast pairings.
+- [ ] `F-02`: Add explicit "do-not-train/do-not-correct" windows around unverified transitions.
+- [ ] `F-03`: Add one-page executive summary for collaborators (what is safe to pair now, what is blocked pending verification).
+- [ ] `F-04`: Add monthly verification cadence and trigger-based updates (new model release, archive revision, metadata correction).
+
+### 16.3 Data-Access Registry Template (fill-in schema)
+
+```yaml
+record_id: "<center>-<system>-<product_type>-<version>-<tag>"
+center: "NWS_NOAA | ECMWF_COPERNICUS"
+system: "NWM | GloFAS"
+product_type: "retrospective | reanalysis | forecast_ensemble | reforecast_hindcast"
+model_version:
+  label: "<e.g., v3.0>"
+  family: "<major branch if needed>"
+  compatibility_group: "<same-model or approved pair-group id>"
+temporal_coverage:
+  data_start_utc: "YYYY-MM-DD"
+  data_end_utc: "YYYY-MM-DD or ongoing"
+  operational_start_utc: "YYYY-MM-DD or null"
+  operational_end_utc: "YYYY-MM-DD or null"
+release_metadata:
+  release_date_utc: "YYYY-MM-DD or null"
+  status: "operational | retrospective_only | deprecated | legacy"
+ensemble_metadata:
+  has_ensembles: true
+  member_count: "<int or range or null>"
+  lead_time_design: "<text>"
+  has_reforecasts: "yes | no | unknown"
+  reforecast_coverage: "<date range or null>"
+storage_and_access:
+  authoritative_portal: "<url>"
+  programmatic_entrypoint: "<api/stac/cds/s3 url>"
+  storage_location: "<bucket/container/path or dataset id>"
+  file_format: "<grib/netcdf/zarr/csv/...>"
+  partitioning: "<time/member/path pattern>"
+  update_cadence: "<operational schedule or archive update notes>"
+quality_and_lineage:
+  source_rank: "authoritative | supporting | to_classify"
+  verified_on_utc: "YYYY-MM-DD"
+  verified_by: "<name>"
+  evidence_urls:
+    - "<url1>"
+    - "<url2>"
+  notes: "<free text>"
+risk_flags:
+  - "version_unknown | date_gap | transition_overlap | reforecast_unconfirmed | metadata_conflict"
+compatibility_decision:
+  can_pair_with:
+    - "<target version id(s)>"
+  decision: "allow | block | conditional"
+  rationale: "<short reason>"
+```
+
+### 16.4 Compatibility Decision Rules (pre-pairing gates)
+
+Apply these checks before using a retrospective/reanalysis dataset to bias-correct forecast ensembles:
+
+1. Version identity gate:
+   - Require exact model version match, or an explicitly approved compatibility pair with documented rationale.
+   - If version is unknown on either side, decision is `block`.
+2. Operational alignment gate:
+   - Forecast valid times must fall inside the operational window for the forecast model version.
+   - Retrospective period used for training must correspond to that same version (or approved pair).
+3. Transition-window gate:
+   - If data point is within a release transition window (cutover/overlap), label `transition_overlap`.
+   - Exclude by default until window-specific policy is documented.
+4. Reforecast preference gate:
+   - If version-matched reforecasts/hindcasts exist, prefer them for transfer calibration and validation.
+   - If absent, record downgrade note and require extra out-of-sample diagnostics.
+5. Storage provenance gate:
+   - Only use records with at least one authoritative source link and a recent verification date.
+   - If only supporting/third-party sources exist, decision is `conditional` and requires maintainer sign-off.
+6. Coverage sufficiency gate:
+   - Minimum train period and event coverage thresholds must be met (define per basin/site).
+   - If thresholds fail, decision is `block` or `conditional` with explicit caveat.
+7. Metadata consistency gate:
+   - Product metadata (variables, units, member semantics, lead-time conventions) must match expected schema.
+   - Any unresolved mismatch blocks pairing.
+8. Final decision logging:
+   - Every approved pair must be written to compatibility matrix with date, reviewer, evidence URLs, and expiration/review date.
