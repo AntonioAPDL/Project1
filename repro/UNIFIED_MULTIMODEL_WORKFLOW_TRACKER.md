@@ -201,6 +201,7 @@ Status legend:
 - [x] `T-P8-01`: Change defaults to theory-aligned stages; keep legacy as opt-in fallback.
 - [x] `T-P8-02`: Add end-to-end unified-run smoke integration coverage for post table exports and post artifact allowlist capture.
 - [x] `T-P8-03`: Add canonical production family config (canonical 7 quantiles) plus validator UX/docs regression coverage.
+- [~] `T-P8-04`: Complete canonical production evidence run (P8C) with production validator PASS and closed manifest.
 
 ## 8) Risk Register (Live)
 
@@ -1349,6 +1350,110 @@ At each planning/execution checkpoint:
   - Template defaults remain unchanged for family run toggles (`models.run_exdqlm_univar=false`, `models.run_ndlm_main=false`).
   - Canonical production evidence run was deferred in this chunk (resource-gated; no runtime risk escalation).
 
+### Progress Update 2026-02-14 00:01 UTC
+- Phase: P8C
+- Change type: operations+validation
+- Summary: executed one canonical production run attempt using `config/unified_runs/production_canonical_family.yaml` (`run_id=prod_canonical_p8b_template`) and collected runtime evidence; run did not close in this interactive cycle (fit remained in early quantile iterations and was interrupted), so P8C remains deferred pending a dedicated long-budget execution window.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Run id:
+  - `prod_canonical_p8b_template`
+- Evidence paths:
+  - `repro/runs/prod_canonical_p8b_template/resolved_config.yaml`
+  - `repro/runs/prod_canonical_p8b_template/run_manifest.yaml`
+  - `repro/runs/prod_canonical_p8b_template/fit/q=01/logs/fit.log`
+  - `repro/runs/prod_canonical_p8b_template/fit/q=05/logs/fit.log`
+  - `repro/runs/prod_canonical_p8b_template/fit/q=10/logs/fit.log`
+  - `repro/runs/prod_canonical_p8b_template/fit/inputs/parameters.txt`
+  - `repro/runs/prod_canonical_p8b_template/fit/inputs/retros_fit_adapter.csv`
+  - `repro/runs/prod_canonical_p8b_template/fit/inputs/nws_fit_adapter.csv`
+  - `repro/runs/prod_canonical_p8b_template/fit/inputs/glofas_fit_adapter.csv`
+  - `repro/runs/prod_canonical_p8b_template/inputs/shared/source_map.txt`
+  - `repro/runs/prod_canonical_p8b_template/inputs/shared/forecats_bundle/snapshot_source_map.txt`
+  - `repro/reports/validator/prod_canonical_p8b_template_auto.txt`
+  - `repro/reports/validator/prod_canonical_p8b_template_production.txt`
+- Validation commands run:
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "testthat::test_dir('tests/testthat', reporter='summary')"`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\\n')"`
+  - `df -h /data`
+  - `df -i /data`
+  - `bash repro/tools/validate_run.sh prod_canonical_p8b_template --profile auto --exit-nonzero`
+  - `bash repro/tools/validate_run.sh prod_canonical_p8b_template --profile production --exit-nonzero`
+- Validation notes:
+  - Preconditions passed and canonical config contract matched expected values (all families enabled, theory-aligned univar/NDLM modes, canonical quantiles, `validation.profile=production`, `write_audit.enforce_from_stage=4`).
+  - `run_manifest.yaml` remained open (`timestamps.finished_at_utc: null`, `validation.status: pending`, `stages.fit.status: pending`) because execution was interrupted before fit completion.
+  - Validator outputs for both `--profile auto` and `--profile production` are `RESULT=FAIL` with `profile_effective=production` and `quantile_outputs=0/7`, consistent with the incomplete run state.
+  - No model/fit/post semantics changes were made and no storage-policy code changes were made in this step.
+  - Next action: execute one dedicated uninterrupted canonical run window, then run `validate_run.sh` with `--profile auto` and `--profile production` and attach validator outputs under `repro/reports/validator/`.
+
+### Progress Update 2026-02-14 01:09 UTC
+- Phase: P8C (ops rerun request)
+- Change type: operations
+- Summary: stopped active canonical run attempt `prod_canonical_p8c_20260213_162304` on maintainer request and launched a fresh full workflow run constrained to quantiles `[0.05, 0.50, 0.95]`.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Configs used:
+  - First attempt (blocked by preflight): `/tmp/prod_proof_q3_20260214_010854.yaml`
+  - Active rerun (in progress): `/tmp/prod_proof_q3_20260214_010911.yaml`
+- Run ids:
+  - stopped: `prod_canonical_p8c_20260213_162304`
+  - active: `prod_proof_q3_20260214_010911`
+- Validation notes:
+  - First rerun attempt failed at run-start storage preflight (`free_gb=71.60`, threshold `min_free_gb_start=90`).
+  - Ops-only remediation applied via temp config threshold alignment (`min_free_gb_start=70`, `min_free_gb_continue=60`) with no model/fit/post semantics changes.
+  - Second rerun attempt passed run-start preflight and is currently running in persistent session.
+- Next action:
+  - Monitor active run to completion, then execute validator checks (`--profile auto` and `--profile production_proof`) and record evidence paths.
+
+### Progress Update 2026-02-14 00:21 UTC
+- Phase: P8C
+- Change type: operations
+- Summary: completed diagnose-first gate and launched one fresh canonical production run in background with a unique run id to avoid partial-state ambiguity from deferred run `prod_canonical_p8b_template`; no code changes applied because diagnosis indicated interruption/partial-run state rather than a proven deterministic model bug.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Run id:
+  - `prod_canonical_p8c_20260213_162140`
+- Operational evidence paths:
+  - `/tmp/prod_canonical_p8c_20260213_162140.yaml` (runtime overlay config with pinned `run.run_id`)
+  - `repro/reports/validator/prod_canonical_p8c_20260213_162140_runner.log`
+  - `repro/reports/validator/prod_canonical_p8c_20260213_162140.pid`
+  - `repro/runs/prod_canonical_p8c_20260213_162140/run_manifest.yaml` (in-progress while run is active)
+- Validation/diagnosis checks run:
+  - `git status -sb`
+  - `git rev-parse --abbrev-ref HEAD`
+  - `git log -n 12 --oneline`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "testthat::test_dir('tests/testthat', reporter='summary')"`
+  - `Rscript -e "parse(file='scripts/unified_run.R'); cat('R_PARSE_OK\\n')"`
+  - deferred-run inspection over `run_manifest.yaml`, `resolved_config.yaml`, `fit/q=*/logs/fit.log`, and `fit/q=*/outputs/*.RData`
+  - process checks via `ps`/`pgrep`
+  - `df -h /data`
+  - `df -i /data`
+- Diagnosis summary:
+  - Deferred run remained open (`finished_at_utc: null`) with zero completed quantile output files recorded at diagnosis time.
+  - Validator fail (`quantile_outputs=0/7`) was consistent with incomplete run state.
+  - Headroom at launch: `/data` `72G` free, inode usage `4%`.
+- Next action:
+  - Keep run active; perform health checks (`ps -p $(cat <pidfile>)`, tail runner log, inspect `run_manifest.yaml` stage status), then run validator `--profile auto` and `--profile production` once run closes.
+
+### Progress Update 2026-02-14 00:23 UTC
+- Phase: P8C
+- Change type: operations
+- Summary: relaunched canonical production run in a persistent PTY session (instead of `nohup` background) because this execution environment reaps detached background jobs at command return; run now advanced through `forecats` and `data_prep_shared` and entered `fit`.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Run id:
+  - `prod_canonical_p8c_20260213_162304`
+- Operational evidence paths:
+  - `/tmp/prod_canonical_p8c_20260213_162304.yaml`
+  - `repro/runs/prod_canonical_p8c_20260213_162304/resolved_config.yaml`
+  - `repro/runs/prod_canonical_p8c_20260213_162304/run_manifest.yaml`
+- Session tracking:
+  - PTY session id: `87547`
+- Next action:
+  - Keep session alive and monitor fit progress via session polling and run-root logs, then execute validator `--profile auto` and `--profile production` after run closure.
+
 ## 11) Open Questions / Resolved Defaults
 
 ### 11.1 Open
@@ -1715,3 +1820,37 @@ Concurrency rule for migration phases:
 1. exDQLM multivariate quantiles may stay parallel per current fit stage.
 2. NDLM should remain isolated as a single stage/job (no quantile fanout) until NDLM-v2 contracts are finalized.
 3. Post/validate/report remain serialized and manifest-driven.
+
+### Progress Update 2026-02-14 01:08 UTC
+- Phase: P8C
+- Change type: operations
+- Summary: executed active-run-safe storage cleanup audit + dry-run policy assessment; applied only one high-confidence deletion (stale temp `.tmp` artifact outside active run root) with before/after evidence capture.
+- Commands run:
+  - `git status -sb`
+  - `git rev-parse --abbrev-ref HEAD`
+  - `df -h /data && df -i /data`
+  - `pgrep -fa "prod_canonical_p8c_20260213_162304|/tmp/prod_canonical_p8c_20260213_162304.yaml|run_DISC_Optimal_Synth_Ranges_W.R"`
+  - `repro/tools/cleanup_runs.sh --inventory-only ...`
+  - `repro/tools/cleanup_runs.sh --dry-run --thin-failed --inventory-root-rdata ...`
+  - `repro/tools/cleanup_runs.sh --dry-run --thin-failed --include-baseline --thin-baseline --inventory-root-rdata ...`
+  - `rm repro/runs/prod_canonical_p8b_template/fit/q=10/outputs/DISC_variables_10_exAL_synth_DISC.RData.tmp.2161922`
+- Evidence paths:
+  - `repro/reports/cleanup_runs/20260213_170344_p8c_safe_cleanup/00_preflight.txt`
+  - `repro/reports/cleanup_runs/20260213_170344_p8c_safe_cleanup/01_files_ge_1GiB.tsv`
+  - `repro/reports/cleanup_runs/20260213_170344_p8c_safe_cleanup/02_top_dirs_by_size.tsv`
+  - `repro/reports/cleanup_runs/20260213_170344_p8c_safe_cleanup/05_baseline_disc_q50_hash_groups.tsv`
+  - `repro/reports/cleanup_runs/20260213_170344_p8c_safe_cleanup/policy_dryrun_main/20260214_010627_dryrun.json`
+  - `repro/reports/cleanup_runs/20260213_170344_p8c_safe_cleanup/policy_dryrun_with_baseline/20260214_010627_dryrun.json`
+  - `repro/reports/cleanup_runs/20260213_170344_p8c_safe_cleanup/09_apply_high_confidence_cleanup.txt`
+  - `repro/reports/cleanup_runs/20260213_170344_p8c_safe_cleanup/10_cleanup_summary.md`
+- Reclaimed space:
+  - Exact removed bytes: `1812216257` (`1.687758 GiB`)
+  - Disk snapshot: `/data` moved from `800G used / 70G avail` to `798G used / 72G avail`.
+- Intentionally not touched:
+  - Active run root `repro/runs/prod_canonical_p8c_20260213_162304` (in-progress process confirmed before/after).
+  - Protected runs in `repro/protected_runs.yaml`.
+  - Baseline duplicates and root-level legacy `.RData` families (classified `REVIEW_FIRST`).
+- New risks:
+  - None introduced; no model/fit/post/validator code or semantics changed.
+- Next action:
+  - If additional reclaim is needed, execute an explicitly approved baseline dedupe-by-hash plan with rollback safeguards.
