@@ -225,13 +225,13 @@ Status legend:
 
 ## 7.8 P9 Tasks (Extreme-Quantile Stabilization)
 
-- [ ] `T-P9-01`: Stop active failing canonical run cleanly and preserve failure forensics (manifest, runner log, q=01 fit log) before cleanup.
-- [ ] `T-P9-02`: Quarantine/remove failed run artifacts with evidence trail (before/after space + retained key logs) using safe cleanup policy.
-- [ ] `T-P9-03`: Run theory-first audit for failing path at q=0.01 (`objective_deltas` / `update_gamma_sigma`), mapping equations to code and finite-domain requirements.
-- [ ] `T-P9-04`: Build isolated reproducer (`fit.quantiles=[0.01]`, multivar-only, post/validate/report OFF) and reproduce deterministically.
-- [ ] `T-P9-05`: Implement diagnostics-first guardrails (finite/domain checks + precise error context) without default semantic changes.
-- [ ] `T-P9-06`: Evaluate opt-in mitigation candidate `gamma/sigma` warmup-freeze (default OFF), then re-enable updates after configured iterations.
-- [ ] `T-P9-07`: Validate fixes with isolated q=0.01 pass, neighboring q=0.05 sanity pass, and targeted regression tests.
+- [x] `T-P9-01`: Stop active failing canonical run cleanly and preserve failure forensics (manifest, runner log, q=01 fit log) before cleanup.
+- [x] `T-P9-02`: Quarantine/remove failed run artifacts with evidence trail (before/after space + retained key logs) using safe cleanup policy.
+- [x] `T-P9-03`: Run theory-first audit for failing path at q=0.01 (`objective_deltas` / `update_gamma_sigma`), mapping equations to code and finite-domain requirements.
+- [~] `T-P9-04`: Build isolated reproducer (`fit.quantiles=[0.01]`, multivar-only, post/validate/report OFF) and reproduce deterministically.
+- [x] `T-P9-05`: Implement diagnostics-first guardrails (finite/domain checks + precise error context) without default semantic changes.
+- [x] `T-P9-06`: Evaluate opt-in mitigation candidate `gamma/sigma` warmup-freeze (default OFF), then re-enable updates after configured iterations.
+- [~] `T-P9-07`: Validate fixes with isolated q=0.01 pass, neighboring q=0.05 sanity pass, and targeted regression tests.
 
 ## 8) Risk Register (Live)
 
@@ -244,7 +244,7 @@ Status legend:
 | R-005 | Medium | Ambiguity on sequencing can delay implementation. | Lock D-007 or replace with alternate sequence immediately after P0. | Maintainer | Mitigated (D-007 locked) |
 | R-006 | High | DISC-W warm-start can load root `DISC_variables_*` paths, violating run-scoped reproducibility if enabled. | Keep warm-start disabled by default; if enabled, require run-scoped warm-start source path recorded in manifest before stage execution. | TBD | Mitigating (legacy bridge env routing now run-scoped; warm-start remains disabled by default) |
 | R-007 | Medium | Post reads `y_reps*.rds` via relative paths, creating working-directory-sensitive behavior. | In P5, enforce absolute/manifest-declared paths for these intermediates and fail fast on unresolved relative reads. | TBD | Mitigating (run-scoped cache path enforced) |
-| R-008 | High | Extreme quantile (`q=0.01`) multivar fit can fail with non-finite objective in optimizer (`L-BFGS-B needs finite values of 'fn'`), blocking canonical closure. | P9 theory-first isolation: preserve evidence, reproduce q=0.01 only, add finite/domain guardrails, evaluate opt-in gamma/sigma warmup freeze. | TBD | Open |
+| R-008 | High | Extreme quantile (`q=0.01`) multivar fit can fail with non-finite objective in optimizer (`L-BFGS-B needs finite values of 'fn'`), blocking canonical closure. | P9 theory-first isolation: preserve evidence, reproduce q=0.01 only, add finite/domain guardrails, evaluate opt-in gamma/sigma warmup freeze. | TBD | Mitigating (guardrails + opt-in freeze implemented; isolated reproducer run active) |
 
 ## 9) Validation and Done Criteria
 
@@ -2031,6 +2031,37 @@ Concurrency rule for migration phases:
   - P9 tasks were added to enforce clean stop, safe cleanup, and single-quantile isolation before attempting mitigations.
 - Next action:
   - Begin P9-T01 by stopping only run-id-scoped processes for `prod_canonical_p8c_20260214_214849_r01`, then preserve forensic artifacts before cleanup and isolation reruns.
+
+### Progress Update 2026-02-14 23:00 UTC
+- Phase: P9
+- Change type: implementation+validation+operations
+- Summary: implemented opt-in extreme-quantile stabilization controls for DISC-W multivar gamma/sigma updates (default semantics unchanged), including config-schema support, fit-stage env wiring, objective finite/domain guardrails, and warmup freeze iterations; added isolated q=0.01 debug config and regression tests; launched deterministic isolated reproducer run with canonicalized shared inputs.
+- Files touched:
+  - `R/unified/config.R`
+  - `R/unified/stages/stage_fit.R`
+  - `DISC_Optimal_Synth_Ranges_W.r`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/debug_q01_multivar_extreme.yaml`
+  - `repro/tests/test_config_extreme_quantile_stabilization.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/reports/failures/prod_canonical_p8c_20260214_214849_r01_20260214T224804Z/fit_q01.log`
+  - `repro/quarantine/failed_runs/prod_canonical_p8c_20260214_214849_r01_20260214T224824Z/QUARANTINE_INDEX.md`
+  - `/tmp/debug_q01_extreme_20260214_225450.yaml`
+  - `repro/runs/debug_q01_extreme_20260214_225450/run_manifest.yaml`
+  - `/tmp/debug_q01_extreme_20260214_225559_r02.yaml`
+  - `repro/runs/debug_q01_extreme_20260214_225559_r02/run_manifest.yaml`
+  - `repro/runs/debug_q01_extreme_20260214_225559_r02/fit/q=01/logs/fit.log`
+- Validation notes:
+  - Targeted regression tests passed:
+    - `python3 -m unittest repro.tests.test_config_extreme_quantile_stabilization repro.tests.test_config_implementation_mode_defaults repro.tests.test_stage_fit_parallel_guard repro.tests.test_production_canonical_family_config -v`
+  - R parse checks passed for modified files:
+    - `R/unified/config.R`
+    - `R/unified/stages/stage_fit.R`
+    - `DISC_Optimal_Synth_Ranges_W.r`
+  - First isolated attempt (`debug_q01_extreme_20260214_225450`) failed pre-fit due input adapter non-finite GloFAS values; second attempt (`debug_q01_extreme_20260214_225559_r02`) launched with `forecats + data_prep_shared` and reached fit execution for q=0.01.
+- Next action:
+  - Let isolated run `debug_q01_extreme_20260214_225559_r02` finish, then inspect q=0.01 fit outcome, run validator/report where applicable, and decide whether freeze iteration count can be reduced while keeping q=0.01 stable.
 
 ## 15) Audit Report (2026-02-14)
 

@@ -166,6 +166,32 @@ Committed proof config:
 
 Proof runs are non-canonical and intended for bounded gate/orchestration validation, not canonical production equivalence.
 
+## Extreme-Quantile Stabilization (Opt-In)
+
+For q-tail debugging (for example `q=0.01`), multivar DISC-W now supports opt-in controls under:
+
+```yaml
+fit:
+  exdqlm_multivar:
+    gamma_sigma:
+      warmup_freeze_iters: 0
+      objective_guard:
+        enabled: false
+        fail_fast: false
+        log_failures: true
+        penalty: 1.0e12
+```
+
+Notes:
+
+- Defaults preserve current behavior (`warmup_freeze_iters=0`, `objective_guard.enabled=false`).
+- `objective_guard.enabled=true` penalizes non-finite objective evaluations with a finite value instead of failing immediately.
+- `warmup_freeze_iters>0` temporarily freezes gamma/sigma updates for the first VB iterations (opt-in only).
+
+Committed isolated q=0.01 debug template:
+
+- `config/unified_runs/debug_q01_multivar_extreme.yaml`
+
 ## Write-Audit Policy
 
 - Production default: `write_audit.enforce_from_stage: 4` (audit starts at `validate` and includes `report`).

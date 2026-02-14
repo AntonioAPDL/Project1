@@ -71,6 +71,36 @@ if (exists("set_sampling_truncnorm_seed", mode = "function")) {
   set_sampling_truncnorm_seed(disc_base_seed)
 }
 
+disc_env_flag <- function(name, default = FALSE) {
+  raw <- Sys.getenv(name, "")
+  if (!nzchar(raw)) return(isTRUE(default))
+  tolower(trimws(raw)) %in% c("1", "true", "yes", "y", "on")
+}
+
+DISC_GAMSIG_FREEZE_ITERS <- suppressWarnings(as.integer(Sys.getenv("DISC_GAMSIG_FREEZE_ITERS", "0")))
+if (!is.finite(DISC_GAMSIG_FREEZE_ITERS) || DISC_GAMSIG_FREEZE_ITERS < 0L) {
+  DISC_GAMSIG_FREEZE_ITERS <- 0L
+}
+
+DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED <- disc_env_flag(
+  "DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED",
+  default = FALSE
+)
+DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST <- disc_env_flag(
+  "DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST",
+  default = FALSE
+)
+DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES <- disc_env_flag(
+  "DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES",
+  default = TRUE
+)
+DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY <- suppressWarnings(as.numeric(
+  Sys.getenv("DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY", "1e12")
+))
+if (!is.finite(DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY) || DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY <= 0) {
+  DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY <- 1e12
+}
+
 print(c(n.samp, 444))
 flush.console()
 
@@ -1124,7 +1154,15 @@ update_gamma_sigma<-function( y, nn, prior_g, prior_s,
                               Climate_Center,
                               ensembles_j = NULL, num_mem_j = NULL, k_forecast = NULL,
                               sts_f = NULL,sts2_f = NULL,
-                              uts_f= NULL,inv.uts_f= NULL){
+                              uts_f= NULL,inv.uts_f= NULL,
+                              context_label = ""){
+
+log_guard_failure <- function(msg) {
+  if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+    cat(sprintf("[gamsig_guard] %s\n", msg))
+    flush.console()
+  }
+}
 
 if(!Climate_Center){
   dq_transf <- function(theta_s,theta_g){
@@ -1134,9 +1172,19 @@ if(!Climate_Center){
       pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
       gam <- L + (U - L) * pi
       a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam); p.fn(p0,gam)
+      if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED)) {
+        if (!is.finite(sig) || sig <= 0 || !is.finite(gam) || !is.finite(b) || b <= 0) {
+          return(-Inf)
+        }
+      }
 
       # Prior
-      yy <- log(PriorGammaDens(gam, prior_g)) - (prior_s[1] + 1) * log(sig) - prior_s[2]/sig
+      prior_gamma_dens <- PriorGammaDens(gam, prior_g)
+      if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED) &&
+          (!is.finite(prior_gamma_dens) || prior_gamma_dens <= 0)) {
+        return(-Inf)
+      }
+      yy <- log(prior_gamma_dens) - (prior_s[1] + 1) * log(sig) - prior_s[2]/sig
 
       # Likelihood
       yy <- yy - (1.5*nn)*log(sig) - (0.5*nn)*log(b)-sum(uts)/sig 
@@ -1148,6 +1196,9 @@ if(!Climate_Center){
       
       # Jacobian (u=log sigma, gamma=L+(U-L)*logistic(xi))
       yy <- yy + theta_s + log(U - L) + log(pi) + log1p(-pi)
+      if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED) && !is.finite(yy)) {
+        return(-Inf)
+      }
       return(yy)
   }
 }else{
@@ -1164,10 +1215,20 @@ if(!Climate_Center){
       # Keep gamma strictly inside (L,U) to avoid evaluating A/B/C at the boundary.
       pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
       gam <- L + (U - L) * pi
-          a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+      a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam);
+      if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED)) {
+        if (!is.finite(sig) || sig <= 0 || !is.finite(gam) || !is.finite(b) || b <= 0) {
+          return(-Inf)
+        }
+      }
 
       # Prior
-      yy <- log(PriorGammaDens(gam, prior_g)) - (prior_s[1] + 1) * log(sig) - prior_s[2]/sig
+      prior_gamma_dens <- PriorGammaDens(gam, prior_g)
+      if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED) &&
+          (!is.finite(prior_gamma_dens) || prior_gamma_dens <= 0)) {
+        return(-Inf)
+      }
+      yy <- log(prior_gamma_dens) - (prior_s[1] + 1) * log(sig) - prior_s[2]/sig
 
       # Likelihood
       yy <- yy - 1.5*(nn+k_forecast*num_mem_j)*log(sig) - (0.5*(nn+k_forecast*num_mem_j))*log(b)-(sum(uts)+sum(uts_f))/sig 
@@ -1185,6 +1246,9 @@ if(!Climate_Center){
                       + (uts_f*a^2)/sig )/b
       # Jacobian (u=log sigma, gamma=L+(U-L)*logistic(xi))
       yy <- yy + theta_s + log(U - L) + log(pi) + log1p(-pi)
+      if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED) && !is.finite(yy)) {
+        return(-Inf)
+      }
       return(yy)
   }
 }
@@ -1196,8 +1260,39 @@ if(!Climate_Center){
   initial_values <- c(theta_s_init, theta_g_init)
 
   # Optimization step
+  objective_neg <- function(x) {
+    yy <- dq_transf(x[1], x[2])
+    if (!isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED)) {
+      return(-yy)
+    }
+    if (!is.finite(yy)) {
+      msg <- sprintf(
+        "non-finite dq_transf at p0=%s context=%s theta_s=%s theta_g=%s",
+        as.character(p0), context_label, format(x[1], digits = 16), format(x[2], digits = 16)
+      )
+      if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST)) {
+        stop(msg, call. = FALSE)
+      }
+      log_guard_failure(msg)
+      return(DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY)
+    }
+    neg <- -yy
+    if (!is.finite(neg)) {
+      msg <- sprintf(
+        "non-finite negative objective at p0=%s context=%s theta_s=%s theta_g=%s",
+        as.character(p0), context_label, format(x[1], digits = 16), format(x[2], digits = 16)
+      )
+      if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST)) {
+        stop(msg, call. = FALSE)
+      }
+      log_guard_failure(msg)
+      return(DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY)
+    }
+    neg
+  }
+
   optim_results <- optim(par = initial_values, 
-                      fn = function(x) -dq_transf(x[1], x[2]), # Maximizing by minimizing the negative
+                      fn = objective_neg, # Maximizing by minimizing the negative
                       method = "L-BFGS-B", # This method allows box constraints
                       lower = c(-Inf, -Inf), # Transform bounds for gam to theta_g space if needed
                       upper = c(Inf, Inf),
@@ -1707,6 +1802,15 @@ while (FLAG & iter < max_iter) {
       }   
   }
 
+  gamsig_frozen_now <- (DISC_GAMSIG_FREEZE_ITERS > 0L) && (iter <= DISC_GAMSIG_FREEZE_ITERS)
+  if (gamsig_frozen_now && isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+    cat(sprintf(
+      "[gamsig_freeze] p0=%s iter=%d freeze_iters=%d\n",
+      as.character(p0), as.integer(iter), as.integer(DISC_GAMSIG_FREEZE_ITERS)
+    ))
+    flush.console()
+  }
+
   ## UPDATE s and u
   for (j in 1:(J+1)) {   
       sts.dummy <- update_sts(y[j,],
@@ -1734,11 +1838,12 @@ while (FLAG & iter < max_iter) {
       new.uts.out$E.log.uts[j,] <- uts.dummy$E.log.uts
       new.uts.out$tot.entrop[j,] <- uts.dummy$tot.entrop
       ########################
-      if(j==1){
-          gamsig.dummy <- update_gamma_sigma(y[j,], 
-                                              TT,
-                                              PriorGamma[j,],
-                                              PriorSigma[j,],
+      if (j == 1) {
+        if (!gamsig_frozen_now) {
+        gamsig.dummy <- update_gamma_sigma(y[j,], 
+                                            TT,
+                                            PriorGamma[j,],
+                                            PriorSigma[j,],
                                               cur.gamsig.out$E.gam[j,], 
                                               cur.gamsig.out$V.gam[j,], 
                                               cur.gamsig.out$E.sigma[j,], 
@@ -1751,7 +1856,8 @@ while (FLAG & iter < max_iter) {
                                               new.uts.out$E.inv.uts[j,],
                                               cur.gamsig.out$E.sigma[j,], 
                                               cur.gamsig.out$E.gam[j,],
-                                              FALSE)    
+                                              FALSE,
+                                              context_label = sprintf("vb_main iter=%d j=%d climate_center=FALSE", iter, j))    
           new.gamsig.out$E.gam[j,] <- gamsig.dummy$E.gam
           new.gamsig.out$E.sigma[j,] <- gamsig.dummy$E.sigma
           new.gamsig.out$E.inv.sigma[j,] <- gamsig.dummy$E.inv.sigma
@@ -1765,6 +1871,7 @@ while (FLAG & iter < max_iter) {
           new.gamsig.out$E.log.sig[j,] <- gamsig.dummy$E.log.sig
           new.gamsig.out$E.prior.sig.gam[j,] <- gamsig.dummy$E.prior.sig.gam
           new.gamsig.out$entrop[j,] <- gamsig.dummy$entrop
+        }
       }else{
           k_forecast <- ranges[j-1]
           for (i in 1:num_mem[j-1]) {
@@ -1804,6 +1911,9 @@ while (FLAG & iter < max_iter) {
   }
     ## UPDATE sigma and gamma
       for (j in 2:(J+1)) {  
+          if (gamsig_frozen_now) {
+            next
+          }
           k_forecast <- ranges[j-1]
           gamsig.dummy <- update_gamma_sigma(Y[j,], TT_sub,
                                               PriorGamma[j,],
@@ -1827,7 +1937,8 @@ while (FLAG & iter < max_iter) {
                                               new.sts.out_f$E.sts[[j-1]],
                                               new.sts.out_f$E.sts2[[j-1]],
                                               new.uts.out_f$E.uts[[j-1]],
-                                              new.uts.out_f$E.inv.uts[[j-1]])
+                                              new.uts.out_f$E.inv.uts[[j-1]],
+                                              context_label = sprintf("vb_main iter=%d j=%d climate_center=TRUE", iter, j))
 
           new.gamsig.out$E.gam[j,] <- gamsig.dummy$E.gam
           new.gamsig.out$E.sigma[j,] <- gamsig.dummy$E.sigma
@@ -1852,7 +1963,11 @@ while (FLAG & iter < max_iter) {
   new.sig = new.gamsig.out$E.sigma
   seq.sigma = cbind(seq.sigma, new.sig)
 
-  conv.check <- sum(old.gam-new.gam)^2 + sum(old.sig-new.sig)^2
+  if (gamsig_frozen_now) {
+    conv.check <- Inf
+  } else {
+    conv.check <- sum(old.gam-new.gam)^2 + sum(old.sig-new.sig)^2
+  }
 
   ##########
   # ELBO
@@ -2028,7 +2143,8 @@ for (j in 1:(J+1)) {
                                             new.uts.out$E.inv.uts[j,],
                                             cur.gamsig.out$E.sigma[j,], 
                                             cur.gamsig.out$E.gam[j,],
-                                            FALSE)    
+                                            FALSE,
+                                            context_label = sprintf("sampling j=%d climate_center=FALSE", j))    
         new.gamsig.out$E.gam[j,] <- gamsig.dummy$E.gam
         new.gamsig.out$E.sigma[j,] <- gamsig.dummy$E.sigma
         new.gamsig.out$E.inv.sigma[j,] <- gamsig.dummy$E.inv.sigma
@@ -2128,7 +2244,8 @@ for (j in 1:(J+1)) {
                                             new.sts.out_f$E.sts[[j-1]],
                                             new.sts.out_f$E.sts2[[j-1]],
                                             new.uts.out_f$E.uts[[j-1]],
-                                            new.uts.out_f$E.inv.uts[[j-1]])
+                                            new.uts.out_f$E.inv.uts[[j-1]],
+                                            context_label = sprintf("sampling j=%d climate_center=TRUE", j))
 
         new.gamsig.out$E.gam[j,] <- gamsig.dummy$E.gam
         new.gamsig.out$E.sigma[j,] <- gamsig.dummy$E.sigma

@@ -273,7 +273,22 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         DISC_W_PARAMETERS_PATH = parameters_copy,
         DISC_W_RETROS_PATH = adapted_retros,
         DISC_W_NWS_PATH = adapted_nws,
-        DISC_W_GLOFAS_PATH = adapted_glofas
+        DISC_W_GLOFAS_PATH = adapted_glofas,
+        DISC_GAMSIG_FREEZE_ITERS = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 0L
+        )),
+        DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED = if (isTRUE(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "enabled"), default = FALSE
+        ))) "TRUE" else "FALSE",
+        DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST = if (isTRUE(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "fail_fast"), default = FALSE
+        ))) "TRUE" else "FALSE",
+        DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES = if (isTRUE(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "log_failures"), default = TRUE
+        ))) "TRUE" else "FALSE",
+        DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
+        ))
       )
       env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
 

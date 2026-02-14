@@ -1,0 +1,138 @@
+from __future__ import annotations
+
+import subprocess
+import tempfile
+import textwrap
+import unittest
+from pathlib import Path
+
+
+REPO_ROOT = Path("/data/muscat_data/jaguir26/project1_ucsc_phd")
+
+
+class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
+    def _resolve_config(self, yaml_text: str) -> dict[str, str]:
+        with tempfile.TemporaryDirectory(prefix="ut_cfg_extreme_q_") as td:
+            cfg_path = Path(td) / "cfg.yaml"
+            cfg_path.write_text(yaml_text, encoding="utf-8")
+            script = "\n".join(
+                [
+                    f'source("{REPO_ROOT / "R" / "unified" / "config.R"}")',
+                    f"cfg <- unified_load_config('{cfg_path.as_posix()}', repo_root = '{REPO_ROOT.as_posix()}')",
+                    "cat(sprintf('freeze_iters=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$warmup_freeze_iters))",
+                    "cat(sprintf('guard_enabled=%s\\n', if (isTRUE(cfg$fit$exdqlm_multivar$gamma_sigma$objective_guard$enabled)) 'true' else 'false'))",
+                    "cat(sprintf('guard_fail_fast=%s\\n', if (isTRUE(cfg$fit$exdqlm_multivar$gamma_sigma$objective_guard$fail_fast)) 'true' else 'false'))",
+                    "cat(sprintf('guard_log_failures=%s\\n', if (isTRUE(cfg$fit$exdqlm_multivar$gamma_sigma$objective_guard$log_failures)) 'true' else 'false'))",
+                    "cat(sprintf('guard_penalty=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$objective_guard$penalty))",
+                ]
+            )
+            proc = subprocess.run(
+                ["Rscript", "--vanilla", "-e", script],
+                cwd=REPO_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, msg=proc.stdout + "\n" + proc.stderr)
+
+        out: dict[str, str] = {}
+        for line in proc.stdout.splitlines():
+            if "=" in line:
+                k, v = line.split("=", 1)
+                out[k.strip()] = v.strip()
+        return out
+
+    def test_defaults_are_semantics_preserving(self) -> None:
+        cfg = textwrap.dedent(
+            """
+            config_version: 1
+            stages:
+              forecats: false
+              data_prep_shared: false
+              fit: false
+              post: false
+              validate: false
+              report: false
+            """
+        )
+        out = self._resolve_config(cfg)
+        self.assertEqual(out["freeze_iters"], "0")
+        self.assertEqual(out["guard_enabled"], "false")
+        self.assertEqual(out["guard_fail_fast"], "false")
+        self.assertEqual(out["guard_log_failures"], "true")
+
+    def test_overrides_are_respected(self) -> None:
+        cfg = textwrap.dedent(
+            """
+            config_version: 1
+            stages:
+              forecats: false
+              data_prep_shared: false
+              fit: false
+              post: false
+              validate: false
+              report: false
+            fit:
+              exdqlm_multivar:
+                gamma_sigma:
+                  warmup_freeze_iters: 25
+                  objective_guard:
+                    enabled: true
+                    fail_fast: true
+                    log_failures: false
+                    penalty: 12345
+            """
+        )
+        out = self._resolve_config(cfg)
+        self.assertEqual(out["freeze_iters"], "25")
+        self.assertEqual(out["guard_enabled"], "true")
+        self.assertEqual(out["guard_fail_fast"], "true")
+        self.assertEqual(out["guard_log_failures"], "false")
+        self.assertEqual(out["guard_penalty"], "12345")
+
+    def test_negative_warmup_freeze_iters_fails_validation(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="ut_cfg_extreme_q_bad_") as td:
+            cfg_path = Path(td) / "cfg_bad.yaml"
+            cfg_path.write_text(
+                textwrap.dedent(
+                    """
+                    config_version: 1
+                    stages:
+                      forecats: false
+                      data_prep_shared: false
+                      fit: false
+                      post: false
+                      validate: false
+                      report: false
+                    fit:
+                      exdqlm_multivar:
+                        gamma_sigma:
+                          warmup_freeze_iters: -1
+                    """
+                ),
+                encoding="utf-8",
+            )
+            script = "\n".join(
+                [
+                    f'source("{REPO_ROOT / "R" / "unified" / "config.R"}")',
+                    f"unified_load_config('{cfg_path.as_posix()}', repo_root = '{REPO_ROOT.as_posix()}')",
+                    "cat('UNEXPECTED_PASS\\n')",
+                ]
+            )
+            proc = subprocess.run(
+                ["Rscript", "--vanilla", "-e", script],
+                cwd=REPO_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn(
+            "fit.exdqlm_multivar.gamma_sigma.warmup_freeze_iters must be an integer >= 0",
+            proc.stderr,
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

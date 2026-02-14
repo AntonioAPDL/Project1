@@ -98,6 +98,17 @@ unified_config_defaults <- function() {
         source_run_id = NULL,
         mode = "resume"
       ),
+      exdqlm_multivar = list(
+        gamma_sigma = list(
+          warmup_freeze_iters = 0L,
+          objective_guard = list(
+            enabled = FALSE,
+            fail_fast = FALSE,
+            log_failures = TRUE,
+            penalty = 1e12
+          )
+        )
+      ),
       contract_checks = list(
         enabled = FALSE,
         fail_fast = TRUE,
@@ -468,6 +479,41 @@ unified_validate_config <- function(cfg) {
   diagnostics_psd_tol <- suppressWarnings(as.numeric(unified_get(cfg, c("fit", "diagnostics", "psd_tol"), -1e-10)))
   if (!is.finite(diagnostics_psd_tol)) {
     add_err("fit.diagnostics.psd_tol must be numeric and finite")
+  }
+
+  gamsig_warmup_freeze_iters <- suppressWarnings(as.integer(
+    unified_get(cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), 0L)
+  ))
+  if (!is.finite(gamsig_warmup_freeze_iters) || gamsig_warmup_freeze_iters < 0L) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.warmup_freeze_iters must be an integer >= 0")
+  }
+
+  gamsig_guard_enabled <- unified_get(
+    cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "enabled"), FALSE
+  )
+  if (!isTRUE(gamsig_guard_enabled) && !identical(gamsig_guard_enabled, FALSE)) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.objective_guard.enabled must be boolean (true/false)")
+  }
+
+  gamsig_guard_fail_fast <- unified_get(
+    cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "fail_fast"), FALSE
+  )
+  if (!isTRUE(gamsig_guard_fail_fast) && !identical(gamsig_guard_fail_fast, FALSE)) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.objective_guard.fail_fast must be boolean (true/false)")
+  }
+
+  gamsig_guard_log_failures <- unified_get(
+    cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "log_failures"), TRUE
+  )
+  if (!isTRUE(gamsig_guard_log_failures) && !identical(gamsig_guard_log_failures, FALSE)) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.objective_guard.log_failures must be boolean (true/false)")
+  }
+
+  gamsig_guard_penalty <- suppressWarnings(as.numeric(
+    unified_get(cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "penalty"), 1e12)
+  ))
+  if (!is.finite(gamsig_guard_penalty) || gamsig_guard_penalty <= 0) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.objective_guard.penalty must be numeric and > 0")
   }
 
   validation_profile <- unified_get(cfg, c("validation", "profile"), "production")
