@@ -1854,3 +1854,27 @@ Concurrency rule for migration phases:
   - None introduced; no model/fit/post/validator code or semantics changed.
 - Next action:
   - If additional reclaim is needed, execute an explicitly approved baseline dedupe-by-hash plan with rollback safeguards.
+
+### Progress Update 2026-02-14 01:31 UTC
+- Phase: P8C
+- Change type: operations
+- Summary: executed aggressive run-artifact cleanup in `repro/` + `repro/baseline_runs` for storage control; deleted heavy generated run products while explicitly excluding active canonical/proof run roots.
+- Scope deleted:
+  - `repro/baseline_runs/*/inputs/DISC_variables_50_exAL_synth_DISC.RData`
+  - `repro/runs|repro/quarantine fit/*/outputs/*.RData|*.rds` (non-excluded runs)
+  - `repro/runs/*/inputs/shared/forecats_bundle` (non-excluded runs)
+- Exclusions:
+  - `repro/runs/prod_canonical_p8c_20260213_162304`
+  - `repro/runs/prod_proof_q3_20260214_010911`
+- Reclaimed space:
+  - `332314584807` bytes (`309.492075 GiB`)
+  - `/data`: `798G used / 72G avail` -> `489G used / 381G avail`
+- Evidence paths:
+  - `repro/reports/cleanup_runs/20260213_172450_aggressive_repro_cleanup/apply_cleanup.log`
+  - `repro/reports/cleanup_runs/20260213_172450_aggressive_repro_cleanup/deleted_paths.tsv`
+  - `repro/reports/cleanup_runs/20260213_172450_aggressive_repro_cleanup/apply_deleted_summary.txt`
+  - `repro/reports/cleanup_runs/20260213_172450_aggressive_repro_cleanup/CLEANUP_REFERENCE_REPORT_2026-02-13.md` (kept untracked by request)
+- New risks:
+  - deleted run-generated heavy artifacts are not locally recoverable unless regenerated.
+- Next action:
+  - keep active run protections; if needed, perform a smaller second-pass prune of low-value run logs/caches only.
