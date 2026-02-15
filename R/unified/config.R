@@ -101,10 +101,19 @@ unified_config_defaults <- function() {
       exdqlm_multivar = list(
         gamma_sigma = list(
           warmup_freeze_iters = 0L,
+          freeze_target = "gamma_sigma",
+          guard_refreeze_iters = 0L,
+          init = list(
+            mode = "legacy",
+            gamma = 0.0,
+            sigma_floor = 1e-3,
+            sigma_scale = 1.0
+          ),
           objective_guard = list(
             enabled = FALSE,
             fail_fast = FALSE,
             log_failures = TRUE,
+            mode = "penalty",
             penalty = 1e12
           )
         )
@@ -488,6 +497,48 @@ unified_validate_config <- function(cfg) {
     add_err("fit.exdqlm_multivar.gamma_sigma.warmup_freeze_iters must be an integer >= 0")
   }
 
+  gamsig_freeze_target <- unified_get(
+    cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "freeze_target"), "gamma_sigma"
+  )
+  if (!(gamsig_freeze_target %in% c("gamma_sigma", "states"))) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.freeze_target must be one of: gamma_sigma, states")
+  }
+
+  gamsig_guard_refreeze_iters <- suppressWarnings(as.integer(
+    unified_get(cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "guard_refreeze_iters"), 0L)
+  ))
+  if (!is.finite(gamsig_guard_refreeze_iters) || gamsig_guard_refreeze_iters < 0L) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.guard_refreeze_iters must be an integer >= 0")
+  }
+
+  gamsig_init_mode <- unified_get(
+    cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "mode"), "legacy"
+  )
+  if (!(gamsig_init_mode %in% c("legacy", "robust"))) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.init.mode must be one of: legacy, robust")
+  }
+
+  gamsig_init_gamma <- suppressWarnings(as.numeric(
+    unified_get(cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "gamma"), 0.0)
+  ))
+  if (!is.finite(gamsig_init_gamma)) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.init.gamma must be numeric and finite")
+  }
+
+  gamsig_init_sigma_floor <- suppressWarnings(as.numeric(
+    unified_get(cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "sigma_floor"), 1e-3)
+  ))
+  if (!is.finite(gamsig_init_sigma_floor) || gamsig_init_sigma_floor <= 0) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.init.sigma_floor must be numeric and > 0")
+  }
+
+  gamsig_init_sigma_scale <- suppressWarnings(as.numeric(
+    unified_get(cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "sigma_scale"), 1.0)
+  ))
+  if (!is.finite(gamsig_init_sigma_scale) || gamsig_init_sigma_scale <= 0) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.init.sigma_scale must be numeric and > 0")
+  }
+
   gamsig_guard_enabled <- unified_get(
     cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "enabled"), FALSE
   )
@@ -507,6 +558,13 @@ unified_validate_config <- function(cfg) {
   )
   if (!isTRUE(gamsig_guard_log_failures) && !identical(gamsig_guard_log_failures, FALSE)) {
     add_err("fit.exdqlm_multivar.gamma_sigma.objective_guard.log_failures must be boolean (true/false)")
+  }
+
+  gamsig_guard_mode <- unified_get(
+    cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "mode"), "penalty"
+  )
+  if (!(gamsig_guard_mode %in% c("penalty", "adaptive_freeze"))) {
+    add_err("fit.exdqlm_multivar.gamma_sigma.objective_guard.mode must be one of: penalty, adaptive_freeze")
   }
 
   gamsig_guard_penalty <- suppressWarnings(as.numeric(

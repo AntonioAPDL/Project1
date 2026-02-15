@@ -77,10 +77,53 @@ disc_env_flag <- function(name, default = FALSE) {
   tolower(trimws(raw)) %in% c("1", "true", "yes", "y", "on")
 }
 
+disc_env_choice <- function(name, choices, default) {
+  raw <- tolower(trimws(Sys.getenv(name, "")))
+  if (!nzchar(raw)) return(default)
+  if (raw %in% choices) return(raw)
+  default
+}
+
+disc_env_nonneg_int <- function(name, default = 0L) {
+  out <- suppressWarnings(as.integer(Sys.getenv(name, as.character(default))))
+  if (!is.finite(out) || out < 0L) return(as.integer(default))
+  as.integer(out)
+}
+
+disc_env_pos_num <- function(name, default) {
+  out <- suppressWarnings(as.numeric(Sys.getenv(name, as.character(default))))
+  if (!is.finite(out) || out <= 0) return(as.numeric(default))
+  as.numeric(out)
+}
+
+disc_env_num <- function(name, default) {
+  out <- suppressWarnings(as.numeric(Sys.getenv(name, as.character(default))))
+  if (!is.finite(out)) return(as.numeric(default))
+  as.numeric(out)
+}
+
 DISC_GAMSIG_FREEZE_ITERS <- suppressWarnings(as.integer(Sys.getenv("DISC_GAMSIG_FREEZE_ITERS", "0")))
 if (!is.finite(DISC_GAMSIG_FREEZE_ITERS) || DISC_GAMSIG_FREEZE_ITERS < 0L) {
   DISC_GAMSIG_FREEZE_ITERS <- 0L
 }
+DISC_GAMSIG_FREEZE_ITERS <- as.integer(DISC_GAMSIG_FREEZE_ITERS)
+DISC_GAMSIG_FREEZE_TARGET <- disc_env_choice(
+  "DISC_GAMSIG_FREEZE_TARGET",
+  choices = c("gamma_sigma", "states"),
+  default = "gamma_sigma"
+)
+DISC_GAMSIG_GUARD_REFREEZE_ITERS <- disc_env_nonneg_int(
+  "DISC_GAMSIG_GUARD_REFREEZE_ITERS",
+  default = 0L
+)
+DISC_GAMSIG_INIT_MODE <- disc_env_choice(
+  "DISC_GAMSIG_INIT_MODE",
+  choices = c("legacy", "robust"),
+  default = "legacy"
+)
+DISC_GAMSIG_INIT_GAMMA <- disc_env_num("DISC_GAMSIG_INIT_GAMMA", 0.0)
+DISC_GAMSIG_INIT_SIGMA_FLOOR <- disc_env_pos_num("DISC_GAMSIG_INIT_SIGMA_FLOOR", 1e-3)
+DISC_GAMSIG_INIT_SIGMA_SCALE <- disc_env_pos_num("DISC_GAMSIG_INIT_SIGMA_SCALE", 1.0)
 
 DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED <- disc_env_flag(
   "DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED",
@@ -94,12 +137,15 @@ DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES <- disc_env_flag(
   "DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES",
   default = TRUE
 )
-DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY <- suppressWarnings(as.numeric(
-  Sys.getenv("DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY", "1e12")
-))
-if (!is.finite(DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY) || DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY <= 0) {
-  DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY <- 1e12
-}
+DISC_GAMSIG_OBJECTIVE_GUARD_MODE <- disc_env_choice(
+  "DISC_GAMSIG_OBJECTIVE_GUARD_MODE",
+  choices = c("penalty", "adaptive_freeze"),
+  default = "penalty"
+)
+DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY <- disc_env_pos_num(
+  "DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY",
+  default = 1e12
+)
 
 print(c(n.samp, 444))
 flush.console()
@@ -919,6 +965,34 @@ if (use_covariates) {
 L = L.fn(p0)
 U = U.fn(p0)
 
+if (identical(DISC_GAMSIG_INIT_MODE, "robust")) {
+  robust_spread <- apply(y, 1, function(v) {
+    out <- suppressWarnings(stats::mad(v, center = stats::median(v, na.rm = TRUE), constant = 1.4826, na.rm = TRUE))
+    if (!is.finite(out) || out <= 0) {
+      out <- suppressWarnings(stats::sd(v, na.rm = TRUE))
+    }
+    if (!is.finite(out) || out <= 0) {
+      out <- 1
+    }
+    out
+  })
+  robust_spread <- as.numeric(robust_spread)
+  sigma_seed <- pmax(DISC_GAMSIG_INIT_SIGMA_FLOOR, DISC_GAMSIG_INIT_SIGMA_SCALE * robust_spread)
+  gamma_seed <- pmin(pmax(DISC_GAMSIG_INIT_GAMMA, L + 1e-6), U - 1e-6)
+  sig.init[, 1] <- sigma_seed
+  gam.init[, 1] <- gamma_seed
+  if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+    cat(sprintf(
+      "[gamsig_init] p0=%s mode=robust gamma_seed=%0.6f sigma_seed_min=%0.6f sigma_seed_max=%0.6f\n",
+      as.character(p0),
+      as.numeric(gamma_seed),
+      as.numeric(min(sigma_seed, na.rm = TRUE)),
+      as.numeric(max(sigma_seed, na.rm = TRUE))
+    ))
+    flush.console()
+  }
+}
+
 FF_list <- vector("list", J)
 GG_list <- vector("list", J)
 
@@ -1164,6 +1238,56 @@ log_guard_failure <- function(msg) {
   }
 }
 
+s_seed <- suppressWarnings(as.numeric(s_init)[1])
+if (!is.finite(s_seed) || s_seed <= 0) {
+  s_seed <- 1
+}
+g_seed <- suppressWarnings(as.numeric(g_init)[1])
+if (!is.finite(g_seed)) {
+  g_seed <- 0
+}
+g_seed <- pmin(pmax(g_seed, L + 1e-12), U - 1e-12)
+
+build_guard_fallback <- function(theta_s_val, theta_g_val, guard_msg = "") {
+  pi <- plogis(theta_g_val)
+  pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
+  sig <- exp(theta_s_val)
+  gam <- L + (U - L) * pi
+  a <- A.fn(p0, gam)
+  b <- B.fn(p0, gam)
+  c <- C.fn(p0, gam)
+  var_sig_seed <- suppressWarnings(as.numeric(var.sig)[1])
+  var_gam_seed <- suppressWarnings(as.numeric(var.gam)[1])
+  if (!is.finite(var_sig_seed) || var_sig_seed <= 0) var_sig_seed <- 1e-3
+  if (!is.finite(var_gam_seed) || var_gam_seed <= 0) var_gam_seed <- 1e-3
+  hess_seed <- diag(c(var_sig_seed, var_gam_seed), nrow = 2L)
+  prior_gamma_log <- suppressWarnings(crch::dtt(
+    gam, location = prior_g[1], scale = prior_g[2], df = prior_g[3], left = L, right = U, log = TRUE
+  ))
+  if (!is.finite(prior_gamma_log)) prior_gamma_log <- -Inf
+  prior_sigma_log <- suppressWarnings(nimble::dinvgamma(sig, shape = prior_s[1], scale = prior_s[2], log = TRUE))
+  if (!is.finite(prior_sigma_log)) prior_sigma_log <- -Inf
+  list(
+    E.sigma = sig,
+    E.inv.sigma = 1 / sig,
+    E.gam = gam,
+    E.c2.invb.absgam2.sigma = c^2 * sig * abs(gam)^2 / b,
+    E.c.invb.absgam = c * abs(gam) / b,
+    E.c.a.invb.absgam = c * abs(gam) * a / b,
+    E.a2.invb.inv.sigma = a^2 / (sig * b),
+    E.invb.inv.sigma = 1 / (sig * b),
+    E.a.invb.inv.sigma = a / (sig * b),
+    Hess.LD = hess_seed,
+    E.log.sig.b = log(sig * b),
+    E.log.sig = log(sig),
+    E.prior.sig.gam = prior_gamma_log + prior_sigma_log,
+    E.theta = c(theta_s_val, theta_g_val),
+    entrop = 0,
+    guard_triggered = TRUE,
+    guard_message = guard_msg
+  )
+}
+
 if(!Climate_Center){
   dq_transf <- function(theta_s,theta_g){
       sig <- exp(theta_s)
@@ -1253,13 +1377,24 @@ if(!Climate_Center){
   }
 }
 
-  theta_s_init <- log(s_init)
-  pi_init <- (g_init - L) / (U - L)
+  theta_s_init <- log(s_seed)
+  pi_init <- (g_seed - L) / (U - L)
   pi_init <- pmin(pmax(pi_init, 1e-12), 1 - 1e-12)
   theta_g_init <- qlogis(pi_init)
   initial_values <- c(theta_s_init, theta_g_init)
 
   # Optimization step
+  guard_triggered <- FALSE
+  guard_message <- ""
+  guard_mode <- DISC_GAMSIG_OBJECTIVE_GUARD_MODE
+
+  mark_guard_trigger <- function(msg) {
+    guard_triggered <<- TRUE
+    if (!nzchar(guard_message)) {
+      guard_message <<- msg
+    }
+  }
+
   objective_neg <- function(x) {
     yy <- dq_transf(x[1], x[2])
     if (!isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED)) {
@@ -1274,6 +1409,10 @@ if(!Climate_Center){
         stop(msg, call. = FALSE)
       }
       log_guard_failure(msg)
+      mark_guard_trigger(msg)
+      if (identical(guard_mode, "adaptive_freeze")) {
+        return(0)
+      }
       return(DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY)
     }
     neg <- -yy
@@ -1286,6 +1425,10 @@ if(!Climate_Center){
         stop(msg, call. = FALSE)
       }
       log_guard_failure(msg)
+      mark_guard_trigger(msg)
+      if (identical(guard_mode, "adaptive_freeze")) {
+        return(0)
+      }
       return(DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY)
     }
     neg
@@ -1297,13 +1440,28 @@ if(!Climate_Center){
                       lower = c(-Inf, -Inf), # Transform bounds for gam to theta_g space if needed
                       upper = c(Inf, Inf),
                       hessian = TRUE)
+  if (isTRUE(guard_triggered) && identical(guard_mode, "adaptive_freeze")) {
+    return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = guard_message))
+  }
+
   # Evaluate the Hessian at the optimal value
   hessian_at_optimal <- -optim_results$hessian # SINCE WE MIN -f, not MAX f
   # Take the inverse of the Hessian
-  inverse_hessian <- solve(hessian_at_optimal)
+  inverse_hessian <- tryCatch(solve(hessian_at_optimal), error = function(e) NULL)
+  if (is.null(inverse_hessian) || any(!is.finite(inverse_hessian))) {
+    msg <- sprintf(
+      "non-invertible Hessian at p0=%s context=%s",
+      as.character(p0), context_label
+    )
+    if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST)) {
+      stop(msg, call. = FALSE)
+    }
+    log_guard_failure(msg)
+    return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = msg))
+  }
 
   LD_mu <- optim_results$par
-  LD_S <- -inverse_hessian 
+  LD_S <- -inverse_hessian
 
   Expected_f <- function(f, theta_s, theta_g){
       x <- hessian(func = f, x = LD_mu)%*%LD_S
@@ -1439,7 +1597,9 @@ if(!Climate_Center){
               E.log.sig = E.log.sig, 
               E.prior.sig.gam= E.prior.sig.gam,
               E.theta = LD_mu,
-              entrop = entrop))
+              entrop = entrop,
+              guard_triggered = FALSE,
+              guard_message = ""))
 }
 
 ########################
@@ -1605,6 +1765,22 @@ tictoc::tic("run time")
   flush.console()
 ########################
 
+gamsig_dynamic_freeze_until_iter <- as.integer(DISC_GAMSIG_FREEZE_ITERS)
+if (!is.finite(gamsig_dynamic_freeze_until_iter) || gamsig_dynamic_freeze_until_iter < 0L) {
+  gamsig_dynamic_freeze_until_iter <- 0L
+}
+if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+  cat(sprintf(
+    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d guard_mode=%s guard_refreeze_iters=%d\n",
+    as.character(p0),
+    DISC_GAMSIG_FREEZE_TARGET,
+    as.integer(DISC_GAMSIG_FREEZE_ITERS),
+    DISC_GAMSIG_OBJECTIVE_GUARD_MODE,
+    as.integer(DISC_GAMSIG_GUARD_REFREEZE_ITERS)
+  ))
+  flush.console()
+}
+
   
 while (FLAG & iter < max_iter) {
 
@@ -1671,11 +1847,27 @@ while (FLAG & iter < max_iter) {
       # Store the array in the list
       QQQ_forecast[[j]] <- A
     }
- if ((crit_ELBO+conv.check) < tol1 || iter < max_iter) {
-  # if ((crit_ELBO+conv.check) < tol1 || iter < 100 || fast > 0 ) {
-    update.theta <- DISC_update_theta_synth_cpp_W( GG, m0, C0, 
-                                            FFF, QQQ, 
-                                            FF, y, ex.df.mat, ex.df.mat.k, Ones, 
+  iter_candidate <- as.integer(iter + 1L)
+  state_freeze_now <- identical(DISC_GAMSIG_FREEZE_TARGET, "states") &&
+    (gamsig_dynamic_freeze_until_iter > 0L) &&
+    (iter_candidate <= gamsig_dynamic_freeze_until_iter)
+
+  if (state_freeze_now) {
+    theta_update <- FALSE
+    iter <- iter_candidate
+    fast <- fast + 1
+    if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+      cat(sprintf(
+        "[state_freeze] p0=%s iter=%d freeze_until_iter=%d\n",
+        as.character(p0), as.integer(iter), as.integer(gamsig_dynamic_freeze_until_iter)
+      ))
+      flush.console()
+    }
+  } else if ((crit_ELBO + conv.check) < tol1 || iter < max_iter) {
+    # if ((crit_ELBO+conv.check) < tol1 || iter < 100 || fast > 0 ) {
+    update.theta <- DISC_update_theta_synth_cpp_W( GG, m0, C0,
+                                            FFF, QQQ,
+                                            FF, y, ex.df.mat, ex.df.mat.k, Ones,
                                             p, J, ppx, TT, k, dM,
                                             GG_list, FF_list,
                                             FFF_forecast, QQQ_forecast,
@@ -1703,8 +1895,6 @@ while (FLAG & iter < max_iter) {
 
     vars <- (apply(vars_1, 3, function(x) diag(x)))
     exps2 = exps^2 + vars
-
-  
 
     ####################################################
     ####################################################
@@ -1738,11 +1928,10 @@ while (FLAG & iter < max_iter) {
         vars_ens <- vars_1
     }else{
         vars_ens <- (apply(vars_1, 3, function(x) diag(x)))
-    }   
+    }
         exps2_ens = exps_ens^2 + vars_ens
 
-
-    # new.theta.out  <- update.theta 
+    # new.theta.out  <- update.theta
     new.theta.out$exps[2:(J-j+2),(TT+1+rs-r_j):(TT+rs)] <- exps_ens
     new.theta.out$exps2[2:(J-j+2),(TT+1+rs-r_j):(TT+rs)] <- exps2_ens
     new.theta.out$sm_ens[[j]] <- sm_j
@@ -1769,44 +1958,48 @@ while (FLAG & iter < max_iter) {
     theta_update <- TRUE
     iter <- iter + 1
     fast <- 0
-  }else{
+  } else {
     theta_update <- FALSE
     fast <- fast + 1
   }
 
-  ## UPDATE W      
-  for(j in 1:J){
-      for(t in 1:rev(ranges_per)[j]){
-          Ct <- new.theta.out$sC_ens[[j]][,,t] 
-          mt <- new.theta.out$sm_ens[[j]][,t] 
-          GGG <- GG_list[[j]]
-          if((j == 1) && (t == 1)){
-              ddd <- dim_theta[1]
-              Ct_1 <- new.theta.out$sC[1:ddd,1:ddd,TT]
-              mt_1 <- new.theta.out$sm[1:ddd,TT]
-          }else if ((j == 2) && (t == 1)){
-              ddd <- dim_theta[j]
-              Ct_1 <- new.theta.out$sC_ens[[j-1]][1:ddd,1:ddd,rev(ranges_per)[j-1]]
-              mt_1 <- new.theta.out$sm_ens[[j-1]][1:ddd,rev(ranges_per)[j-1]]
-          }else{
-              Ct_1 <- new.theta.out$sC_ens[[j]][,,(t-1)]
-              mt_1 <- new.theta.out$sm_ens[[j]][,(t-1)]
-          }
+  ## UPDATE W
+  if (!state_freeze_now) {
+    for(j in 1:J){
+        for(t in 1:rev(ranges_per)[j]){
+            Ct <- new.theta.out$sC_ens[[j]][,,t]
+            mt <- new.theta.out$sm_ens[[j]][,t]
+            GGG <- GG_list[[j]]
+            if((j == 1) && (t == 1)){
+                ddd <- dim_theta[1]
+                Ct_1 <- new.theta.out$sC[1:ddd,1:ddd,TT]
+                mt_1 <- new.theta.out$sm[1:ddd,TT]
+            }else if ((j == 2) && (t == 1)){
+                ddd <- dim_theta[j]
+                Ct_1 <- new.theta.out$sC_ens[[j-1]][1:ddd,1:ddd,rev(ranges_per)[j-1]]
+                mt_1 <- new.theta.out$sm_ens[[j-1]][1:ddd,rev(ranges_per)[j-1]]
+            }else{
+                Ct_1 <- new.theta.out$sC_ens[[j]][,,(t-1)]
+                mt_1 <- new.theta.out$sm_ens[[j]][,(t-1)]
+            }
 
-          GCG <- GGG %*% Ct_1 %*% t(GGG)
-          R <- GCG + cur.covs_list[[j]][,,t]
-          R_inv <- solve(R) 
-          ww <- GCG + (mt-GGG %*% mt_1) %*% t(mt-GGG %*% mt_1) + Ct -2*GCG %*% R_inv %*% Ct
-          new.covs_list[[j]][,,t]  <- epsilon/(epsilon+1)* c_factor *new.theta.out$W_T[1:ddd,1:ddd] + 1/(epsilon+1)*ww
+            GCG <- GGG %*% Ct_1 %*% t(GGG)
+            R <- GCG + cur.covs_list[[j]][,,t]
+            R_inv <- solve(R)
+            ww <- GCG + (mt-GGG %*% mt_1) %*% t(mt-GGG %*% mt_1) + Ct -2*GCG %*% R_inv %*% Ct
+            new.covs_list[[j]][,,t]  <- epsilon/(epsilon+1)* c_factor *new.theta.out$W_T[1:ddd,1:ddd] + 1/(epsilon+1)*ww
 
-      }   
+        }
+    }
   }
 
-  gamsig_frozen_now <- (DISC_GAMSIG_FREEZE_ITERS > 0L) && (iter <= DISC_GAMSIG_FREEZE_ITERS)
+  gamsig_frozen_now <- identical(DISC_GAMSIG_FREEZE_TARGET, "gamma_sigma") &&
+    (gamsig_dynamic_freeze_until_iter > 0L) &&
+    (iter <= gamsig_dynamic_freeze_until_iter)
   if (gamsig_frozen_now && isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     cat(sprintf(
-      "[gamsig_freeze] p0=%s iter=%d freeze_iters=%d\n",
-      as.character(p0), as.integer(iter), as.integer(DISC_GAMSIG_FREEZE_ITERS)
+      "[gamsig_freeze] p0=%s iter=%d freeze_until_iter=%d\n",
+      as.character(p0), as.integer(iter), as.integer(gamsig_dynamic_freeze_until_iter)
     ))
     flush.console()
   }
@@ -1858,6 +2051,28 @@ while (FLAG & iter < max_iter) {
                                               cur.gamsig.out$E.gam[j,],
                                               FALSE,
                                               context_label = sprintf("vb_main iter=%d j=%d climate_center=FALSE", iter, j))    
+          if (isTRUE(gamsig.dummy$guard_triggered) &&
+              DISC_GAMSIG_GUARD_REFREEZE_ITERS > 0L &&
+              identical(DISC_GAMSIG_FREEZE_TARGET, "gamma_sigma")) {
+            old_freeze_until <- gamsig_dynamic_freeze_until_iter
+            gamsig_dynamic_freeze_until_iter <- max(
+              as.integer(gamsig_dynamic_freeze_until_iter),
+              as.integer(iter + DISC_GAMSIG_GUARD_REFREEZE_ITERS)
+            )
+            gamsig_frozen_now <- TRUE
+            if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+              cat(sprintf(
+                "[gamsig_refreeze] p0=%s iter=%d j=%d old_until=%d new_until=%d reason=%s\n",
+                as.character(p0),
+                as.integer(iter),
+                as.integer(j),
+                as.integer(old_freeze_until),
+                as.integer(gamsig_dynamic_freeze_until_iter),
+                ifelse(is.null(gamsig.dummy$guard_message), "", as.character(gamsig.dummy$guard_message))
+              ))
+              flush.console()
+            }
+          }
           new.gamsig.out$E.gam[j,] <- gamsig.dummy$E.gam
           new.gamsig.out$E.sigma[j,] <- gamsig.dummy$E.sigma
           new.gamsig.out$E.inv.sigma[j,] <- gamsig.dummy$E.inv.sigma
@@ -1939,6 +2154,28 @@ while (FLAG & iter < max_iter) {
                                               new.uts.out_f$E.uts[[j-1]],
                                               new.uts.out_f$E.inv.uts[[j-1]],
                                               context_label = sprintf("vb_main iter=%d j=%d climate_center=TRUE", iter, j))
+          if (isTRUE(gamsig.dummy$guard_triggered) &&
+              DISC_GAMSIG_GUARD_REFREEZE_ITERS > 0L &&
+              identical(DISC_GAMSIG_FREEZE_TARGET, "gamma_sigma")) {
+            old_freeze_until <- gamsig_dynamic_freeze_until_iter
+            gamsig_dynamic_freeze_until_iter <- max(
+              as.integer(gamsig_dynamic_freeze_until_iter),
+              as.integer(iter + DISC_GAMSIG_GUARD_REFREEZE_ITERS)
+            )
+            gamsig_frozen_now <- TRUE
+            if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+              cat(sprintf(
+                "[gamsig_refreeze] p0=%s iter=%d j=%d old_until=%d new_until=%d reason=%s\n",
+                as.character(p0),
+                as.integer(iter),
+                as.integer(j),
+                as.integer(old_freeze_until),
+                as.integer(gamsig_dynamic_freeze_until_iter),
+                ifelse(is.null(gamsig.dummy$guard_message), "", as.character(gamsig.dummy$guard_message))
+              ))
+              flush.console()
+            }
+          }
 
           new.gamsig.out$E.gam[j,] <- gamsig.dummy$E.gam
           new.gamsig.out$E.sigma[j,] <- gamsig.dummy$E.sigma

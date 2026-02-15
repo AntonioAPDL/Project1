@@ -277,6 +277,24 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         DISC_GAMSIG_FREEZE_ITERS = as.character(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 0L
         )),
+        DISC_GAMSIG_FREEZE_TARGET = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
+        )),
+        DISC_GAMSIG_GUARD_REFREEZE_ITERS = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "guard_refreeze_iters"), default = 0L
+        )),
+        DISC_GAMSIG_INIT_MODE = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "mode"), default = "legacy"
+        )),
+        DISC_GAMSIG_INIT_GAMMA = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "gamma"), default = 0.0
+        )),
+        DISC_GAMSIG_INIT_SIGMA_FLOOR = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "sigma_floor"), default = 1e-3
+        )),
+        DISC_GAMSIG_INIT_SIGMA_SCALE = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "sigma_scale"), default = 1.0
+        )),
         DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED = if (isTRUE(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "enabled"), default = FALSE
         ))) "TRUE" else "FALSE",
@@ -286,6 +304,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES = if (isTRUE(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "log_failures"), default = TRUE
         ))) "TRUE" else "FALSE",
+        DISC_GAMSIG_OBJECTIVE_GUARD_MODE = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "mode"), default = "penalty"
+        )),
         DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
         ))

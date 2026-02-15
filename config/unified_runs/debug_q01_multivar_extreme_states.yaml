@@ -1,7 +1,7 @@
 config_version: 1
 
 run:
-  run_id: "debug_q01_multivar_extreme_template"
+  run_id: "debug_q01_multivar_extreme_states_template"
   run_root: "repro/runs"
   repro_mode: "strict"
   seed: 777
@@ -73,7 +73,7 @@ fit:
   exdqlm_multivar:
     gamma_sigma:
       warmup_freeze_iters: 20
-      freeze_target: "gamma_sigma"
+      freeze_target: "states"
       guard_refreeze_iters: 10
       init:
         mode: "robust"

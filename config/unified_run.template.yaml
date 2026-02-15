@@ -86,10 +86,18 @@ fit:
   exdqlm_multivar:
     gamma_sigma:
       warmup_freeze_iters: 0
+      freeze_target: "gamma_sigma"   # gamma_sigma | states
+      guard_refreeze_iters: 0        # adaptive guard: additional freeze iterations after a non-finite guard event
+      init:
+        mode: "legacy"               # legacy | robust
+        gamma: 0.0                   # robust mode only; clipped to quantile-implied [L,U]
+        sigma_floor: 1.0e-3          # robust mode only; lower bound for sigma init
+        sigma_scale: 1.0             # robust mode only; multiplier on robust response spread
       objective_guard:
         enabled: false         # set true to penalize non-finite gamma/sigma objective evaluations
         fail_fast: false       # when true + enabled, stop immediately on first non-finite objective
         log_failures: true
+        mode: "penalty"        # penalty | adaptive_freeze
         penalty: 1.0e12
   contract_checks:
     enabled: false

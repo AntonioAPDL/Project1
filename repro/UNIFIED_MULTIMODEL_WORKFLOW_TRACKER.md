@@ -1,7 +1,7 @@
 # Unified Multi-Model Workflow Tracker (Living)
 
 Date: 2026-02-10  
-Last verified: 2026-02-14 (active canonical run in progress: `prod_canonical_p8c_20260214_214849_r01`)  
+Last verified: 2026-02-15 (P9 isolated reruns prepared; no active unified workers)  
 Repo root: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Status: Active planning + execution tracker  
 Primary audience: project maintainer + Codex
@@ -67,14 +67,18 @@ Implication:
 - In strict repro mode, post requires run-scoped model-state artifacts.
 - In non-strict mode, legacy root fallback remains possible only when explicitly enabled for compatibility.
 
-## 2.4 Last Verified Evidence Pointers (2026-02-14)
+## 2.4 Last Verified Evidence Pointers (2026-02-15)
 
-- Active canonical run (in progress): `repro/runs/prod_canonical_p8c_20260214_214849_r01/run_manifest.yaml`
-- Active canonical runner log: `/tmp/prod_canonical_p8c_20260214_214849_r01_unified_run.log`
+- Latest isolated q=0.01 run logs (quarantined after controlled stop/cleanup):
+  - `repro/quarantine/cleanup_runs/20260215T002430Z/debug_q01_extreme_20260214_225559_r02/fit/q=01/logs/fit.log`
+  - `repro/quarantine/cleanup_runs/20260215T002430Z/debug_q01_extreme_20260214_225450/`
 - Stage graph + status wiring: `scripts/unified_run.R`
 - Fit family dispatch + implementation modes: `R/unified/stages/stage_fit.R`
 - Default config + implementation modes: `config/unified_run.template.yaml`, `R/unified/config.R`
 - Canonical production family config: `config/unified_runs/production_canonical_family.yaml`
+- Extreme-q debug configs:
+  - `config/unified_runs/debug_q01_multivar_extreme.yaml`
+  - `config/unified_runs/debug_q01_multivar_extreme_states.yaml`
 - Validator profile resolution (`production|production_proof|smoke|auto`): `repro/tools/validate_run.sh`
 
 ## 3) Theory Source-of-Truth Policy (Locked)
@@ -2062,6 +2066,34 @@ Concurrency rule for migration phases:
   - First isolated attempt (`debug_q01_extreme_20260214_225450`) failed pre-fit due input adapter non-finite GloFAS values; second attempt (`debug_q01_extreme_20260214_225559_r02`) launched with `forecats + data_prep_shared` and reached fit execution for q=0.01.
 - Next action:
   - Let isolated run `debug_q01_extreme_20260214_225559_r02` finish, then inspect q=0.01 fit outcome, run validator/report where applicable, and decide whether freeze iteration count can be reduced while keeping q=0.01 stable.
+
+### Progress Update 2026-02-15 00:35 UTC
+- Phase: P9
+- Change type: implementation+operations
+- Summary: canceled active isolated q=0.01 reproducer and moved its run roots to quarantine for clean restart; upgraded extreme-quantile stabilization from fixed-penalty/fixed-freeze to adaptive policy controls (guard-trigger refreeze windows, selectable freeze target `gamma_sigma|states`, and robust gamma/sigma initialization mode) while keeping default semantics unchanged unless opt-in config keys are enabled.
+- Files touched:
+  - `R/unified/config.R`
+  - `R/unified/stages/stage_fit.R`
+  - `DISC_Optimal_Synth_Ranges_W.r`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/debug_q01_multivar_extreme.yaml`
+  - `config/unified_runs/debug_q01_multivar_extreme_states.yaml`
+  - `repro/tests/test_config_extreme_quantile_stabilization.py`
+  - `repro/UNIFIED_WORKFLOW_README.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/quarantine/cleanup_runs/20260215T002430Z/debug_q01_extreme_20260214_225450/`
+  - `repro/quarantine/cleanup_runs/20260215T002430Z/debug_q01_extreme_20260214_225559_r02/`
+  - `repro/quarantine/cleanup_runs/20260215T002430Z/debug_q01_extreme_20260214_225559_r02/fit/q=01/logs/fit.log`
+- Validation notes:
+  - Prior fixed warmup path showed guard hit immediately after thaw (`iter=121`), motivating adaptive refreeze controls.
+  - New controls are opt-in and default-safe:
+    - `freeze_target` default `gamma_sigma`
+    - `guard_refreeze_iters` default `0`
+    - `objective_guard.mode` default `penalty`
+    - `init.mode` default `legacy`
+- Next action:
+  - Commit + push this P9 adaptive policy batch, then execute tests and run two isolated q=0.01 proofs (`gamma_sigma` freeze target vs `states` freeze target) to compare stability outcomes.
 
 ## 15) Audit Report (2026-02-14)
 

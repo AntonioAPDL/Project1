@@ -175,18 +175,28 @@ fit:
   exdqlm_multivar:
     gamma_sigma:
       warmup_freeze_iters: 0
+      freeze_target: "gamma_sigma"
+      guard_refreeze_iters: 0
+      init:
+        mode: "legacy"
+        gamma: 0.0
+        sigma_floor: 1.0e-3
+        sigma_scale: 1.0
       objective_guard:
         enabled: false
         fail_fast: false
         log_failures: true
+        mode: "penalty"
         penalty: 1.0e12
 ```
 
 Notes:
 
 - Defaults preserve current behavior (`warmup_freeze_iters=0`, `objective_guard.enabled=false`).
-- `objective_guard.enabled=true` penalizes non-finite objective evaluations with a finite value instead of failing immediately.
-- `warmup_freeze_iters>0` temporarily freezes gamma/sigma updates for the first VB iterations (opt-in only).
+- `objective_guard.mode=penalty` keeps the prior behavior (finite-penalty fallback on non-finite objective calls).
+- `objective_guard.mode=adaptive_freeze` triggers refreeze windows (`guard_refreeze_iters`) when the non-finite pattern is detected.
+- `warmup_freeze_iters>0` applies initial freeze to the selected target (`freeze_target: gamma_sigma|states`).
+- `init.mode=robust` seeds gamma/sigma from conservative defaults (`gamma`) and robust response spread (`sigma_floor`, `sigma_scale`); `init.mode=legacy` keeps previous seeds.
 
 Committed isolated q=0.01 debug template:
 
