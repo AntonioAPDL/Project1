@@ -275,16 +275,16 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         DISC_W_NWS_PATH = adapted_nws,
         DISC_W_GLOFAS_PATH = adapted_glofas,
         DISC_GAMSIG_FREEZE_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 0L
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
         )),
         DISC_GAMSIG_FREEZE_TARGET = as.character(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
         )),
         DISC_GAMSIG_GUARD_REFREEZE_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "guard_refreeze_iters"), default = 0L
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "guard_refreeze_iters"), default = 10L
         )),
         DISC_GAMSIG_INIT_MODE = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "mode"), default = "legacy"
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "mode"), default = "robust"
         )),
         DISC_GAMSIG_INIT_GAMMA = as.character(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "gamma"), default = 0.0
@@ -296,7 +296,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "sigma_scale"), default = 1.0
         )),
         DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED = if (isTRUE(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "enabled"), default = FALSE
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "enabled"), default = TRUE
         ))) "TRUE" else "FALSE",
         DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST = if (isTRUE(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "fail_fast"), default = FALSE
@@ -305,7 +305,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "log_failures"), default = TRUE
         ))) "TRUE" else "FALSE",
         DISC_GAMSIG_OBJECTIVE_GUARD_MODE = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "mode"), default = "penalty"
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "mode"), default = "adaptive_freeze"
         )),
         DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
@@ -432,6 +432,42 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         UNIV_PCA_CSV = shared_cov_paths$pca,
         UNIV_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
         UNIV_PREV_RDATA = output_path,
+        UNIV_GAMSIG_FREEZE_ITERS = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
+        )),
+        UNIV_GAMSIG_FREEZE_TARGET = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
+        )),
+        UNIV_GAMSIG_GUARD_REFREEZE_ITERS = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "guard_refreeze_iters"), default = 10L
+        )),
+        UNIV_GAMSIG_INIT_MODE = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "mode"), default = "robust"
+        )),
+        UNIV_GAMSIG_INIT_GAMMA = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "gamma"), default = 0.0
+        )),
+        UNIV_GAMSIG_INIT_SIGMA_FLOOR = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "sigma_floor"), default = 1e-3
+        )),
+        UNIV_GAMSIG_INIT_SIGMA_SCALE = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "sigma_scale"), default = 1.0
+        )),
+        UNIV_GAMSIG_OBJECTIVE_GUARD_ENABLED = if (isTRUE(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "enabled"), default = TRUE
+        ))) "TRUE" else "FALSE",
+        UNIV_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST = if (isTRUE(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "fail_fast"), default = FALSE
+        ))) "TRUE" else "FALSE",
+        UNIV_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES = if (isTRUE(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "log_failures"), default = TRUE
+        ))) "TRUE" else "FALSE",
+        UNIV_GAMSIG_OBJECTIVE_GUARD_MODE = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "mode"), default = "adaptive_freeze"
+        )),
+        UNIV_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
+        )),
         UNIV_THEORY_SUMMARY_LOG = file.path(q_logs, "univar_theory_summary.log")
       )
       env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))

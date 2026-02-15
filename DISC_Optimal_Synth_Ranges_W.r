@@ -102,9 +102,9 @@ disc_env_num <- function(name, default) {
   as.numeric(out)
 }
 
-DISC_GAMSIG_FREEZE_ITERS <- suppressWarnings(as.integer(Sys.getenv("DISC_GAMSIG_FREEZE_ITERS", "0")))
+DISC_GAMSIG_FREEZE_ITERS <- suppressWarnings(as.integer(Sys.getenv("DISC_GAMSIG_FREEZE_ITERS", "20")))
 if (!is.finite(DISC_GAMSIG_FREEZE_ITERS) || DISC_GAMSIG_FREEZE_ITERS < 0L) {
-  DISC_GAMSIG_FREEZE_ITERS <- 0L
+  DISC_GAMSIG_FREEZE_ITERS <- 20L
 }
 DISC_GAMSIG_FREEZE_ITERS <- as.integer(DISC_GAMSIG_FREEZE_ITERS)
 DISC_GAMSIG_FREEZE_TARGET <- disc_env_choice(
@@ -114,12 +114,12 @@ DISC_GAMSIG_FREEZE_TARGET <- disc_env_choice(
 )
 DISC_GAMSIG_GUARD_REFREEZE_ITERS <- disc_env_nonneg_int(
   "DISC_GAMSIG_GUARD_REFREEZE_ITERS",
-  default = 0L
+  default = 10L
 )
 DISC_GAMSIG_INIT_MODE <- disc_env_choice(
   "DISC_GAMSIG_INIT_MODE",
   choices = c("legacy", "robust"),
-  default = "legacy"
+  default = "robust"
 )
 DISC_GAMSIG_INIT_GAMMA <- disc_env_num("DISC_GAMSIG_INIT_GAMMA", 0.0)
 DISC_GAMSIG_INIT_SIGMA_FLOOR <- disc_env_pos_num("DISC_GAMSIG_INIT_SIGMA_FLOOR", 1e-3)
@@ -127,7 +127,7 @@ DISC_GAMSIG_INIT_SIGMA_SCALE <- disc_env_pos_num("DISC_GAMSIG_INIT_SIGMA_SCALE",
 
 DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED <- disc_env_flag(
   "DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED",
-  default = FALSE
+  default = TRUE
 )
 DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST <- disc_env_flag(
   "DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST",
@@ -140,7 +140,7 @@ DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES <- disc_env_flag(
 DISC_GAMSIG_OBJECTIVE_GUARD_MODE <- disc_env_choice(
   "DISC_GAMSIG_OBJECTIVE_GUARD_MODE",
   choices = c("penalty", "adaptive_freeze"),
-  default = "penalty"
+  default = "adaptive_freeze"
 )
 DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY <- disc_env_pos_num(
   "DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY",

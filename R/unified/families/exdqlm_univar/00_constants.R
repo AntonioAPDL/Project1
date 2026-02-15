@@ -1,4 +1,86 @@
-univar_theory_constants <- function(q_num, seed = 777L) {
+univar_theory_default_gamma_sigma_policy <- function() {
+  list(
+    warmup_freeze_iters = 20L,
+    freeze_target = "gamma_sigma",
+    guard_refreeze_iters = 10L,
+    init = list(
+      mode = "robust",
+      gamma = 0.0,
+      sigma_floor = 1e-3,
+      sigma_scale = 1.0
+    ),
+    objective_guard = list(
+      enabled = TRUE,
+      fail_fast = FALSE,
+      log_failures = TRUE,
+      mode = "adaptive_freeze",
+      penalty = 1e12
+    )
+  )
+}
+
+univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
+  out <- univar_theory_default_gamma_sigma_policy()
+  if (is.null(policy) || !is.list(policy)) {
+    return(out)
+  }
+
+  if (!is.null(policy$warmup_freeze_iters)) out$warmup_freeze_iters <- suppressWarnings(as.integer(policy$warmup_freeze_iters))
+  if (!is.null(policy$freeze_target)) out$freeze_target <- as.character(policy$freeze_target)
+  if (!is.null(policy$guard_refreeze_iters)) out$guard_refreeze_iters <- suppressWarnings(as.integer(policy$guard_refreeze_iters))
+
+  init <- policy$init
+  if (is.list(init)) {
+    if (!is.null(init$mode)) out$init$mode <- as.character(init$mode)
+    if (!is.null(init$gamma)) out$init$gamma <- suppressWarnings(as.numeric(init$gamma))
+    if (!is.null(init$sigma_floor)) out$init$sigma_floor <- suppressWarnings(as.numeric(init$sigma_floor))
+    if (!is.null(init$sigma_scale)) out$init$sigma_scale <- suppressWarnings(as.numeric(init$sigma_scale))
+  }
+
+  objective_guard <- policy$objective_guard
+  if (is.list(objective_guard)) {
+    if (!is.null(objective_guard$enabled)) out$objective_guard$enabled <- isTRUE(objective_guard$enabled)
+    if (!is.null(objective_guard$fail_fast)) out$objective_guard$fail_fast <- isTRUE(objective_guard$fail_fast)
+    if (!is.null(objective_guard$log_failures)) out$objective_guard$log_failures <- isTRUE(objective_guard$log_failures)
+    if (!is.null(objective_guard$mode)) out$objective_guard$mode <- as.character(objective_guard$mode)
+    if (!is.null(objective_guard$penalty)) out$objective_guard$penalty <- suppressWarnings(as.numeric(objective_guard$penalty))
+  }
+
+  if (!is.finite(out$warmup_freeze_iters) || out$warmup_freeze_iters < 0L) {
+    out$warmup_freeze_iters <- 20L
+  }
+  out$warmup_freeze_iters <- as.integer(out$warmup_freeze_iters)
+
+  if (!(out$freeze_target %in% c("gamma_sigma", "states"))) {
+    out$freeze_target <- "gamma_sigma"
+  }
+
+  if (!is.finite(out$guard_refreeze_iters) || out$guard_refreeze_iters < 0L) {
+    out$guard_refreeze_iters <- 10L
+  }
+  out$guard_refreeze_iters <- as.integer(out$guard_refreeze_iters)
+
+  if (!(out$init$mode %in% c("legacy", "robust"))) {
+    out$init$mode <- "robust"
+  }
+  if (!is.finite(out$init$gamma)) out$init$gamma <- 0.0
+  if (!is.finite(out$init$sigma_floor) || out$init$sigma_floor <= 0) out$init$sigma_floor <- 1e-3
+  if (!is.finite(out$init$sigma_scale) || out$init$sigma_scale <= 0) out$init$sigma_scale <- 1.0
+
+  if (!is.logical(out$objective_guard$enabled)) out$objective_guard$enabled <- TRUE
+  if (!is.logical(out$objective_guard$fail_fast)) out$objective_guard$fail_fast <- FALSE
+  if (!is.logical(out$objective_guard$log_failures)) out$objective_guard$log_failures <- TRUE
+  if (!(out$objective_guard$mode %in% c("penalty", "adaptive_freeze"))) {
+    out$objective_guard$mode <- "adaptive_freeze"
+  }
+  if (!is.finite(out$objective_guard$penalty) || out$objective_guard$penalty <= 0) {
+    out$objective_guard$penalty <- 1e12
+  }
+
+  out
+}
+
+univar_theory_constants <- function(q_num, seed = 777L, gamma_sigma_policy = NULL) {
   q_num <- as.integer(q_num)
   p0 <- max(min(q_num / 100, 0.995), 0.005)
 
@@ -15,6 +97,7 @@ univar_theory_constants <- function(q_num, seed = 777L) {
     b_sigma = 2.0,
     m_gamma = 0.0,
     s_gamma = 1.0,
-    nu_gamma = 6.0
+    nu_gamma = 6.0,
+    gamma_sigma_policy = univar_theory_resolve_gamma_sigma_policy(gamma_sigma_policy)
   )
 }

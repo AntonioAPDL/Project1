@@ -166,34 +166,49 @@ Committed proof config:
 
 Proof runs are non-canonical and intended for bounded gate/orchestration validation, not canonical production equivalence.
 
-## Extreme-Quantile Stabilization (Opt-In)
+## Extreme-Quantile Stabilization (Default)
 
-For q-tail debugging (for example `q=0.01`), multivar DISC-W now supports opt-in controls under:
+Adaptive freeze + objective guard controls are now defaulted for both exDQLM multivariate and univariate fit paths:
 
 ```yaml
 fit:
   exdqlm_multivar:
     gamma_sigma:
-      warmup_freeze_iters: 0
+      warmup_freeze_iters: 20
       freeze_target: "gamma_sigma"
-      guard_refreeze_iters: 0
+      guard_refreeze_iters: 10
       init:
-        mode: "legacy"
+        mode: "robust"
         gamma: 0.0
         sigma_floor: 1.0e-3
         sigma_scale: 1.0
       objective_guard:
-        enabled: false
+        enabled: true
         fail_fast: false
         log_failures: true
-        mode: "penalty"
+        mode: "adaptive_freeze"
+        penalty: 1.0e12
+  exdqlm_univar:
+    gamma_sigma:
+      warmup_freeze_iters: 20
+      freeze_target: "gamma_sigma"
+      guard_refreeze_iters: 10
+      init:
+        mode: "robust"
+        gamma: 0.0
+        sigma_floor: 1.0e-3
+        sigma_scale: 1.0
+      objective_guard:
+        enabled: true
+        fail_fast: false
+        log_failures: true
+        mode: "adaptive_freeze"
         penalty: 1.0e12
 ```
 
 Notes:
 
-- Defaults preserve current behavior (`warmup_freeze_iters=0`, `objective_guard.enabled=false`).
-- `objective_guard.mode=penalty` keeps the prior behavior (finite-penalty fallback on non-finite objective calls).
+- Defaults now favor robust tail stability (`warmup_freeze_iters=20`, `objective_guard.enabled=true`, `objective_guard.mode=adaptive_freeze`).
 - `objective_guard.mode=adaptive_freeze` triggers refreeze windows (`guard_refreeze_iters`) when the non-finite pattern is detected.
 - `warmup_freeze_iters>0` applies initial freeze to the selected target (`freeze_target: gamma_sigma|states`).
 - `init.mode=robust` seeds gamma/sigma from conservative defaults (`gamma`) and robust response spread (`sigma_floor`, `sigma_scale`); `init.mode=legacy` keeps previous seeds.

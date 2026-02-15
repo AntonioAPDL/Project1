@@ -170,7 +170,7 @@ Status legend:
 | P6 | [~] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
 | P7 | [~] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
 | P8 | [~] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
-| P9 | [~] | Extreme-quantile stabilization (q=0.01 first) | P8C failure evidence captured | Isolated q=0.01 reproducer passes with theory-audited mitigation plan; default semantics unchanged unless explicit opt-in flag is enabled |
+| P9 | [~] | Extreme-quantile stabilization (q=0.01 first) | P8C failure evidence captured | Isolated q=0.01 reproducer passes with theory-audited mitigation plan; adaptive gamma/sigma stabilization defaults are enabled for both exDQLM multivar + univar with explicit config override controls |
 
 ## 7) Detailed Task Backlog
 
@@ -233,8 +233,8 @@ Status legend:
 - [x] `T-P9-02`: Quarantine/remove failed run artifacts with evidence trail (before/after space + retained key logs) using safe cleanup policy.
 - [x] `T-P9-03`: Run theory-first audit for failing path at q=0.01 (`objective_deltas` / `update_gamma_sigma`), mapping equations to code and finite-domain requirements.
 - [~] `T-P9-04`: Build isolated reproducer (`fit.quantiles=[0.01]`, multivar-only, post/validate/report OFF) and reproduce deterministically.
-- [x] `T-P9-05`: Implement diagnostics-first guardrails (finite/domain checks + precise error context) without default semantic changes.
-- [x] `T-P9-06`: Evaluate opt-in mitigation candidate `gamma/sigma` warmup-freeze (default OFF), then re-enable updates after configured iterations.
+- [x] `T-P9-05`: Implement diagnostics-first guardrails (finite/domain checks + precise error context) and shared policy controls.
+- [x] `T-P9-06`: Promote adaptive `gamma/sigma` stabilization to default for exDQLM multivar + univar (`warmup_freeze_iters=20`, `guard_refreeze_iters=10`, `init.mode=robust`, `objective_guard.enabled=true`, `objective_guard.mode=adaptive_freeze`), with per-family override controls.
 - [~] `T-P9-07`: Validate fixes with isolated q=0.01 pass, neighboring q=0.05 sanity pass, and targeted regression tests.
 
 ## 8) Risk Register (Live)
@@ -248,7 +248,7 @@ Status legend:
 | R-005 | Medium | Ambiguity on sequencing can delay implementation. | Lock D-007 or replace with alternate sequence immediately after P0. | Maintainer | Mitigated (D-007 locked) |
 | R-006 | High | DISC-W warm-start can load root `DISC_variables_*` paths, violating run-scoped reproducibility if enabled. | Keep warm-start disabled by default; if enabled, require run-scoped warm-start source path recorded in manifest before stage execution. | TBD | Mitigating (legacy bridge env routing now run-scoped; warm-start remains disabled by default) |
 | R-007 | Medium | Post reads `y_reps*.rds` via relative paths, creating working-directory-sensitive behavior. | In P5, enforce absolute/manifest-declared paths for these intermediates and fail fast on unresolved relative reads. | TBD | Mitigating (run-scoped cache path enforced) |
-| R-008 | High | Extreme quantile (`q=0.01`) multivar fit can fail with non-finite objective in optimizer (`L-BFGS-B needs finite values of 'fn'`), blocking canonical closure. | P9 theory-first isolation: preserve evidence, reproduce q=0.01 only, add finite/domain guardrails, evaluate opt-in gamma/sigma warmup freeze. | TBD | Mitigating (guardrails + opt-in freeze implemented; isolated reproducer run active) |
+| R-008 | High | Extreme quantile (`q=0.01`) multivar fit can fail with non-finite objective in optimizer (`L-BFGS-B needs finite values of 'fn'`), blocking canonical closure. | P9 theory-first isolation: preserve evidence, reproduce q=0.01 only, add finite/domain guardrails, and keep adaptive gamma/sigma stabilization defaulted across exDQLM families with bounded override controls. | TBD | Mitigating (guardrails + adaptive defaults implemented; convergence proof still required on isolated q=0.01 reproducer) |
 
 ## 9) Validation and Done Criteria
 
@@ -1539,12 +1539,19 @@ None currently tracked.
    - `models.ndlm_main.implementation_mode` defaults to `theory_aligned`.
    - `models.run_exdqlm_univar` and `models.run_ndlm_main` remain default `false`; no behavior change unless families are enabled.
    - `legacy_bridge` remains supported as explicit fallback and now emits a non-fatal deprecation warning when selected for an enabled family.
+11. P9 exDQLM gamma/sigma stabilization defaults are locked for both multivar + univar:
+   - `warmup_freeze_iters: 20`
+   - `freeze_target: gamma_sigma`
+   - `guard_refreeze_iters: 10`
+   - `init.mode: robust` with `gamma=0.0`, `sigma_floor=1e-3`, `sigma_scale=1.0`
+   - `objective_guard.enabled: true`, `objective_guard.mode: adaptive_freeze`, `fail_fast: false`, `log_failures: true`, `penalty: 1e12`
+   - Per-family config overrides remain supported under `fit.exdqlm_multivar.gamma_sigma.*` and `fit.exdqlm_univar.gamma_sigma.*`.
 
 ## 12) Immediate Next Actions (Proposed)
 
-1. Execute P9-T01/T02: stop active failing canonical run `prod_canonical_p8c_20260214_214849_r01` cleanly, preserve forensics, and quarantine/cleanup failed artifacts safely.
-2. Execute P9-T03/T04: perform theory-first audit and isolated deterministic reproducer for multivar q=0.01 only.
-3. Execute P9-T05/T06/T07: apply diagnostics-first guardrails, evaluate opt-in gamma/sigma warmup-freeze candidate (default OFF), and validate with q=0.01 then q=0.05 sanity checks.
+1. Complete isolated q=0.01 convergence closure under the new default adaptive stabilization policy and capture fit-stage evidence (`run_manifest.yaml`, q01 `fit.log`, summary artifacts).
+2. Run neighboring q=0.05 sanity check under the same default policy and compare guard/refreeze event rates and convergence behavior.
+3. If q=0.01/q=0.05 stabilize, execute a bounded multi-quantile proof (`q=0.05,0.50,0.95`) and keep canonical 7-quantile closure as the final P8C/P9 gate.
 
 ## 13) Notes
 
@@ -2094,6 +2101,34 @@ Concurrency rule for migration phases:
     - `init.mode` default `legacy`
 - Next action:
   - Commit + push this P9 adaptive policy batch, then execute tests and run two isolated q=0.01 proofs (`gamma_sigma` freeze target vs `states` freeze target) to compare stability outcomes.
+
+### Progress Update 2026-02-15 22:52 UTC
+- Phase: P9
+- Change type: implementation+validation
+- Summary: promoted adaptive gamma/sigma stabilization to default for both exDQLM multivariate and exDQLM univariate paths; aligned unified config defaults, fit-stage env wiring/fallbacks, univariate theory-runner policy ingestion, and docs/tests. Multivar fallback defaults were also aligned in `DISC_Optimal_Synth_Ranges_W.r` for standalone execution consistency.
+- Files touched:
+  - `R/unified/config.R`
+  - `config/unified_run.template.yaml`
+  - `R/unified/stages/stage_fit.R`
+  - `scripts/run_exdqlm_univar.R`
+  - `R/unified/families/exdqlm_univar/00_constants.R`
+  - `R/unified/families/exdqlm_univar/03_updates_vb_or_fitloop.R`
+  - `R/unified/families/exdqlm_univar/zz_run.R`
+  - `DISC_Optimal_Synth_Ranges_W.r`
+  - `repro/tests/test_config_extreme_quantile_stabilization.py`
+  - `repro/UNIFIED_WORKFLOW_README.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Validation checks run:
+  - `python3 -m unittest repro.tests.test_config_extreme_quantile_stabilization repro.tests.test_config_implementation_mode_defaults repro.tests.test_production_canonical_family_config repro.tests.test_stage_fit_parallel_guard -v`
+  - `python3 -m unittest discover -s repro/tests -p 'test_*.py'`
+  - `Rscript -e "testthat::test_dir('tests/testthat', reporter='summary')"`
+  - `Rscript -e "parse(file='R/unified/config.R'); parse(file='R/unified/stages/stage_fit.R'); parse(file='scripts/run_exdqlm_univar.R'); parse(file='R/unified/families/exdqlm_univar/00_constants.R'); parse(file='R/unified/families/exdqlm_univar/03_updates_vb_or_fitloop.R'); parse(file='R/unified/families/exdqlm_univar/zz_run.R'); parse(file='DISC_Optimal_Synth_Ranges_W.r'); cat('R_PARSE_OK\\n')"`
+- Validation notes:
+  - Targeted and full Python test suites passed.
+  - `tests/testthat` suite passed.
+  - No model-family toggles changed (`models.run_exdqlm_univar` remains default `false`); defaults apply when each family is enabled.
+- Next action:
+  - Continue P9 closure via isolated q=0.01 convergence evidence under the new defaults, then run q=0.05 sanity before broader proof runs.
 
 ## 15) Audit Report (2026-02-14)
 

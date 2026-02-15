@@ -13,6 +13,37 @@ if (!is.finite(q) || q <= 0 || q >= 1) {
 seed <- if (length(args) >= 2L) as.integer(args[[2L]]) else as.integer(Sys.getenv("DISC_BASE_SEED", "777"))
 if (!is.finite(seed)) seed <- 777L
 
+env_flag <- function(name, default = FALSE) {
+  raw <- Sys.getenv(name, "")
+  if (!nzchar(raw)) return(isTRUE(default))
+  tolower(trimws(raw)) %in% c("1", "true", "yes", "y", "on")
+}
+
+env_choice <- function(name, choices, default) {
+  raw <- tolower(trimws(Sys.getenv(name, "")))
+  if (!nzchar(raw)) return(default)
+  if (raw %in% choices) return(raw)
+  default
+}
+
+env_nonneg_int <- function(name, default = 0L) {
+  out <- suppressWarnings(as.integer(Sys.getenv(name, as.character(default))))
+  if (!is.finite(out) || out < 0L) return(as.integer(default))
+  as.integer(out)
+}
+
+env_num <- function(name, default) {
+  out <- suppressWarnings(as.numeric(Sys.getenv(name, as.character(default))))
+  if (!is.finite(out)) return(as.numeric(default))
+  as.numeric(out)
+}
+
+env_pos_num <- function(name, default) {
+  out <- suppressWarnings(as.numeric(Sys.getenv(name, as.character(default))))
+  if (!is.finite(out) || out <= 0) return(as.numeric(default))
+  as.numeric(out)
+}
+
 repo_root <- normalizePath(getwd(), mustWork = TRUE)
 module_root <- file.path(repo_root, "R", "unified", "families", "exdqlm_univar")
 module_files <- c(
@@ -47,13 +78,33 @@ if (!nzchar(summary_log)) {
   }
 }
 
+gamma_sigma_policy <- list(
+  warmup_freeze_iters = env_nonneg_int("UNIV_GAMSIG_FREEZE_ITERS", 20L),
+  freeze_target = env_choice("UNIV_GAMSIG_FREEZE_TARGET", choices = c("gamma_sigma", "states"), default = "gamma_sigma"),
+  guard_refreeze_iters = env_nonneg_int("UNIV_GAMSIG_GUARD_REFREEZE_ITERS", 10L),
+  init = list(
+    mode = env_choice("UNIV_GAMSIG_INIT_MODE", choices = c("legacy", "robust"), default = "robust"),
+    gamma = env_num("UNIV_GAMSIG_INIT_GAMMA", 0.0),
+    sigma_floor = env_pos_num("UNIV_GAMSIG_INIT_SIGMA_FLOOR", 1e-3),
+    sigma_scale = env_pos_num("UNIV_GAMSIG_INIT_SIGMA_SCALE", 1.0)
+  ),
+  objective_guard = list(
+    enabled = env_flag("UNIV_GAMSIG_OBJECTIVE_GUARD_ENABLED", TRUE),
+    fail_fast = env_flag("UNIV_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST", FALSE),
+    log_failures = env_flag("UNIV_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES", TRUE),
+    mode = env_choice("UNIV_GAMSIG_OBJECTIVE_GUARD_MODE", choices = c("penalty", "adaptive_freeze"), default = "adaptive_freeze"),
+    penalty = env_pos_num("UNIV_GAMSIG_OBJECTIVE_GUARD_PENALTY", 1e12)
+  )
+)
+
 set.seed(seed)
 RNGkind("Mersenne-Twister", "Inversion", "Rejection")
 result <- unified_run_exdqlm_univar_theory(
   q = q,
   seed = seed,
   output_path = output_path,
-  log_path = summary_log
+  log_path = summary_log,
+  gamma_sigma_policy = gamma_sigma_policy
 )
 
 cat(sprintf("univar_theory_complete quantile=%.2f output=%s\n", q, output_path))
