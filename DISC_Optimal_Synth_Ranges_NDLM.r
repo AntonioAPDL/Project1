@@ -1674,6 +1674,12 @@ tol2 <- 1e-3
 conv.check <- 0
 max_iter <- 10
 TOL <- 1e-4
+fmt_iter_num <- function(x, digits = 8L) {
+  if (!is.finite(x)) {
+    return("NA")
+  }
+  format(signif(as.numeric(x), digits = as.integer(digits)), trim = TRUE, scientific = FALSE)
+}
 
 if(USE_PREV){
   m0 <- new.theta.out$sm[,1]
@@ -1845,6 +1851,21 @@ while ( (FLAG || iter < 10) & (iter < max_iter) ) {
 
   seq.ndlm_elbo <- c(seq.ndlm_elbo, ELBO)  
   print(c(iter, crit_ELBO, ELBO))
+  sigma_exp <- suppressWarnings(as.numeric(mean(new.sig, na.rm = TRUE)))
+  gamma_exp <- suppressWarnings(as.numeric(mean(new.gam, na.rm = TRUE)))
+  state_norm_sq <- suppressWarnings(as.numeric(sum(new.theta.out$sm^2, na.rm = TRUE)))
+  if (!is.finite(sigma_exp)) sigma_exp <- NA_real_
+  if (!is.finite(gamma_exp)) gamma_exp <- NA_real_
+  if (!is.finite(state_norm_sq)) state_norm_sq <- NA_real_
+  cat(sprintf(
+    "[gamsig_progress] family=ndlm_main_legacy p0=0.5 iter=%d elbo=%s crit_elbo=%s sigma_exp=%s gamma_exp=%s state_norm_sq=%s\n",
+    as.integer(iter),
+    fmt_iter_num(ELBO),
+    fmt_iter_num(crit_ELBO),
+    fmt_iter_num(sigma_exp),
+    fmt_iter_num(gamma_exp),
+    fmt_iter_num(state_norm_sq)
+  ))
   flush.console()
   iter <- iter+1
 

@@ -28,6 +28,13 @@ ndlm_theory_standardize <- function(x) {
 }
 
 ndlm_theory_run_vb <- function(inputs, constants) {
+  fmt_iter_num <- function(x, digits = 8L) {
+    if (!is.finite(x)) {
+      return("NA")
+    }
+    format(signif(as.numeric(x), digits = as.integer(digits)), trim = TRUE, scientific = FALSE)
+  }
+
   set.seed(constants$seed)
   Tn <- inputs$T
   d <- constants$state_dim
@@ -50,6 +57,8 @@ ndlm_theory_run_vb <- function(inputs, constants) {
 
   seq_sigma <- rep(NA_real_, constants$n_iter)
   seq_elbo <- rep(NA_real_, constants$n_iter)
+  prev_elbo <- NA_real_
+  crit_elbo <- Inf
   fit <- NULL
 
   for (iter in seq_len(constants$n_iter)) {
@@ -86,6 +95,29 @@ ndlm_theory_run_vb <- function(inputs, constants) {
 
     seq_sigma[iter] <- sigma
     seq_elbo[iter] <- -0.5 * sum(log(2 * pi * sigma) + resid^2 / sigma)
+    if (is.finite(prev_elbo) && is.finite(seq_elbo[iter])) {
+      crit_elbo <- abs(seq_elbo[iter] - prev_elbo)
+    } else {
+      crit_elbo <- Inf
+    }
+    prev_elbo <- seq_elbo[iter]
+
+    state_norm_sq <- suppressWarnings(as.numeric(sum(fit$smooth_mean^2, na.rm = TRUE)))
+    if (!is.finite(state_norm_sq)) {
+      state_norm_sq <- NA_real_
+    }
+    cat(
+      sprintf(
+        "[gamsig_progress] family=ndlm_main p0=NA iter=%d elbo=%s crit_elbo=%s sigma_exp=%s gamma_exp=NA state_norm_sq=%s w_hist=%s w_fore=%s\n",
+        as.integer(iter),
+        fmt_iter_num(seq_elbo[iter]),
+        fmt_iter_num(crit_elbo),
+        fmt_iter_num(sigma),
+        fmt_iter_num(state_norm_sq),
+        fmt_iter_num(w_hist),
+        fmt_iter_num(w_fore)
+      )
+    )
   }
 
   if (is.null(fit)) {

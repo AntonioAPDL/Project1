@@ -109,11 +109,34 @@ if (!is.finite(DISC_GAMSIG_FREEZE_ITERS) || DISC_GAMSIG_FREEZE_ITERS < 0L) {
 DISC_GAMSIG_FREEZE_ITERS <- as.integer(DISC_GAMSIG_FREEZE_ITERS)
 DISC_GAMSIG_MIN_UPDATE_ITERS <- disc_env_nonneg_int(
   "DISC_GAMSIG_MIN_UPDATE_ITERS",
-  default = 10L
+  default = 50L
 )
+DISC_GAMSIG_MIN_TOTAL_ITERS <- disc_env_nonneg_int(
+  "DISC_GAMSIG_MIN_TOTAL_ITERS",
+  default = 50L
+)
+if (!is.finite(DISC_GAMSIG_MIN_TOTAL_ITERS) || DISC_GAMSIG_MIN_TOTAL_ITERS < 1L) {
+  DISC_GAMSIG_MIN_TOTAL_ITERS <- 50L
+}
 DISC_GAMSIG_CONVERGENCE_TOL <- disc_env_pos_num(
   "DISC_GAMSIG_CONVERGENCE_TOL",
-  default = 1e-4
+  default = 1e-6
+)
+DISC_GAMSIG_ELBO_TOL <- disc_env_pos_num(
+  "DISC_GAMSIG_ELBO_TOL",
+  default = DISC_GAMSIG_CONVERGENCE_TOL
+)
+DISC_GAMSIG_STATE_NORM_TOL <- disc_env_pos_num(
+  "DISC_GAMSIG_STATE_NORM_TOL",
+  default = 1e-6
+)
+DISC_GAMSIG_SIGMA_EXP_TOL <- disc_env_pos_num(
+  "DISC_GAMSIG_SIGMA_EXP_TOL",
+  default = 1e-6
+)
+DISC_GAMSIG_GAMMA_EXP_TOL <- disc_env_pos_num(
+  "DISC_GAMSIG_GAMMA_EXP_TOL",
+  default = 1e-6
 )
 DISC_GAMSIG_FREEZE_TARGET <- disc_env_choice(
   "DISC_GAMSIG_FREEZE_TARGET",
@@ -1671,11 +1694,35 @@ seq.elbo = ELBO
 iter = 0
 FLAG = TRUE
 tol1 <- 1e-3
-tol2 <- DISC_GAMSIG_CONVERGENCE_TOL
 conv.check <- 0
 max_iter <- 1000
 fast <- 0
 gamsig_update_iters <- 0L
+prev_state_norm_sq <- NA_real_
+prev_sigma_exp <- NA_real_
+prev_gamma_exp <- NA_real_
+crit_state_norm_sq <- Inf
+crit_sigma_exp <- Inf
+crit_gamma_exp <- Inf
+fmt_iter_num <- function(x, digits = 8L) {
+  if (!is.finite(x)) {
+    return("NA")
+  }
+  format(signif(as.numeric(x), digits = as.integer(digits)), trim = TRUE, scientific = FALSE)
+}
+fmt_iter_vec <- function(x, digits = 8L) {
+  xx <- as.numeric(x)
+  if (length(xx) == 0L) {
+    return("[]")
+  }
+  vals <- vapply(xx, function(v) {
+    if (!is.finite(v)) {
+      return("NA")
+    }
+    format(signif(as.numeric(v), digits = as.integer(digits)), trim = TRUE, scientific = FALSE)
+  }, FUN.VALUE = character(1))
+  paste0("[", paste(vals, collapse = ","), "]")
+}
   print(c(n.samp, 111))
   flush.console()
 if(USE_PREV){
@@ -1780,12 +1827,16 @@ if (!is.finite(gamsig_dynamic_freeze_until_iter) || gamsig_dynamic_freeze_until_
 }
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   cat(sprintf(
-    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d convergence_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
+    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
     as.character(p0),
     DISC_GAMSIG_FREEZE_TARGET,
     as.integer(DISC_GAMSIG_FREEZE_ITERS),
     as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
-    as.numeric(DISC_GAMSIG_CONVERGENCE_TOL),
+    as.integer(DISC_GAMSIG_MIN_TOTAL_ITERS),
+    as.numeric(DISC_GAMSIG_ELBO_TOL),
+    as.numeric(DISC_GAMSIG_STATE_NORM_TOL),
+    as.numeric(DISC_GAMSIG_SIGMA_EXP_TOL),
+    as.numeric(DISC_GAMSIG_GAMMA_EXP_TOL),
     DISC_GAMSIG_OBJECTIVE_GUARD_MODE,
     as.integer(DISC_GAMSIG_GUARD_REFREEZE_ITERS)
   ))
@@ -2214,6 +2265,8 @@ while (FLAG & iter < max_iter) {
   old.sig = seq.sigma[,dim(seq.sigma)[2]]
   new.sig = new.gamsig.out$E.sigma
   seq.sigma = cbind(seq.sigma, new.sig)
+  gamma_delta_vec <- as.numeric(new.gam - old.gam)
+  sigma_delta_vec <- as.numeric(new.sig - old.sig)
 
   if (gamsig_frozen_now) {
     conv.check <- Inf
@@ -2283,30 +2336,80 @@ while (FLAG & iter < max_iter) {
   seq.eigen = cbind(seq.eigen, min(abs(eigen(new.covs_list[[2]][,,ranges_per[1]])$values))) 
 
   print(c(iter, elbo, crit_ELBO))
+  sigma_exp <- suppressWarnings(as.numeric(mean(new.sig, na.rm = TRUE)))
+  gamma_exp <- suppressWarnings(as.numeric(mean(new.gam, na.rm = TRUE)))
+  state_norm_sq <- suppressWarnings(as.numeric(sum(new.theta.out$sm^2, na.rm = TRUE)))
+  if (!is.finite(sigma_exp)) sigma_exp <- NA_real_
+  if (!is.finite(gamma_exp)) gamma_exp <- NA_real_
+  if (!is.finite(state_norm_sq)) state_norm_sq <- NA_real_
+  if (is.finite(prev_state_norm_sq) && is.finite(state_norm_sq)) {
+    crit_state_norm_sq <- abs(state_norm_sq - prev_state_norm_sq)
+  } else {
+    crit_state_norm_sq <- Inf
+  }
+  if (is.finite(prev_sigma_exp) && is.finite(sigma_exp)) {
+    crit_sigma_exp <- abs(sigma_exp - prev_sigma_exp)
+  } else {
+    crit_sigma_exp <- Inf
+  }
+  if (is.finite(prev_gamma_exp) && is.finite(gamma_exp)) {
+    crit_gamma_exp <- abs(gamma_exp - prev_gamma_exp)
+  } else {
+    crit_gamma_exp <- Inf
+  }
+  prev_state_norm_sq <- state_norm_sq
+  prev_sigma_exp <- sigma_exp
+  prev_gamma_exp <- gamma_exp
+
   if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     cat(sprintf(
-      "[gamsig_progress] p0=%s iter=%d gamsig_update_iters=%d min_update_iters=%d frozen=%s\n",
+      "[gamsig_progress] family=exdqlm_multivar p0=%s iter=%d elbo=%s crit_elbo=%s sigma_exp=%s crit_sigma_exp=%s gamma_exp=%s crit_gamma_exp=%s sigma_exp_vec=%s gamma_exp_vec=%s sigma_delta_vec=%s gamma_delta_vec=%s state_norm_sq=%s crit_state_norm_sq=%s conv_check=%s gamsig_update_iters=%d min_update_iters=%d min_total_iters=%d frozen=%s\n",
       as.character(p0),
       as.integer(iter),
+      fmt_iter_num(elbo),
+      fmt_iter_num(crit_ELBO),
+      fmt_iter_num(sigma_exp),
+      fmt_iter_num(crit_sigma_exp),
+      fmt_iter_num(gamma_exp),
+      fmt_iter_num(crit_gamma_exp),
+      fmt_iter_vec(new.sig),
+      fmt_iter_vec(new.gam),
+      fmt_iter_vec(sigma_delta_vec),
+      fmt_iter_vec(gamma_delta_vec),
+      fmt_iter_num(state_norm_sq),
+      fmt_iter_num(crit_state_norm_sq),
+      fmt_iter_num(conv.check),
       as.integer(gamsig_update_iters),
       as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
+      as.integer(DISC_GAMSIG_MIN_TOTAL_ITERS),
       ifelse(isTRUE(gamsig_frozen_now), "true", "false")
     ))
   }
   flush.console()
 
   if(theta_update){
-    if ((crit_ELBO+conv.check) < tol2 &&
-        gamsig_update_iters >= DISC_GAMSIG_MIN_UPDATE_ITERS) {
+    conv_elbo <- is.finite(crit_ELBO) && (crit_ELBO < DISC_GAMSIG_ELBO_TOL)
+    conv_state <- is.finite(crit_state_norm_sq) && (crit_state_norm_sq < DISC_GAMSIG_STATE_NORM_TOL)
+    conv_sigma <- is.finite(crit_sigma_exp) && (crit_sigma_exp < DISC_GAMSIG_SIGMA_EXP_TOL)
+    conv_gamma <- is.finite(crit_gamma_exp) && (crit_gamma_exp < DISC_GAMSIG_GAMMA_EXP_TOL)
+    conv_min_updates <- gamsig_update_iters >= DISC_GAMSIG_MIN_UPDATE_ITERS
+    conv_min_iters <- iter >= DISC_GAMSIG_MIN_TOTAL_ITERS
+    if (conv_elbo && conv_state && conv_sigma && conv_gamma && conv_min_updates && conv_min_iters) {
       FLAG = FALSE
-    } else if ((crit_ELBO+conv.check) < tol2 &&
-               isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+    } else if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
       cat(sprintf(
-        "[gamsig_hold] p0=%s iter=%d reason=min_update_iters_not_met updates=%d required=%d\n",
+        "[gamsig_hold] p0=%s iter=%d conv_elbo=%s conv_state=%s conv_sigma=%s conv_gamma=%s conv_min_updates=%s conv_min_iters=%s updates=%d required_updates=%d required_iters=%d\n",
         as.character(p0),
         as.integer(iter),
+        ifelse(conv_elbo, "true", "false"),
+        ifelse(conv_state, "true", "false"),
+        ifelse(conv_sigma, "true", "false"),
+        ifelse(conv_gamma, "true", "false"),
+        ifelse(conv_min_updates, "true", "false"),
+        ifelse(conv_min_iters, "true", "false"),
         as.integer(gamsig_update_iters),
-        as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS)
+        as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
+        as.integer(DISC_GAMSIG_MIN_TOTAL_ITERS)
       ))
     }
   }

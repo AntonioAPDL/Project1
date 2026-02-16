@@ -80,8 +80,15 @@ if (!nzchar(summary_log)) {
 
 gamma_sigma_policy <- list(
   warmup_freeze_iters = env_nonneg_int("UNIV_GAMSIG_FREEZE_ITERS", 20L),
-  min_update_iters = env_nonneg_int("UNIV_GAMSIG_MIN_UPDATE_ITERS", 10L),
-  convergence_tol = env_pos_num("UNIV_GAMSIG_CONVERGENCE_TOL", 1e-5),
+  min_update_iters = env_nonneg_int("UNIV_GAMSIG_MIN_UPDATE_ITERS", 50L),
+  min_total_iters = env_nonneg_int("UNIV_GAMSIG_MIN_TOTAL_ITERS", 50L),
+  convergence_tol = env_pos_num("UNIV_GAMSIG_CONVERGENCE_TOL", 1e-6),
+  convergence = list(
+    elbo_tol = env_pos_num("UNIV_GAMSIG_ELBO_TOL", env_pos_num("UNIV_GAMSIG_CONVERGENCE_TOL", 1e-6)),
+    state_norm_sq_tol = env_pos_num("UNIV_GAMSIG_STATE_NORM_TOL", 1e-6),
+    sigma_exp_tol = env_pos_num("UNIV_GAMSIG_SIGMA_EXP_TOL", 1e-6),
+    gamma_exp_tol = env_pos_num("UNIV_GAMSIG_GAMMA_EXP_TOL", 1e-6)
+  ),
   freeze_target = env_choice("UNIV_GAMSIG_FREEZE_TARGET", choices = c("gamma_sigma", "states"), default = "gamma_sigma"),
   guard_refreeze_iters = env_nonneg_int("UNIV_GAMSIG_GUARD_REFREEZE_ITERS", 10L),
   init = list(

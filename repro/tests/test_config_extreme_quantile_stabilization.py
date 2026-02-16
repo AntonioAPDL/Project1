@@ -21,7 +21,12 @@ class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
                     f"cfg <- unified_load_config('{cfg_path.as_posix()}', repo_root = '{REPO_ROOT.as_posix()}')",
                     "cat(sprintf('freeze_iters=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$warmup_freeze_iters))",
                     "cat(sprintf('min_update_iters=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$min_update_iters))",
+                    "cat(sprintf('min_total_iters=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$min_total_iters))",
                     "cat(sprintf('convergence_tol=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$convergence_tol))",
+                    "cat(sprintf('elbo_tol=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$convergence$elbo_tol))",
+                    "cat(sprintf('state_norm_sq_tol=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$convergence$state_norm_sq_tol))",
+                    "cat(sprintf('sigma_exp_tol=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$convergence$sigma_exp_tol))",
+                    "cat(sprintf('gamma_exp_tol=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$convergence$gamma_exp_tol))",
                     "cat(sprintf('freeze_target=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$freeze_target))",
                     "cat(sprintf('guard_refreeze_iters=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$guard_refreeze_iters))",
                     "cat(sprintf('guard_enabled=%s\\n', if (isTRUE(cfg$fit$exdqlm_multivar$gamma_sigma$objective_guard$enabled)) 'true' else 'false'))",
@@ -35,7 +40,12 @@ class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
                     "cat(sprintf('init_sigma_scale=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$init$sigma_scale))",
                     "cat(sprintf('univar_freeze_iters=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$warmup_freeze_iters))",
                     "cat(sprintf('univar_min_update_iters=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$min_update_iters))",
+                    "cat(sprintf('univar_min_total_iters=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$min_total_iters))",
                     "cat(sprintf('univar_convergence_tol=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$convergence_tol))",
+                    "cat(sprintf('univar_elbo_tol=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$convergence$elbo_tol))",
+                    "cat(sprintf('univar_state_norm_sq_tol=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$convergence$state_norm_sq_tol))",
+                    "cat(sprintf('univar_sigma_exp_tol=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$convergence$sigma_exp_tol))",
+                    "cat(sprintf('univar_gamma_exp_tol=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$convergence$gamma_exp_tol))",
                     "cat(sprintf('univar_freeze_target=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$freeze_target))",
                     "cat(sprintf('univar_guard_refreeze_iters=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$guard_refreeze_iters))",
                     "cat(sprintf('univar_guard_enabled=%s\\n', if (isTRUE(cfg$fit$exdqlm_univar$gamma_sigma$objective_guard$enabled)) 'true' else 'false'))",
@@ -74,8 +84,13 @@ class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
         )
         out = self._resolve_config(cfg)
         self.assertEqual(out["freeze_iters"], "20")
-        self.assertEqual(out["min_update_iters"], "10")
-        self.assertEqual(out["convergence_tol"], "1e-04")
+        self.assertEqual(out["min_update_iters"], "50")
+        self.assertEqual(out["min_total_iters"], "50")
+        self.assertEqual(out["convergence_tol"], "1e-06")
+        self.assertEqual(out["elbo_tol"], "1e-06")
+        self.assertEqual(out["state_norm_sq_tol"], "1e-06")
+        self.assertEqual(out["sigma_exp_tol"], "1e-06")
+        self.assertEqual(out["gamma_exp_tol"], "1e-06")
         self.assertEqual(out["freeze_target"], "gamma_sigma")
         self.assertEqual(out["guard_refreeze_iters"], "10")
         self.assertEqual(out["guard_enabled"], "true")
@@ -84,8 +99,13 @@ class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
         self.assertEqual(out["guard_mode"], "adaptive_freeze")
         self.assertEqual(out["init_mode"], "robust")
         self.assertEqual(out["univar_freeze_iters"], "20")
-        self.assertEqual(out["univar_min_update_iters"], "10")
-        self.assertEqual(out["univar_convergence_tol"], "1e-05")
+        self.assertEqual(out["univar_min_update_iters"], "50")
+        self.assertEqual(out["univar_min_total_iters"], "50")
+        self.assertEqual(out["univar_convergence_tol"], "1e-06")
+        self.assertEqual(out["univar_elbo_tol"], "1e-06")
+        self.assertEqual(out["univar_state_norm_sq_tol"], "1e-06")
+        self.assertEqual(out["univar_sigma_exp_tol"], "1e-06")
+        self.assertEqual(out["univar_gamma_exp_tol"], "1e-06")
         self.assertEqual(out["univar_freeze_target"], "gamma_sigma")
         self.assertEqual(out["univar_guard_refreeze_iters"], "10")
         self.assertEqual(out["univar_guard_enabled"], "true")

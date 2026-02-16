@@ -278,10 +278,25 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
         )),
         DISC_GAMSIG_MIN_UPDATE_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_update_iters"), default = 10L
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_update_iters"), default = 50L
+        )),
+        DISC_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_total_iters"), default = 50L
         )),
         DISC_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence_tol"), default = 1e-4
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence_tol"), default = 1e-6
+        )),
+        DISC_GAMSIG_ELBO_TOL = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "elbo_tol"), default = 1e-6
+        )),
+        DISC_GAMSIG_STATE_NORM_TOL = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "state_norm_sq_tol"), default = 1e-6
+        )),
+        DISC_GAMSIG_SIGMA_EXP_TOL = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "sigma_exp_tol"), default = 1e-6
+        )),
+        DISC_GAMSIG_GAMMA_EXP_TOL = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "gamma_exp_tol"), default = 1e-6
         )),
         DISC_GAMSIG_FREEZE_TARGET = as.character(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
@@ -399,10 +414,25 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       )
     }
 
-    for (q in quantiles) {
+    if (isTRUE(io_settings$enabled)) {
+      for (q in quantiles) {
+        q_num <- as.integer(round(q * 100))
+        q_lab <- sprintf("%02d", q_num)
+        q_outputs <- file.path(fit_root, "exdqlm_univar", sprintf("q=%s", q_lab), "outputs")
+        dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
+        preflight_univar <- run_preflight_check(
+          path = q_outputs,
+          check_point = "continue",
+          context = sprintf("stage_fit univar q=%s", q_lab),
+          stage_label = sprintf("fit_univar_q%s", q_lab)
+        )
+        manifest <- add_preflight_artifact(manifest, preflight_univar)
+      }
+    }
+
+    run_one_univar_quantile <- function(q) {
       q_num <- as.integer(round(q * 100))
       q_lab <- sprintf("%02d", q_num)
-
       q_root <- file.path(fit_root, "exdqlm_univar", sprintf("q=%s", q_lab))
       q_outputs <- file.path(q_root, "outputs")
       q_logs <- file.path(q_root, "logs")
@@ -412,15 +442,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       output_path <- file.path(q_outputs, sprintf("variables_%s_exAL_synth_DISC_uni.RData", q_lab))
       log_name <- if (identical(univar_impl_mode, "theory_aligned")) "univar_theory.log" else "univar_legacy.log"
       log_path <- file.path(q_logs, log_name)
-      if (isTRUE(io_settings$enabled)) {
-        preflight_univar <- run_preflight_check(
-          path = q_outputs,
-          check_point = "continue",
-          context = sprintf("stage_fit univar q=%s", q_lab),
-          stage_label = sprintf("fit_univar_q%s", q_lab)
-        )
-        manifest <- add_preflight_artifact(manifest, preflight_univar)
-      }
+
       env_overrides <- c(
         UNIFIED_UNIV_RDATA_OUT = output_path,
         UNIV_RUN_ROOT = run_root_abs,
@@ -442,10 +464,25 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
           cfg, c("fit", "exdqlm_univar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
         )),
         UNIV_GAMSIG_MIN_UPDATE_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_update_iters"), default = 10L
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_update_iters"), default = 50L
+        )),
+        UNIV_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_total_iters"), default = 50L
         )),
         UNIV_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence_tol"), default = 1e-5
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence_tol"), default = 1e-6
+        )),
+        UNIV_GAMSIG_ELBO_TOL = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "elbo_tol"), default = 1e-6
+        )),
+        UNIV_GAMSIG_STATE_NORM_TOL = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "state_norm_sq_tol"), default = 1e-6
+        )),
+        UNIV_GAMSIG_SIGMA_EXP_TOL = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "sigma_exp_tol"), default = 1e-6
+        )),
+        UNIV_GAMSIG_GAMMA_EXP_TOL = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "gamma_exp_tol"), default = 1e-6
         )),
         UNIV_GAMSIG_FREEZE_TARGET = as.character(unified_get(
           cfg, c("fit", "exdqlm_univar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
@@ -499,43 +536,76 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       if (!is.finite(cmd_status)) {
         cmd_status <- 0L
       }
-      if (!is.null(cmd_status) && as.integer(cmd_status) != 0L) {
+      list(
+        quantile = q,
+        q_num = q_num,
+        q_lab = q_lab,
+        output_path = output_path,
+        log_path = log_path,
+        status = as.integer(cmd_status)
+      )
+    }
+
+    workers <- suppressWarnings(as.integer(cfg$run$threads$mc_cores))
+    if (!is.finite(workers) || workers < 1L) workers <- 1L
+    workers <- min(workers, length(quantiles))
+
+    results <- if (workers > 1L && .Platform$OS.type != "windows") {
+      parallel::mclapply(quantiles, run_one_univar_quantile, mc.cores = workers)
+    } else {
+      lapply(quantiles, run_one_univar_quantile)
+    }
+
+    for (res_raw in results) {
+      res <- unified_normalize_fit_worker_result(res_raw, context_label = "univariate fit worker")
+      if (!is.null(res$status) && res$status != 0) {
         stop(
           sprintf(
             "univariate fit failed for quantile %s (implementation_mode=%s); see %s",
-            q,
+            res$quantile,
             univar_impl_mode,
-            log_path
+            res$log_path
           ),
           call. = FALSE
         )
       }
-      if (!file.exists(output_path)) {
+      file_size <- suppressWarnings(file.info(res$output_path)$size)
+      if (!file.exists(res$output_path) || !is.finite(file_size) || file_size <= 0) {
         stop(
           sprintf(
-            "univariate output missing for quantile %s (implementation_mode=%s): %s",
-            q,
+            "univariate output missing or empty for quantile %s (implementation_mode=%s): %s",
+            res$quantile,
             univar_impl_mode,
-            output_path
+            res$output_path
           ),
           call. = FALSE
         )
       }
 
+      q_num <- suppressWarnings(as.integer(res$q_num))
+      if (!is.finite(q_num)) q_num <- as.integer(round(as.numeric(res$quantile) * 100))
+      q_lab <- as.character(res$q_lab)
+      if (!length(q_lab) || is.na(q_lab[[1]]) || !nzchar(q_lab[[1]])) {
+        q_lab <- sprintf("%02d", q_num)
+      } else {
+        q_lab <- q_lab[[1]]
+      }
+      q_logs <- file.path(fit_root, "exdqlm_univar", sprintf("q=%s", q_lab), "logs")
+
       manifest <- unified_manifest_add_artifact(
         manifest,
-        output_path,
+        res$output_path,
         storage_scale = "model_state",
         flow_domain = cfg$scale_contract$analysis_scale_fit_internal
       )
-      if (file.exists(log_path)) {
-        manifest <- unified_manifest_add_artifact(manifest, log_path, storage_scale = "text")
+      if (file.exists(res$log_path)) {
+        manifest <- unified_manifest_add_artifact(manifest, res$log_path, storage_scale = "text")
       }
 
       if (contract_checks_enabled && identical(univar_impl_mode, "theory_aligned")) {
         check_dir <- file.path(fit_root, "contract_checks", "exdqlm_univar", sprintf("q=%s", q_lab))
         check_result <- unified_contract_check_exdqlm_univar(
-          rdata_path = output_path,
+          rdata_path = res$output_path,
           q_num = q_num,
           report_dir = check_dir,
           write_reports = contract_checks_write_reports
@@ -559,7 +629,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         diag_dir <- file.path(fit_root, "diagnostics", "exdqlm_univar", sprintf("q=%s", q_lab))
         summary_log_path <- file.path(q_logs, "univar_theory_summary.log")
         diag_result <- unified_diag_exdqlm_univar_theory(
-          rdata_path = output_path,
+          rdata_path = res$output_path,
           q_num = q_num,
           report_dir = diag_dir,
           summary_log_path = summary_log_path,

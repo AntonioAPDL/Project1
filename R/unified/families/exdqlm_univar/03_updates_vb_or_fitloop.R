@@ -41,6 +41,13 @@ univar_theory_log_joint_sigma_gamma <- function(
 }
 
 univar_theory_run_cavi <- function(inputs, constants) {
+  fmt_iter_num <- function(x, digits = 8L) {
+    if (!is.finite(x)) {
+      return("NA")
+    }
+    format(signif(as.numeric(x), digits = as.integer(digits)), trim = TRUE, scientific = FALSE)
+  }
+
   set.seed(constants$seed)
 
   y <- as.numeric(inputs$y)
@@ -93,15 +100,38 @@ univar_theory_run_cavi <- function(inputs, constants) {
 
   min_update_iters <- suppressWarnings(as.integer(policy$min_update_iters))
   if (!is.finite(min_update_iters) || min_update_iters < 0L) {
-    min_update_iters <- 10L
+    min_update_iters <- 50L
+  }
+  min_total_iters <- suppressWarnings(as.integer(policy$min_total_iters))
+  if (!is.finite(min_total_iters) || min_total_iters < 1L) {
+    min_total_iters <- 50L
   }
   convergence_tol <- suppressWarnings(as.numeric(policy$convergence_tol))
   if (!is.finite(convergence_tol) || convergence_tol <= 0) {
-    convergence_tol <- 1e-5
+    convergence_tol <- 1e-6
+  }
+  convergence <- policy$convergence
+  if (!is.list(convergence)) convergence <- list()
+  elbo_tol <- suppressWarnings(as.numeric(convergence$elbo_tol))
+  if (!is.finite(elbo_tol) || elbo_tol <= 0) {
+    elbo_tol <- convergence_tol
+  }
+  state_norm_sq_tol <- suppressWarnings(as.numeric(convergence$state_norm_sq_tol))
+  if (!is.finite(state_norm_sq_tol) || state_norm_sq_tol <= 0) {
+    state_norm_sq_tol <- 1e-6
+  }
+  sigma_exp_tol <- suppressWarnings(as.numeric(convergence$sigma_exp_tol))
+  if (!is.finite(sigma_exp_tol) || sigma_exp_tol <= 0) {
+    sigma_exp_tol <- 1e-6
+  }
+  gamma_exp_tol <- suppressWarnings(as.numeric(convergence$gamma_exp_tol))
+  if (!is.finite(gamma_exp_tol) || gamma_exp_tol <= 0) {
+    gamma_exp_tol <- 1e-6
   }
   max_iter <- suppressWarnings(as.integer(max(
     constants$n_iter,
-    as.integer(policy$warmup_freeze_iters) + min_update_iters + 5L
+    as.integer(policy$warmup_freeze_iters) + min_update_iters + 5L,
+    min_total_iters + 5L
   )))
   if (!is.finite(max_iter) || max_iter < 1L) {
     max_iter <- 50L
@@ -116,7 +146,13 @@ univar_theory_run_cavi <- function(inputs, constants) {
   converged <- FALSE
   convergence_reason <- "max_iter_reached"
   prev_elbo <- NA_real_
+  prev_state_norm_sq <- NA_real_
+  prev_sigma_exp <- NA_real_
+  prev_gamma_exp <- NA_real_
   crit_elbo <- Inf
+  crit_state_norm_sq <- Inf
+  crit_sigma_exp <- Inf
+  crit_gamma_exp <- Inf
 
   gamsig_dynamic_freeze_until_iter <- as.integer(policy$warmup_freeze_iters)
   if (!is.finite(gamsig_dynamic_freeze_until_iter) || gamsig_dynamic_freeze_until_iter < 0L) {
@@ -125,12 +161,16 @@ univar_theory_run_cavi <- function(inputs, constants) {
   if (isTRUE(policy$objective_guard$log_failures)) {
     cat(
       sprintf(
-        "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d convergence_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
+        "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
         as.character(p0),
         policy$freeze_target,
         as.integer(policy$warmup_freeze_iters),
         as.integer(min_update_iters),
-        as.numeric(convergence_tol),
+        as.integer(min_total_iters),
+        as.numeric(elbo_tol),
+        as.numeric(state_norm_sq_tol),
+        as.numeric(sigma_exp_tol),
+        as.numeric(gamma_exp_tol),
         policy$objective_guard$mode,
         as.integer(policy$guard_refreeze_iters)
       )
@@ -337,29 +377,71 @@ univar_theory_run_cavi <- function(inputs, constants) {
       crit_elbo <- Inf
     }
     prev_elbo <- elbo[iter]
+    sigma_exp <- suppressWarnings(as.numeric(sigma))
+    gamma_exp <- suppressWarnings(as.numeric(gamma))
+    state_norm_sq <- NA_real_
+    if (!is.null(smoother) && !is.null(smoother$smooth_mean)) {
+      state_norm_sq <- suppressWarnings(as.numeric(sum(smoother$smooth_mean^2, na.rm = TRUE)))
+    }
+    if (!is.finite(sigma_exp)) sigma_exp <- NA_real_
+    if (!is.finite(gamma_exp)) gamma_exp <- NA_real_
+    if (!is.finite(state_norm_sq)) state_norm_sq <- NA_real_
+
+    if (is.finite(prev_state_norm_sq) && is.finite(state_norm_sq)) {
+      crit_state_norm_sq <- abs(state_norm_sq - prev_state_norm_sq)
+    } else {
+      crit_state_norm_sq <- Inf
+    }
+    if (is.finite(prev_sigma_exp) && is.finite(sigma_exp)) {
+      crit_sigma_exp <- abs(sigma_exp - prev_sigma_exp)
+    } else {
+      crit_sigma_exp <- Inf
+    }
+    if (is.finite(prev_gamma_exp) && is.finite(gamma_exp)) {
+      crit_gamma_exp <- abs(gamma_exp - prev_gamma_exp)
+    } else {
+      crit_gamma_exp <- Inf
+    }
+    prev_state_norm_sq <- state_norm_sq
+    prev_sigma_exp <- sigma_exp
+    prev_gamma_exp <- gamma_exp
 
     if (isTRUE(policy$objective_guard$log_failures)) {
       cat(
         sprintf(
-          "[gamsig_progress] p0=%s iter=%d elbo=%0.10f crit_elbo=%s gamsig_update_iters=%d min_update_iters=%d frozen=%s\n",
+          "[gamsig_progress] family=exdqlm_univar p0=%s iter=%d elbo=%s crit_elbo=%s sigma_exp=%s crit_sigma_exp=%s gamma_exp=%s crit_gamma_exp=%s state_norm_sq=%s crit_state_norm_sq=%s gamsig_update_iters=%d min_update_iters=%d min_total_iters=%d frozen=%s\n",
           as.character(p0),
           iter_int,
-          as.numeric(elbo[iter]),
-          ifelse(is.finite(crit_elbo), sprintf("%0.10f", as.numeric(crit_elbo)), "Inf"),
+          fmt_iter_num(elbo[iter]),
+          fmt_iter_num(crit_elbo),
+          fmt_iter_num(sigma_exp),
+          fmt_iter_num(crit_sigma_exp),
+          fmt_iter_num(gamma_exp),
+          fmt_iter_num(crit_gamma_exp),
+          fmt_iter_num(state_norm_sq),
+          fmt_iter_num(crit_state_norm_sq),
           as.integer(gamsig_update_iters),
           as.integer(min_update_iters),
+          as.integer(min_total_iters),
           ifelse(isTRUE(gamsig_frozen_now), "true", "false")
         )
       )
     }
 
     if (iter_int > 1L &&
+        iter_int >= min_total_iters &&
         is.finite(elbo[iter]) &&
         is.finite(crit_elbo) &&
-        crit_elbo < convergence_tol &&
+        crit_elbo < elbo_tol &&
+        is.finite(crit_state_norm_sq) &&
+        crit_state_norm_sq < state_norm_sq_tol &&
+        is.finite(crit_sigma_exp) &&
+        crit_sigma_exp < sigma_exp_tol &&
+        is.finite(crit_gamma_exp) &&
+        crit_gamma_exp < gamma_exp_tol &&
         gamsig_update_iters >= min_update_iters) {
       converged <- TRUE
-      convergence_reason <- "elbo_tol_and_min_updates"
+      convergence_reason <- "all_convergence_criteria_met"
       break
     }
   }

@@ -215,9 +215,23 @@ for (stage in stage_order) {
   unified_manifest_write(manifest, manifest_path)
 
   if (enforce_audit) {
-    unified_write_audit_snapshot(repo_root, run_root, after_path)
-    unified_write_audit_diff(before_path, after_path, diff_path)
-    unified_write_audit_enforce(diff_path, allowlist = allowlist)
+    audit_error <- NULL
+    tryCatch(
+      {
+        unified_write_audit_snapshot(repo_root, run_root, after_path)
+        unified_write_audit_diff(before_path, after_path, diff_path)
+        unified_write_audit_enforce(diff_path, allowlist = allowlist)
+      },
+      error = function(e) {
+        audit_error <<- e
+        NULL
+      }
+    )
+    if (!is.null(audit_error)) {
+      manifest <- unified_manifest_stage_mark_fail(manifest, stage, log_path = stage_log_path(stage))
+      try(unified_manifest_write(manifest, manifest_path), silent = TRUE)
+      stop(conditionMessage(audit_error), call. = FALSE)
+    }
   }
 }
 

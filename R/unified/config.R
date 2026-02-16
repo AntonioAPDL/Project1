@@ -101,8 +101,15 @@ unified_config_defaults <- function() {
       exdqlm_multivar = list(
         gamma_sigma = list(
           warmup_freeze_iters = 20L,
-          min_update_iters = 10L,
-          convergence_tol = 1e-4,
+          min_update_iters = 50L,
+          min_total_iters = 50L,
+          convergence_tol = 1e-6,
+          convergence = list(
+            elbo_tol = 1e-6,
+            state_norm_sq_tol = 1e-6,
+            sigma_exp_tol = 1e-6,
+            gamma_exp_tol = 1e-6
+          ),
           freeze_target = "gamma_sigma",
           guard_refreeze_iters = 10L,
           init = list(
@@ -123,8 +130,15 @@ unified_config_defaults <- function() {
       exdqlm_univar = list(
         gamma_sigma = list(
           warmup_freeze_iters = 20L,
-          min_update_iters = 10L,
-          convergence_tol = 1e-5,
+          min_update_iters = 50L,
+          min_total_iters = 50L,
+          convergence_tol = 1e-6,
+          convergence = list(
+            elbo_tol = 1e-6,
+            state_norm_sq_tol = 1e-6,
+            sigma_exp_tol = 1e-6,
+            gamma_exp_tol = 1e-6
+          ),
           freeze_target = "gamma_sigma",
           guard_refreeze_iters = 10L,
           init = list(
@@ -536,11 +550,46 @@ unified_validate_config <- function(cfg) {
       add_err(sprintf("%s.min_update_iters must be an integer >= 0", key_prefix))
     }
 
+    min_total_iters <- suppressWarnings(as.integer(
+      cfg_get("min_total_iters", defaults$min_total_iters)
+    ))
+    if (!is.finite(min_total_iters) || min_total_iters < 1L) {
+      add_err(sprintf("%s.min_total_iters must be an integer >= 1", key_prefix))
+    }
+
     convergence_tol <- suppressWarnings(as.numeric(
       cfg_get("convergence_tol", defaults$convergence_tol)
     ))
     if (!is.finite(convergence_tol) || convergence_tol <= 0) {
       add_err(sprintf("%s.convergence_tol must be numeric and > 0", key_prefix))
+    }
+
+    elbo_tol <- suppressWarnings(as.numeric(
+      cfg_get(c("convergence", "elbo_tol"), defaults$convergence$elbo_tol)
+    ))
+    if (!is.finite(elbo_tol) || elbo_tol <= 0) {
+      add_err(sprintf("%s.convergence.elbo_tol must be numeric and > 0", key_prefix))
+    }
+
+    state_norm_sq_tol <- suppressWarnings(as.numeric(
+      cfg_get(c("convergence", "state_norm_sq_tol"), defaults$convergence$state_norm_sq_tol)
+    ))
+    if (!is.finite(state_norm_sq_tol) || state_norm_sq_tol <= 0) {
+      add_err(sprintf("%s.convergence.state_norm_sq_tol must be numeric and > 0", key_prefix))
+    }
+
+    sigma_exp_tol <- suppressWarnings(as.numeric(
+      cfg_get(c("convergence", "sigma_exp_tol"), defaults$convergence$sigma_exp_tol)
+    ))
+    if (!is.finite(sigma_exp_tol) || sigma_exp_tol <= 0) {
+      add_err(sprintf("%s.convergence.sigma_exp_tol must be numeric and > 0", key_prefix))
+    }
+
+    gamma_exp_tol <- suppressWarnings(as.numeric(
+      cfg_get(c("convergence", "gamma_exp_tol"), defaults$convergence$gamma_exp_tol)
+    ))
+    if (!is.finite(gamma_exp_tol) || gamma_exp_tol <= 0) {
+      add_err(sprintf("%s.convergence.gamma_exp_tol must be numeric and > 0", key_prefix))
     }
 
     freeze_target <- cfg_get("freeze_target", defaults$freeze_target)
@@ -611,8 +660,15 @@ unified_validate_config <- function(cfg) {
 
   exdqlm_gamma_sigma_defaults <- list(
     warmup_freeze_iters = 20L,
-    min_update_iters = 10L,
-    convergence_tol = 1e-4,
+    min_update_iters = 50L,
+    min_total_iters = 50L,
+    convergence_tol = 1e-6,
+    convergence = list(
+      elbo_tol = 1e-6,
+      state_norm_sq_tol = 1e-6,
+      sigma_exp_tol = 1e-6,
+      gamma_exp_tol = 1e-6
+    ),
     freeze_target = "gamma_sigma",
     guard_refreeze_iters = 10L,
     init_mode = "robust",
@@ -627,7 +683,6 @@ unified_validate_config <- function(cfg) {
   )
   exdqlm_multivar_gamma_sigma_defaults <- exdqlm_gamma_sigma_defaults
   exdqlm_univar_gamma_sigma_defaults <- exdqlm_gamma_sigma_defaults
-  exdqlm_univar_gamma_sigma_defaults$convergence_tol <- 1e-5
   validate_exdqlm_gamma_sigma_block("exdqlm_multivar", exdqlm_multivar_gamma_sigma_defaults)
   validate_exdqlm_gamma_sigma_block("exdqlm_univar", exdqlm_univar_gamma_sigma_defaults)
 
