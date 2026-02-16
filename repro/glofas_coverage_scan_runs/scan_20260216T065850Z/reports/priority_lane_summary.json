@@ -1,0 +1,18 @@
+{
+  "P1::historical": {
+    "anchors_found": 2,
+    "combos": 4
+  },
+  "P1::reforecast": {
+    "anchors_found": 2,
+    "combos": 4
+  },
+  "P2::historical": {
+    "anchors_found": 1,
+    "combos": 4
+  },
+  "P2::reforecast": {
+    "anchors_found": 2,
+    "combos": 4
+  }
+}

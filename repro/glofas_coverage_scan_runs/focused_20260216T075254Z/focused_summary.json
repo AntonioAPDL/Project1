@@ -1,0 +1,29 @@
+{
+  "adjusted_high_confidence_count": 7,
+  "combos_total": 16,
+  "found": 7,
+  "found_by_lane": {
+    "historical": 3,
+    "reforecast": 4
+  },
+  "generated_utc": "2026-02-16T07:52:54Z",
+  "lower_boundary_probe_run": "repro/glofas_probe_runs/probe_20260216T075054Z",
+  "not_found": 9,
+  "output_csv": "repro/glofas_coverage_scan_runs/focused_20260216T075254Z/focused_refined_ranges.csv",
+  "refine_run": "repro/glofas_coverage_scan_runs/refine_20260216T072601Z",
+  "scan_run": "repro/glofas_coverage_scan_runs/scan_20260216T065850Z",
+  "scope": {
+    "lanes": [
+      "historical",
+      "reforecast"
+    ],
+    "priorities": [
+      "P1",
+      "P2"
+    ],
+    "versions": [
+      "version_3_1",
+      "version_4_0"
+    ]
+  }
+}

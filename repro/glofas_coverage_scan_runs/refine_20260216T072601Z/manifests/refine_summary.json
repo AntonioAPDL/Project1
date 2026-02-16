@@ -1,0 +1,10 @@
+{
+  "attempts_error_or_baseline_error": 59,
+  "attempts_ok": 91,
+  "attempts_total": 150,
+  "base_run_dir": "repro/glofas_coverage_scan_runs/scan_20260216T065850Z",
+  "combos_total": 16,
+  "refined_found": 7,
+  "refined_not_found": 9,
+  "run_dir": "repro/glofas_coverage_scan_runs/refine_20260216T072601Z"
+}

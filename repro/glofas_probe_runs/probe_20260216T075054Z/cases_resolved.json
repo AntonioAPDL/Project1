@@ -1,0 +1,142 @@
+[
+  {
+    "case_id": "hist_v31_lisflood_consolidated_1978_12_31",
+    "dataset": "cems-glofas-historical",
+    "request": {
+      "area": [
+        37.2443931,
+        -122.272464,
+        36.8443931,
+        -121.872464
+      ],
+      "data_format": "grib2",
+      "download_format": "zip",
+      "hday": [
+        "31"
+      ],
+      "hmonth": [
+        "12"
+      ],
+      "hydrological_model": [
+        "lisflood"
+      ],
+      "hyear": [
+        "1978"
+      ],
+      "product_type": [
+        "consolidated"
+      ],
+      "system_version": [
+        "version_3_1"
+      ],
+      "variable": [
+        "river_discharge_in_the_last_24_hours"
+      ]
+    }
+  },
+  {
+    "case_id": "hist_v31_lisflood_consolidated_1979_01_01",
+    "dataset": "cems-glofas-historical",
+    "request": {
+      "area": [
+        37.2443931,
+        -122.272464,
+        36.8443931,
+        -121.872464
+      ],
+      "data_format": "grib2",
+      "download_format": "zip",
+      "hday": [
+        "01"
+      ],
+      "hmonth": [
+        "01"
+      ],
+      "hydrological_model": [
+        "lisflood"
+      ],
+      "hyear": [
+        "1979"
+      ],
+      "product_type": [
+        "consolidated"
+      ],
+      "system_version": [
+        "version_3_1"
+      ],
+      "variable": [
+        "river_discharge_in_the_last_24_hours"
+      ]
+    }
+  },
+  {
+    "case_id": "hist_v40_lisflood_consolidated_1978_12_31",
+    "dataset": "cems-glofas-historical",
+    "request": {
+      "area": [
+        37.2443931,
+        -122.272464,
+        36.8443931,
+        -121.872464
+      ],
+      "data_format": "grib2",
+      "download_format": "zip",
+      "hday": [
+        "31"
+      ],
+      "hmonth": [
+        "12"
+      ],
+      "hydrological_model": [
+        "lisflood"
+      ],
+      "hyear": [
+        "1978"
+      ],
+      "product_type": [
+        "consolidated"
+      ],
+      "system_version": [
+        "version_4_0"
+      ],
+      "variable": [
+        "river_discharge_in_the_last_24_hours"
+      ]
+    }
+  },
+  {
+    "case_id": "hist_v40_lisflood_consolidated_1979_01_01",
+    "dataset": "cems-glofas-historical",
+    "request": {
+      "area": [
+        37.2443931,
+        -122.272464,
+        36.8443931,
+        -121.872464
+      ],
+      "data_format": "grib2",
+      "download_format": "zip",
+      "hday": [
+        "01"
+      ],
+      "hmonth": [
+        "01"
+      ],
+      "hydrological_model": [
+        "lisflood"
+      ],
+      "hyear": [
+        "1979"
+      ],
+      "product_type": [
+        "consolidated"
+      ],
+      "system_version": [
+        "version_4_0"
+      ],
+      "variable": [
+        "river_discharge_in_the_last_24_hours"
+      ]
+    }
+  }
+]

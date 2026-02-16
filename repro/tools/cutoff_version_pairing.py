@@ -3,7 +3,7 @@
 
 This is a metadata-only resolver based on:
 - `repro/NWS_NWM_GLOFAS_DATA_AUDIT_PLAN.md`
-- consolidated bounded-probe evidence (`GLOFAS-LOCAL-09`)
+- focused bounded-probe evidence (`GLOFAS-LOCAL-11`)
 
 The script does not call external services and does not download data.
 """
@@ -103,9 +103,16 @@ GLOFAS_HISTORICAL_SELECTORS: Set[str] = {"2.1", "3.1", "4.0"}
 GLOFAS_REFORECAST_SELECTORS: Set[str] = {"2.2", "3.1", "4.0"}
 GLOFAS_SHARED_ANCHOR_SELECTORS: Set[str] = GLOFAS_HISTORICAL_SELECTORS & GLOFAS_REFORECAST_SELECTORS
 
-# Current bounded evidence snapshot (GLOFAS-LOCAL-09 / GLOFAS-LOCAL-10)
-GLOFAS_EVIDENCE_TAG = "GLOFAS-LOCAL-09 (consolidated_20260216T195500Z)"
+# Current bounded evidence snapshot (focused 3.1/4.0 historical+reforecast follow-up)
+GLOFAS_EVIDENCE_TAG = "GLOFAS-LOCAL-11 (focused_20260216T075254Z)"
 GLOFAS_REFORECAST_FREEZE_NOTICE_DATE = date(2024, 11, 11)
+
+# Focused lisflood+consolidated historical window evidence by selector version.
+# These are bounded-probe windows, not full endpoint guarantee windows.
+GLOFAS_HISTORICAL_LISFLOOD_CONSOLIDATED_END_BY_VERSION: Dict[str, date] = {
+    "3.1": date(2024, 6, 30),
+    "4.0": date(2025, 11, 30),
+}
 
 
 def parse_cutoff_date(raw: str) -> date:
@@ -296,7 +303,7 @@ def resolve_glofas(cutoff: date) -> CenterResolution:
         recommended_bias_training_version = "4.0"
         recommended_reforecast_version = "4.0"
         notes.append(
-            "Historical and reforecast v4.0 point anchors are confirmed in bounded probes; forecast retrieval is via the operational alias."
+            "Historical v4.0 (lisflood+consolidated) and reforecast v4.0 (lisflood control/ensemble) anchors are confirmed in focused bounded probes; forecast retrieval is via the operational alias."
         )
         notes.append(
             "Operational+lisflood forecast boundaries show mixed success/timeout behavior near tested edges; treat windows as bounded evidence."
@@ -309,17 +316,22 @@ def resolve_glofas(cutoff: date) -> CenterResolution:
         )
 
     elif forecast_version == "3.1":
-        decision = "ambiguous"
-        recommended_strategy = "hold_for_metadata_review_or_use_v4_anchor_for_sensitivity_only"
-        recommended_bias_training_version = "4.0" if "4.0" in GLOFAS_SHARED_ANCHOR_SELECTORS else NOT_FOUND
-        recommended_reforecast_version = "4.0" if "4.0" in GLOFAS_SHARED_ANCHOR_SELECTORS else NOT_FOUND
-        notes.append("Forecast-side version_3_1 combinations repeatedly returned invalid_request in bounded probes.")
-        notes.append("Historical/reforecast selectors include version_3_1, but strict same-version transfer remains unresolved.")
-        strategy_notes.append("Do not auto-approve strict version_3_1 transfer for production correction.")
-        if recommended_bias_training_version != NOT_FOUND:
-            alternatives.append(
-                f"Exploratory fallback only: use shared anchor {recommended_bias_training_version} with explicit cross-version labeling."
-            )
+        decision = "conditional"
+        recommended_strategy = "chronology_mapped_v3_1_with_selector_mismatch_caveats"
+        recommended_bias_training_version = "3.1"
+        recommended_reforecast_version = "3.1"
+        notes.append(
+            "Historical and reforecast version_3_1 selectors have focused bounded windows for lisflood products."
+        )
+        notes.append(
+            "Forecast endpoint requests with explicit system_version=version_3_1 previously produced invalid_request; pairing relies on official chronology mapping to operational windows."
+        )
+        strategy_notes.append(
+            "Use 3.1 historical/reforecast for v3.1-era cutoffs, but keep an explicit selector-mismatch caveat in metadata."
+        )
+        alternatives.append(
+            "Sensitivity fallback: rerun with v4.0 anchor and compare correction stability under explicit cross-version labeling."
+        )
 
     elif forecast_version == "2.1":
         decision = "ambiguous"
@@ -395,9 +407,25 @@ def resolve_glofas(cutoff: date) -> CenterResolution:
             "Before relying on recent reforecast availability, check current EWDS collection messages/support guidance."
         )
 
-    notes.append(
-        "Per-system_version historical/reforecast coverage windows are not fully explicit in endpoint metadata and should be validated with lightweight boundary probes."
-    )
+    retro_end = GLOFAS_HISTORICAL_LISFLOOD_CONSOLIDATED_END_BY_VERSION.get(recommended_bias_training_version)
+    if retro_end is not None:
+        coverage_gap_days = (cutoff - retro_end).days
+        if coverage_gap_days > 0:
+            notes.append(
+                f"Focused lisflood+consolidated historical window for v{recommended_bias_training_version} ends at {retro_end.isoformat()} ({coverage_gap_days} days before cutoff)."
+            )
+        else:
+            notes.append(
+                f"Focused lisflood+consolidated historical window for v{recommended_bias_training_version} includes the cutoff."
+            )
+        notes.append(
+            "Coverage-end evidence is from bounded probing; treat as validated lower bound on availability, not exhaustive endpoint metadata."
+        )
+    else:
+        coverage_gap_days = None
+        notes.append(
+            "Per-system_version historical/reforecast coverage windows remain partially unresolved for this recommendation and should be validated with lightweight boundary probes."
+        )
 
     return CenterResolution(
         center="GloFAS",
@@ -406,8 +434,8 @@ def resolve_glofas(cutoff: date) -> CenterResolution:
         forecast_version=forecast_version,
         retrospective_version=retrospective_version,
         reforecast_version=reforecast_version,
-        retrospective_coverage_end_date=NOT_FOUND,
-        days_cutoff_after_retro_end=None,
+        retrospective_coverage_end_date=retro_end.isoformat() if retro_end is not None else NOT_FOUND,
+        days_cutoff_after_retro_end=max(coverage_gap_days, 0) if coverage_gap_days is not None else None,
         decision=decision,
         recommended_strategy=recommended_strategy,
         recommended_bias_training_version=recommended_bias_training_version,

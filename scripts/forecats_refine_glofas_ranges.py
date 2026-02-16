@@ -84,6 +84,10 @@ def parse_date(raw: str) -> date:
     return datetime.strptime(raw, "%Y-%m-%d").date()
 
 
+def parse_csv_list(raw: str) -> List[str]:
+    return [x.strip() for x in str(raw).split(",") if x.strip()]
+
+
 def area_bbox(lat: float, lon: float, buffer_deg: float) -> List[float]:
     return [lat + buffer_deg, lon - buffer_deg, lat - buffer_deg, lon + buffer_deg]
 
@@ -651,7 +655,7 @@ def verify_combo(
         and baseline.latest_success_date is not None
     )
 
-    if fast_found_path:
+    if fast_found_path and not args.aggressive_boundary_expansion:
         if args.run:
             if not probe(valid_days[earliest_idx], force_live=True).ok:
                 earliest_idx = anchor_idx
@@ -709,7 +713,12 @@ def verify_combo(
             if probe(valid_days[latest_idx], force_live=True).ok is False:
                 latest_idx = anchor_idx
 
-        offset_steps = [1, 2, 4, 8, 16, 32, 64, 128, 256]
+        # Full-range doubling expansion. This avoids truncating multi-year windows.
+        offset_steps: List[int] = []
+        step = 1
+        while step < n_days:
+            offset_steps.append(step)
+            step *= 2
 
         def expand_boundary(start_idx: int, direction: int) -> Tuple[int, Optional[int]]:
             best_idx = start_idx
@@ -883,6 +892,28 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--lat", type=float, default=DEFAULT_LAT)
     parser.add_argument("--lon", type=float, default=DEFAULT_LON)
     parser.add_argument("--buffer-deg", type=float, default=DEFAULT_BUFFER_DEG)
+    parser.add_argument("--priorities", default="", help="Optional CSV filter (e.g., P1,P2).")
+    parser.add_argument("--lanes", default="", help="Optional CSV filter (e.g., historical,reforecast).")
+    parser.add_argument(
+        "--system-versions",
+        default="",
+        help="Optional CSV filter (e.g., version_3_1,version_4_0).",
+    )
+    parser.add_argument(
+        "--hydrological-models",
+        default="",
+        help="Optional CSV filter (e.g., lisflood,htessel_lisflood).",
+    )
+    parser.add_argument(
+        "--product-types",
+        default="",
+        help="Optional CSV filter for product_type values.",
+    )
+    parser.add_argument(
+        "--aggressive-boundary-expansion",
+        action="store_true",
+        help="Use full-range doubling boundary expansion even for baseline-found combos.",
+    )
     parser.add_argument(
         "--combo-contains",
         default="",
@@ -907,6 +938,27 @@ def main(argv: Sequence[str]) -> int:
 
     combos, coverage, baseline_cache, combo_err_counts = load_baseline(args.base_run_dir)
     combo_ids = sorted(combos.keys())
+
+    priorities = set(parse_csv_list(args.priorities))
+    lanes = set(parse_csv_list(args.lanes))
+    system_versions = set(parse_csv_list(args.system_versions))
+    hydrological_models = set(parse_csv_list(args.hydrological_models))
+    product_types = set(parse_csv_list(args.product_types))
+
+    def _matches_filters(combo: Combo) -> bool:
+        if priorities and combo.priority not in priorities:
+            return False
+        if lanes and combo.lane not in lanes:
+            return False
+        if system_versions and combo.system_version not in system_versions:
+            return False
+        if hydrological_models and combo.hydrological_model not in hydrological_models:
+            return False
+        if product_types and combo.product_type not in product_types:
+            return False
+        return True
+
+    combo_ids = [c for c in combo_ids if _matches_filters(combos[c])]
     if args.combo_contains:
         combo_ids = [c for c in combo_ids if args.combo_contains in c]
     if not combo_ids:
