@@ -6,11 +6,14 @@ univar_theory_log_joint_sigma_gamma <- function(
   Ev,
   Es,
   p0,
-  constants
+  constants,
+  bounds = NULL
 ) {
   if (!is.finite(sigma) || sigma <= 0 || !is.finite(gamma)) return(-Inf)
 
-  bounds <- univar_theory_gamma_bounds(p0)
+  if (is.null(bounds)) {
+    bounds <- univar_theory_gamma_bounds(p0)
+  }
   if (gamma <= bounds["L"] || gamma >= bounds["U"]) return(-Inf)
 
   map <- tryCatch(univar_theory_exal_map(p0, gamma), error = function(e) NULL)
@@ -208,7 +211,8 @@ univar_theory_run_cavi <- function(inputs, constants) {
           Ev = Ev,
           Es = Es,
           p0 = p0,
-          constants = constants
+          constants = constants,
+          bounds = bounds
         )
         guard_eval(raw, context_label = "univar_gamma_opt", theta_s = sigma, theta_g = g)
       }
@@ -240,7 +244,8 @@ univar_theory_run_cavi <- function(inputs, constants) {
           Ev = Ev,
           Es = Es,
           p0 = p0,
-          constants = constants
+          constants = constants,
+          bounds = bounds
         )
         guard_eval(raw, context_label = "univar_sigma_opt", theta_s = sigma_candidate, theta_g = gamma)
       }
@@ -293,7 +298,8 @@ univar_theory_run_cavi <- function(inputs, constants) {
       Ev = Ev,
       Es = Es,
       p0 = p0,
-      constants = constants
+      constants = constants,
+      bounds = bounds
     )
   }
 

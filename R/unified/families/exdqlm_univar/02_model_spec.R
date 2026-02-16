@@ -1,19 +1,78 @@
-univar_theory_exal_g <- function(gamma) {
-  2 * stats::pnorm(-abs(gamma)) * exp(gamma^2 / 2)
+univar_theory_exal_log_g <- function(gamma) {
+  log(2) + stats::pnorm(-abs(gamma), log.p = TRUE) + (gamma^2) / 2
 }
 
-univar_theory_gamma_bounds <- function(p0, search_upper = 12) {
+univar_theory_exal_g <- function(gamma) {
+  exp(univar_theory_exal_log_g(gamma))
+}
+
+univar_theory_gamma_bounds <- function(
+  p0,
+  search_upper = 12,
+  search_max = 200,
+  growth = 1.5
+) {
   stopifnot(is.finite(p0), p0 > 0, p0 < 1)
-  gfun <- univar_theory_exal_g
+  if (!is.finite(search_upper) || search_upper <= 0) search_upper <- 12
+  if (!is.finite(search_max) || search_max <= search_upper) search_max <- max(200, search_upper * 2)
+  if (!is.finite(growth) || growth <= 1) growth <- 1.5
 
   find_root <- function(target) {
-    f <- function(x) gfun(x) - target
-    hi <- search_upper
-    while (f(hi) > 0 && hi < 200) hi <- hi * 1.5
-    if (f(hi) > 0) {
-      stop("failed to bracket gamma feasibility root", call. = FALSE)
+    if (!is.finite(target) || target <= 0 || target >= 1) {
+      stop(sprintf("invalid gamma-bound target: %s", as.character(target)), call. = FALSE)
     }
-    stats::uniroot(f, lower = 0, upper = hi)$root
+    log_target <- log(target)
+    h <- function(x) univar_theory_exal_log_g(x) - log_target
+
+    hi <- as.numeric(search_upper)
+    h_hi <- h(hi)
+    it <- 0L
+    while (is.finite(h_hi) && h_hi > 0 && hi < search_max) {
+      hi <- min(search_max, hi * growth)
+      h_hi <- h(hi)
+      it <- it + 1L
+      if (it > 512L) {
+        break
+      }
+    }
+
+    if (!is.finite(h_hi)) {
+      stop(
+        sprintf(
+          "failed to bracket gamma feasibility root: non-finite objective at hi=%s for target=%s",
+          format(hi, digits = 16),
+          format(target, digits = 16)
+        ),
+        call. = FALSE
+      )
+    }
+    if (h_hi > 0) {
+      stop(
+        sprintf(
+          "failed to bracket gamma feasibility root: target=%s search_max=%s",
+          format(target, digits = 16),
+          format(search_max, digits = 16)
+        ),
+        call. = FALSE
+      )
+    }
+
+    root <- tryCatch(
+      stats::uniroot(h, lower = 0, upper = hi)$root,
+      error = function(e) e
+    )
+    if (inherits(root, "error") || !is.finite(root)) {
+      msg <- if (inherits(root, "error")) conditionMessage(root) else "non-finite root"
+      stop(
+        sprintf(
+          "failed to solve gamma feasibility root for target=%s: %s",
+          format(target, digits = 16),
+          msg
+        ),
+        call. = FALSE
+      )
+    }
+    as.numeric(root)
   }
 
   c(
@@ -23,10 +82,19 @@ univar_theory_gamma_bounds <- function(p0, search_upper = 12) {
 }
 
 univar_theory_exal_map <- function(p0, gamma, eps = 1e-10) {
-  g <- univar_theory_exal_g(gamma)
+  log_g <- univar_theory_exal_log_g(gamma)
+  if (!is.finite(log_g)) {
+    stop("invalid log g(p0, gamma)", call. = FALSE)
+  }
+  g <- exp(log_g)
   ind_neg <- as.numeric(gamma < 0)
   ind_pos <- as.numeric(gamma > 0)
-  p <- ind_neg + (p0 - ind_neg) / g
+  signed_num <- p0 - ind_neg
+  ratio_abs <- exp(log(abs(signed_num)) - log_g)
+  if (!is.finite(ratio_abs)) {
+    stop("invalid p(p0, gamma) ratio", call. = FALSE)
+  }
+  p <- ind_neg + sign(signed_num) * ratio_abs
 
   if (!is.finite(p) || p <= eps || p >= 1 - eps) {
     stop("invalid p(p0, gamma) outside (0,1)", call. = FALSE)
