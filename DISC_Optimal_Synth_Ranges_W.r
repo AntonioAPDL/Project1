@@ -107,6 +107,14 @@ if (!is.finite(DISC_GAMSIG_FREEZE_ITERS) || DISC_GAMSIG_FREEZE_ITERS < 0L) {
   DISC_GAMSIG_FREEZE_ITERS <- 20L
 }
 DISC_GAMSIG_FREEZE_ITERS <- as.integer(DISC_GAMSIG_FREEZE_ITERS)
+DISC_GAMSIG_MIN_UPDATE_ITERS <- disc_env_nonneg_int(
+  "DISC_GAMSIG_MIN_UPDATE_ITERS",
+  default = 10L
+)
+DISC_GAMSIG_CONVERGENCE_TOL <- disc_env_pos_num(
+  "DISC_GAMSIG_CONVERGENCE_TOL",
+  default = 1e-4
+)
 DISC_GAMSIG_FREEZE_TARGET <- disc_env_choice(
   "DISC_GAMSIG_FREEZE_TARGET",
   choices = c("gamma_sigma", "states"),
@@ -1663,10 +1671,11 @@ seq.elbo = ELBO
 iter = 0
 FLAG = TRUE
 tol1 <- 1e-3
-tol2 <- 1e-3
+tol2 <- DISC_GAMSIG_CONVERGENCE_TOL
 conv.check <- 0
 max_iter <- 1000
 fast <- 0
+gamsig_update_iters <- 0L
   print(c(n.samp, 111))
   flush.console()
 if(USE_PREV){
@@ -1771,10 +1780,12 @@ if (!is.finite(gamsig_dynamic_freeze_until_iter) || gamsig_dynamic_freeze_until_
 }
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   cat(sprintf(
-    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d guard_mode=%s guard_refreeze_iters=%d\n",
+    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d convergence_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
     as.character(p0),
     DISC_GAMSIG_FREEZE_TARGET,
     as.integer(DISC_GAMSIG_FREEZE_ITERS),
+    as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
+    as.numeric(DISC_GAMSIG_CONVERGENCE_TOL),
     DISC_GAMSIG_OBJECTIVE_GUARD_MODE,
     as.integer(DISC_GAMSIG_GUARD_REFREEZE_ITERS)
   ))
@@ -2125,7 +2136,7 @@ while (FLAG & iter < max_iter) {
       }
   }
     ## UPDATE sigma and gamma
-      for (j in 2:(J+1)) {  
+  for (j in 2:(J+1)) {  
           if (gamsig_frozen_now) {
             next
           }
@@ -2190,6 +2201,10 @@ while (FLAG & iter < max_iter) {
           new.gamsig.out$E.log.sig[j,] <- gamsig.dummy$E.log.sig
           new.gamsig.out$E.prior.sig.gam[j,] <- gamsig.dummy$E.prior.sig.gam
           new.gamsig.out$entrop[j,] <- gamsig.dummy$entrop
+  }
+
+  if (!gamsig_frozen_now) {
+    gamsig_update_iters <- as.integer(gamsig_update_iters + 1L)
   }
 
   old.gam = seq.gamma[,dim(seq.gamma)[2]]
@@ -2268,11 +2283,31 @@ while (FLAG & iter < max_iter) {
   seq.eigen = cbind(seq.eigen, min(abs(eigen(new.covs_list[[2]][,,ranges_per[1]])$values))) 
 
   print(c(iter, elbo, crit_ELBO))
+  if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+    cat(sprintf(
+      "[gamsig_progress] p0=%s iter=%d gamsig_update_iters=%d min_update_iters=%d frozen=%s\n",
+      as.character(p0),
+      as.integer(iter),
+      as.integer(gamsig_update_iters),
+      as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
+      ifelse(isTRUE(gamsig_frozen_now), "true", "false")
+    ))
+  }
   flush.console()
 
   if(theta_update){
-    if ((crit_ELBO+conv.check) < tol2) {
+    if ((crit_ELBO+conv.check) < tol2 &&
+        gamsig_update_iters >= DISC_GAMSIG_MIN_UPDATE_ITERS) {
       FLAG = FALSE
+    } else if ((crit_ELBO+conv.check) < tol2 &&
+               isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+      cat(sprintf(
+        "[gamsig_hold] p0=%s iter=%d reason=min_update_iters_not_met updates=%d required=%d\n",
+        as.character(p0),
+        as.integer(iter),
+        as.integer(gamsig_update_iters),
+        as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS)
+      ))
     }
   }
 
@@ -2280,6 +2315,17 @@ while (FLAG & iter < max_iter) {
 
 }
 ########################
+
+if (gamsig_update_iters < DISC_GAMSIG_MIN_UPDATE_ITERS) {
+  stop(
+    sprintf(
+      "stopped before required gamma/sigma updates: got=%d required=%d",
+      as.integer(gamsig_update_iters),
+      as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS)
+    ),
+    call. = FALSE
+  )
+}
 
 ########################
 run.time = tictoc::toc(quiet = TRUE)

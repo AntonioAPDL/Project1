@@ -277,6 +277,12 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         DISC_GAMSIG_FREEZE_ITERS = as.character(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
         )),
+        DISC_GAMSIG_MIN_UPDATE_ITERS = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_update_iters"), default = 10L
+        )),
+        DISC_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence_tol"), default = 1e-4
+        )),
         DISC_GAMSIG_FREEZE_TARGET = as.character(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
         )),
@@ -435,6 +441,12 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         UNIV_GAMSIG_FREEZE_ITERS = as.character(unified_get(
           cfg, c("fit", "exdqlm_univar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
         )),
+        UNIV_GAMSIG_MIN_UPDATE_ITERS = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_update_iters"), default = 10L
+        )),
+        UNIV_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence_tol"), default = 1e-5
+        )),
         UNIV_GAMSIG_FREEZE_TARGET = as.character(unified_get(
           cfg, c("fit", "exdqlm_univar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
         )),
@@ -477,16 +489,17 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       } else {
         c("--vanilla", univar_script, as.character(q))
       }
-      cmd_out <- system2(
+      cmd_status <- suppressWarnings(system2(
         "Rscript",
         script_args,
-        stdout = TRUE,
-        stderr = TRUE,
+        stdout = log_path,
+        stderr = log_path,
         env = env_kv
-      )
-      writeLines(cmd_out, log_path, useBytes = TRUE)
-      status <- attr(cmd_out, "status")
-      if (!is.null(status) && status != 0) {
+      ))
+      if (!is.finite(cmd_status)) {
+        cmd_status <- 0L
+      }
+      if (!is.null(cmd_status) && as.integer(cmd_status) != 0L) {
         stop(
           sprintf(
             "univariate fit failed for quantile %s (implementation_mode=%s); see %s",

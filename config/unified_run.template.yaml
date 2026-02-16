@@ -86,6 +86,8 @@ fit:
   exdqlm_multivar:
     gamma_sigma:
       warmup_freeze_iters: 20
+      min_update_iters: 10          # require at least this many gamma/sigma update iterations before convergence stop
+      convergence_tol: 1.0e-4       # stricter convergence tolerance for ELBO+parameter-change stopping gate
       freeze_target: "gamma_sigma"   # gamma_sigma | states
       guard_refreeze_iters: 10       # adaptive guard: additional freeze iterations after a non-finite guard event
       init:
@@ -102,6 +104,8 @@ fit:
   exdqlm_univar:
     gamma_sigma:
       warmup_freeze_iters: 20
+      min_update_iters: 10          # require at least this many gamma/sigma update iterations before convergence stop
+      convergence_tol: 1.0e-5       # stricter convergence tolerance for ELBO stopping gate in univar theory mode
       freeze_target: "gamma_sigma"   # gamma_sigma | states
       guard_refreeze_iters: 10       # adaptive guard: additional freeze iterations after a non-finite guard event
       init:

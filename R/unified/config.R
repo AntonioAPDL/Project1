@@ -101,6 +101,8 @@ unified_config_defaults <- function() {
       exdqlm_multivar = list(
         gamma_sigma = list(
           warmup_freeze_iters = 20L,
+          min_update_iters = 10L,
+          convergence_tol = 1e-4,
           freeze_target = "gamma_sigma",
           guard_refreeze_iters = 10L,
           init = list(
@@ -121,6 +123,8 @@ unified_config_defaults <- function() {
       exdqlm_univar = list(
         gamma_sigma = list(
           warmup_freeze_iters = 20L,
+          min_update_iters = 10L,
+          convergence_tol = 1e-5,
           freeze_target = "gamma_sigma",
           guard_refreeze_iters = 10L,
           init = list(
@@ -525,6 +529,20 @@ unified_validate_config <- function(cfg) {
       add_err(sprintf("%s.warmup_freeze_iters must be an integer >= 0", key_prefix))
     }
 
+    min_update_iters <- suppressWarnings(as.integer(
+      cfg_get("min_update_iters", defaults$min_update_iters)
+    ))
+    if (!is.finite(min_update_iters) || min_update_iters < 0L) {
+      add_err(sprintf("%s.min_update_iters must be an integer >= 0", key_prefix))
+    }
+
+    convergence_tol <- suppressWarnings(as.numeric(
+      cfg_get("convergence_tol", defaults$convergence_tol)
+    ))
+    if (!is.finite(convergence_tol) || convergence_tol <= 0) {
+      add_err(sprintf("%s.convergence_tol must be numeric and > 0", key_prefix))
+    }
+
     freeze_target <- cfg_get("freeze_target", defaults$freeze_target)
     if (!(freeze_target %in% c("gamma_sigma", "states"))) {
       add_err(sprintf("%s.freeze_target must be one of: gamma_sigma, states", key_prefix))
@@ -593,6 +611,8 @@ unified_validate_config <- function(cfg) {
 
   exdqlm_gamma_sigma_defaults <- list(
     warmup_freeze_iters = 20L,
+    min_update_iters = 10L,
+    convergence_tol = 1e-4,
     freeze_target = "gamma_sigma",
     guard_refreeze_iters = 10L,
     init_mode = "robust",
@@ -605,8 +625,11 @@ unified_validate_config <- function(cfg) {
     guard_mode = "adaptive_freeze",
     guard_penalty = 1e12
   )
-  validate_exdqlm_gamma_sigma_block("exdqlm_multivar", exdqlm_gamma_sigma_defaults)
-  validate_exdqlm_gamma_sigma_block("exdqlm_univar", exdqlm_gamma_sigma_defaults)
+  exdqlm_multivar_gamma_sigma_defaults <- exdqlm_gamma_sigma_defaults
+  exdqlm_univar_gamma_sigma_defaults <- exdqlm_gamma_sigma_defaults
+  exdqlm_univar_gamma_sigma_defaults$convergence_tol <- 1e-5
+  validate_exdqlm_gamma_sigma_block("exdqlm_multivar", exdqlm_multivar_gamma_sigma_defaults)
+  validate_exdqlm_gamma_sigma_block("exdqlm_univar", exdqlm_univar_gamma_sigma_defaults)
 
   validation_profile <- unified_get(cfg, c("validation", "profile"), "production")
   if (!(validation_profile %in% c("production", "production_proof", "smoke"))) {

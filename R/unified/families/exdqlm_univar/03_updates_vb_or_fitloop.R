@@ -91,10 +91,32 @@ univar_theory_run_cavi <- function(inputs, constants) {
   C0 <- diag(c(5, rep(1, d_act - 1)), d_act)
   q_diag <- c(0.05, rep(0.01, d_act - 1))
 
+  min_update_iters <- suppressWarnings(as.integer(policy$min_update_iters))
+  if (!is.finite(min_update_iters) || min_update_iters < 0L) {
+    min_update_iters <- 10L
+  }
+  convergence_tol <- suppressWarnings(as.numeric(policy$convergence_tol))
+  if (!is.finite(convergence_tol) || convergence_tol <= 0) {
+    convergence_tol <- 1e-5
+  }
+  max_iter <- suppressWarnings(as.integer(max(
+    constants$n_iter,
+    as.integer(policy$warmup_freeze_iters) + min_update_iters + 5L
+  )))
+  if (!is.finite(max_iter) || max_iter < 1L) {
+    max_iter <- 50L
+  }
+
   Ev <- rep(1, Tn)
   E1v <- rep(1, Tn)
   Es <- rep(sqrt(2 / pi), Tn)
-  elbo <- rep(NA_real_, constants$n_iter)
+  elbo <- rep(NA_real_, max_iter)
+  gamsig_update_iters <- 0L
+  iterations_completed <- 0L
+  converged <- FALSE
+  convergence_reason <- "max_iter_reached"
+  prev_elbo <- NA_real_
+  crit_elbo <- Inf
 
   gamsig_dynamic_freeze_until_iter <- as.integer(policy$warmup_freeze_iters)
   if (!is.finite(gamsig_dynamic_freeze_until_iter) || gamsig_dynamic_freeze_until_iter < 0L) {
@@ -103,10 +125,12 @@ univar_theory_run_cavi <- function(inputs, constants) {
   if (isTRUE(policy$objective_guard$log_failures)) {
     cat(
       sprintf(
-        "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d guard_mode=%s guard_refreeze_iters=%d\n",
+        "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d convergence_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
         as.character(p0),
         policy$freeze_target,
         as.integer(policy$warmup_freeze_iters),
+        as.integer(min_update_iters),
+        as.numeric(convergence_tol),
         policy$objective_guard$mode,
         as.integer(policy$guard_refreeze_iters)
       )
@@ -115,8 +139,9 @@ univar_theory_run_cavi <- function(inputs, constants) {
 
   smoother <- NULL
   eta <- rep(0, Tn)
-  for (iter in seq_len(constants$n_iter)) {
+  for (iter in seq_len(max_iter)) {
     iter_int <- as.integer(iter)
+    iterations_completed <- iter_int
     state_frozen_now <- identical(policy$freeze_target, "states") &&
       (gamsig_dynamic_freeze_until_iter > 0L) &&
       (iter_int <= gamsig_dynamic_freeze_until_iter) &&
@@ -201,7 +226,9 @@ univar_theory_run_cavi <- function(inputs, constants) {
       Inf
     }
 
+    gamsig_updated_now <- FALSE
     if (!gamsig_frozen_now) {
+      gamsig_updated_now <- TRUE
       gamma_obj <- function(g) {
         raw <- -univar_theory_log_joint_sigma_gamma(
           sigma = sigma,
@@ -267,6 +294,9 @@ univar_theory_run_cavi <- function(inputs, constants) {
         sigma <- max(exp(sigma_opt$minimum), 1e-8)
       }
     }
+    if (isTRUE(gamsig_updated_now) && !isTRUE(guard_triggered)) {
+      gamsig_update_iters <- as.integer(gamsig_update_iters + 1L)
+    }
 
     if (isTRUE(guard_triggered) &&
         identical(policy$objective_guard$mode, "adaptive_freeze") &&
@@ -301,6 +331,56 @@ univar_theory_run_cavi <- function(inputs, constants) {
       constants = constants,
       bounds = bounds
     )
+    if (is.finite(prev_elbo) && is.finite(elbo[iter])) {
+      crit_elbo <- abs(elbo[iter] - prev_elbo)
+    } else {
+      crit_elbo <- Inf
+    }
+    prev_elbo <- elbo[iter]
+
+    if (isTRUE(policy$objective_guard$log_failures)) {
+      cat(
+        sprintf(
+          "[gamsig_progress] p0=%s iter=%d elbo=%0.10f crit_elbo=%s gamsig_update_iters=%d min_update_iters=%d frozen=%s\n",
+          as.character(p0),
+          iter_int,
+          as.numeric(elbo[iter]),
+          ifelse(is.finite(crit_elbo), sprintf("%0.10f", as.numeric(crit_elbo)), "Inf"),
+          as.integer(gamsig_update_iters),
+          as.integer(min_update_iters),
+          ifelse(isTRUE(gamsig_frozen_now), "true", "false")
+        )
+      )
+    }
+
+    if (iter_int > 1L &&
+        is.finite(elbo[iter]) &&
+        is.finite(crit_elbo) &&
+        crit_elbo < convergence_tol &&
+        gamsig_update_iters >= min_update_iters) {
+      converged <- TRUE
+      convergence_reason <- "elbo_tol_and_min_updates"
+      break
+    }
+  }
+
+  if (gamsig_update_iters < min_update_iters) {
+    stop(
+      sprintf(
+        "univar theory stopped before required gamma/sigma updates: got=%d required=%d",
+        as.integer(gamsig_update_iters),
+        as.integer(min_update_iters)
+      ),
+      call. = FALSE
+    )
+  }
+  if (!converged) {
+    convergence_reason <- "max_iter_reached"
+  }
+  if (iterations_completed > 0L) {
+    elbo <- elbo[seq_len(iterations_completed)]
+  } else {
+    elbo <- numeric(0)
   }
 
   if (is.null(smoother)) {
@@ -318,6 +398,10 @@ univar_theory_run_cavi <- function(inputs, constants) {
     E1v = E1v,
     Es = Es,
     elbo = elbo,
+    iterations_completed = as.integer(iterations_completed),
+    gamsig_update_iters = as.integer(gamsig_update_iters),
+    converged = isTRUE(converged),
+    convergence_reason = as.character(convergence_reason),
     p0 = p0,
     bounds = bounds
   )

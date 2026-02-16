@@ -1,8 +1,10 @@
 univar_theory_default_gamma_sigma_policy <- function() {
   list(
     warmup_freeze_iters = 20L,
+    min_update_iters = 10L,
     freeze_target = "gamma_sigma",
     guard_refreeze_iters = 10L,
+    convergence_tol = 1e-5,
     init = list(
       mode = "robust",
       gamma = 0.0,
@@ -26,8 +28,10 @@ univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
   }
 
   if (!is.null(policy$warmup_freeze_iters)) out$warmup_freeze_iters <- suppressWarnings(as.integer(policy$warmup_freeze_iters))
+  if (!is.null(policy$min_update_iters)) out$min_update_iters <- suppressWarnings(as.integer(policy$min_update_iters))
   if (!is.null(policy$freeze_target)) out$freeze_target <- as.character(policy$freeze_target)
   if (!is.null(policy$guard_refreeze_iters)) out$guard_refreeze_iters <- suppressWarnings(as.integer(policy$guard_refreeze_iters))
+  if (!is.null(policy$convergence_tol)) out$convergence_tol <- suppressWarnings(as.numeric(policy$convergence_tol))
 
   init <- policy$init
   if (is.list(init)) {
@@ -51,6 +55,11 @@ univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
   }
   out$warmup_freeze_iters <- as.integer(out$warmup_freeze_iters)
 
+  if (!is.finite(out$min_update_iters) || out$min_update_iters < 0L) {
+    out$min_update_iters <- 10L
+  }
+  out$min_update_iters <- as.integer(out$min_update_iters)
+
   if (!(out$freeze_target %in% c("gamma_sigma", "states"))) {
     out$freeze_target <- "gamma_sigma"
   }
@@ -59,6 +68,10 @@ univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
     out$guard_refreeze_iters <- 10L
   }
   out$guard_refreeze_iters <- as.integer(out$guard_refreeze_iters)
+
+  if (!is.finite(out$convergence_tol) || out$convergence_tol <= 0) {
+    out$convergence_tol <- 1e-5
+  }
 
   if (!(out$init$mode %in% c("legacy", "robust"))) {
     out$init$mode <- "robust"

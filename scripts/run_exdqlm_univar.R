@@ -80,6 +80,8 @@ if (!nzchar(summary_log)) {
 
 gamma_sigma_policy <- list(
   warmup_freeze_iters = env_nonneg_int("UNIV_GAMSIG_FREEZE_ITERS", 20L),
+  min_update_iters = env_nonneg_int("UNIV_GAMSIG_MIN_UPDATE_ITERS", 10L),
+  convergence_tol = env_pos_num("UNIV_GAMSIG_CONVERGENCE_TOL", 1e-5),
   freeze_target = env_choice("UNIV_GAMSIG_FREEZE_TARGET", choices = c("gamma_sigma", "states"), default = "gamma_sigma"),
   guard_refreeze_iters = env_nonneg_int("UNIV_GAMSIG_GUARD_REFREEZE_ITERS", 10L),
   init = list(
