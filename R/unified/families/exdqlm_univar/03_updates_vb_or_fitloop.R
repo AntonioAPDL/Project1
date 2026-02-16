@@ -128,13 +128,18 @@ univar_theory_run_cavi <- function(inputs, constants) {
   if (!is.finite(gamma_exp_tol) || gamma_exp_tol <= 0) {
     gamma_exp_tol <- 1e-6
   }
+  policy_max_iter <- suppressWarnings(as.integer(policy$max_iter))
+  if (!is.finite(policy_max_iter) || policy_max_iter < 1L) {
+    policy_max_iter <- 800L
+  }
   max_iter <- suppressWarnings(as.integer(max(
     constants$n_iter,
     as.integer(policy$warmup_freeze_iters) + min_update_iters + 5L,
-    min_total_iters + 5L
+    min_total_iters + 5L,
+    policy_max_iter
   )))
   if (!is.finite(max_iter) || max_iter < 1L) {
-    max_iter <- 50L
+    max_iter <- 800L
   }
 
   Ev <- rep(1, Tn)
@@ -161,12 +166,13 @@ univar_theory_run_cavi <- function(inputs, constants) {
   if (isTRUE(policy$objective_guard$log_failures)) {
     cat(
       sprintf(
-        "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
+        "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
         as.character(p0),
         policy$freeze_target,
         as.integer(policy$warmup_freeze_iters),
         as.integer(min_update_iters),
         as.integer(min_total_iters),
+        as.integer(max_iter),
         as.numeric(elbo_tol),
         as.numeric(state_norm_sq_tol),
         as.numeric(sigma_exp_tol),

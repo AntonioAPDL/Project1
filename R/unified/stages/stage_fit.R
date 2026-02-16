@@ -283,6 +283,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         DISC_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_total_iters"), default = 50L
         )),
+        DISC_GAMSIG_MAX_ITER = as.character(unified_get(
+          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "max_iter"), default = 800L
+        )),
         DISC_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
           cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence_tol"), default = 1e-6
         )),
@@ -468,6 +471,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         )),
         UNIV_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
           cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_total_iters"), default = 50L
+        )),
+        UNIV_GAMSIG_MAX_ITER = as.character(unified_get(
+          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "max_iter"), default = 800L
         )),
         UNIV_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
           cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence_tol"), default = 1e-6

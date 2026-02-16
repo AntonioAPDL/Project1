@@ -22,6 +22,7 @@ class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
                     "cat(sprintf('freeze_iters=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$warmup_freeze_iters))",
                     "cat(sprintf('min_update_iters=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$min_update_iters))",
                     "cat(sprintf('min_total_iters=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$min_total_iters))",
+                    "cat(sprintf('max_iter=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$max_iter))",
                     "cat(sprintf('convergence_tol=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$convergence_tol))",
                     "cat(sprintf('elbo_tol=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$convergence$elbo_tol))",
                     "cat(sprintf('state_norm_sq_tol=%s\\n', cfg$fit$exdqlm_multivar$gamma_sigma$convergence$state_norm_sq_tol))",
@@ -41,6 +42,7 @@ class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
                     "cat(sprintf('univar_freeze_iters=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$warmup_freeze_iters))",
                     "cat(sprintf('univar_min_update_iters=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$min_update_iters))",
                     "cat(sprintf('univar_min_total_iters=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$min_total_iters))",
+                    "cat(sprintf('univar_max_iter=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$max_iter))",
                     "cat(sprintf('univar_convergence_tol=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$convergence_tol))",
                     "cat(sprintf('univar_elbo_tol=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$convergence$elbo_tol))",
                     "cat(sprintf('univar_state_norm_sq_tol=%s\\n', cfg$fit$exdqlm_univar$gamma_sigma$convergence$state_norm_sq_tol))",
@@ -86,6 +88,7 @@ class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
         self.assertEqual(out["freeze_iters"], "20")
         self.assertEqual(out["min_update_iters"], "50")
         self.assertEqual(out["min_total_iters"], "50")
+        self.assertEqual(out["max_iter"], "800")
         self.assertEqual(out["convergence_tol"], "1e-06")
         self.assertEqual(out["elbo_tol"], "1e-06")
         self.assertEqual(out["state_norm_sq_tol"], "1e-06")
@@ -101,6 +104,7 @@ class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
         self.assertEqual(out["univar_freeze_iters"], "20")
         self.assertEqual(out["univar_min_update_iters"], "50")
         self.assertEqual(out["univar_min_total_iters"], "50")
+        self.assertEqual(out["univar_max_iter"], "800")
         self.assertEqual(out["univar_convergence_tol"], "1e-06")
         self.assertEqual(out["univar_elbo_tol"], "1e-06")
         self.assertEqual(out["univar_state_norm_sq_tol"], "1e-06")
@@ -128,6 +132,7 @@ class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
                 gamma_sigma:
                   warmup_freeze_iters: 25
                   min_update_iters: 12
+                  max_iter: 900
                   convergence_tol: 0.0002
                   freeze_target: "states"
                   guard_refreeze_iters: 11
@@ -147,6 +152,7 @@ class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
         out = self._resolve_config(cfg)
         self.assertEqual(out["freeze_iters"], "25")
         self.assertEqual(out["min_update_iters"], "12")
+        self.assertEqual(out["max_iter"], "900")
         self.assertEqual(out["convergence_tol"], "2e-04")
         self.assertEqual(out["freeze_target"], "states")
         self.assertEqual(out["guard_refreeze_iters"], "11")
@@ -243,6 +249,49 @@ class ConfigExtremeQuantileStabilizationTests(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn(
             "fit.exdqlm_univar.gamma_sigma.min_update_iters must be an integer >= 0",
+            proc.stderr,
+        )
+
+    def test_nonpositive_max_iter_fails_validation(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="ut_cfg_extreme_q_bad_max_iter_") as td:
+            cfg_path = Path(td) / "cfg_bad_max_iter.yaml"
+            cfg_path.write_text(
+                textwrap.dedent(
+                    """
+                    config_version: 1
+                    stages:
+                      forecats: false
+                      data_prep_shared: false
+                      fit: false
+                      post: false
+                      validate: false
+                      report: false
+                    fit:
+                      exdqlm_multivar:
+                        gamma_sigma:
+                          max_iter: 0
+                    """
+                ),
+                encoding="utf-8",
+            )
+            script = "\n".join(
+                [
+                    f'source("{REPO_ROOT / "R" / "unified" / "config.R"}")',
+                    f"unified_load_config('{cfg_path.as_posix()}', repo_root = '{REPO_ROOT.as_posix()}')",
+                    "cat('UNEXPECTED_PASS\\n')",
+                ]
+            )
+            proc = subprocess.run(
+                ["Rscript", "--vanilla", "-e", script],
+                cwd=REPO_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn(
+            "fit.exdqlm_multivar.gamma_sigma.max_iter must be an integer >= 1",
             proc.stderr,
         )
 

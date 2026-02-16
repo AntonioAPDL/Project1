@@ -3,6 +3,7 @@ univar_theory_default_gamma_sigma_policy <- function() {
     warmup_freeze_iters = 20L,
     min_update_iters = 50L,
     min_total_iters = 50L,
+    max_iter = 800L,
     freeze_target = "gamma_sigma",
     guard_refreeze_iters = 10L,
     convergence_tol = 1e-6,
@@ -37,6 +38,7 @@ univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
   if (!is.null(policy$warmup_freeze_iters)) out$warmup_freeze_iters <- suppressWarnings(as.integer(policy$warmup_freeze_iters))
   if (!is.null(policy$min_update_iters)) out$min_update_iters <- suppressWarnings(as.integer(policy$min_update_iters))
   if (!is.null(policy$min_total_iters)) out$min_total_iters <- suppressWarnings(as.integer(policy$min_total_iters))
+  if (!is.null(policy$max_iter)) out$max_iter <- suppressWarnings(as.integer(policy$max_iter))
   if (!is.null(policy$freeze_target)) out$freeze_target <- as.character(policy$freeze_target)
   if (!is.null(policy$guard_refreeze_iters)) out$guard_refreeze_iters <- suppressWarnings(as.integer(policy$guard_refreeze_iters))
   if (!is.null(policy$convergence_tol)) out$convergence_tol <- suppressWarnings(as.numeric(policy$convergence_tol))
@@ -78,6 +80,11 @@ univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
     out$min_total_iters <- 50L
   }
   out$min_total_iters <- as.integer(out$min_total_iters)
+
+  if (!is.finite(out$max_iter) || out$max_iter < 1L) {
+    out$max_iter <- 800L
+  }
+  out$max_iter <- as.integer(out$max_iter)
 
   if (!(out$freeze_target %in% c("gamma_sigma", "states"))) {
     out$freeze_target <- "gamma_sigma"

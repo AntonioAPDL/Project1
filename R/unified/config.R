@@ -103,6 +103,7 @@ unified_config_defaults <- function() {
           warmup_freeze_iters = 20L,
           min_update_iters = 50L,
           min_total_iters = 50L,
+          max_iter = 800L,
           convergence_tol = 1e-6,
           convergence = list(
             elbo_tol = 1e-6,
@@ -132,6 +133,7 @@ unified_config_defaults <- function() {
           warmup_freeze_iters = 20L,
           min_update_iters = 50L,
           min_total_iters = 50L,
+          max_iter = 800L,
           convergence_tol = 1e-6,
           convergence = list(
             elbo_tol = 1e-6,
@@ -557,6 +559,13 @@ unified_validate_config <- function(cfg) {
       add_err(sprintf("%s.min_total_iters must be an integer >= 1", key_prefix))
     }
 
+    max_iter <- suppressWarnings(as.integer(
+      cfg_get("max_iter", defaults$max_iter)
+    ))
+    if (!is.finite(max_iter) || max_iter < 1L) {
+      add_err(sprintf("%s.max_iter must be an integer >= 1", key_prefix))
+    }
+
     convergence_tol <- suppressWarnings(as.numeric(
       cfg_get("convergence_tol", defaults$convergence_tol)
     ))
@@ -662,6 +671,7 @@ unified_validate_config <- function(cfg) {
     warmup_freeze_iters = 20L,
     min_update_iters = 50L,
     min_total_iters = 50L,
+    max_iter = 800L,
     convergence_tol = 1e-6,
     convergence = list(
       elbo_tol = 1e-6,

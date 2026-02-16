@@ -118,6 +118,13 @@ DISC_GAMSIG_MIN_TOTAL_ITERS <- disc_env_nonneg_int(
 if (!is.finite(DISC_GAMSIG_MIN_TOTAL_ITERS) || DISC_GAMSIG_MIN_TOTAL_ITERS < 1L) {
   DISC_GAMSIG_MIN_TOTAL_ITERS <- 50L
 }
+DISC_GAMSIG_MAX_ITER <- disc_env_nonneg_int(
+  "DISC_GAMSIG_MAX_ITER",
+  default = 800L
+)
+if (!is.finite(DISC_GAMSIG_MAX_ITER) || DISC_GAMSIG_MAX_ITER < 1L) {
+  DISC_GAMSIG_MAX_ITER <- 800L
+}
 DISC_GAMSIG_CONVERGENCE_TOL <- disc_env_pos_num(
   "DISC_GAMSIG_CONVERGENCE_TOL",
   default = 1e-6
@@ -1817,7 +1824,17 @@ iter = 0
 FLAG = TRUE
 tol1 <- 1e-3
 conv.check <- 0
-max_iter <- 1000
+required_iter_floor <- suppressWarnings(as.integer(max(
+  DISC_GAMSIG_MIN_TOTAL_ITERS,
+  DISC_GAMSIG_FREEZE_ITERS + DISC_GAMSIG_MIN_UPDATE_ITERS
+)))
+if (!is.finite(required_iter_floor) || required_iter_floor < 1L) {
+  required_iter_floor <- 1L
+}
+max_iter <- suppressWarnings(as.integer(max(DISC_GAMSIG_MAX_ITER, required_iter_floor)))
+if (!is.finite(max_iter) || max_iter < 1L) {
+  max_iter <- 800L
+}
 fast <- 0
 gamsig_update_iters <- 0L
 prev_state_norm_sq <- NA_real_
@@ -1949,12 +1966,13 @@ if (!is.finite(gamsig_dynamic_freeze_until_iter) || gamsig_dynamic_freeze_until_
 }
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   cat(sprintf(
-    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
+    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
     as.character(p0),
     DISC_GAMSIG_FREEZE_TARGET,
     as.integer(DISC_GAMSIG_FREEZE_ITERS),
     as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
     as.integer(DISC_GAMSIG_MIN_TOTAL_ITERS),
+    as.integer(max_iter),
     as.numeric(DISC_GAMSIG_ELBO_TOL),
     as.numeric(DISC_GAMSIG_STATE_NORM_TOL),
     as.numeric(DISC_GAMSIG_SIGMA_EXP_TOL),
