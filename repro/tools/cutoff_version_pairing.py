@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Resolve forecast/retrospective version pairing from a cutoff date.
 
-This is a metadata-only resolver built from the curated audit document:
-`repro/NWS_NWM_GLOFAS_DATA_AUDIT_PLAN.md`.
+This is a metadata-only resolver based on:
+- `repro/NWS_NWM_GLOFAS_DATA_AUDIT_PLAN.md`
+- consolidated bounded-probe evidence (`GLOFAS-LOCAL-09`)
 
-It does not download any data and does not call external services.
+The script does not call external services and does not download data.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from typing import Dict, List, Optional, Sequence, Set
 
 
 NOT_FOUND = "not found in reviewed sources"
+NA = "n/a"
 
 
 @dataclass(frozen=True)
@@ -39,9 +41,12 @@ class RetrospectiveMeta:
 class CenterResolution:
     center: str
     cutoff_date: str
+    cutoff_convention: str
     forecast_version: str
     retrospective_version: str
     reforecast_version: str
+    retrospective_coverage_end_date: str
+    days_cutoff_after_retro_end: Optional[int]
     decision: str
     recommended_strategy: str
     recommended_bias_training_version: str
@@ -50,6 +55,10 @@ class CenterResolution:
     alternatives: List[str]
     notes: List[str]
 
+
+# ---------------------------------------------------------------------------
+# NWS/NWM metadata
+# ---------------------------------------------------------------------------
 
 NWS_FORECAST_WINDOWS: List[VersionWindow] = [
     VersionWindow(version="1.0", start=date(2016, 8, 16), end=date(2017, 5, 7)),
@@ -66,6 +75,11 @@ NWS_RETROSPECTIVE_BY_VERSION: Dict[str, RetrospectiveMeta] = {
     "2.1": RetrospectiveMeta(version="2.1", coverage_start_ym="1979-02", coverage_end_ym="2020-12"),
     "3.0": RetrospectiveMeta(version="3.0", coverage_start_ym="1979-02", coverage_end_ym="2023-01"),
 }
+
+
+# ---------------------------------------------------------------------------
+# GloFAS metadata and bounded evidence summary
+# ---------------------------------------------------------------------------
 
 GLOFAS_FORECAST_WINDOWS: List[VersionWindow] = [
     VersionWindow(version="1.0", start=date(2018, 4, 23), end=date(2018, 11, 13)),
@@ -84,9 +98,13 @@ GLOFAS_FORECAST_WINDOWS: List[VersionWindow] = [
     VersionWindow(version="4.4", start=date(2025, 9, 10), end=None),
 ]
 
-GLOFAS_HISTORICAL_VERSIONS: Set[str] = {"2.1", "3.1", "4.0"}
-GLOFAS_REFORECAST_VERSIONS: Set[str] = {"2.2", "3.1", "4.0"}
-GLOFAS_SHARED_ANCHOR_VERSIONS: Set[str] = GLOFAS_HISTORICAL_VERSIONS & GLOFAS_REFORECAST_VERSIONS
+# Retrieve-selector availability (metadata)
+GLOFAS_HISTORICAL_SELECTORS: Set[str] = {"2.1", "3.1", "4.0"}
+GLOFAS_REFORECAST_SELECTORS: Set[str] = {"2.2", "3.1", "4.0"}
+GLOFAS_SHARED_ANCHOR_SELECTORS: Set[str] = GLOFAS_HISTORICAL_SELECTORS & GLOFAS_REFORECAST_SELECTORS
+
+# Current bounded evidence snapshot (GLOFAS-LOCAL-09 / GLOFAS-LOCAL-10)
+GLOFAS_EVIDENCE_TAG = "GLOFAS-LOCAL-09 (consolidated_20260216T195500Z)"
 GLOFAS_REFORECAST_FREEZE_NOTICE_DATE = date(2024, 11, 11)
 
 
@@ -135,7 +153,7 @@ def nearest_supported_version(target_version: str, supported_versions: Set[str])
     def rank(candidate: str) -> tuple[int, int, int]:
         ckey = parse_version_key(candidate)
         assert ckey is not None
-        # Prefer closest absolute distance, then avoid stepping forward in version when tied.
+        # Prefer smallest absolute version distance, then prefer non-forward jumps.
         return (abs(ckey - target_key), 0 if ckey <= target_key else 1, -ckey)
 
     return sorted(valid, key=rank)[0]
@@ -152,9 +170,12 @@ def resolve_nws_nwm(cutoff: date) -> CenterResolution:
         return CenterResolution(
             center="NWS/NWM",
             cutoff_date=cutoff.isoformat(),
+            cutoff_convention="date_only",
             forecast_version=NOT_FOUND,
             retrospective_version=NOT_FOUND,
             reforecast_version=NOT_FOUND,
+            retrospective_coverage_end_date=NOT_FOUND,
+            days_cutoff_after_retro_end=None,
             decision="ambiguous",
             recommended_strategy="hold_for_metadata_review",
             recommended_bias_training_version=NOT_FOUND,
@@ -166,16 +187,17 @@ def resolve_nws_nwm(cutoff: date) -> CenterResolution:
 
     retro = NWS_RETROSPECTIVE_BY_VERSION.get(forecast_version)
     if retro is None:
-        notes.append(
-            f"Forecast version {forecast_version} has no same-version retrospective in reviewed metadata."
-        )
+        notes.append(f"Forecast version {forecast_version} has no same-version retrospective in reviewed metadata.")
         notes.append("No authoritative NWS forecast-side reforecast/hindcast product was found in reviewed sources.")
         return CenterResolution(
             center="NWS/NWM",
             cutoff_date=cutoff.isoformat(),
+            cutoff_convention="date_only",
             forecast_version=forecast_version,
             retrospective_version=NOT_FOUND,
             reforecast_version=NOT_FOUND,
+            retrospective_coverage_end_date=NOT_FOUND,
+            days_cutoff_after_retro_end=None,
             decision="ambiguous",
             recommended_strategy="hold_for_metadata_review",
             recommended_bias_training_version=NOT_FOUND,
@@ -189,14 +211,14 @@ def resolve_nws_nwm(cutoff: date) -> CenterResolution:
     coverage_gap_days = (cutoff - retro_end).days
     if coverage_gap_days > 0:
         notes.append(
-            f"Retrospective {retro.version} coverage ends at {retro.coverage_end_ym} "
-            f"({coverage_gap_days} days before cutoff)."
+            f"Retrospective {retro.version} coverage ends at {retro.coverage_end_ym} ({coverage_gap_days} days before cutoff)."
         )
     else:
         notes.append(f"Retrospective {retro.version} coverage includes the cutoff date range.")
 
     notes.append("Per-version retrospective release dates are not explicitly listed in reviewed metadata.")
     notes.append("NWM retrospective runs are documented as no streamflow/data-assimilation simulations.")
+    notes.append("Project scope for NWS/NWM pairing is CONUS only.")
 
     strategy_notes.append(
         f"Primary strategy: use same-version pairing ({forecast_version} forecast -> {retro.version} retrospective)."
@@ -206,19 +228,22 @@ def resolve_nws_nwm(cutoff: date) -> CenterResolution:
     )
     if coverage_gap_days > 365:
         strategy_notes.append(
-            "Gap is larger than one year; run sensitivity checks on how correction quality changes near the retrospective boundary."
+            "Gap is larger than one year; run sensitivity checks on correction stability near the retrospective boundary."
         )
 
     alternatives.append(
-        "If diagnostics degrade, keep same-version pairing but shorten training window to recent years inside retrospective coverage."
+        "If diagnostics degrade, keep same-version pairing but shorten training window to recent years within retrospective coverage."
     )
 
     return CenterResolution(
         center="NWS/NWM",
         cutoff_date=cutoff.isoformat(),
+        cutoff_convention="date_only",
         forecast_version=forecast_version,
         retrospective_version=retro.version,
         reforecast_version=NOT_FOUND,
+        retrospective_coverage_end_date=retro_end.isoformat(),
+        days_cutoff_after_retro_end=max(coverage_gap_days, 0),
         decision="conditional",
         recommended_strategy="same_version_with_gap_reporting",
         recommended_bias_training_version=retro.version,
@@ -240,9 +265,12 @@ def resolve_glofas(cutoff: date) -> CenterResolution:
         return CenterResolution(
             center="GloFAS",
             cutoff_date=cutoff.isoformat(),
+            cutoff_convention="date_only",
             forecast_version=NOT_FOUND,
             retrospective_version=NOT_FOUND,
             reforecast_version=NOT_FOUND,
+            retrospective_coverage_end_date=NOT_FOUND,
+            days_cutoff_after_retro_end=None,
             decision="ambiguous",
             recommended_strategy="hold_for_metadata_review",
             recommended_bias_training_version=NOT_FOUND,
@@ -252,116 +280,134 @@ def resolve_glofas(cutoff: date) -> CenterResolution:
             notes=notes,
         )
 
-    historical_exact = forecast_version in GLOFAS_HISTORICAL_VERSIONS
-    reforecast_exact = forecast_version in GLOFAS_REFORECAST_VERSIONS
+    historical_exact = forecast_version in GLOFAS_HISTORICAL_SELECTORS
+    reforecast_exact = forecast_version in GLOFAS_REFORECAST_SELECTORS
 
     retrospective_version = forecast_version if historical_exact else NOT_FOUND
     reforecast_version = forecast_version if reforecast_exact else NOT_FOUND
 
-    nearest_historical = nearest_supported_version(forecast_version, GLOFAS_HISTORICAL_VERSIONS)
-    nearest_reforecast = nearest_supported_version(forecast_version, GLOFAS_REFORECAST_VERSIONS)
-    nearest_shared = nearest_supported_version(forecast_version, GLOFAS_SHARED_ANCHOR_VERSIONS)
+    nearest_historical = nearest_supported_version(forecast_version, GLOFAS_HISTORICAL_SELECTORS)
+    nearest_reforecast = nearest_supported_version(forecast_version, GLOFAS_REFORECAST_SELECTORS)
+    fkey = parse_version_key(forecast_version)
 
-    if historical_exact and reforecast_exact:
-        decision = "allowed"
-        notes.append("Exact version match exists for both historical and reforecast metadata options.")
-
-        recommended_strategy = "strict_same_version_pairing"
-        recommended_bias_training_version = forecast_version
-        recommended_reforecast_version = forecast_version
-        strategy_notes.append(
-            f"Primary strategy: strict same-version pairing ({forecast_version}) for historical, forecast, and reforecast usage."
-        )
-
-    elif historical_exact and not reforecast_exact:
+    if forecast_version == "4.0":
         decision = "conditional"
-        notes.append("Only partial exact version matching is available across historical/reforecast products.")
+        recommended_strategy = "same_version_v4_with_operational_alias_caveats"
+        recommended_bias_training_version = "4.0"
+        recommended_reforecast_version = "4.0"
+        notes.append(
+            "Historical and reforecast v4.0 point anchors are confirmed in bounded probes; forecast retrieval is via the operational alias."
+        )
+        notes.append(
+            "Operational+lisflood forecast boundaries show mixed success/timeout behavior near tested edges; treat windows as bounded evidence."
+        )
+        strategy_notes.append(
+            "Use v4.0 historical + v4.0 reforecast as the primary anchor for v4.0-era cutoffs."
+        )
+        strategy_notes.append(
+            f"Record evidence tag {GLOFAS_EVIDENCE_TAG} and boundary caveats in run metadata."
+        )
 
-        recommended_strategy = "exact_historical_plus_nearest_reforecast"
-        recommended_bias_training_version = forecast_version
-        recommended_reforecast_version = nearest_reforecast
-        strategy_notes.append(
-            f"Use exact historical version {forecast_version} for bias-learning baseline."
-        )
-        strategy_notes.append(
-            f"For reforecast diagnostics, use nearest available version {nearest_reforecast} and tag it as cross-version evidence."
-        )
-        if nearest_shared != NOT_FOUND and nearest_shared != forecast_version:
+    elif forecast_version == "3.1":
+        decision = "ambiguous"
+        recommended_strategy = "hold_for_metadata_review_or_use_v4_anchor_for_sensitivity_only"
+        recommended_bias_training_version = "4.0" if "4.0" in GLOFAS_SHARED_ANCHOR_SELECTORS else NOT_FOUND
+        recommended_reforecast_version = "4.0" if "4.0" in GLOFAS_SHARED_ANCHOR_SELECTORS else NOT_FOUND
+        notes.append("Forecast-side version_3_1 combinations repeatedly returned invalid_request in bounded probes.")
+        notes.append("Historical/reforecast selectors include version_3_1, but strict same-version transfer remains unresolved.")
+        strategy_notes.append("Do not auto-approve strict version_3_1 transfer for production correction.")
+        if recommended_bias_training_version != NOT_FOUND:
             alternatives.append(
-                f"Fully aligned fallback: use shared anchor version {nearest_shared} for both historical and reforecast diagnostics."
+                f"Exploratory fallback only: use shared anchor {recommended_bias_training_version} with explicit cross-version labeling."
             )
 
-    elif (not historical_exact) and reforecast_exact:
-        decision = "conditional"
-        notes.append("Only partial exact version matching is available across historical/reforecast products.")
+    elif forecast_version == "2.1":
+        decision = "ambiguous"
+        recommended_strategy = "exact_historical_only_reforecast_missing"
+        recommended_bias_training_version = "2.1"
+        recommended_reforecast_version = NOT_FOUND
+        notes.append(
+            "Historical version_2_1 is available, but reforecast options start at 2.2 and forecast-side version_2_1 combinations were invalid in bounded probes."
+        )
+        strategy_notes.append(
+            "Historical 2.1 can be used for exploratory bias-learning, but strict retrospective+forecast+reforecast alignment is unresolved."
+        )
+        if nearest_reforecast != NOT_FOUND:
+            alternatives.append(f"Exploratory reforecast fallback: {nearest_reforecast} (cross-version).")
 
-        recommended_strategy = "nearest_historical_plus_exact_reforecast"
-        recommended_bias_training_version = nearest_historical
-        recommended_reforecast_version = forecast_version
-        strategy_notes.append(
-            f"Use exact reforecast version {forecast_version} for diagnostics/post-processing."
+    elif forecast_version == "2.2":
+        decision = "ambiguous"
+        recommended_strategy = "exact_reforecast_only_historical_missing"
+        recommended_bias_training_version = NOT_FOUND
+        recommended_reforecast_version = "2.2"
+        notes.append(
+            "Reforecast version_2_2 is available, but historical selectors do not include 2.2 and strict same-version alignment is unresolved."
         )
         strategy_notes.append(
-            f"Use nearest historical version {nearest_historical} for bias-learning, flagged as cross-version."
+            "Treat 2.2-era retrospective pairing as cross-version unless new authoritative lineage mapping is found."
         )
-        if nearest_shared != NOT_FOUND and nearest_shared != forecast_version:
-            alternatives.append(
-                f"Fully aligned fallback: use shared anchor version {nearest_shared} for both historical and reforecast diagnostics."
-            )
+        if nearest_historical != NOT_FOUND:
+            alternatives.append(f"Exploratory historical fallback: {nearest_historical} (cross-version).")
+
+    elif forecast_version.startswith("4."):
+        decision = "ambiguous"
+        recommended_strategy = "nearest_shared_anchor_4_0"
+        recommended_bias_training_version = "4.0"
+        recommended_reforecast_version = "4.0"
+        notes.append(
+            "Operational chronology reaches newer 4.x versions, but reviewed historical/reforecast selectors stop at version_4_0."
+        )
+        strategy_notes.append(
+            "Use 4.0 as nearest shared anchor only with explicit cross-version labeling and sensitivity checks."
+        )
+
+    elif fkey is not None and 300 <= fkey < 400:
+        decision = "ambiguous"
+        recommended_strategy = "nearest_shared_anchor_3_1"
+        recommended_bias_training_version = "3.1" if "3.1" in GLOFAS_HISTORICAL_SELECTORS else NOT_FOUND
+        recommended_reforecast_version = "3.1" if "3.1" in GLOFAS_REFORECAST_SELECTORS else NOT_FOUND
+        notes.append(
+            "This 3.x forecast version has no strict same-version historical/reforecast selector in reviewed metadata."
+        )
+        strategy_notes.append(
+            "Use 3.1 as nearest shared anchor only as a cross-version fallback with explicit sensitivity checks."
+        )
 
     else:
         decision = "ambiguous"
-        notes.append("No exact same-version historical/reforecast option found in reviewed retrieve metadata.")
-
-        recommended_strategy = "nearest_shared_anchor"
-        if nearest_shared != NOT_FOUND:
-            recommended_bias_training_version = nearest_shared
-            recommended_reforecast_version = nearest_shared
-            strategy_notes.append(
-                f"Use nearest shared anchor version {nearest_shared} for both historical and reforecast to keep internal consistency."
-            )
-        else:
-            recommended_bias_training_version = nearest_historical
-            recommended_reforecast_version = nearest_reforecast
-            strategy_notes.append(
-                "No shared historical+reforecast anchor found; use nearest available per product and treat as exploratory only."
-            )
-
-        if nearest_historical != NOT_FOUND:
-            alternatives.append(f"Historical-only nearest option: {nearest_historical}.")
-        if nearest_reforecast != NOT_FOUND:
-            alternatives.append(f"Reforecast-only nearest option: {nearest_reforecast}.")
-
-    if forecast_version.startswith("4.") and forecast_version != "4.0":
-        notes.append(
-            "Operational forecast chronology reaches newer 4.x versions, but reviewed historical/reforecast "
-            "retrieve options list up to version 4.0 only."
+        recommended_strategy = "hold_for_metadata_review"
+        recommended_bias_training_version = NOT_FOUND
+        recommended_reforecast_version = NOT_FOUND
+        notes.append("No validated strict same-version historical/reforecast pairing was found for this forecast version.")
+        strategy_notes.append(
+            "Pause automatic version transfer for this cutoff and review version lineage/availability before training."
         )
-
-    if forecast_version == "2.1":
-        notes.append("Reforecast options start at version 2.2 in reviewed retrieve metadata.")
-
-    if forecast_version == "2.2":
-        notes.append("Historical options include 2.1/3.1/4.0, so exact 2.2 historical matching is unresolved.")
-
-    if forecast_version not in {"2.1", "3.1", "4.0"}:
-        notes.append("Cross-version pairing is blocked by default unless explicit compatibility evidence is found.")
+        if nearest_historical != NOT_FOUND:
+            alternatives.append(f"Historical nearest option: {nearest_historical}.")
+        if nearest_reforecast != NOT_FOUND:
+            alternatives.append(f"Reforecast nearest option: {nearest_reforecast}.")
 
     if cutoff >= GLOFAS_REFORECAST_FREEZE_NOTICE_DATE:
         notes.append(
-            "EWDS reforecast message feed includes a temporary freeze notice (dated 2024-11-11) for medium-range "
-            "reforecast updates from the v4.2 release point."
+            "EWDS reforecast message feed includes a temporary freeze notice (dated 2024-11-11) for medium-range reforecast updates from the v4.2 release point."
         )
         strategy_notes.append(
-            "Before relying on recent reforecast availability, check the current EWDS collection messages/support guidance."
+            "Before relying on recent reforecast availability, check current EWDS collection messages/support guidance."
         )
+
+    notes.append(
+        "Per-system_version historical/reforecast coverage windows are not fully explicit in endpoint metadata and should be validated with lightweight boundary probes."
+    )
 
     return CenterResolution(
         center="GloFAS",
         cutoff_date=cutoff.isoformat(),
+        cutoff_convention="date_only",
         forecast_version=forecast_version,
         retrospective_version=retrospective_version,
         reforecast_version=reforecast_version,
+        retrospective_coverage_end_date=NOT_FOUND,
+        days_cutoff_after_retro_end=None,
         decision=decision,
         recommended_strategy=recommended_strategy,
         recommended_bias_training_version=recommended_bias_training_version,
@@ -382,33 +428,44 @@ def build_report(cutoff: date) -> Dict[str, object]:
 
 
 def render_text(report: Dict[str, object]) -> str:
-    lines: List[str] = []
-    lines.append(f"Cutoff date: {report['cutoff_date']}")
-    lines.append("")
+    lines: List[str] = [f"Cutoff date: {report['cutoff_date']}", ""]
+
     for rec in report["results"]:
-        r = rec
-        lines.append(f"Center: {r['center']}")
-        lines.append(f"  Forecast version: {r['forecast_version']}")
-        lines.append(f"  Retrospective/Historical version: {r['retrospective_version']}")
-        lines.append(f"  Reforecast version: {r['reforecast_version']}")
-        lines.append(f"  Decision: {r['decision']}")
-        lines.append(f"  Recommended strategy: {r['recommended_strategy']}")
-        lines.append(f"  Recommended bias-training version: {r['recommended_bias_training_version']}")
-        lines.append(f"  Recommended reforecast version: {r['recommended_reforecast_version']}")
+        lines.append(f"Center: {rec['center']}")
+        lines.append(f"  Cutoff convention: {rec['cutoff_convention']}")
+        lines.append(f"  Forecast version: {rec['forecast_version']}")
+        lines.append(f"  Retrospective/Historical version: {rec['retrospective_version']}")
+        lines.append(f"  Reforecast version: {rec['reforecast_version']}")
+        lines.append(f"  Retrospective coverage end date: {rec['retrospective_coverage_end_date']}")
+        days_gap = rec["days_cutoff_after_retro_end"]
+        lines.append(
+            f"  Days cutoff after retrospective end: {NA if days_gap is None else days_gap}"
+        )
+        lines.append(f"  Decision: {rec['decision']}")
+        lines.append(f"  Recommended strategy: {rec['recommended_strategy']}")
+        lines.append(f"  Recommended bias-training version: {rec['recommended_bias_training_version']}")
+        lines.append(f"  Recommended reforecast version: {rec['recommended_reforecast_version']}")
 
         lines.append("  Strategy notes:")
-        for note in r["strategy_notes"]:
-            lines.append(f"    - {note}")
+        if rec["strategy_notes"]:
+            for note in rec["strategy_notes"]:
+                lines.append(f"    - {note}")
+        else:
+            lines.append("    - none")
 
-        if r["alternatives"]:
+        if rec["alternatives"]:
             lines.append("  Alternatives:")
-            for alt in r["alternatives"]:
+            for alt in rec["alternatives"]:
                 lines.append(f"    - {alt}")
 
         lines.append("  Notes:")
-        for note in r["notes"]:
-            lines.append(f"    - {note}")
+        if rec["notes"]:
+            for note in rec["notes"]:
+                lines.append(f"    - {note}")
+        else:
+            lines.append("    - none")
         lines.append("")
+
     return "\n".join(lines).rstrip() + "\n"
 
 

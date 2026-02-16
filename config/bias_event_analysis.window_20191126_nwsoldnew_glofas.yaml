@@ -1,0 +1,32 @@
+run:
+  run_id: bias_events_window_20191126_nwsoldnew_glofas
+  out_root: repro/bias_event_runs
+  overwrite: true
+
+inputs:
+  bias_compare_path: repro/bias_runs/bias_window_20191126_nwsoldnew_glofas/tables/bias_compare.csv
+
+analysis:
+  focus_dates:
+    - "2019-11-19"
+    - "2019-11-22"
+    - "2019-11-26"
+    - "2019-11-29"
+    - "2019-12-03"
+  horizons_days: [1, 7]
+  window_days_before: 7
+  window_days_after: 7
+  local_stat_days: 3
+  centers: [NWS_OLD, NWS_NEW, GLOFAS]
+
+plots:
+  dpi: 180
+  width: 14
+  height: 10
+  line_width: 1.0
+  marker_size: 3.0
+  y_limits_cms: [-30, 30]
+  center_palette:
+    NWS_OLD: "#1f77b4"
+    NWS_NEW: "#9467bd"
+    GLOFAS: "#ff7f0e"

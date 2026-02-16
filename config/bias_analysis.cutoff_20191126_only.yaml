@@ -1,0 +1,43 @@
+run:
+  run_id: bias_cutoff_20191126_only
+  out_root: repro/bias_runs
+  overwrite: true
+
+inputs:
+  forecats_root: data/forecats_inputs/site=11160500
+  retros_path: retros_2023-06-01.csv
+  retros_scale: log1p_cms
+  usgs_col: USGS
+  run_id_selector: latest_mtime
+  explicit_run_id: null
+
+analysis:
+  horizons_days: [1, 7]
+  intervals:
+    - start: "2019-11-26"
+      end: "2019-11-26"
+
+centers:
+  - key: NWS_NWM
+    label: NWS/NWM
+    retros_col: NWS3.0
+    forecast_file: nws_weighted_daily.csv
+  - key: GLOFAS
+    label: GloFAS
+    retros_col: GloFAS
+    forecast_file: glofas_weighted_daily.csv
+
+plots:
+  dpi: 180
+  width: 14
+  height: 7
+  line_width: 0.9
+  marker_size: 3.0
+  y_limits_cms: [-30, 30]
+  scatter_limits_cms: [-30, 30]
+  center_palette:
+    - "#1f77b4"
+    - "#ff7f0e"
+    - "#2ca02c"
+    - "#9467bd"
+  center_groups: null

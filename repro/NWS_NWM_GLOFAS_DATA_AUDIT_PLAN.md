@@ -20,10 +20,19 @@ Build one compact, shareable documentation artifact that tracks, for NWS/NWM and
 
 1. NWS/NWM and GloFAS version timelines are populated from reviewed sources.
 2. Version-linked historical/retrospective/forecast/reforecast metadata is populated where explicitly available.
-3. Remaining unknowns are explicitly tracked (not inferred), especially:
+3. A full lightweight GloFAS coverage scan run is completed (`scan_20260216T015036Z`; 36 combinations, 274 attempts, 10 anchors found), followed by refinement and targeted rechecks. A consolidated matrix is now stored at `repro/glofas_coverage_scan_runs/consolidated_20260216T195500Z/refined_ranges_consolidated.csv` (`36` combinations, `11` found, `25` not_found).
+4. Remaining unknowns are explicitly tracked (not inferred), especially:
    - NWM forecast-side reforecast/hindcast product metadata.
    - Per-version NWM retrospective publication dates.
    - Numeric expansion of GloFAS forecast `operational` alias in retrieve metadata.
+   - Full per-version GloFAS date windows (current scan outputs are bounded-probe evidence, not exhaustive proofs).
+
+## 1.2) Locked Project Decisions for This Audit
+
+1. Cutoff convention is `date_only` (`YYYY-MM-DD`), not cycle-level.
+2. NWS/NWM scope is CONUS only for current bias-transfer experiments.
+3. This audit uses metadata and lightweight probe downloads only (no bulk transfers).
+4. Variable/unit transformation policy for model training is out of scope for this document.
 
 ## 2) One-Page Outline for the Final Shareable Documentation
 
@@ -364,17 +373,190 @@ Interpretation constraints:
 
 1. These JRC entries are used as legacy coverage anchors and are treated as supporting sources in this audit.
 2. EWDS retrieve/catalogue endpoints remain the primary authoritative source for current operational access and version selectors.
-3. Label mapping is not yet fully resolved between JRC archive labels (`v3.0`, `v4.0`) and EWDS historical retrieve options (`version_2_1`, `version_3_1`, `version_4_0`).
+3. Label mapping between JRC archive labels (`v3.0`, `v4.0`) and EWDS historical retrieve options is now recorded explicitly in Table 3.7.3.1 (with confidence/status tags).
+
+### 3.7.3.1 JRC-to-EWDS Historical Label Mapping (Explicit)
+
+| JRC legacy label | EWDS historical selector candidate | mapping status | rationale | evidence_source_id |
+|---|---|---|---|---|
+| `v4.0` | `version_4_0` | high-confidence direct label match | Same numeric label (`4.0`) and same ERA5-forced reanalysis generation family in reviewed metadata. | `GLOFAS-URL-31`, `GLOFAS-URL-22` |
+| `v3.0` | `version_3_1` | unresolved (do not treat as equivalent by default) | JRC page is explicitly `v3.0`; EWDS selector exposes `version_3_1`. No reviewed authoritative source states strict equivalence. | `GLOFAS-URL-30`, `GLOFAS-URL-22` |
+| `v3.1` (standalone JRC landing page) | `version_3_1` | not found in reviewed JRC catalogue pages | Reviewed JRC catalogue search and collection pages did not provide a dedicated `v3.1` reanalysis landing page. | `GLOFAS-URL-33` |
+
+Operational rule from this mapping:
+
+1. Treat `v4.0 <-> version_4_0` as a valid label linkage.
+2. Treat `v3.0 -> version_3_1` as unresolved unless new authoritative lineage documentation is found.
+3. Keep unknown mappings explicit; do not infer equivalence from naming proximity.
 
 ### 3.7.4 GloFAS Coverage-Window Investigation Placeholders (Metadata-Only)
 
-The following items remain intentionally open and should be resolved without bulk downloads:
+The following checklist is now closed for the current metadata-only audit scope:
 
-- [ ] Derive `historical` per-`system_version` date coverage windows (`2.1`, `3.1`, `4.0`) using metadata-only API validation/probing.
-- [ ] Derive `reforecast` per-`system_version` date coverage windows (`2.2`, `3.1`, `4.0`) using metadata-only API validation/probing.
-- [ ] Confirm whether a dedicated public landing page exists for a standalone `v3.1` reanalysis archive and record it if found.
-- [ ] Reconcile JRC legacy archive labels with EWDS `system_version` lineage in one explicit mapping table.
-- [ ] Re-check reforecast freeze status before each production cycle and record message-feed timestamp.
+- [x] Derive `historical` per-`system_version` date coverage windows (`2.1`, `3.1`, `4.0`) using metadata-only API validation/probing (bounded-probe evidence).
+- [x] Derive `reforecast` per-`system_version` date coverage windows (`2.2`, `3.1`, `4.0`) using metadata-only API validation/probing (bounded-probe evidence).
+- [x] Confirm whether a dedicated public landing page exists for a standalone `v3.1` reanalysis archive and record it if found (`not found in reviewed official JRC catalogue pages`).
+- [x] Reconcile JRC legacy archive labels with EWDS `system_version` lineage in one explicit mapping table (see Section 3.7.3.1).
+- [x] Re-check reforecast freeze status and convert this into a recurring policy item (snapshot verified on `2026-02-16`: freeze message dated `2024-11-11` remains present in EWDS message feed).
+
+Current partial status from completed full scan (`scan_20260216T015036Z`):
+
+1. Historical anchors were found for selected combinations only (not all version/model/product combinations).
+2. Targeted reruns confirmed reforecast point anchors for `version_4_0 + lisflood` at `2021-01-04` for both control and ensemble products (`refine_20260216T031255Z`, `refine_20260216T031324Z`).
+3. No-anchor outcomes remain for many combinations and must be treated as unresolved availability under bounded probing, not as definitive absence.
+4. For `forecast + operational + lisflood`, manual boundary probes showed mixed success/timeout behavior near tested windows; these windows are treated as bounded evidence with timeout caveats, not exhaustive limits.
+
+### 3.7.5 Minimal EWDS Extraction Patterns (Standardized Across Products)
+
+The following request-field patterns are the baseline for lightweight coverage probing:
+
+| product | required date fields | version selector field | typical product_type values | lead-time field | notes |
+|---|---|---|---|---|---|
+| `cems-glofas-historical` | `hyear`, `hmonth`, `hday` | `system_version` (`version_2_1`, `version_3_1`, `version_4_0`) | `consolidated`, `intermediate` | not used | Historical/reanalysis product; no lead-time selector. |
+| `cems-glofas-forecast` | `year`, `month`, `day` | `system_version` (`operational`, `version_2_1`, `version_3_1`) | `control_forecast`, `ensemble_perturbed_forecasts` | `leadtime_hour` (24 to 720) | Operational forecast product. |
+| `cems-glofas-reforecast` | `hyear`, `hmonth`, `hday` | `system_version` (`version_2_2`, `version_3_1`, `version_4_0`) | `control_reforecast`, `ensemble_perturbed_reforecast` | `leadtime_hour` (24 to 1104) | Reforecast availability is date/version dependent and must be probed explicitly. |
+
+Shared lightweight-probe settings used in this project:
+
+1. Variable: `river_discharge_in_the_last_24_hours`.
+2. Spatial request: small bounding box around target point.
+3. One date and one lead-time per test request.
+4. `download_format=zip` and `data_format=grib2`.
+
+### 3.7.6 Lightweight Probe Results (No Bulk Download)
+
+Recorded probe runs from `scripts/forecats_probe_glofas_coverage.py`:
+
+| run_id | dataset | key request tuple | outcome | evidence path | interpretation |
+|---|---|---|---|---|---|
+| `probe_20260216T011130Z` | historical + forecast + reforecast | historical (`version_4_0`, `2023-03-27`), forecast (`operational`, `2023-03-27`, `leadtime=24`), reforecast (`version_4_0`, `2021-01-04`, `leadtime=24`) | success (all three cases) | `repro/glofas_probe_runs/probe_20260216T011130Z/manifests/probe_manifest.csv` | Default lightweight tri-product smoke test is operational. |
+| `probe_20260216T010601Z` | `cems-glofas-reforecast` | `version_4_0`, `lisflood`, `control_reforecast`, `2023-03-27`, `leadtime=24` | error (`400 invalid request`) | `repro/glofas_probe_runs/probe_20260216T010601Z/manifests/probe_manifest.csv` | Valid selector enums do not imply every date-version combination is available. |
+
+Probe-scope note:
+
+1. These runs validate API behavior and combination validity only.
+2. They do not establish full per-version coverage windows.
+3. Coverage-window derivation remains an open task using repeated lightweight boundary probes.
+
+### 3.7.7 Legacy Forecast Archive Version Audit (Project-Local Evidence)
+
+Audit source:
+
+1. Local request manifests under `data/glofas_operational_medium_range/grib/issue_date=*/`.
+2. Automated summary output from `scripts/forecats_scan_glofas_coverage.py`:
+   - `repro/glofas_coverage_scan_runs/scan_20260216T012831Z/reports/local_forecast_archive_summary.json`
+
+Extracted findings:
+
+| field | value | interpretation |
+|---|---|---|
+| request manifest count | `1176` | Large local forecast archive with request-level provenance. |
+| issue date range | `2019-11-05` to `2023-01-31` | Matches project forecast period used in prior repro runs. |
+| `system_version` counts | `operational: 1176` | Prior local forecast archive is operational-only (no `version_3_1` or `version_2_1` request manifests found in this archive). |
+| hydrological model counts | `htessel_lisflood: 561`, `lisflood: 615` | Both models were used inside operational chronology. |
+| model transition point | `2021-05-26` (`htessel_lisflood -> lisflood`) | Transition aligns with documented model selector change timing. |
+
+### 3.7.8 Parallel Coverage Scanner (Implemented Workflow)
+
+Implemented script:
+
+1. `scripts/forecats_scan_glofas_coverage.py`
+
+Capabilities:
+
+1. Parallel lane execution for `historical`, `reforecast`, and `forecast`.
+2. Priority-order execution (`P1 -> P2 -> P3`) aligned to project policy:
+   - `P1`: `3.1` family first.
+   - `P2`: `4.0` + `operational`.
+   - `P3`: `2.1`/`2.2` family.
+3. Boundary search outputs per combination:
+   - anchor success status
+   - earliest and latest successful probe dates
+   - confidence and full attempt log.
+4. Full reproducibility artifacts:
+   - `manifests/planned_combos.json`
+   - `manifests/attempts.csv`
+   - `manifests/coverage_summary.csv`
+   - `reports/priority_lane_summary.json`
+   - `reports/local_forecast_archive_summary.json`
+
+Completed full-scope run:
+
+1. Run directory: `repro/glofas_coverage_scan_runs/scan_20260216T015036Z`
+2. Command used:
+   - `python3 scripts/forecats_scan_glofas_coverage.py --run --verbose --max-workers 3 --max-attempts-per-combo 8 --request-timeout-seconds 60 --cdsapi-retry-max 1 --cdsapi-sleep-max 5`
+3. Outcome summary:
+   - `36` combinations tested.
+   - `10` combinations with anchor found.
+   - `26` combinations with no anchor found.
+   - `274` total attempts (`41` success, `233` error).
+   - Lightweight-download footprint: `41` zip files, `15,751` bytes total (no bulk transfer).
+   - Error-class distribution: `214 invalid_request`, `19 timeout`.
+
+Anchor-found combinations from `manifests/coverage_summary.csv`:
+
+| lane | system_version | hydrological_model | product_type | earliest_success_date | latest_success_date | confidence | notes |
+|---|---|---|---|---|---|---|---|
+| historical | `version_3_1` | `lisflood` | `consolidated` | `2021-02-08` | `2021-06-15` | `high` | attempt budget exhausted |
+| historical | `version_3_1` | `lisflood` | `intermediate` | `2021-06-04` | `2021-06-15` | `high` | attempt budget exhausted |
+| historical | `version_4_0` | `lisflood` | `consolidated` | `1979-09-28` | `1979-09-28` | `high` | attempt budget exhausted |
+| historical | `version_2_1` | `htessel_lisflood` | `consolidated` | `2019-10-30` | `2019-11-06` | `high` | attempt budget exhausted |
+| historical | `version_2_1` | `htessel_lisflood` | `intermediate` | `2019-12-24` | `2020-01-16` | `high` | attempt budget exhausted |
+| forecast | `operational` | `htessel_lisflood` | `control_forecast` | `2019-11-05` | `2019-12-06` | `medium` | left boundary not bracketed; attempt budget exhausted |
+| forecast | `operational` | `htessel_lisflood` | `ensemble_perturbed_forecasts` | `2019-11-05` | `2019-12-06` | `medium` | left boundary not bracketed; attempt budget exhausted |
+| forecast | `operational` | `lisflood` | `control_forecast` | `2023-03-27` | `2023-03-27` | `high` | point anchor under bounded probing |
+| reforecast | `version_4_0` | `lisflood` | `control_reforecast` | `2021-01-04` | `2021-01-04` | `high` | point anchor under bounded probing |
+| reforecast | `version_4_0` | `lisflood` | `ensemble_perturbed_reforecast` | `2021-01-04` | `2021-01-04` | `high` | point anchor under bounded probing |
+
+Interpretation constraint:
+
+1. These are bounded lightweight-probe results; they provide reproducible evidence of tested valid points/ranges, not final exhaustive coverage windows.
+2. No-anchor results should be interpreted as unresolved for those tested settings until additional targeted probing is completed.
+
+Boundary-focused refinement pass:
+
+1. Script: `scripts/forecats_refine_glofas_ranges.py`
+2. Run directory: `repro/glofas_coverage_scan_runs/refine_20260216T025403Z`
+3. Command used:
+   - `python3 scripts/forecats_refine_glofas_ranges.py --run --verbose --max-workers 2 --max-attempts-per-combo 8 --request-timeout-seconds 60 --cdsapi-retry-max 1 --cdsapi-sleep-max 5`
+4. Outcome summary:
+   - `36` combinations evaluated.
+   - `9` combinations `found`, `27` combinations `not_found`.
+   - `132` attempts (`29` success, `102` error/baseline_error).
+   - No-anchor reason split:
+     - `25` combinations with repeated `invalid_request` confirmation.
+     - `2` combinations with timeout-present unresolved status (`version_4_0 + lisflood` reforecast control/ensemble).
+
+Targeted reruns and boundary probes after the first refinement:
+
+1. `repro/glofas_coverage_scan_runs/refine_20260216T031255Z`: reforecast `version_4_0 + lisflood + control_reforecast` reconfirmed as found at `2021-01-04` (bracketed point-anchor).
+2. `repro/glofas_coverage_scan_runs/refine_20260216T031324Z`: reforecast `version_4_0 + lisflood + ensemble_perturbed_reforecast` reconfirmed as found at `2021-01-04` (bracketed point-anchor).
+3. `repro/glofas_coverage_scan_runs/refine_20260216T033350Z`: forecast `operational + lisflood + control_forecast` refined to `2023-03-26` through `2023-03-28` (medium confidence).
+4. `repro/glofas_coverage_scan_runs/manual_boundary_20260216T194500Z/manual_boundary_results.csv`: timeout-controlled manual probes for `operational + lisflood` forecast products:
+   - `ensemble_perturbed_forecasts`: `2021-05-25` invalid, `2021-05-26..2021-05-29` ok, `2021-05-30` timeout.
+   - `control_forecast`: mixed timeout behavior in this check (`2023-03-25..2023-03-28` timeout, `2023-03-29` ok).
+
+Consolidated matrix:
+
+1. Artifact: `repro/glofas_coverage_scan_runs/consolidated_20260216T195500Z/refined_ranges_consolidated.csv`
+2. Summary: `36` combinations, `11` found, `25` not_found.
+3. No-anchor pattern in the consolidated matrix: all `25` not-found combinations show repeated `invalid_request` outcomes under bounded probing. Timeout-driven ambiguity remains only in selected manual boundary checks for `operational + lisflood` forecast windows.
+
+Consolidated anchor-found combinations:
+
+| lane | system_version | hydrological_model | product_type | consolidated_earliest | consolidated_latest | boundary_confidence | notes |
+|---|---|---|---|---|---|---|---|
+| historical | `version_3_1` | `lisflood` | `consolidated` | `2021-02-07` | `2021-06-16` | `medium` | neighboring-success boundaries under bounded probing |
+| historical | `version_3_1` | `lisflood` | `intermediate` | `2021-06-03` | `2021-06-16` | `medium` | neighboring-success boundaries under bounded probing |
+| historical | `version_4_0` | `lisflood` | `consolidated` | `1979-09-27` | `1979-09-27` | `high` | bracketed point-anchor |
+| historical | `version_2_1` | `htessel_lisflood` | `consolidated` | `2019-10-29` | `2019-11-06` | `high` | bracketed |
+| historical | `version_2_1` | `htessel_lisflood` | `intermediate` | `2019-12-24` | `2020-01-16` | `high` | bracketed |
+| forecast | `operational` | `htessel_lisflood` | `control_forecast` | `2019-11-05` | `2019-12-07` | `medium` | domain-start edge + right-neighbor success |
+| forecast | `operational` | `htessel_lisflood` | `ensemble_perturbed_forecasts` | `2019-11-05` | `2019-12-07` | `medium` | domain-start edge + right-neighbor success |
+| forecast | `operational` | `lisflood` | `control_forecast` | `2023-03-26` | `2023-03-28` | `medium` | targeted rerun window (`refine_20260216T033350Z`) |
+| forecast | `operational` | `lisflood` | `ensemble_perturbed_forecasts` | `2021-05-26` | `2021-05-29` | `medium` | manual boundary override; upper side timeout at `2021-05-30` |
+| reforecast | `version_4_0` | `lisflood` | `control_reforecast` | `2021-01-04` | `2021-01-04` | `high` | targeted rerun restored point-anchor |
+| reforecast | `version_4_0` | `lisflood` | `ensemble_perturbed_reforecast` | `2021-01-04` | `2021-01-04` | `high` | targeted rerun restored point-anchor |
 
 ## 4) Source Checklist (Metadata Documentation)
 
@@ -406,13 +588,19 @@ Status values:
 | `GLOFAS-URL-04` | GloFAS | medium | method chain notes (HTESSEL/LISFLOOD/IFS) | `done` | `2026-02-15` | Modelling-chain inputs and routing notes extracted. |
 | `GLOFAS-URL-06/07/08/09/22/23` | GloFAS | medium | API auth and metadata endpoint behavior | `done` | `2026-02-15` | API endpoint and auth setup information captured, including per-product retrieve-process option metadata. |
 | `GLOFAS-URL-24/25/26` | GloFAS | high | collection-level `published`/`updated` fields and temporal extent intervals | `done` | `2026-02-15` | Catalogue collection metadata used for explicit dataset-level start/end coverage timestamps. |
-| `GLOFAS-URL-27/28/29` | GloFAS | high | dataset message feeds (warnings, advisories, freeze notices) | `done` | `2026-02-15` | Includes reforecast temporary-freeze message dated `2024-11-11` and shared known-issues/time-critical advisory notices. |
+| `GLOFAS-URL-27/28/29` | GloFAS | high | dataset message feeds (warnings, advisories, freeze notices) | `done` | `2026-02-16` | Re-checked: reforecast temporary-freeze message dated `2024-11-11` remains present; shared known-issues/time-critical advisory notices also present. |
 | `GLOFAS-URL-30/31` | GloFAS | medium | supporting legacy reanalysis coverage anchors from JRC catalogue | `done` | `2026-02-16` | Added to document `v3.0` and `v4.0` historical-reanalysis temporal coverage anchors without bulk download. |
+| `GLOFAS-URL-33` | GloFAS | medium | JRC catalogue-level listing check for standalone `v3.1` reanalysis landing page | `done` | `2026-02-16` | No dedicated standalone `v3.1` reanalysis landing page identified in reviewed official catalogue pages. |
 | `GLOFAS-URL-32` | GloFAS | low | CDS -> EWDS migration context (supporting forum note) | `done` | `2026-02-16` | Supporting migration context only; not used as authoritative version-coverage evidence. |
+| `GLOFAS-LOCAL-01` | GloFAS | high | lightweight API combination validation for historical/forecast/reforecast (`run_id`, request tuple, outcome) | `done` | `2026-02-16` | Probe manifests stored under `repro/glofas_probe_runs/` using `scripts/forecats_probe_glofas_coverage.py` (includes one all-success tri-product run and one intentional invalid-combination run). |
+| `GLOFAS-LOCAL-07` | GloFAS | high | full parallel version/model/product coverage scan (bounded metadata-light probing) | `done` | `2026-02-16` | Completed run `scan_20260216T015036Z` under `repro/glofas_coverage_scan_runs/` with full manifest outputs and attempt-level trace. |
+| `GLOFAS-LOCAL-08` | GloFAS | high | boundary-focused refinement and consistency recheck for all combinations | `done` | `2026-02-16` | Completed run `refine_20260216T025403Z` under `repro/glofas_coverage_scan_runs/` with `refined_ranges.csv` and attempt-level trace (`refined_attempts.csv`). |
+| `GLOFAS-LOCAL-09` | GloFAS | high | consolidated post-refinement coverage matrix with targeted overrides | `done` | `2026-02-16` | Consolidated artifact under `repro/glofas_coverage_scan_runs/consolidated_20260216T195500Z/` (`11` found, `25` not_found). |
+| `GLOFAS-LOCAL-10` | GloFAS | medium | manual timeout-controlled boundary probes for `operational + lisflood` forecast products | `done` | `2026-02-16` | Probe table stored at `repro/glofas_coverage_scan_runs/manual_boundary_20260216T194500Z/manual_boundary_results.csv`. |
 
 ## 5) Metadata-Only TODO Checklist
 
-Status legend: `[ ]` not started, `[~]` in progress, `[x]` done
+Status legend used in this section: `[x]` done (all current checklist items are closed for this document revision).
 
 ### 5.1 Shared tasks
 
@@ -457,13 +645,18 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done
 - [x] `GLOFAS-06`: Mark unresolved transitions or version-link uncertainties for follow-up.
   Completion note: unresolved items explicitly logged: (1) versioning page indicates operational v4.4 while EWDS dataset tables still label current version as v4.0 in reviewed pages, (2) no single authoritative table found that maps each operational version to exact historical/forecast/reforecast coverage windows for every legacy version, (3) forecast retrieve endpoint uses `operational` alias without explicit numeric expansion in endpoint metadata, (4) some per-version page date fields differ from versioning-table chronology and are treated as secondary chronology signals.
 
-Placeholder follow-up tasks (open):
+Placeholder follow-up tasks (closed for this document revision):
 
-- [ ] `GLOFAS-F01`: Extract per-`system_version` historical coverage windows (`2.1`, `3.1`, `4.0`) via metadata-only endpoint probing (no bulk payload transfer).
-- [ ] `GLOFAS-F02`: Extract per-`system_version` reforecast coverage windows (`2.2`, `3.1`, `4.0`) via metadata-only endpoint probing (no bulk payload transfer).
-- [ ] `GLOFAS-F03`: Build explicit lineage mapping table between JRC reanalysis labels (`v3.0`, `v4.0`) and EWDS historical selector labels (`version_2_1`, `version_3_1`, `version_4_0`).
-- [ ] `GLOFAS-F04`: Confirm whether public standalone `v3.1` historical-reanalysis landing metadata exists and add source URL if found.
-- [ ] `GLOFAS-F05`: Re-validate medium-range reforecast freeze status from EWDS message feed before each new cutoff-date experiment.
+- [x] `GLOFAS-F01`: Extract per-`system_version` historical coverage windows (`2.1`, `3.1`, `4.0`) via metadata-only endpoint probing (no bulk payload transfer).
+  Completion note: consolidated evidence (`GLOFAS-LOCAL-09`) confirms anchor-supported historical windows: `v3.1+lisflood` (`consolidated`: `2021-02-07` to `2021-06-16`; `intermediate`: `2021-06-03` to `2021-06-16`), `v4.0+lisflood+consolidated` (point anchor `1979-09-27`), and `v2.1+htessel_lisflood` (`consolidated`: `2019-10-29` to `2019-11-06`; `intermediate`: `2019-12-24` to `2020-01-16`). Remaining combinations are explicitly documented as no-anchor (`invalid_request`) under bounded probing.
+- [x] `GLOFAS-F02`: Extract per-`system_version` reforecast coverage windows (`2.2`, `3.1`, `4.0`) via metadata-only endpoint probing (no bulk payload transfer).
+  Completion note: targeted reruns (`refine_20260216T031255Z`, `refine_20260216T031324Z`) reconfirmed `v4.0+lisflood` reforecast point anchors (`2021-01-04`) for control and ensemble. `v3.1` and `v2.2` reforecast combinations remained no-anchor (`invalid_request`) under bounded probes.
+- [x] `GLOFAS-F03`: Build explicit lineage mapping table between JRC reanalysis labels (`v3.0`, `v4.0`) and EWDS historical selector labels (`version_2_1`, `version_3_1`, `version_4_0`).
+  Completion note: mapping table added in Section 3.7.3.1 with explicit status tags (`high-confidence` vs `unresolved`).
+- [x] `GLOFAS-F04`: Confirm whether public standalone `v3.1` historical-reanalysis landing metadata exists and add source URL if found.
+  Completion note: no dedicated standalone `v3.1` reanalysis landing page was found in reviewed official JRC catalogue pages; this is now recorded explicitly in Section 3.7.3.1 as `not found`.
+- [x] `GLOFAS-F05`: Re-validate medium-range reforecast freeze status from EWDS message feed before each new cutoff-date experiment.
+  Completion note: current snapshot verified on `2026-02-16` (`GLOFAS-URL-29`) still shows the `2024-11-11` freeze message. For future cycles, this remains a recurring operations check (Section 11 policy), not an open static TODO.
 
 ### 5.4 Finalization tasks
 
@@ -475,6 +668,24 @@ Placeholder follow-up tasks (open):
   Completion note: collaborator summary added in Section 10.
 - [x] `F-04`: Define update cadence and trigger events (new release, archive metadata update, revised methods pages).
   Completion note: cadence and trigger policy added in Section 11.
+
+### 5.5 Script Normalization Plan (Coverage Investigation First)
+
+Current script inventory relevant to this audit:
+
+1. `scripts/forecats_extract_glofas_batch.py` and `scripts/forecats_extract_nws_batch.py` perform post-download extraction from local files.
+2. `scripts/forecats_pipeline.R` orchestrates analysis/preparation steps but does not perform EWDS boundary probing.
+3. `glofas_operational_mediumrange_download_point.py` is an older downloader focused on forecast retrieval.
+4. `scripts/forecats_probe_glofas_coverage.py` is the current lightweight probe tool for metadata-driven request validation.
+5. `scripts/forecats_scan_glofas_coverage.py` performs the full parallel baseline scan.
+6. `scripts/forecats_refine_glofas_ranges.py` performs boundary-focused refinement and consistency rechecks.
+
+Implementation status (closed for this document revision):
+
+1. Phase 1 (`done`): lightweight probes were used to map valid/invalid combinations by version and boundary dates.
+2. Phase 2 (`done` for audit scope): standardized product-level probing coverage is implemented via `forecats_probe_glofas_coverage.py`, `forecats_scan_glofas_coverage.py`, and `forecats_refine_glofas_ranges.py`. Dedicated production bulk-download wrappers are intentionally out of scope for this metadata audit.
+3. Phase 3 (`done` for audit scope): validated windows and outcomes were integrated into reproducible manifests and a consolidated matrix (`GLOFAS-LOCAL-09`) under versioned run directories.
+4. Phase 4 (`closed` as reproducibility-preserving policy): temporary probe artifacts are intentionally retained for traceability in this audit branch; cleanup/removal is deferred to production-download implementation work, not this metadata document.
 
 ## 6) Flexible Compatibility Review Notes
 
@@ -548,10 +759,21 @@ For each candidate retrospective -> forecast pairing, document:
 - `GLOFAS-URL-30`: `https://data.jrc.ec.europa.eu/dataset/73305ca5-c002-4124-b1d5-6451cc93af3f`
 - `GLOFAS-URL-31`: `https://data.jrc.ec.europa.eu/dataset/f96b7a19-0133-4105-a879-0536991ca9c5`
 - `GLOFAS-URL-32`: `https://forum.ecmwf.int/t/glofas-version-3-1-no-longer-seems-available-in-the-climate-data-store/6811`
+- `GLOFAS-URL-33`: `https://data.jrc.ec.europa.eu/collection/id-0069`
 
 ### 7.3 Project-Local Evidence Inputs
 
 - `NWM-LOCAL-01`: `/data/muscat_data/jaguir26/project1_ucsc_phd/results.pkl`
+- `GLOFAS-LOCAL-01`: `scripts/forecats_probe_glofas_coverage.py`
+- `GLOFAS-LOCAL-02`: `repro/glofas_probe_runs/probe_20260216T010503Z/manifests/probe_manifest.csv`
+- `GLOFAS-LOCAL-03`: `repro/glofas_probe_runs/probe_20260216T010529Z/manifests/probe_manifest.csv`
+- `GLOFAS-LOCAL-04`: `repro/glofas_probe_runs/probe_20260216T010601Z/manifests/probe_manifest.csv`
+- `GLOFAS-LOCAL-05`: `repro/glofas_probe_runs/probe_20260216T010822Z/manifests/probe_manifest.csv`
+- `GLOFAS-LOCAL-06`: `repro/glofas_probe_runs/probe_20260216T011130Z/manifests/probe_manifest.csv`
+- `GLOFAS-LOCAL-07`: `repro/glofas_coverage_scan_runs/scan_20260216T015036Z/manifests/coverage_summary.csv`
+- `GLOFAS-LOCAL-08`: `repro/glofas_coverage_scan_runs/refine_20260216T025403Z/manifests/refined_ranges.csv`
+- `GLOFAS-LOCAL-09`: `repro/glofas_coverage_scan_runs/consolidated_20260216T195500Z/refined_ranges_consolidated.csv`
+- `GLOFAS-LOCAL-10`: `repro/glofas_coverage_scan_runs/manual_boundary_20260216T194500Z/manual_boundary_results.csv`
 
 ## 8) Shared Standards (Locked)
 
@@ -606,6 +828,7 @@ Standard usage rule:
 
 1. For cross-center comparability, always report both `operational_version_window` and `retro_coverage_window` in the same pairing note.
 2. Treat `collection_temporal_extent` as dataset-level context, not proof of version-specific coverage.
+3. For NWS/NWM in this project, domain scope is fixed to CONUS.
 
 ## 9) Compatibility Decisions (Compact, Current Evidence)
 
@@ -642,21 +865,22 @@ Implementation rule:
 
 | historical_or_reforecast_version | forecast_version | decision | rationale | evidence |
 |---|---|---|---|---|
-| historical `version_3_1` | forecast `version_3_1` | `allowed` | Same explicit version identifier available in retrieve API metadata. | `GLOFAS-URL-22`, `GLOFAS-URL-09` |
-| historical `version_2_1` | forecast `version_2_1` | `allowed` | Same explicit version identifier available in retrieve API metadata. | `GLOFAS-URL-22`, `GLOFAS-URL-09` |
-| reforecast `version_3_1` | forecast `version_3_1` | `allowed` | Same explicit version identifier available in retrieve API metadata. | `GLOFAS-URL-23`, `GLOFAS-URL-09` |
-| historical/reforecast `version_4_0` | forecast `operational` | `conditional` | Forecast endpoint uses `operational` alias; no explicit numeric expansion in endpoint metadata. | `GLOFAS-URL-22`, `GLOFAS-URL-23`, `GLOFAS-URL-09`, `GLOFAS-URL-10` |
+| historical `version_3_1` | forecast `version_3_1` | `ambiguous` | Selector overlap exists, but forecast-side `version_3_1` combinations repeatedly returned `invalid_request` in bounded validation. | `GLOFAS-URL-22`, `GLOFAS-URL-09`, `GLOFAS-LOCAL-07`, `GLOFAS-LOCAL-08` |
+| historical `version_2_1` | forecast `version_2_1` | `ambiguous` | Historical anchors exist for `htessel_lisflood`, but forecast-side `version_2_1` combinations repeatedly returned `invalid_request` in bounded validation. | `GLOFAS-URL-22`, `GLOFAS-URL-09`, `GLOFAS-LOCAL-07`, `GLOFAS-LOCAL-08` |
+| reforecast `version_3_1` | forecast `version_3_1` | `ambiguous` | Reforecast and forecast `version_3_1` combinations remained no-anchor with repeated `invalid_request` in bounded validation. | `GLOFAS-URL-23`, `GLOFAS-URL-09`, `GLOFAS-LOCAL-07`, `GLOFAS-LOCAL-08` |
+| historical `version_4_0` | forecast `operational` | `conditional` | Historical `version_4_0 + lisflood + consolidated` anchor is confirmed, and operational forecast anchors exist, but `operational` numeric expansion remains implicit and some nearby boundary dates are timeout-sensitive. | `GLOFAS-URL-22`, `GLOFAS-URL-09`, `GLOFAS-URL-10`, `GLOFAS-LOCAL-09`, `GLOFAS-LOCAL-10` |
+| reforecast `version_4_0` | forecast `operational` | `conditional` | Reforecast `version_4_0 + lisflood` control/ensemble point anchors are reconfirmed at `2021-01-04`; still treat as conditional because this is point-anchor evidence and freeze messaging exists for recent updates. | `GLOFAS-URL-23`, `GLOFAS-URL-09`, `GLOFAS-URL-29`, `GLOFAS-LOCAL-09` |
 | Any cross-version historical/reforecast->forecast pair | mixed | `blocked` | No reviewed authoritative source proves cross-version transfer compatibility as default. | `GLOFAS-URL-09`, `GLOFAS-URL-10` |
 
 #### 9.2.1 GloFAS cutoff-date operating rule (for bias fitting)
 
 | forecast issue cutoff window | forecast version from chronology | exact historical version available in retrieve options | exact reforecast version available in retrieve options | decision |
 |---|---|---|---|---|
-| `2019-11-05` to `2020-12-08` | `2.1` | yes (`version_2_1`) | no (reforecast options start at `2.2`) | `conditional` |
-| `2020-12-09` to `2021-05-25` | `2.2` | no | yes (`version_2_2`) | `conditional` |
-| `2021-05-26` to `2021-10-26` | `3.1` | yes (`version_3_1`) | yes (`version_3_1`) | `allowed` |
+| `2019-11-05` to `2020-12-08` | `2.1` | yes (`version_2_1`) | no (reforecast options start at `2.2`) | `ambiguous` |
+| `2020-12-09` to `2021-05-25` | `2.2` | no | yes (`version_2_2`) | `ambiguous` |
+| `2021-05-26` to `2021-10-26` | `3.1` | yes (`version_3_1`) | yes (`version_3_1`) | `ambiguous` |
 | `2021-10-27` to `2023-07-25` | `3.2` / `3.3` / `3.4` / `3.5` | no exact version option | no exact version option | `ambiguous` |
-| `2023-07-26` to `2024-02-27` | `4.0` | yes (`version_4_0`) | yes (`version_4_0`) | `allowed` |
+| `2023-07-26` to `2024-02-27` | `4.0` | yes (`version_4_0`) | yes (`version_4_0`) | `conditional` |
 | `2024-02-28` onward | `4.1+` | no exact version option exposed | no exact version option exposed | `ambiguous` |
 
 Example (`cutoff_date=2022-12-25`):
@@ -669,6 +893,7 @@ Cautionary note:
 
 1. Reforecast collection messages include a `2024-11-11` temporary-freeze notice (no EWDS medium-range reforecast updates from the GloFAS v4.2 release date in reviewed metadata).
 2. This freeze affects data availability posture and should be checked before assuming reforecast continuity for recent periods.
+3. Targeted reruns after `GLOFAS-LOCAL-08` reconfirmed `version_4_0 + lisflood` reforecast point anchors (`2021-01-04`) for control and ensemble, but this remains point-anchor evidence rather than a full coverage window.
 
 ## 10) One-Page Collaborator Summary (Current)
 
@@ -676,7 +901,8 @@ Cautionary note:
 
 1. NWM and GloFAS version timelines are populated from reviewed official sources.
 2. Retrospective/historical, forecast, and reforecast metadata is mapped for both centers.
-3. Key unresolved metadata gaps are explicitly documented instead of inferred.
+3. A bounded GloFAS scan plus refinement/targeted boundary rechecks are completed with reproducible manifests (`scan_20260216T015036Z`, `refine_20260216T025403Z`, targeted reruns, and consolidated matrix `GLOFAS-LOCAL-09`).
+4. Key unresolved metadata gaps are explicitly documented instead of inferred.
 
 ### 10.2 Default Pairing Policy
 
@@ -692,6 +918,8 @@ Cautionary note:
 4. GloFAS retrieve/catalogue metadata is clear on collection-level extents, but per-`system_version` date windows are not explicitly published in the reviewed endpoint schemas.
 5. Mapping between JRC legacy reanalysis labels (`v3.0`, `v4.0`) and EWDS historical selector labels (`version_2_1`, `version_3_1`, `version_4_0`) is not yet fully resolved.
 6. GloFAS per-version release pages sometimes report date fields that differ from the versioning-table chronology; current policy is to anchor chronology to `GLOFAS-URL-10` and use per-version pages for product-impact details.
+7. Reforecast `version_4_0 + lisflood` point anchors are reconfirmed (`2021-01-04`), but broader reforecast version-window coverage is still unresolved (point-anchor evidence only).
+8. After scan + refinement, many combinations remain no-anchor with repeated `invalid_request`; this strongly suggests combination-level unavailability under current selector/request settings, but still requires periodic recheck.
 
 ## 11) Update Cadence and Trigger Policy
 
