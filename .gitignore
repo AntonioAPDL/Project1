@@ -133,6 +133,10 @@ repro/runs/
 repro/bias_runs/
 repro/bias_event_runs/
 repro/bias_version_runs/
+repro/bias_inputs/
+repro/cleanup_logs/
+repro/quarantine/cleanup_runs/
+repro/quarantine/failed_runs/
 
 # Uppercase spreadsheet exports
 *.CSV
