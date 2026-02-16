@@ -59,6 +59,9 @@ source(file.path(repo_root, "R", "unified", "stages", "stage_report.R"))
 
 cfg <- unified_load_config(opts$config_path, repo_root = repo_root)
 
+# Prevent Python helper calls from writing bytecode caches outside run roots.
+Sys.setenv(PYTHONDONTWRITEBYTECODE = "1")
+
 run_id <- cfg$run$run_id
 if (is.null(run_id) || !nzchar(run_id)) {
   run_id <- format(Sys.time(), "%Y%m%d_%H%M%S")

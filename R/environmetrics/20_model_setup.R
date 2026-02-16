@@ -228,21 +228,38 @@ B0 <- B_fn(p0, gam0)
 C0 <- C_fn(p0, gam0)
 abs_gam0 <- abs(gam0)
 
-fill_with_value <- function(matrix_list, value) {
-  for (i in seq_along(matrix_list)) {
-    matrix_list[[i]][] <- value
-  }
-  return(matrix_list)
-}
 preallocate_matrix_list <- function(column_counts, num_rows) {
-  # Initialize an empty list
-  matrix_list <- vector("list", length(column_counts))
-
-  for (i in seq_along(column_counts)) {
-    num_cols <- column_counts[i]
-    matrix_list[[i]] <- matrix(NA, nrow = num_rows[i], ncol = num_cols)
+  n_list <- length(column_counts)
+  if (length(num_rows) != n_list) {
+    stop(sprintf(
+      "preallocate_matrix_list: num_rows length (%d) must match column_counts length (%d)",
+      as.integer(length(num_rows)),
+      as.integer(n_list)
+    ), call. = FALSE)
   }
-  return(matrix_list)
+  matrix_list <- vector("list", n_list)
+  for (i in seq_along(column_counts)) {
+    num_cols <- suppressWarnings(as.integer(column_counts[i]))
+    num_rows_i <- suppressWarnings(as.integer(num_rows[i]))
+    if (!is.finite(num_cols) || num_cols <= 0L) {
+      stop(sprintf("preallocate_matrix_list: invalid num_cols at i=%d (%s)", as.integer(i), as.character(column_counts[i])), call. = FALSE)
+    }
+    if (!is.finite(num_rows_i) || num_rows_i <= 0L) {
+      stop(sprintf("preallocate_matrix_list: invalid num_rows at i=%d (%s)", as.integer(i), as.character(num_rows[i])), call. = FALSE)
+    }
+    matrix_list[[i]] <- matrix(NA_real_, nrow = num_rows_i, ncol = num_cols)
+  }
+  matrix_list
+}
+fill_with_scalar <- function(matrix_list, scalar, label) {
+  val <- suppressWarnings(as.numeric(scalar))
+  if (length(val) != 1L || !is.finite(val)) {
+    stop(sprintf("%s must be a finite scalar; got length=%d value=%s", label, as.integer(length(val)), as.character(scalar)), call. = FALSE)
+  }
+  for (i in seq_along(matrix_list)) {
+    matrix_list[[i]][] <- val
+  }
+  matrix_list
 }
 
 ###########################################################################################
@@ -282,11 +299,11 @@ new.sts.out = list(E.sts = E1,
 # S_t (After Forecast)
 E1 <- preallocate_matrix_list(num_mem, ranges)
 E2 <- preallocate_matrix_list(num_mem, ranges)
-E1 <- fill_with_value(E1, 1)
-E2 <- fill_with_value(E2, 1^2)
+E1 <- fill_with_scalar(E1, 1, "new.sts.out_f E.sts init")
+E2 <- fill_with_scalar(E2, 1, "new.sts.out_f E.sts2 init")
 
 entrop_s <- preallocate_matrix_list(num_mem, rep(1,J) )
-entrop_s <- fill_with_value(entrop_s, 0)
+entrop_s <- fill_with_scalar(entrop_s, 0, "new.sts.out_f entrop init")
 
 new.sts.out_f = list(E.sts = E1, 
                     E.sts2 = E2,
@@ -308,11 +325,17 @@ new.uts.out = list(E.uts = E1,
 # U_t (After Forecast)
 E1 <- preallocate_matrix_list(num_mem, ranges)
 E2 <- preallocate_matrix_list(num_mem, ranges)
-E1 <- fill_with_value(E1, 1/sig0)
-E2 <- fill_with_value(E2, sig0)
+for (jj in seq_len(J)) {
+  sigma_j <- suppressWarnings(as.numeric(sig0[jj + 1, 1]))
+  if (!is.finite(sigma_j) || sigma_j <= 0) {
+    stop(sprintf("Invalid sigma seed for forecast ensemble j=%d: %s", as.integer(jj), as.character(sigma_j)), call. = FALSE)
+  }
+  E1[[jj]][] <- 1 / sigma_j
+  E2[[jj]][] <- sigma_j
+}
 
 entrop_u <- preallocate_matrix_list(num_mem, rep(1,J))
-entrop_u <- fill_with_value(entrop_u, 0)
+entrop_u <- fill_with_scalar(entrop_u, 0, "new.uts.out_f entrop init")
 
 new.uts.out_f = list(E.uts = E1, 
                     E.inv.uts = E2,

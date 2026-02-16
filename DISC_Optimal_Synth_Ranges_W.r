@@ -177,6 +177,10 @@ DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY <- disc_env_pos_num(
   "DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY",
   default = 1e12
 )
+DISC_STRICT_CONTRACTS <- disc_env_flag(
+  "DISC_STRICT_CONTRACTS",
+  default = TRUE
+)
 
 print(c(n.samp, 444))
 flush.console()
@@ -1070,21 +1074,38 @@ for (j in 1:(J+1)) {
 gam0 = gam.init 
 sig0 = sig.init 
 
-fill_with_value <- function(matrix_list, value) {
-  for (i in seq_along(matrix_list)) {
-    matrix_list[[i]][] <- value
-  }
-  return(matrix_list)
-}
 preallocate_matrix_list <- function(column_counts, num_rows) {
-  # Initialize an empty list
-  matrix_list <- vector("list", length(column_counts))
-
-  for (i in seq_along(column_counts)) {
-    num_cols <- column_counts[i]
-    matrix_list[[i]] <- matrix(NA, nrow = num_rows[i], ncol = num_cols)
+  n_list <- length(column_counts)
+  if (length(num_rows) != n_list) {
+    stop(sprintf(
+      "preallocate_matrix_list: num_rows length (%d) must match column_counts length (%d)",
+      as.integer(length(num_rows)),
+      as.integer(n_list)
+    ), call. = FALSE)
   }
-  return(matrix_list)
+  matrix_list <- vector("list", n_list)
+  for (i in seq_along(column_counts)) {
+    num_cols <- suppressWarnings(as.integer(column_counts[i]))
+    num_rows_i <- suppressWarnings(as.integer(num_rows[i]))
+    if (!is.finite(num_cols) || num_cols <= 0L) {
+      stop(sprintf("preallocate_matrix_list: invalid num_cols at i=%d (%s)", as.integer(i), as.character(column_counts[i])), call. = FALSE)
+    }
+    if (!is.finite(num_rows_i) || num_rows_i <= 0L) {
+      stop(sprintf("preallocate_matrix_list: invalid num_rows at i=%d (%s)", as.integer(i), as.character(num_rows[i])), call. = FALSE)
+    }
+    matrix_list[[i]] <- matrix(NA_real_, nrow = num_rows_i, ncol = num_cols)
+  }
+  matrix_list
+}
+fill_with_scalar <- function(matrix_list, scalar, label) {
+  val <- suppressWarnings(as.numeric(scalar))
+  if (length(val) != 1L || !is.finite(val)) {
+    stop(sprintf("%s must be a finite scalar; got length=%d value=%s", label, as.integer(length(val)), as.character(scalar)), call. = FALSE)
+  }
+  for (i in seq_along(matrix_list)) {
+    matrix_list[[i]][] <- val
+  }
+  matrix_list
 }
 
 ###########################################################################################
@@ -1124,11 +1145,11 @@ new.sts.out = list(E.sts = E1,
 # S_t (After Forecast)
 E1 <- preallocate_matrix_list(num_mem, ranges)
 E2 <- preallocate_matrix_list(num_mem, ranges)
-E1 <- fill_with_value(E1, 1)
-E2 <- fill_with_value(E2, 1^2)
+E1 <- fill_with_scalar(E1, 1, "new.sts.out_f E.sts init")
+E2 <- fill_with_scalar(E2, 1, "new.sts.out_f E.sts2 init")
 
 entrop_s <- preallocate_matrix_list(num_mem, rep(1,J) )
-entrop_s <- fill_with_value(entrop_s, 0)
+entrop_s <- fill_with_scalar(entrop_s, 0, "new.sts.out_f entrop init")
 
 new.sts.out_f = list(E.sts = E1, 
                     E.sts2 = E2,
@@ -1150,11 +1171,17 @@ new.uts.out = list(E.uts = E1,
 # U_t (After Forecast)
 E1 <- preallocate_matrix_list(num_mem, ranges)
 E2 <- preallocate_matrix_list(num_mem, ranges)
-E1 <- fill_with_value(E1, 1/sig0)
-E2 <- fill_with_value(E2, sig0)
+for (jj in seq_len(J)) {
+  sigma_j <- suppressWarnings(as.numeric(sig0[jj + 1, 1]))
+  if (!is.finite(sigma_j) || sigma_j <= 0) {
+    stop(sprintf("Invalid sigma seed for forecast ensemble j=%d: %s", as.integer(jj), as.character(sigma_j)), call. = FALSE)
+  }
+  E1[[jj]][] <- 1 / sigma_j
+  E2[[jj]][] <- sigma_j
+}
 
 entrop_u <- preallocate_matrix_list(num_mem, rep(1,J))
-entrop_u <- fill_with_value(entrop_u, 0)
+entrop_u <- fill_with_scalar(entrop_u, 0, "new.uts.out_f entrop init")
 
 new.uts.out_f = list(E.uts = E1, 
                     E.inv.uts = E2,
@@ -1640,32 +1667,127 @@ T_size <- c(TT, (TT+ranges))
 #############################################################################################################################################
 #############################################################################################################################################
 
-# Function to concatenate matrices horizontally based on row numbers
-concatenate_matrices <- function(FFF_list) {
-  concatenated_list <- list()
-  J <- length(FFF_list)
-  
-  if (J == 1) {
-    concatenated_list[[1]] <- FFF_list[[1]]
-    return(concatenated_list)
+# Build horizon-segment matrices in deterministic descending-range order.
+disc_w_concat_horizon_segments <- function(mat_list, label) {
+  if (!is.list(mat_list) || length(mat_list) < 1L) {
+    stop(sprintf("%s must be a non-empty list", label), call. = FALSE)
   }
-  
-  start_row <- 1
-  for (j in J:2) {
-    row_num <- nrow(FFF_list[[j]])
-    concatenated_matrix <- do.call(cbind, lapply(FFF_list[1:J], function(mat) mat[start_row:(start_row + row_num - 1), ]))
-    concatenated_list[[J - j + 1]] <- concatenated_matrix
-    start_row <- start_row + row_num
+  mats <- lapply(seq_along(mat_list), function(i) {
+    m <- as.matrix(mat_list[[i]])
+    storage.mode(m) <- "double"
+    if (!is.matrix(m) || nrow(m) < 1L || ncol(m) < 1L) {
+      stop(sprintf("%s[[%d]] must be a non-empty numeric matrix", label, as.integer(i)), call. = FALSE)
+    }
+    if (any(!is.finite(m))) {
+      stop(sprintf("%s[[%d]] contains non-finite values", label, as.integer(i)), call. = FALSE)
+    }
+    m
+  })
+  rows <- vapply(mats, nrow, integer(1))
+  if (any(diff(rows) > 0L)) {
+    stop(sprintf("%s row counts must be non-increasing; got [%s]", label, paste(rows, collapse = ",")), call. = FALSE)
   }
-  
-  # Handle the last remaining rows from the first matrix
-  row_num <- nrow(FFF_list[[1]]) - start_row + 1
-  concatenated_list[[length(concatenated_list) + 1]] <- FFF_list[[1]][start_row:(start_row + row_num - 1), ]
-  
-  return(concatenated_list)
+  out <- vector("list", length(mats))
+  out_i <- 1L
+  for (idx in seq(from = length(mats), to = 1L, by = -1L)) {
+    upper <- rows[idx]
+    lower <- if (idx < length(mats)) rows[idx + 1L] else 0L
+    if (upper <= lower) {
+      stop(sprintf("%s has invalid segment bounds at idx=%d (lower=%d upper=%d)", label, as.integer(idx), as.integer(lower), as.integer(upper)), call. = FALSE)
+    }
+    segment_rows <- (lower + 1L):upper
+    pieces <- lapply(seq_len(idx), function(i) mats[[i]][segment_rows, , drop = FALSE])
+    out[[out_i]] <- do.call(cbind, pieces)
+    out_i <- out_i + 1L
+  }
+  out
+}
+disc_w_assert_shape <- function(x, dims, label, allow_array = FALSE) {
+  actual <- dim(x)
+  if (is.null(actual)) {
+    stop(sprintf("%s has no dim attribute", label), call. = FALSE)
+  }
+  if (!allow_array && length(actual) != 2L) {
+    stop(sprintf("%s must be 2D; got dim length=%d", label, as.integer(length(actual))), call. = FALSE)
+  }
+  if (length(actual) != length(dims) || any(actual != dims)) {
+    stop(sprintf(
+      "%s shape mismatch: expected (%s), got (%s)",
+      label,
+      paste(dims, collapse = "x"),
+      paste(actual, collapse = "x")
+    ), call. = FALSE)
+  }
+}
+disc_w_validate_cpp_contract <- function(
+  GG,
+  m0,
+  C0,
+  FF,
+  y,
+  ex.df.mat,
+  ex.df.mat.k,
+  GG_list,
+  FF_list,
+  FFF_forecast,
+  QQQ_forecast,
+  ensembles_forecast,
+  cur.covs_list,
+  num_mem,
+  ranges,
+  p,
+  J,
+  ppx,
+  TT_sub,
+  context_label = ""
+) {
+  ranges_i <- suppressWarnings(as.integer(ranges))
+  num_mem_i <- suppressWarnings(as.integer(num_mem))
+  if (length(ranges_i) != J || any(!is.finite(ranges_i)) || any(ranges_i <= 0L)) {
+    stop(sprintf("contract %s: invalid ranges [%s]", context_label, paste(ranges, collapse = ",")), call. = FALSE)
+  }
+  if (length(num_mem_i) != J || any(!is.finite(num_mem_i)) || any(num_mem_i <= 0L)) {
+    stop(sprintf("contract %s: invalid num_mem [%s]", context_label, paste(num_mem, collapse = ",")), call. = FALSE)
+  }
+  if (any(diff(ranges_i) > 0L)) {
+    stop(sprintf("contract %s: ranges must be non-increasing, got [%s]", context_label, paste(ranges_i, collapse = ",")), call. = FALSE)
+  }
+  total_state <- as.integer(p * (J + 1) + ppx)
+  disc_w_assert_shape(GG, c(total_state, total_state, as.integer(TT_sub)), sprintf("GG (%s)", context_label), allow_array = TRUE)
+  disc_w_assert_shape(C0, c(total_state, total_state), sprintf("C0 (%s)", context_label))
+  if (length(as.numeric(m0)) != total_state) {
+    stop(sprintf("contract %s: m0 length mismatch expected=%d got=%d", context_label, total_state, as.integer(length(m0))), call. = FALSE)
+  }
+  disc_w_assert_shape(FF, c(total_state, as.integer(J + 1), as.integer(TT_sub)), sprintf("FF (%s)", context_label), allow_array = TRUE)
+  disc_w_assert_shape(y, c(as.integer(J + 1), as.integer(TT_sub)), sprintf("y (%s)", context_label))
+  disc_w_assert_shape(ex.df.mat, c(total_state, total_state), sprintf("ex.df.mat (%s)", context_label))
+  disc_w_assert_shape(ex.df.mat.k, c(total_state, total_state), sprintf("ex.df.mat.k (%s)", context_label))
+  if (length(GG_list) != J || length(FF_list) != J || length(FFF_forecast) != J ||
+      length(QQQ_forecast) != J || length(ensembles_forecast) != J || length(cur.covs_list) != J) {
+    stop(sprintf("contract %s: list-length mismatch in ensemble payloads", context_label), call. = FALSE)
+  }
+  ranges_per_i <- if (J > 1L) {
+    ranges_i - c(ranges_i[2:J], 0L)
+  } else {
+    ranges_i
+  }
+  horizon_i <- rev(ranges_per_i)
+  for (seg in seq_len(J)) {
+    expected_state <- as.integer(p * (J - seg + 2L))
+    expected_series <- as.integer(J - seg + 1L)
+    expected_h <- as.integer(horizon_i[seg])
+    expected_obs <- as.integer(sum(num_mem_i[seq_len(expected_series)]))
+    disc_w_assert_shape(as.matrix(GG_list[[seg]]), c(expected_state, expected_state), sprintf("GG_list[[%d]] (%s)", as.integer(seg), context_label))
+    disc_w_assert_shape(as.matrix(FF_list[[seg]]), c(expected_state, expected_series), sprintf("FF_list[[%d]] (%s)", as.integer(seg), context_label))
+    disc_w_assert_shape(as.matrix(FFF_forecast[[seg]]), c(expected_obs, expected_h), sprintf("FFF_forecast[[%d]] (%s)", as.integer(seg), context_label))
+    disc_w_assert_shape(as.matrix(ensembles_forecast[[seg]]), c(expected_obs, expected_h), sprintf("ensembles_forecast[[%d]] (%s)", as.integer(seg), context_label))
+    disc_w_assert_shape(as.array(QQQ_forecast[[seg]]), c(expected_obs, expected_obs, expected_h), sprintf("QQQ_forecast[[%d]] (%s)", as.integer(seg), context_label), allow_array = TRUE)
+    disc_w_assert_shape(as.array(cur.covs_list[[seg]]), c(expected_state, expected_state, expected_h), sprintf("cur.covs_list[[%d]] (%s)", as.integer(seg), context_label), allow_array = TRUE)
+  }
+  invisible(TRUE)
 }
 
-ensembles_forecast <- concatenate_matrices(ensembles)
+ensembles_forecast <- disc_w_concat_horizon_segments(ensembles, "ensembles")
 ensembles_forecast <- lapply(ensembles_forecast, t)
 #############################################################################################################################################
 #############################################################################################################################################
@@ -1844,7 +1966,7 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
 }
 
   
-while (FLAG & iter < max_iter) {
+while (isTRUE(FLAG) && iter < max_iter) {
 
 
     cur.covs_list = new.covs_list
@@ -1885,10 +2007,10 @@ while (FLAG & iter < max_iter) {
 
     ######################################
     ######################################
-    result_F <- concatenate_matrices(FFF_list)
+    result_F <- disc_w_concat_horizon_segments(FFF_list, sprintf("FFF_list iter=%d", as.integer(iter)))
     FFF_forecast <- lapply(result_F, t)
 
-    result_Q <- concatenate_matrices(QQQ_list)
+    result_Q <- disc_w_concat_horizon_segments(QQQ_list, sprintf("QQQ_list iter=%d", as.integer(iter)))
     QQQ_forecast_VEC <- lapply(result_Q, t)
     QQQ_forecast <- vector("list", J)
 
@@ -1925,8 +2047,32 @@ while (FLAG & iter < max_iter) {
       ))
       flush.console()
     }
-  } else if ((crit_ELBO + conv.check) < tol1 || iter < max_iter) {
+  } else if (iter < max_iter) {
     # if ((crit_ELBO+conv.check) < tol1 || iter < 100 || fast > 0 ) {
+    if (isTRUE(DISC_STRICT_CONTRACTS)) {
+      disc_w_validate_cpp_contract(
+        GG = GG,
+        m0 = m0,
+        C0 = C0,
+        FF = FF,
+        y = y,
+        ex.df.mat = ex.df.mat,
+        ex.df.mat.k = ex.df.mat.k,
+        GG_list = GG_list,
+        FF_list = FF_list,
+        FFF_forecast = FFF_forecast,
+        QQQ_forecast = QQQ_forecast,
+        ensembles_forecast = ensembles_forecast,
+        cur.covs_list = cur.covs_list,
+        num_mem = num_mem,
+        ranges = ranges,
+        p = p,
+        J = J,
+        ppx = ppx,
+        TT_sub = TT_sub,
+        context_label = sprintf("p0=%s iter=%d", as.character(p0), as.integer(iter))
+      )
+    }
     update.theta <- DISC_update_theta_synth_cpp_W( GG, m0, C0,
                                             FFF, QQQ,
                                             FF, y, ex.df.mat, ex.df.mat.k, Ones,
@@ -2258,12 +2404,18 @@ while (FLAG & iter < max_iter) {
     gamsig_update_iters <- as.integer(gamsig_update_iters + 1L)
   }
 
-  old.gam = seq.gamma[,dim(seq.gamma)[2]]
-  new.gam = new.gamsig.out$E.gam
+  old.gam <- as.numeric(seq.gamma[, dim(seq.gamma)[2], drop = TRUE])
+  new.gam <- as.numeric(new.gamsig.out$E.gam)
+  if (length(old.gam) != length(new.gam)) {
+    stop(sprintf("gamma length drift at iter=%d: old=%d new=%d", as.integer(iter), as.integer(length(old.gam)), as.integer(length(new.gam))), call. = FALSE)
+  }
   seq.gamma = cbind(seq.gamma, new.gam)
 
-  old.sig = seq.sigma[,dim(seq.sigma)[2]]
-  new.sig = new.gamsig.out$E.sigma
+  old.sig <- as.numeric(seq.sigma[, dim(seq.sigma)[2], drop = TRUE])
+  new.sig <- as.numeric(new.gamsig.out$E.sigma)
+  if (length(old.sig) != length(new.sig)) {
+    stop(sprintf("sigma length drift at iter=%d: old=%d new=%d", as.integer(iter), as.integer(length(old.sig)), as.integer(length(new.sig))), call. = FALSE)
+  }
   seq.sigma = cbind(seq.sigma, new.sig)
   gamma_delta_vec <- as.numeric(new.gam - old.gam)
   sigma_delta_vec <- as.numeric(new.sig - old.sig)
@@ -2271,7 +2423,12 @@ while (FLAG & iter < max_iter) {
   if (gamsig_frozen_now) {
     conv.check <- Inf
   } else {
-    conv.check <- sum(old.gam-new.gam)^2 + sum(old.sig-new.sig)^2
+    step_vec <- c(gamma_delta_vec, sigma_delta_vec)
+    if (length(step_vec) == 0L || any(!is.finite(step_vec))) {
+      conv.check <- Inf
+    } else {
+      conv.check <- sum(step_vec^2)
+    }
   }
 
   ##########
