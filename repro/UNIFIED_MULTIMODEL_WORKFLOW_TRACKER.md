@@ -2130,6 +2130,28 @@ Concurrency rule for migration phases:
 - Next action:
   - Continue P9 closure via isolated q=0.01 convergence evidence under the new defaults, then run q=0.05 sanity before broader proof runs.
 
+### Progress Update 2026-02-16 19:56 UTC
+- Phase: P9
+- Change type: validation+monitoring
+- Summary: refreshed live trace visualizations for current extreme-quantile monitoring runs (univariate and multivariate) using the latest `gamsig_progress` logs, and captured current run-state evidence. Multivariate `q=50` and `q=99` reached completion with saved outputs; multivariate `q=01` halted with a matrix-dimension error in `DISC_update_theta_synth_cpp_W`.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/reports/figures/univar_trace_matrix_q010599_live_enhanced_20260216_195533Z.png`
+  - `repro/reports/figures/multivar_trace_matrix_q010599_live_enhanced_20260216_195533Z.png`
+  - `repro/runs/debug_extreme_mv_q010599_parallel_20260216_034312/fit/q=01/logs/fit.log`
+  - `repro/runs/debug_extreme_mv_q010599_parallel_20260216_034312/fit/q=50/logs/fit.log`
+  - `repro/runs/debug_extreme_mv_q010599_parallel_20260216_034312/fit/q=99/logs/fit.log`
+- Validation notes:
+  - Univariate latest run remains completed (`q=01` iter 75, `q=50` iter 70, `q=99` iter 75).
+  - Multivariate latest run status at capture time:
+    - `q=99`: iter `1000` (max-iter cap reached), output saved.
+    - `q=50`: iter `145`, output saved.
+    - `q=01`: halted at iter `739` with `matrix multiplication: incompatible matrix dimensions: 0x0 and 31x31`.
+  - No active run was interrupted for this update.
+- Next action:
+  - Isolate and debug the `q=01` multivariate matrix-dimension failure path while preserving successful `q=50` and `q=99` artifacts as control references.
+
 ## 15) Audit Report (2026-02-14)
 
 ### 15.1 Inconsistencies Found and Fixed
