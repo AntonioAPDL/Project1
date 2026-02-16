@@ -1,0 +1,6 @@
+2026-02-15 17:01:34,318 | INFO | Run directory: repro/glofas_probe_runs/probe_20260216T010134Z
+2026-02-15 17:01:34,319 | INFO | Mode: run
+2026-02-15 17:01:34,319 | INFO | Cases: 3
+2026-02-15 17:01:35,407 | INFO | [RUN] historical_smoke dataset=cems-glofas-historical
+2026-02-15 17:01:59,859 | INFO | [OK] historical_smoke bytes=354
+2026-02-15 17:01:59,860 | INFO | [RUN] forecast_smoke dataset=cems-glofas-forecast

@@ -1,0 +1,18 @@
+2026-02-15 23:50:54,307 | INFO | Run directory: repro/glofas_probe_runs/probe_20260216T075054Z
+2026-02-15 23:50:54,307 | INFO | Mode: run
+2026-02-15 23:50:54,307 | INFO | Cases: 4
+2026-02-15 23:50:55,219 | INFO | [RUN] hist_v31_lisflood_consolidated_1978_12_31 dataset=cems-glofas-historical
+2026-02-15 23:50:55,752 | ERROR | [ERR] hist_v31_lisflood_consolidated_1978_12_31: 400 Client Error: Bad Request for url: https://ewds.climate.copernicus.eu/api/retrieve/v1/processes/cems-glofas-historical/execution
+invalid request
+Request has not produced a valid combination of values, please check your selection.
+{'system_version': ['version_3_1'], 'hydrological_model': ['lisflood'], 'product_type': ['consolidated'], 'variable': ['river_discharge_in_the_last_24_hours'], 'hyear': ['1978'], 'hmonth': ['12'], 'hday': ['31'], 'data_format': ['grib'], 'area': ['37.2443931', '-122.272464', '36.8443931', '-121.872464']}
+2026-02-15 23:50:55,753 | INFO | [RUN] hist_v31_lisflood_consolidated_1979_01_01 dataset=cems-glofas-historical
+2026-02-15 23:51:12,152 | INFO | [OK] hist_v31_lisflood_consolidated_1979_01_01 bytes=289
+2026-02-15 23:51:12,153 | INFO | [RUN] hist_v40_lisflood_consolidated_1978_12_31 dataset=cems-glofas-historical
+2026-02-15 23:51:12,521 | ERROR | [ERR] hist_v40_lisflood_consolidated_1978_12_31: 400 Client Error: Bad Request for url: https://ewds.climate.copernicus.eu/api/retrieve/v1/processes/cems-glofas-historical/execution
+invalid request
+Request has not produced a valid combination of values, please check your selection.
+{'system_version': ['version_4_0'], 'hydrological_model': ['lisflood'], 'product_type': ['consolidated'], 'variable': ['river_discharge_in_the_last_24_hours'], 'hyear': ['1978'], 'hmonth': ['12'], 'hday': ['31'], 'data_format': ['grib'], 'area': ['37.2443931', '-122.272464', '36.8443931', '-121.872464']}
+2026-02-15 23:51:12,522 | INFO | [RUN] hist_v40_lisflood_consolidated_1979_01_01 dataset=cems-glofas-historical
+2026-02-15 23:51:29,043 | INFO | [OK] hist_v40_lisflood_consolidated_1979_01_01 bytes=334
+2026-02-15 23:51:29,043 | INFO | Completed. Manifest: repro/glofas_probe_runs/probe_20260216T075054Z/manifests/probe_manifest.csv

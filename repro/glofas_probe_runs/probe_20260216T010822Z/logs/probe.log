@@ -1,0 +1,6 @@
+2026-02-15 17:08:22,223 | INFO | Run directory: repro/glofas_probe_runs/probe_20260216T010822Z
+2026-02-15 17:08:22,224 | INFO | Mode: run
+2026-02-15 17:08:22,224 | INFO | Cases: 1
+2026-02-15 17:08:23,130 | INFO | [RUN] reforecast_smoke_success dataset=cems-glofas-reforecast
+2026-02-15 17:08:47,519 | INFO | [OK] reforecast_smoke_success bytes=343
+2026-02-15 17:08:47,519 | INFO | Completed. Manifest: repro/glofas_probe_runs/probe_20260216T010822Z/manifests/probe_manifest.csv

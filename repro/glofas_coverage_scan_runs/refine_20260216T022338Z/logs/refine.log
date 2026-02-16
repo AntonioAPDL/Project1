@@ -1,0 +1,6 @@
+2026-02-15 18:23:38,846 | INFO | base_run_dir=repro/glofas_coverage_scan_runs/scan_20260216T015036Z
+2026-02-15 18:23:38,847 | INFO | mode=dry-run
+2026-02-15 18:23:38,873 | INFO | selected_combos=1
+2026-02-15 18:23:38,903 | INFO | start combo=P2__reforecast__version_4_0__lisflood__control_reforecast baseline=found
+2026-02-15 18:23:38,906 | INFO | done combo=P2__reforecast__version_4_0__lisflood__control_reforecast found earliest=2021-01-04 latest=2021-01-04 conf=low
+2026-02-15 18:23:38,909 | INFO | completed combos=1 found=1 attempts=3 out=repro/glofas_coverage_scan_runs/refine_20260216T022338Z

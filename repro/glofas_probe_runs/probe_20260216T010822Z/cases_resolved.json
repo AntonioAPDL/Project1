@@ -1,0 +1,40 @@
+[
+  {
+    "case_id": "reforecast_smoke_success",
+    "dataset": "cems-glofas-reforecast",
+    "request": {
+      "area": [
+        37.2443931,
+        -122.272464,
+        36.8443931,
+        -121.872464
+      ],
+      "data_format": "grib2",
+      "download_format": "zip",
+      "hday": [
+        "04"
+      ],
+      "hmonth": [
+        "01"
+      ],
+      "hydrological_model": [
+        "lisflood"
+      ],
+      "hyear": [
+        "2021"
+      ],
+      "leadtime_hour": [
+        "24"
+      ],
+      "product_type": [
+        "control_reforecast"
+      ],
+      "system_version": [
+        "version_4_0"
+      ],
+      "variable": [
+        "river_discharge_in_the_last_24_hours"
+      ]
+    }
+  }
+]

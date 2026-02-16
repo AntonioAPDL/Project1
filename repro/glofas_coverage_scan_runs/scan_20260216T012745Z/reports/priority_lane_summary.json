@@ -1,0 +1,38 @@
+{
+  "P1::forecast": {
+    "anchors_found": 0,
+    "combos": 2
+  },
+  "P1::historical": {
+    "anchors_found": 0,
+    "combos": 2
+  },
+  "P1::reforecast": {
+    "anchors_found": 0,
+    "combos": 2
+  },
+  "P2::forecast": {
+    "anchors_found": 0,
+    "combos": 2
+  },
+  "P2::historical": {
+    "anchors_found": 0,
+    "combos": 2
+  },
+  "P2::reforecast": {
+    "anchors_found": 0,
+    "combos": 2
+  },
+  "P3::forecast": {
+    "anchors_found": 0,
+    "combos": 2
+  },
+  "P3::historical": {
+    "anchors_found": 0,
+    "combos": 2
+  },
+  "P3::reforecast": {
+    "anchors_found": 0,
+    "combos": 2
+  }
+}

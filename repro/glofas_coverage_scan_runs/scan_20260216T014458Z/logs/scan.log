@@ -1,0 +1,21 @@
+2026-02-15 17:44:58,042 | INFO | run_id=scan_20260216T014458Z
+2026-02-15 17:44:58,042 | INFO | mode=run
+2026-02-15 17:44:58,047 | INFO | total_combos=36
+2026-02-15 17:44:58,052 | INFO | [HISTORICAL] combos=12
+2026-02-15 17:44:58,061 | INFO | [REFORECAST] combos=12
+2026-02-15 17:44:58,093 | INFO | [REFORECAST] start combo=P1__reforecast__version_3_1__htessel_lisflood__control_reforecast days=2598
+2026-02-15 17:44:58,111 | INFO | [HISTORICAL] start combo=P1__historical__version_3_1__htessel_lisflood__consolidated days=17213
+2026-02-15 17:45:12,621 | INFO | [REFORECAST] no anchor combo=P1__reforecast__version_3_1__htessel_lisflood__control_reforecast
+2026-02-15 17:45:12,643 | INFO | [REFORECAST] start combo=P1__reforecast__version_3_1__htessel_lisflood__ensemble_perturbed_reforecast days=2598
+2026-02-15 17:45:13,373 | INFO | [HISTORICAL] no anchor combo=P1__historical__version_3_1__htessel_lisflood__consolidated
+2026-02-15 17:45:13,410 | INFO | [HISTORICAL] start combo=P1__historical__version_3_1__htessel_lisflood__intermediate days=17213
+2026-02-15 17:45:26,348 | INFO | [REFORECAST] no anchor combo=P1__reforecast__version_3_1__htessel_lisflood__ensemble_perturbed_reforecast
+2026-02-15 17:45:26,370 | INFO | [REFORECAST] start combo=P1__reforecast__version_3_1__lisflood__control_reforecast days=2598
+2026-02-15 17:45:27,407 | INFO | [HISTORICAL] no anchor combo=P1__historical__version_3_1__htessel_lisflood__intermediate
+2026-02-15 17:45:27,447 | INFO | [HISTORICAL] start combo=P1__historical__version_3_1__lisflood__consolidated days=17213
+2026-02-15 17:48:16,816 | INFO | [REFORECAST] done combo=P1__reforecast__version_3_1__lisflood__control_reforecast earliest=2002-05-23 latest=2002-06-17 confidence=high attempts=12
+2026-02-15 17:48:16,834 | INFO | [REFORECAST] start combo=P1__reforecast__version_3_1__lisflood__ensemble_perturbed_reforecast days=2598
+2026-02-15 17:50:00,747 | INFO | [REFORECAST] done combo=P1__reforecast__version_3_1__lisflood__ensemble_perturbed_reforecast earliest=2002-05-23 latest=2002-06-17 confidence=high attempts=12
+2026-02-15 17:50:00,781 | INFO | [REFORECAST] start combo=P2__reforecast__version_4_0__htessel_lisflood__control_reforecast days=2598
+2026-02-15 17:50:15,098 | INFO | [REFORECAST] no anchor combo=P2__reforecast__version_4_0__htessel_lisflood__control_reforecast
+2026-02-15 17:50:15,119 | INFO | [REFORECAST] start combo=P2__reforecast__version_4_0__htessel_lisflood__ensemble_perturbed_reforecast days=2598

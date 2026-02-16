@@ -1,0 +1,7 @@
+2026-02-15 17:01:27,189 | INFO | Run directory: repro/glofas_probe_runs/probe_20260216T010127Z
+2026-02-15 17:01:27,189 | INFO | Mode: dry-run
+2026-02-15 17:01:27,190 | INFO | Cases: 3
+2026-02-15 17:01:27,190 | INFO | [DRY] historical_smoke dataset=cems-glofas-historical
+2026-02-15 17:01:27,190 | INFO | [DRY] forecast_smoke dataset=cems-glofas-forecast
+2026-02-15 17:01:27,191 | INFO | [DRY] reforecast_smoke dataset=cems-glofas-reforecast
+2026-02-15 17:01:27,191 | INFO | Completed. Manifest: repro/glofas_probe_runs/probe_20260216T010127Z/manifests/probe_manifest.csv

@@ -1,0 +1,113 @@
+[
+  {
+    "case_id": "historical_smoke",
+    "dataset": "cems-glofas-historical",
+    "request": {
+      "area": [
+        37.2443931,
+        -122.272464,
+        36.8443931,
+        -121.872464
+      ],
+      "data_format": "grib2",
+      "download_format": "zip",
+      "hday": [
+        "27"
+      ],
+      "hmonth": [
+        "03"
+      ],
+      "hydrological_model": [
+        "lisflood"
+      ],
+      "hyear": [
+        "2023"
+      ],
+      "product_type": [
+        "consolidated"
+      ],
+      "system_version": [
+        "version_4_0"
+      ],
+      "variable": [
+        "river_discharge_in_the_last_24_hours"
+      ]
+    }
+  },
+  {
+    "case_id": "forecast_smoke",
+    "dataset": "cems-glofas-forecast",
+    "request": {
+      "area": [
+        37.2443931,
+        -122.272464,
+        36.8443931,
+        -121.872464
+      ],
+      "data_format": "grib2",
+      "day": [
+        "27"
+      ],
+      "download_format": "zip",
+      "hydrological_model": [
+        "lisflood"
+      ],
+      "leadtime_hour": [
+        "24"
+      ],
+      "month": [
+        "03"
+      ],
+      "product_type": [
+        "control_forecast"
+      ],
+      "system_version": [
+        "operational"
+      ],
+      "variable": [
+        "river_discharge_in_the_last_24_hours"
+      ],
+      "year": [
+        "2023"
+      ]
+    }
+  },
+  {
+    "case_id": "reforecast_smoke",
+    "dataset": "cems-glofas-reforecast",
+    "request": {
+      "area": [
+        37.2443931,
+        -122.272464,
+        36.8443931,
+        -121.872464
+      ],
+      "data_format": "grib2",
+      "download_format": "zip",
+      "hday": [
+        "27"
+      ],
+      "hmonth": [
+        "03"
+      ],
+      "hydrological_model": [
+        "lisflood"
+      ],
+      "hyear": [
+        "2023"
+      ],
+      "leadtime_hour": [
+        "24"
+      ],
+      "product_type": [
+        "control_reforecast"
+      ],
+      "system_version": [
+        "version_4_0"
+      ],
+      "variable": [
+        "river_discharge_in_the_last_24_hours"
+      ]
+    }
+  }
+]

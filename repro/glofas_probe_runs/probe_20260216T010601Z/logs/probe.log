@@ -1,0 +1,9 @@
+2026-02-15 17:06:01,451 | INFO | Run directory: repro/glofas_probe_runs/probe_20260216T010601Z
+2026-02-15 17:06:01,451 | INFO | Mode: run
+2026-02-15 17:06:01,451 | INFO | Cases: 1
+2026-02-15 17:06:02,351 | INFO | [RUN] reforecast_smoke_only dataset=cems-glofas-reforecast
+2026-02-15 17:06:02,753 | ERROR | [ERR] reforecast_smoke_only: 400 Client Error: Bad Request for url: https://ewds.climate.copernicus.eu/api/retrieve/v1/processes/cems-glofas-reforecast/execution
+invalid request
+Request has not produced a valid combination of values, please check your selection.
+{'system_version': ['version_4_0'], 'hydrological_model': ['lisflood'], 'product_type': ['control_reforecast'], 'variable': ['river_discharge_in_the_last_24_hours'], 'hyear': ['2023'], 'hmonth': ['03'], 'hday': ['27'], 'leadtime_hour': ['24'], 'data_format': ['grib'], 'area': ['37.2443931', '-122.272464', '36.8443931', '-121.872464']}
+2026-02-15 17:06:02,753 | INFO | Completed. Manifest: repro/glofas_probe_runs/probe_20260216T010601Z/manifests/probe_manifest.csv

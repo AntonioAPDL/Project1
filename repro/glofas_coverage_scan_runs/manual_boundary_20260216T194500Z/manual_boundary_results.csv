@@ -1,0 +1,12 @@
+probe_group,dataset,system_version,hydrological_model,product_type,probe_date,status,bytes,notes
+operational_lisflood_ensemble,cems-glofas-forecast,operational,lisflood,ensemble_perturbed_forecasts,2021-05-25,invalid_request,,
+operational_lisflood_ensemble,cems-glofas-forecast,operational,lisflood,ensemble_perturbed_forecasts,2021-05-26,ok,513,
+operational_lisflood_ensemble,cems-glofas-forecast,operational,lisflood,ensemble_perturbed_forecasts,2021-05-27,ok,531,
+operational_lisflood_ensemble,cems-glofas-forecast,operational,lisflood,ensemble_perturbed_forecasts,2021-05-28,ok,510,
+operational_lisflood_ensemble,cems-glofas-forecast,operational,lisflood,ensemble_perturbed_forecasts,2021-05-29,ok,511,
+operational_lisflood_ensemble,cems-glofas-forecast,operational,lisflood,ensemble_perturbed_forecasts,2021-05-30,timeout,,
+operational_lisflood_control,cems-glofas-forecast,operational,lisflood,control_forecast,2023-03-25,timeout,,
+operational_lisflood_control,cems-glofas-forecast,operational,lisflood,control_forecast,2023-03-26,timeout,,
+operational_lisflood_control,cems-glofas-forecast,operational,lisflood,control_forecast,2023-03-27,timeout,,
+operational_lisflood_control,cems-glofas-forecast,operational,lisflood,control_forecast,2023-03-28,timeout,,
+operational_lisflood_control,cems-glofas-forecast,operational,lisflood,control_forecast,2023-03-29,ok,305,

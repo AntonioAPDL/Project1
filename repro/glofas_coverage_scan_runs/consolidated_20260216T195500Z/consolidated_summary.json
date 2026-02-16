@@ -1,0 +1,14 @@
+{
+  "generated_utc": "2026-02-16T03:53:52Z",
+  "base_source": "repro/glofas_coverage_scan_runs/refine_20260216T025403Z/manifests/refined_ranges.csv",
+  "overrides": {
+    "P2__reforecast__version_4_0__lisflood__control_reforecast": "repro/glofas_coverage_scan_runs/refine_20260216T031255Z/manifests/refined_ranges.csv",
+    "P2__reforecast__version_4_0__lisflood__ensemble_perturbed_reforecast": "repro/glofas_coverage_scan_runs/refine_20260216T031324Z/manifests/refined_ranges.csv",
+    "P2__forecast__operational__lisflood__control_forecast": "repro/glofas_coverage_scan_runs/refine_20260216T033350Z/manifests/refined_ranges.csv"
+  },
+  "manual_override_source": "repro/glofas_coverage_scan_runs/manual_boundary_20260216T194500Z/manual_boundary_results.csv",
+  "combos_total": 36,
+  "found": 11,
+  "not_found": 25,
+  "output_csv": "repro/glofas_coverage_scan_runs/consolidated_20260216T195500Z/refined_ranges_consolidated.csv"
+}

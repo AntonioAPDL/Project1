@@ -1,0 +1,43 @@
+2026-02-15 17:27:45,849 | INFO | run_id=scan_20260216T012745Z
+2026-02-15 17:27:45,850 | INFO | mode=dry-run
+2026-02-15 17:27:45,854 | INFO | total_combos=18
+2026-02-15 17:27:45,857 | INFO | [HISTORICAL] combos=6
+2026-02-15 17:27:45,868 | INFO | [REFORECAST] combos=6
+2026-02-15 17:27:45,889 | INFO | [FORECAST] combos=6
+2026-02-15 17:27:45,894 | INFO | [FORECAST] start combo=P1__forecast__version_3_1__htessel_lisflood__control_forecast days=2296
+2026-02-15 17:27:45,897 | INFO | [FORECAST] no anchor combo=P1__forecast__version_3_1__htessel_lisflood__control_forecast
+2026-02-15 17:27:45,903 | INFO | [FORECAST] start combo=P1__forecast__version_3_1__lisflood__control_forecast days=2296
+2026-02-15 17:27:45,905 | INFO | [FORECAST] no anchor combo=P1__forecast__version_3_1__lisflood__control_forecast
+2026-02-15 17:27:45,910 | INFO | [FORECAST] start combo=P2__forecast__operational__htessel_lisflood__control_forecast days=2296
+2026-02-15 17:27:45,940 | INFO | [REFORECAST] start combo=P1__reforecast__version_3_1__htessel_lisflood__control_reforecast days=2598
+2026-02-15 17:27:45,948 | INFO | [FORECAST] no anchor combo=P2__forecast__operational__htessel_lisflood__control_forecast
+2026-02-15 17:27:45,945 | INFO | [HISTORICAL] start combo=P1__historical__version_3_1__htessel_lisflood__consolidated days=17213
+2026-02-15 17:27:45,953 | INFO | [REFORECAST] no anchor combo=P1__reforecast__version_3_1__htessel_lisflood__control_reforecast
+2026-02-15 17:27:45,958 | INFO | [FORECAST] start combo=P2__forecast__operational__lisflood__control_forecast days=2296
+2026-02-15 17:27:45,969 | INFO | [HISTORICAL] no anchor combo=P1__historical__version_3_1__htessel_lisflood__consolidated
+2026-02-15 17:27:45,985 | INFO | [FORECAST] no anchor combo=P2__forecast__operational__lisflood__control_forecast
+2026-02-15 17:27:46,000 | INFO | [FORECAST] start combo=P3__forecast__version_2_1__htessel_lisflood__control_forecast days=2296
+2026-02-15 17:27:46,004 | INFO | [FORECAST] no anchor combo=P3__forecast__version_2_1__htessel_lisflood__control_forecast
+2026-02-15 17:27:46,009 | INFO | [FORECAST] start combo=P3__forecast__version_2_1__lisflood__control_forecast days=2296
+2026-02-15 17:27:46,011 | INFO | [FORECAST] no anchor combo=P3__forecast__version_2_1__lisflood__control_forecast
+2026-02-15 17:27:46,039 | INFO | [REFORECAST] start combo=P1__reforecast__version_3_1__lisflood__control_reforecast days=2598
+2026-02-15 17:27:46,042 | INFO | [REFORECAST] no anchor combo=P1__reforecast__version_3_1__lisflood__control_reforecast
+2026-02-15 17:27:46,065 | INFO | [HISTORICAL] start combo=P1__historical__version_3_1__lisflood__consolidated days=17213
+2026-02-15 17:27:46,075 | INFO | [HISTORICAL] no anchor combo=P1__historical__version_3_1__lisflood__consolidated
+2026-02-15 17:27:46,095 | INFO | [REFORECAST] start combo=P2__reforecast__version_4_0__htessel_lisflood__control_reforecast days=2598
+2026-02-15 17:27:46,105 | INFO | [REFORECAST] no anchor combo=P2__reforecast__version_4_0__htessel_lisflood__control_reforecast
+2026-02-15 17:27:46,141 | INFO | [HISTORICAL] start combo=P2__historical__version_4_0__htessel_lisflood__consolidated days=17213
+2026-02-15 17:27:46,151 | INFO | [HISTORICAL] no anchor combo=P2__historical__version_4_0__htessel_lisflood__consolidated
+2026-02-15 17:27:46,158 | INFO | [REFORECAST] start combo=P2__reforecast__version_4_0__lisflood__control_reforecast days=2598
+2026-02-15 17:27:46,160 | INFO | [REFORECAST] no anchor combo=P2__reforecast__version_4_0__lisflood__control_reforecast
+2026-02-15 17:27:46,200 | INFO | [REFORECAST] start combo=P3__reforecast__version_2_2__htessel_lisflood__control_reforecast days=2598
+2026-02-15 17:27:46,204 | INFO | [REFORECAST] no anchor combo=P3__reforecast__version_2_2__htessel_lisflood__control_reforecast
+2026-02-15 17:27:46,238 | INFO | [HISTORICAL] start combo=P2__historical__version_4_0__lisflood__consolidated days=17213
+2026-02-15 17:27:46,248 | INFO | [HISTORICAL] no anchor combo=P2__historical__version_4_0__lisflood__consolidated
+2026-02-15 17:27:46,272 | INFO | [REFORECAST] start combo=P3__reforecast__version_2_2__lisflood__control_reforecast days=2598
+2026-02-15 17:27:46,281 | INFO | [REFORECAST] no anchor combo=P3__reforecast__version_2_2__lisflood__control_reforecast
+2026-02-15 17:27:46,299 | INFO | [HISTORICAL] start combo=P3__historical__version_2_1__htessel_lisflood__consolidated days=17213
+2026-02-15 17:27:46,311 | INFO | [HISTORICAL] no anchor combo=P3__historical__version_2_1__htessel_lisflood__consolidated
+2026-02-15 17:27:46,350 | INFO | [HISTORICAL] start combo=P3__historical__version_2_1__lisflood__consolidated days=17213
+2026-02-15 17:27:46,369 | INFO | [HISTORICAL] no anchor combo=P3__historical__version_2_1__lisflood__consolidated
+2026-02-15 17:27:46,648 | INFO | completed combos=18 anchors_found=0 attempts=1554 out=repro/glofas_coverage_scan_runs/scan_20260216T012745Z

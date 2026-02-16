@@ -1,0 +1,5 @@
+run_id,lane,priority,combo_id,dataset,system_version,hydrological_model,product_type,anchor_status,anchor_date,earliest_success_date,latest_success_date,confidence,attempts_total,attempts_success,attempts_error,notes
+scan_20260216T012831Z,reforecast,P2,P2__reforecast__version_4_0__htessel_lisflood__control_reforecast,cems-glofas-reforecast,version_4_0,htessel_lisflood,control_reforecast,not_found,,,,none,10,0,10,no successful anchor in tested days
+scan_20260216T012831Z,reforecast,P2,P2__reforecast__version_4_0__lisflood__control_reforecast,cems-glofas-reforecast,version_4_0,lisflood,control_reforecast,found,2021-01-04,2021-01-04,2021-01-04,high,3,1,2,
+scan_20260216T012831Z,historical,P2,P2__historical__version_4_0__htessel_lisflood__consolidated,cems-glofas-historical,version_4_0,htessel_lisflood,consolidated,not_found,,,,none,10,0,10,no successful anchor in tested days
+scan_20260216T012831Z,historical,P2,P2__historical__version_4_0__lisflood__consolidated,cems-glofas-historical,version_4_0,lisflood,consolidated,found,2023-03-27,2021-11-01,2023-03-27,high,10,10,0,attempt budget exhausted

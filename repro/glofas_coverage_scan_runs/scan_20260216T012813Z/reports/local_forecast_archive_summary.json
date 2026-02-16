@@ -1,0 +1,24 @@
+{
+  "archive_root": "data/glofas_operational_medium_range/grib",
+  "hydrological_model_counts": {
+    "htessel_lisflood": 561,
+    "lisflood": 615
+  },
+  "issue_date_max": "2023-01-31",
+  "issue_date_min": "2019-11-05",
+  "model_transition_points": [
+    {
+      "from_model": "htessel_lisflood",
+      "issue_date": "2021-05-26",
+      "to_model": "lisflood"
+    }
+  ],
+  "notes": "summary from local request JSON manifests",
+  "product_type_counts": {
+    "control_forecast,ensemble_perturbed_forecasts": 1176
+  },
+  "request_file_count": 1176,
+  "system_version_counts": {
+    "operational": 1176
+  }
+}

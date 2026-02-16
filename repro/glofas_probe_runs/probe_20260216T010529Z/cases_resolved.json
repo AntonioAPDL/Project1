@@ -1,0 +1,40 @@
+[
+  {
+    "case_id": "forecast_smoke_only",
+    "dataset": "cems-glofas-forecast",
+    "request": {
+      "area": [
+        37.2443931,
+        -122.272464,
+        36.8443931,
+        -121.872464
+      ],
+      "data_format": "grib2",
+      "day": [
+        "27"
+      ],
+      "download_format": "zip",
+      "hydrological_model": [
+        "lisflood"
+      ],
+      "leadtime_hour": [
+        "24"
+      ],
+      "month": [
+        "03"
+      ],
+      "product_type": [
+        "control_forecast"
+      ],
+      "system_version": [
+        "operational"
+      ],
+      "variable": [
+        "river_discharge_in_the_last_24_hours"
+      ],
+      "year": [
+        "2023"
+      ]
+    }
+  }
+]

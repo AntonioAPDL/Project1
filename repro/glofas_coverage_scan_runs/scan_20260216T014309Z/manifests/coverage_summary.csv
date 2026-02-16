@@ -1,0 +1,7 @@
+run_id,lane,priority,combo_id,dataset,system_version,hydrological_model,product_type,anchor_status,anchor_date,earliest_success_date,latest_success_date,confidence,attempts_total,attempts_success,attempts_error,notes
+scan_20260216T014309Z,forecast,P1,P1__forecast__version_3_1__htessel_lisflood__control_forecast,cems-glofas-forecast,version_3_1,htessel_lisflood,control_forecast,not_found,,,,none,4,0,0,no successful anchor in tested days
+scan_20260216T014309Z,forecast,P1,P1__forecast__version_3_1__lisflood__control_forecast,cems-glofas-forecast,version_3_1,lisflood,control_forecast,not_found,,,,none,4,0,0,no successful anchor in tested days
+scan_20260216T014309Z,reforecast,P1,P1__reforecast__version_3_1__htessel_lisflood__control_reforecast,cems-glofas-reforecast,version_3_1,htessel_lisflood,control_reforecast,not_found,,,,none,4,0,0,no successful anchor in tested days
+scan_20260216T014309Z,reforecast,P1,P1__reforecast__version_3_1__lisflood__control_reforecast,cems-glofas-reforecast,version_3_1,lisflood,control_reforecast,not_found,,,,none,4,0,0,no successful anchor in tested days
+scan_20260216T014309Z,historical,P1,P1__historical__version_3_1__htessel_lisflood__consolidated,cems-glofas-historical,version_3_1,htessel_lisflood,consolidated,not_found,,,,none,4,0,0,no successful anchor in tested days
+scan_20260216T014309Z,historical,P1,P1__historical__version_3_1__lisflood__consolidated,cems-glofas-historical,version_3_1,lisflood,consolidated,not_found,,,,none,4,0,0,no successful anchor in tested days

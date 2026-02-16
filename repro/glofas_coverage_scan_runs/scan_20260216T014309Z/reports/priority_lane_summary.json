@@ -1,0 +1,14 @@
+{
+  "P1::forecast": {
+    "anchors_found": 0,
+    "combos": 2
+  },
+  "P1::historical": {
+    "anchors_found": 0,
+    "combos": 2
+  },
+  "P1::reforecast": {
+    "anchors_found": 0,
+    "combos": 2
+  }
+}

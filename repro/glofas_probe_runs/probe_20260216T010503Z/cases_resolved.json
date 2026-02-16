@@ -1,0 +1,37 @@
+[
+  {
+    "case_id": "historical_smoke_only",
+    "dataset": "cems-glofas-historical",
+    "request": {
+      "area": [
+        37.2443931,
+        -122.272464,
+        36.8443931,
+        -121.872464
+      ],
+      "data_format": "grib2",
+      "download_format": "zip",
+      "hday": [
+        "27"
+      ],
+      "hmonth": [
+        "03"
+      ],
+      "hydrological_model": [
+        "lisflood"
+      ],
+      "hyear": [
+        "2023"
+      ],
+      "product_type": [
+        "consolidated"
+      ],
+      "system_version": [
+        "version_4_0"
+      ],
+      "variable": [
+        "river_discharge_in_the_last_24_hours"
+      ]
+    }
+  }
+]

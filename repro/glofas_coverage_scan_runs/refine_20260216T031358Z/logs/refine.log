@@ -1,0 +1,29 @@
+2026-02-15 19:13:58,877 | INFO | base_run_dir=repro/glofas_coverage_scan_runs/scan_20260216T015036Z
+2026-02-15 19:13:58,877 | INFO | mode=run
+2026-02-15 19:13:58,899 | INFO | selected_combos=36
+2026-02-15 19:13:58,905 | INFO | start combo=P1__forecast__version_3_1__htessel_lisflood__control_forecast baseline=not_found
+2026-02-15 19:13:59,005 | INFO | start combo=P1__forecast__version_3_1__htessel_lisflood__ensemble_perturbed_forecasts baseline=not_found
+2026-02-15 19:14:02,380 | INFO | done combo=P1__forecast__version_3_1__htessel_lisflood__control_forecast status=not_found
+2026-02-15 19:14:02,389 | INFO | start combo=P1__forecast__version_3_1__lisflood__control_forecast baseline=not_found
+2026-02-15 19:14:02,486 | INFO | done combo=P1__forecast__version_3_1__htessel_lisflood__ensemble_perturbed_forecasts status=not_found
+2026-02-15 19:14:02,492 | INFO | start combo=P1__forecast__version_3_1__lisflood__ensemble_perturbed_forecasts baseline=not_found
+2026-02-15 19:14:06,134 | INFO | done combo=P1__forecast__version_3_1__lisflood__ensemble_perturbed_forecasts status=not_found
+2026-02-15 19:14:06,170 | INFO | start combo=P1__historical__version_3_1__htessel_lisflood__consolidated baseline=not_found
+2026-02-15 19:14:06,433 | INFO | done combo=P1__forecast__version_3_1__lisflood__control_forecast status=not_found
+2026-02-15 19:14:06,477 | INFO | start combo=P1__historical__version_3_1__htessel_lisflood__intermediate baseline=not_found
+2026-02-15 19:14:09,928 | INFO | done combo=P1__historical__version_3_1__htessel_lisflood__intermediate status=not_found
+2026-02-15 19:14:09,966 | INFO | start combo=P1__historical__version_3_1__lisflood__consolidated baseline=found
+2026-02-15 19:14:10,095 | INFO | done combo=P1__historical__version_3_1__htessel_lisflood__consolidated status=not_found
+2026-02-15 19:14:10,135 | INFO | start combo=P1__historical__version_3_1__lisflood__intermediate baseline=found
+2026-02-15 19:16:07,764 | INFO | done combo=P1__historical__version_3_1__lisflood__consolidated found earliest=2021-02-07 latest=2021-06-16 conf=medium
+2026-02-15 19:16:07,789 | INFO | start combo=P1__reforecast__version_3_1__htessel_lisflood__control_reforecast baseline=not_found
+2026-02-15 19:16:11,456 | INFO | done combo=P1__reforecast__version_3_1__htessel_lisflood__control_reforecast status=not_found
+2026-02-15 19:16:11,683 | INFO | start combo=P1__reforecast__version_3_1__htessel_lisflood__ensemble_perturbed_reforecast baseline=not_found
+2026-02-15 19:16:15,395 | INFO | done combo=P1__reforecast__version_3_1__htessel_lisflood__ensemble_perturbed_reforecast status=not_found
+2026-02-15 19:16:15,419 | INFO | start combo=P1__reforecast__version_3_1__lisflood__control_reforecast baseline=not_found
+2026-02-15 19:16:18,760 | INFO | done combo=P1__reforecast__version_3_1__lisflood__control_reforecast status=not_found
+2026-02-15 19:16:18,783 | INFO | start combo=P1__reforecast__version_3_1__lisflood__ensemble_perturbed_reforecast baseline=not_found
+2026-02-15 19:16:22,338 | INFO | done combo=P1__reforecast__version_3_1__lisflood__ensemble_perturbed_reforecast status=not_found
+2026-02-15 19:16:22,555 | INFO | start combo=P2__forecast__operational__htessel_lisflood__control_forecast baseline=found
+2026-02-15 19:16:23,939 | INFO | done combo=P1__historical__version_3_1__lisflood__intermediate found earliest=2021-06-03 latest=2021-06-16 conf=medium
+2026-02-15 19:16:23,946 | INFO | start combo=P2__forecast__operational__htessel_lisflood__ensemble_perturbed_forecasts baseline=found
