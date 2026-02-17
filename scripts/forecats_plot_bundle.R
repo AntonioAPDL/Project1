@@ -85,6 +85,8 @@ plot_forecats_bundle <- function(bundle_dir) {
   forecast_start <- as.Date(meta$dates$forecast_start_date)
   plot_start <- as.Date(meta$dates$plot_start)
   plot_end <- as.Date(meta$dates$plot_end)
+  plot_title <- as.character(meta$plot$title %||% "Observed and Retrospective River Flow")
+  plot_title <- gsub("\\\\n", "\n", plot_title)
 
   # -------------------------
   # Load inputs
@@ -98,22 +100,37 @@ plot_forecats_bundle <- function(bundle_dir) {
       value = transform_flow(discharge_cms, plot_scale)
     )
 
-  retros <- readr::read_csv(retros_path, show_col_types = FALSE) %>%
-    mutate(date = as.Date(date)) %>%
-    mutate(
-      usgs_cms = as.numeric(usgs_cms),
-      glofas_cms = as.numeric(glofas_cms),
-      nws_cms = as.numeric(nws_cms)
-    ) %>%
-    filter(date >= plot_start & date < forecast_start)
+  retros_raw <- readr::read_csv(retros_path, show_col_types = FALSE) %>%
+    mutate(date = as.Date(date))
 
-  retros_long <- retros %>%
-    select(date, glofas_cms, nws_cms) %>%
-    pivot_longer(cols = c(glofas_cms, nws_cms), names_to = "Source", values_to = "cms") %>%
-    mutate(
-      Source = recode(Source, glofas_cms = "GloFAS", nws_cms = "NWS"),
-      value = transform_flow(cms, plot_scale)
-    )
+  has_long_schema <- all(c("source_id", "source_label", "discharge_cms") %in% names(retros_raw))
+  retros_long <- if (has_long_schema) {
+    retros_raw %>%
+      transmute(
+        date = as.Date(date),
+        source_id = as.character(source_id),
+        source_label = as.character(source_label),
+        discharge_cms = as.numeric(discharge_cms)
+      )
+  } else {
+    # Backward-compatible fallback for older bundles.
+    retros_old <- retros_raw %>%
+      mutate(
+        glofas_cms = as.numeric(glofas_cms),
+        nws_cms = as.numeric(nws_cms)
+      )
+    retros_old %>%
+      select(date, glofas_cms, nws_cms) %>%
+      pivot_longer(cols = c(glofas_cms, nws_cms), names_to = "source_id", values_to = "discharge_cms") %>%
+      mutate(
+        source_id = recode(source_id, glofas_cms = "baseline_glofas", nws_cms = "baseline_nws"),
+        source_label = recode(source_id, baseline_glofas = "GloFAS retrospective (baseline)", baseline_nws = "NWS retrospective (baseline)")
+      )
+  }
+
+  retros_long <- retros_long %>%
+    filter(date >= plot_start & date < forecast_start) %>%
+    mutate(value = transform_flow(discharge_cms, plot_scale))
 
   # Forecast ensembles (wide -> long)
   read_ens_long <- function(path, provider_label) {
@@ -140,9 +157,61 @@ plot_forecats_bundle <- function(bundle_dir) {
   glofas_color <- "#E67E22"
   nws_color <- "#756bb1"
   usgs_color <- "#238b45"
+  retro_palette_fallback <- scales::hue_pal(h = c(15, 375), c = 85, l = 52)(max(1, length(unique(retros_long$source_label))))
 
-  usgs_before <- usgs %>% filter(obs_type == "Before") %>% mutate(Source = "USGS")
-  usgs_after <- usgs %>% filter(obs_type == "After") %>% mutate(Source = "USGS")
+  build_retro_colors <- function(labels) {
+    labels <- unique(as.character(labels))
+    out <- setNames(rep(NA_character_, length(labels)), labels)
+
+    fixed <- c(
+      "GloFAS retrospective (baseline)" = "#E67E22",
+      "NWS retrospective v3.0 (baseline)" = "#756bb1",
+      "NWS retrospective v2.1 (baseline)" = "#9e9ac8",
+      "NWS retrospective (baseline)" = "#756bb1",
+      "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)" = "#1f77b4",
+      "GloFAS historical v3.1 (LISFLOOD, consolidated)" = "#2ca02c",
+      "GloFAS historical v4.0 (LISFLOOD, consolidated)" = "#17becf",
+      "GloFAS legacy reanalysis v3.0" = "#8c564b"
+    )
+    for (nm in names(fixed)) if (nm %in% labels) out[[nm]] <- fixed[[nm]]
+
+    idx_na <- which(is.na(out))
+    if (length(idx_na) > 0) {
+      fill_cols <- retro_palette_fallback[seq_len(length(idx_na))]
+      out[idx_na] <- fill_cols
+    }
+    out
+  }
+
+  retro_labels <- unique(retros_long$source_label)
+  retro_color_map <- build_retro_colors(retro_labels)
+  legend_levels <- c("USGS observed", retro_labels)
+  legend_label_map <- setNames(
+    vapply(legend_levels, function(x) paste(strwrap(as.character(x), width = 34), collapse = "\n"), character(1)),
+    legend_levels
+  )
+  color_map <- c("USGS observed" = usgs_color, retro_color_map)
+
+  usgs_before <- usgs %>% filter(obs_type == "Before") %>% mutate(Source = "USGS observed")
+  usgs_after <- usgs %>% filter(obs_type == "After") %>% mutate(Source = "USGS observed")
+
+  coverage_entries <- meta$retrospective_coverage
+  coverage_caption <- NULL
+  if (!is.null(coverage_entries) && length(coverage_entries) > 0) {
+    to_entry <- function(x) {
+      lbl <- as.character(x$source_label %||% x$source_id %||% "unknown")
+      s <- as.character(x$coverage_start %||% "NA")
+      e <- as.character(x$coverage_end %||% "NA")
+      paste0(lbl, ": ", s, " to ", e)
+    }
+    items <- vapply(coverage_entries, to_entry, character(1))
+    coverage_caption <- paste(
+      c("Retrospective/historical/reanalysis coverage:",
+        paste(items, collapse = "; ")),
+      collapse = " "
+    )
+    coverage_caption <- paste(strwrap(coverage_caption, width = 180), collapse = "\n")
+  }
 
   # Optional flood thresholds (must be in discharge units, not stage).
   # Define in YAML under plot.flood_levels:
@@ -212,31 +281,24 @@ plot_forecats_bundle <- function(bundle_dir) {
       fontface = "italic",
       size = 3.5
     )} +
-    # Retros before (GloFAS + NWS)
+    # Retrospective/historical/reanalysis before cutoff.
     geom_line(
       data = retros_long,
-      aes(x = date, y = value, color = Source, linetype = Source, group = Source),
-      linewidth = 0.5,
-      alpha = 0.85,
-      na.rm = TRUE
-    ) +
-    geom_point(
-      data = retros_long,
-      aes(x = date, y = value, color = Source, shape = Source),
-      size = 1.3,
+      aes(x = date, y = value, color = source_label, group = source_id),
+      linewidth = 0.7,
       alpha = 0.85,
       na.rm = TRUE
     ) +
     # USGS before
     geom_line(
       data = usgs_before,
-      aes(x = date, y = value, color = Source, linetype = Source),
+      aes(x = date, y = value, color = Source),
       linewidth = 0.5,
       na.rm = TRUE
     ) +
     geom_point(
       data = usgs_before,
-      aes(x = date, y = value, color = Source, shape = Source),
+      aes(x = date, y = value, color = Source),
       size = 1.4,
       na.rm = TRUE
     ) +
@@ -278,34 +340,30 @@ plot_forecats_bundle <- function(bundle_dir) {
       na.rm = TRUE
     ) +
     scale_color_manual(
-      name = "Data Source",
-      values = c("USGS" = usgs_color, "GloFAS" = glofas_color, "NWS" = nws_color)
-    ) +
-    scale_linetype_manual(
-      name = "Data Source",
-      values = c("USGS" = "solid", "GloFAS" = "solid", "NWS" = "solid")
-    ) +
-    scale_shape_manual(
-      name = "Data Source",
-      values = c("USGS" = 16, "GloFAS" = 16, "NWS" = 16)
+      name = "Series",
+      values = color_map,
+      breaks = legend_levels,
+      labels = legend_label_map[legend_levels]
     ) +
     scale_x_date(breaks = scales::pretty_breaks(6), date_labels = "%b %d") +
     labs(
-      title = meta$plot$title,
+      title = plot_title,
       x = paste0("Date (", format(plot_start, "%Y"), "-", format(plot_end, "%Y"), ")"),
-      y = y_lab
+      y = y_lab,
+      caption = coverage_caption
     ) +
     guides(
-      color = guide_legend(override.aes = list(size = 2, shape = 16, linetype = "solid")),
-      shape = "none",
-      linetype = "none"
+      color = guide_legend(override.aes = list(size = 1.2), nrow = 2, byrow = TRUE)
     ) +
     theme_minimal(base_size = 14) +
     theme(
       plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
       axis.title = element_text(face = "bold"),
-      legend.position = "top",
+      legend.position = "bottom",
       legend.title = element_text(face = "bold"),
+      legend.text = element_text(size = 9),
+      plot.caption = element_text(size = 8.5, color = "gray30", hjust = 0, margin = margin(t = 10)),
+      plot.caption.position = "plot",
       panel.grid.minor = element_blank()
     )
 

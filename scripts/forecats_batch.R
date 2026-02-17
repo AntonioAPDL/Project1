@@ -277,14 +277,15 @@ build_retros_cache <- function(cfg, retros_cache_path, plot_end) {
       readr::read_csv(retros_cache_path, show_col_types = FALSE) %>%
         mutate(
           date = as.Date(date),
-          usgs_cms = as.numeric(usgs_cms),
-          glofas_cms = as.numeric(glofas_cms),
-          nws_cms = as.numeric(nws_cms)
+          discharge_cms = as.numeric(discharge_cms)
         ),
       error = function(e) NULL
     )
 
-    if (!is.null(cached) && ("date" %in% names(cached))) {
+    has_new_schema <- !is.null(cached) &&
+      all(c("date", "source_id", "source_label", "source_family", "discharge_cms") %in% names(cached))
+
+    if (has_new_schema) {
       max_date <- suppressWarnings(max(cached$date, na.rm = TRUE))
       if (is.finite(max_date) && !is.na(max_date) && (max_date >= plot_end)) {
         return(cached)
@@ -308,23 +309,122 @@ build_retros_cache <- function(cfg, retros_cache_path, plot_end) {
   retro <- readr::read_csv(in_path, show_col_types = FALSE)
   stop_if_missing(retro$Date %||% NULL, "Retros CSV must contain Date column")
 
-  nws_col <- NULL
-  if ("NWS3.0" %in% names(retro)) nws_col <- "NWS3.0"
-  if ("NWS" %in% names(retro)) nws_col <- "NWS"
-  if (is.null(nws_col)) stop("Retros CSV missing NWS column (expected NWS3.0 or NWS).", call. = FALSE)
-
   convert_scale_to_cms <- function(x, scale) {
     if (scale == "raw_cms") return(x)
     if (scale == "log1p_cms") return(exp(x) - 1)
     stop(paste("Unknown scale:", scale))
   }
 
-  out <- tibble::tibble(
-    date = as.Date(retro$Date),
-    usgs_cms = convert_scale_to_cms(retro$USGS, in_scale),
-    glofas_cms = convert_scale_to_cms(retro$GloFAS, in_scale),
-    nws_cms = convert_scale_to_cms(retro[[nws_col]], in_scale)
-  ) %>% filter(date <= as.Date(plot_end))
+  mk_source_id <- function(x) {
+    paste0(
+      "baseline_",
+      tolower(gsub("_+", "_", gsub("[^A-Za-z0-9]+", "_", x)))
+    )
+  }
+
+  baseline_label <- function(col) {
+    if (col == "GloFAS") return("GloFAS retrospective (baseline)")
+    if (col == "NWS3.0") return("NWS retrospective v3.0 (baseline)")
+    if (col == "NWS2.1") return("NWS retrospective v2.1 (baseline)")
+    if (col == "NWS") return("NWS retrospective (baseline)")
+    paste0(col, " retrospective (baseline)")
+  }
+
+  baseline_family <- function(col) {
+    if (grepl("^NWS", col)) return("nwm_retrospective")
+    if (grepl("^GloFAS", col, ignore.case = TRUE)) return("glofas_retrospective_baseline")
+    "retrospective_baseline"
+  }
+
+  baseline_cols <- setdiff(names(retro), c("Date", "USGS"))
+  if (length(baseline_cols) == 0) {
+    stop("Retros CSV has no retrospective source columns (expected at least NWS/GloFAS).", call. = FALSE)
+  }
+
+  baseline_long <- dplyr::bind_rows(lapply(baseline_cols, function(col) {
+    tibble::tibble(
+      date = as.Date(retro$Date),
+      source_id = mk_source_id(col),
+      source_label = baseline_label(col),
+      source_family = baseline_family(col),
+      discharge_cms = convert_scale_to_cms(as.numeric(retro[[col]]), in_scale)
+    )
+  }))
+
+  default_extra_sources <- list(
+    list(
+      source_id = "glofas_hist_v21_htessel_cons",
+      source_label = "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)",
+      source_family = "glofas_historical",
+      path = "data/glofas_historical_consolidated_point/point_series/hist_v21_htessel_cons_bigtrees.csv",
+      date_col = "date",
+      value_col = "discharge_cms"
+    ),
+    list(
+      source_id = "glofas_hist_v31_lisflood_cons",
+      source_label = "GloFAS historical v3.1 (LISFLOOD, consolidated)",
+      source_family = "glofas_historical",
+      path = "data/glofas_historical_consolidated_point/point_series/hist_v31_lisflood_cons_bigtrees.csv",
+      date_col = "date",
+      value_col = "discharge_cms"
+    ),
+    list(
+      source_id = "glofas_hist_v40_lisflood_cons",
+      source_label = "GloFAS historical v4.0 (LISFLOOD, consolidated)",
+      source_family = "glofas_historical",
+      path = "data/glofas_historical_consolidated_point/point_series/hist_v40_lisflood_cons_bigtrees.csv",
+      date_col = "date",
+      value_col = "discharge_cms"
+    ),
+    list(
+      source_id = "glofas_legacy_reanalysis_v30",
+      source_label = "GloFAS legacy reanalysis v3.0",
+      source_family = "glofas_legacy_reanalysis",
+      path = "data/glofas_legacy_global/point_series/dis_1980_2018_v3_legacy_bigtrees.csv",
+      date_col = "date",
+      value_col = "discharge_cms"
+    )
+  )
+
+  configured_extra <- cfg$inputs$retros$extra_sources %||% default_extra_sources
+  extras_long <- list()
+  for (spec in configured_extra) {
+    p <- as_abs_path(spec$path %||% "")
+    if (!nzchar(p) || !file.exists(p)) next
+
+    date_col <- spec$date_col %||% "date"
+    value_col <- spec$value_col %||% "discharge_cms"
+    src_id <- spec$source_id %||% mk_source_id(basename(p))
+    src_label <- spec$source_label %||% src_id
+    src_family <- spec$source_family %||% "historical_or_reanalysis"
+
+    ext <- tryCatch(
+      readr::read_csv(p, show_col_types = FALSE),
+      error = function(e) NULL
+    )
+    if (is.null(ext)) {
+      cat(sprintf("[WARN] Could not read extra retrospective source: %s\n", p))
+      next
+    }
+    if (!(date_col %in% names(ext)) || !(value_col %in% names(ext))) {
+      cat(sprintf("[WARN] Extra source missing required columns (%s, %s): %s\n", date_col, value_col, p))
+      next
+    }
+
+    extras_long[[length(extras_long) + 1L]] <- tibble::tibble(
+      date = as.Date(ext[[date_col]]),
+      source_id = as.character(src_id),
+      source_label = as.character(src_label),
+      source_family = as.character(src_family),
+      discharge_cms = as.numeric(ext[[value_col]])
+    )
+  }
+
+  out <- dplyr::bind_rows(c(list(baseline_long), extras_long)) %>%
+    filter(!is.na(date), !is.na(discharge_cms))
+
+  # Keep stable row order for reproducibility.
+  out <- out %>% arrange(source_id, date)
 
   readr::write_csv(out, retros_cache_path)
   cat(sprintf("[OK] wrote %s (%d rows)\n", retros_cache_path, nrow(out)))
@@ -351,6 +451,26 @@ render_mode <- function(cfg, cutoff_dates, batch_root, shard_tag) {
 
   usgs_all <- fetch_usgs_cache(cfg, usgs_cache_path, max_plot_end)
   retros_all <- build_retros_cache(cfg, retros_cache_path, max_plot_end)
+  retros_coverage <- retros_all %>%
+    group_by(source_id, source_label, source_family) %>%
+    summarise(
+      coverage_start = min(date, na.rm = TRUE),
+      coverage_end = max(date, na.rm = TRUE),
+      n_points = n(),
+      .groups = "drop"
+    ) %>%
+    arrange(source_family, source_label)
+  retros_coverage_list <- lapply(seq_len(nrow(retros_coverage)), function(i) {
+    row <- retros_coverage[i, ]
+    list(
+      source_id = as.character(row$source_id),
+      source_label = as.character(row$source_label),
+      source_family = as.character(row$source_family),
+      coverage_start = format(as.Date(row$coverage_start), "%Y-%m-%d"),
+      coverage_end = format(as.Date(row$coverage_end), "%Y-%m-%d"),
+      n_points = as.integer(row$n_points)
+    )
+  })
 
   # Load plotting function without running its CLI.
   source(file.path(getwd(), "scripts", "forecats_plot_bundle.R"))
@@ -483,6 +603,7 @@ render_mode <- function(cfg, cutoff_dates, batch_root, shard_tag) {
       plot = cfg$plot %||% list(),
       config = cfg
     )
+    meta$retrospective_coverage <- retros_coverage_list
 
     # Ensure cutoff marker exists.
     if (is.null(meta$plot$markers) || length(meta$plot$markers) == 0) {
