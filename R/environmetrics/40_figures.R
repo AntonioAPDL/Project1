@@ -32,6 +32,110 @@ safe_lines <- function(x, y = NULL, ...) {
 }
 lines <- safe_lines
 
+ndlm_warn_once <- local({
+  warned <- new.env(parent = emptyenv())
+  function(key, message_text) {
+    if (!exists(key, envir = warned, inherits = FALSE)) {
+      assign(key, TRUE, envir = warned)
+      warning(message_text, call. = FALSE)
+    }
+    invisible(NULL)
+  }
+})
+
+ndlm_state_rows_for_projection <- function(sm_mat, F_constant, context = "ndlm") {
+  n_state <- nrow(sm_mat)
+  max_rows <- length(F_constant)
+  if (!is.finite(n_state) || n_state <= 0L || max_rows <= 0L) {
+    return(integer(0))
+  }
+  if (n_state >= 14L && max_rows >= 7L) {
+    return(8:14)
+  }
+  use_rows <- seq_len(min(n_state, max_rows))
+  ndlm_warn_once(
+    paste0("rows:", context),
+    sprintf(
+      "%s has only %d state rows; using rows %s for discrepancy projection.",
+      context,
+      as.integer(n_state),
+      paste(use_rows, collapse = ",")
+    )
+  )
+  use_rows
+}
+
+ndlm_project_discrepancy_from_sm <- function(sm_mat, F_constant, context = "ndlm") {
+  if (!is.numeric(sm_mat) || is.null(dim(sm_mat)) || length(dim(sm_mat)) != 2L) {
+    ndlm_warn_once(
+      paste0("sm_shape:", context),
+      sprintf("%s has invalid sm_ens entry shape; expected matrix.", context)
+    )
+    return(numeric(0))
+  }
+  row_idx <- ndlm_state_rows_for_projection(sm_mat, F_constant, context = context)
+  if (length(row_idx) == 0L) {
+    return(numeric(0))
+  }
+  f_use <- as.numeric(F_constant)[seq_len(length(row_idx))]
+  as.vector(matrix(f_use, nrow = 1L) %*% sm_mat[row_idx, , drop = FALSE])
+}
+
+ndlm_discrepancy_pair <- function(theta_obj, F_constant, target_len, context = "ndlm") {
+  sm_ens <- theta_obj$sm_ens
+  if (!is.list(sm_ens) || length(sm_ens) < 2L) {
+    ndlm_warn_once(
+      paste0("pair:", context),
+      sprintf("%s is missing a two-segment sm_ens list; returning NA discrepancy.", context)
+    )
+    return(rep(NA_real_, as.integer(target_len)))
+  }
+  d1 <- ndlm_project_discrepancy_from_sm(sm_ens[[1]], F_constant, context = paste0(context, ".seg1"))
+  d2 <- ndlm_project_discrepancy_from_sm(sm_ens[[2]], F_constant, context = paste0(context, ".seg2"))
+  align_to_len(c(d1, d2), target_len, sprintf("%s discrepancy", context))
+}
+
+gaussian_projection_mean_sd <- function(Ft, Mu, Sigma, context = "projection") {
+  if (!is.numeric(Ft) || !is.numeric(Mu) || !is.numeric(Sigma) ||
+      is.null(dim(Sigma)) || length(dim(Sigma)) != 2L) {
+    ndlm_warn_once(
+      paste0("projection_shape:", context),
+      sprintf("%s has invalid Ft/Mu/Sigma shapes; returning NA moments.", context)
+    )
+    return(c(mean = NA_real_, sd = NA_real_))
+  }
+
+  p_use <- min(length(Ft), length(Mu), nrow(Sigma), ncol(Sigma))
+  if (!is.finite(p_use) || p_use <= 0L) {
+    ndlm_warn_once(
+      paste0("projection_empty:", context),
+      sprintf("%s has empty overlap across Ft/Mu/Sigma; returning NA moments.", context)
+    )
+    return(c(mean = NA_real_, sd = NA_real_))
+  }
+
+  if (p_use < length(Ft) || p_use < length(Mu) || p_use < nrow(Sigma) || p_use < ncol(Sigma)) {
+    ndlm_warn_once(
+      paste0("projection_trim:", context),
+      sprintf(
+        "%s trimmed Ft/Mu/Sigma dimensions to %d for compatible projection.",
+        context,
+        as.integer(p_use)
+      )
+    )
+  }
+
+  Ft_use <- matrix(as.numeric(Ft)[seq_len(p_use)], ncol = 1L)
+  Mu_use <- as.numeric(Mu)[seq_len(p_use)]
+  Sigma_use <- as.matrix(Sigma)[seq_len(p_use), seq_len(p_use), drop = FALSE]
+  mean_val <- as.numeric(crossprod(Ft_use, Mu_use))
+  var_val <- as.numeric(t(Ft_use) %*% Sigma_use %*% Ft_use)
+  if (!is.finite(var_val)) {
+    return(c(mean = mean_val, sd = NA_real_))
+  }
+  c(mean = mean_val, sd = sqrt(max(var_val, 0)))
+}
+
 profile_section("figures.elbo_traces", {
   png("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/All_ELBOS_DISC.png", width = 6000, height = 4000, res = 600)
   par(mfrow = c(1, 8), mar = c(2, 2, 2, 1), oma = c(0, 0, 3, 0))
@@ -256,16 +360,68 @@ for(j in 1:J){
     if (length(idx) == 0L) {
       next
     }
-    tt <- 1
-    for(t in idx){
-        Mu <- new.theta.out_50_NDLM_synth_DISC$sm_ens[[j]][,tt]
-        Sigma <- new.theta.out_50_NDLM_synth_DISC$sC_ens[[j]][,,tt]
-        Ft <- FF_list[[j]][1:p,1]
-        S <- Sigma[1:p,1:p] + diag(p)*eps
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu[1:p], sd = sqrt(t(Ft)%*%S%*%Ft))
-        xbs_ndlm[1,t,] <- xbs_samp
-        
-        tt <- tt+1
+
+    if (j > length(new.theta.out_50_NDLM_synth_DISC$sm_ens) ||
+        j > length(new.theta.out_50_NDLM_synth_DISC$sC_ens)) {
+      ndlm_warn_once(
+        paste0("missing_seg:", j),
+        sprintf("NDLM ensemble segment j=%d is missing; skipping this segment.", as.integer(j))
+      )
+      next
+    }
+
+    sm_j <- new.theta.out_50_NDLM_synth_DISC$sm_ens[[j]]
+    sC_j <- new.theta.out_50_NDLM_synth_DISC$sC_ens[[j]]
+    if (!is.numeric(sm_j) || is.null(dim(sm_j)) || length(dim(sm_j)) != 2L ||
+        !is.numeric(sC_j) || is.null(dim(sC_j)) || length(dim(sC_j)) != 3L) {
+      ndlm_warn_once(
+        paste0("shape_seg:", j),
+        sprintf("NDLM ensemble segment j=%d has invalid shape; skipping this segment.", as.integer(j))
+      )
+      next
+    }
+
+    n_avail <- min(length(idx), ncol(sm_j), dim(sC_j)[3])
+    if (!is.finite(n_avail) || n_avail <= 0L) {
+      ndlm_warn_once(
+        paste0("empty_seg:", j),
+        sprintf("NDLM ensemble segment j=%d has no overlapping forecast horizon; skipping.", as.integer(j))
+      )
+      next
+    }
+    if (n_avail < length(idx)) {
+      ndlm_warn_once(
+        paste0("trunc_seg:", j),
+        sprintf(
+          "NDLM segment j=%d forecast horizon truncated from %d to %d (available sm/sC columns).",
+          as.integer(j),
+          as.integer(length(idx)),
+          as.integer(n_avail)
+        )
+      )
+    }
+
+    Ft <- FF_list[[j]][1:p, 1]
+    for (tt in seq_len(n_avail)) {
+      t <- idx[[tt]]
+      Mu <- sm_j[, tt]
+      Sigma <- sC_j[, , tt]
+      p_use <- min(
+        length(Ft),
+        length(Mu),
+        nrow(Sigma),
+        ncol(Sigma)
+      )
+      if (!is.finite(p_use) || p_use <= 0L) {
+        next
+      }
+      Ft_use <- matrix(Ft[seq_len(p_use)], ncol = 1L)
+      S <- Sigma[seq_len(p_use), seq_len(p_use), drop = FALSE] + diag(p_use) * eps
+      mean_use <- as.numeric(crossprod(Ft_use, Mu[seq_len(p_use)]))
+      var_use <- as.numeric(t(Ft_use) %*% S %*% Ft_use)
+      sd_use <- sqrt(max(var_use, 0))
+      xbs_samp <- rnorm(n = n.samp, mean = mean_use, sd = sd_use)
+      xbs_ndlm[1, t, ] <- xbs_samp
     }
 }
 
@@ -563,43 +719,51 @@ profile_section("figures.sample_xbs_retro", {
 
 	        Mu <- new.theta.out_50_NDLM_synth_DISC$sm[, t]
 	        Sigma <- new.theta.out_50_NDLM_synth_DISC$sC[, , t]
-	        mean_ndlm <- as.numeric(t(Ft) %*% Mu)
-	        sd_ndlm <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+	        stats_ndlm <- gaussian_projection_mean_sd(Ft, Mu, Sigma, context = "retro.ndlm")
+	        mean_ndlm <- stats_ndlm[["mean"]]
+	        sd_ndlm <- stats_ndlm[["sd"]]
 
 	        Mu <- new.theta.out_95_exAL_synth_DISC$sm[, t]
 	        Sigma <- new.theta.out_95_exAL_synth_DISC$sC[, , t]
-	        mean_95 <- as.numeric(t(Ft) %*% Mu)
-	        sd_95 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+	        stats_95 <- gaussian_projection_mean_sd(Ft, Mu, Sigma, context = "retro.exal95")
+	        mean_95 <- stats_95[["mean"]]
+	        sd_95 <- stats_95[["sd"]]
 
 	        Mu <- new.theta.out_80_exAL_synth_DISC$sm[, t]
 	        Sigma <- new.theta.out_80_exAL_synth_DISC$sC[, , t]
-	        mean_80 <- as.numeric(t(Ft) %*% Mu)
-	        sd_80 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+	        stats_80 <- gaussian_projection_mean_sd(Ft, Mu, Sigma, context = "retro.exal80")
+	        mean_80 <- stats_80[["mean"]]
+	        sd_80 <- stats_80[["sd"]]
 
 	        Mu <- new.theta.out_65_exAL_synth_DISC$sm[, t]
 	        Sigma <- new.theta.out_65_exAL_synth_DISC$sC[, , t]
-	        mean_65 <- as.numeric(t(Ft) %*% Mu)
-	        sd_65 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+	        stats_65 <- gaussian_projection_mean_sd(Ft, Mu, Sigma, context = "retro.exal65")
+	        mean_65 <- stats_65[["mean"]]
+	        sd_65 <- stats_65[["sd"]]
 
 	        Mu <- new.theta.out_50_exAL_synth_DISC$sm[, t]
 	        Sigma <- new.theta.out_50_exAL_synth_DISC$sC[, , t]
-	        mean_50 <- as.numeric(t(Ft) %*% Mu)
-	        sd_50 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+	        stats_50 <- gaussian_projection_mean_sd(Ft, Mu, Sigma, context = "retro.exal50")
+	        mean_50 <- stats_50[["mean"]]
+	        sd_50 <- stats_50[["sd"]]
 
 	        Mu <- new.theta.out_35_exAL_synth_DISC$sm[, t]
 	        Sigma <- new.theta.out_35_exAL_synth_DISC$sC[, , t]
-	        mean_35 <- as.numeric(t(Ft) %*% Mu)
-	        sd_35 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+	        stats_35 <- gaussian_projection_mean_sd(Ft, Mu, Sigma, context = "retro.exal35")
+	        mean_35 <- stats_35[["mean"]]
+	        sd_35 <- stats_35[["sd"]]
 
 	        Mu <- new.theta.out_20_exAL_synth_DISC$sm[, t]
 	        Sigma <- new.theta.out_20_exAL_synth_DISC$sC[, , t]
-	        mean_20 <- as.numeric(t(Ft) %*% Mu)
-	        sd_20 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+	        stats_20 <- gaussian_projection_mean_sd(Ft, Mu, Sigma, context = "retro.exal20")
+	        mean_20 <- stats_20[["mean"]]
+	        sd_20 <- stats_20[["sd"]]
 
 	        Mu <- new.theta.out_5_exAL_synth_DISC$sm[, t]
 	        Sigma <- new.theta.out_5_exAL_synth_DISC$sC[, , t]
-	        mean_5 <- as.numeric(t(Ft) %*% Mu)
-	        sd_5 <- as.numeric(sqrt(t(Ft) %*% Sigma %*% Ft))
+	        stats_5 <- gaussian_projection_mean_sd(Ft, Mu, Sigma, context = "retro.exal05")
+	        mean_5 <- stats_5[["mean"]]
+	        sd_5 <- stats_5[["sd"]]
 
 	        means <- c(mean_ndlm, mean_95, mean_80, mean_65, mean_50, mean_35, mean_20, mean_5)
 	        sds <- c(sd_ndlm, sd_95, sd_80, sd_65, sd_50, sd_35, sd_20, sd_5)
@@ -1292,10 +1456,13 @@ idx <- (TT-iii):(TT)
 
 sd_ndlm <- mean(sqrt(samp.sigma_50_NDLM_synth_DISC[1,]))
 
-d1 <- new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]][8,]
-d2 <- new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]][8,]
-discrep <- c(d1, d2) 
-estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
+discrep <- ndlm_discrepancy_pair(
+  new.theta.out_50_NDLM_synth_DISC,
+  F_constant = FF[1:7, 1, 1],
+  target_len = ranges[1],
+  context = "ndlm.q50.allth"
+)
+estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2, (TT + 1):(TT + ranges[1])] - discrep
 lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.5), col = "orange", lwd = 2)
 lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.5), col = 'orange', lwd = 2)
 
@@ -1498,9 +1665,12 @@ sd_ndlm <- mean(sqrt(samp.sigma_50_NDLM_synth_DISC[1,]))
 
 
 F_constant_disc <- FF[1:7,1,1]
-d1 <- F_constant_disc%*%new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]][8:14,]
-d2 <- F_constant_disc%*%new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]][8:14,]
-discrep <- c(d1, d2) 
+discrep <- ndlm_discrepancy_pair(
+  new.theta.out_50_NDLM_synth_DISC,
+  F_constant = F_constant_disc,
+  target_len = ranges[1],
+  context = "ndlm.q50.all3"
+)
 
 estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
 lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.5), col = "orange", lwd = 2)
@@ -1610,9 +1780,12 @@ lines(idx_f, result[3,], col = 'orange', lty = 2, lwd = 1)
 # d2 <- new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]][8,]
 # discrep <- c(d1, d2) 
 F_constant_disc <- FF[1:7,1,1]
-d1 <- F_constant_disc%*%new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]][8:14,]
-d2 <- F_constant_disc%*%new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]][8:14,]
-discrep <- c(d1, d2) 
+discrep <- ndlm_discrepancy_pair(
+  new.theta.out_50_NDLM_synth_DISC,
+  F_constant = F_constant_disc,
+  target_len = ranges[1],
+  context = "ndlm.q50.p95"
+)
 estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
 lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.95), col = "orange", lwd = 2)
 lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.95), col = 'orange', lwd = 2)
@@ -1725,9 +1898,12 @@ lines(idx_f, result[3,], col = 'orange', lty = 2, lwd = 1)
 # d2 <- new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]][8,]
 # discrep <- c(d1, d2) 
 F_constant_disc <- FF[1:7,1,1]
-d1 <- F_constant_disc%*%new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]][8:14,]
-d2 <- F_constant_disc%*%new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]][8:14,]
-discrep <- c(d1, d2) 
+discrep <- ndlm_discrepancy_pair(
+  new.theta.out_50_NDLM_synth_DISC,
+  F_constant = F_constant_disc,
+  target_len = ranges[1],
+  context = "ndlm.q50.p50"
+)
 estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
 lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.5), col = "orange", lwd = 2)
 lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.5), col = 'orange', lwd = 2)
@@ -1834,9 +2010,12 @@ lines(idx_f, result[2,], col = 'orange', lwd = 1.5)
 lines(idx_f, result[3,], col = 'orange', lty = 2, lwd = 1)
 
 # Adding NDLM estimation
-d1 <- new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]][8,]
-d2 <- new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]][8,]
-discrep <- c(d1, d2) 
+discrep <- ndlm_discrepancy_pair(
+  new.theta.out_50_NDLM_synth_DISC,
+  F_constant = FF[1:7, 1, 1],
+  target_len = ranges[1],
+  context = "ndlm.q50.p05"
+)
 estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
 q_exps[4,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[4,]")
 lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.05), col = "orange", lwd = 2)

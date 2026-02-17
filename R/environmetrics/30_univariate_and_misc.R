@@ -158,6 +158,93 @@ load_quantile_bundle_with_alias <- function(path, target_label, source_label, su
   invisible(TRUE)
 }
 
+is_numeric_matrix <- function(x) {
+  is.numeric(x) && !is.null(dim(x)) && length(dim(x)) == 2L
+}
+
+is_numeric_array3 <- function(x) {
+  is.numeric(x) && !is.null(dim(x)) && length(dim(x)) == 3L
+}
+
+is_numeric_matrix_list <- function(x) {
+  is.list(x) && length(x) > 0L && all(vapply(x, is_numeric_matrix, logical(1)))
+}
+
+is_numeric_array3_list <- function(x) {
+  is.list(x) && length(x) > 0L && all(vapply(x, is_numeric_array3, logical(1)))
+}
+
+extract_nested_list_field <- function(x, field_name, validator) {
+  if (validator(x)) {
+    return(x)
+  }
+  if (!is.list(x)) {
+    return(NULL)
+  }
+  nested <- x[[field_name]]
+  if (!is.null(nested) && validator(nested)) {
+    return(nested)
+  }
+  idx <- which(vapply(x, validator, logical(1)))
+  if (length(idx) > 0L) {
+    return(x[[idx[[1L]]]])
+  }
+  NULL
+}
+
+normalize_ndlm_ensemble_fields <- function(
+  obj_name = "new.theta.out_50_NDLM_synth_DISC",
+  assign_env = parent.frame()
+) {
+  if (!exists(obj_name, envir = assign_env, inherits = FALSE)) {
+    return(invisible(FALSE))
+  }
+  obj <- get(obj_name, envir = assign_env, inherits = FALSE)
+  if (!is.list(obj)) {
+    return(invisible(FALSE))
+  }
+
+  sm_raw <- obj$sm_ens
+  sc_raw <- obj$sC_ens
+  sm_fixed <- extract_nested_list_field(sm_raw, "sm_ens", is_numeric_matrix_list)
+  sc_fixed <- extract_nested_list_field(sc_raw, "sC_ens", is_numeric_array3_list)
+
+  normalized <- FALSE
+  if (!is.null(sm_fixed) && !identical(sm_raw, sm_fixed)) {
+    obj$sm_ens <- sm_fixed
+    normalized <- TRUE
+  }
+  if (!is.null(sc_fixed) && !identical(sc_raw, sc_fixed)) {
+    obj$sC_ens <- sc_fixed
+    normalized <- TRUE
+  }
+
+  if (normalized) {
+    assign(obj_name, obj, envir = assign_env)
+    warning(
+      sprintf(
+        "Normalized %s ensemble fields to canonical structure (sm_ens=%d, sC_ens=%d).",
+        obj_name,
+        length(obj$sm_ens),
+        length(obj$sC_ens)
+      ),
+      call. = FALSE
+    )
+  }
+  invisible(normalized)
+}
+
+load_ndlm_bundle_with_normalize <- function(
+  path,
+  obj_name = "new.theta.out_50_NDLM_synth_DISC",
+  attempts = 3L,
+  sleep_sec = 0.5
+) {
+  load_rdata_with_retry(path, attempts = attempts, sleep_sec = sleep_sec, envir = parent.frame())
+  normalize_ndlm_ensemble_fields(obj_name = obj_name, assign_env = parent.frame())
+  invisible(TRUE)
+}
+
 profile_section(
   "univariate.load_vars_05",
   load_quantile_bundle_with_alias(file_path, target_label = "05", source_label = UNI_VAR_SRC_05, suffix = "exAL_synth_DISC_uni")
@@ -971,7 +1058,7 @@ dim(synth_f2)
 
 p <- 7
 file_path <- NDLM_VAR_50
-profile_section("univariate.load_disc_vars_ndlm_50", load_rdata_with_retry(file_path))
+profile_section("univariate.load_disc_vars_ndlm_50", load_ndlm_bundle_with_normalize(file_path))
 
 par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
 time_cuts <- which(timestamps %in% c("2012-08-01","2016-05-01","2016-09-15","2019-08-01") )
@@ -1137,7 +1224,7 @@ profile_section(
 
 
 file_path <- NDLM_VAR_50
-profile_section("univariate.load_disc_vars_ndlm_50_repeat", load_rdata_with_retry(file_path))
+profile_section("univariate.load_disc_vars_ndlm_50_repeat", load_ndlm_bundle_with_normalize(file_path))
 
 
 n.samp <- 2000
