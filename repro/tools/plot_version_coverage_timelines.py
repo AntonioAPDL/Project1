@@ -657,6 +657,14 @@ def _draw_glofas_v2_v3_v4_family_variant(ax: plt.Axes, legend_mode: str = "insid
 
     historical_rows: List[IntervalRow] = [
         IntervalRow(
+            label="Historical coverage: v2.1 htessel_lisflood consolidated",
+            start=date(1979, 1, 1),
+            end=date(2022, 7, 31),
+            color=version_color["2.1"],
+            alpha=0.45,
+            hatch="..",
+        ),
+        IntervalRow(
             label="Historical coverage: v3.x alias lisflood consolidated",
             start=date(1979, 1, 1),
             end=date(2024, 6, 30),
@@ -692,6 +700,7 @@ def _draw_glofas_v2_v3_v4_family_variant(ax: plt.Axes, legend_mode: str = "insid
         ),
     ]
     historical_labels = [
+        f"Historical coverage: v2.1 htessel_lisflood consolidated\n{_fmt_range(date(1979, 1, 1), date(2022, 7, 31))}",
         f"Historical coverage: v3.x alias lisflood consolidated\n{_fmt_range(date(1979, 1, 1), date(2024, 6, 30))}",
         f"Historical coverage: v4.0 lisflood consolidated\n{_fmt_range(date(1979, 1, 1), date(2025, 11, 30))}",
         f"Legacy reanalysis archive window: v3.x alias (JRC)\n{_fmt_range(date(1980, 1, 1), date(2018, 12, 31))}",

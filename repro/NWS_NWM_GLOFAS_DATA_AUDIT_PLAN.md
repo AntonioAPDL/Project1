@@ -1,7 +1,7 @@
 # NWS/NWM and GloFAS Data Audit Plan (Metadata-Only, Version Compatibility)
 
 Date created: 2026-02-14  
-Last updated: 2026-02-16  
+Last updated: 2026-02-17  
 Scope: version, release, coverage, format, and access documentation only.  
 Working constraint: metadata-first audit (no bulk dataset downloads).
 
@@ -21,7 +21,10 @@ Build one compact, shareable documentation artifact that tracks, for NWS/NWM and
 1. NWS/NWM and GloFAS version timelines are populated from reviewed sources.
 2. Version-linked historical/retrospective/forecast/reforecast metadata is populated where explicitly available.
 3. GloFAS coverage probing is implemented with two evidence tiers: (a) full-scope baseline scan/refinement (`scan_20260216T015036Z` plus consolidated matrix `GLOFAS-LOCAL-09`), and (b) focused follow-up for priority scope (`version_3_1`/`version_4_0`, historical+reforecast) using `scan_20260216T065850Z`, `refine_20260216T072601Z`, and focused bundle `GLOFAS-LOCAL-11`.
-4. Remaining unknowns are explicitly tracked (not inferred), especially:
+4. Additional 2026-02-17 execution evidence is now available for:
+   - forecast selector parity blocking (`operational` accepted, explicit forecast selectors rejected) via `GLOFAS-LOCAL-15`, and
+   - historical consolidated campaign planning/smoke execution via `GLOFAS-LOCAL-16`.
+5. Remaining unknowns are explicitly tracked (not inferred), especially:
    - NWM forecast-side reforecast/hindcast product metadata.
    - Per-version NWM retrospective publication dates.
    - Numeric expansion of GloFAS forecast `operational` alias in retrieve metadata.
@@ -738,6 +741,8 @@ Status values:
 | `GLOFAS-LOCAL-12` | GloFAS | high | lower-bound validation probes for historical lisflood consolidated (`1978-12-31` vs `1979-01-01`) | `done` | `2026-02-16` | Probe run `probe_20260216T075054Z`: both `version_3_1` and `version_4_0` return invalid on `1978-12-31` and success on `1979-01-01`. |
 | `GLOFAS-LOCAL-13` | GloFAS | medium | fixed-date boundary checks across prioritized historical/reforecast tuples with hard timeout control | `done` | `2026-02-16` | Runs `boundary_check_20260216T223610Z` and `boundary_check_20260216T234434Z`: structural exclusions confirmed and `version_2_1 + htessel_lisflood` historical validity/boundaries explicitly confirmed (Section 3.7.10). |
 | `GLOFAS-LOCAL-14` | GloFAS | medium | local legacy-JRC file inventory for parity-check readiness | `done` | `2026-02-16` | Run `repro/glofas_probe_runs/legacy_inventory_20260216T224643Z`: `match_count=0` under current `data/` tree (Section 3.7.11). |
+| `GLOFAS-LOCAL-15` | GloFAS | high | forecast selector parity check (`operational` vs explicit `version_2_1`/`version_3_1`) | `done` | `2026-02-17` | Runs `operational_explicit_parity_20260217T012751Z` and `probe_20260217T013028Z`: operational accepted, explicit selectors rejected (`invalid_request`). |
+| `GLOFAS-LOCAL-16` | GloFAS | medium | historical consolidated campaign planning + smoke execution readiness (`v2.1`/`v3.1`/`v4.0`) | `done` | `2026-02-17` | Plan run `hist_campaign_20260217T013445Z`; pilot/smoke runs `hist_campaign_20260217T014141Z` and `hist_campaign_20260217T014458Z`; v3.1 full-lane execution resumed via tmux. |
 
 ## 5) Metadata-Only TODO Checklist
 
@@ -920,6 +925,10 @@ For each candidate retrospective -> forecast pairing, document:
 - `GLOFAS-LOCAL-10`: `repro/glofas_coverage_scan_runs/manual_boundary_20260216T194500Z/manual_boundary_results.csv`
 - `GLOFAS-LOCAL-11`: `repro/glofas_coverage_scan_runs/focused_20260216T075254Z/focused_refined_ranges.csv`
 - `GLOFAS-LOCAL-12`: `repro/glofas_probe_runs/probe_20260216T075054Z/manifests/probe_manifest.csv`
+- `GLOFAS-LOCAL-13`: `repro/glofas_probe_runs/boundary_check_20260216T234434Z/manifests/boundary_manifest.csv`
+- `GLOFAS-LOCAL-14`: `repro/glofas_probe_runs/legacy_inventory_20260216T224643Z/summary.txt`
+- `GLOFAS-LOCAL-15`: `repro/glofas_probe_runs/operational_explicit_parity_20260217T012751Z/parity_manifest.csv`
+- `GLOFAS-LOCAL-16`: `repro/glofas_probe_runs/hist_campaign_20260217T013445Z/campaign_metadata.json`
 
 ## 8) Shared Standards (Locked)
 
