@@ -137,6 +137,8 @@ repro/bias_inputs/
 repro/cleanup_logs/
 repro/quarantine/cleanup_runs/
 repro/quarantine/failed_runs/
+repro/glofas_probe_runs/
+repro/glofas_coverage_scan_runs/
 
 # Uppercase spreadsheet exports
 *.CSV

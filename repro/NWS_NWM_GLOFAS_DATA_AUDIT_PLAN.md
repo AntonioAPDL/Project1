@@ -607,6 +607,94 @@ Focused no-anchor pattern:
 2. `version_4_0 + lisflood + intermediate` historical remained `not_found` with repeated `invalid_request`.
 3. These outcomes are documented as unsupported combinations under tested bounded requests, not as universal product absence claims beyond tested settings.
 
+### 3.7.10 Targeted Fixed-Date Boundary Checks (Timeout-Controlled)
+
+Purpose of this step:
+
+1. Run explicit boundary-date probes per combination (instead of broad sweeps) to isolate:
+   - hard-invalid requests (`invalid_request`), and
+   - unresolved cases (`timeout`) that require slower retries.
+2. Keep the requests metadata-light (single day, small area, no bulk transfer).
+
+Implementation:
+
+1. Script added: `scripts/forecats_check_glofas_boundaries.py`
+2. Completed run: `repro/glofas_probe_runs/boundary_check_20260216T223610Z`
+3. Run profile:
+   - `32` fixed cases
+   - parallel workers: `4`
+   - per-request hard timeout: `45s`
+
+Outcome summary (`boundary_check_20260216T223610Z`):
+
+1. `32/32` requests returned error-classified outcomes:
+   - `16` as `invalid_request`
+   - `16` as `timeout`
+2. Structural `invalid_request` confirmations (useful for compatibility filtering):
+   - Historical:
+     - `version_3_1 + lisflood + consolidated`: `1978-12-31` invalid, `2024-07-01` invalid
+     - `version_3_1 + lisflood + intermediate`: `2020-12-31` invalid, `2024-09-24` invalid
+     - `version_4_0 + lisflood + consolidated`: `1978-12-31` invalid, `2025-12-01` invalid
+     - `version_4_0 + lisflood + intermediate`: `2023-03-27` invalid
+     - `version_3_1/version_4_0 + htessel_lisflood + consolidated`: invalid in tested dates
+   - Reforecast:
+     - `version_3_1 + lisflood + control_reforecast`: `2002-01-01` invalid and `2021-01-04` invalid
+     - `version_4_0 + lisflood + control_reforecast`: `2021-01-03`, `2021-01-07`, `2022-01-03` invalid
+     - `version_3_1/version_4_0 + htessel_lisflood + control_reforecast`: invalid in tested dates
+3. Timeout-labeled requests are treated as unresolved (not interpreted as invalid) in this step.
+
+Interpretation policy for this run:
+
+1. Use `invalid_request` outcomes as hard exclusion evidence for the tested request tuples.
+2. Do not downgrade previously confirmed anchor windows from Section 3.7.9 based on timeout-only outcomes in this run.
+3. For positive-window confirmation, keep Section 3.7.9 (`GLOFAS-LOCAL-11`, `GLOFAS-LOCAL-12`) as the primary evidence base.
+
+Correction follow-up for `version_2_1` historical:
+
+1. Run: `repro/glofas_probe_runs/boundary_check_20260216T234434Z` (same fixed-date checker, filtered to `hist_v21_*` cases).
+2. Confirmed valid tuple:
+   - `system_version=version_2_1`
+   - `hydrological_model=htessel_lisflood`
+   - `product_type=consolidated`
+3. Confirmed consolidated boundary behavior (for the tested request tuple):
+   - `1978-12-31`: `invalid_request`
+   - `1979-01-01`: `ok`
+   - `1991-07-13`: `ok`
+   - `2022-07-31`: `ok`
+   - `2022-08-01`: `invalid_request`
+4. Confirmed intermediate anchors (same selector/model):
+   - `2019-09-30`: `ok`
+   - `2019-10-01`: `ok`
+   - `2022-09-01`: `ok`
+   - `2022-09-13`: `invalid_request`
+5. Interpretation update:
+   - Earlier “v2.1 historical unavailable” inference is rejected.
+   - Root cause was probe selection/coverage configuration in earlier runs, not product absence in EWDS.
+
+### 3.7.11 Legacy-JRC vs EWDS Historical Value-Parity Status
+
+Objective:
+
+1. Check whether point/day output values are numerically equivalent between:
+   - legacy JRC reanalysis archives (`v3.0`, `v4.0`), and
+   - EWDS historical product selectors (`version_3_1`, `version_4_0`) in overlap periods.
+
+Current status:
+
+1. Local inventory check run:
+   - `repro/glofas_probe_runs/legacy_inventory_20260216T224643Z`
+   - `summary.txt` reports `match_count=0` for legacy/reanalysis-targeted filename patterns under `data/`.
+2. Direct value-parity comparison was therefore not executed in this document revision.
+
+Evidence-constrained conclusion:
+
+1. This audit currently supports lineage/coverage compatibility using metadata + bounded EWDS probes.
+2. It does not yet provide file-level numeric equivalence proof between JRC legacy archives and EWDS historical selectors.
+
+Minimal dependency to close this gap:
+
+1. Provide at least one legacy JRC sample file per archive family (`v3.0`, `v4.0`) on dates overlapping EWDS historical availability, then run point/day value-diff checks.
+
 ## 4) Source Checklist (Metadata Documentation)
 
 Track source review progress here. Use URL IDs from Section 7.
@@ -648,6 +736,8 @@ Status values:
 | `GLOFAS-LOCAL-10` | GloFAS | medium | manual timeout-controlled boundary probes for `operational + lisflood` forecast products | `done` | `2026-02-16` | Probe table stored at `repro/glofas_coverage_scan_runs/manual_boundary_20260216T194500Z/manual_boundary_results.csv`. |
 | `GLOFAS-LOCAL-11` | GloFAS | high | focused priority-scope scan/refinement (`v3.x alias` + `v4.0`, historical+reforecast only) | `done` | `2026-02-16` | Runs: `scan_20260216T065850Z` and `refine_20260216T072601Z` with aggressive boundary expansion; summary bundle at `focused_20260216T075254Z`. |
 | `GLOFAS-LOCAL-12` | GloFAS | high | lower-bound validation probes for historical lisflood consolidated (`1978-12-31` vs `1979-01-01`) | `done` | `2026-02-16` | Probe run `probe_20260216T075054Z`: both `version_3_1` and `version_4_0` return invalid on `1978-12-31` and success on `1979-01-01`. |
+| `GLOFAS-LOCAL-13` | GloFAS | medium | fixed-date boundary checks across prioritized historical/reforecast tuples with hard timeout control | `done` | `2026-02-16` | Runs `boundary_check_20260216T223610Z` and `boundary_check_20260216T234434Z`: structural exclusions confirmed and `version_2_1 + htessel_lisflood` historical validity/boundaries explicitly confirmed (Section 3.7.10). |
+| `GLOFAS-LOCAL-14` | GloFAS | medium | local legacy-JRC file inventory for parity-check readiness | `done` | `2026-02-16` | Run `repro/glofas_probe_runs/legacy_inventory_20260216T224643Z`: `match_count=0` under current `data/` tree (Section 3.7.11). |
 
 ## 5) Metadata-Only TODO Checklist
 
@@ -708,6 +798,8 @@ Placeholder follow-up tasks (closed for this document revision):
   Completion note: no dedicated standalone `v3.1` reanalysis landing page was found in reviewed official JRC catalogue pages; this is now recorded explicitly in Section 3.7.3.1 as `not found`.
 - [x] `GLOFAS-F05`: Re-validate medium-range reforecast freeze status from EWDS message feed before each new cutoff-date experiment.
   Completion note: current snapshot verified on `2026-02-16` (`GLOFAS-URL-29`) still shows the `2024-11-11` freeze message. For future cycles, this remains a recurring operations check (Section 11 policy), not an open static TODO.
+- [x] `GLOFAS-F06`: Execute initial legacy-JRC vs EWDS historical parity-readiness check (local inventory + execution feasibility).
+  Completion note: local inventory run `legacy_inventory_20260216T224643Z` reports no legacy-JRC files in current `data/` tree (`match_count=0`), so direct numeric parity testing is blocked pending sample-file availability (Section 3.7.11).
 
 ### 5.4 Finalization tasks
 
@@ -730,6 +822,7 @@ Current script inventory relevant to this audit:
 4. `scripts/forecats_probe_glofas_coverage.py` is the current lightweight probe tool for metadata-driven request validation.
 5. `scripts/forecats_scan_glofas_coverage.py` performs the full parallel baseline scan.
 6. `scripts/forecats_refine_glofas_ranges.py` performs boundary-focused refinement and consistency rechecks.
+7. `scripts/forecats_check_glofas_boundaries.py` performs fixed-date boundary checks with explicit timeout-controlled request execution.
 
 Implementation status (closed for this document revision):
 
