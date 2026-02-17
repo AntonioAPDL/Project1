@@ -180,7 +180,7 @@ Status legend:
 | P4 | [x] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory, plus ELBO/VB parity regression and contract evidence |
 | P5 | [x] | Post decoupling from root artifacts | P2 done | Post loads only manifest-declared run-scoped artifacts and strict figures-on smoke closes with non-null `finished_at_utc` |
 | P6 | [~] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
-| P7 | [~] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
+| P7 | [x] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure, with family-summary report regression coverage |
 | P8 | [~] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
 | P9 | [x] | Extreme-quantile stabilization (q=0.01 first) | P8C failure evidence captured | Isolated extreme-quantile proof runs (`q=0.01,0.50,0.99`) close for exDQLM multivar + univar under adaptive defaults, with run-scoped outputs and no hard runtime failures (operational closure accepted under D-011) |
 
@@ -232,8 +232,8 @@ Status legend:
 
 - `T-P6-01`: Add explicit model-family toggles under unified config.
 - `T-P6-02`: Add scheduling policy for parallel exDQLM stages + NDLM isolation.
-- `T-P7-01`: Extend validator to enforce per-family required outputs.
-- `T-P7-02`: Extend report to summarize each family separately.
+- [x] `T-P7-01`: Extend validator to enforce per-family required outputs.
+- [x] `T-P7-02`: Extend report to summarize each family separately.
 - [x] `T-P8-01`: Change defaults to theory-aligned stages; keep legacy as opt-in fallback.
 - [x] `T-P8-02`: Add end-to-end unified-run smoke integration coverage for post table exports and post artifact allowlist capture.
 - [x] `T-P8-03`: Add canonical production family config (canonical 7 quantiles) plus validator UX/docs regression coverage.
@@ -2230,6 +2230,23 @@ Concurrency rule for migration phases:
   - NDLM closure smoke completed with `forecats=pass`, `data_prep_shared=pass`, `fit=pass`, and non-null `finished_at_utc`.
 - Next action:
   - Continue C2 canonical P8C closure monitoring and then close C4/C5/C6/C7 checklist items.
+
+### Progress Update 2026-02-17 07:06 UTC
+- Phase: C4 (P7 closure)
+- Change type: validation+tests
+- Summary: closed P7 validator/report hardening by adding explicit report family-summary regression coverage and re-validating production-proof gate behavior under current validator contracts.
+- Files touched:
+  - `repro/tests/test_stage_report_family_summary.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/tests/test_stage_report_family_summary.py`
+  - `repro/runs/prod_proof_p7b_20260212_225100/FAILURE_REPORT.md`
+  - `/tmp/c4_validate_prodproof_20260217.log`
+- Validation notes:
+  - `python3 -m unittest repro.tests.test_stage_report_family_summary repro.tests.test_validate_run -v` passed.
+  - External validator intentionally failed `prod_proof_p7b_20260212_225100` under current policies when family outputs were missing, confirming active family-aware gate enforcement.
+- Next action:
+  - Continue C2 canonical P8C closure run; apply C5 follow-up legacy-fallback policy hardening commit.
 
 ## 15) Audit Report (2026-02-14)
 
