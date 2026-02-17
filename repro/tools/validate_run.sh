@@ -279,6 +279,7 @@ payload = {
     "run_ndlm_main": as_bool(models.get("run_ndlm_main"), default=False),
     "fit_contract_checks_enabled": as_bool((fit.get("contract_checks") or {}).get("enabled"), default=False),
     "fit_diagnostics_enabled": as_bool((fit.get("diagnostics") or {}).get("enabled"), default=False),
+    "post_allow_legacy_root_fallback": as_bool((doc.get("post") or {}).get("allow_legacy_root_fallback"), default=False),
     "forecats_mode": forecats_mode,
     "forecats_snapshot_enabled": as_bool(snapshot_enabled, default=False),
 }
@@ -299,6 +300,7 @@ ordered_keys = [
     "run_ndlm_main",
     "fit_contract_checks_enabled",
     "fit_diagnostics_enabled",
+    "post_allow_legacy_root_fallback",
     "forecats_mode",
     "forecats_snapshot_enabled",
 ]
@@ -324,6 +326,7 @@ cfg_run_exdqlm_univar="false"
 cfg_run_ndlm_main="false"
 cfg_contract_checks_enabled="false"
 cfg_diagnostics_enabled="false"
+cfg_post_allow_legacy_root_fallback="false"
 cfg_forecats_mode="use_existing"
 cfg_forecats_snapshot_enabled="false"
 cfg_prefer_forecats_snapshot="true"
@@ -351,6 +354,7 @@ if cfg_parse_output="$(parse_resolved_config_single_pass "${RESOLVED_CONFIG_PATH
       run_ndlm_main) cfg_run_ndlm_main="${val}" ;;
       fit_contract_checks_enabled) cfg_contract_checks_enabled="${val}" ;;
       fit_diagnostics_enabled) cfg_diagnostics_enabled="${val}" ;;
+      post_allow_legacy_root_fallback) cfg_post_allow_legacy_root_fallback="${val}" ;;
       forecats_mode) cfg_forecats_mode="${val}" ;;
       forecats_snapshot_enabled) cfg_forecats_snapshot_enabled="${val}" ;;
     esac
@@ -658,6 +662,11 @@ if [[ "${chk_snapshot_shared_map}" != "true" || \
   chk_snapshot_evidence="false"
 fi
 
+chk_legacy_post_fallback="true"
+if [[ "${PROFILE_EFFECTIVE}" != "smoke" && "${cfg_post_allow_legacy_root_fallback}" == "true" ]]; then
+  chk_legacy_post_fallback="false"
+fi
+
 chk_manifest_exists="false"
 [[ -f "${MANIFEST_PATH}" ]] && chk_manifest_exists="true"
 
@@ -742,6 +751,7 @@ overall_pass="false"
 if [[ "${PROFILE_EFFECTIVE}" == "production" || "${PROFILE_EFFECTIVE}" == "production_proof" ]]; then
   if [[ "${chk_manifest_exists}" == "true" && \
         "${chk_finished_at}" == "true" && \
+        "${chk_legacy_post_fallback}" == "true" && \
         "${chk_quantiles}" == "true" && \
         "${chk_univar_outputs}" == "true" && \
         "${chk_ndlm_outputs}" == "true" && \
@@ -761,6 +771,7 @@ if [[ "${PROFILE_EFFECTIVE}" == "production" || "${PROFILE_EFFECTIVE}" == "produ
 else
   if [[ "${chk_manifest_exists}" == "true" && \
         "${chk_finished_at}" == "true" && \
+        "${chk_legacy_post_fallback}" == "true" && \
         "${chk_quantiles}" == "true" && \
         "${chk_univar_outputs}" == "true" && \
         "${chk_ndlm_outputs}" == "true" && \
@@ -887,6 +898,7 @@ Result: PASS
 - profile: \`${PROFILE_EFFECTIVE}\`
 - [$(bool_word "${chk_manifest_exists}")] run_manifest.yaml exists
 - [$(bool_word "${chk_finished_at}")] manifest timestamps.finished_at_utc is non-null
+- [$(bool_word "${chk_legacy_post_fallback}")] post.allow_legacy_root_fallback disabled for this profile
 - [$(bool_word "${chk_quantiles}")] expected multivar quantile outputs present
 - [$(bool_word "${chk_univar_outputs}")] expected univar outputs present (when enabled)
 - [$(bool_word "${chk_ndlm_outputs}")] expected NDLM outputs present (when enabled)
@@ -947,6 +959,7 @@ Result: FAIL
 - profile: \`${PROFILE_EFFECTIVE}\`
 - [$(bool_word "${chk_manifest_exists}")] run_manifest.yaml exists
 - [$(bool_word "${chk_finished_at}")] manifest timestamps.finished_at_utc is non-null
+- [$(bool_word "${chk_legacy_post_fallback}")] post.allow_legacy_root_fallback disabled for this profile
 - [$(bool_word "${chk_quantiles}")] expected multivar quantile outputs present
 - [$(bool_word "${chk_univar_outputs}")] expected univar outputs present (when enabled)
 - [$(bool_word "${chk_ndlm_outputs}")] expected NDLM outputs present (when enabled)
@@ -1037,7 +1050,9 @@ echo "fit.contract_checks.enabled=${cfg_contract_checks_enabled}"
 echo "fit.diagnostics.enabled=${cfg_diagnostics_enabled}"
 echo "forecats.mode=${cfg_forecats_mode}"
 echo "forecats.snapshot.enabled=${cfg_forecats_snapshot_enabled}"
+echo "post.allow_legacy_root_fallback=${cfg_post_allow_legacy_root_fallback}"
 echo "inputs.shared.prefer_forecats_snapshot=${cfg_prefer_forecats_snapshot}"
+echo "policy_check.legacy_post_fallback=$(bool_word "${chk_legacy_post_fallback}")"
 echo "require_snapshot_evidence=${require_snapshot_evidence}"
 echo "snapshot_check.shared_map=$(bool_word "${chk_snapshot_shared_map}")"
 echo "snapshot_check.snapshot_map=$(bool_word "${chk_snapshot_bundle_map}")"

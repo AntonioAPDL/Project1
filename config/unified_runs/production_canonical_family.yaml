@@ -101,6 +101,7 @@ post:
   smoke_fast: true
   profile: false
   profile_detail: false
+  allow_legacy_root_fallback: false
   sort_keep_na: true
   export_tables: false
 

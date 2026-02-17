@@ -106,7 +106,14 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   if (is.null(repro_mode) || !nzchar(repro_mode)) repro_mode <- "strict"
   repro_mode <- as.character(repro_mode)
   strict_repro <- identical(tolower(repro_mode), "strict")
-  allow_legacy_root_fallback <- isTRUE(cfg$post$allow_legacy_root_fallback) && !strict_repro
+  legacy_fallback_requested <- isTRUE(cfg$post$allow_legacy_root_fallback)
+  if (legacy_fallback_requested) {
+    warning(
+      "post.allow_legacy_root_fallback is deprecated and should remain false; this compatibility path will be removed in a future cutover.",
+      call. = FALSE
+    )
+  }
+  allow_legacy_root_fallback <- legacy_fallback_requested && !strict_repro
   quantiles <- as.numeric(cfg$fit$quantiles)
   q_num <- as.integer(round(quantiles * 100))
   q_labels <- sprintf("%02d", q_num)

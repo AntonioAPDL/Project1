@@ -836,6 +836,33 @@ class ValidateRunScriptTests(unittest.TestCase):
         self.assertIn("require_snapshot_evidence=true", result.stdout)
         self.assertIn("snapshot_check.evidence=PASS", result.stdout)
 
+    def test_production_proof_fails_when_legacy_post_fallback_is_enabled(self) -> None:
+        self._write_common_success_files()
+        write_text(
+            self.run_root / "resolved_config.yaml",
+            "\n".join(
+                [
+                    "models:",
+                    "  run_exdqlm_multivar: false",
+                    "  run_exdqlm_univar: false",
+                    "  run_ndlm_main: false",
+                    "post:",
+                    "  allow_legacy_root_fallback: true",
+                    "fit:",
+                    "  quantiles: [0.5]",
+                    "validation:",
+                    "  profile: production_proof",
+                ]
+            )
+            + "\n",
+        )
+
+        result = self._run_validate("production_proof")
+        self._assert_output_contract(result, "production_proof", expected_result="FAIL")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("post.allow_legacy_root_fallback=true", result.stdout)
+        self.assertIn("policy_check.legacy_post_fallback=FAIL", result.stdout)
+
     def test_smoke_profile_fails_hard_on_malformed_resolved_config(self) -> None:
         self._write_common_success_files()
         write_text(self.run_root / "resolved_config.yaml", "models: [\n")

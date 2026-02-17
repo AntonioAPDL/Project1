@@ -177,7 +177,8 @@ unified_config_defaults <- function() {
       profile = FALSE,
       profile_detail = FALSE,
       sort_keep_na = TRUE,
-      export_tables = TRUE
+      export_tables = TRUE,
+      allow_legacy_root_fallback = FALSE
     ),
     validation = list(
       profile = "production",
@@ -364,6 +365,10 @@ unified_validate_config <- function(cfg) {
   post_export_tables <- unified_get(cfg, c("post", "export_tables"), default = TRUE)
   if (!isTRUE(post_export_tables) && !identical(post_export_tables, FALSE)) {
     add_err("post.export_tables must be boolean (true/false)")
+  }
+  post_allow_legacy_root_fallback <- unified_get(cfg, c("post", "allow_legacy_root_fallback"), default = FALSE)
+  if (!isTRUE(post_allow_legacy_root_fallback) && !identical(post_allow_legacy_root_fallback, FALSE)) {
+    add_err("post.allow_legacy_root_fallback must be boolean (true/false)")
   }
 
   run_exdqlm_multivar <- unified_get(cfg, c("models", "run_exdqlm_multivar"), default = TRUE)

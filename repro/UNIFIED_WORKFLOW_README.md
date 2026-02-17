@@ -134,6 +134,7 @@ bash repro/tools/validate_run.sh <RUN_ID> --profile production --exit-nonzero
 Important:
 
 - Do not run `--profile production` on bounded proof runs (expected `FAIL` by design if not all 7 quantiles exist).
+- `post.allow_legacy_root_fallback` is a deprecated compatibility switch. Keep it `false`; validator rejects it for `production` and `production_proof` profiles.
 
 ## Canonical Production Run (7 Quantiles, All Families)
 

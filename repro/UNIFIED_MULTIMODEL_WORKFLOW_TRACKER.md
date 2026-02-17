@@ -127,6 +127,7 @@ Precedence rule:
 | D-009 | Preserve current DISC-W fit output contract `fit/q=<QQ>/outputs/...` until family-path cutover. | Locked | Existing fit/post tooling and run artifacts rely on this structure; migration to `fit/exdqlm_multivar/...` is a versioned cutover item. |
 | D-010 | P5 closure is accepted via strict run-scoped figures-on smoke using smoke-fast path; full heavy figure hardening is a separate follow-up item. | Locked | Requires non-null manifest closure, run-scoped load proof, and PNG outputs under run root. |
 | D-011 | P9 closure is accepted as operationally robust (“good enough”) when isolated extreme-quantile proof runs close with run-scoped artifacts and no hard runtime failures, even if some tails terminate at max-iter. | Locked | Residual strict-tail convergence tightening is tracked as follow-up optimization, not a blocker for forward workflow implementation. |
+| D-012 | Legacy post root fallback remains deprecated compatibility-only and must be disabled for `production` and `production_proof` validation profiles. | Locked | `post.allow_legacy_root_fallback=true` now triggers explicit policy FAIL in external validator for non-smoke profiles. |
 
 ## 5) Target End-State Architecture
 
@@ -254,7 +255,7 @@ Status legend:
 | Risk ID | Severity | Description | Mitigation | Owner | Status |
 |---|---|---|---|---|---|
 | R-001 | Critical | NDLM forecast-window covariance mismatch vs theory can invalidate inference. | Prioritize P4 equation-to-code audit + tests before making NDLM default authoritative. | TBD | Mitigated (P4 closed with theory-aligned NDLM mode, stochastic `W` smoke closure, and NDLM VB regression test coverage) |
-| R-002 | High | Post currently consumes root pre-generated NDLM/univariate artifacts. | Execute P5 decoupling before declaring full autonomy. | TBD | Mitigating (strict run-scoped smoke passed) |
+| R-002 | High | Post currently consumes root pre-generated NDLM/univariate artifacts. | Execute P5 decoupling before declaring full autonomy. | TBD | Mitigated (strict run-scoped smoke passed; non-smoke validator now enforces disabled legacy root fallback) |
 | R-003 | High | Legacy scripts contain duplicated core functions and fragile patterns. | Modularize with strict tests and narrow wrappers. | TBD | Open |
 | R-004 | Medium | Parallel orchestration may induce file collisions without strict run-scope contracts. | Enforce per-family/per-quantile isolated output roots + write-audit. | TBD | Mitigating (P2B fit-stage write-audit pass with empty outside-run-root diff) |
 | R-005 | Medium | Ambiguity on sequencing can delay implementation. | Lock D-007 or replace with alternate sequence immediately after P0. | Maintainer | Mitigated (D-007 locked) |
@@ -1536,6 +1537,10 @@ None currently tracked.
 7. Manifest v1 now includes additive stage-status metadata:
    - `stages.<name>.status` uses `pass|fail|skip` (with `pending` only transiently during execution).
    - `stages.<name>.started_at_utc` and `stages.<name>.finished_at_utc` are populated on execution path.
+8. Post legacy fallback policy is locked:
+   - `post.allow_legacy_root_fallback` defaults to `false`.
+   - For `production` and `production_proof`, validator enforces `post.allow_legacy_root_fallback=false`.
+   - Any `true` setting is treated as deprecated compatibility mode and must remain smoke-only.
    - `stages.<name>.log_path` records stage-log intent without changing run pass/fail semantics.
 8. Write-audit policy defaults are locked:
    - Keep `write_audit.enforce_from_stage: 4` as production default.
@@ -2248,6 +2253,30 @@ Concurrency rule for migration phases:
 - Next action:
   - Continue C2 canonical P8C closure run; apply C5 follow-up legacy-fallback policy hardening commit.
 
+### Progress Update 2026-02-17 07:14 UTC
+- Phase: C5 (P5 follow-up policy)
+- Change type: implementation+validation
+- Summary: resolved the non-strict legacy post fallback decision by locking an explicit deprecated compatibility switch (`post.allow_legacy_root_fallback`) and enforcing policy rejection in `production` and `production_proof` validator profiles.
+- Files touched:
+  - `R/unified/config.R`
+  - `R/unified/stages/stage_post.R`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/production_canonical_family.yaml`
+  - `repro/tools/validate_run.sh`
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_WORKFLOW_README.md`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/tests/test_validate_run.py`
+  - `/tmp/c4_validate_prodproof_20260217.log`
+  - `config/unified_run.template.yaml`
+  - `config/unified_runs/production_canonical_family.yaml`
+- Validation notes:
+  - `python3 -m unittest repro.tests.test_stage_report_family_summary repro.tests.test_validate_run -v` passed.
+  - Added explicit validator policy gate: `policy_check.legacy_post_fallback`.
+- Next action:
+  - Continue C2 canonical production closure monitoring and then close P8 cutover packaging/checklist finalization.
+
 ## 15) Audit Report (2026-02-14)
 
 ### 15.1 Inconsistencies Found and Fixed
@@ -2262,5 +2291,4 @@ Concurrency rule for migration phases:
 
 ### 15.2 Remaining Ambiguities Requiring Explicit Maintainer Decision
 
-- Whether and when to remove non-strict legacy root fallback paths entirely from post modules.
 - Final canonical production evidence closure (`T-P8-04`) remains in progress.

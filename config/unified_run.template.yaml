@@ -147,6 +147,7 @@ post:
   figures: true
   profile: false
   profile_detail: false
+  allow_legacy_root_fallback: false  # deprecated compatibility path; removed from production/proof validation contracts
   export_tables: true
   table_formats: ["csv"]        # supported: csv, rds
 
