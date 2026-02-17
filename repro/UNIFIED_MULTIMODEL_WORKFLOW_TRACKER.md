@@ -1570,11 +1570,9 @@ None currently tracked.
 
 ## 12) Immediate Next Actions (Proposed)
 
-1. Execute P8C canonical production closure run (all enabled families, canonical 7 quantiles), then run external validator with `--profile auto` and `--profile production`.
-2. Close remaining P4 theory-completeness items (`T-P4-02`, `T-P4-03`) with focused NDLM theory-parity checks and regression coverage.
-3. Close remaining P7 validation/report hardening (`T-P7-01`, `T-P7-02`) with family-aware output gates in production-style runs.
-4. Finalize P5 follow-up hardening decision on non-strict legacy fallback paths (remove or deprecate with explicit timeline/tests).
-5. Complete P8 cutover packaging: document default theory-aligned behavior, preserve explicit legacy fallback controls, and run final release-smoke evidence capture.
+1. Complete C2 canonical P8C production closure run (`prod_canonical_p8c_parallel_20260216_220751`) and execute external validator with `--profile auto` and `--profile production`.
+2. Perform C7 final tracker self-consistency pass immediately after C2 closes (phase table, checkboxes, risks, decisions, evidence pointers, and immediate-next-actions).
+3. If C2 exceeds runtime budget under current strict convergence settings, capture blocker evidence and decide whether to keep strict runtime or execute a bounded canonical rerun policy.
 
 ## 13) Notes
 
@@ -2276,6 +2274,42 @@ Concurrency rule for migration phases:
   - Added explicit validator policy gate: `policy_check.legacy_post_fallback`.
 - Next action:
   - Continue C2 canonical production closure monitoring and then close P8 cutover packaging/checklist finalization.
+
+### Progress Update 2026-02-17 07:18 UTC
+- Phase: C2 (P8C canonical production closure run)
+- Change type: run-monitoring
+- Summary: canonical production closure run remains active with strict convergence defaults (`max_iter=800`, per-component tolerances at `1e-6`) and canonical 7-quantile multivariate fit workload. No hard runtime errors observed; stages `forecats` and `data_prep_shared` are pass and `fit` is still pending.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/runs/prod_canonical_p8c_parallel_20260216_220751/run_manifest.yaml`
+  - `/tmp/prod_canonical_p8c_parallel_20260216_220751_unified.log`
+  - `repro/runs/prod_canonical_p8c_parallel_20260216_220751/fit/q=01/logs/fit.log`
+  - `repro/runs/prod_canonical_p8c_parallel_20260216_220751/fit/q=50/logs/fit.log`
+  - `repro/runs/prod_canonical_p8c_parallel_20260216_220751/fit/q=99/logs/fit.log`
+- Validation notes:
+  - Stage statuses at capture: `forecats=pass`, `data_prep_shared=pass`, `fit=pending`, `post=pending`, `validate=pending`, `report=pending`.
+  - Iterations observed during this window: approximately `q01=113`, `q50=118`, `q99=113` with no `Execution halted`.
+- Next action:
+  - Continue to closure gate (`finished_at_utc` non-null), then run external validator with `--profile auto` and `--profile production`.
+
+### Progress Update 2026-02-17 07:20 UTC
+- Phase: C6 (P8 cutover packaging)
+- Change type: validation+documentation
+- Summary: finalized cutover packaging consistency around theory-aligned defaults and deprecated fallback controls, and captured a release-readiness smoke run with full stage closure plus external validator PASS on `auto` and `production` profiles.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/runs/smoke_c6_packaging_20260217_070653/run_manifest.yaml`
+  - `repro/runs/smoke_c6_packaging_20260217_070653/validate/compare_report.json`
+  - `repro/runs/smoke_c6_packaging_20260217_070653/report/summary.json`
+  - `/tmp/c6_validate_auto_20260217.log`
+  - `/tmp/c6_validate_production_20260217.log`
+- Validation notes:
+  - Smoke run closed with `forecats=pass`, `data_prep_shared=pass`, `fit=pass`, `post=pass`, `validate=pass`, `report=pass`, and non-null `finished_at_utc`.
+  - External validator PASS confirmed for both `--profile auto` and `--profile production` on this release-readiness smoke run.
+- Next action:
+  - Complete C2 canonical production closure and run C7 final self-consistency pass.
 
 ## 15) Audit Report (2026-02-14)
 
