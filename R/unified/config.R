@@ -74,7 +74,9 @@ unified_config_defaults <- function() {
         covariates = list()
       ),
       post = list(
-        use_fit_outputs_from_run = TRUE
+        use_fit_outputs_from_run = TRUE,
+        source_run_id = NULL,
+        source_run_root = NULL
       ),
       forecats = list(
         mode = "use_existing",
@@ -275,6 +277,7 @@ unified_resolve_paths <- function(cfg, repo_root) {
     c("inputs", "fit", "nws_forecast_path"),
     c("inputs", "fit", "glofas_forecast_path"),
     c("inputs", "fit", "usgs_cache_path"),
+    c("inputs", "post", "source_run_root"),
     c("inputs", "forecats", "pipeline_config_path"),
     c("inputs", "forecats", "existing_bundle_path")
   )
@@ -365,6 +368,37 @@ unified_validate_config <- function(cfg) {
   post_export_tables <- unified_get(cfg, c("post", "export_tables"), default = TRUE)
   if (!isTRUE(post_export_tables) && !identical(post_export_tables, FALSE)) {
     add_err("post.export_tables must be boolean (true/false)")
+  }
+  post_use_fit_outputs_from_run <- unified_get(cfg, c("inputs", "post", "use_fit_outputs_from_run"), default = TRUE)
+  if (!isTRUE(post_use_fit_outputs_from_run) && !identical(post_use_fit_outputs_from_run, FALSE)) {
+    add_err("inputs.post.use_fit_outputs_from_run must be boolean (true/false)")
+  }
+  post_source_run_id <- unified_get(cfg, c("inputs", "post", "source_run_id"), default = NULL)
+  if (!is.null(post_source_run_id) && !is.character(post_source_run_id)) {
+    post_source_run_id <- as.character(post_source_run_id)
+  }
+  post_source_run_root <- unified_get(cfg, c("inputs", "post", "source_run_root"), default = NULL)
+  if (!is.null(post_source_run_root) && !nzchar(post_source_run_root)) {
+    post_source_run_root <- NULL
+  }
+  if (isTRUE(unified_get(cfg, c("stages", "post"), FALSE)) &&
+      isTRUE(post_use_fit_outputs_from_run) &&
+      !is.null(post_source_run_id) &&
+      nzchar(post_source_run_id)) {
+    if (is.null(post_source_run_root) || !nzchar(post_source_run_root)) {
+      post_source_run_root <- unified_get(cfg, c("run", "run_root"), default = NULL)
+    }
+    source_run_dir <- if (!is.null(post_source_run_root) && nzchar(post_source_run_root)) {
+      file.path(post_source_run_root, post_source_run_id)
+    } else {
+      NULL
+    }
+    if (is.null(source_run_dir) || !dir.exists(source_run_dir)) {
+      add_err(sprintf(
+        "inputs.post.source_run_id is set but source run directory does not exist: %s",
+        if (is.null(source_run_dir)) "<null>" else source_run_dir
+      ))
+    }
   }
   post_allow_legacy_root_fallback <- unified_get(cfg, c("post", "allow_legacy_root_fallback"), default = FALSE)
   if (!isTRUE(post_allow_legacy_root_fallback) && !identical(post_allow_legacy_root_fallback, FALSE)) {

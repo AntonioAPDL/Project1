@@ -114,13 +114,13 @@ synthesize_samples <- function(y_reps, q_s, k = 1) {
 }
 
 file_path <- UNI_VAR_05
-load_rdata_with_retry <- function(path, attempts = 3L, sleep_sec = 0.5) {
+load_rdata_with_retry <- function(path, attempts = 3L, sleep_sec = 0.5, envir = parent.frame()) {
   stopifnot(is.character(path), length(path) == 1L, attempts >= 1L)
   last_err <- NULL
   for (i in seq_len(attempts)) {
     ok <- tryCatch({
       # Ensure loaded objects persist in the caller's scope (this module's run env).
-      load(path, envir = parent.frame())
+      load(path, envir = envir)
       TRUE
     }, error = function(e) {
       last_err <<- e
@@ -132,40 +132,101 @@ load_rdata_with_retry <- function(path, attempts = 3L, sleep_sec = 0.5) {
   stop(last_err)
 }
 
-profile_section("univariate.load_vars_05", load_rdata_with_retry(file_path))
+quantile_label_tag <- function(label) {
+  as.character(as.integer(to_quantile_label(label)))
+}
+
+load_quantile_bundle_with_alias <- function(path, target_label, source_label, suffix, attempts = 3L, sleep_sec = 0.5) {
+  target_tag <- quantile_label_tag(target_label)
+  source_tag <- quantile_label_tag(if (is.null(source_label) || !nzchar(as.character(source_label))) target_label else source_label)
+  bundle_env <- new.env(parent = emptyenv())
+  load_rdata_with_retry(path, attempts = attempts, sleep_sec = sleep_sec, envir = bundle_env)
+
+  obj_names <- ls(bundle_env, all.names = TRUE)
+  src_token <- paste0("_", source_tag, "_", suffix)
+  tgt_token <- paste0("_", target_tag, "_", suffix)
+  for (nm in obj_names) {
+    value <- get(nm, envir = bundle_env, inherits = FALSE)
+    assign(nm, value, envir = parent.frame())
+    if (!identical(source_tag, target_tag)) {
+      alias_name <- sub(src_token, tgt_token, nm, fixed = TRUE)
+      if (!identical(alias_name, nm)) {
+        assign(alias_name, value, envir = parent.frame())
+      }
+    }
+  }
+  invisible(TRUE)
+}
+
+profile_section(
+  "univariate.load_vars_05",
+  load_quantile_bundle_with_alias(file_path, target_label = "05", source_label = UNI_VAR_SRC_05, suffix = "exAL_synth_DISC_uni")
+)
 
 
 
 file_path <- UNI_VAR_50
-profile_section("univariate.load_vars_50", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_vars_50",
+  load_quantile_bundle_with_alias(file_path, target_label = "50", source_label = UNI_VAR_SRC_50, suffix = "exAL_synth_DISC_uni")
+)
 
 
 
 file_path <- UNI_VAR_95
-profile_section("univariate.load_vars_95", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_vars_95",
+  load_quantile_bundle_with_alias(file_path, target_label = "95", source_label = UNI_VAR_SRC_95, suffix = "exAL_synth_DISC_uni")
+)
 
 
 
 file_path <- UNI_VAR_20
-profile_section("univariate.load_vars_20", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_vars_20",
+  load_quantile_bundle_with_alias(file_path, target_label = "20", source_label = UNI_VAR_SRC_20, suffix = "exAL_synth_DISC_uni")
+)
 
 
 
 file_path <- UNI_VAR_35
-profile_section("univariate.load_vars_35", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_vars_35",
+  load_quantile_bundle_with_alias(file_path, target_label = "35", source_label = UNI_VAR_SRC_35, suffix = "exAL_synth_DISC_uni")
+)
 
 
 
 file_path <- UNI_VAR_65
-profile_section("univariate.load_vars_65", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_vars_65",
+  load_quantile_bundle_with_alias(file_path, target_label = "65", source_label = UNI_VAR_SRC_65, suffix = "exAL_synth_DISC_uni")
+)
 
 
 
 file_path <- UNI_VAR_80
-profile_section("univariate.load_vars_80", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_vars_80",
+  load_quantile_bundle_with_alias(file_path, target_label = "80", source_label = UNI_VAR_SRC_80, suffix = "exAL_synth_DISC_uni")
+)
 
 
-n.samp <- 2000
+n.samp_candidates <- c(
+  dim(samp.theta_5_exAL_synth_DISC_uni)[3],
+  dim(samp.theta_20_exAL_synth_DISC_uni)[3],
+  dim(samp.theta_35_exAL_synth_DISC_uni)[3],
+  dim(samp.theta_50_exAL_synth_DISC_uni)[3],
+  dim(samp.theta_65_exAL_synth_DISC_uni)[3],
+  dim(samp.theta_80_exAL_synth_DISC_uni)[3],
+  dim(samp.theta_95_exAL_synth_DISC_uni)[3]
+)
+n.samp_candidates <- n.samp_candidates[is.finite(n.samp_candidates) & n.samp_candidates > 0]
+n.samp <- if (length(n.samp_candidates) > 0L) {
+  as.integer(min(2000L, min(n.samp_candidates)))
+} else {
+  2000L
+}
 
 dim(new.theta.out_50_exAL_synth_DISC_uni$exps)
 TTT_temp <- dim(new.theta.out_50_exAL_synth_DISC_uni$exps)[2]
@@ -405,9 +466,10 @@ print(dim(Gx[(p+1), (p+2:ppx), ]))
 print(dim(as.matrix(t(X_f)) * 1))
 
 c <- (1)^2
+state_idx <- seq_len(p + ppx)
 ###############################################
-sm_T <- matrix(new.theta.out_95_exAL_synth_DISC_uni$sm[,TT], ncol = 1)
-sC_T <- new.theta.out_95_exAL_synth_DISC_uni$sC[,,TT]*c
+sm_T <- matrix(new.theta.out_95_exAL_synth_DISC_uni$sm[state_idx,TT], ncol = 1)
+sC_T <- new.theta.out_95_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT]*c
 
 FF_f <- matrix(FF[1:(p+ppx),1,1], ncol = 1)
 FF_f[p+1] <- 1 
@@ -426,8 +488,8 @@ lines(truth_log, col = 'black')
 points(truth_log, col = 'black')
 
 ###############################################
-sm_T <- matrix(new.theta.out_50_exAL_synth_DISC_uni$sm[,TT], ncol = 1)
-sC_T <- new.theta.out_50_exAL_synth_DISC_uni$sC[,,TT]*c
+sm_T <- matrix(new.theta.out_50_exAL_synth_DISC_uni$sm[state_idx,TT], ncol = 1)
+sC_T <- new.theta.out_50_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT]*c
 
 FF_f <- matrix(FF[1:(p+ppx),1,1], ncol = 1)
 FF_f[p+1] <- 1 
@@ -443,8 +505,8 @@ lines(y_forecast[1,], col = 'forestgreen', lwd = 2)
 
 
 ###############################################
-sm_T <- matrix(new.theta.out_5_exAL_synth_DISC_uni$sm[,TT], ncol = 1)
-sC_T <- new.theta.out_5_exAL_synth_DISC_uni$sC[,,TT]*c
+sm_T <- matrix(new.theta.out_5_exAL_synth_DISC_uni$sm[state_idx,TT], ncol = 1)
+sC_T <- new.theta.out_5_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT]*c
 
 FF_f <- matrix(FF[1:(p+ppx),1,1], ncol = 1)
 FF_f[p+1] <- 1 
@@ -464,8 +526,8 @@ plot.ts(truth_log, col = 'black', ylim = c(-1,4))
 points(truth_log, col = 'black')
 
 ###############################################
-sm_T <- samp.theta_95_exAL_synth_DISC_uni[,TT,]
-sC_T <- new.theta.out_95_exAL_synth_DISC_uni$sC[,,TT]*c
+sm_T <- matrix(samp.theta_95_exAL_synth_DISC_uni[state_idx,TT,], nrow = length(state_idx))
+sC_T <- new.theta.out_95_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT]*c
 
 FF_f <- matrix(FF[1:(p+ppx),1,1], ncol = 1)
 FF_f[p+1] <- 1 
@@ -483,8 +545,8 @@ for(i in 1:n.samp){
 }
 
 ###############################################
-sm_T <- samp.theta_50_exAL_synth_DISC_uni[,TT,]
-sC_T <- new.theta.out_50_exAL_synth_DISC_uni$sC[,,TT]*c
+sm_T <- matrix(samp.theta_50_exAL_synth_DISC_uni[state_idx,TT,], nrow = length(state_idx))
+sC_T <- new.theta.out_50_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT]*c
 
 FF_f <- matrix(FF[1:(p+ppx),1,1], ncol = 1)
 FF_f[p+1] <- 1 
@@ -502,8 +564,8 @@ for(i in 1:n.samp){
 }
 
 ###############################################
-sm_T <- samp.theta_5_exAL_synth_DISC_uni[,TT,]
-sC_T <- new.theta.out_5_exAL_synth_DISC_uni$sC[,,TT]*c
+sm_T <- matrix(samp.theta_5_exAL_synth_DISC_uni[state_idx,TT,], nrow = length(state_idx))
+sC_T <- new.theta.out_5_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT]*c
 
 FF_f <- matrix(FF[1:(p+ppx),1,1], ncol = 1)
 FF_f[p+1] <- 1 
@@ -540,13 +602,13 @@ compute_W_list <- function(sC_T) {
   })
 }
 
-sC_5_T  <- new.theta.out_5_exAL_synth_DISC_uni$sC[,,TT]  * c
-sC_20_T <- new.theta.out_20_exAL_synth_DISC_uni$sC[,,TT] * c
-sC_35_T <- new.theta.out_35_exAL_synth_DISC_uni$sC[,,TT] * c
-sC_50_T <- new.theta.out_50_exAL_synth_DISC_uni$sC[,,TT] * c
-sC_65_T <- new.theta.out_65_exAL_synth_DISC_uni$sC[,,TT] * c
-sC_80_T <- new.theta.out_80_exAL_synth_DISC_uni$sC[,,TT] * c
-sC_95_T <- new.theta.out_95_exAL_synth_DISC_uni$sC[,,TT] * c
+sC_5_T  <- new.theta.out_5_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT]  * c
+sC_20_T <- new.theta.out_20_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT] * c
+sC_35_T <- new.theta.out_35_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT] * c
+sC_50_T <- new.theta.out_50_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT] * c
+sC_65_T <- new.theta.out_65_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT] * c
+sC_80_T <- new.theta.out_80_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT] * c
+sC_95_T <- new.theta.out_95_exAL_synth_DISC_uni$sC[state_idx, state_idx, TT] * c
 
 W_list_5  <- compute_W_list(sC_5_T)
 W_list_20 <- compute_W_list(sC_20_T)
@@ -558,37 +620,37 @@ W_list_95 <- compute_W_list(sC_95_T)
 
 
 for(i in 1:n.samp){
-    sm_k1 <- samp.theta_5_exAL_synth_DISC_uni[,TT,i]
+    sm_k1 <- samp.theta_5_exAL_synth_DISC_uni[state_idx,TT,i]
     e <- rmvnorm(n = 1, sigma = W_list_5[[1]])
     sm_k1 <- Gx[,,1] %*% sm_k1 +t(e)
     xb_forecast[1,i,1] <- sum((FF_f)*sm_k1)
     
-    sm_k2 <- samp.theta_20_exAL_synth_DISC_uni[,TT,i]
+    sm_k2 <- samp.theta_20_exAL_synth_DISC_uni[state_idx,TT,i]
     e <- rmvnorm(n = 1, sigma = W_list_20[[1]])
     sm_k2 <- Gx[,,1] %*% sm_k2 +t(e)
     xb_forecast[2,i,1] <- sum((FF_f)*sm_k2)
 
-    sm_k3 <- samp.theta_35_exAL_synth_DISC_uni[,TT,i]
+    sm_k3 <- samp.theta_35_exAL_synth_DISC_uni[state_idx,TT,i]
     e <- rmvnorm(n = 1, sigma = W_list_35[[1]])
     sm_k3 <- Gx[,,1] %*% sm_k3 +t(e)
     xb_forecast[3,i,1] <- sum((FF_f)*sm_k3)
     
-    sm_k4 <- samp.theta_50_exAL_synth_DISC_uni[,TT,i]
+    sm_k4 <- samp.theta_50_exAL_synth_DISC_uni[state_idx,TT,i]
     e <- rmvnorm(n = 1, sigma = W_list_50[[1]])
     sm_k4 <- Gx[,,1] %*% sm_k4 +t(e)
     xb_forecast[4,i,1] <- sum((FF_f)*sm_k4)
     
-    sm_k5 <- samp.theta_65_exAL_synth_DISC_uni[,TT,i]
+    sm_k5 <- samp.theta_65_exAL_synth_DISC_uni[state_idx,TT,i]
     e <- rmvnorm(n = 1, sigma = W_list_65[[1]])
     sm_k5 <- Gx[,,1] %*% sm_k5 +t(e)
     xb_forecast[5,i,1] <- sum((FF_f)*sm_k5)
     
-    sm_k6 <- samp.theta_80_exAL_synth_DISC_uni[,TT,i]
+    sm_k6 <- samp.theta_80_exAL_synth_DISC_uni[state_idx,TT,i]
     e <- rmvnorm(n = 1, sigma = W_list_80[[1]])
     sm_k6 <- Gx[,,1] %*% sm_k6 +t(e)
     xb_forecast[6,i,1] <- sum((FF_f)*sm_k6)
 
-    sm_k7 <- samp.theta_95_exAL_synth_DISC_uni[,TT,i]
+    sm_k7 <- samp.theta_95_exAL_synth_DISC_uni[state_idx,TT,i]
     e <- rmvnorm(n = 1, sigma = W_list_95[[1]])
     sm_k7 <- Gx[,,1] %*% sm_k7 +t(e)
     xb_forecast[7,i,1] <- sum((FF_f)*sm_k7)
@@ -707,49 +769,49 @@ FF_hist_uni[p+1] <- 1
 for(i in 1:n.samp){
     for(t in (TT-days_hist_uni+1):TT){
         tt <- ( t -(TT-days_hist_uni+1) + 1 )
-        xb_hist_uni[7,i,tt] <- sum((FF_hist_uni)*samp.theta_95_exAL_synth_DISC_uni[,t,i])
+        xb_hist_uni[7,i,tt] <- sum((FF_hist_uni)*samp.theta_95_exAL_synth_DISC_uni[state_idx,t,i])
         gamma <- samp.gamma_95_exAL_synth_DISC_uni[1,i]
         sigma <- samp.sigma_95_exAL_synth_DISC_uni[1,i]
         p00 <- 0.95
         mu  <- xb_hist_uni[7,i,tt]
         y_hist_uni[7,i,tt] <- rexal(1, p00, mu, sigma, gamma)
 
-        xb_hist_uni[6,i,tt] <- sum((FF_hist_uni)*samp.theta_80_exAL_synth_DISC_uni[,t,i])
+        xb_hist_uni[6,i,tt] <- sum((FF_hist_uni)*samp.theta_80_exAL_synth_DISC_uni[state_idx,t,i])
         gamma <- samp.gamma_80_exAL_synth_DISC_uni[1,i]
         sigma <- samp.sigma_80_exAL_synth_DISC_uni[1,i]
         p00 <- 0.80
         mu  <- xb_hist_uni[6,i,tt]
         y_hist_uni[6,i,tt] <- rexal(1, p00, mu, sigma, gamma)
 
-        xb_hist_uni[5,i,tt] <- sum((FF_hist_uni)*samp.theta_65_exAL_synth_DISC_uni[,t,i])
+        xb_hist_uni[5,i,tt] <- sum((FF_hist_uni)*samp.theta_65_exAL_synth_DISC_uni[state_idx,t,i])
         gamma <- samp.gamma_65_exAL_synth_DISC_uni[1,i]
         sigma <- samp.sigma_65_exAL_synth_DISC_uni[1,i]
         p00 <- 0.65
         mu  <- xb_hist_uni[5,i,tt]
         y_hist_uni[5,i,tt] <- rexal(1, p00, mu, sigma, gamma)
 
-        xb_hist_uni[4,i,tt] <- sum((FF_hist_uni)*samp.theta_50_exAL_synth_DISC_uni[,t,i])
+        xb_hist_uni[4,i,tt] <- sum((FF_hist_uni)*samp.theta_50_exAL_synth_DISC_uni[state_idx,t,i])
         gamma <- samp.gamma_50_exAL_synth_DISC_uni[1,i]
         sigma <- samp.sigma_50_exAL_synth_DISC_uni[1,i]
         p00 <- 0.50
         mu  <- xb_hist_uni[4,i,tt]
         y_hist_uni[4,i,tt] <- rexal(1, p00, mu, sigma, gamma)
 
-        xb_hist_uni[3,i,tt] <- sum((FF_hist_uni)*samp.theta_35_exAL_synth_DISC_uni[,t,i])
+        xb_hist_uni[3,i,tt] <- sum((FF_hist_uni)*samp.theta_35_exAL_synth_DISC_uni[state_idx,t,i])
         gamma <- samp.gamma_35_exAL_synth_DISC_uni[1,i]
         sigma <- samp.sigma_35_exAL_synth_DISC_uni[1,i]
         p00 <- 0.35
         mu  <- xb_hist_uni[3,i,tt]
         y_hist_uni[3,i,tt] <- rexal(1, p00, mu, sigma, gamma)
 
-        xb_hist_uni[2,i,tt] <- sum((FF_hist_uni)*samp.theta_20_exAL_synth_DISC_uni[,t,i])
+        xb_hist_uni[2,i,tt] <- sum((FF_hist_uni)*samp.theta_20_exAL_synth_DISC_uni[state_idx,t,i])
         gamma <- samp.gamma_20_exAL_synth_DISC_uni[1,i]
         sigma <- samp.sigma_20_exAL_synth_DISC_uni[1,i]
         p00 <- 0.20
         mu  <- xb_hist_uni[2,i,tt]
         y_hist_uni[2,i,tt] <- rexal(1, p00, mu, sigma, gamma)
 
-        xb_hist_uni[1,i,tt] <- sum((FF_hist_uni)*samp.theta_5_exAL_synth_DISC_uni[,t,i])
+        xb_hist_uni[1,i,tt] <- sum((FF_hist_uni)*samp.theta_5_exAL_synth_DISC_uni[state_idx,t,i])
         gamma <- samp.gamma_5_exAL_synth_DISC_uni[1,i]
         sigma <- samp.sigma_5_exAL_synth_DISC_uni[1,i]
         p00 <- 0.05
@@ -1019,37 +1081,58 @@ invisible(try({
 }, silent = TRUE))
 
 file_path <- DISC_W_VAR_05
-profile_section("univariate.load_disc_vars_exal_05", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_disc_vars_exal_05",
+  load_quantile_bundle_with_alias(file_path, target_label = "05", source_label = DISC_W_VAR_SRC_05, suffix = "exAL_synth_DISC")
+)
 
 
 
 file_path <- DISC_W_VAR_50
-profile_section("univariate.load_disc_vars_exal_50", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_disc_vars_exal_50",
+  load_quantile_bundle_with_alias(file_path, target_label = "50", source_label = DISC_W_VAR_SRC_50, suffix = "exAL_synth_DISC")
+)
 
 
 
 file_path <- DISC_W_VAR_95
-profile_section("univariate.load_disc_vars_exal_95", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_disc_vars_exal_95",
+  load_quantile_bundle_with_alias(file_path, target_label = "95", source_label = DISC_W_VAR_SRC_95, suffix = "exAL_synth_DISC")
+)
 
 
 
 file_path <- DISC_W_VAR_20
-profile_section("univariate.load_disc_vars_exal_20", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_disc_vars_exal_20",
+  load_quantile_bundle_with_alias(file_path, target_label = "20", source_label = DISC_W_VAR_SRC_20, suffix = "exAL_synth_DISC")
+)
 
 
 
 file_path <- DISC_W_VAR_35
-profile_section("univariate.load_disc_vars_exal_35", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_disc_vars_exal_35",
+  load_quantile_bundle_with_alias(file_path, target_label = "35", source_label = DISC_W_VAR_SRC_35, suffix = "exAL_synth_DISC")
+)
 
 
 
 file_path <- DISC_W_VAR_65
-profile_section("univariate.load_disc_vars_exal_65", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_disc_vars_exal_65",
+  load_quantile_bundle_with_alias(file_path, target_label = "65", source_label = DISC_W_VAR_SRC_65, suffix = "exAL_synth_DISC")
+)
 
 
 
 file_path <- DISC_W_VAR_80
-profile_section("univariate.load_disc_vars_exal_80", load_rdata_with_retry(file_path))
+profile_section(
+  "univariate.load_disc_vars_exal_80",
+  load_quantile_bundle_with_alias(file_path, target_label = "80", source_label = DISC_W_VAR_SRC_80, suffix = "exAL_synth_DISC")
+)
 
 
 

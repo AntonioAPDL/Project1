@@ -57,6 +57,16 @@ map_get <- function(map, key) {
   if (!(key %in% names(map))) "" else as.character(map[[key]])
 }
 
+nearest_available_label <- function(requested_label, path_map) {
+  requested_label <- to_quantile_label(requested_label)
+  available <- names(path_map)[nzchar(as.character(path_map))]
+  if (length(available) == 0L) return("")
+  req <- suppressWarnings(as.integer(requested_label))
+  avail_int <- suppressWarnings(as.integer(available))
+  if (!is.finite(req) || any(!is.finite(avail_int))) return(available[[1]])
+  available[[which.min(abs(avail_int - req))]]
+}
+
 PROJECT_ROOT <- env_or_default("ENV_PROJECT_ROOT", "/data/muscat_data/jaguir26/project1_ucsc_phd")
 PROJECT_ROOT <- normalizePath(PROJECT_ROOT, mustWork = FALSE)
 RUN_ROOT <- env_or_default("UNIFIED_RUN_ROOT", as.character(getOption("unified.run_root", "")))
@@ -200,15 +210,57 @@ resolve_ndlm_path <- function() {
   require_runscoped_path(NDLM_RDATA_PATH, "NDLM artifact q=50", fallback)
 }
 
+resolve_univar_path_with_source <- function(label) {
+  label <- to_quantile_label(label)
+  src <- label
+  path <- resolve_univar_path_if_present(label)
+  if (!nzchar(path)) {
+    src <- nearest_available_label(label, UNIV_RDATA_MAP)
+    if (nzchar(src)) {
+      path <- resolve_univar_path_if_present(src)
+    }
+  }
+  list(path = path, source_label = src)
+}
+
+resolve_disc_w_path_with_source <- function(label) {
+  label <- to_quantile_label(label)
+  src <- label
+  path <- resolve_disc_w_path_if_present(label)
+  if (!nzchar(path)) {
+    src <- nearest_available_label(label, DISC_W_RDATA_MAP)
+    if (nzchar(src)) {
+      path <- resolve_disc_w_path_if_present(src)
+    }
+  }
+  list(path = path, source_label = src)
+}
+
 # Univariate outputs
 if (isTRUE(MODEL_RUN_EXDQLM_UNIVAR) || length(UNIV_RDATA_PATHS) > 0L) {
-  UNI_VAR_05 <- resolve_univar_path_if_present("05")
-  UNI_VAR_20 <- resolve_univar_path_if_present("20")
-  UNI_VAR_35 <- resolve_univar_path_if_present("35")
-  UNI_VAR_50 <- resolve_univar_path_if_present("50")
-  UNI_VAR_65 <- resolve_univar_path_if_present("65")
-  UNI_VAR_80 <- resolve_univar_path_if_present("80")
-  UNI_VAR_95 <- resolve_univar_path_if_present("95")
+  uni_05 <- resolve_univar_path_with_source("05")
+  uni_20 <- resolve_univar_path_with_source("20")
+  uni_35 <- resolve_univar_path_with_source("35")
+  uni_50 <- resolve_univar_path_with_source("50")
+  uni_65 <- resolve_univar_path_with_source("65")
+  uni_80 <- resolve_univar_path_with_source("80")
+  uni_95 <- resolve_univar_path_with_source("95")
+
+  UNI_VAR_05 <- uni_05$path
+  UNI_VAR_20 <- uni_20$path
+  UNI_VAR_35 <- uni_35$path
+  UNI_VAR_50 <- uni_50$path
+  UNI_VAR_65 <- uni_65$path
+  UNI_VAR_80 <- uni_80$path
+  UNI_VAR_95 <- uni_95$path
+
+  UNI_VAR_SRC_05 <- uni_05$source_label
+  UNI_VAR_SRC_20 <- uni_20$source_label
+  UNI_VAR_SRC_35 <- uni_35$source_label
+  UNI_VAR_SRC_50 <- uni_50$source_label
+  UNI_VAR_SRC_65 <- uni_65$source_label
+  UNI_VAR_SRC_80 <- uni_80$source_label
+  UNI_VAR_SRC_95 <- uni_95$source_label
 } else {
   UNI_VAR_05 <- ""
   UNI_VAR_20 <- ""
@@ -217,17 +269,40 @@ if (isTRUE(MODEL_RUN_EXDQLM_UNIVAR) || length(UNIV_RDATA_PATHS) > 0L) {
   UNI_VAR_65 <- ""
   UNI_VAR_80 <- ""
   UNI_VAR_95 <- ""
+  UNI_VAR_SRC_05 <- ""
+  UNI_VAR_SRC_20 <- ""
+  UNI_VAR_SRC_35 <- ""
+  UNI_VAR_SRC_50 <- ""
+  UNI_VAR_SRC_65 <- ""
+  UNI_VAR_SRC_80 <- ""
+  UNI_VAR_SRC_95 <- ""
 }
 
 # DISC-W and NDLM outputs
 if (isTRUE(MODEL_RUN_EXDQLM_MULTIVAR) || length(DISC_W_RDATA_PATHS) > 0L) {
-  DISC_W_VAR_05 <- resolve_disc_w_path_if_present("05")
-  DISC_W_VAR_20 <- resolve_disc_w_path_if_present("20")
-  DISC_W_VAR_35 <- resolve_disc_w_path_if_present("35")
-  DISC_W_VAR_50 <- resolve_disc_w_path_if_present("50")
-  DISC_W_VAR_65 <- resolve_disc_w_path_if_present("65")
-  DISC_W_VAR_80 <- resolve_disc_w_path_if_present("80")
-  DISC_W_VAR_95 <- resolve_disc_w_path_if_present("95")
+  disc_05 <- resolve_disc_w_path_with_source("05")
+  disc_20 <- resolve_disc_w_path_with_source("20")
+  disc_35 <- resolve_disc_w_path_with_source("35")
+  disc_50 <- resolve_disc_w_path_with_source("50")
+  disc_65 <- resolve_disc_w_path_with_source("65")
+  disc_80 <- resolve_disc_w_path_with_source("80")
+  disc_95 <- resolve_disc_w_path_with_source("95")
+
+  DISC_W_VAR_05 <- disc_05$path
+  DISC_W_VAR_20 <- disc_20$path
+  DISC_W_VAR_35 <- disc_35$path
+  DISC_W_VAR_50 <- disc_50$path
+  DISC_W_VAR_65 <- disc_65$path
+  DISC_W_VAR_80 <- disc_80$path
+  DISC_W_VAR_95 <- disc_95$path
+
+  DISC_W_VAR_SRC_05 <- disc_05$source_label
+  DISC_W_VAR_SRC_20 <- disc_20$source_label
+  DISC_W_VAR_SRC_35 <- disc_35$source_label
+  DISC_W_VAR_SRC_50 <- disc_50$source_label
+  DISC_W_VAR_SRC_65 <- disc_65$source_label
+  DISC_W_VAR_SRC_80 <- disc_80$source_label
+  DISC_W_VAR_SRC_95 <- disc_95$source_label
 } else {
   DISC_W_VAR_05 <- ""
   DISC_W_VAR_20 <- ""
@@ -236,6 +311,13 @@ if (isTRUE(MODEL_RUN_EXDQLM_MULTIVAR) || length(DISC_W_RDATA_PATHS) > 0L) {
   DISC_W_VAR_65 <- ""
   DISC_W_VAR_80 <- ""
   DISC_W_VAR_95 <- ""
+  DISC_W_VAR_SRC_05 <- ""
+  DISC_W_VAR_SRC_20 <- ""
+  DISC_W_VAR_SRC_35 <- ""
+  DISC_W_VAR_SRC_50 <- ""
+  DISC_W_VAR_SRC_65 <- ""
+  DISC_W_VAR_SRC_80 <- ""
+  DISC_W_VAR_SRC_95 <- ""
 }
 
 if (isTRUE(MODEL_RUN_NDLM_MAIN) || nzchar(NDLM_RDATA_PATH)) {

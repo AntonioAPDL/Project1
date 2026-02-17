@@ -65,6 +65,8 @@ inputs:
     covariates: []   # optional list of {name, path}
   post:
     use_fit_outputs_from_run: true
+    source_run_id: null          # optional: reuse fit outputs from an existing run id (post-only replay)
+    source_run_root: null        # optional: defaults to run.run_root when source_run_id is set
   forecats:
     mode: "use_existing"
     pipeline_config_path: "config/forecats_pipeline.template.yaml"

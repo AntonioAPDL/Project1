@@ -3,6 +3,29 @@
 unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   run_root_abs <- normalizePath(run_root, mustWork = FALSE)
   repo_root_abs <- normalizePath(repo_root, mustWork = FALSE)
+  run_id <- cfg$run$run_id
+  post_use_fit_outputs_from_run <- isTRUE(unified_get(cfg, c("inputs", "post", "use_fit_outputs_from_run"), default = TRUE))
+  post_source_run_id <- unified_get(cfg, c("inputs", "post", "source_run_id"), default = NULL)
+  if (!is.null(post_source_run_id) && !is.character(post_source_run_id)) {
+    post_source_run_id <- as.character(post_source_run_id)
+  }
+  post_source_run_root <- unified_get(cfg, c("inputs", "post", "source_run_root"), default = NULL)
+  if (is.null(post_source_run_root) || !nzchar(post_source_run_root)) {
+    post_source_run_root <- cfg$run$run_root
+  }
+  fit_outputs_root_abs <- run_root_abs
+  if (post_use_fit_outputs_from_run &&
+      !is.null(post_source_run_id) &&
+      nzchar(post_source_run_id) &&
+      !identical(post_source_run_id, run_id)) {
+    fit_outputs_root_abs <- normalizePath(file.path(post_source_run_root, post_source_run_id), mustWork = FALSE)
+    if (!dir.exists(fit_outputs_root_abs)) {
+      stop(sprintf(
+        "inputs.post.source_run_id requested but source run root is missing: %s",
+        fit_outputs_root_abs
+      ), call. = FALSE)
+    }
+  }
   post_root <- file.path(run_root, "post")
   post_inputs <- file.path(post_root, "inputs")
   post_logs <- file.path(post_root, "logs")
@@ -12,11 +35,15 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   dir.create(post_logs, recursive = TRUE, showWarnings = FALSE)
   dir.create(post_cache_dir, recursive = TRUE, showWarnings = FALSE)
 
-  shared_paths <- unified_shared_input_paths(run_root)
+  shared_input_run_root <- run_root
+  if (dir.exists(file.path(fit_outputs_root_abs, "inputs", "shared"))) {
+    shared_input_run_root <- fit_outputs_root_abs
+  }
+  shared_paths <- unified_shared_input_paths(shared_input_run_root)
   use_shared_inputs <- isTRUE(cfg$stages$data_prep_shared) || dir.exists(shared_paths$root)
   if (use_shared_inputs) {
     shared_validation <- unified_validate_required_shared_inputs(
-      run_root = run_root,
+      run_root = shared_input_run_root,
       stage_name = "post",
       manifest = manifest,
       enabled_models = cfg$models
@@ -101,7 +128,6 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   manifest <- unified_manifest_add_artifact(manifest, adapted_nws, storage_scale = legacy_scale)
   manifest <- unified_manifest_add_artifact(manifest, adapted_glofas, storage_scale = legacy_scale)
 
-  run_id <- cfg$run$run_id
   repro_mode <- cfg$run$repro_mode
   if (is.null(repro_mode) || !nzchar(repro_mode)) repro_mode <- "strict"
   repro_mode <- as.character(repro_mode)
@@ -119,9 +145,12 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   q_labels <- sprintf("%02d", q_num)
 
   resolve_manifest_paths <- function(patterns, family_name, fallback_rel_paths = NULL) {
-    is_under_run_root <- function(path) {
-      startsWith(path.expand(path), paste0(run_root_abs, .Platform$file.sep)) ||
-        identical(path.expand(path), run_root_abs)
+    allowed_roots <- unique(c(run_root_abs, fit_outputs_root_abs))
+    is_under_allowed_roots <- function(path) {
+      abs_path <- path.expand(path)
+      any(vapply(allowed_roots, function(root) {
+        startsWith(abs_path, paste0(root, .Platform$file.sep)) || identical(abs_path, root)
+      }, logical(1)))
     }
 
     paths <- vapply(patterns, function(pattern) {
@@ -134,7 +163,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
         rel <- fallback_rel_paths[[nm]]
         rel <- if (is.null(rel)) "" else as.character(rel)
         if (!nzchar(rel)) next
-        candidate <- file.path(run_root_abs, rel)
+        candidate <- file.path(fit_outputs_root_abs, rel)
         if (!file.exists(candidate)) next
 
         if (!nzchar(paths[[nm]])) {
@@ -142,7 +171,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
           next
         }
 
-        if (strict_repro && !is_under_run_root(paths[[nm]])) {
+        if (strict_repro && !is_under_allowed_roots(paths[[nm]])) {
           paths[[nm]] <- candidate
         }
       }
@@ -165,7 +194,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     if (length(existing) == 0L) {
       return(character(0))
     }
-    unified_artifact_paths_to_absolute(existing, run_root = run_root_abs, repo_root = repo_root_abs, must_exist = strict_repro)
+    unified_artifact_paths_to_absolute(existing, run_root = fit_outputs_root_abs, repo_root = repo_root_abs, must_exist = strict_repro)
   }
 
   disc_w_paths_abs <- character(0)
@@ -202,10 +231,13 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
       must_exist = FALSE
     )
 
-    ndlm_fallback <- file.path(run_root_abs, "fit", "ndlm_main", "outputs", "DISC_variables_50_NDLM_synth_DISC.RData")
+    ndlm_fallback <- file.path(fit_outputs_root_abs, "fit", "ndlm_main", "outputs", "DISC_variables_50_NDLM_synth_DISC.RData")
     ndlm_is_run_scoped <- function(path) {
-      startsWith(path.expand(path), paste0(run_root_abs, .Platform$file.sep)) ||
-        identical(path.expand(path), run_root_abs)
+      abs_path <- path.expand(path)
+      startsWith(abs_path, paste0(run_root_abs, .Platform$file.sep)) ||
+        identical(abs_path, run_root_abs) ||
+        startsWith(abs_path, paste0(fit_outputs_root_abs, .Platform$file.sep)) ||
+        identical(abs_path, fit_outputs_root_abs)
     }
 
     if (file.exists(ndlm_fallback)) {
@@ -224,7 +256,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     } else {
       ndlm_path_abs <- unified_artifact_path_to_absolute(
         ndlm_rel,
-        run_root = run_root_abs,
+        run_root = fit_outputs_root_abs,
         repo_root = repo_root_abs,
         must_exist = strict_repro
       )
@@ -252,6 +284,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   env_overrides <- c(
     UNIFIED_RUN_ROOT = run_root_abs,
     UNIFIED_RUN_ID = run_id,
+    UNIFIED_FIT_OUTPUTS_SOURCE_ROOT = fit_outputs_root_abs,
     UNIFIED_POST_CACHE_DIR = normalizePath(post_cache_dir, mustWork = FALSE),
     UNIFIED_REPRO_MODE = repro_mode,
     UNIFIED_REQUIRE_RUNSCOPED_POST = if (strict_repro) "TRUE" else "FALSE",
