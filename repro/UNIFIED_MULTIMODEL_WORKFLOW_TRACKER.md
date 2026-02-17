@@ -177,7 +177,7 @@ Status legend:
 | P1 | [x] | Shared input contract + adapters | P0 done | Single run-scoped input bundle consumable by all three families with forecats snapshot integration and per-family fast-fail gating |
 | P2 | [x] | Legacy orchestration bridge in unified runner | P0 done | Unified runner can launch current legacy univariate + NDLM as controlled sub-stages |
 | P3 | [~] | Univariate modularization (theory-aligned) | P2 done | New modular univariate stage passes structural compatibility checks |
-| P4 | [~] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory |
+| P4 | [x] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory, plus ELBO/VB parity regression and contract evidence |
 | P5 | [x] | Post decoupling from root artifacts | P2 done | Post loads only manifest-declared run-scoped artifacts and strict figures-on smoke closes with non-null `finished_at_utc` |
 | P6 | [~] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
 | P7 | [~] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
@@ -215,8 +215,8 @@ Status legend:
 ## 7.5 P4 Tasks (NDLM Modular, Theory-Aligned VB)
 
 - [x] `T-P4-01`: Split `DISC_Optimal_Synth_Ranges_NDLM.r` into modular files.
-- [~] `T-P4-02`: Replace forecast-window discount-factor-only path with theory-aligned stochastic `W` treatment (VB only).
-- [~] `T-P4-03`: Update ELBO and VB covariance distribution updates per NDLM derivations.
+- [x] `T-P4-02`: Replace forecast-window discount-factor-only path with theory-aligned stochastic `W` treatment (VB only).
+- [x] `T-P4-03`: Update ELBO and VB covariance distribution updates per NDLM derivations.
 - [x] `T-P4-04`: Emit neutral NDLM artifacts (`ndlm_main`) with stable schema.
 - [x] `T-P4-05`: Add NDLM structural compatibility contract checks against post-consumed aliases.
 - [x] `T-P4-06`: Add theory-mode diagnostics (finite/shape/symmetry/PSD sampled checks + summary-log invariants) and equation-to-code audit notes for NDLM modules.
@@ -253,7 +253,7 @@ Status legend:
 
 | Risk ID | Severity | Description | Mitigation | Owner | Status |
 |---|---|---|---|---|---|
-| R-001 | Critical | NDLM forecast-window covariance mismatch vs theory can invalidate inference. | Prioritize P4 equation-to-code audit + tests before making NDLM default authoritative. | TBD | Mitigating (theory-aligned NDLM mode + stochastic `W` smoke path now wired and exercised) |
+| R-001 | Critical | NDLM forecast-window covariance mismatch vs theory can invalidate inference. | Prioritize P4 equation-to-code audit + tests before making NDLM default authoritative. | TBD | Mitigated (P4 closed with theory-aligned NDLM mode, stochastic `W` smoke closure, and NDLM VB regression test coverage) |
 | R-002 | High | Post currently consumes root pre-generated NDLM/univariate artifacts. | Execute P5 decoupling before declaring full autonomy. | TBD | Mitigating (strict run-scoped smoke passed) |
 | R-003 | High | Legacy scripts contain duplicated core functions and fragile patterns. | Modularize with strict tests and narrow wrappers. | TBD | Open |
 | R-004 | Medium | Parallel orchestration may induce file collisions without strict run-scope contracts. | Enforce per-family/per-quantile isolated output roots + write-audit. | TBD | Mitigating (P2B fit-stage write-audit pass with empty outside-run-root diff) |
@@ -2213,6 +2213,24 @@ Concurrency rule for migration phases:
 - Next action:
   - Execute C2 canonical P8C production closure run and run validator with `--profile auto` and `--profile production`.
 
+### Progress Update 2026-02-17 06:58 UTC
+- Phase: C3 (P4 closure)
+- Change type: implementation+validation
+- Summary: closed remaining P4 tasks by locking NDLM theory-mode regression coverage and fresh NDLM closure smoke evidence under unified runner. Marked `T-P4-02` and `T-P4-03` complete and promoted P4 to closed.
+- Files touched:
+  - `repro/tests/test_ndlm_theory_vb_regression.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/runs/smoke_p4_ndlm_closure_20260217_065448/run_manifest.yaml`
+  - `repro/runs/smoke_p4_ndlm_closure_20260217_065448/fit/ndlm_main/outputs/DISC_variables_50_NDLM_synth_DISC.RData`
+  - `repro/runs/smoke_p4_ndlm_closure_20260217_065448/fit/ndlm_main/logs/ndlm_theory_summary.log`
+  - `repro/runs/smoke_p4_ndlm_closure_20260217_065448/fit/contract_checks/ndlm_main/ndlm_main_contract_check.json`
+- Validation notes:
+  - `python3 -m unittest repro.tests.test_ndlm_theory_vb_regression -v` passed.
+  - NDLM closure smoke completed with `forecats=pass`, `data_prep_shared=pass`, `fit=pass`, and non-null `finished_at_utc`.
+- Next action:
+  - Continue C2 canonical P8C closure monitoring and then close C4/C5/C6/C7 checklist items.
+
 ## 15) Audit Report (2026-02-14)
 
 ### 15.1 Inconsistencies Found and Fixed
@@ -2228,4 +2246,4 @@ Concurrency rule for migration phases:
 ### 15.2 Remaining Ambiguities Requiring Explicit Maintainer Decision
 
 - Whether and when to remove non-strict legacy root fallback paths entirely from post modules.
-- P4 theory completeness closure (`T-P4-02`, `T-P4-03`) and final canonical production evidence closure (`T-P8-04`) remain in progress.
+- Final canonical production evidence closure (`T-P8-04`) remains in progress.
