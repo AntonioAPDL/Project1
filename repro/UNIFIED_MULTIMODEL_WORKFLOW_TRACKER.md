@@ -1,7 +1,7 @@
 # Unified Multi-Model Workflow Tracker (Living)
 
 Date: 2026-02-10  
-Last verified: 2026-02-15 (P9 isolated reruns prepared; no active unified workers)  
+Last verified: 2026-02-17 (P9 extreme-quantile proof runs completed; move-forward plan refreshed)  
 Repo root: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Status: Active planning + execution tracker  
 Primary audience: project maintainer + Codex
@@ -67,11 +67,22 @@ Implication:
 - In strict repro mode, post requires run-scoped model-state artifacts.
 - In non-strict mode, legacy root fallback remains possible only when explicitly enabled for compatibility.
 
-## 2.4 Last Verified Evidence Pointers (2026-02-15)
+## 2.4 Last Verified Evidence Pointers (2026-02-17)
 
-- Latest isolated q=0.01 run logs (quarantined after controlled stop/cleanup):
-  - `repro/quarantine/cleanup_runs/20260215T002430Z/debug_q01_extreme_20260214_225559_r02/fit/q=01/logs/fit.log`
-  - `repro/quarantine/cleanup_runs/20260215T002430Z/debug_q01_extreme_20260214_225450/`
+- P9 closure proof runs (q=0.01, 0.50, 0.99):
+  - `repro/runs/debug_extreme_mv_q010599_parallel_max800_20260216_222144/run_manifest.yaml`
+  - `repro/runs/debug_extreme_uv_q010599_parallel_max800_20260216_222436/run_manifest.yaml`
+- Multivariate proof outputs:
+  - `repro/runs/debug_extreme_mv_q010599_parallel_max800_20260216_222144/fit/q=01/outputs/DISC_variables_1_exAL_synth_DISC.RData`
+  - `repro/runs/debug_extreme_mv_q010599_parallel_max800_20260216_222144/fit/q=50/outputs/DISC_variables_50_exAL_synth_DISC.RData`
+  - `repro/runs/debug_extreme_mv_q010599_parallel_max800_20260216_222144/fit/q=99/outputs/DISC_variables_99_exAL_synth_DISC.RData`
+- Univariate proof outputs:
+  - `repro/runs/debug_extreme_uv_q010599_parallel_max800_20260216_222436/fit/exdqlm_univar/q=01/outputs/variables_01_exAL_synth_DISC_uni.RData`
+  - `repro/runs/debug_extreme_uv_q010599_parallel_max800_20260216_222436/fit/exdqlm_univar/q=50/outputs/variables_50_exAL_synth_DISC_uni.RData`
+  - `repro/runs/debug_extreme_uv_q010599_parallel_max800_20260216_222436/fit/exdqlm_univar/q=99/outputs/variables_99_exAL_synth_DISC_uni.RData`
+- Latest trace summaries:
+  - `repro/reports/figures/debug_extreme_mv_q010599_parallel_max800_20260216_222144_trace_summary_latest.png`
+  - `repro/reports/figures/debug_extreme_uv_q010599_parallel_max800_20260216_222436_trace_summary_latest.png`
 - Stage graph + status wiring: `scripts/unified_run.R`
 - Fit family dispatch + implementation modes: `R/unified/stages/stage_fit.R`
 - Default config + implementation modes: `config/unified_run.template.yaml`, `R/unified/config.R`
@@ -115,6 +126,7 @@ Precedence rule:
 | D-008 | Preserve `post/outputs/<RUN_ID>/` nesting until validate contract is explicitly versioned. | Locked | `stage_validate` currently compares against `run_root/post/outputs/<RUN_ID>`; do not break this path contract before validate v2. |
 | D-009 | Preserve current DISC-W fit output contract `fit/q=<QQ>/outputs/...` until family-path cutover. | Locked | Existing fit/post tooling and run artifacts rely on this structure; migration to `fit/exdqlm_multivar/...` is a versioned cutover item. |
 | D-010 | P5 closure is accepted via strict run-scoped figures-on smoke using smoke-fast path; full heavy figure hardening is a separate follow-up item. | Locked | Requires non-null manifest closure, run-scoped load proof, and PNG outputs under run root. |
+| D-011 | P9 closure is accepted as operationally robust (“good enough”) when isolated extreme-quantile proof runs close with run-scoped artifacts and no hard runtime failures, even if some tails terminate at max-iter. | Locked | Residual strict-tail convergence tightening is tracked as follow-up optimization, not a blocker for forward workflow implementation. |
 
 ## 5) Target End-State Architecture
 
@@ -170,7 +182,7 @@ Status legend:
 | P6 | [~] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
 | P7 | [~] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure |
 | P8 | [~] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
-| P9 | [~] | Extreme-quantile stabilization (q=0.01 first) | P8C failure evidence captured | Isolated q=0.01 reproducer passes with theory-audited mitigation plan; adaptive gamma/sigma stabilization defaults are enabled for both exDQLM multivar + univar with explicit config override controls |
+| P9 | [x] | Extreme-quantile stabilization (q=0.01 first) | P8C failure evidence captured | Isolated extreme-quantile proof runs (`q=0.01,0.50,0.99`) close for exDQLM multivar + univar under adaptive defaults, with run-scoped outputs and no hard runtime failures (operational closure accepted under D-011) |
 
 ## 7) Detailed Task Backlog
 
@@ -232,10 +244,10 @@ Status legend:
 - [x] `T-P9-01`: Stop active failing canonical run cleanly and preserve failure forensics (manifest, runner log, q=01 fit log) before cleanup.
 - [x] `T-P9-02`: Quarantine/remove failed run artifacts with evidence trail (before/after space + retained key logs) using safe cleanup policy.
 - [x] `T-P9-03`: Run theory-first audit for failing path at q=0.01 (`objective_deltas` / `update_gamma_sigma`), mapping equations to code and finite-domain requirements.
-- [~] `T-P9-04`: Build isolated reproducer (`fit.quantiles=[0.01]`, multivar-only, post/validate/report OFF) and reproduce deterministically.
+- [x] `T-P9-04`: Build isolated reproducer (`fit.quantiles=[0.01]`, multivar-only, post/validate/report OFF) and reproduce deterministically.
 - [x] `T-P9-05`: Implement diagnostics-first guardrails (finite/domain checks + precise error context) and shared policy controls.
 - [x] `T-P9-06`: Promote adaptive `gamma/sigma` stabilization to default for exDQLM multivar + univar (`warmup_freeze_iters=20`, `guard_refreeze_iters=10`, `init.mode=robust`, `objective_guard.enabled=true`, `objective_guard.mode=adaptive_freeze`), with per-family override controls.
-- [~] `T-P9-07`: Validate fixes with isolated q=0.01 pass, neighboring q=0.05 sanity pass, and targeted regression tests.
+- [x] `T-P9-07`: Validate fixes with isolated extreme-quantile proofs (`q=0.01,0.50,0.99`) for exDQLM multivar + univar, plus targeted regression tests and trace monitoring artifacts.
 
 ## 8) Risk Register (Live)
 
@@ -248,7 +260,7 @@ Status legend:
 | R-005 | Medium | Ambiguity on sequencing can delay implementation. | Lock D-007 or replace with alternate sequence immediately after P0. | Maintainer | Mitigated (D-007 locked) |
 | R-006 | High | DISC-W warm-start can load root `DISC_variables_*` paths, violating run-scoped reproducibility if enabled. | Keep warm-start disabled by default; if enabled, require run-scoped warm-start source path recorded in manifest before stage execution. | TBD | Mitigating (legacy bridge env routing now run-scoped; warm-start remains disabled by default) |
 | R-007 | Medium | Post reads `y_reps*.rds` via relative paths, creating working-directory-sensitive behavior. | In P5, enforce absolute/manifest-declared paths for these intermediates and fail fast on unresolved relative reads. | TBD | Mitigating (run-scoped cache path enforced) |
-| R-008 | High | Extreme quantile (`q=0.01`) multivar fit can fail with non-finite objective in optimizer (`L-BFGS-B needs finite values of 'fn'`), blocking canonical closure. | P9 theory-first isolation: preserve evidence, reproduce q=0.01 only, add finite/domain guardrails, and keep adaptive gamma/sigma stabilization defaulted across exDQLM families with bounded override controls. | TBD | Mitigating (guardrails + adaptive defaults implemented; convergence proof still required on isolated q=0.01 reproducer) |
+| R-008 | Medium | Extreme quantile (`q=0.01`) multivar fit can enter non-finite objective regions without adaptive safeguards. | Keep adaptive gamma/sigma guardrails defaulted across exDQLM families; maintain extreme-quantile regression proofs and trace monitoring for drift. | TBD | Mitigated for current scope (P9 closure accepted under D-011; residual strict-tail convergence tightening tracked as follow-up optimization) |
 
 ## 9) Validation and Done Criteria
 
@@ -1546,12 +1558,18 @@ None currently tracked.
    - `init.mode: robust` with `gamma=0.0`, `sigma_floor=1e-3`, `sigma_scale=1.0`
    - `objective_guard.enabled: true`, `objective_guard.mode: adaptive_freeze`, `fail_fast: false`, `log_failures: true`, `penalty: 1e12`
    - Per-family config overrides remain supported under `fit.exdqlm_multivar.gamma_sigma.*` and `fit.exdqlm_univar.gamma_sigma.*`.
+12. P9 closure acceptance rule is locked under D-011:
+   - Operational closure requires completed isolated extreme-quantile proofs with run-scoped artifacts and no hard runtime failures.
+   - Hitting max-iter in extreme tails is acceptable for this closure gate when traces remain stable and outputs are produced.
+   - Additional strict-tail convergence tightening is tracked as non-blocking follow-up work.
 
 ## 12) Immediate Next Actions (Proposed)
 
-1. Complete isolated q=0.01 convergence closure under the new default adaptive stabilization policy and capture fit-stage evidence (`run_manifest.yaml`, q01 `fit.log`, summary artifacts).
-2. Run neighboring q=0.05 sanity check under the same default policy and compare guard/refreeze event rates and convergence behavior.
-3. If q=0.01/q=0.05 stabilize, execute a bounded multi-quantile proof (`q=0.05,0.50,0.95`) and keep canonical 7-quantile closure as the final P8C/P9 gate.
+1. Execute P8C canonical production closure run (all enabled families, canonical 7 quantiles), then run external validator with `--profile auto` and `--profile production`.
+2. Close remaining P4 theory-completeness items (`T-P4-02`, `T-P4-03`) with focused NDLM theory-parity checks and regression coverage.
+3. Close remaining P7 validation/report hardening (`T-P7-01`, `T-P7-02`) with family-aware output gates in production-style runs.
+4. Finalize P5 follow-up hardening decision on non-strict legacy fallback paths (remove or deprecate with explicit timeline/tests).
+5. Complete P8 cutover packaging: document default theory-aligned behavior, preserve explicit legacy fallback controls, and run final release-smoke evidence capture.
 
 ## 13) Notes
 
@@ -2151,6 +2169,49 @@ Concurrency rule for migration phases:
   - No active run was interrupted for this update.
 - Next action:
   - Isolate and debug the `q=01` multivariate matrix-dimension failure path while preserving successful `q=50` and `q=99` artifacts as control references.
+
+### Progress Update 2026-02-17 05:35 UTC
+- Phase: P9
+- Change type: validation+closure
+- Summary: completed final isolated extreme-quantile proof runs for exDQLM multivar + univar using `fit.quantiles=[0.01,0.50,0.99]`, `mc_cores=3`, and `gamma_sigma.max_iter=800`. All six quantile jobs closed with run-scoped outputs and no hard runtime failures. Maintainer accepted operational “good enough” closure for P9.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/runs/debug_extreme_mv_q010599_parallel_max800_20260216_222144/run_manifest.yaml`
+  - `repro/runs/debug_extreme_uv_q010599_parallel_max800_20260216_222436/run_manifest.yaml`
+  - `repro/runs/debug_extreme_mv_q010599_parallel_max800_20260216_222144/fit/q=01/outputs/DISC_variables_1_exAL_synth_DISC.RData`
+  - `repro/runs/debug_extreme_mv_q010599_parallel_max800_20260216_222144/fit/q=50/outputs/DISC_variables_50_exAL_synth_DISC.RData`
+  - `repro/runs/debug_extreme_mv_q010599_parallel_max800_20260216_222144/fit/q=99/outputs/DISC_variables_99_exAL_synth_DISC.RData`
+  - `repro/runs/debug_extreme_uv_q010599_parallel_max800_20260216_222436/fit/exdqlm_univar/q=01/outputs/variables_01_exAL_synth_DISC_uni.RData`
+  - `repro/runs/debug_extreme_uv_q010599_parallel_max800_20260216_222436/fit/exdqlm_univar/q=50/outputs/variables_50_exAL_synth_DISC_uni.RData`
+  - `repro/runs/debug_extreme_uv_q010599_parallel_max800_20260216_222436/fit/exdqlm_univar/q=99/outputs/variables_99_exAL_synth_DISC_uni.RData`
+  - `repro/reports/figures/debug_extreme_mv_q010599_parallel_max800_20260216_222144_trace_summary_latest.png`
+  - `repro/reports/figures/debug_extreme_uv_q010599_parallel_max800_20260216_222436_trace_summary_latest.png`
+- Validation notes:
+  - Multivar run finished with stage status `fit=pass`, `timestamps.finished_at_utc: 2026-02-17T04:40:00Z`.
+  - Univar run finished with stage status `fit=pass`, `timestamps.finished_at_utc: 2026-02-16T23:15:17Z`.
+  - Extremes (`q=0.01`, `q=0.99`) closed at `iter=800` under adaptive guardrails with output artifacts present; no `Execution halted` markers in final proof logs.
+- Next action:
+  - Move focus to remaining unified-workflow closure items (P8 canonical production evidence, P4 NDLM theory completeness, and P7 validator/report hardening).
+
+### Progress Update 2026-02-17 05:56 UTC
+- Phase: C1 baseline gate
+- Change type: validation
+- Summary: pre-execution baseline verified against current tracker claims. Confirmed P9 closure evidence exists and resolves, and confirmed remaining closure scope is still P8C + P4 + P7 + P5 follow-up + P8 packaging.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/runs/debug_extreme_mv_q010599_parallel_max800_20260216_222144/run_manifest.yaml`
+  - `repro/runs/debug_extreme_uv_q010599_parallel_max800_20260216_222436/run_manifest.yaml`
+  - `repro/reports/figures/debug_extreme_mv_q010599_parallel_max800_20260216_222144_trace_summary_latest.png`
+  - `repro/reports/figures/debug_extreme_uv_q010599_parallel_max800_20260216_222436_trace_summary_latest.png`
+  - `config/unified_runs/production_canonical_family.yaml`
+- Validation notes:
+  - Multivar proof manifest: `fit=pass`, `finished_at_utc=2026-02-17T04:40:00Z`.
+  - Univar proof manifest: `fit=pass`, `finished_at_utc=2026-02-16T23:15:17Z`.
+  - P9 proof outputs exist for all three tracked quantiles in both model families.
+- Next action:
+  - Execute C2 canonical P8C production closure run and run validator with `--profile auto` and `--profile production`.
 
 ## 15) Audit Report (2026-02-14)
 
