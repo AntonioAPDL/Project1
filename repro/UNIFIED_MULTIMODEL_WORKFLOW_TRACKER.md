@@ -1,7 +1,7 @@
 # Unified Multi-Model Workflow Tracker (Living)
 
 Date: 2026-02-10  
-Last verified: 2026-02-17 (P9 extreme-quantile proof runs completed; move-forward plan refreshed)  
+Last verified: 2026-02-17 (P9 extreme-quantile proof runs completed; canonical P8C health snapshot + trace figures refreshed)  
 Repo root: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Status: Active planning + execution tracker  
 Primary audience: project maintainer + Codex
@@ -83,6 +83,14 @@ Implication:
 - Latest trace summaries:
   - `repro/reports/figures/debug_extreme_mv_q010599_parallel_max800_20260216_222144_trace_summary_latest.png`
   - `repro/reports/figures/debug_extreme_uv_q010599_parallel_max800_20260216_222436_trace_summary_latest.png`
+- Canonical production closure run:
+  - `repro/runs/prod_canonical_p8c_parallel_20260216_220751/run_manifest.yaml`
+- Canonical trace summaries (all enabled families):
+  - `repro/reports/figures/prod_canonical_p8c_parallel_20260216_220751_univar_trace_summary_latest.png`
+  - `repro/reports/figures/prod_canonical_p8c_parallel_20260216_220751_multivar_trace_summary_latest.png`
+  - `repro/reports/figures/prod_canonical_p8c_parallel_20260216_220751_ndlm_trace_summary_latest.png`
+- Trace plotting utility:
+  - `repro/tools/plot_unified_trace_summaries.py`
 - Stage graph + status wiring: `scripts/unified_run.R`
 - Fit family dispatch + implementation modes: `R/unified/stages/stage_fit.R`
 - Default config + implementation modes: `config/unified_run.template.yaml`, `R/unified/config.R`
@@ -91,6 +99,34 @@ Implication:
   - `config/unified_runs/debug_q01_multivar_extreme.yaml`
   - `config/unified_runs/debug_q01_multivar_extreme_states.yaml`
 - Validator profile resolution (`production|production_proof|smoke|auto`): `repro/tools/validate_run.sh`
+
+## 2.5 Canonical P8C Health Snapshot (2026-02-17)
+
+Run-level closure:
+
+| run_id | finished_at_utc | validation.status | stage statuses |
+|---|---|---|---|
+| `prod_canonical_p8c_parallel_20260216_220751` | `2026-02-17T13:40:00Z` | `pass` | `forecats=pass`, `data_prep_shared=pass`, `fit=pass`, `post=pass`, `validate=pass`, `report=pass` |
+
+Family/quantile fit snapshot from latest `gamsig_progress` lines:
+
+| family | q | final_iter | final_elbo | final_sigma_exp | final_gamma_exp |
+|---|---|---:|---:|---:|---:|
+| `exdqlm_multivar` | `0.01` | 800 | -44.83422 | 0.01179619 | 1.953162 |
+| `exdqlm_multivar` | `0.05` | 466 | -44.65134 | 0.03011774 | 0.9584789 |
+| `exdqlm_multivar` | `0.10` | 800 | -44.60489 | 0.04203167 | 0.5289511 |
+| `exdqlm_multivar` | `0.50` | 134 | -44.28300 | 0.07889116 | -0.04823061 |
+| `exdqlm_multivar` | `0.90` | 800 | -44.15141 | 0.05367939 | -1.139010 |
+| `exdqlm_multivar` | `0.95` | 800 | -44.14914 | 0.04167215 | -1.826992 |
+| `exdqlm_multivar` | `0.99` | 800 | -44.44925 | 0.02117679 | -3.882173 |
+| `exdqlm_univar` | `0.01` | 800 | -1929.086 | 0.3812341 | 61.47403 |
+| `exdqlm_univar` | `0.05` | 769 | 113901.1 | 0.0002493927 | 7.852744 |
+| `exdqlm_univar` | `0.10` | 215 | 113904.6 | 0.0002494134 | 3.750303 |
+| `exdqlm_univar` | `0.50` | 70 | 113909.9 | 0.0002493727 | -0.0000005375816 |
+| `exdqlm_univar` | `0.90` | 211 | 113904.6 | 0.0002494129 | -3.750300 |
+| `exdqlm_univar` | `0.95` | 700 | 113901.1 | 0.0002493898 | -7.852662 |
+| `exdqlm_univar` | `0.99` | 800 | -1927.464 | 0.3812506 | -61.46849 |
+| `ndlm_main` | `0.50` | 16 | -13660.61 | 0.7382676 | NA |
 
 ## 3) Theory Source-of-Truth Policy (Locked)
 
@@ -2326,6 +2362,25 @@ Concurrency rule for migration phases:
   - Immediate-next-actions now focus exclusively on C2 closure and final post-C2 audit.
 - Next action:
   - Finalize C2 closure and then perform the terminal C7 pass to mark full tracker closure state.
+
+### Progress Update 2026-02-17 19:26 UTC
+- Phase: C2/P8C monitoring follow-up
+- Change type: validation+documentation
+- Summary: added a compact canonical-run health snapshot table to close the live-checkpoint documentation gap and refreshed all-family trace figures for the canonical production run (univariate, multivariate, NDLM) from latest logs.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+  - `repro/tools/plot_unified_trace_summaries.py`
+- Evidence paths:
+  - `repro/runs/prod_canonical_p8c_parallel_20260216_220751/run_manifest.yaml`
+  - `repro/reports/figures/prod_canonical_p8c_parallel_20260216_220751_univar_trace_summary_latest.png`
+  - `repro/reports/figures/prod_canonical_p8c_parallel_20260216_220751_multivar_trace_summary_latest.png`
+  - `repro/reports/figures/prod_canonical_p8c_parallel_20260216_220751_ndlm_trace_summary_latest.png`
+  - `repro/tools/plot_unified_trace_summaries.py`
+- Validation notes:
+  - Manifest confirms canonical run closure with `finished_at_utc=2026-02-17T13:40:00Z` and `validation.status=pass`.
+  - All enabled families have trace data captured in refreshed figures.
+- Next action:
+  - Continue remaining unified-workflow closure workstream items using this canonical health snapshot as baseline.
 
 ## 15) Audit Report (2026-02-14)
 
