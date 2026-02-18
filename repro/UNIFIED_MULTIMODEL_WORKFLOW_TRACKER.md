@@ -1609,6 +1609,7 @@ None currently tracked.
 1. Complete C2 canonical P8C production closure run (`prod_canonical_p8c_parallel_20260216_220751`) and execute external validator with `--profile auto` and `--profile production`.
 2. Perform C7 final tracker self-consistency pass immediately after C2 closes (phase table, checkboxes, risks, decisions, evidence pointers, and immediate-next-actions).
 3. If C2 exceeds runtime budget under current strict convergence settings, capture blocker evidence and decide whether to keep strict runtime or execute a bounded canonical rerun policy.
+4. Isolate and close NDLM post full-figures replay blocker in a dedicated post-only debug lane (`post_replay_p8c_fullfig*`), with theory/contract-backed fixes and targeted regression checks before reattempting full replay.
 
 ## 13) Notes
 
@@ -2382,6 +2383,23 @@ Concurrency rule for migration phases:
 - Next action:
   - Continue remaining unified-workflow closure workstream items using this canonical health snapshot as baseline.
 
+### Progress Update 2026-02-17 21:46 UTC
+- Phase: Post-replay NDLM blocker triage
+- Change type: validation+planning
+- Summary: documented current post-only replay failure state for full-figures runs and locked an isolated NDLM-first debug lane. Latest replay progressed deep into `40_figures.R` and now fails in NDLM JSD computation (`array(..., dim=dim_p)` with empty `dim_p`), indicating a downstream shape/contract issue beyond previously fixed NDLM forecast-window indexing mismatches.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/runs/post_replay_p8c_fullfig_20260217_120550/post/logs/post_runner.log` (original NDLM subscript OOB failure)
+  - `repro/runs/post_replay_p8c_fullfig_fix_20260217_203611_r01/post/logs/post_runner.log` (intermediate non-conformable projection failure)
+  - `repro/runs/post_replay_p8c_fullfig_fix_20260217_205632_r02/post/logs/post_runner.log` (current NDLM JSD failure: `dims cannot be of length 0`)
+  - `repro/runs/post_replay_p8c_fullfig_fix_20260217_205632_r02/run_manifest.yaml` (post status fail; deep artifact generation completed before terminal error)
+- Validation notes:
+  - No active post replay process remained at capture time.
+  - Latest failed run produced substantial post artifacts, confirming the blocker is localized in later `40_figures.R` NDLM/JSD path, not early figure wiring.
+- Next action:
+  - Execute isolated NDLM post-debug plan with strict invariants (shape contracts, theory-consistent transformations, no superficial patches) and close replay with post stage PASS.
+
 ## 15) Audit Report (2026-02-14)
 
 ### 15.1 Inconsistencies Found and Fixed
@@ -2397,3 +2415,37 @@ Concurrency rule for migration phases:
 ### 15.2 Remaining Ambiguities Requiring Explicit Maintainer Decision
 
 - Final canonical production evidence closure (`T-P8-04`) remains in progress.
+
+### Progress Update 2026-02-18 00:14 UTC
+- Phase: NDLM post-replay blocker closure lane (D1-D8)
+- Change type: implementation+validation
+- Summary: completed root-cause-first NDLM post hardening for the full-figures replay failure chain. Baseline failures were re-verified from prior replay logs (subscript OOB, projection non-conformable, and JSD `dim` failure), NDLM shape contracts were audited against canonical artifacts, and the JSD path was replaced with dimension-safe, contract-checked helpers that support valid `d=1/2/3` error spaces with explicit keyed diagnostics.
+- Files touched:
+  - `R/environmetrics/02_helpers_core.R`
+  - `R/environmetrics/40_figures.R`
+  - `tests/testthat/test_ndlm_post_jsd.R`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - Baseline failures:
+    - `repro/runs/post_replay_p8c_fullfig_20260217_120550/post/logs/post_runner.log`
+    - `repro/runs/post_replay_p8c_fullfig_fix_20260217_203611_r01/post/logs/post_runner.log`
+    - `repro/runs/post_replay_p8c_fullfig_fix_20260217_205632_r02/post/logs/post_runner.log`
+  - Contract/theory audit bundle:
+    - `repro/runs/ndlm_post_debug_20260217T234137Z/ndlm_shape_contract_audit.md`
+    - `repro/runs/ndlm_post_debug_20260217T234137Z/ndlm_observed_shapes.json`
+    - `repro/runs/ndlm_post_debug_20260217T234137Z/ndlm_post_root_cause_audit.md`
+    - `repro/runs/ndlm_post_debug_20260217T234137Z/baseline_jsd_dim_repro.json`
+    - `repro/runs/ndlm_post_debug_20260217T234137Z/ndlm_only_jsd_replay.json`
+  - Isolated NDLM replay PASS:
+    - `repro/runs/post_replay_ndlm_only_smoke_20260217_234449/run_manifest.yaml`
+    - `repro/runs/post_replay_ndlm_only_smoke_20260217_234449/post/logs/post_runner.log`
+    - `repro/runs/post_replay_ndlm_only_smoke_20260217_234449/post/outputs/post_replay_ndlm_only_smoke_20260217_234449/All_ELBOS_DISC.png`
+  - Targeted regression tests:
+    - `tests/testthat/test_ndlm_post_jsd.R`
+- Validation notes:
+  - `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_ndlm_post_jsd.R', reporter='summary')"` passed.
+  - Isolated NDLM-only post replay closed with `post=pass` and non-null `finished_at_utc`.
+  - Full all-family full-figures replay is running in strict post-only lane for final closure evidence:
+    - `repro/runs/post_replay_fullfig_ndlmfix_20260217_234449/run_manifest.yaml` (`post=pending` at this checkpoint).
+- Next action:
+  - Let `post_replay_fullfig_ndlmfix_20260217_234449` close, then record terminal pass/fail evidence and finalize D7/D8 closure status.
