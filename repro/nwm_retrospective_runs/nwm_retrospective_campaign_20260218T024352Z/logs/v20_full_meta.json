@@ -1,0 +1,17 @@
+{
+  "version": "2.0",
+  "zarr_url": "s3://noaa-nwm-retro-v2-zarr-pds",
+  "variable": "streamflow",
+  "selected_feature_id": 17682474,
+  "selected_feature_index": 1809384,
+  "selected_latitude": 37.0467529296875,
+  "selected_longitude": -122.07135009765625,
+  "target_latitude": 37.0443931,
+  "target_longitude": -122.072464,
+  "distance_deg": 0.002609516159253932,
+  "start_date": "1993-01-01",
+  "end_date": "2018-12-31",
+  "aggregate": "daily",
+  "rows_out": 9496,
+  "created_utc": "2026-02-18T02:51:49.988854+00:00"
+}

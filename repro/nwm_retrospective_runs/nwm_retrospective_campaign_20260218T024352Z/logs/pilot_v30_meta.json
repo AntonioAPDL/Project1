@@ -1,0 +1,17 @@
+{
+  "version": "3.0",
+  "zarr_url": "s3://noaa-nwm-retrospective-3-0-pds/CONUS/zarr/chrtout.zarr",
+  "variable": "streamflow",
+  "selected_feature_id": 17682474,
+  "selected_feature_index": 1809118,
+  "selected_latitude": 37.0467529296875,
+  "selected_longitude": -122.07135009765625,
+  "target_latitude": 37.0443931,
+  "target_longitude": -122.072464,
+  "distance_deg": 0.002609516159253932,
+  "start_date": "2017-06-01",
+  "end_date": "2017-06-07",
+  "aggregate": "daily",
+  "rows_out": 7,
+  "created_utc": "2026-02-18T02:44:57.081635+00:00"
+}

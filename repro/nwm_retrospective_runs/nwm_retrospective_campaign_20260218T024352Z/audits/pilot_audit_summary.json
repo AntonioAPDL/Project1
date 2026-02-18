@@ -1,0 +1,73 @@
+{
+  "created_utc": "2026-02-18T02:50:10.330818+00:00",
+  "rows": [
+    {
+      "label": "v12_pilot",
+      "path": "repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z/point_series/pilot_v12_daily.csv",
+      "exists": true,
+      "rows_raw": 2,
+      "date_col": "date",
+      "value_col": "streamflow_cms",
+      "start_date": "1993-01-01",
+      "end_date": "1993-01-02",
+      "expected_start": "1993-01-01",
+      "expected_end": "1993-01-02",
+      "daily_rows": 2,
+      "expected_days": 2,
+      "missing_days": 0,
+      "subdaily_extra_rows": 0,
+      "nan_values": 0
+    },
+    {
+      "label": "v20_pilot",
+      "path": "repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z/point_series/pilot_v20_daily.csv",
+      "exists": true,
+      "rows_raw": 7,
+      "date_col": "date",
+      "value_col": "streamflow_cms",
+      "start_date": "2017-06-01",
+      "end_date": "2017-06-07",
+      "expected_start": "2017-06-01",
+      "expected_end": "2017-06-07",
+      "daily_rows": 7,
+      "expected_days": 7,
+      "missing_days": 0,
+      "subdaily_extra_rows": 0,
+      "nan_values": 0
+    },
+    {
+      "label": "v21_pilot",
+      "path": "repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z/point_series/pilot_v21_daily.csv",
+      "exists": true,
+      "rows_raw": 7,
+      "date_col": "date",
+      "value_col": "streamflow_cms",
+      "start_date": "2017-06-01",
+      "end_date": "2017-06-07",
+      "expected_start": "2017-06-01",
+      "expected_end": "2017-06-07",
+      "daily_rows": 7,
+      "expected_days": 7,
+      "missing_days": 0,
+      "subdaily_extra_rows": 0,
+      "nan_values": 0
+    },
+    {
+      "label": "v30_pilot",
+      "path": "repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z/point_series/pilot_v30_daily.csv",
+      "exists": true,
+      "rows_raw": 7,
+      "date_col": "date",
+      "value_col": "streamflow_cms",
+      "start_date": "2017-06-01",
+      "end_date": "2017-06-07",
+      "expected_start": "2017-06-01",
+      "expected_end": "2017-06-07",
+      "daily_rows": 7,
+      "expected_days": 7,
+      "missing_days": 0,
+      "subdaily_extra_rows": 0,
+      "nan_values": 0
+    }
+  ]
+}

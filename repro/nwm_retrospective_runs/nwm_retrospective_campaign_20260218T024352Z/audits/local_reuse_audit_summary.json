@@ -1,0 +1,39 @@
+{
+  "created_utc": "2026-02-18T02:50:11.769537+00:00",
+  "rows": [
+    {
+      "label": "v21_local",
+      "path": "11160500_nws_retro_old.csv",
+      "exists": true,
+      "rows_raw": 367439,
+      "date_col": "Date",
+      "value_col": "streamflow",
+      "start_date": "1979-02-01",
+      "end_date": "2020-12-31",
+      "expected_start": "1979-02-01",
+      "expected_end": "2020-12-31",
+      "daily_rows": 15310,
+      "expected_days": 15310,
+      "missing_days": 0,
+      "subdaily_extra_rows": 352129,
+      "nan_values": 0
+    },
+    {
+      "label": "v30_local",
+      "path": "11160500_nws_retro.csv",
+      "exists": true,
+      "rows_raw": 385704,
+      "date_col": "Date",
+      "value_col": "streamflow",
+      "start_date": "1979-02-01",
+      "end_date": "2023-02-01",
+      "expected_start": "1979-02-01",
+      "expected_end": "2023-02-01",
+      "daily_rows": 16072,
+      "expected_days": 16072,
+      "missing_days": 0,
+      "subdaily_extra_rows": 369632,
+      "nan_values": 0
+    }
+  ]
+}

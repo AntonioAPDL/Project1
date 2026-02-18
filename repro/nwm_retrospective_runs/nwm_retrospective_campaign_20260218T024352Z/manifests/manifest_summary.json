@@ -1,0 +1,8 @@
+{
+  "run_id": "nwm_retrospective_campaign_20260218T024352Z",
+  "run_dir": "repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z",
+  "created_utc": "2026-02-18T02:44:01.024947+00:00",
+  "source_manifest_csv": "repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z/manifests/version_source_manifest.csv",
+  "local_inventory_csv": "repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z/manifests/local_inventory.csv",
+  "bucket_probes_json": "repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z/logs/bucket_probes.json"
+}

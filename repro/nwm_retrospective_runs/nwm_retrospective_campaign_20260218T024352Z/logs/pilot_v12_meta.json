@@ -1,0 +1,21 @@
+{
+  "version": "1.2",
+  "bucket": "nwm-archive",
+  "variable": "streamflow",
+  "selected_feature_id": 17682474,
+  "selected_feature_index": 1809384,
+  "selected_latitude": NaN,
+  "selected_longitude": NaN,
+  "target_latitude": 37.0443931,
+  "target_longitude": -122.072464,
+  "distance_deg": NaN,
+  "start_date": "1993-01-01",
+  "end_date": "1993-01-02",
+  "aggregate": "daily",
+  "requested_hours": 48,
+  "downloaded_hours": 48,
+  "missing_hours": 0,
+  "rows_out": 2,
+  "max_hours": 0,
+  "created_utc": "2026-02-18T02:48:10.534838+00:00"
+}

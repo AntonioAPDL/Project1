@@ -1,0 +1,26 @@
+{
+  "3.0": {
+    "cmd": "aws s3 ls --no-sign-request s3://noaa-nwm-retrospective-3-0-pds/",
+    "returncode": 0,
+    "stdout_head": "                           PRE Alaska/\n                           PRE CONUS/\n                           PRE Hawaii/\n                           PRE PR/\n2025-11-24 12:33:44      36822 index.html",
+    "stderr_head": ""
+  },
+  "2.1": {
+    "cmd": "aws s3 ls --no-sign-request s3://noaa-nwm-retrospective-2-1-zarr-pds/",
+    "returncode": 0,
+    "stdout_head": "                           PRE chrtout.zarr/\n                           PRE gwout.zarr/\n                           PRE lakeout.zarr/\n                           PRE ldasout.zarr/\n                           PRE precip.zarr/\n                           PRE rtout.zarr/\n2025-11-24 12:33:42      36822 index.html",
+    "stderr_head": ""
+  },
+  "2.0": {
+    "cmd": "aws s3 ls --no-sign-request s3://noaa-nwm-retro-v2-zarr-pds/",
+    "returncode": 0,
+    "stdout_head": "                           PRE elevation/\n                           PRE feature_id/\n                           PRE latitude/\n                           PRE longitude/\n                           PRE order/\n                           PRE qBtmVertRunoff/\n                           PRE qBucket/\n                           PRE qSfcLatRunoff/\n                           PRE q_lateral/\n                           PRE streamflow/\n                           PRE time/\n                           PRE velocity/\n2021-01-08 12:39:06        759 .zattrs\n2021-01-08 12:39:01         24 .zgroup\n2021-01-08 12:38:46      12240 .zmetadata\n2021-09-27 12:48:35      32357 index.html",
+    "stderr_head": ""
+  },
+  "1.2": {
+    "cmd": "aws s3 ls --no-sign-request s3://nwm-archive/",
+    "returncode": 0,
+    "stdout_head": "                           PRE 1993/\n                           PRE 1994/\n                           PRE 1995/\n                           PRE 1996/\n                           PRE 1997/\n                           PRE 1998/\n                           PRE 1999/\n                           PRE 2000/\n                           PRE 2001/\n                           PRE 2002/\n                           PRE 2003/\n                           PRE 2004/\n                           PRE 2005/\n                           PRE 2006/\n                           PRE 2007/\n                           PRE 2008/\n                           PRE 2009/\n                           PRE 2010/\n                           PRE 2011/\n                           PRE 2012/\n                           PRE 2013/\n                           PRE 2014/\n                           PRE 2015/\n                           PRE 2016/\n                           PRE 2017/\n2021-09-27 12:48:56      32357 index.html",
+    "stderr_head": ""
+  }
+}
