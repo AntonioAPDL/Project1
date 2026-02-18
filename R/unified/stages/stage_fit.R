@@ -16,6 +16,30 @@ unified_normalize_fit_worker_result <- function(res, context_label = "fit stage 
   )
 }
 
+unified_resolve_fit_parallel_mode <- function(cfg) {
+  mode <- as.character(unified_get(cfg, c("fit", "parallel", "mode"), default = "by_family"))
+  if (!length(mode) || is.na(mode[[1]]) || !nzchar(mode[[1]])) {
+    return("by_family")
+  }
+  mode <- mode[[1]]
+  if (!(mode %in% c("by_family", "global_models"))) {
+    warning(
+      sprintf("unknown fit.parallel.mode=%s; falling back to by_family", mode),
+      call. = FALSE
+    )
+    return("by_family")
+  }
+  mode
+}
+
+unified_resolve_fit_parallel_workers <- function(cfg, n_jobs, default_workers = 1L) {
+  workers <- unified_get(cfg, c("fit", "parallel", "workers"), default = default_workers)
+  workers <- suppressWarnings(as.integer(workers))
+  if (!is.finite(workers) || workers < 1L) workers <- 1L
+  if (n_jobs < 1L) return(1L)
+  min(workers, as.integer(n_jobs))
+}
+
 unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   oldwd <- getwd()
   on.exit(setwd(oldwd), add = TRUE)
@@ -248,146 +272,146 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   )
   manifest <- add_preflight_artifact(manifest, fit_preflight)
 
-  if (isTRUE(cfg$models$run_exdqlm_multivar)) {
-    run_one_quantile <- function(q) {
-      q_num <- as.integer(round(q * 100))
-      q_label <- sprintf("%02d", q_num)
-      q_root <- file.path(fit_root, sprintf("q=%s", q_label))
-      q_outputs <- file.path(q_root, "outputs")
-      q_logs <- file.path(q_root, "logs")
-      dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
-      dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
-      if (isTRUE(io_settings$enabled)) {
-        run_preflight_check(
-          path = q_outputs,
-          check_point = "continue",
-          context = sprintf("stage_fit quantile q=%s", q_label),
-          stage_label = sprintf("fit_multivar_q%s", q_label)
-        )
-      }
+  fit_parallel_mode <- unified_resolve_fit_parallel_mode(cfg)
+  run_exdqlm_multivar <- isTRUE(cfg$models$run_exdqlm_multivar)
+  run_exdqlm_univar <- isTRUE(cfg$models$run_exdqlm_univar)
+  run_ndlm_main <- isTRUE(cfg$models$run_ndlm_main)
 
-      env_overrides <- c(
-        DISC_BASE_SEED = as.character(cfg$run$seed),
-        DISC_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
-        DISC_W_OUTPUT_DIR = q_outputs,
-        DISC_W_PARAMETERS_PATH = parameters_copy,
-        DISC_W_RETROS_PATH = adapted_retros,
-        DISC_W_NWS_PATH = adapted_nws,
-        DISC_W_GLOFAS_PATH = adapted_glofas,
-        DISC_GAMSIG_FREEZE_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
-        )),
-        DISC_GAMSIG_MIN_UPDATE_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_update_iters"), default = 50L
-        )),
-        DISC_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_total_iters"), default = 50L
-        )),
-        DISC_GAMSIG_MAX_ITER = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "max_iter"), default = 800L
-        )),
-        DISC_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence_tol"), default = 1e-6
-        )),
-        DISC_GAMSIG_ELBO_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "elbo_tol"), default = 1e-6
-        )),
-        DISC_GAMSIG_STATE_NORM_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "state_norm_sq_tol"), default = 1e-6
-        )),
-        DISC_GAMSIG_SIGMA_EXP_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "sigma_exp_tol"), default = 1e-6
-        )),
-        DISC_GAMSIG_GAMMA_EXP_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "gamma_exp_tol"), default = 1e-6
-        )),
-        DISC_GAMSIG_FREEZE_TARGET = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
-        )),
-        DISC_GAMSIG_GUARD_REFREEZE_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "guard_refreeze_iters"), default = 10L
-        )),
-        DISC_GAMSIG_INIT_MODE = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "mode"), default = "robust"
-        )),
-        DISC_GAMSIG_INIT_GAMMA = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "gamma"), default = 0.0
-        )),
-        DISC_GAMSIG_INIT_SIGMA_FLOOR = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "sigma_floor"), default = 1e-3
-        )),
-        DISC_GAMSIG_INIT_SIGMA_SCALE = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "sigma_scale"), default = 1.0
-        )),
-        DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED = if (isTRUE(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "enabled"), default = TRUE
-        ))) "TRUE" else "FALSE",
-        DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST = if (isTRUE(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "fail_fast"), default = FALSE
-        ))) "TRUE" else "FALSE",
-        DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES = if (isTRUE(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "log_failures"), default = TRUE
-        ))) "TRUE" else "FALSE",
-        DISC_GAMSIG_OBJECTIVE_GUARD_MODE = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "mode"), default = "adaptive_freeze"
-        )),
-        DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
-          cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
-        ))
-      )
-      env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
-
-      log_path <- file.path(q_logs, "fit.log")
-      cmd_status <- suppressWarnings(system2(
-        "Rscript",
-        c("--vanilla", file.path("scripts", "run_DISC_Optimal_Synth_Ranges_W.R"), as.character(q), as.character(cfg$run$seed)),
-        stdout = log_path,
-        stderr = log_path,
-        env = env_kv
-      ))
-      if (!is.finite(cmd_status)) cmd_status <- 0L
-
-      output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_DISC.RData", q_num))
-      list(
-        quantile = q,
-        output_path = output_path,
-        log_path = log_path,
-        status = as.integer(cmd_status)
-      )
-    }
-
-    workers <- suppressWarnings(as.integer(cfg$run$threads$mc_cores))
-    if (!is.finite(workers) || workers < 1) workers <- 1L
-    workers <- min(workers, length(quantiles))
-
-    results <- if (workers > 1 && .Platform$OS.type != "windows") {
-      parallel::mclapply(quantiles, run_one_quantile, mc.cores = workers)
-    } else {
-      lapply(quantiles, run_one_quantile)
-    }
-
-    for (res_raw in results) {
-      res <- unified_normalize_fit_worker_result(res_raw, context_label = "fit stage parallel worker")
-      if (!is.null(res$status) && res$status != 0) {
-        stop(sprintf("fit stage failed for quantile %s; see %s", res$quantile, res$log_path), call. = FALSE)
-      }
-      file_size <- suppressWarnings(file.info(res$output_path)$size)
-      if (!file.exists(res$output_path) || !is.finite(file_size) || file_size <= 0) {
-        stop(
-          sprintf("fit stage output missing or empty for quantile %s: %s", res$quantile, res$output_path),
-          call. = FALSE
-        )
-      }
-      manifest <- unified_manifest_add_artifact(
-        manifest,
-        res$output_path,
-        storage_scale = "model_state",
-        flow_domain = cfg$scale_contract$analysis_scale_fit_internal
-      )
-    }
+  default_workers <- suppressWarnings(as.integer(cfg$run$threads$mc_cores))
+  if (!is.finite(default_workers) || default_workers < 1L) {
+    default_workers <- 1L
   }
 
-  if (isTRUE(cfg$models$run_exdqlm_univar)) {
+  run_one_quantile <- function(q) {
+    q_num <- as.integer(round(q * 100))
+    q_label <- sprintf("%02d", q_num)
+    q_root <- file.path(fit_root, sprintf("q=%s", q_label))
+    q_outputs <- file.path(q_root, "outputs")
+    q_logs <- file.path(q_root, "logs")
+    dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
+    dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
+    if (isTRUE(io_settings$enabled)) {
+      run_preflight_check(
+        path = q_outputs,
+        check_point = "continue",
+        context = sprintf("stage_fit quantile q=%s", q_label),
+        stage_label = sprintf("fit_multivar_q%s", q_label)
+      )
+    }
+
+    env_overrides <- c(
+      DISC_BASE_SEED = as.character(cfg$run$seed),
+      DISC_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
+      DISC_W_OUTPUT_DIR = q_outputs,
+      DISC_W_PARAMETERS_PATH = parameters_copy,
+      DISC_W_RETROS_PATH = adapted_retros,
+      DISC_W_NWS_PATH = adapted_nws,
+      DISC_W_GLOFAS_PATH = adapted_glofas,
+      DISC_GAMSIG_FREEZE_ITERS = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
+      )),
+      DISC_GAMSIG_MIN_UPDATE_ITERS = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_update_iters"), default = 50L
+      )),
+      DISC_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_total_iters"), default = 50L
+      )),
+      DISC_GAMSIG_MAX_ITER = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "max_iter"), default = 800L
+      )),
+      DISC_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence_tol"), default = 1e-6
+      )),
+      DISC_GAMSIG_ELBO_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "elbo_tol"), default = 1e-6
+      )),
+      DISC_GAMSIG_STATE_NORM_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "state_norm_sq_tol"), default = 1e-6
+      )),
+      DISC_GAMSIG_SIGMA_EXP_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "sigma_exp_tol"), default = 1e-6
+      )),
+      DISC_GAMSIG_GAMMA_EXP_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "gamma_exp_tol"), default = 1e-6
+      )),
+      DISC_GAMSIG_FREEZE_TARGET = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
+      )),
+      DISC_GAMSIG_GUARD_REFREEZE_ITERS = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "guard_refreeze_iters"), default = 10L
+      )),
+      DISC_GAMSIG_INIT_MODE = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "mode"), default = "robust"
+      )),
+      DISC_GAMSIG_INIT_GAMMA = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "gamma"), default = 0.0
+      )),
+      DISC_GAMSIG_INIT_SIGMA_FLOOR = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "sigma_floor"), default = 1e-3
+      )),
+      DISC_GAMSIG_INIT_SIGMA_SCALE = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "sigma_scale"), default = 1.0
+      )),
+      DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "fail_fast"), default = FALSE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "log_failures"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_OBJECTIVE_GUARD_MODE = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "mode"), default = "adaptive_freeze"
+      )),
+      DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
+      ))
+    )
+    env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
+
+    log_path <- file.path(q_logs, "fit.log")
+    cmd_status <- suppressWarnings(system2(
+      "Rscript",
+      c("--vanilla", file.path("scripts", "run_DISC_Optimal_Synth_Ranges_W.R"), as.character(q), as.character(cfg$run$seed)),
+      stdout = log_path,
+      stderr = log_path,
+      env = env_kv
+    ))
+    if (!is.finite(cmd_status)) cmd_status <- 0L
+
+    output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_DISC.RData", q_num))
+    list(
+      model_family = "exdqlm_multivar",
+      quantile = q,
+      output_path = output_path,
+      log_path = log_path,
+      status = as.integer(cmd_status)
+    )
+  }
+
+  process_multivar_result <- function(manifest, res_raw) {
+    res <- unified_normalize_fit_worker_result(res_raw, context_label = "fit stage parallel worker")
+    if (!is.null(res$status) && res$status != 0) {
+      stop(sprintf("fit stage failed for quantile %s; see %s", res$quantile, res$log_path), call. = FALSE)
+    }
+    file_size <- suppressWarnings(file.info(res$output_path)$size)
+    if (!file.exists(res$output_path) || !is.finite(file_size) || file_size <= 0) {
+      stop(
+        sprintf("fit stage output missing or empty for quantile %s: %s", res$quantile, res$output_path),
+        call. = FALSE
+      )
+    }
+    unified_manifest_add_artifact(
+      manifest,
+      res$output_path,
+      storage_scale = "model_state",
+      flow_domain = cfg$scale_contract$analysis_scale_fit_internal
+    )
+  }
+
+  univar_script <- NULL
+  if (run_exdqlm_univar) {
     if (!use_shared_inputs) {
       stop(
         "legacy univariate bridge requires run-scoped shared inputs. Enable stages.data_prep_shared and provide shared bundle inputs.",
@@ -432,242 +456,238 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         manifest <- add_preflight_artifact(manifest, preflight_univar)
       }
     }
-
-    run_one_univar_quantile <- function(q) {
-      q_num <- as.integer(round(q * 100))
-      q_lab <- sprintf("%02d", q_num)
-      q_root <- file.path(fit_root, "exdqlm_univar", sprintf("q=%s", q_lab))
-      q_outputs <- file.path(q_root, "outputs")
-      q_logs <- file.path(q_root, "logs")
-      dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
-      dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
-
-      output_path <- file.path(q_outputs, sprintf("variables_%s_exAL_synth_DISC_uni.RData", q_lab))
-      log_name <- if (identical(univar_impl_mode, "theory_aligned")) "univar_theory.log" else "univar_legacy.log"
-      log_path <- file.path(q_logs, log_name)
-
-      env_overrides <- c(
-        UNIFIED_UNIV_RDATA_OUT = output_path,
-        UNIV_RUN_ROOT = run_root_abs,
-        UNIV_OUT_DIR = q_outputs,
-        UNIV_SHARED_INPUT_ROOT = shared_paths$root,
-        UNIV_PARAMETERS_TXT = source_parameters,
-        UNIV_RETROS_CSV = source_retros,
-        UNIV_NWS_FORECAST_CSV = source_nws,
-        UNIV_GLOFAS_FORECAST_CSV = source_glofas,
-        UNIV_COVARIATES_DIR = shared_paths$covariates_dir,
-        UNIV_COV1_ELI_CSV = shared_cov_paths$eli,
-        UNIV_COV2_ONI_CSV = shared_cov_paths$oni,
-        UNIV_PPT_CSV = shared_cov_paths$ppt,
-        UNIV_SOIL_CSV = shared_cov_paths$soil,
-        UNIV_PCA_CSV = shared_cov_paths$pca,
-        UNIV_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
-        UNIV_PREV_RDATA = output_path,
-        UNIV_GAMSIG_FREEZE_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
-        )),
-        UNIV_GAMSIG_MIN_UPDATE_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_update_iters"), default = 50L
-        )),
-        UNIV_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_total_iters"), default = 50L
-        )),
-        UNIV_GAMSIG_MAX_ITER = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "max_iter"), default = 800L
-        )),
-        UNIV_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence_tol"), default = 1e-6
-        )),
-        UNIV_GAMSIG_ELBO_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "elbo_tol"), default = 1e-6
-        )),
-        UNIV_GAMSIG_STATE_NORM_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "state_norm_sq_tol"), default = 1e-6
-        )),
-        UNIV_GAMSIG_SIGMA_EXP_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "sigma_exp_tol"), default = 1e-6
-        )),
-        UNIV_GAMSIG_GAMMA_EXP_TOL = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "gamma_exp_tol"), default = 1e-6
-        )),
-        UNIV_GAMSIG_FREEZE_TARGET = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
-        )),
-        UNIV_GAMSIG_GUARD_REFREEZE_ITERS = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "guard_refreeze_iters"), default = 10L
-        )),
-        UNIV_GAMSIG_INIT_MODE = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "mode"), default = "robust"
-        )),
-        UNIV_GAMSIG_INIT_GAMMA = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "gamma"), default = 0.0
-        )),
-        UNIV_GAMSIG_INIT_SIGMA_FLOOR = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "sigma_floor"), default = 1e-3
-        )),
-        UNIV_GAMSIG_INIT_SIGMA_SCALE = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "sigma_scale"), default = 1.0
-        )),
-        UNIV_GAMSIG_OBJECTIVE_GUARD_ENABLED = if (isTRUE(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "enabled"), default = TRUE
-        ))) "TRUE" else "FALSE",
-        UNIV_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST = if (isTRUE(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "fail_fast"), default = FALSE
-        ))) "TRUE" else "FALSE",
-        UNIV_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES = if (isTRUE(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "log_failures"), default = TRUE
-        ))) "TRUE" else "FALSE",
-        UNIV_GAMSIG_OBJECTIVE_GUARD_MODE = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "mode"), default = "adaptive_freeze"
-        )),
-        UNIV_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
-          cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
-        )),
-        UNIV_THEORY_SUMMARY_LOG = file.path(q_logs, "univar_theory_summary.log")
-      )
-      env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
-
-      script_args <- if (identical(univar_impl_mode, "theory_aligned")) {
-        c("--vanilla", univar_script, as.character(q), as.character(cfg$run$seed))
-      } else {
-        c("--vanilla", univar_script, as.character(q))
-      }
-      cmd_status <- suppressWarnings(system2(
-        "Rscript",
-        script_args,
-        stdout = log_path,
-        stderr = log_path,
-        env = env_kv
-      ))
-      if (!is.finite(cmd_status)) {
-        cmd_status <- 0L
-      }
-      list(
-        quantile = q,
-        q_num = q_num,
-        q_lab = q_lab,
-        output_path = output_path,
-        log_path = log_path,
-        status = as.integer(cmd_status)
-      )
-    }
-
-    workers <- suppressWarnings(as.integer(cfg$run$threads$mc_cores))
-    if (!is.finite(workers) || workers < 1L) workers <- 1L
-    workers <- min(workers, length(quantiles))
-
-    results <- if (workers > 1L && .Platform$OS.type != "windows") {
-      parallel::mclapply(quantiles, run_one_univar_quantile, mc.cores = workers)
-    } else {
-      lapply(quantiles, run_one_univar_quantile)
-    }
-
-    for (res_raw in results) {
-      res <- unified_normalize_fit_worker_result(res_raw, context_label = "univariate fit worker")
-      if (!is.null(res$status) && res$status != 0) {
-        stop(
-          sprintf(
-            "univariate fit failed for quantile %s (implementation_mode=%s); see %s",
-            res$quantile,
-            univar_impl_mode,
-            res$log_path
-          ),
-          call. = FALSE
-        )
-      }
-      file_size <- suppressWarnings(file.info(res$output_path)$size)
-      if (!file.exists(res$output_path) || !is.finite(file_size) || file_size <= 0) {
-        stop(
-          sprintf(
-            "univariate output missing or empty for quantile %s (implementation_mode=%s): %s",
-            res$quantile,
-            univar_impl_mode,
-            res$output_path
-          ),
-          call. = FALSE
-        )
-      }
-
-      q_num <- suppressWarnings(as.integer(res$q_num))
-      if (!is.finite(q_num)) q_num <- as.integer(round(as.numeric(res$quantile) * 100))
-      q_lab <- as.character(res$q_lab)
-      if (!length(q_lab) || is.na(q_lab[[1]]) || !nzchar(q_lab[[1]])) {
-        q_lab <- sprintf("%02d", q_num)
-      } else {
-        q_lab <- q_lab[[1]]
-      }
-      q_logs <- file.path(fit_root, "exdqlm_univar", sprintf("q=%s", q_lab), "logs")
-
-      manifest <- unified_manifest_add_artifact(
-        manifest,
-        res$output_path,
-        storage_scale = "model_state",
-        flow_domain = cfg$scale_contract$analysis_scale_fit_internal
-      )
-      if (file.exists(res$log_path)) {
-        manifest <- unified_manifest_add_artifact(manifest, res$log_path, storage_scale = "text")
-      }
-
-      if (contract_checks_enabled && identical(univar_impl_mode, "theory_aligned")) {
-        check_dir <- file.path(fit_root, "contract_checks", "exdqlm_univar", sprintf("q=%s", q_lab))
-        check_result <- unified_contract_check_exdqlm_univar(
-          rdata_path = res$output_path,
-          q_num = q_num,
-          report_dir = check_dir,
-          write_reports = contract_checks_write_reports
-        )
-        manifest <- add_report_artifacts(manifest, check_result$report_paths, role = "contract_check")
-        if (!identical(check_result$status, "pass")) {
-          err_msg <- sprintf(
-            "univariate contract check failed for q=%s: %s",
-            q_lab,
-            paste(check_result$errors, collapse = " | ")
-          )
-          if (contract_checks_fail_fast) {
-            stop(err_msg, call. = FALSE)
-          } else {
-            warning(err_msg, call. = FALSE)
-          }
-        }
-      }
-
-      if (diagnostics_enabled && identical(univar_impl_mode, "theory_aligned")) {
-        diag_dir <- file.path(fit_root, "diagnostics", "exdqlm_univar", sprintf("q=%s", q_lab))
-        summary_log_path <- file.path(q_logs, "univar_theory_summary.log")
-        diag_result <- unified_diag_exdqlm_univar_theory(
-          rdata_path = res$output_path,
-          q_num = q_num,
-          report_dir = diag_dir,
-          summary_log_path = summary_log_path,
-          settings = diagnostics_settings,
-          write_reports = diagnostics_write_reports
-        )
-        manifest <- add_report_artifacts(manifest, diag_result$report_paths, role = "diagnostics")
-        if (!identical(diag_result$status, "pass")) {
-          report_pointer <- unlist(diag_result$report_paths, use.names = FALSE)
-          report_pointer <- report_pointer[nzchar(report_pointer)]
-          pointer_msg <- if (length(report_pointer) > 0L) {
-            sprintf(" (see %s)", report_pointer[[1]])
-          } else {
-            ""
-          }
-          err_msg <- sprintf(
-            "univariate diagnostics failed for q=%s%s: %s",
-            q_lab,
-            pointer_msg,
-            paste(diag_result$errors, collapse = " | ")
-          )
-          if (diagnostics_fail_fast) {
-            stop(err_msg, call. = FALSE)
-          } else {
-            warning(err_msg, call. = FALSE)
-          }
-        }
-      }
-    }
   }
 
-  if (isTRUE(cfg$models$run_ndlm_main)) {
+  run_one_univar_quantile <- function(q) {
+    q_num <- as.integer(round(q * 100))
+    q_lab <- sprintf("%02d", q_num)
+    q_root <- file.path(fit_root, "exdqlm_univar", sprintf("q=%s", q_lab))
+    q_outputs <- file.path(q_root, "outputs")
+    q_logs <- file.path(q_root, "logs")
+    dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
+    dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
+
+    output_path <- file.path(q_outputs, sprintf("variables_%s_exAL_synth_DISC_uni.RData", q_lab))
+    log_name <- if (identical(univar_impl_mode, "theory_aligned")) "univar_theory.log" else "univar_legacy.log"
+    log_path <- file.path(q_logs, log_name)
+
+    env_overrides <- c(
+      UNIFIED_UNIV_RDATA_OUT = output_path,
+      UNIV_RUN_ROOT = run_root_abs,
+      UNIV_OUT_DIR = q_outputs,
+      UNIV_SHARED_INPUT_ROOT = shared_paths$root,
+      UNIV_PARAMETERS_TXT = source_parameters,
+      UNIV_RETROS_CSV = source_retros,
+      UNIV_NWS_FORECAST_CSV = source_nws,
+      UNIV_GLOFAS_FORECAST_CSV = source_glofas,
+      UNIV_COVARIATES_DIR = shared_paths$covariates_dir,
+      UNIV_COV1_ELI_CSV = shared_cov_paths$eli,
+      UNIV_COV2_ONI_CSV = shared_cov_paths$oni,
+      UNIV_PPT_CSV = shared_cov_paths$ppt,
+      UNIV_SOIL_CSV = shared_cov_paths$soil,
+      UNIV_PCA_CSV = shared_cov_paths$pca,
+      UNIV_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
+      UNIV_PREV_RDATA = output_path,
+      UNIV_GAMSIG_FREEZE_ITERS = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
+      )),
+      UNIV_GAMSIG_MIN_UPDATE_ITERS = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_update_iters"), default = 50L
+      )),
+      UNIV_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_total_iters"), default = 50L
+      )),
+      UNIV_GAMSIG_MAX_ITER = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "max_iter"), default = 800L
+      )),
+      UNIV_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence_tol"), default = 1e-6
+      )),
+      UNIV_GAMSIG_ELBO_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "elbo_tol"), default = 1e-6
+      )),
+      UNIV_GAMSIG_STATE_NORM_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "state_norm_sq_tol"), default = 1e-6
+      )),
+      UNIV_GAMSIG_SIGMA_EXP_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "sigma_exp_tol"), default = 1e-6
+      )),
+      UNIV_GAMSIG_GAMMA_EXP_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "gamma_exp_tol"), default = 1e-6
+      )),
+      UNIV_GAMSIG_FREEZE_TARGET = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
+      )),
+      UNIV_GAMSIG_GUARD_REFREEZE_ITERS = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "guard_refreeze_iters"), default = 10L
+      )),
+      UNIV_GAMSIG_INIT_MODE = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "mode"), default = "robust"
+      )),
+      UNIV_GAMSIG_INIT_GAMMA = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "gamma"), default = 0.0
+      )),
+      UNIV_GAMSIG_INIT_SIGMA_FLOOR = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "sigma_floor"), default = 1e-3
+      )),
+      UNIV_GAMSIG_INIT_SIGMA_SCALE = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "sigma_scale"), default = 1.0
+      )),
+      UNIV_GAMSIG_OBJECTIVE_GUARD_ENABLED = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      UNIV_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "fail_fast"), default = FALSE
+      ))) "TRUE" else "FALSE",
+      UNIV_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "log_failures"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      UNIV_GAMSIG_OBJECTIVE_GUARD_MODE = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "mode"), default = "adaptive_freeze"
+      )),
+      UNIV_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
+      )),
+      UNIV_THEORY_SUMMARY_LOG = file.path(q_logs, "univar_theory_summary.log")
+    )
+    env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
+
+    script_args <- if (identical(univar_impl_mode, "theory_aligned")) {
+      c("--vanilla", univar_script, as.character(q), as.character(cfg$run$seed))
+    } else {
+      c("--vanilla", univar_script, as.character(q))
+    }
+    cmd_status <- suppressWarnings(system2(
+      "Rscript",
+      script_args,
+      stdout = log_path,
+      stderr = log_path,
+      env = env_kv
+    ))
+    if (!is.finite(cmd_status)) {
+      cmd_status <- 0L
+    }
+    list(
+      model_family = "exdqlm_univar",
+      quantile = q,
+      q_num = q_num,
+      q_lab = q_lab,
+      output_path = output_path,
+      log_path = log_path,
+      status = as.integer(cmd_status)
+    )
+  }
+
+  process_univar_result <- function(manifest, res_raw) {
+    res <- unified_normalize_fit_worker_result(res_raw, context_label = "univariate fit worker")
+    if (!is.null(res$status) && res$status != 0) {
+      stop(
+        sprintf(
+          "univariate fit failed for quantile %s (implementation_mode=%s); see %s",
+          res$quantile,
+          univar_impl_mode,
+          res$log_path
+        ),
+        call. = FALSE
+      )
+    }
+    file_size <- suppressWarnings(file.info(res$output_path)$size)
+    if (!file.exists(res$output_path) || !is.finite(file_size) || file_size <= 0) {
+      stop(
+        sprintf(
+          "univariate output missing or empty for quantile %s (implementation_mode=%s): %s",
+          res$quantile,
+          univar_impl_mode,
+          res$output_path
+        ),
+        call. = FALSE
+      )
+    }
+
+    q_num <- suppressWarnings(as.integer(res$q_num))
+    if (!is.finite(q_num)) q_num <- as.integer(round(as.numeric(res$quantile) * 100))
+    q_lab <- as.character(res$q_lab)
+    if (!length(q_lab) || is.na(q_lab[[1]]) || !nzchar(q_lab[[1]])) {
+      q_lab <- sprintf("%02d", q_num)
+    } else {
+      q_lab <- q_lab[[1]]
+    }
+    q_logs <- file.path(fit_root, "exdqlm_univar", sprintf("q=%s", q_lab), "logs")
+
+    manifest <- unified_manifest_add_artifact(
+      manifest,
+      res$output_path,
+      storage_scale = "model_state",
+      flow_domain = cfg$scale_contract$analysis_scale_fit_internal
+    )
+    if (file.exists(res$log_path)) {
+      manifest <- unified_manifest_add_artifact(manifest, res$log_path, storage_scale = "text")
+    }
+
+    if (contract_checks_enabled && identical(univar_impl_mode, "theory_aligned")) {
+      check_dir <- file.path(fit_root, "contract_checks", "exdqlm_univar", sprintf("q=%s", q_lab))
+      check_result <- unified_contract_check_exdqlm_univar(
+        rdata_path = res$output_path,
+        q_num = q_num,
+        report_dir = check_dir,
+        write_reports = contract_checks_write_reports
+      )
+      manifest <- add_report_artifacts(manifest, check_result$report_paths, role = "contract_check")
+      if (!identical(check_result$status, "pass")) {
+        err_msg <- sprintf(
+          "univariate contract check failed for q=%s: %s",
+          q_lab,
+          paste(check_result$errors, collapse = " | ")
+        )
+        if (contract_checks_fail_fast) {
+          stop(err_msg, call. = FALSE)
+        } else {
+          warning(err_msg, call. = FALSE)
+        }
+      }
+    }
+
+    if (diagnostics_enabled && identical(univar_impl_mode, "theory_aligned")) {
+      diag_dir <- file.path(fit_root, "diagnostics", "exdqlm_univar", sprintf("q=%s", q_lab))
+      summary_log_path <- file.path(q_logs, "univar_theory_summary.log")
+      diag_result <- unified_diag_exdqlm_univar_theory(
+        rdata_path = res$output_path,
+        q_num = q_num,
+        report_dir = diag_dir,
+        summary_log_path = summary_log_path,
+        settings = diagnostics_settings,
+        write_reports = diagnostics_write_reports
+      )
+      manifest <- add_report_artifacts(manifest, diag_result$report_paths, role = "diagnostics")
+      if (!identical(diag_result$status, "pass")) {
+        report_pointer <- unlist(diag_result$report_paths, use.names = FALSE)
+        report_pointer <- report_pointer[nzchar(report_pointer)]
+        pointer_msg <- if (length(report_pointer) > 0L) {
+          sprintf(" (see %s)", report_pointer[[1]])
+        } else {
+          ""
+        }
+        err_msg <- sprintf(
+          "univariate diagnostics failed for q=%s%s: %s",
+          q_lab,
+          pointer_msg,
+          paste(diag_result$errors, collapse = " | ")
+        )
+        if (diagnostics_fail_fast) {
+          stop(err_msg, call. = FALSE)
+        } else {
+          warning(err_msg, call. = FALSE)
+        }
+      }
+    }
+
+    manifest
+  }
+
+  ndlm_script <- NULL
+  ndlm_outputs <- NULL
+  ndlm_logs <- NULL
+  if (run_ndlm_main) {
     if (!use_shared_inputs) {
       stop(
         "legacy NDLM bridge requires run-scoped shared inputs. Enable stages.data_prep_shared and provide shared bundle inputs.",
@@ -711,7 +731,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       )
       manifest <- add_preflight_artifact(manifest, ndlm_preflight)
     }
+  }
 
+  run_ndlm_fit <- function() {
     output_path <- file.path(ndlm_outputs, "DISC_variables_50_NDLM_synth_DISC.RData")
     log_name <- if (identical(ndlm_impl_mode, "theory_aligned")) "ndlm_theory.log" else "ndlm_legacy.log"
     log_path <- file.path(ndlm_logs, log_name)
@@ -750,34 +772,46 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     )
     writeLines(cmd_out, log_path, useBytes = TRUE)
     status <- attr(cmd_out, "status")
-    if (!is.null(status) && status != 0) {
+    if (is.null(status) || !is.finite(status)) status <- 0L
+    list(
+      model_family = "ndlm_main",
+      quantile = NA_real_,
+      output_path = output_path,
+      log_path = log_path,
+      status = as.integer(status)
+    )
+  }
+
+  process_ndlm_result <- function(manifest, res_raw) {
+    res <- unified_normalize_fit_worker_result(res_raw, context_label = "NDLM fit worker")
+    if (!is.null(res$status) && res$status != 0) {
       stop(
-        sprintf("NDLM fit failed (implementation_mode=%s); see %s", ndlm_impl_mode, log_path),
+        sprintf("NDLM fit failed (implementation_mode=%s); see %s", ndlm_impl_mode, res$log_path),
         call. = FALSE
       )
     }
-    if (!file.exists(output_path)) {
+    if (!file.exists(res$output_path)) {
       stop(
-        sprintf("NDLM output missing (implementation_mode=%s): %s", ndlm_impl_mode, output_path),
+        sprintf("NDLM output missing (implementation_mode=%s): %s", ndlm_impl_mode, res$output_path),
         call. = FALSE
       )
     }
 
     manifest <- unified_manifest_add_artifact(
       manifest,
-      output_path,
+      res$output_path,
       storage_scale = "model_state",
       flow_domain = cfg$scale_contract$analysis_scale_fit_internal
     )
-    if (file.exists(log_path)) {
-      manifest <- unified_manifest_add_artifact(manifest, log_path, storage_scale = "text")
+    if (file.exists(res$log_path)) {
+      manifest <- unified_manifest_add_artifact(manifest, res$log_path, storage_scale = "text")
     }
 
     if (contract_checks_enabled && identical(ndlm_impl_mode, "theory_aligned")) {
       check_dir <- file.path(fit_root, "contract_checks", "ndlm_main")
       summary_log_path <- file.path(ndlm_logs, "ndlm_theory_summary.log")
       check_result <- unified_contract_check_ndlm_main(
-        rdata_path = output_path,
+        rdata_path = res$output_path,
         report_dir = check_dir,
         summary_log_path = summary_log_path,
         write_reports = contract_checks_write_reports
@@ -800,7 +834,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       diag_dir <- file.path(fit_root, "diagnostics", "ndlm_main")
       summary_log_path <- file.path(ndlm_logs, "ndlm_theory_summary.log")
       diag_result <- unified_diag_ndlm_main_theory(
-        rdata_path = output_path,
+        rdata_path = res$output_path,
         report_dir = diag_dir,
         summary_log_path = summary_log_path,
         settings = diagnostics_settings,
@@ -826,6 +860,99 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
           warning(err_msg, call. = FALSE)
         }
       }
+    }
+
+    manifest
+  }
+
+  execute_fit_jobs <- function(fit_jobs, workers) {
+    if (length(fit_jobs) == 0L) return(list())
+    if (workers > 1L && .Platform$OS.type != "windows") {
+      parallel::mclapply(fit_jobs, function(job) job$runner(), mc.cores = workers)
+    } else {
+      lapply(fit_jobs, function(job) job$runner())
+    }
+  }
+
+  if (identical(fit_parallel_mode, "global_models")) {
+    fit_jobs <- list()
+
+    if (run_exdqlm_multivar) {
+      for (q in quantiles) {
+        fit_jobs[[length(fit_jobs) + 1L]] <- local({
+          q_local <- q
+          list(
+            family = "exdqlm_multivar",
+            runner = function() run_one_quantile(q_local)
+          )
+        })
+      }
+    }
+    if (run_exdqlm_univar) {
+      for (q in quantiles) {
+        fit_jobs[[length(fit_jobs) + 1L]] <- local({
+          q_local <- q
+          list(
+            family = "exdqlm_univar",
+            runner = function() run_one_univar_quantile(q_local)
+          )
+        })
+      }
+    }
+    if (run_ndlm_main) {
+      fit_jobs[[length(fit_jobs) + 1L]] <- list(
+        family = "ndlm_main",
+        runner = function() run_ndlm_fit()
+      )
+    }
+
+    workers <- unified_resolve_fit_parallel_workers(cfg, length(fit_jobs), default_workers = default_workers)
+    results <- execute_fit_jobs(fit_jobs, workers = workers)
+    for (res in results) {
+      family <- as.character(res$model_family)
+      if (!length(family) || is.na(family[[1]]) || !nzchar(family[[1]])) {
+        stop("fit stage global_models worker returned empty model_family", call. = FALSE)
+      }
+      family <- family[[1]]
+      manifest <- switch(
+        family,
+        exdqlm_multivar = process_multivar_result(manifest, res),
+        exdqlm_univar = process_univar_result(manifest, res),
+        ndlm_main = process_ndlm_result(manifest, res),
+        stop(sprintf("unknown fit stage family result in global_models mode: %s", family), call. = FALSE)
+      )
+    }
+  } else {
+    if (run_exdqlm_multivar) {
+      workers <- min(default_workers, length(quantiles))
+      results <- execute_fit_jobs(
+        lapply(quantiles, function(q) {
+          q_local <- q
+          list(family = "exdqlm_multivar", runner = function() run_one_quantile(q_local))
+        }),
+        workers = workers
+      )
+      for (res in results) {
+        manifest <- process_multivar_result(manifest, res)
+      }
+    }
+
+    if (run_exdqlm_univar) {
+      workers <- min(default_workers, length(quantiles))
+      results <- execute_fit_jobs(
+        lapply(quantiles, function(q) {
+          q_local <- q
+          list(family = "exdqlm_univar", runner = function() run_one_univar_quantile(q_local))
+        }),
+        workers = workers
+      )
+      for (res in results) {
+        manifest <- process_univar_result(manifest, res)
+      }
+    }
+
+    if (run_ndlm_main) {
+      manifest <- process_ndlm_result(manifest, run_ndlm_fit())
     }
   }
 

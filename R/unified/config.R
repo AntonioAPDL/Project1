@@ -95,6 +95,10 @@ unified_config_defaults <- function() {
     ),
     fit = list(
       quantiles = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95),
+      parallel = list(
+        mode = "by_family",
+        workers = NULL
+      ),
       warm_start = list(
         enabled = FALSE,
         source_run_id = NULL,
