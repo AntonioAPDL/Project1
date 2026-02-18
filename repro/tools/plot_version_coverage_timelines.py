@@ -319,14 +319,24 @@ def plot_nws_nwm_v21_v30_only(outdir: Path) -> Path:
     return outbase.with_suffix(".png")
 
 
-def _draw_nws_nwm_v21_v30_only(ax: plt.Axes, legend_mode: str = "inside") -> None:
+def _draw_nws_nwm_v21_v30_only(
+    ax: plt.Axes,
+    legend_mode: str = "inside",
+    keep_versions: Optional[Sequence[str]] = None,
+    xmin: date = date(2018, 1, 1),
+) -> None:
     version_color = {
+        "1.2": "#7c3aed",
+        "2.0": "#2563eb",
         "2.1": "#d97706",
         "3.0": "#059669",
     }
-    keep_versions = {"2.1", "3.0"}
+    if keep_versions is None:
+        keep_versions = ("2.1", "3.0")
+    keep_versions_set = set(keep_versions)
+    version_order = ["1.2", "2.0", "2.1", "3.0"]
 
-    forecast_windows = [w for w in NWS_FORECAST_WINDOWS if w.version in keep_versions]
+    forecast_windows = [w for w in NWS_FORECAST_WINDOWS if w.version in keep_versions_set]
     forecast_rows: List[IntervalRow] = []
     forecast_labels: List[str] = []
     for w in forecast_windows:
@@ -345,7 +355,7 @@ def _draw_nws_nwm_v21_v30_only(ax: plt.Axes, legend_mode: str = "inside") -> Non
             f"Forecast issue dates: v{w.version}\n{_fmt_range(w.start, end, is_open_ended=(w.end is None))}"
         )
 
-    retro_versions = ["2.1", "3.0"]
+    retro_versions = [v for v in version_order if v in keep_versions_set]
     retro_rows: List[IntervalRow] = []
     retro_labels: List[str] = []
     for ver in retro_versions:
@@ -373,24 +383,30 @@ def _draw_nws_nwm_v21_v30_only(ax: plt.Axes, legend_mode: str = "inside") -> Non
     _forecast_version_lines(
         ax,
         [(w.version, w.start) for w in forecast_windows],
-        y_top=max(y_positions) + 0.14,
+        y_top=max(y_positions) + 0.42,
         min_gap_days=180.0,
-        level_offsets=(0.0, 0.10),
+        level_offsets=(0.0, 0.14),
         rotation=45.0,
     )
 
     sep_y = len(retro_rows) + 0.5
     ax.axhline(sep_y, color="#64748b", linewidth=1.0, alpha=0.6)
-    xmin = date(2018, 1, 1)
     xmax = date(2026, 12, 31)
     ax.set_yticks(y_positions)
     ax.set_yticklabels(forecast_labels + retro_labels)
     ax.set_ylim(0.25, len(rows) + 1.5)
     _set_time_axis(ax, xmin, xmax, major_year_step=1)
 
+    shown = [f"v{v}" for v in version_order if v in keep_versions_set]
+    if len(shown) <= 2:
+        shown_txt = " and ".join(shown)
+    else:
+        shown_txt = ", ".join(shown[:-1]) + f", and {shown[-1]}"
+    title_txt = f"NWS / NOAA National Water Model: Version and Coverage Timeline ({shown_txt})"
+
     if legend_mode == "top_outside":
         ax.set_title(
-            "NWS / NOAA National Water Model: Version and Coverage Timeline (v2.1 and v3.0 only)",
+            title_txt,
             loc="left",
             y=1.15,
             pad=0,
@@ -398,7 +414,7 @@ def _draw_nws_nwm_v21_v30_only(ax: plt.Axes, legend_mode: str = "inside") -> Non
         )
     else:
         ax.set_title(
-            "NWS / NOAA National Water Model: Version and Coverage Timeline (v2.1 and v3.0 only)",
+            title_txt,
             loc="left",
             pad=18,
             weight="bold",
@@ -406,9 +422,9 @@ def _draw_nws_nwm_v21_v30_only(ax: plt.Axes, legend_mode: str = "inside") -> Non
     ax.set_xlabel("Date")
 
     legend_handles = [
-        Patch(facecolor=version_color["2.1"], edgecolor="#1f2937", label="Forecast version coverage by issue date"),
+        Patch(facecolor="#2563eb", edgecolor="#1f2937", label="Forecast version coverage by issue date"),
         Patch(
-            facecolor=version_color["2.1"],
+            facecolor="#2563eb",
             edgecolor="#1f2937",
             hatch="//",
             alpha=0.55,
@@ -482,7 +498,7 @@ def plot_glofas(outdir: Path) -> Path:
             hatch="..",
         ),
         IntervalRow(
-            label="Historical coverage: v3.x alias lisflood consolidated",
+            label="Historical coverage: v3.1 lisflood consolidated",
             start=date(1979, 1, 1),
             end=date(2024, 6, 30),
             color=version_color["3.0"],
@@ -498,7 +514,7 @@ def plot_glofas(outdir: Path) -> Path:
             hatch="..",
         ),
         IntervalRow(
-            label="Legacy reanalysis archive window: v3.x alias (JRC)",
+            label="Legacy reanalysis archive window: v3.0 (JRC)",
             start=date(1980, 1, 1),
             end=date(2018, 12, 31),
             color=version_color["3.0"],
@@ -506,22 +522,12 @@ def plot_glofas(outdir: Path) -> Path:
             hatch="xx",
             edgecolor="#475569",
         ),
-        IntervalRow(
-            label="Legacy reanalysis archive window: v4.0 (JRC)",
-            start=date(1980, 1, 1),
-            end=date(2022, 7, 31),
-            color=version_color["4.0"],
-            alpha=0.24,
-            hatch="xx",
-            edgecolor="#475569",
-        ),
     ]
     historical_labels = [
         f"Historical coverage: v2.1 htessel_lisflood consolidated\n{_fmt_range(date(1979, 1, 1), date(2022, 7, 31))}",
-        f"Historical coverage: v3.x alias lisflood consolidated\n{_fmt_range(date(1979, 1, 1), date(2024, 6, 30))}",
+        f"Historical coverage: v3.1 lisflood consolidated\n{_fmt_range(date(1979, 1, 1), date(2024, 6, 30))}",
         f"Historical coverage: v4.0 lisflood consolidated\n{_fmt_range(date(1979, 1, 1), date(2025, 11, 30))}",
-        f"Legacy reanalysis archive window: v3.x alias (JRC)\n{_fmt_range(date(1980, 1, 1), date(2018, 12, 31))}",
-        f"Legacy reanalysis archive window: v4.0 (JRC)\n{_fmt_range(date(1980, 1, 1), date(2022, 7, 31))}",
+        f"Legacy reanalysis archive window: v3.0 (JRC)\n{_fmt_range(date(1980, 1, 1), date(2018, 12, 31))}",
     ]
 
     rows = forecast_rows + historical_rows
@@ -610,7 +616,11 @@ def plot_glofas_v3x_v4x_family_palette(outdir: Path) -> Path:
     return outbase.with_suffix(".png")
 
 
-def _draw_glofas_v2_v3_v4_family_variant(ax: plt.Axes, legend_mode: str = "inside") -> None:
+def _draw_glofas_v2_v3_v4_family_variant(
+    ax: plt.Axes,
+    legend_mode: str = "inside",
+    xmin: date = date(2018, 1, 1),
+) -> None:
     # Variant requested: grouped color families by major version.
     version_color = {
         # Keep older versions subdued.
@@ -665,7 +675,7 @@ def _draw_glofas_v2_v3_v4_family_variant(ax: plt.Axes, legend_mode: str = "insid
             hatch="..",
         ),
         IntervalRow(
-            label="Historical coverage: v3.x alias lisflood consolidated",
+            label="Historical coverage: v3.1 lisflood consolidated",
             start=date(1979, 1, 1),
             end=date(2024, 6, 30),
             color=version_color["3.0"],
@@ -681,7 +691,7 @@ def _draw_glofas_v2_v3_v4_family_variant(ax: plt.Axes, legend_mode: str = "insid
             hatch="..",
         ),
         IntervalRow(
-            label="Legacy reanalysis archive window: v3.x alias (JRC)",
+            label="Legacy reanalysis archive window: v3.0 (JRC)",
             start=date(1980, 1, 1),
             end=date(2018, 12, 31),
             color=version_color["3.0"],
@@ -689,22 +699,12 @@ def _draw_glofas_v2_v3_v4_family_variant(ax: plt.Axes, legend_mode: str = "insid
             hatch="xx",
             edgecolor="#475569",
         ),
-        IntervalRow(
-            label="Legacy reanalysis archive window: v4.0 (JRC)",
-            start=date(1980, 1, 1),
-            end=date(2022, 7, 31),
-            color=version_color["4.0"],
-            alpha=0.24,
-            hatch="xx",
-            edgecolor="#475569",
-        ),
     ]
     historical_labels = [
         f"Historical coverage: v2.1 htessel_lisflood consolidated\n{_fmt_range(date(1979, 1, 1), date(2022, 7, 31))}",
-        f"Historical coverage: v3.x alias lisflood consolidated\n{_fmt_range(date(1979, 1, 1), date(2024, 6, 30))}",
+        f"Historical coverage: v3.1 lisflood consolidated\n{_fmt_range(date(1979, 1, 1), date(2024, 6, 30))}",
         f"Historical coverage: v4.0 lisflood consolidated\n{_fmt_range(date(1979, 1, 1), date(2025, 11, 30))}",
-        f"Legacy reanalysis archive window: v3.x alias (JRC)\n{_fmt_range(date(1980, 1, 1), date(2018, 12, 31))}",
-        f"Legacy reanalysis archive window: v4.0 (JRC)\n{_fmt_range(date(1980, 1, 1), date(2022, 7, 31))}",
+        f"Legacy reanalysis archive window: v3.0 (JRC)\n{_fmt_range(date(1980, 1, 1), date(2018, 12, 31))}",
     ]
 
     rows = forecast_rows + historical_rows
@@ -727,7 +727,6 @@ def _draw_glofas_v2_v3_v4_family_variant(ax: plt.Axes, legend_mode: str = "insid
     sep1 = len(rows) - forecast_n + 0.5
     ax.axhline(sep1, color="#64748b", linewidth=1.0, alpha=0.6)
 
-    xmin = date(2018, 1, 1)
     xmax = date(2026, 12, 31)
     ax.set_yticks(y_positions)
     ax.set_yticklabels(forecast_labels + historical_labels)
@@ -767,9 +766,16 @@ def _draw_glofas_v2_v3_v4_family_variant(ax: plt.Axes, legend_mode: str = "insid
             edgecolor="#475569",
             alpha=0.24,
             hatch="xx",
-            label="Legacy historical/reanalysis archive windows",
+            label="Legacy historical/reanalysis archive windows (v3.0 only)",
         ),
         Line2D([0], [0], color="#6b7280", linestyle=(0, (4, 4)), lw=1.0, label="Forecast version start"),
+        Line2D(
+            [0],
+            [0],
+            color="#111827",
+            lw=0,
+            label="Forecast numeric versions are assigned by official release chronology",
+        ),
     ]
     if legend_mode == "inside":
         ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(0.0, 0.95), frameon=True, framealpha=0.95)
@@ -793,13 +799,22 @@ def plot_variant_matrix(outdir: Path, nws_png: Optional[Path] = None, glofas_png
     for ax in axes:
         ax.set_facecolor("#ffffff")
 
-    _draw_nws_nwm_v21_v30_only(ax=axes[0], legend_mode="top_outside")
-    _draw_glofas_v2_v3_v4_family_variant(ax=axes[1], legend_mode="top_outside")
+    _draw_nws_nwm_v21_v30_only(
+        ax=axes[0],
+        legend_mode="top_outside",
+        keep_versions=("1.2", "2.0", "2.1", "3.0"),
+        xmin=date(2016, 1, 1),
+    )
+    _draw_glofas_v2_v3_v4_family_variant(
+        ax=axes[1],
+        legend_mode="top_outside",
+        xmin=date(2016, 1, 1),
+    )
 
     fig.text(
         0.5,
         0.01,
-        "Both panels use the current working variant settings and x-axis start at 2018 for direct visual comparison.",
+        "Both panels use the current working variant settings and x-axis start at 2016 for direct visual comparison.",
         ha="center",
         va="bottom",
         fontsize=10,
