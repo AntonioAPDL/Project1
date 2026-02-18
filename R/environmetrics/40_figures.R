@@ -3671,65 +3671,9 @@ plot_quantile_component(q_d_50, q_d_05, q_d_95,
 par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
 
 
-# Load necessary libraries
-
-# Function to compute JSD for a given sample matrix
-compute_jsd <- function(p_sample, gridsize = c(100, 100, 100)) {
-  
-  # Step 2: Perform KDE on the sample to estimate the density of p
-  kde_p <- kde(p_sample, gridsize = gridsize)  # KDE estimation with custom grid size
-
-  # Step 3: Define the grid and evaluate the KDE density
-  pdf_p <- kde_p$estimate  # Estimated density of p on the grid
-  dim_p <- dim(pdf_p)
-  # cat("Dimensions of pdf_p:", dim_p, "\n")  # Print the dimensions of pdf_p
-
-  # Step 4: Define the distribution q (standard multivariate normal)
-  mean_q <- rep(0, 3)  # Mean vector of zeros for q
-  cov_q <- diag(3)     # Identity matrix as covariance for q
-
-  # Step 5: Evaluate the PDF for q on the same grid as kde_p
-  grid_points <- kde_p$eval.points  # Grid points used in kde_p
-
-  # Create a matrix of all grid points where the densities are evaluated.
-  # Avoid expand.grid() here: it builds a 1e6-row data.frame for gridsize=c(100,100,100),
-  # which is slower and allocates more than necessary. Keep row order identical to expand.grid:
-  # Var1 varies fastest, then Var2, then Var3.
-  x1 <- grid_points[[1]]
-  x2 <- grid_points[[2]]
-  x3 <- grid_points[[3]]
-  grid_matrix <- cbind(
-    rep(x1, times = length(x2) * length(x3)),
-    rep(rep(x2, each = length(x1)), times = length(x3)),
-    rep(x3, each = length(x1) * length(x2))
-  )
-
-  # Calculate the density for the standard normal on the same grid
-  pdf_q <- dmvnorm(grid_matrix, mean = mean_q, sigma = cov_q)
-  pdf_q <- array(pdf_q, dim = dim_p)  # Reshape to match the dimension of pdf_p
-  # cat("Dimensions of pdf_q:", dim(pdf_q), "\n")  # Print the dimensions of pdf_q
-
-  # Step 6: Normalize the densities
-  pdf_p <- pdf_p / sum(pdf_p)
-  pdf_q <- pdf_q / sum(pdf_q)
-
-  # Step 7: Function to compute the KL divergence
-  KL.divergence <- function(p, q) {
-    epsilon <- 1e-10  # Small value to prevent division by zero or log of zero
-    p <- p + epsilon
-    q <- q + epsilon
-    return(sum(p * log(p / q)))
-  }
-
-  # Step 8: Function to compute the Jensen-Shannon divergence
-  JSD <- function(p, q) {
-    m <- 0.5 * (p + q)
-    return(0.5 * KL.divergence(p, m) + 0.5 * KL.divergence(q, m))
-  }
-
-  # Step 9: Compute the Jensen-Shannon divergence
-  js_divergence <- JSD(pdf_p, pdf_q)
-  return(js_divergence)
+# Dimension-safe JSD wrapper: delegates to core helper with explicit context labels.
+compute_jsd <- function(p_sample, gridsize = c(100, 100, 100), context = "jsd.sample") {
+  compute_jsd_to_standard_normal(p_sample, gridsize = gridsize, context = context)
 }
 
 # List of p_sample matrices
@@ -3763,7 +3707,11 @@ for (i in 1:length(sample_list)) {
   cat("Computing JSD for:", sample_names[i], "\n")
   js_divergence <- profile_section(
     paste0("figures.compute_jsd.", i),
-    compute_jsd(sample_list[[i]], gridsize = c(100, 100, 100))
+    compute_jsd(
+      sample_list[[i]],
+      gridsize = c(100, 100, 100),
+      context = sample_names[i]
+    )
   )
   cat("Jensen-Shannon divergence for", sample_names[i], "is", js_divergence, "\n\n")
   results[[sample_names[i]]] <- js_divergence
