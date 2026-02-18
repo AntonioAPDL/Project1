@@ -1091,3 +1091,169 @@ preallocate_matrix_list <- function(column_counts, num_rows) {
   
   return(matrix_list)
 }
+
+# Prepare a numeric sample matrix for JSD/KDE diagnostics with strict shape checks.
+prepare_jsd_sample_matrix <- function(sample, context = "jsd_sample", min_rows = 5L) {
+  if (is.null(sample)) {
+    stop(sprintf("[JSD_INPUT_NULL] %s is NULL; expected numeric vector/matrix.", context))
+  }
+  if (is.vector(sample)) {
+    sample <- matrix(as.numeric(sample), ncol = 1L)
+  } else {
+    sample <- as.matrix(sample)
+  }
+  if (!is.numeric(sample)) {
+    stop(sprintf("[JSD_INPUT_TYPE] %s is non-numeric; expected numeric sample matrix.", context))
+  }
+  if (is.null(dim(sample)) || length(dim(sample)) != 2L || ncol(sample) < 1L) {
+    stop(sprintf("[JSD_INPUT_SHAPE] %s has invalid shape; expected an n x d matrix with d >= 1.", context))
+  }
+
+  keep <- apply(sample, 1L, function(row) all(is.finite(row)))
+  n_drop <- sum(!keep)
+  if (n_drop > 0L) {
+    warning(
+      sprintf("[JSD_INPUT_NONFINITE] %s dropped %d non-finite sample rows before KDE.", context, as.integer(n_drop)),
+      call. = FALSE
+    )
+  }
+  sample <- sample[keep, , drop = FALSE]
+
+  if (nrow(sample) < as.integer(min_rows)) {
+    stop(
+      sprintf(
+        "[JSD_INPUT_ROWS] %s has %d finite rows after filtering; need at least %d for stable KDE.",
+        context,
+        as.integer(nrow(sample)),
+        as.integer(min_rows)
+      )
+    )
+  }
+  sample
+}
+
+normalize_jsd_gridsize <- function(gridsize, d) {
+  d <- as.integer(d)
+  gs <- as.integer(gridsize)
+  if (length(gs) == 0L || any(!is.finite(gs))) {
+    stop("[JSD_GRID_INVALID] JSD gridsize must contain at least one finite integer.")
+  }
+  if (length(gs) == 1L) {
+    gs <- rep(gs, d)
+  } else if (length(gs) < d) {
+    gs <- c(gs, rep(tail(gs, 1L), d - length(gs)))
+  } else if (length(gs) > d) {
+    gs <- gs[seq_len(d)]
+  }
+  if (any(gs < 2L)) {
+    stop("[JSD_GRID_RANGE] JSD gridsize entries must be >= 2.")
+  }
+  gs
+}
+
+extract_kde_eval_points <- function(kde_obj, d, context = "jsd_kde") {
+  gp <- kde_obj$eval.points
+  d <- as.integer(d)
+
+  if (d == 1L) {
+    if (is.numeric(gp)) {
+      return(list(as.numeric(gp)))
+    }
+    if (is.list(gp) && length(gp) == 1L && is.numeric(gp[[1L]])) {
+      return(list(as.numeric(gp[[1L]])))
+    }
+    if (is.list(gp) && length(gp) > 1L &&
+        all(vapply(gp, function(v) is.numeric(v) && length(v) == 1L, logical(1)))) {
+      return(list(as.numeric(unlist(gp, use.names = FALSE))))
+    }
+    stop(sprintf("[JSD_KDE_AXIS_1D] %s has unsupported 1D eval.points structure.", context))
+  }
+
+  if (!is.list(gp) || length(gp) != d) {
+    stop(sprintf("[JSD_KDE_AXES] %s expected %d KDE eval-point axes; found %d.", context, d, length(gp)))
+  }
+  out <- lapply(gp, as.numeric)
+  axis_lengths <- vapply(out, length, integer(1))
+  if (any(axis_lengths < 2L)) {
+    stop(sprintf("[JSD_KDE_AXIS_RANGE] %s contains degenerate KDE axis lengths: %s.", context, paste(axis_lengths, collapse = ",")))
+  }
+  out
+}
+
+# Jensen-Shannon divergence between sample KDE and standard Normal in matching dimension.
+compute_jsd_to_standard_normal <- function(sample, gridsize = 100L, context = "jsd") {
+  if (!requireNamespace("ks", quietly = TRUE)) {
+    stop("[JSD_DEP_KS] compute_jsd_to_standard_normal requires package 'ks'.")
+  }
+  if (!requireNamespace("mvtnorm", quietly = TRUE)) {
+    stop("[JSD_DEP_MVTNORM] compute_jsd_to_standard_normal requires package 'mvtnorm'.")
+  }
+
+  sample_m <- prepare_jsd_sample_matrix(sample, context = context)
+  d <- ncol(sample_m)
+  if (d > 3L) {
+    stop(sprintf("[JSD_DIMENSION] %s has dimension %d; JSD KDE grid diagnostics support d <= 3.", context, as.integer(d)))
+  }
+
+  gs <- normalize_jsd_gridsize(gridsize, d)
+  kde_obj <- ks::kde(sample_m, gridsize = gs)
+
+  pdf_p <- kde_obj$estimate
+  dim_p <- dim(pdf_p)
+  if (is.null(dim_p)) {
+    dim_p <- length(pdf_p)
+  }
+  dim_p <- as.integer(dim_p)
+  if (length(dim_p) != d) {
+    stop(
+      sprintf(
+        "[JSD_KDE_DIM_MISMATCH] %s KDE estimate dimension mismatch: sample d=%d but estimate dim length=%d.",
+        context,
+        as.integer(d),
+        as.integer(length(dim_p))
+      )
+    )
+  }
+  if (any(dim_p < 2L)) {
+    stop(sprintf("[JSD_KDE_DIM_RANGE] %s KDE estimate has degenerate dimensions: %s.", context, paste(dim_p, collapse = "x")))
+  }
+
+  grid_points <- extract_kde_eval_points(kde_obj, d, context = context)
+  grid_df <- do.call(expand.grid, c(grid_points, KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE))
+  grid_matrix <- as.matrix(grid_df)
+  if (!is.numeric(grid_matrix) || ncol(grid_matrix) != d) {
+    stop(sprintf("[JSD_GRID_SHAPE] %s generated invalid KDE grid matrix shape.", context))
+  }
+
+  mean_q <- rep(0, d)
+  cov_q <- diag(d)
+  pdf_q_vec <- mvtnorm::dmvnorm(grid_matrix, mean = mean_q, sigma = cov_q)
+  if (length(pdf_q_vec) != prod(dim_p)) {
+    stop(
+      sprintf(
+        "[JSD_DENSITY_GRID_MISMATCH] %s density-grid mismatch: q length=%d vs p grid size=%d.",
+        context,
+        as.integer(length(pdf_q_vec)),
+        as.integer(prod(dim_p))
+      )
+    )
+  }
+  pdf_q <- array(pdf_q_vec, dim = dim_p)
+
+  sum_p <- sum(pdf_p)
+  sum_q <- sum(pdf_q)
+  if (!is.finite(sum_p) || sum_p <= 0 || !is.finite(sum_q) || sum_q <= 0) {
+    stop(sprintf("[JSD_DENSITY_NORMALIZATION] %s invalid KDE or reference density normalization constants.", context))
+  }
+  pdf_p <- pdf_p / sum_p
+  pdf_q <- pdf_q / sum_q
+
+  epsilon <- 1e-10
+  kl_divergence <- function(p, q) {
+    p <- p + epsilon
+    q <- q + epsilon
+    sum(p * log(p / q))
+  }
+  m <- 0.5 * (pdf_p + pdf_q)
+  as.numeric(0.5 * kl_divergence(pdf_p, m) + 0.5 * kl_divergence(pdf_q, m))
+}
