@@ -56,13 +56,31 @@ transform_flow <- function(x_cms, scale) {
     return(out)
   }
   if (scale == "log_log1p_cms") {
-    # log(log1p(x)) is only defined for log1p(x) > 0 => x > 0.
+    # Keep zero-flow days finite for plotting continuity on log(log1p(.)) scale.
+    # Without this floor, x==0 maps to -Inf and appears as broken segments.
     out <- rep(NA_real_, length(x_cms))
-    ok <- !is.na(x_cms) & (x_cms > 0)
-    out[ok] <- log(log(x_cms[ok] + 1))
+    x <- suppressWarnings(as.numeric(x_cms))
+    pos <- x[!is.na(x) & (x > 0)]
+    if (length(pos) == 0) return(out)
+    floor_pos <- min(pos, na.rm = TRUE)
+    x_safe <- x
+    x_safe[!is.na(x_safe) & (x_safe <= 0)] <- floor_pos
+    ok <- !is.na(x_safe) & (x_safe > -1)
+    out[ok] <- log(log(x_safe[ok] + 1))
     return(out)
   }
   stop(paste("Unknown plot_scale:", scale))
+}
+
+format_coverage_date <- function(x) {
+  if (inherits(x, "Date")) return(format(x, "%Y-%m-%d"))
+  x_chr <- as.character(x %||% "")
+  if (!nzchar(x_chr) || x_chr == "NA") return(NA_character_)
+  x_chr
+}
+
+wrap_legend_label <- function(x, width = 38) {
+  paste(strwrap(as.character(x), width = width), collapse = "\n")
 }
 
 plot_forecats_bundle <- function(bundle_dir) {
@@ -164,14 +182,27 @@ plot_forecats_bundle <- function(bundle_dir) {
     out <- setNames(rep(NA_character_, length(labels)), labels)
 
     fixed <- c(
+      # GloFAS family (orange palette)
       "GloFAS retrospective (baseline)" = "#E67E22",
-      "NWS retrospective v3.0 (baseline)" = "#756bb1",
-      "NWS retrospective v2.1 (baseline)" = "#9e9ac8",
+      "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)" = "#F5B041",
+      "GloFAS historical v3.1 (LISFLOOD, consolidated)" = "#EB984E",
+      "GloFAS historical v4.0 (LISFLOOD, consolidated)" = "#D35400",
+      "GloFAS legacy reanalysis v3.0" = "#BA4A00",
+      "GloFAS synthetic retrospective (ensemble mean)" = "#AF601A",
+      # NWS/NWM family (purple palette)
       "NWS retrospective (baseline)" = "#756bb1",
-      "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)" = "#1f77b4",
-      "GloFAS historical v3.1 (LISFLOOD, consolidated)" = "#2ca02c",
-      "GloFAS historical v4.0 (LISFLOOD, consolidated)" = "#17becf",
-      "GloFAS legacy reanalysis v3.0" = "#8c564b"
+      "NWS retrospective v3.0 (baseline)" = "#756bb1",
+      "NWS retrospective v2.1 (baseline)" = "#8E79C6",
+      "NWS retrospective v2.0 (baseline)" = "#A491D3",
+      "NWS retrospective v3.0 (legacy local csv)" = "#6C5BA8",
+      "NWS retrospective v2.1 (legacy local csv)" = "#8A78C1",
+      "NWS retrospective v3.0 (re-extracted point)" = "#5B4B9A",
+      "NWS retrospective v2.1 (re-extracted point)" = "#7A68B5",
+      "NWS retrospective v2.0 (re-extracted point)" = "#9A8CC9",
+      "NWS retrospective v3.0" = "#5B4B9A",
+      "NWS retrospective v2.1" = "#7A68B5",
+      "NWS retrospective v2.0" = "#9A8CC9",
+      "NWS synthetic retrospective (ensemble mean)" = "#4B2E83"
     )
     for (nm in names(fixed)) if (nm %in% labels) out[[nm]] <- fixed[[nm]]
 
@@ -183,35 +214,119 @@ plot_forecats_bundle <- function(bundle_dir) {
     out
   }
 
-  retro_labels <- unique(retros_long$source_label)
+  build_shape_map <- function(labels) {
+    labels <- unique(as.character(labels))
+    out <- setNames(rep(NA_integer_, length(labels)), labels)
+
+    fixed <- c(
+      "USGS observed" = 16,
+      "GloFAS retrospective (baseline)" = 15,
+      "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)" = 17,
+      "GloFAS historical v3.1 (LISFLOOD, consolidated)" = 18,
+      "GloFAS historical v4.0 (LISFLOOD, consolidated)" = 0,
+      "GloFAS legacy reanalysis v3.0" = 8,
+      "GloFAS synthetic retrospective (ensemble mean)" = 10,
+      "NWS retrospective (baseline)" = 1,
+      "NWS retrospective v3.0 (baseline)" = 1,
+      "NWS retrospective v2.1 (baseline)" = 2,
+      "NWS retrospective v2.0 (baseline)" = 5,
+      "NWS retrospective v3.0 (legacy local csv)" = 1,
+      "NWS retrospective v2.1 (legacy local csv)" = 2,
+      "NWS retrospective v3.0 (re-extracted point)" = 7,
+      "NWS retrospective v2.1 (re-extracted point)" = 6,
+      "NWS retrospective v2.0 (re-extracted point)" = 4,
+      "NWS retrospective v3.0" = 7,
+      "NWS retrospective v2.1" = 6,
+      "NWS retrospective v2.0" = 4,
+      "NWS synthetic retrospective (ensemble mean)" = 9
+    )
+    for (nm in names(fixed)) if (nm %in% labels) out[[nm]] <- fixed[[nm]]
+
+    idx_na <- which(is.na(out))
+    if (length(idx_na) > 0) {
+      fallback <- c(0:25)
+      used <- unname(out[!is.na(out)])
+      fallback <- fallback[!fallback %in% used]
+      out[idx_na] <- fallback[seq_len(min(length(idx_na), length(fallback)))]
+    }
+    out
+  }
+
+  coverage_entries <- meta$retrospective_coverage
+  coverage_df <- NULL
+  if (!is.null(coverage_entries) && length(coverage_entries) > 0) {
+    coverage_df <- dplyr::bind_rows(lapply(coverage_entries, function(x) {
+      tibble::tibble(
+        source_label = as.character(x$source_label %||% x$source_id %||% ""),
+        coverage_start = format_coverage_date(x$coverage_start),
+        coverage_end = format_coverage_date(x$coverage_end)
+      )
+    })) %>%
+      filter(nzchar(source_label))
+  }
+
+  retro_labels_from_coverage <- if (!is.null(coverage_df)) unique(coverage_df$source_label) else character(0)
+  retro_labels_from_window <- unique(as.character(retros_long$source_label))
+  retro_labels <- unique(c(retro_labels_from_coverage, retro_labels_from_window))
+
   retro_color_map <- build_retro_colors(retro_labels)
-  legend_levels <- c("USGS observed", retro_labels)
-  legend_label_map <- setNames(
-    vapply(legend_levels, function(x) paste(strwrap(as.character(x), width = 34), collapse = "\n"), character(1)),
-    legend_levels
-  )
   color_map <- c("USGS observed" = usgs_color, retro_color_map)
+  legend_levels <- c("USGS observed", retro_labels)
+  shape_map <- build_shape_map(legend_levels)
 
   usgs_before <- usgs %>% filter(obs_type == "Before") %>% mutate(Source = "USGS observed")
   usgs_after <- usgs %>% filter(obs_type == "After") %>% mutate(Source = "USGS observed")
 
-  coverage_entries <- meta$retrospective_coverage
-  coverage_caption <- NULL
-  if (!is.null(coverage_entries) && length(coverage_entries) > 0) {
-    to_entry <- function(x) {
-      lbl <- as.character(x$source_label %||% x$source_id %||% "unknown")
-      s <- as.character(x$coverage_start %||% "NA")
-      e <- as.character(x$coverage_end %||% "NA")
-      paste0(lbl, ": ", s, " to ", e)
-    }
-    items <- vapply(coverage_entries, to_entry, character(1))
-    coverage_caption <- paste(
-      c("Retrospective/historical/reanalysis coverage:",
-        paste(items, collapse = "; ")),
-      collapse = " "
-    )
-    coverage_caption <- paste(strwrap(coverage_caption, width = 180), collapse = "\n")
+  present_labels <- retros_long %>%
+    filter(!is.na(value)) %>%
+    distinct(source_label) %>%
+    pull(source_label) %>%
+    as.character()
+
+  retro_coverage_map <- list()
+  if (!is.null(coverage_df) && nrow(coverage_df) > 0) {
+    cov_agg <- coverage_df %>%
+      mutate(
+        coverage_start = as.Date(coverage_start),
+        coverage_end = as.Date(coverage_end)
+      ) %>%
+      group_by(source_label) %>%
+      summarise(
+        coverage_start = min(coverage_start, na.rm = TRUE),
+        coverage_end = max(coverage_end, na.rm = TRUE),
+        .groups = "drop"
+      )
+    retro_coverage_map <- split(cov_agg, cov_agg$source_label)
+  } else if (nrow(retros_raw) > 0 && all(c("source_label", "date") %in% names(retros_raw))) {
+    cov_agg <- retros_raw %>%
+      group_by(source_label) %>%
+      summarise(
+        coverage_start = min(as.Date(date), na.rm = TRUE),
+        coverage_end = max(as.Date(date), na.rm = TRUE),
+        .groups = "drop"
+      )
+    retro_coverage_map <- split(cov_agg, cov_agg$source_label)
   }
+
+  format_retro_legend <- function(lbl) {
+    cov_row <- retro_coverage_map[[lbl]]
+    start_txt <- "NA"
+    end_txt <- "NA"
+    if (!is.null(cov_row) && nrow(cov_row) > 0) {
+      start_txt <- format(as.Date(cov_row$coverage_start[[1]]), "%Y-%m-%d")
+      end_txt <- format(as.Date(cov_row$coverage_end[[1]]), "%Y-%m-%d")
+    }
+    line1 <- wrap_legend_label(lbl, width = 36)
+    line2 <- wrap_legend_label(paste0(start_txt, " to ", end_txt), width = 44)
+    paste(line1, line2, sep = "\n")
+  }
+
+  legend_label_map <- setNames(rep("", length(legend_levels)), legend_levels)
+  legend_label_map[["USGS observed"]] <- "USGS observed"
+  if (length(retro_labels) > 0) {
+    legend_label_map[retro_labels] <- vapply(retro_labels, format_retro_legend, character(1))
+  }
+  legend_levels_shown <- c("USGS observed", retro_labels[retro_labels %in% present_labels])
 
   # Optional flood thresholds (must be in discharge units, not stage).
   # Define in YAML under plot.flood_levels:
@@ -248,6 +363,18 @@ plot_forecats_bundle <- function(bundle_dir) {
       labels <- c(labels, lvl$label)
     }
     flood_df <- tibble::tibble(label = labels, y = yvals)
+    if (nrow(flood_df) > 1) {
+      all_vals <- c(usgs$value, retros_long$value, glofas_ens_long$value, nws_ens_long$value)
+      all_vals <- all_vals[is.finite(all_vals)]
+      span <- if (length(all_vals) > 1) diff(range(all_vals, na.rm = TRUE)) else 1
+      if (!is.finite(span) || span <= 0) span <- 1
+      offset <- 0.03 * span
+      flood_df <- flood_df %>%
+        arrange(desc(y)) %>%
+        mutate(label_y = y + seq(offset, -offset, length.out = n()))
+    } else {
+      flood_df <- flood_df %>% mutate(label_y = y)
+    }
   }
 
   # -------------------------
@@ -256,8 +383,8 @@ plot_forecats_bundle <- function(bundle_dir) {
   y_lab <- switch(
     plot_scale,
     raw_cms = "Water Flow (m^3/s)",
-    log1p_cms = "Water Flow (log1p(m^3/s))",
-    log_log1p_cms = "Water Flow (log(log1p(m^3/s)))",
+    log1p_cms = expression(Water~Flow~(log(1 + m^3/s))),
+    log_log1p_cms = expression(Water~Flow~(log(log(1 + m^3/s)))),
     paste0("Water Flow (", plot_scale, ")")
   )
 
@@ -273,10 +400,10 @@ plot_forecats_bundle <- function(bundle_dir) {
     {if (!is.null(flood_df) && nrow(flood_df) > 0) annotate(
       "text",
       x = plot_end,
-      y = flood_df$y,
+      y = flood_df$label_y,
       label = flood_df$label,
       hjust = 1.02,
-      vjust = -0.5,
+      vjust = 0.5,
       color = "black",
       fontface = "italic",
       size = 3.5
@@ -286,7 +413,15 @@ plot_forecats_bundle <- function(bundle_dir) {
       data = retros_long,
       aes(x = date, y = value, color = source_label, group = source_id),
       linewidth = 0.7,
+      linetype = "solid",
       alpha = 0.85,
+      na.rm = TRUE
+    ) +
+    geom_point(
+      data = retros_long,
+      aes(x = date, y = value, color = source_label, shape = source_label, group = source_id),
+      size = 1.6,
+      alpha = 0.9,
       na.rm = TRUE
     ) +
     # USGS before
@@ -298,7 +433,7 @@ plot_forecats_bundle <- function(bundle_dir) {
     ) +
     geom_point(
       data = usgs_before,
-      aes(x = date, y = value, color = Source),
+      aes(x = date, y = value, color = Source, shape = Source),
       size = 1.4,
       na.rm = TRUE
     ) +
@@ -342,18 +477,37 @@ plot_forecats_bundle <- function(bundle_dir) {
     scale_color_manual(
       name = "Series",
       values = color_map,
-      breaks = legend_levels,
-      labels = legend_label_map[legend_levels]
+      breaks = legend_levels_shown,
+      labels = legend_label_map[legend_levels_shown]
+    ) +
+    scale_shape_manual(
+      name = "Series",
+      values = shape_map,
+      breaks = legend_levels_shown,
+      labels = legend_label_map[legend_levels_shown]
     ) +
     scale_x_date(breaks = scales::pretty_breaks(6), date_labels = "%b %d") +
     labs(
       title = plot_title,
-      x = paste0("Date (", format(plot_start, "%Y"), "-", format(plot_end, "%Y"), ")"),
-      y = y_lab,
-      caption = coverage_caption
+      x = paste0(
+        "Cutoff date: ", format(cutoff_date, "%Y-%m-%d"),
+        " (forecast starts ", format(forecast_start, "%Y-%m-%d"), ")"
+      ),
+      y = y_lab
     ) +
     guides(
-      color = guide_legend(override.aes = list(size = 1.2), nrow = 2, byrow = TRUE)
+      color = guide_legend(
+        override.aes = list(
+          size = 2.0,
+          linetype = 1,
+          shape = unname(shape_map[legend_levels_shown]),
+          linewidth = 0.9,
+          alpha = 1
+        ),
+        ncol = 3,
+        byrow = TRUE
+      ),
+      shape = "none"
     ) +
     theme_minimal(base_size = 14) +
     theme(
@@ -361,9 +515,7 @@ plot_forecats_bundle <- function(bundle_dir) {
       axis.title = element_text(face = "bold"),
       legend.position = "bottom",
       legend.title = element_text(face = "bold"),
-      legend.text = element_text(size = 9),
-      plot.caption = element_text(size = 8.5, color = "gray30", hjust = 0, margin = margin(t = 10)),
-      plot.caption.position = "plot",
+      legend.text = element_text(size = 8.8),
       panel.grid.minor = element_blank()
     )
 
