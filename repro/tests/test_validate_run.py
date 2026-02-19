@@ -65,7 +65,34 @@ class ValidateRunScriptTests(unittest.TestCase):
         write_text(self.run_root / "validate" / "write_audit" / "fit" / "fs_diff.patch", "")
         write_json(self.run_root / "report" / "summary.json", {"ok": True})
         write_text(self.run_root / "report" / "summary.md", "# ok\n")
-        write_text(self.run_root / "post" / "outputs" / self.run_id / "dummy.txt", "ok\n")
+        post_outputs_dir = self.run_root / "post" / "outputs" / self.run_id
+        write_text(post_outputs_dir / "dummy.txt", "ok\n")
+        write_text(
+            post_outputs_dir / "post_artifacts_manifest.csv",
+            "\n".join(
+                [
+                    "scope,relative_path,artifact_type,extension,bytes,modified_at_utc",
+                    "outputs,dummy.txt,text,txt,3,2026-02-11T00:00:00Z",
+                ]
+            )
+            + "\n",
+        )
+        write_json(
+            post_outputs_dir / "post_artifacts_summary.json",
+            {
+                "run_id": self.run_id,
+                "generated_at_utc": "2026-02-11T00:00:00Z",
+                "total_artifact_files": 1,
+                "contract": {
+                    "status": True,
+                    "checks": {
+                        "outputs_nonempty": True,
+                    },
+                    "messages": [],
+                    "missing_paths": [],
+                },
+            },
+        )
 
     def _run_validate(self, profile: str, exit_nonzero: bool = True) -> subprocess.CompletedProcess[str]:
         cmd = [

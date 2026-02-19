@@ -325,37 +325,48 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     stop(sprintf("post stage failed; see %s", log_path), call. = FALSE)
   }
 
-  out_dir <- file.path(run_root, "post", "outputs", run_id)
-  if (dir.exists(out_dir)) {
-    generated <- list.files(out_dir, full.names = TRUE, recursive = TRUE)
+  add_stage_post_artifacts <- function(manifest_obj, root_dir, role_tag) {
+    if (!dir.exists(root_dir)) {
+      return(manifest_obj)
+    }
+    generated <- list.files(root_dir, full.names = TRUE, recursive = TRUE)
+    if (length(generated) == 0L) {
+      return(manifest_obj)
+    }
     allowed_ext <- "\\.(png|pdf|csv|tsv|txt|json|yaml|yml|rds)$"
-    out_dir_abs <- normalizePath(out_dir, mustWork = TRUE)
-    out_dir_prefix <- paste0(out_dir_abs, .Platform$file.sep)
+    root_abs <- normalizePath(root_dir, mustWork = TRUE)
+    root_prefix <- paste0(root_abs, .Platform$file.sep)
+
     for (f in generated) {
       if (file.info(f)$isdir) next
       if (!grepl(allowed_ext, f, ignore.case = TRUE)) next
       f_abs <- normalizePath(f, mustWork = FALSE)
-      if (!startsWith(f_abs, out_dir_prefix) && !identical(f_abs, out_dir_abs)) next
+      if (!startsWith(f_abs, root_prefix) && !identical(f_abs, root_abs)) next
 
       if (grepl("\\.png$", f, ignore.case = TRUE)) {
-        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "image_png", analysis_scale = "n/a")
+        manifest_obj <- unified_manifest_add_artifact(manifest_obj, f, storage_scale = "image_png", analysis_scale = "n/a", role = role_tag)
       } else if (grepl("\\.pdf$", f, ignore.case = TRUE)) {
-        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_binary", analysis_scale = "n/a")
+        manifest_obj <- unified_manifest_add_artifact(manifest_obj, f, storage_scale = "text_binary", analysis_scale = "n/a", role = role_tag)
       } else if (grepl("\\.rds$", f, ignore.case = TRUE)) {
-        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "model_state")
+        manifest_obj <- unified_manifest_add_artifact(manifest_obj, f, storage_scale = "model_state", role = role_tag)
       } else if (grepl("\\.csv$", f, ignore.case = TRUE)) {
-        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "table_csv", analysis_scale = "n/a")
+        manifest_obj <- unified_manifest_add_artifact(manifest_obj, f, storage_scale = "table_csv", analysis_scale = "n/a", role = role_tag)
       } else if (grepl("\\.tsv$", f, ignore.case = TRUE)) {
-        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "table_tsv", analysis_scale = "n/a")
+        manifest_obj <- unified_manifest_add_artifact(manifest_obj, f, storage_scale = "table_tsv", analysis_scale = "n/a", role = role_tag)
       } else if (grepl("\\.json$", f, ignore.case = TRUE)) {
-        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_json", analysis_scale = "n/a")
+        manifest_obj <- unified_manifest_add_artifact(manifest_obj, f, storage_scale = "text_json", analysis_scale = "n/a", role = role_tag)
       } else if (grepl("\\.(yaml|yml)$", f, ignore.case = TRUE)) {
-        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_yaml", analysis_scale = "n/a")
+        manifest_obj <- unified_manifest_add_artifact(manifest_obj, f, storage_scale = "text_yaml", analysis_scale = "n/a", role = role_tag)
       } else if (grepl("\\.txt$", f, ignore.case = TRUE)) {
-        manifest <- unified_manifest_add_artifact(manifest, f, storage_scale = "text_plain", analysis_scale = "n/a")
+        manifest_obj <- unified_manifest_add_artifact(manifest_obj, f, storage_scale = "text_plain", analysis_scale = "n/a", role = role_tag)
       }
     }
+    manifest_obj
   }
+
+  out_dir <- file.path(run_root, "post", "outputs", run_id)
+  manifest <- add_stage_post_artifacts(manifest, out_dir, role_tag = "post_output")
+  manifest <- add_stage_post_artifacts(manifest, post_cache_dir, role_tag = "post_cache")
 
   list(manifest = manifest)
 }

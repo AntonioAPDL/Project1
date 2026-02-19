@@ -12,6 +12,7 @@ Production profile (default) strict success checklist:
    DISC_variables_{1,5,10,50,90,95,99}_exAL_synth_DISC.RData
    (canonical production gate; this is enforced regardless of fit.quantiles)
 2) post outputs exist under post/outputs/<RUN_ID> with at least one file
+2a) post artifact contract reports exist and indicate pass
 3) validate/compare_report.json exists
 4) validate/write_audit/.../fs_diff.patch exists
 5) report/summary.md exists
@@ -155,6 +156,8 @@ RUN_ROOT="${REPO_ROOT}/repro/runs/${RUN_ID}"
 MANIFEST_PATH="${RUN_ROOT}/run_manifest.yaml"
 POST_DIR="${RUN_ROOT}/post"
 POST_OUTPUTS_DIR="${RUN_ROOT}/post/outputs/${RUN_ID}"
+POST_ARTIFACT_MANIFEST_PATH="${POST_OUTPUTS_DIR}/post_artifacts_manifest.csv"
+POST_ARTIFACT_SUMMARY_PATH="${POST_OUTPUTS_DIR}/post_artifacts_summary.json"
 COMPARE_REPORT_PATH="${RUN_ROOT}/validate/compare_report.json"
 REPORT_MD_PATH="${RUN_ROOT}/report/summary.md"
 REPORT_JSON_PATH="${RUN_ROOT}/report/summary.json"
@@ -187,6 +190,7 @@ except Exception as exc:
 validation = doc.get("validation") or {}
 models = doc.get("models") or {}
 fit = doc.get("fit") or {}
+post_cfg = doc.get("post") or {}
 inputs = doc.get("inputs") or {}
 forecats = inputs.get("forecats") or {}
 shared = inputs.get("shared") or {}
@@ -280,6 +284,8 @@ payload = {
     "fit_contract_checks_enabled": as_bool((fit.get("contract_checks") or {}).get("enabled"), default=False),
     "fit_diagnostics_enabled": as_bool((fit.get("diagnostics") or {}).get("enabled"), default=False),
     "post_allow_legacy_root_fallback": as_bool((doc.get("post") or {}).get("allow_legacy_root_fallback"), default=False),
+    "post_figures": as_bool(post_cfg.get("figures"), default=True),
+    "post_export_tables": as_bool(post_cfg.get("export_tables"), default=True),
     "forecats_mode": forecats_mode,
     "forecats_snapshot_enabled": as_bool(snapshot_enabled, default=False),
 }
@@ -301,6 +307,8 @@ ordered_keys = [
     "fit_contract_checks_enabled",
     "fit_diagnostics_enabled",
     "post_allow_legacy_root_fallback",
+    "post_figures",
+    "post_export_tables",
     "forecats_mode",
     "forecats_snapshot_enabled",
 ]
@@ -327,6 +335,8 @@ cfg_run_ndlm_main="false"
 cfg_contract_checks_enabled="false"
 cfg_diagnostics_enabled="false"
 cfg_post_allow_legacy_root_fallback="false"
+cfg_post_figures="true"
+cfg_post_export_tables="true"
 cfg_forecats_mode="use_existing"
 cfg_forecats_snapshot_enabled="false"
 cfg_prefer_forecats_snapshot="true"
@@ -355,6 +365,8 @@ if cfg_parse_output="$(parse_resolved_config_single_pass "${RESOLVED_CONFIG_PATH
       fit_contract_checks_enabled) cfg_contract_checks_enabled="${val}" ;;
       fit_diagnostics_enabled) cfg_diagnostics_enabled="${val}" ;;
       post_allow_legacy_root_fallback) cfg_post_allow_legacy_root_fallback="${val}" ;;
+      post_figures) cfg_post_figures="${val}" ;;
+      post_export_tables) cfg_post_export_tables="${val}" ;;
       forecats_mode) cfg_forecats_mode="${val}" ;;
       forecats_snapshot_enabled) cfg_forecats_snapshot_enabled="${val}" ;;
     esac
@@ -557,6 +569,36 @@ if [[ -d "${POST_OUTPUTS_DIR}" ]]; then
   post_file_count="$(find "${POST_OUTPUTS_DIR}" -type f | wc -l | tr -d '[:space:]')"
 fi
 
+post_artifact_contract_status=""
+if [[ -f "${POST_ARTIFACT_SUMMARY_PATH}" ]]; then
+  if post_artifact_contract_status="$(python3 - "${POST_ARTIFACT_SUMMARY_PATH}" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        doc = json.load(f) or {}
+except Exception:
+    print("")
+    raise SystemExit(0)
+
+contract = doc.get("contract") or {}
+status = contract.get("status")
+if status is True:
+    print("true")
+elif status is False:
+    print("false")
+else:
+    print("")
+PY
+)"; then
+    :
+  else
+    post_artifact_contract_status=""
+  fi
+fi
+
 manifest_finished_at=""
 manifest_validation_status=""
 manifest_git_dirty=""
@@ -721,6 +763,17 @@ if [[ -d "${POST_OUTPUTS_DIR}" && "${post_file_count}" -gt 0 ]]; then
   chk_post_outputs="true"
 fi
 
+chk_post_artifact_manifest="false"
+[[ -f "${POST_ARTIFACT_MANIFEST_PATH}" ]] && chk_post_artifact_manifest="true"
+
+chk_post_artifact_summary="false"
+[[ -f "${POST_ARTIFACT_SUMMARY_PATH}" ]] && chk_post_artifact_summary="true"
+
+chk_post_artifact_contract="false"
+if [[ "${chk_post_artifact_summary}" == "true" && "${post_artifact_contract_status}" == "true" ]]; then
+  chk_post_artifact_contract="true"
+fi
+
 chk_compare_report="false"
 [[ -f "${COMPARE_REPORT_PATH}" ]] && chk_compare_report="true"
 
@@ -761,6 +814,9 @@ if [[ "${PROFILE_EFFECTIVE}" == "production" || "${PROFILE_EFFECTIVE}" == "produ
         "${chk_diag_ndlm}" == "true" && \
         "${chk_snapshot_evidence}" == "true" && \
         "${chk_post_outputs}" == "true" && \
+        "${chk_post_artifact_manifest}" == "true" && \
+        "${chk_post_artifact_summary}" == "true" && \
+        "${chk_post_artifact_contract}" == "true" && \
         "${chk_compare_report}" == "true" && \
         "${chk_write_audit_patch}" == "true" && \
         "${chk_report_md}" == "true" && \
@@ -780,6 +836,9 @@ else
         "${chk_diag_univar}" == "true" && \
         "${chk_diag_ndlm}" == "true" && \
         "${chk_post_outputs}" == "true" && \
+        "${chk_post_artifact_manifest}" == "true" && \
+        "${chk_post_artifact_summary}" == "true" && \
+        "${chk_post_artifact_contract}" == "true" && \
         "${chk_compare_report}" == "true" && \
         "${chk_write_audit_patch}" == "true" && \
         "${chk_write_audit_clean}" == "true" && \
@@ -812,6 +871,7 @@ else
   quantile_target="0"
 fi
 
+set +o pipefail
 largest10="$(
   find "${RUN_ROOT}" -type f -printf '%s\t%P\n' 2>/dev/null \
     | sort -nr \
@@ -825,6 +885,7 @@ largest10="$(
 artifact_index="$(
   find "${RUN_ROOT}" -maxdepth 6 -type f -printf '%P\t%s\n' 2>/dev/null | sort
 )"
+set -o pipefail
 
 where_stopped="n/a"
 if [[ "${overall_pass}" != "true" ]]; then
@@ -839,7 +900,10 @@ if [[ "${overall_pass}" != "true" ]]; then
           "${chk_contract_univar}" != "true" || "${chk_contract_ndlm}" != "true" || \
           "${chk_diag_univar}" != "true" || "${chk_diag_ndlm}" != "true" ]]; then
     where_stopped="fit (family artifact/contract/diagnostics checks)"
-  elif [[ "${chk_post_outputs}" != "true" ]]; then
+  elif [[ "${chk_post_outputs}" != "true" || \
+          "${chk_post_artifact_manifest}" != "true" || \
+          "${chk_post_artifact_summary}" != "true" || \
+          "${chk_post_artifact_contract}" != "true" ]]; then
     where_stopped="post"
   elif [[ "${chk_compare_report}" != "true" || "${chk_write_audit_patch}" != "true" || "${chk_validation_pass}" != "true" ]]; then
     where_stopped="validate"
@@ -907,6 +971,9 @@ Result: PASS
 - [$(bool_word "${chk_diag_univar}")] expected univar diagnostics reports present (when enabled)
 - [$(bool_word "${chk_diag_ndlm}")] expected NDLM diagnostics reports present (when enabled)
 - [$(bool_word "${chk_post_outputs}")] post outputs exist under post/outputs/${RUN_ID}
+- [$(bool_word "${chk_post_artifact_manifest}")] post artifact manifest exists (\`post_artifacts_manifest.csv\`)
+- [$(bool_word "${chk_post_artifact_summary}")] post artifact summary exists (\`post_artifacts_summary.json\`)
+- [$(bool_word "${chk_post_artifact_contract}")] post artifact contract status is pass
 - [$(bool_word "${chk_compare_report}")] validate/compare_report.json exists
 - [$(bool_word "${chk_write_audit_patch}")] validate/write_audit fs_diff.patch exists
 - [$(bool_word "${chk_write_audit_clean}")] all detected write_audit fs_diff.patch files are empty (smoke profile)
@@ -968,6 +1035,9 @@ Result: FAIL
 - [$(bool_word "${chk_diag_univar}")] expected univar diagnostics reports present (when enabled)
 - [$(bool_word "${chk_diag_ndlm}")] expected NDLM diagnostics reports present (when enabled)
 - [$(bool_word "${chk_post_outputs}")] post outputs exist under post/outputs/${RUN_ID}
+- [$(bool_word "${chk_post_artifact_manifest}")] post artifact manifest exists (\`post_artifacts_manifest.csv\`)
+- [$(bool_word "${chk_post_artifact_summary}")] post artifact summary exists (\`post_artifacts_summary.json\`)
+- [$(bool_word "${chk_post_artifact_contract}")] post artifact contract status is pass
 - [$(bool_word "${chk_compare_report}")] validate/compare_report.json exists
 - [$(bool_word "${chk_write_audit_patch}")] validate/write_audit fs_diff.patch exists
 - [$(bool_word "${chk_write_audit_clean}")] all detected write_audit fs_diff.patch files are empty (smoke profile)
@@ -1050,6 +1120,8 @@ echo "fit.contract_checks.enabled=${cfg_contract_checks_enabled}"
 echo "fit.diagnostics.enabled=${cfg_diagnostics_enabled}"
 echo "forecats.mode=${cfg_forecats_mode}"
 echo "forecats.snapshot.enabled=${cfg_forecats_snapshot_enabled}"
+echo "post.figures=${cfg_post_figures}"
+echo "post.export_tables=${cfg_post_export_tables}"
 echo "post.allow_legacy_root_fallback=${cfg_post_allow_legacy_root_fallback}"
 echo "inputs.shared.prefer_forecats_snapshot=${cfg_prefer_forecats_snapshot}"
 echo "policy_check.legacy_post_fallback=$(bool_word "${chk_legacy_post_fallback}")"
@@ -1077,6 +1149,12 @@ echo "missing_diag_univar_reports=${missing_diag_univar_csv}"
 echo "diag_ndlm_report=${diag_ndlm_report_out}"
 echo "post_outputs_dir=${POST_OUTPUTS_DIR}"
 echo "post_outputs_file_count=${post_file_count}"
+echo "post_artifact_manifest_path=${POST_ARTIFACT_MANIFEST_PATH}"
+echo "post_artifact_manifest_exists=${chk_post_artifact_manifest}"
+echo "post_artifact_summary_path=${POST_ARTIFACT_SUMMARY_PATH}"
+echo "post_artifact_summary_exists=${chk_post_artifact_summary}"
+echo "post_artifact_contract_status=${post_artifact_contract_status:-<null>}"
+echo "post_artifact_contract_pass=${chk_post_artifact_contract}"
 echo "compare_report_exists=${chk_compare_report}"
 echo "write_audit_patch_path=${WRITE_AUDIT_PATH:-<none>}"
 echo "write_audit_all_patches=$(join_by "," "${WRITE_AUDIT_PATCHES[@]:-}")"

@@ -1,7 +1,7 @@
 # Unified Multi-Model Workflow Tracker (Living)
 
 Date: 2026-02-10  
-Last verified: 2026-02-17 (P9 extreme-quantile proof runs completed; canonical P8C health snapshot + trace figures refreshed)  
+Last verified: 2026-02-19 (post artifact contract hardening + validator gate update verified with regression tests and full-figures replay artifacts)  
 Repo root: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Status: Active planning + execution tracker  
 Primary audience: project maintainer + Codex
@@ -41,7 +41,7 @@ Repo references:
 
 - Theory-aligned univariate and NDLM runners are wired in unified `fit` and selected by `models.<family>.implementation_mode`.
 - Legacy scripts (`OptimalModelSLexAL.r`, `DISC_Optimal_Synth_Ranges_NDLM.r`) remain supported as explicit fallback paths when `implementation_mode=legacy_bridge`.
-- Remaining open work is parity/completeness closure (not orchestration presence), especially P4 stochastic `W`/ELBO follow-through and P8 canonical production evidence closure.
+- Remaining open work is parity/completeness follow-up (not orchestration presence), focused on NDLM convergence-quality review and full post synthesis replay artifacts under figures/tables-enabled post mode.
 
 Repo references:
 
@@ -67,7 +67,7 @@ Implication:
 - In strict repro mode, post requires run-scoped model-state artifacts.
 - In non-strict mode, legacy root fallback remains possible only when explicitly enabled for compatibility.
 
-## 2.4 Last Verified Evidence Pointers (2026-02-17)
+## 2.4 Last Verified Evidence Pointers (2026-02-18)
 
 - P9 closure proof runs (q=0.01, 0.50, 0.99):
   - `repro/runs/debug_extreme_mv_q010599_parallel_max800_20260216_222144/run_manifest.yaml`
@@ -85,6 +85,18 @@ Implication:
   - `repro/reports/figures/debug_extreme_uv_q010599_parallel_max800_20260216_222436_trace_summary_latest.png`
 - Canonical production closure run:
   - `repro/runs/prod_canonical_p8c_parallel_20260216_220751/run_manifest.yaml`
+  - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/run_manifest.yaml`
+  - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/report/summary.md`
+  - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/validate/compare_report.json`
+  - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/validate/env_drift_report.json`
+  - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/post/outputs/prod_canonical_parallel_allmodels_20260218_040416/post_smoke_marker.txt`
+- Full-figures post replay (contract-report closure evidence):
+  - `repro/runs/post_replay_canonical_fullprod_fix2_20260219_002249/run_manifest.yaml`
+  - `repro/runs/post_replay_canonical_fullprod_fix2_20260219_002249/post/outputs/post_replay_canonical_fullprod_fix2_20260219_002249/post_artifacts_manifest.csv`
+  - `repro/runs/post_replay_canonical_fullprod_fix2_20260219_002249/post/outputs/post_replay_canonical_fullprod_fix2_20260219_002249/post_artifacts_summary.json`
+  - `repro/runs/post_replay_canonical_fullprod_fix2_20260219_002249/post/cache/y_reps_f.rds`
+  - `repro/runs/post_replay_canonical_fullprod_fix2_20260219_002249/post/cache/y_reps.rds`
+  - `repro/runs/post_replay_canonical_fullprod_fix2_20260219_002249/post/outputs/post_replay_canonical_fullprod_fix2_20260219_002249/tables/posterior_table_exports_manifest.csv`
 - Canonical trace summaries (all enabled families):
   - `repro/reports/figures/prod_canonical_p8c_parallel_20260216_220751_univar_trace_summary_latest.png`
   - `repro/reports/figures/prod_canonical_p8c_parallel_20260216_220751_multivar_trace_summary_latest.png`
@@ -107,6 +119,12 @@ Run-level closure:
 | run_id | finished_at_utc | validation.status | stage statuses |
 |---|---|---|---|
 | `prod_canonical_p8c_parallel_20260216_220751` | `2026-02-17T13:40:00Z` | `pass` | `forecats=pass`, `data_prep_shared=pass`, `fit=pass`, `post=pass`, `validate=pass`, `report=pass` |
+| `prod_canonical_parallel_allmodels_20260218_040416` | `2026-02-18T10:43:26Z` | `pass` | `forecats=pass`, `data_prep_shared=pass`, `fit=pass`, `post=pass`, `validate=pass`, `report=pass` |
+
+Post-mode note for latest run (`prod_canonical_parallel_allmodels_20260218_040416`):
+
+1. `post.smoke_fast=true`, `post.figures=false`, `post.export_tables=false`.
+2. Expected post output is smoke marker + logs (not full synthesis figure/table bundle).
 
 Family/quantile fit snapshot from latest `gamsig_progress` lines:
 
@@ -216,9 +234,9 @@ Status legend:
 | P3 | [~] | Univariate modularization (theory-aligned) | P2 done | New modular univariate stage passes structural compatibility checks |
 | P4 | [x] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory, plus ELBO/VB parity regression and contract evidence |
 | P5 | [x] | Post decoupling from root artifacts | P2 done | Post loads only manifest-declared run-scoped artifacts and strict figures-on smoke closes with non-null `finished_at_utc` |
-| P6 | [~] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
+| P6 | [x] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
 | P7 | [x] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure, with family-summary report regression coverage |
-| P8 | [~] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
+| P8 | [x] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
 | P9 | [x] | Extreme-quantile stabilization (q=0.01 first) | P8C failure evidence captured | Isolated extreme-quantile proof runs (`q=0.01,0.50,0.99`) close for exDQLM multivar + univar under adaptive defaults, with run-scoped outputs and no hard runtime failures (operational closure accepted under D-011) |
 
 ## 7) Detailed Task Backlog
@@ -267,14 +285,14 @@ Status legend:
 
 ## 7.7 P6-P8 Tasks (Orchestration, Validation, Cutover)
 
-- `T-P6-01`: Add explicit model-family toggles under unified config.
-- `T-P6-02`: Add scheduling policy for parallel exDQLM stages + NDLM isolation.
+- [x] `T-P6-01`: Add explicit model-family toggles under unified config.
+- [x] `T-P6-02`: Add scheduling policy for parallel exDQLM stages + NDLM isolation.
 - [x] `T-P7-01`: Extend validator to enforce per-family required outputs.
 - [x] `T-P7-02`: Extend report to summarize each family separately.
 - [x] `T-P8-01`: Change defaults to theory-aligned stages; keep legacy as opt-in fallback.
 - [x] `T-P8-02`: Add end-to-end unified-run smoke integration coverage for post table exports and post artifact allowlist capture.
 - [x] `T-P8-03`: Add canonical production family config (canonical 7 quantiles) plus validator UX/docs regression coverage.
-- [~] `T-P8-04`: Complete canonical production evidence run (P8C) with production validator PASS and closed manifest.
+- [x] `T-P8-04`: Complete canonical production evidence run (P8C) with production validator PASS and closed manifest.
 
 ## 7.8 P9 Tasks (Extreme-Quantile Stabilization)
 
@@ -342,6 +360,34 @@ At each planning/execution checkpoint:
 ```
 
 ## 10.3 Progress Log Entries
+
+### Progress Update 2026-02-19 02:20 UTC
+- Phase: P8C/P7 follow-up hardening
+- Change type: implementation+validation
+- Summary: implemented run-scoped post artifact contract helpers, wired contract report generation/fail-fast into post runner, extended validator with post artifact contract gates, and fixed validator `--profile auto` SIGPIPE/exit-141 failure path under `pipefail`. Verified against real full-figures replay artifacts and updated regression coverage.
+- Files touched:
+  - `R/unified/post_artifact_contract.R`
+  - `scripts/run_environmetrics_figures.R`
+  - `R/unified/stages/stage_post.R`
+  - `repro/tools/validate_run.sh`
+  - `tests/testthat/test_post_artifact_contract.R`
+  - `repro/tests/test_validate_run.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - `repro/runs/post_replay_canonical_fullprod_fix2_20260219_002249/post/outputs/post_replay_canonical_fullprod_fix2_20260219_002249/post_artifacts_manifest.csv`
+  - `repro/runs/post_replay_canonical_fullprod_fix2_20260219_002249/post/outputs/post_replay_canonical_fullprod_fix2_20260219_002249/post_artifacts_summary.json`
+  - `/tmp/post_replay_fix2_validate_auto_v2.txt`
+  - `/tmp/post_replay_fix2_validate_prod.txt`
+- Validation notes:
+  - `python3 -m pytest -q repro/tests/test_validate_run.py` -> `29 passed`
+  - `python3 -m pytest -q repro/tests/test_post_tables_manifest_integration.py` -> `2 passed`
+  - `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_artifact_contract.R')"` -> pass
+  - `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_forecast_horizon.R')"` -> pass (expected warning only)
+  - `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_ndlm_post_jsd.R')"` -> pass (expected warning only)
+- New risks:
+  - None added; this closes validator output robustness bug and post artifact-contract coverage gap.
+- Next action:
+  - Keep NDLM convergence-quality review as the primary remaining quality task; post artifact contract and validator hardening are now in place.
 
 ### Progress Update 2026-02-10 02:24 UTC
 - Phase: P2
@@ -1606,10 +1652,10 @@ None currently tracked.
 
 ## 12) Immediate Next Actions (Proposed)
 
-1. Complete C2 canonical P8C production closure run (`prod_canonical_p8c_parallel_20260216_220751`) and execute external validator with `--profile auto` and `--profile production`.
-2. Perform C7 final tracker self-consistency pass immediately after C2 closes (phase table, checkboxes, risks, decisions, evidence pointers, and immediate-next-actions).
-3. If C2 exceeds runtime budget under current strict convergence settings, capture blocker evidence and decide whether to keep strict runtime or execute a bounded canonical rerun policy.
-4. Isolate and close NDLM post full-figures replay blocker in a dedicated post-only debug lane (`post_replay_p8c_fullfig*`), with theory/contract-backed fixes and targeted regression checks before reattempting full replay.
+1. Run NDLM-focused convergence-quality audit on the canonical closure artifacts (`prod_canonical_parallel_allmodels_20260218_040416`) and document whether additional NDLM fit-policy adjustments are required.
+2. Keep one optional full post replay (`post.smoke_fast=false`, `post.figures=true`, `post.export_tables=true`) as a periodic regression check; current full-figures artifact-contract evidence is already recorded from replay outputs.
+3. Record any additional synthesis artifact locations (multivar/univar/NDLM) and keep evidence pointers current in this tracker.
+4. Perform final tracker self-consistency pass after NDLM convergence-quality follow-up closes (phase table, task statuses, risks, decisions, and evidence pointers).
 
 ## 13) Notes
 
@@ -2449,3 +2495,115 @@ Concurrency rule for migration phases:
     - `repro/runs/post_replay_fullfig_ndlmfix_20260217_234449/run_manifest.yaml` (`post=pending` at this checkpoint).
 - Next action:
   - Let `post_replay_fullfig_ndlmfix_20260217_234449` close, then record terminal pass/fail evidence and finalize D7/D8 closure status.
+
+### Progress Update 2026-02-18 01:26 UTC
+- Phase: C2 (definitive canonical closure rerun)
+- Change type: execution+tracking
+- Summary: launched a fresh canonical production full-workflow run from `production_canonical_family.yaml` with a unique run id and confirmed live progression into fit stage. This run is now the active definitive closure lane for C2 evidence collection.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - Active run config overlay:
+    - `/tmp/prod_canonical_definitive_20260217_172457_diag.yaml`
+  - Active run manifest:
+    - `repro/runs/prod_canonical_definitive_20260217_172457_diag/run_manifest.yaml`
+  - Active run stage logs:
+    - `repro/runs/prod_canonical_definitive_20260217_172457_diag/fit/q=01/logs/fit.log`
+- Validation notes:
+  - Current stage snapshot at capture:
+    - `forecats=pass`
+    - `data_prep_shared=pass`
+    - `fit=pending` (active)
+    - `post/validate/report=pending`
+  - Process-level evidence shows active multivariate fit worker for `q=0.01`.
+- Next action:
+  - Continue periodic health checks until terminal closure, then run:
+    - `bash repro/tools/validate_run.sh prod_canonical_definitive_20260217_172457_diag --profile auto --exit-nonzero`
+    - `bash repro/tools/validate_run.sh prod_canonical_definitive_20260217_172457_diag --profile production --exit-nonzero`
+
+### Progress Update 2026-02-18 03:50 UTC
+- Phase: C2 (canonical closure rerun policy update)
+- Change type: execution-policy adjustment
+- Summary: deprecated interrupted serial-worker canonical attempt `prod_canonical_definitive_20260217_172457_diag` for closure purposes due excessive wall-time under `mc_cores=1` with canonical 7-quantile + 3-family workload, and relaunched the same canonical plan with safe parallel fit workers (`mc_cores=3`) to accelerate time-to-closure while preserving model semantics and stage contract behavior.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - Deprecated serial attempt:
+    - `repro/runs/prod_canonical_definitive_20260217_172457_diag/run_manifest.yaml`
+    - `repro/runs/prod_canonical_definitive_20260217_172457_diag/fit/q=01/logs/fit.log`
+    - `/tmp/prod_canonical_definitive_20260217_172457_diag.yaml`
+  - Active parallel canonical run:
+    - `repro/runs/prod_canonical_parallel_mc3_diag_20260217_194948/run_manifest.yaml`
+    - `repro/runs/prod_canonical_parallel_mc3_diag_20260217_194948/fit/q=01/logs/fit.log`
+    - `repro/runs/prod_canonical_parallel_mc3_diag_20260217_194948/fit/q=05/logs/fit.log`
+    - `repro/runs/prod_canonical_parallel_mc3_diag_20260217_194948/fit/q=10/logs/fit.log`
+    - `/tmp/prod_canonical_parallel_mc3_diag_20260217_194948.yaml`
+- Validation notes:
+  - Parallel run shows concurrent multivariate workers for `q=01`, `q=05`, `q=10` with `fit=pending` and no hard runtime errors at capture.
+  - Stage status at capture:
+    - `forecats=pass`
+    - `data_prep_shared=pass`
+    - `fit=pending`
+    - `post/validate/report=pending`
+- Next action:
+  - Continue periodic health checks on `prod_canonical_parallel_mc3_diag_20260217_194948`, then execute validator `--profile auto` and `--profile production` after terminal closure.
+
+### Progress Update 2026-02-18 19:25 UTC
+- Phase: C2/P8C closure update (canonical all-family parallel lane)
+- Change type: evidence + status closure
+- Summary: canonical all-family closure lane `prod_canonical_parallel_allmodels_20260218_040416` completed end-to-end with all stages `pass` and closed manifest timestamp (`finished_at_utc=2026-02-18T10:43:26Z`). Fit executed with `fit.parallel.mode=global_models` and `fit.parallel.workers=15` (7 multivar quantiles + 7 univar quantiles + NDLM in parallel). Validation and report both closed `pass`.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence paths:
+  - Canonical run closure:
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/run_manifest.yaml`
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/resolved_config.yaml`
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/report/summary.md`
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/validate/compare_report.json`
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/validate/env_drift_report.json`
+  - Fit completion evidence:
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/fit/q=01/logs/fit.log`
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/fit/q=99/logs/fit.log`
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/fit/exdqlm_univar/q=01/logs/univar_theory.log`
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/fit/exdqlm_univar/q=99/logs/univar_theory.log`
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/fit/ndlm_main/logs/ndlm_theory.log`
+  - Post-mode clarification:
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/post/outputs/prod_canonical_parallel_allmodels_20260218_040416/post_smoke_marker.txt`
+    - `repro/runs/prod_canonical_parallel_allmodels_20260218_040416/post/logs/post_runner.log`
+- Validation notes:
+  - Stage statuses are all `pass`: `forecats`, `data_prep_shared`, `fit`, `post`, `validate`, `report`.
+  - No hard runtime failures in fit logs (`Error in`/`Execution halted` absent in family logs used for closure check).
+  - Synthesis figure/table bundles were intentionally not produced in this canonical run because resolved post config used smoke mode:
+    - `post.smoke_fast=true`
+    - `post.figures=false`
+    - `post.export_tables=false`
+- Next action:
+  - Launch a dedicated post replay from this canonical fit run with synthesis outputs enabled (`smoke_fast=false`, `figures=true`, `export_tables=true`) and then register generated multivar/univar/NDLM synthesis artifact paths.
+
+### Progress Update 2026-02-18 20:23 UTC
+
+- Phase: Post-synthesis completion + restartability verification (no-refit path)
+- Summary:
+  - Launched full post replay from canonical fit artifacts with synthesis outputs enabled and no refit:
+    - `run_id=post_replay_canonical_fullprod_20260218_115313`
+    - stages enabled: `post`, `validate`, `report`
+    - `inputs.post.source_run_id=prod_canonical_parallel_allmodels_20260218_040416`
+    - `post.smoke_fast=false`, `post.figures=true`, `post.export_tables=true`, `post.table_formats=[csv,rds]`
+  - Replay is currently in `post` (long-running full-fig path, CPU-active) and already producing synthesis artifacts under run-scoped outputs.
+  - Per maintainer cleanup request, quarantined previous debug/proof/replay run roots to reduce workspace clutter while preserving canonical evidence lanes.
+  - Started automated restartability helper that waits for replay closure, clears only run-scoped post outputs, reruns same run id with `overwrite=true`, and writes a restartability summary JSON.
+- Evidence:
+  - Active replay config:
+    - `/tmp/post_replay_canonical_fullprod_20260218_115313.yaml`
+  - Active replay run root:
+    - `repro/runs/post_replay_canonical_fullprod_20260218_115313/run_manifest.yaml`
+    - `repro/runs/post_replay_canonical_fullprod_20260218_115313/post/logs/post_replay_canonical_fullprod_20260218_115313/run_log.txt`
+    - `repro/runs/post_replay_canonical_fullprod_20260218_115313/post/outputs/post_replay_canonical_fullprod_20260218_115313/`
+  - Cleanup quarantine batch:
+    - `repro/quarantine/cleanup_runs/20260218T201412Z/CLEANUP_INDEX.md`
+    - `repro/quarantine/cleanup_runs/20260218T201412Z/cleanup_summary.json`
+  - Restartability helper:
+    - `/tmp/post_replay_canonical_fullprod_20260218_115313_restart_helper.sh`
+    - `repro/runs/post_replay_canonical_fullprod_20260218_115313/post/restartability_helper.log`
+- Next action:
+  - Wait for `post_replay_canonical_fullprod_20260218_115313` to close, then confirm helper-produced restartability rerun closure and register final artifact counts/paths.

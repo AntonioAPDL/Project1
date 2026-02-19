@@ -28,6 +28,11 @@ split_env_paths <- function(key) {
 
 PROJECT_ROOT <- Sys.getenv("ENV_PROJECT_ROOT", "/data/muscat_data/jaguir26/project1_ucsc_phd")
 PROJECT_ROOT <- normalizePath(PROJECT_ROOT, mustWork = FALSE)
+POST_CONTRACT_HELPERS <- file.path(PROJECT_ROOT, "R", "unified", "post_artifact_contract.R")
+if (!file.exists(POST_CONTRACT_HELPERS)) {
+  stop(sprintf("Missing post artifact contract helpers: %s", POST_CONTRACT_HELPERS), call. = FALSE)
+}
+source(POST_CONTRACT_HELPERS)
 
 RUN_ROOT <- Sys.getenv("UNIFIED_RUN_ROOT", "")
 RUN_ID <- Sys.getenv("UNIFIED_RUN_ID", Sys.getenv("RUN_ID", ""))
@@ -404,6 +409,35 @@ if (!POST_FIGURES) {
     marker
   )
   log_step(sprintf("WROTE %s", marker))
+}
+
+post_artifacts <- unified_collect_post_artifacts(
+  outputs_dir = OUT_DIR,
+  cache_dir = if (nzchar(POST_CACHE_DIR)) POST_CACHE_DIR else NULL
+)
+post_contract <- unified_post_contract_check(
+  artifacts_df = post_artifacts,
+  outputs_dir = OUT_DIR,
+  cache_dir = if (nzchar(POST_CACHE_DIR)) POST_CACHE_DIR else NULL,
+  post_figures = isTRUE(POST_FIGURES),
+  export_tables = isTRUE(EXPORT_TABLES)
+)
+post_artifact_reports <- unified_write_post_artifact_reports(
+  artifacts_df = post_artifacts,
+  outputs_dir = OUT_DIR,
+  run_id = RUN_ID,
+  cache_dir = if (nzchar(POST_CACHE_DIR)) POST_CACHE_DIR else NULL,
+  contract = post_contract
+)
+log_step(sprintf("WROTE %s", post_artifact_reports$manifest_path))
+log_step(sprintf("WROTE %s", post_artifact_reports$summary_path))
+
+if (!isTRUE(post_contract$status)) {
+  fail_parts <- c(
+    "[POST_ARTIFACT_CONTRACT_FAIL] post artifact contract check failed.",
+    post_contract$messages
+  )
+  stop(paste(fail_parts[nzchar(fail_parts)], collapse = " "), call. = FALSE)
 }
 
 cat(sprintf("END: %s\n", format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
