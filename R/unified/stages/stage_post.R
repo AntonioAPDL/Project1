@@ -3,6 +3,11 @@
 unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   run_root_abs <- normalizePath(run_root, mustWork = FALSE)
   repo_root_abs <- normalizePath(repo_root, mustWork = FALSE)
+  ndlm_diag_helpers <- file.path(repo_root_abs, "R", "unified", "ndlm_post_diagnostics.R")
+  if (!file.exists(ndlm_diag_helpers)) {
+    stop(sprintf("Missing NDLM post diagnostics helpers: %s", ndlm_diag_helpers), call. = FALSE)
+  }
+  source(ndlm_diag_helpers, local = environment())
   run_id <- cfg$run$run_id
   post_use_fit_outputs_from_run <- isTRUE(unified_get(cfg, c("inputs", "post", "use_fit_outputs_from_run"), default = TRUE))
   post_source_run_id <- unified_get(cfg, c("inputs", "post", "source_run_id"), default = NULL)
@@ -323,6 +328,36 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   status <- attr(cmd_out, "status")
   if (!is.null(status) && status != 0) {
     stop(sprintf("post stage failed; see %s", log_path), call. = FALSE)
+  }
+
+  ndlm_only_mode <- isTRUE(cfg$models$run_ndlm_main) &&
+    !isTRUE(cfg$models$run_exdqlm_multivar) &&
+    !isTRUE(cfg$models$run_exdqlm_univar)
+  if (isTRUE(cfg$models$run_ndlm_main) && nzchar(ndlm_path_abs)) {
+    ndlm_fit_log <- file.path(run_root_abs, "fit", "ndlm_main", "logs", "ndlm_theory.log")
+    ndlm_diag_result <- unified_generate_ndlm_post_diagnostics(
+      run_root = run_root_abs,
+      ndlm_rdata_path = ndlm_path_abs,
+      retros_csv_path = normalizePath(adapted_retros, mustWork = FALSE),
+      nws_csv_path = normalizePath(adapted_nws, mustWork = FALSE),
+      glofas_csv_path = normalizePath(adapted_glofas, mustWork = FALSE),
+      fit_log_path = ndlm_fit_log,
+      output_dir = file.path(run_root_abs, "diagnostics", "ndlm"),
+      strict_contract = ndlm_only_mode
+    )
+
+    ndlm_diag_paths <- unlist(ndlm_diag_result$paths, use.names = FALSE)
+    ndlm_diag_paths <- ndlm_diag_paths[nzchar(ndlm_diag_paths)]
+    for (diag_path in ndlm_diag_paths) {
+      if (!file.exists(diag_path)) next
+      if (grepl("\\.csv$", diag_path, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(manifest, diag_path, storage_scale = "table_csv", analysis_scale = "n/a", role = "diagnostics")
+      } else if (grepl("\\.(md|txt)$", diag_path, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(manifest, diag_path, storage_scale = "text_plain", analysis_scale = "n/a", role = "diagnostics")
+      } else {
+        manifest <- unified_manifest_add_artifact(manifest, diag_path, storage_scale = "text_plain", analysis_scale = "n/a", role = "diagnostics")
+      }
+    }
   }
 
   add_stage_post_artifacts <- function(manifest_obj, root_dir, role_tag) {
