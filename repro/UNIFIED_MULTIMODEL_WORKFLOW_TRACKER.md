@@ -1731,6 +1731,10 @@ Checklist (execute in order, one lane at a time):
   - Acceptance gate:
     - NDLM figures use full intended forecast window for the selected plot definition.
     - No silent truncation from index-shape mismatch.
+  - Current sub-status:
+    - `Q-01A` run closure and diagnostics bundle are complete.
+    - `Q-01B` root-cause matrix is complete with a single supported cause for the original NDLM-only post crash.
+    - Acceptance gate remains open because NDLM horizon-contract mismatch is still present in diagnostics.
 
 ### 12.1) `Q-00` + `Q-01` Root-Cause Debug Checklist (Execution Contract)
 
@@ -1840,22 +1844,25 @@ Phase E: Fix-readiness gate (`Q-01C`)
     - multivar corrected synthesis + `Agg_disc_*` figures
   - Update risk register statuses for `R-009`, `R-010`, `R-011` and close checklist items.
 
-### 12.2) Context-Switch Resume Reminder (Frozen State)
+### 12.2) Context-Switch Resume Reminder (Current State)
 
 If work is paused for a tangent, resume from this exact state:
 
 1. `Q-00` is complete (`Q-00A` + `Q-00B`) with baseline artifacts under:
    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/`
-2. `Q-01A` NDLM-isolated lane reached:
-   - `fit=pass`, `post=fail` in `diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726`.
-3. Current blocker:
-   - NDLM-only post still traverses univariate/multivariate bundle-loading path in `30_univariate_and_misc.R`, causing empty-path `load_rdata_with_retry` failure.
-4. First implementation step on resume:
-   - add strict model-toggle gating so NDLM-only post does not attempt non-NDLM bundle loads; then rerun `Q-01A`.
+2. `Q-01A` is complete on rerun:
+   - `run_id=diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704`
+   - stages: `forecats=pass`, `data_prep_shared=pass`, `fit=pass`, `post=pass`
+3. `Q-01B` is complete:
+   - single supported root cause for the original NDLM-only post crash is family-unaware post initialization wiring.
+4. Active remaining NDLM issue after `Q-01A/B`:
+   - horizon-contract mismatch persists (`ndlm_plot_contract_check.csv`), so quality acceptance gate is still open.
 5. Resume evidence anchors:
-   - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726/run_manifest.yaml`
-   - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726/post/logs/post_runner.log`
-   - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726/fit/ndlm_main/logs/ndlm_theory.log`
+   - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/run_manifest.yaml`
+   - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/post/logs/post_runner.log`
+   - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/ndlm_iter_trace.csv`
+   - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/ndlm_plot_contract_check.csv`
+   - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/ndlm_hypothesis_matrix.md`
 
 ## 13) Notes
 
@@ -2936,3 +2943,56 @@ Concurrency rule for migration phases:
   - No model-logic edits were applied in this step.
 - Next action:
   - Continue periodic health checks on `diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726` and register NDLM diagnostics bundle outputs once fit/post close.
+
+### Progress Update 2026-02-20 22:01 UTC
+
+- Phase: `Q-01A/Q-01B` NDLM-only resume closure with updated retrospective policy context
+- Change type: root-cause fix + targeted tests + isolated rerun evidence
+- Summary:
+  - Re-verified updated cutoff retrospective preparation for `cutoff=2022-12-25`:
+    - source: `data/forecats_inputs/site=11160500/cutoff_date=2022-12-25/run_id=auto_cutoff_policy_fillcheck_minicache_20260220/inputs/retrospective_preparation.csv`
+    - continuity: daily index continuous from `2019-11-06` to `2022-12-25`
+    - `selected_nws_synthetic_value` missing count: `0`
+  - Confirmed original `Q-01A` fail locus in NDLM-only mode:
+    - `fit=pass`, `post=fail` due empty-path univar bundle load in `30_univariate_and_misc.R`.
+  - Implemented family-aware NDLM-only post initialization path:
+    - new module planner helper and NDLM-only init module.
+    - NDLM-only path now skips exDQLM bundle loads and fail-fasts only on NDLM-required artifact/object contract.
+  - Added/ran targeted regression tests covering:
+    - NDLM-only module planning,
+    - non-NDLM-only planning unchanged,
+    - NDLM-only init success/fail-fast behavior,
+    - smoke-fast post artifact contract relaxation path.
+  - Relaunched NDLM-only isolated lane with shared-input prep and achieved closure:
+    - `run_id=diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704`
+    - stages: `forecats=pass`, `data_prep_shared=pass`, `fit=pass`, `post=pass`
+  - Generated required `Q-01A` diagnostics bundle and `Q-01B` hypothesis matrix.
+- Files touched:
+  - `R/unified/post_module_plan.R`
+  - `R/environmetrics/30_ndlm_only_init.R`
+  - `R/unified/post_artifact_contract.R`
+  - `scripts/run_environmetrics_figures.R`
+  - `repro/tests/test_post_module_plan.py`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+  - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/*`
+- Evidence:
+  - Baseline failed run:
+    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726/run_manifest.yaml`
+    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726/post/logs/post_runner.log`
+  - Passing rerun:
+    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/run_manifest.yaml`
+    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/post/logs/post_runner.log`
+    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/post/outputs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/post_artifacts_manifest.csv`
+  - Q-01A diagnostics bundle:
+    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/ndlm_iter_trace.csv`
+    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/ndlm_time_coverage.csv`
+    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/ndlm_plot_contract_check.csv`
+    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/ndlm_object_shapes.csv`
+  - Q-01B matrix:
+    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/ndlm_hypothesis_matrix.md`
+- Validation notes:
+  - `Q-01A` run closure criteria (stage pass + diagnostics bundle) are satisfied.
+  - `Q-01B` root-cause isolation for original NDLM-only post crash is satisfied with one supported cause.
+  - NDLM horizon acceptance remains open (`ndlm_plot_contract_check.csv` mismatches), to be handled in downstream quality-fix tasks (`Q-03/Q-04` scope).
+- Next action:
+  - Continue with NDLM horizon/quality correction work using the new passing NDLM-only lane and diagnostics artifacts as baseline.
