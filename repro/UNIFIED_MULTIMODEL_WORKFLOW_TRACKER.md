@@ -1,7 +1,7 @@
 # Unified Multi-Model Workflow Tracker (Living)
 
 Date: 2026-02-10  
-Last verified: 2026-02-19 (post artifact contract hardening + validator gate update verified with regression tests and full-figures replay artifacts)  
+Last verified: 2026-02-20 (canonical one-core-per-model parallel end-to-end run closed PASS; post-quality diagnosis checklist opened for NDLM/univar quality and multivar synthesis-horizon/aggregated-discrepancy figure integrity)  
 Repo root: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Status: Active planning + execution tracker  
 Primary audience: project maintainer + Codex
@@ -316,6 +316,9 @@ Status legend:
 | R-006 | High | DISC-W warm-start can load root `DISC_variables_*` paths, violating run-scoped reproducibility if enabled. | Keep warm-start disabled by default; if enabled, require run-scoped warm-start source path recorded in manifest before stage execution. | TBD | Mitigating (legacy bridge env routing now run-scoped; warm-start remains disabled by default) |
 | R-007 | Medium | Post reads `y_reps*.rds` via relative paths, creating working-directory-sensitive behavior. | In P5, enforce absolute/manifest-declared paths for these intermediates and fail fast on unresolved relative reads. | TBD | Mitigating (run-scoped cache path enforced) |
 | R-008 | Medium | Extreme quantile (`q=0.01`) multivar fit can enter non-finite objective regions without adaptive safeguards. | Keep adaptive gamma/sigma guardrails defaulted across exDQLM families; maintain extreme-quantile regression proofs and trace monitoring for drift. | TBD | Mitigated for current scope (P9 closure accepted under D-011; residual strict-tail convergence tightening tracked as follow-up optimization) |
+| R-009 | High | Post synthesis horizon may be truncated before full forecast lead window (expected up to GloFAS 30-day support) in multivar and NDLM figure outputs. | Execute isolated post diagnostics that compare each plotted time index against available `NWS/GloFAS` member horizons and model-state forecast arrays; enforce explicit horizon-contract checks before plotting. | TBD | Open (diagnosis checklist queued) |
+| R-010 | High | Aggregated discrepancy figures (`Agg_disc_*`) currently render observed discrepancies only, without fitted aggregated discrepancy overlays. | Audit aggregated discrepancy plotting path and model-fit object wiring; add contract checks requiring both observed and fitted aggregated discrepancy series in figure payloads. | TBD | Open (diagnosis checklist queued) |
+| R-011 | Medium | Univariate exDQLM and NDLM outputs may be numerically complete but visually/structurally inconsistent with expected model behavior in synthesis windows. | Run isolated single-family lanes (NDLM-only and univar median-only) with dedicated convergence + posterior trace diagnostics and post-only replay checks before changing model logic. | TBD | Open (diagnosis checklist queued) |
 
 ## 9) Validation and Done Criteria
 
@@ -1650,12 +1653,160 @@ None currently tracked.
    - Hitting max-iter in extreme tails is acceptable for this closure gate when traces remain stable and outputs are produced.
    - Additional strict-tail convergence tightening is tracked as non-blocking follow-up work.
 
-## 12) Immediate Next Actions (Proposed)
+## 12) Immediate Next Actions (Post-Quality Isolation Checklist)
 
-1. Run NDLM-focused convergence-quality audit on the canonical closure artifacts (`prod_canonical_parallel_allmodels_20260218_040416`) and document whether additional NDLM fit-policy adjustments are required.
-2. Keep one optional full post replay (`post.smoke_fast=false`, `post.figures=true`, `post.export_tables=true`) as a periodic regression check; current full-figures artifact-contract evidence is already recorded from replay outputs.
-3. Record any additional synthesis artifact locations (multivar/univar/NDLM) and keep evidence pointers current in this tracker.
-4. Perform final tracker self-consistency pass after NDLM convergence-quality follow-up closes (phase table, task statuses, risks, decisions, and evidence pointers).
+Scope note:
+1. Canonical workflow execution is now confirmed end-to-end PASS under one-core-per-model parallel mode.
+2. The active blocker is output-quality correctness (NDLM/univar behavior and multivar synthesis/aggregated-discrepancy figure integrity), not orchestration stability.
+
+Checklist (execute in order, one lane at a time):
+
+- [x] `Q-00` Baseline freeze + diagnostics contract
+  - Lock baseline run for diagnosis: `prod_canonical_full_e2e_parallel_onecore_20260220_002642`.
+  - Snapshot current problematic artifacts and map each to producing code path:
+    - NDLM quality figure: `All3_ndlm_DISC.png`
+    - Univar quality figures (median-focused)
+    - Multivar horizon and aggregated discrepancy figures:
+      - `All3_exal_DISC.png`
+      - `Agg_disc_1991_2022_1.png` (and sibling `Agg_disc_*`)
+  - Define expected horizon contract explicitly for all synthesis figures:
+    - Plot domain end must match the maximum valid forecast horizon across available model inputs used in that plot (NWS/GloFAS/member availability aware).
+
+- [ ] `Q-01` NDLM-only isolated fit + post diagnosis lane
+  - Run NDLM-only fit and NDLM-only post replay from run-scoped artifacts.
+  - Add NDLM diagnostics outputs:
+    - ELBO trace
+    - state norm trace
+    - sigma (and any NDLM-specific dynamic variance/weight traces already available)
+    - forecast-window coverage trace (time index actually plotted vs available)
+  - Acceptance gate:
+    - NDLM figures use full intended forecast window for the selected plot definition.
+    - No silent truncation from index-shape mismatch.
+
+### 12.1) `Q-00` + `Q-01` Root-Cause Debug Checklist (Execution Contract)
+
+Use this checklist as mandatory execution contract for `Q-00` and `Q-01`. Do not patch code until phases A-D are complete and evidence is written.
+
+Phase A: Baseline freeze (`Q-00A`)
+1. Lock diagnosis baseline run id and path:
+   - `RUN_BASE=prod_canonical_full_e2e_parallel_onecore_20260220_002642`
+   - `repro/runs/${RUN_BASE}`
+2. Record immutable baseline snapshot in:
+   - `repro/runs/${RUN_BASE}/diagnostics/q00_baseline/`
+3. Write `baseline_manifest.md` containing:
+   - run id, stage statuses, finished timestamp, active git commit hash,
+   - exact list of target artifacts under diagnosis (`All3_ndlm_DISC.png`, `All3_exal_DISC.png`, all `Agg_disc_*`, univar median synthesis figures),
+   - producer code map (`file`, `function/block`, `line hint`).
+4. Write `baseline_symptom_table.csv` with one row per symptom:
+   - `symptom_id`, `artifact_path`, `observed_behavior`, `expected_behavior`, `severity`, `suspected_layer` (`fit`, `post`, `plot_contract`, `time_index`).
+
+Phase B: Contract audit (`Q-00B`)
+1. Write `horizon_contract.md` for each affected figure family:
+   - expected x-range definition,
+   - required source time vectors,
+   - max valid horizon rule and truncation rule.
+2. Write `shape_contract_table.csv` for NDLM objects used in post:
+   - object name,
+   - expected rank/dims/type,
+   - observed rank/dims/type from baseline run artifacts,
+   - status (`match`, `mismatch`, `ambiguous`).
+3. Parse post logs and emit `contract_warnings_summary.csv`:
+   - warning/error key,
+   - count,
+   - first/last occurrence,
+   - affected script.
+4. `Q-00` completion gate:
+   - all four baseline contract files exist and are linked in progress log.
+
+Phase C: NDLM isolation lane (`Q-01A`)
+1. Run isolated NDLM lane only (fit + post) with deterministic seed and run-scoped output directory:
+   - no univar/multivar families enabled in this lane.
+2. Persist NDLM diagnostics bundle at:
+   - `repro/runs/<Q01_RUN_ID>/diagnostics/ndlm/`
+3. Required diagnostics files:
+   - `ndlm_iter_trace.csv`: `iter, elbo, elbo_diff, state_norm_sq, sigma_expectation`.
+   - `ndlm_time_coverage.csv`: `source_series, t_min, t_max, n_points, missing_count`.
+   - `ndlm_plot_contract_check.csv`: figure-level expected vs actual x-range coverage.
+   - `ndlm_object_shapes.csv`: NDLM post-input object shapes read at render time.
+
+Phase D: Root-cause isolation (`Q-01B`)
+1. Build `ndlm_hypothesis_matrix.md` with three root classes and explicit falsification checks:
+   - H1 time-index contract mismatch,
+   - H2 tensor orientation/rank mismatch,
+   - H3 upstream forecast-horizon truncation propagated into plotting.
+2. For each hypothesis, run one minimal discriminating check and record outcome with artifact path.
+3. Declare root cause only when one hypothesis is supported and alternatives are falsified.
+4. No code fix is allowed unless `ndlm_hypothesis_matrix.md` has a single supported root-cause conclusion.
+
+Phase E: Fix-readiness gate (`Q-01C`)
+1. Before edits, write `ndlm_fix_spec.md`:
+   - invariant(s) to enforce,
+   - exact interfaces/files to change,
+   - why fix preserves model/post semantics.
+2. Define acceptance criteria:
+   - NDLM synthesis figures cover contract horizon,
+   - no index/dimension warning promoted to error in NDLM lane,
+   - post artifacts generated with non-empty fitted series where required.
+3. Only after this gate: implement code changes and proceed to `Q-04/Q-05`.
+
+- [ ] `Q-02` Univariate exDQLM median-only isolated lane (`q=0.50`)
+  - Run univar-only (`q=0.50`) fit + post replay.
+  - Produce compact diagnostics pack:
+    - ELBO trace
+    - gamma/sigma traces
+    - state norm trace
+    - synthesis horizon coverage trace
+  - Acceptance gate:
+    - Median univar synthesis aligns with expected horizon and does not show premature plot cutoff.
+
+- [ ] `Q-03` Multivariate post-only figure integrity lane
+  - Reuse existing multivar fit artifacts; run post-only replay focused on multivar figures.
+  - Diagnose and fix two issues:
+    - `Q-03A`: synthesis horizon truncation in `All3_exal_DISC.png` and related multivar synthesis plots.
+    - `Q-03B`: aggregated discrepancy figures (`Agg_disc_*`) must include fitted aggregated discrepancy series, not only observed discrepancy.
+  - Add explicit plot-data contract checks before rendering:
+    - observed series length
+    - fitted series length
+    - plotted x-range
+    - missing-value handling policy
+  - Acceptance gate:
+    - Fitted aggregated discrepancy overlay is present and non-empty in every `Agg_disc_*` figure.
+    - Synthesis x-range matches the expected forecast horizon contract.
+
+- [ ] `Q-04` Root-cause closure + regression guardrails
+  - For every corrected issue, record:
+    - exact root cause (object/dimension/time-index mismatch, wrong variable selection, or path-level contract mismatch),
+    - exact file/line fixes,
+    - why the fix is theory-consistent (no cosmetic patching).
+  - Add targeted tests for:
+    - horizon coverage contract,
+    - aggregated discrepancy fit presence contract,
+    - NDLM/univar median post-figure data-shape checks.
+
+- [ ] `Q-05` Recompose final quality pack
+  - Re-run post (full figures + tables) from corrected artifacts.
+  - Register final evidence paths for:
+    - NDLM corrected figures and traces
+    - univar median corrected figures and traces
+    - multivar corrected synthesis + `Agg_disc_*` figures
+  - Update risk register statuses for `R-009`, `R-010`, `R-011` and close checklist items.
+
+### 12.2) Context-Switch Resume Reminder (Frozen State)
+
+If work is paused for a tangent, resume from this exact state:
+
+1. `Q-00` is complete (`Q-00A` + `Q-00B`) with baseline artifacts under:
+   - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/`
+2. `Q-01A` NDLM-isolated lane reached:
+   - `fit=pass`, `post=fail` in `diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726`.
+3. Current blocker:
+   - NDLM-only post still traverses univariate/multivariate bundle-loading path in `30_univariate_and_misc.R`, causing empty-path `load_rdata_with_retry` failure.
+4. First implementation step on resume:
+   - add strict model-toggle gating so NDLM-only post does not attempt non-NDLM bundle loads; then rerun `Q-01A`.
+5. Resume evidence anchors:
+   - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726/run_manifest.yaml`
+   - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726/post/logs/post_runner.log`
+   - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726/fit/ndlm_main/logs/ndlm_theory.log`
 
 ## 13) Notes
 
@@ -2607,3 +2758,132 @@ Concurrency rule for migration phases:
     - `repro/runs/post_replay_canonical_fullprod_20260218_115313/post/restartability_helper.log`
 - Next action:
   - Wait for `post_replay_canonical_fullprod_20260218_115313` to close, then confirm helper-produced restartability rerun closure and register final artifact counts/paths.
+
+### Progress Update 2026-02-20 19:57 UTC
+
+- Phase: Post-quality diagnosis planning (NDLM + univar median + multivar synthesis/agg-discrepancy)
+- Change type: validation+planning
+- Summary:
+  - Verified definitive canonical one-core-per-model full run closure:
+    - `run_id=prod_canonical_full_e2e_parallel_onecore_20260220_002642`
+    - all stages `pass` with non-null `finished_at_utc`.
+  - Confirmed synthesis/figure artifacts exist under run-scoped post outputs.
+  - Maintainer-raised quality issues were captured as new diagnosis scope:
+    - NDLM fit/plot quality concerns.
+    - Univariate exDQLM quality concerns.
+    - Multivariate synthesis horizon truncation suspicion (expected vs plotted horizon mismatch).
+    - Aggregated discrepancy figures (`Agg_disc_*`) showing observed discrepancy but missing fitted aggregated discrepancy overlay.
+  - Opened explicit isolation-first checklist in Section 12 (`Q-00` to `Q-05`) and corresponding live risks (`R-009`, `R-010`, `R-011`).
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence:
+  - Canonical run closure:
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/run_manifest.yaml`
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/post/logs/post_runner.log`
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/report/summary.md`
+  - Quality-issue example artifacts:
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/post/outputs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/All3_ndlm_DISC.png`
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/post/outputs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/All3_exal_DISC.png`
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/post/outputs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/Agg_disc_1991_2022_1.png`
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/post/outputs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/post_artifacts_manifest.csv`
+- Validation notes:
+  - No hard runtime failures are currently blocking workflow completion.
+  - Current blocker class is output-quality correctness and plot-data contract integrity.
+- Next action:
+  - Execute `Q-00` baseline freeze and then start `Q-01` NDLM-only isolated diagnosis lane before any model-logic edits.
+
+### Progress Update 2026-02-20 20:17 UTC
+
+- Phase: `Q-00A` baseline freeze artifactization (diagnostics contract bootstrap)
+- Change type: evidence capture (no model/post logic edits)
+- Summary:
+  - Executed `Q-00A` and froze the canonical diagnosis baseline for:
+    - `run_id=prod_canonical_full_e2e_parallel_onecore_20260220_002642`
+  - Added run-scoped baseline diagnostics bundle with:
+    - immutable run/status snapshot,
+    - explicit target artifact list under diagnosis,
+    - producer code-path map with file/line hints,
+    - symptom table for NDLM, univar median, multivar horizon, and `Agg_disc_*`.
+  - No code-path behavior changes were made in fit/post/validate/report.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/baseline_manifest.md`
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/baseline_symptom_table.csv`
+- Evidence:
+  - Baseline bundle root:
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/`
+  - Baseline manifest:
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/baseline_manifest.md`
+  - Baseline symptoms:
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/baseline_symptom_table.csv`
+- Validation notes:
+  - Target diagnosis artifacts referenced in the baseline manifest are present in post outputs.
+  - `Q-00A` is complete; `Q-00B` contract audit files (`horizon_contract.md`, `shape_contract_table.csv`, `contract_warnings_summary.csv`) remain pending.
+- Next action:
+  - Execute `Q-00B` contract audit and then launch `Q-01A` NDLM-only isolated lane.
+
+### Progress Update 2026-02-20 20:44 UTC
+
+- Phase: `Q-00B` contract audit completion
+- Change type: diagnostics evidence capture (no model/post logic edits)
+- Summary:
+  - Completed `Q-00B` and generated all required contract-audit artifacts for baseline run:
+    - horizon contract with requested vs available vs effective horizons,
+    - NDLM post-input shape contract table (expected vs observed),
+    - keyed warning/error summary parsed from baseline post logs.
+  - Baseline highlights captured for root-cause isolation:
+    - forecast availability mismatch (`NWS=10`, `GloFAS=28`, requested `k_step_ahead=30`),
+    - effective synthesis cache horizon (`y_reps_f`) at `18`,
+    - NDLM forecast-window objects (`sm_ens`, `standard_forecast_errors`) at horizon `10`.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/horizon_contract.md`
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/shape_contract_table.csv`
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/contract_warnings_summary.csv`
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/horizon_metrics.csv`
+- Evidence:
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/horizon_contract.md`
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/shape_contract_table.csv`
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/contract_warnings_summary.csv`
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/diagnostics/q00_baseline/horizon_metrics.csv`
+- Validation notes:
+  - `Q-00` completion gate is satisfied (`baseline_manifest.md`, `baseline_symptom_table.csv`, `horizon_contract.md`, `shape_contract_table.csv`, `contract_warnings_summary.csv` all present).
+  - No stage reruns were executed in this update.
+- Next action:
+  - Launch `Q-01A` NDLM-only isolated fit+post lane and start periodic health checks on that lane.
+
+### Progress Update 2026-02-20 20:47 UTC
+
+- Phase: `Q-01A` NDLM-only lane launch + isolation wiring validation
+- Change type: execution diagnostics
+- Summary:
+  - Attempted NDLM-only isolated lane with minimal stages and captured two hard preconditions:
+    1. `fit+post` without shared inputs fails in fit adapter conversion with non-finite source rows.
+    2. NDLM fit bridge enforces run-scoped shared inputs (`inputs/shared/...`) and fails fast when absent.
+  - Started active NDLM-only isolated run with pre-seeded run-scoped shared bundle:
+    - `run_id=diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726`
+    - stages: `fit, post`
+    - models: `run_ndlm_main=true`, `run_exdqlm_multivar=false`, `run_exdqlm_univar=false`
+  - Live process evidence confirms NDLM theory runner is executing under the isolated run root.
+- Files touched:
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence:
+  - Failed attempt (raw-input non-finite conversion):
+    - `/tmp/diag_q01a_ndlm_only_fitpost_20260220_124453.yaml`
+    - `repro/runs/diag_q01a_ndlm_only_fitpost_20260220_124453/run_manifest.yaml`
+    - foreground error capture: `glofas_fit_adapter.csv:0 has non-finite values after conversion`
+  - Failed attempt (shared-input precondition):
+    - `/tmp/diag_q01a_ndlm_only_fitpost_from_adapters_20260220_124637.yaml`
+    - `repro/runs/diag_q01a_ndlm_only_fitpost_from_adapters_20260220_124637/run_manifest.yaml`
+    - foreground error capture: `legacy NDLM bridge requires run-scoped shared inputs`
+  - Active isolated run:
+    - `/tmp/diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726.yaml`
+    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726/run_manifest.yaml`
+    - process traces observed for:
+      - `scripts/unified_run.R --config /tmp/diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726.yaml`
+      - `scripts/run_ndlm_main.R` with NDLM run-scoped env bindings.
+- Validation notes:
+  - `Q-01A` is in progress (fit active; post not started yet).
+  - No model-logic edits were applied in this step.
+- Next action:
+  - Continue periodic health checks on `diag_q01a_ndlm_only_sharedseed_fitpost_20260220_124726` and register NDLM diagnostics bundle outputs once fit/post close.
