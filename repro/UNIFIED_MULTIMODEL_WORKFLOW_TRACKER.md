@@ -1734,7 +1734,7 @@ Checklist (execute in order, one lane at a time):
   - Current sub-status:
     - `Q-01A` run closure and diagnostics bundle are complete.
     - `Q-01B` root-cause matrix is complete with a single supported cause for the original NDLM-only post crash.
-    - `Q-01C` horizon-contract closure is complete with theory-aligned shared-horizon invariants (`K=min(nws_len,glofas_len,K_cap)`) and passing NDLM-only diagnostics.
+    - `Q-01C` horizon-contract closure has been upgraded to theory-aligned ragged-horizon invariants (`K_j`, `A_k`, `K_overlap`, `K_max`, segment profile) with passing NDLM-only diagnostics.
 
 ### 12.1) `Q-00` + `Q-01` Root-Cause Debug Checklist (Execution Contract)
 
@@ -3099,3 +3099,52 @@ Concurrency rule for migration phases:
   - No additional NDLM horizon/data-flow code change was required after this re-verification.
 - Next action:
   - Keep NDLM horizon/data-flow contract frozen and move remaining NDLM work to model-quality diagnostics (fit behavior) only.
+
+### Progress Update 2026-02-20 23:40 UTC
+
+- Phase: NDLM ragged-horizon contract correction (`Q-01` scope refinement)
+- Change type: root-cause fix (shared-K truncation removal) + theory alignment + regression hardening + isolated rerun
+- Summary:
+  - Reopened NDLM horizon contract because shared-`K` assumptions were mathematically inconsistent with target Model C ragged horizons.
+  - Implemented NDLM ragged-horizon forecast contract:
+    - per-source effective horizon `K_j=min(source_len_j, K_cap)`,
+    - `K_overlap=min_j K_j`, `K_max=max_j K_j`,
+    - active set by lead `A_k={j: k<=K_j}`,
+    - segmented forecast state outputs `sm_ens/sC_ens` with profile `[K_overlap, K_max-K_overlap]` (for two-source case).
+  - Added run-time NDLM metadata for contract tracing:
+    - `K_vec`, `K_overlap`, `K_max`, `segment_lengths`, `extension_source`, `bridge_source`,
+    - `active_set_by_lead`, `state_dim_by_lead`.
+  - Updated fit/post contract checks to validate ragged profile consistency instead of shared-`K` equality.
+  - Added NDLM ragged diagnostics outputs in post:
+    - `active_set_by_lead.csv`,
+    - `state_dim_by_lead.csv`,
+    - `horizon_contract_check.csv`,
+    - `ragged_coverage_summary.csv`.
+- Theory updates:
+  - NDLM derivation sections now state ragged-horizon Model C contract (`K_j`, `A_k`, transdimensional/equivalent fixed-dim projection).
+- Verification rerun:
+  - `run_id=20260220_153713`
+  - stages: `forecats=pass`, `data_prep_shared=pass`, `fit=pass`, `post=pass`
+  - ragged contract result: full pass (`k_nws=10`, `k_glofas=28`, `segment=[10,18]`, `standard_forecast_errors.K=28`).
+- Evidence:
+  - Run closure:
+    - `repro/runs/20260220_153713/run_manifest.yaml`
+    - `repro/runs/20260220_153713/fit/ndlm_main/logs/ndlm_theory.log`
+    - `repro/runs/20260220_153713/post/logs/post_runner.log`
+  - NDLM diagnostics bundle:
+    - `repro/runs/20260220_153713/diagnostics/ndlm/ndlm_iter_trace.csv`
+    - `repro/runs/20260220_153713/diagnostics/ndlm/ndlm_time_coverage.csv`
+    - `repro/runs/20260220_153713/diagnostics/ndlm/horizon_contract_check.csv`
+    - `repro/runs/20260220_153713/diagnostics/ndlm/ndlm_plot_contract_check.csv`
+    - `repro/runs/20260220_153713/diagnostics/ndlm/active_set_by_lead.csv`
+    - `repro/runs/20260220_153713/diagnostics/ndlm/state_dim_by_lead.csv`
+    - `repro/runs/20260220_153713/diagnostics/ndlm/ragged_coverage_summary.csv`
+    - `repro/runs/20260220_153713/diagnostics/ndlm/ndlm_hypothesis_matrix.md`
+- Validation notes:
+  - Targeted tests passed:
+    - `tests/testthat/test_ndlm_ragged_horizon_builder.R`
+    - `tests/testthat/test_ndlm_horizon_contract.R`
+  - NDLM fit contract check passed:
+    - `repro/runs/20260220_153713/fit/contract_checks/ndlm_main/ndlm_main_contract_check.yaml`
+- Next action:
+  - Keep ragged-horizon contract frozen and proceed to NDLM model-quality diagnosis (fit behavior/parameter dynamics), without changing non-NDLM families.
