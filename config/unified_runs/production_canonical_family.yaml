@@ -79,6 +79,9 @@ inputs:
     prefer_forecats_snapshot: true
 
 fit:
+  parallel:
+    mode: "one_core_per_model"
+    workers: null
   quantiles: [0.01, 0.05, 0.10, 0.50, 0.90, 0.95, 0.99]
   warm_start:
     enabled: false

@@ -96,7 +96,7 @@ unified_config_defaults <- function() {
     fit = list(
       quantiles = c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95),
       parallel = list(
-        mode = "by_family",
+        mode = "one_core_per_model",
         workers = NULL
       ),
       warm_start = list(
@@ -367,6 +367,26 @@ unified_validate_config <- function(cfg) {
   io_min_free_inodes_pct <- suppressWarnings(as.numeric(unified_get(cfg, c("run", "io", "min_free_inodes_pct"), default = 5)))
   if (!is.finite(io_min_free_inodes_pct) || io_min_free_inodes_pct < 0 || io_min_free_inodes_pct > 100) {
     add_err("run.io.min_free_inodes_pct must be numeric in [0, 100]")
+  }
+  run_threads_mc_cores <- suppressWarnings(as.integer(unified_get(cfg, c("run", "threads", "mc_cores"), default = 1L)))
+  if (!is.finite(run_threads_mc_cores) || run_threads_mc_cores < 1L) {
+    add_err("run.threads.mc_cores must be an integer >= 1")
+  }
+  fit_parallel_mode <- as.character(unified_get(cfg, c("fit", "parallel", "mode"), default = "one_core_per_model"))
+  fit_parallel_mode <- if (length(fit_parallel_mode) > 0L) fit_parallel_mode[[1]] else "one_core_per_model"
+  fit_parallel_mode <- gsub("[^A-Za-z0-9]+", "_", tolower(fit_parallel_mode))
+  if (!(fit_parallel_mode %in% c("by_family", "global_models", "one_core_per_model"))) {
+    add_err("fit.parallel.mode must be one of: one_core_per_model, global_models, by_family")
+  }
+  fit_parallel_workers_raw <- unified_get(cfg, c("fit", "parallel", "workers"), default = NULL)
+  if (!is.null(fit_parallel_workers_raw)) {
+    fit_parallel_workers_chr <- as.character(fit_parallel_workers_raw)[[1]]
+    if (!is.na(fit_parallel_workers_chr) && nzchar(fit_parallel_workers_chr)) {
+      fit_parallel_workers <- suppressWarnings(as.integer(fit_parallel_workers_chr))
+      if (!is.finite(fit_parallel_workers) || fit_parallel_workers < 1L) {
+        add_err("fit.parallel.workers must be null or an integer >= 1")
+      }
+    }
   }
 
   post_export_tables <- unified_get(cfg, c("post", "export_tables"), default = TRUE)

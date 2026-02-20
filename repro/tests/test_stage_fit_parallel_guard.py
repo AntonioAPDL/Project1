@@ -48,7 +48,7 @@ class StageFitParallelGuardTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
         self.assertIn("q=0.5 status=0", result.stdout)
 
-    def test_fit_parallel_mode_unknown_falls_back(self) -> None:
+    def test_fit_parallel_mode_unknown_falls_back_to_one_core_per_model(self) -> None:
         expr = (
             "source('R/unified/config.R');"
             "source('R/unified/stages/stage_fit.R');"
@@ -59,7 +59,20 @@ class StageFitParallelGuardTests(unittest.TestCase):
         )
         result = self._run_r(expr)
         self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
-        self.assertIn("mode=by_family", result.stdout)
+        self.assertIn("mode=one_core_per_model", result.stdout)
+
+    def test_fit_parallel_mode_default_is_one_core_per_model(self) -> None:
+        expr = (
+            "source('R/unified/config.R');"
+            "source('R/unified/stages/stage_fit.R');"
+            "cfg <- list();"
+            "m <- unified_resolve_fit_parallel_mode(cfg);"
+            "cat(sprintf('mode=%s\\n', m));"
+            "quit(status=0)"
+        )
+        result = self._run_r(expr)
+        self.assertEqual(result.returncode, 0, msg=result.stdout + "\n" + result.stderr)
+        self.assertIn("mode=one_core_per_model", result.stdout)
 
     def test_fit_parallel_workers_caps_to_job_count(self) -> None:
         expr = (

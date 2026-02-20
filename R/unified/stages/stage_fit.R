@@ -17,17 +17,17 @@ unified_normalize_fit_worker_result <- function(res, context_label = "fit stage 
 }
 
 unified_resolve_fit_parallel_mode <- function(cfg) {
-  mode <- as.character(unified_get(cfg, c("fit", "parallel", "mode"), default = "by_family"))
+  mode <- as.character(unified_get(cfg, c("fit", "parallel", "mode"), default = "one_core_per_model"))
   if (!length(mode) || is.na(mode[[1]]) || !nzchar(mode[[1]])) {
-    return("by_family")
+    return("one_core_per_model")
   }
-  mode <- mode[[1]]
-  if (!(mode %in% c("by_family", "global_models"))) {
+  mode <- gsub("[^A-Za-z0-9]+", "_", tolower(mode[[1]]))
+  if (!(mode %in% c("by_family", "global_models", "one_core_per_model"))) {
     warning(
-      sprintf("unknown fit.parallel.mode=%s; falling back to by_family", mode),
+      sprintf("unknown fit.parallel.mode=%s; falling back to one_core_per_model", mode),
       call. = FALSE
     )
-    return("by_family")
+    return("one_core_per_model")
   }
   mode
 }
@@ -870,11 +870,17 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     if (workers > 1L && .Platform$OS.type != "windows") {
       parallel::mclapply(fit_jobs, function(job) job$runner(), mc.cores = workers)
     } else {
+      if (workers > 1L && .Platform$OS.type == "windows") {
+        warning(
+          "fit parallel workers > 1 requested on Windows; falling back to sequential execution",
+          call. = FALSE
+        )
+      }
       lapply(fit_jobs, function(job) job$runner())
     }
   }
 
-  if (identical(fit_parallel_mode, "global_models")) {
+  build_fit_jobs <- function() {
     fit_jobs <- list()
 
     if (run_exdqlm_multivar) {
@@ -905,13 +911,35 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         runner = function() run_ndlm_fit()
       )
     }
+    fit_jobs
+  }
 
-    workers <- unified_resolve_fit_parallel_workers(cfg, length(fit_jobs), default_workers = default_workers)
+  if (fit_parallel_mode %in% c("global_models", "one_core_per_model")) {
+    fit_jobs <- build_fit_jobs()
+    if (identical(fit_parallel_mode, "one_core_per_model")) {
+      workers <- as.integer(length(fit_jobs))
+      detected_cores <- suppressWarnings(as.integer(parallel::detectCores(logical = TRUE)))
+      if (is.finite(detected_cores) && detected_cores > 0L && workers > detected_cores) {
+        warning(
+          sprintf(
+            "one_core_per_model requested %d workers but only %d cores detected; oversubscription may slow fit stage",
+            workers,
+            detected_cores
+          ),
+          call. = FALSE
+        )
+      }
+    } else {
+      workers <- unified_resolve_fit_parallel_workers(cfg, length(fit_jobs), default_workers = default_workers)
+    }
+    if (length(fit_jobs) > 0L) {
+      message(sprintf("fit scheduler mode=%s workers=%d jobs=%d", fit_parallel_mode, workers, length(fit_jobs)))
+    }
     results <- execute_fit_jobs(fit_jobs, workers = workers)
     for (res in results) {
       family <- as.character(res$model_family)
       if (!length(family) || is.na(family[[1]]) || !nzchar(family[[1]])) {
-        stop("fit stage global_models worker returned empty model_family", call. = FALSE)
+        stop(sprintf("fit stage %s worker returned empty model_family", fit_parallel_mode), call. = FALSE)
       }
       family <- family[[1]]
       manifest <- switch(
@@ -919,7 +947,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         exdqlm_multivar = process_multivar_result(manifest, res),
         exdqlm_univar = process_univar_result(manifest, res),
         ndlm_main = process_ndlm_result(manifest, res),
-        stop(sprintf("unknown fit stage family result in global_models mode: %s", family), call. = FALSE)
+        stop(sprintf("unknown fit stage family result in %s mode: %s", fit_parallel_mode, family), call. = FALSE)
       )
     }
   } else {
