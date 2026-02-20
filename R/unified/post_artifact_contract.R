@@ -120,7 +120,8 @@ unified_post_contract_check <- function(
   outputs_dir,
   cache_dir = NULL,
   post_figures = TRUE,
-  export_tables = TRUE
+  export_tables = TRUE,
+  post_smoke_fast = FALSE
 ) {
   if (is.null(artifacts_df)) {
     artifacts_df <- unified_collect_post_artifacts(outputs_dir = outputs_dir, cache_dir = cache_dir)
@@ -154,42 +155,50 @@ unified_post_contract_check <- function(
       messages <- c(messages, "no figure artifacts found under post outputs.")
     }
 
-    required_cache <- c("y_reps_f.rds", "y_reps.rds", "y_reps_f_new.rds", "y_reps_new.rds")
-    cache_paths <- file.path(cache_dir, required_cache)
-    missing_cache <- cache_paths[!file.exists(cache_paths)]
-    checks$synthesis_cache_files_present <- length(missing_cache) == 0L
-    if (!checks$synthesis_cache_files_present) {
-      missing_paths <- c(missing_paths, missing_cache)
-      messages <- c(messages, sprintf("missing synthesis cache files: %s", paste(basename(missing_cache), collapse = ", ")))
-    }
-
-    core_shape_checks <- list(
-      unified_validate_synthesis_cube_file(file.path(cache_dir, "y_reps_f.rds"), "y_reps_f.rds"),
-      unified_validate_synthesis_cube_file(file.path(cache_dir, "y_reps.rds"), "y_reps.rds")
-    )
-    core_shape_ok <- all(vapply(core_shape_checks, `[[`, logical(1), "ok"))
-    checks$synthesis_core_shapes_ok <- core_shape_ok
-    if (!core_shape_ok) {
-      bad_msgs <- vapply(core_shape_checks[!vapply(core_shape_checks, `[[`, logical(1), "ok")], `[[`, character(1), "message")
-      messages <- c(messages, bad_msgs)
-    }
-
-    if (isTRUE(export_tables)) {
-      required_tables <- c(
-        "gamma_summary.csv",
-        "sigma_summary.csv",
-        "covariate_effects_summary.csv",
-        "posterior_table_exports_manifest.csv",
-        "posterior_table_exports_README.md"
-      )
-      missing_tables <- required_tables[!vapply(required_tables, has_output_file, logical(1))]
-      checks$table_exports_present <- length(missing_tables) == 0L
-      if (!checks$table_exports_present) {
-        missing_paths <- c(missing_paths, file.path(outputs_dir, "tables", missing_tables))
-        messages <- c(messages, sprintf("missing table exports: %s", paste(basename(missing_tables), collapse = ", ")))
-      }
-    } else {
+    if (isTRUE(post_smoke_fast)) {
+      # Smoke-fast figure runs are intentionally minimal and do not emit full
+      # synthesis cache cubes or table-export artifacts.
+      checks$synthesis_cache_files_present <- TRUE
+      checks$synthesis_core_shapes_ok <- TRUE
       checks$table_exports_present <- TRUE
+    } else {
+      required_cache <- c("y_reps_f.rds", "y_reps.rds", "y_reps_f_new.rds", "y_reps_new.rds")
+      cache_paths <- file.path(cache_dir, required_cache)
+      missing_cache <- cache_paths[!file.exists(cache_paths)]
+      checks$synthesis_cache_files_present <- length(missing_cache) == 0L
+      if (!checks$synthesis_cache_files_present) {
+        missing_paths <- c(missing_paths, missing_cache)
+        messages <- c(messages, sprintf("missing synthesis cache files: %s", paste(basename(missing_cache), collapse = ", ")))
+      }
+
+      core_shape_checks <- list(
+        unified_validate_synthesis_cube_file(file.path(cache_dir, "y_reps_f.rds"), "y_reps_f.rds"),
+        unified_validate_synthesis_cube_file(file.path(cache_dir, "y_reps.rds"), "y_reps.rds")
+      )
+      core_shape_ok <- all(vapply(core_shape_checks, `[[`, logical(1), "ok"))
+      checks$synthesis_core_shapes_ok <- core_shape_ok
+      if (!core_shape_ok) {
+        bad_msgs <- vapply(core_shape_checks[!vapply(core_shape_checks, `[[`, logical(1), "ok")], `[[`, character(1), "message")
+        messages <- c(messages, bad_msgs)
+      }
+
+      if (isTRUE(export_tables)) {
+        required_tables <- c(
+          "gamma_summary.csv",
+          "sigma_summary.csv",
+          "covariate_effects_summary.csv",
+          "posterior_table_exports_manifest.csv",
+          "posterior_table_exports_README.md"
+        )
+        missing_tables <- required_tables[!vapply(required_tables, has_output_file, logical(1))]
+        checks$table_exports_present <- length(missing_tables) == 0L
+        if (!checks$table_exports_present) {
+          missing_paths <- c(missing_paths, file.path(outputs_dir, "tables", missing_tables))
+          messages <- c(messages, sprintf("missing table exports: %s", paste(basename(missing_tables), collapse = ", ")))
+        }
+      } else {
+        checks$table_exports_present <- TRUE
+      }
     }
   }
 
