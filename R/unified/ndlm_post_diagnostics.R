@@ -137,23 +137,47 @@ unified_ndlm_diag_date_span <- function(dates) {
   c(t_min = as.character(min(dates[ok])), t_max = as.character(max(dates[ok])))
 }
 
+unified_ndlm_diag_named_int <- function(x, name, fallback = NA_integer_) {
+  if (is.null(x)) return(as.integer(fallback))
+  if (!is.null(names(x)) && (name %in% names(x))) {
+    return(unified_ndlm_diag_int(x[[name]]))
+  }
+  unified_ndlm_diag_int(x[[1L]])
+}
+
 unified_ndlm_diag_build_horizon_contract <- function(ndlm_obj, state_obj, retros_n, nws_n, glofas_n) {
   state_k <- NA_integer_
+  state_k_overlap <- NA_integer_
+  state_k_max <- NA_integer_
   state_k_cap <- NA_integer_
   state_nws <- NA_integer_
   state_glofas <- NA_integer_
+  state_k_vec_nws <- NA_integer_
+  state_k_vec_glofas <- NA_integer_
+  state_seg_overlap <- NA_integer_
+  state_seg_extension <- NA_integer_
   if (is.list(state_obj)) {
     state_k <- unified_ndlm_diag_int(state_obj$K)
+    state_k_overlap <- unified_ndlm_diag_int(state_obj$K_overlap)
+    state_k_max <- unified_ndlm_diag_int(state_obj$K_max)
     state_k_cap <- unified_ndlm_diag_int(state_obj$K_cap)
     state_nws <- unified_ndlm_diag_int(state_obj$nws_len)
     state_glofas <- unified_ndlm_diag_int(state_obj$glofas_len)
+    state_k_vec_nws <- unified_ndlm_diag_named_int(state_obj$K_vec, "nws")
+    state_k_vec_glofas <- unified_ndlm_diag_named_int(state_obj$K_vec, "glofas")
+    state_seg_overlap <- unified_ndlm_diag_named_int(state_obj$segment_lengths, "overlap")
+    state_seg_extension <- unified_ndlm_diag_named_int(state_obj$segment_lengths, "extension")
   }
 
   if (!is.finite(state_k_cap) || state_k_cap <= 0L) state_k_cap <- 14L
   if (!is.finite(state_nws) || state_nws <= 0L) state_nws <- nws_n
   if (!is.finite(state_glofas) || state_glofas <= 0L) state_glofas <- glofas_n
 
-  expected_k <- suppressWarnings(as.integer(min(state_nws, state_glofas, state_k_cap)))
+  expected_k_nws <- suppressWarnings(as.integer(min(state_nws, state_k_cap)))
+  expected_k_glofas <- suppressWarnings(as.integer(min(state_glofas, state_k_cap)))
+  expected_k_overlap <- suppressWarnings(as.integer(min(expected_k_nws, expected_k_glofas)))
+  expected_k_max <- suppressWarnings(as.integer(max(expected_k_nws, expected_k_glofas)))
+  expected_seg <- c(expected_k_overlap, max(expected_k_max - expected_k_overlap, 0L))
   standard_k <- if (is.list(ndlm_obj) && is.numeric(ndlm_obj$standard_forecast_errors)) {
     d <- dim(ndlm_obj$standard_forecast_errors)
     if (!is.null(d) && length(d) == 2L) as.integer(d[2]) else NA_integer_
@@ -188,32 +212,62 @@ unified_ndlm_diag_build_horizon_contract <- function(ndlm_obj, state_obj, retros
     NA_integer_
   }
 
+  actual_seg <- if (length(sm_k) > 0L) sm_k else integer(0)
+  actual_seg_txt <- if (length(actual_seg) == 0L) "[]" else sprintf("[%s]", paste(actual_seg, collapse = ","))
+  expected_seg_txt <- sprintf("[%s]", paste(expected_seg, collapse = ","))
+  sc_seg_txt <- if (length(sc_k) == 0L) "[]" else sprintf("[%s]", paste(sc_k, collapse = ","))
+
   rows <- list(
     data.frame(
-      figure_or_series = "ndlm_shared_forecast_horizon",
-      expected_horizon = expected_k,
+      figure_or_series = "ndlm_total_forecast_horizon",
+      expected_horizon = expected_k_max,
       actual_horizon = standard_k,
-      status = if (is.finite(expected_k) && is.finite(standard_k) && expected_k == standard_k) "pass" else "mismatch",
-      contract_rule = "K = min(nws_len, glofas_len, K_cap)",
-      notes = sprintf("state.K=%s state.nws_len=%s state.glofas_len=%s K_cap=%s", as.character(state_k), as.character(state_nws), as.character(state_glofas), as.character(state_k_cap)),
+      status = if (is.finite(expected_k_max) && is.finite(standard_k) && expected_k_max == standard_k) "pass" else "mismatch",
+      contract_rule = "K_max = max(min(nws_len,K_cap), min(glofas_len,K_cap))",
+      notes = sprintf("state.K=%s state.K_max=%s state.K_overlap=%s K_cap=%s state.K_vec=(nws=%s,glofas=%s)", as.character(state_k), as.character(state_k_max), as.character(state_k_overlap), as.character(state_k_cap), as.character(state_k_vec_nws), as.character(state_k_vec_glofas)),
       stringsAsFactors = FALSE
     ),
     data.frame(
-      figure_or_series = "ndlm_sm_ens_segment_horizon",
-      expected_horizon = expected_k,
-      actual_horizon = if (length(sm_k) == 0L) NA_integer_ else min(sm_k),
-      status = if (length(sm_k) > 0L && all(is.finite(sm_k)) && all(sm_k == expected_k)) "pass" else "mismatch",
-      contract_rule = "Each sm_ens segment must use shared K",
-      notes = if (length(sm_k) == 0L) "no sm_ens segments" else sprintf("segment_K=[%s]", paste(sm_k, collapse = ",")),
+      figure_or_series = "ndlm_segment_profile_sm_ens",
+      expected_horizon = expected_k_overlap,
+      actual_horizon = if (length(sm_k) == 0L) NA_integer_ else sum(sm_k),
+      status = if (length(sm_k) > 0L && all(is.finite(sm_k)) && all(sm_k >= 0L) && identical(as.integer(sm_k), as.integer(expected_seg))) "pass" else "mismatch",
+      contract_rule = "sm_ens segment lengths must match [K_overlap, K_max-K_overlap]",
+      notes = sprintf("expected=%s actual=%s", expected_seg_txt, actual_seg_txt),
       stringsAsFactors = FALSE
     ),
     data.frame(
-      figure_or_series = "ndlm_sC_ens_segment_horizon",
-      expected_horizon = expected_k,
-      actual_horizon = if (length(sc_k) == 0L) NA_integer_ else min(sc_k),
-      status = if (length(sc_k) > 0L && all(is.finite(sc_k)) && all(sc_k == expected_k)) "pass" else "mismatch",
-      contract_rule = "Each sC_ens segment must use shared K",
-      notes = if (length(sc_k) == 0L) "no sC_ens segments" else sprintf("segment_K=[%s]", paste(sc_k, collapse = ",")),
+      figure_or_series = "ndlm_segment_profile_sC_ens",
+      expected_horizon = expected_k_overlap,
+      actual_horizon = if (length(sc_k) == 0L) NA_integer_ else sum(sc_k),
+      status = if (length(sc_k) > 0L && all(is.finite(sc_k)) && all(sc_k >= 0L) && identical(as.integer(sc_k), as.integer(expected_seg))) "pass" else "mismatch",
+      contract_rule = "sC_ens segment lengths must match [K_overlap, K_max-K_overlap]",
+      notes = sprintf("expected=%s actual=%s", expected_seg_txt, sc_seg_txt),
+      stringsAsFactors = FALSE
+    ),
+    data.frame(
+      figure_or_series = "ndlm_segment_profile_state_consistency",
+      expected_horizon = expected_k_max,
+      actual_horizon = if (length(sm_k) == 0L) NA_integer_ else sum(sm_k),
+      status = if (length(sm_k) > 0L && length(sc_k) > 0L && all(is.finite(sm_k)) && all(is.finite(sc_k)) && length(sm_k) == length(sc_k) && all(sm_k == sc_k) && sum(sm_k) == standard_k) "pass" else "mismatch",
+      contract_rule = "sm_ens and sC_ens segment profiles must match and sum to standard_forecast_errors horizon",
+      notes = sprintf("sm_ens=%s sC_ens=%s standard.K=%s", actual_seg_txt, sc_seg_txt, as.character(standard_k)),
+      stringsAsFactors = FALSE
+    ),
+    data.frame(
+      figure_or_series = "ndlm_state_metadata_consistency",
+      expected_horizon = expected_k_max,
+      actual_horizon = state_k_max,
+      status = if (is.finite(state_k_max) && is.finite(state_k_overlap) && is.finite(state_seg_overlap) && is.finite(state_seg_extension) &&
+                    state_k_max == expected_k_max &&
+                    state_k_overlap == expected_k_overlap &&
+                    state_seg_overlap == state_k_overlap &&
+                    (state_seg_overlap + state_seg_extension) == state_k_max &&
+                    state_k_vec_nws == expected_k_nws &&
+                    state_k_vec_glofas == expected_k_glofas &&
+                    state_k == state_k_max) "pass" else "mismatch",
+      contract_rule = "state metadata (K_vec/K_overlap/K_max/segment_lengths) must match expected ragged horizon",
+      notes = sprintf("state.seg=[%s,%s] state.K=%s expected.Kmax=%s expected.Koverlap=%s", as.character(state_seg_overlap), as.character(state_seg_extension), as.character(state_k), as.character(expected_k_max), as.character(expected_k_overlap)),
       stringsAsFactors = FALSE
     ),
     data.frame(
@@ -351,6 +405,68 @@ unified_generate_ndlm_post_diagnostics <- function(
     glofas_n = as.integer(nrow(glofas_df))
   )
 
+  derive_active_set <- function() {
+    if (is.list(state_obj) && is.data.frame(state_obj$active_set_by_lead)) {
+      out <- state_obj$active_set_by_lead
+      req <- c("lead", "active_nws", "active_glofas", "active_count")
+      if (all(req %in% names(out))) {
+        return(out[, req, drop = FALSE])
+      }
+    }
+    cap <- if (is.list(state_obj)) unified_ndlm_diag_int(state_obj$K_cap) else NA_integer_
+    if (!is.finite(cap) || cap <= 0L) cap <- 14L
+    k_nws <- min(as.integer(nrow(nws_df)), cap)
+    k_glofas <- min(as.integer(nrow(glofas_df)), cap)
+    k_max <- max(k_nws, k_glofas)
+    data.frame(
+      lead = seq_len(k_max),
+      active_nws = as.integer(seq_len(k_max) <= k_nws),
+      active_glofas = as.integer(seq_len(k_max) <= k_glofas),
+      active_count = as.integer((seq_len(k_max) <= k_nws) + (seq_len(k_max) <= k_glofas)),
+      stringsAsFactors = FALSE
+    )
+  }
+  active_set_by_lead <- derive_active_set()
+
+  state_dim_by_lead <- if (is.list(state_obj) && is.data.frame(state_obj$state_dim_by_lead) &&
+                           all(c("lead", "state_dim") %in% names(state_obj$state_dim_by_lead))) {
+    state_obj$state_dim_by_lead[, c("lead", "state_dim"), drop = FALSE]
+  } else {
+    data.frame(
+      lead = active_set_by_lead$lead,
+      state_dim = as.integer(7L * active_set_by_lead$active_count),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  parse_seg_profile <- function(x) {
+    out <- gsub("^\\[|\\]$", "", as.character(x))
+    if (!nzchar(out)) return(integer(0))
+    vals <- strsplit(out, ",", fixed = TRUE)[[1L]]
+    suppressWarnings(as.integer(trimws(vals)))
+  }
+  row_sm <- horizon_contract[horizon_contract$figure_or_series == "ndlm_segment_profile_sm_ens", , drop = FALSE]
+  row_total <- horizon_contract[horizon_contract$figure_or_series == "ndlm_total_forecast_horizon", , drop = FALSE]
+  sm_profile <- if (nrow(row_sm) == 1L) parse_seg_profile(sub(".*actual=\\[([^]]*)\\].*", "[\\1]", row_sm$notes[[1L]])) else integer(0)
+  ragged_coverage_summary <- data.frame(
+    metric = c(
+      "k_nws_effective", "k_glofas_effective", "k_overlap", "k_max",
+      "segment_overlap", "segment_extension", "segment_sum", "standard_forecast_errors_k", "contract_status"
+    ),
+    value = c(
+      as.character(sum(active_set_by_lead$active_nws)),
+      as.character(sum(active_set_by_lead$active_glofas)),
+      as.character(sum(active_set_by_lead$active_count == 2L)),
+      as.character(nrow(active_set_by_lead)),
+      as.character(if (length(sm_profile) >= 1L) sm_profile[[1L]] else NA_integer_),
+      as.character(if (length(sm_profile) >= 2L) sm_profile[[2L]] else NA_integer_),
+      as.character(if (length(sm_profile) > 0L) sum(sm_profile, na.rm = TRUE) else NA_integer_),
+      as.character(if (nrow(row_total) == 1L) row_total$actual_horizon[[1L]] else NA_integer_),
+      if (all(horizon_contract$status == "pass")) "pass" else "mismatch"
+    ),
+    stringsAsFactors = FALSE
+  )
+
   obs_series <- unified_ndlm_diag_pick_numeric_column(retros_df, preferred = c("USGS", "y", "obs", "flow", "value"))
   fit_series <- if (is.numeric(exps) && !is.null(dim(exps)) && length(dim(exps)) == 2L && dim(exps)[1] >= 2L) {
     as.numeric(exps[2, ])
@@ -383,9 +499,9 @@ unified_generate_ndlm_post_diagnostics <- function(
     "# NDLM Horizon Contract",
     "",
     "Theory alignment:",
-    "1. NDLM Model C defines a shared forecast index `k=1..K` for active forecast sources.",
-    "2. In this implementation, `K` is derived as `min(nws_len, glofas_len, K_cap)`.",
-    "3. `exps` is retrospective-only (`T` columns). Forecast discrepancy dynamics are represented by `sm_ens/sC_ens` and `standard_forecast_errors` over `K`.",
+    "1. NDLM Model C uses ragged forecast horizons with active set A_k = {j: k <= K_j}.",
+    "2. In this implementation, K_j = min(source_len_j, K_cap), K_overlap=min(K_j), K_max=max(K_j).",
+    "3. `exps` is retrospective-only (`T` columns). Forecast discrepancy dynamics are represented by segmented `sm_ens/sC_ens` and `standard_forecast_errors` over K_max.",
     "",
     sprintf("Observed lengths: retros=%d, nws=%d, glofas=%d", as.integer(nrow(retros_df)), as.integer(nrow(nws_df)), as.integer(nrow(glofas_df))),
     sprintf("Contract result: %s", if (all(horizon_contract$status == "pass")) "pass" else "mismatch")
@@ -394,17 +510,25 @@ unified_generate_ndlm_post_diagnostics <- function(
   paths <- list(
     ndlm_iter_trace = file.path(output_dir, "ndlm_iter_trace.csv"),
     ndlm_time_coverage = file.path(output_dir, "ndlm_time_coverage.csv"),
+    active_set_by_lead = file.path(output_dir, "active_set_by_lead.csv"),
+    state_dim_by_lead = file.path(output_dir, "state_dim_by_lead.csv"),
+    horizon_contract_check = file.path(output_dir, "horizon_contract_check.csv"),
     ndlm_plot_contract_check = file.path(output_dir, "ndlm_plot_contract_check.csv"),
     ndlm_object_shapes = file.path(output_dir, "ndlm_object_shapes.csv"),
     ndlm_fit_vs_observed_coverage = file.path(output_dir, "ndlm_fit_vs_observed_coverage.csv"),
+    ragged_coverage_summary = file.path(output_dir, "ragged_coverage_summary.csv"),
     ndlm_horizon_contract = file.path(output_dir, "ndlm_horizon_contract.md")
   )
 
   utils::write.csv(iter_trace, paths$ndlm_iter_trace, row.names = FALSE)
   utils::write.csv(time_coverage, paths$ndlm_time_coverage, row.names = FALSE)
+  utils::write.csv(active_set_by_lead, paths$active_set_by_lead, row.names = FALSE)
+  utils::write.csv(state_dim_by_lead, paths$state_dim_by_lead, row.names = FALSE)
+  utils::write.csv(horizon_contract, paths$horizon_contract_check, row.names = FALSE)
   utils::write.csv(horizon_contract, paths$ndlm_plot_contract_check, row.names = FALSE)
   utils::write.csv(shape_rows, paths$ndlm_object_shapes, row.names = FALSE)
   utils::write.csv(fit_summary, paths$ndlm_fit_vs_observed_coverage, row.names = FALSE)
+  utils::write.csv(ragged_coverage_summary, paths$ragged_coverage_summary, row.names = FALSE)
   writeLines(horizon_note, con = paths$ndlm_horizon_contract)
 
   if (isTRUE(strict_contract)) {

@@ -448,6 +448,8 @@ unified_diag_ndlm_main_theory <- function(
 
   Tn <- NA_integer_
   Kn <- NA_integer_
+  sm_k <- integer(0)
+  sc_k <- integer(0)
   if (!is.null(obj_new)) {
     add(diag_result("ndlm.new_theta.is_list", is.list(obj_new), "expected list"))
     if (is.list(obj_new)) {
@@ -514,29 +516,50 @@ unified_diag_ndlm_main_theory <- function(
           add(diag_result("ndlm.new_theta.standard_forecast_errors.K_ge_1", is.finite(Kn) && Kn >= 1L, sprintf("K=%s", as.character(Kn))))
         }
 
-        if (is.finite(Kn) && is.list(sm_ens) && length(sm_ens) > 0L) {
+        if (is.list(sm_ens) && length(sm_ens) > 0L) {
           sm_k <- vapply(sm_ens, function(x) {
             d <- dim(x)
             if (is.null(d) || length(d) != 2L) return(NA_integer_)
             as.integer(d[2])
           }, integer(1))
           add(diag_result(
-            "ndlm.new_theta.sm_ens.K_match_standard_errors",
-            all(is.finite(sm_k)) && all(sm_k == Kn),
-            sprintf("sm_ens K=[%s], standard_forecast_errors K=%d", paste(sm_k, collapse = ","), as.integer(Kn))
+            "ndlm.new_theta.sm_ens.segment_lengths_valid",
+            all(is.finite(sm_k)) && all(sm_k >= 0L),
+            sprintf("sm_ens K=[%s]", paste(sm_k, collapse = ","))
           ))
         }
 
-        if (is.finite(Kn) && is.list(sC_ens) && length(sC_ens) > 0L) {
+        if (is.list(sC_ens) && length(sC_ens) > 0L) {
           sc_k <- vapply(sC_ens, function(x) {
             d <- dim(x)
             if (is.null(d) || length(d) != 3L) return(NA_integer_)
             as.integer(d[3])
           }, integer(1))
           add(diag_result(
-            "ndlm.new_theta.sC_ens.K_match_standard_errors",
-            all(is.finite(sc_k)) && all(sc_k == Kn),
-            sprintf("sC_ens K=[%s], standard_forecast_errors K=%d", paste(sc_k, collapse = ","), as.integer(Kn))
+            "ndlm.new_theta.sC_ens.segment_lengths_valid",
+            all(is.finite(sc_k)) && all(sc_k >= 0L),
+            sprintf("sC_ens K=[%s]", paste(sc_k, collapse = ","))
+          ))
+        }
+        if (length(sm_k) > 0L && length(sc_k) > 0L) {
+          add(diag_result(
+            "ndlm.new_theta.sm_sC_segment_profile_match",
+            length(sm_k) == length(sc_k) && all(sm_k == sc_k),
+            sprintf("sm_ens K=[%s], sC_ens K=[%s]", paste(sm_k, collapse = ","), paste(sc_k, collapse = ","))
+          ))
+        }
+        if (is.finite(Kn) && length(sm_k) > 0L) {
+          add(diag_result(
+            "ndlm.new_theta.sm_ens.segment_sum_matches_standard_errors",
+            all(is.finite(sm_k)) && sum(sm_k) == Kn,
+            sprintf("sum(sm_ens K)=%s, standard_forecast_errors K=%s", as.character(sum(sm_k)), as.character(Kn))
+          ))
+        }
+        if (is.finite(Kn) && length(sc_k) > 0L) {
+          add(diag_result(
+            "ndlm.new_theta.sC_ens.segment_sum_matches_standard_errors",
+            all(is.finite(sc_k)) && sum(sc_k) == Kn,
+            sprintf("sum(sC_ens K)=%s, standard_forecast_errors K=%s", as.character(sum(sc_k)), as.character(Kn))
           ))
         }
       }
@@ -546,7 +569,7 @@ unified_diag_ndlm_main_theory <- function(
   if (!is.null(obj_state)) {
     add(diag_result("ndlm.theory_state.is_list", is.list(obj_state), "ndlm_main_theory_state must be a list"))
     if (is.list(obj_state)) {
-      req_state <- c("K", "K_cap", "nws_len", "glofas_len")
+      req_state <- c("K", "K_overlap", "K_max", "K_vec", "segment_lengths", "K_cap", "nws_len", "glofas_len")
       miss_state <- req_state[!req_state %in% names(obj_state)]
       add(diag_result(
         "ndlm.theory_state.required_fields",
@@ -554,25 +577,75 @@ unified_diag_ndlm_main_theory <- function(
         if (length(miss_state) == 0L) "all required fields present" else paste("missing:", paste(miss_state, collapse = ","))
       ))
       if (length(miss_state) == 0L) {
+        read_named_int <- function(x, name) {
+          if (is.null(x)) return(NA_integer_)
+          if (length(x) == 0L) return(NA_integer_)
+          if (!is.null(names(x)) && (name %in% names(x))) {
+            return(suppressWarnings(as.integer(x[[name]])))
+          }
+          suppressWarnings(as.integer(x[[1L]]))
+        }
         K_state <- suppressWarnings(as.integer(obj_state$K[[1L]]))
+        K_overlap <- suppressWarnings(as.integer(obj_state$K_overlap[[1L]]))
+        K_max <- suppressWarnings(as.integer(obj_state$K_max[[1L]]))
         K_cap <- suppressWarnings(as.integer(obj_state$K_cap[[1L]]))
         nws_len <- suppressWarnings(as.integer(obj_state$nws_len[[1L]]))
         glofas_len <- suppressWarnings(as.integer(obj_state$glofas_len[[1L]]))
-        K_expected <- suppressWarnings(as.integer(min(nws_len, glofas_len, K_cap)))
+        k_nws_cap <- suppressWarnings(as.integer(min(nws_len, K_cap)))
+        k_glofas_cap <- suppressWarnings(as.integer(min(glofas_len, K_cap)))
+        K_expected_max <- suppressWarnings(as.integer(max(k_nws_cap, k_glofas_cap)))
+        K_expected_overlap <- suppressWarnings(as.integer(min(k_nws_cap, k_glofas_cap)))
+        K_vec <- obj_state$K_vec
+        segment_lengths <- obj_state$segment_lengths
+        k_vec_nws <- read_named_int(K_vec, "nws")
+        k_vec_glofas <- read_named_int(K_vec, "glofas")
+        seg_overlap <- read_named_int(segment_lengths, "overlap")
+        seg_extension <- read_named_int(segment_lengths, "extension")
         add(diag_result("ndlm.theory_state.K_finite", is.finite(K_state) && K_state >= 1L, sprintf("K=%s", as.character(obj_state$K))))
+        add(diag_result("ndlm.theory_state.K_overlap_finite", is.finite(K_overlap) && K_overlap >= 1L, sprintf("K_overlap=%s", as.character(obj_state$K_overlap))))
+        add(diag_result("ndlm.theory_state.K_max_finite", is.finite(K_max) && K_max >= 1L, sprintf("K_max=%s", as.character(obj_state$K_max))))
         add(diag_result("ndlm.theory_state.K_cap_positive", is.finite(K_cap) && K_cap >= 1L, sprintf("K_cap=%s", as.character(obj_state$K_cap))))
         add(diag_result("ndlm.theory_state.nws_len_positive", is.finite(nws_len) && nws_len >= 1L, sprintf("nws_len=%s", as.character(obj_state$nws_len))))
         add(diag_result("ndlm.theory_state.glofas_len_positive", is.finite(glofas_len) && glofas_len >= 1L, sprintf("glofas_len=%s", as.character(obj_state$glofas_len))))
         add(diag_result(
-          "ndlm.theory_state.K_expected_match",
-          is.finite(K_state) && is.finite(K_expected) && K_state == K_expected,
-          sprintf("K=%s expected=min(%s,%s,%s)=%s", as.character(K_state), as.character(nws_len), as.character(glofas_len), as.character(K_cap), as.character(K_expected))
+          "ndlm.theory_state.K_vec_expected_match",
+          is.finite(k_vec_nws) && is.finite(k_vec_glofas) &&
+            k_vec_nws == k_nws_cap && k_vec_glofas == k_glofas_cap,
+          sprintf("K_vec=(nws=%s,glofas=%s) expected=(%s,%s)", as.character(k_vec_nws), as.character(k_vec_glofas), as.character(k_nws_cap), as.character(k_glofas_cap))
+        ))
+        add(diag_result(
+          "ndlm.theory_state.K_overlap_expected_match",
+          is.finite(K_overlap) && is.finite(K_expected_overlap) && K_overlap == K_expected_overlap,
+          sprintf("K_overlap=%s expected=min(%s,%s)=%s", as.character(K_overlap), as.character(k_nws_cap), as.character(k_glofas_cap), as.character(K_expected_overlap))
+        ))
+        add(diag_result(
+          "ndlm.theory_state.K_max_expected_match",
+          is.finite(K_max) && is.finite(K_expected_max) && K_max == K_expected_max,
+          sprintf("K_max=%s expected=max(%s,%s)=%s", as.character(K_max), as.character(k_nws_cap), as.character(k_glofas_cap), as.character(K_expected_max))
+        ))
+        add(diag_result(
+          "ndlm.theory_state.segment_lengths_consistent",
+          is.finite(seg_overlap) && is.finite(seg_extension) &&
+            seg_overlap == K_overlap && seg_overlap + seg_extension == K_max,
+          sprintf("segment_lengths=(overlap=%s,extension=%s), K_overlap=%s, K_max=%s", as.character(seg_overlap), as.character(seg_extension), as.character(K_overlap), as.character(K_max))
+        ))
+        add(diag_result(
+          "ndlm.theory_state.K_alias_matches_K_max",
+          is.finite(K_state) && is.finite(K_max) && K_state == K_max,
+          sprintf("K=%s K_max=%s", as.character(K_state), as.character(K_max))
         ))
         if (is.finite(Kn)) {
           add(diag_result(
             "ndlm.theory_state.K_matches_standard_errors",
-            K_state == Kn,
-            sprintf("K_state=%s standard_forecast_errors.K=%s", as.character(K_state), as.character(Kn))
+            K_max == Kn,
+            sprintf("K_max=%s standard_forecast_errors.K=%s", as.character(K_max), as.character(Kn))
+          ))
+        }
+        if (is.finite(Kn) && length(sm_k) > 0L) {
+          add(diag_result(
+            "ndlm.theory_state.segment_sum_matches_standard_errors",
+            sum(sm_k) == Kn,
+            sprintf("sum(sm_ens K)=%s standard_forecast_errors.K=%s", as.character(sum(sm_k)), as.character(Kn))
           ))
         }
       }
