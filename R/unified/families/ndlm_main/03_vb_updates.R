@@ -199,6 +199,9 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     w_hist = w_hist,
     w_fore = w_fore,
     K = K,
+    K_cap = inputs$forecast$K_cap,
+    nws_len = inputs$forecast$nws_len,
+    glofas_len = inputs$forecast$glofas_len,
     T = Tn
   )
 }

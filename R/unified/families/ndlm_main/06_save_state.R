@@ -17,7 +17,10 @@ ndlm_theory_pack_compat_outputs <- function(fit_result) {
       w_hist = fit_result$w_hist,
       w_fore = fit_result$w_fore,
       T = fit_result$T,
-      K = fit_result$K
+      K = fit_result$K,
+      K_cap = fit_result$K_cap,
+      nws_len = fit_result$nws_len,
+      glofas_len = fit_result$glofas_len
     ),
     envir = out_env
   )

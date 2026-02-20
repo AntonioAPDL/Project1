@@ -428,7 +428,8 @@ unified_diag_ndlm_main_theory <- function(
     "samp.theta_ens_50_NDLM_synth_DISC",
     "seq.elbo_50_NDLM_synth_DISC",
     "seq.sigma_50_NDLM_synth_DISC",
-    "delta_50_NDLM_synth_DISC"
+    "delta_50_NDLM_synth_DISC",
+    "ndlm_main_theory_state"
   )
 
   env <- diag_env_load(rdata_path)
@@ -443,12 +444,14 @@ unified_diag_ndlm_main_theory <- function(
   obj_elbo <- diag_env_get(env, required[[5]])
   obj_seq_sigma <- diag_env_get(env, required[[6]])
   obj_delta <- diag_env_get(env, required[[7]])
+  obj_state <- diag_env_get(env, required[[8]])
 
   Tn <- NA_integer_
+  Kn <- NA_integer_
   if (!is.null(obj_new)) {
     add(diag_result("ndlm.new_theta.is_list", is.list(obj_new), "expected list"))
     if (is.list(obj_new)) {
-      req_fields <- c("sm", "sC", "sm_ens", "sC_ens", "exps")
+      req_fields <- c("sm", "sC", "sm_ens", "sC_ens", "exps", "standard_forecast_errors")
       miss <- req_fields[!req_fields %in% names(obj_new)]
       add(diag_result("ndlm.new_theta.fields", length(miss) == 0L, if (length(miss) == 0L) "all required fields present" else paste("missing:", paste(miss, collapse = ","))))
       if (length(miss) == 0L) {
@@ -457,6 +460,7 @@ unified_diag_ndlm_main_theory <- function(
         sm_ens <- obj_new$sm_ens
         sC_ens <- obj_new$sC_ens
         exps <- obj_new$exps
+        standard_forecast_errors <- obj_new$standard_forecast_errors
 
         add(diag_check_dims(sm, expected = list(rank = 2L), name = "ndlm.new_theta.sm"))
         add(diag_check_finite(sm, "ndlm.new_theta.sm"))
@@ -500,6 +504,77 @@ unified_diag_ndlm_main_theory <- function(
 
         add(diag_check_dims(exps, expected = list(rank = 2L, ncol = Tn), name = "ndlm.new_theta.exps"))
         add(diag_check_finite(exps, "ndlm.new_theta.exps"))
+
+        add(diag_check_dims(standard_forecast_errors, expected = list(rank = 2L), name = "ndlm.new_theta.standard_forecast_errors"))
+        add(diag_check_finite(standard_forecast_errors, "ndlm.new_theta.standard_forecast_errors"))
+        sfe_dim <- dim(standard_forecast_errors)
+        if (!is.null(sfe_dim) && length(sfe_dim) == 2L) {
+          Kn <- as.integer(sfe_dim[2])
+          add(diag_result("ndlm.new_theta.standard_forecast_errors.rows_ge_1", as.integer(sfe_dim[1]) >= 1L, sprintf("rows=%d", as.integer(sfe_dim[1]))))
+          add(diag_result("ndlm.new_theta.standard_forecast_errors.K_ge_1", is.finite(Kn) && Kn >= 1L, sprintf("K=%s", as.character(Kn))))
+        }
+
+        if (is.finite(Kn) && is.list(sm_ens) && length(sm_ens) > 0L) {
+          sm_k <- vapply(sm_ens, function(x) {
+            d <- dim(x)
+            if (is.null(d) || length(d) != 2L) return(NA_integer_)
+            as.integer(d[2])
+          }, integer(1))
+          add(diag_result(
+            "ndlm.new_theta.sm_ens.K_match_standard_errors",
+            all(is.finite(sm_k)) && all(sm_k == Kn),
+            sprintf("sm_ens K=[%s], standard_forecast_errors K=%d", paste(sm_k, collapse = ","), as.integer(Kn))
+          ))
+        }
+
+        if (is.finite(Kn) && is.list(sC_ens) && length(sC_ens) > 0L) {
+          sc_k <- vapply(sC_ens, function(x) {
+            d <- dim(x)
+            if (is.null(d) || length(d) != 3L) return(NA_integer_)
+            as.integer(d[3])
+          }, integer(1))
+          add(diag_result(
+            "ndlm.new_theta.sC_ens.K_match_standard_errors",
+            all(is.finite(sc_k)) && all(sc_k == Kn),
+            sprintf("sC_ens K=[%s], standard_forecast_errors K=%d", paste(sc_k, collapse = ","), as.integer(Kn))
+          ))
+        }
+      }
+    }
+  }
+
+  if (!is.null(obj_state)) {
+    add(diag_result("ndlm.theory_state.is_list", is.list(obj_state), "ndlm_main_theory_state must be a list"))
+    if (is.list(obj_state)) {
+      req_state <- c("K", "K_cap", "nws_len", "glofas_len")
+      miss_state <- req_state[!req_state %in% names(obj_state)]
+      add(diag_result(
+        "ndlm.theory_state.required_fields",
+        length(miss_state) == 0L,
+        if (length(miss_state) == 0L) "all required fields present" else paste("missing:", paste(miss_state, collapse = ","))
+      ))
+      if (length(miss_state) == 0L) {
+        K_state <- suppressWarnings(as.integer(obj_state$K[[1L]]))
+        K_cap <- suppressWarnings(as.integer(obj_state$K_cap[[1L]]))
+        nws_len <- suppressWarnings(as.integer(obj_state$nws_len[[1L]]))
+        glofas_len <- suppressWarnings(as.integer(obj_state$glofas_len[[1L]]))
+        K_expected <- suppressWarnings(as.integer(min(nws_len, glofas_len, K_cap)))
+        add(diag_result("ndlm.theory_state.K_finite", is.finite(K_state) && K_state >= 1L, sprintf("K=%s", as.character(obj_state$K))))
+        add(diag_result("ndlm.theory_state.K_cap_positive", is.finite(K_cap) && K_cap >= 1L, sprintf("K_cap=%s", as.character(obj_state$K_cap))))
+        add(diag_result("ndlm.theory_state.nws_len_positive", is.finite(nws_len) && nws_len >= 1L, sprintf("nws_len=%s", as.character(obj_state$nws_len))))
+        add(diag_result("ndlm.theory_state.glofas_len_positive", is.finite(glofas_len) && glofas_len >= 1L, sprintf("glofas_len=%s", as.character(obj_state$glofas_len))))
+        add(diag_result(
+          "ndlm.theory_state.K_expected_match",
+          is.finite(K_state) && is.finite(K_expected) && K_state == K_expected,
+          sprintf("K=%s expected=min(%s,%s,%s)=%s", as.character(K_state), as.character(nws_len), as.character(glofas_len), as.character(K_cap), as.character(K_expected))
+        ))
+        if (is.finite(Kn)) {
+          add(diag_result(
+            "ndlm.theory_state.K_matches_standard_errors",
+            K_state == Kn,
+            sprintf("K_state=%s standard_forecast_errors.K=%s", as.character(K_state), as.character(Kn))
+          ))
+        }
       }
     }
   }

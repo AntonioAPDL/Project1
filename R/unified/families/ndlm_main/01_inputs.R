@@ -49,7 +49,7 @@ ndlm_theory_find_input <- function(env_key, shared_root, rel_path) {
   normalizePath(file.path(shared_root, rel_path), mustWork = FALSE)
 }
 
-ndlm_theory_load_inputs <- function() {
+ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
   shared_root <- Sys.getenv("NDLM_SHARED_INPUT_ROOT", "")
   if (nzchar(shared_root)) shared_root <- normalizePath(shared_root, mustWork = FALSE)
 
@@ -107,7 +107,14 @@ ndlm_theory_load_inputs <- function() {
   glofas_vec <- as.numeric(glofas_vec)
   glofas_vec <- glofas_vec[is.finite(glofas_vec)]
 
-  K <- min(length(nws_vec), length(glofas_vec), 14L)
+  horizon_cap <- suppressWarnings(as.integer(horizon_cap[[1L]]))
+  if (!is.finite(horizon_cap) || horizon_cap <= 0L) {
+    stop(sprintf("ndlm theory forecast horizon cap must be a positive integer; got '%s'", as.character(horizon_cap)), call. = FALSE)
+  }
+
+  nws_len <- length(nws_vec)
+  glofas_len <- length(glofas_vec)
+  K <- min(nws_len, glofas_len, horizon_cap)
   if (K < 3L) {
     stop("ndlm theory requires forecast vectors with at least 3 finite rows", call. = FALSE)
   }
@@ -119,7 +126,10 @@ ndlm_theory_load_inputs <- function() {
     forecast = list(
       nws = nws_vec[seq_len(K)],
       glofas = glofas_vec[seq_len(K)],
-      K = K
+      K = K,
+      K_cap = horizon_cap,
+      nws_len = nws_len,
+      glofas_len = glofas_len
     ),
     input_paths = list(
       retros = retros_path,

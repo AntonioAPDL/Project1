@@ -1,6 +1,6 @@
 unified_run_ndlm_main_theory <- function(seed, output_path, log_path = NULL) {
   constants <- ndlm_theory_constants(seed = seed)
-  inputs <- ndlm_theory_load_inputs()
+  inputs <- ndlm_theory_load_inputs(horizon_cap = constants$forecast_horizon_cap)
   fit_result <- ndlm_theory_fit(inputs = inputs, constants = constants)
   out_env <- ndlm_theory_pack_compat_outputs(fit_result)
 
@@ -14,7 +14,10 @@ unified_run_ndlm_main_theory <- function(seed, output_path, log_path = NULL) {
     sprintf("w_hist=%.8f", fit_result$w_hist),
     sprintf("w_fore=%.8f", fit_result$w_fore),
     sprintf("T=%d", fit_result$T),
-    sprintf("K=%d", fit_result$K)
+    sprintf("K=%d", fit_result$K),
+    sprintf("K_cap=%d", fit_result$K_cap),
+    sprintf("nws_len=%d", fit_result$nws_len),
+    sprintf("glofas_len=%d", fit_result$glofas_len)
   )
   if (!is.null(log_path) && nzchar(log_path)) {
     dir.create(dirname(log_path), recursive = TRUE, showWarnings = FALSE)
