@@ -146,6 +146,55 @@ Family/quantile fit snapshot from latest `gamsig_progress` lines:
 | `exdqlm_univar` | `0.99` | 800 | -1927.464 | 0.3812506 | -61.46849 |
 | `ndlm_main` | `0.50` | 16 | -13660.61 | 0.7382676 | NA |
 
+## 2.6 Automatic Cutoff Retrospective Policy (Forecats Batch/Render)
+
+Scope:
+
+1. Implemented in `scripts/forecats_batch.R` render path.
+2. Configured via `inputs.retros.automatic_cutoff_policy` (defaulted in `config/forecats_batch.site=11160500.default.yaml`).
+3. Used by unified workflow through forecats bundle snapshots consumed by `data_prep_shared`, therefore shared by multivariate exDQLM, univariate exDQLM, and NDLM downstream.
+
+Version mapping logic (by cutoff `c`):
+
+1. Forecast-origin bounds enforced from local shared cache snapshot: `2019-11-05` to `2023-01-31`.
+2. GloFAS historical source selection:
+   - `2.x` family cutoffs -> `version_2_1` (`glofas_hist_v21_htessel_cons`)
+   - `3.x` family cutoffs -> `version_3_1` (`glofas_hist_v31_lisflood_cons`)
+   - `4.x` family cutoffs -> `version_4_0` (`glofas_hist_v40_lisflood_cons`)
+3. NWS primary retrospective source: synthetic one-step series (`nws_synth_retro_ens_mean`).
+4. Optional NWS hybrid diagnostic (audit-only): same-version retrospective, then next-version gap fill, then synthetic fallback.
+5. NWS synthetic-gap fill rule (enabled by default):
+   - for missing synthetic value at day `t`, use latest available NWS forecast-cache issue that predicts `t` (equivalent to trying day+1 from `t-1`, then day+2 from `t-2`, then day+3 from `t-3`, etc.).
+   - fail fast if unresolved synthetic gaps remain after this lead fallback (indicates outage longer than available lead horizon).
+
+Shared retrospective window rule:
+
+1. For each cutoff, selected NWS primary and selected GloFAS historical are loaded through `date <= cutoff`.
+2. Compute:
+   - `shared_start = max(min_date_nws_selected, min_date_glofas_selected)`
+3. Retrospective preparation tables are built on `[shared_start, cutoff]` inclusive.
+4. Plot input `retros_daily.csv` remains windowed to `[plot_start, plot_end]` for rendering compatibility/performance, but sourced from the shared-window-trimmed selected series.
+
+Per-cutoff outputs (bundle `inputs/`):
+
+1. `retros_daily.csv` (plot-consumed long schema).
+2. `retrospective_preparation.csv` with:
+   - `date`
+   - `selected_glofas_retrospective_value`
+   - `selected_nws_synthetic_value`
+   - `shared_window_flag`
+   - selected source/version labels used for the cutoff.
+3. `retrospective_nws_hybrid_diagnostic.csv` (optional audit diagnostic when enabled).
+4. `meta.yaml` now records `retrospective_policy` selection fields and preparation artifact paths.
+5. `retrospective_preparation.csv` includes synthetic-fill diagnostics (`selected_nws_synthetic_fill_*`, filled/unresolved flags).
+
+Fallback/error behavior:
+
+1. If cutoff is outside local shared origin span, render fails fast with explicit bounds error.
+2. If cutoff is a known missing-origin date (`2020-03-12..2020-03-16`, `2020-07-29`, `2020-11-14`, `2022-07-14`), render fails fast with explicit date list.
+3. If required selected retrospective source is missing from cache, render fails fast with actionable source-id inventory.
+4. If automatic policy is explicitly disabled, legacy/manual selection policy is used and a fallback preparation table is still emitted.
+
 ## 3) Theory Source-of-Truth Policy (Locked)
 
 All new or corrected model logic must follow these theory repos:

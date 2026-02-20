@@ -71,10 +71,64 @@ dates:
 transforms:
   plot_scale: "log_log1p_cms"
 
+processing:
+  aggregation_scale_internal: "log_log1p_cms"
+
 inputs:
   retros:
     path: "retros_2023-06-01.csv"
     scale: "log1p_cms"
+    automatic_cutoff_policy:
+      enabled: true
+      forecast_origin_span:
+        start: "2019-11-05"
+        end: "2023-01-31"
+      known_missing_origin_dates:
+        - "2020-03-12"
+        - "2020-03-13"
+        - "2020-03-14"
+        - "2020-03-15"
+        - "2020-03-16"
+        - "2020-07-29"
+        - "2020-11-14"
+        - "2022-07-14"
+      glofas_family_windows:
+        - start: "1900-01-01"
+          end: "2021-05-25"
+          source_id: "glofas_hist_v21_htessel_cons"
+          forecast_family: "2.x"
+          historical_version_label: "version_2_1"
+        - start: "2021-05-26"
+          end: "2023-07-25"
+          source_id: "glofas_hist_v31_lisflood_cons"
+          forecast_family: "3.x"
+          historical_version_label: "version_3_1"
+        - start: "2023-07-26"
+          end: "2999-12-31"
+          source_id: "glofas_hist_v40_lisflood_cons"
+          forecast_family: "4.x"
+          historical_version_label: "version_4_0"
+      nws_forecast_windows:
+        - start: "1900-01-01"
+          end: "2021-04-19"
+          forecast_version_label: "2.0"
+          same_version_source_id: "nws_retro_v20"
+          next_version_source_id: "nws_retro_v21"
+        - start: "2021-04-20"
+          end: "2023-09-19"
+          forecast_version_label: "2.1"
+          same_version_source_id: "nws_retro_v21"
+          next_version_source_id: "nws_retro_v30"
+        - start: "2023-09-20"
+          end: "2999-12-31"
+          forecast_version_label: "3.0"
+          same_version_source_id: "nws_retro_v30"
+          next_version_source_id: ""
+      nws:
+        primary_source_id: "nws_synth_retro_ens_mean"
+        write_hybrid_diagnostic: true
+        use_synthetic_lead_fallback: true
+        fail_on_unresolved_synthetic: true
 
   glofas:
     grib_root: "data/glofas_operational_medium_range/grib"
