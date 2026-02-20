@@ -3056,3 +3056,46 @@ Concurrency rule for migration phases:
   - NDLM model-quality interpretation (fit quality vs scientific adequacy) remains a separate downstream task and is not changed by this wiring/contract fix.
 - Next action:
   - Continue with non-NDLM checklist items (`Q-02` onward) without changing this NDLM contract baseline.
+
+### Progress Update 2026-02-20 22:47 UTC
+
+- Phase: NDLM-only re-verification pass (post-fix stability check)
+- Change type: verification rerun + theory/notebook alignment evidence update (no new NDLM logic change)
+- Summary:
+  - Re-ran the NDLM-only isolated lane from the horizon-fixed configuration with a fresh run id:
+    - `run_id=diag_q01a_ndlm_only_horizonfix_verify_20260220_224430`
+    - stages: `forecats=pass`, `data_prep_shared=pass`, `fit=pass`, `post=pass`
+  - Re-validated retrospective continuity for cutoff `2022-12-25` under the updated automatic policy:
+    - daily index continuity holds (`date_gap_count=0`)
+    - `selected_nws_synthetic_value` has no missing values after lead-fallback fill (`missing=0`)
+  - Re-checked NDLM horizon-contract diagnostics:
+    - all checks pass at shared horizon `K=10`
+    - confirms consistent `K` across `standard_forecast_errors`, `sm_ens`, and `sC_ens`
+  - Theory/notebook alignment note:
+    - NDLM derivations define one shared forecast index `k=1..K` for active forecasters.
+    - Historical notebook cells often use `ranges[1]` for plotting scaffolds, but NDLM forecast discrepancy state blocks are expected to follow the shared `K` contract.
+- Evidence:
+  - NDLM-only verify run:
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_verify_20260220_224430/run_manifest.yaml`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_verify_20260220_224430/post/logs/post_runner.log`
+  - NDLM diagnostics (verify run):
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_verify_20260220_224430/diagnostics/ndlm/ndlm_iter_trace.csv`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_verify_20260220_224430/diagnostics/ndlm/ndlm_time_coverage.csv`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_verify_20260220_224430/diagnostics/ndlm/ndlm_plot_contract_check.csv`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_verify_20260220_224430/diagnostics/ndlm/ndlm_object_shapes.csv`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_verify_20260220_224430/diagnostics/ndlm/ndlm_fit_vs_observed_coverage.csv`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_verify_20260220_224430/diagnostics/ndlm/ndlm_horizon_contract.md`
+  - Retrospective continuity check source:
+    - `data/forecats_inputs/site=11160500/cutoff_date=2022-12-25/run_id=auto_cutoff_policy_fillcheck_minicache_20260220/inputs/retrospective_preparation.csv`
+  - Theory references:
+    - `/data/muscat_data/jaguir26/NDLM---Ensemble/docs/derivations/sections/01_notation_and_model.tex`
+    - `/data/muscat_data/jaguir26/NDLM---Ensemble/docs/derivations/sections/08_computational_notes.tex`
+- Validation notes:
+  - Targeted NDLM regressions continue to pass:
+    - `tests/testthat/test_ndlm_horizon_contract.R`
+    - `tests/testthat/test_ndlm_post_jsd.R`
+    - `repro/tests/test_post_module_plan.py`
+    - `repro/tests/test_ndlm_theory_vb_regression.py`
+  - No additional NDLM horizon/data-flow code change was required after this re-verification.
+- Next action:
+  - Keep NDLM horizon/data-flow contract frozen and move remaining NDLM work to model-quality diagnostics (fit behavior) only.
