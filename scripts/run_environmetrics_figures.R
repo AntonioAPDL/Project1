@@ -33,6 +33,11 @@ if (!file.exists(POST_CONTRACT_HELPERS)) {
   stop(sprintf("Missing post artifact contract helpers: %s", POST_CONTRACT_HELPERS), call. = FALSE)
 }
 source(POST_CONTRACT_HELPERS)
+POST_MODULE_PLAN_HELPERS <- file.path(PROJECT_ROOT, "R", "unified", "post_module_plan.R")
+if (!file.exists(POST_MODULE_PLAN_HELPERS)) {
+  stop(sprintf("Missing post module-plan helpers: %s", POST_MODULE_PLAN_HELPERS), call. = FALSE)
+}
+source(POST_MODULE_PLAN_HELPERS)
 
 RUN_ROOT <- Sys.getenv("UNIFIED_RUN_ROOT", "")
 RUN_ID <- Sys.getenv("UNIFIED_RUN_ID", Sys.getenv("RUN_ID", ""))
@@ -80,6 +85,11 @@ options(
   unified.model_run_ndlm_main = MODEL_RUN_NDLM_MAIN,
   unified.post_figures = POST_FIGURES
 )
+
+NDLM_ONLY_MODE <- isTRUE(MODEL_RUN_NDLM_MAIN) &&
+  !isTRUE(MODEL_RUN_EXDQLM_MULTIVAR) &&
+  !isTRUE(MODEL_RUN_EXDQLM_UNIVAR)
+POST_SMOKE_FAST_EFFECTIVE <- isTRUE(POST_SMOKE_FAST) || (isTRUE(POST_FIGURES) && NDLM_ONLY_MODE)
 
 OUT_PARENT <- if (nzchar(RUN_ROOT)) {
   file.path(RUN_ROOT, "post", "outputs")
@@ -308,14 +318,17 @@ core_modules <- c(
   "utils_data.R",
   "utils_plot.R"
 )
-modules <- if (POST_FIGURES) {
-  if (POST_SMOKE_FAST) {
-    c(core_modules, "10_data_inputs.R", "20_model_setup.R", "40_figures_smoke_fast.R")
-  } else {
-    c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures.R")
-  }
-} else {
-  core_modules
+modules <- unified_post_select_modules(
+  post_figures = POST_FIGURES,
+  post_smoke_fast = POST_SMOKE_FAST_EFFECTIVE,
+  model_run_exdqlm_multivar = MODEL_RUN_EXDQLM_MULTIVAR,
+  model_run_exdqlm_univar = MODEL_RUN_EXDQLM_UNIVAR,
+  model_run_ndlm_main = MODEL_RUN_NDLM_MAIN,
+  core_modules = core_modules
+)
+
+if (isTRUE(NDLM_ONLY_MODE) && !isTRUE(POST_SMOKE_FAST)) {
+  cat("[INFO] NDLM-only mode: forcing smoke-fast figure path to avoid non-NDLM family initialization.\n")
 }
 
 missing <- modules[!file.exists(file.path(modules_dir, modules))]
@@ -420,7 +433,8 @@ post_contract <- unified_post_contract_check(
   outputs_dir = OUT_DIR,
   cache_dir = if (nzchar(POST_CACHE_DIR)) POST_CACHE_DIR else NULL,
   post_figures = isTRUE(POST_FIGURES),
-  export_tables = isTRUE(EXPORT_TABLES)
+  export_tables = isTRUE(EXPORT_TABLES),
+  post_smoke_fast = isTRUE(POST_SMOKE_FAST_EFFECTIVE)
 )
 post_artifact_reports <- unified_write_post_artifact_reports(
   artifacts_df = post_artifacts,
