@@ -27,6 +27,57 @@ ndlm_theory_standardize <- function(x) {
   z
 }
 
+ndlm_theory_build_ragged_horizon <- function(forecast) {
+  k_nws <- suppressWarnings(as.integer(forecast$K_vec[["nws"]]))
+  k_glofas <- suppressWarnings(as.integer(forecast$K_vec[["glofas"]]))
+  if (!is.finite(k_nws) || k_nws < 1L || !is.finite(k_glofas) || k_glofas < 1L) {
+    stop("ndlm theory ragged horizon requires positive K_vec entries for nws and glofas", call. = FALSE)
+  }
+
+  k_overlap <- min(k_nws, k_glofas)
+  k_max <- max(k_nws, k_glofas)
+  k_tail <- max(k_max - k_overlap, 0L)
+  extension_source <- if (k_nws >= k_glofas) "nws" else "glofas"
+  bridge_source <- if (identical(extension_source, "nws")) "glofas" else "nws"
+
+  active_sources <- lapply(seq_len(k_max), function(k) {
+    out <- character(0)
+    if (k <= k_nws) out <- c(out, "nws")
+    if (k <= k_glofas) out <- c(out, "glofas")
+    out
+  })
+
+  list(
+    K_overlap = as.integer(k_overlap),
+    K_max = as.integer(k_max),
+    K_tail = as.integer(k_tail),
+    K_vec = c(nws = as.integer(k_nws), glofas = as.integer(k_glofas)),
+    extension_source = extension_source,
+    bridge_source = bridge_source,
+    segment_lengths = c(overlap = as.integer(k_overlap), extension = as.integer(k_tail)),
+    active_sources = active_sources
+  )
+}
+
+ndlm_theory_alloc_segment_cov <- function(k_len, w_fore, inactive_row = integer(0)) {
+  k_len <- suppressWarnings(as.integer(k_len[[1L]]))
+  if (!is.finite(k_len) || k_len < 0L) k_len <- 0L
+  out <- array(0, dim = c(7L, 7L, k_len))
+  if (k_len == 0L) return(out)
+  inactive_row <- suppressWarnings(as.integer(inactive_row))
+  for (k in seq_len(k_len)) {
+    d <- diag(w_fore * k + 1e-4, 7L)
+    if (length(inactive_row) > 0L) {
+      keep <- inactive_row[inactive_row >= 1L & inactive_row <= 7L]
+      if (length(keep) > 0L) {
+        d[keep, keep] <- 1e-8
+      }
+    }
+    out[, , k] <- d
+  }
+  out
+}
+
 ndlm_theory_run_vb <- function(inputs, constants) {
   fmt_iter_num <- function(x, digits = 8L) {
     if (!is.finite(x)) {
@@ -38,7 +89,10 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   set.seed(constants$seed)
   Tn <- inputs$T
   d <- constants$state_dim
-  K <- inputs$forecast$K
+  ragged <- ndlm_theory_build_ragged_horizon(inputs$forecast)
+  K_overlap <- ragged$K_overlap
+  K_tail <- ragged$K_tail
+  K_max <- ragged$K_max
 
   H_mat <- matrix(0, nrow = Tn, ncol = d)
   H_mat[, 1] <- 1
@@ -129,23 +183,37 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   vars <- rbind(fit$fitted_var, fit$fitted_var)
   exps2 <- exps^2 + vars
 
+  nws_std <- ndlm_theory_standardize(inputs$forecast$nws)
+  glofas_std <- ndlm_theory_standardize(inputs$forecast$glofas)
+
   base_hist <- fit$smooth_mean[8:14, Tn]
-  sm_ens_1 <- matrix(0, nrow = 7, ncol = K)
-  sm_ens_2 <- matrix(0, nrow = 7, ncol = K)
-  sm_ens_1[1, ] <- ndlm_theory_standardize(inputs$forecast$nws[, drop = TRUE])
-  sm_ens_1[2, ] <- ndlm_theory_standardize(inputs$forecast$glofas[, drop = TRUE])
-  sm_ens_1[3:7, ] <- matrix(base_hist[3:7], nrow = 5, ncol = K)
+  sm_ens_1 <- matrix(0, nrow = 7L, ncol = K_overlap)
+  sm_ens_1[1, ] <- nws_std[seq_len(K_overlap)]
+  sm_ens_1[2, ] <- glofas_std[seq_len(K_overlap)]
+  sm_ens_1[3:7, ] <- matrix(base_hist[3:7], nrow = 5L, ncol = K_overlap)
 
-  sm_ens_2[1, ] <- ndlm_theory_standardize(inputs$forecast$glofas[, drop = TRUE])
-  sm_ens_2[2, ] <- ndlm_theory_standardize(inputs$forecast$nws[, drop = TRUE])
-  sm_ens_2[3:7, ] <- matrix(base_hist[3:7], nrow = 5, ncol = K)
-
-  sC_ens_1 <- array(0, dim = c(7, 7, K))
-  sC_ens_2 <- array(0, dim = c(7, 7, K))
-  for (k in seq_len(K)) {
-    sC_ens_1[, , k] <- diag(w_fore * k + 1e-4, 7)
-    sC_ens_2[, , k] <- diag(w_fore * k + 1e-4, 7)
+  sm_ens_2 <- matrix(0, nrow = 7L, ncol = K_tail)
+  bridge_value <- 0
+  inactive_row <- integer(0)
+  if (K_tail > 0L) {
+    if (identical(ragged$extension_source, "nws")) {
+      tail_idx <- seq.int(K_overlap + 1L, ragged$K_vec[["nws"]])
+      sm_ens_2[1, ] <- nws_std[tail_idx]
+      bridge_value <- as.numeric(glofas_std[K_overlap])
+      inactive_row <- 2L
+    } else {
+      tail_idx <- seq.int(K_overlap + 1L, ragged$K_vec[["glofas"]])
+      sm_ens_2[1, ] <- glofas_std[tail_idx]
+      bridge_value <- as.numeric(nws_std[K_overlap])
+      inactive_row <- 2L
+    }
+    if (!is.finite(bridge_value)) bridge_value <- 0
+    sm_ens_2[2, ] <- rep(bridge_value, K_tail)
+    sm_ens_2[3:7, ] <- matrix(base_hist[3:7], nrow = 5L, ncol = K_tail)
   }
+
+  sC_ens_1 <- ndlm_theory_alloc_segment_cov(K_overlap, w_fore = w_fore)
+  sC_ens_2 <- ndlm_theory_alloc_segment_cov(K_tail, w_fore = w_fore, inactive_row = inactive_row)
 
   samp_theta_retro <- ndlm_theory_state_draws(
     sm = fit$smooth_mean,
@@ -159,8 +227,10 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   for (j in 1:2) {
     mu <- if (j == 1) sm_ens_1 else sm_ens_2
     Sig <- if (j == 1) sC_ens_1 else sC_ens_2
-    arr <- array(0, dim = c(7, K, constants$n_draws))
-    for (k in seq_len(K)) {
+    k_j <- suppressWarnings(as.integer(ncol(mu)))
+    if (!is.finite(k_j) || k_j < 0L) k_j <- 0L
+    arr <- array(0, dim = c(7L, k_j, constants$n_draws))
+    for (k in seq_len(k_j)) {
       L <- chol(Sig[, , k] + diag(1e-8, 7))
       Z <- matrix(stats::rnorm(7 * constants$n_draws), nrow = 7)
       arr[, k, ] <- mu[, k] + L %*% Z
@@ -171,9 +241,35 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   set.seed(constants$seed + 33L)
   samp_sigma <- matrix(1 / stats::rgamma(constants$n_draws, shape = constants$a_sigma + Tn / 2, rate = constants$b_sigma + Tn / 2), nrow = 1)
 
-  standard_forecast_errors <- matrix(
-    inputs$forecast$nws - inputs$forecast$glofas,
-    nrow = 1
+  standard_forecast_errors <- rep(NA_real_, K_max)
+  standard_forecast_errors[seq_len(K_overlap)] <- inputs$forecast$nws[seq_len(K_overlap)] - inputs$forecast$glofas[seq_len(K_overlap)]
+  if (K_tail > 0L) {
+    if (identical(ragged$extension_source, "nws")) {
+      tail_idx <- seq.int(K_overlap + 1L, ragged$K_vec[["nws"]])
+      bridge_raw <- as.numeric(inputs$forecast$glofas[K_overlap])
+      if (!is.finite(bridge_raw)) bridge_raw <- 0
+      standard_forecast_errors[seq.int(K_overlap + 1L, K_max)] <- inputs$forecast$nws[tail_idx] - bridge_raw
+    } else {
+      tail_idx <- seq.int(K_overlap + 1L, ragged$K_vec[["glofas"]])
+      bridge_raw <- as.numeric(inputs$forecast$nws[K_overlap])
+      if (!is.finite(bridge_raw)) bridge_raw <- 0
+      standard_forecast_errors[seq.int(K_overlap + 1L, K_max)] <- bridge_raw - inputs$forecast$glofas[tail_idx]
+    }
+  }
+  standard_forecast_errors[!is.finite(standard_forecast_errors)] <- 0
+  standard_forecast_errors <- matrix(standard_forecast_errors, nrow = 1L)
+
+  active_set_by_lead <- data.frame(
+    lead = seq_len(K_max),
+    active_nws = as.integer(seq_len(K_max) <= ragged$K_vec[["nws"]]),
+    active_glofas = as.integer(seq_len(K_max) <= ragged$K_vec[["glofas"]]),
+    active_count = as.integer(vapply(ragged$active_sources, length, integer(1))),
+    stringsAsFactors = FALSE
+  )
+  state_dim_by_lead <- data.frame(
+    lead = seq_len(K_max),
+    state_dim = as.integer(7L * active_set_by_lead$active_count),
+    stringsAsFactors = FALSE
   )
 
   new_theta <- list(
@@ -184,7 +280,15 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     vars = vars,
     sm_ens = list(sm_ens_1, sm_ens_2),
     sC_ens = list(sC_ens_1, sC_ens_2),
-    standard_forecast_errors = standard_forecast_errors
+    standard_forecast_errors = standard_forecast_errors,
+    forecast_horizon = list(
+      K_vec = ragged$K_vec,
+      K_overlap = ragged$K_overlap,
+      K_max = ragged$K_max,
+      segment_lengths = ragged$segment_lengths,
+      extension_source = ragged$extension_source,
+      bridge_source = ragged$bridge_source
+    )
   )
 
   list(
@@ -198,7 +302,15 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     sigma = sigma,
     w_hist = w_hist,
     w_fore = w_fore,
-    K = K,
+    K = K_max,
+    K_overlap = K_overlap,
+    K_max = K_max,
+    K_vec = ragged$K_vec,
+    segment_lengths = ragged$segment_lengths,
+    extension_source = ragged$extension_source,
+    bridge_source = ragged$bridge_source,
+    active_set_by_lead = active_set_by_lead,
+    state_dim_by_lead = state_dim_by_lead,
     K_cap = inputs$forecast$K_cap,
     nws_len = inputs$forecast$nws_len,
     glofas_len = inputs$forecast$glofas_len,

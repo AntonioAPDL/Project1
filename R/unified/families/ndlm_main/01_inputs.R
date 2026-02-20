@@ -112,11 +112,17 @@ ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
     stop(sprintf("ndlm theory forecast horizon cap must be a positive integer; got '%s'", as.character(horizon_cap)), call. = FALSE)
   }
 
-  nws_len <- length(nws_vec)
-  glofas_len <- length(glofas_vec)
-  K <- min(nws_len, glofas_len, horizon_cap)
-  if (K < 3L) {
-    stop("ndlm theory requires forecast vectors with at least 3 finite rows", call. = FALSE)
+  nws_len_raw <- length(nws_vec)
+  glofas_len_raw <- length(glofas_vec)
+  nws_len <- min(nws_len_raw, horizon_cap)
+  glofas_len <- min(glofas_len_raw, horizon_cap)
+  K_overlap <- min(nws_len, glofas_len)
+  K_max <- max(nws_len, glofas_len)
+  if (K_overlap < 3L) {
+    stop("ndlm theory requires at least 3 overlapping finite forecast leads across sources", call. = FALSE)
+  }
+  if (K_max < 3L) {
+    stop("ndlm theory requires forecast vectors with at least 3 finite rows after horizon capping", call. = FALSE)
   }
 
   list(
@@ -124,12 +130,17 @@ ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
     X = X,
     T = Tn,
     forecast = list(
-      nws = nws_vec[seq_len(K)],
-      glofas = glofas_vec[seq_len(K)],
-      K = K,
+      nws = nws_vec[seq_len(nws_len)],
+      glofas = glofas_vec[seq_len(glofas_len)],
+      K = K_max,
+      K_overlap = K_overlap,
+      K_max = K_max,
+      K_vec = c(nws = nws_len, glofas = glofas_len),
       K_cap = horizon_cap,
       nws_len = nws_len,
-      glofas_len = glofas_len
+      glofas_len = glofas_len,
+      nws_len_raw = nws_len_raw,
+      glofas_len_raw = glofas_len_raw
     ),
     input_paths = list(
       retros = retros_path,
