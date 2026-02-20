@@ -1,7 +1,7 @@
 # NWS/NWM and GloFAS Data Audit Plan (Metadata-First, Version Compatibility)
 
 Date created: 2026-02-14  
-Last updated: 2026-02-17  
+Last updated: 2026-02-20  
 Scope: version, release, coverage, format, access, and targeted point-level validation for version-compatibility decisions.  
 Working constraint: metadata-first audit with controlled local validation runs when unresolved lineage/coverage claims require direct verification.
 
@@ -1088,6 +1088,59 @@ Cautionary note:
 1. Reforecast collection messages include a `2024-11-11` temporary-freeze notice (no EWDS medium-range reforecast updates from the GloFAS v4.2 release date in reviewed metadata).
 2. This freeze affects data availability posture and should be checked before assuming reforecast continuity for recent periods.
 3. Targeted reruns after `GLOFAS-LOCAL-08` reconfirmed `version_4_0 + lisflood` reforecast point anchors (`2021-01-04`) for control and ensemble, but this remains point-anchor evidence rather than a full coverage window.
+
+### 9.3 Cutoff-to-Retrospective Construction Rule (Current Project Policy)
+
+Applies to cutoffs at or after `2019-11-05` (the first shared forecast-origin date currently available for both centers in local storage).
+
+Given cutoff `c`:
+
+1. Use forecast issue date `c` for both centers.
+2. Choose forecast-version label by chronology (NWS SCN/TIN chronology; GloFAS versioning chronology).
+3. Choose the retrospective/historical version:
+   - NWS: same version as forecast (`2.0->2.0`, `2.1->2.1`, `3.0->3.0`).
+   - GloFAS: closest exposed historical family match in EWDS (`2.x->2.1`, `3.x->3.1`, `4.x->4.0`).
+4. For NWS, build a version-matched synthetic one-step retrospective (same transformed daily scale as plotted forecasts):
+   - `S_x(d) = mean_m F_x(issue=d-1, lead=1 day, member=m)`,
+   - using only forecasts from version `x` and only issue dates `<= c`.
+5. If there is a date gap between the last day of NWS retrospective `x` and the first day available from `S_x`, fill that gap with the next NWS retrospective version.
+
+#### 9.3.1 NWS/NWM gap-fill dates by forecast version
+
+| NWS forecast version `x` | cutoff window where `x` applies | retrospective `x` end date | first synthetic day from forecasts of `x` | gap dates to fill | gap-fill retrospective |
+|---|---|---|---|---|---|
+| `2.0` | `2019-11-05` to `2021-04-19` | `2018-12-31` | `2019-11-06` (using shared local overlap start `2019-11-05`) | `2019-01-01` to `2019-11-05` | `2.1` |
+| `2.1` | `2021-04-20` to `2023-09-19` | `2020-12-31` | `2021-04-21` | `2021-01-01` to `2021-04-20` | `3.0` |
+| `3.0` | `2023-09-20` onward | `2023-01-31` | `2023-09-21` | `2023-02-01` to `2023-09-20` | unresolved in current catalog (no later NWS retrospective version published in this audit) |
+
+Notes:
+
+1. The first row is intentionally anchored to the current dual-center stored overlap (`2019-11-05` onward), because this is the active joint modeling window in local artifacts.
+2. If you re-expand NWS-only forecast origins earlier than `2019-11-05`, recompute the first synthetic day for `2.0` accordingly.
+
+#### 9.3.2 GloFAS historical-version pick rule by forecast version
+
+| cutoff window (forecast issue date) | inferred GloFAS forecast version | historical version to use |
+|---|---|---|
+| `2019-11-05` to `2020-12-08` | `2.1` | `version_2_1` (`htessel_lisflood`, consolidated) |
+| `2020-12-09` to `2021-05-25` | `2.2` | `version_2_1` (closest exposed `2.x` historical) |
+| `2021-05-26` to `2021-10-26` | `3.1` | `version_3_1` (`lisflood`, consolidated) |
+| `2021-10-27` to `2022-10-18` | `3.2` | `version_3_1` (closest exposed `3.x` historical) |
+| `2022-10-19` to `2022-12-13` | `3.3` | `version_3_1` (closest exposed `3.x` historical) |
+| `2022-12-14` to `2023-06-27` | `3.4` | `version_3_1` (closest exposed `3.x` historical) |
+| `2023-06-28` to `2023-07-25` | `3.5` | `version_3_1` (closest exposed `3.x` historical) |
+| `2023-07-26` onward | `4.x` family | `version_4_0` (closest exposed `4.x` historical) |
+
+### 9.4 Local forecast-origin span currently stored (filesystem snapshot: 2026-02-20)
+
+| source | path pattern | min origin date | max origin date | unique origin dates | notes |
+|---|---|---|---|---|---|
+| GloFAS forecast cache | `data/forecats_cache/site=11160500/run_id=latest/forecast_cache/glofas/issue_date=*` | `2019-11-05` | `2023-01-31` | `1176` | Four known missing blocks: `2020-03-12..2020-03-16`, `2020-07-29`, `2020-11-14`, `2022-07-14`. |
+| NWS forecast cache | `data/forecats_cache/site=11160500/run_id=latest/forecast_cache/nws/cutoff_date=*` | `2019-11-05` | `2023-01-31` | `1176` | Same missing blocks as GloFAS cache. |
+| GloFAS raw GRIB store | `data/glofas_operational_medium_range/grib/issue_date=*` | `2019-11-05` | `2023-01-31` | `1176` | Mirrors current extracted GloFAS cache window. |
+| NWS raw archive (`results.pkl`) | `results.pkl` | `2018-09-17` | `2024-02-20` | `1980` | Broader than cache window; current batch cache is a subset used for shared runs. |
+
+Current dual-center overlap available in local processed cache: `2019-11-05` to `2023-01-31`.
 
 ## 10) One-Page Collaborator Summary (Current)
 
