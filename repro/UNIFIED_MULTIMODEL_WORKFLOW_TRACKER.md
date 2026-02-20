@@ -1721,7 +1721,7 @@ Checklist (execute in order, one lane at a time):
   - Define expected horizon contract explicitly for all synthesis figures:
     - Plot domain end must match the maximum valid forecast horizon across available model inputs used in that plot (NWS/GloFAS/member availability aware).
 
-- [ ] `Q-01` NDLM-only isolated fit + post diagnosis lane
+- [x] `Q-01` NDLM-only isolated fit + post diagnosis lane
   - Run NDLM-only fit and NDLM-only post replay from run-scoped artifacts.
   - Add NDLM diagnostics outputs:
     - ELBO trace
@@ -1734,7 +1734,7 @@ Checklist (execute in order, one lane at a time):
   - Current sub-status:
     - `Q-01A` run closure and diagnostics bundle are complete.
     - `Q-01B` root-cause matrix is complete with a single supported cause for the original NDLM-only post crash.
-    - Acceptance gate remains open because NDLM horizon-contract mismatch is still present in diagnostics.
+    - `Q-01C` horizon-contract closure is complete with theory-aligned shared-horizon invariants (`K=min(nws_len,glofas_len,K_cap)`) and passing NDLM-only diagnostics.
 
 ### 12.1) `Q-00` + `Q-01` Root-Cause Debug Checklist (Execution Contract)
 
@@ -1856,13 +1856,16 @@ If work is paused for a tangent, resume from this exact state:
 3. `Q-01B` is complete:
    - single supported root cause for the original NDLM-only post crash is family-unaware post initialization wiring.
 4. Active remaining NDLM issue after `Q-01A/B`:
-   - horizon-contract mismatch persists (`ndlm_plot_contract_check.csv`), so quality acceptance gate is still open.
+   - resolved: NDLM horizon-contract mismatch was closed in rerun `diag_q01a_ndlm_only_horizonfix_20260220_223605` with passing `ndlm_plot_contract_check.csv`.
 5. Resume evidence anchors:
    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/run_manifest.yaml`
    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/post/logs/post_runner.log`
    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/ndlm_iter_trace.csv`
    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/ndlm_plot_contract_check.csv`
    - `repro/runs/diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704/diagnostics/ndlm/ndlm_hypothesis_matrix.md`
+   - `repro/runs/diag_q01a_ndlm_only_horizonfix_20260220_223605/run_manifest.yaml`
+   - `repro/runs/diag_q01a_ndlm_only_horizonfix_20260220_223605/diagnostics/ndlm/ndlm_horizon_contract.md`
+   - `repro/runs/diag_q01a_ndlm_only_horizonfix_20260220_223605/diagnostics/ndlm/ndlm_plot_contract_check.csv`
 
 ## 13) Notes
 
@@ -2996,3 +2999,60 @@ Concurrency rule for migration phases:
   - NDLM horizon acceptance remains open (`ndlm_plot_contract_check.csv` mismatches), to be handled in downstream quality-fix tasks (`Q-03/Q-04` scope).
 - Next action:
   - Continue with NDLM horizon/quality correction work using the new passing NDLM-only lane and diagnostics artifacts as baseline.
+
+### Progress Update 2026-02-20 22:39 UTC
+
+- Phase: `Q-01C` NDLM horizon/data-flow contract closure (NDLM-only scope)
+- Change type: root-cause fix + diagnostics hardening + targeted regression + isolated rerun evidence
+- Summary:
+  - Root-cause confirmed for remaining NDLM mismatch: diagnostics contract incorrectly assumed max forecast horizon (`28`) instead of NDLM shared forecast horizon.
+  - Implemented theory-aligned NDLM horizon invariants:
+    - NDLM shared horizon is now explicitly tracked as `K=min(nws_len,glofas_len,K_cap)`.
+    - `ndlm_main_theory_state` now stores `K`, `K_cap`, `nws_len`, `glofas_len`.
+    - NDLM fit contract checks and diagnostics now enforce horizon consistency across `standard_forecast_errors`, `sm_ens`, and `sC_ens`.
+  - Added automated NDLM diagnostics bundle generation in post stage (NDLM-enabled runs; strict fail-fast in NDLM-only lane):
+    - `ndlm_iter_trace.csv` (ELBO, crit_elbo, sigma, state-norm, weights),
+    - `ndlm_time_coverage.csv`,
+    - `ndlm_plot_contract_check.csv`,
+    - `ndlm_object_shapes.csv`,
+    - `ndlm_fit_vs_observed_coverage.csv`,
+    - `ndlm_horizon_contract.md`.
+  - Reran NDLM-only lane and closed `Q-01C` acceptance:
+    - `run_id=diag_q01a_ndlm_only_horizonfix_20260220_223605`
+    - stages: `forecats=pass`, `data_prep_shared=pass`, `fit=pass`, `post=pass`
+    - horizon contract check now fully passes (`expected K=10`, `actual K=10`).
+- Files touched:
+  - `R/unified/families/ndlm_main/00_constants.R`
+  - `R/unified/families/ndlm_main/01_inputs.R`
+  - `R/unified/families/ndlm_main/03_vb_updates.R`
+  - `R/unified/families/ndlm_main/06_save_state.R`
+  - `R/unified/families/ndlm_main/zz_run.R`
+  - `R/unified/contract_checks.R`
+  - `R/unified/diagnostics.R`
+  - `R/unified/ndlm_post_diagnostics.R`
+  - `R/unified/stages/stage_post.R`
+  - `tests/testthat/test_ndlm_horizon_contract.R`
+  - `repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md`
+- Evidence:
+  - Updated retrospective continuity recheck (unchanged data-prep policy result):
+    - `data/forecats_inputs/site=11160500/cutoff_date=2022-12-25/run_id=auto_cutoff_policy_fillcheck_minicache_20260220/inputs/retrospective_preparation.csv`
+  - NDLM-only rerun closure:
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_20260220_223605/run_manifest.yaml`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_20260220_223605/post/logs/post_runner.log`
+  - NDLM diagnostics bundle (auto-generated by post stage):
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_20260220_223605/diagnostics/ndlm/ndlm_iter_trace.csv`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_20260220_223605/diagnostics/ndlm/ndlm_time_coverage.csv`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_20260220_223605/diagnostics/ndlm/ndlm_plot_contract_check.csv`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_20260220_223605/diagnostics/ndlm/ndlm_object_shapes.csv`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_20260220_223605/diagnostics/ndlm/ndlm_fit_vs_observed_coverage.csv`
+    - `repro/runs/diag_q01a_ndlm_only_horizonfix_20260220_223605/diagnostics/ndlm/ndlm_horizon_contract.md`
+- Validation notes:
+  - Targeted tests passed:
+    - `tests/testthat/test_ndlm_horizon_contract.R`
+    - `tests/testthat/test_ndlm_post_jsd.R`
+    - `repro/tests/test_post_module_plan.py`
+    - `repro/tests/test_ndlm_theory_vb_regression.py`
+  - `Q-01` is now closed for NDLM-only crash + horizon-contract mismatch.
+  - NDLM model-quality interpretation (fit quality vs scientific adequacy) remains a separate downstream task and is not changed by this wiring/contract fix.
+- Next action:
+  - Continue with non-NDLM checklist items (`Q-02` onward) without changing this NDLM contract baseline.
