@@ -3148,3 +3148,74 @@ Concurrency rule for migration phases:
     - `repro/runs/20260220_153713/fit/contract_checks/ndlm_main/ndlm_main_contract_check.yaml`
 - Next action:
   - Keep ragged-horizon contract frozen and proceed to NDLM model-quality diagnosis (fit behavior/parameter dynamics), without changing non-NDLM families.
+
+### Progress Update 2026-02-21 01:21 UTC
+
+- Phase: Kalman C++ congruence + NDLM backend wiring (`A0`-`A8` execution thread, NDLM/exDQLM scope only)
+- Change type: contract audit + C++ fail-fast hardening + NDLM unified backend integration + targeted tests + verification runs
+- Summary:
+  - Completed baseline and theory-to-code contract artifacts for NDLM/exDQLM Kalman paths:
+    - `A0` baseline inventory matrix with callsite evidence.
+    - `A1` shared Kalman contract note (common FFBS structure + model-specific likelihood/covariance split).
+    - `A2` NDLM covariance compatibility decision (fixed `D` default with optional expected-covariance inputs in synth C++ path).
+    - `A3` mismatch table and severity/fix mapping.
+  - Implemented root-fix hardening in C++ paths:
+    - NDLM synth C++ now has strict shape/slice guards, optional covariance selectors (`D_t`, `D_ens_t`), and explicit non-finite ELBO fail-fast.
+    - multiv synth C++ now has explicit non-finite ELBO fail-fast checks.
+  - Wired NDLM C++ Kalman backend into unified workflow:
+    - Added backend selector `models.ndlm_main.kalman_backend: r|cpp`.
+    - Added `R/unified/families/ndlm_main/ndlm_kalman_backend.cpp` and dispatch path in `02_model_spec.R`.
+    - Set default NDLM backend to `cpp` in unified defaults + production canonical config.
+    - Preserved R backend as fallback.
+  - Added targeted deterministic tests:
+    - C++ compile/load smoke (both DISC files + NDLM backend C++).
+    - NDLM backend config validation.
+    - R-vs-C++ NDLM smoother consistency test.
+  - Verification status:
+    - Targeted tests: pass.
+    - NDLM-only fit+post smoke: pass.
+    - multiv exDQLM median-only smoke (`q=0.50`) launched and running; no continuous polling by policy.
+- Files touched (this phase):
+  - `DISC_kalman_synth.cpp`
+  - `DISC_kalman_synth_NDLM.cpp`
+  - `R/unified/families/ndlm_main/ndlm_kalman_backend.cpp`
+  - `R/unified/families/ndlm_main/02_model_spec.R`
+  - `R/unified/families/ndlm_main/00_constants.R`
+  - `R/unified/families/ndlm_main/03_vb_updates.R`
+  - `R/unified/families/ndlm_main/zz_run.R`
+  - `R/unified/config.R`
+  - `R/unified/stages/stage_fit.R`
+  - `R/unified/manifest.R`
+  - `scripts/run_ndlm_main.R`
+  - `config/unified_runs/production_canonical_family.yaml`
+  - `tests/testthat/test_ndlm_kalman_backend.R`
+  - `repro/tests/test_kalman_cpp_compile_smoke.py`
+  - `repro/tests/test_ndlm_kalman_backend_config.py`
+  - `repro/docs/kalman_cpp_audit/20260221T003811Z/baseline_inventory_matrix.md`
+  - `repro/docs/kalman_cpp_audit/20260221T003811Z/shared_kalman_contract.md`
+  - `repro/docs/kalman_cpp_audit/20260221T003811Z/ndlm_covariance_compatibility_decision.md`
+  - `repro/docs/kalman_cpp_audit/20260221T003811Z/cpp_congruence_mismatch_table.md`
+  - `config/unified_runs/ndlm_cpp_only_smoke_shared_20260221.yaml`
+  - `config/unified_runs/multiv_cpp_ultrafast_smoke_shared_20260221.yaml`
+- Evidence:
+  - Contract/audit artifacts:
+    - `repro/docs/kalman_cpp_audit/20260221T003811Z/baseline_inventory_matrix.md`
+    - `repro/docs/kalman_cpp_audit/20260221T003811Z/shared_kalman_contract.md`
+    - `repro/docs/kalman_cpp_audit/20260221T003811Z/ndlm_covariance_compatibility_decision.md`
+    - `repro/docs/kalman_cpp_audit/20260221T003811Z/cpp_congruence_mismatch_table.md`
+  - Targeted tests:
+    - `tests/testthat/test_ndlm_kalman_backend.R`
+    - `repro/tests/test_kalman_cpp_compile_smoke.py`
+    - `repro/tests/test_ndlm_kalman_backend_config.py`
+  - NDLM-only closure run:
+    - `repro/runs/diag_ndlm_cpp_only_smoke_shared_20260221/run_manifest.yaml`
+    - `repro/runs/diag_ndlm_cpp_only_smoke_shared_20260221/post/logs/post_runner.log`
+  - Active multiv median-only smoke run:
+    - `repro/runs/diag_multiv_cpp_ultrafast_smoke_shared_20260221/run_manifest.yaml`
+    - `repro/runs/diag_multiv_cpp_ultrafast_smoke_shared_20260221/fit/q=50/logs/fit.log`
+- Validation notes:
+  - `A0`-`A6` complete.
+  - `A7`: NDLM smoke complete; multiv smoke is in-progress (median-only lane, one job).
+  - `A8`: tracker updated with current state and evidence paths.
+- Next action:
+  - Wait for `diag_multiv_cpp_ultrafast_smoke_shared_20260221` fit/post closure, then append final verification status and close the remaining `A7` gate.
