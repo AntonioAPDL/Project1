@@ -754,6 +754,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       NDLM_PCA_CSV = shared_cov_paths$pca,
       NDLM_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
       NDLM_PREV_RDATA = output_path,
+      NDLM_KALMAN_BACKEND = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "kalman_backend"), default = "cpp"
+      )),
       NDLM_THEORY_SUMMARY_LOG = file.path(ndlm_logs, "ndlm_theory_summary.log")
     )
     env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))

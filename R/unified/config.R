@@ -46,7 +46,8 @@ unified_config_defaults <- function() {
         implementation_mode = "theory_aligned"
       ),
       ndlm_main = list(
-        implementation_mode = "theory_aligned"
+        implementation_mode = "theory_aligned",
+        kalman_backend = "cpp"
       )
     ),
     site = list(
@@ -452,6 +453,10 @@ unified_validate_config <- function(cfg) {
   ndlm_mode <- unified_get(cfg, c("models", "ndlm_main", "implementation_mode"), default = "theory_aligned")
   if (!(ndlm_mode %in% c("legacy_bridge", "theory_aligned"))) {
     add_err("models.ndlm_main.implementation_mode must be one of: legacy_bridge, theory_aligned")
+  }
+  ndlm_kalman_backend <- unified_get(cfg, c("models", "ndlm_main", "kalman_backend"), default = "cpp")
+  if (!(ndlm_kalman_backend %in% c("r", "cpp"))) {
+    add_err("models.ndlm_main.kalman_backend must be one of: r, cpp")
   }
 
   check_required_file <- function(path, key) {

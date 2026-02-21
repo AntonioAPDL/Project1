@@ -3,10 +3,15 @@ ndlm_theory_constants <- function(seed = 777L) {
   if (!is.finite(horizon_cap) || horizon_cap <= 0L) {
     horizon_cap <- 1080L
   }
+  kalman_backend <- tolower(trimws(Sys.getenv("NDLM_KALMAN_BACKEND", "cpp")))
+  if (!(kalman_backend %in% c("r", "cpp"))) {
+    kalman_backend <- "cpp"
+  }
   list(
     state_dim = 26L,
     active_hist_dim = 14L,
     forecast_horizon_cap = horizon_cap,
+    kalman_backend = kalman_backend,
     ensemble_block_dim = 7L,
     n_iter = 16L,
     n_draws = 48L,

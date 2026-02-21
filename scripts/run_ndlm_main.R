@@ -46,4 +46,5 @@ result <- unified_run_ndlm_main_theory(
 )
 
 cat(sprintf("ndlm_theory_complete output=%s\n", output_path))
+cat(sprintf("kalman_backend=%s\n", result$kalman_backend))
 cat(sprintf("sigma=%.8f w_hist=%.8f w_fore=%.8f\n", result$sigma, result$w_hist, result$w_fore))

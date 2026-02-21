@@ -1,4 +1,53 @@
-ndlm_theory_kalman_smoother <- function(y, H_mat, R_vec, q_diag, m0, C0) {
+ndlm_theory_kalman_backend_normalize <- function(backend = "r") {
+  backend <- tolower(trimws(as.character(backend[[1L]])))
+  if (!nzchar(backend)) backend <- "r"
+  if (!(backend %in% c("r", "cpp"))) {
+    stop(sprintf("ndlm kalman backend must be one of: r, cpp; got '%s'", backend), call. = FALSE)
+  }
+  backend
+}
+
+ndlm_theory_kalman_load_cpp <- function() {
+  if (exists("ndlm_kalman_smoother_cpp", mode = "function", inherits = TRUE)) {
+    return(invisible(TRUE))
+  }
+  if (!requireNamespace("Rcpp", quietly = TRUE)) {
+    stop("NDLM cpp backend requires package 'Rcpp'", call. = FALSE)
+  }
+
+  env_cpp <- Sys.getenv("NDLM_KALMAN_CPP_PATH", "")
+  candidates <- c(
+    env_cpp,
+    file.path(getwd(), "R", "unified", "families", "ndlm_main", "ndlm_kalman_backend.cpp"),
+    file.path(getwd(), "..", "R", "unified", "families", "ndlm_main", "ndlm_kalman_backend.cpp"),
+    file.path(getwd(), "..", "..", "R", "unified", "families", "ndlm_main", "ndlm_kalman_backend.cpp")
+  )
+  candidates <- unique(candidates[nzchar(candidates)])
+  cpp_path <- ""
+  for (cand in candidates) {
+    cand_norm <- normalizePath(cand, mustWork = FALSE)
+    if (file.exists(cand_norm)) {
+      cpp_path <- cand_norm
+      break
+    }
+  }
+  if (!nzchar(cpp_path)) {
+    stop(
+      sprintf(
+        "NDLM cpp backend source not found in any candidate path: %s",
+        paste(candidates, collapse = " | ")
+      ),
+      call. = FALSE
+    )
+  }
+  Rcpp::sourceCpp(cpp_path)
+  if (!exists("ndlm_kalman_smoother_cpp", mode = "function", inherits = TRUE)) {
+    stop("NDLM cpp backend compiled but exported symbol 'ndlm_kalman_smoother_cpp' was not found", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0) {
   y <- as.numeric(y)
   H_mat <- as.matrix(H_mat)
   Tn <- length(y)
@@ -69,4 +118,23 @@ ndlm_theory_kalman_smoother <- function(y, H_mat, R_vec, q_diag, m0, C0) {
     fitted_mean = fitted_mean,
     fitted_var = pmax(fitted_var, 1e-10)
   )
+}
+
+ndlm_theory_kalman_smoother <- function(y, H_mat, R_vec, q_diag, m0, C0, backend = "r") {
+  backend <- ndlm_theory_kalman_backend_normalize(backend)
+  if (identical(backend, "cpp")) {
+    ndlm_theory_kalman_load_cpp()
+    out <- ndlm_kalman_smoother_cpp(
+      y = as.numeric(y),
+      H_mat = as.matrix(H_mat),
+      R_vec_in = as.numeric(R_vec),
+      q_diag_in = as.numeric(q_diag),
+      m0 = as.numeric(m0),
+      C0 = as.matrix(C0)
+    )
+    out$fitted_mean <- as.numeric(out$fitted_mean)
+    out$fitted_var <- pmax(as.numeric(out$fitted_var), 1e-10)
+    return(out)
+  }
+  ndlm_theory_kalman_smoother_r(y = y, H_mat = H_mat, R_vec = R_vec, q_diag = q_diag, m0 = m0, C0 = C0)
 }

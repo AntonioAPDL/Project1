@@ -185,6 +185,7 @@ unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record
       ndlm_main = list(
         enabled = isTRUE(cfg$models$run_ndlm_main),
         implementation_mode = ndlm_mode,
+        kalman_backend = as.character(unified_get(cfg, c("models", "ndlm_main", "kalman_backend"), default = "cpp")),
         authoritative = ndlm_authoritative
       )
     ),

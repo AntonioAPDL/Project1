@@ -9,6 +9,7 @@ unified_run_ndlm_main_theory <- function(seed, output_path, log_path = NULL) {
 
   summary_lines <- c(
     "implementation_mode=theory_aligned",
+    sprintf("kalman_backend=%s", constants$kalman_backend),
     sprintf("output_path=%s", output_path),
     sprintf("sigma=%.8f", fit_result$sigma),
     sprintf("w_hist=%.8f", fit_result$w_hist),
@@ -38,7 +39,8 @@ unified_run_ndlm_main_theory <- function(seed, output_path, log_path = NULL) {
       output_path = output_path,
       sigma = fit_result$sigma,
       w_hist = fit_result$w_hist,
-      w_fore = fit_result$w_fore
+      w_fore = fit_result$w_fore,
+      kalman_backend = constants$kalman_backend
     )
   )
 }

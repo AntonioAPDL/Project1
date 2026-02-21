@@ -125,7 +125,8 @@ ndlm_theory_run_vb <- function(inputs, constants) {
       R_vec = R_vec,
       q_diag = q_diag,
       m0 = m0,
-      C0 = C0
+      C0 = C0,
+      backend = constants$kalman_backend
     )
 
     resid <- inputs$y - fit$fitted_mean

@@ -32,6 +32,7 @@ models:
     implementation_mode: "theory_aligned"
   ndlm_main:
     implementation_mode: "theory_aligned"
+    kalman_backend: "cpp"
 
 site:
   usgs_site: "11160500"
