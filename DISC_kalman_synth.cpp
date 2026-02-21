@@ -9,6 +9,7 @@
 #include <Eigen/Dense>
 #include <vector>
 #include <sstream>
+#include <cmath>
 
 using namespace Rcpp;
 using Eigen::MatrixXd;  // Explicitly using MatrixXd from Eigen
@@ -741,6 +742,10 @@ Rcpp::List DISC_update_theta_synth_cpp(arma::cube GG,
     A = Eigen::Map<Eigen::MatrixXd>(CBRB.memptr(), CBRB.n_rows, CBRB.n_cols); 
     log_det = logDetCholesky(A);
     elbo += 0.5 * log_det; 
+
+    if (!std::isfinite(elbo) || !std::isfinite(elbo_ens)) {
+        Rcpp::stop("DISC_update_theta_synth_cpp produced non-finite ELBO component(s)");
+    }
 
     return List::create(Named("standard_forecast_errors") = standard_forecast_errors,
                         Named("sm") = sm,
@@ -1664,6 +1669,10 @@ elbo += 0.5 * arma::accu(xxxx.diag());
 A = Eigen::Map<Eigen::MatrixXd>(CBRB.memptr(), CBRB.n_rows, CBRB.n_cols); 
 log_det = logDetCholesky(A);
 elbo += 0.5 * log_det; 
+
+if (!std::isfinite(elbo) || !std::isfinite(elbo_ens)) {
+    Rcpp::stop("DISC_update_theta_synth_cpp_W produced non-finite ELBO component(s)");
+}
 
 return List::create(Named("standard_forecast_errors") = standard_forecast_errors,
 Named("sm") = sm,
