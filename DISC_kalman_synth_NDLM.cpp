@@ -8,6 +8,8 @@
 #include <RcppEigen.h>
 #include <Eigen/Dense>
 #include <vector>
+#include <sstream>
+#include <cmath>
 
 using namespace Rcpp;
 using Eigen::MatrixXd;  // Explicitly using MatrixXd from Eigen
@@ -80,6 +82,117 @@ arma::mat robust_svd_inv_sqrt(const arma::mat& matrix, double tolerance = 1e-20)
     return V * arma::diagmat(s_inv_sqrt) * U.t();
 }
 
+void stop_shape_mismatch(
+    const std::string& label,
+    arma::uword expected_rows,
+    arma::uword expected_cols,
+    arma::uword actual_rows,
+    arma::uword actual_cols,
+    int j = -1,
+    int kk = -1) {
+    std::ostringstream oss;
+    oss << "update_theta_synth_cpp_ndlm shape mismatch for " << label
+        << ": expected " << expected_rows << "x" << expected_cols
+        << ", got " << actual_rows << "x" << actual_cols;
+    if (j >= 0) {
+        oss << " (j=" << j;
+        if (kk >= 0) oss << ", kk=" << kk;
+        oss << ")";
+    }
+    Rcpp::stop(oss.str());
+}
+
+void assert_mat_shape(
+    const arma::mat& m,
+    arma::uword expected_rows,
+    arma::uword expected_cols,
+    const std::string& label,
+    int j = -1,
+    int kk = -1) {
+    if (m.n_rows != expected_rows || m.n_cols != expected_cols) {
+        stop_shape_mismatch(label, expected_rows, expected_cols, m.n_rows, m.n_cols, j, kk);
+    }
+}
+
+void assert_cube_slice_available(
+    const arma::cube& cube,
+    arma::uword expected_rows,
+    arma::uword expected_cols,
+    arma::uword min_required_slices,
+    const std::string& label,
+    int j = -1,
+    int kk = -1) {
+    if (cube.n_rows != expected_rows || cube.n_cols != expected_cols) {
+        stop_shape_mismatch(label, expected_rows, expected_cols, cube.n_rows, cube.n_cols, j, kk);
+    }
+    if (cube.n_slices < min_required_slices) {
+        std::ostringstream oss;
+        oss << "update_theta_synth_cpp_ndlm slice underflow for " << label
+            << ": required slices >= " << min_required_slices
+            << ", got " << cube.n_slices;
+        if (j >= 0) {
+            oss << " (j=" << j;
+            if (kk >= 0) oss << ", kk=" << kk;
+            oss << ")";
+        }
+        Rcpp::stop(oss.str());
+    }
+}
+
+arma::mat select_hist_cov(
+    const arma::mat& D_fixed,
+    const bool use_D_t,
+    const arma::cube& D_t_cube,
+    arma::uword obs_dim,
+    int t) {
+    if (use_D_t) {
+        assert_cube_slice_available(
+            D_t_cube,
+            obs_dim,
+            obs_dim,
+            static_cast<arma::uword>(t + 1),
+            "D_t",
+            -1,
+            t
+        );
+        return D_t_cube.slice(static_cast<arma::uword>(t));
+    }
+    assert_mat_shape(D_fixed, obs_dim, obs_dim, "D");
+    return D_fixed;
+}
+
+arma::mat select_ens_cov(
+    const Rcpp::List& D_ens_fixed,
+    const bool use_D_ens_t,
+    const Rcpp::List& D_ens_t_list,
+    int index,
+    arma::uword obs_dim,
+    int kk,
+    int j) {
+    if (index < 0 || index >= D_ens_fixed.size()) {
+        Rcpp::stop("update_theta_synth_cpp_ndlm D_ens index out of range");
+    }
+    if (use_D_ens_t) {
+        if (index >= D_ens_t_list.size()) {
+            Rcpp::stop("update_theta_synth_cpp_ndlm D_ens_t index out of range");
+        }
+        arma::cube D_ens_cube = Rcpp::as<arma::cube>(D_ens_t_list[index]);
+        assert_cube_slice_available(
+            D_ens_cube,
+            obs_dim,
+            obs_dim,
+            static_cast<arma::uword>(kk + 1),
+            "D_ens_t",
+            j,
+            kk
+        );
+        return D_ens_cube.slice(static_cast<arma::uword>(kk));
+    }
+    arma::mat D_ens_mat = Rcpp::as<arma::mat>(D_ens_fixed[index]);
+    assert_mat_shape(D_ens_mat, obs_dim, obs_dim, "D_ens", j, kk);
+    return D_ens_mat;
+}
+
 // Function to expand the matrix
 arma::mat expand_matrix(const arma::mat& product, const arma::vec& num_mem) {
     int J = num_mem.n_elem;
@@ -147,7 +260,9 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
                                   Rcpp::List D_ens,
                                   arma::cube ex_df_mat_list_ens, arma::cube ex_df_mat_k_list_ens,
                                   Rcpp::List y_list_ens, arma::vec k_ens, arma::mat Ones_ens,
-                                  int tot_ens, arma::vec num_mem) {
+                                  int tot_ens, arma::vec num_mem,
+                                  Rcpp::Nullable<arma::cube> D_t = R_NilValue,
+                                  Rcpp::Nullable<Rcpp::List> D_ens_t = R_NilValue) {
                                     
     // Print initial debug information
     // Declare matrices for use in SVD calculations
@@ -190,6 +305,17 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
     double elbo = 0.0;
     double elbo_ens = 0.0;
 
+    bool use_D_t = D_t.isNotNull();
+    arma::cube D_t_cube;
+    if (use_D_t) {
+        D_t_cube = Rcpp::as<arma::cube>(D_t);
+    }
+    bool use_D_ens_t = D_ens_t.isNotNull();
+    Rcpp::List D_ens_t_list;
+    if (use_D_ens_t) {
+        D_ens_t_list = Rcpp::as<Rcpp::List>(D_ens_t);
+    }
+
     // Initialize Eigen matrix from Armadillo data
     // Rcpp::Rcout << "Debug: Initializing Eigen matrix from Armadillo data" << std::endl;
     MatrixXd A = Eigen::Map<MatrixXd>(const_cast<double*>(C0.memptr()), C0.n_rows, C0.n_cols);
@@ -207,7 +333,9 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
     // Compute initial forecast and process covariance
     // Rcpp::Rcout << "Debug: Compute initial forecast and process covariance" << std::endl;
     arma::vec f = FF.slice(0).t() * a;
-    arma::mat q = FF.slice(0).t() * R * FF.slice(0) + D;
+    arma::uword hist_obs_dim = static_cast<arma::uword>(FF.slice(0).n_cols);
+    arma::mat D_hist_0 = select_hist_cov(D, use_D_t, D_t_cube, hist_obs_dim, 0);
+    arma::mat q = FF.slice(0).t() * R * FF.slice(0) + D_hist_0;
     q = 0.5 * q + 0.5 * q.t();  // Symmetrize the matrix
     // Rcpp::Rcout << "Debug: Initial q matrix: " << q << std::endl;
 
@@ -241,7 +369,9 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
 
         // Forecast and process covariance
         f = FF.slice(t).t() * a;
-        q = FF.slice(t).t() * R * FF.slice(t) + D;
+        hist_obs_dim = static_cast<arma::uword>(FF.slice(t).n_cols);
+        arma::mat D_hist_t = select_hist_cov(D, use_D_t, D_t_cube, hist_obs_dim, t);
+        q = FF.slice(t).t() * R * FF.slice(t) + D_hist_t;
         q = (q + q.t()) / 2;  // Symmetrize the matrix
 
         q_inv = robust_svd_inv(q);
@@ -269,12 +399,28 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
 
         if (j == J) {
             arma::mat GG_list_ens_mat = Rcpp::as<arma::mat>(GG_list_ens[index]);
+            assert_mat_shape(
+                GG_list_ens_mat,
+                static_cast<arma::uword>(p * (j + 1)),
+                static_cast<arma::uword>(p * (j + 1)),
+                "GG_list_ens",
+                j,
+                kk
+            );
             a = GG_list_ens_mat * m.col(TT-1).subvec(0, p*(j+1) - 1);
             P = GG_list_ens_mat * C.slice(TT-1).submat(0, 0, p*(j+1) - 1, p*(j+1) - 1) * GG_list_ens_mat.t();      
             R = P % ex_df_mat_list_ens.slice(0).submat(0, 0, p*(j+1) - 1, p*(j+1) - 1) +  P % Ones_ens.submat(0, 0, p*(j+1) - 1, p*(j+1) - 1);  
         } else {
 
             arma::mat GG_list_ens_mat = Rcpp::as<arma::mat>(GG_list_ens[index]);
+            assert_mat_shape(
+                GG_list_ens_mat,
+                static_cast<arma::uword>(p * (j + 1)),
+                static_cast<arma::uword>(p * (j + 1)),
+                "GG_list_ens",
+                j,
+                kk
+            );
             int last_slice_index = m_ens[index - 1].n_slices - 1;
             arma::mat sub_matrix = m_ens[index - 1].subcube(0, 0, last_slice_index, p*(j+1) - 1, 0, last_slice_index);
             a = GG_list_ens_mat * sub_matrix.col(0);
@@ -286,19 +432,29 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
         R = regularize(R);
         // Rcpp::Rcout << "Checkpoint 6.1." <<j<< std::endl;
         // Rcpp::Rcout << "Checkpoint A" << std::endl;
-        arma::vec f_a = Rcpp::as<arma::mat>(FF_list_ens[index]).t() * a;
+        arma::mat FF_slice = Rcpp::as<arma::mat>(FF_list_ens[index]);
         arma::vec sub_num_mem = num_mem.subvec(0, j-1);
+        assert_mat_shape(
+            FF_slice,
+            static_cast<arma::uword>(p * (j + 1)),
+            static_cast<arma::uword>(sub_num_mem.n_elem),
+            "FF_list_ens",
+            j,
+            kk
+        );
+        arma::vec f_a = FF_slice.t() * a;
         // Rcpp::Rcout << "Checkpoint B" << std::endl;
         arma::vec exp_f_a = repeat_vector(f_a, sub_num_mem);
         f = exp_f_a;
         // Rcpp::Rcout << "Checkpoint C" << std::endl;
-        arma::mat FF_slice = Rcpp::as<arma::mat>(FF_list_ens[index]);
         // Rcpp::Rcout << "Checkpoint CA" << std::endl;
         arma::mat product = FF_slice.t() * R * FF_slice;
         // Rcpp::Rcout << "Checkpoint CB" << std::endl;
         arma::mat expanded_matrix = expand_matrix(product, sub_num_mem);
         // Rcpp::Rcout << "Checkpoint CC" << std::endl;
-        q = expanded_matrix + Rcpp::as<arma::mat>(D_ens[index]);
+        arma::uword obs_dim = static_cast<arma::uword>(expanded_matrix.n_rows);
+        arma::mat D_ens_cov = select_ens_cov(D_ens, use_D_ens_t, D_ens_t_list, index, obs_dim, 0, j);
+        q = expanded_matrix + D_ens_cov;
         // Rcpp::Rcout << "Checkpoint CD" << std::endl;
         q = (q + q.t()) / 2;  
 
@@ -307,8 +463,11 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
 
       
         arma::mat expanded_FF = expand_FF(FF_slice, sub_num_mem);
-        
-        arma::vec temp_vec = a + R * expanded_FF * q_inv * (Rcpp::as<arma::mat>(y_list_ens[index]).col(0) - f);
+        arma::mat y_ens = Rcpp::as<arma::mat>(y_list_ens[index]);
+        if (y_ens.n_rows != obs_dim || y_ens.n_cols < 1) {
+            stop_shape_mismatch("y_list_ens", obs_dim, 1, y_ens.n_rows, y_ens.n_cols, j, kk);
+        }
+        arma::vec temp_vec = a + R * expanded_FF * q_inv * (y_ens.col(0) - f);
   
         arma::mat temp_mat = R - R * expanded_FF * q_inv * expanded_FF.t() * R.t();
         
@@ -320,7 +479,7 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
         
         // Compute standard forecast errors        
         // Rcpp::as<arma::mat>(standard_forecast_errors_ens[index]).col(0) = q_inv_sqrt * (Rcpp::as<arma::mat>(y_list_ens[index]).col(0) - f);
-        standard_forecast_errors_ens[index].slice(0) = q_inv_sqrt * (Rcpp::as<arma::mat>(y_list_ens[index]).col(0) - f);
+        standard_forecast_errors_ens[index].slice(0) = q_inv_sqrt * (y_ens.col(0) - f);
         // Rcpp::Rcout << "Checkpoint 6.2." <<j<< std::endl;
         if (j < J) {
             k_j = k_ens[j-1]-k_ens[j];
@@ -331,6 +490,14 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
         kk++;
         while (kk < k_j) {
             arma::mat GG_list_ens_mat = Rcpp::as<arma::mat>(GG_list_ens[index]);
+            assert_mat_shape(
+                GG_list_ens_mat,
+                static_cast<arma::uword>(p * (j + 1)),
+                static_cast<arma::uword>(p * (j + 1)),
+                "GG_list_ens",
+                j,
+                kk
+            );
             arma::mat sub_matrix = m_ens[index].subcube(0, 0, kk-1, p*(j+1) - 1, 0, kk-1);
             arma::vec a = GG_list_ens_mat * sub_matrix.col(0);
 
@@ -340,14 +507,24 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
             R = (R + R.t()) / 2; 
             R = regularize(R);
 
-            arma::vec f_a = Rcpp::as<arma::mat>(FF_list_ens[index]).t() * a;
+            arma::mat FF_slice = Rcpp::as<arma::mat>(FF_list_ens[index]);
+            assert_mat_shape(
+                FF_slice,
+                static_cast<arma::uword>(p * (j + 1)),
+                static_cast<arma::uword>(sub_num_mem.n_elem),
+                "FF_list_ens",
+                j,
+                kk
+            );
+            arma::vec f_a = FF_slice.t() * a;
             arma::vec exp_f_a = repeat_vector(f_a, sub_num_mem);
             arma::vec f = exp_f_a;
 
-            arma::mat FF_slice = Rcpp::as<arma::mat>(FF_list_ens[index]);
             arma::mat product = FF_slice.t() * R * FF_slice;
             arma::mat expanded_matrix = expand_matrix(product, sub_num_mem);
-            arma::mat q = expanded_matrix + Rcpp::as<arma::mat>(D_ens[index]);
+            arma::uword obs_dim_k = static_cast<arma::uword>(expanded_matrix.n_rows);
+            arma::mat D_ens_cov_k = select_ens_cov(D_ens, use_D_ens_t, D_ens_t_list, index, obs_dim_k, kk, j);
+            arma::mat q = expanded_matrix + D_ens_cov_k;
 
             q = (q + q.t()) / 2;  
 
@@ -355,13 +532,19 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
             arma::mat q_inv_sqrt = robust_svd_inv_sqrt(q);
 
             expanded_FF = expand_FF(FF_slice, sub_num_mem);
-            arma::vec temp_vec_ = a + R * expanded_FF * q_inv * (Rcpp::as<arma::mat>(y_list_ens[index]).col(kk) - f);
+            if (y_ens.n_cols <= static_cast<arma::uword>(kk)) {
+                std::ostringstream oss;
+                oss << "update_theta_synth_cpp_ndlm y_list_ens column underflow at j=" << j << ", kk=" << kk
+                    << " (available_cols=" << y_ens.n_cols << ")";
+                Rcpp::stop(oss.str());
+            }
+            arma::vec temp_vec_ = a + R * expanded_FF * q_inv * (y_ens.col(kk) - f);
             m_ens[index].slice(kk) = temp_vec_;
             arma::mat temp_mat_ = R - R * expanded_FF * q_inv * expanded_FF.t() * R.t();
             C_ens[index].slice(kk) = temp_mat_;
             C_ens[index].slice(kk) = (C_ens[index].slice(kk) + C_ens[index].slice(kk).t()) / 2;
             // Rcpp::as<arma::mat>(standard_forecast_errors_ens[index]).col(kk) = q_inv_sqrt * (Rcpp::as<arma::mat>(y_list_ens[index]).col(kk) - f);
-            standard_forecast_errors_ens[index].slice(kk) = q_inv_sqrt * (Rcpp::as<arma::mat>(y_list_ens[index]).col(kk) - f);
+            standard_forecast_errors_ens[index].slice(kk) = q_inv_sqrt * (y_ens.col(kk) - f);
             kk++;    
         }
         
@@ -698,6 +881,10 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
     log_det = logDetCholesky(A);
     elbo += 0.5 * log_det; 
 
+    if (!std::isfinite(elbo) || !std::isfinite(elbo_ens)) {
+        Rcpp::stop("update_theta_synth_cpp_ndlm produced non-finite ELBO component(s)");
+    }
+
     return List::create(Named("standard_forecast_errors") = standard_forecast_errors,
                         Named("sm") = sm,
                         Named("sC") = sC,
@@ -711,5 +898,3 @@ Rcpp::List update_theta_synth_cpp_ndlm(arma::cube GG,
                         Named("fm_ens") = m_ens, 
                         Named("fC_ens") = C_ens);
 }
-
-
