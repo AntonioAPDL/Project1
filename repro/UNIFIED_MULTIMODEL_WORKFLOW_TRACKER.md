@@ -3219,3 +3219,46 @@ Concurrency rule for migration phases:
   - `A8`: tracker updated with current state and evidence paths.
 - Next action:
   - Wait for `diag_multiv_cpp_ultrafast_smoke_shared_20260221` fit/post closure, then append final verification status and close the remaining `A7` gate.
+
+### Progress Update 2026-02-21 04:11 UTC
+
+- Phase: Kalman C++ congruence + NDLM backend wiring (`A7/A8` final closure)
+- Change type: final verification closure + tracker completion + handoff checklist
+- Summary:
+  - Re-verified closure manifests for both required smoke runs:
+    - `diag_ndlm_cpp_only_smoke_shared_20260221`
+    - `diag_multiv_cpp_ultrafast_smoke_shared_20260221`
+    - both now have all stages `pass` and non-null `finished_at_utc`.
+  - Produced final verification matrix artifact for this thread:
+    - `repro/docs/kalman_cpp_audit/20260221T003811Z/final_verification_matrix.md`
+  - Captured reproducible verification logs:
+    - pytest kalman suite log,
+    - testthat NDLM backend suite log,
+    - run-status summary snapshot.
+- Evidence:
+  - Final matrix:
+    - `repro/docs/kalman_cpp_audit/20260221T003811Z/final_verification_matrix.md`
+  - Verification logs:
+    - `repro/docs/kalman_cpp_audit/20260221T003811Z/verification_logs/pytest_kalman.txt`
+    - `repro/docs/kalman_cpp_audit/20260221T003811Z/verification_logs/r_testthat_ndlm_backend.txt`
+    - `repro/docs/kalman_cpp_audit/20260221T003811Z/verification_logs/run_status_summary.txt`
+  - NDLM smoke closure:
+    - `repro/runs/diag_ndlm_cpp_only_smoke_shared_20260221/run_manifest.yaml`
+  - multiv median smoke closure:
+    - `repro/runs/diag_multiv_cpp_ultrafast_smoke_shared_20260221/run_manifest.yaml`
+- Validation notes:
+  - `A7` is complete (targeted tests + NDLM smoke + multiv median smoke all pass).
+  - `A8` is complete (tracker reflects final status and evidence for this thread).
+  - Kalman contract/wiring baseline is frozen for this task.
+- Next action:
+  - Shift to post-Kalman workflow tasks (`Q-02` onward) without changing the NDLM/exDQLM Kalman baseline.
+
+### Post-Kalman Handoff Checklist (No Implementation In This Step)
+
+1. `Q-02` Univariate exDQLM isolated diagnosis lane (quality-focused, no Kalman contract changes).
+2. `Q-03` Multivariate synthesis/agg-discrepancy figure contract fixes (post-layer only).
+3. `Q-04` NDLM model-quality diagnosis (fit behavior/parameter dynamics), keeping Kalman backend/wiring frozen.
+4. `Q-05` Final quality-pack recomposition and reporting pass after `Q-02..Q-04` close.
+
+Handoff rule:
+- Treat the Kalman C++ audit/alignment output as a frozen baseline unless new evidence shows a contract violation.
