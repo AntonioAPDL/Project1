@@ -3262,3 +3262,64 @@ Concurrency rule for migration phases:
 
 Handoff rule:
 - Treat the Kalman C++ audit/alignment output as a frozen baseline unless new evidence shows a contract violation.
+
+### Progress Update 2026-02-21 17:56 UTC
+
+- Phase: Post-Kalman baseline freeze + ordered execution kickoff (`S1`/`S2` bridge)
+- Change type: tracker baseline alignment (no model/post logic edits)
+- Baseline status freeze:
+  - Solved and frozen:
+    - Kalman C++ audit/alignment thread (`A0`-`A8`) is closed.
+    - NDLM `kalman_backend` selector is wired and validated (`r|cpp`, default `cpp`).
+    - NDLM-only and multiv median-only smoke lanes are closed with pass manifests.
+  - Remaining ordered tasks:
+    - `Q-02` univariate exDQLM isolated quality diagnosis.
+    - `Q-03` multivariate post synthesis/aggregated-discrepancy integrity fixes.
+    - `Q-04` NDLM model-quality diagnosis (fit behavior), with Kalman baseline frozen.
+    - `Q-05` final quality-pack recomposition and closure reporting.
+- Acceptance criteria for remaining tasks:
+  - `Q-02` acceptance:
+    - isolated univar lane closes with `fit=pass` and `post=pass`;
+    - root-cause diagnosis artifact exists;
+    - regression checks cover any implemented fix path.
+  - `Q-03` acceptance:
+    - synthesis plots honor expected horizon contract (no premature truncation against available forecast/member windows);
+    - `Agg_disc_*` outputs include both observed and fitted aggregated discrepancy series;
+    - post-level regression checks prevent recurrence.
+  - `Q-04` acceptance:
+    - NDLM diagnostics separate implementation/wiring issues from model-behavior issues;
+    - any implementation fixes are evidence-backed and keep Kalman contract baseline unchanged unless violation is proven;
+    - diagnostics bundle and residual-risk note are published.
+  - `Q-05` acceptance:
+    - recomposed final output pack includes expected figures/tables/synthesis artifacts;
+    - full run/report closure is evidenced via manifests and output inventory;
+    - risk register and checklist states are updated consistently.
+- Next action:
+  - Launch a fresh canonical all-family full E2E replay (one-core-per-model, full post outputs enabled), then wait for closure before `S3` inventory and `Q-02` start.
+
+### Progress Update 2026-02-21 18:03 UTC
+
+- Phase: Full canonical rerun kickoff (`S2`)
+- Change type: execution launch (no model/post logic edits)
+- Launch metadata:
+  - Config path:
+    - `config/unified_runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221.yaml`
+  - Run id:
+    - `prod_canonical_full_e2e_parallel_onecore_refresh_20260221`
+  - Run root:
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221`
+  - Launcher command:
+    - `Rscript --vanilla scripts/unified_run.R --config config/unified_runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221.yaml`
+  - Stage/log anchors:
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221/run_manifest.yaml`
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221/fit/logs/fit.log`
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221/post/logs/post_runner.log`
+- Runtime policy confirmed in launch output:
+  - `fit.parallel.mode=one_core_per_model`
+  - scheduler reported `workers=15 jobs=15` (7 multiv quantiles + 7 univar quantiles + 1 NDLM).
+- Post-output policy confirmed in config:
+  - `post.smoke_fast=false`
+  - `post.figures=true`
+  - `post.export_tables=true`
+- Next action:
+  - Wait for run closure, then execute `S3` full-run output inventory and proceed with `Q-02` to `Q-05` in order.

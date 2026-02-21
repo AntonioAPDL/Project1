@@ -1,0 +1,131 @@
+config_version: 1
+
+run:
+  run_id: "prod_canonical_full_e2e_parallel_onecore_refresh_20260221"
+  run_root: "repro/runs"
+  repro_mode: "strict"
+  seed: 777
+  overwrite: false
+  dry_run: false
+  git_require_clean: false
+  threads:
+    omp: 1
+    openblas: 1
+    mkl: 1
+    veclib: 1
+    numexpr: 1
+    mc_cores: 1
+
+stages:
+  forecats: true
+  data_prep_shared: true
+  fit: true
+  post: true
+  validate: true
+  report: true
+
+models:
+  run_exdqlm_multivar: true
+  run_exdqlm_univar: true
+  run_ndlm_main: true
+  exdqlm_univar:
+    implementation_mode: "theory_aligned"
+  ndlm_main:
+    implementation_mode: "theory_aligned"
+    kalman_backend: "cpp"
+
+site:
+  usgs_site: "11160500"
+  lat: 37.0443931
+  lon: -122.072464
+
+dates:
+  cutoff_date: "2022-12-25"
+  plot_start: "2022-12-07"
+  plot_end: "2023-01-22"
+
+inputs:
+  fit:
+    parameters_path: "/data/muscat_data/jaguir26/projects/Project/Input/exAL/parameters/parameters.txt"
+    retros_path: "retros_2022-12-25.csv"
+    retros_storage_scale: "log1p_cms"
+    nws_forecast_path: "nws_forecast.csv"
+    nws_storage_scale: "log1p_cms"
+    glofas_forecast_path: "weighted_time_series.csv"
+    glofas_storage_scale: "log1p_cms"
+    usgs_mode: "live"
+    usgs_cache_path: null
+    covariates:
+      - name: "ELI"
+        path: "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_ELI.csv"
+      - name: "ONI"
+        path: "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_2_ONI.csv"
+      - name: "PPT"
+        path: "prism_precipitation_santa_cruz_1987_2023.csv"
+      - name: "SOIL"
+        path: "soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv"
+      - name: "PCA"
+        path: "pca.csv"
+  post:
+    use_fit_outputs_from_run: true
+  forecats:
+    mode: "use_existing"
+    pipeline_config_path: "config/forecats_pipeline.template.yaml"
+    existing_bundle_path: "repro/runs/prod_canonical_full_e2e_parallel_onecore_20260220_002642/inputs/shared/forecats_bundle"
+    snapshot:
+      enabled: true
+      dest_rel: "inputs/shared/forecats_bundle"
+      copy_list: []
+  shared:
+    prefer_forecats_snapshot: true
+
+fit:
+  parallel:
+    mode: "one_core_per_model"
+    workers: null
+  quantiles: [0.01, 0.05, 0.10, 0.50, 0.90, 0.95, 0.99]
+  warm_start:
+    enabled: false
+    source_run_id: null
+    mode: "resume"
+  contract_checks:
+    enabled: true
+    fail_fast: true
+    write_reports: true
+  diagnostics:
+    enabled: true
+    fail_fast: true
+    write_reports: true
+    max_time_checks: 25
+    seed: 777
+    psd_tol: -1.0e-10
+
+post:
+  figures: true
+  smoke_fast: false
+  profile: false
+  profile_detail: false
+  allow_legacy_root_fallback: false
+  sort_keep_na: true
+  export_tables: true
+
+validation:
+  profile: "production"
+  canonical_run_id: "__SELF__"
+  compare:
+    mode: "both"
+    numeric_abs_tol: 0.0
+    numeric_rel_tol: 0.0
+    pixel_max_abs_tol: 0.0
+
+scale_contract:
+  canonical_storage_scale: "raw_cms"
+  legacy_fit_input_scale: "log1p_cms"
+  legacy_post_input_scale: "log1p_cms"
+  analysis_scale_fit_internal: "log_log1p_cms"
+  analysis_scale_post_internal: "log_log1p_cms"
+
+write_audit:
+  enabled: true
+  enforce_from_stage: 4
+  allowlist_outside_run_root: []
