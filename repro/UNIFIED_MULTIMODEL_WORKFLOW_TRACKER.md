@@ -3323,3 +3323,48 @@ Handoff rule:
   - `post.export_tables=true`
 - Next action:
   - Wait for run closure, then execute `S3` full-run output inventory and proceed with `Q-02` to `Q-05` in order.
+
+### Progress Update 2026-02-21 18:17 UTC
+
+- Phase: Scheduled delayed health-check automation (`S2.5`)
+- Change type: execution orchestration hardening (no model/post logic edits)
+- Scheduler implementation:
+  - Health-check tool:
+    - `repro/tools/unified_run_healthcheck.py`
+  - Delayed scheduler wrapper:
+    - `scripts/schedule_checkin_prod_canonical_refresh_20260221.sh`
+  - Scheduler backend:
+    - `atd` one-shot job (file-based outputs; no chat-push dependency)
+- Scheduled check-in registration:
+  - Run id:
+    - `prod_canonical_full_e2e_parallel_onecore_refresh_20260221`
+  - Trigger target (`T+6h`):
+    - `2026-02-22T00:17:27Z`
+  - `at` queue evidence:
+    - `atq` entry: `job 1` at `Sun Feb 22 00:17:00 2026 UTC`
+  - Scheduled artifact root:
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221/healthchecks/scheduled_checkin_6h/checkin_2026-02-22T001727Z`
+  - Scheduler metadata:
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221/healthchecks/scheduled_checkin_6h/checkin_2026-02-22T001727Z/schedule_meta.env`
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221/healthchecks/scheduled_checkin_6h/checkin_2026-02-22T001727Z/scheduled_job.txt`
+    - `repro/runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221/healthchecks/scheduled_checkin_6h/checkin_2026-02-22T001727Z/at_command.sh`
+- Scheduled check-in outputs (written at trigger):
+  - Primary status report:
+    - `.../status_report.json`
+    - `.../status_report.md`
+  - Runner log:
+    - `.../scheduled_checkin.log`
+  - If run is fully closed `pass`:
+    - auto-run `S3` inventory artifacts:
+      - `.../s3_output_inventory.json`
+      - `.../s3_output_inventory.md`
+  - If run has `fail` stage status:
+    - failure bundle artifacts:
+      - `.../failure_bundle.json`
+      - `.../failure_bundle.md`
+- Checker dry-run sanity (immediate execution, same run_id):
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221/healthchecks/manual_20260221T181751Z/status_report.json`
+  - `repro/runs/prod_canonical_full_e2e_parallel_onecore_refresh_20260221/healthchecks/manual_20260221T181751Z/status_report.md`
+- Behavior policy:
+  - The scheduled checker only diagnoses and inventories outputs.
+  - No broad patches are auto-applied on failure; fixes remain manual and root-cause-first.
