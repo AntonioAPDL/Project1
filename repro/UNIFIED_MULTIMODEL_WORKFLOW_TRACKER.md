@@ -1802,15 +1802,24 @@ Phase E: Fix-readiness gate (`Q-01C`)
    - post artifacts generated with non-empty fitted series where required.
 3. Only after this gate: implement code changes and proceed to `Q-04/Q-05`.
 
-- [ ] `Q-02` Univariate exDQLM median-only isolated lane (`q=0.50`)
-  - Run univar-only (`q=0.50`) fit + post replay.
-  - Produce compact diagnostics pack:
-    - ELBO trace
-    - gamma/sigma traces
-    - state norm trace
-    - synthesis horizon coverage trace
-  - Acceptance gate:
-    - Median univar synthesis aligns with expected horizon and does not show premature plot cutoff.
+- [x] `Q-02` Univariate exDQLM isolated quality diagnosis (`q=0.01,0.05,0.10,0.50,0.90,0.95,0.99`)
+  - Baseline freeze + symptoms:
+    - `repro/docs/q02_univar_20260222T212607Z/baseline_freeze.md`
+    - `repro/docs/q02_univar_20260222T212607Z/univar_symptom_table.csv`
+  - Root cause (supported): absolute-only convergence contract was scale-mismatched for extreme tails (`q=0.01`, `q=0.99`), producing deterministic `max_iter_reached` despite stable relative progress.
+    - `repro/docs/q02_univar_20260222T212607Z/root_cause_analysis.md`
+    - `repro/docs/q02_univar_20260222T212607Z/relative_convergence_counterfactual.csv`
+  - Fix implemented:
+    - convergence contract upgraded to abs-or-rel metric checks for ELBO/state-norm/sigma/gamma deltas (policy + env wiring + summary reporting + tests).
+  - Acceptance evidence:
+    - rel-contract full-7 univar fit run:
+      - `repro/runs/diag_q02_univar_only_full7_relfix_20260222_225800/run_manifest.yaml`
+      - `repro/docs/q02_univar_20260222T212607Z/univar_relfix_full7_symptom_table.csv`
+      - `repro/docs/q02_univar_20260222T212607Z/univar_relfix_full7_vs_baseline.csv`
+    - univar-only post replay after family-aware post init fix:
+      - `repro/runs/diag_q02_univar_full7_postonly_sourcerun_r05_20260222_223657/run_manifest.yaml`
+      - `repro/runs/diag_q02_univar_full7_postonly_sourcerun_r05_20260222_223657/post/logs/post_runner.log`
+      - `repro/docs/q02_univar_20260222T212607Z/verification_ladder.md`
 
 - [ ] `Q-03` Multivariate post-only figure integrity lane
   - Reuse existing multivar fit artifacts; run post-only replay focused on multivar figures.
@@ -3368,3 +3377,43 @@ Handoff rule:
 - Behavior policy:
   - The scheduled checker only diagnoses and inventories outputs.
   - No broad patches are auto-applied on failure; fixes remain manual and root-cause-first.
+
+### Progress Update 2026-02-22 22:41 UTC
+
+- Phase: `Q-02` Univariate isolated quality diagnosis closure
+- Change type: root-cause diagnosis + convergence-contract fix + univar-only post-path hardening
+- Summary:
+  - Completed `Q-02` baseline freeze and symptom extraction from canonical pass run.
+  - Confirmed extreme-tail non-convergence pattern (`q=0.01`, `q=0.99`) with counterfactual evidence showing relative progress was stable while absolute deltas remained above fixed thresholds.
+  - Implemented a theory-consistent abs-or-rel convergence contract for univar gamma/sigma updates:
+    - ELBO / state_norm_sq / sigma_exp / gamma_exp convergence now accepts `abs_delta < abs_tol OR rel_delta < rel_tol`.
+    - Added configuration + environment wiring for relative tolerances and explicit summary logging.
+  - Added deterministic regression tests for:
+    - convergence contract defaults/resolution,
+    - metric-delta convergence behavior,
+    - univar-only post module routing contract.
+  - Resolved univar-only post replay blocker by making post module selection family-aware and preventing NDLM/multivar bundle access in univar-only mode.
+  - Verified post replay success from univar-only fit outputs with pass manifest and artifact contract checks.
+- Evidence:
+  - Baseline + diagnosis artifacts:
+    - `repro/docs/q02_univar_20260222T212607Z/baseline_freeze.md`
+    - `repro/docs/q02_univar_20260222T212607Z/univar_symptom_table.csv`
+    - `repro/docs/q02_univar_20260222T212607Z/root_cause_analysis.md`
+    - `repro/docs/q02_univar_20260222T212607Z/relative_convergence_counterfactual.csv`
+  - Fit impact artifacts:
+    - `repro/docs/q02_univar_20260222T212607Z/univar_relfix_full7_symptom_table.csv`
+    - `repro/docs/q02_univar_20260222T212607Z/univar_relfix_full7_vs_baseline.csv`
+    - `repro/runs/diag_q02_univar_only_full7_relfix_20260222_225800/run_manifest.yaml`
+  - Post replay closure artifacts:
+    - `repro/runs/diag_q02_univar_full7_postonly_sourcerun_r05_20260222_223657/run_manifest.yaml`
+    - `repro/runs/diag_q02_univar_full7_postonly_sourcerun_r05_20260222_223657/post/logs/post_runner.log`
+    - `repro/runs/diag_q02_univar_full7_postonly_sourcerun_r05_20260222_223657/post/outputs/diag_q02_univar_full7_postonly_sourcerun_r05_20260222_223657/post_artifacts_summary.json`
+    - `repro/docs/q02_univar_20260222T212607Z/verification_ladder.md`
+  - Tests:
+    - `tests/testthat/test_univar_convergence_contract.R`
+    - `tests/testthat/test_post_module_plan.R`
+- Validation notes:
+  - `Q-02` acceptance criteria are satisfied with evidence-backed closure artifacts.
+  - `Q-03` / `Q-04` / `Q-05` remain intentionally untouched in this update.
+- Next action:
+  - Start `Q-03` multivariate post-layer contract fixes only (synthesis horizon + aggregated discrepancy overlays), keeping `Q-02` baseline frozen.
