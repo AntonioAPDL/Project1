@@ -1822,6 +1822,7 @@ Phase E: Fix-readiness gate (`Q-01C`)
       - `repro/docs/q02_univar_20260222T212607Z/verification_ladder.md`
 
 - [ ] `Q-03` Multivariate post-only figure integrity lane
+  - Default execution policy for this task: use the lean debug profile first (`date_start=2010-01-01`, quantiles `0.05/0.50/0.95`, one-core-per-model), then promote to full-range/full-quantile only after contracts pass.
   - Reuse existing multivar fit artifacts; run post-only replay focused on multivar figures.
   - Diagnose and fix two issues:
     - `Q-03A`: synthesis horizon truncation in `All3_exal_DISC.png` and related multivar synthesis plots.
@@ -1836,6 +1837,7 @@ Phase E: Fix-readiness gate (`Q-01C`)
     - Synthesis x-range matches the expected forecast horizon contract.
 
 - [ ] `Q-04` Root-cause closure + regression guardrails
+  - Default execution policy for this task: prove fixes on lean debug profile first (`date_start=2010-01-01`, quantiles `0.05/0.50/0.95`), then run full profile once as final confirmation.
   - For every corrected issue, record:
     - exact root cause (object/dimension/time-index mismatch, wrong variable selection, or path-level contract mismatch),
     - exact file/line fixes,
@@ -1846,12 +1848,29 @@ Phase E: Fix-readiness gate (`Q-01C`)
     - NDLM/univar median post-figure data-shape checks.
 
 - [ ] `Q-05` Recompose final quality pack
+  - Promote-from-lean rule: run full data + all quantiles only after `Q-03` and `Q-04` are closed on lean profile.
   - Re-run post (full figures + tables) from corrected artifacts.
   - Register final evidence paths for:
     - NDLM corrected figures and traces
     - univar median corrected figures and traces
     - multivar corrected synthesis + `Agg_disc_*` figures
   - Update risk register statuses for `R-009`, `R-010`, `R-011` and close checklist items.
+
+### 12.3) Efficient Debug Execution Policy (Active)
+
+This policy is active for all remaining open workflow issues until final closure.
+
+1. Default debug lane (fast evidence lane):
+   - data window start: `2010-01-01`
+   - quantiles: `0.05`, `0.50`, `0.95`
+   - parallel mode: `one_core_per_model`
+2. Isolation-first rule:
+   - isolate by family/task first (univar-only, multivar-post-only, NDLM-only) before any all-family rerun.
+3. Promotion rule:
+   - move to full data + all quantiles only when lean-lane contracts/tests pass.
+4. Resource hygiene:
+   - stop deprecated/background diagnostic runs before launching new lanes.
+   - keep only the currently active diagnostic lane unless explicitly running a planned parallel check.
 
 ### 12.2) Context-Switch Resume Reminder (Current State)
 
@@ -3417,3 +3436,24 @@ Handoff rule:
   - `Q-03` / `Q-04` / `Q-05` remain intentionally untouched in this update.
 - Next action:
   - Start `Q-03` multivariate post-layer contract fixes only (synthesis horizon + aggregated discrepancy overlays), keeping `Q-02` baseline frozen.
+
+### Progress Update 2026-02-22 22:51 UTC
+
+- Phase: execution hygiene + remaining-task policy refinement
+- Change type: operational cleanup + planning constraints (no model logic changes)
+- Summary:
+  - Stopped deprecated background diagnostics to free compute/memory resources.
+  - Confirmed no active `diag_*` unified workflow jobs remain running in the background.
+  - Activated lean-first execution policy for all remaining open issues:
+    - default debug window starts at `2010-01-01`
+    - default quantiles `0.05/0.50/0.95`
+    - `one_core_per_model` parallel policy
+    - promote to full data + all quantiles only after lean-lane contracts pass.
+- Evidence:
+  - Process cleanup check (no active diag jobs after cleanup):
+    - command snapshot: `ps -ef | rg "scripts/unified_run\\.R --config config/unified_runs/diag_|diag_q"` (empty after cleanup)
+- Validation notes:
+  - Resource hygiene now aligned with isolated root-cause workflow policy.
+  - Remaining technical scope is unchanged (`Q-03`, `Q-04`, `Q-05`).
+- Next action:
+  - Execute `Q-03` on lean profile first, then promote only if contract checks pass.
