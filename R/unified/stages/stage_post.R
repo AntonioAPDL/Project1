@@ -274,6 +274,17 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     paste(x, collapse = ",")
   }
 
+  univar_only_mode <- isTRUE(cfg$models$run_exdqlm_univar) &&
+    !isTRUE(cfg$models$run_exdqlm_multivar) &&
+    !isTRUE(cfg$models$run_ndlm_main)
+  post_smoke_fast_effective <- isTRUE(cfg$post$smoke_fast) || univar_only_mode
+  if (univar_only_mode && !isTRUE(cfg$post$smoke_fast)) {
+    warning(
+      "stage_post: enabling smoke-fast post artifact contract for univariate-only mode to avoid cross-family artifact requirements.",
+      call. = FALSE
+    )
+  }
+
   sort_keep_na <- cfg$post$sort_keep_na
   if (is.null(sort_keep_na)) sort_keep_na <- TRUE
   export_tables <- cfg$post$export_tables
@@ -297,7 +308,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_MODEL_RUN_EXDQLM_MULTIVAR = if (isTRUE(cfg$models$run_exdqlm_multivar)) "TRUE" else "FALSE",
     UNIFIED_MODEL_RUN_EXDQLM_UNIVAR = if (isTRUE(cfg$models$run_exdqlm_univar)) "TRUE" else "FALSE",
     UNIFIED_MODEL_RUN_NDLM_MAIN = if (isTRUE(cfg$models$run_ndlm_main)) "TRUE" else "FALSE",
-    UNIFIED_POST_SMOKE_FAST = if (isTRUE(cfg$post$smoke_fast)) "TRUE" else "FALSE",
+    UNIFIED_POST_SMOKE_FAST = if (isTRUE(post_smoke_fast_effective)) "TRUE" else "FALSE",
     UNIFIED_FIT_QUANTILE_LABELS = encode_env_list(q_labels),
     UNIFIED_DISC_W_RDATA_PATHS = encode_env_list(disc_w_paths_abs),
     UNIFIED_UNIV_RDATA_PATHS = encode_env_list(univ_paths_abs),

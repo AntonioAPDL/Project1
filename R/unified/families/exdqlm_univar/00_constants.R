@@ -9,9 +9,13 @@ univar_theory_default_gamma_sigma_policy <- function() {
     convergence_tol = 1e-6,
     convergence = list(
       elbo_tol = 1e-6,
+      elbo_rel_tol = 2.5e-4,
       state_norm_sq_tol = 1e-6,
+      state_norm_sq_rel_tol = 2.5e-4,
       sigma_exp_tol = 1e-6,
-      gamma_exp_tol = 1e-6
+      sigma_exp_rel_tol = 5e-5,
+      gamma_exp_tol = 1e-6,
+      gamma_exp_rel_tol = 5e-5
     ),
     init = list(
       mode = "robust",
@@ -44,9 +48,13 @@ univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
   if (!is.null(policy$convergence_tol)) out$convergence_tol <- suppressWarnings(as.numeric(policy$convergence_tol))
   if (is.list(policy$convergence)) {
     if (!is.null(policy$convergence$elbo_tol)) out$convergence$elbo_tol <- suppressWarnings(as.numeric(policy$convergence$elbo_tol))
+    if (!is.null(policy$convergence$elbo_rel_tol)) out$convergence$elbo_rel_tol <- suppressWarnings(as.numeric(policy$convergence$elbo_rel_tol))
     if (!is.null(policy$convergence$state_norm_sq_tol)) out$convergence$state_norm_sq_tol <- suppressWarnings(as.numeric(policy$convergence$state_norm_sq_tol))
+    if (!is.null(policy$convergence$state_norm_sq_rel_tol)) out$convergence$state_norm_sq_rel_tol <- suppressWarnings(as.numeric(policy$convergence$state_norm_sq_rel_tol))
     if (!is.null(policy$convergence$sigma_exp_tol)) out$convergence$sigma_exp_tol <- suppressWarnings(as.numeric(policy$convergence$sigma_exp_tol))
+    if (!is.null(policy$convergence$sigma_exp_rel_tol)) out$convergence$sigma_exp_rel_tol <- suppressWarnings(as.numeric(policy$convergence$sigma_exp_rel_tol))
     if (!is.null(policy$convergence$gamma_exp_tol)) out$convergence$gamma_exp_tol <- suppressWarnings(as.numeric(policy$convergence$gamma_exp_tol))
+    if (!is.null(policy$convergence$gamma_exp_rel_tol)) out$convergence$gamma_exp_rel_tol <- suppressWarnings(as.numeric(policy$convergence$gamma_exp_rel_tol))
   }
 
   init <- policy$init
@@ -102,14 +110,26 @@ univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
   if (!is.finite(out$convergence$elbo_tol) || out$convergence$elbo_tol <= 0) {
     out$convergence$elbo_tol <- as.numeric(out$convergence_tol)
   }
+  if (!is.finite(out$convergence$elbo_rel_tol) || out$convergence$elbo_rel_tol <= 0) {
+    out$convergence$elbo_rel_tol <- 2.5e-4
+  }
   if (!is.finite(out$convergence$state_norm_sq_tol) || out$convergence$state_norm_sq_tol <= 0) {
     out$convergence$state_norm_sq_tol <- 1e-6
+  }
+  if (!is.finite(out$convergence$state_norm_sq_rel_tol) || out$convergence$state_norm_sq_rel_tol <= 0) {
+    out$convergence$state_norm_sq_rel_tol <- 2.5e-4
   }
   if (!is.finite(out$convergence$sigma_exp_tol) || out$convergence$sigma_exp_tol <= 0) {
     out$convergence$sigma_exp_tol <- 1e-6
   }
+  if (!is.finite(out$convergence$sigma_exp_rel_tol) || out$convergence$sigma_exp_rel_tol <= 0) {
+    out$convergence$sigma_exp_rel_tol <- 5e-5
+  }
   if (!is.finite(out$convergence$gamma_exp_tol) || out$convergence$gamma_exp_tol <= 0) {
     out$convergence$gamma_exp_tol <- 1e-6
+  }
+  if (!is.finite(out$convergence$gamma_exp_rel_tol) || out$convergence$gamma_exp_rel_tol <= 0) {
+    out$convergence$gamma_exp_rel_tol <- 5e-5
   }
 
   if (!(out$init$mode %in% c("legacy", "robust"))) {

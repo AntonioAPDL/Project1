@@ -506,14 +506,26 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       UNIV_GAMSIG_ELBO_TOL = as.character(unified_get(
         cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "elbo_tol"), default = 1e-6
       )),
+      UNIV_GAMSIG_ELBO_REL_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "elbo_rel_tol"), default = 2.5e-4
+      )),
       UNIV_GAMSIG_STATE_NORM_TOL = as.character(unified_get(
         cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "state_norm_sq_tol"), default = 1e-6
+      )),
+      UNIV_GAMSIG_STATE_NORM_REL_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "state_norm_sq_rel_tol"), default = 2.5e-4
       )),
       UNIV_GAMSIG_SIGMA_EXP_TOL = as.character(unified_get(
         cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "sigma_exp_tol"), default = 1e-6
       )),
+      UNIV_GAMSIG_SIGMA_EXP_REL_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "sigma_exp_rel_tol"), default = 5e-5
+      )),
       UNIV_GAMSIG_GAMMA_EXP_TOL = as.character(unified_get(
         cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "gamma_exp_tol"), default = 1e-6
+      )),
+      UNIV_GAMSIG_GAMMA_EXP_REL_TOL = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "gamma_exp_rel_tol"), default = 5e-5
       )),
       UNIV_GAMSIG_FREEZE_TARGET = as.character(unified_get(
         cfg, c("fit", "exdqlm_univar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"

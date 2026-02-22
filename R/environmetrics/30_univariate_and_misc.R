@@ -245,6 +245,17 @@ load_ndlm_bundle_with_normalize <- function(
   invisible(TRUE)
 }
 
+has_ndlm_bundle <- function() {
+  isTRUE(MODEL_RUN_NDLM_MAIN) || nzchar(NDLM_VAR_50)
+}
+
+has_disc_w_bundle <- function() {
+  isTRUE(MODEL_RUN_EXDQLM_MULTIVAR) || any(nzchar(c(
+    DISC_W_VAR_05, DISC_W_VAR_20, DISC_W_VAR_35,
+    DISC_W_VAR_50, DISC_W_VAR_65, DISC_W_VAR_80, DISC_W_VAR_95
+  )))
+}
+
 profile_section(
   "univariate.load_vars_05",
   load_quantile_bundle_with_alias(file_path, target_label = "05", source_label = UNI_VAR_SRC_05, suffix = "exAL_synth_DISC_uni")
@@ -1056,175 +1067,168 @@ dim(synth_f2_q)
 dim(synth_f2)
 
 
-p <- 7
-file_path <- NDLM_VAR_50
-profile_section("univariate.load_disc_vars_ndlm_50", load_ndlm_bundle_with_normalize(file_path))
+if (has_ndlm_bundle()) {
+  p <- 7
+  file_path <- NDLM_VAR_50
+  profile_section("univariate.load_disc_vars_ndlm_50", load_ndlm_bundle_with_normalize(file_path))
 
-par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
-time_cuts <- which(timestamps %in% c("2012-08-01","2016-05-01","2016-09-15","2019-08-01") )
-dates_ts_usgs <- timestamps
-idx <- time_cuts[3]:time_cuts[4]
-percentiles <- c(0.025, 0.5, 0.975)
+  par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
+  time_cuts <- which(timestamps %in% c("2012-08-01","2016-05-01","2016-09-15","2019-08-01") )
+  dates_ts_usgs <- timestamps
+  idx <- time_cuts[3]:time_cuts[4]
+  percentiles <- c(0.025, 0.5, 0.975)
 
-plot.ts(idx, (new.theta.out_50_NDLM_synth_DISC$exps[1,idx])*0, ylim = c(-2, 2),  type="l", lwd = 1,
-        main = "Quantile Dynamics     -    2017-2019",
-        xlab = " ", ylab = "log-flow", xaxt = "n")
-lines(idx, Y[1,idx], col = 'black', lwd = 0.1)
-points(idx, Y[1,idx], col = 'gray')
-points(idx, Y[1,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
+  plot.ts(idx, (new.theta.out_50_NDLM_synth_DISC$exps[1,idx])*0, ylim = c(-2, 2),  type="l", lwd = 1,
+          main = "Quantile Dynamics     -    2017-2019",
+          xlab = " ", ylab = "log-flow", xaxt = "n")
+  lines(idx, Y[1,idx], col = 'black', lwd = 0.1)
+  points(idx, Y[1,idx], col = 'gray')
+  points(idx, Y[1,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
 
-# lines(idx, Y[2,idx], col = 'black', lwd = 0.1)
-# points(idx, Y[2,idx], col = 'gray')
-# points(idx, Y[2,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
+  # lines(idx, Y[2,idx], col = 'black', lwd = 0.1)
+  # points(idx, Y[2,idx], col = 'gray')
+  # points(idx, Y[2,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
 
-# lines(idx, Y[3,idx], col = 'black', lwd = 0.1)
-# points(idx, Y[3,idx], col = 'gray')
-# points(idx, Y[3,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
+  # lines(idx, Y[3,idx], col = 'black', lwd = 0.1)
+  # points(idx, Y[3,idx], col = 'gray')
+  # points(idx, Y[3,idx], col = 'black', pch = 19, cex = 0.5, lwd = 0.1)
 
-result <- new.theta.out_50_NDLM_synth_DISC$exps[1,idx]
-lines(idx, result, col = 'pink', lwd=2)
+  result <- new.theta.out_50_NDLM_synth_DISC$exps[1,idx]
+  lines(idx, result, col = 'pink', lwd=2)
 
-result <- new.theta.out_50_NDLM_synth_DISC$sm[1,idx]
-lines(idx, result, col = 'blue', lwd=2)
+  result <- new.theta.out_50_NDLM_synth_DISC$sm[1,idx]
+  lines(idx, result, col = 'blue', lwd=2)
 
-result <- new.theta.out_50_NDLM_synth_DISC$sm[2,idx]
-lines(idx, result, col = 'green', lwd=2)
+  result <- new.theta.out_50_NDLM_synth_DISC$sm[2,idx]
+  lines(idx, result, col = 'green', lwd=2)
 
-result <- new.theta.out_50_NDLM_synth_DISC$sm[6,idx]
-lines(idx, result, col = 'orange', lwd=2)
+  result <- new.theta.out_50_NDLM_synth_DISC$sm[6,idx]
+  lines(idx, result, col = 'orange', lwd=2)
 
-selected_dates <- dates_ts_usgs[idx] 
-num_ticks <- 25
-tick_positions <- pretty(idx, num_ticks) 
-if (length(tick_positions) > num_ticks) {
-    tick_positions <- tick_positions[seq(1, length(tick_positions), length.out = num_ticks)]
+  selected_dates <- dates_ts_usgs[idx]
+  num_ticks <- 25
+  tick_positions <- pretty(idx, num_ticks)
+  if (length(tick_positions) > num_ticks) {
+      tick_positions <- tick_positions[seq(1, length(tick_positions), length.out = num_ticks)]
+  }
+  tick_labels <- format(selected_dates[match(tick_positions, idx)], "%Y-%m-%d")
+  axis(1, at = tick_positions, labels = FALSE)
+  text(x = tick_positions, y = par("usr")[3] - 0.025 * diff(par("usr")[3:4]), labels = tick_labels, srt = 45, adj = 1, xpd = TRUE, cex = 0.8)
+    mtext("Forest Green: 50th Quantile | Dark Red: 5th Quantile | Dark Blue: 95th Quantile | Orange: Average", side = 1, outer = TRUE, line = 2, cex = 0.8)
+
+  plot.ts(t(new.theta.out_50_NDLM_synth_DISC$sm[22:26,]))
+
+  plot.ts(idx,(new.theta.out_50_NDLM_synth_DISC$sm[c(1),idx]), ylim = c(-2,2))
+  lines(idx,Y[1,idx], col = 'gray')
+  lines(new.theta.out_50_NDLM_synth_DISC$sm[22,]+(new.theta.out_50_NDLM_synth_DISC$sm[c(1),]), col = 'red')
+  lines(idx,new.theta.out_50_NDLM_synth_DISC$sm[22,idx]+(new.theta.out_50_NDLM_synth_DISC$sm[c(2),idx])+(new.theta.out_50_NDLM_synth_DISC$sm[c(1),idx]), col = 'blue')
+
+  invisible(try({
+    covs_list <- vector("list", J)
+    ranges_per <- ranges-c(ranges[2:(J)],0)
+    dim_theta <- p*(J:1)
+    for(i in 1:J){
+      covs_list[[i]] <- array(NA_real_,c(dim_theta[i],dim_theta[i],ranges_per[(J-i)+1]))
+    }
+
+    # Precompute dimensions and replication counts
+    dim_theta <- p * (J:1)
+    ranges_per <- ranges - c(ranges[2:J], 0)
+    r_vec <- rev(ranges_per)
+
+    # Hyperparams for prior
+    epsilon <- 1
+    nu <- dim_theta + 1 + epsilon
+
+    # Preallocate the list of 3D arrays (diagonal matrices)
+    covs_list <- mapply(function(n, r) {
+      replicate(r, diag(0.01, n), simplify = "array")
+    }, n = dim_theta, r = r_vec, SIMPLIFY = FALSE)
+
+    # Example: inspect the first covariance matrix of the first period.
+    # replicate(..., simplify="array") may return 2D when r == 1.
+    cov2 <- covs_list[[2]]
+    if (length(dim(cov2)) == 3L) {
+      print(cov2[, , 1, drop = FALSE])
+    } else {
+      print(cov2)
+    }
+
+    GG_T <- (GG[,,TT])
+    #### This Requires to define the prior inside the kalman filtering!
+    sC_T <- new.theta.out_50_NDLM_synth_DISC$sC[,,TT]
+    ####
+    W_T <- ex.df.mat * GG_T%*%sC_T%*%t(GG_T)
+
+    S_list <- mapply(function(n, factor) {
+      # Extract the top-left submatrix of W_T of size n x n
+      subW <- W_T[1:n, 1:n]
+      # Multiply by factor: (nu - n - 1)
+      subW * factor
+    }, n = dim_theta, factor = nu - dim_theta - 1, SIMPLIFY = FALSE)
+
+    # Check the result for the first element:
+    print(S_list[[2]])
+
+    dim(new.theta.out_50_NDLM_synth_DISC$sC_ens[[1]])
+    dim(new.theta.out_50_NDLM_synth_DISC$sC_ens[[2]])
+    dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]])
+    dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]])
+  }, silent = TRUE))
+} else {
+  warning("Skipping NDLM load/diagnostic block in 30_univariate_and_misc.R because NDLM family is disabled.", call. = FALSE)
 }
-tick_labels <- format(selected_dates[match(tick_positions, idx)], "%Y-%m-%d")
-axis(1, at = tick_positions, labels = FALSE) 
-text(x = tick_positions, y = par("usr")[3] - 0.025 * diff(par("usr")[3:4]), labels = tick_labels, srt = 45, adj = 1, xpd = TRUE, cex = 0.8)
-  mtext("Forest Green: 50th Quantile | Dark Red: 5th Quantile | Dark Blue: 95th Quantile | Orange: Average", side = 1, outer = TRUE, line = 2, cex = 0.8)
 
-plot.ts(t(new.theta.out_50_NDLM_synth_DISC$sm[22:26,]))
+if (has_disc_w_bundle()) {
+  file_path <- DISC_W_VAR_05
+  profile_section(
+    "univariate.load_disc_vars_exal_05",
+    load_quantile_bundle_with_alias(file_path, target_label = "05", source_label = DISC_W_VAR_SRC_05, suffix = "exAL_synth_DISC")
+  )
 
+  file_path <- DISC_W_VAR_50
+  profile_section(
+    "univariate.load_disc_vars_exal_50",
+    load_quantile_bundle_with_alias(file_path, target_label = "50", source_label = DISC_W_VAR_SRC_50, suffix = "exAL_synth_DISC")
+  )
 
+  file_path <- DISC_W_VAR_95
+  profile_section(
+    "univariate.load_disc_vars_exal_95",
+    load_quantile_bundle_with_alias(file_path, target_label = "95", source_label = DISC_W_VAR_SRC_95, suffix = "exAL_synth_DISC")
+  )
 
+  file_path <- DISC_W_VAR_20
+  profile_section(
+    "univariate.load_disc_vars_exal_20",
+    load_quantile_bundle_with_alias(file_path, target_label = "20", source_label = DISC_W_VAR_SRC_20, suffix = "exAL_synth_DISC")
+  )
 
-plot.ts(idx,(new.theta.out_50_NDLM_synth_DISC$sm[c(1),idx]), ylim = c(-2,2))
-lines(idx,Y[1,idx], col = 'gray')
-lines(new.theta.out_50_NDLM_synth_DISC$sm[22,]+(new.theta.out_50_NDLM_synth_DISC$sm[c(1),]), col = 'red')
-lines(idx,new.theta.out_50_NDLM_synth_DISC$sm[22,idx]+(new.theta.out_50_NDLM_synth_DISC$sm[c(2),idx])+(new.theta.out_50_NDLM_synth_DISC$sm[c(1),idx]), col = 'blue')
+  file_path <- DISC_W_VAR_35
+  profile_section(
+    "univariate.load_disc_vars_exal_35",
+    load_quantile_bundle_with_alias(file_path, target_label = "35", source_label = DISC_W_VAR_SRC_35, suffix = "exAL_synth_DISC")
+  )
 
-invisible(try({
-  covs_list <- vector("list", J)
-  ranges_per <- ranges-c(ranges[2:(J)],0)
-  dim_theta <- p*(J:1)
-  for(i in 1:J){
-    covs_list[[i]] <- array(NA_real_,c(dim_theta[i],dim_theta[i],ranges_per[(J-i)+1]))
-  }
+  file_path <- DISC_W_VAR_65
+  profile_section(
+    "univariate.load_disc_vars_exal_65",
+    load_quantile_bundle_with_alias(file_path, target_label = "65", source_label = DISC_W_VAR_SRC_65, suffix = "exAL_synth_DISC")
+  )
 
-  # Precompute dimensions and replication counts
-  dim_theta <- p * (J:1)
-  ranges_per <- ranges - c(ranges[2:J], 0)
-  r_vec <- rev(ranges_per)
+  file_path <- DISC_W_VAR_80
+  profile_section(
+    "univariate.load_disc_vars_exal_80",
+    load_quantile_bundle_with_alias(file_path, target_label = "80", source_label = DISC_W_VAR_SRC_80, suffix = "exAL_synth_DISC")
+  )
+} else {
+  warning("Skipping DISC-W load block in 30_univariate_and_misc.R because multivariate family is disabled.", call. = FALSE)
+}
 
-  # Hyperparams for prior
-  epsilon <- 1
-  nu <- dim_theta + 1 + epsilon
-
-  # Preallocate the list of 3D arrays (diagonal matrices)
-  covs_list <- mapply(function(n, r) {
-    replicate(r, diag(0.01, n), simplify = "array")
-  }, n = dim_theta, r = r_vec, SIMPLIFY = FALSE)
-
-  # Example: inspect the first covariance matrix of the first period.
-  # replicate(..., simplify="array") may return 2D when r == 1.
-  cov2 <- covs_list[[2]]
-  if (length(dim(cov2)) == 3L) {
-    print(cov2[, , 1, drop = FALSE])
-  } else {
-    print(cov2)
-  }
-
-  GG_T <- (GG[,,TT])
-  #### This Requires to define the prior inside the kalman filtering!
-  sC_T <- new.theta.out_50_NDLM_synth_DISC$sC[,,TT]
-  ####
-  W_T <- ex.df.mat * GG_T%*%sC_T%*%t(GG_T)
-
-  S_list <- mapply(function(n, factor) {
-    # Extract the top-left submatrix of W_T of size n x n
-    subW <- W_T[1:n, 1:n]
-    # Multiply by factor: (nu - n - 1)
-    subW * factor
-  }, n = dim_theta, factor = nu - dim_theta - 1, SIMPLIFY = FALSE)
-
-  # Check the result for the first element:
-  print(S_list[[2]])
-
-  dim(new.theta.out_50_NDLM_synth_DISC$sC_ens[[1]])
-  dim(new.theta.out_50_NDLM_synth_DISC$sC_ens[[2]])
-  dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[1]])
-  dim(new.theta.out_50_NDLM_synth_DISC$sm_ens[[2]])
-}, silent = TRUE))
-
-file_path <- DISC_W_VAR_05
-profile_section(
-  "univariate.load_disc_vars_exal_05",
-  load_quantile_bundle_with_alias(file_path, target_label = "05", source_label = DISC_W_VAR_SRC_05, suffix = "exAL_synth_DISC")
-)
-
-
-
-file_path <- DISC_W_VAR_50
-profile_section(
-  "univariate.load_disc_vars_exal_50",
-  load_quantile_bundle_with_alias(file_path, target_label = "50", source_label = DISC_W_VAR_SRC_50, suffix = "exAL_synth_DISC")
-)
-
-
-
-file_path <- DISC_W_VAR_95
-profile_section(
-  "univariate.load_disc_vars_exal_95",
-  load_quantile_bundle_with_alias(file_path, target_label = "95", source_label = DISC_W_VAR_SRC_95, suffix = "exAL_synth_DISC")
-)
-
-
-
-file_path <- DISC_W_VAR_20
-profile_section(
-  "univariate.load_disc_vars_exal_20",
-  load_quantile_bundle_with_alias(file_path, target_label = "20", source_label = DISC_W_VAR_SRC_20, suffix = "exAL_synth_DISC")
-)
-
-
-
-file_path <- DISC_W_VAR_35
-profile_section(
-  "univariate.load_disc_vars_exal_35",
-  load_quantile_bundle_with_alias(file_path, target_label = "35", source_label = DISC_W_VAR_SRC_35, suffix = "exAL_synth_DISC")
-)
-
-
-
-file_path <- DISC_W_VAR_65
-profile_section(
-  "univariate.load_disc_vars_exal_65",
-  load_quantile_bundle_with_alias(file_path, target_label = "65", source_label = DISC_W_VAR_SRC_65, suffix = "exAL_synth_DISC")
-)
-
-
-
-file_path <- DISC_W_VAR_80
-profile_section(
-  "univariate.load_disc_vars_exal_80",
-  load_quantile_bundle_with_alias(file_path, target_label = "80", source_label = DISC_W_VAR_SRC_80, suffix = "exAL_synth_DISC")
-)
-
-
-
-file_path <- NDLM_VAR_50
-profile_section("univariate.load_disc_vars_ndlm_50_repeat", load_ndlm_bundle_with_normalize(file_path))
+if (has_ndlm_bundle()) {
+  file_path <- NDLM_VAR_50
+  profile_section("univariate.load_disc_vars_ndlm_50_repeat", load_ndlm_bundle_with_normalize(file_path))
+}
 
 
 n.samp <- 2000

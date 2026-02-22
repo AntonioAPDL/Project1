@@ -40,6 +40,29 @@ univar_theory_log_joint_sigma_gamma <- function(
   ll + lp_sigma + lp_gamma
 }
 
+univar_theory_metric_delta <- function(current, previous, abs_tol, rel_tol) {
+  abs_delta <- NA_real_
+  rel_delta <- NA_real_
+  conv_abs <- FALSE
+  conv_rel <- FALSE
+
+  if (is.finite(current) && is.finite(previous)) {
+    abs_delta <- abs(current - previous)
+    scale <- max(1.0, abs(current), abs(previous))
+    rel_delta <- abs_delta / scale
+    conv_abs <- is.finite(abs_delta) && is.finite(abs_tol) && (abs_delta < abs_tol)
+    conv_rel <- is.finite(rel_delta) && is.finite(rel_tol) && (rel_delta < rel_tol)
+  }
+
+  list(
+    abs_delta = abs_delta,
+    rel_delta = rel_delta,
+    converged = isTRUE(conv_abs) || isTRUE(conv_rel),
+    conv_abs = isTRUE(conv_abs),
+    conv_rel = isTRUE(conv_rel)
+  )
+}
+
 univar_theory_run_cavi <- function(inputs, constants) {
   fmt_iter_num <- function(x, digits = 8L) {
     if (!is.finite(x)) {
@@ -116,17 +139,33 @@ univar_theory_run_cavi <- function(inputs, constants) {
   if (!is.finite(elbo_tol) || elbo_tol <= 0) {
     elbo_tol <- convergence_tol
   }
+  elbo_rel_tol <- suppressWarnings(as.numeric(convergence$elbo_rel_tol))
+  if (!is.finite(elbo_rel_tol) || elbo_rel_tol <= 0) {
+    elbo_rel_tol <- 2.5e-4
+  }
   state_norm_sq_tol <- suppressWarnings(as.numeric(convergence$state_norm_sq_tol))
   if (!is.finite(state_norm_sq_tol) || state_norm_sq_tol <= 0) {
     state_norm_sq_tol <- 1e-6
+  }
+  state_norm_sq_rel_tol <- suppressWarnings(as.numeric(convergence$state_norm_sq_rel_tol))
+  if (!is.finite(state_norm_sq_rel_tol) || state_norm_sq_rel_tol <= 0) {
+    state_norm_sq_rel_tol <- 2.5e-4
   }
   sigma_exp_tol <- suppressWarnings(as.numeric(convergence$sigma_exp_tol))
   if (!is.finite(sigma_exp_tol) || sigma_exp_tol <= 0) {
     sigma_exp_tol <- 1e-6
   }
+  sigma_exp_rel_tol <- suppressWarnings(as.numeric(convergence$sigma_exp_rel_tol))
+  if (!is.finite(sigma_exp_rel_tol) || sigma_exp_rel_tol <= 0) {
+    sigma_exp_rel_tol <- 5e-5
+  }
   gamma_exp_tol <- suppressWarnings(as.numeric(convergence$gamma_exp_tol))
   if (!is.finite(gamma_exp_tol) || gamma_exp_tol <= 0) {
     gamma_exp_tol <- 1e-6
+  }
+  gamma_exp_rel_tol <- suppressWarnings(as.numeric(convergence$gamma_exp_rel_tol))
+  if (!is.finite(gamma_exp_rel_tol) || gamma_exp_rel_tol <= 0) {
+    gamma_exp_rel_tol <- 5e-5
   }
   policy_max_iter <- suppressWarnings(as.integer(policy$max_iter))
   if (!is.finite(policy_max_iter) || policy_max_iter < 1L) {
@@ -155,9 +194,13 @@ univar_theory_run_cavi <- function(inputs, constants) {
   prev_sigma_exp <- NA_real_
   prev_gamma_exp <- NA_real_
   crit_elbo <- Inf
+  crit_elbo_rel <- Inf
   crit_state_norm_sq <- Inf
+  crit_state_norm_sq_rel <- Inf
   crit_sigma_exp <- Inf
+  crit_sigma_exp_rel <- Inf
   crit_gamma_exp <- Inf
+  crit_gamma_exp_rel <- Inf
 
   gamsig_dynamic_freeze_until_iter <- as.integer(policy$warmup_freeze_iters)
   if (!is.finite(gamsig_dynamic_freeze_until_iter) || gamsig_dynamic_freeze_until_iter < 0L) {
@@ -166,7 +209,7 @@ univar_theory_run_cavi <- function(inputs, constants) {
   if (isTRUE(policy$objective_guard$log_failures)) {
     cat(
       sprintf(
-        "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
+        "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g elbo_rel_tol=%g state_norm_sq_tol=%g state_norm_sq_rel_tol=%g sigma_exp_tol=%g sigma_exp_rel_tol=%g gamma_exp_tol=%g gamma_exp_rel_tol=%g guard_mode=%s guard_refreeze_iters=%d\n",
         as.character(p0),
         policy$freeze_target,
         as.integer(policy$warmup_freeze_iters),
@@ -174,9 +217,13 @@ univar_theory_run_cavi <- function(inputs, constants) {
         as.integer(min_total_iters),
         as.integer(max_iter),
         as.numeric(elbo_tol),
+        as.numeric(elbo_rel_tol),
         as.numeric(state_norm_sq_tol),
+        as.numeric(state_norm_sq_rel_tol),
         as.numeric(sigma_exp_tol),
+        as.numeric(sigma_exp_rel_tol),
         as.numeric(gamma_exp_tol),
+        as.numeric(gamma_exp_rel_tol),
         policy$objective_guard$mode,
         as.integer(policy$guard_refreeze_iters)
       )
@@ -377,11 +424,14 @@ univar_theory_run_cavi <- function(inputs, constants) {
       constants = constants,
       bounds = bounds
     )
-    if (is.finite(prev_elbo) && is.finite(elbo[iter])) {
-      crit_elbo <- abs(elbo[iter] - prev_elbo)
-    } else {
-      crit_elbo <- Inf
-    }
+    delta_elbo <- univar_theory_metric_delta(
+      current = elbo[iter],
+      previous = prev_elbo,
+      abs_tol = elbo_tol,
+      rel_tol = elbo_rel_tol
+    )
+    crit_elbo <- if (is.finite(delta_elbo$abs_delta)) delta_elbo$abs_delta else Inf
+    crit_elbo_rel <- if (is.finite(delta_elbo$rel_delta)) delta_elbo$rel_delta else Inf
     prev_elbo <- elbo[iter]
     sigma_exp <- suppressWarnings(as.numeric(sigma))
     gamma_exp <- suppressWarnings(as.numeric(gamma))
@@ -393,21 +443,30 @@ univar_theory_run_cavi <- function(inputs, constants) {
     if (!is.finite(gamma_exp)) gamma_exp <- NA_real_
     if (!is.finite(state_norm_sq)) state_norm_sq <- NA_real_
 
-    if (is.finite(prev_state_norm_sq) && is.finite(state_norm_sq)) {
-      crit_state_norm_sq <- abs(state_norm_sq - prev_state_norm_sq)
-    } else {
-      crit_state_norm_sq <- Inf
-    }
-    if (is.finite(prev_sigma_exp) && is.finite(sigma_exp)) {
-      crit_sigma_exp <- abs(sigma_exp - prev_sigma_exp)
-    } else {
-      crit_sigma_exp <- Inf
-    }
-    if (is.finite(prev_gamma_exp) && is.finite(gamma_exp)) {
-      crit_gamma_exp <- abs(gamma_exp - prev_gamma_exp)
-    } else {
-      crit_gamma_exp <- Inf
-    }
+    delta_state <- univar_theory_metric_delta(
+      current = state_norm_sq,
+      previous = prev_state_norm_sq,
+      abs_tol = state_norm_sq_tol,
+      rel_tol = state_norm_sq_rel_tol
+    )
+    delta_sigma <- univar_theory_metric_delta(
+      current = sigma_exp,
+      previous = prev_sigma_exp,
+      abs_tol = sigma_exp_tol,
+      rel_tol = sigma_exp_rel_tol
+    )
+    delta_gamma <- univar_theory_metric_delta(
+      current = gamma_exp,
+      previous = prev_gamma_exp,
+      abs_tol = gamma_exp_tol,
+      rel_tol = gamma_exp_rel_tol
+    )
+    crit_state_norm_sq <- if (is.finite(delta_state$abs_delta)) delta_state$abs_delta else Inf
+    crit_state_norm_sq_rel <- if (is.finite(delta_state$rel_delta)) delta_state$rel_delta else Inf
+    crit_sigma_exp <- if (is.finite(delta_sigma$abs_delta)) delta_sigma$abs_delta else Inf
+    crit_sigma_exp_rel <- if (is.finite(delta_sigma$rel_delta)) delta_sigma$rel_delta else Inf
+    crit_gamma_exp <- if (is.finite(delta_gamma$abs_delta)) delta_gamma$abs_delta else Inf
+    crit_gamma_exp_rel <- if (is.finite(delta_gamma$rel_delta)) delta_gamma$rel_delta else Inf
     prev_state_norm_sq <- state_norm_sq
     prev_sigma_exp <- sigma_exp
     prev_gamma_exp <- gamma_exp
@@ -415,17 +474,21 @@ univar_theory_run_cavi <- function(inputs, constants) {
     if (isTRUE(policy$objective_guard$log_failures)) {
       cat(
         sprintf(
-          "[gamsig_progress] family=exdqlm_univar p0=%s iter=%d elbo=%s crit_elbo=%s sigma_exp=%s crit_sigma_exp=%s gamma_exp=%s crit_gamma_exp=%s state_norm_sq=%s crit_state_norm_sq=%s gamsig_update_iters=%d min_update_iters=%d min_total_iters=%d frozen=%s\n",
+          "[gamsig_progress] family=exdqlm_univar p0=%s iter=%d elbo=%s crit_elbo_abs=%s crit_elbo_rel=%s sigma_exp=%s crit_sigma_exp_abs=%s crit_sigma_exp_rel=%s gamma_exp=%s crit_gamma_exp_abs=%s crit_gamma_exp_rel=%s state_norm_sq=%s crit_state_norm_sq_abs=%s crit_state_norm_sq_rel=%s gamsig_update_iters=%d min_update_iters=%d min_total_iters=%d frozen=%s\n",
           as.character(p0),
           iter_int,
           fmt_iter_num(elbo[iter]),
           fmt_iter_num(crit_elbo),
+          fmt_iter_num(crit_elbo_rel),
           fmt_iter_num(sigma_exp),
           fmt_iter_num(crit_sigma_exp),
+          fmt_iter_num(crit_sigma_exp_rel),
           fmt_iter_num(gamma_exp),
           fmt_iter_num(crit_gamma_exp),
+          fmt_iter_num(crit_gamma_exp_rel),
           fmt_iter_num(state_norm_sq),
           fmt_iter_num(crit_state_norm_sq),
+          fmt_iter_num(crit_state_norm_sq_rel),
           as.integer(gamsig_update_iters),
           as.integer(min_update_iters),
           as.integer(min_total_iters),
@@ -434,17 +497,18 @@ univar_theory_run_cavi <- function(inputs, constants) {
       )
     }
 
+    conv_elbo <- isTRUE(delta_elbo$converged)
+    conv_state <- isTRUE(delta_state$converged)
+    conv_sigma <- isTRUE(delta_sigma$converged)
+    conv_gamma <- isTRUE(delta_gamma$converged)
+
     if (iter_int > 1L &&
         iter_int >= min_total_iters &&
         is.finite(elbo[iter]) &&
-        is.finite(crit_elbo) &&
-        crit_elbo < elbo_tol &&
-        is.finite(crit_state_norm_sq) &&
-        crit_state_norm_sq < state_norm_sq_tol &&
-        is.finite(crit_sigma_exp) &&
-        crit_sigma_exp < sigma_exp_tol &&
-        is.finite(crit_gamma_exp) &&
-        crit_gamma_exp < gamma_exp_tol &&
+        conv_elbo &&
+        conv_state &&
+        conv_sigma &&
+        conv_gamma &&
         gamsig_update_iters >= min_update_iters) {
       converged <- TRUE
       convergence_reason <- "all_convergence_criteria_met"
