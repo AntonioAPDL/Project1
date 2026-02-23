@@ -32,6 +32,35 @@ safe_lines <- function(x, y = NULL, ...) {
 }
 lines <- safe_lines
 
+daily_dates_for_n <- function(start_date, n_days, context = "dates") {
+  start_date <- as.Date(start_date)
+  if (length(start_date) != 1L || !is.finite(start_date)) {
+    stop(sprintf("[%s] start_date must be a valid scalar Date.", context), call. = FALSE)
+  }
+  n_use <- as.integer(n_days[[1]])
+  if (!is.finite(n_use) || n_use <= 0L) {
+    stop(
+      sprintf("[%s] n_days must be a positive finite integer, got '%s'.", context, as.character(n_days[[1]])),
+      call. = FALSE
+    )
+  }
+  seq(start_date, by = "1 day", length.out = n_use)
+}
+
+daily_dates_for_matrix_rows <- function(mat, start_date, context = "dates.rows") {
+  if (is.null(dim(mat)) || length(dim(mat)) != 2L) {
+    stop(sprintf("[%s] expected a 2D object for row-based date construction.", context), call. = FALSE)
+  }
+  daily_dates_for_n(start_date = start_date, n_days = nrow(mat), context = context)
+}
+
+daily_dates_for_matrix_cols <- function(mat, start_date, context = "dates.cols") {
+  if (is.null(dim(mat)) || length(dim(mat)) != 2L) {
+    stop(sprintf("[%s] expected a 2D object for column-based date construction.", context), call. = FALSE)
+  }
+  daily_dates_for_n(start_date = start_date, n_days = ncol(mat), context = context)
+}
+
 ndlm_warn_once <- local({
   warned <- new.env(parent = emptyenv())
   function(key, message_text) {
@@ -42,6 +71,64 @@ ndlm_warn_once <- local({
     invisible(NULL)
   }
 })
+
+agg_disc_warn_once <- local({
+  warned <- new.env(parent = emptyenv())
+  function(key, message_text) {
+    if (!exists(key, envir = warned, inherits = FALSE)) {
+      assign(key, TRUE, envir = warned)
+      warning(message_text, call. = FALSE)
+    }
+    invisible(NULL)
+  }
+})
+
+agg_disc_contract_rows <- list()
+
+resolve_agg_discrep_contract <- function(df, obs, preferred_ylim, contract_key, title) {
+  if (!is.data.frame(obs) || !("Discrepancy" %in% names(obs))) {
+    stop(sprintf("[%s_OBS_SCHEMA] obs must contain Discrepancy column.", contract_key))
+  }
+  contract <- resolve_agg_discrep_ylim(
+    obs = obs$Discrepancy,
+    fitted_df = df,
+    preferred_ylim = preferred_ylim,
+    context = contract_key
+  )
+
+  agg_disc_contract_rows[[length(agg_disc_contract_rows) + 1L]] <<- data.frame(
+    panel_id = as.character(contract_key),
+    title = as.character(title),
+    preferred_min = contract$preferred_min,
+    preferred_max = contract$preferred_max,
+    used_min = contract$ylim[[1L]],
+    used_max = contract$ylim[[2L]],
+    mode = as.character(contract$mode),
+    preferred_inrange_share = contract$preferred_inrange_share,
+    fitted_finite_n = contract$fitted_finite_n,
+    obs_finite_n = contract$obs_finite_n,
+    combined_min = contract$combined_min,
+    combined_max = contract$combined_max,
+    stringsAsFactors = FALSE
+  )
+
+  if (!identical(contract$mode, "preferred")) {
+    agg_disc_warn_once(
+      paste0("ylim:", contract_key),
+      sprintf(
+        "[AGG_DISC_YLIM_EXPANDED] %s expanded ylim from [%s, %s] to [%s, %s] (preferred fitted in-range share=%.3f).",
+        contract_key,
+        format(contract$preferred_min, digits = 6),
+        format(contract$preferred_max, digits = 6),
+        format(contract$ylim[[1L]], digits = 6),
+        format(contract$ylim[[2L]], digits = 6),
+        ifelse(is.finite(contract$preferred_inrange_share), contract$preferred_inrange_share, NA_real_)
+      )
+    )
+  }
+
+  contract$ylim
+}
 
 ndlm_state_rows_for_projection <- function(sm_mat, F_constant, context = "ndlm") {
   n_state <- nrow(sm_mat)
@@ -194,8 +281,94 @@ profile_detail_section("figures.build_xbs_discrep", {
 
     F_constant_disc <- FF[1:7,1,1]
 
+    normalize_theta_time_sample <- function(theta_arr, target_time, target_samples, context) {
+      if (!is.numeric(theta_arr) || is.null(dim(theta_arr)) || length(dim(theta_arr)) != 3L) {
+        stop(sprintf("[%s_SHAPE] expected theta_arr as numeric 3D array.", context))
+      }
+      d <- dim(theta_arr)
+      arr <- theta_arr
+      if (d[2] == target_time && d[3] == target_samples) {
+        arr <- theta_arr
+      } else if (d[3] == target_time && d[2] == target_samples) {
+        arr <- aperm(theta_arr, c(1, 3, 2))
+      } else {
+        stop(
+          sprintf(
+            "[%s_DIM] unsupported theta_arr dimensions %s for target_time=%d target_samples=%d.",
+            context,
+            paste(d, collapse = "x"),
+            as.integer(target_time),
+            as.integer(target_samples)
+          )
+        )
+      }
+      arr
+    }
+
+    project_discrep_block <- function(theta_arr, row_idx, context) {
+      arr <- normalize_theta_time_sample(
+        theta_arr = theta_arr,
+        target_time = TT,
+        target_samples = n.samp,
+        context = context
+      )
+      if (max(row_idx) > dim(arr)[1]) {
+        stop(
+          sprintf(
+            "[%s_ROW_OOB] requested rows %s exceed theta_arr rows=%d.",
+            context,
+            paste(row_idx, collapse = ","),
+            as.integer(dim(arr)[1])
+          )
+        )
+      }
+
+      f_use <- as.numeric(F_constant_disc)[seq_along(row_idx)]
+      if (any(!is.finite(f_use))) {
+        agg_disc_warn_once(
+          paste0("fconst:", context),
+          sprintf("[%s_F_CONST_NONFINITE] non-finite projection weights detected; treating non-finite weights as 0.", context)
+        )
+        f_use[!is.finite(f_use)] <- 0
+      }
+
+      theta_mat <- matrix(arr[row_idx, , ], nrow = length(row_idx))
+      finite_col_count <- colSums(is.finite(theta_mat))
+      theta_mat[!is.finite(theta_mat)] <- 0
+
+      out_vec <- as.vector(crossprod(f_use, theta_mat))
+      out <- matrix(out_vec, nrow = TT, ncol = n.samp)
+      out[!matrix(finite_col_count > 0L, nrow = TT, ncol = n.samp)] <- NA_real_
+      out
+    }
+
 	    idx <- c(0)
-	    for (j in 1:(J - 1)) {
+      ens_segment_lengths <- c(
+        length(samp.theta_ens_5_exAL_synth_DISC),
+        length(samp.theta_ens_20_exAL_synth_DISC),
+        length(samp.theta_ens_35_exAL_synth_DISC),
+        length(samp.theta_ens_50_exAL_synth_DISC),
+        length(samp.theta_ens_65_exAL_synth_DISC),
+        length(samp.theta_ens_80_exAL_synth_DISC),
+        length(samp.theta_ens_95_exAL_synth_DISC),
+        length(FF_list)
+      )
+      n_seg_available <- min(c(as.integer(J), as.integer(ens_segment_lengths)))
+      if (!is.finite(n_seg_available) || n_seg_available <= 0L) {
+        stop("[EXAL_FORECAST_SEGMENTS_EMPTY] exAL forecast segment lists are empty; cannot build forecast sample cube.")
+      }
+      if (n_seg_available < J) {
+        warning(
+          sprintf(
+            "[EXAL_FORECAST_SEGMENTS_TRUNCATE] exAL forecast segments truncated from J=%d to %d based on available segment lists.",
+            as.integer(J),
+            as.integer(n_seg_available)
+          ),
+          call. = FALSE
+        )
+      }
+
+	    for (j in seq_len(n_seg_available)) {
 	        idx <- next_idx_block(idx, ks[J - j + 1])
           if (length(idx) == 0L) {
             next
@@ -225,15 +398,18 @@ profile_detail_section("figures.build_xbs_discrep", {
 	        fill_xbs_segment(samp.theta_ens_95_exAL_synth_DISC[[j]]$samp_theta, 7)
 
 	        if (j == 1) {
-	            fill_discrep <- function(theta_arr, out_row) {
-	                theta_d1 <- matrix(theta_arr[8:14, , ], nrow = p)
-	                d1_vec <- as.vector(crossprod(F_constant_disc, theta_d1))
-	                xb_discrep1[out_row, , ] <- matrix(d1_vec, nrow = TT, ncol = n.samp)
-
-	                theta_d2 <- matrix(theta_arr[15:21, , ], nrow = p)
-	                d2_vec <- as.vector(crossprod(F_constant_disc, theta_d2))
-	                xb_discrep2[out_row, , ] <- matrix(d2_vec, nrow = TT, ncol = n.samp)
-	            }
+            fill_discrep <- function(theta_arr, out_row) {
+                xb_discrep1[out_row, , ] <- project_discrep_block(
+                  theta_arr = theta_arr,
+                  row_idx = 8:14,
+                  context = sprintf("exal_discrep1_qrow%d", as.integer(out_row))
+                )
+                xb_discrep2[out_row, , ] <- project_discrep_block(
+                  theta_arr = theta_arr,
+                  row_idx = 15:21,
+                  context = sprintf("exal_discrep2_qrow%d", as.integer(out_row))
+                )
+            }
 
 	            fill_discrep(samp.theta_5_exAL_synth_DISC$samp_theta, 1)
 	            fill_discrep(samp.theta_20_exAL_synth_DISC$samp_theta, 2)
@@ -257,8 +433,101 @@ prepare_quantile_data <- function(v_d) {
   q_d
 }
 
-    q_d_discrep1_quantiles <- profile_section("figures.discrep1_quantiles", prepare_quantile_data(xb_discrep1))
-    q_d_discrep2_quantiles <- profile_section("figures.discrep2_quantiles", prepare_quantile_data(xb_discrep2))
+build_discrep_quantiles_from_state_posterior <- function(theta_obj_list, row_idx, context) {
+  out <- array(NA_real_, dim = c(length(theta_obj_list), TT, 3L))
+  w <- as.numeric(F_constant_disc)[seq_along(row_idx)]
+  if (any(!is.finite(w))) {
+    stop(sprintf("[%s_F_CONST_NONFINITE] discrepancy projection weights are non-finite.", context))
+  }
+
+  z025 <- qnorm(0.025)
+  z975 <- qnorm(0.975)
+
+  for (i in seq_along(theta_obj_list)) {
+    obj <- theta_obj_list[[i]]
+    sm <- obj$sm
+    sC <- obj$sC
+    if (!is.numeric(sm) || is.null(dim(sm)) || length(dim(sm)) != 2L) {
+      stop(sprintf("[%s_SM_SHAPE] expected theta$sm as numeric matrix for row %d.", context, as.integer(i)))
+    }
+    if (!is.numeric(sC) || is.null(dim(sC)) || length(dim(sC)) != 3L) {
+      stop(sprintf("[%s_SC_SHAPE] expected theta$sC as numeric 3D array for row %d.", context, as.integer(i)))
+    }
+    if (nrow(sm) < max(row_idx)) {
+      stop(
+        sprintf(
+          "[%s_ROW_OOB] theta$sm rows=%d cannot support requested row_idx up to %d.",
+          context,
+          as.integer(nrow(sm)),
+          as.integer(max(row_idx))
+        )
+      )
+    }
+    if (ncol(sm) < TT || dim(sC)[3] < TT) {
+      stop(
+        sprintf(
+          "[%s_TIME_SHORT] theta$sm cols=%d and theta$sC slices=%d must both cover TT=%d.",
+          context,
+          as.integer(ncol(sm)),
+          as.integer(dim(sC)[3]),
+          as.integer(TT)
+        )
+      )
+    }
+
+    means <- as.numeric(crossprod(w, sm[row_idx, seq_len(TT), drop = FALSE]))
+    vars <- numeric(TT)
+    for (tt in seq_len(TT)) {
+      Ct <- sC[row_idx, row_idx, tt, drop = FALSE]
+      Ct <- matrix(Ct, nrow = length(row_idx), ncol = length(row_idx))
+      vars[[tt]] <- as.numeric(crossprod(w, Ct %*% w))
+    }
+    vars[!is.finite(vars)] <- NA_real_
+    vars[vars < 0] <- 0
+    sds <- sqrt(vars)
+
+    lower <- means + z025 * sds
+    upper <- means + z975 * sds
+
+    out[i, , 1L] <- lower
+    out[i, , 2L] <- means
+    out[i, , 3L] <- upper
+  }
+  out
+}
+
+    discrep_theta_objs <- list(
+      new.theta.out_5_exAL_synth_DISC,
+      new.theta.out_20_exAL_synth_DISC,
+      new.theta.out_35_exAL_synth_DISC,
+      new.theta.out_50_exAL_synth_DISC,
+      new.theta.out_65_exAL_synth_DISC,
+      new.theta.out_80_exAL_synth_DISC,
+      new.theta.out_95_exAL_synth_DISC
+    )
+
+    q_d_discrep1_quantiles <- profile_section(
+      "figures.discrep1_quantiles_state_posterior",
+      build_discrep_quantiles_from_state_posterior(
+        theta_obj_list = discrep_theta_objs,
+        row_idx = 8:14,
+        context = "EXAL_DISCREP1_STATE_POSTERIOR"
+      )
+    )
+    q_d_discrep2_quantiles <- profile_section(
+      "figures.discrep2_quantiles_state_posterior",
+      build_discrep_quantiles_from_state_posterior(
+        theta_obj_list = discrep_theta_objs,
+        row_idx = 15:21,
+        context = "EXAL_DISCREP2_STATE_POSTERIOR"
+      )
+    )
+    if (!any(is.finite(q_d_discrep1_quantiles))) {
+      stop("[EXAL_DISCREP1_ALL_NONFINITE] discrepancy-1 quantiles are entirely non-finite after projection.")
+    }
+    if (!any(is.finite(q_d_discrep2_quantiles))) {
+      stop("[EXAL_DISCREP2_ALL_NONFINITE] discrepancy-2 quantiles are entirely non-finite after projection.")
+    }
 
 
 
@@ -266,11 +535,78 @@ eps <- 0.0
 
     profile_section("figures.sample_xbs_sm_ens", {
     idx <- c(0)
-    for(j in J:J){
+    theta_objs <- list(
+      q05 = new.theta.out_5_exAL_synth_DISC,
+      q20 = new.theta.out_20_exAL_synth_DISC,
+      q35 = new.theta.out_35_exAL_synth_DISC,
+      q50 = new.theta.out_50_exAL_synth_DISC,
+      q65 = new.theta.out_65_exAL_synth_DISC,
+      q80 = new.theta.out_80_exAL_synth_DISC,
+      q95 = new.theta.out_95_exAL_synth_DISC
+    )
+
+    segment_capacity <- function(theta_obj, seg_id) {
+      if (!is.list(theta_obj$sm_ens) || !is.list(theta_obj$sC_ens)) {
+        return(0L)
+      }
+      if (seg_id > length(theta_obj$sm_ens) || seg_id > length(theta_obj$sC_ens)) {
+        return(0L)
+      }
+      sm_j <- theta_obj$sm_ens[[seg_id]]
+      sC_j <- theta_obj$sC_ens[[seg_id]]
+      if (!is.numeric(sm_j) || is.null(dim(sm_j)) || length(dim(sm_j)) != 2L) {
+        return(0L)
+      }
+      if (!is.numeric(sC_j) || is.null(dim(sC_j)) || length(dim(sC_j)) != 3L) {
+        return(0L)
+      }
+      as.integer(min(ncol(sm_j), dim(sC_j)[3]))
+    }
+
+    n_seg_sample <- min(c(
+      as.integer(J),
+      as.integer(length(FF_list)),
+      vapply(theta_objs, function(obj) min(length(obj$sm_ens), length(obj$sC_ens)), integer(1))
+    ))
+    if (!is.finite(n_seg_sample) || n_seg_sample <= 0L) {
+      stop("[EXAL_FORECAST_SAMPLE_SEGMENTS_EMPTY] No usable exAL forecast segments are available for sampled synthesis.")
+    }
+    if (n_seg_sample < J) {
+      warning(
+        sprintf(
+          "[EXAL_FORECAST_SAMPLE_SEGMENTS_TRUNCATE] sample_xbs uses %d/%d segments based on available sm_ens/sC_ens/FF_list.",
+          as.integer(n_seg_sample),
+          as.integer(J)
+        ),
+        call. = FALSE
+      )
+    }
+
+    for(j in seq_len(n_seg_sample)){
 
     idx <- next_idx_block(idx, ks[J-j+1])
     if (length(idx) == 0L) {
       next
+    }
+    seg_caps <- vapply(theta_objs, segment_capacity, seg_id = j, integer(1))
+    seg_cap <- min(seg_caps)
+    if (!is.finite(seg_cap) || seg_cap <= 0L) {
+      stop(
+        sprintf(
+          "[EXAL_FORECAST_SAMPLE_SEGMENT_INVALID] Segment j=%d has invalid sm_ens/sC_ens shapes for sampled synthesis.",
+          as.integer(j)
+        )
+      )
+    }
+    if (seg_cap < length(idx)) {
+      stop(
+        sprintf(
+          "[EXAL_FORECAST_SAMPLE_SEGMENT_SHORT] Segment j=%d expected %d time steps but only %d are available in sampled state objects.",
+          as.integer(j),
+          as.integer(length(idx)),
+          as.integer(seg_cap)
+        )
+      )
     }
     tt <- 1
     for(t in (idx) ){
@@ -2861,46 +3197,46 @@ plot_quantile_component <- function(q_d_50, q_d_05, q_d_95, q_d_20, q_d_35, q_d_
         xlab = " ", ylab = "log-flow", main = "80-Month Sasonal Effect  -  1991-2022", xaxt = "n")
   } else if (component == 8) {
     plot(idx, Y[2, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  1991-2022", xaxt = "n")
   } else if (component == 9) {
     plot(idx, Y[3, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS -  1991-2022", xaxt = "n")
   } else if (component == 10) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-2.5,2.5), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  1991-2022", xaxt = "n")
   } else if (component == 11) {
    plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0, 0.1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS - 1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS - 1991-2022", xaxt = "n")
   } else if (component == 12) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.04,0.0), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  1991-2022", xaxt = "n")
   } else if (component == 13) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS -  1991-2022", xaxt = "n")
  } else if (component == 14) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  1991-2022", xaxt = "n")
   } else if (component == 15) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.08,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS  -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS  -  1991-2022", xaxt = "n")
   } else if (component == 16) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.055,0.055), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  1991-2022", xaxt = "n")
   } else if (component == 17) {
    plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0, 0.1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS  -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS  -  1991-2022", xaxt = "n")
   } else if (component == 18) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.04,0.0), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  1991-2022", xaxt = "n")
   } else if (component == 19) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  1991-2022", xaxt = "n")
  } else if (component == 20) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS  -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS  -  1991-2022", xaxt = "n")
   } else if (component == 21) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.08,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  1991-2022", xaxt = "n")
   } else if (component == 22) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-2,2), 
         xlab = " ", ylab = "log-flow", main = "Cummulative Transfer   -  1991-2022", xaxt = "n")
@@ -2983,7 +3319,7 @@ tick_labels <- format(selected_dates[match(tick_positions, idx)], "%Y-%m-%d")
 
 if(j == 1){
 plot(idx, Y[2, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  1991-2022", xaxt = "n")
+xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  1991-2022", xaxt = "n")
 lines(idx, q_d_discrep1_quantiles[4,idx,2], col = 'forestgreen', lwd = 1)
 lines(idx, q_d_discrep1_quantiles[4,idx,1], col = 'green', lwd = 1, lty = 2)
 lines(idx, q_d_discrep1_quantiles[4,idx,3], col = 'green', lwd = 1, lty = 2)
@@ -2995,7 +3331,7 @@ lines(idx, q_d_discrep1_quantiles[7,idx,1], col = 'pink', lwd = 1, lty = 2)
 lines(idx, q_d_discrep1_quantiles[7,idx,3], col = 'pink', lwd = 1, lty = 2)
 }else{
 plot(idx, Y[3, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  1991-2022", xaxt = "n")
+xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  1991-2022", xaxt = "n")
 lines(idx, q_d_discrep2_quantiles[4,idx,2], col = 'forestgreen', lwd = 1)
 lines(idx, q_d_discrep2_quantiles[4,idx,1], col = 'green', lwd = 1, lty = 2)
 lines(idx, q_d_discrep2_quantiles[4,idx,3], col = 'green', lwd = 1, lty = 2)
@@ -3204,46 +3540,46 @@ plot_quantile_component <- function(q_d_50, q_d_05, q_d_95, q_d_20, q_d_35, q_d_
         xlab = " ", ylab = "log-flow", main = "80-Month Sasonal Effect  -  2012-2016", xaxt = "n")
   } else if (component == 8) {
     plot(idx, Y[2, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  2012-2016", xaxt = "n")
   } else if (component == 9) {
     plot(idx, Y[3, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS -  2012-2016", xaxt = "n")
   } else if (component == 10) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-2.5,2.5), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  2012-2016", xaxt = "n")
   } else if (component == 11) {
    plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0, 0.1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS - 2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS - 2012-2016", xaxt = "n")
   } else if (component == 12) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.04,0.0), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  2012-2016", xaxt = "n")
   } else if (component == 13) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS -  2012-2016", xaxt = "n")
  } else if (component == 14) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  2012-2016", xaxt = "n")
   } else if (component == 15) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.08,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS  -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS  -  2012-2016", xaxt = "n")
   } else if (component == 16) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.055,0.055), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  2012-2016", xaxt = "n")
   } else if (component == 17) {
    plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0, 0.1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS  -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS  -  2012-2016", xaxt = "n")
   } else if (component == 18) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.04,0.0), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  2012-2016", xaxt = "n")
   } else if (component == 19) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  2012-2016", xaxt = "n")
  } else if (component == 20) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS  -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS  -  2012-2016", xaxt = "n")
   } else if (component == 21) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.08,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  2012-2016", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  2012-2016", xaxt = "n")
   } else if (component == 22) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
         xlab = " ", ylab = "log-flow", main = "Cummulative Transfer   -  2012-2016", xaxt = "n")
@@ -3347,7 +3683,7 @@ tick_labels <- format(selected_dates[match(tick_positions, idx)], "%Y-%m-%d")
 
 if(j == 1){
 plot(idx, Y[2, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  1991-2022", xaxt = "n")
+xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  1991-2022", xaxt = "n")
 lines(idx, q_d_discrep1_quantiles[4,idx,2], col = 'forestgreen', lwd = 1)
 lines(idx, q_d_discrep1_quantiles[4,idx,1], col = 'green', lwd = 1, lty = 2)
 lines(idx, q_d_discrep1_quantiles[4,idx,3], col = 'green', lwd = 1, lty = 2)
@@ -3359,7 +3695,7 @@ lines(idx, q_d_discrep1_quantiles[7,idx,1], col = 'pink', lwd = 1, lty = 2)
 lines(idx, q_d_discrep1_quantiles[7,idx,3], col = 'pink', lwd = 1, lty = 2)
 }else{
 plot(idx, Y[3, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  1991-2022", xaxt = "n")
+xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  1991-2022", xaxt = "n")
 lines(idx, q_d_discrep2_quantiles[4,idx,2], col = 'forestgreen', lwd = 1)
 lines(idx, q_d_discrep2_quantiles[4,idx,1], col = 'green', lwd = 1, lty = 2)
 lines(idx, q_d_discrep2_quantiles[4,idx,3], col = 'green', lwd = 1, lty = 2)
@@ -3416,46 +3752,46 @@ plot_quantile_component <- function(q_d_50, q_d_05, q_d_95, q_d_20, q_d_35, q_d_
         xlab = " ", ylab = "log-flow", main = "80-Month Sasonal Effect  -  2017-2019", xaxt = "n")
   } else if (component == 8) {
     plot(idx, Y[2, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  2017-2019", xaxt = "n")
   } else if (component == 9) {
     plot(idx, Y[3, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS -  2017-2019", xaxt = "n")
   } else if (component == 10) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-2.5,2.5), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  2017-2019", xaxt = "n")
   } else if (component == 11) {
    plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0, 0.1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS -  1991-2022", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS -  1991-2022", xaxt = "n")
   } else if (component == 12) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.04,0.0), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  2017-2019", xaxt = "n")
   } else if (component == 13) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS -  2017-2019", xaxt = "n")
  } else if (component == 14) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  2017-2019", xaxt = "n")
   } else if (component == 15) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.08,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS  -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS  -  2017-2019", xaxt = "n")
   } else if (component == 16) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.055,0.055), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  2017-2019", xaxt = "n")
   } else if (component == 17) {
    plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0, 0.1), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS  -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS  -  2017-2019", xaxt = "n")
   } else if (component == 18) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.04,0.0), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  2017-2019", xaxt = "n")
   } else if (component == 19) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  2017-2019", xaxt = "n")
  } else if (component == 20) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.05,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS  -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS  -  2017-2019", xaxt = "n")
   } else if (component == 21) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-0.08,0.05), 
-        xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-NWS -  2017-2019", xaxt = "n")
+        xlab = " ", ylab = "log-flow", main = "Discrepancy NWS-USGS -  2017-2019", xaxt = "n")
   } else if (component == 22) {
     plot(idx, 0*Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
         xlab = " ", ylab = "log-flow", main = "Cummulative Transfer   -  2017-2019", xaxt = "n")
@@ -3560,7 +3896,7 @@ tick_labels <- format(selected_dates[match(tick_positions, idx)], "%Y-%m-%d")
 
 if(j == 1){
 plot(idx, Y[2, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  1991-2022", xaxt = "n")
+xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  1991-2022", xaxt = "n")
 lines(idx, q_d_discrep1_quantiles[4,idx,2], col = 'forestgreen', lwd = 1)
 lines(idx, q_d_discrep1_quantiles[4,idx,1], col = 'green', lwd = 1, lty = 2)
 lines(idx, q_d_discrep1_quantiles[4,idx,3], col = 'green', lwd = 1, lty = 2)
@@ -3572,7 +3908,7 @@ lines(idx, q_d_discrep1_quantiles[7,idx,1], col = 'pink', lwd = 1, lty = 2)
 lines(idx, q_d_discrep1_quantiles[7,idx,3], col = 'pink', lwd = 1, lty = 2)
 }else{
 plot(idx, Y[3, idx]-Y[1, idx], type = "l", col = "gray", lwd = 2, ylim=c(-1,1), 
-xlab = " ", ylab = "log-flow", main = "Discrepancy USGS-GloFAS  -  1991-2022", xaxt = "n")
+xlab = " ", ylab = "log-flow", main = "Discrepancy GloFAS-USGS  -  1991-2022", xaxt = "n")
 lines(idx, q_d_discrep2_quantiles[4,idx,2], col = 'forestgreen', lwd = 1)
 lines(idx, q_d_discrep2_quantiles[4,idx,1], col = 'green', lwd = 1, lty = 2)
 lines(idx, q_d_discrep2_quantiles[4,idx,3], col = 'green', lwd = 1, lty = 2)
@@ -4211,6 +4547,26 @@ profile_section("figures.sort_y_reps_f", {
   }
 })
 
+forecast_horizon_active <- ranges[1]
+profile_section("figures.trim_y_reps_f_effective_horizon", {
+  y_reps_f_trim <- trim_forecast_cube_to_effective_horizon(
+    y_reps_f,
+    context = "figures.y_reps_f"
+  )
+  y_reps_f <<- y_reps_f_trim$cube
+  forecast_horizon_active <<- as.integer(y_reps_f_trim$info$horizon)
+})
+if (forecast_horizon_active < ranges[1]) {
+  warning(
+    sprintf(
+      "[FIGURES_FORECAST_HORIZON_TRUNCATE] Forecast horizon reduced from %d to %d for synthesis/plotting due to trailing non-finite forecast slices (global ranges kept unchanged).",
+      as.integer(ranges[1]),
+      as.integer(forecast_horizon_active)
+    ),
+    call. = FALSE
+  )
+}
+
 profile_section("figures.save_y_reps_f_rds", {
   saveRDS(y_reps_f, file = post_cache_path("y_reps_f.rds"))
 })
@@ -4250,11 +4606,29 @@ print("Array y_reps saved as y_reps.rds in the current directory.")
 
 
 synthesize_samples <- function(y_reps, q_s, n_cores = detectCores() - 1) {
-  
+  if (!is.numeric(y_reps) || is.null(dim(y_reps)) || length(dim(y_reps)) != 3L) {
+    stop("[SYNTH_INPUT_SHAPE] synthesize_samples expects a numeric 3D array [quantile x sample x time].")
+  }
+
   # Get dimensions
   n.q     <- dim(y_reps)[1]
   n.samp  <- dim(y_reps)[2]
   n.times <- dim(y_reps)[3]
+
+  finite_slices <- vapply(
+    seq_len(n.times),
+    function(t_idx) all(is.finite(y_reps[, , t_idx])),
+    logical(1)
+  )
+  if (!all(finite_slices)) {
+    bad_t <- which(!finite_slices)
+    stop(
+      sprintf(
+        "[SYNTH_INPUT_NONFINITE] synthesize_samples received non-finite slices at forecast t=%s.",
+        paste(utils::head(bad_t, 10L), collapse = ",")
+      )
+    )
+  }
   
   stopifnot(length(q_s) == n.q, !is.unsorted(q_s))
   k <- 1
@@ -4348,7 +4722,7 @@ y_reps_f <- profile_section("figures.read_y_reps_f_rds", readRDS(post_cache_path
 q_s    <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95)
 n.q     <- length(q_s)
 n.samp  <- n.samp
-n.times <- ranges[1]
+n.times <- dim(y_reps_f)[3]
 
 	synth_f <- profile_section("figures.synthesize_samples_y_reps_f", synthesize_samples(y_reps_f, q_s))
 	dim(synth_f)
@@ -4372,16 +4746,16 @@ dim(synth_f_q)
 # dim(synth_f_q2)
 
 		profile_section("figures.sort_synth_f", {
-		  for (t in 1:ranges[1]) {
+		  for (t in seq_len(n.times)) {
 		    synth_f[, t] <- sort_to_len(synth_f[, t], target_len = nrow(synth_f), context = sprintf("synth_f[,%d]", t))
 		    # synth_f2[,t] <- sort(synth_f2[,t])
 		  }
 		})
 
-plot.ts(rep(0,ranges[1]), ylim = c(0,10))
+plot.ts(rep(0, n.times), ylim = c(0,10))
 
 SL <- San_Lorenzo_Daily_USGS_R[San_Lorenzo_Daily_USGS_R$Date >= timestamps[1] , ]
-SL <- SL[(TT+1):(TT+ranges[1]) , ]
+SL <- SL[(TT+1):(TT+n.times) , ]
 
 matlines(t(synth_f), col = 'pink', lwd = 0.5)
 
@@ -4392,19 +4766,19 @@ for (i in 1:n.q) {
 }
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- fast_row_quantiles_t(exp(xbs[7, , ]), probs = c(0.025, 0.5, 0.975))
+result <- fast_row_quantiles_t(exp(xbs[7, seq_len(n.times), ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'blue', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkblue', lwd = 1.5)
 lines(result[3,], col = 'blue', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- fast_row_quantiles_t(exp(xbs[1, , ]), probs = c(0.025, 0.5, 0.975))
+result <- fast_row_quantiles_t(exp(xbs[1, seq_len(n.times), ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'red', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkred', lwd = 1.5)
 lines(result[3,], col = 'red', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- fast_row_quantiles_t(exp(xbs[4, , ]), probs = c(0.025, 0.5, 0.975))
+result <- fast_row_quantiles_t(exp(xbs[4, seq_len(n.times), ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'green', lty = 2, lwd = 1)
 lines(result[2,], col = 'forestgreen', lwd = 1.5)
 lines(result[3,], col = 'green', lty = 2, lwd = 1)
@@ -4508,11 +4882,16 @@ profile_section("figures.save_y_reps_f_new_rds", {
 
 
 y_reps_f <- profile_section("figures.read_y_reps_f_new_rds", readRDS(post_cache_path("y_reps_f_new.rds")))
+y_reps_f_trim2 <- trim_forecast_cube_to_effective_horizon(
+  y_reps_f,
+  context = "figures.y_reps_f_new"
+)
+y_reps_f <- y_reps_f_trim2$cube
 
 q_s    <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95)
 n.q     <- length(q_s)
 n.samp  <- n.samp
-n.times <- ranges[1]
+n.times <- dim(y_reps_f)[3]
 
 synth_f <- profile_section("figures.synthesize_samples_y_reps_f_exp", synthesize_samples(exp(y_reps_f), q_s))
 dim(synth_f)
@@ -4522,15 +4901,15 @@ synth_f_q <- t(synth_f_q)
 dim(synth_f_q)
 
 profile_section("figures.sort_synth_f_exp", {
-  for (t in 1:ranges[1]) {
+  for (t in seq_len(n.times)) {
     synth_f[, t] <- sort_to_len(synth_f[, t], target_len = nrow(synth_f), context = sprintf("synth_f_exp[,%d]", t))
   }
 })
 
-plot.ts(rep(0,ranges[1]), ylim = c(0,10))
+plot.ts(rep(0,n.times), ylim = c(0,10))
 
 SL <- San_Lorenzo_Daily_USGS_R[San_Lorenzo_Daily_USGS_R$Date >= timestamps[1] , ]
-SL <- SL[(TT+1):(TT+ranges[1]) , ]
+SL <- SL[(TT+1):(TT+n.times) , ]
 
 matlines(t(synth_f), col = 'pink', lwd = 0.5)
 
@@ -4541,19 +4920,19 @@ for (i in 1:n.q) {
 }
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- fast_row_quantiles_t(exp(xbs[7, , ]), probs = c(0.025, 0.5, 0.975))
+result <- fast_row_quantiles_t(exp(xbs[7, seq_len(n.times), ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'blue', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkblue', lwd = 1.5)
 lines(result[3,], col = 'blue', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- fast_row_quantiles_t(exp(xbs[1, , ]), probs = c(0.025, 0.5, 0.975))
+result <- fast_row_quantiles_t(exp(xbs[1, seq_len(n.times), ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'red', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkred', lwd = 1.5)
 lines(result[3,], col = 'red', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- fast_row_quantiles_t(exp(xbs[4, , ]), probs = c(0.025, 0.5, 0.975))
+result <- fast_row_quantiles_t(exp(xbs[4, seq_len(n.times), ]), probs = c(0.025, 0.5, 0.975))
 lines(result[1,], col = 'green', lty = 2, lwd = 1)
 lines(result[2,], col = 'forestgreen', lwd = 1.5)
 lines(result[3,], col = 'green', lty = 2, lwd = 1)
@@ -5013,8 +5392,16 @@ usgs_plot_df <- San_Lorenzo_Daily_USGS_R %>%
 
 # 2. Get GloFAS and NWS forecast dates
 forecast_start <- as.Date("2022-12-26")
-glofas_dates <- seq(forecast_start, by = "1 day", length.out = ranges[1])
-nws_dates    <- seq(forecast_start, by = "1 day", length.out = ranges[2])
+glofas_dates <- daily_dates_for_matrix_rows(
+  ensembles[[1]],
+  start_date = forecast_start,
+  context = "ensemble_dates.glofas"
+)
+nws_dates <- daily_dates_for_matrix_rows(
+  ensembles[[2]],
+  start_date = forecast_start,
+  context = "ensemble_dates.nws"
+)
 
 # Set color codes
 glofas_color <- "#E67E22"   # Bright orange
@@ -5196,7 +5583,11 @@ idx <- idx_sub
 
 # 1. Dates for fit and forecast
 fit_dates <- as.Date(timestamps[idx])
-forecast_dates <- seq(fit_dates[length(fit_dates)] + 1, by = "1 day", length.out = ranges[1])
+forecast_dates <- daily_dates_for_matrix_cols(
+  synth_f,
+  start_date = fit_dates[length(fit_dates)] + 1,
+  context = "posterior_dates.synth_f"
+)
 
 # 2. Posterior samples, tidy for ggplot (long format; avoid pivot_longer)
 df_post_fit <- fast_long_by_row(
@@ -5396,7 +5787,11 @@ ggsave(
 
 # Dates for fit (historical) and forecast
 fit_dates <- as.Date(timestamps[idx])
-forecast_dates <- seq(fit_dates[length(fit_dates)] + 1, by = "1 day", length.out = ranges[1])
+forecast_dates <- daily_dates_for_matrix_cols(
+  synth_f2,
+  start_date = fit_dates[length(fit_dates)] + 1,
+  context = "posterior_dates.synth_f2"
+)
 
 # 1. Posterior samples: historical (fit) and forecast (avoid pivot_longer)
 df_post_fit <- fast_long_by_row(
@@ -6458,18 +6853,14 @@ plot_component_quantiles(
 idx <- ceiling(TT/10):TT
 # Helper to tidy the quantile array
 make_quantile_df <- function(q_array, idx, dates, quantiles = c("5th", "50th", "95th")) {
-  # q_array: [quantile, time, quant (1=lower,2=median,3=upper)]
-  stopifnot(dim(q_array)[3] == 3)
-  out <- lapply(1:dim(q_array)[1], function(qi) {
-    data.frame(
-      Date = as.Date(dates),
-      Quantile = quantiles[qi],
-      Lower = q_array[qi, idx, 1],
-      Median = q_array[qi, idx, 2],
-      Upper = q_array[qi, idx, 3]
-    )
-  })
-  bind_rows(out)
+  build_agg_discrep_quantile_df(
+    q_array = q_array,
+    idx = idx,
+    dates = dates,
+    quantile_rows = c(1L, 4L, 7L),
+    quantile_labels = quantiles,
+    context = "agg_disc_1991_2022"
+  )
 }
 
 # Dates for x axis
@@ -6484,7 +6875,7 @@ df2 <- make_quantile_df(q_d_discrep2_quantiles, idx, dates, quantiles_labels)
 obs1 <- data.frame(Date = dates, Discrepancy = Y[2, idx] - Y[1, idx])
 obs2 <- data.frame(Date = dates, Discrepancy = Y[3, idx] - Y[1, idx])
 
-make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-2, 1)) {
+make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-2, 1), contract_key = "agg_disc_1991_2022") {
   # Reduce number of date ticks
   n_ticks <- 16
   date_breaks <- scales::pretty_breaks(n = n_ticks)(range(obs$Date))
@@ -6496,6 +6887,13 @@ make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-2
     "95th" = "#2171b5"     # Dark blue
   )
   ribbon_alpha <- 0.11
+  ylim_use <- resolve_agg_discrep_contract(
+    df = df,
+    obs = obs,
+    preferred_ylim = ylim,
+    contract_key = contract_key,
+    title = title
+  )
 
   ggplot() +
       # Observed discrepancy
@@ -6523,7 +6921,7 @@ make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-2
       breaks = date_breaks,
       date_labels = "%Y-%m"
     ) +
-    coord_cartesian(ylim = ylim) +
+    coord_cartesian(ylim = ylim_use) +
     labs(
       title = title,
       x = NULL,
@@ -6539,20 +6937,22 @@ make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-2
     )
 }
 
-# USGS-GloFAS
+# GloFAS-USGS
 p1 <- make_discrepancy_plot(
   df1 %>% filter(Quantile %in% c("5th", "50th", "95th")),
   obs1,
-  title = "Discrepancy USGS–GloFAS   1991–2022"
+  title = "Discrepancy GloFAS–USGS   1991–2022",
+  contract_key = "agg_disc_1991_2022_1"
 )
 p1
 ggsave("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_1991_2022_1.png", p1, width = 12, height = 6, units = "in", dpi = 900)
 
-# USGS-NWS (if J==2)
+# NWS-USGS (if J==2)
 p2 <- make_discrepancy_plot(
   df2 %>% filter(Quantile %in% c("5th", "50th", "95th")),
   obs2,
-  title = "Discrepancy USGS–NWS   1991–2022"
+  title = "Discrepancy NWS–USGS   1991–2022",
+  contract_key = "agg_disc_1991_2022_2"
 )
 p2
 ggsave("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_1991_2022_2.png", p2, width = 12, height = 6, units = "in", dpi = 900)
@@ -6561,18 +6961,14 @@ ggsave("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Ag
 idx <- time_cuts[1]:time_cuts[2]
 # Helper to tidy the quantile array
 make_quantile_df <- function(q_array, idx, dates, quantiles = c("5th", "50th", "95th")) {
-  # q_array: [quantile, time, quant (1=lower,2=median,3=upper)]
-  stopifnot(dim(q_array)[3] == 3)
-  out <- lapply(1:dim(q_array)[1], function(qi) {
-    data.frame(
-      Date = as.Date(dates),
-      Quantile = quantiles[qi],
-      Lower = q_array[qi, idx, 1],
-      Median = q_array[qi, idx, 2],
-      Upper = q_array[qi, idx, 3]
-    )
-  })
-  bind_rows(out)
+  build_agg_discrep_quantile_df(
+    q_array = q_array,
+    idx = idx,
+    dates = dates,
+    quantile_rows = c(1L, 4L, 7L),
+    quantile_labels = quantiles,
+    context = "agg_disc_2012_2016"
+  )
 }
 
 # Dates for x axis
@@ -6587,7 +6983,7 @@ df2 <- make_quantile_df(q_d_discrep2_quantiles, idx, dates, quantiles_labels)
 obs1 <- data.frame(Date = dates, Discrepancy = Y[2, idx] - Y[1, idx])
 obs2 <- data.frame(Date = dates, Discrepancy = Y[3, idx] - Y[1, idx])
 
-make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-1, 1)) {
+make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-1, 1), contract_key = "agg_disc_2012_2016") {
   # Reduce number of date ticks
   n_ticks <- 8
   date_breaks <- scales::pretty_breaks(n = n_ticks)(range(obs$Date))
@@ -6599,6 +6995,13 @@ make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-1
     "95th" = "#2171b5"     # Dark blue
   )
   ribbon_alpha <- 0.11
+  ylim_use <- resolve_agg_discrep_contract(
+    df = df,
+    obs = obs,
+    preferred_ylim = ylim,
+    contract_key = contract_key,
+    title = title
+  )
 
   ggplot() +
       # Observed discrepancy
@@ -6641,7 +7044,7 @@ make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-1
       breaks = date_breaks,
       date_labels = "%Y-%m"
     ) +
-    coord_cartesian(ylim = ylim) +
+    coord_cartesian(ylim = ylim_use) +
     labs(
       title = title,
       x = NULL,
@@ -6657,22 +7060,24 @@ make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-1
     )
 }
 
-# USGS-GloFAS
+# GloFAS-USGS
 p1 <- make_discrepancy_plot(
   df1 %>% filter(Quantile %in% c("5th", "50th", "95th")),
   obs1,
-  title = "Discrepancy USGS–GloFAS   1991–2022",
-  ylim = c(-1.5, 1)
+  title = "Discrepancy GloFAS–USGS   1991–2022",
+  ylim = c(-1.5, 1),
+  contract_key = "agg_disc_2012_2016_1"
 )
 p1
 ggsave("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_2012_2016_1.png", p1, width = 12, height = 6, units = "in", dpi = 900)
 
-# USGS-NWS (if J==2)
+# NWS-USGS (if J==2)
 p2 <- make_discrepancy_plot(
   df2 %>% filter(Quantile %in% c("5th", "50th", "95th")),
   obs2,
-  title = "Discrepancy USGS–NWS   1991–2022",
-  ylim = c(-2.5, 1)
+  title = "Discrepancy NWS–USGS   1991–2022",
+  ylim = c(-2.5, 1),
+  contract_key = "agg_disc_2012_2016_2"
 )
 p2
 ggsave("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_2012_2016_2.png", p2, width = 12, height = 6, units = "in", dpi = 900)
@@ -6681,18 +7086,14 @@ ggsave("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Ag
 idx <- time_cuts[3]:time_cuts[4]
 # Helper to tidy the quantile array
 make_quantile_df <- function(q_array, idx, dates, quantiles = c("5th", "50th", "95th")) {
-  # q_array: [quantile, time, quant (1=lower,2=median,3=upper)]
-  stopifnot(dim(q_array)[3] == 3)
-  out <- lapply(1:dim(q_array)[1], function(qi) {
-    data.frame(
-      Date = as.Date(dates),
-      Quantile = quantiles[qi],
-      Lower = q_array[qi, idx, 1],
-      Median = q_array[qi, idx, 2],
-      Upper = q_array[qi, idx, 3]
-    )
-  })
-  bind_rows(out)
+  build_agg_discrep_quantile_df(
+    q_array = q_array,
+    idx = idx,
+    dates = dates,
+    quantile_rows = c(1L, 4L, 7L),
+    quantile_labels = quantiles,
+    context = "agg_disc_2017_2019"
+  )
 }
 
 # Dates for x axis
@@ -6707,7 +7108,7 @@ df2 <- make_quantile_df(q_d_discrep2_quantiles, idx, dates, quantiles_labels)
 obs1 <- data.frame(Date = dates, Discrepancy = Y[2, idx] - Y[1, idx])
 obs2 <- data.frame(Date = dates, Discrepancy = Y[3, idx] - Y[1, idx])
 
-make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-1, 1)) {
+make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-1, 1), contract_key = "agg_disc_2017_2019") {
   # Reduce number of date ticks
   n_ticks <- 8
   date_breaks <- scales::pretty_breaks(n = n_ticks)(range(obs$Date))
@@ -6719,6 +7120,13 @@ make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-1
     "95th" = "#2171b5"     # Dark blue
   )
   ribbon_alpha <- 0.11
+  ylim_use <- resolve_agg_discrep_contract(
+    df = df,
+    obs = obs,
+    preferred_ylim = ylim,
+    contract_key = contract_key,
+    title = title
+  )
 
   ggplot() +
       # Observed discrepancy
@@ -6761,7 +7169,7 @@ make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-1
       breaks = date_breaks,
       date_labels = "%Y-%m"
     ) +
-    coord_cartesian(ylim = ylim) +
+    coord_cartesian(ylim = ylim_use) +
     labs(
       title = title,
       x = NULL,
@@ -6777,25 +7185,40 @@ make_discrepancy_plot <- function(df, obs, title, ylab = "log-flow", ylim = c(-1
     )
 }
 
-# USGS-GloFAS
+# GloFAS-USGS
 p1 <- make_discrepancy_plot(
   df1 %>% filter(Quantile %in% c("5th", "50th", "95th")),
   obs1,
-  title = "Discrepancy USGS–GloFAS   1991–2022",
-  ylim = c(-1.6, 0.8)
+  title = "Discrepancy GloFAS–USGS   1991–2022",
+  ylim = c(-1.6, 0.8),
+  contract_key = "agg_disc_2017_2019_1"
 )
 p1
 ggsave("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_2017_2019_1.png", p1, width = 12, height = 6, units = "in", dpi = 900)
 
-# USGS-NWS (if J==2)
+# NWS-USGS (if J==2)
 p2 <- make_discrepancy_plot(
   df2 %>% filter(Quantile %in% c("5th", "50th", "95th")),
   obs2,
-  title = "Discrepancy USGS–NWS   1991–2022",
-  ylim = c(-1.6, 0.8)
+  title = "Discrepancy NWS–USGS   1991–2022",
+  ylim = c(-1.6, 0.8),
+  contract_key = "agg_disc_2017_2019_2"
 )
 p2
 ggsave("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_2017_2019_2.png", p2, width = 12, height = 6, units = "in", dpi = 900)
+
+# Keep legacy filename aliases in sync with the same fitted-overlay payload.
+ggsave("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_2018_2020_1.png", p1, width = 12, height = 6, units = "in", dpi = 900)
+ggsave("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Agg_disc_2018_2020_2.png", p2, width = 12, height = 6, units = "in", dpi = 900)
+
+if (exists("OUT_DIR", inherits = TRUE) && length(agg_disc_contract_rows) > 0L) {
+  agg_contract_df <- dplyr::bind_rows(agg_disc_contract_rows)
+  write.csv(
+    agg_contract_df,
+    file.path(get("OUT_DIR", inherits = TRUE), "agg_disc_plot_contract.csv"),
+    row.names = FALSE
+  )
+}
 
 
 # 
@@ -7065,7 +7488,11 @@ output_q <- t(output_q)
 
 # 1. Dates for fit and forecast
 fit_dates <- as.Date(timestamps[idx])
-forecast_dates <- seq(fit_dates[length(fit_dates)] + 1, by = "1 day", length.out = ranges[1])
+forecast_dates <- daily_dates_for_matrix_cols(
+  output_f,
+  start_date = fit_dates[length(fit_dates)] + 1,
+  context = "posterior_dates.output_f"
+)
 
 # 2. Posterior samples, tidy for ggplot (long format; avoid pivot_longer)
 df_post_fit <- fast_long_by_row(
@@ -7275,7 +7702,11 @@ output_q <- t(output_q)
 
 # Dates for fit (historical) and forecast
 fit_dates <- as.Date(timestamps[idx])
-forecast_dates <- seq(fit_dates[length(fit_dates)] + 1, by = "1 day", length.out = ranges[1])
+forecast_dates <- daily_dates_for_matrix_cols(
+  synth_f2,
+  start_date = fit_dates[length(fit_dates)] + 1,
+  context = "posterior_dates.synth_f2_second_block"
+)
 
 # 1. Posterior samples: historical (fit) and forecast (avoid pivot_longer)
 df_post_fit <- fast_long_by_row(
