@@ -1,7 +1,7 @@
 # Unified Multi-Model Workflow Tracker (Living)
 
 Date: 2026-02-10  
-Last verified: 2026-02-20 (canonical one-core-per-model parallel end-to-end run closed PASS; post-quality diagnosis checklist opened for NDLM/univar quality and multivar synthesis-horizon/aggregated-discrepancy figure integrity)  
+Last verified: 2026-02-24 (Q-05 post-only recomposition lane closed PASS after synthesis sample-alignment fixes; stages `post/validate/report` all PASS in `diag_q05_allfam_postonly_recompose_20260224_080036`)  
 Repo root: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Status: Active planning + execution tracker  
 Primary audience: project maintainer + Codex
@@ -1880,7 +1880,7 @@ Phase E: Fix-readiness gate (`Q-01C`)
     - `repro/runs/diag_q04_ndlm_only_fitloop_20260224/fit/diagnostics/ndlm_main/ndlm_main_diagnostics.json`
     - `repro/runs/diag_q04_ndlm_only_fitloop_20260224/diagnostics/ndlm/ndlm_plot_contract_check.csv`
 
-- [ ] `Q-05` Recompose final quality pack
+- [x] `Q-05` Recompose final quality pack
   - Promote-from-lean rule: run full data + all quantiles only after `Q-03` and `Q-04` are closed on lean profile.
   - Re-run post (full figures + tables) from corrected artifacts.
   - Register final evidence paths for:
@@ -1888,6 +1888,20 @@ Phase E: Fix-readiness gate (`Q-01C`)
     - univar median corrected figures and traces
     - multivar corrected synthesis + `Agg_disc_*` figures
   - Update risk register statuses for `R-009`, `R-010`, `R-011` and close checklist items.
+  - Closure summary:
+    - Q-05 post-only recomposition now closes PASS with full figures/tables enabled and strict run-scoped post mode.
+    - Root fixes required for closure were in `R/environmetrics/40_figures.R`:
+      - bounded synthesis sample cap (`resolve_post_effective_n_samp`) to avoid memory-pressure failures,
+      - consistent sample-dimension alignment across forecast/history posterior matrices (`align_sample_time_matrix`) before `y_reps_f`/`y_reps` assembly.
+    - The prior late-stage `y_reps_f` replacement-length failure is resolved in closure run.
+    - Stage closure status in closure run: `post=pass`, `validate=pass`, `report=pass`, non-null `finished_at_utc`.
+  - Evidence:
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/run_manifest.yaml`
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/post/logs/diag_q05_allfam_postonly_recompose_20260224_080036/run_log.txt`
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/post/outputs/diag_q05_allfam_postonly_recompose_20260224_080036/post_artifacts_manifest.csv`
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/post/outputs/diag_q05_allfam_postonly_recompose_20260224_080036/post_artifacts_summary.json`
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/validate/compare_report.json`
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/report/summary.md`
 
 ### 12.3) Efficient Debug Execution Policy (Active)
 
@@ -3574,3 +3588,35 @@ Handoff rule:
   - Residual NDLM predictive-quality tuning remains a model-calibration follow-up (not a workflow wiring defect).
 - Next action:
   - Proceed to `Q-05` final quality-pack recomposition.
+
+### Progress Update 2026-02-24 10:24 UTC
+
+- Phase: `Q-05` final quality-pack recomposition
+- Change type: post-layer root-fix closure + full post/validate/report pass
+- Summary:
+  - Closed `Q-05` in strict post-only recomposition lane using existing fit artifacts (`no refit`).
+  - Resolved post failure chain in `R/environmetrics/40_figures.R` with root-cause fixes:
+    - synthesis sample-cap enforcement to avoid memory-pressure failures,
+    - correct ordering of cap operations (avoid pre-definition access),
+    - orientation-safe sample/time alignment for forecast posterior matrices before `y_reps_f` assembly.
+  - Full closure run now passes all active stages:
+    - `post=pass`
+    - `validate=pass`
+    - `report=pass`
+    - `finished_at_utc` non-null.
+  - Recomposition artifacts include figures/tables manifest + summary and validation compare outputs.
+- Evidence:
+  - Closure run:
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/run_manifest.yaml`
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/post/logs/diag_q05_allfam_postonly_recompose_20260224_080036/run_log.txt`
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/post/outputs/diag_q05_allfam_postonly_recompose_20260224_080036/post_artifacts_manifest.csv`
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/post/outputs/diag_q05_allfam_postonly_recompose_20260224_080036/post_artifacts_summary.json`
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/validate/compare_report.json`
+    - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/report/summary.md`
+  - Code:
+    - `R/environmetrics/40_figures.R`
+- Validation notes:
+  - `Q-05` acceptance criteria are satisfied for workflow closure readiness.
+  - `R-011` remains partially mitigated (model-calibration quality follow-up only), with no open workflow wiring blockers.
+- Next action:
+  - Transition from workflow-closure execution to model-calibration follow-up lanes (outside Q-05 checklist scope).
