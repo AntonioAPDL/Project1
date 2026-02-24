@@ -72,6 +72,89 @@ ndlm_warn_once <- local({
   }
 })
 
+resolve_post_effective_n_samp <- function(n_available, TT, context = "post.n_samp") {
+  n_avail <- as.integer(n_available[[1L]])
+  if (!is.finite(n_avail) || n_avail <= 0L) {
+    stop(sprintf("[%s] n_available must be a positive finite integer.", context), call. = FALSE)
+  }
+
+  explicit_cap <- suppressWarnings(as.integer(Sys.getenv("UNIFIED_POST_NSAMP_CAP", "")))
+  if (!is.finite(explicit_cap) || explicit_cap <= 0L) {
+    explicit_cap <- NA_integer_
+  }
+
+  synth_bytes_cap <- suppressWarnings(as.numeric(Sys.getenv("UNIFIED_POST_SYNTH_MAX_BYTES", "6.0e8")))
+  if (!is.finite(synth_bytes_cap) || synth_bytes_cap <= 0) {
+    synth_bytes_cap <- 6.0e8
+  }
+  tt_use <- as.double(max(1L, as.integer(TT[[1L]])))
+  # y_reps / y_reps_f arrays are 7 x n.samp x horizon doubles.
+  auto_cap <- as.integer(floor(synth_bytes_cap / (7.0 * tt_use * 8.0)))
+  if (!is.finite(auto_cap) || auto_cap <= 0L) {
+    auto_cap <- 64L
+  }
+  auto_cap <- min(n_avail, max(64L, auto_cap))
+
+  n_eff <- min(n_avail, auto_cap)
+  if (!is.na(explicit_cap)) {
+    n_eff <- min(n_eff, explicit_cap)
+  }
+  n_eff <- max(1L, as.integer(n_eff))
+
+  if (n_eff < n_avail) {
+    warning(
+      sprintf(
+        "[POST_NSAMP_CAP] %s reduced n.samp from %d to %d (UNIFIED_POST_NSAMP_CAP=%s, UNIFIED_POST_SYNTH_MAX_BYTES=%.0f).",
+        context,
+        n_avail,
+        n_eff,
+        ifelse(is.na(explicit_cap), "unset", as.character(explicit_cap)),
+        synth_bytes_cap
+      ),
+      call. = FALSE
+    )
+  }
+  n_eff
+}
+
+cap_sample_rows <- function(mat, n_keep) {
+  if (!is.matrix(mat) || n_keep >= nrow(mat)) {
+    return(mat)
+  }
+  mat[seq_len(n_keep), , drop = FALSE]
+}
+
+align_sample_time_matrix <- function(mat, n_samp, horizon, context) {
+  if (!is.matrix(mat)) {
+    stop(sprintf("[%s] expected matrix input, got %s.", context, class(mat)[1L]), call. = FALSE)
+  }
+  nr <- nrow(mat)
+  nc <- ncol(mat)
+  ns <- as.integer(n_samp)
+  hz <- as.integer(horizon)
+
+  if (nr == ns && nc >= hz) {
+    return(mat[, seq_len(hz), drop = FALSE])
+  }
+  if (nc == ns && nr >= hz) {
+    return(t(mat[seq_len(hz), , drop = FALSE]))
+  }
+  if (nr >= ns && nc == hz) {
+    return(mat[seq_len(ns), , drop = FALSE])
+  }
+  if (nc >= ns && nr == hz) {
+    return(t(mat[, seq_len(ns), drop = FALSE]))
+  }
+
+  stop(
+    sprintf(
+      "[%s] unable to align matrix with dims %dx%d to expected sample/time dims %dx%d.",
+      context, nr, nc, ns, hz
+    ),
+    call. = FALSE
+  )
+}
+
 agg_disc_warn_once <- local({
   warned <- new.env(parent = emptyenv())
   function(key, message_text) {
@@ -964,17 +1047,30 @@ q35 <- compute_quantiles_means(y_post_35,0.35)
 q65 <- compute_quantiles_means(y_post_65,0.65)
 q80 <- compute_quantiles_means(y_post_80,0.8)
 ################################################################################################################################################
-n.samp <- dim(samp.theta_50_exAL_synth_DISC$samp_theta)[3]
+n.samp <- resolve_post_effective_n_samp(
+  n_available = dim(samp.theta_50_exAL_synth_DISC$samp_theta)[3],
+  TT = TT,
+  context = "figures.synth_q_forecast"
+)
+if (n.samp < nrow(y_post_50)) {
+  y_post_5 <- cap_sample_rows(y_post_5, n.samp)
+  y_post_20 <- cap_sample_rows(y_post_20, n.samp)
+  y_post_35 <- cap_sample_rows(y_post_35, n.samp)
+  y_post_50 <- cap_sample_rows(y_post_50, n.samp)
+  y_post_65 <- cap_sample_rows(y_post_65, n.samp)
+  y_post_80 <- cap_sample_rows(y_post_80, n.samp)
+  y_post_95 <- cap_sample_rows(y_post_95, n.samp)
+}
 synth_f <- matrix(NA_real_, nrow = n.samp, ncol = ranges[1])
 synth_q_f <- matrix(NA_real_, nrow = n.samp, ncol = ranges[1])
 k <- 10
-sigma_5  <- samp.sigma_5_exAL_synth_DISC[1, ]
-sigma_20 <- samp.sigma_20_exAL_synth_DISC[1, ]
-sigma_35 <- samp.sigma_35_exAL_synth_DISC[1, ]
-sigma_50 <- samp.sigma_50_exAL_synth_DISC[1, ]
-sigma_65 <- samp.sigma_65_exAL_synth_DISC[1, ]
-sigma_80 <- samp.sigma_80_exAL_synth_DISC[1, ]
-sigma_95 <- samp.sigma_95_exAL_synth_DISC[1, ]
+sigma_5  <- samp.sigma_5_exAL_synth_DISC[1, seq_len(n.samp)]
+sigma_20 <- samp.sigma_20_exAL_synth_DISC[1, seq_len(n.samp)]
+sigma_35 <- samp.sigma_35_exAL_synth_DISC[1, seq_len(n.samp)]
+sigma_50 <- samp.sigma_50_exAL_synth_DISC[1, seq_len(n.samp)]
+sigma_65 <- samp.sigma_65_exAL_synth_DISC[1, seq_len(n.samp)]
+sigma_80 <- samp.sigma_80_exAL_synth_DISC[1, seq_len(n.samp)]
+sigma_95 <- samp.sigma_95_exAL_synth_DISC[1, seq_len(n.samp)]
 
 q_refs <- rbind(
   q5$quantiles[1, ],
@@ -4294,8 +4390,33 @@ exp_y_post_65 <- exp(y_post_65)
 exp_y_post_80 <- exp(y_post_80)
 exp_y_post_95 <- exp(y_post_95)
 
+n.samp_available <- nrow(exp_y_post_50)
+n.samp <- resolve_post_effective_n_samp(
+  n_available = n.samp_available,
+  TT = TT,
+  context = "figures.posterior"
+)
+if (n.samp < n.samp_available) {
+  y_post_5 <- cap_sample_rows(y_post_5, n.samp)
+  y_post_20 <- cap_sample_rows(y_post_20, n.samp)
+  y_post_35 <- cap_sample_rows(y_post_35, n.samp)
+  y_post_50 <- cap_sample_rows(y_post_50, n.samp)
+  y_post_65 <- cap_sample_rows(y_post_65, n.samp)
+  y_post_80 <- cap_sample_rows(y_post_80, n.samp)
+  y_post_95 <- cap_sample_rows(y_post_95, n.samp)
+
+  exp_y_post_5 <- cap_sample_rows(exp_y_post_5, n.samp)
+  exp_y_post_20 <- cap_sample_rows(exp_y_post_20, n.samp)
+  exp_y_post_35 <- cap_sample_rows(exp_y_post_35, n.samp)
+  exp_y_post_50 <- cap_sample_rows(exp_y_post_50, n.samp)
+  exp_y_post_65 <- cap_sample_rows(exp_y_post_65, n.samp)
+  exp_y_post_80 <- cap_sample_rows(exp_y_post_80, n.samp)
+  exp_y_post_95 <- cap_sample_rows(exp_y_post_95, n.samp)
+  invisible(gc(verbose = FALSE))
+}
+
 idx <- (TT-500):(TT)
-n.samp <- dim(samp.theta_50_exAL_synth_DISC$samp_theta)[3]
+n.samp <- min(n.samp, dim(samp.theta_50_exAL_synth_DISC$samp_theta)[3])
 plot.ts(exp(Y[1,idx]), ylim = c(0,7))
 matlines(t(exp_y_post_50[,idx]), lwd = 0.1, col='forestgreen')
 matlines(t(exp_y_post_95[,idx]), lwd = 0.1, col='darkblue')
@@ -4335,7 +4456,7 @@ exp_m80 <- colMeans((exp_y_post_80))
 
 # Define the time range and common y-axis limits
 idx <- (TT - 500):(TT)
-n.samp <- dim(samp.theta_50_exAL_synth_DISC$samp_theta)[3]
+n.samp <- min(n.samp, dim(samp.theta_50_exAL_synth_DISC$samp_theta)[3])
 ylim_range <- c(0, 7)
 output_dir <- "/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce"
 
@@ -4418,7 +4539,7 @@ par(mfrow = c(1, 1))  # Return to single plot layout
 
 
 idx <- (TT-500):(TT)
-n.samp <- dim(samp.theta_95_exAL_synth_DISC$samp_theta)[3]
+n.samp <- min(n.samp, dim(samp.theta_95_exAL_synth_DISC$samp_theta)[3])
 
 plot.ts(exp(Y[1,idx]), ylim = c(0,7))
 matlines(t(exp_y_post_95[, idx]), lwd = 0.1, col='darkblue')
@@ -4519,6 +4640,22 @@ profile_section("figures.build_y_post_forecast", {
   exp_y_post_65_f <- exp(generate_y_post(p0_65, xb_65_f, gam_65_f, sig_65_f))
 })
 ############################################################################
+y_post_5_f <- align_sample_time_matrix(y_post_5_f, n.samp, ranges[1], "y_post_5_f")
+y_post_20_f <- align_sample_time_matrix(y_post_20_f, n.samp, ranges[1], "y_post_20_f")
+y_post_35_f <- align_sample_time_matrix(y_post_35_f, n.samp, ranges[1], "y_post_35_f")
+y_post_50_f <- align_sample_time_matrix(y_post_50_f, n.samp, ranges[1], "y_post_50_f")
+y_post_65_f <- align_sample_time_matrix(y_post_65_f, n.samp, ranges[1], "y_post_65_f")
+y_post_80_f <- align_sample_time_matrix(y_post_80_f, n.samp, ranges[1], "y_post_80_f")
+y_post_95_f <- align_sample_time_matrix(y_post_95_f, n.samp, ranges[1], "y_post_95_f")
+
+exp_y_post_5_f <- align_sample_time_matrix(exp_y_post_5_f, n.samp, ranges[1], "exp_y_post_5_f")
+exp_y_post_20_f <- align_sample_time_matrix(exp_y_post_20_f, n.samp, ranges[1], "exp_y_post_20_f")
+exp_y_post_35_f <- align_sample_time_matrix(exp_y_post_35_f, n.samp, ranges[1], "exp_y_post_35_f")
+exp_y_post_50_f <- align_sample_time_matrix(exp_y_post_50_f, n.samp, ranges[1], "exp_y_post_50_f")
+exp_y_post_65_f <- align_sample_time_matrix(exp_y_post_65_f, n.samp, ranges[1], "exp_y_post_65_f")
+exp_y_post_80_f <- align_sample_time_matrix(exp_y_post_80_f, n.samp, ranges[1], "exp_y_post_80_f")
+exp_y_post_95_f <- align_sample_time_matrix(exp_y_post_95_f, n.samp, ranges[1], "exp_y_post_95_f")
+
 n_rows_5 <- dim(xb_05_f)[1]
 n_cols_5 <- dim(xb_05_f)[2]
 
