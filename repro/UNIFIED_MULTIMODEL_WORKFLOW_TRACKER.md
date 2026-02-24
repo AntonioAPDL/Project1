@@ -365,8 +365,8 @@ Status legend:
 | R-006 | High | DISC-W warm-start can load root `DISC_variables_*` paths, violating run-scoped reproducibility if enabled. | Keep warm-start disabled by default; if enabled, require run-scoped warm-start source path recorded in manifest before stage execution. | TBD | Mitigating (legacy bridge env routing now run-scoped; warm-start remains disabled by default) |
 | R-007 | Medium | Post reads `y_reps*.rds` via relative paths, creating working-directory-sensitive behavior. | In P5, enforce absolute/manifest-declared paths for these intermediates and fail fast on unresolved relative reads. | TBD | Mitigating (run-scoped cache path enforced) |
 | R-008 | Medium | Extreme quantile (`q=0.01`) multivar fit can enter non-finite objective regions without adaptive safeguards. | Keep adaptive gamma/sigma guardrails defaulted across exDQLM families; maintain extreme-quantile regression proofs and trace monitoring for drift. | TBD | Mitigated for current scope (P9 closure accepted under D-011; residual strict-tail convergence tightening tracked as follow-up optimization) |
-| R-009 | High | Post synthesis horizon may be truncated before full forecast lead window (expected up to GloFAS 30-day support) in multivar and NDLM figure outputs. | Execute isolated post diagnostics that compare each plotted time index against available `NWS/GloFAS` member horizons and model-state forecast arrays; enforce explicit horizon-contract checks before plotting. | TBD | Open (diagnosis checklist queued) |
-| R-010 | High | Aggregated discrepancy figures (`Agg_disc_*`) currently render observed discrepancies only, without fitted aggregated discrepancy overlays. | Audit aggregated discrepancy plotting path and model-fit object wiring; add contract checks requiring both observed and fitted aggregated discrepancy series in figure payloads. | TBD | Open (diagnosis checklist queued) |
+| R-009 | High | Post synthesis horizon may be truncated before full forecast lead window (expected up to GloFAS 30-day support) in multivar and NDLM figure outputs. | Execute isolated post diagnostics that compare each plotted time index against available `NWS/GloFAS` member horizons and model-state forecast arrays; enforce explicit horizon-contract checks before plotting. | TBD | Mitigated (Q-03A closure run passed with horizon identity contract artifact and full post output inventory) |
+| R-010 | High | Aggregated discrepancy figures (`Agg_disc_*`) currently render observed discrepancies only, without fitted aggregated discrepancy overlays. | Audit aggregated discrepancy plotting path and model-fit object wiring; add contract checks requiring both observed and fitted aggregated discrepancy series in figure payloads. | TBD | Mitigated (Q-03B closure run passed with fitted overlays, sign parity, and contract checks) |
 | R-011 | Medium | Univariate exDQLM and NDLM outputs may be numerically complete but visually/structurally inconsistent with expected model behavior in synthesis windows. | Run isolated single-family lanes (NDLM-only and univar median-only) with dedicated convergence + posterior trace diagnostics and post-only replay checks before changing model logic. | TBD | Open (diagnosis checklist queued) |
 
 ## 9) Validation and Done Criteria
@@ -1821,7 +1821,7 @@ Phase E: Fix-readiness gate (`Q-01C`)
       - `repro/runs/diag_q02_univar_full7_postonly_sourcerun_r05_20260222_223657/post/logs/post_runner.log`
       - `repro/docs/q02_univar_20260222T212607Z/verification_ladder.md`
 
-- [ ] `Q-03` Multivariate post-only figure integrity lane
+- [x] `Q-03` Multivariate post-only figure integrity lane
   - Default execution policy for this task: use the lean debug profile first (`date_start=2010-01-01`, quantiles `0.05/0.50/0.95`, one-core-per-model), then promote to full-range/full-quantile only after contracts pass.
   - Fit-bottleneck policy (mandatory): reuse previously successful fit artifacts and run post-only replays; do not refit unless evidence shows source fit artifacts are invalid/incompatible for the contract under test.
   - Reuse existing multivar fit artifacts; run post-only replay focused on multivar figures.
@@ -1840,16 +1840,20 @@ Phase E: Fix-readiness gate (`Q-01C`)
   - Acceptance gate:
     - Fitted aggregated discrepancy overlay is present and non-empty in every `Agg_disc_*` figure.
     - Synthesis x-range matches the expected forecast horizon contract.
-  - Current sub-status:
-    - `Q-03B` resolved in post-only all-family sign-fix lane: `Agg_disc_*` now contain fitted overlays and observed discrepancy uses model-minus-USGS sign parity (`GloFAS–USGS`, `NWS–USGS`), validated by contract rows with non-zero fitted finite counts.
-    - Aggregated discrepancy plots now include posterior uncertainty bands (95% credible intervals) derived from state posterior (`sm`, `sC`) rather than deterministic-only fitted means.
-    - `Q-03A` remains open: synthesis horizon contract closure is still pending final acceptance.
+  - Closure summary:
+    - `Q-03B` resolved in post-only all-family sign-fix lane: `Agg_disc_*` contain fitted overlays and observed discrepancy uses model-minus-USGS sign parity (`GloFAS–USGS`, `NWS–USGS`), validated by contract rows with non-zero fitted finite counts.
+    - Aggregated discrepancy plots include posterior uncertainty bands (95% credible intervals) derived from state posterior (`sm`, `sC`) rather than deterministic-only fitted means.
+    - `Q-03A` resolved in post-only horizon-identity lane with complete post pass, synthesis figure regeneration, and explicit forecast identity contract export; visual acceptance confirmed by user review.
   - Evidence:
     - `repro/runs/diag_q03_allfam_postonly_signfix_20260223_045713/run_manifest.yaml`
     - `repro/runs/diag_q03_allfam_postonly_signfix_20260223_045713/post/outputs/diag_q03_allfam_postonly_signfix_20260223_045713/agg_disc_plot_contract.csv`
     - `repro/runs/diag_q03_allfam_postonly_signfix_credible_20260223_054753/run_manifest.yaml`
     - `repro/runs/diag_q03_allfam_postonly_signfix_credible_20260223_054753/post/outputs/diag_q03_allfam_postonly_signfix_credible_20260223_054753/Agg_disc_1991_2022_1.png`
     - `repro/runs/diag_q03_allfam_postonly_signfix_credible_20260223_054753/post/outputs/diag_q03_allfam_postonly_signfix_credible_20260223_054753/Agg_disc_1991_2022_2.png`
+    - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/run_manifest.yaml`
+    - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/post/outputs/diag_q03a_horizon_identity_v2_20260223_171245/All3_exal_DISC.png`
+    - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/post/outputs/diag_q03a_horizon_identity_v2_20260223_171245/forecast_identity_contract.csv`
+    - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/post/outputs/diag_q03a_horizon_identity_v2_20260223_171245/post_artifacts_summary.json`
 
 - [ ] `Q-04` Root-cause closure + regression guardrails
   - Default execution policy for this task: prove fixes on lean debug profile first (`date_start=2010-01-01`, quantiles `0.05/0.50/0.95`), then run full profile once as final confirmation.
@@ -3497,3 +3501,25 @@ Handoff rule:
   - `Q-03A` synthesis horizon-contract closure remains open and is now the primary pending item in `Q-03`.
 - Next action:
   - Execute targeted synthesis-horizon closure checks/fixes (`Q-03A`) on post-only replay lane, then run final `Q-03` acceptance pass.
+
+### Progress Update 2026-02-24 07:40 UTC
+
+- Phase: `Q-03` multivariate post-only figure integrity closure
+- Change type: checklist closure + risk-status update (post-only evidence; no refit)
+- Summary:
+  - Closed `Q-03` after successful `Q-03A` horizon-identity replay and user visual acceptance.
+  - Confirmed complete post closure in run `diag_q03a_horizon_identity_v2_20260223_171245` (`post=pass`, non-null `finished_at_utc`).
+  - Confirmed expected artifacts present, including `All3_exal_DISC.png`, `Agg_disc_*`, `forecast_identity_contract.csv`, and post artifact summary inventory.
+  - Updated live risk statuses:
+    - `R-009`: mitigated for current scope.
+    - `R-010`: mitigated for current scope.
+- Evidence:
+  - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/run_manifest.yaml`
+  - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/post/outputs/diag_q03a_horizon_identity_v2_20260223_171245/All3_exal_DISC.png`
+  - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/post/outputs/diag_q03a_horizon_identity_v2_20260223_171245/forecast_identity_contract.csv`
+  - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/post/outputs/diag_q03a_horizon_identity_v2_20260223_171245/post_artifacts_summary.json`
+- Validation notes:
+  - `Q-03` acceptance criteria are satisfied with post-only, fit-reuse evidence.
+  - `Q-04` remains open and is now the primary root-cause/guardrail workstream.
+- Next action:
+  - Start `Q-04` root-cause closure + regression guardrails on lean profile first, then promote to full profile after contracts pass.
