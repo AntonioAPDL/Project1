@@ -367,7 +367,7 @@ Status legend:
 | R-008 | Medium | Extreme quantile (`q=0.01`) multivar fit can enter non-finite objective regions without adaptive safeguards. | Keep adaptive gamma/sigma guardrails defaulted across exDQLM families; maintain extreme-quantile regression proofs and trace monitoring for drift. | TBD | Mitigated for current scope (P9 closure accepted under D-011; residual strict-tail convergence tightening tracked as follow-up optimization) |
 | R-009 | High | Post synthesis horizon may be truncated before full forecast lead window (expected up to GloFAS 30-day support) in multivar and NDLM figure outputs. | Execute isolated post diagnostics that compare each plotted time index against available `NWS/GloFAS` member horizons and model-state forecast arrays; enforce explicit horizon-contract checks before plotting. | TBD | Mitigated (Q-03A closure run passed with horizon identity contract artifact and full post output inventory) |
 | R-010 | High | Aggregated discrepancy figures (`Agg_disc_*`) currently render observed discrepancies only, without fitted aggregated discrepancy overlays. | Audit aggregated discrepancy plotting path and model-fit object wiring; add contract checks requiring both observed and fitted aggregated discrepancy series in figure payloads. | TBD | Mitigated (Q-03B closure run passed with fitted overlays, sign parity, and contract checks) |
-| R-011 | Medium | Univariate exDQLM and NDLM outputs may be numerically complete but visually/structurally inconsistent with expected model behavior in synthesis windows. | Run isolated single-family lanes (NDLM-only and univar median-only) with dedicated convergence + posterior trace diagnostics and post-only replay checks before changing model logic. | TBD | Open (diagnosis checklist queued) |
+| R-011 | Medium | Univariate exDQLM and NDLM outputs may be numerically complete but visually/structurally inconsistent with expected model behavior in synthesis windows. | Run isolated single-family lanes (NDLM-only and univar median-only) with dedicated convergence + posterior trace diagnostics and post-only replay checks before changing model logic. | TBD | Partially mitigated (Q-04 wiring defect fixed: NDLM fit-loop controls now config-driven with explicit convergence metadata; model-calibration follow-up remains) |
 
 ## 9) Validation and Done Criteria
 
@@ -1855,7 +1855,7 @@ Phase E: Fix-readiness gate (`Q-01C`)
     - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/post/outputs/diag_q03a_horizon_identity_v2_20260223_171245/forecast_identity_contract.csv`
     - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/post/outputs/diag_q03a_horizon_identity_v2_20260223_171245/post_artifacts_summary.json`
 
-- [ ] `Q-04` Root-cause closure + regression guardrails
+- [x] `Q-04` Root-cause closure + regression guardrails
   - Default execution policy for this task: prove fixes on lean debug profile first (`date_start=2010-01-01`, quantiles `0.05/0.50/0.95`), then run full profile once as final confirmation.
   - For every corrected issue, record:
     - exact root cause (object/dimension/time-index mismatch, wrong variable selection, or path-level contract mismatch),
@@ -1865,6 +1865,20 @@ Phase E: Fix-readiness gate (`Q-01C`)
     - horizon coverage contract,
     - aggregated discrepancy fit presence contract,
     - NDLM/univar median post-figure data-shape checks.
+  - Closure summary:
+    - Root cause confirmed as implementation/wiring defect: NDLM theory fit-loop used fixed `n_iter=16` (not unified config-driven), which under-iterated quality lane runs regardless of profile settings.
+    - NDLM fit-loop controls are now wired from unified config/environment (`min_total_iters`, `max_iter`, `elbo_tol`, `elbo_rel_tol`) and emitted in summary logs (`converged`, `iterations_completed`, `convergence_reason`, `crit_elbo`, `crit_elbo_rel`).
+    - Added deterministic regression guardrails for NDLM fit-loop controls and convergence-gate semantics.
+    - NDLM diagnostics warning semantics updated from invalid `delta >= 0` assumption to sign-balance warning (informational, non-fatal).
+  - Evidence:
+    - `repro/docs/q04_ndlm_20260224T075302Z/baseline_note.md`
+    - `repro/docs/q04_ndlm_20260224T075302Z/root_cause_matrix.md`
+    - `repro/docs/q04_ndlm_20260224T075302Z/ndlm_fitloop_comparison.csv`
+    - `repro/docs/q04_ndlm_20260224T075302Z/verification_matrix.md`
+    - `repro/runs/diag_q04_ndlm_only_fitloop_20260224/run_manifest.yaml`
+    - `repro/runs/diag_q04_ndlm_only_fitloop_20260224/fit/ndlm_main/logs/ndlm_theory_summary.log`
+    - `repro/runs/diag_q04_ndlm_only_fitloop_20260224/fit/diagnostics/ndlm_main/ndlm_main_diagnostics.json`
+    - `repro/runs/diag_q04_ndlm_only_fitloop_20260224/diagnostics/ndlm/ndlm_plot_contract_check.csv`
 
 - [ ] `Q-05` Recompose final quality pack
   - Promote-from-lean rule: run full data + all quantiles only after `Q-03` and `Q-04` are closed on lean profile.
@@ -3523,3 +3537,40 @@ Handoff rule:
   - `Q-04` remains open and is now the primary root-cause/guardrail workstream.
 - Next action:
   - Start `Q-04` root-cause closure + regression guardrails on lean profile first, then promote to full profile after contracts pass.
+
+### Progress Update 2026-02-24 07:53 UTC
+
+- Phase: `Q-04` NDLM root-cause closure + regression guardrails
+- Change type: implementation fix + guardrail tests + lean-lane verification
+- Summary:
+  - Confirmed primary Q-04 root cause as NDLM fit-loop wiring defect: hard-coded fixed iteration count (`n_iter=16`) in theory-aligned NDLM path, independent of unified run profile controls.
+  - Implemented config-driven NDLM fit-loop controls (`min_total_iters`, `max_iter`, `elbo_tol`, `elbo_rel_tol`) and wired them through stage-fit env to NDLM theory constants.
+  - Added explicit NDLM convergence metadata to summary logs (`converged`, `iterations_completed`, `convergence_reason`, `crit_elbo`, `crit_elbo_rel`) for deterministic diagnosis.
+  - Updated NDLM diagnostics warning semantics from invalid nonnegativity assumption on `delta` to sign-balance warning.
+  - Added deterministic regression tests for NDLM fit-loop contract and convergence gate semantics.
+  - Executed lean NDLM-only verification lane with new controls and full stage closure.
+- Evidence:
+  - Code/test:
+    - `R/unified/families/ndlm_main/00_constants.R`
+    - `R/unified/families/ndlm_main/03_vb_updates.R`
+    - `R/unified/families/ndlm_main/zz_run.R`
+    - `R/unified/stages/stage_fit.R`
+    - `R/unified/diagnostics.R`
+    - `config/unified_run.template.yaml`
+    - `tests/testthat/test_ndlm_fitloop_contract.R`
+  - Q-04 artifacts:
+    - `repro/docs/q04_ndlm_20260224T075302Z/baseline_note.md`
+    - `repro/docs/q04_ndlm_20260224T075302Z/root_cause_matrix.md`
+    - `repro/docs/q04_ndlm_20260224T075302Z/ndlm_fitloop_comparison.csv`
+    - `repro/docs/q04_ndlm_20260224T075302Z/verification_matrix.md`
+  - Lean verification run:
+    - `repro/runs/diag_q04_ndlm_only_fitloop_20260224/run_manifest.yaml`
+    - `repro/runs/diag_q04_ndlm_only_fitloop_20260224/fit/ndlm_main/logs/ndlm_theory.log`
+    - `repro/runs/diag_q04_ndlm_only_fitloop_20260224/fit/ndlm_main/logs/ndlm_theory_summary.log`
+    - `repro/runs/diag_q04_ndlm_only_fitloop_20260224/fit/diagnostics/ndlm_main/ndlm_main_diagnostics.json`
+    - `repro/runs/diag_q04_ndlm_only_fitloop_20260224/diagnostics/ndlm/ndlm_plot_contract_check.csv`
+- Validation notes:
+  - `Q-04` workflow-quality acceptance is satisfied for root-cause closure and guardrails.
+  - Residual NDLM predictive-quality tuning remains a model-calibration follow-up (not a workflow wiring defect).
+- Next action:
+  - Proceed to `Q-05` final quality-pack recomposition.
