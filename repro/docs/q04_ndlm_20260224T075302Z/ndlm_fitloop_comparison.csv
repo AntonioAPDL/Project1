@@ -1,0 +1,4 @@
+run_id,fit_stage_status,finished_at_utc,iterations_completed,max_iter,converged,convergence_reason,crit_elbo,crit_elbo_rel,elbo_tol,elbo_rel_tol,sigma,w_hist,w_fore,T,K
+prod_canonical_full_e2e_parallel_onecore_refresh_20260221,pass,2026-02-22T01:26:59Z,,,,,,,,,0.73826732,0.00000357,0.00000356,16034,28
+diag_q01a_ndlm_only_sharedseed_fitpost_resume_sharedfix_20260220_215704,pass,2026-02-20T21:59:52Z,,,,,,,,,0.73826759,0.00000357,0.00000356,16034,10
+diag_q04_ndlm_only_fitloop_20260224,pass,2026-02-24T07:52:50Z,200,200,false,max_iter_reached,1.26547877096664,0.000313793448884993,1e-06,0.00025,0.87245800,0.00001205,0.00001205,4742,28

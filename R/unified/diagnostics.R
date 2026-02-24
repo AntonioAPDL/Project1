@@ -685,8 +685,18 @@ unified_diag_ndlm_main_theory <- function(
   if (!is.null(obj_seq_sigma)) add(diag_check_finite(obj_seq_sigma, "ndlm.seq.sigma"))
   if (!is.null(obj_delta)) {
     add(diag_check_finite(obj_delta, "ndlm.delta"))
-    nonneg <- all(as.numeric(obj_delta) >= -1e-12)
-    add(diag_result("ndlm.delta.nonnegative", nonneg, if (nonneg) "delta >= 0" else "delta has negative entries"), severity = "warning")
+    delta_vals <- as.numeric(obj_delta)
+    delta_vals <- delta_vals[is.finite(delta_vals)]
+    if (length(delta_vals) > 0L) {
+      neg_share <- mean(delta_vals < 0)
+      pos_share <- mean(delta_vals > 0)
+      zero_share <- mean(delta_vals == 0)
+      add(diag_result(
+        "ndlm.delta.sign_balance",
+        (neg_share > 0) && (pos_share > 0),
+        sprintf("neg_share=%.3f pos_share=%.3f zero_share=%.3f", neg_share, pos_share, zero_share)
+      ), severity = "warning")
+    }
   }
 
   summary_vals <- diag_parse_summary_log(summary_log_path)

@@ -766,6 +766,21 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       NDLM_PCA_CSV = shared_cov_paths$pca,
       NDLM_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
       NDLM_PREV_RDATA = output_path,
+      NDLM_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
+        cfg, c("fit", "ndlm_main", "gamma_sigma", "min_total_iters"), default = 50L
+      )),
+      NDLM_GAMSIG_MAX_ITER = as.character(unified_get(
+        cfg, c("fit", "ndlm_main", "gamma_sigma", "max_iter"), default = 800L
+      )),
+      NDLM_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
+        cfg, c("fit", "ndlm_main", "gamma_sigma", "convergence_tol"), default = 1e-6
+      )),
+      NDLM_GAMSIG_ELBO_TOL = as.character(unified_get(
+        cfg, c("fit", "ndlm_main", "gamma_sigma", "convergence", "elbo_tol"), default = 1e-6
+      )),
+      NDLM_GAMSIG_ELBO_REL_TOL = as.character(unified_get(
+        cfg, c("fit", "ndlm_main", "gamma_sigma", "convergence", "elbo_rel_tol"), default = 2.5e-4
+      )),
       NDLM_KALMAN_BACKEND = as.character(unified_get(
         cfg, c("models", "ndlm_main", "kalman_backend"), default = "cpp"
       )),

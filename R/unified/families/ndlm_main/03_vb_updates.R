@@ -78,6 +78,23 @@ ndlm_theory_alloc_segment_cov <- function(k_len, w_fore, inactive_row = integer(
   out
 }
 
+ndlm_theory_has_converged <- function(
+  iter,
+  min_total_iters,
+  crit_elbo,
+  crit_elbo_rel,
+  elbo_tol,
+  elbo_rel_tol
+) {
+  if (!is.finite(iter) || !is.finite(min_total_iters) || as.integer(iter) < as.integer(min_total_iters)) {
+    return(FALSE)
+  }
+  if (!is.finite(crit_elbo) || !is.finite(crit_elbo_rel)) {
+    return(FALSE)
+  }
+  (crit_elbo <= elbo_tol) && (crit_elbo_rel <= elbo_rel_tol)
+}
+
 ndlm_theory_run_vb <- function(inputs, constants) {
   fmt_iter_num <- function(x, digits = 8L) {
     if (!is.finite(x)) {
@@ -109,13 +126,32 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   w_hist <- 0.05
   w_fore <- 0.05
 
-  seq_sigma <- rep(NA_real_, constants$n_iter)
-  seq_elbo <- rep(NA_real_, constants$n_iter)
+  max_iter <- suppressWarnings(as.integer(constants$max_iter))
+  if (!is.finite(max_iter) || max_iter < 1L) {
+    max_iter <- 800L
+  }
+  min_total_iters <- suppressWarnings(as.integer(constants$min_total_iters))
+  if (!is.finite(min_total_iters) || min_total_iters < 1L) {
+    min_total_iters <- min(50L, max_iter)
+  }
+  min_total_iters <- min(min_total_iters, max_iter)
+  conv <- constants$convergence
+  elbo_tol <- suppressWarnings(as.numeric(conv$elbo_tol))
+  elbo_rel_tol <- suppressWarnings(as.numeric(conv$elbo_rel_tol))
+  if (!is.finite(elbo_tol) || elbo_tol <= 0) elbo_tol <- 1e-6
+  if (!is.finite(elbo_rel_tol) || elbo_rel_tol <= 0) elbo_rel_tol <- 2.5e-4
+
+  seq_sigma <- rep(NA_real_, max_iter)
+  seq_elbo <- rep(NA_real_, max_iter)
   prev_elbo <- NA_real_
   crit_elbo <- Inf
+  crit_elbo_rel <- Inf
   fit <- NULL
+  converged <- FALSE
+  convergence_reason <- "max_iter_reached"
+  iterations_completed <- 0L
 
-  for (iter in seq_len(constants$n_iter)) {
+  for (iter in seq_len(max_iter)) {
     q_diag <- c(rep(w_hist, 7L), rep(w_fore, 7L), rep(1e-4, d - 14L))
     R_vec <- rep(sigma, Tn)
 
@@ -152,10 +188,14 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     seq_elbo[iter] <- -0.5 * sum(log(2 * pi * sigma) + resid^2 / sigma)
     if (is.finite(prev_elbo) && is.finite(seq_elbo[iter])) {
       crit_elbo <- abs(seq_elbo[iter] - prev_elbo)
+      denom <- max(abs(prev_elbo), 1e-12)
+      crit_elbo_rel <- crit_elbo / denom
     } else {
       crit_elbo <- Inf
+      crit_elbo_rel <- Inf
     }
     prev_elbo <- seq_elbo[iter]
+    iterations_completed <- as.integer(iter)
 
     state_norm_sq <- suppressWarnings(as.numeric(sum(fit$smooth_mean^2, na.rm = TRUE)))
     if (!is.finite(state_norm_sq)) {
@@ -163,21 +203,40 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     }
     cat(
       sprintf(
-        "[gamsig_progress] family=ndlm_main p0=NA iter=%d elbo=%s crit_elbo=%s sigma_exp=%s gamma_exp=NA state_norm_sq=%s w_hist=%s w_fore=%s\n",
+        "[gamsig_progress] family=ndlm_main p0=NA iter=%d elbo=%s crit_elbo=%s crit_elbo_rel=%s sigma_exp=%s gamma_exp=NA state_norm_sq=%s w_hist=%s w_fore=%s\n",
         as.integer(iter),
         fmt_iter_num(seq_elbo[iter]),
         fmt_iter_num(crit_elbo),
+        fmt_iter_num(crit_elbo_rel),
         fmt_iter_num(sigma),
         fmt_iter_num(state_norm_sq),
         fmt_iter_num(w_hist),
         fmt_iter_num(w_fore)
       )
     )
+
+    if (ndlm_theory_has_converged(
+      iter = iter,
+      min_total_iters = min_total_iters,
+      crit_elbo = crit_elbo,
+      crit_elbo_rel = crit_elbo_rel,
+      elbo_tol = elbo_tol,
+      elbo_rel_tol = elbo_rel_tol
+    )) {
+      converged <- TRUE
+      convergence_reason <- "all_convergence_criteria_met"
+      break
+    }
   }
 
   if (is.null(fit)) {
     stop("ndlm theory VB failed to initialize", call. = FALSE)
   }
+  if (iterations_completed < 1L) {
+    iterations_completed <- max_iter
+  }
+  seq_sigma <- seq_sigma[seq_len(iterations_completed)]
+  seq_elbo <- seq_elbo[seq_len(iterations_completed)]
 
   exps <- rbind(fit$fitted_mean, fit$fitted_mean)
   rownames(exps) <- c("median", "mean")
@@ -300,6 +359,16 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     seq_sigma = seq_sigma,
     seq_elbo = seq_elbo,
     delta = c(diff(seq_elbo), 0),
+    iterations_completed = iterations_completed,
+    max_iter = max_iter,
+    converged = converged,
+    convergence_reason = convergence_reason,
+    convergence_metrics = c(
+      crit_elbo = suppressWarnings(as.numeric(crit_elbo)),
+      crit_elbo_rel = suppressWarnings(as.numeric(crit_elbo_rel)),
+      elbo_tol = elbo_tol,
+      elbo_rel_tol = elbo_rel_tol
+    ),
     sigma = sigma,
     w_hist = w_hist,
     w_fore = w_fore,

@@ -136,6 +136,14 @@ fit:
         log_failures: true
         mode: "adaptive_freeze"      # penalty | adaptive_freeze
         penalty: 1.0e12
+  ndlm_main:
+    gamma_sigma:
+      min_total_iters: 50
+      max_iter: 800
+      convergence_tol: 1.0e-6       # legacy alias for ELBO criterion; prefer convergence.elbo_tol
+      convergence:
+        elbo_tol: 1.0e-6
+        elbo_rel_tol: 2.5e-4
   contract_checks:
     enabled: false
     fail_fast: true
