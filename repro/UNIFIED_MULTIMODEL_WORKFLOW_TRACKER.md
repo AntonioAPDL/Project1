@@ -388,6 +388,7 @@ Scope note:
     - complete NDLM diagnostics bundle,
     - maintainer visual review of NDLM fit/synthesis figures.
 - [ ] `T-P10-09`: Update tracker/risk status and freeze new NDLM contract once accepted.
+  - Blocker rule: do not continue NDLM calibration tuning (Q-04 quality pass) until `T-P10-08` is accepted.
 
 ## 8) Risk Register (Live)
 
@@ -1959,50 +1960,85 @@ This policy is active for all remaining open workflow issues until final closure
 
 Use this checklist for Codex execution. Follow in order and do not skip gates.
 
-Phase N0: Spec freeze and evidence bundle
-1. Create `repro/docs/p10_ndlm_spec_<timestamp>/spec_baseline.md` with:
-   - current theory-aligned NDLM spec summary (`w_hist/w_fore` path),
-   - legacy NDLM discount-factor spec summary,
-   - multiv exDQLM discount-factor spec summary.
-2. Create `spec_equation_map.csv` (`symbol`, `legacy_ndlm`, `multiv`, `ndlm_theory_current`, `status`).
+`Execution profile (mandatory):`
+1. Use lean NDLM-only lanes by default (`date_start=2010-01-01`, one-core-per-model, run-scoped artifacts).
+2. Do not run all-family/full-quantile workflows for P10 debugging.
+3. Do not tune NDLM quality hyperparameters until model-spec parity is closed.
 
-Phase N1: Theory correction first
-1. Update NDLM theory docs under `/data/muscat_data/jaguir26/NDLM---Ensemble/docs/derivations/`:
-   - component discount-factor matrices for historical and forecast windows,
-   - transfer `lambda` role,
-   - forecast-window covariance handling (including Wishart-expected form where applicable).
-2. Write `theory_change_log.md` summarizing equation-level deltas.
-3. Gate: no code changes until N1 artifacts are complete.
+`Phase N0: Intake freeze (baseline contract)`
+1. Create `repro/docs/p10_ndlm_spec_<timestamp>/spec_baseline.md`:
+   - current theory-aligned NDLM (`w_hist/w_fore`) behavior,
+   - legacy NDLM behavior (`df_t`, `df_s1`, `df_s2`, `df_s67`, `df.discrep`, `lambda`),
+   - multiv exDQLM baseline behavior for discount-factor and covariance policy.
+2. Create `spec_equation_map.csv` with columns:
+   - `symbol`, `legacy_ndlm`, `multiv_exdqlm`, `ndlm_current`, `target_ndlm`, `status`.
+3. Gate N0:
+   - no ambiguity remains on what is currently wrong vs target contract.
 
-Phase N2: NDLM modular implementation realignment
-1. Add config keys for NDLM discount factors and `lambda`.
-2. Replace `w_hist/w_fore` evolution construction in NDLM theory modules with discount-factor matrix construction.
-3. Preserve ragged-horizon contracts and existing fail-fast checks.
-4. Ensure NDLM C++ backend input contract remains shape-safe and covariance-consistent.
+`Phase N1: Theory-first correction (no code edits before this gate)`
+1. Update NDLM derivations under `/data/muscat_data/jaguir26/NDLM---Ensemble/docs/derivations/`:
+   - component discount-factor matrix construction for history and forecast windows,
+   - transfer parameter `lambda` in transition/transfer blocks,
+   - forecast-window covariance policy (including Wishart-expected form if used).
+2. Write `theory_change_log.md` with equation-level deltas and implementation implications.
+3. Gate N1:
+   - derivation explicitly supports legacy/multiv parity contract.
 
-Phase N3: Regression and deterministic checks
-1. Add tests for:
-   - discount-factor matrix construction equivalence,
-   - `lambda` transition matrix wiring,
-   - ragged-horizon compatibility with new covariance path.
-2. Keep tests lean and deterministic.
+`Phase N2: Implementation design map`
+1. Write `impl_change_plan.md` mapping each corrected equation block to concrete files/functions in modular NDLM path.
+2. Include a line-by-line replacement plan for removal of `w_hist/w_fore` assumptions.
+3. Gate N2:
+   - every required code edit has a corresponding equation reference.
 
-Phase N4: Lean verification lane (NDLM-only)
+`Phase N3: NDLM code realignment`
+1. Add NDLM config surface for:
+   - `df_t`, `df_s1`, `df_s2`, `df_s67`, `df.discrep`, `lambda` (with bounds/validation).
+2. Replace NDLM evolution construction with discount-factor matrix construction (history + forecast windows).
+3. Align forecast-window covariance plumbing with documented policy and keep shape/rank fail-fast checks.
+4. Preserve ragged-horizon and active-set contracts already stabilized by prior fixes.
+5. Gate N3:
+   - no remaining NDLM code path depends on legacy `w_hist/w_fore` semantics.
+
+`Phase N4: Regression test guardrails`
+1. Add deterministic tests for:
+   - discount-factor matrix construction parity,
+   - `lambda` wiring into transition/transfer blocks,
+   - covariance object shape/rank/finite checks,
+   - ragged-horizon compatibility.
+2. Add malformed-input tests with explicit error keys/messages.
+3. Gate N4:
+   - test suite passes locally before any new run.
+
+`Phase N5: Lean NDLM verification lane`
 1. Run NDLM-only lean lane:
-   - `date_start=2010-01-01`, one-core-per-model, strict run-scoped mode.
-2. Required outputs:
-   - ELBO/sigma/state traces,
-   - dynamic-fit windows,
-   - NDLM contract tables.
-3. Gate:
-   - fit/post/validate/report pass,
-   - convergence metadata present,
-   - maintainer visual review completed.
+   - fit/post/validate/report enabled,
+   - no univar/multiv family execution.
+2. Required diagnostics bundle:
+   - `ndlm_elbo_trace.csv`,
+   - `ndlm_sigma_trace.csv`,
+   - `ndlm_state_norm_trace.csv`,
+   - `ndlm_dynamic_fit_windows.csv`,
+   - `ndlm_contract_checks.csv`.
+3. Gate N5:
+   - all stages pass with non-null `finished_at_utc`,
+   - diagnostics complete and contract checks pass.
 
-Phase N5: Tracker closure update
-1. Record evidence paths and outcomes.
-2. Move P10 tasks to complete only after N4 gate passes.
-3. Update risks `R-001` and `R-011` accordingly.
+`Phase N6: Maintainer review gate (human-in-the-loop)`
+1. Maintainer reviews generated NDLM figures and diagnostics.
+2. Any visual/behavior concerns feed back as new P10 sub-tasks (not ad-hoc patches).
+3. Gate N6:
+   - maintainer marks “spec-parity accepted for NDLM calibration phase”.
+
+`Phase N7: Tracker/risk closure`
+1. Record all evidence paths in progress log.
+2. Mark `T-P10-01..T-P10-09` complete only after N6 gate passes.
+3. Update risk register:
+   - `R-001` -> mitigated/closed only if parity is proven,
+   - `R-011` -> keep open only for post-parity calibration quality concerns.
+
+`Phase N8: Promotion rule`
+1. After P10 closure, resume NDLM quality calibration work under `Q-04`.
+2. Promote to all-family/full-profile runs only after lean NDLM lane remains stable.
 
 ### 12.2) Context-Switch Resume Reminder (Current State)
 
