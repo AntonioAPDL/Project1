@@ -1,7 +1,7 @@
 # Unified Multi-Model Workflow Tracker (Living)
 
 Date: 2026-02-10  
-Last verified: 2026-02-25 (NDLM-only calibration lane `diag_ndlm_only_calib_r01_20260225_003151` closed PASS end-to-end with dedicated NDLM trace and dynamic-fit diagnostics)  
+Last verified: 2026-02-25 (NDLM-only calibration lane closed PASS for wiring/execution, but NDLM model-spec mismatch was identified: theory-aligned path currently omits legacy/multiv discount-factor + lambda structure)  
 Repo root: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Status: Active planning + execution tracker  
 Primary audience: project maintainer + Codex
@@ -281,12 +281,13 @@ Status legend:
 | P1 | [x] | Shared input contract + adapters | P0 done | Single run-scoped input bundle consumable by all three families with forecats snapshot integration and per-family fast-fail gating |
 | P2 | [x] | Legacy orchestration bridge in unified runner | P0 done | Unified runner can launch current legacy univariate + NDLM as controlled sub-stages |
 | P3 | [~] | Univariate modularization (theory-aligned) | P2 done | New modular univariate stage passes structural compatibility checks |
-| P4 | [x] | NDLM modularization (theory-aligned VB) | P2 done | New modular NDLM stage with forecast-window stochastic `W` policy implemented per NDLM theory, plus ELBO/VB parity regression and contract evidence |
+| P4 | [x] | NDLM modularization (theory-aligned VB, wiring scope) | P2 done | New modular NDLM stage executes in unified workflow with run-scoped artifacts, diagnostics, and contract checks |
 | P5 | [x] | Post decoupling from root artifacts | P2 done | Post loads only manifest-declared run-scoped artifacts and strict figures-on smoke closes with non-null `finished_at_utc` |
 | P6 | [x] | Parallel orchestration hardening | P5 done | exDQLM multivar + univar parallel; NDLM isolated; no cross-stage clobbering |
 | P7 | [x] | Validation/report family-aware automation | P6 done | PASS criteria include per-family artifact checks + write-audit + manifest closure, with family-summary report regression coverage |
 | P8 | [x] | Cutover + deprecation plan | P7 done | Theory-aligned stages become default; legacy stages optional fallback |
 | P9 | [x] | Extreme-quantile stabilization (q=0.01 first) | P8C failure evidence captured | Isolated extreme-quantile proof runs (`q=0.01,0.50,0.99`) close for exDQLM multivar + univar under adaptive defaults, with run-scoped outputs and no hard runtime failures (operational closure accepted under D-011) |
+| P10 | [~] | NDLM model-spec realignment to legacy/multiv discount-factor contract | Q-03/Q-05 closed; NDLM calibration review confirms spec mismatch | Theory-aligned NDLM uses component discount factors + transfer `lambda` + forecast-window covariance policy consistent with legacy NDLM and multiv exDQLM contracts |
 
 ## 7) Detailed Task Backlog
 
@@ -316,7 +317,11 @@ Status legend:
 - [x] `T-P3-03`: Add structural compatibility tests against expected post interfaces.
 - [x] `T-P3-04`: Add theory-mode diagnostics (finite/shape/symmetry/PSD sampled checks) and equation-to-code audit notes for univariate modules.
 
-## 7.5 P4 Tasks (NDLM Modular, Theory-Aligned VB)
+## 7.5 P4 Tasks (NDLM Modular, Theory-Aligned VB, Wiring Scope)
+
+Scope note:
+1. P4 is considered closed for orchestration/wiring/contract plumbing.
+2. NDLM model-spec parity with legacy/multiv discount-factor structure is now tracked under P10.
 
 - [x] `T-P4-01`: Split `DISC_Optimal_Synth_Ranges_NDLM.r` into modular files.
 - [x] `T-P4-02`: Replace forecast-window discount-factor-only path with theory-aligned stochastic `W` treatment (VB only).
@@ -353,11 +358,42 @@ Status legend:
 - [x] `T-P9-06`: Promote adaptive `gamma/sigma` stabilization to default for exDQLM multivar + univar (`warmup_freeze_iters=20`, `guard_refreeze_iters=10`, `init.mode=robust`, `objective_guard.enabled=true`, `objective_guard.mode=adaptive_freeze`), with per-family override controls.
 - [x] `T-P9-07`: Validate fixes with isolated extreme-quantile proofs (`q=0.01,0.50,0.99`) for exDQLM multivar + univar, plus targeted regression tests and trace monitoring artifacts.
 
+## 7.9 P10 Tasks (NDLM Model-Spec Realignment: Discount Factors + Lambda + Forecast Covariance)
+
+- [ ] `T-P10-01`: Freeze NDLM spec baseline and evidence matrix.
+  - Record current theory-aligned NDLM equations/code path (`w_hist/w_fore`) and legacy NDLM/multiv discount-factor path (`df_t`, `df_s1`, `df_s2`, `df_s67`, `df.discrep`, `lambda`).
+  - Build side-by-side contract table (symbol, role, where used in history and forecast windows, covariance implication).
+- [ ] `T-P10-02`: Update NDLM theory derivation to explicit component discount-factor construction.
+  - Add equations for component-specific discount matrices in history and forecast windows.
+  - Explicitly document `lambda` transfer-function role and forecast-window transition behavior.
+  - Document forecast-window covariance policy and where Wishart-expected covariance is used.
+- [ ] `T-P10-03`: Add NDLM config surface for discount-factor controls.
+  - Expose `df_t`, `df_s1`, `df_s2`, `df_s67`, `df.discrep`, `lambda` (plus bounds/validation) in unified NDLM config.
+  - Keep deterministic defaults aligned with legacy initial values unless explicitly overridden.
+- [ ] `T-P10-04`: Replace NDLM theory-aligned `w_hist/w_fore` evolution construction with discount-factor matrix construction.
+  - Implement `make_df_mat` / `make_df_mat_k`-equivalent NDLM internals in modular code.
+  - Preserve ragged-horizon indexing and active-set contracts already stabilized in Q-01/Q-03.
+- [ ] `T-P10-05`: Align NDLM forecast-window covariance handling with multiv exDQLM policy.
+  - Ensure NDLM C++/R smoother path receives consistent forecast covariance objects.
+  - Keep fail-fast checks for shape/rank/slice mismatches and non-finite ELBO paths.
+- [ ] `T-P10-06`: Wire `lambda` into NDLM transfer-function/covariate transition path (as in legacy contract).
+  - Confirm all affected matrices in history and forecast windows use the same semantics as documented.
+- [ ] `T-P10-07`: Add regression tests for NDLM discount-factor/lambda contract.
+  - Unit tests: matrix-construction equivalence, bounds validation, and ragged-horizon compatibility.
+  - Integration tests: NDLM-only lean lane contract checks and diagnostics outputs.
+- [ ] `T-P10-08`: Execute verification ladder (NDLM-only lean lane first, then promotion gate).
+  - Lean lane (`2010+`, NDLM only, one-core-per-model): fit/post/validate/report must pass.
+  - Acceptance requires:
+    - explicit convergence metadata,
+    - complete NDLM diagnostics bundle,
+    - maintainer visual review of NDLM fit/synthesis figures.
+- [ ] `T-P10-09`: Update tracker/risk status and freeze new NDLM contract once accepted.
+
 ## 8) Risk Register (Live)
 
 | Risk ID | Severity | Description | Mitigation | Owner | Status |
 |---|---|---|---|---|---|
-| R-001 | Critical | NDLM forecast-window covariance mismatch vs theory can invalidate inference. | Prioritize P4 equation-to-code audit + tests before making NDLM default authoritative. | TBD | Mitigated (P4 closed with theory-aligned NDLM mode, stochastic `W` smoke closure, and NDLM VB regression test coverage) |
+| R-001 | Critical | NDLM model-spec mismatch: theory-aligned path currently omits legacy/multiv component discount factors (`df_t`, `df_s1`, `df_s2`, `df_s67`, `df.discrep`) and transfer `lambda`, risking invalid NDLM calibration behavior. | Execute P10 end-to-end (theory update + implementation realignment + regression ladder) before accepting NDLM calibration conclusions. | TBD | Open (reopened 2026-02-25) |
 | R-002 | High | Post currently consumes root pre-generated NDLM/univariate artifacts. | Execute P5 decoupling before declaring full autonomy. | TBD | Mitigated (strict run-scoped smoke passed; non-smoke validator now enforces disabled legacy root fallback) |
 | R-003 | High | Legacy scripts contain duplicated core functions and fragile patterns. | Modularize with strict tests and narrow wrappers. | TBD | Open |
 | R-004 | Medium | Parallel orchestration may induce file collisions without strict run-scope contracts. | Enforce per-family/per-quantile isolated output roots + write-audit. | TBD | Mitigating (P2B fit-stage write-audit pass with empty outside-run-root diff) |
@@ -367,7 +403,7 @@ Status legend:
 | R-008 | Medium | Extreme quantile (`q=0.01`) multivar fit can enter non-finite objective regions without adaptive safeguards. | Keep adaptive gamma/sigma guardrails defaulted across exDQLM families; maintain extreme-quantile regression proofs and trace monitoring for drift. | TBD | Mitigated for current scope (P9 closure accepted under D-011; residual strict-tail convergence tightening tracked as follow-up optimization) |
 | R-009 | High | Post synthesis horizon may be truncated before full forecast lead window (expected up to GloFAS 30-day support) in multivar and NDLM figure outputs. | Execute isolated post diagnostics that compare each plotted time index against available `NWS/GloFAS` member horizons and model-state forecast arrays; enforce explicit horizon-contract checks before plotting. | TBD | Mitigated (Q-03A closure run passed with horizon identity contract artifact and full post output inventory) |
 | R-010 | High | Aggregated discrepancy figures (`Agg_disc_*`) currently render observed discrepancies only, without fitted aggregated discrepancy overlays. | Audit aggregated discrepancy plotting path and model-fit object wiring; add contract checks requiring both observed and fitted aggregated discrepancy series in figure payloads. | TBD | Mitigated (Q-03B closure run passed with fitted overlays, sign parity, and contract checks) |
-| R-011 | Medium | Univariate exDQLM and NDLM outputs may be numerically complete but visually/structurally inconsistent with expected model behavior in synthesis windows. | Run isolated single-family lanes (NDLM-only and univar median-only) with dedicated convergence + posterior trace diagnostics and post-only replay checks before changing model logic. | TBD | Partially mitigated (Q-04 wiring defect fixed: NDLM fit-loop controls now config-driven with explicit convergence metadata; model-calibration follow-up remains) |
+| R-011 | High | NDLM outputs can appear overfit/unstable because current theory-aligned NDLM uses a different state-evolution specification than legacy NDLM and multiv exDQLM. | Re-scope NDLM quality work under P10 with strict spec-parity checkpoints before further calibration tuning. | TBD | Open (root cause narrowed; fix not yet implemented) |
 
 ## 9) Validation and Done Criteria
 
@@ -1855,7 +1891,7 @@ Phase E: Fix-readiness gate (`Q-01C`)
     - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/post/outputs/diag_q03a_horizon_identity_v2_20260223_171245/forecast_identity_contract.csv`
     - `repro/runs/diag_q03a_horizon_identity_v2_20260223_171245/post/outputs/diag_q03a_horizon_identity_v2_20260223_171245/post_artifacts_summary.json`
 
-- [x] `Q-04` Root-cause closure + regression guardrails
+- [~] `Q-04` Root-cause closure + regression guardrails
   - Default execution policy for this task: prove fixes on lean debug profile first (`date_start=2010-01-01`, quantiles `0.05/0.50/0.95`), then run full profile once as final confirmation.
   - For every corrected issue, record:
     - exact root cause (object/dimension/time-index mismatch, wrong variable selection, or path-level contract mismatch),
@@ -1865,11 +1901,10 @@ Phase E: Fix-readiness gate (`Q-01C`)
     - horizon coverage contract,
     - aggregated discrepancy fit presence contract,
     - NDLM/univar median post-figure data-shape checks.
-  - Closure summary:
-    - Root cause confirmed as implementation/wiring defect: NDLM theory fit-loop used fixed `n_iter=16` (not unified config-driven), which under-iterated quality lane runs regardless of profile settings.
-    - NDLM fit-loop controls are now wired from unified config/environment (`min_total_iters`, `max_iter`, `elbo_tol`, `elbo_rel_tol`) and emitted in summary logs (`converged`, `iterations_completed`, `convergence_reason`, `crit_elbo`, `crit_elbo_rel`).
-    - Added deterministic regression guardrails for NDLM fit-loop controls and convergence-gate semantics.
-    - NDLM diagnostics warning semantics updated from invalid `delta >= 0` assumption to sign-balance warning (informational, non-fatal).
+  - Updated scope status:
+    - Q-04 wiring sub-scope is complete (fit-loop control wiring + diagnostics guardrails).
+    - Q-04 model-spec sub-scope is reopened under P10 after confirming NDLM theory-aligned path does not currently use legacy/multiv discount-factor + lambda structure.
+    - Until P10 closes, NDLM calibration conclusions remain provisional.
   - Evidence:
     - `repro/docs/q04_ndlm_20260224T075302Z/baseline_note.md`
     - `repro/docs/q04_ndlm_20260224T075302Z/root_cause_matrix.md`
@@ -1919,6 +1954,55 @@ This policy is active for all remaining open workflow issues until final closure
 4. Resource hygiene:
    - stop deprecated/background diagnostic runs before launching new lanes.
    - keep only the currently active diagnostic lane unless explicitly running a planned parallel check.
+
+### 12.4) NDLM Model-Spec Realignment Checklist (P10, Active)
+
+Use this checklist for Codex execution. Follow in order and do not skip gates.
+
+Phase N0: Spec freeze and evidence bundle
+1. Create `repro/docs/p10_ndlm_spec_<timestamp>/spec_baseline.md` with:
+   - current theory-aligned NDLM spec summary (`w_hist/w_fore` path),
+   - legacy NDLM discount-factor spec summary,
+   - multiv exDQLM discount-factor spec summary.
+2. Create `spec_equation_map.csv` (`symbol`, `legacy_ndlm`, `multiv`, `ndlm_theory_current`, `status`).
+
+Phase N1: Theory correction first
+1. Update NDLM theory docs under `/data/muscat_data/jaguir26/NDLM---Ensemble/docs/derivations/`:
+   - component discount-factor matrices for historical and forecast windows,
+   - transfer `lambda` role,
+   - forecast-window covariance handling (including Wishart-expected form where applicable).
+2. Write `theory_change_log.md` summarizing equation-level deltas.
+3. Gate: no code changes until N1 artifacts are complete.
+
+Phase N2: NDLM modular implementation realignment
+1. Add config keys for NDLM discount factors and `lambda`.
+2. Replace `w_hist/w_fore` evolution construction in NDLM theory modules with discount-factor matrix construction.
+3. Preserve ragged-horizon contracts and existing fail-fast checks.
+4. Ensure NDLM C++ backend input contract remains shape-safe and covariance-consistent.
+
+Phase N3: Regression and deterministic checks
+1. Add tests for:
+   - discount-factor matrix construction equivalence,
+   - `lambda` transition matrix wiring,
+   - ragged-horizon compatibility with new covariance path.
+2. Keep tests lean and deterministic.
+
+Phase N4: Lean verification lane (NDLM-only)
+1. Run NDLM-only lean lane:
+   - `date_start=2010-01-01`, one-core-per-model, strict run-scoped mode.
+2. Required outputs:
+   - ELBO/sigma/state traces,
+   - dynamic-fit windows,
+   - NDLM contract tables.
+3. Gate:
+   - fit/post/validate/report pass,
+   - convergence metadata present,
+   - maintainer visual review completed.
+
+Phase N5: Tracker closure update
+1. Record evidence paths and outcomes.
+2. Move P10 tasks to complete only after N4 gate passes.
+3. Update risks `R-001` and `R-011` accordingly.
 
 ### 12.2) Context-Switch Resume Reminder (Current State)
 
@@ -3738,3 +3822,25 @@ Handoff rule:
   - Residual work is calibration-quality interpretation/tuning, not workflow orchestration failure.
 - Next action:
   - Use the produced NDLM figures/tables for maintainer visual review, then decide targeted NDLM calibration adjustments for the next lean lane.
+
+### Progress Update 2026-02-25 01:05 UTC
+
+- Phase: NDLM model-spec root-cause clarification (P10 activation)
+- Change type: scope correction + checklist re-baseline
+- Summary:
+  - Confirmed that current theory-aligned NDLM path does not use the legacy/multiv discount-factor + transfer-`lambda` structure.
+  - Confirmed multiv exDQLM unified path still runs legacy DISC-W path where `df_t`, `df_s1`, `df_s2`, `df_s67`, `df.discrep`, and `lambda` are active.
+  - Re-scoped NDLM from "calibration-only follow-up" to "model-spec realignment" and opened P10 with an ordered execution checklist.
+- Evidence:
+  - Theory-aligned NDLM (`w_hist/w_fore`):
+    - `R/unified/families/ndlm_main/03_vb_updates.R`
+  - Legacy NDLM discount-factor path:
+    - `DISC_Optimal_Synth_Ranges_NDLM.r`
+  - Multiv exDQLM discount-factor path:
+    - `DISC_Optimal_Synth_Ranges_W.r`
+  - Unified fit dispatch references:
+    - `R/unified/stages/stage_fit.R`
+- Validation notes:
+  - NDLM wiring is healthy, but current NDLM model form is not yet aligned with the intended discount-factor contract.
+- Next action:
+  - Execute P10/N0-N5 checklist in order, starting from theory document correction before implementation edits.
