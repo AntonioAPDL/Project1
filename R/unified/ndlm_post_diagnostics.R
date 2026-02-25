@@ -145,6 +145,89 @@ unified_ndlm_diag_named_int <- function(x, name, fallback = NA_integer_) {
   unified_ndlm_diag_int(x[[1L]])
 }
 
+unified_ndlm_diag_write_trace_plot <- function(df, x_col, y_col, path, main, ylab) {
+  if (!is.data.frame(df) || !(x_col %in% names(df)) || !(y_col %in% names(df))) return(FALSE)
+  x <- suppressWarnings(as.numeric(df[[x_col]]))
+  y <- suppressWarnings(as.numeric(df[[y_col]]))
+  ok <- is.finite(x) & is.finite(y)
+  if (sum(ok) < 2L) return(FALSE)
+
+  grDevices::png(filename = path, width = 1400, height = 800, res = 140)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  graphics::par(mar = c(4.2, 4.6, 3.4, 1.2))
+  graphics::plot(
+    x[ok], y[ok],
+    type = "l",
+    col = "#004C6D",
+    lwd = 2.4,
+    xlab = "Iteration",
+    ylab = ylab,
+    main = main
+  )
+  graphics::grid(col = "#D6DCE5", lty = "dotted")
+  TRUE
+}
+
+unified_ndlm_diag_write_fit_plot <- function(
+  dates,
+  obs,
+  fit,
+  path,
+  title,
+  x_as_date = TRUE
+) {
+  obs <- suppressWarnings(as.numeric(obs))
+  fit <- suppressWarnings(as.numeric(fit))
+  n <- min(length(obs), length(fit), length(dates))
+  if (n < 2L) return(FALSE)
+  obs <- obs[seq_len(n)]
+  fit <- fit[seq_len(n)]
+  d <- dates[seq_len(n)]
+  ok <- is.finite(obs) & is.finite(fit)
+  if (x_as_date) {
+    ok <- ok & !is.na(d)
+    x <- d
+    xlab <- "Date"
+  } else {
+    x <- seq_len(n)
+    xlab <- "Index"
+  }
+  if (sum(ok) < 2L) return(FALSE)
+
+  y_rng <- range(c(obs[ok], fit[ok]), finite = TRUE)
+  if (!all(is.finite(y_rng))) return(FALSE)
+  pad <- 0.05 * max(diff(y_rng), 1e-8)
+  y_lim <- c(y_rng[1] - pad, y_rng[2] + pad)
+
+  grDevices::png(filename = path, width = 1600, height = 900, res = 140)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  graphics::par(mar = c(4.2, 4.8, 3.4, 1.4))
+  graphics::plot(
+    x[ok], obs[ok],
+    type = "o",
+    pch = 16,
+    cex = 0.35,
+    lwd = 1.2,
+    col = "#171A1F",
+    xlab = xlab,
+    ylab = "log1p(cms)",
+    ylim = y_lim,
+    main = title
+  )
+  graphics::lines(x[ok], fit[ok], col = "#D1495B", lwd = 2.2)
+  graphics::grid(col = "#D6DCE5", lty = "dotted")
+  graphics::legend(
+    "topright",
+    legend = c("Observed (USGS)", "NDLM dynamic location fit"),
+    col = c("#171A1F", "#D1495B"),
+    lwd = c(1.2, 2.2),
+    pch = c(16, NA),
+    pt.cex = c(0.6, NA),
+    bty = "n"
+  )
+  TRUE
+}
+
 unified_ndlm_diag_build_horizon_contract <- function(ndlm_obj, state_obj, retros_n, nws_n, glofas_n) {
   state_k <- NA_integer_
   state_k_overlap <- NA_integer_
@@ -495,6 +578,14 @@ unified_generate_ndlm_post_diagnostics <- function(
     stringsAsFactors = FALSE
   )
 
+  fit_series <- data.frame(
+    date = if (length(retros_dates) >= n_overlap) retros_dates[seq_len(n_overlap)] else as.Date(rep(NA_character_, n_overlap)),
+    observed = obs_use,
+    ndlm_fit = fit_use,
+    residual = if (n_overlap > 0L) fit_use - obs_use else numeric(0),
+    stringsAsFactors = FALSE
+  )
+
   horizon_note <- c(
     "# NDLM Horizon Contract",
     "",
@@ -516,8 +607,16 @@ unified_generate_ndlm_post_diagnostics <- function(
     ndlm_plot_contract_check = file.path(output_dir, "ndlm_plot_contract_check.csv"),
     ndlm_object_shapes = file.path(output_dir, "ndlm_object_shapes.csv"),
     ndlm_fit_vs_observed_coverage = file.path(output_dir, "ndlm_fit_vs_observed_coverage.csv"),
+    ndlm_fit_series = file.path(output_dir, "ndlm_fit_series.csv"),
     ragged_coverage_summary = file.path(output_dir, "ragged_coverage_summary.csv"),
-    ndlm_horizon_contract = file.path(output_dir, "ndlm_horizon_contract.md")
+    ndlm_horizon_contract = file.path(output_dir, "ndlm_horizon_contract.md"),
+    ndlm_elbo_trace = file.path(output_dir, "ndlm_elbo_trace.png"),
+    ndlm_sigma_trace = file.path(output_dir, "ndlm_sigma_trace.png"),
+    ndlm_state_norm_trace = file.path(output_dir, "ndlm_state_norm_trace.png"),
+    ndlm_dynamic_fit_full = file.path(output_dir, "ndlm_dynamic_fit_full.png"),
+    ndlm_dynamic_fit_2012_2016 = file.path(output_dir, "ndlm_dynamic_fit_2012_2016.png"),
+    ndlm_dynamic_fit_2017_2019 = file.path(output_dir, "ndlm_dynamic_fit_2017_2019.png"),
+    ndlm_dynamic_fit_2018_2020 = file.path(output_dir, "ndlm_dynamic_fit_2018_2020.png")
   )
 
   utils::write.csv(iter_trace, paths$ndlm_iter_trace, row.names = FALSE)
@@ -528,8 +627,69 @@ unified_generate_ndlm_post_diagnostics <- function(
   utils::write.csv(horizon_contract, paths$ndlm_plot_contract_check, row.names = FALSE)
   utils::write.csv(shape_rows, paths$ndlm_object_shapes, row.names = FALSE)
   utils::write.csv(fit_summary, paths$ndlm_fit_vs_observed_coverage, row.names = FALSE)
+  utils::write.csv(fit_series, paths$ndlm_fit_series, row.names = FALSE)
   utils::write.csv(ragged_coverage_summary, paths$ragged_coverage_summary, row.names = FALSE)
   writeLines(horizon_note, con = paths$ndlm_horizon_contract)
+
+  invisible(unified_ndlm_diag_write_trace_plot(
+    df = iter_trace,
+    x_col = "iter",
+    y_col = "elbo",
+    path = paths$ndlm_elbo_trace,
+    main = "NDLM ELBO Trace",
+    ylab = "ELBO"
+  ))
+  invisible(unified_ndlm_diag_write_trace_plot(
+    df = iter_trace,
+    x_col = "iter",
+    y_col = "sigma_exp",
+    path = paths$ndlm_sigma_trace,
+    main = "NDLM Sigma Trace",
+    ylab = "Sigma"
+  ))
+  invisible(unified_ndlm_diag_write_trace_plot(
+    df = iter_trace,
+    x_col = "iter",
+    y_col = "state_norm_sq",
+    path = paths$ndlm_state_norm_trace,
+    main = "NDLM State-Norm Trace",
+    ylab = "State Norm Sq"
+  ))
+
+  if (n_overlap > 1L) {
+    # Full retrospective fit view.
+    invisible(unified_ndlm_diag_write_fit_plot(
+      dates = fit_series$date,
+      obs = fit_series$observed,
+      fit = fit_series$ndlm_fit,
+      path = paths$ndlm_dynamic_fit_full,
+      title = "NDLM Dynamic Location Fit vs Observed (Full Retrospective)",
+      x_as_date = any(!is.na(fit_series$date))
+    ))
+
+    # Standard post windows for quick parity checks.
+    win_specs <- list(
+      list(path = paths$ndlm_dynamic_fit_2012_2016, start = as.Date("2012-01-01"), end = as.Date("2016-12-31"), label = "2012-2016"),
+      list(path = paths$ndlm_dynamic_fit_2017_2019, start = as.Date("2017-01-01"), end = as.Date("2019-12-31"), label = "2017-2019"),
+      list(path = paths$ndlm_dynamic_fit_2018_2020, start = as.Date("2018-01-01"), end = as.Date("2020-12-31"), label = "2018-2020")
+    )
+    for (spec in win_specs) {
+      idx <- if (any(!is.na(fit_series$date))) {
+        which(!is.na(fit_series$date) & fit_series$date >= spec$start & fit_series$date <= spec$end)
+      } else {
+        integer(0)
+      }
+      if (length(idx) < 2L) next
+      invisible(unified_ndlm_diag_write_fit_plot(
+        dates = fit_series$date[idx],
+        obs = fit_series$observed[idx],
+        fit = fit_series$ndlm_fit[idx],
+        path = spec$path,
+        title = sprintf("NDLM Dynamic Location Fit vs Observed (%s)", spec$label),
+        x_as_date = TRUE
+      ))
+    }
+  }
 
   if (isTRUE(strict_contract)) {
     mismatches <- horizon_contract$figure_or_series[horizon_contract$status != "pass"]

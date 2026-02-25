@@ -361,7 +361,9 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     ndlm_diag_paths <- ndlm_diag_paths[nzchar(ndlm_diag_paths)]
     for (diag_path in ndlm_diag_paths) {
       if (!file.exists(diag_path)) next
-      if (grepl("\\.csv$", diag_path, ignore.case = TRUE)) {
+      if (grepl("\\.png$", diag_path, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(manifest, diag_path, storage_scale = "image_png", analysis_scale = "n/a", role = "diagnostics")
+      } else if (grepl("\\.csv$", diag_path, ignore.case = TRUE)) {
         manifest <- unified_manifest_add_artifact(manifest, diag_path, storage_scale = "table_csv", analysis_scale = "n/a", role = "diagnostics")
       } else if (grepl("\\.(md|txt)$", diag_path, ignore.case = TRUE)) {
         manifest <- unified_manifest_add_artifact(manifest, diag_path, storage_scale = "text_plain", analysis_scale = "n/a", role = "diagnostics")
