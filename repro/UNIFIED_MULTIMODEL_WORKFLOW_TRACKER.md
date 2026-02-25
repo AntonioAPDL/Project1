@@ -1,7 +1,7 @@
 # Unified Multi-Model Workflow Tracker (Living)
 
 Date: 2026-02-10  
-Last verified: 2026-02-24 (Q-05 post-only recomposition lane closed PASS after synthesis sample-alignment fixes; stages `post/validate/report` all PASS in `diag_q05_allfam_postonly_recompose_20260224_080036`)  
+Last verified: 2026-02-25 (NDLM-only calibration lane `diag_ndlm_only_calib_r01_20260225_003151` closed PASS end-to-end with dedicated NDLM trace and dynamic-fit diagnostics)  
 Repo root: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Status: Active planning + execution tracker  
 Primary audience: project maintainer + Codex
@@ -3620,3 +3620,121 @@ Handoff rule:
   - `R-011` remains partially mitigated (model-calibration quality follow-up only), with no open workflow wiring blockers.
 - Next action:
   - Transition from workflow-closure execution to model-calibration follow-up lanes (outside Q-05 checklist scope).
+
+### Progress Update 2026-02-24 18:38 UTC
+
+- Phase: post-Q05 health check + lean follow-up activation
+- Change type: operational health snapshot + next-phase execution plan
+- Summary:
+  - Verified no active unified/model jobs at health-check time.
+  - Re-verified Q-05 closure run remains pass-complete:
+    - `post=pass`, `validate=pass`, `report=pass`
+    - `finished_at_utc` present
+    - post artifact inventory present.
+  - Confirmed `Q-00..Q-05` checklist is complete and transitioned to lean model-calibration follow-up plan.
+  - Added explicit lean execution artifact for reproducibility and handoff.
+- Evidence:
+  - `repro/docs/post_q05_next_phase_20260224T1838Z/healthcheck_and_plan.md`
+  - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/run_manifest.yaml`
+  - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/post/outputs/diag_q05_allfam_postonly_recompose_20260224_080036/post_artifacts_summary.json`
+  - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/validate/compare_report.json`
+  - `repro/runs/diag_q05_allfam_postonly_recompose_20260224_080036/report/summary.md`
+- Next action:
+  - Launch and monitor lean all-family calibration lane (2010+, q05/q50/q95, one-core-per-model, no downloads) before any full-profile promotion.
+
+## 16) Post-Q05 Lean Calibration Checklist (Active)
+
+- [x] `C-01` Health-check closure state + evidence snapshot.
+- [x] `C-02` Define lean calibration lane config:
+  - shared inputs reused from canonical refresh run.
+  - quantiles restricted to `0.05`, `0.50`, `0.95`.
+  - `one_core_per_model` parallel policy.
+  - strict post mode (`allow_legacy_root_fallback=false`).
+- [ ] `C-03` Execute lean all-family lane and collect fit/post/validate/report evidence bundle.
+- [ ] `C-04` Decide promotion gate (full-profile follow-up only if lean evidence and maintainer visual checks are satisfactory).
+
+### Progress Update 2026-02-24 18:42 UTC
+
+- Phase: post-Q05 lean calibration execution (`C-03`)
+- Change type: blocker resolution + corrected run launch
+- Summary:
+  - Identified concrete C-03 blocker in prior lean lane `diag_postq05_allfam_lean_calib_20260224_1838`:
+    - `fit` failed at stage initialization because run-scoped shared inputs were absent (`stages.data_prep_shared=false`), while univariate/NDLM bridges require run-scoped shared bundles.
+  - Resolved by launching corrected lean lane with run-scoped shared input construction enabled:
+    - run id: `diag_postq05_allfam_lean_calib_r01_20260224_184202`
+    - config: `config/unified_runs/diag_postq05_allfam_lean_calib_r01_20260224_184202.yaml`
+    - key fix: `stages.data_prep_shared=true` (no downloads; copies from configured canonical shared-input paths).
+  - New lane is active and executing in background (`data_prep_shared -> fit -> post -> validate -> report`).
+- Evidence:
+  - Failed attempt manifest:
+    - `repro/runs/diag_postq05_allfam_lean_calib_20260224_1838/run_manifest.yaml`
+  - Corrected config + launch log:
+    - `config/unified_runs/diag_postq05_allfam_lean_calib_r01_20260224_184202.yaml`
+    - `/tmp/diag_postq05_allfam_lean_calib_r01_20260224_184202_unified.log`
+  - Active run manifest:
+    - `repro/runs/diag_postq05_allfam_lean_calib_r01_20260224_184202/run_manifest.yaml`
+- Next action:
+  - Complete health checks until closure, then finalize `C-03` evidence bundle and execute `C-04` promotion-gate decision.
+
+### Progress Update 2026-02-24 18:46 UTC
+
+- Phase: post-Q05 lean calibration execution (`C-03`)
+- Change type: launcher-hardening correction + persistent run session
+- Summary:
+  - `r01`/`r02` relaunches showed a launch-method issue: detached background invocation from a short-lived shell can terminate the run process without a manifest fail marker (stage left `pending`).
+  - Corrected by launching the lean lane in a persistent PTY session to keep the process lifecycle attached to an active execution session.
+  - Active canonical lean lane:
+    - run id: `diag_postq05_allfam_lean_calib_r03_20260224_184202`
+    - config: `config/unified_runs/diag_postq05_allfam_lean_calib_r03_20260224_184202.yaml`
+    - current state: `data_prep_shared=pass`, `fit=pending` (scheduler initialized `mode=one_core_per_model`, `workers=7`, `jobs=7`).
+- Evidence:
+  - Active run manifest:
+    - `repro/runs/diag_postq05_allfam_lean_calib_r03_20260224_184202/run_manifest.yaml`
+  - Session-backed launcher output:
+    - `fit scheduler mode=one_core_per_model workers=7 jobs=7`
+  - Fit-progress health snapshot:
+    - `repro/docs/post_q05_next_phase_20260224T1846Z/healthcheck_diag_postq05_allfam_lean_calib_r03_20260224_184202.md`
+- Next action:
+  - Continue health checks to stage closure and collect the full `fit/post/validate/report` evidence bundle for `C-03`, then execute `C-04` promotion-gate decision.
+
+### Progress Update 2026-02-25 00:38 UTC
+
+- Phase: NDLM-only calibration follow-up lane (post-Q05 model-quality diagnostics)
+- Change type: isolated NDLM execution + diagnostics artifact expansion
+- Summary:
+  - Executed NDLM-only calibration lane with shared-input reuse and strict run-scoped artifacts:
+    - run id: `diag_ndlm_only_calib_r01_20260225_003151`
+    - models enabled: NDLM only (`run_ndlm_main=true`, `run_exdqlm_univar=false`, `run_exdqlm_multivar=false`)
+    - stages: `data_prep_shared`, `fit`, `post`, `validate`, `report` (`forecats=skip`).
+  - Stage closure is complete with non-null finish timestamp:
+    - `data_prep_shared=pass`, `fit=pass`, `post=pass`, `validate=pass`, `report=pass`.
+  - Added NDLM-focused post diagnostics for calibration review:
+    - ELBO trace, sigma trace, state-norm trace,
+    - dynamic-fit figures (full and windowed views),
+    - fit series export (`date`, `observed`, `ndlm_fit`, `residual`).
+  - Fit completed to configured max iterations (`800`) with explicit convergence metadata (`convergence_reason=max_iter_reached`), preserving deterministic diagnostics for calibration tuning.
+- Evidence:
+  - Config:
+    - `config/unified_runs/diag_ndlm_only_calib_r01_20260225_003151.yaml`
+  - Run closure:
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/run_manifest.yaml`
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/report/summary.md`
+  - NDLM fit logs:
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/fit/ndlm_main/logs/ndlm_theory.log`
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/fit/ndlm_main/logs/ndlm_theory_summary.log`
+  - NDLM diagnostics bundle:
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/diagnostics/ndlm/ndlm_elbo_trace.png`
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/diagnostics/ndlm/ndlm_sigma_trace.png`
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/diagnostics/ndlm/ndlm_state_norm_trace.png`
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/diagnostics/ndlm/ndlm_dynamic_fit_full.png`
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/diagnostics/ndlm/ndlm_dynamic_fit_2012_2016.png`
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/diagnostics/ndlm/ndlm_dynamic_fit_2017_2019.png`
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/diagnostics/ndlm/ndlm_dynamic_fit_2018_2020.png`
+    - `repro/runs/diag_ndlm_only_calib_r01_20260225_003151/diagnostics/ndlm/ndlm_fit_series.csv`
+  - Calibration note:
+    - `repro/docs/ndlm_calibration_20260225T0038Z/README.md`
+- Validation notes:
+  - NDLM-only lane execution/wiring is healthy under strict run-scoped mode.
+  - Residual work is calibration-quality interpretation/tuning, not workflow orchestration failure.
+- Next action:
+  - Use the produced NDLM figures/tables for maintainer visual review, then decide targeted NDLM calibration adjustments for the next lean lane.
