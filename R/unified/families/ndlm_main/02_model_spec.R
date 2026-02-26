@@ -47,7 +47,7 @@ ndlm_theory_kalman_load_cpp <- function() {
   invisible(TRUE)
 }
 
-ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0) {
+ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0, df_mat = NULL) {
   y <- as.numeric(y)
   H_mat <- as.matrix(H_mat)
   Tn <- length(y)
@@ -58,6 +58,18 @@ ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0) {
 
   R_vec <- pmax(as.numeric(R_vec), 1e-10)
   Q <- diag(pmax(as.numeric(q_diag), 1e-10), d)
+  use_discount <- !is.null(df_mat)
+  if (use_discount) {
+    df_mat <- as.matrix(df_mat)
+    if (!all(dim(df_mat) == c(d, d))) {
+      stop("df_mat must have shape d x d", call. = FALSE)
+    }
+    if (any(!is.finite(df_mat))) {
+      stop("df_mat must contain finite numeric values", call. = FALSE)
+    }
+    df_mat <- (df_mat + t(df_mat)) / 2
+    df_mat[df_mat < 0] <- 0
+  }
   m0 <- as.numeric(m0)
   C0 <- as.matrix(C0)
 
@@ -65,6 +77,10 @@ ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0) {
   m <- matrix(0, nrow = d, ncol = Tn)
   Rpred <- array(0, dim = c(d, d, Tn))
   C <- array(0, dim = c(d, d, Tn))
+  pred_mean <- rep(NA_real_, Tn)
+  pred_var <- rep(NA_real_, Tn)
+  filter_mean <- rep(NA_real_, Tn)
+  filter_var <- rep(NA_real_, Tn)
 
   m_prev <- m0
   C_prev <- C0
@@ -72,7 +88,14 @@ ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0) {
   for (t in seq_len(Tn)) {
     H_t <- matrix(H_mat[t, ], ncol = 1)
     a_t <- m_prev
-    R_t <- C_prev + Q
+    P_t <- C_prev
+    if (use_discount) {
+      W_t <- df_mat * P_t
+      R_t <- P_t + W_t + Q
+    } else {
+      R_t <- C_prev + Q
+    }
+    R_t <- (R_t + t(R_t)) / 2
     Qy <- as.numeric(crossprod(H_t, R_t %*% H_t)) + R_vec[t]
     Qy <- max(Qy, 1e-10)
     K <- as.vector((R_t %*% H_t) / Qy)
@@ -80,6 +103,10 @@ ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0) {
     m_t <- a_t + K * innov
     C_t <- R_t - (R_t %*% (H_t %*% t(H_t)) %*% R_t) / Qy
     C_t <- (C_t + t(C_t)) / 2
+    pred_mean[t] <- as.numeric(crossprod(H_t, a_t))
+    pred_var[t] <- max(as.numeric(crossprod(H_t, R_t %*% H_t)) + R_vec[t], 1e-10)
+    filter_mean[t] <- as.numeric(crossprod(H_t, m_t))
+    filter_var[t] <- max(as.numeric(crossprod(H_t, C_t %*% H_t)) + R_vec[t], 1e-10)
 
     a[, t] <- a_t
     m[, t] <- m_t
@@ -105,22 +132,28 @@ ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0) {
     }
   }
 
-  fitted_mean <- rowSums(H_mat * t(ms))
-  fitted_var <- vapply(
+  smooth_obs_mean <- rowSums(H_mat * t(ms))
+  smooth_obs_var <- vapply(
     seq_len(Tn),
-    function(t) as.numeric(crossprod(H_mat[t, ], Cs[, , t] %*% H_mat[t, ])),
+    function(t) as.numeric(crossprod(H_mat[t, ], Cs[, , t] %*% H_mat[t, ])) + R_vec[t],
     numeric(1)
   )
 
   list(
     smooth_mean = ms,
     smooth_cov = Cs,
-    fitted_mean = fitted_mean,
-    fitted_var = pmax(fitted_var, 1e-10)
+    predicted_mean = as.numeric(pred_mean),
+    predicted_var = pmax(as.numeric(pred_var), 1e-10),
+    filtered_mean = as.numeric(filter_mean),
+    filtered_var = pmax(as.numeric(filter_var), 1e-10),
+    smoothed_mean = as.numeric(smooth_obs_mean),
+    smoothed_var = pmax(as.numeric(smooth_obs_var), 1e-10),
+    fitted_mean = as.numeric(smooth_obs_mean),
+    fitted_var = pmax(as.numeric(smooth_obs_var), 1e-10)
   )
 }
 
-ndlm_theory_kalman_smoother <- function(y, H_mat, R_vec, q_diag, m0, C0, backend = "r") {
+ndlm_theory_kalman_smoother <- function(y, H_mat, R_vec, q_diag, m0, C0, df_mat = NULL, backend = "r") {
   backend <- ndlm_theory_kalman_backend_normalize(backend)
   if (identical(backend, "cpp")) {
     ndlm_theory_kalman_load_cpp()
@@ -129,12 +162,19 @@ ndlm_theory_kalman_smoother <- function(y, H_mat, R_vec, q_diag, m0, C0, backend
       H_mat = as.matrix(H_mat),
       R_vec_in = as.numeric(R_vec),
       q_diag_in = as.numeric(q_diag),
+      df_mat_in = if (is.null(df_mat)) NULL else as.matrix(df_mat),
       m0 = as.numeric(m0),
       C0 = as.matrix(C0)
     )
+    out$predicted_mean <- as.numeric(out$predicted_mean)
+    out$predicted_var <- pmax(as.numeric(out$predicted_var), 1e-10)
+    out$filtered_mean <- as.numeric(out$filtered_mean)
+    out$filtered_var <- pmax(as.numeric(out$filtered_var), 1e-10)
+    out$smoothed_mean <- as.numeric(out$smoothed_mean)
+    out$smoothed_var <- pmax(as.numeric(out$smoothed_var), 1e-10)
     out$fitted_mean <- as.numeric(out$fitted_mean)
     out$fitted_var <- pmax(as.numeric(out$fitted_var), 1e-10)
     return(out)
   }
-  ndlm_theory_kalman_smoother_r(y = y, H_mat = H_mat, R_vec = R_vec, q_diag = q_diag, m0 = m0, C0 = C0)
+  ndlm_theory_kalman_smoother_r(y = y, H_mat = H_mat, R_vec = R_vec, q_diag = q_diag, m0 = m0, C0 = C0, df_mat = df_mat)
 }

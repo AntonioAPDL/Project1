@@ -2,7 +2,7 @@
 Project: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Scope: the *model-fitting* pipeline (DISC/exAL) and its C++ dependencies  
 Primary objective: make the fit pipeline reproducible, modular, documented, and optimizable **without changing behavior/outputs**.  
-Last updated: 2026-02-04
+Last updated: 2026-02-25
 
 ---
 
@@ -263,6 +263,103 @@ Deliverables:
 
 ---
 
-## 7) Progress log (append-only)
-- 2026-02-04: Initial fit-pipeline refactor/optimization tracker created (analysis-only; no code changes in fit pipeline yet).
+## 7) NDLM calibration debug checklist (active, no-rerun first)
 
+Intent:
+- Diagnose NDLM overfitting behavior with existing artifacts first.
+- Keep this efficient: no refits unless a specific gate says a rerun is needed.
+- Be most rigorous on:
+  - NDLM likelihood/update path,
+  - NDLM vs multiv exDQLM state-evolution parity,
+  - NDLM modern vs legacy parity.
+
+### 7.1 Baseline freeze (required, no edits)
+- [x] Lock and cite the latest NDLM evidence bundle:
+  - `repro/runs/diag_p10_ndlm_only_specalign_r05_20260225_073723/run_manifest.yaml`
+  - `repro/runs/diag_p10_ndlm_only_specalign_r05_20260225_073723/fit/ndlm_main/logs/ndlm_theory_summary.log`
+  - `repro/runs/diag_p10_ndlm_only_specalign_r05_20260225_073723/diagnostics/ndlm/ndlm_iter_trace.csv`
+  - `repro/runs/diag_p10_ndlm_only_specalign_r05_20260225_073723/diagnostics/ndlm/ndlm_fit_vs_observed_coverage.csv`
+- [x] Write `repro/docs/ndlm_calibration_debug_<timestamp>/baseline_note.md` with:
+  - active hyperparameters (`df_*`, `lambda`, `max_iter`),
+  - convergence state,
+  - top observed quality symptom.
+  - Evidence: `repro/docs/ndlm_calibration_debug_20260225T231718Z/baseline_note.md`
+
+### 7.2 Likelihood/update-path audit (rigorous item #1)
+Primary question:
+- Is the apparent overfit driven by Gaussian likelihood/update behavior vs expected smoother behavior?
+
+Checklist:
+- [x] Audit NDLM Gaussian update math and implementation alignment:
+  - `R/unified/families/ndlm_main/03_vb_updates.R`
+  - `R/unified/families/ndlm_main/02_model_spec.R`
+  - `R/unified/families/ndlm_main/ndlm_kalman_backend.cpp`
+- [x] Add diagnostics export (no model refit yet):
+  - filtered one-step mean/residual series,
+  - smoothed mean/residual series,
+  - side-by-side summary table.
+- [x] Define pass/fail criterion:
+  - if smoother is much tighter than one-step filter, classify as expected smoothing effect;
+  - if both are unrealistically tight, classify as likely model/update issue.
+  - Evidence: `repro/docs/ndlm_calibration_debug_20260225T231718Z/likelihood_update_audit.md`
+  - New outputs wired in post diagnostics: `ndlm_fit_modes_series.csv`, `ndlm_fit_modes_coverage.csv`, `ndlm_dynamic_fit_modes_full.png`
+
+### 7.3 NDLM vs multiv exDQLM parity audit (rigorous item #2)
+Primary question:
+- Is `W_t`/discount evolution wired equivalently (except for likelihood)?
+
+Checklist:
+- [x] Build side-by-side mapping table:
+  - NDLM current:
+    - `R/unified/families/ndlm_main/03_vb_updates.R`
+    - `R/unified/families/ndlm_main/ndlm_kalman_backend.cpp`
+  - multiv reference:
+    - `R/environmetrics/20_model_setup.R`
+    - `DISC_kalman_synth.cpp`
+    - `scripts/run_DISC_Optimal_Synth_Ranges_W.R`
+- [x] Verify block-level parity for:
+  - discount matrix construction,
+  - `W_t` formation and transition blocks,
+  - forecast-window covariance handling contract.
+- [x] Record parity outcomes in:
+  - `repro/docs/ndlm_calibration_debug_<timestamp>/parity_ndlm_vs_multiv.md`
+  - Evidence: `repro/docs/ndlm_calibration_debug_20260225T231718Z/parity_ndlm_vs_multiv.md`
+
+### 7.4 Modern NDLM vs legacy NDLM parity audit (rigorous item #3)
+Primary question:
+- Are current behaviors intentional deviations (Wishart-forecast update path) or accidental drift?
+
+Checklist:
+- [x] Compare modern NDLM to legacy anchors:
+  - `scripts/_notebook_linearized.R`
+  - `DISC_kalman_synth_NDLM.cpp`
+  - `kalman_synth_NDLM.cpp`
+- [x] Produce a drift table with three labels only:
+  - `intentional_theory_update`,
+  - `legacy_technical_debt`,
+  - `unexpected_mismatch`.
+- [x] Save:
+  - `repro/docs/ndlm_calibration_debug_<timestamp>/legacy_parity.md`
+  - Evidence: `repro/docs/ndlm_calibration_debug_20260225T231718Z/legacy_parity.md`
+
+### 7.5 Decision gate before any rerun
+- [x] Rerun only if at least one of these is true:
+  - diagnostics export is missing required series,
+  - parity audit found an `unexpected_mismatch`,
+  - likelihood audit cannot classify root cause with current artifacts.
+- [x] If rerun is required:
+  - execute one NDLM-only lean lane, one core, single config change per run.
+- [x] If rerun is not required:
+  - move directly to minimal code fix proposal + targeted test plan.
+  - Gate decision recorded: `repro/docs/ndlm_calibration_debug_20260225T231718Z/decision_gate.md`
+
+### 7.6 Closure criteria for this checklist
+- [x] Root cause class selected with evidence path(s).
+- [x] One minimal fix scope proposed (or explicit no-fix conclusion if behavior is expected).
+- [x] Regression guardrails listed (what must not regress).
+- [x] Tracker updated with final status and evidence links.
+
+## 8) Progress log (append-only)
+- 2026-02-04: Initial fit-pipeline refactor/optimization tracker created (analysis-only; no code changes in fit pipeline yet).
+- 2026-02-25: Added NDLM calibration debug checklist focused on likelihood-path audit, multiv parity audit, and legacy parity audit; set no-rerun-first policy.
+- 2026-02-25: Executed NDLM calibration checklist without refit; added fit-mode diagnostics exports (one-step/filtered/smoothed), completed likelihood/parity audits, and recorded gate decision plus evidence bundle under `repro/docs/ndlm_calibration_debug_20260225T231718Z/`.

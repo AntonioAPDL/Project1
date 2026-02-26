@@ -5,8 +5,10 @@ ndlm_theory_state_draws <- function(sm, sC, n_draws, seed) {
   out <- array(0, dim = c(d, Tn, n_draws))
   for (t in seq_len(Tn)) {
     Sigma <- as.matrix(sC[, , t])
-    Sigma <- (Sigma + t(Sigma)) / 2 + diag(1e-8, d)
-    L <- tryCatch(chol(Sigma), error = function(e) chol(Sigma + diag(1e-6, d)))
+    if (!all(is.finite(Sigma))) {
+      stop(sprintf("[NDLM_COV_NONFINITE] smooth covariance slice t=%d contains non-finite values", as.integer(t)), call. = FALSE)
+    }
+    L <- ndlm_theory_safe_chol(Sigma)
     Z <- matrix(stats::rnorm(d * n_draws), nrow = d, ncol = n_draws)
     out[, t, ] <- sm[, t] + L %*% Z
   }
@@ -59,21 +61,231 @@ ndlm_theory_build_ragged_horizon <- function(forecast) {
   )
 }
 
-ndlm_theory_alloc_segment_cov <- function(k_len, w_fore, inactive_row = integer(0)) {
+ndlm_theory_make_df_mat <- function(df, dim_df, n, power = 1L) {
+  if (sum(dim_df) != n) {
+    stop("sum(dim_df) must equal n for ndlm discount matrix construction", call. = FALSE)
+  }
+  if (length(df) != length(dim_df)) {
+    stop("length(df) must match length(dim_df) for ndlm discount matrix construction", call. = FALSE)
+  }
+  pwr <- suppressWarnings(as.numeric(power))
+  if (!is.finite(pwr) || pwr < 1) pwr <- 1
+  dfs <- rep(as.numeric(df), as.integer(dim_df))
+  dfs <- pmin(pmax(dfs, 1e-8), 1 - 1e-8)
+  idx <- c(0L, cumsum(as.integer(dim_df)))
+  out <- matrix(0, nrow = n, ncol = n)
+  for (j in seq_len(length(dim_df))) {
+    cur <- dfs[idx[j + 1L]]
+    scale <- (1 - cur^pwr) / (cur^pwr)
+    out[(idx[j] + 1L):idx[j + 1L], (idx[j] + 1L):idx[j + 1L]] <- scale
+  }
+  out
+}
+
+ndlm_theory_df_components <- function(constants, mode = c("hist", "fore"), k = 1L) {
+  mode <- match.arg(mode)
+  k <- suppressWarnings(as.integer(k[[1L]]))
+  if (!is.finite(k) || k < 1L) k <- 1L
+  df_hist <- c(constants$df_t, constants$df_s1, constants$df_s2, constants$df_s67)
+  if (identical(mode, "hist")) {
+    return(df_hist)
+  }
+  trend_df <- constants$df_t * constants$df_discrep * (constants$lambda ^ max(k - 1L, 0L))
+  trend_df <- pmin(pmax(trend_df, 1e-8), 1 - 1e-8)
+  c(trend_df, constants$df_s1, constants$df_s2, constants$df_s67)
+}
+
+ndlm_theory_q_diag_from_discount <- function(constants, state_dim) {
+  state_dim <- suppressWarnings(as.integer(state_dim[[1L]]))
+  if (!is.finite(state_dim) || state_dim < 14L) {
+    stop("state_dim must be >= 14 for ndlm discount-based q_diag construction", call. = FALSE)
+  }
+  hist_diag <- rep(1e-8, 7L)
+  fore_diag <- rep(1e-8, 7L)
+  extra_len <- state_dim - 14L
+  extra_diag <- numeric(0)
+  if (extra_len > 0L) {
+    extra_diag <- rep(1e-8, extra_len)
+  }
+  q_diag <- c(hist_diag, fore_diag, extra_diag)
+  pmax(as.numeric(q_diag), 1e-8)
+}
+
+ndlm_theory_discount_matrix_full <- function(constants, state_dim, k = 1L) {
+  state_dim <- suppressWarnings(as.integer(state_dim[[1L]]))
+  if (!is.finite(state_dim) || state_dim < 14L) {
+    stop("state_dim must be >= 14 for ndlm discount matrix construction", call. = FALSE)
+  }
+  hist_df <- ndlm_theory_df_components(constants, mode = "hist", k = k)
+  discrep_df <- pmin(pmax(constants$df_discrep * hist_df, 1e-8), 1 - 1e-8)
+  df_hist <- ndlm_theory_make_df_mat(hist_df, dim_df = c(1L, 2L, 2L, 2L), n = 7L, power = 1L)
+  df_discrep <- ndlm_theory_make_df_mat(discrep_df, dim_df = c(1L, 2L, 2L, 2L), n = 7L, power = 1L)
+  out <- matrix(0, nrow = state_dim, ncol = state_dim)
+  out[1:7, 1:7] <- df_hist
+  out[8:14, 8:14] <- df_discrep
+  if (state_dim > 14L) {
+    extra_n <- state_dim - 14L
+    extra_df <- rep(constants$df_covs, extra_n)
+    extra_df[[1L]] <- constants$df_trans
+    extra_df <- pmin(pmax(extra_df, 1e-8), 1 - 1e-8)
+    out[15:state_dim, 15:state_dim] <- diag((1 - extra_df) / extra_df, extra_n)
+  }
+  out
+}
+
+ndlm_theory_safe_chol <- function(Sigma) {
+  try_chol <- function(M, jitters) {
+    for (j in jitters) {
+      out <- tryCatch(chol(M + diag(j, nrow(M))), error = function(e) NULL)
+      if (!is.null(out)) return(out)
+    }
+    NULL
+  }
+
+  Sigma <- as.matrix(Sigma)
+  if (!all(is.finite(Sigma))) {
+    stop("[NDLM_COV_NONFINITE] covariance contains non-finite values", call. = FALSE)
+  }
+  if (!is.numeric(Sigma) || nrow(Sigma) != ncol(Sigma)) {
+    stop("[NDLM_COV_SHAPE] covariance must be a finite square numeric matrix", call. = FALSE)
+  }
+  Sigma <- (Sigma + t(Sigma)) / 2
+  jitters <- c(0, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2)
+
+  out <- try_chol(Sigma, jitters)
+  if (!is.null(out)) return(out)
+
+  eig <- eigen(Sigma, symmetric = TRUE)
+  vals <- pmax(as.numeric(eig$values), 1e-8)
+  Sigma_psd <- eig$vectors %*% diag(vals, length(vals)) %*% t(eig$vectors)
+  Sigma_psd <- (Sigma_psd + t(Sigma_psd)) / 2
+  if (all(is.finite(Sigma_psd))) {
+    out <- try_chol(Sigma_psd, jitters)
+    if (!is.null(out)) return(out)
+  }
+
+  # Last-resort SPD projection with nearPD for extreme numerical instability.
+  if (requireNamespace("Matrix", quietly = TRUE)) {
+    np <- tryCatch(
+      Matrix::nearPD(
+        Sigma,
+        corr = FALSE,
+        keepDiag = FALSE,
+        do2eigen = TRUE,
+        doSym = TRUE,
+        base.matrix = TRUE
+      ),
+      error = function(e) NULL
+    )
+    if (!is.null(np) && !is.null(np$mat)) {
+      S_np <- as.matrix(np$mat)
+      if (all(is.finite(S_np))) {
+        S_np <- (S_np + t(S_np)) / 2
+        out <- try_chol(S_np, c(0, jitters, 1e-1))
+        if (!is.null(out)) return(out)
+      }
+    }
+  }
+
+  min_eig <- suppressWarnings(min(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values))
+  stop(
+    sprintf(
+      "[NDLM_COV_NOT_SPD] unable to obtain SPD covariance for Cholesky (n=%d, min_eig=%s)",
+      as.integer(nrow(Sigma)),
+      as.character(signif(min_eig, 6))
+    ),
+    call. = FALSE
+  )
+}
+
+ndlm_theory_covariance_diagnostics_one <- function(object_name, cov_arr) {
+  dims <- dim(cov_arr)
+  if (is.null(dims) || length(dims) != 3L || dims[1] != dims[2]) {
+    stop(sprintf("[NDLM_COV_SHAPE] %s must be a square 3D covariance array", object_name), call. = FALSE)
+  }
+  n_slices <- as.integer(dims[3])
+  min_eigs <- rep(NA_real_, n_slices)
+  min_diags <- rep(NA_real_, n_slices)
+  max_asym <- rep(NA_real_, n_slices)
+  nonfinite <- rep(FALSE, n_slices)
+  base_chol_fail <- rep(FALSE, n_slices)
+
+  for (k in seq_len(n_slices)) {
+    S <- as.matrix(cov_arr[, , k, drop = TRUE])
+    if (!all(is.finite(S))) {
+      nonfinite[k] <- TRUE
+      next
+    }
+    S <- (S + t(S)) / 2
+    max_asym[k] <- max(abs(S - t(S)))
+    min_diags[k] <- min(diag(S))
+    min_eigs[k] <- min(eigen(S, symmetric = TRUE, only.values = TRUE)$values)
+    base_try <- tryCatch(chol(S + diag(1e-8, nrow(S))), error = function(e) NULL)
+    base_chol_fail[k] <- is.null(base_try)
+  }
+
+  data.frame(
+    object = object_name,
+    n_slices = n_slices,
+    matrix_dim = as.integer(dims[1]),
+    nonfinite_slices = as.integer(sum(nonfinite)),
+    asymmetry_max = if (all(is.na(max_asym))) NA_real_ else max(max_asym, na.rm = TRUE),
+    min_diag_min = if (all(is.na(min_diags))) NA_real_ else min(min_diags, na.rm = TRUE),
+    min_eig_min = if (all(is.na(min_eigs))) NA_real_ else min(min_eigs, na.rm = TRUE),
+    min_eig_p01 = if (all(is.na(min_eigs))) NA_real_ else as.numeric(stats::quantile(min_eigs, probs = 0.01, na.rm = TRUE, names = FALSE)),
+    base_chol_fail_slices = as.integer(sum(base_chol_fail, na.rm = TRUE)),
+    base_chol_fail_rate = mean(base_chol_fail, na.rm = TRUE),
+    stringsAsFactors = FALSE
+  )
+}
+
+ndlm_theory_collect_covariance_diagnostics <- function(fit_sC, sC_ens_1, sC_ens_2) {
+  rows <- list(
+    ndlm_theory_covariance_diagnostics_one("smooth_cov", fit_sC),
+    ndlm_theory_covariance_diagnostics_one("forecast_cov_segment_1", sC_ens_1),
+    ndlm_theory_covariance_diagnostics_one("forecast_cov_segment_2", sC_ens_2)
+  )
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+ndlm_theory_alloc_segment_cov <- function(k_len, constants, base_cov, inactive_row = integer(0), start_k = 1L) {
   k_len <- suppressWarnings(as.integer(k_len[[1L]]))
   if (!is.finite(k_len) || k_len < 0L) k_len <- 0L
+  start_k <- suppressWarnings(as.integer(start_k[[1L]]))
+  if (!is.finite(start_k) || start_k < 1L) start_k <- 1L
   out <- array(0, dim = c(7L, 7L, k_len))
   if (k_len == 0L) return(out)
+  base_cov <- as.matrix(base_cov)
+  if (!all(dim(base_cov) == c(7L, 7L))) {
+    stop("base_cov must be 7x7 for ndlm forecast segment covariance construction", call. = FALSE)
+  }
+  P_prev <- (base_cov + t(base_cov)) / 2 + diag(1e-8, 7L)
   inactive_row <- suppressWarnings(as.integer(inactive_row))
   for (k in seq_len(k_len)) {
-    d <- diag(w_fore * k + 1e-4, 7L)
+    k_abs <- as.integer(start_k + k - 1L)
+    df_fore_k <- ndlm_theory_df_components(constants, mode = "fore", k = k_abs)
+    d <- ndlm_theory_make_df_mat(
+      df = df_fore_k,
+      dim_df = c(1L, 2L, 2L, 2L),
+      n = 7L,
+      power = 1L
+    )
+    Wk <- d * P_prev
+    d <- (P_prev + Wk)
+    d <- (d + t(d)) / 2
     if (length(inactive_row) > 0L) {
       keep <- inactive_row[inactive_row >= 1L & inactive_row <= 7L]
       if (length(keep) > 0L) {
-        d[keep, keep] <- 1e-8
+        d[keep, ] <- 0
+        d[, keep] <- 0
+        d[cbind(keep, keep)] <- 1e-8
       }
     }
+    d <- (d + t(d)) / 2 + diag(1e-8, 7L)
     out[, , k] <- d
+    P_prev <- d
   }
   out
 }
@@ -123,8 +335,10 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   C0 <- diag(c(5, rep(1, d - 1)), d)
 
   sigma <- max(stats::sd(inputs$y), 0.1)
-  w_hist <- 0.05
-  w_fore <- 0.05
+  hist_df_components <- ndlm_theory_df_components(constants, mode = "hist", k = 1L)
+  fore_df_components <- ndlm_theory_df_components(constants, mode = "fore", k = 1L)
+  w_hist <- mean((1 - hist_df_components) / hist_df_components)
+  w_fore <- mean((1 - fore_df_components) / fore_df_components)
 
   max_iter <- suppressWarnings(as.integer(constants$max_iter))
   if (!is.finite(max_iter) || max_iter < 1L) {
@@ -150,9 +364,10 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   converged <- FALSE
   convergence_reason <- "max_iter_reached"
   iterations_completed <- 0L
+  df_mat_full <- ndlm_theory_discount_matrix_full(constants, state_dim = d, k = 1L)
+  q_diag <- ndlm_theory_q_diag_from_discount(constants, state_dim = d)
 
   for (iter in seq_len(max_iter)) {
-    q_diag <- c(rep(w_hist, 7L), rep(w_fore, 7L), rep(1e-4, d - 14L))
     R_vec <- rep(sigma, Tn)
 
     fit <- ndlm_theory_kalman_smoother(
@@ -160,6 +375,7 @@ ndlm_theory_run_vb <- function(inputs, constants) {
       H_mat = H_mat,
       R_vec = R_vec,
       q_diag = q_diag,
+      df_mat = df_mat_full,
       m0 = m0,
       C0 = C0,
       backend = constants$kalman_backend
@@ -170,19 +386,6 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     sigma_rate <- constants$b_sigma + 0.5 * sum(resid^2 + fit$fitted_var)
     sigma <- sigma_rate / max(sigma_shape - 1, 1.01)
     sigma <- max(sigma, 1e-6)
-
-    hist_diff <- diff(t(fit$smooth_mean[1:7, , drop = FALSE]))
-    fore_diff <- diff(t(fit$smooth_mean[8:14, , drop = FALSE]))
-
-    hist_shape <- constants$a_w_hist + length(hist_diff) / 2
-    hist_rate <- constants$b_w_hist + 0.5 * sum(hist_diff^2)
-    fore_shape <- constants$a_w_fore + length(fore_diff) / 2
-    fore_rate <- constants$b_w_fore + 0.5 * sum(fore_diff^2)
-
-    w_hist <- hist_rate / max(hist_shape - 1, 1.01)
-    w_fore <- fore_rate / max(fore_shape - 1, 1.01)
-    w_hist <- max(w_hist, 1e-6)
-    w_fore <- max(w_fore, 1e-6)
 
     seq_sigma[iter] <- sigma
     seq_elbo[iter] <- -0.5 * sum(log(2 * pi * sigma) + resid^2 / sigma)
@@ -203,7 +406,7 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     }
     cat(
       sprintf(
-        "[gamsig_progress] family=ndlm_main p0=NA iter=%d elbo=%s crit_elbo=%s crit_elbo_rel=%s sigma_exp=%s gamma_exp=NA state_norm_sq=%s w_hist=%s w_fore=%s\n",
+        "[gamsig_progress] family=ndlm_main p0=NA iter=%d elbo=%s crit_elbo=%s crit_elbo_rel=%s sigma_exp=%s gamma_exp=NA state_norm_sq=%s w_hist=%s w_fore=%s df_t=%s df_s1=%s df_s2=%s df_s67=%s df_discrep=%s lambda=%s\n",
         as.integer(iter),
         fmt_iter_num(seq_elbo[iter]),
         fmt_iter_num(crit_elbo),
@@ -211,7 +414,13 @@ ndlm_theory_run_vb <- function(inputs, constants) {
         fmt_iter_num(sigma),
         fmt_iter_num(state_norm_sq),
         fmt_iter_num(w_hist),
-        fmt_iter_num(w_fore)
+        fmt_iter_num(w_fore),
+        fmt_iter_num(constants$df_t),
+        fmt_iter_num(constants$df_s1),
+        fmt_iter_num(constants$df_s2),
+        fmt_iter_num(constants$df_s67),
+        fmt_iter_num(constants$df_discrep),
+        fmt_iter_num(constants$lambda)
       )
     )
 
@@ -243,6 +452,37 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   vars <- rbind(fit$fitted_var, fit$fitted_var)
   exps2 <- exps^2 + vars
 
+  pick_fit_vec <- function(name, fallback) {
+    val <- fit[[name]]
+    if (is.null(val)) {
+      return(as.numeric(fallback))
+    }
+    out <- as.numeric(val)
+    if (length(out) != length(fallback)) {
+      return(as.numeric(fallback))
+    }
+    out
+  }
+  y_obs <- as.numeric(inputs$y)
+  y_pred <- pick_fit_vec("predicted_mean", fit$fitted_mean)
+  y_filt <- pick_fit_vec("filtered_mean", fit$fitted_mean)
+  y_smooth <- pick_fit_vec("smoothed_mean", fit$fitted_mean)
+  v_pred <- pmax(pick_fit_vec("predicted_var", fit$fitted_var), 1e-10)
+  v_filt <- pmax(pick_fit_vec("filtered_var", fit$fitted_var), 1e-10)
+  v_smooth <- pmax(pick_fit_vec("smoothed_var", fit$fitted_var), 1e-10)
+  fit_diagnostics <- list(
+    y_observed = y_obs,
+    y_predicted_one_step = y_pred,
+    y_filtered = y_filt,
+    y_smoothed = y_smooth,
+    var_predicted_one_step = v_pred,
+    var_filtered = v_filt,
+    var_smoothed = v_smooth,
+    residual_one_step = y_obs - y_pred,
+    residual_filtered = y_obs - y_filt,
+    residual_smoothed = y_obs - y_smooth
+  )
+
   nws_std <- ndlm_theory_standardize(inputs$forecast$nws)
   glofas_std <- ndlm_theory_standardize(inputs$forecast$glofas)
 
@@ -250,7 +490,10 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   sm_ens_1 <- matrix(0, nrow = 7L, ncol = K_overlap)
   sm_ens_1[1, ] <- nws_std[seq_len(K_overlap)]
   sm_ens_1[2, ] <- glofas_std[seq_len(K_overlap)]
-  sm_ens_1[3:7, ] <- matrix(base_hist[3:7], nrow = 5L, ncol = K_overlap)
+  if (K_overlap > 0L) {
+    decay_1 <- matrix(constants$lambda ^ (seq_len(K_overlap) - 1L), nrow = 1L, ncol = K_overlap)
+    sm_ens_1[3:7, ] <- matrix(base_hist[3:7], nrow = 5L, ncol = K_overlap) * matrix(rep(decay_1, 5L), nrow = 5L)
+  }
 
   sm_ens_2 <- matrix(0, nrow = 7L, ncol = K_tail)
   bridge_value <- 0
@@ -269,11 +512,30 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     }
     if (!is.finite(bridge_value)) bridge_value <- 0
     sm_ens_2[2, ] <- rep(bridge_value, K_tail)
-    sm_ens_2[3:7, ] <- matrix(base_hist[3:7], nrow = 5L, ncol = K_tail)
+    decay_2 <- matrix(constants$lambda ^ (seq.int(K_overlap + 1L, K_max) - 1L), nrow = 1L, ncol = K_tail)
+    sm_ens_2[3:7, ] <- matrix(base_hist[3:7], nrow = 5L, ncol = K_tail) * matrix(rep(decay_2, 5L), nrow = 5L)
   }
 
-  sC_ens_1 <- ndlm_theory_alloc_segment_cov(K_overlap, w_fore = w_fore)
-  sC_ens_2 <- ndlm_theory_alloc_segment_cov(K_tail, w_fore = w_fore, inactive_row = inactive_row)
+  base_fore_cov <- fit$smooth_cov[8:14, 8:14, Tn, drop = TRUE]
+  sC_ens_1 <- ndlm_theory_alloc_segment_cov(
+    k_len = K_overlap,
+    constants = constants,
+    base_cov = base_fore_cov,
+    inactive_row = integer(0),
+    start_k = 1L
+  )
+  sC_ens_2 <- ndlm_theory_alloc_segment_cov(
+    k_len = K_tail,
+    constants = constants,
+    base_cov = if (K_overlap > 0L) sC_ens_1[, , K_overlap, drop = TRUE] else base_fore_cov,
+    inactive_row = inactive_row,
+    start_k = K_overlap + 1L
+  )
+  cov_diag <- ndlm_theory_collect_covariance_diagnostics(
+    fit_sC = fit$smooth_cov,
+    sC_ens_1 = sC_ens_1,
+    sC_ens_2 = sC_ens_2
+  )
 
   samp_theta_retro <- ndlm_theory_state_draws(
     sm = fit$smooth_mean,
@@ -291,7 +553,7 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     if (!is.finite(k_j) || k_j < 0L) k_j <- 0L
     arr <- array(0, dim = c(7L, k_j, constants$n_draws))
     for (k in seq_len(k_j)) {
-      L <- chol(Sig[, , k] + diag(1e-8, 7))
+      L <- ndlm_theory_safe_chol(Sig[, , k])
       Z <- matrix(stats::rnorm(7 * constants$n_draws), nrow = 7)
       arr[, k, ] <- mu[, k] + L %*% Z
     }
@@ -372,6 +634,16 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     sigma = sigma,
     w_hist = w_hist,
     w_fore = w_fore,
+    discount_factors = c(
+      df_t = constants$df_t,
+      df_s1 = constants$df_s1,
+      df_s2 = constants$df_s2,
+      df_s67 = constants$df_s67,
+      df_discrep = constants$df_discrep,
+      lambda = constants$lambda,
+      df_trans = constants$df_trans,
+      df_covs = constants$df_covs
+    ),
     K = K_max,
     K_overlap = K_overlap,
     K_max = K_max,
@@ -381,6 +653,8 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     bridge_source = ragged$bridge_source,
     active_set_by_lead = active_set_by_lead,
     state_dim_by_lead = state_dim_by_lead,
+    covariance_diagnostics = cov_diag,
+    fit_diagnostics = fit_diagnostics,
     K_cap = inputs$forecast$K_cap,
     nws_len = inputs$forecast$nws_len,
     glofas_len = inputs$forecast$glofas_len,

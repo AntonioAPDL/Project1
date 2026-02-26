@@ -16,6 +16,7 @@ ndlm_theory_pack_compat_outputs <- function(fit_result) {
       sigma = fit_result$sigma,
       w_hist = fit_result$w_hist,
       w_fore = fit_result$w_fore,
+      discount_factors = fit_result$discount_factors,
       T = fit_result$T,
       K = fit_result$K,
       K_overlap = fit_result$K_overlap,
@@ -26,6 +27,8 @@ ndlm_theory_pack_compat_outputs <- function(fit_result) {
       bridge_source = fit_result$bridge_source,
       active_set_by_lead = fit_result$active_set_by_lead,
       state_dim_by_lead = fit_result$state_dim_by_lead,
+      covariance_diagnostics = fit_result$covariance_diagnostics,
+      fit_diagnostics = fit_result$fit_diagnostics,
       K_cap = fit_result$K_cap,
       nws_len = fit_result$nws_len,
       glofas_len = fit_result$glofas_len

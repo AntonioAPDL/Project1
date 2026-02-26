@@ -55,7 +55,10 @@ unified_ndlm_diag_pick_numeric_column <- function(df, preferred = character(0)) 
 }
 
 unified_ndlm_diag_parse_progress_log <- function(log_path) {
-  cols <- c("iter", "elbo", "crit_elbo", "sigma_exp", "gamma_exp", "state_norm_sq", "w_hist", "w_fore")
+  cols <- c(
+    "iter", "elbo", "crit_elbo", "sigma_exp", "gamma_exp", "state_norm_sq",
+    "w_hist", "w_fore", "df_t", "df_s1", "df_s2", "df_s67", "df_discrep", "lambda"
+  )
   empty <- stats::setNames(data.frame(matrix(ncol = length(cols), nrow = 0L)), cols)
   if (is.null(log_path) || !nzchar(log_path) || !file.exists(log_path)) {
     return(empty)
@@ -82,7 +85,13 @@ unified_ndlm_diag_parse_progress_log <- function(log_path) {
       gamma_exp = unified_ndlm_diag_num(extract_token("gamma_exp")),
       state_norm_sq = unified_ndlm_diag_num(extract_token("state_norm_sq")),
       w_hist = unified_ndlm_diag_num(extract_token("w_hist")),
-      w_fore = unified_ndlm_diag_num(extract_token("w_fore"))
+      w_fore = unified_ndlm_diag_num(extract_token("w_fore")),
+      df_t = unified_ndlm_diag_num(extract_token("df_t")),
+      df_s1 = unified_ndlm_diag_num(extract_token("df_s1")),
+      df_s2 = unified_ndlm_diag_num(extract_token("df_s2")),
+      df_s67 = unified_ndlm_diag_num(extract_token("df_s67")),
+      df_discrep = unified_ndlm_diag_num(extract_token("df_discrep")),
+      lambda = unified_ndlm_diag_num(extract_token("lambda"))
     )
   }
 
@@ -145,6 +154,58 @@ unified_ndlm_diag_named_int <- function(x, name, fallback = NA_integer_) {
   unified_ndlm_diag_int(x[[1L]])
 }
 
+unified_ndlm_diag_cov_row <- function(object_name, cov_arr) {
+  dims <- dim(cov_arr)
+  if (is.null(dims) || length(dims) != 3L || dims[1] != dims[2]) {
+    return(data.frame(
+      object = object_name,
+      n_slices = NA_integer_,
+      matrix_dim = NA_integer_,
+      nonfinite_slices = NA_integer_,
+      asymmetry_max = NA_real_,
+      min_diag_min = NA_real_,
+      min_eig_min = NA_real_,
+      min_eig_p01 = NA_real_,
+      base_chol_fail_slices = NA_integer_,
+      base_chol_fail_rate = NA_real_,
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  n_slices <- as.integer(dims[3])
+  min_eigs <- rep(NA_real_, n_slices)
+  min_diags <- rep(NA_real_, n_slices)
+  asym <- rep(NA_real_, n_slices)
+  nonfinite <- rep(FALSE, n_slices)
+  base_fail <- rep(FALSE, n_slices)
+  for (k in seq_len(n_slices)) {
+    S <- as.matrix(cov_arr[, , k, drop = TRUE])
+    if (!all(is.finite(S))) {
+      nonfinite[k] <- TRUE
+      next
+    }
+    S <- (S + t(S)) / 2
+    asym[k] <- max(abs(S - t(S)))
+    min_diags[k] <- min(diag(S))
+    min_eigs[k] <- min(eigen(S, symmetric = TRUE, only.values = TRUE)$values)
+    base_fail[k] <- is.null(tryCatch(chol(S + diag(1e-8, nrow(S))), error = function(e) NULL))
+  }
+
+  data.frame(
+    object = object_name,
+    n_slices = n_slices,
+    matrix_dim = as.integer(dims[1]),
+    nonfinite_slices = as.integer(sum(nonfinite)),
+    asymmetry_max = if (all(is.na(asym))) NA_real_ else max(asym, na.rm = TRUE),
+    min_diag_min = if (all(is.na(min_diags))) NA_real_ else min(min_diags, na.rm = TRUE),
+    min_eig_min = if (all(is.na(min_eigs))) NA_real_ else min(min_eigs, na.rm = TRUE),
+    min_eig_p01 = if (all(is.na(min_eigs))) NA_real_ else as.numeric(stats::quantile(min_eigs, probs = 0.01, na.rm = TRUE, names = FALSE)),
+    base_chol_fail_slices = as.integer(sum(base_fail, na.rm = TRUE)),
+    base_chol_fail_rate = mean(base_fail, na.rm = TRUE),
+    stringsAsFactors = FALSE
+  )
+}
+
 unified_ndlm_diag_write_trace_plot <- function(df, x_col, y_col, path, main, ylab) {
   if (!is.data.frame(df) || !(x_col %in% names(df)) || !(y_col %in% names(df))) return(FALSE)
   x <- suppressWarnings(as.numeric(df[[x_col]]))
@@ -166,6 +227,135 @@ unified_ndlm_diag_write_trace_plot <- function(df, x_col, y_col, path, main, yla
   )
   graphics::grid(col = "#D6DCE5", lty = "dotted")
   TRUE
+}
+
+unified_ndlm_diag_safe_filename <- function(x) {
+  x <- tolower(as.character(x))
+  x <- gsub("[^a-z0-9]+", "_", x)
+  x <- gsub("^_+|_+$", "", x)
+  if (!nzchar(x)) x <- "scale"
+  x
+}
+
+unified_ndlm_diag_extract_sigma_long <- function(iter_trace, env) {
+  # Prefer explicit sigma sequence object if present; fallback to parsed progress log.
+  sigma_obj <- if (exists("seq.sigma_50_NDLM_synth_DISC", envir = env, inherits = FALSE)) {
+    get("seq.sigma_50_NDLM_synth_DISC", envir = env, inherits = FALSE)
+  } else {
+    NULL
+  }
+
+  iter_n <- if (is.data.frame(iter_trace) && nrow(iter_trace) > 0L && "iter" %in% names(iter_trace)) {
+    max(suppressWarnings(as.integer(iter_trace$iter)), na.rm = TRUE)
+  } else {
+    NA_integer_
+  }
+  if (!is.finite(iter_n) || iter_n < 1L) iter_n <- NA_integer_
+
+  rows <- list()
+
+  if (!is.null(sigma_obj) && is.numeric(sigma_obj)) {
+    if (is.null(dim(sigma_obj))) {
+      v <- as.numeric(sigma_obj)
+      if (length(v) > 0L) {
+        rows[[length(rows) + 1L]] <- data.frame(
+          iter = seq_along(v),
+          scale_key = "scale_01",
+          scale_label = "scale_01",
+          sigma = v,
+          stringsAsFactors = FALSE
+        )
+      }
+    } else if (length(dim(sigma_obj)) == 2L) {
+      mat <- as.matrix(sigma_obj)
+      nr <- nrow(mat)
+      nc <- ncol(mat)
+      if (is.finite(iter_n)) {
+        if (nr == iter_n) {
+          # as-is
+        } else if (nc == iter_n) {
+          mat <- t(mat)
+          nr <- nrow(mat)
+          nc <- ncol(mat)
+        } else if (nc > nr) {
+          mat <- t(mat)
+          nr <- nrow(mat)
+          nc <- ncol(mat)
+        }
+      } else if (nc > nr) {
+        mat <- t(mat)
+        nr <- nrow(mat)
+        nc <- ncol(mat)
+      }
+      scale_names <- colnames(mat)
+      if (is.null(scale_names) || length(scale_names) != nc) {
+        scale_names <- sprintf("scale_%02d", seq_len(nc))
+      } else {
+        scale_names <- ifelse(nzchar(scale_names), scale_names, sprintf("scale_%02d", seq_len(nc)))
+      }
+      for (j in seq_len(nc)) {
+        rows[[length(rows) + 1L]] <- data.frame(
+          iter = seq_len(nr),
+          scale_key = sprintf("scale_%02d", j),
+          scale_label = as.character(scale_names[[j]]),
+          sigma = as.numeric(mat[, j]),
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+  }
+
+  if (length(rows) == 0L && is.data.frame(iter_trace) && nrow(iter_trace) > 0L && "sigma_exp" %in% names(iter_trace)) {
+    rows[[1L]] <- data.frame(
+      iter = suppressWarnings(as.integer(iter_trace$iter)),
+      scale_key = "scale_01",
+      scale_label = "sigma_exp",
+      sigma = suppressWarnings(as.numeric(iter_trace$sigma_exp)),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  if (length(rows) == 0L) {
+    return(data.frame(iter = integer(0), scale_key = character(0), scale_label = character(0), sigma = numeric(0), stringsAsFactors = FALSE))
+  }
+
+  out <- do.call(rbind, rows)
+  out <- out[is.finite(out$iter) & is.finite(out$sigma), , drop = FALSE]
+  out$iter <- as.integer(out$iter)
+  rownames(out) <- NULL
+  out
+}
+
+unified_ndlm_diag_write_sigma_traces <- function(sigma_long, output_dir, primary_path) {
+  if (!is.data.frame(sigma_long) || nrow(sigma_long) < 2L) {
+    return(character(0))
+  }
+  paths <- character(0)
+  scales <- unique(as.character(sigma_long$scale_key))
+  scales <- scales[nzchar(scales)]
+  if (length(scales) < 1L) return(paths)
+
+  for (k in seq_along(scales)) {
+    sk <- scales[[k]]
+    sub <- sigma_long[sigma_long$scale_key == sk, , drop = FALSE]
+    lbl <- if (nrow(sub) > 0L) as.character(sub$scale_label[[1L]]) else sk
+    if (!nzchar(lbl)) lbl <- sk
+    out_path <- if (k == 1L) {
+      primary_path
+    } else {
+      file.path(output_dir, sprintf("ndlm_sigma_trace_%s.png", unified_ndlm_diag_safe_filename(sk)))
+    }
+    ok <- unified_ndlm_diag_write_trace_plot(
+      df = sub,
+      x_col = "iter",
+      y_col = "sigma",
+      path = out_path,
+      main = sprintf("NDLM Sigma Trace (%s)", lbl),
+      ylab = "Sigma"
+    )
+    if (isTRUE(ok)) paths <- c(paths, out_path)
+  }
+  paths
 }
 
 unified_ndlm_diag_write_fit_plot <- function(
@@ -225,6 +415,222 @@ unified_ndlm_diag_write_fit_plot <- function(
     pt.cex = c(0.6, NA),
     bty = "n"
   )
+  TRUE
+}
+
+unified_ndlm_diag_write_fit_modes_plot <- function(df, path, title) {
+  req <- c("date", "observed", "one_step_predicted", "filtered_fit", "smoothed_fit")
+  if (!is.data.frame(df) || !all(req %in% names(df)) || nrow(df) < 2L) return(FALSE)
+
+  obs <- suppressWarnings(as.numeric(df$observed))
+  one_step <- suppressWarnings(as.numeric(df$one_step_predicted))
+  filt <- suppressWarnings(as.numeric(df$filtered_fit))
+  smooth <- suppressWarnings(as.numeric(df$smoothed_fit))
+  d <- suppressWarnings(as.Date(df$date))
+  use_date <- any(!is.na(d))
+  x <- if (use_date) d else seq_len(nrow(df))
+  ok_obs <- is.finite(obs) & if (use_date) !is.na(x) else TRUE
+  if (sum(ok_obs) < 2L) return(FALSE)
+
+  y_stack <- c(obs[ok_obs], one_step[is.finite(one_step)], filt[is.finite(filt)], smooth[is.finite(smooth)])
+  y_rng <- range(y_stack, finite = TRUE)
+  if (!all(is.finite(y_rng))) return(FALSE)
+  pad <- 0.05 * max(diff(y_rng), 1e-8)
+  y_lim <- c(y_rng[1] - pad, y_rng[2] + pad)
+
+  grDevices::png(filename = path, width = 1800, height = 1000, res = 140)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  graphics::par(mar = c(4.2, 4.8, 3.4, 1.4))
+  graphics::plot(
+    x[ok_obs], obs[ok_obs],
+    type = "o",
+    pch = 16,
+    cex = 0.32,
+    lwd = 1.0,
+    col = "#171A1F",
+    xlab = if (use_date) "Date" else "Index",
+    ylab = "log1p(cms)",
+    ylim = y_lim,
+    main = title
+  )
+  ok_one <- is.finite(one_step) & if (use_date) !is.na(x) else TRUE
+  if (sum(ok_one) >= 2L) graphics::lines(x[ok_one], one_step[ok_one], col = "#1E88E5", lwd = 1.8, lty = 2)
+  ok_filt <- is.finite(filt) & if (use_date) !is.na(x) else TRUE
+  if (sum(ok_filt) >= 2L) graphics::lines(x[ok_filt], filt[ok_filt], col = "#00897B", lwd = 1.8, lty = 3)
+  ok_smooth <- is.finite(smooth) & if (use_date) !is.na(x) else TRUE
+  if (sum(ok_smooth) >= 2L) graphics::lines(x[ok_smooth], smooth[ok_smooth], col = "#D1495B", lwd = 2.2, lty = 1)
+  graphics::grid(col = "#D6DCE5", lty = "dotted")
+  graphics::legend(
+    "topright",
+    legend = c("Observed", "One-step predicted", "Filtered fit", "Smoothed fit"),
+    col = c("#171A1F", "#1E88E5", "#00897B", "#D1495B"),
+    lwd = c(1.0, 1.8, 1.8, 2.2),
+    lty = c(1, 2, 3, 1),
+    pch = c(16, NA, NA, NA),
+    pt.cex = c(0.55, NA, NA, NA),
+    bty = "n"
+  )
+  TRUE
+}
+
+unified_ndlm_diag_component_label <- function(component_id) {
+  component_id <- suppressWarnings(as.integer(component_id[[1L]]))
+  if (!is.finite(component_id) || component_id < 1L) {
+    return("theta_unknown")
+  }
+  if (component_id <= 7L) {
+    return(sprintf("hist_%02d (theta_%02d)", component_id, component_id))
+  }
+  if (component_id <= 14L) {
+    return(sprintf("discrep_%02d (theta_%02d)", component_id - 7L, component_id))
+  }
+  sprintf("transfer_%02d (theta_%02d)", component_id - 14L, component_id)
+}
+
+unified_ndlm_diag_extract_theta_draws <- function(env) {
+  if (!exists("samp.theta_50_NDLM_synth_DISC", envir = env, inherits = FALSE)) {
+    return(NULL)
+  }
+  raw_obj <- get("samp.theta_50_NDLM_synth_DISC", envir = env, inherits = FALSE)
+  arr <- if (is.list(raw_obj) && !is.null(raw_obj$samp_theta)) raw_obj$samp_theta else raw_obj
+  if (!is.numeric(arr)) return(NULL)
+  d <- dim(arr)
+  if (is.null(d) || length(d) != 3L) return(NULL)
+  arr
+}
+
+unified_ndlm_diag_summarize_state_draws <- function(theta_draws, dates = as.Date(character(0))) {
+  d <- dim(theta_draws)
+  if (is.null(d) || length(d) != 3L) {
+    stop("[NDLM_STATE_DRAWS_SHAPE] theta_draws must be a numeric 3D array [state, time, draw]", call. = FALSE)
+  }
+  n_state <- as.integer(d[1])
+  n_time <- as.integer(d[2])
+  n_draw <- as.integer(d[3])
+  if (!is.finite(n_state) || !is.finite(n_time) || !is.finite(n_draw) ||
+      n_state < 1L || n_time < 1L || n_draw < 1L) {
+    stop("[NDLM_STATE_DRAWS_SHAPE] theta_draws dimensions must be positive", call. = FALSE)
+  }
+
+  if (length(dates) < n_time) {
+    dates_use <- as.Date(rep(NA_character_, n_time))
+  } else {
+    dates_use <- suppressWarnings(as.Date(dates[seq_len(n_time)]))
+  }
+  idx <- seq_len(n_time)
+
+  summary_rows <- vector("list", n_state)
+  coverage_rows <- vector("list", n_state)
+  for (j in seq_len(n_state)) {
+    mat_j <- theta_draws[j, , , drop = TRUE]
+    if (is.null(dim(mat_j))) {
+      mat_j <- matrix(as.numeric(mat_j), nrow = n_time, ncol = 1L)
+    } else if (length(dim(mat_j)) != 2L) {
+      mat_j <- matrix(as.numeric(mat_j), nrow = n_time, ncol = n_draw)
+    }
+    q025 <- apply(mat_j, 1L, stats::quantile, probs = 0.025, na.rm = TRUE, type = 7L, names = FALSE)
+    q500 <- apply(mat_j, 1L, stats::quantile, probs = 0.500, na.rm = TRUE, type = 7L, names = FALSE)
+    q975 <- apply(mat_j, 1L, stats::quantile, probs = 0.975, na.rm = TRUE, type = 7L, names = FALSE)
+    mn <- rowMeans(mat_j, na.rm = TRUE)
+    band <- q975 - q025
+    ok <- is.finite(q025) & is.finite(q500) & is.finite(q975) & is.finite(mn)
+
+    label_j <- unified_ndlm_diag_component_label(j)
+    summary_rows[[j]] <- data.frame(
+      component_id = as.integer(j),
+      component_label = label_j,
+      t_index = as.integer(idx),
+      date = dates_use,
+      q025 = as.numeric(q025),
+      q500 = as.numeric(q500),
+      q975 = as.numeric(q975),
+      mean = as.numeric(mn),
+      band_width = as.numeric(band),
+      stringsAsFactors = FALSE
+    )
+    coverage_rows[[j]] <- data.frame(
+      component_id = as.integer(j),
+      component_label = label_j,
+      n_time = as.integer(n_time),
+      finite_points = as.integer(sum(ok)),
+      finite_rate = as.numeric(sum(ok) / n_time),
+      mean_band_width = if (any(ok)) mean(band[ok]) else NA_real_,
+      median_band_width = if (any(ok)) stats::median(band[ok]) else NA_real_,
+      q95_band_width = if (any(ok)) as.numeric(stats::quantile(band[ok], probs = 0.95, names = FALSE, na.rm = TRUE)) else NA_real_,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  list(
+    summary = do.call(rbind, summary_rows),
+    coverage = do.call(rbind, coverage_rows)
+  )
+}
+
+unified_ndlm_diag_write_state_components_ci_plot <- function(summary_df, path, title, component_ids = NULL) {
+  req <- c("component_id", "component_label", "t_index", "q025", "q500", "q975")
+  if (!is.data.frame(summary_df) || !all(req %in% names(summary_df)) || nrow(summary_df) < 2L) return(FALSE)
+  work <- summary_df
+  if (!is.null(component_ids)) {
+    keep <- suppressWarnings(as.integer(component_ids))
+    keep <- keep[is.finite(keep)]
+    work <- work[work$component_id %in% keep, , drop = FALSE]
+  }
+  comps <- sort(unique(suppressWarnings(as.integer(work$component_id))))
+  comps <- comps[is.finite(comps)]
+  if (length(comps) < 1L) return(FALSE)
+
+  n_panels <- length(comps)
+  n_col <- min(4L, max(1L, ceiling(sqrt(n_panels))))
+  n_row <- max(1L, ceiling(n_panels / n_col))
+  width_px <- max(1400L, 520L * n_col)
+  height_px <- max(900L, 320L * n_row)
+
+  grDevices::png(filename = path, width = width_px, height = height_px, res = 140)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  graphics::par(mfrow = c(n_row, n_col), mar = c(2.9, 3.4, 2.2, 1.1), oma = c(0.5, 0.5, 2.0, 0))
+
+  for (cid in comps) {
+    sub <- work[work$component_id == cid, , drop = FALSE]
+    x <- suppressWarnings(as.numeric(sub$t_index))
+    lo <- suppressWarnings(as.numeric(sub$q025))
+    md <- suppressWarnings(as.numeric(sub$q500))
+    hi <- suppressWarnings(as.numeric(sub$q975))
+    ok <- is.finite(x) & is.finite(lo) & is.finite(md) & is.finite(hi)
+    panel_title <- as.character(sub$component_label[[1L]])
+    if (sum(ok) < 2L) {
+      graphics::plot.new()
+      graphics::title(main = panel_title)
+      next
+    }
+    y_rng <- range(c(lo[ok], hi[ok]), finite = TRUE)
+    if (!all(is.finite(y_rng))) {
+      graphics::plot.new()
+      graphics::title(main = panel_title)
+      next
+    }
+    pad <- 0.05 * max(diff(y_rng), 1e-8)
+    y_lim <- c(y_rng[1] - pad, y_rng[2] + pad)
+
+    graphics::plot(
+      x[ok], md[ok],
+      type = "n",
+      xlab = "Time index",
+      ylab = "State value",
+      ylim = y_lim,
+      main = panel_title
+    )
+    graphics::polygon(
+      x = c(x[ok], rev(x[ok])),
+      y = c(lo[ok], rev(hi[ok])),
+      col = grDevices::adjustcolor("#80B1D3", alpha.f = 0.30),
+      border = NA
+    )
+    graphics::lines(x[ok], md[ok], col = "#0B3C5D", lwd = 1.7)
+    graphics::grid(col = "#D6DCE5", lty = "dotted")
+  }
+
+  graphics::mtext(title, outer = TRUE, line = 0.2, cex = 1.0)
   TRUE
 }
 
@@ -398,6 +804,19 @@ unified_generate_ndlm_post_diagnostics <- function(
   } else {
     NULL
   }
+  covariance_diagnostics <- if (
+    is.list(state_obj) &&
+      is.data.frame(state_obj$covariance_diagnostics) &&
+      nrow(state_obj$covariance_diagnostics) > 0L
+  ) {
+    state_obj$covariance_diagnostics
+  } else {
+    do.call(rbind, list(
+      unified_ndlm_diag_cov_row("smooth_cov", ndlm_obj$sC),
+      if (is.list(ndlm_obj$sC_ens) && length(ndlm_obj$sC_ens) >= 1L) unified_ndlm_diag_cov_row("forecast_cov_segment_1", ndlm_obj$sC_ens[[1L]]) else NULL,
+      if (is.list(ndlm_obj$sC_ens) && length(ndlm_obj$sC_ens) >= 2L) unified_ndlm_diag_cov_row("forecast_cov_segment_2", ndlm_obj$sC_ens[[2L]]) else NULL
+    ))
+  }
 
   iter_trace <- unified_ndlm_diag_parse_progress_log(fit_log_path)
   if (nrow(iter_trace) == 0L && exists("seq.elbo_50_NDLM_synth_DISC", envir = env, inherits = FALSE)) {
@@ -551,15 +970,86 @@ unified_generate_ndlm_post_diagnostics <- function(
   )
 
   obs_series <- unified_ndlm_diag_pick_numeric_column(retros_df, preferred = c("USGS", "y", "obs", "flow", "value"))
-  fit_series <- if (is.numeric(exps) && !is.null(dim(exps)) && length(dim(exps)) == 2L && dim(exps)[1] >= 2L) {
+  smooth_series <- if (is.numeric(exps) && !is.null(dim(exps)) && length(dim(exps)) == 2L && dim(exps)[1] >= 2L) {
     as.numeric(exps[2, ])
   } else {
     numeric(0)
   }
-  n_overlap <- min(length(obs_series), length(fit_series))
-  obs_use <- if (n_overlap > 0L) obs_series[seq_len(n_overlap)] else numeric(0)
-  fit_use <- if (n_overlap > 0L) fit_series[seq_len(n_overlap)] else numeric(0)
-  ok <- is.finite(obs_use) & is.finite(fit_use)
+
+  fit_diag_state <- if (is.list(state_obj) && is.list(state_obj$fit_diagnostics)) state_obj$fit_diagnostics else NULL
+  get_diag_vec <- function(name, fallback, n_target) {
+    val <- if (!is.null(fit_diag_state)) fit_diag_state[[name]] else NULL
+    out <- suppressWarnings(as.numeric(val))
+    if (length(out) != n_target) out <- fallback
+    if (length(out) != n_target) out <- rep(NA_real_, n_target)
+    out
+  }
+
+  n_overlap <- max(
+    min(length(obs_series), length(smooth_series)),
+    if (!is.null(fit_diag_state)) suppressWarnings(as.integer(length(fit_diag_state$y_observed))) else 0L
+  )
+  if (!is.finite(n_overlap) || n_overlap < 0L) n_overlap <- 0L
+  if (n_overlap > 0L) {
+    n_overlap <- min(
+      n_overlap,
+      length(obs_series),
+      max(length(smooth_series), if (!is.null(fit_diag_state)) suppressWarnings(as.integer(length(fit_diag_state$y_smoothed))) else 0L)
+    )
+  }
+
+  obs_use <- if (n_overlap > 0L) as.numeric(obs_series[seq_len(n_overlap)]) else numeric(0)
+  smooth_use <- if (n_overlap > 0L) get_diag_vec("y_smoothed", smooth_series[seq_len(min(length(smooth_series), n_overlap))], n_overlap) else numeric(0)
+  pred_use <- if (n_overlap > 0L) get_diag_vec("y_predicted_one_step", rep(NA_real_, n_overlap), n_overlap) else numeric(0)
+  filt_use <- if (n_overlap > 0L) get_diag_vec("y_filtered", rep(NA_real_, n_overlap), n_overlap) else numeric(0)
+  date_use <- if (n_overlap > 0L && length(retros_dates) >= n_overlap) retros_dates[seq_len(n_overlap)] else as.Date(rep(NA_character_, n_overlap))
+
+  mode_series <- data.frame(
+    date = date_use,
+    observed = obs_use,
+    one_step_predicted = pred_use,
+    filtered_fit = filt_use,
+    smoothed_fit = smooth_use,
+    residual_one_step = if (n_overlap > 0L) pred_use - obs_use else numeric(0),
+    residual_filtered = if (n_overlap > 0L) filt_use - obs_use else numeric(0),
+    residual_smoothed = if (n_overlap > 0L) smooth_use - obs_use else numeric(0),
+    stringsAsFactors = FALSE
+  )
+
+  summarize_mode <- function(mode_name, fitted_vals, observed_vals) {
+    fitted_vals <- suppressWarnings(as.numeric(fitted_vals))
+    observed_vals <- suppressWarnings(as.numeric(observed_vals))
+    n <- min(length(fitted_vals), length(observed_vals))
+    if (n <= 0L) {
+      return(data.frame(
+        mode = mode_name, n_points = 0L, finite_points = 0L, coverage_rate = NA_real_,
+        rmse = NA_real_, mae = NA_real_, corr = NA_real_, mean_residual = NA_real_,
+        stringsAsFactors = FALSE
+      ))
+    }
+    f <- fitted_vals[seq_len(n)]
+    o <- observed_vals[seq_len(n)]
+    ok <- is.finite(f) & is.finite(o)
+    err <- f - o
+    data.frame(
+      mode = mode_name,
+      n_points = as.integer(n),
+      finite_points = as.integer(sum(ok)),
+      coverage_rate = if (n > 0L) as.numeric(sum(ok) / n) else NA_real_,
+      rmse = if (any(ok)) sqrt(mean(err[ok]^2)) else NA_real_,
+      mae = if (any(ok)) mean(abs(err[ok])) else NA_real_,
+      corr = if (sum(ok) >= 2L) suppressWarnings(stats::cor(f[ok], o[ok])) else NA_real_,
+      mean_residual = if (any(ok)) mean(err[ok]) else NA_real_,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  mode_coverage <- do.call(rbind, list(
+    summarize_mode("one_step_predicted", mode_series$one_step_predicted, mode_series$observed),
+    summarize_mode("filtered_fit", mode_series$filtered_fit, mode_series$observed),
+    summarize_mode("smoothed_fit", mode_series$smoothed_fit, mode_series$observed)
+  ))
+  row_sm <- mode_coverage[mode_coverage$mode == "smoothed_fit", , drop = FALSE]
   fit_summary <- data.frame(
     metric = c(
       "retros_points", "exps_points", "overlap_points", "finite_overlap_points",
@@ -567,24 +1057,32 @@ unified_generate_ndlm_post_diagnostics <- function(
     ),
     value = c(
       as.numeric(length(obs_series)),
-      as.numeric(length(fit_series)),
+      as.numeric(length(smooth_series)),
       as.numeric(n_overlap),
-      as.numeric(sum(ok)),
-      if (n_overlap > 0L) as.numeric(sum(ok) / n_overlap) else NA_real_,
-      if (any(ok)) sqrt(mean((fit_use[ok] - obs_use[ok])^2)) else NA_real_,
-      if (any(ok)) mean(abs(fit_use[ok] - obs_use[ok])) else NA_real_,
-      if (sum(ok) >= 2L) suppressWarnings(stats::cor(fit_use[ok], obs_use[ok])) else NA_real_
+      if (nrow(row_sm) == 1L) as.numeric(row_sm$finite_points[[1L]]) else NA_real_,
+      if (nrow(row_sm) == 1L) as.numeric(row_sm$coverage_rate[[1L]]) else NA_real_,
+      if (nrow(row_sm) == 1L) as.numeric(row_sm$rmse[[1L]]) else NA_real_,
+      if (nrow(row_sm) == 1L) as.numeric(row_sm$mae[[1L]]) else NA_real_,
+      if (nrow(row_sm) == 1L) as.numeric(row_sm$corr[[1L]]) else NA_real_
     ),
     stringsAsFactors = FALSE
   )
 
   fit_series <- data.frame(
-    date = if (length(retros_dates) >= n_overlap) retros_dates[seq_len(n_overlap)] else as.Date(rep(NA_character_, n_overlap)),
-    observed = obs_use,
-    ndlm_fit = fit_use,
-    residual = if (n_overlap > 0L) fit_use - obs_use else numeric(0),
+    date = mode_series$date,
+    observed = mode_series$observed,
+    ndlm_fit = mode_series$smoothed_fit,
+    residual = mode_series$residual_smoothed,
     stringsAsFactors = FALSE
   )
+
+  sigma_long <- unified_ndlm_diag_extract_sigma_long(iter_trace = iter_trace, env = env)
+
+  theta_draws <- unified_ndlm_diag_extract_theta_draws(env)
+  state_ci <- NULL
+  if (!is.null(theta_draws)) {
+    state_ci <- unified_ndlm_diag_summarize_state_draws(theta_draws = theta_draws, dates = retros_dates)
+  }
 
   horizon_note <- c(
     "# NDLM Horizon Contract",
@@ -608,12 +1106,23 @@ unified_generate_ndlm_post_diagnostics <- function(
     ndlm_object_shapes = file.path(output_dir, "ndlm_object_shapes.csv"),
     ndlm_fit_vs_observed_coverage = file.path(output_dir, "ndlm_fit_vs_observed_coverage.csv"),
     ndlm_fit_series = file.path(output_dir, "ndlm_fit_series.csv"),
+    ndlm_fit_modes_coverage = file.path(output_dir, "ndlm_fit_modes_coverage.csv"),
+    ndlm_fit_modes_series = file.path(output_dir, "ndlm_fit_modes_series.csv"),
+    ndlm_sigma_trace_long = file.path(output_dir, "ndlm_sigma_trace_long.csv"),
+    ndlm_state_components_ci_summary = file.path(output_dir, "ndlm_state_components_ci_summary.csv"),
+    ndlm_state_components_ci_coverage = file.path(output_dir, "ndlm_state_components_ci_coverage.csv"),
+    ndlm_covariance_diagnostics = file.path(output_dir, "ndlm_covariance_diagnostics.csv"),
     ragged_coverage_summary = file.path(output_dir, "ragged_coverage_summary.csv"),
     ndlm_horizon_contract = file.path(output_dir, "ndlm_horizon_contract.md"),
     ndlm_elbo_trace = file.path(output_dir, "ndlm_elbo_trace.png"),
     ndlm_sigma_trace = file.path(output_dir, "ndlm_sigma_trace.png"),
     ndlm_state_norm_trace = file.path(output_dir, "ndlm_state_norm_trace.png"),
     ndlm_dynamic_fit_full = file.path(output_dir, "ndlm_dynamic_fit_full.png"),
+    ndlm_dynamic_fit_modes_full = file.path(output_dir, "ndlm_dynamic_fit_modes_full.png"),
+    ndlm_state_components_ci_all = file.path(output_dir, "ndlm_state_components_ci_all.png"),
+    ndlm_state_components_ci_hist = file.path(output_dir, "ndlm_state_components_ci_hist.png"),
+    ndlm_state_components_ci_discrep = file.path(output_dir, "ndlm_state_components_ci_discrep.png"),
+    ndlm_state_components_ci_transfer = file.path(output_dir, "ndlm_state_components_ci_transfer.png"),
     ndlm_dynamic_fit_2012_2016 = file.path(output_dir, "ndlm_dynamic_fit_2012_2016.png"),
     ndlm_dynamic_fit_2017_2019 = file.path(output_dir, "ndlm_dynamic_fit_2017_2019.png"),
     ndlm_dynamic_fit_2018_2020 = file.path(output_dir, "ndlm_dynamic_fit_2018_2020.png")
@@ -628,6 +1137,16 @@ unified_generate_ndlm_post_diagnostics <- function(
   utils::write.csv(shape_rows, paths$ndlm_object_shapes, row.names = FALSE)
   utils::write.csv(fit_summary, paths$ndlm_fit_vs_observed_coverage, row.names = FALSE)
   utils::write.csv(fit_series, paths$ndlm_fit_series, row.names = FALSE)
+  utils::write.csv(mode_coverage, paths$ndlm_fit_modes_coverage, row.names = FALSE)
+  utils::write.csv(mode_series, paths$ndlm_fit_modes_series, row.names = FALSE)
+  if (is.data.frame(sigma_long) && nrow(sigma_long) > 0L) {
+    utils::write.csv(sigma_long, paths$ndlm_sigma_trace_long, row.names = FALSE)
+  }
+  if (!is.null(state_ci) && is.list(state_ci) && is.data.frame(state_ci$summary) && nrow(state_ci$summary) > 0L) {
+    utils::write.csv(state_ci$summary, paths$ndlm_state_components_ci_summary, row.names = FALSE)
+    utils::write.csv(state_ci$coverage, paths$ndlm_state_components_ci_coverage, row.names = FALSE)
+  }
+  utils::write.csv(covariance_diagnostics, paths$ndlm_covariance_diagnostics, row.names = FALSE)
   utils::write.csv(ragged_coverage_summary, paths$ragged_coverage_summary, row.names = FALSE)
   writeLines(horizon_note, con = paths$ndlm_horizon_contract)
 
@@ -639,14 +1158,21 @@ unified_generate_ndlm_post_diagnostics <- function(
     main = "NDLM ELBO Trace",
     ylab = "ELBO"
   ))
-  invisible(unified_ndlm_diag_write_trace_plot(
-    df = iter_trace,
-    x_col = "iter",
-    y_col = "sigma_exp",
-    path = paths$ndlm_sigma_trace,
-    main = "NDLM Sigma Trace",
-    ylab = "Sigma"
-  ))
+  sigma_trace_paths <- unified_ndlm_diag_write_sigma_traces(
+    sigma_long = sigma_long,
+    output_dir = output_dir,
+    primary_path = paths$ndlm_sigma_trace
+  )
+  if (length(sigma_trace_paths) == 0L) {
+    invisible(unified_ndlm_diag_write_trace_plot(
+      df = iter_trace,
+      x_col = "iter",
+      y_col = "sigma_exp",
+      path = paths$ndlm_sigma_trace,
+      main = "NDLM Sigma Trace",
+      ylab = "Sigma"
+    ))
+  }
   invisible(unified_ndlm_diag_write_trace_plot(
     df = iter_trace,
     x_col = "iter",
@@ -657,6 +1183,12 @@ unified_generate_ndlm_post_diagnostics <- function(
   ))
 
   if (n_overlap > 1L) {
+    invisible(unified_ndlm_diag_write_fit_modes_plot(
+      df = mode_series,
+      path = paths$ndlm_dynamic_fit_modes_full,
+      title = "NDLM Fit Comparison: One-step vs Filtered vs Smoothed"
+    ))
+
     # Full retrospective fit view.
     invisible(unified_ndlm_diag_write_fit_plot(
       dates = fit_series$date,
@@ -689,6 +1221,32 @@ unified_generate_ndlm_post_diagnostics <- function(
         x_as_date = TRUE
       ))
     }
+  }
+
+  if (!is.null(state_ci) && is.list(state_ci) && is.data.frame(state_ci$summary) && nrow(state_ci$summary) > 0L) {
+    invisible(unified_ndlm_diag_write_state_components_ci_plot(
+      summary_df = state_ci$summary,
+      path = paths$ndlm_state_components_ci_all,
+      title = "NDLM State Components (Posterior Median + 95% Credible Interval)"
+    ))
+    invisible(unified_ndlm_diag_write_state_components_ci_plot(
+      summary_df = state_ci$summary,
+      path = paths$ndlm_state_components_ci_hist,
+      title = "NDLM Historical Block States (1-7): Median + 95% CI",
+      component_ids = 1:7
+    ))
+    invisible(unified_ndlm_diag_write_state_components_ci_plot(
+      summary_df = state_ci$summary,
+      path = paths$ndlm_state_components_ci_discrep,
+      title = "NDLM Discrepancy Block States (8-14): Median + 95% CI",
+      component_ids = 8:14
+    ))
+    invisible(unified_ndlm_diag_write_state_components_ci_plot(
+      summary_df = state_ci$summary,
+      path = paths$ndlm_state_components_ci_transfer,
+      title = "NDLM Transfer Block States (15+): Median + 95% CI",
+      component_ids = which(sort(unique(as.integer(state_ci$summary$component_id))) >= 15L)
+    ))
   }
 
   if (isTRUE(strict_contract)) {
