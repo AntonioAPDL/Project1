@@ -1,0 +1,46 @@
+site:
+  usgs_site: "11160500"
+  feature_id: 17684066
+  lat: 37.0443931
+  lon: -122.072464
+
+ingest:
+  base_url: "https://storage.googleapis.com/national-water-model"
+  lookback_days: 4
+  cycle_hours_desc: [18, 12, 6, 0]
+  member_max_leads:
+    "1": 240
+    "2": 204
+    "3": 204
+    "4": 204
+    "5": 204
+    "6": 204
+  timeout_connect_sec: 20
+  timeout_read_sec: 180
+  retries: 3
+  backoff_sec: 0.40
+  workers: 6
+  max_tasks: null
+
+processing:
+  post_days: 28
+  weighting_scheme: "latest"
+  alpha: 1.0
+  aggregation_scale: "log_log1p_cms"
+  parse_issue_hour: true
+  issue_lookback_days: 2
+  exponents: {}
+
+observed:
+  pre_days: 20
+  nwis_parameter_cd: "00060"
+  nwis_stat_cd: "00003"
+
+output:
+  root_dir: "data/nws_operational_latest/site=11160500"
+  cache_alias_root: "data/forecats_cache/site=11160500/run_id=operational_nws_latest/forecast_cache/nws"
+  status_file_rel: "status/latest_run.json"
+  plot_file_rel: "plots/nws_operational_latest.png"
+
+runtime:
+  skip_if_current: true
