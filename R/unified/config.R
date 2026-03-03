@@ -11,6 +11,7 @@ unified_config_defaults <- function() {
       repro_mode = "strict",
       seed = 777L,
       overwrite = FALSE,
+      auto_suffix_on_collision = FALSE,
       dry_run = FALSE,
       git_require_clean = FALSE,
       io = list(
@@ -42,12 +43,46 @@ unified_config_defaults <- function() {
       run_exdqlm_multivar = TRUE,
       run_exdqlm_univar = FALSE,
       run_ndlm_main = FALSE,
+      exdqlm_multivar = list(
+        implementation_mode = "legacy_bridge",
+        forecast_transfer_mode = "drop",
+        forecast_transfer_modes = NULL,
+        state_evolution = list(
+          df_t = 0.9999995,
+          df_s1 = 0.9997,
+          df_s2 = 0.9997,
+          df_s67 = 0.9997,
+          df_discrep = 0.999,
+          lambda = 0.8995,
+          df_trans = 0.99999999,
+          df_covs = 0.99999
+        )
+      ),
       exdqlm_univar = list(
-        implementation_mode = "theory_aligned"
+        implementation_mode = "theory_aligned",
+        state_evolution = list(
+          df_t = 0.9999995,
+          df_s1 = 0.9997,
+          df_s2 = 0.9997,
+          df_s67 = 0.9997,
+          lambda = 0.8995,
+          df_trans = 0.99999999,
+          df_covs = 0.99999
+        )
       ),
       ndlm_main = list(
         implementation_mode = "theory_aligned",
-        kalman_backend = "cpp"
+        kalman_backend = "cpp",
+        state_evolution = list(
+          df_t = 0.95,
+          df_s1 = 0.98,
+          df_s2 = 0.98,
+          df_s67 = 0.98,
+          df_discrep = 0.98,
+          lambda = 0.99,
+          df_trans = 0.99999999,
+          df_covs = 0.99999
+        )
       )
     ),
     site = list(
@@ -107,10 +142,10 @@ unified_config_defaults <- function() {
       ),
       exdqlm_multivar = list(
         gamma_sigma = list(
-          warmup_freeze_iters = 20L,
+          warmup_freeze_iters = 5L,
           min_update_iters = 50L,
           min_total_iters = 50L,
-          max_iter = 800L,
+          max_iter = 100L,
           convergence_tol = 1e-6,
           convergence = list(
             elbo_tol = 1e-6,
@@ -132,15 +167,29 @@ unified_config_defaults <- function() {
             log_failures = TRUE,
             mode = "adaptive_freeze",
             penalty = 1e12
+          ),
+          transfer_compare_fast = list(
+            enabled = FALSE,
+            warmup_freeze_iters = 5L,
+            min_update_iters = 15L,
+            min_total_iters = 20L,
+            max_iter = 20L
           )
+        ),
+        legacy = list(
+          lam1 = 1 - 1e-6,
+          lam2 = 1 - 1e-6,
+          n_samp = 2000L,
+          sims_enabled = TRUE,
+          use_covariates = TRUE
         )
       ),
       exdqlm_univar = list(
         gamma_sigma = list(
-          warmup_freeze_iters = 20L,
+          warmup_freeze_iters = 5L,
           min_update_iters = 50L,
           min_total_iters = 50L,
-          max_iter = 800L,
+          max_iter = 100L,
           convergence_tol = 1e-6,
           convergence = list(
             elbo_tol = 1e-6,
@@ -163,6 +212,31 @@ unified_config_defaults <- function() {
             mode = "adaptive_freeze",
             penalty = 1e12
           )
+        ),
+        legacy = list(
+          lam1 = 1 - 1e-16,
+          lam2 = 1 - 1e-16,
+          n_samp = 2000L,
+          sims_enabled = TRUE,
+          use_covariates = TRUE
+        )
+      ),
+      ndlm_main = list(
+        gamma_sigma = list(
+          min_total_iters = 50L,
+          max_iter = 100L,
+          convergence_tol = 1e-6,
+          convergence = list(
+            elbo_tol = 1e-6,
+            elbo_rel_tol = 2.5e-4
+          )
+        ),
+        legacy = list(
+          lam1 = 1 - 1e-6,
+          lam2 = 0.9,
+          n_samp = 2000L,
+          sims_enabled = TRUE,
+          use_covariates = TRUE
         )
       ),
       contract_checks = list(
@@ -247,6 +321,71 @@ unified_get <- function(x, path, default = NULL) {
     cur <- cur[[p]]
   }
   cur
+}
+
+unified_resolve_multivar_transfer_modes <- function(cfg, default_mode = "drop") {
+  single_mode <- as.character(unified_get(
+    cfg,
+    c("models", "exdqlm_multivar", "forecast_transfer_mode"),
+    default = default_mode
+  ))
+  if (!length(single_mode) || is.na(single_mode[[1]]) || !nzchar(single_mode[[1]])) {
+    single_mode <- default_mode
+  } else {
+    single_mode <- single_mode[[1]]
+  }
+  single_mode <- tolower(trimws(single_mode))
+  if (!(single_mode %in% c("drop", "keep"))) {
+    single_mode <- default_mode
+  }
+
+  raw_modes <- unified_get(
+    cfg,
+    c("models", "exdqlm_multivar", "forecast_transfer_modes"),
+    default = NULL
+  )
+  if (is.null(raw_modes)) {
+    return(single_mode)
+  }
+
+  mode_vec <- unlist(raw_modes, use.names = FALSE)
+  mode_vec <- tolower(trimws(as.character(mode_vec)))
+  mode_vec <- mode_vec[nzchar(mode_vec) & !is.na(mode_vec)]
+  mode_vec <- unique(mode_vec)
+  mode_vec <- mode_vec[mode_vec %in% c("drop", "keep")]
+
+  if (length(mode_vec) == 0L) {
+    return(single_mode)
+  }
+  mode_vec
+}
+
+unified_resolve_multivar_primary_transfer_mode <- function(cfg, modes = NULL, default_mode = "drop") {
+  if (is.null(modes) || length(modes) == 0L) {
+    modes <- unified_resolve_multivar_transfer_modes(cfg, default_mode = default_mode)
+  }
+  modes <- tolower(trimws(as.character(modes)))
+  modes <- modes[nzchar(modes) & !is.na(modes)]
+  if (length(modes) == 0L) {
+    return(default_mode)
+  }
+  modes <- unique(modes)
+
+  preferred <- as.character(unified_get(
+    cfg,
+    c("models", "exdqlm_multivar", "forecast_transfer_mode"),
+    default = default_mode
+  ))
+  if (!length(preferred) || is.na(preferred[[1]]) || !nzchar(preferred[[1]])) {
+    preferred <- default_mode
+  } else {
+    preferred <- preferred[[1]]
+  }
+  preferred <- tolower(trimws(preferred))
+  if (preferred %in% modes) {
+    return(preferred)
+  }
+  modes[[1]]
 }
 
 unified_set <- function(x, path, value) {
@@ -454,10 +593,97 @@ unified_validate_config <- function(cfg) {
   if (!(ndlm_mode %in% c("legacy_bridge", "theory_aligned"))) {
     add_err("models.ndlm_main.implementation_mode must be one of: legacy_bridge, theory_aligned")
   }
+  multivar_forecast_transfer_mode <- unified_get(
+    cfg,
+    c("models", "exdqlm_multivar", "forecast_transfer_mode"),
+    default = "drop"
+  )
+  if (!(multivar_forecast_transfer_mode %in% c("drop", "keep"))) {
+    add_err("models.exdqlm_multivar.forecast_transfer_mode must be one of: drop, keep")
+  }
+  multivar_forecast_transfer_modes <- unified_get(
+    cfg,
+    c("models", "exdqlm_multivar", "forecast_transfer_modes"),
+    default = NULL
+  )
+  if (!is.null(multivar_forecast_transfer_modes)) {
+    mode_vec <- unlist(multivar_forecast_transfer_modes, use.names = FALSE)
+    mode_vec <- tolower(trimws(as.character(mode_vec)))
+    mode_vec <- mode_vec[nzchar(mode_vec) & !is.na(mode_vec)]
+    if (length(mode_vec) == 0L) {
+      add_err("models.exdqlm_multivar.forecast_transfer_modes must be null or a non-empty list of modes")
+    } else {
+      invalid_modes <- unique(mode_vec[!(mode_vec %in% c("drop", "keep"))])
+      if (length(invalid_modes) > 0L) {
+        add_err(sprintf(
+          "models.exdqlm_multivar.forecast_transfer_modes has invalid values: %s (allowed: drop, keep)",
+          paste(invalid_modes, collapse = ", ")
+        ))
+      }
+    }
+  }
   ndlm_kalman_backend <- unified_get(cfg, c("models", "ndlm_main", "kalman_backend"), default = "cpp")
   if (!(ndlm_kalman_backend %in% c("r", "cpp"))) {
     add_err("models.ndlm_main.kalman_backend must be one of: r, cpp")
   }
+  multivar_prob_keys <- c("df_t", "df_s1", "df_s2", "df_s67", "df_discrep", "lambda", "df_trans", "df_covs")
+  for (nm in multivar_prob_keys) {
+    val <- suppressWarnings(as.numeric(unified_get(cfg, c("models", "exdqlm_multivar", "state_evolution", nm), default = NA_real_)))
+    if (!is.finite(val) || val <= 0 || val >= 1) {
+      add_err(sprintf("models.exdqlm_multivar.state_evolution.%s must be numeric in (0,1)", nm))
+    }
+  }
+  ndlm_prob_keys <- c("df_t", "df_s1", "df_s2", "df_s67", "df_discrep", "lambda", "df_trans", "df_covs")
+  for (nm in ndlm_prob_keys) {
+    val <- suppressWarnings(as.numeric(unified_get(cfg, c("models", "ndlm_main", "state_evolution", nm), default = NA_real_)))
+    if (!is.finite(val) || val <= 0 || val >= 1) {
+      add_err(sprintf("models.ndlm_main.state_evolution.%s must be numeric in (0,1)", nm))
+    }
+  }
+  univar_prob_keys <- c("df_t", "df_s1", "df_s2", "df_s67", "lambda", "df_trans", "df_covs")
+  for (nm in univar_prob_keys) {
+    val <- suppressWarnings(as.numeric(unified_get(cfg, c("models", "exdqlm_univar", "state_evolution", nm), default = NA_real_)))
+    if (!is.finite(val) || val <= 0 || val >= 1) {
+      add_err(sprintf("models.exdqlm_univar.state_evolution.%s must be numeric in (0,1)", nm))
+    }
+  }
+
+  validate_prob_01 <- function(path, label) {
+    val <- suppressWarnings(as.numeric(unified_get(cfg, path, default = NA_real_)))
+    if (!is.finite(val) || val <= 0 || val >= 1) {
+      add_err(sprintf("%s must be numeric in (0,1)", label))
+    }
+  }
+  validate_int_min <- function(path, label, min_value = 1L) {
+    val <- suppressWarnings(as.integer(unified_get(cfg, path, default = NA_integer_)))
+    if (!is.finite(val) || val < as.integer(min_value)) {
+      add_err(sprintf("%s must be an integer >= %d", label, as.integer(min_value)))
+    }
+  }
+  validate_bool <- function(path, label) {
+    val <- unified_get(cfg, path, default = NULL)
+    if (!isTRUE(val) && !identical(val, FALSE)) {
+      add_err(sprintf("%s must be boolean (true/false)", label))
+    }
+  }
+
+  validate_prob_01(c("fit", "exdqlm_univar", "legacy", "lam1"), "fit.exdqlm_univar.legacy.lam1")
+  validate_prob_01(c("fit", "exdqlm_univar", "legacy", "lam2"), "fit.exdqlm_univar.legacy.lam2")
+  validate_int_min(c("fit", "exdqlm_univar", "legacy", "n_samp"), "fit.exdqlm_univar.legacy.n_samp", min_value = 1L)
+  validate_bool(c("fit", "exdqlm_univar", "legacy", "sims_enabled"), "fit.exdqlm_univar.legacy.sims_enabled")
+  validate_bool(c("fit", "exdqlm_univar", "legacy", "use_covariates"), "fit.exdqlm_univar.legacy.use_covariates")
+
+  validate_prob_01(c("fit", "exdqlm_multivar", "legacy", "lam1"), "fit.exdqlm_multivar.legacy.lam1")
+  validate_prob_01(c("fit", "exdqlm_multivar", "legacy", "lam2"), "fit.exdqlm_multivar.legacy.lam2")
+  validate_int_min(c("fit", "exdqlm_multivar", "legacy", "n_samp"), "fit.exdqlm_multivar.legacy.n_samp", min_value = 1L)
+  validate_bool(c("fit", "exdqlm_multivar", "legacy", "sims_enabled"), "fit.exdqlm_multivar.legacy.sims_enabled")
+  validate_bool(c("fit", "exdqlm_multivar", "legacy", "use_covariates"), "fit.exdqlm_multivar.legacy.use_covariates")
+
+  validate_prob_01(c("fit", "ndlm_main", "legacy", "lam1"), "fit.ndlm_main.legacy.lam1")
+  validate_prob_01(c("fit", "ndlm_main", "legacy", "lam2"), "fit.ndlm_main.legacy.lam2")
+  validate_int_min(c("fit", "ndlm_main", "legacy", "n_samp"), "fit.ndlm_main.legacy.n_samp", min_value = 1L)
+  validate_bool(c("fit", "ndlm_main", "legacy", "sims_enabled"), "fit.ndlm_main.legacy.sims_enabled")
+  validate_bool(c("fit", "ndlm_main", "legacy", "use_covariates"), "fit.ndlm_main.legacy.use_covariates")
 
   check_required_file <- function(path, key) {
     if (is.null(path) || !nzchar(path)) {
@@ -736,10 +962,10 @@ unified_validate_config <- function(cfg) {
   }
 
   exdqlm_gamma_sigma_defaults <- list(
-    warmup_freeze_iters = 20L,
+    warmup_freeze_iters = 5L,
     min_update_iters = 50L,
     min_total_iters = 50L,
-    max_iter = 800L,
+    max_iter = 100L,
     convergence_tol = 1e-6,
     convergence = list(
       elbo_tol = 1e-6,
@@ -764,9 +990,69 @@ unified_validate_config <- function(cfg) {
   validate_exdqlm_gamma_sigma_block("exdqlm_multivar", exdqlm_multivar_gamma_sigma_defaults)
   validate_exdqlm_gamma_sigma_block("exdqlm_univar", exdqlm_univar_gamma_sigma_defaults)
 
+  validate_multivar_transfer_compare_fast <- function() {
+    key_prefix <- "fit.exdqlm_multivar.gamma_sigma.transfer_compare_fast"
+    path_prefix <- c("fit", "exdqlm_multivar", "gamma_sigma", "transfer_compare_fast")
+    cfg_get <- function(path_tail, default = NULL) {
+      unified_get(cfg, c(path_prefix, path_tail), default)
+    }
+
+    enabled <- cfg_get("enabled", FALSE)
+    if (!isTRUE(enabled) && !identical(enabled, FALSE)) {
+      add_err(sprintf("%s.enabled must be boolean (true/false)", key_prefix))
+    }
+
+    warmup_freeze_iters <- suppressWarnings(as.integer(
+      cfg_get("warmup_freeze_iters", 5L)
+    ))
+    if (!is.finite(warmup_freeze_iters) || warmup_freeze_iters < 0L) {
+      add_err(sprintf("%s.warmup_freeze_iters must be an integer >= 0", key_prefix))
+    }
+
+    min_update_iters <- suppressWarnings(as.integer(
+      cfg_get("min_update_iters", 15L)
+    ))
+    if (!is.finite(min_update_iters) || min_update_iters < 0L) {
+      add_err(sprintf("%s.min_update_iters must be an integer >= 0", key_prefix))
+    }
+
+    min_total_iters <- suppressWarnings(as.integer(
+      cfg_get("min_total_iters", 20L)
+    ))
+    if (!is.finite(min_total_iters) || min_total_iters < 1L) {
+      add_err(sprintf("%s.min_total_iters must be an integer >= 1", key_prefix))
+    }
+
+    max_iter <- suppressWarnings(as.integer(
+      cfg_get("max_iter", 20L)
+    ))
+    if (!is.finite(max_iter) || max_iter < 1L) {
+      add_err(sprintf("%s.max_iter must be an integer >= 1", key_prefix))
+    }
+
+    required_floor <- max(min_total_iters, warmup_freeze_iters + min_update_iters)
+    if (isTRUE(enabled) && is.finite(max_iter) && is.finite(required_floor) && max_iter < required_floor) {
+      add_err(sprintf(
+        "%s.max_iter must be >= max(min_total_iters, warmup_freeze_iters + min_update_iters) when enabled",
+        key_prefix
+      ))
+    }
+  }
+  validate_multivar_transfer_compare_fast()
+
   validation_profile <- unified_get(cfg, c("validation", "profile"), "production")
   if (!(validation_profile %in% c("production", "production_proof", "smoke"))) {
     add_err("validation.profile must be one of: production, production_proof, smoke")
+  }
+  validation_compare_mode <- as.character(unified_get(cfg, c("validation", "compare", "mode"), "both"))
+  validation_compare_mode <- if (length(validation_compare_mode) > 0L) {
+    tolower(trimws(validation_compare_mode[[1L]]))
+  } else {
+    "both"
+  }
+  if (!nzchar(validation_compare_mode)) validation_compare_mode <- "both"
+  if (!(validation_compare_mode %in% c("hash", "pixel", "both", "none"))) {
+    add_err("validation.compare.mode must be one of: hash, pixel, both, none")
   }
 
   data_start <- unified_get(cfg, c("dates", "data_start"), default = NULL)

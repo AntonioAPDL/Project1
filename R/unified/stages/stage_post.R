@@ -148,6 +148,12 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   quantiles <- as.numeric(cfg$fit$quantiles)
   q_num <- as.integer(round(quantiles * 100))
   q_labels <- sprintf("%02d", q_num)
+  multivar_transfer_modes <- unified_resolve_multivar_transfer_modes(cfg)
+  primary_multivar_transfer_mode <- unified_resolve_multivar_primary_transfer_mode(
+    cfg,
+    modes = multivar_transfer_modes
+  )
+  multivar_dual_mode <- isTRUE(cfg$models$run_exdqlm_multivar) && length(multivar_transfer_modes) > 1L
 
   resolve_manifest_paths <- function(patterns, family_name, fallback_rel_paths = NULL) {
     allowed_roots <- unique(c(run_root_abs, fit_outputs_root_abs))
@@ -202,17 +208,45 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     unified_artifact_paths_to_absolute(existing, run_root = fit_outputs_root_abs, repo_root = repo_root_abs, must_exist = strict_repro)
   }
 
-  disc_w_paths_abs <- character(0)
+  disc_w_paths_by_mode <- list()
   if (isTRUE(cfg$models$run_exdqlm_multivar)) {
-    patterns <- setNames(
-      sprintf("fit/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC\\.RData$", q_labels, q_num),
-      q_labels
-    )
-    fallback_rel <- setNames(
-      sprintf("fit/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC.RData", q_labels, q_num),
-      q_labels
-    )
-    disc_w_paths_abs <- resolve_manifest_paths(patterns, "DISC-W", fallback_rel_paths = fallback_rel)
+    resolve_disc_w_mode_paths <- function(mode) {
+      mode <- tolower(trimws(as.character(mode)))
+      use_legacy_primary <- identical(mode, primary_multivar_transfer_mode)
+      if (use_legacy_primary) {
+        patterns <- setNames(
+          sprintf("fit/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC\\.RData$", q_labels, q_num),
+          q_labels
+        )
+        fallback_rel <- setNames(
+          sprintf("fit/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC.RData", q_labels, q_num),
+          q_labels
+        )
+      } else {
+        patterns <- setNames(
+          sprintf("fit/exdqlm_multivar/%s/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC\\.RData$", mode, q_labels, q_num),
+          q_labels
+        )
+        fallback_rel <- setNames(
+          sprintf("fit/exdqlm_multivar/%s/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC.RData", mode, q_labels, q_num),
+          q_labels
+        )
+      }
+      resolve_manifest_paths(
+        patterns = patterns,
+        family_name = sprintf("DISC-W (%s)", mode),
+        fallback_rel_paths = fallback_rel
+      )
+    }
+
+    for (mode in multivar_transfer_modes) {
+      disc_w_paths_by_mode[[mode]] <- resolve_disc_w_mode_paths(mode)
+    }
+  }
+  disc_w_paths_abs <- if (length(disc_w_paths_by_mode) > 0L) {
+    disc_w_paths_by_mode[[primary_multivar_transfer_mode]]
+  } else {
+    character(0)
   }
 
   univ_paths_abs <- character(0)
@@ -277,10 +311,19 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   univar_only_mode <- isTRUE(cfg$models$run_exdqlm_univar) &&
     !isTRUE(cfg$models$run_exdqlm_multivar) &&
     !isTRUE(cfg$models$run_ndlm_main)
-  post_smoke_fast_effective <- isTRUE(cfg$post$smoke_fast) || univar_only_mode
+  multivar_only_mode <- isTRUE(cfg$models$run_exdqlm_multivar) &&
+    !isTRUE(cfg$models$run_exdqlm_univar) &&
+    !isTRUE(cfg$models$run_ndlm_main)
+  post_smoke_fast_effective <- isTRUE(cfg$post$smoke_fast) || univar_only_mode || multivar_only_mode
   if (univar_only_mode && !isTRUE(cfg$post$smoke_fast)) {
     warning(
       "stage_post: enabling smoke-fast post artifact contract for univariate-only mode to avoid cross-family artifact requirements.",
+      call. = FALSE
+    )
+  }
+  if (multivar_only_mode && !isTRUE(cfg$post$smoke_fast)) {
+    warning(
+      "stage_post: enabling smoke-fast post artifact contract for multivariate-only mode to avoid cross-family artifact requirements.",
       call. = FALSE
     )
   }
@@ -297,7 +340,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     table_formats <- table_formats[nzchar(table_formats)]
     if (length(table_formats) == 0L) table_formats <- "csv"
   }
-  env_overrides <- c(
+  base_env_overrides <- c(
     UNIFIED_RUN_ROOT = run_root_abs,
     UNIFIED_RUN_ID = run_id,
     UNIFIED_FIT_OUTPUTS_SOURCE_ROOT = fit_outputs_root_abs,
@@ -311,6 +354,8 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_POST_SMOKE_FAST = if (isTRUE(post_smoke_fast_effective)) "TRUE" else "FALSE",
     UNIFIED_FIT_QUANTILE_LABELS = encode_env_list(q_labels),
     UNIFIED_DISC_W_RDATA_PATHS = encode_env_list(disc_w_paths_abs),
+    UNIFIED_POST_OUTPUT_SUBDIR = "",
+    UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE = primary_multivar_transfer_mode,
     UNIFIED_UNIV_RDATA_PATHS = encode_env_list(univ_paths_abs),
     UNIFIED_NDLM_RDATA_PATH = ndlm_path_abs,
     RUN_ID = run_id,
@@ -325,27 +370,84 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     ENV_NWS_FORECAST_PATH = normalizePath(adapted_nws, mustWork = FALSE),
     ENV_GLOFAS_FORECAST_PATH = normalizePath(adapted_glofas, mustWork = FALSE)
   )
+  run_post_runner <- function(env_overrides, log_path) {
+    env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
+    cmd_out <- system2(
+      "Rscript",
+      c("--vanilla", file.path("scripts", "run_environmetrics_figures.R")),
+      stdout = TRUE,
+      stderr = TRUE,
+      env = env_kv
+    )
+    writeLines(cmd_out, log_path, useBytes = TRUE)
+    status <- attr(cmd_out, "status")
+    if (!is.null(status) && status != 0) {
+      stop(sprintf("post stage failed; see %s", log_path), call. = FALSE)
+    }
+  }
 
-  log_path <- file.path(post_logs, "post_runner.log")
-  env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
-  cmd_out <- system2(
-    "Rscript",
-    c("--vanilla", file.path("scripts", "run_environmetrics_figures.R")),
-    stdout = TRUE,
-    stderr = TRUE,
-    env = env_kv
+  run_post_runner(
+    env_overrides = base_env_overrides,
+    log_path = file.path(post_logs, "post_runner.log")
   )
-  writeLines(cmd_out, log_path, useBytes = TRUE)
-  status <- attr(cmd_out, "status")
-  if (!is.null(status) && status != 0) {
-    stop(sprintf("post stage failed; see %s", log_path), call. = FALSE)
+
+  if (isTRUE(cfg$models$run_exdqlm_multivar) && multivar_dual_mode) {
+    additional_modes <- setdiff(multivar_transfer_modes, primary_multivar_transfer_mode)
+    for (mode in additional_modes) {
+      mode_paths <- disc_w_paths_by_mode[[mode]]
+      mode_subdir <- sprintf("multivar_%s", mode)
+      mode_cache_dir <- file.path(post_cache_dir, mode_subdir)
+      dir.create(mode_cache_dir, recursive = TRUE, showWarnings = FALSE)
+      mode_env <- base_env_overrides
+      mode_env["UNIFIED_MODEL_RUN_EXDQLM_MULTIVAR"] <- "TRUE"
+      mode_env["UNIFIED_MODEL_RUN_EXDQLM_UNIVAR"] <- "FALSE"
+      mode_env["UNIFIED_MODEL_RUN_NDLM_MAIN"] <- "FALSE"
+      mode_env["UNIFIED_DISC_W_RDATA_PATHS"] <- encode_env_list(mode_paths)
+      mode_env["UNIFIED_UNIV_RDATA_PATHS"] <- ""
+      mode_env["UNIFIED_NDLM_RDATA_PATH"] <- ""
+      mode_env["UNIFIED_POST_OUTPUT_SUBDIR"] <- mode_subdir
+      mode_env["UNIFIED_POST_CACHE_DIR"] <- normalizePath(mode_cache_dir, mustWork = FALSE)
+      mode_env["UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE"] <- mode
+      run_post_runner(
+        env_overrides = mode_env,
+        log_path = file.path(post_logs, sprintf("post_runner_multivar_%s.log", mode))
+      )
+    }
   }
 
   ndlm_only_mode <- isTRUE(cfg$models$run_ndlm_main) &&
     !isTRUE(cfg$models$run_exdqlm_multivar) &&
     !isTRUE(cfg$models$run_exdqlm_univar)
   if (isTRUE(cfg$models$run_ndlm_main) && nzchar(ndlm_path_abs)) {
-    ndlm_fit_log <- file.path(run_root_abs, "fit", "ndlm_main", "logs", "ndlm_theory.log")
+    ndlm_impl_mode <- as.character(unified_get(
+      cfg,
+      c("models", "ndlm_main", "implementation_mode"),
+      default = "theory_aligned"
+    ))
+    if (!length(ndlm_impl_mode) || is.na(ndlm_impl_mode[[1L]]) || !nzchar(ndlm_impl_mode[[1L]])) {
+      ndlm_impl_mode <- "theory_aligned"
+    } else {
+      ndlm_impl_mode <- ndlm_impl_mode[[1L]]
+    }
+
+    fit_logs_root <- file.path(fit_outputs_root_abs, "fit", "ndlm_main", "logs")
+    ndlm_fit_log_primary <- if (identical(ndlm_impl_mode, "legacy_bridge")) {
+      file.path(fit_logs_root, "ndlm_legacy.log")
+    } else {
+      file.path(fit_logs_root, "ndlm_theory.log")
+    }
+    ndlm_fit_log_alt <- if (identical(ndlm_impl_mode, "legacy_bridge")) {
+      file.path(fit_logs_root, "ndlm_theory.log")
+    } else {
+      file.path(fit_logs_root, "ndlm_legacy.log")
+    }
+    ndlm_fit_log <- if (file.exists(ndlm_fit_log_primary)) ndlm_fit_log_primary else ndlm_fit_log_alt
+
+    ndlm_usgs_site <- as.character(unified_get(cfg, c("site", "usgs_site"), default = "11160500"))
+    ndlm_cutoff_date <- suppressWarnings(as.Date(unified_get(cfg, c("dates", "cutoff_date"), default = NA_character_)))
+    ndlm_forecast_start <- if (!is.na(ndlm_cutoff_date)) as.character(ndlm_cutoff_date + 1L) else NA_character_
+    ndlm_forecast_end <- as.character(unified_get(cfg, c("dates", "plot_end"), default = NA_character_))
+
     ndlm_diag_result <- unified_generate_ndlm_post_diagnostics(
       run_root = run_root_abs,
       ndlm_rdata_path = ndlm_path_abs,
@@ -354,7 +456,11 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
       glofas_csv_path = normalizePath(adapted_glofas, mustWork = FALSE),
       fit_log_path = ndlm_fit_log,
       output_dir = file.path(run_root_abs, "diagnostics", "ndlm"),
-      strict_contract = ndlm_only_mode
+      usgs_site = ndlm_usgs_site,
+      forecast_start_date = ndlm_forecast_start,
+      forecast_end_date = ndlm_forecast_end,
+      strict_contract = ndlm_only_mode && !identical(ndlm_impl_mode, "legacy_bridge"),
+      state_ci_max_draws = if (identical(ndlm_impl_mode, "legacy_bridge")) 250L else NULL
     )
 
     ndlm_diag_paths <- unlist(ndlm_diag_result$paths, use.names = FALSE)

@@ -42,6 +42,9 @@ source(POST_MODULE_PLAN_HELPERS)
 RUN_ROOT <- Sys.getenv("UNIFIED_RUN_ROOT", "")
 RUN_ID <- Sys.getenv("UNIFIED_RUN_ID", Sys.getenv("RUN_ID", ""))
 POST_CACHE_DIR <- Sys.getenv("UNIFIED_POST_CACHE_DIR", "")
+POST_OUTPUT_SUBDIR <- Sys.getenv("UNIFIED_POST_OUTPUT_SUBDIR", "")
+POST_OUTPUT_SUBDIR <- gsub("[^A-Za-z0-9._-]+", "_", POST_OUTPUT_SUBDIR)
+POST_OUTPUT_SUBDIR <- gsub("^_+|_+$", "", POST_OUTPUT_SUBDIR)
 UNIFIED_REPRO_MODE <- tolower(Sys.getenv("UNIFIED_REPRO_MODE", ""))
 STRICT_RUNSCOPED_POST <- env_flag("UNIFIED_REQUIRE_RUNSCOPED_POST", "FALSE") || identical(UNIFIED_REPRO_MODE, "strict")
 ALLOW_LEGACY_ROOT_FALLBACK <- env_flag("UNIFIED_ALLOW_LEGACY_POST_FALLBACK", "FALSE")
@@ -100,6 +103,9 @@ if (!nzchar(RUN_ID)) {
   RUN_ID <- format(Sys.time(), "%Y%m%d_%H%M%S")
 }
 OUT_DIR <- file.path(OUT_PARENT, RUN_ID)
+if (nzchar(POST_OUTPUT_SUBDIR)) {
+  OUT_DIR <- file.path(OUT_DIR, POST_OUTPUT_SUBDIR)
+}
 SEED <- 777
 PROFILE <- env_flag("PROFILE", "FALSE")
 PROFILE_DETAIL <- env_flag("PROFILE_DETAIL", "FALSE")
@@ -115,9 +121,17 @@ options(stringsAsFactors = FALSE)
 # Logging
 # -------------------------
 log_dir <- if (nzchar(RUN_ROOT)) {
-  file.path(RUN_ROOT, "post", "logs", RUN_ID)
+  if (nzchar(POST_OUTPUT_SUBDIR)) {
+    file.path(RUN_ROOT, "post", "logs", RUN_ID, POST_OUTPUT_SUBDIR)
+  } else {
+    file.path(RUN_ROOT, "post", "logs", RUN_ID)
+  }
 } else {
-  file.path(PROJECT_ROOT, "repro", "logs", "script_runs", RUN_ID)
+  if (nzchar(POST_OUTPUT_SUBDIR)) {
+    file.path(PROJECT_ROOT, "repro", "logs", "script_runs", RUN_ID, POST_OUTPUT_SUBDIR)
+  } else {
+    file.path(PROJECT_ROOT, "repro", "logs", "script_runs", RUN_ID)
+  }
 }
 dir.create(log_dir, showWarnings = FALSE, recursive = TRUE)
 log_path <- file.path(log_dir, "run_log.txt")
@@ -127,6 +141,7 @@ cat(sprintf("START: %s\n", format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
 git_hash <- tryCatch(system("git rev-parse HEAD", intern = TRUE), error = function(e) "UNKNOWN")
 cat(sprintf("GIT_COMMIT: %s\n", git_hash))
 cat(sprintf("OUT_DIR: %s\n", OUT_DIR))
+cat(sprintf("POST_OUTPUT_SUBDIR: %s\n", if (nzchar(POST_OUTPUT_SUBDIR)) POST_OUTPUT_SUBDIR else "<root>"))
 cat(sprintf("SEED: %s\n", SEED))
 cat(sprintf("PROFILE: %s\n", PROFILE))
 cat(sprintf("PROFILE_DETAIL: %s\n", PROFILE_DETAIL))

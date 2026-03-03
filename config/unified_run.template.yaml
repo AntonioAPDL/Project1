@@ -35,10 +35,42 @@ models:
   run_exdqlm_multivar: true
   run_exdqlm_univar: false
   run_ndlm_main: false
+  exdqlm_multivar:
+    implementation_mode: "legacy_bridge"   # legacy_bridge
+    forecast_transfer_mode: "drop"         # drop | keep (keep retains transfer block during forecast window)
+    # Optional: run both transfer regimes in one unified run (repeats multivar fit/post per mode)
+    # forecast_transfer_modes: ["drop", "keep"]
+    state_evolution:
+      df_t:       0.9999
+      df_s1:      0.9995
+      df_s2:      0.9995
+      df_s67:     0.9999
+      df_discrep: 0.992
+      lambda:     0.97
+      df_trans:   0.99999999
+      df_covs:    0.99999999
   exdqlm_univar:
     implementation_mode: "theory_aligned"   # legacy_bridge | theory_aligned
+    state_evolution:
+      df_t: 0.9999995
+      df_s1: 0.9997
+      df_s2: 0.9997
+      df_s67: 0.9997
+      lambda: 0.8995
+      df_trans: 0.99999999
+      df_covs: 0.99999
   ndlm_main:
     implementation_mode: "theory_aligned"    # legacy_bridge | theory_aligned
+    kalman_backend: "cpp"                     # r | cpp
+    state_evolution:
+      df_t: 0.95
+      df_s1: 0.98
+      df_s2: 0.98
+      df_s67: 0.98
+      df_discrep: 0.98
+      lambda: 0.99
+      df_trans: 0.99999999
+      df_covs: 0.99999
 
 site:
   usgs_site: "11160500"
@@ -90,9 +122,10 @@ fit:
     mode: "resume"
   exdqlm_multivar:
     gamma_sigma:
-      warmup_freeze_iters: 20
+      warmup_freeze_iters: 5
       min_update_iters: 50          # require at least this many gamma/sigma update iterations before convergence stop
       min_total_iters: 50           # require at least this many total VB iterations before convergence stop
+      max_iter: 100
       convergence_tol: 1.0e-6       # legacy alias for ELBO criterion; prefer convergence.elbo_tol
       convergence:
         elbo_tol: 1.0e-6
@@ -112,11 +145,26 @@ fit:
         log_failures: true
         mode: "adaptive_freeze" # penalty | adaptive_freeze
         penalty: 1.0e12
+      transfer_compare_fast:
+        enabled: false         # when true, override gamma/sigma iteration controls for fast drop-vs-keep comparisons
+        warmup_freeze_iters: 5
+        min_update_iters: 15
+        min_total_iters: 20
+        max_iter: 20
+    legacy:
+      lam1: 0.999999
+      lam2: 0.999999
+      n_samp: 2000
+      sims_enabled: true
+      use_covariates: true
+      forecast_cov:
+        c_factor: 1.0e2            # legacy DISC-W forecast-window covariance prior scaling
   exdqlm_univar:
     gamma_sigma:
-      warmup_freeze_iters: 20
+      warmup_freeze_iters: 5
       min_update_iters: 50          # require at least this many gamma/sigma update iterations before convergence stop
       min_total_iters: 50           # require at least this many total VB iterations before convergence stop
+      max_iter: 100
       convergence_tol: 1.0e-6       # legacy alias for ELBO criterion; prefer convergence.elbo_tol
       convergence:
         elbo_tol: 1.0e-6
@@ -136,14 +184,26 @@ fit:
         log_failures: true
         mode: "adaptive_freeze"      # penalty | adaptive_freeze
         penalty: 1.0e12
+    legacy:
+      lam1: 0.9999999999999999
+      lam2: 0.9999999999999999
+      n_samp: 2000
+      sims_enabled: true
+      use_covariates: true
   ndlm_main:
     gamma_sigma:
       min_total_iters: 50
-      max_iter: 800
+      max_iter: 100
       convergence_tol: 1.0e-6       # legacy alias for ELBO criterion; prefer convergence.elbo_tol
       convergence:
         elbo_tol: 1.0e-6
         elbo_rel_tol: 2.5e-4
+    legacy:
+      lam1: 0.999999
+      lam2: 0.9
+      n_samp: 2000
+      sims_enabled: true
+      use_covariates: true
   contract_checks:
     enabled: false
     fail_fast: true
@@ -168,7 +228,7 @@ validation:
   profile: "production"          # production | production_proof | smoke
   canonical_run_id: null
   compare:
-    mode: "both"
+    mode: "both"                 # hash | pixel | both | none
     numeric_abs_tol: 0.0
     numeric_rel_tol: 0.0
     pixel_max_abs_tol: 0.0

@@ -11,6 +11,22 @@ unified_extract_artifact_quantiles <- function(paths, family = c("multivar", "un
       reg <- regmatches(
         p,
         regexec(
+          "fit/exdqlm_multivar/([a-z0-9_\\-]+)/q=([0-9]{2})/outputs/DISC_variables_([0-9]+)_exAL_synth_DISC\\.RData$",
+          p,
+          perl = TRUE
+        )
+      )[[1]]
+      if (length(reg) >= 4L) {
+        q_val <- suppressWarnings(as.integer(reg[[4L]]))
+        if (!is.finite(q_val)) {
+          q_val <- suppressWarnings(as.integer(reg[[3L]]))
+        }
+        if (is.finite(q_val)) out <- c(out, q_val)
+        next
+      }
+      reg <- regmatches(
+        p,
+        regexec(
           "fit/q=([0-9]{2})/outputs/DISC_variables_([0-9]+)_exAL_synth_DISC\\.RData$",
           p,
           perl = TRUE
@@ -59,6 +75,59 @@ unified_extract_artifact_quantiles <- function(paths, family = c("multivar", "un
   }
 
   sort(unique(out))
+}
+
+unified_extract_multivar_quantiles_by_mode <- function(paths, primary_mode = "drop") {
+  paths <- as.character(paths)
+  paths <- paths[nzchar(paths)]
+  out <- list()
+
+  append_q <- function(mode, q_val) {
+    if (!is.finite(q_val)) return(invisible(NULL))
+    mode <- tolower(trimws(as.character(mode)))
+    if (!nzchar(mode)) return(invisible(NULL))
+    prev <- out[[mode]]
+    if (is.null(prev)) prev <- integer(0)
+    out[[mode]] <<- sort(unique(c(prev, as.integer(q_val))))
+    invisible(NULL)
+  }
+
+  for (p in paths) {
+    reg_mode <- regmatches(
+      p,
+      regexec(
+        "fit/exdqlm_multivar/([a-z0-9_\\-]+)/q=([0-9]{2})/outputs/DISC_variables_([0-9]+)_exAL_synth_DISC\\.RData$",
+        p,
+        perl = TRUE
+      )
+    )[[1]]
+    if (length(reg_mode) >= 4L) {
+      q_val <- suppressWarnings(as.integer(reg_mode[[4L]]))
+      if (!is.finite(q_val)) {
+        q_val <- suppressWarnings(as.integer(reg_mode[[3L]]))
+      }
+      append_q(reg_mode[[2L]], q_val)
+      next
+    }
+
+    reg_legacy <- regmatches(
+      p,
+      regexec(
+        "fit/q=([0-9]{2})/outputs/DISC_variables_([0-9]+)_exAL_synth_DISC\\.RData$",
+        p,
+        perl = TRUE
+      )
+    )[[1]]
+    if (length(reg_legacy) >= 3L) {
+      q_val <- suppressWarnings(as.integer(reg_legacy[[3L]]))
+      if (!is.finite(q_val)) {
+        q_val <- suppressWarnings(as.integer(reg_legacy[[2L]]))
+      }
+      append_q(primary_mode, q_val)
+    }
+  }
+
+  out
 }
 
 unified_detect_ndlm_output_present <- function(paths) {
@@ -124,19 +193,82 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
 
   quantiles_expected <- suppressWarnings(as.integer(round(as.numeric(cfg$fit$quantiles) * 100)))
   quantiles_expected <- sort(unique(quantiles_expected[is.finite(quantiles_expected)]))
+  resolve_multivar_modes <- function(cfg_obj) {
+    if (exists("unified_resolve_multivar_transfer_modes", mode = "function")) {
+      return(unified_resolve_multivar_transfer_modes(cfg_obj))
+    }
+    mode <- as.character(unified_get(
+      cfg_obj,
+      c("models", "exdqlm_multivar", "forecast_transfer_mode"),
+      default = "drop"
+    ))
+    if (!length(mode) || is.na(mode[[1L]]) || !nzchar(mode[[1L]])) mode <- "drop" else mode <- mode[[1L]]
+    tolower(trimws(mode))
+  }
+  resolve_primary_multivar_mode <- function(cfg_obj, modes) {
+    if (exists("unified_resolve_multivar_primary_transfer_mode", mode = "function")) {
+      return(unified_resolve_multivar_primary_transfer_mode(cfg_obj, modes = modes))
+    }
+    modes <- unique(tolower(trimws(as.character(modes))))
+    modes <- modes[nzchar(modes)]
+    if (!length(modes)) return("drop")
+    mode <- as.character(unified_get(
+      cfg_obj,
+      c("models", "exdqlm_multivar", "forecast_transfer_mode"),
+      default = modes[[1L]]
+    ))
+    if (!length(mode) || is.na(mode[[1L]]) || !nzchar(mode[[1L]])) {
+      return(modes[[1L]])
+    }
+    mode <- tolower(trimws(mode[[1L]]))
+    if (mode %in% modes) mode else modes[[1L]]
+  }
+  multivar_transfer_modes <- resolve_multivar_modes(cfg)
+  primary_multivar_transfer_mode <- resolve_primary_multivar_mode(cfg, multivar_transfer_modes)
+
   artifact_paths <- unlist(lapply(manifest$artifacts, function(x) {
     val <- x$path
     if (is.null(val)) "" else as.character(val)
   }), use.names = FALSE)
   artifact_paths <- artifact_paths[nzchar(artifact_paths)]
 
-  multivar_found <- unified_extract_artifact_quantiles(artifact_paths, family = "multivar")
+  multivar_found_by_mode_raw <- unified_extract_multivar_quantiles_by_mode(
+    artifact_paths,
+    primary_mode = primary_multivar_transfer_mode
+  )
+  multivar_found_by_mode <- list()
+  if (isTRUE(cfg$models$run_exdqlm_multivar)) {
+    if (!length(multivar_transfer_modes)) {
+      multivar_transfer_modes <- primary_multivar_transfer_mode
+    }
+    for (mode in multivar_transfer_modes) {
+      q_vals <- multivar_found_by_mode_raw[[mode]]
+      if (is.null(q_vals)) q_vals <- integer(0)
+      multivar_found_by_mode[[mode]] <- sort(unique(as.integer(q_vals)))
+    }
+  }
+  multivar_found <- if (length(multivar_found_by_mode)) {
+    sort(unique(as.integer(unlist(multivar_found_by_mode, use.names = FALSE))))
+  } else {
+    integer(0)
+  }
   univar_found <- unified_extract_artifact_quantiles(artifact_paths, family = "univar")
   ndlm_present <- unified_detect_ndlm_output_present(artifact_paths)
 
   families_summary <- list(
     exdqlm_multivar = list(
       enabled = isTRUE(cfg$models$run_exdqlm_multivar),
+      transfer_modes = if (isTRUE(cfg$models$run_exdqlm_multivar)) multivar_transfer_modes else character(0),
+      primary_transfer_mode = if (isTRUE(cfg$models$run_exdqlm_multivar)) primary_multivar_transfer_mode else NA_character_,
+      quantiles_expected_by_mode = if (isTRUE(cfg$models$run_exdqlm_multivar)) {
+        stats::setNames(
+          rep(list(quantiles_expected), length(multivar_transfer_modes)),
+          multivar_transfer_modes
+        )
+      } else {
+        list()
+      },
+      quantiles_found_by_mode = if (isTRUE(cfg$models$run_exdqlm_multivar)) multivar_found_by_mode else list(),
       quantiles_expected = if (isTRUE(cfg$models$run_exdqlm_multivar)) quantiles_expected else integer(0),
       quantiles_found = if (isTRUE(cfg$models$run_exdqlm_multivar)) multivar_found else integer(0)
     ),
@@ -202,12 +334,25 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     sprintf("- artifacts_recorded: `%d`", length(manifest$artifacts)),
     sprintf("- summary_json: `%s`", file.path(report_root, "summary.json")),
     sprintf("- families.exdqlm_multivar.enabled: `%s`", families_summary$exdqlm_multivar$enabled),
+    sprintf("- families.exdqlm_multivar.transfer_modes: `%s`", paste(families_summary$exdqlm_multivar$transfer_modes, collapse = ", ")),
+    sprintf("- families.exdqlm_multivar.primary_transfer_mode: `%s`", families_summary$exdqlm_multivar$primary_transfer_mode),
     sprintf("- families.exdqlm_multivar.quantiles_found: `%s`", paste(families_summary$exdqlm_multivar$quantiles_found, collapse = ", ")),
     sprintf("- families.exdqlm_univar.enabled: `%s`", families_summary$exdqlm_univar$enabled),
     sprintf("- families.exdqlm_univar.quantiles_found: `%s`", paste(families_summary$exdqlm_univar$quantiles_found, collapse = ", ")),
     sprintf("- families.ndlm_main.enabled: `%s`", families_summary$ndlm_main$enabled),
     sprintf("- families.ndlm_main.output_present: `%s`", families_summary$ndlm_main$output_present)
   )
+
+  if (isTRUE(families_summary$exdqlm_multivar$enabled) &&
+      length(families_summary$exdqlm_multivar$quantiles_found_by_mode) > 0L) {
+    for (mode in names(families_summary$exdqlm_multivar$quantiles_found_by_mode)) {
+      mode_q <- families_summary$exdqlm_multivar$quantiles_found_by_mode[[mode]]
+      summary_lines <- c(
+        summary_lines,
+        sprintf("- families.exdqlm_multivar.quantiles_found_by_mode.%s: `%s`", mode, paste(mode_q, collapse = ", "))
+      )
+    }
+  }
 
   if (!is.null(profile_summary_path)) {
     summary_lines <- c(summary_lines, sprintf("- profile_summary: `%s`", profile_summary_path))

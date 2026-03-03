@@ -271,6 +271,76 @@ arma::vec repeat_vector(const arma::vec& input, const arma::vec& num_mem) {
     return output;
 }
 
+arma::uvec head_tail_indices(arma::uword full_dim, arma::uword core_dim, arma::uword tail_dim) {
+    if (core_dim + tail_dim > full_dim) {
+        Rcpp::stop("head_tail_indices received invalid dimensions");
+    }
+    arma::uvec idx(core_dim + tail_dim);
+    arma::uword pos = 0;
+    for (arma::uword i = 0; i < core_dim; ++i) {
+        idx(pos++) = i;
+    }
+    for (arma::uword i = 0; i < tail_dim; ++i) {
+        idx(pos++) = full_dim - tail_dim + i;
+    }
+    return idx;
+}
+
+arma::vec project_state_head_tail(const arma::vec& x, arma::uword core_dim, arma::uword tail_dim) {
+    arma::uvec idx = head_tail_indices(x.n_elem, core_dim, tail_dim);
+    return x.elem(idx);
+}
+
+arma::mat project_cov_head_tail(const arma::mat& M, arma::uword core_dim, arma::uword tail_dim) {
+    arma::uvec idx = head_tail_indices(M.n_rows, core_dim, tail_dim);
+    return M.submat(idx, idx);
+}
+
+arma::mat get_gg_transition_slice(
+    const Rcpp::List& GG_list_ens,
+    int index,
+    arma::uword state_dim,
+    arma::uword step,
+    const std::string& label,
+    int j = -1,
+    int kk = -1
+) {
+    if (index < 0 || index >= GG_list_ens.size()) {
+        std::ostringstream oss;
+        oss << "GG_list_ens index out of bounds: index=" << index
+            << " size=" << GG_list_ens.size();
+        Rcpp::stop(oss.str());
+    }
+    Rcpp::RObject obj = GG_list_ens[index];
+    if (!obj.hasAttribute("dim")) {
+        Rcpp::stop("GG_list_ens entry is missing dim attribute");
+    }
+    Rcpp::IntegerVector dims = obj.attr("dim");
+    if (dims.size() == 2) {
+        arma::mat GG_mat = Rcpp::as<arma::mat>(obj);
+        assert_mat_shape(GG_mat, state_dim, state_dim, label, j, kk);
+        return GG_mat;
+    }
+    if (dims.size() == 3) {
+        arma::cube GG_cube = Rcpp::as<arma::cube>(obj);
+        assert_mat_shape(GG_cube.slice(0), state_dim, state_dim, label, j, kk);
+        if (GG_cube.n_slices < 1) {
+            std::ostringstream oss;
+            oss << "GG_list_ens cube has no slices for " << label;
+            Rcpp::stop(oss.str());
+        }
+        arma::uword use_step = step;
+        if (use_step >= GG_cube.n_slices) {
+            use_step = GG_cube.n_slices - 1;
+        }
+        return GG_cube.slice(use_step);
+    }
+    std::ostringstream oss;
+    oss << "GG_list_ens entry must be matrix or cube, got dim rank=" << dims.size();
+    Rcpp::stop(oss.str());
+    return arma::mat();
+}
+
 
 // [[Rcpp::export]]
 Rcpp::List DISC_update_theta_synth_cpp(arma::cube GG, 
@@ -979,7 +1049,7 @@ if (y.n_rows != static_cast<arma::uword>(J + 1) || y.n_cols < static_cast<arma::
 if (num_mem.n_elem != static_cast<arma::uword>(J)) {
     Rcpp::stop("DISC_update_theta_synth_cpp_W num_mem length must equal J");
 }
-arma::uword forecast_state_dim = static_cast<arma::uword>(p * (J + 1));
+arma::uword forecast_state_dim = static_cast<arma::uword>(p * (J + 1) + ppx);
 if (ex_df_mat_list_ens.n_rows != forecast_state_dim ||
     ex_df_mat_list_ens.n_cols != forecast_state_dim ||
     ex_df_mat_list_ens.n_slices < 2) {
@@ -1022,10 +1092,10 @@ if (num_mem(j - 1) <= 0) {
         << " (value=" << num_mem(j - 1) << ")";
     Rcpp::stop(oss.str());
 }
-m_ens[j-1] = arma::cube(p*(J+1) + p*(1 - j), 1, kkk_j, arma::fill::zeros);
-sm_ens[j-1] = arma::cube(p*(J+1) + p*(1 - j), 1, kkk_j, arma::fill::zeros);
-C_ens[j-1] = arma::cube(p*(J+1) + p*(1 - j), p*(J+1) + p*(1 - j), kkk_j, arma::fill::zeros);
-sC_ens[j-1] = arma::cube(p*(J+1) + p*(1 - j), p*(J+1) + p*(1 - j), kkk_j, arma::fill::zeros);
+m_ens[j-1] = arma::cube(p*(J+1) + p*(1 - j) + ppx, 1, kkk_j, arma::fill::zeros);
+sm_ens[j-1] = arma::cube(p*(J+1) + p*(1 - j) + ppx, 1, kkk_j, arma::fill::zeros);
+C_ens[j-1] = arma::cube(p*(J+1) + p*(1 - j) + ppx, p*(J+1) + p*(1 - j) + ppx, kkk_j, arma::fill::zeros);
+sC_ens[j-1] = arma::cube(p*(J+1) + p*(1 - j) + ppx, p*(J+1) + p*(1 - j) + ppx, kkk_j, arma::fill::zeros);
 
 int nrow_error = Rcpp::as<arma::mat>(y_list_ens[j-1]).col(0).n_rows;
 standard_forecast_errors_ens[j-1] = arma::cube(nrow_error, 1, kkk_j, arma::fill::zeros);
@@ -1110,12 +1180,10 @@ for (int j = J; j >= 1; --j) {
 
 int kk = 0;
 int index = J-j;
-arma::uword state_dim = static_cast<arma::uword>(p * (j + 1));
+arma::uword state_dim = static_cast<arma::uword>(p * (j + 1) + ppx);
 arma::vec sub_num_mem = num_mem.subvec(0, j - 1);
 arma::uword sub_series = static_cast<arma::uword>(sub_num_mem.n_elem);
 arma::uword obs_dim = static_cast<arma::uword>(arma::sum(sub_num_mem));
-arma::mat GG_list_ens_mat = Rcpp::as<arma::mat>(GG_list_ens[index]);
-assert_mat_shape(GG_list_ens_mat, state_dim, state_dim, "GG_list_ens", j, kk);
 arma::cube W_list_ens_cube = Rcpp::as<arma::cube>(W_list_ens[index]);
 assert_cube_slice_available(W_list_ens_cube, state_dim, state_dim, 1, "W_list_ens", j, kk);
 arma::mat FF_slice = Rcpp::as<arma::mat>(FF_list_ens[index]);
@@ -1133,19 +1201,25 @@ if (y_ens.n_rows != obs_dim || y_ens.n_cols < 1) {
 
 if (j == J) {
     // // Rcpp::Rcout << " 1 " << std::endl;
+arma::mat GG_list_ens_mat = get_gg_transition_slice(
+    GG_list_ens, index, state_dim, static_cast<arma::uword>(0), "GG_list_ens", j, kk
+);
 arma::mat W_list_ens_mat = W_list_ens_cube.slice(0);
-a = GG_list_ens_mat * m.col(TT-1).subvec(0, p*(j+1) - 1);
-P = GG_list_ens_mat * C.slice(TT-1).submat(0, 0, p*(j+1) - 1, p*(j+1) - 1) * GG_list_ens_mat.t();      
+a = GG_list_ens_mat * project_state_head_tail(m.col(TT-1), static_cast<arma::uword>(p * (j + 1)), static_cast<arma::uword>(ppx));
+P = GG_list_ens_mat * project_cov_head_tail(C.slice(TT-1), static_cast<arma::uword>(p * (j + 1)), static_cast<arma::uword>(ppx)) * GG_list_ens_mat.t();
 // R = P % ex_df_mat_list_ens.slice(0).submat(0, 0, p + j - 1, p + j - 1) +  P % Ones_ens.submat(0, 0, p + j - 1, p + j - 1);  
 R = W_list_ens_mat +  P ;  
 // Rcpp::Rcout << " 11 " << std::endl;
 } else {
     // Rcpp::Rcout << " 2 " << std::endl;
 int last_slice_index = m_ens[index - 1].n_slices - 1;
+arma::mat GG_list_ens_mat = get_gg_transition_slice(
+    GG_list_ens, index, state_dim, static_cast<arma::uword>(0), "GG_list_ens", j, kk
+);
 arma::mat W_list_ens_mat = W_list_ens_cube.slice(0);
-arma::mat sub_matrix = m_ens[index - 1].subcube(0, 0, last_slice_index, p*(j+1) - 1, 0, last_slice_index);
-a = GG_list_ens_mat * sub_matrix.col(0);
-P = GG_list_ens_mat * C_ens[index - 1].slice(last_slice_index).submat(0, 0, p*(j+1) - 1, p*(j+1) - 1) * GG_list_ens_mat.t();
+arma::vec sub_state = project_state_head_tail(m_ens[index - 1].slice(last_slice_index).col(0), static_cast<arma::uword>(p * (j + 1)), static_cast<arma::uword>(ppx));
+a = GG_list_ens_mat * sub_state;
+P = GG_list_ens_mat * project_cov_head_tail(C_ens[index - 1].slice(last_slice_index), static_cast<arma::uword>(p * (j + 1)), static_cast<arma::uword>(ppx)) * GG_list_ens_mat.t();
 // R = P % ex_df_mat_list_ens.slice(0).submat(0, 0, p + j - 1, p + j - 1) +  P % Ones_ens.submat(0, 0, p + j - 1, p + j - 1);  
 R = W_list_ens_mat +  P ;  
 // Rcpp::Rcout << " 22 " << std::endl;
@@ -1195,8 +1269,11 @@ while (kk < k_j) {
     // Rcpp::Rcout << " 3 " << std::endl;
 assert_cube_slice_available(W_list_ens_cube, state_dim, state_dim, static_cast<arma::uword>(kk + 1), "W_list_ens", j, kk);
 arma::mat W_list_ens_mat = W_list_ens_cube.slice(kk); 
-arma::mat sub_matrix = m_ens[index].subcube(0, 0, kk-1, p*(j+1) - 1, 0, kk-1);
-arma::vec a = GG_list_ens_mat * sub_matrix.col(0);
+arma::mat GG_list_ens_mat = get_gg_transition_slice(
+    GG_list_ens, index, state_dim, static_cast<arma::uword>(kk), "GG_list_ens", j, kk
+);
+arma::vec sub_state = m_ens[index].slice(kk-1).col(0);
+arma::vec a = GG_list_ens_mat * sub_state;
 arma::mat P = GG_list_ens_mat * C_ens[index].slice(kk-1) * GG_list_ens_mat.t();
 // arma::mat R = P % ex_df_mat_list_ens.slice(1).submat(0, 0, p + j - 1, p + j - 1) + P % Ones_ens.submat(0, 0, p + j - 1, p + j - 1);
 arma::mat R = W_list_ens_mat + P ;
@@ -1257,7 +1334,7 @@ if (k_j <= 0) {
 }
 assert_cube_slice_available(
     m_ens[J - 1],
-    static_cast<arma::uword>(p * 2),
+    static_cast<arma::uword>(p * 2 + ppx),
     static_cast<arma::uword>(1),
     static_cast<arma::uword>(k_j),
     "m_ens (initial smooth seed)",
@@ -1266,8 +1343,8 @@ assert_cube_slice_available(
 );
 assert_cube_slice_available(
     C_ens[J - 1],
-    static_cast<arma::uword>(p * 2),
-    static_cast<arma::uword>(p * 2),
+    static_cast<arma::uword>(p * 2 + ppx),
+    static_cast<arma::uword>(p * 2 + ppx),
     static_cast<arma::uword>(k_j),
     "C_ens (initial smooth seed)",
     0,
@@ -1294,7 +1371,7 @@ k_j = k_ens[j]-k_ens[(j+1)];
 
 int kk = k_j-1;
 int index = J-1-j;
-arma::uword state_dim_cur = static_cast<arma::uword>(p * (j + 2));
+arma::uword state_dim_cur = static_cast<arma::uword>(p * (j + 2) + ppx);
 
 // ADD SMOOTH FOR T+K_2, T+K_3, ..., T+K_J
 
@@ -1304,9 +1381,16 @@ if (index < (J-1)) {
 // index   = J-2   J-3   J-4  ...   1    0
 // Th_dims = p+J-1 p+J-2 p+J-3     p+2  p+1
 // Rcpp::Rcout << " 4 " << std::endl;
-arma::mat GG_list_ens_mat = Rcpp::as<arma::mat>(GG_list_ens[index+1]);
-arma::uword state_dim_next = static_cast<arma::uword>(p * (j + 1));
-assert_mat_shape(GG_list_ens_mat, state_dim_next, state_dim_next, "GG_list_ens (smooth carry)", j, kk);
+arma::uword state_dim_next = static_cast<arma::uword>(p * (j + 1) + ppx);
+arma::mat GG_list_ens_mat = get_gg_transition_slice(
+    GG_list_ens,
+    index + 1,
+    state_dim_next,
+    static_cast<arma::uword>(k_j),
+    "GG_list_ens (smooth carry)",
+    j,
+    kk
+);
 arma::cube W_list_ens_cube = Rcpp::as<arma::cube>(W_list_ens[index+1]);
 assert_cube_slice_available(
     W_list_ens_cube,
@@ -1354,9 +1438,9 @@ assert_cube_slice_available(
     0
 );
 arma::mat W_list_ens_mat = W_list_ens_cube.slice(k_j);  
-arma::mat sub_matrix = m_ens[index].subcube(0, 0, k_j-1, p*(j+1) - 1, 0, k_j-1);
-a = GG_list_ens_mat * sub_matrix.col(0);
-P = GG_list_ens_mat * C_ens[index].slice(k_j-1).submat(0, 0, p*(j+1) - 1, p*(j+1) - 1) * GG_list_ens_mat.t();  
+arma::vec sub_state = project_state_head_tail(m_ens[index].slice(k_j-1).col(0), static_cast<arma::uword>(p * (j + 1)), static_cast<arma::uword>(ppx));
+a = GG_list_ens_mat * sub_state;
+P = GG_list_ens_mat * project_cov_head_tail(C_ens[index].slice(k_j-1), static_cast<arma::uword>(p * (j + 1)), static_cast<arma::uword>(ppx)) * GG_list_ens_mat.t();
 // R = P % ex_df_mat_list_ens.slice(1).submat(0, 0, (p+j) - 1, (p+j) - 1) +  P % Ones_ens.submat(0, 0, (p+j) - 1, (p+j) - 1);  
 R = W_list_ens_mat +  P ;  
 // Rcpp::Rcout << " 44 " << std::endl;
@@ -1366,7 +1450,9 @@ R = W_list_ens_mat +  P ;
 R = (R + R.t()) / 2;  
 arma::mat R_inv = robust_svd_inv(R);
 
-arma::mat sB = C_ens[index].slice(k_j-1).submat(0, 0, p*(j+2) - 1, p*(j+1) - 1) * GG_list_ens_mat.t() * R_inv;
+arma::uvec idx_next = head_tail_indices(state_dim_cur, static_cast<arma::uword>(p * (j + 1)), static_cast<arma::uword>(ppx));
+arma::mat C_cross = C_ens[index].slice(k_j-1).cols(idx_next);
+arma::mat sB = C_cross * GG_list_ens_mat.t() * R_inv;
 
 // sm_ens[index].col(k_j-1) = m_ens[index].col(k_j-1) + sB * (sm_ens[index+1].col(0) - a);
 
@@ -1384,7 +1470,7 @@ arma::mat final_result = intermediate_result * sB.t();
 sC_ens[index].slice(k_j-1) = C_slice + final_result;
 sC_ens[index].slice(k_j-1) = (sC_ens[index].slice(k_j-1) + sC_ens[index].slice(k_j-1).t()) / 2;
 
-arma::mat W_t_1 = P % ex_df_mat_list_ens.slice(1).submat(0, 0, p*(j+1) - 1, p*(j+1) - 1);
+arma::mat W_t_1 = P % project_cov_head_tail(ex_df_mat_list_ens.slice(1), static_cast<arma::uword>(p * (j + 1)), static_cast<arma::uword>(ppx));
 W_t_1 = regularize((W_t_1 + W_t_1.t()) / 2);
 arma::mat W_inv = robust_svd_inv(W_t_1);
 arma::mat CBRB = sC_ens[index].slice(k_j-1)  - sB * sC_ens[index+1].slice(0) * sB.t();
@@ -1429,8 +1515,15 @@ elbo_ens += 0.5 * log_det;
 kk--;
 while (kk >= 0) {
     // Rcpp::Rcout << " 5 " << std::endl;
-arma::mat GG_list_ens_mat = Rcpp::as<arma::mat>(GG_list_ens[index]);
-assert_mat_shape(GG_list_ens_mat, state_dim_cur, state_dim_cur, "GG_list_ens (smooth backstep)", j, kk);
+arma::mat GG_list_ens_mat = get_gg_transition_slice(
+    GG_list_ens,
+    index,
+    state_dim_cur,
+    static_cast<arma::uword>(kk + 1),
+    "GG_list_ens (smooth backstep)",
+    j,
+    kk
+);
 arma::cube W_list_ens_cube = Rcpp::as<arma::cube>(W_list_ens[index]);
 assert_cube_slice_available(
     W_list_ens_cube,
@@ -1507,7 +1600,11 @@ sC_ens[index].slice(kk) = C_slice + intermediate_result * sB.t();
 sC_ens[index].slice(kk) = (sC_ens[index].slice(kk) + sC_ens[index].slice(kk).t()) / 2;
 
 // Calculate W_t_1 and its inverse
-arma::mat W_t_1 = P % ex_df_mat_list_ens.slice(1).submat(0, 0, p*(j+2)-1, p*(j+2)-1);
+arma::mat W_t_1 = P % project_cov_head_tail(
+    ex_df_mat_list_ens.slice(1),
+    static_cast<arma::uword>(p * (j + 2)),
+    static_cast<arma::uword>(ppx)
+);
 W_t_1 = regularize((W_t_1 + W_t_1.t()) / 2);
 arma::mat W_inv = robust_svd_inv(W_t_1);
 
@@ -1553,11 +1650,11 @@ kk--;
 // // Smoothing: Before Forecast  
 
 // Rcpp::Rcout << " 6 " << std::endl;
-arma::mat GG_list_ens_mat = Rcpp::as<arma::mat>(GG_list_ens[0]);
-assert_mat_shape(
-    GG_list_ens_mat,
-    static_cast<arma::uword>(p * (J + 1)),
-    static_cast<arma::uword>(p * (J + 1)),
+arma::mat GG_list_ens_mat = get_gg_transition_slice(
+    GG_list_ens,
+    0,
+    static_cast<arma::uword>(p * (J + 1) + ppx),
+    static_cast<arma::uword>(0),
     "GG_list_ens (before-forecast smooth)",
     J,
     0
@@ -1565,8 +1662,8 @@ assert_mat_shape(
 arma::cube W_list_ens_cube = Rcpp::as<arma::cube>(W_list_ens[0]);
 assert_cube_slice_available(
     W_list_ens_cube,
-    static_cast<arma::uword>(p * (J + 1)),
-    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(p * (J + 1) + ppx),
+    static_cast<arma::uword>(p * (J + 1) + ppx),
     static_cast<arma::uword>(1),
     "W_list_ens (before-forecast smooth)",
     J,
@@ -1574,7 +1671,7 @@ assert_cube_slice_available(
 );
 assert_cube_slice_available(
     m_ens[0],
-    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(p * (J + 1) + ppx),
     static_cast<arma::uword>(1),
     static_cast<arma::uword>(1),
     "m_ens (before-forecast smooth)",
@@ -1583,7 +1680,7 @@ assert_cube_slice_available(
 );
 assert_cube_slice_available(
     sm_ens[0],
-    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(p * (J + 1) + ppx),
     static_cast<arma::uword>(1),
     static_cast<arma::uword>(1),
     "sm_ens (before-forecast smooth)",
@@ -1592,8 +1689,8 @@ assert_cube_slice_available(
 );
 assert_cube_slice_available(
     C_ens[0],
-    static_cast<arma::uword>(p * (J + 1)),
-    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(p * (J + 1) + ppx),
+    static_cast<arma::uword>(p * (J + 1) + ppx),
     static_cast<arma::uword>(1),
     "C_ens (before-forecast smooth)",
     J,
@@ -1601,27 +1698,41 @@ assert_cube_slice_available(
 );
 assert_cube_slice_available(
     sC_ens[0],
-    static_cast<arma::uword>(p * (J + 1)),
-    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(p * (J + 1) + ppx),
+    static_cast<arma::uword>(p * (J + 1) + ppx),
     static_cast<arma::uword>(1),
     "sC_ens (before-forecast smooth)",
     J,
     0
 );
 arma::mat W_list_ens_mat = W_list_ens_cube.slice(0);  
-arma::mat sub_matrix = m.col(TT-1).subvec(0, p*(J+1) - 1);
-a = GG_list_ens_mat * sub_matrix.col(0);
-P = GG_list_ens_mat * C.slice(TT-1).submat(0, 0, p*(J+1) - 1, p*(J+1) - 1) * GG_list_ens_mat.t();  
+arma::vec sub_state_bridge = project_state_head_tail(
+    m.col(TT-1),
+    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(ppx)
+);
+a = GG_list_ens_mat * sub_state_bridge;
+P = GG_list_ens_mat * project_cov_head_tail(
+    C.slice(TT-1),
+    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(ppx)
+) * GG_list_ens_mat.t();  
 // R = P % ex_df_mat_list_ens.slice(0).submat(0, 0, (p+J) - 1, (p+J) - 1) +  P % Ones_ens.submat(0, 0, (p+J) - 1, (p+J) - 1);  
 R = W_list_ens_mat +  P ;  
 // Rcpp::Rcout << " 66 " << std::endl;
 R = (R + R.t()) / 2;  
 arma::mat R_inv = robust_svd_inv(R);
 
-arma::mat sB = C.slice(TT-1).submat(0, 0, p*(J+1) + ppx - 1, p*(J+1) - 1) * GG_list_ens_mat.t() * R_inv;
+arma::uword state_dim_bridge = static_cast<arma::uword>(p * (J + 1) + ppx);
+arma::uvec idx_bridge = head_tail_indices(
+    state_dim_bridge,
+    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(ppx)
+);
+arma::mat sB = C.slice(TT-1).cols(idx_bridge) * GG_list_ens_mat.t() * R_inv;
 
-arma::vec m_col =  m_ens[0].subcube(0, 0, 0, p*(J+1) - 1, 0, 0);
-arma::vec sm_col =  sm_ens[0].subcube(0, 0, 0, p*(J+1) - 1, 0, 0);
+arma::vec m_col = m_ens[0].slice(0).col(0);
+arma::vec sm_col = sm_ens[0].slice(0).col(0);
 arma::mat C_slice = C_ens[0].slice(0);
 arma::mat sC_slice = sC_ens[0].slice(0);
 
@@ -1629,7 +1740,11 @@ sm.col(TT-1) = m.col(TT-1) + sB * (sm_col - a);
 sC.slice(TT-1) = C.slice(TT-1) + sB * (sC_slice - R) * sB.t();
 sC.slice(TT-1) = (sC.slice(TT-1) + sC.slice(TT-1).t()) / 2;
 
-arma::mat W_t_1 = P % ex_df_mat_list_ens.slice(0).submat(0, 0, p*(J+1) - 1, p*(J+1) - 1);
+arma::mat W_t_1 = P % project_cov_head_tail(
+    ex_df_mat_list_ens.slice(0),
+    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(ppx)
+);
 W_t_1 = regularize((W_t_1 + W_t_1.t()) / 2);
 arma::mat W_inv = robust_svd_inv(W_t_1);
 arma::mat CBRB = sC.slice(TT-1) - sB * sC_slice * sB.t();
@@ -1642,14 +1757,26 @@ A = Eigen::Map<Eigen::MatrixXd>(CBRB.memptr(), CBRB.n_rows, CBRB.n_cols);
 log_det = logDetCholesky(A);
 elbo_ens += 0.5 * log_det; 
 
-arma::vec ee = sm_col - GG_list_ens_mat * sm.col(TT-1).subvec(0, p*(J+1) - 1);
-arma::mat XX = sC_slice + GG_list_ens_mat * sC.slice(TT-1).submat(0, 0, p*(J+1) - 1, p*(J+1) - 1) * GG_list_ens_mat.t();
+arma::vec ee = sm_col - GG_list_ens_mat * project_state_head_tail(
+    sm.col(TT-1),
+    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(ppx)
+);
+arma::mat XX = sC_slice + GG_list_ens_mat * project_cov_head_tail(
+    sC.slice(TT-1),
+    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(ppx)
+) * GG_list_ens_mat.t();
 XX = XX - 2*(P*R_inv*sC_slice) + ee * ee.t();
 
 arma::mat xXX =  robust_linear_solve(W_t_1, XX);
 elbo_ens -= 0.5 * arma::accu(xXX.diag());
 
-a = GG_list_ens_mat * m.col(TT-1).subvec(0, p*(J+1) - 1);
+a = GG_list_ens_mat * project_state_head_tail(
+    m.col(TT-1),
+    static_cast<arma::uword>(p * (J + 1)),
+    static_cast<arma::uword>(ppx)
+);
 CBRB = sC.slice(TT-1) - sB*sC_slice*sB.t();
 CBRB = regularize((CBRB + CBRB.t()) / 2);
 arma::mat CBRB_inv = robust_svd_inv(CBRB);

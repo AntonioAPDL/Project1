@@ -150,6 +150,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   manifest <- unified_manifest_add_artifact(manifest, adapted_nws, storage_scale = legacy_scale)
   manifest <- unified_manifest_add_artifact(manifest, adapted_glofas, storage_scale = legacy_scale)
 
+  fit_covariates <- cfg$inputs$fit$covariates
+  if (is.null(fit_covariates)) fit_covariates <- list()
+
   shared_cov_paths <- list(
     eli = "",
     oni = "",
@@ -157,14 +160,21 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     soil = "",
     pca = ""
   )
+  assign_cov_path <- function(cov_name, cov_path) {
+    key <- tolower(as.character(cov_name))
+    if (grepl("eli", key, fixed = TRUE)) shared_cov_paths$eli <<- cov_path
+    if (grepl("oni", key, fixed = TRUE)) shared_cov_paths$oni <<- cov_path
+    if (grepl("ppt", key, fixed = TRUE) || grepl("precip", key, fixed = TRUE)) shared_cov_paths$ppt <<- cov_path
+    if (grepl("soil", key, fixed = TRUE)) shared_cov_paths$soil <<- cov_path
+    if (grepl("pca", key, fixed = TRUE)) shared_cov_paths$pca <<- cov_path
+  }
+
   if (use_shared_inputs) {
     sanitize_cov_tag <- function(x) {
       tag <- gsub("[^A-Za-z0-9]+", "_", as.character(x))
       tag <- gsub("^_+|_+$", "", tag)
       if (!nzchar(tag)) "cov" else tag
     }
-    fit_covariates <- cfg$inputs$fit$covariates
-    if (is.null(fit_covariates)) fit_covariates <- list()
     if (length(fit_covariates) > 0L) {
       for (i in seq_along(fit_covariates)) {
         entry <- fit_covariates[[i]]
@@ -173,12 +183,17 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         if (!nzchar(cov_name)) next
         cov_path <- file.path(shared_paths$covariates_dir, sprintf("cov_%02d_%s.csv", i, sanitize_cov_tag(cov_name)))
         if (!file.exists(cov_path)) next
-        key <- tolower(cov_name)
-        if (grepl("eli", key, fixed = TRUE)) shared_cov_paths$eli <- cov_path
-        if (grepl("oni", key, fixed = TRUE)) shared_cov_paths$oni <- cov_path
-        if (grepl("ppt", key, fixed = TRUE) || grepl("precip", key, fixed = TRUE)) shared_cov_paths$ppt <- cov_path
-        if (grepl("soil", key, fixed = TRUE)) shared_cov_paths$soil <- cov_path
-        if (grepl("pca", key, fixed = TRUE)) shared_cov_paths$pca <- cov_path
+        assign_cov_path(cov_name, cov_path)
+      }
+    }
+  } else {
+    if (length(fit_covariates) > 0L) {
+      for (entry in fit_covariates) {
+        if (!is.list(entry)) next
+        cov_name <- if (is.null(entry$name)) "" else as.character(entry$name)
+        cov_path <- if (is.null(entry$path)) "" else as.character(entry$path)
+        if (!nzchar(cov_name) || !nzchar(cov_path) || !file.exists(cov_path)) next
+        assign_cov_path(cov_name, cov_path)
       }
     }
   }
@@ -276,16 +291,32 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   run_exdqlm_multivar <- isTRUE(cfg$models$run_exdqlm_multivar)
   run_exdqlm_univar <- isTRUE(cfg$models$run_exdqlm_univar)
   run_ndlm_main <- isTRUE(cfg$models$run_ndlm_main)
+  multivar_transfer_modes <- unified_resolve_multivar_transfer_modes(cfg)
+  primary_multivar_transfer_mode <- unified_resolve_multivar_primary_transfer_mode(
+    cfg,
+    modes = multivar_transfer_modes
+  )
+  multivar_dual_mode <- isTRUE(run_exdqlm_multivar) && length(multivar_transfer_modes) > 1L
 
   default_workers <- suppressWarnings(as.integer(cfg$run$threads$mc_cores))
   if (!is.finite(default_workers) || default_workers < 1L) {
     default_workers <- 1L
   }
 
-  run_one_quantile <- function(q) {
+  run_one_quantile <- function(q, transfer_mode = primary_multivar_transfer_mode) {
     q_num <- as.integer(round(q * 100))
     q_label <- sprintf("%02d", q_num)
-    q_root <- file.path(fit_root, sprintf("q=%s", q_label))
+    forecast_transfer_mode <- tolower(trimws(as.character(transfer_mode)))
+    if (!nzchar(forecast_transfer_mode) || !(forecast_transfer_mode %in% c("drop", "keep"))) {
+      forecast_transfer_mode <- primary_multivar_transfer_mode
+    }
+    is_primary_multivar_mode <- identical(forecast_transfer_mode, primary_multivar_transfer_mode)
+    use_legacy_multivar_layout <- !multivar_dual_mode || is_primary_multivar_mode
+    if (use_legacy_multivar_layout) {
+      q_root <- file.path(fit_root, sprintf("q=%s", q_label))
+    } else {
+      q_root <- file.path(fit_root, "exdqlm_multivar", forecast_transfer_mode, sprintf("q=%s", q_label))
+    }
     q_outputs <- file.path(q_root, "outputs")
     q_logs <- file.path(q_root, "logs")
     dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
@@ -294,31 +325,125 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       run_preflight_check(
         path = q_outputs,
         check_point = "continue",
-        context = sprintf("stage_fit quantile q=%s", q_label),
-        stage_label = sprintf("fit_multivar_q%s", q_label)
+        context = sprintf("stage_fit multivar mode=%s quantile q=%s", forecast_transfer_mode, q_label),
+        stage_label = sprintf("fit_multivar_%s_q%s", forecast_transfer_mode, q_label)
+      )
+    }
+
+    cutoff_raw <- as.character(unified_get(
+      cfg,
+      c("dates", "cutoff_date"),
+      default = "2022-12-25"
+    ))
+    if (!length(cutoff_raw) || is.na(cutoff_raw[[1]]) || !nzchar(cutoff_raw[[1]])) {
+      cutoff_raw <- "2022-12-25"
+    } else {
+      cutoff_raw <- cutoff_raw[[1]]
+    }
+    cutoff_date <- suppressWarnings(as.Date(cutoff_raw))
+    if (is.na(cutoff_date)) cutoff_date <- as.Date("2022-12-25")
+    forecast_start_date <- cutoff_date + 1
+
+    gamsig_freeze_iters <- as.character(unified_get(
+      cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 5L
+    ))
+    gamsig_min_update_iters <- as.character(unified_get(
+      cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_update_iters"), default = 50L
+    ))
+    gamsig_min_total_iters <- as.character(unified_get(
+      cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_total_iters"), default = 50L
+    ))
+    gamsig_max_iter <- as.character(unified_get(
+      cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "max_iter"), default = 100L
+    ))
+
+    transfer_compare_fast_enabled <- isTRUE(unified_get(
+      cfg,
+      c("fit", "exdqlm_multivar", "gamma_sigma", "transfer_compare_fast", "enabled"),
+      default = FALSE
+    ))
+    if (transfer_compare_fast_enabled) {
+      gamsig_freeze_iters <- as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "transfer_compare_fast", "warmup_freeze_iters"), default = 5L
+      ))
+      gamsig_min_update_iters <- as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "transfer_compare_fast", "min_update_iters"), default = 15L
+      ))
+      gamsig_min_total_iters <- as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "transfer_compare_fast", "min_total_iters"), default = 20L
+      ))
+      gamsig_max_iter <- as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "transfer_compare_fast", "max_iter"), default = 20L
+      ))
+      message(
+        sprintf(
+          "exdqlm_multivar transfer_compare_fast enabled for q=%s (freeze=%s, min_update=%s, min_total=%s, max_iter=%s)",
+          q_label,
+          gamsig_freeze_iters,
+          gamsig_min_update_iters,
+          gamsig_min_total_iters,
+          gamsig_max_iter
+        )
       )
     }
 
     env_overrides <- c(
       DISC_BASE_SEED = as.character(cfg$run$seed),
       DISC_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
+      DISC_W_FORECAST_TRANSFER_MODE = forecast_transfer_mode,
+      DISC_W_CUTOFF_DATE = as.character(cutoff_date),
+      DISC_W_FORECAST_START_DATE = as.character(forecast_start_date),
       DISC_W_OUTPUT_DIR = q_outputs,
       DISC_W_PARAMETERS_PATH = parameters_copy,
       DISC_W_RETROS_PATH = adapted_retros,
       DISC_W_NWS_PATH = adapted_nws,
       DISC_W_GLOFAS_PATH = adapted_glofas,
-      DISC_GAMSIG_FREEZE_ITERS = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
+      DISC_W_DF_T = as.character(unified_get(
+        cfg, c("models", "exdqlm_multivar", "state_evolution", "df_t"), default = 0.9999995
       )),
-      DISC_GAMSIG_MIN_UPDATE_ITERS = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_update_iters"), default = 50L
+      DISC_W_DF_S1 = as.character(unified_get(
+        cfg, c("models", "exdqlm_multivar", "state_evolution", "df_s1"), default = 0.9997
       )),
-      DISC_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_total_iters"), default = 50L
+      DISC_W_DF_S2 = as.character(unified_get(
+        cfg, c("models", "exdqlm_multivar", "state_evolution", "df_s2"), default = 0.9997
       )),
-      DISC_GAMSIG_MAX_ITER = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "max_iter"), default = 800L
+      DISC_W_DF_S67 = as.character(unified_get(
+        cfg, c("models", "exdqlm_multivar", "state_evolution", "df_s67"), default = 0.9997
       )),
+      DISC_W_DF_DISCREP = as.character(unified_get(
+        cfg, c("models", "exdqlm_multivar", "state_evolution", "df_discrep"), default = 0.999
+      )),
+      DISC_W_LAMBDA = as.character(unified_get(
+        cfg, c("models", "exdqlm_multivar", "state_evolution", "lambda"), default = 0.8995
+      )),
+      DISC_W_DF_TRANS = as.character(unified_get(
+        cfg, c("models", "exdqlm_multivar", "state_evolution", "df_trans"), default = 0.99999999
+      )),
+      DISC_W_DF_COVS = as.character(unified_get(
+        cfg, c("models", "exdqlm_multivar", "state_evolution", "df_covs"), default = 0.99999
+      )),
+      DISC_W_LAM1 = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "lam1"), default = 1 - 1e-6
+      )),
+      DISC_W_LAM2 = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "lam2"), default = 1 - 1e-6
+      )),
+      DISC_W_N_SAMP = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "n_samp"), default = 2000L
+      )),
+      DISC_W_SIMS_ENABLED = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "sims_enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_W_USE_COVARIATES = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "use_covariates"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_W_C_FACTOR = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "forecast_cov", "c_factor"), default = 1e2
+      )),
+      DISC_GAMSIG_FREEZE_ITERS = gamsig_freeze_iters,
+      DISC_GAMSIG_MIN_UPDATE_ITERS = gamsig_min_update_iters,
+      DISC_GAMSIG_MIN_TOTAL_ITERS = gamsig_min_total_iters,
+      DISC_GAMSIG_MAX_ITER = gamsig_max_iter,
       DISC_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
         cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence_tol"), default = 1e-6
       )),
@@ -368,6 +493,16 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
       ))
     )
+    cov_env_overrides <- c(
+      if (nzchar(shared_cov_paths$eli)) c(DISC_W_COV1_PATH = shared_cov_paths$eli) else character(0),
+      if (nzchar(shared_cov_paths$oni)) c(DISC_W_COV2_PATH = shared_cov_paths$oni) else character(0),
+      if (nzchar(shared_cov_paths$ppt)) c(DISC_W_PRISM_PATH = shared_cov_paths$ppt) else character(0),
+      if (nzchar(shared_cov_paths$soil)) c(DISC_W_SOIL_PATH = shared_cov_paths$soil) else character(0),
+      if (nzchar(shared_cov_paths$pca)) c(DISC_W_PCA_PATH = shared_cov_paths$pca) else character(0)
+    )
+    if (length(cov_env_overrides) > 0L) {
+      env_overrides <- c(env_overrides, cov_env_overrides)
+    }
     env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
 
     log_path <- file.path(q_logs, "fit.log")
@@ -383,6 +518,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_DISC.RData", q_num))
     list(
       model_family = "exdqlm_multivar",
+      transfer_mode = forecast_transfer_mode,
       quantile = q,
       output_path = output_path,
       log_path = log_path,
@@ -432,7 +568,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     univar_script <- if (identical(univar_impl_mode, "theory_aligned")) {
       file.path(repo_root, "scripts", "run_exdqlm_univar.R")
     } else {
-      file.path(repo_root, "OptimalModelSLexAL.r")
+      file.path(repo_root, "scripts", "run_OptimalModelSLexAL.R")
     }
     if (!file.exists(univar_script)) {
       stop(
@@ -489,7 +625,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       UNIV_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
       UNIV_PREV_RDATA = output_path,
       UNIV_GAMSIG_FREEZE_ITERS = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "warmup_freeze_iters"), default = 20L
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "warmup_freeze_iters"), default = 5L
       )),
       UNIV_GAMSIG_MIN_UPDATE_ITERS = as.character(unified_get(
         cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_update_iters"), default = 50L
@@ -498,7 +634,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_total_iters"), default = 50L
       )),
       UNIV_GAMSIG_MAX_ITER = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "max_iter"), default = 800L
+        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "max_iter"), default = 100L
       )),
       UNIV_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
         cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence_tol"), default = 1e-6
@@ -560,15 +696,47 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       UNIV_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
         cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
       )),
+      UNIV_DF_T = as.character(unified_get(
+        cfg, c("models", "exdqlm_univar", "state_evolution", "df_t"), default = 0.9999995
+      )),
+      UNIV_DF_S1 = as.character(unified_get(
+        cfg, c("models", "exdqlm_univar", "state_evolution", "df_s1"), default = 0.9997
+      )),
+      UNIV_DF_S2 = as.character(unified_get(
+        cfg, c("models", "exdqlm_univar", "state_evolution", "df_s2"), default = 0.9997
+      )),
+      UNIV_DF_S67 = as.character(unified_get(
+        cfg, c("models", "exdqlm_univar", "state_evolution", "df_s67"), default = 0.9997
+      )),
+      UNIV_LAMBDA = as.character(unified_get(
+        cfg, c("models", "exdqlm_univar", "state_evolution", "lambda"), default = 0.8995
+      )),
+      UNIV_DF_TRANS = as.character(unified_get(
+        cfg, c("models", "exdqlm_univar", "state_evolution", "df_trans"), default = 0.99999999
+      )),
+      UNIV_DF_COVS = as.character(unified_get(
+        cfg, c("models", "exdqlm_univar", "state_evolution", "df_covs"), default = 0.99999
+      )),
+      UNIV_LAM1 = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "legacy", "lam1"), default = 1 - 1e-16
+      )),
+      UNIV_LAM2 = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "legacy", "lam2"), default = 1 - 1e-16
+      )),
+      UNIV_N_SAMP = as.character(unified_get(
+        cfg, c("fit", "exdqlm_univar", "legacy", "n_samp"), default = 2000L
+      )),
+      UNIV_SIMS_ENABLED = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_univar", "legacy", "sims_enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      UNIV_USE_COVARIATES = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_univar", "legacy", "use_covariates"), default = TRUE
+      ))) "TRUE" else "FALSE",
       UNIV_THEORY_SUMMARY_LOG = file.path(q_logs, "univar_theory_summary.log")
     )
     env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
 
-    script_args <- if (identical(univar_impl_mode, "theory_aligned")) {
-      c("--vanilla", univar_script, as.character(q), as.character(cfg$run$seed))
-    } else {
-      c("--vanilla", univar_script, as.character(q))
-    }
+    script_args <- c("--vanilla", univar_script, as.character(q), as.character(cfg$run$seed))
     cmd_status <- suppressWarnings(system2(
       "Rscript",
       script_args,
@@ -720,7 +888,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     ndlm_script <- if (identical(ndlm_impl_mode, "theory_aligned")) {
       file.path(repo_root, "scripts", "run_ndlm_main.R")
     } else {
-      file.path(repo_root, "DISC_Optimal_Synth_Ranges_NDLM.r")
+      file.path(repo_root, "scripts", "run_DISC_Optimal_Synth_Ranges_NDLM.R")
     }
     if (!file.exists(ndlm_script)) {
       stop(
@@ -770,7 +938,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         cfg, c("fit", "ndlm_main", "gamma_sigma", "min_total_iters"), default = 50L
       )),
       NDLM_GAMSIG_MAX_ITER = as.character(unified_get(
-        cfg, c("fit", "ndlm_main", "gamma_sigma", "max_iter"), default = 800L
+        cfg, c("fit", "ndlm_main", "gamma_sigma", "max_iter"), default = 100L
       )),
       NDLM_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
         cfg, c("fit", "ndlm_main", "gamma_sigma", "convergence_tol"), default = 1e-6
@@ -784,15 +952,50 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       NDLM_KALMAN_BACKEND = as.character(unified_get(
         cfg, c("models", "ndlm_main", "kalman_backend"), default = "cpp"
       )),
+      NDLM_DF_T = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "state_evolution", "df_t"), default = 0.95
+      )),
+      NDLM_DF_S1 = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "state_evolution", "df_s1"), default = 0.98
+      )),
+      NDLM_DF_S2 = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "state_evolution", "df_s2"), default = 0.98
+      )),
+      NDLM_DF_S67 = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "state_evolution", "df_s67"), default = 0.98
+      )),
+      NDLM_DF_DISCREP = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "state_evolution", "df_discrep"), default = 0.98
+      )),
+      NDLM_LAMBDA = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "state_evolution", "lambda"), default = 0.99
+      )),
+      NDLM_DF_TRANS = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "state_evolution", "df_trans"), default = 0.99999999
+      )),
+      NDLM_DF_COVS = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "state_evolution", "df_covs"), default = 0.99999
+      )),
+      NDLM_LAM1 = as.character(unified_get(
+        cfg, c("fit", "ndlm_main", "legacy", "lam1"), default = 1 - 1e-6
+      )),
+      NDLM_LAM2 = as.character(unified_get(
+        cfg, c("fit", "ndlm_main", "legacy", "lam2"), default = 0.9
+      )),
+      NDLM_N_SAMP = as.character(unified_get(
+        cfg, c("fit", "ndlm_main", "legacy", "n_samp"), default = 2000L
+      )),
+      NDLM_SIMS_ENABLED = if (isTRUE(unified_get(
+        cfg, c("fit", "ndlm_main", "legacy", "sims_enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      NDLM_USE_COVARIATES = if (isTRUE(unified_get(
+        cfg, c("fit", "ndlm_main", "legacy", "use_covariates"), default = TRUE
+      ))) "TRUE" else "FALSE",
       NDLM_THEORY_SUMMARY_LOG = file.path(ndlm_logs, "ndlm_theory_summary.log")
     )
     env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
 
-    script_args <- if (identical(ndlm_impl_mode, "theory_aligned")) {
-      c("--vanilla", ndlm_script, as.character(cfg$run$seed))
-    } else {
-      c("--vanilla", ndlm_script)
-    }
+    script_args <- c("--vanilla", ndlm_script, as.character(cfg$run$seed))
     cmd_out <- system2(
       "Rscript",
       script_args,
@@ -914,14 +1117,17 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     fit_jobs <- list()
 
     if (run_exdqlm_multivar) {
-      for (q in quantiles) {
-        fit_jobs[[length(fit_jobs) + 1L]] <- local({
-          q_local <- q
-          list(
-            family = "exdqlm_multivar",
-            runner = function() run_one_quantile(q_local)
-          )
-        })
+      for (mode in multivar_transfer_modes) {
+        for (q in quantiles) {
+          fit_jobs[[length(fit_jobs) + 1L]] <- local({
+            q_local <- q
+            mode_local <- mode
+            list(
+              family = sprintf("exdqlm_multivar_%s", mode_local),
+              runner = function() run_one_quantile(q_local, mode_local)
+            )
+          })
+        }
       }
     }
     if (run_exdqlm_univar) {
@@ -944,24 +1150,77 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     fit_jobs
   }
 
-  if (fit_parallel_mode %in% c("global_models", "one_core_per_model")) {
-    fit_jobs <- build_fit_jobs()
-    if (identical(fit_parallel_mode, "one_core_per_model")) {
-      workers <- as.integer(length(fit_jobs))
-      detected_cores <- suppressWarnings(as.integer(parallel::detectCores(logical = TRUE)))
-      if (is.finite(detected_cores) && detected_cores > 0L && workers > detected_cores) {
-        warning(
-          sprintf(
-            "one_core_per_model requested %d workers but only %d cores detected; oversubscription may slow fit stage",
-            workers,
-            detected_cores
-          ),
-          call. = FALSE
-        )
+  if (identical(fit_parallel_mode, "one_core_per_model")) {
+    # In one_core_per_model mode, launch at most one worker per enabled family.
+    # Quantiles for each family are executed sequentially inside that family worker.
+    family_jobs <- list()
+    task_count <- 0L
+    if (run_exdqlm_multivar) {
+      task_count <- task_count + length(quantiles) * length(multivar_transfer_modes)
+      for (mode in multivar_transfer_modes) {
+        family_jobs[[length(family_jobs) + 1L]] <- local({
+          mode_local <- mode
+          list(
+            family = sprintf("exdqlm_multivar_%s", mode_local),
+            runner = function() lapply(quantiles, function(q) run_one_quantile(q, mode_local))
+          )
+        })
       }
-    } else {
-      workers <- unified_resolve_fit_parallel_workers(cfg, length(fit_jobs), default_workers = default_workers)
     }
+    if (run_exdqlm_univar) {
+      task_count <- task_count + length(quantiles)
+      family_jobs[[length(family_jobs) + 1L]] <- list(
+        family = "exdqlm_univar",
+        runner = function() lapply(quantiles, run_one_univar_quantile)
+      )
+    }
+    if (run_ndlm_main) {
+      task_count <- task_count + 1L
+      family_jobs[[length(family_jobs) + 1L]] <- list(
+        family = "ndlm_main",
+        runner = function() list(run_ndlm_fit())
+      )
+    }
+
+    workers <- as.integer(length(family_jobs))
+    detected_cores <- suppressWarnings(as.integer(parallel::detectCores(logical = TRUE)))
+    if (is.finite(detected_cores) && detected_cores > 0L && workers > detected_cores) {
+      warning(
+        sprintf(
+          "one_core_per_model requested %d workers but only %d cores detected; oversubscription may slow fit stage",
+          workers,
+          detected_cores
+        ),
+        call. = FALSE
+      )
+    }
+    if (length(family_jobs) > 0L) {
+      message(
+        sprintf(
+          "fit scheduler mode=%s workers=%d model_jobs=%d task_jobs=%d",
+          fit_parallel_mode, workers, length(family_jobs), as.integer(task_count)
+        )
+      )
+    }
+    nested_results <- execute_fit_jobs(family_jobs, workers = workers)
+    results <- unlist(nested_results, recursive = FALSE)
+    for (res in results) {
+      family <- as.character(res$model_family)
+      if (!length(family) || is.na(family[[1]]) || !nzchar(family[[1]])) {
+        stop(sprintf("fit stage %s worker returned empty model_family", fit_parallel_mode), call. = FALSE)
+      }
+      family <- family[[1]]
+      manifest <- switch(
+        family,
+        exdqlm_multivar = process_multivar_result(manifest, res),
+        exdqlm_univar = process_univar_result(manifest, res),
+        ndlm_main = process_ndlm_result(manifest, res),
+        stop(sprintf("unknown fit stage family result in %s mode: %s", fit_parallel_mode, family), call. = FALSE)
+      )
+    }
+  } else if (identical(fit_parallel_mode, "global_models")) {
+    fit_jobs <- build_fit_jobs()
+    workers <- unified_resolve_fit_parallel_workers(cfg, length(fit_jobs), default_workers = default_workers)
     if (length(fit_jobs) > 0L) {
       message(sprintf("fit scheduler mode=%s workers=%d jobs=%d", fit_parallel_mode, workers, length(fit_jobs)))
     }
@@ -982,16 +1241,22 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     }
   } else {
     if (run_exdqlm_multivar) {
-      workers <- min(default_workers, length(quantiles))
-      results <- execute_fit_jobs(
-        lapply(quantiles, function(q) {
-          q_local <- q
-          list(family = "exdqlm_multivar", runner = function() run_one_quantile(q_local))
-        }),
-        workers = workers
-      )
-      for (res in results) {
-        manifest <- process_multivar_result(manifest, res)
+      for (mode in multivar_transfer_modes) {
+        mode_local <- mode
+        workers <- min(default_workers, length(quantiles))
+        results <- execute_fit_jobs(
+          lapply(quantiles, function(q) {
+            q_local <- q
+            list(
+              family = sprintf("exdqlm_multivar_%s", mode_local),
+              runner = function() run_one_quantile(q_local, mode_local)
+            )
+          }),
+          workers = workers
+        )
+        for (res in results) {
+          manifest <- process_multivar_result(manifest, res)
+        }
       }
     }
 

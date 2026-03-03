@@ -56,7 +56,7 @@ Sys.setenv(LD_LIBRARY_PATH="/data/muscat_data/jaguir26/libs/lib64:/data/muscat_d
 
 Rcpp::sourceCpp("/data/muscat_data/jaguir26/project1_ucsc_phd/sampling_exal.cpp")
 Rcpp::sourceCpp("/data/muscat_data/jaguir26/project1_ucsc_phd/sampling_truncnorm.cpp")
-Rcpp::sourceCpp("/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_kalman_synth.cpp")
+Rcpp::sourceCpp("/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_kalman_synth_transfer_forecast.cpp")
 
 disc_base_seed <- suppressWarnings(as.numeric(Sys.getenv("DISC_BASE_SEED", "777")))
 if (!is.finite(disc_base_seed)) {
@@ -1038,6 +1038,27 @@ if (use_covariates) {
   GG <- model$GG
 }
 
+if (J > 0 && ppx > 0) {
+  transfer_df_fore <- make_df_mat(c(df_trans, df_covs), c(1, px), ppx)
+  transfer_df_k_fore <- make_df_mat_k(c(df_trans, df_covs), c(1, px), ppx, k)
+
+  old_n <- dim(DF.MAT)[1]
+  old_s <- dim(DF.MAT)[3]
+  DF.MAT_new <- array(0, dim = c(old_n + ppx, old_n + ppx, old_s))
+  for (ss in 1:old_s) {
+    DF.MAT_new[,,ss] <- as.matrix(bdiag(DF.MAT[,,ss], transfer_df_fore))
+  }
+  DF.MAT <- DF.MAT_new
+
+  old_n_k <- dim(DF.MAT_k)[1]
+  old_s_k <- dim(DF.MAT_k)[3]
+  DF.MAT_k_new <- array(0, dim = c(old_n_k + ppx, old_n_k + ppx, old_s_k))
+  for (ss in 1:old_s_k) {
+    DF.MAT_k_new[,,ss] <- as.matrix(bdiag(DF.MAT_k[,,ss], transfer_df_k_fore))
+  }
+  DF.MAT_k <- DF.MAT_k_new
+}
+
 
 L = L.fn(p0)
 U = U.fn(p0)
@@ -1074,13 +1095,55 @@ FF_list <- vector("list", J)
 GG_list <- vector("list", J)
 
 ######################
-# Without covariates for the forceasting period
+# Transfer-preserving forecast variant:
+# keep transfer coordinates in the forecast state for all forecast segments.
+ranges_per_local <- if (J > 1) ranges - c(ranges[2:J], 0) else ranges
+r_vec_local <- rev(ranges_per_local)
+seg_start_local <- cumsum(c(1, head(r_vec_local, -1)))
+
 for (j in 1:J) {
   jj <- J-j+1
-  GG_tsc <- result_GG[1:(p*(jj+1)),1:(p*(jj+1))]
-  GG_list[[j]] <- matrix(GG_tsc, nrow = p*(jj+1), ncol = p*(jj+1) )
-  FF_tsc <- result_FF[1:(p*(jj+1)), 2:(jj+1)]
-  FF_list[[j]] <- matrix(FF_tsc, nrow = p*(jj+1), ncol = (jj) )
+  core_dim <- p * (jj + 1)
+  FF_tsc <- result_FF[1:core_dim, 2:(jj+1), drop = FALSE]
+  GG_tsc <- result_GG[1:core_dim, 1:core_dim, drop = FALSE]
+
+  if (ppx > 0) {
+    seg_from <- seg_start_local[j]
+    seg_to <- seg_from + r_vec_local[j] - 1
+    seg_to <- min(seg_to, nrow(X_f))
+    seg_from <- max(1, min(seg_from, seg_to))
+    seg_len <- as.integer(r_vec_local[j])
+    X_seg <- as.matrix(X_f[seg_from:seg_to, , drop = FALSE])
+    if (nrow(X_seg) < seg_len) {
+      pad_n <- seg_len - nrow(X_seg)
+      X_seg <- rbind(
+        X_seg,
+        matrix(rep(X_seg[nrow(X_seg), ], each = pad_n), nrow = pad_n, byrow = TRUE)
+      )
+    }
+    if (nrow(X_seg) > seg_len) {
+      X_seg <- X_seg[seq_len(seg_len), , drop = FALSE]
+    }
+
+    state_dim <- core_dim + ppx
+    GG_seg <- array(0, dim = c(state_dim, state_dim, seg_len))
+    G_transfer_base <- as.matrix(bdiag(lambda, diag(px)))
+    GG_base <- as.matrix(bdiag(GG_tsc, G_transfer_base))
+    for (tt in seq_len(seg_len)) {
+      GG_tt <- GG_base
+      if (ppx > 1L) {
+        GG_tt[core_dim + 1L, (core_dim + 2L):(core_dim + ppx)] <- as.numeric(X_seg[tt, seq_len(ppx - 1L), drop = TRUE])
+      }
+      GG_seg[,,tt] <- GG_tt
+    }
+    GG_list[[j]] <- GG_seg
+
+    transfer_load <- rbind(rep(1, jj), matrix(0, nrow = px, ncol = jj))
+    FF_list[[j]] <- rbind(FF_tsc, transfer_load)
+  } else {
+    GG_list[[j]] <- matrix(GG_tsc, nrow = core_dim, ncol = core_dim)
+    FF_list[[j]] <- matrix(FF_tsc, nrow = core_dim, ncol = jj)
+  }
 }
 
 ########### For every j
@@ -1790,6 +1853,34 @@ disc_w_concat_horizon_segments <- function(mat_list, label) {
   }
   out
 }
+disc_w_head_tail_idx <- function(full_dim, core_dim, tail_dim) {
+  full_dim <- as.integer(full_dim)
+  core_dim <- as.integer(core_dim)
+  tail_dim <- as.integer(tail_dim)
+  if (!is.finite(full_dim) || !is.finite(core_dim) || !is.finite(tail_dim) ||
+      full_dim < 1L || core_dim < 0L || tail_dim < 0L || core_dim + tail_dim > full_dim) {
+    stop(
+      sprintf(
+        "invalid head/tail indexing dims: full=%s core=%s tail=%s",
+        as.character(full_dim), as.character(core_dim), as.character(tail_dim)
+      ),
+      call. = FALSE
+    )
+  }
+  head_idx <- if (core_dim > 0L) seq_len(core_dim) else integer(0)
+  tail_idx <- if (tail_dim > 0L) seq.int(full_dim - tail_dim + 1L, full_dim) else integer(0)
+  c(head_idx, tail_idx)
+}
+disc_w_extract_state_ht <- function(v, core_dim, tail_dim) {
+  vv <- as.numeric(v)
+  idx <- disc_w_head_tail_idx(length(vv), core_dim, tail_dim)
+  vv[idx]
+}
+disc_w_extract_cov_ht <- function(M, core_dim, tail_dim) {
+  MM <- as.matrix(M)
+  idx <- disc_w_head_tail_idx(nrow(MM), core_dim, tail_dim)
+  MM[idx, idx, drop = FALSE]
+}
 disc_w_assert_shape <- function(x, dims, label, allow_array = FALSE) {
   actual <- dim(x)
   if (is.null(actual)) {
@@ -1861,23 +1952,30 @@ disc_w_validate_cpp_contract <- function(
   }
   horizon_i <- rev(ranges_per_i)
   for (seg in seq_len(J)) {
-    expected_state <- as.integer(p * (J - seg + 2L))
+    expected_state <- as.integer(p * (J - seg + 2L) + ppx)
     expected_series <- as.integer(J - seg + 1L)
     expected_h <- as.integer(horizon_i[seg])
     expected_obs <- as.integer(sum(num_mem_i[seq_len(expected_series)]))
-    GG_seg <- as.matrix(GG_list[[seg]])
+    GG_seg_raw <- as.array(GG_list[[seg]])
+    GG_dims <- dim(GG_seg_raw)
+    if (length(GG_dims) == 2L) {
+      disc_w_assert_shape(GG_seg_raw, c(expected_state, expected_state), sprintf("GG_list[[%d]] (%s)", as.integer(seg), context_label))
+    } else if (length(GG_dims) == 3L) {
+      disc_w_assert_shape(GG_seg_raw, c(expected_state, expected_state, expected_h), sprintf("GG_list[[%d]] (%s)", as.integer(seg), context_label), allow_array = TRUE)
+    } else {
+      stop(sprintf("contract %s: GG_list[[%d]] must be matrix or 3D array", context_label, as.integer(seg)), call. = FALSE)
+    }
     FF_seg <- as.matrix(FF_list[[seg]])
     FFF_seg <- as.matrix(FFF_forecast[[seg]])
     ens_seg <- as.matrix(ensembles_forecast[[seg]])
     QQQ_seg <- as.array(QQQ_forecast[[seg]])
     cov_seg <- as.array(cur.covs_list[[seg]])
-    disc_w_assert_shape(GG_seg, c(expected_state, expected_state), sprintf("GG_list[[%d]] (%s)", as.integer(seg), context_label))
     disc_w_assert_shape(FF_seg, c(expected_state, expected_series), sprintf("FF_list[[%d]] (%s)", as.integer(seg), context_label))
     disc_w_assert_shape(FFF_seg, c(expected_obs, expected_h), sprintf("FFF_forecast[[%d]] (%s)", as.integer(seg), context_label))
     disc_w_assert_shape(ens_seg, c(expected_obs, expected_h), sprintf("ensembles_forecast[[%d]] (%s)", as.integer(seg), context_label))
     disc_w_assert_shape(QQQ_seg, c(expected_obs, expected_obs, expected_h), sprintf("QQQ_forecast[[%d]] (%s)", as.integer(seg), context_label), allow_array = TRUE)
     disc_w_assert_shape(cov_seg, c(expected_state, expected_state, expected_h), sprintf("cur.covs_list[[%d]] (%s)", as.integer(seg), context_label), allow_array = TRUE)
-    if (any(!is.finite(GG_seg)) || any(!is.finite(FF_seg)) || any(!is.finite(FFF_seg)) ||
+    if (any(!is.finite(GG_seg_raw)) || any(!is.finite(FF_seg)) || any(!is.finite(FFF_seg)) ||
         any(!is.finite(ens_seg)) || any(!is.finite(QQQ_seg)) || any(!is.finite(cov_seg))) {
       stop(sprintf("contract %s: non-finite values in ensemble payload seg=%d", context_label, as.integer(seg)), call. = FALSE)
     }
@@ -2073,7 +2171,7 @@ if(USE_PREV){
 }
 
 # Precompute dimensions and replication counts
-dim_theta <- p * ((J+1):2)
+dim_theta <- p * ((J+1):2) + ppx
 ranges_per <- ranges - c(ranges[2:J], 0)
 r_vec <- rev(ranges_per)
 
@@ -2266,7 +2364,7 @@ while (isTRUE(FLAG) && iter < max_iter) {
     rs <- 0
     for (j in 1:J) {
 
-    dims <- p*(J+1)
+    dims <- p*(J+1) + ppx
     r_j <- length(update.theta$sm_ens[[j]])/(dims-p*(j-1))
     rs <- r_j + rs
     fm_j <- matrix(update.theta$fm_ens[[j]], nrow = (dims-p*(j-1)))
@@ -2333,27 +2431,37 @@ while (isTRUE(FLAG) && iter < max_iter) {
     ranges_rev <- rev(ranges_per)
     for(j in 1:J){
         ddd <- as.integer(dim_theta[j])
+        core_dim_j <- as.integer(ddd - ppx)
         for(t in 1:ranges_rev[j]){
             Ct <- disc_w_force_spd(
               new.theta.out$sC_ens[[j]][,,t],
               label = sprintf("sC_ens[[%d]][,,%d]", as.integer(j), as.integer(t))
             )
             mt <- as.numeric(new.theta.out$sm_ens[[j]][,t])
-            GGG <- as.matrix(GG_list[[j]])
+            GG_seg <- GG_list[[j]]
+            GG_dims <- dim(GG_seg)
+            if (length(GG_dims) == 3L) {
+              if (t > GG_dims[3]) {
+                stop(sprintf("GG_list[[%d]] slice underflow at t=%d (available=%d)", as.integer(j), as.integer(t), as.integer(GG_dims[3])), call. = FALSE)
+              }
+              GGG <- as.matrix(GG_seg[,,t])
+            } else {
+              GGG <- as.matrix(GG_seg)
+            }
             storage.mode(GGG) <- "double"
             if((t == 1) && (j == 1)){
                 Ct_1 <- disc_w_force_spd(
-                  new.theta.out$sC[1:ddd,1:ddd,TT],
+                  disc_w_extract_cov_ht(new.theta.out$sC[,,TT], core_dim_j, ppx),
                   label = sprintf("sC_hist_sub[[%d]]", as.integer(j))
                 )
-                mt_1 <- as.numeric(new.theta.out$sm[1:ddd,TT])
+                mt_1 <- disc_w_extract_state_ht(new.theta.out$sm[,TT], core_dim_j, ppx)
             } else if (t == 1) {
                 prev_h <- as.integer(ranges_rev[j-1])
                 Ct_1 <- disc_w_force_spd(
-                  new.theta.out$sC_ens[[j-1]][1:ddd,1:ddd,prev_h],
+                  disc_w_extract_cov_ht(new.theta.out$sC_ens[[j-1]][,,prev_h], core_dim_j, ppx),
                   label = sprintf("sC_ens[[%d]] carry slice", as.integer(j - 1L))
                 )
-                mt_1 <- as.numeric(new.theta.out$sm_ens[[j-1]][1:ddd,prev_h])
+                mt_1 <- disc_w_extract_state_ht(new.theta.out$sm_ens[[j-1]][,prev_h], core_dim_j, ppx)
             } else {
                 Ct_1 <- disc_w_force_spd(
                   new.theta.out$sC_ens[[j]][,,(t-1)],
@@ -2385,7 +2493,7 @@ while (isTRUE(FLAG) && iter < max_iter) {
               label = sprintf("ww[j=%d,t=%d]", as.integer(j), as.integer(t))
             )
             prior_w <- disc_w_force_spd(
-              new.theta.out$W_T[1:ddd,1:ddd],
+              disc_w_extract_cov_ht(new.theta.out$W_T, core_dim_j, ppx),
               label = sprintf("W_T_sub[j=%d]", as.integer(j))
             )
             new_cov <- epsilon/(epsilon+1) * c_factor * prior_w + 1/(epsilon+1) * ww

@@ -30,6 +30,44 @@ inline unsigned int derive_seed(std::uint64_t stream_id, std::uint64_t index_id)
     std::uint64_t mixed = splitmix64(g_sampling_exal_base_seed ^ (stream_id * 0x9e3779b97f4a7c15ULL) ^ index_id);
     return static_cast<unsigned int>(mixed & 0xffffffffULL);
 }
+
+arma::mat chol_with_jitter(const arma::mat& covariance) {
+    arma::mat S = 0.5 * (covariance + covariance.t());
+    if (!S.is_finite()) {
+        S.elem(arma::find_nonfinite(S)).zeros();
+    }
+
+    double diag_scale = arma::mean(arma::abs(S.diag()));
+    if (!std::isfinite(diag_scale) || diag_scale <= 0.0) diag_scale = 1.0;
+    const double base_jitter = 1e-10 * diag_scale + 1e-12;
+    arma::mat I = arma::eye<arma::mat>(S.n_rows, S.n_cols);
+
+    arma::mat L;
+    for (int k = 0; k < 8; ++k) {
+        double jitter = (k == 0) ? 0.0 : base_jitter * std::pow(10.0, static_cast<double>(k - 1));
+        if (arma::chol(L, S + jitter * I, "lower")) {
+            return L;
+        }
+    }
+
+    arma::vec eigval;
+    arma::mat eigvec;
+    if (arma::eig_sym(eigval, eigvec, S)) {
+        for (arma::uword i = 0; i < eigval.n_elem; ++i) {
+            if (!std::isfinite(eigval(i)) || eigval(i) < base_jitter) eigval(i) = base_jitter;
+        }
+        arma::mat S_psd = eigvec * arma::diagmat(eigval) * eigvec.t();
+        if (arma::chol(L, S_psd + base_jitter * I, "lower")) {
+            return L;
+        }
+    }
+
+    arma::vec d = arma::abs(S.diag());
+    for (arma::uword i = 0; i < d.n_elem; ++i) {
+        if (!std::isfinite(d(i)) || d(i) < base_jitter) d(i) = base_jitter;
+    }
+    return arma::diagmat(arma::sqrt(d));
+}
 }  // namespace
 
 // [[Rcpp::export]]
@@ -225,7 +263,7 @@ arma::cube sample_multivariate_normal(int n_samp, int TT, arma::cube sC, arma::m
         
         #pragma omp for
         for (int t = 0; t < TT; ++t) {
-            arma::mat LL = arma::trans(chol(sC.slice(t)));
+            arma::mat LL = chol_with_jitter(sC.slice(t));
             for (int i = 0; i < n_samp; ++i) {
                 arma::vec z(p + J, arma::fill::zeros);
                 for (int j = 0; j < p + J; ++j) {
@@ -425,7 +463,7 @@ arma::cube DISC_sample_multivariate_normal(int n_samp, int TT, arma::cube sC, ar
         
         #pragma omp for
         for (int t = 0; t < TT; ++t) {
-            arma::mat LL = arma::trans(chol(sC.slice(t)));
+            arma::mat LL = chol_with_jitter(sC.slice(t));
             for (int i = 0; i < n_samp; ++i) {
                 arma::vec z(n, arma::fill::zeros);
                 for (int j = 0; j < n; ++j) {

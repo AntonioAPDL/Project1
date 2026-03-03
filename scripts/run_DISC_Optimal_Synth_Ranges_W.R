@@ -41,4 +41,20 @@ preflight_path <- file.path("R", "unified", "preflight.R")
 if (file.exists(preflight_path)) {
   source(preflight_path)
 }
-source("DISC_Optimal_Synth_Ranges_W.r", chdir = TRUE)
+
+transfer_mode <- tolower(trimws(Sys.getenv("DISC_W_FORECAST_TRANSFER_MODE", "drop")))
+if (!nzchar(transfer_mode)) transfer_mode <- "drop"
+if (!(transfer_mode %in% c("drop", "keep"))) {
+  warning(
+    sprintf("unknown DISC_W_FORECAST_TRANSFER_MODE=%s; using drop", transfer_mode),
+    call. = FALSE
+  )
+  transfer_mode <- "drop"
+}
+
+entrypoint <- if (identical(transfer_mode, "keep")) {
+  "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r"
+} else {
+  "DISC_Optimal_Synth_Ranges_W.r"
+}
+source(entrypoint, chdir = TRUE)

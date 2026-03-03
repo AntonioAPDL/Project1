@@ -1,0 +1,1564 @@
+###############################################################################
+# Multivariate exDQLM-only figures module (q=50 capable with q-alias support)
+# Purpose:
+#   - Robust post figures for multivariate-only runs without NDLM dependencies.
+#   - Focus on fit diagnostics, traces, and forecast-window comparisons.
+###############################################################################
+
+safe_get <- function(name, default = NULL) {
+  get0(name, ifnotfound = default, inherits = TRUE)
+}
+
+as_numeric_vec <- function(x) {
+  if (is.null(x)) return(numeric(0))
+  if (is.atomic(x)) return(as.numeric(x))
+  numeric(0)
+}
+
+as_trace_matrix <- function(x) {
+  if (is.null(x)) return(matrix(numeric(0), nrow = 0L, ncol = 0L))
+  if (is.matrix(x)) {
+    return(matrix(as.numeric(x), nrow = nrow(x), ncol = ncol(x)))
+  }
+  if (is.atomic(x)) {
+    vals <- as.numeric(x)
+    return(matrix(vals, nrow = 1L))
+  }
+  matrix(numeric(0), nrow = 0L, ncol = 0L)
+}
+
+pad_to_len <- function(x, n) {
+  out <- rep(NA_real_, n)
+  vals <- as.numeric(x)
+  n_use <- min(length(vals), n)
+  if (n_use > 0L) out[seq_len(n_use)] <- vals[seq_len(n_use)]
+  out
+}
+
+pad_matrix_rows <- function(mat, n_rows) {
+  if (!is.matrix(mat)) return(matrix(NA_real_, nrow = n_rows, ncol = 0L))
+  out <- matrix(NA_real_, nrow = n_rows, ncol = ncol(mat))
+  keep <- min(n_rows, nrow(mat))
+  if (keep > 0L) out[seq_len(keep), ] <- mat[seq_len(keep), , drop = FALSE]
+  out
+}
+
+safe_row_quantiles <- function(mat, probs = c(0.025, 0.5, 0.975)) {
+  if (!is.matrix(mat) || nrow(mat) == 0L || ncol(mat) == 0L) {
+    return(matrix(NA_real_, nrow = length(probs), ncol = 0L))
+  }
+  out <- apply(
+    mat,
+    1L,
+    function(v) {
+      vv <- as.numeric(v)
+      vv <- vv[is.finite(vv)]
+      if (length(vv) == 0L) return(rep(NA_real_, length(probs)))
+      quantile(vv, probs = probs, na.rm = TRUE, type = 8, names = FALSE)
+    }
+  )
+  matrix(out, nrow = length(probs), byrow = FALSE)
+}
+
+resolve_future_truth_multivar <- function(horizon) {
+  h <- as.integer(horizon[[1L]])
+  truth <- rep(NA_real_, h)
+  if (!is.finite(h) || h <= 0L) return(truth)
+
+  infer_start_from_forecasts <- function() {
+    starts <- as.Date(character(0))
+    if (exists("glofas_forecast", inherits = TRUE) &&
+        is.data.frame(glofas_forecast) &&
+        "target_date" %in% names(glofas_forecast)) {
+      d <- suppressWarnings(as.Date(glofas_forecast$target_date))
+      d <- d[!is.na(d)]
+      if (length(d) > 0L) starts <- c(starts, min(d))
+    }
+    if (exists("nws_forecast", inherits = TRUE) && is.data.frame(nws_forecast)) {
+      nws_date_col <- if ("target_date" %in% names(nws_forecast)) "target_date" else if ("Date" %in% names(nws_forecast)) "Date" else ""
+      if (nzchar(nws_date_col)) {
+        d <- suppressWarnings(as.Date(nws_forecast[[nws_date_col]]))
+        d <- d[!is.na(d)]
+        if (length(d) > 0L) starts <- c(starts, min(d))
+      }
+    }
+    starts <- starts[!is.na(starts)]
+    if (length(starts) > 0L) min(starts) else as.Date("2022-12-26")
+  }
+
+  start_date <- infer_start_from_forecasts()
+  target_dates <- seq.Date(start_date, by = "day", length.out = h)
+
+  if (exists("San_Lorenzo_Daily_USGS_R", inherits = TRUE) &&
+      is.data.frame(San_Lorenzo_Daily_USGS_R) &&
+      "data0" %in% names(San_Lorenzo_Daily_USGS_R)) {
+    sl <- San_Lorenzo_Daily_USGS_R
+    date_col <- if ("Date" %in% names(sl)) {
+      suppressWarnings(as.Date(sl$Date))
+    } else if ("timestamp" %in% names(sl)) {
+      suppressWarnings(as.Date(sl$timestamp))
+    } else if ("time" %in% names(sl)) {
+      suppressWarnings(as.Date(sl$time))
+    } else {
+      as.Date(rep(NA_character_, nrow(sl)))
+    }
+    flow_log1p <- suppressWarnings(as.numeric(sl$data0))
+    ok <- !is.na(date_col) & is.finite(flow_log1p) & (flow_log1p > 0)
+    if (sum(ok) > 0L) {
+      idx_map <- match(target_dates, date_col[ok])
+      valid <- !is.na(idx_map)
+      if (any(valid)) {
+        truth[valid] <- log(flow_log1p[ok][idx_map[valid]])
+      }
+    }
+  }
+
+  if (all(!is.finite(truth))) {
+    tt <- suppressWarnings(as.integer(safe_get("TT", NA_integer_)))
+    y <- safe_get("Y", NULL)
+    if (is.finite(tt) && is.matrix(y) && nrow(y) >= 1L) {
+      obs <- as.numeric(y[1, ])
+      idx <- tt + seq_len(h)
+      valid <- idx >= 1L & idx <= length(obs)
+      if (any(valid)) truth[valid] <- obs[idx[valid]]
+    }
+  }
+
+  truth
+}
+
+infer_theta_segment_layout <- function(arr, seg_len) {
+  d <- dim(arr)
+  if (length(d) != 3L) return(NULL)
+  if (d[2] == seg_len) return(list(time_dim = 2L, sample_dim = 3L))
+  if (d[3] == seg_len) return(list(time_dim = 3L, sample_dim = 2L))
+  # Fallback: choose the dim that is closest to expected segment length.
+  dist2 <- abs(d[2] - seg_len)
+  dist3 <- abs(d[3] - seg_len)
+  if (dist2 <= dist3) list(time_dim = 2L, sample_dim = 3L) else list(time_dim = 3L, sample_dim = 2L)
+}
+
+project_location_from_theta_segment <- function(theta_arr, f_vec, seg_len, n_keep) {
+  if (!is.array(theta_arr) || length(dim(theta_arr)) != 3L) {
+    return(matrix(NA_real_, nrow = seg_len, ncol = 0L))
+  }
+  d <- dim(theta_arr)
+  layout <- infer_theta_segment_layout(theta_arr, seg_len)
+  if (is.null(layout)) {
+    return(matrix(NA_real_, nrow = seg_len, ncol = 0L))
+  }
+
+  p_use <- min(length(f_vec), d[1])
+  if (p_use <= 0L) {
+    return(matrix(NA_real_, nrow = seg_len, ncol = 0L))
+  }
+  f_use <- as.numeric(f_vec[seq_len(p_use)])
+
+  t_dim <- layout$time_dim
+  s_dim <- layout$sample_dim
+  n_time <- d[t_dim]
+  n_samp <- d[s_dim]
+  t_use <- min(seg_len, n_time)
+  s_use <- min(n_keep, n_samp)
+  if (t_use <= 0L || s_use <= 0L) {
+    return(matrix(NA_real_, nrow = seg_len, ncol = 0L))
+  }
+
+  out <- matrix(NA_real_, nrow = seg_len, ncol = s_use)
+  for (s in seq_len(s_use)) {
+    if (t_dim == 2L) {
+      st <- theta_arr[seq_len(p_use), seq_len(t_use), s, drop = FALSE]
+    } else {
+      st <- theta_arr[seq_len(p_use), s, seq_len(t_use), drop = FALSE]
+      st <- aperm(st, c(1, 3, 2))
+    }
+    st <- matrix(st, nrow = p_use, ncol = t_use)
+    out[seq_len(t_use), s] <- as.vector(crossprod(f_use, st))
+  }
+
+  out
+}
+
+extract_multivar_q50_forecast_samples <- function(horizon) {
+  h <- as.integer(horizon[[1L]])
+  if (!is.finite(h) || h <= 0L) {
+    return(matrix(NA_real_, nrow = 0L, ncol = 0L))
+  }
+
+  theta_ens <- safe_get("samp.theta_ens_50_exAL_synth_DISC", NULL)
+  ff_list <- safe_get("FF_list", NULL)
+  ranges <- as.numeric(safe_get("ranges", NA_real_))
+  p_core <- suppressWarnings(as.integer(safe_get("p", 7L)))
+  if (!is.list(theta_ens) || !is.list(ff_list) || any(!is.finite(ranges)) || length(ranges) == 0L || !is.finite(p_core) || p_core <= 0L) {
+    return(matrix(NA_real_, nrow = h, ncol = 0L))
+  }
+
+  j_total <- length(ranges)
+  ks <- -diff(c(ranges, 0))
+  n_seg <- min(length(theta_ens), length(ff_list), j_total)
+  if (!is.finite(n_seg) || n_seg <= 0L) {
+    return(matrix(NA_real_, nrow = h, ncol = 0L))
+  }
+
+  first_arr <- theta_ens[[1]]$samp_theta
+  if (!is.array(first_arr) || length(dim(first_arr)) != 3L) {
+    return(matrix(NA_real_, nrow = h, ncol = 0L))
+  }
+  first_seg_len <- suppressWarnings(as.integer(ks[j_total]))
+  if (!is.finite(first_seg_len) || first_seg_len <= 0L) {
+    first_seg_len <- dim(first_arr)[2]
+  }
+  first_layout <- infer_theta_segment_layout(first_arr, first_seg_len)
+  if (is.null(first_layout)) {
+    return(matrix(NA_real_, nrow = h, ncol = 0L))
+  }
+  first_sample_n <- dim(first_arr)[first_layout$sample_dim]
+  if (!is.finite(first_sample_n) || first_sample_n <= 0L) {
+    return(matrix(NA_real_, nrow = h, ncol = 0L))
+  }
+  # user-tunable cap for forecast sample traces in post-only diagnostics
+  sample_cap <- suppressWarnings(as.integer(Sys.getenv("UNIFIED_POST_FORECAST_NSAMP", "600")))
+  if (!is.finite(sample_cap) || sample_cap <= 0L) sample_cap <- 600L
+  n_keep <- min(sample_cap, first_sample_n)
+  if (n_keep <= 0L) {
+    return(matrix(NA_real_, nrow = h, ncol = 0L))
+  }
+
+  out <- matrix(NA_real_, nrow = h, ncol = n_keep)
+  cursor <- 0L
+  for (j in seq_len(n_seg)) {
+    seg_len <- suppressWarnings(as.integer(ks[j_total - j + 1L]))
+    if (!is.finite(seg_len) || seg_len <= 0L) next
+    idx <- seq.int(cursor + 1L, length.out = seg_len)
+    cursor <- cursor + seg_len
+    if (min(idx) > h) next
+
+    theta_arr <- theta_ens[[j]]$samp_theta
+    ff_seg <- as.matrix(ff_list[[j]])
+    if (!is.array(theta_arr) || length(dim(theta_arr)) != 3L || !is.matrix(ff_seg) || ncol(ff_seg) < 1L) {
+      next
+    }
+    p_use <- min(p_core, nrow(theta_arr), nrow(ff_seg))
+    if (p_use <= 0L) next
+    f_s <- as.numeric(ff_seg[seq_len(p_use), 1])
+    seg_proj <- project_location_from_theta_segment(
+      theta_arr = theta_arr,
+      f_vec = f_s,
+      seg_len = seg_len,
+      n_keep = n_keep
+    )
+    if (!is.matrix(seg_proj) || ncol(seg_proj) == 0L) next
+
+    idx_use <- idx[idx <= h]
+    n_use <- min(length(idx_use), nrow(seg_proj))
+    if (n_use <= 0L) next
+    out[idx_use[seq_len(n_use)], seq_len(ncol(seg_proj))] <- seg_proj[seq_len(n_use), , drop = FALSE]
+  }
+
+  out
+}
+
+compute_multivar_q50_state_interval <- function(horizon) {
+  h <- as.integer(horizon[[1L]])
+  out <- list(mean = rep(NA_real_, h), lower = rep(NA_real_, h), upper = rep(NA_real_, h))
+  if (!is.finite(h) || h <= 0L) return(out)
+
+  theta_obj <- safe_get("new.theta.out_50_exAL_synth_DISC", NULL)
+  ff_list <- safe_get("FF_list", NULL)
+  ranges <- as.numeric(safe_get("ranges", NA_real_))
+  p_core <- suppressWarnings(as.integer(safe_get("p", 7L)))
+  if (!is.list(theta_obj) || !is.list(theta_obj$sm_ens) || !is.list(theta_obj$sC_ens) ||
+      !is.list(ff_list) || any(!is.finite(ranges)) || !is.finite(p_core) || p_core <= 0L) {
+    return(out)
+  }
+
+  j_total <- length(ranges)
+  ks <- -diff(c(ranges, 0))
+  n_seg <- min(length(theta_obj$sm_ens), length(theta_obj$sC_ens), length(ff_list), j_total)
+  if (!is.finite(n_seg) || n_seg <= 0L) return(out)
+
+  cursor <- 0L
+  for (j in seq_len(n_seg)) {
+    seg_len <- suppressWarnings(as.integer(ks[j_total - j + 1L]))
+    if (!is.finite(seg_len) || seg_len <= 0L) next
+    idx <- seq.int(cursor + 1L, length.out = seg_len)
+    cursor <- cursor + seg_len
+    if (min(idx) > h) next
+
+    sm <- as.matrix(theta_obj$sm_ens[[j]])
+    sC <- theta_obj$sC_ens[[j]]
+    ff_seg <- as.matrix(ff_list[[j]])
+    if (!is.matrix(sm) || !is.array(sC) || length(dim(sC)) != 3L || !is.matrix(ff_seg) || ncol(ff_seg) < 1L) next
+
+    p_use <- min(p_core, nrow(sm), dim(sC)[1], dim(sC)[2], nrow(ff_seg))
+    t_use <- min(seg_len, ncol(sm), dim(sC)[3])
+    if (p_use <= 0L || t_use <= 0L) next
+    f_s <- matrix(as.numeric(ff_seg[seq_len(p_use), 1]), ncol = 1L)
+
+    mean_seg <- rep(NA_real_, t_use)
+    sd_seg <- rep(NA_real_, t_use)
+    for (tt in seq_len(t_use)) {
+      mu <- as.numeric(sm[seq_len(p_use), tt])
+      sigma <- as.matrix(sC[seq_len(p_use), seq_len(p_use), tt, drop = FALSE])
+      mean_seg[tt] <- as.numeric(crossprod(f_s, mu))
+      var_seg <- as.numeric(t(f_s) %*% sigma %*% f_s)
+      sd_seg[tt] <- if (is.finite(var_seg)) sqrt(max(var_seg, 0)) else NA_real_
+    }
+
+    idx_use <- idx[idx <= h]
+    n_use <- min(length(idx_use), t_use)
+    if (n_use <= 0L) next
+    out$mean[idx_use[seq_len(n_use)]] <- mean_seg[seq_len(n_use)]
+    out$lower[idx_use[seq_len(n_use)]] <- mean_seg[seq_len(n_use)] - 1.96 * sd_seg[seq_len(n_use)]
+    out$upper[idx_use[seq_len(n_use)]] <- mean_seg[seq_len(n_use)] + 1.96 * sd_seg[seq_len(n_use)]
+  }
+
+  out
+}
+
+build_multivar_q50_forecast_summary <- function() {
+  theta <- safe_get("new.theta.out_50_exAL_synth_DISC", NULL)
+  y <- safe_get("Y", NULL)
+  tt <- suppressWarnings(as.integer(safe_get("TT", NA_integer_)))
+  ranges <- as.numeric(safe_get("ranges", NA_real_))
+  h <- if (!is.null(ranges) && length(ranges) > 0L && is.finite(ranges[1])) as.integer(ranges[1]) else 0L
+
+  if (!is.list(theta) || !is.matrix(y) || !is.finite(tt) || h <= 0L) {
+    return(NULL)
+  }
+
+  exps <- as.matrix(theta$exps)
+  obs <- as.numeric(y[1, ])
+  fit_n <- min(tt, length(obs), if (is.matrix(exps)) ncol(exps) else 0L)
+  if (fit_n <= 0L) return(NULL)
+
+  mu_fit <- rep(NA_real_, fit_n)
+  mu_fore <- rep(NA_real_, h)
+  if (is.matrix(exps) && nrow(exps) >= 1L) {
+    mu_fit <- as.numeric(exps[1, seq_len(fit_n)])
+    if (ncol(exps) >= tt + 1L) {
+      mu_fore <- pad_to_len(exps[1, (tt + 1L):ncol(exps)], h)
+    }
+  }
+
+  forecast_samples <- extract_multivar_q50_forecast_samples(horizon = h)
+  q_fore <- safe_row_quantiles(forecast_samples, probs = c(0.025, 0.5, 0.975))
+  lower <- rep(NA_real_, h)
+  upper <- rep(NA_real_, h)
+  if (is.matrix(q_fore) && ncol(q_fore) == h) {
+    lower <- q_fore[1, ]
+    upper <- q_fore[3, ]
+    q50_sample <- q_fore[2, ]
+    miss_mu <- !is.finite(mu_fore)
+    if (any(miss_mu)) mu_fore[miss_mu] <- q50_sample[miss_mu]
+  }
+
+  if (all(!is.finite(lower)) || all(!is.finite(upper))) {
+    state_int <- compute_multivar_q50_state_interval(horizon = h)
+    lower <- state_int$lower
+    upper <- state_int$upper
+    if (all(!is.finite(mu_fore))) mu_fore <- state_int$mean
+  }
+
+  # Use state-based reconstruction of mu_usgs in forecast when available:
+  # mu_usgs = mu_glofas - aggregated_discrepancy_glofas.
+  payload <- suppressWarnings(build_transfer_state_window_q50(pre_days = 0L))
+  if (!is.null(payload) && is.data.frame(payload$state_df)) {
+    sf <- payload$state_df[payload$state_df$phase == "forecast", , drop = FALSE]
+    if (nrow(sf) > 0L) {
+      idx <- suppressWarnings(as.integer(sf$day_rel))
+      ok <- is.finite(idx) & idx >= 1L & idx <= h
+      if (any(ok)) {
+        idx_use <- idx[ok]
+        mu_state <- as.numeric(sf$mu_usgs[ok])
+        lo_state <- as.numeric(sf$mu_usgs_lower_95[ok])
+        up_state <- as.numeric(sf$mu_usgs_upper_95[ok])
+        take_mu <- is.finite(mu_state)
+        if (any(take_mu)) mu_fore[idx_use[take_mu]] <- mu_state[take_mu]
+        take_lo <- is.finite(lo_state)
+        if (any(take_lo)) lower[idx_use[take_lo]] <- lo_state[take_lo]
+        take_up <- is.finite(up_state)
+        if (any(take_up)) upper[idx_use[take_up]] <- up_state[take_up]
+      }
+    }
+  }
+
+  truth <- resolve_future_truth_multivar(h)
+
+  ens <- safe_get("ensembles", NULL)
+  glofas <- matrix(NA_real_, nrow = h, ncol = 0L)
+  nws <- matrix(NA_real_, nrow = h, ncol = 0L)
+  if (is.list(ens) && length(ens) >= 1L) {
+    glofas <- pad_matrix_rows(as.matrix(ens[[1]]), h)
+  }
+  if (is.list(ens) && length(ens) >= 2L) {
+    nws <- pad_matrix_rows(as.matrix(ens[[2]]), h)
+  }
+  glofas_mean <- if (ncol(glofas) > 0L) rowMeans(glofas, na.rm = TRUE) else rep(NA_real_, h)
+  nws_mean <- if (ncol(nws) > 0L) rowMeans(nws, na.rm = TRUE) else rep(NA_real_, h)
+
+  list(
+    fit_obs = obs[seq_len(fit_n)],
+    fit_mu = mu_fit,
+    fit_n = fit_n,
+    horizon = h,
+    mu_forecast = mu_fore,
+    lower_forecast = lower,
+    upper_forecast = upper,
+    truth_future = truth,
+    glofas_members = glofas,
+    nws_members = nws,
+    glofas_mean = glofas_mean,
+    nws_mean = nws_mean
+  )
+}
+
+infer_transfer_layout_q50 <- function(theta_obj, p_hint = NA_integer_) {
+  out <- list(
+    valid = FALSE,
+    reason = "unavailable",
+    J = NA_integer_,
+    p = NA_integer_,
+    ppx = NA_integer_,
+    TT_hist = NA_integer_,
+    core_hist_dim = NA_integer_,
+    seg_contract = data.frame()
+  )
+
+  if (!is.list(theta_obj) || !is.matrix(theta_obj$sm) || !is.list(theta_obj$sm_ens)) {
+    out$reason <- "missing_state_objects"
+    return(out)
+  }
+
+  j_total <- length(theta_obj$sm_ens)
+  if (!is.finite(j_total) || j_total < 1L) {
+    out$reason <- "no_forecast_segments"
+    return(out)
+  }
+  j_total <- as.integer(j_total)
+
+  p_val <- suppressWarnings(as.integer(p_hint))
+  if (!is.finite(p_val) || p_val <= 0L) {
+    if (j_total >= 2L) {
+      d1 <- nrow(as.matrix(theta_obj$sm_ens[[1L]]))
+      d2 <- nrow(as.matrix(theta_obj$sm_ens[[2L]]))
+      p_val <- suppressWarnings(as.integer(abs(d1 - d2)))
+    }
+  }
+  if (!is.finite(p_val) || p_val <= 0L) {
+    out$reason <- "cannot_infer_p"
+    return(out)
+  }
+
+  full_hist_dim <- nrow(theta_obj$sm)
+  core_hist_dim <- as.integer(p_val * (j_total + 1L))
+  ppx_val <- as.integer(full_hist_dim - core_hist_dim)
+  if (!is.finite(ppx_val) || ppx_val <= 0L) {
+    out$reason <- "no_transfer_block_detected"
+    return(out)
+  }
+
+  seg_rows <- vapply(theta_obj$sm_ens, function(x) nrow(as.matrix(x)), integer(1))
+  seg_cols <- vapply(theta_obj$sm_ens, function(x) ncol(as.matrix(x)), integer(1))
+  seg_idx <- seq_len(j_total)
+  expected_core <- as.integer(p_val * (j_total - seg_idx + 2L))
+  expected_with_transfer <- expected_core + ppx_val
+  transfer_retained <- seg_rows >= expected_with_transfer
+
+  seg_contract <- data.frame(
+    segment = seg_idx,
+    segment_horizon = seg_cols,
+    segment_state_dim = seg_rows,
+    expected_core_state_dim = expected_core,
+    expected_transfer_state_dim = expected_with_transfer,
+    transfer_retained = transfer_retained,
+    stringsAsFactors = FALSE
+  )
+
+  out$valid <- TRUE
+  out$reason <- "ok"
+  out$J <- j_total
+  out$p <- p_val
+  out$ppx <- ppx_val
+  out$TT_hist <- ncol(theta_obj$sm)
+  out$core_hist_dim <- core_hist_dim
+  out$seg_contract <- seg_contract
+  out
+}
+
+safe_diag_sd <- function(cube_arr, idx, n_time) {
+  out <- rep(NA_real_, n_time)
+  if (!is.array(cube_arr) || length(dim(cube_arr)) != 3L || n_time <= 0L) return(out)
+  if (idx < 1L || idx > dim(cube_arr)[1] || idx > dim(cube_arr)[2]) return(out)
+  t_use <- min(n_time, dim(cube_arr)[3])
+  if (t_use <= 0L) return(out)
+  vv <- as.numeric(cube_arr[idx, idx, seq_len(t_use)])
+  out[seq_len(t_use)] <- sqrt(pmax(vv, 0))
+  out
+}
+
+safe_linear_sd <- function(cube_arr, w, t_idx) {
+  if (!is.array(cube_arr) || length(dim(cube_arr)) != 3L) return(NA_real_)
+  if (!is.numeric(w) || length(w) != dim(cube_arr)[1] || dim(cube_arr)[1] != dim(cube_arr)[2]) return(NA_real_)
+  tt <- suppressWarnings(as.integer(t_idx))
+  if (!is.finite(tt) || tt < 1L || tt > dim(cube_arr)[3]) return(NA_real_)
+  s <- matrix(
+    as.numeric(cube_arr[, , tt, drop = TRUE]),
+    nrow = dim(cube_arr)[1],
+    ncol = dim(cube_arr)[2]
+  )
+  v <- suppressWarnings(as.numeric(t(w) %*% s %*% w))
+  if (!is.finite(v)) return(NA_real_)
+  sqrt(max(v, 0))
+}
+
+infer_baseline_ff_q50 <- function(p) {
+  p_use <- suppressWarnings(as.integer(p))
+  if (!is.finite(p_use) || p_use <= 0L) return(rep(0, 0L))
+
+  m_simp <- safe_get("model_simp", NULL)
+  if (is.list(m_simp) && !is.null(m_simp$FF)) {
+    ff <- m_simp$FF
+    if (is.array(ff) && length(dim(ff)) == 3L && dim(ff)[1] >= p_use && dim(ff)[2] >= 1L) {
+      out <- as.numeric(ff[seq_len(p_use), 1, 1])
+      if (any(is.finite(out) & abs(out) > 0)) return(out)
+    }
+    if (is.matrix(ff) && nrow(ff) >= p_use && ncol(ff) >= 1L) {
+      out <- as.numeric(ff[seq_len(p_use), 1])
+      if (any(is.finite(out) & abs(out) > 0)) return(out)
+    }
+  }
+
+  ff_list <- safe_get("FF_list", NULL)
+  if (is.list(ff_list) && length(ff_list) > 0L) {
+    ff0 <- ff_list[[1L]]
+    ffm <- if (is.array(ff0) && length(dim(ff0)) == 3L) as.matrix(ff0[, , 1]) else as.matrix(ff0)
+    if (is.matrix(ffm) && ncol(ffm) >= 1L && nrow(ffm) >= p_use) {
+      n_blocks <- as.integer(floor(nrow(ffm) / p_use))
+      if (is.finite(n_blocks) && n_blocks >= 1L) {
+        for (b in seq_len(n_blocks)) {
+          rows <- seq.int((b - 1L) * p_use + 1L, b * p_use)
+          cand <- as.numeric(ffm[rows, 1])
+          if (any(is.finite(cand) & abs(cand) > 0)) return(cand)
+        }
+      }
+    }
+  }
+
+  out <- rep(0, p_use)
+  out[1] <- 1
+  out
+}
+
+infer_trend_indices_q50 <- function(p) {
+  p_use <- suppressWarnings(as.integer(p))
+  if (!is.finite(p_use) || p_use <= 0L) {
+    return(list(trend_idx = integer(0), season_idx = integer(0)))
+  }
+  harms <- safe_get("harmonics", NULL)
+  n_harm <- if (is.numeric(harms)) length(harms) else 0L
+  trend_dim <- p_use - 2L * n_harm
+  if (!is.finite(trend_dim) || trend_dim <= 0L || trend_dim >= p_use) {
+    trend_dim <- 1L
+  }
+  trend_idx <- seq_len(trend_dim)
+  season_idx <- if (trend_dim < p_use) seq.int(trend_dim + 1L, p_use) else integer(0)
+  list(trend_idx = trend_idx, season_idx = season_idx)
+}
+
+build_transfer_state_window_q50 <- function(pre_days = 30L) {
+  theta_obj <- safe_get("new.theta.out_50_exAL_synth_DISC", NULL)
+  y <- safe_get("Y", NULL)
+  p_hint <- suppressWarnings(as.integer(safe_get("p", NA_integer_)))
+  layout <- infer_transfer_layout_q50(theta_obj, p_hint = p_hint)
+  if (!isTRUE(layout$valid)) return(NULL)
+
+  j_total <- layout$J
+  p <- layout$p
+  ppx <- layout$ppx
+  tt_hist <- layout$TT_hist
+  core_hist_dim <- layout$core_hist_dim
+  seg_contract <- layout$seg_contract
+  psi_count <- max(ppx - 1L, 0L)
+  ff_base <- infer_baseline_ff_q50(p)
+  idx_split <- infer_trend_indices_q50(p)
+  trend_idx <- idx_split$trend_idx
+  season_idx <- idx_split$season_idx
+
+  pre_n <- suppressWarnings(as.integer(pre_days))
+  if (!is.finite(pre_n) || pre_n < 0L) pre_n <- 30L
+  hist_start <- max(1L, tt_hist - pre_n)
+  hist_idx <- seq.int(hist_start, tt_hist)
+  n_hist <- length(hist_idx)
+  hist_day_rel <- seq.int(-n_hist + 1L, 0L)
+
+  sm_hist <- as.matrix(theta_obj$sm)
+  sC_hist <- theta_obj$sC
+
+  h_obs <- rep(NA_real_, n_hist)
+  if (is.matrix(y) && nrow(y) >= 1L && ncol(y) >= max(hist_idx)) {
+    h_obs <- as.numeric(y[1, hist_idx])
+  }
+
+  seg_h <- vapply(theta_obj$sm_ens, function(x) ncol(as.matrix(x)), integer(1))
+  h <- sum(seg_h)
+  fore_day_rel <- if (h > 0L) seq_len(h) else integer(0)
+  truth_future <- resolve_future_truth_multivar(h)
+
+  state_hist <- data.frame(
+    day_rel = hist_day_rel,
+    phase = "history",
+    mu_usgs = rep(NA_real_, n_hist),
+    mu_usgs_lower_95 = rep(NA_real_, n_hist),
+    mu_usgs_upper_95 = rep(NA_real_, n_hist),
+    mu_glofas = rep(NA_real_, n_hist),
+    mu_glofas_lower_95 = rep(NA_real_, n_hist),
+    mu_glofas_upper_95 = rep(NA_real_, n_hist),
+    mu_nws = rep(NA_real_, n_hist),
+    mu_nws_lower_95 = rep(NA_real_, n_hist),
+    mu_nws_upper_95 = rep(NA_real_, n_hist),
+    agg_discrep_glofas = rep(NA_real_, n_hist),
+    agg_discrep_glofas_lower_95 = rep(NA_real_, n_hist),
+    agg_discrep_glofas_upper_95 = rep(NA_real_, n_hist),
+    agg_discrep_nws = rep(NA_real_, n_hist),
+    agg_discrep_nws_lower_95 = rep(NA_real_, n_hist),
+    agg_discrep_nws_upper_95 = rep(NA_real_, n_hist),
+    zeta_mean = rep(NA_real_, n_hist),
+    zeta_lower_95 = rep(NA_real_, n_hist),
+    zeta_upper_95 = rep(NA_real_, n_hist),
+    trend_agg = rep(NA_real_, n_hist),
+    trend_agg_lower_95 = rep(NA_real_, n_hist),
+    trend_agg_upper_95 = rep(NA_real_, n_hist),
+    season_agg = rep(NA_real_, n_hist),
+    season_agg_lower_95 = rep(NA_real_, n_hist),
+    season_agg_upper_95 = rep(NA_real_, n_hist),
+    mu_without_transfer = rep(NA_real_, n_hist),
+    mu_without_transfer_lower_95 = rep(NA_real_, n_hist),
+    mu_without_transfer_upper_95 = rep(NA_real_, n_hist),
+    usgs_observed = h_obs,
+    stringsAsFactors = FALSE
+  )
+
+  zeta_hist_idx <- core_hist_dim + 1L
+  has_hist_transfer <- zeta_hist_idx <= nrow(sm_hist)
+
+  for (ii in seq_len(n_hist)) {
+    tt <- hist_idx[ii]
+    mt <- as.numeric(sm_hist[, tt])
+    theta_idx <- seq_len(p)
+    delta_g_idx <- if (j_total >= 1L) seq.int(p + 1L, 2L * p) else integer(0)
+    delta_n_idx <- if (j_total >= 2L) seq.int(2L * p + 1L, 3L * p) else integer(0)
+
+    base_no_transfer <- sum(ff_base * mt[theta_idx])
+    trend_mean <- if (length(trend_idx) > 0L) sum(ff_base[trend_idx] * mt[trend_idx]) else NA_real_
+    season_mean <- if (length(season_idx) > 0L) sum(ff_base[season_idx] * mt[season_idx]) else 0
+    zeta_mean <- if (has_hist_transfer) mt[zeta_hist_idx] else 0
+    disc_g_mean <- if (length(delta_g_idx) == p) sum(ff_base * mt[delta_g_idx]) else NA_real_
+    disc_n_mean <- if (length(delta_n_idx) == p) sum(ff_base * mt[delta_n_idx]) else NA_real_
+
+    mu_usgs <- base_no_transfer + zeta_mean
+    mu_g <- if (is.finite(disc_g_mean)) mu_usgs + disc_g_mean else NA_real_
+    mu_n <- if (is.finite(disc_n_mean)) mu_usgs + disc_n_mean else NA_real_
+
+    w_usgs <- rep(0, nrow(sm_hist))
+    w_usgs[theta_idx] <- ff_base
+    if (has_hist_transfer) w_usgs[zeta_hist_idx] <- 1
+    sd_usgs <- safe_linear_sd(sC_hist, w_usgs, tt)
+
+    w_base <- rep(0, nrow(sm_hist)); w_base[theta_idx] <- ff_base
+    sd_base <- safe_linear_sd(sC_hist, w_base, tt)
+    w_trend <- rep(0, nrow(sm_hist)); if (length(trend_idx) > 0L) w_trend[trend_idx] <- ff_base[trend_idx]
+    sd_trend <- safe_linear_sd(sC_hist, w_trend, tt)
+    w_season <- rep(0, nrow(sm_hist)); if (length(season_idx) > 0L) w_season[season_idx] <- ff_base[season_idx]
+    sd_season <- safe_linear_sd(sC_hist, w_season, tt)
+
+    z_sd <- if (has_hist_transfer) safe_diag_sd(sC_hist, zeta_hist_idx, tt)[tt] else 0
+    d_g_sd <- NA_real_
+    d_n_sd <- NA_real_
+    mu_g_sd <- NA_real_
+    mu_n_sd <- NA_real_
+
+    if (length(delta_g_idx) == p) {
+      w_disc_g <- rep(0, nrow(sm_hist)); w_disc_g[delta_g_idx] <- ff_base
+      d_g_sd <- safe_linear_sd(sC_hist, w_disc_g, tt)
+      w_mu_g <- w_usgs + w_disc_g
+      mu_g_sd <- safe_linear_sd(sC_hist, w_mu_g, tt)
+    }
+    if (length(delta_n_idx) == p) {
+      w_disc_n <- rep(0, nrow(sm_hist)); w_disc_n[delta_n_idx] <- ff_base
+      d_n_sd <- safe_linear_sd(sC_hist, w_disc_n, tt)
+      w_mu_n <- w_usgs + w_disc_n
+      mu_n_sd <- safe_linear_sd(sC_hist, w_mu_n, tt)
+    }
+
+    state_hist$mu_usgs[ii] <- mu_usgs
+    state_hist$mu_usgs_lower_95[ii] <- mu_usgs - 1.96 * sd_usgs
+    state_hist$mu_usgs_upper_95[ii] <- mu_usgs + 1.96 * sd_usgs
+    state_hist$mu_glofas[ii] <- mu_g
+    state_hist$mu_glofas_lower_95[ii] <- if (is.finite(mu_g_sd)) mu_g - 1.96 * mu_g_sd else NA_real_
+    state_hist$mu_glofas_upper_95[ii] <- if (is.finite(mu_g_sd)) mu_g + 1.96 * mu_g_sd else NA_real_
+    state_hist$mu_nws[ii] <- mu_n
+    state_hist$mu_nws_lower_95[ii] <- if (is.finite(mu_n_sd)) mu_n - 1.96 * mu_n_sd else NA_real_
+    state_hist$mu_nws_upper_95[ii] <- if (is.finite(mu_n_sd)) mu_n + 1.96 * mu_n_sd else NA_real_
+    state_hist$agg_discrep_glofas[ii] <- disc_g_mean
+    state_hist$agg_discrep_glofas_lower_95[ii] <- if (is.finite(d_g_sd)) disc_g_mean - 1.96 * d_g_sd else NA_real_
+    state_hist$agg_discrep_glofas_upper_95[ii] <- if (is.finite(d_g_sd)) disc_g_mean + 1.96 * d_g_sd else NA_real_
+    state_hist$agg_discrep_nws[ii] <- disc_n_mean
+    state_hist$agg_discrep_nws_lower_95[ii] <- if (is.finite(d_n_sd)) disc_n_mean - 1.96 * d_n_sd else NA_real_
+    state_hist$agg_discrep_nws_upper_95[ii] <- if (is.finite(d_n_sd)) disc_n_mean + 1.96 * d_n_sd else NA_real_
+    state_hist$zeta_mean[ii] <- zeta_mean
+    state_hist$zeta_lower_95[ii] <- zeta_mean - 1.96 * z_sd
+    state_hist$zeta_upper_95[ii] <- zeta_mean + 1.96 * z_sd
+    state_hist$trend_agg[ii] <- trend_mean
+    state_hist$trend_agg_lower_95[ii] <- if (is.finite(sd_trend)) trend_mean - 1.96 * sd_trend else NA_real_
+    state_hist$trend_agg_upper_95[ii] <- if (is.finite(sd_trend)) trend_mean + 1.96 * sd_trend else NA_real_
+    state_hist$season_agg[ii] <- season_mean
+    state_hist$season_agg_lower_95[ii] <- if (is.finite(sd_season)) season_mean - 1.96 * sd_season else NA_real_
+    state_hist$season_agg_upper_95[ii] <- if (is.finite(sd_season)) season_mean + 1.96 * sd_season else NA_real_
+    state_hist$mu_without_transfer[ii] <- base_no_transfer
+    state_hist$mu_without_transfer_lower_95[ii] <- base_no_transfer - 1.96 * sd_base
+    state_hist$mu_without_transfer_upper_95[ii] <- base_no_transfer + 1.96 * sd_base
+  }
+
+  state_fore <- data.frame(
+    day_rel = fore_day_rel,
+    phase = "forecast",
+    mu_usgs = rep(NA_real_, h),
+    mu_usgs_lower_95 = rep(NA_real_, h),
+    mu_usgs_upper_95 = rep(NA_real_, h),
+    mu_glofas = rep(NA_real_, h),
+    mu_glofas_lower_95 = rep(NA_real_, h),
+    mu_glofas_upper_95 = rep(NA_real_, h),
+    mu_nws = rep(NA_real_, h),
+    mu_nws_lower_95 = rep(NA_real_, h),
+    mu_nws_upper_95 = rep(NA_real_, h),
+    agg_discrep_glofas = rep(NA_real_, h),
+    agg_discrep_glofas_lower_95 = rep(NA_real_, h),
+    agg_discrep_glofas_upper_95 = rep(NA_real_, h),
+    agg_discrep_nws = rep(NA_real_, h),
+    agg_discrep_nws_lower_95 = rep(NA_real_, h),
+    agg_discrep_nws_upper_95 = rep(NA_real_, h),
+    zeta_mean = rep(NA_real_, h),
+    zeta_lower_95 = rep(NA_real_, h),
+    zeta_upper_95 = rep(NA_real_, h),
+    trend_agg = rep(NA_real_, h),
+    trend_agg_lower_95 = rep(NA_real_, h),
+    trend_agg_upper_95 = rep(NA_real_, h),
+    season_agg = rep(NA_real_, h),
+    season_agg_lower_95 = rep(NA_real_, h),
+    season_agg_upper_95 = rep(NA_real_, h),
+    mu_without_transfer = rep(NA_real_, h),
+    mu_without_transfer_lower_95 = rep(NA_real_, h),
+    mu_without_transfer_upper_95 = rep(NA_real_, h),
+    usgs_observed = truth_future,
+    stringsAsFactors = FALSE
+  )
+
+  psi_hist_mean <- matrix(NA_real_, nrow = psi_count, ncol = n_hist)
+  psi_hist_sd <- matrix(NA_real_, nrow = psi_count, ncol = n_hist)
+  if (psi_count > 0L) {
+    psi_hist_idx <- seq.int(core_hist_dim + 2L, core_hist_dim + ppx)
+    for (k in seq_len(psi_count)) {
+      if (psi_hist_idx[k] <= nrow(sm_hist)) {
+        psi_hist_mean[k, ] <- as.numeric(sm_hist[psi_hist_idx[k], hist_idx])
+        psi_hist_sd[k, ] <- safe_diag_sd(sC_hist, psi_hist_idx[k], n_hist)
+      }
+    }
+  }
+
+  psi_fore_mean <- matrix(NA_real_, nrow = psi_count, ncol = h)
+  psi_fore_sd <- matrix(NA_real_, nrow = psi_count, ncol = h)
+  forecast_has_transfer <- FALSE
+
+  cursor <- 0L
+  for (j in seq_len(j_total)) {
+    seg_len <- seg_h[j]
+    if (!is.finite(seg_len) || seg_len <= 0L) next
+    seg_idx <- seq.int(cursor + 1L, cursor + seg_len)
+    cursor <- cursor + seg_len
+
+    sm_seg <- as.matrix(theta_obj$sm_ens[[j]])
+    sC_seg <- theta_obj$sC_ens[[j]]
+    if (!is.matrix(sm_seg) || !is.array(sC_seg) || length(dim(sC_seg)) != 3L) next
+    t_use <- min(seg_len, ncol(sm_seg), dim(sC_seg)[3])
+    if (!is.finite(t_use) || t_use <= 0L) next
+
+    jj <- j_total - j + 1L
+    core_dim_j <- as.integer(p * (jj + 1L))
+    has_transfer <- isTRUE(seg_contract$transfer_retained[j])
+    if (has_transfer) forecast_has_transfer <- TRUE
+    zeta_idx_j <- if (has_transfer) core_dim_j + 1L else NA_integer_
+
+    for (tt in seq_len(t_use)) {
+      g_idx <- seg_idx[tt]
+      mt <- as.numeric(sm_seg[, tt])
+
+      theta_idx <- seq_len(p)
+      delta_g_idx <- if (jj >= 1L) seq.int(p + 1L, 2L * p) else integer(0)
+      delta_n_idx <- if (jj >= 2L) seq.int(2L * p + 1L, 3L * p) else integer(0)
+
+      base_no_transfer <- sum(ff_base * mt[theta_idx])
+      trend_mean <- if (length(trend_idx) > 0L) sum(ff_base[trend_idx] * mt[trend_idx]) else NA_real_
+      season_mean <- if (length(season_idx) > 0L) sum(ff_base[season_idx] * mt[season_idx]) else 0
+      zeta_mean <- if (isTRUE(has_transfer) && is.finite(zeta_idx_j) && zeta_idx_j <= length(mt)) mt[zeta_idx_j] else 0
+      disc_g_mean <- if (length(delta_g_idx) == p) sum(ff_base * mt[delta_g_idx]) else NA_real_
+      disc_n_mean <- if (length(delta_n_idx) == p) sum(ff_base * mt[delta_n_idx]) else NA_real_
+
+      mu_usgs <- base_no_transfer + zeta_mean
+      mu_g <- if (is.finite(disc_g_mean)) mu_usgs + disc_g_mean else NA_real_
+      mu_n <- if (is.finite(disc_n_mean)) mu_usgs + disc_n_mean else NA_real_
+
+      w_usgs <- rep(0, nrow(sm_seg))
+      w_usgs[theta_idx] <- ff_base
+      if (isTRUE(has_transfer) && is.finite(zeta_idx_j) && zeta_idx_j <= nrow(sm_seg)) w_usgs[zeta_idx_j] <- 1
+      sd_usgs <- safe_linear_sd(sC_seg, w_usgs, tt)
+
+      w_base <- rep(0, nrow(sm_seg)); w_base[theta_idx] <- ff_base
+      sd_base <- safe_linear_sd(sC_seg, w_base, tt)
+      w_trend <- rep(0, nrow(sm_seg)); if (length(trend_idx) > 0L) w_trend[trend_idx] <- ff_base[trend_idx]
+      sd_trend <- safe_linear_sd(sC_seg, w_trend, tt)
+      w_season <- rep(0, nrow(sm_seg)); if (length(season_idx) > 0L) w_season[season_idx] <- ff_base[season_idx]
+      sd_season <- safe_linear_sd(sC_seg, w_season, tt)
+
+      z_sd <- if (isTRUE(has_transfer) && is.finite(zeta_idx_j)) safe_diag_sd(sC_seg, zeta_idx_j, tt)[tt] else 0
+      d_g_sd <- NA_real_
+      d_n_sd <- NA_real_
+      mu_g_sd <- NA_real_
+      mu_n_sd <- NA_real_
+
+      if (length(delta_g_idx) == p) {
+        w_disc_g <- rep(0, nrow(sm_seg)); w_disc_g[delta_g_idx] <- ff_base
+        d_g_sd <- safe_linear_sd(sC_seg, w_disc_g, tt)
+        w_mu_g <- w_usgs + w_disc_g
+        mu_g_sd <- safe_linear_sd(sC_seg, w_mu_g, tt)
+      }
+      if (length(delta_n_idx) == p) {
+        w_disc_n <- rep(0, nrow(sm_seg)); w_disc_n[delta_n_idx] <- ff_base
+        d_n_sd <- safe_linear_sd(sC_seg, w_disc_n, tt)
+        w_mu_n <- w_usgs + w_disc_n
+        mu_n_sd <- safe_linear_sd(sC_seg, w_mu_n, tt)
+      }
+
+      state_fore$mu_usgs[g_idx] <- mu_usgs
+      state_fore$mu_usgs_lower_95[g_idx] <- mu_usgs - 1.96 * sd_usgs
+      state_fore$mu_usgs_upper_95[g_idx] <- mu_usgs + 1.96 * sd_usgs
+      state_fore$mu_glofas[g_idx] <- mu_g
+      state_fore$mu_glofas_lower_95[g_idx] <- if (is.finite(mu_g_sd)) mu_g - 1.96 * mu_g_sd else NA_real_
+      state_fore$mu_glofas_upper_95[g_idx] <- if (is.finite(mu_g_sd)) mu_g + 1.96 * mu_g_sd else NA_real_
+      state_fore$mu_nws[g_idx] <- mu_n
+      state_fore$mu_nws_lower_95[g_idx] <- if (is.finite(mu_n_sd)) mu_n - 1.96 * mu_n_sd else NA_real_
+      state_fore$mu_nws_upper_95[g_idx] <- if (is.finite(mu_n_sd)) mu_n + 1.96 * mu_n_sd else NA_real_
+      state_fore$agg_discrep_glofas[g_idx] <- disc_g_mean
+      state_fore$agg_discrep_glofas_lower_95[g_idx] <- if (is.finite(d_g_sd)) disc_g_mean - 1.96 * d_g_sd else NA_real_
+      state_fore$agg_discrep_glofas_upper_95[g_idx] <- if (is.finite(d_g_sd)) disc_g_mean + 1.96 * d_g_sd else NA_real_
+      state_fore$agg_discrep_nws[g_idx] <- disc_n_mean
+      state_fore$agg_discrep_nws_lower_95[g_idx] <- if (is.finite(d_n_sd)) disc_n_mean - 1.96 * d_n_sd else NA_real_
+      state_fore$agg_discrep_nws_upper_95[g_idx] <- if (is.finite(d_n_sd)) disc_n_mean + 1.96 * d_n_sd else NA_real_
+      state_fore$zeta_mean[g_idx] <- zeta_mean
+      state_fore$zeta_lower_95[g_idx] <- zeta_mean - 1.96 * z_sd
+      state_fore$zeta_upper_95[g_idx] <- zeta_mean + 1.96 * z_sd
+      state_fore$trend_agg[g_idx] <- trend_mean
+      state_fore$trend_agg_lower_95[g_idx] <- if (is.finite(sd_trend)) trend_mean - 1.96 * sd_trend else NA_real_
+      state_fore$trend_agg_upper_95[g_idx] <- if (is.finite(sd_trend)) trend_mean + 1.96 * sd_trend else NA_real_
+      state_fore$season_agg[g_idx] <- season_mean
+      state_fore$season_agg_lower_95[g_idx] <- if (is.finite(sd_season)) season_mean - 1.96 * sd_season else NA_real_
+      state_fore$season_agg_upper_95[g_idx] <- if (is.finite(sd_season)) season_mean + 1.96 * sd_season else NA_real_
+      state_fore$mu_without_transfer[g_idx] <- base_no_transfer
+      state_fore$mu_without_transfer_lower_95[g_idx] <- base_no_transfer - 1.96 * sd_base
+      state_fore$mu_without_transfer_upper_95[g_idx] <- base_no_transfer + 1.96 * sd_base
+    }
+
+    if (psi_count > 0L && isTRUE(has_transfer)) {
+      psi_idx_j <- seq.int(core_dim_j + 2L, core_dim_j + ppx)
+      for (k in seq_len(min(psi_count, length(psi_idx_j)))) {
+        psi_k_idx <- psi_idx_j[k]
+        if (psi_k_idx <= nrow(sm_seg)) {
+          psi_fore_mean[k, seg_idx[seq_len(t_use)]] <- as.numeric(sm_seg[psi_k_idx, seq_len(t_use)])
+          psi_fore_sd[k, seg_idx[seq_len(t_use)]] <- safe_diag_sd(sC_seg, psi_k_idx, t_use)[seq_len(t_use)]
+        }
+      }
+    }
+  }
+
+  state_df <- rbind(state_hist, state_fore)
+  state_df$mu_total <- state_df$mu_usgs
+  state_df$mu_usgs_from_glofas <- state_df$mu_glofas - state_df$agg_discrep_glofas
+  state_df$identity_err_glofas <- state_df$mu_glofas - state_df$mu_usgs - state_df$agg_discrep_glofas
+  state_df$identity_err_nws <- state_df$mu_nws - state_df$mu_usgs - state_df$agg_discrep_nws
+
+  psi_rows <- list()
+  if (psi_count > 0L) {
+    for (k in seq_len(psi_count)) {
+      coeff_name <- sprintf("psi_%02d", k)
+      psi_hist <- data.frame(
+        coefficient = coeff_name,
+        day_rel = hist_day_rel,
+        phase = "history",
+        mean = psi_hist_mean[k, ],
+        lower_95 = psi_hist_mean[k, ] - 1.96 * psi_hist_sd[k, ],
+        upper_95 = psi_hist_mean[k, ] + 1.96 * psi_hist_sd[k, ],
+        stringsAsFactors = FALSE
+      )
+      psi_fore <- data.frame(
+        coefficient = coeff_name,
+        day_rel = fore_day_rel,
+        phase = "forecast",
+        mean = if (h > 0L) psi_fore_mean[k, ] else numeric(0),
+        lower_95 = if (h > 0L) psi_fore_mean[k, ] - 1.96 * psi_fore_sd[k, ] else numeric(0),
+        upper_95 = if (h > 0L) psi_fore_mean[k, ] + 1.96 * psi_fore_sd[k, ] else numeric(0),
+        stringsAsFactors = FALSE
+      )
+      psi_rows[[length(psi_rows) + 1L]] <- rbind(psi_hist, psi_fore)
+    }
+  }
+  psi_df <- if (length(psi_rows) > 0L) do.call(rbind, psi_rows) else data.frame()
+
+  err_g_max <- suppressWarnings(max(abs(state_df$identity_err_glofas[is.finite(state_df$identity_err_glofas)]), na.rm = TRUE))
+  err_n_max <- suppressWarnings(max(abs(state_df$identity_err_nws[is.finite(state_df$identity_err_nws)]), na.rm = TRUE))
+  if (!is.finite(err_g_max)) err_g_max <- NA_real_
+  if (!is.finite(err_n_max)) err_n_max <- NA_real_
+
+  list(
+    state_df = state_df,
+    psi_df = psi_df,
+    seg_contract = seg_contract,
+    meta = list(
+      J = j_total,
+      p = p,
+      ppx = ppx,
+      TT_hist = tt_hist,
+      forecast_horizon = h,
+      forecast_has_transfer = isTRUE(forecast_has_transfer),
+      trend_state_dim = length(trend_idx),
+      season_state_dim = length(season_idx),
+      identity_max_abs_err_glofas = err_g_max,
+      identity_max_abs_err_nws = err_n_max
+    )
+  )
+}
+
+draw_phase_band <- function(df_phase, y_lo, y_hi, fill_col) {
+  if (!is.data.frame(df_phase) || nrow(df_phase) == 0L) return(invisible(NULL))
+  ok <- is.finite(df_phase[[y_lo]]) & is.finite(df_phase[[y_hi]]) & is.finite(df_phase$day_rel)
+  if (!any(ok)) return(invisible(NULL))
+  xx <- df_phase$day_rel[ok]
+  lo <- df_phase[[y_lo]][ok]
+  hi <- df_phase[[y_hi]][ok]
+  polygon(c(xx, rev(xx)), c(lo, rev(hi)), border = NA, col = fill_col)
+  invisible(NULL)
+}
+
+plot_transfer_zeta_window_q50 <- function(state_df, out_file, forecast_has_transfer) {
+  if (!is.data.frame(state_df) || nrow(state_df) == 0L) return(invisible(FALSE))
+  ok <- is.finite(state_df$zeta_mean) | is.finite(state_df$zeta_lower_95) | is.finite(state_df$zeta_upper_95)
+  if (!any(ok)) return(invisible(FALSE))
+
+  ylim_use <- range(
+    c(state_df$zeta_mean[ok], state_df$zeta_lower_95[ok], state_df$zeta_upper_95[ok]),
+    na.rm = TRUE
+  )
+  if (!all(is.finite(ylim_use)) || diff(ylim_use) <= 0) ylim_use <- c(-1, 1)
+
+  png(out_file, width = 3200, height = 1400, res = 300)
+  on.exit(dev.off(), add = TRUE)
+  plot(
+    state_df$day_rel[ok], state_df$zeta_mean[ok], type = "n",
+    xlab = "Day relative to cutoff (0 = T)",
+    ylab = expression(zeta[t]),
+    main = "Transfer state zeta_t around cutoff (history + forecast)",
+    ylim = ylim_use
+  )
+  abline(v = 0, lty = 3, lwd = 1.2, col = "gray45")
+
+  hist_df <- state_df[state_df$phase == "history", , drop = FALSE]
+  fore_df <- state_df[state_df$phase == "forecast", , drop = FALSE]
+  draw_phase_band(hist_df, "zeta_lower_95", "zeta_upper_95", adjustcolor("#2166ac", alpha.f = 0.18))
+  draw_phase_band(fore_df, "zeta_lower_95", "zeta_upper_95", adjustcolor("#b2182b", alpha.f = 0.18))
+
+  if (any(is.finite(hist_df$zeta_mean))) lines(hist_df$day_rel, hist_df$zeta_mean, lwd = 2.4, col = "#2166ac")
+  if (any(is.finite(fore_df$zeta_mean))) lines(fore_df$day_rel, fore_df$zeta_mean, lwd = 2.4, col = "#b2182b")
+  if (!isTRUE(forecast_has_transfer)) {
+    mtext("Forecast transfer coordinates absent (drop mode: zeta not propagated past cutoff)", side = 3, col = "#b2182b", line = 0.3)
+  }
+  legend(
+    "topleft",
+    legend = c("History zeta_t", "Forecast zeta_t", "95% interval"),
+    col = c("#2166ac", "#b2182b", "gray35"),
+    lwd = c(2.4, 2.4, 1.0),
+    lty = c(1, 1, 2),
+    bty = "n"
+  )
+  invisible(TRUE)
+}
+
+plot_transfer_coefficients_window_q50 <- function(psi_df, out_file, forecast_has_transfer) {
+  if (!is.data.frame(psi_df) || nrow(psi_df) == 0L) return(invisible(FALSE))
+  coeffs <- unique(as.character(psi_df$coefficient))
+  coeffs <- coeffs[nzchar(coeffs)]
+  if (length(coeffs) == 0L) return(invisible(FALSE))
+
+  n_pan <- length(coeffs)
+  n_col <- min(3L, n_pan)
+  n_row <- as.integer(ceiling(n_pan / n_col))
+  png(out_file, width = 3200, height = max(1200L, 900L * n_row), res = 300)
+  op <- par(no.readonly = TRUE)
+  on.exit({
+    par(op)
+    dev.off()
+  }, add = TRUE)
+  par(mfrow = c(n_row, n_col), mar = c(4.2, 4.2, 2.8, 1.2))
+
+  for (coeff in coeffs) {
+    dd <- psi_df[psi_df$coefficient == coeff, , drop = FALSE]
+    ok <- is.finite(dd$mean) | is.finite(dd$lower_95) | is.finite(dd$upper_95)
+    if (!any(ok)) {
+      plot.new()
+      title(main = sprintf("%s (no finite values)", coeff))
+      next
+    }
+    ylim_use <- range(c(dd$mean[ok], dd$lower_95[ok], dd$upper_95[ok]), na.rm = TRUE)
+    if (!all(is.finite(ylim_use)) || diff(ylim_use) <= 0) ylim_use <- c(-1, 1)
+
+    plot(
+      dd$day_rel[ok], dd$mean[ok], type = "n",
+      xlab = "Day rel. cutoff",
+      ylab = coeff,
+      main = sprintf("Transfer coefficient %s", coeff),
+      ylim = ylim_use
+    )
+    abline(v = 0, lty = 3, lwd = 1.0, col = "gray45")
+    hdd <- dd[dd$phase == "history", , drop = FALSE]
+    fdd <- dd[dd$phase == "forecast", , drop = FALSE]
+    draw_phase_band(hdd, "lower_95", "upper_95", adjustcolor("#2166ac", alpha.f = 0.18))
+    draw_phase_band(fdd, "lower_95", "upper_95", adjustcolor("#b2182b", alpha.f = 0.18))
+    if (any(is.finite(hdd$mean))) lines(hdd$day_rel, hdd$mean, lwd = 2.0, col = "#2166ac")
+    if (any(is.finite(fdd$mean))) lines(fdd$day_rel, fdd$mean, lwd = 2.0, col = "#b2182b")
+  }
+  if (!isTRUE(forecast_has_transfer)) {
+    mtext("Forecast coefficients absent in drop mode", side = 1, outer = TRUE, line = -1.2, col = "#b2182b")
+  }
+  invisible(TRUE)
+}
+
+plot_transfer_observation_decomp_q50 <- function(state_df, out_file, forecast_has_transfer) {
+  if (!is.data.frame(state_df) || nrow(state_df) == 0L) return(invisible(FALSE))
+  ok <- is.finite(state_df$mu_usgs) |
+    is.finite(state_df$mu_without_transfer) |
+    is.finite(state_df$zeta_mean) |
+    is.finite(state_df$trend_agg) |
+    is.finite(state_df$season_agg) |
+    is.finite(state_df$usgs_observed)
+  if (!any(ok)) return(invisible(FALSE))
+
+  ylim_use <- range(
+    c(
+      state_df$mu_usgs[ok],
+      state_df$mu_without_transfer[ok],
+      state_df$zeta_mean[ok],
+      state_df$trend_agg[ok],
+      state_df$season_agg[ok],
+      state_df$usgs_observed[ok]
+    ),
+    na.rm = TRUE
+  )
+  if (!all(is.finite(ylim_use)) || diff(ylim_use) <= 0) ylim_use <- c(-1, 1)
+
+  png(out_file, width = 3200, height = 1400, res = 300)
+  on.exit(dev.off(), add = TRUE)
+  plot(
+    state_df$day_rel[ok], state_df$mu_usgs[ok], type = "n",
+    xlab = "Day relative to cutoff (0 = T)",
+    ylab = "Location component scale",
+    main = "USGS location decomposition around cutoff: total, trend, seasonal, transfer, and observed USGS",
+    ylim = ylim_use
+  )
+  abline(v = 0, lty = 3, lwd = 1.2, col = "gray45")
+
+  draw_phase_band(
+    state_df[state_df$phase == "history", , drop = FALSE],
+    "mu_usgs_lower_95",
+    "mu_usgs_upper_95",
+    adjustcolor("#1b7837", alpha.f = 0.14)
+  )
+  draw_phase_band(
+    state_df[state_df$phase == "forecast", , drop = FALSE],
+    "mu_usgs_lower_95",
+    "mu_usgs_upper_95",
+    adjustcolor("#1b7837", alpha.f = 0.10)
+  )
+
+  if (any(is.finite(state_df$mu_usgs))) lines(state_df$day_rel, state_df$mu_usgs, lwd = 2.5, col = "#1b7837")
+  if (any(is.finite(state_df$mu_without_transfer))) lines(state_df$day_rel, state_df$mu_without_transfer, lwd = 2.1, col = "#762a83")
+  if (any(is.finite(state_df$zeta_mean))) lines(state_df$day_rel, state_df$zeta_mean, lwd = 1.9, lty = 2, col = "#b2182b")
+  if (any(is.finite(state_df$trend_agg))) lines(state_df$day_rel, state_df$trend_agg, lwd = 1.8, lty = 3, col = "#2166ac")
+  if (any(is.finite(state_df$season_agg))) lines(state_df$day_rel, state_df$season_agg, lwd = 1.8, lty = 4, col = "#e08214")
+  if (any(is.finite(state_df$usgs_observed))) {
+    points(state_df$day_rel, state_df$usgs_observed, pch = 16, cex = 0.55, col = "black")
+    lines(state_df$day_rel, state_df$usgs_observed, lwd = 0.9, col = "black")
+  }
+
+  if (!isTRUE(forecast_has_transfer)) {
+    mtext("drop mode: transfer block is omitted in forecast (zeta forecast contribution is fixed to zero)", side = 3, col = "#b2182b", line = 0.3)
+  }
+  legend(
+    "topleft",
+    legend = c("mu_usgs (state-reconstructed)", "mu_usgs 95% band", "mu_without_transfer", "zeta_t", "trend (aggregated)", "seasonal (aggregated)", "USGS observed/withheld"),
+    col = c("#1b7837", "#1b7837", "#762a83", "#b2182b", "#2166ac", "#e08214", "black"),
+    lwd = c(2.5, 1.1, 2.1, 1.9, 1.8, 1.8, 0.9),
+    lty = c(1, 2, 1, 2, 3, 4, 1),
+    pch = c(NA, NA, NA, NA, NA, NA, 16),
+    bty = "n"
+  )
+  invisible(TRUE)
+}
+
+plot_transfer_sources_window_q50 <- function(state_df, out_file, forecast_has_transfer) {
+  if (!is.data.frame(state_df) || nrow(state_df) == 0L) return(invisible(FALSE))
+  ok <- is.finite(state_df$mu_usgs) | is.finite(state_df$mu_glofas) | is.finite(state_df$mu_nws) | is.finite(state_df$usgs_observed)
+  if (!any(ok)) return(invisible(FALSE))
+
+  ylim_use <- range(
+    c(
+      state_df$mu_usgs[ok], state_df$mu_usgs_lower_95[ok], state_df$mu_usgs_upper_95[ok],
+      state_df$mu_glofas[ok], state_df$mu_glofas_lower_95[ok], state_df$mu_glofas_upper_95[ok],
+      state_df$mu_nws[ok], state_df$mu_nws_lower_95[ok], state_df$mu_nws_upper_95[ok],
+      state_df$usgs_observed[ok]
+    ),
+    na.rm = TRUE
+  )
+  if (!all(is.finite(ylim_use)) || diff(ylim_use) <= 0) ylim_use <- c(-1, 1)
+
+  png(out_file, width = 3200, height = 1500, res = 300)
+  on.exit(dev.off(), add = TRUE)
+  plot(
+    state_df$day_rel[ok], state_df$mu_usgs[ok], type = "n",
+    xlab = "Day relative to cutoff (0 = T)",
+    ylab = "Location component scale",
+    main = "Source-level location reconstruction around cutoff: USGS, GLOFAS, NWS (95% bands)",
+    ylim = ylim_use
+  )
+  abline(v = 0, lty = 3, lwd = 1.2, col = "gray45")
+
+  draw_phase_band(state_df, "mu_usgs_lower_95", "mu_usgs_upper_95", adjustcolor("#1b7837", alpha.f = 0.10))
+  draw_phase_band(state_df, "mu_glofas_lower_95", "mu_glofas_upper_95", adjustcolor("#2166ac", alpha.f = 0.08))
+  draw_phase_band(state_df, "mu_nws_lower_95", "mu_nws_upper_95", adjustcolor("#762a83", alpha.f = 0.08))
+
+  if (any(is.finite(state_df$mu_usgs))) lines(state_df$day_rel, state_df$mu_usgs, lwd = 2.5, col = "#1b7837")
+  if (any(is.finite(state_df$mu_glofas))) lines(state_df$day_rel, state_df$mu_glofas, lwd = 2.2, col = "#2166ac")
+  if (any(is.finite(state_df$mu_nws))) lines(state_df$day_rel, state_df$mu_nws, lwd = 2.2, col = "#762a83")
+  if (any(is.finite(state_df$usgs_observed))) {
+    points(state_df$day_rel, state_df$usgs_observed, pch = 16, cex = 0.55, col = "black")
+    lines(state_df$day_rel, state_df$usgs_observed, lwd = 0.9, col = "black")
+  }
+
+  if (!isTRUE(forecast_has_transfer)) {
+    mtext("drop mode: transfer coordinates are not propagated after cutoff", side = 3, line = 0.3, col = "#b2182b")
+  }
+  legend(
+    "topleft",
+    legend = c("mu_usgs", "mu_glofas", "mu_nws", "USGS observed/withheld"),
+    col = c("#1b7837", "#2166ac", "#762a83", "black"),
+    lwd = c(2.5, 2.2, 2.2, 0.9),
+    lty = c(1, 1, 1, 1),
+    pch = c(NA, NA, NA, 16),
+    bty = "n"
+  )
+  invisible(TRUE)
+}
+
+plot_transfer_discrepancy_identity_q50 <- function(state_df, out_file) {
+  if (!is.data.frame(state_df) || nrow(state_df) == 0L) return(invisible(FALSE))
+  ok_g <- is.finite(state_df$mu_glofas) & is.finite(state_df$mu_usgs) & is.finite(state_df$agg_discrep_glofas)
+  ok_n <- is.finite(state_df$mu_nws) & is.finite(state_df$mu_usgs) & is.finite(state_df$agg_discrep_nws)
+  if (!any(ok_g) && !any(ok_n)) return(invisible(FALSE))
+
+  png(out_file, width = 3200, height = 1700, res = 300)
+  op <- par(no.readonly = TRUE)
+  on.exit({
+    par(op)
+    dev.off()
+  }, add = TRUE)
+  par(mfrow = c(2, 1), mar = c(4.0, 4.2, 2.6, 1.0))
+
+  draw_panel <- function(ok, source_name, source_col, disc_col) {
+    if (!any(ok)) {
+      plot.new()
+      title(main = sprintf("%s discrepancy identity (no finite points)", source_name))
+      return(invisible(NULL))
+    }
+    x <- state_df$day_rel[ok]
+    lhs <- state_df[[source_col]][ok] - state_df$mu_usgs[ok]
+    rhs <- state_df[[disc_col]][ok]
+    ylim_use <- range(c(lhs, rhs), na.rm = TRUE)
+    if (!all(is.finite(ylim_use)) || diff(ylim_use) <= 0) ylim_use <- c(-1, 1)
+    plot(x, lhs, type = "l", lwd = 2.2, col = "#2166ac",
+         xlab = "Day relative to cutoff (0 = T)", ylab = "Discrepancy scale",
+         main = sprintf("%s identity check: (mu_%s - mu_usgs) vs aggregated discrepancy", source_name, tolower(source_name)),
+         ylim = ylim_use)
+    abline(v = 0, lty = 3, lwd = 1.0, col = "gray45")
+    lines(x, rhs, lwd = 2.0, lty = 2, col = "#b2182b")
+    err <- lhs - rhs
+    if (any(is.finite(err))) {
+      max_abs <- max(abs(err), na.rm = TRUE)
+      mtext(sprintf("max |lhs-rhs| = %.3e", max_abs), side = 3, line = 0.25, col = "gray30", adj = 1)
+    }
+    legend("topleft",
+           legend = c(sprintf("mu_%s - mu_usgs", tolower(source_name)), sprintf("aggregated_discrepancy_%s", tolower(source_name))),
+           col = c("#2166ac", "#b2182b"), lwd = c(2.2, 2.0), lty = c(1, 2), bty = "n")
+    invisible(NULL)
+  }
+
+  draw_panel(ok_g, "GLOFAS", "mu_glofas", "agg_discrep_glofas")
+  draw_panel(ok_n, "NWS", "mu_nws", "agg_discrep_nws")
+  invisible(TRUE)
+}
+
+plot_trace_lines <- function(values, title_txt, ylab_txt, file_name, line_cols = NULL) {
+  mat <- as_trace_matrix(values)
+  if (ncol(mat) == 0L) return(invisible(FALSE))
+  if (is.null(line_cols)) {
+    line_cols <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e")
+  }
+  keep <- seq_len(nrow(mat))
+  cols <- line_cols[(keep - 1L) %% length(line_cols) + 1L]
+  out_file <- file.path(OUT_DIR, file_name)
+  png(out_file, width = 2800, height = 1400, res = 300)
+  on.exit(dev.off(), add = TRUE)
+  mat[, 1L] <- NA_real_
+  ylim_use <- range(mat, na.rm = TRUE, finite = TRUE)
+  if (!all(is.finite(ylim_use)) || diff(ylim_use) <= 0) ylim_use <- c(-1, 1)
+  plot(seq_len(ncol(mat)), mat[1, ], type = "l", lwd = 2, col = cols[1],
+       xlab = "Iteration", ylab = ylab_txt, main = title_txt, ylim = ylim_use)
+  if (nrow(mat) > 1L) {
+    for (i in 2:nrow(mat)) {
+      lines(seq_len(ncol(mat)), mat[i, ], lwd = 1.7, col = cols[i])
+    }
+  }
+  legend("topright",
+         legend = paste0("Series ", seq_len(nrow(mat))),
+         col = cols, lwd = 2, bty = "n")
+  invisible(TRUE)
+}
+
+profile_section("figures_multivar_only.trace_plots", {
+  plot_trace_lines(
+    values = safe_get("seq.elbo_50_exAL_synth_DISC", NULL),
+    title_txt = "Multivariate exDQLM ELBO Trace (q=50)",
+    ylab_txt = "ELBO",
+    file_name = "multivar_elbo_trace_q50.png",
+    line_cols = "#1b7837"
+  )
+  plot_trace_lines(
+    values = safe_get("seq.sigma_50_exAL_synth_DISC", NULL),
+    title_txt = "Multivariate exDQLM Sigma Traces (q=50)",
+    ylab_txt = "sigma",
+    file_name = "multivar_sigma_traces_q50.png"
+  )
+  plot_trace_lines(
+    values = safe_get("seq.gamma_50_exAL_synth_DISC", NULL),
+    title_txt = "Multivariate exDQLM Gamma Traces (q=50)",
+    ylab_txt = "gamma",
+    file_name = "multivar_gamma_traces_q50.png"
+  )
+})
+
+profile_section("figures_multivar_only.trace_summary", {
+  trace_summary <- data.frame(
+    parameter = character(0),
+    component = integer(0),
+    iter_n = integer(0),
+    first = numeric(0),
+    last = numeric(0),
+    mean = numeric(0),
+    sd = numeric(0),
+    stringsAsFactors = FALSE
+  )
+
+  append_trace_rows <- function(param_name, obj_name) {
+    mat <- as_trace_matrix(safe_get(obj_name, NULL))
+    if (ncol(mat) == 0L) return(invisible(NULL))
+    for (i in seq_len(nrow(mat))) {
+      vals <- as.numeric(mat[i, ])
+      vals <- vals[is.finite(vals)]
+      if (length(vals) == 0L) next
+      trace_summary[nrow(trace_summary) + 1L, ] <<- list(
+        param_name, i, length(vals), vals[1], vals[length(vals)], mean(vals), stats::sd(vals)
+      )
+    }
+    invisible(NULL)
+  }
+
+  append_trace_rows("elbo", "seq.elbo_50_exAL_synth_DISC")
+  append_trace_rows("sigma", "seq.sigma_50_exAL_synth_DISC")
+  append_trace_rows("gamma", "seq.gamma_50_exAL_synth_DISC")
+
+  if (nrow(trace_summary) > 0L) {
+    write.csv(trace_summary, file.path(OUT_DIR, "multivar_trace_summary_q50.csv"), row.names = FALSE)
+  }
+})
+
+profile_section("figures_multivar_only.fit_and_forecast", {
+  fs <- build_multivar_q50_forecast_summary()
+  if (is.null(fs)) return(invisible(NULL))
+
+  idx_fit <- seq_len(fs$fit_n)
+  fit_obs <- as.numeric(fs$fit_obs)
+  fit_mu <- as.numeric(fs$fit_mu)
+
+  out_fit <- file.path(OUT_DIR, "multivar_fit_mu_vs_observed_loglog.png")
+  png(out_fit, width = 3000, height = 1400, res = 300)
+  on.exit(dev.off(), add = TRUE)
+  y_min <- min(c(fit_obs, fit_mu), na.rm = TRUE)
+  y_max <- max(c(fit_obs, fit_mu), na.rm = TRUE)
+  plot(idx_fit, fit_obs, type = "p", pch = 16, cex = 0.35, col = "gray25",
+       xlab = "Time index", ylab = "log(log(flow + 1))",
+       main = "Multivariate exDQLM expected location vs observed (in-sample)",
+       ylim = c(y_min, y_max))
+  lines(idx_fit, fit_mu, col = "#1b7837", lwd = 2.2)
+  legend("topright",
+         legend = c("Observed USGS", "mu_t (q=50)"),
+         col = c("gray25", "#1b7837"),
+         pch = c(16, NA), lwd = c(NA, 2.2), bty = "n")
+
+  recent_n <- min(900L, fs$fit_n)
+  idx_recent <- seq.int(fs$fit_n - recent_n + 1L, fs$fit_n)
+  out_fit_recent <- file.path(OUT_DIR, "multivar_fit_mu_vs_observed_recent_loglog.png")
+  png(out_fit_recent, width = 3000, height = 1400, res = 300)
+  on.exit(dev.off(), add = TRUE)
+  y_min_r <- min(c(fit_obs[idx_recent], fit_mu[idx_recent]), na.rm = TRUE)
+  y_max_r <- max(c(fit_obs[idx_recent], fit_mu[idx_recent]), na.rm = TRUE)
+  plot(idx_recent, fit_obs[idx_recent], type = "p", pch = 16, cex = 0.55, col = "gray25",
+       xlab = "Time index", ylab = "log(log(flow + 1))",
+       main = sprintf("Multivariate exDQLM expected location vs observed (recent %d points)", recent_n),
+       ylim = c(y_min_r, y_max_r))
+  lines(idx_recent, fit_mu[idx_recent], col = "#1b7837", lwd = 2.3)
+  legend("topright",
+         legend = c("Observed USGS", "mu_t (q=50)"),
+         col = c("gray25", "#1b7837"),
+         pch = c(16, NA), lwd = c(NA, 2.3), bty = "n")
+
+  h <- fs$horizon
+  x_f <- seq_len(h)
+  mu_f <- as.numeric(fs$mu_forecast)
+  lo_f <- as.numeric(fs$lower_forecast)
+  up_f <- as.numeric(fs$upper_forecast)
+  truth <- as.numeric(fs$truth_future)
+  glofas_mean <- as.numeric(fs$glofas_mean)
+  nws_mean <- as.numeric(fs$nws_mean)
+  mu_minus_zeta_f <- rep(NA_real_, h)
+  forecast_has_transfer <- FALSE
+
+  transfer_payload <- build_transfer_state_window_q50(pre_days = 0L)
+  if (!is.null(transfer_payload) && is.data.frame(transfer_payload$state_df)) {
+    state_df <- transfer_payload$state_df
+    forecast_has_transfer <- isTRUE(transfer_payload$meta$forecast_has_transfer)
+    sf <- state_df[state_df$phase == "forecast", , drop = FALSE]
+    if (nrow(sf) > 0L) {
+      idx <- suppressWarnings(as.integer(sf$day_rel))
+      use <- is.finite(idx) & idx >= 1L & idx <= h
+      if (any(use)) {
+        mu_minus_zeta_f[idx[use]] <- as.numeric(sf$mu_without_transfer[use])
+      }
+    }
+  }
+  fill <- !is.finite(mu_minus_zeta_f)
+  if (any(fill)) {
+    # In drop mode transfer is not propagated in forecast; mu_t - zeta_t collapses to mu_t.
+    mu_minus_zeta_f[fill] <- mu_f[fill]
+  }
+
+  forecast_df <- data.frame(
+    forecast_day = x_f,
+    mu_q50 = mu_f,
+    mu_minus_zeta_q50 = mu_minus_zeta_f,
+    lower_95 = lo_f,
+    upper_95 = up_f,
+    usgs_future_withheld = truth,
+    glofas_mean = glofas_mean,
+    nws_mean = nws_mean
+  )
+  write.csv(forecast_df, file.path(OUT_DIR, "multivar_forecast_window_q50_summary.csv"), row.names = FALSE)
+
+  valid_mu <- is.finite(mu_f) & is.finite(truth)
+  valid_g <- is.finite(glofas_mean) & is.finite(truth)
+  valid_n <- is.finite(nws_mean) & is.finite(truth)
+  coverage <- is.finite(lo_f) & is.finite(up_f) & is.finite(truth) & truth >= lo_f & truth <= up_f
+  metric_df <- data.frame(
+    metric = c("n_overlap_mu", "mae_mu", "rmse_mu", "coverage_mu_95", "n_overlap_glofas_mean", "mae_glofas_mean", "n_overlap_nws_mean", "mae_nws_mean"),
+    value = c(
+      sum(valid_mu),
+      if (any(valid_mu)) mean(abs(mu_f[valid_mu] - truth[valid_mu])) else NA_real_,
+      if (any(valid_mu)) sqrt(mean((mu_f[valid_mu] - truth[valid_mu])^2)) else NA_real_,
+      if (any(is.finite(coverage))) mean(coverage, na.rm = TRUE) else NA_real_,
+      sum(valid_g),
+      if (any(valid_g)) mean(abs(glofas_mean[valid_g] - truth[valid_g])) else NA_real_,
+      sum(valid_n),
+      if (any(valid_n)) mean(abs(nws_mean[valid_n] - truth[valid_n])) else NA_real_
+    )
+  )
+  write.csv(metric_df, file.path(OUT_DIR, "multivar_forecast_window_q50_metrics.csv"), row.names = FALSE)
+
+  out_mu <- file.path(OUT_DIR, "multivar_forecast_window_mu_vs_future_usgs.png")
+  png(out_mu, width = 3000, height = 1400, res = 300)
+  on.exit(dev.off(), add = TRUE)
+  y_min_f <- min(c(lo_f, up_f, mu_f, truth), na.rm = TRUE)
+  y_max_f <- max(c(lo_f, up_f, mu_f, truth), na.rm = TRUE)
+  plot(x_f, mu_f, type = "l", lwd = 2.4, col = "#1b7837",
+       xlab = "Forecast day", ylab = "log(log(flow + 1))",
+       main = "Forecast window: multivariate exDQLM mu_t (q=50) vs future USGS",
+       ylim = c(y_min_f, y_max_f))
+  if (any(is.finite(lo_f)) && any(is.finite(up_f))) {
+    polygon(
+      x = c(x_f, rev(x_f)),
+      y = c(lo_f, rev(up_f)),
+      border = NA,
+      col = adjustcolor("#1b7837", alpha.f = 0.18)
+    )
+    lines(x_f, lo_f, lty = 2, lwd = 1.2, col = "#1b7837")
+    lines(x_f, up_f, lty = 2, lwd = 1.2, col = "#1b7837")
+    lines(x_f, mu_f, lwd = 2.4, col = "#1b7837")
+  }
+  points(x_f, truth, pch = 16, cex = 0.8, col = "black")
+  lines(x_f, truth, lwd = 1.1, col = "black")
+  legend("topleft",
+         legend = c("Multivar mu_t q=50", "Multivar q50 95% band", "Future USGS (withheld)"),
+         col = c("#1b7837", "#1b7837", "black"),
+         lty = c(1, 2, 1), lwd = c(2.4, 1.2, 1.1), pch = c(NA, NA, 16), bty = "n")
+
+  out_mu_minus_zeta <- file.path(OUT_DIR, "multivar_forecast_window_mu_minus_zeta_vs_future_usgs.png")
+  png(out_mu_minus_zeta, width = 3000, height = 1400, res = 300)
+  on.exit(dev.off(), add = TRUE)
+  y_min_mz <- min(c(mu_minus_zeta_f, mu_f, truth), na.rm = TRUE)
+  y_max_mz <- max(c(mu_minus_zeta_f, mu_f, truth), na.rm = TRUE)
+  plot(x_f, mu_minus_zeta_f, type = "l", lwd = 2.6, col = "#762a83",
+       xlab = "Forecast day", ylab = "log(log(flow + 1))",
+       main = "Forecast window: multivariate exDQLM (mu_t - zeta_t) vs future USGS",
+       ylim = c(y_min_mz, y_max_mz))
+  lines(x_f, mu_f, lwd = 1.6, lty = 3, col = "#1b7837")
+  points(x_f, truth, pch = 16, cex = 0.8, col = "black")
+  lines(x_f, truth, lwd = 1.1, col = "black")
+  if (!isTRUE(forecast_has_transfer)) {
+    mtext("drop mode: transfer omitted in forecast, so mu_t - zeta_t aligns with mu_t", side = 3, line = 0.3, col = "#762a83")
+  }
+  legend("topleft",
+         legend = c("mu_t - zeta_t (q50 dynamic)", "mu_t (q50)", "Future USGS (withheld)"),
+         col = c("#762a83", "#1b7837", "black"),
+         lty = c(1, 3, 1), lwd = c(2.6, 1.6, 1.1), pch = c(NA, NA, 16), bty = "n")
+
+  out_vs_ens <- file.path(OUT_DIR, "multivar_forecast_window_multivar_vs_ensembles.png")
+  png(out_vs_ens, width = 3000, height = 1400, res = 300)
+  on.exit(dev.off(), add = TRUE)
+  y_min_e <- min(c(lo_f, up_f, mu_f, glofas_mean, nws_mean, truth), na.rm = TRUE)
+  y_max_e <- max(c(lo_f, up_f, mu_f, glofas_mean, nws_mean, truth), na.rm = TRUE)
+  plot(x_f, mu_f, type = "l", lwd = 2.5, col = "#1b7837",
+       xlab = "Forecast day", ylab = "log(log(flow + 1))",
+       main = "Forecast window: multivariate exDQLM vs ensemble means",
+       ylim = c(y_min_e, y_max_e))
+  lines(x_f, lo_f, lty = 2, lwd = 1.1, col = "#1b7837")
+  lines(x_f, up_f, lty = 2, lwd = 1.1, col = "#1b7837")
+  lines(x_f, glofas_mean, col = "#2166ac", lwd = 1.8)
+  lines(x_f, nws_mean, col = "#762a83", lwd = 1.8)
+  points(x_f, truth, pch = 16, cex = 0.8, col = "black")
+  lines(x_f, truth, lwd = 1.1, col = "black")
+  legend("topleft",
+         legend = c("Multivar mu_t q=50", "Multivar q50 95% band", "GLOFAS ensemble mean", "NWS ensemble mean", "Future USGS (withheld)"),
+         col = c("#1b7837", "#1b7837", "#2166ac", "#762a83", "black"),
+         lty = c(1, 2, 1, 1, 1), lwd = c(2.5, 1.1, 1.8, 1.8, 1.1), pch = c(NA, NA, NA, NA, 16), bty = "n")
+
+  out_members <- file.path(OUT_DIR, "multivar_forecast_window_ensemble_members.png")
+  png(out_members, width = 3000, height = 1400, res = 300)
+  on.exit(dev.off(), add = TRUE)
+  gmat <- as.matrix(fs$glofas_members)
+  nmat <- as.matrix(fs$nws_members)
+  y_min_m <- min(c(gmat, nmat, lo_f, up_f, mu_f, truth), na.rm = TRUE)
+  y_max_m <- max(c(gmat, nmat, lo_f, up_f, mu_f, truth), na.rm = TRUE)
+  plot(x_f, mu_f, type = "l", lwd = 2.6, col = "#1b7837",
+       xlab = "Forecast day", ylab = "log(log(flow + 1))",
+       main = "Forecast window: ensemble members + multivariate q50 (95% band) + future USGS",
+       ylim = c(y_min_m, y_max_m))
+  if (any(is.finite(lo_f)) && any(is.finite(up_f))) {
+    polygon(
+      x = c(x_f, rev(x_f)),
+      y = c(lo_f, rev(up_f)),
+      border = NA,
+      col = adjustcolor("#1b7837", alpha.f = 0.14)
+    )
+    lines(x_f, lo_f, lty = 2, lwd = 1.0, col = "#1b7837")
+    lines(x_f, up_f, lty = 2, lwd = 1.0, col = "#1b7837")
+  }
+  if (ncol(gmat) > 0L) {
+    matlines(seq_len(nrow(gmat)), gmat, lty = 1, lwd = 0.5, col = adjustcolor("#2166ac", alpha.f = 0.28))
+  }
+  if (ncol(nmat) > 0L) {
+    matlines(seq_len(nrow(nmat)), nmat, lty = 1, lwd = 0.5, col = adjustcolor("#762a83", alpha.f = 0.28))
+  }
+  lines(x_f, mu_f, lwd = 2.6, col = "#1b7837")
+  points(x_f, truth, pch = 16, cex = 0.85, col = "black")
+  lines(x_f, truth, lwd = 1.1, col = "black")
+  legend("topleft",
+         legend = c("Multivar mu_t q=50", "Multivar q50 95% band", "GLOFAS members", "NWS members", "Future USGS (withheld)"),
+         col = c("#1b7837", "#1b7837", "#2166ac", "#762a83", "black"),
+         lty = c(1, 2, 1, 1, 1), lwd = c(2.6, 1.0, 1.0, 1.0, 1.1), pch = c(NA, NA, NA, NA, 16), bty = "n")
+})
+
+profile_section("figures_multivar_only.transfer_state_verification", {
+  payload <- build_transfer_state_window_q50(pre_days = 30L)
+  if (is.null(payload)) return(invisible(NULL))
+
+  state_df <- payload$state_df
+  psi_df <- payload$psi_df
+  seg_contract <- payload$seg_contract
+  forecast_has_transfer <- isTRUE(payload$meta$forecast_has_transfer)
+
+  if (is.data.frame(state_df) && nrow(state_df) > 0L) {
+    write.csv(state_df, file.path(OUT_DIR, "multivar_transfer_state_window_q50.csv"), row.names = FALSE)
+  }
+  if (is.data.frame(psi_df) && nrow(psi_df) > 0L) {
+    write.csv(psi_df, file.path(OUT_DIR, "multivar_transfer_coefficients_window_q50.csv"), row.names = FALSE)
+  }
+  if (is.data.frame(seg_contract) && nrow(seg_contract) > 0L) {
+    write.csv(seg_contract, file.path(OUT_DIR, "multivar_transfer_state_contract_q50.csv"), row.names = FALSE)
+  }
+
+  if (is.data.frame(state_df) && nrow(state_df) > 0L) {
+    identity_summary <- do.call(
+      rbind,
+      lapply(unique(state_df$phase), function(ph) {
+        dd <- state_df[state_df$phase == ph, , drop = FALSE]
+        data.frame(
+          phase = ph,
+          n = nrow(dd),
+          max_abs_identity_err_glofas = if (any(is.finite(dd$identity_err_glofas))) max(abs(dd$identity_err_glofas), na.rm = TRUE) else NA_real_,
+          max_abs_identity_err_nws = if (any(is.finite(dd$identity_err_nws))) max(abs(dd$identity_err_nws), na.rm = TRUE) else NA_real_,
+          stringsAsFactors = FALSE
+        )
+      })
+    )
+    write.csv(identity_summary, file.path(OUT_DIR, "multivar_transfer_identity_check_q50.csv"), row.names = FALSE)
+  }
+
+  plot_transfer_zeta_window_q50(
+    state_df = state_df,
+    out_file = file.path(OUT_DIR, "multivar_transfer_zeta_window_q50.png"),
+    forecast_has_transfer = forecast_has_transfer
+  )
+  plot_transfer_coefficients_window_q50(
+    psi_df = psi_df,
+    out_file = file.path(OUT_DIR, "multivar_transfer_coefficients_window_q50.png"),
+    forecast_has_transfer = forecast_has_transfer
+  )
+  plot_transfer_observation_decomp_q50(
+    state_df = state_df,
+    out_file = file.path(OUT_DIR, "multivar_transfer_observation_decomposition_q50.png"),
+    forecast_has_transfer = forecast_has_transfer
+  )
+  plot_transfer_sources_window_q50(
+    state_df = state_df,
+    out_file = file.path(OUT_DIR, "multivar_transfer_source_mu_window_q50.png"),
+    forecast_has_transfer = forecast_has_transfer
+  )
+  plot_transfer_discrepancy_identity_q50(
+    state_df = state_df,
+    out_file = file.path(OUT_DIR, "multivar_transfer_discrepancy_identity_q50.png")
+  )
+})
