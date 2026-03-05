@@ -32,6 +32,20 @@ safe_lines <- function(x, y = NULL, ...) {
 }
 lines <- safe_lines
 
+if (!exists("CUTOFF_DATE", inherits = TRUE)) {
+  CUTOFF_DATE <- as.Date("2022-12-25")
+}
+if (!exists("FORECAST_START_DATE", inherits = TRUE)) {
+  FORECAST_START_DATE <- CUTOFF_DATE + 1L
+}
+if (!exists("PLOT_START_DATE", inherits = TRUE)) {
+  PLOT_START_DATE <- CUTOFF_DATE - 18L
+}
+if (!exists("PLOT_END_DATE", inherits = TRUE)) {
+  PLOT_END_DATE <- CUTOFF_DATE + 28L
+}
+cutoff_label_short <- format(as.Date(CUTOFF_DATE), "%b %d")
+
 daily_dates_for_n <- function(start_date, n_days, context = "dates") {
   start_date <- as.Date(start_date)
   if (length(start_date) != 1L || !is.finite(start_date)) {
@@ -359,13 +373,102 @@ profile_detail_section("figures.build_xbs_discrep", {
     xbs <- array(NA_real_, c(7,ranges[1],n.samp))
     xbs_ndlm <- array(NA_real_, c(1,ranges[1],n.samp))
 
-    xb_discrep1 <- array(NA_real_ , c(7,TT,n.samp))
-    xb_discrep2 <- array(NA_real_ , c(7,TT,n.samp))
+	    xb_discrep1 <- array(NA_real_ , c(7,TT,n.samp))
+	    xb_discrep2 <- array(NA_real_ , c(7,TT,n.samp))
 
-    F_constant_disc <- FF[1:7,1,1]
+	    F_constant_disc <- FF[1:7,1,1]
+	    forecast_transfer_mode <- tolower(trimws(Sys.getenv("UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE", "drop")))
+	    if (!forecast_transfer_mode %in% c("drop", "keep")) {
+	      forecast_transfer_mode <- "drop"
+	    }
+	    ppx_local <- if (exists("ppx", inherits = TRUE)) as.integer(ppx) else 0L
+	    use_transfer_forecast_projection <- isTRUE(use_covariates) &&
+	      identical(forecast_transfer_mode, "keep") &&
+	      is.finite(ppx_local) &&
+	      ppx_local > 0L
 
-    normalize_theta_time_sample <- function(theta_arr, target_time, target_samples, context) {
-      if (!is.numeric(theta_arr) || is.null(dim(theta_arr)) || length(dim(theta_arr)) != 3L) {
+	    forecast_core_dim <- function(seg_id) {
+	      as.integer(p * (J - as.integer(seg_id) + 2L))
+	    }
+
+	    build_usgs_projection_weights <- function(ff_seg, state_len, seg_id, context = "forecast_projection") {
+	      state_len <- as.integer(state_len)
+	      if (!is.finite(state_len) || state_len <= 0L) {
+	        stop(sprintf("[%s_STATE_LEN] invalid state_len=%s.", context, as.character(state_len)), call. = FALSE)
+	      }
+	      if (!is.matrix(ff_seg) || ncol(ff_seg) < 1L) {
+	        stop(sprintf("[%s_FF_SHAPE] expected FF segment matrix with at least one column.", context), call. = FALSE)
+	      }
+
+	      ff_n <- nrow(ff_seg)
+	      weights <- rep(0, state_len)
+	      base_len <- min(p, ff_n, state_len)
+	      if (base_len > 0L) {
+	        base_vals <- as.numeric(ff_seg[seq_len(base_len), 1, drop = TRUE])
+	        base_vals[!is.finite(base_vals)] <- 0
+	        weights[seq_len(base_len)] <- base_vals
+	      }
+
+	      if (isTRUE(use_transfer_forecast_projection)) {
+	        core_dim <- forecast_core_dim(seg_id)
+	        zeta_idx <- core_dim + 1L
+	        if (zeta_idx <= ff_n && zeta_idx <= state_len) {
+	          zeta_w <- as.numeric(ff_seg[zeta_idx, 1, drop = TRUE])
+	          if (!is.finite(zeta_w)) zeta_w <- 0
+	          weights[zeta_idx] <- zeta_w
+	        } else {
+	          warning(
+	            sprintf(
+	              "[%s_TRANSFER_OOB] zeta index %d is outside FF/state dims (ff_n=%d, state_len=%d) for seg=%d.",
+	              context, as.integer(zeta_idx), as.integer(ff_n), as.integer(state_len), as.integer(seg_id)
+	            ),
+	            call. = FALSE
+	          )
+	        }
+	      }
+
+	      weights
+	    }
+
+	    project_state_gaussian <- function(Mu, Sigma, ff_seg, seg_id, eps_reg = 0, context = "forecast_projection") {
+	      if (!is.numeric(Mu)) {
+	        stop(sprintf("[%s_MU] expected numeric Mu vector.", context), call. = FALSE)
+	      }
+	      if (!is.numeric(Sigma) || is.null(dim(Sigma)) || length(dim(Sigma)) != 2L) {
+	        stop(sprintf("[%s_SIGMA] expected 2D numeric Sigma matrix.", context), call. = FALSE)
+	      }
+	      if (nrow(Sigma) < length(Mu) || ncol(Sigma) < length(Mu)) {
+	        stop(
+	          sprintf(
+	            "[%s_SIGMA_DIM] Sigma dims %dx%d do not cover Mu length %d.",
+	            context, as.integer(nrow(Sigma)), as.integer(ncol(Sigma)), as.integer(length(Mu))
+	          ),
+	          call. = FALSE
+	        )
+	      }
+
+	      w <- build_usgs_projection_weights(ff_seg, state_len = length(Mu), seg_id = seg_id, context = context)
+	      idx_use <- which(abs(w) > 0)
+	      if (length(idx_use) == 0L) {
+	        return(c(mean = NA_real_, sd = NA_real_))
+	      }
+
+	      Mu_use <- as.numeric(Mu[idx_use])
+	      Mu_use[!is.finite(Mu_use)] <- 0
+	      S_use <- as.matrix(Sigma[idx_use, idx_use, drop = FALSE])
+	      S_use[!is.finite(S_use)] <- 0
+	      if (is.finite(eps_reg) && eps_reg > 0) {
+	        S_use <- S_use + diag(length(idx_use)) * eps_reg
+	      }
+	      w_use <- as.numeric(w[idx_use])
+	      mean_use <- sum(w_use * Mu_use)
+	      var_use <- as.numeric(crossprod(w_use, S_use %*% w_use))
+	      if (!is.finite(var_use) || var_use < 0) var_use <- 0
+	      c(mean = mean_use, sd = sqrt(var_use))
+	    }
+
+	    normalize_theta_time_sample <- function(theta_arr, target_time, target_samples, context) {
+	      if (!is.numeric(theta_arr) || is.null(dim(theta_arr)) || length(dim(theta_arr)) != 3L) {
         stop(sprintf("[%s_SHAPE] expected theta_arr as numeric 3D array.", context))
       }
       d <- dim(theta_arr)
@@ -458,7 +561,6 @@ profile_detail_section("figures.build_xbs_discrep", {
           }
 
 	        FF_s <- FF_list[[j]]
-	        F_s <- as.numeric(FF_s[1:p, 1])
 	        segment_len <- length(idx)
 
 	        fill_xbs_segment <- function(theta_arr, out_row) {
@@ -466,10 +568,24 @@ profile_detail_section("figures.build_xbs_discrep", {
 	                theta_arr <- aperm(theta_arr, c(1, 3, 2))
 	            }
 
-	            theta_mat <- matrix(theta_arr[1:p, , ], nrow = p)
-	            xb_vec <- as.vector(crossprod(F_s, theta_mat))
+	            state_dim <- dim(theta_arr)[1]
+	            w_state <- build_usgs_projection_weights(
+	              ff_seg = FF_s,
+	              state_len = state_dim,
+	              seg_id = j,
+	              context = sprintf("xbs_segment_qrow%d_seg%d", as.integer(out_row), as.integer(j))
+	            )
+	            idx_state <- which(abs(w_state) > 0)
+	            if (length(idx_state) == 0L) {
+	              xbs[out_row, idx, ] <- NA_real_
+	              return(invisible(NULL))
+	            }
+
+	            theta_mat <- matrix(theta_arr[idx_state, , ], nrow = length(idx_state))
+	            xb_vec <- as.vector(crossprod(w_state[idx_state], theta_mat))
 	            xb_mat <- matrix(xb_vec, nrow = segment_len, ncol = n.samp)
 	            xbs[out_row, idx, ] <- xb_mat
+	            invisible(NULL)
 	        }
 
 	        fill_xbs_segment(samp.theta_ens_5_exAL_synth_DISC[[j]]$samp_theta, 1)
@@ -665,7 +781,7 @@ eps <- 0.0
       )
     }
 
-    for(j in seq_len(n_seg_sample)){
+	    for(j in seq_len(n_seg_sample)){
 
     idx <- next_idx_block(idx, ks[J-j+1])
     if (length(idx) == 0L) {
@@ -691,67 +807,36 @@ eps <- 0.0
         )
       )
     }
-    tt <- 1
-    for(t in (idx) ){
-        # print(c(0.05,t,j))
-        # print(t(Ft)%*%Sigma[1:p,1:p]%*%Ft)
-        Mu <- new.theta.out_5_exAL_synth_DISC$sm_ens[[j]][,tt]
-        Sigma <- new.theta.out_5_exAL_synth_DISC$sC_ens[[j]][,,tt]
-        Ft <- FF_list[[j]][1:p,1]
-        S <- Sigma[1:p,1:p] + diag(p)*eps
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu[1:p], sd = sqrt(t(Ft)%*%S%*%Ft))
-        xbs[1,t,] <- xbs_samp
-        # print(c(0.2,t,j))
-        # print(t(Ft)%*%Sigma[1:p,1:p]%*%Ft)
-        Mu <- new.theta.out_20_exAL_synth_DISC$sm_ens[[j]][,tt]
-        Sigma <- new.theta.out_20_exAL_synth_DISC$sC_ens[[j]][,,tt]
-        Ft <- FF_list[[j]][1:p,1]
-        S <- Sigma[1:p,1:p] + diag(p)*eps
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu[1:p], sd = sqrt(t(Ft)%*%S%*%Ft))
-        xbs[2,t,] <- xbs_samp
-        # print(c(0.35,t,j))
-        # print(t(Ft)%*%Sigma[1:p,1:p]%*%Ft)
-        Mu <- new.theta.out_35_exAL_synth_DISC$sm_ens[[j]][,tt]
-        Sigma <- new.theta.out_35_exAL_synth_DISC$sC_ens[[j]][,,tt]
-        Ft <- FF_list[[j]][1:p,1]
-        S <- Sigma[1:p,1:p] + diag(p)*eps
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu[1:p], sd = sqrt(t(Ft)%*%S%*%Ft))
-        xbs[3,t,] <- xbs_samp
-        # print(c(0.5,t,j))
-        # print(t(Ft)%*%Sigma[1:p,1:p]%*%Ft)
-        Mu <- new.theta.out_50_exAL_synth_DISC$sm_ens[[j]][,tt]
-        Sigma <- new.theta.out_50_exAL_synth_DISC$sC_ens[[j]][,,tt]
-        Ft <- FF_list[[j]][1:p,1]
-        S <- Sigma[1:p,1:p] + diag(p)*eps
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu[1:p], sd = sqrt(t(Ft)%*%S%*%Ft))
-        xbs[4,t,] <- xbs_samp
-        # print(c(0.65,t,j))
-        # print(t(Ft)%*%Sigma[1:p,1:p]%*%Ft)
-        Mu <- new.theta.out_65_exAL_synth_DISC$sm_ens[[j]][,tt]
-        Sigma <- new.theta.out_65_exAL_synth_DISC$sC_ens[[j]][,,tt]
-        Ft <- FF_list[[j]][1:p,1]
-        S <- Sigma[1:p,1:p] + diag(p)*eps
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu[1:p], sd = sqrt(t(Ft)%*%S%*%Ft))
-        xbs[5,t,] <- xbs_samp
-        # print(c(0.8,t,j))
-        # print(t(Ft)%*%Sigma[1:p,1:p]%*%Ft)
-        Mu <- new.theta.out_80_exAL_synth_DISC$sm_ens[[j]][,tt]
-        Sigma <- new.theta.out_80_exAL_synth_DISC$sC_ens[[j]][,,tt]
-        Ft <- FF_list[[j]][1:p,1]
-        S <- Sigma[1:p,1:p] + diag(p)*eps
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu[1:p], sd = sqrt(t(Ft)%*%S%*%Ft))
-        xbs[6,t,] <- xbs_samp
-        # print(c(0.95,t,j))
-        # print(t(Ft)%*%Sigma[1:p,1:p]%*%Ft)
-        Mu <- new.theta.out_95_exAL_synth_DISC$sm_ens[[j]][,tt]
-        Sigma <- new.theta.out_95_exAL_synth_DISC$sC_ens[[j]][,,tt]
-        Ft <- FF_list[[j]][1:p,1]
-        S <- Sigma[1:p,1:p] + diag(p)*eps
-        xbs_samp <- rnorm(n = n.samp, mean = t(Ft)%*%Mu[1:p], sd = sqrt(t(Ft)%*%S%*%Ft))
-        xbs[7,t,] <- xbs_samp
-        tt <- tt+1
-    }
-  }
+	    tt <- 1
+	    for(t in (idx) ){
+	        fill_xbs_state <- function(theta_obj, out_row, q_label) {
+	          Mu <- theta_obj$sm_ens[[j]][, tt]
+	          Sigma <- theta_obj$sC_ens[[j]][,, tt]
+	          proj <- project_state_gaussian(
+	            Mu = Mu,
+	            Sigma = Sigma,
+	            ff_seg = FF_list[[j]],
+	            seg_id = j,
+	            eps_reg = eps,
+	            context = sprintf("xbs_sm_ens_q%s_seg%d_t%d", q_label, as.integer(j), as.integer(tt))
+	          )
+	          mu_use <- as.numeric(proj[["mean"]])
+	          sd_use <- as.numeric(proj[["sd"]])
+	          if (!is.finite(mu_use)) mu_use <- NA_real_
+	          if (!is.finite(sd_use) || sd_use < 0) sd_use <- 0
+	          xbs[out_row, t, ] <<- rnorm(n = n.samp, mean = mu_use, sd = sd_use)
+	        }
+
+	        fill_xbs_state(new.theta.out_5_exAL_synth_DISC, 1, "05")
+	        fill_xbs_state(new.theta.out_20_exAL_synth_DISC, 2, "20")
+	        fill_xbs_state(new.theta.out_35_exAL_synth_DISC, 3, "35")
+	        fill_xbs_state(new.theta.out_50_exAL_synth_DISC, 4, "50")
+	        fill_xbs_state(new.theta.out_65_exAL_synth_DISC, 5, "65")
+	        fill_xbs_state(new.theta.out_80_exAL_synth_DISC, 6, "80")
+	        fill_xbs_state(new.theta.out_95_exAL_synth_DISC, 7, "95")
+	        tt <- tt+1
+	    }
+	  }
     })
 
 
@@ -1015,15 +1100,15 @@ q80 <- compute_quantiles_means(y_post_80)
 # Main Code Execution
 
 # Log-transformed truth data
-truth_log <- log(San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date >= as.Date('2022-12-26')][1:ranges[1]])
-idx <- (TT - 30):(TT)
+truth_log <- log(San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date >= FORECAST_START_DATE][1:ranges[1]])
+idx <- safe_time_index(TT - 30, TT, TT, context = "40_figures.tt_minus_30")
 
 # Plot log-transformed data and forecast
 plot_log_truth_data(idx, Y, truth_log, y_post_95, y_post_5, y_post_50, y_post_20, y_post_35, y_post_80, y_post_65,
                     xb_95_f, xb_05_f, xb_50_f, xb_20_f, xb_35_f, xb_80_f, xb_65_f, n_rows_5)
 
 # Raw truth data
-truth_raw <- San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date >= as.Date('2022-12-26')][1:ranges[1]]
+truth_raw <- San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date >= FORECAST_START_DATE][1:ranges[1]]
 
 # Plot exp-transformed data and forecast
 plot_exp_truth_data(idx, Y, truth_raw, y_post_95, y_post_5, y_post_50, y_post_20, y_post_35, y_post_80, y_post_65,
@@ -1105,9 +1190,9 @@ m_synth <- colMeans((synth_q_f))
 
 ################################################################################################################################################
 
-truth<- San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date>=as.Date('2022-12-26')]
+truth<- San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date>=FORECAST_START_DATE]
 truth <- log(truth[1:ranges[1]])
-idx <- (TT-30):(TT)
+idx <- safe_time_index(TT - 30, TT, TT, context = "40_figures.tt_minus_30")
 plot.ts(rep(0, length(idx)+30), ylab="", ylim=c(-1.5,2.5))
 lines((Y[1,idx]), ylab="")
 points((Y[1,idx]), ylab="", pch = 19)
@@ -1124,9 +1209,9 @@ lines((length(idx)+1):(length(idx)+length(truth)),q_synth[1,], lwd = 0.6, col='b
 
 ################################################################################################################################################
 
-truth<- San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date>=as.Date('2022-12-26')]
+truth<- San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date>=FORECAST_START_DATE]
 truth <- (truth[1:ranges[1]])
-idx <- (TT-30):(TT)
+idx <- safe_time_index(TT - 30, TT, TT, context = "40_figures.tt_minus_30")
 plot.ts(rep(0, length(idx)+30), ylab="", ylim=c(0,6))
 lines(exp(Y[1,idx]), ylab="")
 points(exp(Y[1,idx]), ylab="", pch = 19)
@@ -1232,9 +1317,9 @@ profile_section("figures.sort_xbs_retro", {
   }
 })
 
-truth<- San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date>=as.Date('2022-12-26')]
+truth<- San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date>=FORECAST_START_DATE]
 # truth <- truth[1:ranges[1]]
-truth <- log(truth[1:ranges[1]]+1)
+truth <- log(truth[1:ranges[1]])
 
 FF_t <- aperm(FF, c(2, 1, 3))
 multiply_matrices <- function(slice_index) {
@@ -1246,7 +1331,7 @@ result_array <- aperm(result_array, c(1, 3, 2))[,,1]
 dim( result_array )
 TT
 
-idx <- (TT-300):TT
+idx <- safe_time_index(TT - 300, TT, TT, context = "40_figures.tt_minus_300")
 plot.ts(Y[1,idx], col = 'gray')
 points(Y[1,idx], col = 'black')
 lines(new.theta.out_50_exAL_synth_DISC$exps[1,idx], col = 'green')
@@ -1390,7 +1475,7 @@ lines(idx_f, result[1,], col = 'red', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'darkred', lwd = 1.5)
 lines(idx_f, result[3,], col = 'red', lty = 2, lwd = 1)
 
-idx <- (TT-iii):(TT)
+idx <- safe_time_index(TT - iii, TT, TT, context = "40_figures.tt_minus_iii")
 
 # Adding retrospective quantile estimation (blue)
 result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = c(0.025, 0.5, 0.975))
@@ -1484,7 +1569,7 @@ text(x = tick_positions, y = par("usr")[3] - 0.025 * diff(par("usr")[3:4]), labe
      srt = 45, adj = 1, xpd = TRUE, cex = 0.8, col = "black")
 
 # Adding a vertical line for the forecast start date
-forecast_date <- as.Date("2022-12-25")
+forecast_date <- CUTOFF_DATE
 forecast_position <- which(selected_dates == forecast_date)
 abline(v = forecast_position, col = "black", lty = 1, lwd = 0.8)
 
@@ -1628,7 +1713,7 @@ lines(idx_f, result[1,], col = 'red', lty = 2, lwd = 1)
 lines(idx_f, result[2,], col = 'darkred', lwd = 1.5)
 lines(idx_f, result[3,], col = 'red', lty = 2, lwd = 1)
 
-idx <- (TT-iii):(TT)
+idx <- safe_time_index(TT - iii, TT, TT, context = "40_figures.tt_minus_iii")
 
 # Adding retrospective quantile estimation (blue)
 result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = c(0.025, 0.5, 0.975))
@@ -1722,7 +1807,7 @@ text(x = tick_positions, y = par("usr")[3] - 0.025 * diff(par("usr")[3:4]), labe
      srt = 45, adj = 1, xpd = TRUE, cex = 0.8, col = "black")
 
 # Adding a vertical line for the forecast start date
-forecast_date <- as.Date("2022-12-25")
+forecast_date <- CUTOFF_DATE
 forecast_position <- which(selected_dates == forecast_date)
 abline(v = forecast_position, col = "black", lty = 1, lwd = 0.8)
 
@@ -1883,7 +1968,7 @@ points(Y[1,idx_y], col = 'black', pch = 16, cex = 0.6)
 # lines(1:length(idx), result[3,idx], col = 'blue', lty = 2, lwd = 0.5)
 
 
-idx <- (TT-iii):(TT)
+idx <- safe_time_index(TT - iii, TT, TT, context = "40_figures.tt_minus_iii")
 
 
 sd_ndlm <- mean(sqrt(samp.sigma_50_NDLM_synth_DISC[1,]))
@@ -1935,7 +2020,7 @@ text(x = tick_positions, y = par("usr")[3] - 0.025 * diff(par("usr")[3:4]), labe
      srt = 45, adj = 1, xpd = TRUE, cex = 0.8, col = "black")
 
 # Adding a vertical line for the forecast start date
-forecast_date <- as.Date("2022-12-25")
+forecast_date <- CUTOFF_DATE
 forecast_position <- which(selected_dates == forecast_date)
 abline(v = forecast_position, col = "black", lty = 1, lwd = 0.8)
 
@@ -2086,7 +2171,7 @@ points(Y[1,idx_y], col = 'black', pch = 16, cex = 0.6)
 # lines(1:length(idx), result[3,idx], col = 'blue', lty = 2, lwd = 0.5)
 
 
-idx <- (TT-iii):(TT)
+idx <- safe_time_index(TT - iii, TT, TT, context = "40_figures.tt_minus_iii")
 
 
 sd_ndlm <- mean(sqrt(samp.sigma_50_NDLM_synth_DISC[1,]))
@@ -2145,7 +2230,7 @@ text(x = tick_positions, y = par("usr")[3] - 0.025 * diff(par("usr")[3:4]), labe
      srt = 45, adj = 1, xpd = TRUE, cex = 0.8, col = "black")
 
 # Adding a vertical line for the forecast start date
-forecast_date <- as.Date("2022-12-25")
+forecast_date <- CUTOFF_DATE
 forecast_position <- which(selected_dates == forecast_date)
 abline(v = forecast_position, col = "black", lty = 1, lwd = 0.8)
 
@@ -2223,7 +2308,7 @@ lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.95), col = "orange", lwd = 2)
 lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.95), col = 'orange', lwd = 2)
 
 
-idx <- (TT-iii):(TT)
+idx <- safe_time_index(TT - iii, TT, TT, context = "40_figures.tt_minus_iii")
 
 # Adding retrospective quantile estimation (blue)
 result <- fast_row_quantiles_t(xbs_retro[7, , ], probs = c(0.025, 0.5, 0.975))
@@ -2263,7 +2348,7 @@ text(x = tick_positions, y = par("usr")[3] - 0.025 * diff(par("usr")[3:4]), labe
      srt = 45, adj = 1, xpd = TRUE, cex = 0.8, col = "black")
 
 # Adding a vertical line for the forecast start date
-forecast_date <- as.Date("2022-12-25")
+forecast_date <- CUTOFF_DATE
 forecast_position <- which(selected_dates == forecast_date)
 abline(v = forecast_position, col = "black", lty = 1, lwd = 0.8)
 
@@ -2341,7 +2426,7 @@ lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.5), col = "orange", lwd = 2)
 lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.5), col = 'orange', lwd = 2)
 
 
-idx <- (TT-iii):(TT)
+idx <- safe_time_index(TT - iii, TT, TT, context = "40_figures.tt_minus_iii")
 
 # Adding retrospective quantile estimation (blue)
 result <- fast_row_quantiles_t(xbs_retro[4, , ], probs = c(0.025, 0.5, 0.975))
@@ -2381,7 +2466,7 @@ text(x = tick_positions, y = par("usr")[3] - 0.025 * diff(par("usr")[3:4]), labe
      srt = 45, adj = 1, xpd = TRUE, cex = 0.8, col = "black")
 
 # Adding a vertical line for the forecast start date
-forecast_date <- as.Date("2022-12-25")
+forecast_date <- CUTOFF_DATE
 forecast_position <- which(selected_dates == forecast_date)
 abline(v = forecast_position, col = "black", lty = 1, lwd = 0.8)
 
@@ -2454,7 +2539,7 @@ lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.05), col = "orange", lwd = 2)
 lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.05), col = 'orange', lwd = 2)
 
 
-idx <- (TT-iii):(TT)
+idx <- safe_time_index(TT - iii, TT, TT, context = "40_figures.tt_minus_iii")
 
 # Adding retrospective quantile estimation (blue)
 result <- fast_row_quantiles_t(xbs_retro[1, , ], probs = c(0.025, 0.5, 0.975))
@@ -2494,7 +2579,7 @@ text(x = tick_positions, y = par("usr")[3] - 0.025 * diff(par("usr")[3:4]), labe
      srt = 45, adj = 1, xpd = TRUE, cex = 0.8, col = "black")
 
 # Adding a vertical line for the forecast start date
-forecast_date <- as.Date("2022-12-25")
+forecast_date <- CUTOFF_DATE
 forecast_position <- which(selected_dates == forecast_date)
 abline(v = forecast_position, col = "black", lty = 1, lwd = 0.8)
 
@@ -2674,7 +2759,11 @@ q_d_NDLM <- prepare_quantile_data(samp.theta_50_NDLM_synth_DISC$samp_theta)
 
 # 
 
-time_cuts <- which(timestamps %in% c("2012-08-01","2016-05-01","2016-09-15","2019-08-01") )
+time_cuts <- resolve_time_cuts(
+  timestamps = timestamps,
+  cutoff_date = CUTOFF_DATE,
+  context = "40_figures.main"
+)
 
 
 png("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/All_exal_ndlm_2012-2016_DISC.png", width = 6000, height = 4000, res = 600)
@@ -3151,7 +3240,7 @@ text(x = tick_positions, y = par("usr")[3] - 0.025 * diff(par("usr")[3:4]), labe
 
 # dev.off()
 
-idx <- (TT-2000):(TT)
+idx <- safe_time_index(TT - 2000, TT, TT, context = "40_figures.tt_minus_2000")
 # yy <- new.theta.out_95_exAL_synth_DISC$standard_forecast_errors[1,idx]
 yy <- Y[1,idx]
 yy <- (yy-mean(yy))/sd(yy)
@@ -4415,7 +4504,7 @@ if (n.samp < n.samp_available) {
   invisible(gc(verbose = FALSE))
 }
 
-idx <- (TT-500):(TT)
+idx <- safe_time_index(TT - 500, TT, TT, context = "40_figures.tt_minus_500")
 n.samp <- min(n.samp, dim(samp.theta_50_exAL_synth_DISC$samp_theta)[3])
 plot.ts(exp(Y[1,idx]), ylim = c(0,7))
 matlines(t(exp_y_post_50[,idx]), lwd = 0.1, col='forestgreen')
@@ -4455,7 +4544,7 @@ exp_m80 <- colMeans((exp_y_post_80))
 
 
 # Define the time range and common y-axis limits
-idx <- (TT - 500):(TT)
+idx <- safe_time_index(TT - 500, TT, TT, context = "40_figures.tt_minus_500")
 n.samp <- min(n.samp, dim(samp.theta_50_exAL_synth_DISC$samp_theta)[3])
 ylim_range <- c(0, 7)
 output_dir <- "/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce"
@@ -4538,7 +4627,7 @@ dev.off()
 par(mfrow = c(1, 1))  # Return to single plot layout
 
 
-idx <- (TT-500):(TT)
+idx <- safe_time_index(TT - 500, TT, TT, context = "40_figures.tt_minus_500")
 n.samp <- min(n.samp, dim(samp.theta_95_exAL_synth_DISC$samp_theta)[3])
 
 plot.ts(exp(Y[1,idx]), ylim = c(0,7))
@@ -5435,13 +5524,214 @@ ggsave(
 )
 
 
+read_kv_map <- function(path) {
+  out <- list()
+  path <- as.character(path)
+  if (!length(path) || is.na(path[[1]]) || !nzchar(path[[1]]) || !file.exists(path[[1]])) return(out)
+  path <- path[[1]]
+  lines <- readLines(path, warn = FALSE)
+  if (!length(lines)) return(out)
+  for (ln in lines) {
+    pos <- regexpr("=", ln, fixed = TRUE)
+    if (pos[[1]] <= 1L) next
+    key <- trimws(substr(ln, 1L, pos[[1]] - 1L))
+    val <- trimws(substr(ln, pos[[1]] + 1L, nchar(ln)))
+    if (!nzchar(key)) next
+    out[[key]] <- val
+  }
+  out
+}
 
+choose_source_by_priority <- function(df, source_regex, priorities) {
+  rows <- df[grepl(source_regex, df$source_id), c("Date", "source_id", "discharge"), drop = FALSE]
+  if (nrow(rows) == 0L) return(data.frame(Date = as.Date(character(0)), value = numeric(0)))
+  rows$priority <- match(rows$source_id, priorities)
+  rows$priority[is.na(rows$priority)] <- length(priorities) + 1L
+  rows <- rows[order(rows$Date, rows$priority, rows$source_id), , drop = FALSE]
+  rows <- rows[!duplicated(rows$Date), c("Date", "discharge"), drop = FALSE]
+  names(rows)[2] <- "value"
+  rows
+}
 
-df_retro <- data.frame(
-  Date = as.Date(timestamps),
-  GloFAS = Y[2,],
-  NWS = Y[3,]
-)
+resolve_retros_selection_policy <- function(bundle_root, cutoff_date) {
+  glofas_priority <- c(
+    "glofas_hist_v40_lisflood_cons",
+    "glofas_hist_v31_lisflood_cons",
+    "glofas_hist_v21_htessel_cons",
+    "glofas_legacy_reanalysis_v30",
+    "glofas_synth_retro_ens_mean"
+  )
+  nws_priority <- c(
+    "nws_synth_retro_ens_mean",
+    "nws_retro_v30",
+    "nws_retro_v21",
+    "nws_retro_v20",
+    "nws_retro_v12"
+  )
+  if (!nzchar(bundle_root)) {
+    return(list(glofas_priority = glofas_priority, nws_priority = nws_priority))
+  }
+
+  meta_path <- file.path(bundle_root, "meta.yaml")
+  if (!file.exists(meta_path)) {
+    return(list(glofas_priority = glofas_priority, nws_priority = nws_priority))
+  }
+  meta <- tryCatch(yaml::read_yaml(meta_path), error = function(e) NULL)
+  sel <- meta$config$inputs$retros$selection_policy
+  if (!is.list(sel)) {
+    return(list(glofas_priority = glofas_priority, nws_priority = nws_priority))
+  }
+
+  `%or_default%` <- function(x, y) if (is.null(x)) y else x
+  cutoff_use <- suppressWarnings(as.Date(cutoff_date))
+
+  pick_window_source <- function(windows, cutoff_date) {
+    if (!is.list(windows) || is.na(cutoff_date)) return("")
+    for (w in windows) {
+      if (!is.list(w)) next
+      src <- tolower(as.character(w$source_id %or_default% ""))
+      if (!nzchar(src)) next
+      start <- suppressWarnings(as.Date(as.character(w$start %or_default% NA_character_)))
+      end <- suppressWarnings(as.Date(as.character(w$end %or_default% NA_character_)))
+      if (is.na(start) || is.na(end)) next
+      if (cutoff_date >= start && cutoff_date <= end) return(src)
+    }
+    ""
+  }
+
+  keep_ids <- tolower(as.character(unlist(sel$keep_source_ids %or_default% character(0), use.names = FALSE)))
+  keep_ids <- keep_ids[nzchar(keep_ids)]
+  keep_glofas <- keep_ids[grepl("glofas", keep_ids)]
+  keep_nws <- keep_ids[grepl("^nws", keep_ids)]
+  if (length(keep_glofas) > 0L) {
+    glofas_priority <- unique(c(keep_glofas, glofas_priority))
+  }
+  if (length(keep_nws) > 0L) {
+    nws_priority <- unique(c(keep_nws, nws_priority))
+  }
+
+  win_glofas <- pick_window_source(sel$glofas_by_cutoff_windows, cutoff_use)
+  win_nws <- pick_window_source(sel$nws_by_cutoff_windows, cutoff_use)
+  if (nzchar(win_glofas)) {
+    glofas_priority <- unique(c(win_glofas, glofas_priority))
+  }
+  if (nzchar(win_nws)) {
+    nws_priority <- unique(c(win_nws, nws_priority))
+  }
+
+  list(glofas_priority = glofas_priority, nws_priority = nws_priority)
+}
+
+build_forecats_retros_plot <- function() {
+  fallback <- data.frame(
+    Date = as.Date(timestamps),
+    GloFAS = as.numeric(Y[2, ]),
+    NWS = as.numeric(Y[3, ]),
+    stringsAsFactors = FALSE
+  )
+
+  if (!exists("RETROS_PATH", inherits = TRUE)) return(fallback)
+  retros_path <- as.character(get("RETROS_PATH", inherits = TRUE))
+  if (!nzchar(retros_path) || !file.exists(retros_path)) return(fallback)
+
+  retros_wide <- tryCatch(read.csv(retros_path, stringsAsFactors = FALSE, check.names = FALSE), error = function(e) NULL)
+  if (!is.data.frame(retros_wide) || nrow(retros_wide) == 0L) return(fallback)
+  date_col <- if ("Date" %in% names(retros_wide)) "Date" else if ("date" %in% names(retros_wide)) "date" else ""
+  if (!nzchar(date_col)) return(fallback)
+  ncol_name <- if ("NWS3.0" %in% names(retros_wide)) "NWS3.0" else if ("NWS" %in% names(retros_wide)) "NWS" else ""
+  if (!("USGS" %in% names(retros_wide)) || !("GloFAS" %in% names(retros_wide)) || !nzchar(ncol_name)) return(fallback)
+
+  retros_wide <- data.frame(
+    Date = as.Date(retros_wide[[date_col]]),
+    USGS = suppressWarnings(as.numeric(retros_wide$USGS)),
+    GloFAS = suppressWarnings(as.numeric(retros_wide$GloFAS)),
+    NWS = suppressWarnings(as.numeric(retros_wide[[ncol_name]])),
+    stringsAsFactors = FALSE
+  )
+  retros_wide <- retros_wide[!is.na(retros_wide$Date), , drop = FALSE]
+
+  shared_root <- dirname(dirname(retros_path))
+  source_map <- read_kv_map(file.path(shared_root, "source_map.txt"))
+  snapshot_root <- as.character(source_map[["snapshot_root"]])
+  if (!length(snapshot_root) || is.na(snapshot_root[[1]]) || !nzchar(snapshot_root[[1]])) {
+    snapshot_root <- ""
+  } else {
+    snapshot_root <- snapshot_root[[1]]
+  }
+  snap_map <- read_kv_map(file.path(snapshot_root, "snapshot_source_map.txt"))
+  bundle_root <- as.character(snap_map[["bundle_root"]])
+  if (!length(bundle_root) || is.na(bundle_root[[1]]) || !nzchar(bundle_root[[1]])) {
+    bundle_root <- ""
+  } else {
+    bundle_root <- bundle_root[[1]]
+  }
+  long_path <- file.path(bundle_root, "inputs", "retros_daily.csv")
+  if (nzchar(bundle_root) && file.exists(long_path)) {
+    long_retro <- tryCatch(read.csv(long_path, stringsAsFactors = FALSE, check.names = FALSE), error = function(e) NULL)
+    if (is.data.frame(long_retro) && ("source_id" %in% names(long_retro)) && ("discharge_cms" %in% names(long_retro))) {
+      dcol <- if ("date" %in% names(long_retro)) "date" else if ("Date" %in% names(long_retro)) "Date" else ""
+      if (nzchar(dcol)) {
+        long_tbl <- data.frame(
+          Date = as.Date(long_retro[[dcol]]),
+          source_id = tolower(as.character(long_retro$source_id)),
+          discharge = suppressWarnings(as.numeric(long_retro$discharge_cms)),
+          stringsAsFactors = FALSE
+        )
+        long_tbl <- long_tbl[!is.na(long_tbl$Date) & is.finite(long_tbl$discharge), , drop = FALSE]
+        if (is.finite(CUTOFF_DATE)) {
+          long_tbl <- long_tbl[long_tbl$Date <= CUTOFF_DATE, , drop = FALSE]
+        }
+        policy <- resolve_retros_selection_policy(bundle_root, CUTOFF_DATE)
+        glofas_sel <- choose_source_by_priority(long_tbl, "glofas", policy$glofas_priority)
+        nws_sel <- choose_source_by_priority(long_tbl, "^nws", policy$nws_priority)
+        if (nrow(glofas_sel) > 0L && nrow(nws_sel) > 0L) {
+          names(glofas_sel)[2] <- "GloFAS"
+          names(nws_sel)[2] <- "NWS"
+          retros_wide <- merge(retros_wide[, c("Date", "USGS"), drop = FALSE], glofas_sel, by = "Date", all = FALSE)
+          retros_wide <- merge(retros_wide, nws_sel, by = "Date", all = FALSE)
+        }
+      }
+    }
+  }
+
+  usgs_ref <- data.frame(
+    Date = as.Date(San_Lorenzo_Daily_USGS_R$time),
+    usgs_raw = suppressWarnings(as.numeric(San_Lorenzo_Daily_USGS_R$X_00060_00003) * CFSToCMS_CONVERSION_FACTOR),
+    stringsAsFactors = FALSE
+  )
+  cmp <- merge(retros_wide[, c("Date", "USGS"), drop = FALSE], usgs_ref, by = "Date", all = FALSE)
+  cmp <- cmp[is.finite(cmp$USGS) & is.finite(cmp$usgs_raw), , drop = FALSE]
+  scale_mode <- "log1p_cms"
+  if (nrow(cmp) >= 10L) {
+    mae_raw <- mean(abs(cmp$USGS - cmp$usgs_raw), na.rm = TRUE)
+    mae_log1p <- mean(abs(expm1(cmp$USGS) - cmp$usgs_raw), na.rm = TRUE)
+    if (is.finite(mae_raw) && is.finite(mae_log1p) && mae_raw <= mae_log1p) {
+      scale_mode <- "raw_cms"
+    }
+  }
+
+  to_loglog <- function(x, scale_mode) {
+    x <- suppressWarnings(as.numeric(x))
+    if (identical(scale_mode, "raw_cms")) {
+      x <- pmax(x, 1.0e-8)
+      return(log(log(x + 1)))
+    }
+    x <- pmax(x, 1.0e-8)
+    log(x)
+  }
+
+  out <- data.frame(
+    Date = as.Date(retros_wide$Date),
+    GloFAS = to_loglog(retros_wide$GloFAS, scale_mode),
+    NWS = to_loglog(retros_wide$NWS, scale_mode),
+    stringsAsFactors = FALSE
+  )
+  out <- out[is.finite(out$GloFAS) & is.finite(out$NWS), , drop = FALSE]
+  if (nrow(out) < 10L) return(fallback)
+  out
+}
+
+df_retro <- build_forecats_retros_plot()
 
 # Reshape to long format for ggplot (avoid slow pivot_longer)
 df_retro_long <- fast_long_by_row(
@@ -5513,22 +5803,89 @@ ggsave(
 
 
 # 1. Filter USGS time series for plotting window
-plot_start <- as.Date("2022-12-7")
-plot_end <- as.Date("2023-01-22")
+plot_start <- PLOT_START_DATE
+plot_end <- PLOT_END_DATE
+flood_event_date <- as.Date("2023-01-09")
+show_jan9_flood_marker <- !is.na(CUTOFF_DATE) &&
+  (as.Date(CUTOFF_DATE) == as.Date("2022-12-25")) &&
+  !is.na(flood_event_date) &&
+  flood_event_date >= as.Date(plot_start) &&
+  flood_event_date <= as.Date(plot_end)
+
+compute_jan9_label_y <- function(values, offset = 0.15, fallback = -0.15) {
+  y <- suppressWarnings(min(values, na.rm = TRUE))
+  if (!is.finite(y)) return(fallback)
+  y - offset
+}
+
+safe_max_date <- function(values, fallback_date) {
+  fallback_date <- as.Date(fallback_date)
+  out <- suppressWarnings(max(as.Date(values), na.rm = TRUE))
+  if (!is.finite(out)) return(fallback_date)
+  as.Date(out, origin = "1970-01-01")
+}
+
+add_jan9_flood_marker <- function(plot_obj, label_y) {
+  if (!isTRUE(show_jan9_flood_marker)) return(plot_obj)
+  plot_obj +
+    geom_vline(
+      xintercept = as.numeric(flood_event_date),
+      color = "#4a235a",
+      linetype = "dashed",
+      linewidth = 0.5,
+      alpha = 0.8
+    ) +
+    annotate(
+      "text",
+      x = flood_event_date,
+      y = label_y,
+      label = "Jan 9: Flood",
+      color = "#4a235a",
+      vjust = 4,
+      hjust = -0.1,
+      fontface = "bold",
+      size = 3.5
+    )
+}
+
+safe_log_values <- function(x) {
+  x <- suppressWarnings(as.numeric(x))
+  x[!is.finite(x) | x <= 0] <- NA_real_
+  log(x)
+}
+
+compute_adaptive_ylim <- function(..., fallback = c(-1, 3.5), pad_frac = 0.06, min_pad = 0.12) {
+  vals <- unlist(lapply(list(...), function(v) suppressWarnings(as.numeric(v))), use.names = FALSE)
+  vals <- vals[is.finite(vals)]
+  if (!length(vals)) {
+    return(as.numeric(fallback))
+  }
+  lo <- min(vals, na.rm = TRUE)
+  hi <- max(vals, na.rm = TRUE)
+  span <- hi - lo
+  if (!is.finite(span) || span <= 0) span <- 1
+  pad <- max(min_pad, span * pad_frac)
+  c(lo - pad, hi + pad)
+}
 
 df_retro_plot <- df_retro_long %>%
-  filter(Date >= plot_start & Date < as.Date("2022-12-26"))
+  filter(Date >= plot_start & Date < FORECAST_START_DATE)
 
 
 usgs_plot_df <- San_Lorenzo_Daily_USGS_R %>%
   filter(time >= plot_start & time <= plot_end) %>%
   mutate(
-    obs_type = ifelse(time >= as.Date("2022-12-26"), "After", "Before"),
+    obs_type = ifelse(time >= FORECAST_START_DATE, "After", "Before"),
     value = log(log(X_00060_00003 * CFSToCMS_CONVERSION_FACTOR + 1))
-  )
+  ) %>%
+  filter(is.finite(value))
+
+cutoff_label_y <- compute_jan9_label_y(usgs_plot_df$value, offset = 0.15, fallback = -0.15)
+jan9_label_y <- cutoff_label_y
+usgs_right_x <- safe_max_date(usgs_plot_df$time, fallback_date = plot_end)
 
 # 2. Get GloFAS and NWS forecast dates
-forecast_start <- as.Date("2022-12-26")
+forecast_start <- FORECAST_START_DATE
 glofas_dates <- daily_dates_for_matrix_rows(
   ensembles[[1]],
   start_date = forecast_start,
@@ -5544,7 +5901,7 @@ nws_dates <- daily_dates_for_matrix_rows(
 glofas_color <- "#E67E22"   # Bright orange
 nws_color    <- "#756bb1"   # Purple
 usgs_green   <- "#238b45"   # Dark green (for line and early points)
-"#B22222"  <- "#A8E063"   # Light green (for later points)
+usgs_after_color <- "#B22222"  # Post-cutoff USGS marker/line color
 
 # USGS points
 usgs_before_df <- usgs_plot_df %>% filter(obs_type == "Before") %>%
@@ -5560,12 +5917,13 @@ y_max <- max(
   usgs_after_df$value,
   na.rm = TRUE
 )
+if (!is.finite(y_max)) y_max <- 0
 
 
 p <- ggplot() +
   annotate(
     "text",
-    x = max(usgs_plot_df$time),  # or max date of your plot
+    x = usgs_right_x,
     y = flood_stages_trans,
     label = flood_stage_labels,
     hjust = 10.5,     # places label just to the right of the axis
@@ -5576,9 +5934,9 @@ p <- ggplot() +
   ) +
   annotate(
     "text",
-    x = as.Date("2022-12-25"),
-    y = min(usgs_plot_df$value, na.rm = TRUE) - 0.15, # a bit below min y
-    label = "Dec 25",
+    x = CUTOFF_DATE,
+    y = cutoff_label_y,
+    label = cutoff_label_short,
     color = "gray40",
 	    size = 3.5,
 	    fontface = "bold",
@@ -5635,11 +5993,11 @@ p <- ggplot() +
   # USGS after
   geom_line(
     data = usgs_after_df,
-    aes(x = time, y = value), color = "#B22222", linewidth = 0.5, linetype = "dashed", show.legend = FALSE
+    aes(x = time, y = value), color = usgs_after_color, linewidth = 0.5, linetype = "dashed", show.legend = FALSE
   ) +
   geom_point(
     data = usgs_after_df,
-    aes(x = time, y = value), color = "#B22222", size = 2, show.legend = FALSE
+    aes(x = time, y = value), color = usgs_after_color, size = 2, show.legend = FALSE
   ) +
   scale_x_date(breaks = pretty_breaks(6), date_labels = "%b %d") +
   scale_color_manual(
@@ -5656,30 +6014,12 @@ p <- ggplot() +
   ) +
   # Vertical dashed line at forecast start
 geom_vline(
-  xintercept = as.numeric(as.Date("2022-12-25")), 
+  xintercept = as.numeric(CUTOFF_DATE), 
   color = "gray40", linetype = "dashed", linewidth = 0.5, alpha = 0.8
 ) +
-# Vertical dashed line at 2023 flood event
-geom_vline(
-  xintercept = as.numeric(as.Date("2023-01-09")),
-  color = "#4a235a", linetype = "dashed", linewidth = 0.5, alpha = 0.8
-) +
-
-annotate(
-  "text",
-  x = as.Date("2023-01-09"),
-  y = min(usgs_plot_df$value, na.rm = TRUE) - 0.15,
-  label = "Jan 9: Flood",
-  color = "#4a235a",
-  vjust = 4,
-  hjust = -0.1,
-  fontface = "bold",
-  size = 3.5
-) +
-
 labs(
   title = "Observed and Retrospective River Flow\nwith GloFAS and NWS Forecast Ensembles",
-  x = "Date (2022-2023)",
+  x = "Date",
   y = expression("Water Flow (Log-Log cm^3/s)")
 ) +
   guides(
@@ -5695,6 +6035,7 @@ labs(
     legend.title = element_text(face = "bold"),
     panel.grid.minor = element_blank()
   )
+p <- add_jan9_flood_marker(p, jan9_label_y)
 
 print(p)
 
@@ -5775,6 +6116,21 @@ df_q <- bind_rows(df_q_fit, df_q_forecast)
 # 4. Observed values for USGS
 obs_df <- usgs_plot_df %>% 
   mutate(Source = "USGS", colgroup = ifelse(obs_type == "After", "After", "Before"))
+obs_label_x <- safe_max_date(obs_df$time, fallback_date = usgs_right_x)
+glofas_after_ens_df <- fast_long_ensembles(ensembles[[1]], glofas_dates)
+nws_after_ens_df <- fast_long_ensembles(ensembles[[2]], nws_dates)
+ylim_post_samples <- compute_adaptive_ylim(
+  safe_log_values(df_post$Value),
+  safe_log_values(df_q$Value),
+  obs_df$value,
+  glofas_before_df$Value,
+  nws_before_df$Value,
+  glofas_after_ens_df$value,
+  nws_after_ens_df$value,
+  flood_stages_trans,
+  cutoff_label_y,
+  jan9_label_y
+)
 
 p_post <- ggplot() +
   # Flood stage lines and labels
@@ -5784,11 +6140,11 @@ p_post <- ggplot() +
     color = "gray",
     linewidth = 0.8
   ) +
-    annotate(
+  annotate(
     "text",
-    x = as.Date("2022-12-25"),
-    y = min(usgs_plot_df$value, na.rm = TRUE) - 0.15, # a bit below min y
-    label = "Dec 25",
+    x = CUTOFF_DATE,
+    y = cutoff_label_y,
+    label = cutoff_label_short,
     color = "gray40",
     size = 3.5,
     fontface = "bold",
@@ -5797,7 +6153,7 @@ p_post <- ggplot() +
   ) +
   annotate(
     "text",
-    x = max(obs_df$time),
+    x = obs_label_x,
     y = flood_stages_trans,
     label = flood_stage_labels,
     hjust = 10.5,
@@ -5808,23 +6164,8 @@ p_post <- ggplot() +
   ) +
   # Vertical lines for forecast init and flood
   geom_vline(
-    xintercept = as.numeric(as.Date("2022-12-25")), 
+    xintercept = as.numeric(CUTOFF_DATE), 
     color = "gray40", linetype = "dashed", linewidth = 0.5, alpha = 0.8
-  ) +
-  geom_vline(
-    xintercept = as.numeric(as.Date("2023-01-09")),
-    color = "#4a235a", linetype = "dashed", linewidth = 0.5, alpha = 0.8
-  ) +
-  annotate(
-    "text",
-    x = as.Date("2023-01-09"),
-    y = min(usgs_plot_df$value, na.rm = TRUE) - 0.15,
-    label = "Jan 9: Flood",
-    color = "#4a235a",
-    vjust = 4,
-    hjust = -0.1,
-    fontface = "bold",
-    size = 3.5
   ) +
   # Posterior samples ("spaghetti")
   geom_line(
@@ -5848,7 +6189,7 @@ p_post <- ggplot() +
   geom_point(
     data = obs_df %>% filter(colgroup == "After"), 
     aes(x = time, y = (value)), 
-    color = "#B22222", size = 2
+    color = usgs_after_color, size = 2
   ) +
   geom_line(
     data = obs_df %>% filter(colgroup == "Before"),
@@ -5856,7 +6197,7 @@ p_post <- ggplot() +
   ) +
   geom_line(
     data = obs_df %>% filter(colgroup == "After"),
-    aes(x = time, y = (value)), color = "#B22222", linewidth = 0.5, linetype = "dashed"
+    aes(x = time, y = (value)), color = usgs_after_color, linewidth = 0.5, linetype = "dashed"
   ) +
   ############################
 # GloFAS before (gray)
@@ -5883,17 +6224,17 @@ geom_point(
 ) +
 # GloFAS ensembles after (gray)
 geom_line(
-  data = fast_long_ensembles(ensembles[[1]], glofas_dates),
+  data = glofas_after_ens_df,
   aes(x = Date, y = value, group = member),
   color = "gray", alpha = 0.22, linewidth = 0.5, show.legend = FALSE
 ) +
 # NWS ensembles after (gray)
 geom_line(
-  data = fast_long_ensembles(ensembles[[2]], nws_dates),
+  data = nws_after_ens_df,
   aes(x = Date, y = value, group = member),
   color = "gray", alpha = 0.22, linewidth = 0.5, show.legend = FALSE
 ) +
-  coord_cartesian(ylim = c(-1, 3.5)) +
+  coord_cartesian(ylim = ylim_post_samples) +
   ############################
   scale_x_date(breaks = pretty_breaks(6), date_labels = "%b %d") +
   labs(
@@ -5908,6 +6249,7 @@ geom_line(
     legend.position = "none",
     panel.grid.minor = element_blank()
   )
+p_post <- add_jan9_flood_marker(p_post, jan9_label_y)
 
 print(p_post)
 
@@ -5979,12 +6321,21 @@ df_q <- bind_rows(df_q_fit, df_q_forecast)
 # 3. Observed values for USGS
 obs_df <- usgs_plot_df %>% 
   mutate(Source = "USGS", colgroup = ifelse(obs_type == "After", "After", "Before"))
+obs_label_x <- safe_max_date(obs_df$time, fallback_date = usgs_right_x)
+ylim_post_counter <- compute_adaptive_ylim(
+  df_post$Value,
+  df_q$Value,
+  obs_df$value,
+  flood_stages_trans,
+  cutoff_label_y,
+  jan9_label_y
+)
 
 # 4. Plot (as before, no need to change this part except color for 'After' points/lines)
 p_post <- ggplot() +
   # Vertical lines for forecast init and flood
   geom_vline(
-    xintercept = as.numeric(as.Date("2022-12-25")), 
+    xintercept = as.numeric(CUTOFF_DATE), 
     color = "gray40", linetype = "dashed", linewidth = 0.5, alpha = 0.8
   ) +
   # Posterior samples
@@ -6009,7 +6360,7 @@ p_post <- ggplot() +
   geom_point(
     data = obs_df %>% filter(colgroup == "After"), 
     aes(x = time, y = (value)), 
-    color = "#B22222", size = 2
+    color = usgs_after_color, size = 2
   ) +
   geom_line(
     data = obs_df %>% filter(colgroup == "Before"),
@@ -6017,11 +6368,7 @@ p_post <- ggplot() +
   ) +
   geom_line(
     data = obs_df %>% filter(colgroup == "After"),
-    aes(x = time, y = (value)), color = "#B22222", linewidth = 0.5, linetype = "dashed"
-  ) +
-  geom_vline(
-    xintercept = as.numeric(as.Date("2023-01-09")),
-    color = "#4a235a", linetype = "dashed", linewidth = 0.5, alpha = 0.8
+    aes(x = time, y = (value)), color = usgs_after_color, linewidth = 0.5, linetype = "dashed"
   ) +
   # Flood stage lines and labels
   geom_hline(
@@ -6030,10 +6377,10 @@ p_post <- ggplot() +
     color = "gray",
     linewidth = 0.8
   ) +
-    coord_cartesian(ylim = c(-1, 3.5)) +
+    coord_cartesian(ylim = ylim_post_counter) +
   annotate(
     "text",
-    x = max(obs_df$time),
+    x = obs_label_x,
     y = flood_stages_trans,
     label = flood_stage_labels,
     hjust = 10.5,
@@ -6044,31 +6391,20 @@ p_post <- ggplot() +
   ) +
     annotate(
     "text",
-    x = as.Date("2022-12-25"),
-    y = min(usgs_plot_df$value, na.rm = TRUE) - 0.15, # a bit below min y
-    label = "Dec 25",
+    x = CUTOFF_DATE,
+    y = cutoff_label_y,
+    label = cutoff_label_short,
     color = "gray40",
     size = 3.5,
     fontface = "bold",
     vjust = 4,
     hjust = -0.1 
   ) +
-  annotate(
-    "text",
-    x = as.Date("2023-01-09"),
-    y = min(usgs_plot_df$value, na.rm = TRUE) - 0.15,
-    label = "Jan 9: Flood",
-    color = "#4a235a",
-    vjust = 4,
-    hjust = -0.1,
-    fontface = "bold",
-    size = 3.5
-  ) +
   ############################
   scale_x_date(breaks = pretty_breaks(6), date_labels = "%b %d") +
   labs(
     title = "Posterior Predictive Samples and Quantiles\nwith USGS Observed Flow",
-    x = "Date (2022-2023)",
+    x = "Date",
     y = expression("Water Flow (Log-Log cm^3/s)")
   ) +
   theme_minimal(base_size = 14) +
@@ -6078,6 +6414,7 @@ p_post <- ggplot() +
     legend.position = "none",
     panel.grid.minor = element_blank()
   )
+p_post <- add_jan9_flood_marker(p_post, jan9_label_y)
 
 print(p_post)
 
@@ -7680,6 +8017,21 @@ df_q <- bind_rows(df_q_fit, df_q_forecast)
 # 4. Observed values for USGS
 obs_df <- usgs_plot_df %>% 
   mutate(Source = "USGS", colgroup = ifelse(obs_type == "After", "After", "Before"))
+obs_label_x <- safe_max_date(obs_df$time, fallback_date = usgs_right_x)
+glofas_after_ens_df_valid <- fast_long_ensembles(ensembles[[1]], glofas_dates)
+nws_after_ens_df_valid <- fast_long_ensembles(ensembles[[2]], nws_dates)
+ylim_post_valid <- compute_adaptive_ylim(
+  df_post$Value,
+  df_q$Value,
+  obs_df$value,
+  glofas_before_df$Value,
+  nws_before_df$Value,
+  glofas_after_ens_df_valid$value,
+  nws_after_ens_df_valid$value,
+  flood_stages_trans,
+  cutoff_label_y,
+  jan9_label_y
+)
 
 p_post <- ggplot() +
   # Flood stage lines and labels
@@ -7689,11 +8041,11 @@ p_post <- ggplot() +
     color = "gray",
     linewidth = 0.8
   ) +
-    annotate(
+  annotate(
     "text",
-    x = as.Date("2022-12-25"),
-    y = min(usgs_plot_df$value, na.rm = TRUE) - 0.15, # a bit below min y
-    label = "Dec 25",
+    x = CUTOFF_DATE,
+    y = cutoff_label_y,
+    label = cutoff_label_short,
     color = "gray40",
     size = 3.5,
     fontface = "bold",
@@ -7702,7 +8054,7 @@ p_post <- ggplot() +
   ) +
   annotate(
     "text",
-    x = max(obs_df$time),
+    x = obs_label_x,
     y = flood_stages_trans,
     label = flood_stage_labels,
     hjust = 10.5,
@@ -7713,23 +8065,8 @@ p_post <- ggplot() +
   ) +
   # Vertical lines for forecast init and flood
   geom_vline(
-    xintercept = as.numeric(as.Date("2022-12-25")), 
+    xintercept = as.numeric(CUTOFF_DATE), 
     color = "gray40", linetype = "dashed", linewidth = 0.5, alpha = 0.8
-  ) +
-  geom_vline(
-    xintercept = as.numeric(as.Date("2023-01-09")),
-    color = "#4a235a", linetype = "dashed", linewidth = 0.5, alpha = 0.8
-  ) +
-  annotate(
-    "text",
-    x = as.Date("2023-01-09"),
-    y = min(usgs_plot_df$value, na.rm = TRUE) - 0.15,
-    label = "Jan 9: Flood",
-    color = "#4a235a",
-    vjust = 4,
-    hjust = -0.1,
-    fontface = "bold",
-    size = 3.5
   ) +
   # Posterior samples ("spaghetti")
   geom_line(
@@ -7753,7 +8090,7 @@ p_post <- ggplot() +
   geom_point(
     data = obs_df %>% filter(colgroup == "After"), 
     aes(x = time, y = (value)), 
-    color = "#B22222", size = 2
+    color = usgs_after_color, size = 2
   ) +
   geom_line(
     data = obs_df %>% filter(colgroup == "Before"),
@@ -7761,7 +8098,7 @@ p_post <- ggplot() +
   ) +
   geom_line(
     data = obs_df %>% filter(colgroup == "After"),
-    aes(x = time, y = (value)), color = "#B22222", linewidth = 0.5, linetype = "dashed"
+    aes(x = time, y = (value)), color = usgs_after_color, linewidth = 0.5, linetype = "dashed"
   ) +
   ############################
 # GloFAS before (gray)
@@ -7788,17 +8125,17 @@ geom_point(
 ) +
 # GloFAS ensembles after (gray)
 geom_line(
-  data = fast_long_ensembles(ensembles[[1]], glofas_dates),
+  data = glofas_after_ens_df_valid,
   aes(x = Date, y = value, group = member),
   color = "gray", alpha = 0.22, linewidth = 0.5, show.legend = FALSE
 ) +
 # NWS ensembles after (gray)
 geom_line(
-  data = fast_long_ensembles(ensembles[[2]], nws_dates),
+  data = nws_after_ens_df_valid,
   aes(x = Date, y = value, group = member),
   color = "gray", alpha = 0.22, linewidth = 0.5, show.legend = FALSE
 ) +
-  coord_cartesian(ylim = c(-1, 3.5)) +
+  coord_cartesian(ylim = ylim_post_valid) +
   ############################
   scale_x_date(breaks = pretty_breaks(6), date_labels = "%b %d") +
   labs(
@@ -7813,6 +8150,7 @@ geom_line(
     legend.position = "none",
     panel.grid.minor = element_blank()
   )
+p_post <- add_jan9_flood_marker(p_post, jan9_label_y)
 
 print(p_post)
 
@@ -7894,12 +8232,21 @@ df_q <- bind_rows(df_q_fit, df_q_forecast)
 # 3. Observed values for USGS
 obs_df <- usgs_plot_df %>% 
   mutate(Source = "USGS", colgroup = ifelse(obs_type == "After", "After", "Before"))
+obs_label_x <- safe_max_date(obs_df$time, fallback_date = usgs_right_x)
+ylim_post_counter_valid <- compute_adaptive_ylim(
+  df_post$Value,
+  df_q$Value,
+  obs_df$value,
+  flood_stages_trans,
+  cutoff_label_y,
+  jan9_label_y
+)
 
 # 4. Plot (as before, no need to change this part except color for 'After' points/lines)
 p_post <- ggplot() +
   # Vertical lines for forecast init and flood
   geom_vline(
-    xintercept = as.numeric(as.Date("2022-12-25")), 
+    xintercept = as.numeric(CUTOFF_DATE), 
     color = "gray40", linetype = "dashed", linewidth = 0.5, alpha = 0.8
   ) +
   # Posterior samples
@@ -7924,7 +8271,7 @@ p_post <- ggplot() +
   geom_point(
     data = obs_df %>% filter(colgroup == "After"), 
     aes(x = time, y = (value)), 
-    color = "#B22222", size = 2
+    color = usgs_after_color, size = 2
   ) +
   geom_line(
     data = obs_df %>% filter(colgroup == "Before"),
@@ -7932,11 +8279,7 @@ p_post <- ggplot() +
   ) +
   geom_line(
     data = obs_df %>% filter(colgroup == "After"),
-    aes(x = time, y = (value)), color = "#B22222", linewidth = 0.5, linetype = "dashed"
-  ) +
-  geom_vline(
-    xintercept = as.numeric(as.Date("2023-01-09")),
-    color = "#4a235a", linetype = "dashed", linewidth = 0.5, alpha = 0.8
+    aes(x = time, y = (value)), color = usgs_after_color, linewidth = 0.5, linetype = "dashed"
   ) +
   # Flood stage lines and labels
   geom_hline(
@@ -7945,10 +8288,10 @@ p_post <- ggplot() +
     color = "gray",
     linewidth = 0.8
   ) +
-    coord_cartesian(ylim = c(-1, 3.5)) +
+    coord_cartesian(ylim = ylim_post_counter_valid) +
   annotate(
     "text",
-    x = max(obs_df$time),
+    x = obs_label_x,
     y = flood_stages_trans,
     label = flood_stage_labels,
     hjust = 10.5,
@@ -7959,31 +8302,20 @@ p_post <- ggplot() +
   ) +
     annotate(
     "text",
-    x = as.Date("2022-12-25"),
-    y = min(usgs_plot_df$value, na.rm = TRUE) - 0.15, # a bit below min y
-    label = "Dec 25",
+    x = CUTOFF_DATE,
+    y = cutoff_label_y,
+    label = cutoff_label_short,
     color = "gray40",
     size = 3.5,
     fontface = "bold",
     vjust = 4,
     hjust = -0.1 
   ) +
-  annotate(
-    "text",
-    x = as.Date("2023-01-09"),
-    y = min(usgs_plot_df$value, na.rm = TRUE) - 0.15,
-    label = "Jan 9: Flood",
-    color = "#4a235a",
-    vjust = 4,
-    hjust = -0.1,
-    fontface = "bold",
-    size = 3.5
-  ) +
   ############################
   scale_x_date(breaks = pretty_breaks(6), date_labels = "%b %d") +
   labs(
     title = "Posterior Predictive Samples and Quantiles\nwith USGS Observed Flow",
-    x = "Date (2022-2023)",
+    x = "Date",
     y = expression("Water Flow (Log-Log cm^3/s)")
   ) +
   theme_minimal(base_size = 14) +
@@ -7993,6 +8325,7 @@ p_post <- ggplot() +
     legend.position = "none",
     panel.grid.minor = element_blank()
   )
+p_post <- add_jan9_flood_marker(p_post, jan9_label_y)
 
 print(p_post)
 

@@ -557,3 +557,167 @@ Completed in this run:
 - 2026-03-02 09:42 PST: Completed unified dual-mode integration so one run can execute multivar `drop` + `keep` together while preserving univar/NDLM families.
 - 2026-03-02 09:46 PST: Added mode-aware report synthesis (`quantiles_found_by_mode`) and mode-scoped post outputs (`multivar_<mode>`).
 - 2026-03-02 09:49 PST: Passed dual-mode all-model dry-run gate (`diag_dualmode_allmodels_dryrun_20260302`) after strict numeric normalization in temp config.
+- 2026-03-03 01:59 PST: Root-cause remediation for validation false fail.
+  - Root cause: `env_drift` compared raw `LD_LIBRARY_PATH` strings; duplicate path-entry multiplicity differed between canonical/current runs, causing a false `renviron_snapshot.txt` mismatch.
+  - Fix: added canonical normalization for `LD_LIBRARY_PATH` in `R/unified/utils_env_capture.R` (trim empties + de-duplicate entries preserving order) before drift comparison.
+  - Added regression test `tests/testthat/test_env_drift_normalization.R`.
+  - Verification: targeted test file passes; direct `unified_env_drift_report()` on the previously failing run pair now returns `status=pass`.
+  - Replayed `validate+report` for `prod_allmodels_uniformdfs_preview_20260302` to refresh artifacts with `validation_status=pass` and `env_drift_status=pass`.
+
+### 18) Cutoff-Generalization Patch Set + Alternate-Cutoff End-to-End Smoke (2026-03-03)
+Scope:
+- Generalize hardcoded cutoff/forecast dates across fit + post paths.
+- Ensure `forecats` snapshot inputs produce fit-ready retrospective + forecast files for arbitrary cutoff.
+- Run full unified smoke on alternate cutoff with `forecats -> data_prep_shared -> fit -> post -> validate -> report`.
+
+Key files updated in this pass:
+- `R/environmetrics/40_figures.R`
+- `R/environmetrics/40_figures_multivar_only.R`
+- `R/environmetrics/40_figures_smoke_fast.R`
+- `R/environmetrics/10_data_inputs.R`
+- `R/environmetrics/00_paths.R`
+- `R/unified/stages/stage_post.R`
+- `R/unified/stages/stage_data_prep_shared.R`
+- `R/unified/stages/stage_forecats.R`
+- `R/unified/inputs_shared_validate.R`
+- `R/unified/ndlm_post_diagnostics.R`
+- `R/disc_w/01_paths_inputs.R`
+- `DISC_Optimal_Synth_Ranges_W.r`
+- `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r`
+
+Root fixes applied:
+- Replaced fixed date usage in figure modules with `CUTOFF_DATE`, `FORECAST_START_DATE`, `PLOT_START_DATE`, `PLOT_END_DATE`.
+- Added dynamic cutoff labels in forecast-window plots.
+- Unified post stage now exports cutoff/forecast/plot date env vars to post runner.
+- `stage_forecats` now builds canonical `retros.csv` (`Date,USGS,GloFAS,NWS3.0`) from snapshot/bundle inputs, including long-format `retros_daily.csv` conversion + positive-floor guard for legacy `log()` paths.
+- `stage_forecats` now sanitizes member forecast aliases (`nws_forecast.csv`, `glofas_forecast.csv`) to finite rows/columns and clears stale snapshot dir before copy.
+- Snapshot NWS/GloFAS validation now accepts ragged horizons when finite coverage is sufficient (instead of requiring all finite matrix cells).
+- Fixed NDLM post diagnostic thinning guard for nullable draw caps (`max_draws=NULL`) and scalarized condition checks.
+- Fixed `stage_post` artifact scan guard (`if (NA)` on `file.info(...)$isdir`).
+
+Alternate-cutoff smoke run:
+- Config: `/tmp/unified_smoke_altcutoff_20211024_end2end_20260303.yaml`
+- Cutoff: `2021-10-24`
+- Bundle source: `data/forecats_inputs/site=11160500/cutoff_date=2021-10-24/run_id=20260219_single_retro_policy_pre1080_r01/meta.yaml`
+- Stages: all enabled (`forecats,data_prep_shared,fit,post,validate,report`)
+- Quantiles: `[0.50]`
+
+Final result:
+- Run path: `repro/runs/smoke_altcutoff_20211024_end2end_20260303`
+- Manifest status: all `pass`
+  - `forecats=pass`
+  - `data_prep_shared=pass`
+  - `fit=pass`
+  - `post=pass`
+  - `validate=pass`
+  - `report=pass`
+- `finished_at_utc`: `2026-03-04T05:27:02Z`
+
+Evidence of cutoff-aligned prepared inputs:
+- Shared source map indicates snapshot origins for retros/NWS/GloFAS:
+  - `inputs/shared/source_map.txt`
+- Snapshot source map records cutoff-specific bundle/cache provenance:
+  - `inputs/shared/forecats_bundle/snapshot_source_map.txt`
+- Prepared shared files:
+  - retros: `inputs/shared/forecats_bundle/retros.csv` (1081 data rows + header)
+  - nws forecast: `inputs/shared/forecasts/nws_forecast.csv` (8 data rows + header)
+  - glofas forecast: `inputs/shared/forecasts/glofas_forecast.csv` (28 data rows + header)
+
+Post/validate/report outputs:
+- Post figures dir: `repro/runs/smoke_altcutoff_20211024_end2end_20260303/post/outputs/smoke_altcutoff_20211024_end2end_20260303`
+- Validate artifacts:
+  - `validate/compare_report.json`
+  - `validate/compare_report.txt`
+- Report artifacts:
+  - `report/summary.md`
+  - `report/summary.json`
+
+### 19) Root-Cause Post Failure Fix + Post Repair Replay (2026-03-04)
+Scope:
+- Fix post-stage crash on alternate-cutoff dual-mode run and replay post outputs with transfer-aware keep/drop figures.
+
+Root issue:
+- Failing run: `repro/runs/prod_altcutoff_20220511_full_dual_20260304_cleanrerun`
+- Error: `object 'usgs_plot_df' not found`
+- Source: `R/environmetrics/40_figures.R`
+- Cause: Jan-9/cutoff label helper code referenced `usgs_plot_df` before it was built.
+
+Robust fix implemented:
+- In `R/environmetrics/40_figures.R`:
+  - Reordered logic to ensure `usgs_plot_df` is created before dependent computations.
+  - Added safe date/value guards (`safe_max_date`, finite filtering) for label anchors and y-bounds.
+  - Replaced fragile direct min/max usages with precomputed safe anchors.
+- Parse gate passed for `40_figures.R`.
+
+Replay runs and outcomes:
+- Verification replay (post-only, keep-mode focused):
+  - Run: `repro/runs/prod_altcutoff_20220511_full_dual_20260304_cleanrerun_postretry`
+  - Evidence: `END 40_figures.R` + `post_artifacts_manifest.csv` written.
+  - Note: wrapper process hung after artifact write; killed to avoid idle hang.
+
+- Full repaired post replay (drop+keep outputs):
+  - Run: `repro/runs/prod_altcutoff_20220511_full_dual_20260304_cleanrerun_postrepair`
+  - Produced combined drop/keep post outputs at:
+    - `repro/runs/prod_altcutoff_20220511_full_dual_20260304_cleanrerun_postrepair/post/outputs/prod_altcutoff_20220511_full_dual_20260304_cleanrerun_postrepair`
+  - Key files confirmed:
+    - `All3_exal_DISC.png`
+    - `All3_exal_DISC_keep.png`
+    - `forecats.png`
+    - `forecats_keep.png`
+    - `posterior_samples.png`
+    - `posterior_samples_keep.png`
+    - `posterior_samples_valid.png`
+    - `posterior_samples_valid_keep.png`
+    - `post_artifacts_manifest.csv`
+    - `post_artifacts_summary.json`
+
+- Validate/report follow-up:
+  - Run: `repro/runs/prod_altcutoff_20220511_full_dual_20260304_cleanrerun_postrepair_valrep`
+  - Stages: `validate=pass`, `report=pass`
+  - Artifacts:
+    - `validate/compare_report.json`
+    - `validate/compare_report.txt`
+    - `report/summary.md`
+    - `report/summary.json`
+
+Notes:
+- `postrepair` manifest remains `post=pending` due interruption of a stale TTY wrapper after post artifacts were already generated.
+- Canonical successful validation/report status is in `postrepair_valrep`.
+
+### 20) Post Figure Consistency Fixes (Allth + Posterior Valid) and Post Replay (2026-03-04)
+Scope:
+- Fix future USGS overlay consistency in `Allth_exal_DISC*`.
+- Replace fixed y-window in `posterior_samples_valid*`-style figures with adaptive limits that include ensemble trajectories.
+- Regenerate post figures (drop + keep) without refit.
+
+Code changes:
+- File: `R/environmetrics/40_figures.R`
+- Fixes:
+  - Corrected future USGS transform in `Allth_exal_DISC*` block:
+    - from `log(truth + 1)` to `log(truth)` when `truth` already equals `log(cms+1)`.
+  - Added helpers:
+    - `safe_log_values()`
+    - `compute_adaptive_ylim()`
+  - Replaced hardcoded `coord_cartesian(ylim = c(-1, 3.5))` with adaptive limits in:
+    - posterior sample plot blocks with ensembles
+    - counter/valid posterior blocks
+  - Adaptive limits now include observed USGS + quantile/sample trajectories + GloFAS/NWS before/after forecast ensembles (where applicable).
+
+Replay run:
+- Run id: `prod_altcutoff_20220511_full_dual_20260304_cleanrerun_postfix_r02`
+- Config: `/tmp/unified_prod_altcutoff_20220511_full_dual_20260304_cleanrerun_postfix_r02.yaml`
+- Stages: `post` only
+- Source fit outputs: `prod_altcutoff_20220511_full_dual_20260304_cleanrerun`
+- Output root:
+  - `repro/runs/prod_altcutoff_20220511_full_dual_20260304_cleanrerun_postfix_r02/post/outputs/prod_altcutoff_20220511_full_dual_20260304_cleanrerun_postfix_r02`
+
+Key regenerated artifacts (timestamps confirm new writes):
+- `Allth_exal_DISC.png`
+- `Allth_exal_DISC_keep.png`
+- `posterior_samples_valid.png`
+- `posterior_samples_valid_keep.png`
+- `forecats.png`
+- `forecats_keep.png`
+
+Note:
+- As in prior post-only replay runs, `run_manifest.yaml` stage flags may remain `pending` if the outer TTY wrapper is interrupted after files are fully written.
