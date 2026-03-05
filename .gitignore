@@ -238,6 +238,29 @@ Thumbs.db
 *.swp
 *~
 nohup.out
+
+# -------------------------
+# Local codex/session scratch and local run dumps
+# -------------------------
+_codex_work/
+logs/
+data/
+forecats_*_manifest.txt
+forecats_*_summary.txt
+
+# Generated local diagnostics/docs snapshots (large, reproducible, not source)
+repro/diagnostics/
+repro/audit_artifacts/
+repro/forecats_inputs_compat/
+repro/docs/q03_post_direct_*/
+repro/docs/post_q05_next_phase_*/
+repro/docs/q03_post_*/
+repro/docs/p10_ndlm_spec_*/
+repro/nwm_retrospective_runs/*/logs/v12_yearly/
+repro/nwm_retrospective_runs/*/audits/full_versions_loglog1p_summary.json
+
+# One-off local diagnostic run configs; keep curated debug/prod/smoke configs tracked
+config/unified_runs/diag_*.yaml
 *.log
 
 # Local logs
