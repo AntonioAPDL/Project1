@@ -66,6 +66,13 @@ resolve_future_truth_multivar <- function(horizon) {
   if (!is.finite(h) || h <= 0L) return(truth)
 
   infer_start_from_forecasts <- function() {
+    fallback_start <- if (exists("FORECAST_START_DATE", inherits = TRUE)) {
+      suppressWarnings(as.Date(get("FORECAST_START_DATE", inherits = TRUE)))
+    } else {
+      as.Date("2022-12-26")
+    }
+    if (is.na(fallback_start)) fallback_start <- as.Date("2022-12-26")
+
     starts <- as.Date(character(0))
     if (exists("glofas_forecast", inherits = TRUE) &&
         is.data.frame(glofas_forecast) &&
@@ -83,7 +90,7 @@ resolve_future_truth_multivar <- function(horizon) {
       }
     }
     starts <- starts[!is.na(starts)]
-    if (length(starts) > 0L) min(starts) else as.Date("2022-12-26")
+    if (length(starts) > 0L) min(starts) else fallback_start
   }
 
   start_date <- infer_start_from_forecasts()
@@ -1505,6 +1512,9 @@ profile_section("figures_multivar_only.transfer_state_verification", {
   payload <- build_transfer_state_window_q50(pre_days = 30L)
   if (is.null(payload)) return(invisible(NULL))
 
+  transfer_mode <- tolower(trimws(Sys.getenv("UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE", "drop")))
+  if (!transfer_mode %in% c("drop", "keep")) transfer_mode <- "drop"
+
   state_df <- payload$state_df
   psi_df <- payload$psi_df
   seg_contract <- payload$seg_contract
@@ -1535,6 +1545,74 @@ profile_section("figures_multivar_only.transfer_state_verification", {
       })
     )
     write.csv(identity_summary, file.path(OUT_DIR, "multivar_transfer_identity_check_q50.csv"), row.names = FALSE)
+
+    tol_identity <- 1e-8
+    tol_decomp <- 1e-8
+    eq_err <- state_df$mu_usgs - state_df$mu_without_transfer - state_df$zeta_mean
+    max_abs_eq_err <- if (any(is.finite(eq_err))) max(abs(eq_err), na.rm = TRUE) else NA_real_
+
+    max_abs_err_g <- if (any(is.finite(state_df$identity_err_glofas))) {
+      max(abs(state_df$identity_err_glofas), na.rm = TRUE)
+    } else {
+      NA_real_
+    }
+    max_abs_err_n <- if (any(is.finite(state_df$identity_err_nws))) {
+      max(abs(state_df$identity_err_nws), na.rm = TRUE)
+    } else {
+      NA_real_
+    }
+
+    forecast_rows <- state_df[state_df$phase == "forecast", , drop = FALSE]
+    finite_zeta_forecast <- if (nrow(forecast_rows) > 0L) sum(is.finite(forecast_rows$zeta_mean)) else 0L
+    finite_mu_without_transfer_forecast <- if (nrow(forecast_rows) > 0L) sum(is.finite(forecast_rows$mu_without_transfer)) else 0L
+
+    contract_summary <- data.frame(
+      transfer_mode = transfer_mode,
+      forecast_has_transfer = isTRUE(forecast_has_transfer),
+      n_forecast_rows = nrow(forecast_rows),
+      finite_zeta_forecast = as.integer(finite_zeta_forecast),
+      finite_mu_without_transfer_forecast = as.integer(finite_mu_without_transfer_forecast),
+      max_abs_mu_decomp_error = max_abs_eq_err,
+      max_abs_identity_err_glofas = max_abs_err_g,
+      max_abs_identity_err_nws = max_abs_err_n,
+      tol_decomp = tol_decomp,
+      tol_identity = tol_identity,
+      stringsAsFactors = FALSE
+    )
+    write.csv(contract_summary, file.path(OUT_DIR, "multivar_transfer_contract_q50.csv"), row.names = FALSE)
+
+    violations <- character(0)
+    if (is.finite(max_abs_eq_err) && max_abs_eq_err > tol_decomp) {
+      violations <- c(violations, sprintf("mu decomposition error exceeds tolerance: %.6e > %.6e", max_abs_eq_err, tol_decomp))
+    }
+    if (is.finite(max_abs_err_g) && max_abs_err_g > tol_identity) {
+      violations <- c(violations, sprintf("glofas identity error exceeds tolerance: %.6e > %.6e", max_abs_err_g, tol_identity))
+    }
+    if (is.finite(max_abs_err_n) && max_abs_err_n > tol_identity) {
+      violations <- c(violations, sprintf("nws identity error exceeds tolerance: %.6e > %.6e", max_abs_err_n, tol_identity))
+    }
+    if (identical(transfer_mode, "keep")) {
+      if (!isTRUE(forecast_has_transfer)) {
+        violations <- c(violations, "keep mode expected forecast transfer retention, but forecast_has_transfer is FALSE")
+      }
+      if (nrow(forecast_rows) > 0L && finite_zeta_forecast == 0L) {
+        violations <- c(violations, "keep mode expected finite forecast zeta_mean values, but none were found")
+      }
+    }
+    if (identical(transfer_mode, "drop")) {
+      if (isTRUE(forecast_has_transfer)) {
+        violations <- c(violations, "drop mode expected no forecast transfer retention, but forecast_has_transfer is TRUE")
+      }
+    }
+    if (length(violations) > 0L) {
+      stop(
+        paste(
+          c("[MULTIVAR_TRANSFER_CONTRACT_FAIL]", violations),
+          collapse = " | "
+        ),
+        call. = FALSE
+      )
+    }
   }
 
   plot_transfer_zeta_window_q50(

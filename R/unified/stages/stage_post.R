@@ -243,8 +243,18 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
       disc_w_paths_by_mode[[mode]] <- resolve_disc_w_mode_paths(mode)
     }
   }
+  post_primary_multivar_mode <- if (
+    isTRUE(cfg$models$run_exdqlm_multivar) &&
+    "drop" %in% names(disc_w_paths_by_mode) &&
+    length(disc_w_paths_by_mode[["drop"]]) > 0L
+  ) {
+    "drop"
+  } else {
+    primary_multivar_transfer_mode
+  }
+
   disc_w_paths_abs <- if (length(disc_w_paths_by_mode) > 0L) {
-    disc_w_paths_by_mode[[primary_multivar_transfer_mode]]
+    disc_w_paths_by_mode[[post_primary_multivar_mode]]
   } else {
     character(0)
   }
@@ -340,6 +350,24 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     table_formats <- table_formats[nzchar(table_formats)]
     if (length(table_formats) == 0L) table_formats <- "csv"
   }
+
+  cfg_date <- function(path, default) {
+    raw <- as.character(unified_get(cfg, path, default = default))
+    if (!length(raw) || is.na(raw[[1L]]) || !nzchar(raw[[1L]])) {
+      raw <- default
+    } else {
+      raw <- raw[[1L]]
+    }
+    parsed <- suppressWarnings(as.Date(raw))
+    if (is.na(parsed)) parsed <- as.Date(default)
+    parsed
+  }
+
+  post_cutoff_date <- cfg_date(c("dates", "cutoff_date"), "2022-12-25")
+  post_forecast_start_date <- post_cutoff_date + 1L
+  post_plot_start_date <- cfg_date(c("dates", "plot_start"), as.character(post_cutoff_date - 18L))
+  post_plot_end_date <- cfg_date(c("dates", "plot_end"), as.character(post_cutoff_date + 28L))
+
   base_env_overrides <- c(
     UNIFIED_RUN_ROOT = run_root_abs,
     UNIFIED_RUN_ID = run_id,
@@ -355,7 +383,13 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_FIT_QUANTILE_LABELS = encode_env_list(q_labels),
     UNIFIED_DISC_W_RDATA_PATHS = encode_env_list(disc_w_paths_abs),
     UNIFIED_POST_OUTPUT_SUBDIR = "",
-    UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE = primary_multivar_transfer_mode,
+    UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE = post_primary_multivar_mode,
+    UNIFIED_POST_OUTPUT_SUFFIX = "",
+    UNIFIED_POST_PRESERVE_OUT_DIR = "FALSE",
+    UNIFIED_CUTOFF_DATE = as.character(post_cutoff_date),
+    UNIFIED_FORECAST_START_DATE = as.character(post_forecast_start_date),
+    UNIFIED_PLOT_START = as.character(post_plot_start_date),
+    UNIFIED_PLOT_END = as.character(post_plot_end_date),
     UNIFIED_UNIV_RDATA_PATHS = encode_env_list(univ_paths_abs),
     UNIFIED_NDLM_RDATA_PATH = ndlm_path_abs,
     RUN_ID = run_id,
@@ -391,28 +425,22 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     log_path = file.path(post_logs, "post_runner.log")
   )
 
-  if (isTRUE(cfg$models$run_exdqlm_multivar) && multivar_dual_mode) {
-    additional_modes <- setdiff(multivar_transfer_modes, primary_multivar_transfer_mode)
-    for (mode in additional_modes) {
-      mode_paths <- disc_w_paths_by_mode[[mode]]
-      mode_subdir <- sprintf("multivar_%s", mode)
-      mode_cache_dir <- file.path(post_cache_dir, mode_subdir)
-      dir.create(mode_cache_dir, recursive = TRUE, showWarnings = FALSE)
-      mode_env <- base_env_overrides
-      mode_env["UNIFIED_MODEL_RUN_EXDQLM_MULTIVAR"] <- "TRUE"
-      mode_env["UNIFIED_MODEL_RUN_EXDQLM_UNIVAR"] <- "FALSE"
-      mode_env["UNIFIED_MODEL_RUN_NDLM_MAIN"] <- "FALSE"
-      mode_env["UNIFIED_DISC_W_RDATA_PATHS"] <- encode_env_list(mode_paths)
-      mode_env["UNIFIED_UNIV_RDATA_PATHS"] <- ""
-      mode_env["UNIFIED_NDLM_RDATA_PATH"] <- ""
-      mode_env["UNIFIED_POST_OUTPUT_SUBDIR"] <- mode_subdir
-      mode_env["UNIFIED_POST_CACHE_DIR"] <- normalizePath(mode_cache_dir, mustWork = FALSE)
-      mode_env["UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE"] <- mode
-      run_post_runner(
-        env_overrides = mode_env,
-        log_path = file.path(post_logs, sprintf("post_runner_multivar_%s.log", mode))
-      )
-    }
+  if (
+    isTRUE(cfg$models$run_exdqlm_multivar) &&
+    multivar_dual_mode &&
+    "keep" %in% names(disc_w_paths_by_mode) &&
+    length(disc_w_paths_by_mode[["keep"]]) > 0L &&
+    !identical(post_primary_multivar_mode, "keep")
+  ) {
+    keep_env <- base_env_overrides
+    keep_env["UNIFIED_DISC_W_RDATA_PATHS"] <- encode_env_list(disc_w_paths_by_mode[["keep"]])
+    keep_env["UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE"] <- "keep"
+    keep_env["UNIFIED_POST_OUTPUT_SUFFIX"] <- "_keep"
+    keep_env["UNIFIED_POST_PRESERVE_OUT_DIR"] <- "TRUE"
+    run_post_runner(
+      env_overrides = keep_env,
+      log_path = file.path(post_logs, "post_runner_keep.log")
+    )
   }
 
   ndlm_only_mode <- isTRUE(cfg$models$run_ndlm_main) &&
@@ -492,7 +520,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     root_prefix <- paste0(root_abs, .Platform$file.sep)
 
     for (f in generated) {
-      if (file.info(f)$isdir) next
+      if (isTRUE(file.info(f)$isdir)) next
       if (!grepl(allowed_ext, f, ignore.case = TRUE)) next
       f_abs <- normalizePath(f, mustWork = FALSE)
       if (!startsWith(f_abs, root_prefix) && !identical(f_abs, root_abs)) next

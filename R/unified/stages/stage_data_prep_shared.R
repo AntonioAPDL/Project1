@@ -100,11 +100,17 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
   source_nws_scale <- cfg$inputs$fit$nws_storage_scale
   source_glofas_scale <- cfg$inputs$fit$glofas_storage_scale
   source_mode <- "configured"
+  source_retros_origin <- "configured"
   source_nws_origin <- "configured"
   source_glofas_origin <- "configured"
 
   if (prefer_snapshot && snapshot_ready) {
     source_mode <- "forecats_snapshot_mixed"
+    source_retros <- snapshot_retros
+    source_retros_origin <- "snapshot"
+    if (is.null(source_retros_scale) || !nzchar(as.character(source_retros_scale))) {
+      source_retros_scale <- "log1p_cms"
+    }
     source_glofas <- snapshot_glofas
     source_glofas_scale <- "raw_cms"
     source_glofas_origin <- "snapshot"
@@ -115,8 +121,11 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
           snapshot_nws,
           label = "forecats snapshot nws_forecast",
           stage_name = "data_prep_shared/source_nws_snapshot",
-          min_rows = 10L,
-          min_numeric_cols = 2L
+          min_rows = 5L,
+          min_numeric_cols = 2L,
+          allow_nonfinite = TRUE,
+          min_finite_rows = 5L,
+          min_finite_numeric_cols = 2L
         )
         TRUE
       },
@@ -174,14 +183,14 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
 
   source_map_path <- file.path(shared_root, "source_map.txt")
   writeLines(
-    c(
-      sprintf("source_mode=%s", source_mode),
-      sprintf("source.parameters=%s", cfg$inputs$fit$parameters_path),
-      sprintf("source.retros=%s", source_retros),
-      sprintf("source.retros_origin=configured"),
-      sprintf("source.nws=%s", source_nws),
-      sprintf("source.nws_origin=%s", source_nws_origin),
-      sprintf("source.glofas=%s", source_glofas),
+      c(
+        sprintf("source_mode=%s", source_mode),
+        sprintf("source.parameters=%s", cfg$inputs$fit$parameters_path),
+        sprintf("source.retros=%s", source_retros),
+        sprintf("source.retros_origin=%s", source_retros_origin),
+        sprintf("source.nws=%s", source_nws),
+        sprintf("source.nws_origin=%s", source_nws_origin),
+        sprintf("source.glofas=%s", source_glofas),
       sprintf("source.glofas_origin=%s", source_glofas_origin),
       sprintf("snapshot_root=%s", snapshot_root),
       sprintf("snapshot_ready=%s", if (snapshot_ready) "TRUE" else "FALSE")

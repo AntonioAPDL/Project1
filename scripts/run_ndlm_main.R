@@ -47,4 +47,20 @@ result <- unified_run_ndlm_main_theory(
 
 cat(sprintf("ndlm_theory_complete output=%s\n", output_path))
 cat(sprintf("kalman_backend=%s\n", result$kalman_backend))
-cat(sprintf("sigma=%.8f w_hist=%.8f w_fore=%.8f\n", result$sigma, result$w_hist, result$w_fore))
+cat(sprintf("sigma=%.8f sigma_mean=%.8f w_hist=%.8f w_fore=%.8f\n", result$sigma, result$sigma_mean, result$w_hist, result$w_fore))
+if (is.numeric(result$sigma_by_source)) {
+  sig <- result$sigma_by_source
+  for (nm in names(sig)) {
+    val <- suppressWarnings(as.numeric(sig[[nm]]))
+    if (!is.finite(val)) next
+    cat(sprintf("sigma_%s=%.8f\n", nm, val))
+  }
+}
+if (is.list(result$discount_factors) || is.numeric(result$discount_factors)) {
+  dfs <- unlist(result$discount_factors, use.names = TRUE)
+  for (nm in names(dfs)) {
+    val <- suppressWarnings(as.numeric(dfs[[nm]]))
+    if (!is.finite(val)) next
+    cat(sprintf("%s=%.8f\n", nm, val))
+  }
+}

@@ -25,12 +25,65 @@ San_Lorenzo_Daily_USGS_R <- data_usgs_r %>%
   filter(timestamp > as.Date("1979-01-01"))
 San_Lorenzo_Daily_USGS_R$time <- San_Lorenzo_Daily_USGS_R$timestamp
 
+cutoff_date <- if (exists("CUTOFF_DATE", inherits = TRUE)) as.Date(get("CUTOFF_DATE", inherits = TRUE)) else as.Date("2022-12-25")
+if (is.na(cutoff_date)) cutoff_date <- as.Date("2022-12-25")
+forecast_start_date <- if (exists("FORECAST_START_DATE", inherits = TRUE)) as.Date(get("FORECAST_START_DATE", inherits = TRUE)) else (cutoff_date + 1L)
+if (is.na(forecast_start_date)) forecast_start_date <- cutoff_date + 1L
+
+select_future_window <- function(df, time_col, value_col, start_date, horizon, label) {
+  idx <- which(df[[time_col]] >= start_date)
+  if (!length(idx)) {
+    warning(
+      sprintf("%s has no rows at/after forecast start date %s; using persistence from last value", label, as.character(start_date)),
+      call. = FALSE
+    )
+    idx <- nrow(df)
+  }
+  start_idx <- idx[[1]]
+  n_needed <- as.integer(horizon)
+  end_idx <- start_idx + n_needed - 1L
+  end_obs <- min(end_idx, nrow(df))
+  out <- df[start_idx:end_obs, c(time_col, value_col)]
+  colnames(out) <- c("time", value_col)
+
+  if (nrow(out) < n_needed) {
+    n_pad <- n_needed - nrow(out)
+    last_time <- as.Date(out$time[[nrow(out)]])
+    last_val <- out[[value_col]][[nrow(out)]]
+    pad_times <- seq(last_time + 1L, by = "day", length.out = n_pad)
+    pad <- data.frame(time = pad_times, stringsAsFactors = FALSE)
+    pad[[value_col]] <- rep(last_val, n_pad)
+    out <- rbind(out, pad[, c("time", value_col)])
+    warning(
+      sprintf("%s forecast horizon short by %d rows; extending with persistence", label, n_pad),
+      call. = FALSE
+    )
+  }
+
+  out[, c(value_col, "time")]
+}
+
 ###########################################################################################
 ####################################### Forecasts ######################################### 
 ###########################################################################################
 nws_forecast <- read.csv(NWS_FORECAST_PATH)
-nws_forecast[,-1] <- log(nws_forecast[,-1])
-nws_value_cols <- setdiff(colnames(nws_forecast), "Date")
+if (!("target_date" %in% names(nws_forecast))) {
+  if ("Date" %in% names(nws_forecast)) {
+    nws_forecast$target_date <- as.Date(nws_forecast$Date)
+  } else {
+    stop(
+      sprintf("NWS forecast file must include 'target_date' or 'Date': %s", NWS_FORECAST_PATH),
+      call. = FALSE
+    )
+  }
+} else {
+  nws_forecast$target_date <- as.Date(nws_forecast$target_date)
+}
+nws_value_cols <- setdiff(colnames(nws_forecast), c("target_date", "Date"))
+if (length(nws_value_cols) == 0L) {
+  stop(sprintf("NWS forecast file has no numeric ensemble columns: %s", NWS_FORECAST_PATH), call. = FALSE)
+}
+nws_forecast[, nws_value_cols] <- log(nws_forecast[, nws_value_cols, drop = FALSE])
 num_ens_nws <- length(nws_value_cols)
 
 glofas_forecast <- read.csv(GLOFAS_FORECAST_PATH)
@@ -46,7 +99,7 @@ if (!("target_date" %in% names(glofas_forecast))) {
 } else {
   glofas_forecast$target_date <- as.Date(glofas_forecast$target_date)
 }
-specific_date <- as.Date("2022-12-26")
+specific_date <- forecast_start_date
 glofas_forecast <- glofas_forecast[glofas_forecast$target_date >= specific_date, ]
 glofas_value_cols <- setdiff(colnames(glofas_forecast), c("target_date", "Date"))
 if (length(glofas_value_cols) == 0L) {
@@ -86,11 +139,15 @@ mean_forecast <- do.call(rbind, row_means_list)
 ppt_data <- read_csv(PPT_PATH, show_col_types = FALSE)
 ppt_data$Date <- as.Date(ppt_data$Date)
 colnames(ppt_data) <- c('time','ppt')
-X_ppt <- ppt_data[ppt_data$time <= '2022-12-25',]
-
-start_date_idx <- which(ppt_data$time == '2022-12-26')
-end_date_idx <- which(ppt_data$time == '2022-12-26') + ranges[1] - 1
-X_ppt_f <- ppt_data[start_date_idx:end_date_idx,c('ppt','time')]
+X_ppt <- ppt_data[ppt_data$time <= cutoff_date,]
+X_ppt_f <- select_future_window(
+  df = ppt_data,
+  time_col = "time",
+  value_col = "ppt",
+  start_date = forecast_start_date,
+  horizon = ranges[1],
+  label = "PRISM precipitation"
+)
 
 ##########
 ## SOIL ##
@@ -98,22 +155,30 @@ X_ppt_f <- ppt_data[start_date_idx:end_date_idx,c('ppt','time')]
 soil_moisture_data <- read.csv(SOIL_PATH)
 soil_moisture_data$Date <- as.Date(soil_moisture_data$Date)
 colnames(soil_moisture_data) <- c('time','soil')
-X_soil <- soil_moisture_data[soil_moisture_data$time <= '2022-12-25',]
-
-start_date_idx <- which(soil_moisture_data$time == '2022-12-26')
-end_date_idx <- which(soil_moisture_data$time == '2022-12-26') + ranges[1] - 1
-X_soil_f <- soil_moisture_data[start_date_idx:end_date_idx,c('soil','time')]
+X_soil <- soil_moisture_data[soil_moisture_data$time <= cutoff_date,]
+X_soil_f <- select_future_window(
+  df = soil_moisture_data,
+  time_col = "time",
+  value_col = "soil",
+  start_date = forecast_start_date,
+  horizon = ranges[1],
+  label = "soil moisture"
+)
 
 #########
 ## PCA ##
 #########
 principal_components_df <- read_csv(PCA_PATH, show_col_types = FALSE)
 colnames(principal_components_df) <- c('time','Static_PCA')
-X_pca <- principal_components_df[principal_components_df$time <= '2022-12-25',]
-
-start_date_idx <- which(principal_components_df$time == '2022-12-26')
-end_date_idx <- which(principal_components_df$time == '2022-12-26') + ranges[1] - 1
-X_pca_f <- principal_components_df[start_date_idx:end_date_idx,c('Static_PCA','time')]
+X_pca <- principal_components_df[principal_components_df$time <= cutoff_date,]
+X_pca_f <- select_future_window(
+  df = principal_components_df,
+  time_col = "time",
+  value_col = "Static_PCA",
+  start_date = forecast_start_date,
+  horizon = ranges[1],
+  label = "PCA covariate"
+)
 
 ###########
 ## Merge ##

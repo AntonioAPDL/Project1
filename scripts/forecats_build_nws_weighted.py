@@ -28,7 +28,7 @@ This tool supports two weighting schemes so we can compare "notebook-mode" vs
 1) notebook-mode (default)
    Weight within each (target_date, target_hour, ensemble) by lead time:
      w_raw = 1 / (lead_time_h ** exponent[ensemble])
-   Normalize within the group and compute a weighted average on log1p(cms).
+   Normalize within the group and compute a weighted average on transformed(cms).
 
 2) paper-mode
    Weight within each (target_date, target_hour, ensemble) by "age" r (days before
@@ -36,12 +36,12 @@ This tool supports two weighting schemes so we can compare "notebook-mode" vs
    higher weights:
      r_days = cutoff_date - issue_date
      w_raw  = 1 / (r_days + 1) ** alpha
-   Normalize within the group and compute a weighted average on log1p(cms).
+   Normalize within the group and compute a weighted average on transformed(cms).
 
 In both modes, we then compute a simple (unweighted) daily average per (target_date, ensemble)
 by averaging over target_hour.
 
-Outputs are written in raw cms by inverting: cms = expm1(weighted_avg_log1p).
+Outputs are written in raw cms by inverting from the working transform scale.
 
 Important:
 - `results.pkl` keys include multiple run cycles (t00z/t12z). The original notebook
@@ -62,6 +62,8 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
+from flow_scale import TRANSFORM_SCALES, forward_transform_cms, inverse_transform_to_cms
 
 
 # NOTE: use raw strings with single backslashes for regex escapes.
@@ -155,6 +157,12 @@ def main() -> int:
     ap.add_argument("--alpha", default=1.0, type=float, help="Paper-mode exponent alpha (weights ~ (r_days+1)^-alpha).")
     ap.add_argument("--parse-issue-hour", action="store_true")
     ap.add_argument("--issue-lookback-days", type=int, default=40, help="Skip issue_dates older than cutoff-lookback (speed).")
+    ap.add_argument(
+        "--aggregation-scale",
+        default="log1p_cms",
+        choices=list(TRANSFORM_SCALES),
+        help="Working scale for weighting/hourly->daily averaging.",
+    )
     ap.add_argument("--out-csv", required=True, type=Path)
     ap.add_argument("--overwrite", action="store_true")
     ap.add_argument("--verbose", action="store_true")
@@ -191,7 +199,10 @@ def main() -> int:
     issue_min = cutoff - timedelta(days=int(args.issue_lookback_days))
 
     if args.verbose:
-        print(f"[INFO] weighting_scheme={args.weighting_scheme} alpha={args.alpha} parse_issue_hour={args.parse_issue_hour}")
+        print(
+            f"[INFO] weighting_scheme={args.weighting_scheme} alpha={args.alpha} "
+            f"aggregation_scale={args.aggregation_scale} parse_issue_hour={args.parse_issue_hour}"
+        )
         if args.weighting_scheme == "notebook":
             print(f"[INFO] exponents: {args.exponents}")
         print(f"[INFO] loading {args.pkl} ...")
@@ -241,8 +252,8 @@ def main() -> int:
         columns=["issue_date", "issue_hour", "target_date", "target_hour", "ensemble", "lead_time_h", "value_cms"],
     )
 
-    # Weighting on log1p scale.
-    df["log1p_cms"] = np.log1p(df["value_cms"].astype("float64"))
+    # Weighting on configured transform scale.
+    df["work_value"] = forward_transform_cms(df["value_cms"].astype("float64"), args.aggregation_scale)
     if args.weighting_scheme == "notebook":
         lead = df["lead_time_h"].astype("float64").replace(0.0, 1.0)
         expo = df["ensemble"].map(lambda e: exponents[int(e)]).astype("float64")
@@ -257,7 +268,7 @@ def main() -> int:
         issue_dt = pd.to_datetime(df["issue_date"]) + pd.to_timedelta(df["issue_hour"].astype(int), unit="h")
         issue_ts = pd.Series(issue_dt.values, index=df.index)
         issue_max = issue_ts.groupby([df["target_date"], df["target_hour"], df["ensemble"]]).transform("max")
-        keep = (issue_ts == issue_max) & np.isfinite(df["log1p_cms"].to_numpy())
+        keep = (issue_ts == issue_max) & np.isfinite(df["work_value"].to_numpy())
         df = df.loc[keep].copy()
         df["w_raw"] = 1.0
     else:
@@ -265,23 +276,26 @@ def main() -> int:
 
     denom = df.groupby(["target_date", "target_hour", "ensemble"])["w_raw"].transform("sum")
     df["w"] = df["w_raw"] / denom
-    df["w_log1p"] = df["w"] * df["log1p_cms"]
+    df["w_work"] = df["w"] * df["work_value"]
 
     # Weighted average per target_time (date+hour) + ensemble
     w_by_time = (
-        df.groupby(["target_date", "target_hour", "ensemble"], as_index=False)["w_log1p"]
+        df.groupby(["target_date", "target_hour", "ensemble"], as_index=False)["w_work"]
         .sum()
-        .rename(columns={"w_log1p": "weighted_log1p"})
+        .rename(columns={"w_work": "weighted_work"})
     )
 
     # Daily average across target_hour
     daily = (
-        w_by_time.groupby(["target_date", "ensemble"], as_index=False)["weighted_log1p"]
+        w_by_time.groupby(["target_date", "ensemble"], as_index=False)["weighted_work"]
         .mean()
-        .rename(columns={"weighted_log1p": "daily_weighted_log1p"})
+        .rename(columns={"weighted_work": "daily_weighted_work"})
     )
 
-    daily["value_cms"] = np.expm1(daily["daily_weighted_log1p"].astype("float64"))
+    daily["value_cms"] = inverse_transform_to_cms(
+        daily["daily_weighted_work"].astype("float64"),
+        args.aggregation_scale,
+    )
 
     wide = daily.pivot(index="target_date", columns="ensemble", values="value_cms").sort_index()
 

@@ -31,9 +31,9 @@
 - `DISC_Optimal_Synth_Ranges_NDLM.r`: NDLM baseline; saves `DISC_variables_<p0*100>_NDLM_synth_DISC.RData`.
 - `Environmetrics_Figures.ipynb`: loads model outputs + covariates; saves PNGs into `Environmetrics/` (save calls mostly commented).
 - `Retro-Analysis.ipynb`: loads `weighted_time_series.csv` + `nws_*` + USGS data; produces `plot_*.png` in repo root.
-- `download_prism_data.R`: downloads PRISM precipitation; outputs `prism_precipitation_santa_cruz_1987_2023.csv` and populates `prism_data/`.
-- `download_era5_soilmoisture.py`: downloads ERA5 soil moisture (netCDF) into `soil_moisture_data/`.
-- `soil.ipynb`: aggregates soil moisture to daily average CSVs.
+- `scripts/build_prism_ppt_point_series.R`: official PRISM precipitation pipeline; monthly chunk download + point extraction + CSV output + cleanup of raw download folders by default.
+- `scripts/build_era5_soil_moisture_point_series.py`: official ERA5 soil moisture pipeline; monthly download + nearest-point extraction + daily aggregation + cleanup of monthly NetCDF by default.
+- `download_prism_data.R` + `download_era5_soilmoisture.py` + `soil.ipynb`: legacy split workflow retained for reference.
 - `gdpc_fit.ipynb`: writes `pca.csv`.
 - `Paper_Forecast_Synthesis_DQLM.ipynb`: writes `nws_forecast.csv`.
 - `glofas_forecasts.ipynb`: generates `weighted_time_series.csv` or `weighted_time_series_custom.csv` (outputs mostly commented).
@@ -53,8 +53,8 @@
 Local (in repo):
 - `nws_forecast.csv` (generated in `Paper_Forecast_Synthesis_DQLM.ipynb`).
 - `weighted_time_series.csv` (from `glofas_forecasts.ipynb` or manual export).
-- `prism_precipitation_santa_cruz_1987_2023.csv` (from `download_prism_data.R`).
-- `soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv` (from `soil.ipynb`).
+- `prism_precipitation_santa_cruz_1987_2023.csv` (from `scripts/build_prism_ppt_point_series.R`).
+- `soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv` (from `scripts/build_era5_soil_moisture_point_series.py`).
 - `pca.csv` (from `gdpc_fit.ipynb`).
 - USGS/forecast intermediate CSVs in repo root (e.g., `usgs_*`, `glofas_*`, `nws_*`).
 

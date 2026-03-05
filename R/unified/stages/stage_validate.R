@@ -59,9 +59,16 @@ unified_stage_validate <- function(cfg, run_root, repo_root, manifest) {
   unified_write_sha_for_dir(current_dir, current_sha)
 
   compare_script <- file.path(repo_root, "repro", "compare_to_canonical.py")
+  compare_mode_raw <- as.character(unified_get(cfg, c("validation", "compare", "mode"), default = "both"))
+  compare_mode <- if (length(compare_mode_raw) > 0L) tolower(trimws(compare_mode_raw[[1L]])) else "both"
+  if (!nzchar(compare_mode)) compare_mode <- "both"
   cmd_status <- 0L
   cmd_out <- character(0)
-  if (file.exists(compare_script)) {
+  compare_skipped <- identical(compare_mode, "none")
+  if (compare_skipped) {
+    writeLines("Canonical comparison skipped (validation.compare.mode=none).", report_txt, useBytes = TRUE)
+    cmd_out <- "canonical comparison skipped"
+  } else if (file.exists(compare_script)) {
     args <- c(
       compare_script,
       "--manifest", file.path(run_root, "run_manifest.yaml"),
@@ -71,7 +78,7 @@ unified_stage_validate <- function(cfg, run_root, repo_root, manifest) {
       "--current-sha", current_sha,
       "--report", report_txt,
       "--diff-dir", diff_dir,
-      "--mode", cfg$validation$compare$mode
+      "--mode", compare_mode
     )
     cmd_out <- system2("python3", args, stdout = TRUE, stderr = TRUE)
     status_attr <- attr(cmd_out, "status")
@@ -82,12 +89,13 @@ unified_stage_validate <- function(cfg, run_root, repo_root, manifest) {
   }
 
   metrics <- unified_parse_compare_report_txt(report_txt)
-  status <- if (!is.na(metrics$mismatched) && !is.na(metrics$missing) && !is.na(metrics$extra) &&
-                metrics$mismatched == 0 && metrics$missing == 0 && metrics$extra == 0 && cmd_status == 0) {
-    "pass"
+  compare_ok <- if (compare_skipped) {
+    TRUE
   } else {
-    "fail"
+    !is.na(metrics$mismatched) && !is.na(metrics$missing) && !is.na(metrics$extra) &&
+      metrics$mismatched == 0 && metrics$missing == 0 && metrics$extra == 0 && cmd_status == 0
   }
+  status <- if (isTRUE(compare_ok)) "pass" else "fail"
 
   report <- list(
     status = status,
@@ -96,7 +104,8 @@ unified_stage_validate <- function(cfg, run_root, repo_root, manifest) {
     canonical_run_id = canonical_run_id,
     canonical_dir = canonical_dir,
     current_dir = current_dir,
-    mode = cfg$validation$compare$mode,
+    mode = compare_mode,
+    compare_skipped = compare_skipped,
     metrics = metrics,
     command_status = cmd_status,
     command_output_tail = utils::tail(cmd_out, 20)

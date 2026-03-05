@@ -18,6 +18,8 @@ test_that("ndlm compatibility output packs fit diagnostics into theory state", {
     seq_elbo = c(NA_real_, 1.23),
     delta = c(0.1, 0),
     sigma = 0.9,
+    sigma_by_source = c(usgs = 0.9, nws = 1.1, glofas = 0.8),
+    sigma_mean = 0.9333333,
     w_hist = 0.01,
     w_fore = 0.02,
     discount_factors = c(df_t = 0.95, df_s1 = 0.98, df_s2 = 0.98, df_s67 = 0.98, df_discrep = 0.98, lambda = 0.99),
@@ -48,4 +50,5 @@ test_that("ndlm compatibility output packs fit diagnostics into theory state", {
   st <- get("ndlm_main_theory_state", envir = out_env, inherits = FALSE)
   expect_true(is.list(st$fit_diagnostics))
   expect_equal(as.numeric(st$fit_diagnostics$y_smoothed), c(0.9, 1.9, 2.9, 3.9))
+  expect_equal(as.numeric(st$sigma_by_source[c("usgs", "nws", "glofas")]), c(0.9, 1.1, 0.8))
 })

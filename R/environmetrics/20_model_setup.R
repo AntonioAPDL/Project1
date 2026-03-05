@@ -185,13 +185,50 @@ FF_list <- vector("list", J)
 GG_list <- vector("list", J)
 
 ######################
-# Without covariates for the forceasting period
+# Forecast transfer mode in post/legacy synthesis:
+# `drop` keeps legacy behavior; `keep` retains transfer coordinates in forecast FF/GG lists.
+forecast_transfer_mode <- tolower(trimws(Sys.getenv("UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE", "drop")))
+if (!forecast_transfer_mode %in% c("drop", "keep")) {
+  forecast_transfer_mode <- "drop"
+}
+keep_transfer_forecast <- isTRUE(use_covariates) && ppx > 0L && identical(forecast_transfer_mode, "keep")
+
+ranges_per_local <- if (J > 1) ranges - c(ranges[2:J], 0) else ranges
+r_vec_local <- rev(ranges_per_local)
+seg_start_local <- cumsum(c(1, head(r_vec_local, -1)))
+
 for (j in 1:J) {
   jj <- J-j+1
-  GG_tsc <- result_GG[1:(p*(jj+1)),1:(p*(jj+1))]
-  GG_list[[j]] <- matrix(GG_tsc, nrow = p*(jj+1), ncol = p*(jj+1) )
-  FF_tsc <- result_FF[1:(p*(jj+1)), 2:(jj+1)]
-  FF_list[[j]] <- matrix(FF_tsc, nrow = p*(jj+1), ncol = (jj) )
+  core_dim <- p * (jj + 1L)
+  GG_tsc <- result_GG[1:core_dim, 1:core_dim, drop = FALSE]
+  FF_tsc <- result_FF[1:core_dim, 2:(jj+1), drop = FALSE]
+
+  if (keep_transfer_forecast) {
+    state_dim <- core_dim + ppx
+    GG_keep <- matrix(0, nrow = state_dim, ncol = state_dim)
+    GG_keep[1:core_dim, 1:core_dim] <- GG_tsc
+
+    G_transfer <- as.matrix(bdiag(lambda, diag(px)))
+    GG_keep[(core_dim + 1L):state_dim, (core_dim + 1L):state_dim] <- G_transfer
+
+    if (ppx > 1L && exists("X_f", inherits = TRUE) && is.numeric(X_f) && nrow(X_f) > 0L) {
+      seg_from <- seg_start_local[j]
+      seg_to <- seg_from + r_vec_local[j] - 1L
+      seg_to <- min(seg_to, nrow(X_f))
+      seg_from <- max(1L, min(seg_from, seg_to))
+      x_seg <- as.matrix(X_f[seg_from:seg_to, seq_len(ppx - 1L), drop = FALSE])
+      x_mean <- colMeans(x_seg, na.rm = TRUE)
+      x_mean[!is.finite(x_mean)] <- 0
+      GG_keep[core_dim + 1L, (core_dim + 2L):state_dim] <- as.numeric(x_mean)
+    }
+
+    GG_list[[j]] <- GG_keep
+    transfer_load <- rbind(rep(1, jj), matrix(0, nrow = px, ncol = jj))
+    FF_list[[j]] <- rbind(FF_tsc, transfer_load)
+  } else {
+    GG_list[[j]] <- matrix(GG_tsc, nrow = core_dim, ncol = core_dim)
+    FF_list[[j]] <- matrix(FF_tsc, nrow = core_dim, ncol = jj)
+  }
 }
 
 ########### For every j

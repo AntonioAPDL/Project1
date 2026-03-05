@@ -14,8 +14,8 @@
 #
 # Notes:
 # - This pipeline stores all flows in *raw cms* (m^3/s) in the bundle CSVs.
-# - Forecast weighting is performed on log1p(cms) internally (per notebooks),
-#   but outputs are inverted back to cms for storage.
+# - Forecast weighting is performed on a configurable transform scale internally,
+#   and outputs are inverted back to cms for storage.
 
 suppressPackageStartupMessages({
   library(yaml)
@@ -59,6 +59,7 @@ as_abs_path <- function(p) {
 convert_scale_to_cms <- function(x, scale) {
   if (scale == "raw_cms") return(x)
   if (scale == "log1p_cms") return(exp(x) - 1)
+  if (scale == "log_log1p_cms") return(exp(exp(x)) - 1)
   stop(paste("Unknown scale:", scale))
 }
 
@@ -179,6 +180,7 @@ main <- function(config_path) {
   cat(sprintf("BUNDLE_DIR: %s\n", bundle_dir))
 
   overwrite <- isTRUE(cfg$run$overwrite)
+  agg_scale <- cfg$processing$aggregation_scale_internal %||% "log1p_cms"
 
   # -------------------------
   # 1) USGS daily (raw cms)
@@ -310,6 +312,7 @@ main <- function(config_path) {
         "--weighting-scheme", shQuote(as.character(scheme)),
         "--power", shQuote(as.character(power)),
         "--alpha", shQuote(as.character(alpha)),
+        "--aggregation-scale", shQuote(as.character(agg_scale)),
         "--shift-days", shQuote(as.character(shift_days)),
         "--cache-dir", shQuote(cache_glofas),
         "--cell-json", shQuote(glofas_cell_json),
@@ -389,6 +392,7 @@ main <- function(config_path) {
         "--forecast-end-date", shQuote(forecast_end_str),
         "--weighting-scheme", shQuote(as.character(scheme)),
         "--alpha", shQuote(as.character(alpha)),
+        "--aggregation-scale", shQuote(as.character(agg_scale)),
         if (scheme == "notebook") paste("--exponents", shQuote(exp_spec)) else "",
         if (parse_hour) "--parse-issue-hour" else "",
         "--issue-lookback-days", shQuote(as.character(lookback_days)),
@@ -422,7 +426,7 @@ main <- function(config_path) {
   retro_chk <- readr::read_csv(retros_out, show_col_types = FALSE)
 
   cat(sprintf("  - Storage unit: cms (m^3/s)\n"))
-  cat(sprintf("  - Weighting scale (forecasts): log1p(cms) internally; inverted to cms for storage\n"))
+  cat(sprintf("  - Weighting scale (forecasts): %s internally; inverted to cms for storage\n", as.character(agg_scale)))
   cat(sprintf("  - Bias/scale correction: NONE (expected)\n"))
 
   # USGS range
@@ -487,7 +491,7 @@ main <- function(config_path) {
       storage_unit = "cms",
       bias_correction = FALSE,
       scale_correction = FALSE,
-      weighting_scale_internal = "log1p_cms"
+      weighting_scale_internal = as.character(agg_scale)
     ),
     site = cfg$site,
     dates = list(

@@ -58,6 +58,20 @@ env_flag <- function(key, default = FALSE) {
   isTRUE(as.logical(raw))
 }
 
+read_env_num <- function(key, default) {
+  raw <- Sys.getenv(key, "")
+  if (!nzchar(raw)) return(default)
+  val <- suppressWarnings(as.numeric(raw))
+  if (!is.finite(val)) return(default)
+  val
+}
+
+read_env_int <- function(key, default, min_val = 1L) {
+  val <- suppressWarnings(as.integer(read_env_num(key, default)))
+  if (!is.finite(val) || val < as.integer(min_val)) return(as.integer(default))
+  as.integer(val)
+}
+
 require_readable_path <- function(path, label) {
   if (!file.exists(path)) {
     stop(sprintf("%s does not exist at path: %s", label, path), call. = FALSE)
@@ -108,6 +122,7 @@ if (nzchar(UNIV_COVARIATES_DIR)) {
   UNIV_COVARIATES_DIR <- normalizePath(UNIV_COVARIATES_DIR, mustWork = FALSE)
 }
 USE_PREV <- env_flag("UNIV_USE_PREV", USE_PREV)
+n.samp <- read_env_int("UNIV_N_SAMP", n.samp, min_val = 1L)
 
 Sys.setenv("PKG_CXXFLAGS"="-I/data/muscat_data/jaguir26/libs/eigen -I/data/muscat_data/jaguir26/libs/boost/include -DEIGEN_DONT_VECTORIZE")
 Sys.setenv("PKG_LIBS"="-L/data/muscat_data/jaguir26/libs/lib64 -L/data/muscat_data/jaguir26/libs/boost/lib -llapack -lblas -lboost_random -lboost_system -fopenmp")
@@ -124,15 +139,15 @@ flush.console()
 
 objective_deltas <- function(delta, SIMS, use_covariates){
 
-lam1 <- 1-1e-16 # Sudden correction at start of forecast period
-lam2 <- 1-1e-16 # Correction during forecast period from historical period
+lam1 <- read_env_num("UNIV_LAM1", 1 - 1e-16) # Sudden correction at start of forecast period
+lam2 <- read_env_num("UNIV_LAM2", 1 - 1e-16) # Correction during forecast period from historical period
 
 df_t          <- delta[1] 
 df_s1         <- delta[2] 
 df_s2         <- delta[3] 
 df_s67        <- delta[4] 
-df_trans      <- 0.99999999
-df_covs       <- 0.99999
+df_trans      <- read_env_num("UNIV_DF_TRANS", 0.99999999)
+df_covs       <- read_env_num("UNIV_DF_COVS", 0.99999)
 lambda        <- delta[5]
 
 df.discrep <- "MAKE IT BREAK"
@@ -759,6 +774,98 @@ San_Lorenzo_Daily_USGS_R <- data_usgs_r %>%
   filter(timestamp > as.Date("1979-01-01"))
 San_Lorenzo_Daily_USGS_R$time <- San_Lorenzo_Daily_USGS_R$timestamp
 
+resolve_run_dates <- function(prefix, forecast_dates) {
+  read_env_date <- function(key) {
+    raw <- trimws(Sys.getenv(key, ""))
+    if (!nzchar(raw)) return(as.Date(NA))
+    suppressWarnings(as.Date(raw))
+  }
+
+  cutoff_date <- read_env_date(sprintf("%s_CUTOFF_DATE", prefix))
+  forecast_start_date <- read_env_date(sprintf("%s_FORECAST_START_DATE", prefix))
+
+  if (!is.na(cutoff_date) && is.na(forecast_start_date)) {
+    forecast_start_date <- cutoff_date + 1
+  }
+  if (is.na(cutoff_date) && !is.na(forecast_start_date)) {
+    cutoff_date <- forecast_start_date - 1
+  }
+
+  if (is.na(forecast_start_date)) {
+    valid_dates <- forecast_dates[!is.na(forecast_dates)]
+    if (length(valid_dates) > 0L) {
+      forecast_start_date <- min(valid_dates)
+    }
+  }
+  if (is.na(cutoff_date) && !is.na(forecast_start_date)) {
+    cutoff_date <- forecast_start_date - 1
+  }
+  if (is.na(forecast_start_date) || is.na(cutoff_date)) {
+    stop(
+      sprintf(
+        "%s could not resolve cutoff/forecast start dates from env or forecast data.",
+        prefix
+      ),
+      call. = FALSE
+    )
+  }
+  list(cutoff_date = cutoff_date, forecast_start_date = forecast_start_date)
+}
+
+select_future_window <- function(df, time_col, value_col, start_date, horizon, label) {
+  if (!nrow(df)) {
+    stop(sprintf("%s has no rows.", label), call. = FALSE)
+  }
+  df[[time_col]] <- as.Date(df[[time_col]])
+  df <- df[order(df[[time_col]]), , drop = FALSE]
+
+  n_needed <- as.integer(horizon)
+  if (!is.finite(n_needed) || n_needed < 1L) {
+    stop(sprintf("%s invalid horizon: %s", label, as.character(horizon)), call. = FALSE)
+  }
+
+  idx <- which(df[[time_col]] >= start_date)
+  if (!length(idx)) {
+    warning(
+      sprintf(
+        "%s has no rows at/after %s; using persistence from last available value.",
+        label,
+        as.character(start_date)
+      ),
+      call. = FALSE
+    )
+    start_idx <- nrow(df)
+  } else {
+    start_idx <- idx[[1L]]
+  }
+  end_idx <- start_idx + n_needed - 1L
+  end_obs <- min(end_idx, nrow(df))
+
+  out <- df[start_idx:end_obs, c(time_col, value_col), drop = FALSE]
+  colnames(out) <- c("time", value_col)
+
+  if (nrow(out) < n_needed) {
+    n_pad <- n_needed - nrow(out)
+    last_time <- as.Date(out$time[[nrow(out)]])
+    last_val <- out[[value_col]][[nrow(out)]]
+    pad <- data.frame(
+      time = seq(last_time + 1, by = "day", length.out = n_pad),
+      stringsAsFactors = FALSE
+    )
+    pad[[value_col]] <- rep(last_val, n_pad)
+    out <- rbind(out, pad[, c("time", value_col), drop = FALSE])
+    warning(
+      sprintf(
+        "%s horizon short by %d rows; extended with persistence.",
+        label,
+        n_pad
+      ),
+      call. = FALSE
+    )
+  }
+  out
+}
+
 ###########################################################################################
 ####################################### Forecasts ######################################### 
 ###########################################################################################
@@ -780,8 +887,11 @@ glofas_forecast <- read.csv(resolve_shared_input_path(
   shared_root = UNIV_SHARED_INPUT_ROOT
 ))
 glofas_forecast$target_date <- as.Date(glofas_forecast$target_date)
-specific_date <- as.Date("2022-12-26")
-glofas_forecast <- glofas_forecast[glofas_forecast$target_date >= specific_date, ]
+run_dates <- resolve_run_dates(prefix = "UNIV", forecast_dates = glofas_forecast$target_date)
+glofas_forecast <- glofas_forecast[glofas_forecast$target_date >= run_dates$forecast_start_date, , drop = FALSE]
+if (!nrow(glofas_forecast)) {
+  stop("UNIV GloFAS forecast has no rows at/after forecast start date.", call. = FALSE)
+}
 glofas_forecast[,-1] <- log(glofas_forecast[,-1])
 
 num_ens_glofas <- dim(glofas_forecast)[2]-1
@@ -794,11 +904,15 @@ for(j in 1:J){
   num_mem[j] <- dim(ensembles[[j]])[2]
   ranges[j] <- dim(ensembles[[j]])[1]
 }
+forecast_horizon <- as.integer(ranges[[1L]])
+if (!is.finite(forecast_horizon) || forecast_horizon < 1L) {
+  stop("UNIV invalid forecast horizon inferred from ensembles.", call. = FALSE)
+}
 
 row_means_list <- vector("list", J + 1)
-row_means_list[[1]] <- rep(NA_real_, ranges[1])
+row_means_list[[1]] <- rep(NA_real_, forecast_horizon)
 for (j in 1:J) {
-  row_means_list[[j + 1]] <- rep(NA_real_, ranges[1])
+  row_means_list[[j + 1]] <- rep(NA_real_, forecast_horizon)
   row_means_list[[j + 1]][1:ranges[j]] <- rowMeans(ensembles[[j]])
 }
 mean_forecast <- do.call(rbind, row_means_list)
@@ -820,11 +934,15 @@ file_path <- resolve_covariate_path(
 ppt_data <- read_csv(file_path, show_col_types = FALSE)
 ppt_data$Date <- as.Date(ppt_data$Date)
 colnames(ppt_data) <- c('time','ppt')
-X_ppt <- ppt_data[ppt_data$time <= '2022-12-25',]
-
-start_date_idx <- which(ppt_data$time == '2022-12-26')
-end_date_idx <- which(ppt_data$time == '2022-12-26') + ranges[1]
-X_ppt_f <- ppt_data[start_date_idx:end_date_idx,c('ppt','time')]
+X_ppt <- ppt_data[ppt_data$time <= run_dates$cutoff_date, ]
+X_ppt_f <- select_future_window(
+  df = ppt_data,
+  time_col = "time",
+  value_col = "ppt",
+  start_date = run_dates$forecast_start_date,
+  horizon = forecast_horizon,
+  label = "UNIV precipitation covariate"
+)
 
 ##########
 ## SOIL ##
@@ -839,11 +957,15 @@ csv_file_path <- resolve_covariate_path(
 soil_moisture_data <- read.csv(csv_file_path)
 soil_moisture_data$Date <- as.Date(soil_moisture_data$Date)
 colnames(soil_moisture_data) <- c('time','soil')
-X_soil <- soil_moisture_data[soil_moisture_data$time <= '2022-12-25',]
-
-start_date_idx <- which(soil_moisture_data$time == '2022-12-26')
-end_date_idx <- which(soil_moisture_data$time == '2022-12-26') + ranges[1]
-X_soil_f <- soil_moisture_data[start_date_idx:end_date_idx,c('soil','time')]
+X_soil <- soil_moisture_data[soil_moisture_data$time <= run_dates$cutoff_date, ]
+X_soil_f <- select_future_window(
+  df = soil_moisture_data,
+  time_col = "time",
+  value_col = "soil",
+  start_date = run_dates$forecast_start_date,
+  horizon = forecast_horizon,
+  label = "UNIV soil covariate"
+)
 
 #########
 ## PCA ##
@@ -856,12 +978,17 @@ components_file_path <- resolve_covariate_path(
   label = "UNIV PCA covariate"
 )
 principal_components_df <- read_csv(components_file_path, show_col_types = FALSE)
+principal_components_df$time <- as.Date(principal_components_df$time)
 colnames(principal_components_df) <- c('time','Static_PCA')
-X_pca <- principal_components_df[principal_components_df$time <= '2022-12-25',]
-
-start_date_idx <- which(principal_components_df$time == '2022-12-26')
-end_date_idx <- which(principal_components_df$time == '2022-12-26') + ranges[1]
-X_pca_f <- principal_components_df[start_date_idx:end_date_idx,c('Static_PCA','time')]
+X_pca <- principal_components_df[principal_components_df$time <= run_dates$cutoff_date, ]
+X_pca_f <- select_future_window(
+  df = principal_components_df,
+  time_col = "time",
+  value_col = "Static_PCA",
+  start_date = run_dates$forecast_start_date,
+  horizon = forecast_horizon,
+  label = "UNIV PCA covariate"
+)
 
 ###########
 ## Merge ##
@@ -898,7 +1025,7 @@ timestamps <- all_data[, 'time']
 ## Add Constant at the end ##
 #############################
 X <- cbind(all_data[,c('ppt','soil','Static_PCA')], rep(1, TT))
-X_f <- cbind(X_f[,-1], rep(1, ranges[1]))
+X_f <- cbind(X_f[,-1, drop = FALSE], rep(1, forecast_horizon))
 ########### Adding covariates
 X_ext <- matrix(NA_real_, ncol = 5, nrow = TT)
 
@@ -923,12 +1050,12 @@ X_ext[,5] <- X_ext[,5]/sd5
 ###############################################
 ###############################################
 ########## Adding covariates at the future
-X_ext_f <- matrix(NA_real_, ncol = 5, nrow = ranges[1])
-X_ext_f[,1] <- c(X[TT,1],X_f[1:(ranges[1]-1),1])
-X_ext_f[,2] <- c(X[(TT-1),1],X[TT,1],X_f[1:(ranges[1]-2),1])
+X_ext_f <- matrix(NA_real_, ncol = 5, nrow = forecast_horizon)
+X_ext_f[,1] <- c(X[TT,1],X_f[1:(forecast_horizon-1),1])
+X_ext_f[,2] <- c(X[(TT-1),1],X[TT,1],X_f[1:(forecast_horizon-2),1])
 X_ext_f[,3] <- X_f[,1]^2
-X_ext_f[,4] <- c(X[TT,1],X_f[1:(ranges[1]-1),1])^2
-X_ext_f[,5] <- c(X[(TT-1),1],X[TT,1],X_f[1:(ranges[1]-2),1])^2
+X_ext_f[,4] <- c(X[TT,1],X_f[1:(forecast_horizon-1),1])^2
+X_ext_f[,5] <- c(X[(TT-1),1],X[TT,1],X_f[1:(forecast_horizon-2),1])^2
 #####################
 ## STANDARDIZATION ##
 #####################
@@ -1773,6 +1900,10 @@ tol1 <- 1e-3
 tol2 <- 1e-3
 conv.check <- 0
 max_iter <- 200
+tol1 <- read_env_num("UNIV_GAMSIG_ELBO_TOL", tol1)
+tol2 <- read_env_num("UNIV_GAMSIG_CONVERGENCE_TOL", read_env_num("UNIV_GAMSIG_ELBO_REL_TOL", tol2))
+max_iter <- read_env_int("UNIV_GAMSIG_MAX_ITER", max_iter, min_val = 1L)
+min_total_iters <- read_env_int("UNIV_GAMSIG_MIN_TOTAL_ITERS", 1L, min_val = 1L)
 
 if(USE_PREV){
   prev_override <- Sys.getenv("UNIV_PREV_RDATA", "")
@@ -1941,7 +2072,7 @@ if(USE_PREV){
     iter = iter + 1
     
     if(theta_update){
-      if ((crit_ELBO+conv.check) < tol2) {
+      if (iter >= min_total_iters && (crit_ELBO + conv.check) < tol2) {
         FLAG = FALSE
       }
     }
@@ -1956,7 +2087,7 @@ if (verbose) {
               iter, round(run.time$toc - run.time$tic, 3)), "\n")
 }
 
-n.samp <- 2000
+n.samp <- read_env_int("UNIV_N_SAMP", n.samp, min_val = 1L)
 
 if(SIMS){
 tictoc::tic("run time")
@@ -2148,6 +2279,20 @@ initial_delta   <- c(0.9999995, 0.9997, 0.9997, 0.9997, 0.8995)
 # initial_delta <- c(0.999999, 0.9952, 0.995, 0.9997, 0.977) 
 # initial_delta <- c(df_t  , df_s1 , df_s2 , df_s67, lambda)
 
+initial_delta <- c(
+  read_env_num("UNIV_DF_T", initial_delta[[1L]]),
+  read_env_num("UNIV_DF_S1", initial_delta[[2L]]),
+  read_env_num("UNIV_DF_S2", initial_delta[[3L]]),
+  read_env_num("UNIV_DF_S67", initial_delta[[4L]]),
+  read_env_num("UNIV_LAMBDA", initial_delta[[5L]])
+)
+cat(sprintf(
+  "[univ_legacy_env_delta] df_t=%.8f df_s1=%.8f df_s2=%.8f df_s67=%.8f lambda=%.8f\n",
+  initial_delta[[1L]], initial_delta[[2L]], initial_delta[[3L]],
+  initial_delta[[4L]], initial_delta[[5L]]
+))
+flush.console()
+
 
 upper_bounds <- c(rep(0.985, (length(initial_delta)-1)), 1.0e-6)   
 upper_bounds <- rep(0.9999999, length(initial_delta))  
@@ -2175,4 +2320,8 @@ objective_deltas_min <- function(delta) {
 
 d <- initial_delta
 ############################################
-objective_deltas(d, TRUE, TRUE);
+objective_deltas(
+  d,
+  SIMS = env_flag("UNIV_SIMS_ENABLED", TRUE),
+  use_covariates = env_flag("UNIV_USE_COVARIATES", TRUE)
+);

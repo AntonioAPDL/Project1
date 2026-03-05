@@ -1,9 +1,9 @@
 univar_theory_default_gamma_sigma_policy <- function() {
   list(
-    warmup_freeze_iters = 20L,
+    warmup_freeze_iters = 5L,
     min_update_iters = 50L,
     min_total_iters = 50L,
-    max_iter = 800L,
+    max_iter = 100L,
     freeze_target = "gamma_sigma",
     guard_refreeze_iters = 10L,
     convergence_tol = 1e-6,
@@ -75,7 +75,7 @@ univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
   }
 
   if (!is.finite(out$warmup_freeze_iters) || out$warmup_freeze_iters < 0L) {
-    out$warmup_freeze_iters <- 20L
+    out$warmup_freeze_iters <- 5L
   }
   out$warmup_freeze_iters <- as.integer(out$warmup_freeze_iters)
 
@@ -90,7 +90,7 @@ univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
   out$min_total_iters <- as.integer(out$min_total_iters)
 
   if (!is.finite(out$max_iter) || out$max_iter < 1L) {
-    out$max_iter <- 800L
+    out$max_iter <- 100L
   }
   out$max_iter <- as.integer(out$max_iter)
 

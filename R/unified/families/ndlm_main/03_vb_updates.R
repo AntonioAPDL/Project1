@@ -290,6 +290,82 @@ ndlm_theory_alloc_segment_cov <- function(k_len, constants, base_cov, inactive_r
   out
 }
 
+ndlm_theory_build_hist_pseudo_obs <- function(
+  source_obs,
+  sigma_by_source,
+  source_names = c("usgs", "nws", "glofas"),
+  fallback_y = NULL,
+  fallback_var = 1e12
+) {
+  if (!is.list(source_obs)) {
+    stop("source_obs must be a named list of source vectors", call. = FALSE)
+  }
+  source_names <- unique(as.character(source_names))
+  source_names <- source_names[nzchar(source_names)]
+  if (length(source_names) < 1L) {
+    stop("source_names must include at least one source label", call. = FALSE)
+  }
+
+  lengths <- vapply(source_names, function(nm) length(as.numeric(source_obs[[nm]])), integer(1))
+  Tn <- suppressWarnings(as.integer(max(lengths)))
+  if (!is.finite(Tn) || Tn < 1L) {
+    stop("source_obs must include at least one non-empty source vector", call. = FALSE)
+  }
+
+  fallback_y <- as.numeric(fallback_y)
+  if (length(fallback_y) < Tn) {
+    fallback_y <- c(fallback_y, rep(NA_real_, Tn - length(fallback_y)))
+  }
+  fallback_y <- fallback_y[seq_len(Tn)]
+
+  fallback_var <- suppressWarnings(as.numeric(fallback_var[[1L]]))
+  if (!is.finite(fallback_var) || fallback_var <= 0) {
+    fallback_var <- 1e12
+  }
+
+  y_pseudo <- rep(0, Tn)
+  R_vec <- rep(fallback_var, Tn)
+  n_sources <- integer(Tn)
+
+  for (t in seq_len(Tn)) {
+    obs_vals <- numeric(0)
+    prec_vals <- numeric(0)
+    for (nm in source_names) {
+      obs_nm <- as.numeric(source_obs[[nm]])
+      if (length(obs_nm) < t) next
+      y_nt <- obs_nm[[t]]
+      sigma_nt <- suppressWarnings(as.numeric(sigma_by_source[[nm]]))
+      if (!is.finite(y_nt) || !is.finite(sigma_nt) || sigma_nt <= 0) next
+      obs_vals <- c(obs_vals, y_nt)
+      prec_vals <- c(prec_vals, 1 / max(sigma_nt, 1e-10))
+    }
+
+    if (length(obs_vals) > 0L) {
+      prec_sum <- sum(prec_vals)
+      if (!is.finite(prec_sum) || prec_sum <= 0) {
+        prec_sum <- 1e-12
+      }
+      y_pseudo[[t]] <- sum(obs_vals * prec_vals) / prec_sum
+      R_vec[[t]] <- 1 / prec_sum
+      n_sources[[t]] <- as.integer(length(obs_vals))
+    } else {
+      y_fallback <- fallback_y[[t]]
+      if (!is.finite(y_fallback)) {
+        y_fallback <- 0
+      }
+      y_pseudo[[t]] <- y_fallback
+      R_vec[[t]] <- fallback_var
+      n_sources[[t]] <- 0L
+    }
+  }
+
+  list(
+    y = as.numeric(y_pseudo),
+    R_vec = pmax(as.numeric(R_vec), 1e-10),
+    n_sources = as.integer(n_sources)
+  )
+}
+
 ndlm_theory_has_converged <- function(
   iter,
   min_total_iters,
@@ -334,7 +410,33 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   m0 <- rep(0, d)
   C0 <- diag(c(5, rep(1, d - 1)), d)
 
-  sigma <- max(stats::sd(inputs$y), 0.1)
+  source_names <- c("usgs", "nws", "glofas")
+  retros <- inputs$retros
+  if (!is.list(retros)) {
+    retros <- list()
+  }
+  source_obs <- list(
+    usgs = as.numeric(if (!is.null(retros$usgs)) retros$usgs else inputs$y),
+    nws = as.numeric(if (!is.null(retros$nws)) retros$nws else rep(NA_real_, Tn)),
+    glofas = as.numeric(if (!is.null(retros$glofas)) retros$glofas else rep(NA_real_, Tn))
+  )
+  for (nm in source_names) {
+    cur <- source_obs[[nm]]
+    if (length(cur) < Tn) {
+      cur <- c(cur, rep(NA_real_, Tn - length(cur)))
+    }
+    source_obs[[nm]] <- as.numeric(cur[seq_len(Tn)])
+  }
+
+  sigma_init <- vapply(source_names, function(nm) {
+    x <- source_obs[[nm]]
+    sdv <- suppressWarnings(stats::sd(x, na.rm = TRUE))
+    if (!is.finite(sdv) || sdv < 0.1) sdv <- 0.1
+    as.numeric(sdv)
+  }, numeric(1))
+  names(sigma_init) <- source_names
+  sigma_by_source <- pmax(sigma_init, 1e-6)
+
   hist_df_components <- ndlm_theory_df_components(constants, mode = "hist", k = 1L)
   fore_df_components <- ndlm_theory_df_components(constants, mode = "fore", k = 1L)
   w_hist <- mean((1 - hist_df_components) / hist_df_components)
@@ -342,7 +444,7 @@ ndlm_theory_run_vb <- function(inputs, constants) {
 
   max_iter <- suppressWarnings(as.integer(constants$max_iter))
   if (!is.finite(max_iter) || max_iter < 1L) {
-    max_iter <- 800L
+    max_iter <- 100L
   }
   min_total_iters <- suppressWarnings(as.integer(constants$min_total_iters))
   if (!is.finite(min_total_iters) || min_total_iters < 1L) {
@@ -355,25 +457,61 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   if (!is.finite(elbo_tol) || elbo_tol <= 0) elbo_tol <- 1e-6
   if (!is.finite(elbo_rel_tol) || elbo_rel_tol <= 0) elbo_rel_tol <- 2.5e-4
 
-  seq_sigma <- rep(NA_real_, max_iter)
+  seq_sigma <- matrix(NA_real_, nrow = max_iter, ncol = length(source_names))
+  colnames(seq_sigma) <- sprintf("sigma_%s_exp", source_names)
   seq_elbo <- rep(NA_real_, max_iter)
+  scale_colnames <- c(
+    "sigma_exp",
+    "sigma_usgs_exp",
+    "sigma_nws_exp",
+    "sigma_glofas_exp",
+    "w_hist",
+    "w_fore",
+    "df_t",
+    "df_s1",
+    "df_s2",
+    "df_s67",
+    "df_discrep",
+    "lambda",
+    "df_trans",
+    "df_covs"
+  )
+  seq_scale <- matrix(NA_real_, nrow = max_iter, ncol = length(scale_colnames))
+  colnames(seq_scale) <- scale_colnames
   prev_elbo <- NA_real_
   crit_elbo <- Inf
   crit_elbo_rel <- Inf
+  sigma_shape_final <- rep(constants$a_sigma, length(source_names))
+  sigma_rate_final <- rep(constants$b_sigma, length(source_names))
+  names(sigma_shape_final) <- source_names
+  names(sigma_rate_final) <- source_names
   fit <- NULL
   converged <- FALSE
   convergence_reason <- "max_iter_reached"
   iterations_completed <- 0L
   df_mat_full <- ndlm_theory_discount_matrix_full(constants, state_dim = d, k = 1L)
   q_diag <- ndlm_theory_q_diag_from_discount(constants, state_dim = d)
+  hist_assim <- ndlm_theory_build_hist_pseudo_obs(
+    source_obs = source_obs,
+    sigma_by_source = sigma_by_source,
+    source_names = source_names,
+    fallback_y = inputs$y,
+    fallback_var = max(as.numeric(sigma_by_source[["usgs"]]), 1e6, na.rm = TRUE)
+  )
 
   for (iter in seq_len(max_iter)) {
-    R_vec <- rep(sigma, Tn)
+    hist_assim <- ndlm_theory_build_hist_pseudo_obs(
+      source_obs = source_obs,
+      sigma_by_source = sigma_by_source,
+      source_names = source_names,
+      fallback_y = inputs$y,
+      fallback_var = max(as.numeric(sigma_by_source[["usgs"]]), 1e6, na.rm = TRUE)
+    )
 
     fit <- ndlm_theory_kalman_smoother(
-      y = inputs$y,
+      y = hist_assim$y,
       H_mat = H_mat,
-      R_vec = R_vec,
+      R_vec = hist_assim$R_vec,
       q_diag = q_diag,
       df_mat = df_mat_full,
       m0 = m0,
@@ -381,14 +519,64 @@ ndlm_theory_run_vb <- function(inputs, constants) {
       backend = constants$kalman_backend
     )
 
-    resid <- inputs$y - fit$fitted_mean
-    sigma_shape <- constants$a_sigma + Tn / 2
-    sigma_rate <- constants$b_sigma + 0.5 * sum(resid^2 + fit$fitted_var)
-    sigma <- sigma_rate / max(sigma_shape - 1, 1.01)
-    sigma <- max(sigma, 1e-6)
+    fitted_mean <- as.numeric(fit$fitted_mean)
+    fitted_latent_var <- pmax(vapply(
+      seq_len(Tn),
+      function(tt) as.numeric(crossprod(H_mat[tt, ], fit$smooth_cov[, , tt] %*% H_mat[tt, ])),
+      numeric(1)
+    ), 1e-10)
 
-    seq_sigma[iter] <- sigma
-    seq_elbo[iter] <- -0.5 * sum(log(2 * pi * sigma) + resid^2 / sigma)
+    source_elbo <- rep(0, length(source_names))
+    names(source_elbo) <- source_names
+    sigma_next <- sigma_by_source
+    for (nm in source_names) {
+      obs <- as.numeric(source_obs[[nm]])
+      ok <- is.finite(obs) & is.finite(fitted_mean) & is.finite(fitted_latent_var)
+      n_obs <- sum(ok)
+
+      sigma_shape <- constants$a_sigma + n_obs / 2
+      sigma_rate <- constants$b_sigma
+      if (n_obs > 0L) {
+        resid <- obs[ok] - fitted_mean[ok]
+        sigma_rate <- sigma_rate + 0.5 * sum(resid^2 + fitted_latent_var[ok])
+      }
+      sigma_new <- sigma_rate / max(sigma_shape - 1, 1.01)
+      sigma_new <- max(sigma_new, 1e-6)
+      sigma_next[[nm]] <- sigma_new
+      sigma_shape_final[[nm]] <- sigma_shape
+      sigma_rate_final[[nm]] <- sigma_rate
+
+      prior_term <- constants$a_sigma * log(constants$b_sigma) -
+        lgamma(constants$a_sigma) -
+        (constants$a_sigma + 1) * log(sigma_new) -
+        constants$b_sigma / sigma_new
+      ll_term <- 0
+      if (n_obs > 0L) {
+        resid <- obs[ok] - fitted_mean[ok]
+        ll_term <- -0.5 * sum(log(2 * pi * sigma_new) + (resid^2 + fitted_latent_var[ok]) / sigma_new)
+      }
+      source_elbo[[nm]] <- ll_term + prior_term
+    }
+    sigma_by_source <- sigma_next
+
+    seq_sigma[iter, ] <- as.numeric(sigma_by_source[source_names])
+    seq_elbo[iter] <- sum(as.numeric(source_elbo))
+    seq_scale[iter, ] <- c(
+      sigma_by_source[["usgs"]],
+      sigma_by_source[["usgs"]],
+      sigma_by_source[["nws"]],
+      sigma_by_source[["glofas"]],
+      w_hist,
+      w_fore,
+      constants$df_t,
+      constants$df_s1,
+      constants$df_s2,
+      constants$df_s67,
+      constants$df_discrep,
+      constants$lambda,
+      constants$df_trans,
+      constants$df_covs
+    )
     if (is.finite(prev_elbo) && is.finite(seq_elbo[iter])) {
       crit_elbo <- abs(seq_elbo[iter] - prev_elbo)
       denom <- max(abs(prev_elbo), 1e-12)
@@ -406,12 +594,15 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     }
     cat(
       sprintf(
-        "[gamsig_progress] family=ndlm_main p0=NA iter=%d elbo=%s crit_elbo=%s crit_elbo_rel=%s sigma_exp=%s gamma_exp=NA state_norm_sq=%s w_hist=%s w_fore=%s df_t=%s df_s1=%s df_s2=%s df_s67=%s df_discrep=%s lambda=%s\n",
+        "[gamsig_progress] family=ndlm_main p0=NA iter=%d elbo=%s crit_elbo=%s crit_elbo_rel=%s sigma_exp=%s sigma_usgs_exp=%s sigma_nws_exp=%s sigma_glofas_exp=%s gamma_exp=NA state_norm_sq=%s w_hist=%s w_fore=%s df_t=%s df_s1=%s df_s2=%s df_s67=%s df_discrep=%s lambda=%s\n",
         as.integer(iter),
         fmt_iter_num(seq_elbo[iter]),
         fmt_iter_num(crit_elbo),
         fmt_iter_num(crit_elbo_rel),
-        fmt_iter_num(sigma),
+        fmt_iter_num(sigma_by_source[["usgs"]]),
+        fmt_iter_num(sigma_by_source[["usgs"]]),
+        fmt_iter_num(sigma_by_source[["nws"]]),
+        fmt_iter_num(sigma_by_source[["glofas"]]),
         fmt_iter_num(state_norm_sq),
         fmt_iter_num(w_hist),
         fmt_iter_num(w_fore),
@@ -444,8 +635,9 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   if (iterations_completed < 1L) {
     iterations_completed <- max_iter
   }
-  seq_sigma <- seq_sigma[seq_len(iterations_completed)]
+  seq_sigma <- seq_sigma[seq_len(iterations_completed), , drop = FALSE]
   seq_elbo <- seq_elbo[seq_len(iterations_completed)]
+  seq_scale <- seq_scale[seq_len(iterations_completed), , drop = FALSE]
 
   exps <- rbind(fit$fitted_mean, fit$fitted_mean)
   rownames(exps) <- c("median", "mean")
@@ -472,6 +664,10 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   v_smooth <- pmax(pick_fit_vec("smoothed_var", fit$fitted_var), 1e-10)
   fit_diagnostics <- list(
     y_observed = y_obs,
+    y_assim_hist_pseudo = hist_assim$y,
+    R_assim_hist_pseudo = hist_assim$R_vec,
+    n_sources_assim_hist = hist_assim$n_sources,
+    n_sources_assim_hist_mean = mean(hist_assim$n_sources),
     y_predicted_one_step = y_pred,
     y_filtered = y_filt,
     y_smoothed = y_smooth,
@@ -480,7 +676,10 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     var_smoothed = v_smooth,
     residual_one_step = y_obs - y_pred,
     residual_filtered = y_obs - y_filt,
-    residual_smoothed = y_obs - y_smooth
+    residual_smoothed = y_obs - y_smooth,
+    residual_source_usgs = as.numeric(source_obs$usgs) - y_smooth,
+    residual_source_nws = as.numeric(source_obs$nws) - y_smooth,
+    residual_source_glofas = as.numeric(source_obs$glofas) - y_smooth
   )
 
   nws_std <- ndlm_theory_standardize(inputs$forecast$nws)
@@ -561,7 +760,16 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   }
 
   set.seed(constants$seed + 33L)
-  samp_sigma <- matrix(1 / stats::rgamma(constants$n_draws, shape = constants$a_sigma + Tn / 2, rate = constants$b_sigma + Tn / 2), nrow = 1)
+  samp_sigma <- matrix(NA_real_, nrow = length(source_names), ncol = constants$n_draws)
+  rownames(samp_sigma) <- source_names
+  for (j in seq_along(source_names)) {
+    nm <- source_names[[j]]
+    shp <- sigma_shape_final[[nm]]
+    rte <- sigma_rate_final[[nm]]
+    if (!is.finite(shp) || shp <= 0) shp <- constants$a_sigma
+    if (!is.finite(rte) || rte <= 0) rte <- constants$b_sigma
+    samp_sigma[j, ] <- 1 / stats::rgamma(constants$n_draws, shape = shp, rate = rte)
+  }
 
   standard_forecast_errors <- rep(NA_real_, K_max)
   standard_forecast_errors[seq_len(K_overlap)] <- inputs$forecast$nws[seq_len(K_overlap)] - inputs$forecast$glofas[seq_len(K_overlap)]
@@ -619,6 +827,7 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     samp_theta_ens = samp_theta_ens,
     samp_sigma = samp_sigma,
     seq_sigma = seq_sigma,
+    seq_scale = seq_scale,
     seq_elbo = seq_elbo,
     delta = c(diff(seq_elbo), 0),
     iterations_completed = iterations_completed,
@@ -631,7 +840,9 @@ ndlm_theory_run_vb <- function(inputs, constants) {
       elbo_tol = elbo_tol,
       elbo_rel_tol = elbo_rel_tol
     ),
-    sigma = sigma,
+    sigma = as.numeric(sigma_by_source[["usgs"]]),
+    sigma_by_source = sigma_by_source[source_names],
+    sigma_mean = mean(as.numeric(sigma_by_source[source_names])),
     w_hist = w_hist,
     w_fore = w_fore,
     discount_factors = c(

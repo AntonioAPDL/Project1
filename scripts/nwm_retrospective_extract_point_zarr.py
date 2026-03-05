@@ -15,6 +15,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from flow_scale import TRANSFORM_SCALES, forward_transform_cms, inverse_transform_to_cms
+
 
 @dataclass
 class ExtractionMeta:
@@ -31,6 +33,7 @@ class ExtractionMeta:
     start_date: str
     end_date: str
     aggregate: str
+    aggregation_scale: str
     rows_out: int
     created_utc: str
 
@@ -50,6 +53,12 @@ def parse_args() -> argparse.Namespace:
         choices=("hourly", "daily"),
         default="daily",
         help="Output aggregation level.",
+    )
+    p.add_argument(
+        "--aggregation-scale",
+        choices=list(TRANSFORM_SCALES),
+        default="log1p_cms",
+        help="Transform scale used when --aggregate=daily.",
     )
     p.add_argument("--out-csv", required=True, help="Output CSV path.")
     p.add_argument("--out-meta", required=True, help="Output metadata JSON path.")
@@ -100,9 +109,16 @@ def main() -> int:
 
     if args.aggregate == "daily":
         df["date"] = pd.to_datetime(df["time"]).dt.floor("D")
+        df["work_value"] = forward_transform_cms(df["streamflow_cms"], args.aggregation_scale)
+        daily_work = (
+            df.groupby("date", as_index=False)["work_value"]
+            .mean()
+            .rename(columns={"work_value": "mean_work_value"})
+        )
         out = (
             df.groupby("date", as_index=False)["streamflow_cms"]
             .mean()
+            .rename(columns={"streamflow_cms": "mean_raw_cms"})
             .assign(
                 version=args.version,
                 feature_id=selected_feature_id,
@@ -112,6 +128,11 @@ def main() -> int:
                 target_longitude=float(args.lon),
                 distance_deg=distance_deg,
             )
+        )
+        out = out.merge(daily_work, on="date", how="left")
+        out["streamflow_cms"] = inverse_transform_to_cms(
+            out["mean_work_value"].to_numpy(dtype="float64"),
+            args.aggregation_scale,
         )
         out = out[
             [
@@ -169,6 +190,7 @@ def main() -> int:
         start_date=args.start_date,
         end_date=args.end_date,
         aggregate=args.aggregate,
+        aggregation_scale=args.aggregation_scale,
         rows_out=int(len(out)),
         created_utc=datetime.now(timezone.utc).isoformat(),
     )
@@ -181,4 +203,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

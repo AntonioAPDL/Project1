@@ -12,6 +12,7 @@
   "start_date": "1993-01-01",
   "end_date": "2018-12-31",
   "aggregate": "daily",
+  "aggregation_scale": "log_log1p_cms",
   "rows_out": 9496,
-  "created_utc": "2026-02-18T02:51:49.988854+00:00"
+  "created_utc": "2026-02-19T00:34:58.998981+00:00"
 }

@@ -144,8 +144,9 @@ def main() -> int:
             if tname is None:
                 raise RuntimeError(f"No time coordinate found in shard: {zpath}")
 
-            t = pd.to_datetime(da[tname].values)
-            y = da.isel(latitude=lat_i, longitude=lon_i).values.astype("float64")
+            # Some shards can collapse to scalar time/value; normalize to 1D.
+            t = pd.to_datetime(np.atleast_1d(da[tname].values))
+            y = np.atleast_1d(da.isel(latitude=lat_i, longitude=lon_i).values).astype("float64")
             out = pd.DataFrame(
                 {
                     "date": t,

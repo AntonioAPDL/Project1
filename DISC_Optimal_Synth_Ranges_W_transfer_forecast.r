@@ -834,13 +834,31 @@ adjustment_years <- 170
 ELI_lon$time <- ELI_lon$time - years(adjustment_years)
 #
 CFSToCMS_CONVERSION_FACTOR = 0.0283168466
-# Read and process USGS data
-data_usgs_r <- readNWISdv(siteNumbers = site_code[1], parameterCd = "00060", statCd = "00003")
-San_Lorenzo_Daily_USGS_R <- data_usgs_r %>%
-  mutate(timestamp = as.Date(Date),
-         data0 = log(X_00060_00003*CFSToCMS_CONVERSION_FACTOR + 1)) %>%
-  filter(timestamp > as.Date("1979-01-01"))
-San_Lorenzo_Daily_USGS_R$time <- San_Lorenzo_Daily_USGS_R$timestamp
+# Read and process USGS data (non-fatal if the external service is unavailable)
+San_Lorenzo_Daily_USGS_R <- tryCatch({
+  data_usgs_r <- readNWISdv(siteNumbers = site_code[1], parameterCd = "00060", statCd = "00003")
+  out <- data_usgs_r %>%
+    mutate(
+      timestamp = as.Date(Date),
+      data0 = log(X_00060_00003 * CFSToCMS_CONVERSION_FACTOR + 1)
+    ) %>%
+    filter(timestamp > as.Date("1979-01-01"))
+  out$time <- out$timestamp
+  out
+}, error = function(e) {
+  warning(
+    sprintf(
+      "USGS readNWISdv failed (%s). Continuing fit without live USGS fetch.",
+      conditionMessage(e)
+    ),
+    call. = FALSE
+  )
+  data.frame(
+    timestamp = as.Date(character(0)),
+    data0 = numeric(0),
+    time = as.Date(character(0))
+  )
+})
 
 ###########################################################################################
 ####################################### Forecasts ######################################### 
@@ -852,7 +870,12 @@ num_ens_nws <- dim(nws_forecast)[2]-1
 
 glofas_forecast <- forecasts$glofas_forecast
 glofas_forecast$target_date <- as.Date(glofas_forecast$target_date)
-specific_date <- as.Date("2022-12-26")
+cutoff_date_local <- suppressWarnings(as.Date(Sys.getenv("DISC_W_CUTOFF_DATE", "2022-12-25")))
+if (is.na(cutoff_date_local)) cutoff_date_local <- as.Date("2022-12-25")
+specific_date <- suppressWarnings(
+  as.Date(Sys.getenv("DISC_W_FORECAST_START_DATE", as.character(cutoff_date_local + 1L)))
+)
+if (is.na(specific_date)) specific_date <- cutoff_date_local + 1L
 glofas_forecast <- glofas_forecast[glofas_forecast$target_date >= specific_date, ]
 glofas_forecast[,-1] <- log(glofas_forecast[,-1])
 

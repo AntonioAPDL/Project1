@@ -22,6 +22,8 @@ import netCDF4
 import numpy as np
 import pandas as pd
 
+from flow_scale import TRANSFORM_SCALES, forward_transform_cms, inverse_transform_to_cms
+
 
 @dataclass
 class ExtractionMeta:
@@ -38,6 +40,7 @@ class ExtractionMeta:
     start_date: str
     end_date: str
     aggregate: str
+    aggregation_scale: str
     requested_hours: int
     downloaded_hours: int
     missing_hours: int
@@ -65,10 +68,28 @@ def parse_args() -> argparse.Namespace:
         help="Output aggregation level.",
     )
     p.add_argument(
+        "--aggregation-scale",
+        choices=list(TRANSFORM_SCALES),
+        default="log1p_cms",
+        help="Transform scale used when --aggregate=daily.",
+    )
+    p.add_argument(
         "--max-hours",
         type=int,
         default=0,
         help="Optional cap for processed hours (0 means all requested hours).",
+    )
+    p.add_argument(
+        "--aws-retries",
+        type=int,
+        default=4,
+        help="Retries per hourly S3 copy attempt.",
+    )
+    p.add_argument(
+        "--retry-sleep-sec",
+        type=float,
+        default=2.0,
+        help="Sleep seconds between retries.",
     )
     p.add_argument(
         "--missing-hours-csv",
@@ -84,10 +105,18 @@ def s3_key_for_hour(ts: pd.Timestamp) -> str:
     return f"{ts:%Y}/{ts:%Y%m%d%H}00.CHRTOUT_DOMAIN1.comp"
 
 
-def aws_cp_no_sign_request(src: str, dst: str) -> bool:
+def aws_cp_no_sign_request(src: str, dst: str, retries: int, retry_sleep_sec: float) -> bool:
+    import time
+
     cmd = ["aws", "s3", "cp", "--no-sign-request", src, dst]
-    p = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    return p.returncode == 0
+    attempts = max(1, retries)
+    for i in range(attempts):
+        p = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if p.returncode == 0:
+            return True
+        if i < attempts - 1:
+            time.sleep(max(0.0, retry_sleep_sec))
+    return False
 
 
 def find_feature_index(
@@ -155,7 +184,12 @@ def main() -> int:
         for ts in hourly:
             key = s3_key_for_hour(ts)
             src = f"s3://{args.bucket}/{key}"
-            ok = aws_cp_no_sign_request(src, str(tmp_path))
+            ok = aws_cp_no_sign_request(
+                src=src,
+                dst=str(tmp_path),
+                retries=int(args.aws_retries),
+                retry_sleep_sec=float(args.retry_sleep_sec),
+            )
             if not ok:
                 missing.append({"datetime_utc": ts.isoformat(), "s3_key": key})
                 continue
@@ -196,10 +230,18 @@ def main() -> int:
 
     df = pd.DataFrame(rows).sort_values("datetime_utc")
     if args.aggregate == "daily":
+        df["work_value"] = forward_transform_cms(df["streamflow_cms"], args.aggregation_scale)
+        daily_work = (
+            df.assign(date=pd.to_datetime(df["datetime_utc"]).dt.floor("D"))
+            .groupby("date", as_index=False)["work_value"]
+            .mean()
+            .rename(columns={"work_value": "mean_work_value"})
+        )
         out = (
             df.assign(date=pd.to_datetime(df["datetime_utc"]).dt.floor("D"))
             .groupby("date", as_index=False)["streamflow_cms"]
             .mean()
+            .rename(columns={"streamflow_cms": "mean_raw_cms"})
             .assign(
                 version=args.version,
                 feature_id=int(feature_info["feature_id"]),
@@ -209,6 +251,11 @@ def main() -> int:
                 target_longitude=float(args.lon),
                 distance_deg=float(feature_info["distance_deg"]),
             )
+        )
+        out = out.merge(daily_work, on="date", how="left")
+        out["streamflow_cms"] = inverse_transform_to_cms(
+            out["mean_work_value"].to_numpy(dtype="float64"),
+            args.aggregation_scale,
         )
         out = out[
             [
@@ -259,6 +306,7 @@ def main() -> int:
         start_date=args.start_date,
         end_date=args.end_date,
         aggregate=args.aggregate,
+        aggregation_scale=args.aggregation_scale,
         requested_hours=int(len(hourly)),
         downloaded_hours=int(len(df)),
         missing_hours=int(len(missing)),

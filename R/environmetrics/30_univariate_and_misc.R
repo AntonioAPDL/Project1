@@ -256,6 +256,14 @@ has_disc_w_bundle <- function() {
   )))
 }
 
+has_univar_bundle <- function() {
+  isTRUE(MODEL_RUN_EXDQLM_UNIVAR) || any(nzchar(c(
+    UNI_VAR_05, UNI_VAR_20, UNI_VAR_35,
+    UNI_VAR_50, UNI_VAR_65, UNI_VAR_80, UNI_VAR_95
+  )))
+}
+
+if (has_univar_bundle()) {
 profile_section(
   "univariate.load_vars_05",
   load_quantile_bundle_with_alias(file_path, target_label = "05", source_label = UNI_VAR_SRC_05, suffix = "exAL_synth_DISC_uni")
@@ -334,10 +342,14 @@ length(timestamps)
 diff <- 0
 
 par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
-time_cuts <- which(timestamps %in% c("2012-08-01","2016-05-01","2016-09-15","2019-08-01") )
+time_cuts <- resolve_time_cuts(
+  timestamps = timestamps,
+  cutoff_date = CUTOFF_DATE,
+  context = "30_univariate_and_misc.univariate_demo"
+)
 dates_ts_usgs <- timestamps
 # idx <- time_cuts[3]:time_cuts[4]
-idx <- (TT-1000-diff):(TT-diff-500)
+idx <- safe_time_index(TT - 1000 - diff, TT - diff - 500, TT, context = "30_univariate.demo_window")
 # TTT_temp <- dim(new.theta.out_50_exAL_synth_DISC_uni$exps)[2]
 # idx <- (TTT_temp-200):(TTT_temp)
 percentiles <- c(0.025, 0.5, 0.975)
@@ -581,7 +593,7 @@ for(k in 2:ranges[1]){
 }
 
 plot.ts(y_forecast[1,], ylim = c(-1,4), col = 'darkblue', lwd = 2)
-truth_log <- log(San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date >= as.Date('2022-12-26')][1:ranges[1]])
+truth_log <- log(San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date >= FORECAST_START_DATE][1:ranges[1]])
 lines(truth_log, col = 'black')
 points(truth_log, col = 'black')
 
@@ -619,7 +631,7 @@ for(k in 2:ranges[1]){
 lines(y_forecast[1,], col = 'darkred', lwd = 2)
 
 
-truth_log <- log(San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date >= as.Date('2022-12-26')][1:ranges[1]])
+truth_log <- log(San_Lorenzo_Daily_USGS_R$data0[San_Lorenzo_Daily_USGS_R$Date >= FORECAST_START_DATE][1:ranges[1]])
 plot.ts(truth_log, col = 'black', ylim = c(-1,4))
 points(truth_log, col = 'black')
 
@@ -1065,6 +1077,9 @@ dim(synth_hist_uni)
 dim(synth_hist_uni_q)
 dim(synth_f2_q)
 dim(synth_f2)
+} else {
+  warning("Skipping univariate load/diagnostic block in 30_univariate_and_misc.R because univariate family is disabled.", call. = FALSE)
+}
 
 
 if (has_ndlm_bundle()) {
@@ -1073,7 +1088,11 @@ if (has_ndlm_bundle()) {
   profile_section("univariate.load_disc_vars_ndlm_50", load_ndlm_bundle_with_normalize(file_path))
 
   par(mfrow = c(1, 1), mar = c(4, 4, 2, 1), oma = c(4, 0, 0, 0))
-  time_cuts <- which(timestamps %in% c("2012-08-01","2016-05-01","2016-09-15","2019-08-01") )
+  time_cuts <- resolve_time_cuts(
+    timestamps = timestamps,
+    cutoff_date = CUTOFF_DATE,
+    context = "30_univariate_and_misc.ndlm_demo"
+  )
   dates_ts_usgs <- timestamps
   idx <- time_cuts[3]:time_cuts[4]
   percentiles <- c(0.025, 0.5, 0.975)

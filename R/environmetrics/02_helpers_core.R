@@ -85,6 +85,228 @@ sort_to_len <- function(x, target_len, keep_na = NULL, fill = NA_real_, context 
   sorted[seq_len(target_len)]
 }
 
+build_agg_discrep_quantile_df <- function(
+  q_array,
+  idx,
+  dates,
+  quantile_rows = c(1L, 4L, 7L),
+  quantile_labels = c("5th", "50th", "95th"),
+  context = "agg_discrep"
+) {
+  if (!is.numeric(q_array) || is.null(dim(q_array)) || length(dim(q_array)) != 3L) {
+    stop(sprintf("[%s_SHAPE] q_array must be numeric 3D [quantile_row x time x summary].", context))
+  }
+  if (dim(q_array)[3] < 3L) {
+    stop(sprintf("[%s_SUMMARY_DIM] q_array third dimension must contain at least 3 summary slots.", context))
+  }
+
+  idx <- as.integer(idx)
+  if (length(idx) == 0L || any(!is.finite(idx)) || any(idx < 1L)) {
+    stop(sprintf("[%s_INDEX] idx must contain positive finite indices.", context))
+  }
+  if (max(idx) > dim(q_array)[2]) {
+    stop(
+      sprintf(
+        "[%s_INDEX_OOB] idx max=%d exceeds q_array time dimension=%d.",
+        context,
+        as.integer(max(idx)),
+        as.integer(dim(q_array)[2])
+      )
+    )
+  }
+
+  quantile_rows <- as.integer(quantile_rows)
+  if (length(quantile_rows) != length(quantile_labels)) {
+    stop(sprintf("[%s_LABEL_MAP] quantile_rows and quantile_labels must have the same length.", context))
+  }
+  if (any(!is.finite(quantile_rows)) || any(quantile_rows < 1L) || any(quantile_rows > dim(q_array)[1])) {
+    stop(
+      sprintf(
+        "[%s_ROW_OOB] quantile_rows must be within [1, %d].",
+        context,
+        as.integer(dim(q_array)[1])
+      )
+    )
+  }
+
+  dates <- as.Date(dates)
+  if (length(dates) != length(idx)) {
+    stop(
+      sprintf(
+        "[%s_DATE_LEN] dates length=%d must equal idx length=%d.",
+        context,
+        as.integer(length(dates)),
+        as.integer(length(idx))
+      )
+    )
+  }
+
+  rows <- lapply(seq_along(quantile_rows), function(i) {
+    row_id <- quantile_rows[[i]]
+    lower_raw <- q_array[row_id, idx, 1]
+    upper_raw <- q_array[row_id, idx, 3]
+    data.frame(
+      Date = dates,
+      Quantile = as.character(quantile_labels[[i]]),
+      Lower = pmin(lower_raw, upper_raw),
+      Median = q_array[row_id, idx, 2],
+      Upper = pmax(lower_raw, upper_raw),
+      stringsAsFactors = FALSE
+    )
+  })
+  dplyr::bind_rows(rows)
+}
+
+resolve_agg_discrep_ylim <- function(
+  obs,
+  fitted_df,
+  preferred_ylim = NULL,
+  min_inrange_share = 0.15,
+  pad_frac = 0.05,
+  min_span = 0.1,
+  context = "agg_discrep"
+) {
+  obs <- as.numeric(obs)
+  if (!is.data.frame(fitted_df) ||
+      !all(c("Lower", "Median", "Upper") %in% names(fitted_df))) {
+    stop(sprintf("[%s_FITTED_SCHEMA] fitted_df must contain Lower/Median/Upper columns.", context))
+  }
+
+  fitted_vals <- c(
+    as.numeric(fitted_df$Lower),
+    as.numeric(fitted_df$Median),
+    as.numeric(fitted_df$Upper)
+  )
+  obs_finite <- obs[is.finite(obs)]
+  fitted_finite <- fitted_vals[is.finite(fitted_vals)]
+  combined <- c(obs_finite, fitted_finite)
+  if (length(combined) == 0L) {
+    stop(sprintf("[%s_EMPTY_SERIES] no finite observed/fitted values available to resolve ylim.", context))
+  }
+
+  pref_valid <- FALSE
+  pref <- c(NA_real_, NA_real_)
+  if (!is.null(preferred_ylim)) {
+    pref <- as.numeric(preferred_ylim)
+    pref_valid <- length(pref) == 2L && all(is.finite(pref)) && pref[1] < pref[2]
+  }
+
+  inrange_share <- NA_real_
+  use_preferred <- FALSE
+  if (pref_valid && length(fitted_finite) > 0L) {
+    inrange_share <- mean(fitted_finite >= pref[1] & fitted_finite <= pref[2])
+    use_preferred <- is.finite(inrange_share) && inrange_share >= as.numeric(min_inrange_share)
+  } else if (pref_valid && length(fitted_finite) == 0L) {
+    use_preferred <- TRUE
+  }
+
+  if (use_preferred) {
+    return(list(
+      ylim = pref,
+      mode = "preferred",
+      preferred_inrange_share = inrange_share,
+      fitted_finite_n = as.integer(length(fitted_finite)),
+      obs_finite_n = as.integer(length(obs_finite)),
+      combined_min = min(combined),
+      combined_max = max(combined),
+      preferred_min = pref[1],
+      preferred_max = pref[2]
+    ))
+  }
+
+  y_min <- min(combined)
+  y_max <- max(combined)
+  span <- y_max - y_min
+  if (!is.finite(span) || span < as.numeric(min_span)) {
+    mid <- mean(c(y_min, y_max))
+    span <- as.numeric(min_span)
+    y_min <- mid - 0.5 * span
+    y_max <- mid + 0.5 * span
+  }
+  pad <- max(as.numeric(pad_frac) * span, 1e-6)
+  dyn <- c(y_min - pad, y_max + pad)
+
+  list(
+    ylim = dyn,
+    mode = if (pref_valid) "expanded" else "expanded_no_preferred",
+    preferred_inrange_share = inrange_share,
+    fitted_finite_n = as.integer(length(fitted_finite)),
+    obs_finite_n = as.integer(length(obs_finite)),
+    combined_min = min(combined),
+    combined_max = max(combined),
+    preferred_min = if (pref_valid) pref[1] else NA_real_,
+    preferred_max = if (pref_valid) pref[2] else NA_real_
+  )
+}
+
+forecast_cube_effective_horizon <- function(cube, context = "forecast_cube") {
+  if (!is.numeric(cube)) {
+    stop(sprintf("[FORECAST_CUBE_TYPE] %s must be a numeric 3D array.", context))
+  }
+  d <- dim(cube)
+  if (is.null(d) || length(d) != 3L) {
+    stop(sprintf("[FORECAST_CUBE_DIM] %s must be a 3D array [quantile x sample x time].", context))
+  }
+  n_t <- as.integer(d[[3L]])
+  if (!is.finite(n_t) || n_t <= 0L) {
+    stop(sprintf("[FORECAST_CUBE_EMPTY] %s has no forecast time dimension.", context))
+  }
+
+  finite_by_t <- vapply(
+    seq_len(n_t),
+    function(t) all(is.finite(cube[, , t])),
+    logical(1)
+  )
+
+  if (!any(finite_by_t)) {
+    stop(sprintf("[FORECAST_CUBE_EMPTY] %s has no fully finite forecast slices.", context))
+  }
+
+  last_finite <- max(which(finite_by_t))
+  interior_missing <- which(!finite_by_t[seq_len(last_finite)])
+  if (length(interior_missing) > 0L) {
+    stop(
+      sprintf(
+        "[FORECAST_CUBE_GAP] %s has non-finite interior forecast slices before horizon end at t=%d (first bad t=%d).",
+        context,
+        as.integer(last_finite),
+        as.integer(interior_missing[[1L]])
+      )
+    )
+  }
+
+  trailing_missing <- which(!finite_by_t & seq_len(n_t) > last_finite)
+  if (length(trailing_missing) > 0L) {
+    warning(
+      sprintf(
+        "[FORECAST_CUBE_TRUNCATE] %s contains trailing non-finite slices; effective horizon reduced from %d to %d.",
+        context,
+        as.integer(n_t),
+        as.integer(last_finite)
+      ),
+      call. = FALSE
+    )
+  }
+
+  list(
+    horizon = as.integer(last_finite),
+    finite_mask = finite_by_t,
+    trailing_missing = as.integer(length(trailing_missing))
+  )
+}
+
+trim_forecast_cube_to_effective_horizon <- function(cube, context = "forecast_cube") {
+  info <- forecast_cube_effective_horizon(cube, context = context)
+  n_t <- dim(cube)[3]
+  if (info$horizon >= n_t) {
+    return(list(cube = cube, info = info))
+  }
+  list(
+    cube = cube[, , seq_len(info$horizon), drop = FALSE],
+    info = info
+  )
+}
+
 post_export_tables_enabled <- function(default = TRUE) {
   if (exists("EXPORT_TABLES", inherits = TRUE)) {
     return(isTRUE(get("EXPORT_TABLES", inherits = TRUE)))
@@ -1256,4 +1478,119 @@ compute_jsd_to_standard_normal <- function(sample, gridsize = 100L, context = "j
   }
   m <- 0.5 * (pdf_p + pdf_q)
   as.numeric(0.5 * kl_divergence(pdf_p, m) + 0.5 * kl_divergence(pdf_q, m))
+}
+
+resolve_time_cuts <- function(
+  timestamps,
+  cutoff_date = if (exists("CUTOFF_DATE", inherits = TRUE)) get("CUTOFF_DATE", inherits = TRUE) else NA,
+  anchor_dates = c("2012-08-01", "2016-05-01", "2016-09-15", "2019-08-01"),
+  anchor_tolerance_days = 3L,
+  context = "time_cuts"
+) {
+  dates <- as.Date(timestamps)
+  n <- length(dates)
+  if (n < 8L) {
+    stop(sprintf("[%s] need at least 8 timestamps to build stable plotting windows.", context), call. = FALSE)
+  }
+
+  sanitize_cuts <- function(idx) {
+    idx <- as.integer(round(idx))
+    if (length(idx) != 4L || any(!is.finite(idx))) return(NULL)
+    idx <- pmin(pmax(idx, 1L), n)
+    for (i in 2:4) {
+      if (idx[[i]] <= idx[[i - 1L]]) idx[[i]] <- idx[[i - 1L]] + 1L
+    }
+    if (idx[[4L]] > n) {
+      shift <- idx[[4L]] - n
+      idx <- idx - shift
+      if (idx[[1L]] < 1L) idx <- idx + (1L - idx[[1L]])
+      for (i in 2:4) {
+        if (idx[[i]] <= idx[[i - 1L]]) idx[[i]] <- idx[[i - 1L]] + 1L
+      }
+    }
+    if (idx[[1L]] < 1L || idx[[4L]] > n || any(diff(idx) <= 0L)) return(NULL)
+    idx
+  }
+
+  anchors <- as.Date(anchor_dates)
+  anchor_idx_exact <- match(anchors, dates)
+  if (all(!is.na(anchor_idx_exact))) {
+    anchor_cuts <- sanitize_cuts(anchor_idx_exact)
+    if (!is.null(anchor_cuts)) return(anchor_cuts)
+  }
+
+  nearest_index <- function(target) {
+    target <- as.Date(target)
+    if (is.na(target)) return(NA_integer_)
+    as.integer(which.min(abs(as.numeric(dates - target))))
+  }
+
+  tol_days <- suppressWarnings(as.numeric(anchor_tolerance_days))
+  if (!is.finite(tol_days) || tol_days < 0) tol_days <- 0
+  anchor_idx_near <- vapply(anchors, nearest_index, integer(1))
+  if (!anyNA(anchor_idx_near)) {
+    anchor_dist <- abs(as.numeric(dates[anchor_idx_near] - anchors))
+    if (all(is.finite(anchor_dist)) && all(anchor_dist <= tol_days)) {
+      anchor_cuts <- sanitize_cuts(anchor_idx_near)
+      if (!is.null(anchor_cuts)) return(anchor_cuts)
+    }
+  }
+
+  cutoff_date <- suppressWarnings(as.Date(cutoff_date))
+  hist_end <- if (!is.na(cutoff_date)) {
+    idx <- which(dates <= cutoff_date)
+    if (length(idx) > 0L) max(idx) else n
+  } else {
+    n
+  }
+  hist_end <- min(max(8L, hist_end), n)
+
+  w2_end <- max(4L, hist_end)
+  w2_start <- max(3L, w2_end - 365L * 3L)
+  w1_end <- max(2L, w2_start - 1L)
+  w1_start <- max(1L, w1_end - 365L * 4L)
+  fallback_cuts <- sanitize_cuts(c(w1_start, w1_end, w2_start, w2_end))
+  if (!is.null(fallback_cuts)) return(fallback_cuts)
+
+  idx_grid <- unique(as.integer(round(c(0.10, 0.45, 0.55, 0.90) * (hist_end - 1L) + 1L)))
+  if (length(idx_grid) < 4L) {
+    idx_grid <- as.integer(round(seq(1L, hist_end, length.out = 4L)))
+  } else if (length(idx_grid) > 4L) {
+    idx_grid <- idx_grid[c(1L, 2L, length(idx_grid) - 1L, length(idx_grid))]
+  }
+  final_cuts <- sanitize_cuts(idx_grid)
+  if (is.null(final_cuts)) {
+    stop(sprintf("[%s] unable to derive valid time_cuts.", context), call. = FALSE)
+  }
+  final_cuts
+}
+
+safe_time_index <- function(start_idx, end_idx, n, context = "time_index", prefer_tail = TRUE) {
+  n <- as.integer(n)
+  if (!is.finite(n) || n < 1L) {
+    stop(sprintf("[%s] n must be a positive integer; got: %s", context, paste(n, collapse = ",")), call. = FALSE)
+  }
+
+  s <- suppressWarnings(as.integer(round(start_idx)))
+  e <- suppressWarnings(as.integer(round(end_idx)))
+  if (!is.finite(s)) s <- 1L
+  if (!is.finite(e)) e <- n
+
+  s <- max(1L, min(n, s))
+  e <- max(1L, min(n, e))
+
+  if (s > e) {
+    if (isTRUE(prefer_tail)) {
+      width_raw <- suppressWarnings(as.integer(round(end_idx - start_idx + 1L)))
+      if (!is.finite(width_raw) || width_raw < 1L) width_raw <- 1L
+      width <- min(n, width_raw)
+      e <- n
+      s <- max(1L, e - width + 1L)
+    } else {
+      s <- 1L
+      e <- 1L
+    }
+  }
+
+  seq.int(s, e)
 }

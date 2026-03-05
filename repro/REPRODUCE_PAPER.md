@@ -33,8 +33,8 @@ ls -lh /data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_E
 ```
 
 If any of these are missing:
-- `prism_precipitation_santa_cruz_1987_2023.csv`: run `Rscript download_prism_data.R` (downloads 1987-2023 PRISM data to `prism_data/`).
-- `soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv`: run `download_era5_soilmoisture.py` (ERA5 download) then `soil.ipynb` to aggregate to daily averages.
+- `prism_precipitation_santa_cruz_1987_2023.csv`: run `Rscript --vanilla scripts/build_prism_ppt_point_series.R` (official pipeline; monthly chunk download + point extraction + cleanup so raw PRISM folders do not accumulate unless `--keep-downloads` is set).
+- `soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv`: run `python3 scripts/build_era5_soil_moisture_point_series.py` (official pipeline; monthly ERA5 download + nearest-point extraction + daily aggregation + cleanup so monthly NetCDF files do not accumulate unless `--keep-monthly` is set).
 - `pca.csv`: run `gdpc_fit.ipynb`.
 - `nws_forecast.csv`: generated in `Paper_Forecast_Synthesis_DQLM.ipynb`.
 - `weighted_time_series.csv`: derived in `glofas_forecasts.ipynb` (output lines are mostly commented; may need to enable).

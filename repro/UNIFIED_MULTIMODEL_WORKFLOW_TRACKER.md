@@ -3880,3 +3880,130 @@ Handoff rule:
   - NDLM wiring is healthy, but current NDLM model form is not yet aligned with the intended discount-factor contract.
 - Next action:
   - Execute P10/N0-N5 checklist in order, starting from theory document correction before implementation edits.
+
+### Progress Update 2026-02-25 02:30 UTC
+
+- Phase: `P10` NDLM model-spec realignment (`N0/N2/N3` implementation start)
+- Change type: implementation + run launch
+- Summary:
+  - Started active P10 execution with spec-freeze artifacts and implementation mapping docs.
+  - Implemented first NDLM realignment slice in unified theory path:
+    - added NDLM discount-factor/lambda config surface and env wiring,
+    - replaced scalar NDLM evolution construction in `ndlm_main` fitter with discount-derived covariance construction,
+    - added discount/lambda metadata to NDLM summary/state outputs,
+    - extended NDLM diagnostics parsing/checks for discount-factor contract.
+  - Launched NDLM-only lean verification lane (`2010+`, one-core-per-model, strict run-scoped) and left running in background.
+- Files touched:
+  - `R/unified/families/ndlm_main/00_constants.R`
+  - `R/unified/families/ndlm_main/03_vb_updates.R`
+  - `R/unified/families/ndlm_main/06_save_state.R`
+  - `R/unified/families/ndlm_main/zz_run.R`
+  - `R/unified/stages/stage_fit.R`
+  - `R/unified/config.R`
+  - `R/unified/diagnostics.R`
+  - `R/unified/ndlm_post_diagnostics.R`
+  - `scripts/run_ndlm_main.R`
+  - `config/unified_run.template.yaml`
+  - `tests/testthat/test_ndlm_fitloop_contract.R`
+  - `tests/testthat/test_ndlm_ragged_horizon_builder.R`
+  - `repro/docs/p10_ndlm_spec_20260225T022238Z/spec_baseline.md`
+  - `repro/docs/p10_ndlm_spec_20260225T022238Z/spec_equation_map.csv`
+  - `repro/docs/p10_ndlm_spec_20260225T022238Z/impl_change_plan.md`
+  - `config/unified_runs/diag_p10_ndlm_only_specalign_r01_20260225_0225.yaml`
+- Evidence:
+  - P10 baseline artifacts:
+    - `repro/docs/p10_ndlm_spec_20260225T022238Z/spec_baseline.md`
+    - `repro/docs/p10_ndlm_spec_20260225T022238Z/spec_equation_map.csv`
+    - `repro/docs/p10_ndlm_spec_20260225T022238Z/impl_change_plan.md`
+  - Lean run launch:
+    - `config/unified_runs/diag_p10_ndlm_only_specalign_r01_20260225_0225.yaml`
+    - `repro/runs/diag_p10_ndlm_only_specalign_r01_20260225_0225/run_manifest.yaml`
+    - `/tmp/diag_p10_ndlm_only_specalign_r01_20260225_0225_unified.log`
+- Validation notes:
+  - Targeted NDLM contract tests pass after the first realignment slice:
+    - `tests/testthat/test_ndlm_fitloop_contract.R`
+    - `tests/testthat/test_ndlm_ragged_horizon_builder.R`
+  - N1 (theory-article derivation rewrite) remains open and will be completed before P10 closure.
+- Next action:
+  - Wait for NDLM lean lane post diagnostics/figures, then perform maintainer visual review gate before additional P10 code changes.
+
+### Progress Update 2026-02-25 06:55 UTC
+
+- Phase: `P10` NDLM spec realignment (`N1/N3/N4/N5` stabilization)
+- Change type: robustness fix + diagnostics + lean rerun launch
+- Summary:
+  - Completed `N1` theory delta note for discount-matrix evolution + PSD covariance contract:
+    - `repro/docs/p10_ndlm_spec_20260225T022238Z/theory_change_log.md`
+  - Fixed root NDLM fit failure locus from `diag_p10_ndlm_only_specalign_r01/r02`:
+    - replaced fragile retrospective-state draw Cholesky path with the shared PSD-safe routine (`ndlm_theory_safe_chol`) and explicit non-finite guard.
+  - Added NDLM covariance validity diagnostics for per-slice checks:
+    - min eigenvalue summary,
+    - minimum diagonal summary,
+    - base Cholesky fail count/rate,
+    - non-finite slice count,
+    for `smooth_cov`, `forecast_cov_segment_1`, and `forecast_cov_segment_2`.
+  - Added regression tests for:
+    - PSD-repair safe Cholesky behavior,
+    - covariance diagnostics summary including Cholesky-fail detection.
+  - Launched new NDLM-only lean verification lane:
+    - `run_id=diag_p10_ndlm_only_specalign_r03_20260225_065434`
+    - `date_start=2010-01-01`, one-core-per-model, strict run-scoped artifacts.
+- Files touched:
+  - `R/unified/families/ndlm_main/03_vb_updates.R`
+  - `R/unified/families/ndlm_main/06_save_state.R`
+  - `R/unified/families/ndlm_main/zz_run.R`
+  - `R/unified/ndlm_post_diagnostics.R`
+  - `tests/testthat/test_ndlm_ragged_horizon_builder.R`
+  - `config/unified_runs/diag_p10_ndlm_only_specalign_r03_20260225_065434.yaml`
+  - `repro/docs/p10_ndlm_spec_20260225T022238Z/theory_change_log.md`
+- Evidence:
+  - Prior failure signatures:
+    - `repro/runs/diag_p10_ndlm_only_specalign_r01_20260225_0225/fit/ndlm_main/logs/ndlm_theory.log`
+    - `repro/runs/diag_p10_ndlm_only_specalign_r02_20260225_024153/fit/ndlm_main/logs/ndlm_theory.log`
+  - Test pass evidence:
+    - `tests/testthat/test_ndlm_fitloop_contract.R`
+    - `tests/testthat/test_ndlm_kalman_backend.R`
+    - `tests/testthat/test_ndlm_ragged_horizon_builder.R`
+  - Active rerun artifacts:
+    - `config/unified_runs/diag_p10_ndlm_only_specalign_r03_20260225_065434.yaml`
+    - `repro/runs/diag_p10_ndlm_only_specalign_r03_20260225_065434/run_manifest.yaml`
+- Validation notes:
+  - NDLM-only rerun is active (`fit=pending`) at this checkpoint.
+  - `N5` closure still pending terminal run status + diagnostics bundle generation.
+- Next action:
+  - Wait for `r03` closure, then verify `fit/post/validate/report` and hand off NDLM diagnostics figure paths for maintainer visual gate.
+
+### Progress Update 2026-02-25 07:08 UTC
+
+- Phase: `P10` NDLM spec realignment (`N3/N5` SPD hardening + rerun)
+- Change type: root-cause fix + rerun launch
+- Summary:
+  - Health check confirmed `r03` failed in NDLM fit after `iter=800` at covariance Cholesky draw path.
+  - Before patching, compared multiv exDQLM numerical strategy:
+    - multiv C++ path (`DISC_kalman_synth.cpp`) uses regularization plus robust SVD inverse/sqrt-inverse for covariance operations (`regularize`, `robust_svd_inv`, `robust_svd_inv_sqrt`), which avoids direct brittle Cholesky dependence in those update blocks.
+  - Implemented stricter NDLM SPD repair cascade in `ndlm_theory_safe_chol`:
+    1) multi-jitter Cholesky attempts,
+    2) eigenvalue clipping projection,
+    3) re-attempt Cholesky with expanded jitters,
+    4) `Matrix::nearPD` fallback + final jitter attempts,
+    5) explicit fail-fast error with min-eigenvalue context.
+  - Relaunched NDLM-only lean lane `r04` with high discount factors for stability (`df_t/df_s1/df_s2/df_s67/df_discrep/lambda/df_trans/df_covs = 0.9999`).
+- Files touched:
+  - `R/unified/families/ndlm_main/03_vb_updates.R`
+  - `config/unified_runs/diag_p10_ndlm_only_specalign_r04_20260225_070648.yaml`
+- Evidence:
+  - `r03` failure:
+    - `repro/runs/diag_p10_ndlm_only_specalign_r03_20260225_065434/run_manifest.yaml`
+    - `repro/runs/diag_p10_ndlm_only_specalign_r03_20260225_065434/fit/ndlm_main/logs/ndlm_theory.log`
+  - multiv reference inspected:
+    - `DISC_kalman_synth.cpp`
+  - active `r04` run:
+    - `config/unified_runs/diag_p10_ndlm_only_specalign_r04_20260225_070648.yaml`
+    - `repro/runs/diag_p10_ndlm_only_specalign_r04_20260225_070648/run_manifest.yaml`
+- Validation notes:
+  - NDLM targeted tests pass after SPD patch:
+    - `tests/testthat/test_ndlm_ragged_horizon_builder.R`
+    - `tests/testthat/test_ndlm_kalman_backend.R`
+  - `r04` currently active with `fit=pending`.
+- Next action:
+  - Continue periodic health checks; if `r04` still fails, capture first failing covariance diagnostics and tighten/trace the exact offending slice source (`smooth_cov` vs forecast segments).

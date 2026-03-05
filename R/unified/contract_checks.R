@@ -233,6 +233,7 @@ unified_contract_check_ndlm_main <- function(
   samp_theta_ens <- unified_contract_object(env, "samp.theta_ens_50_NDLM_synth_DISC")
   seq_elbo <- unified_contract_object(env, "seq.elbo_50_NDLM_synth_DISC")
   seq_sigma <- unified_contract_object(env, "seq.sigma_50_NDLM_synth_DISC")
+  seq_scale <- unified_contract_object(env, "seq.scale_50_NDLM_synth_DISC")
   delta <- unified_contract_object(env, "delta_50_NDLM_synth_DISC")
   theory_state <- unified_contract_object(env, "ndlm_main_theory_state")
 
@@ -444,6 +445,14 @@ unified_contract_check_ndlm_main <- function(
           )
         }
       }
+      if ("sigma_by_source" %in% names(theory_state)) {
+        sbs <- theory_state$sigma_by_source
+        sbs_num <- suppressWarnings(as.numeric(sbs))
+        add_check("ndlm.theory_state.sigma_by_source.numeric", is.numeric(sbs), "sigma_by_source must be numeric")
+        add_check("ndlm.theory_state.sigma_by_source.len_ge_3", length(sbs_num) >= 3L, sprintf("length=%d", length(sbs_num)))
+        add_check("ndlm.theory_state.sigma_by_source.finite", unified_contract_all_finite(sbs_num), "sigma_by_source contains non-finite values")
+        add_check("ndlm.theory_state.sigma_by_source.positive", all(sbs_num > 0), "sigma_by_source must be strictly positive")
+      }
     }
   }
 
@@ -509,6 +518,11 @@ unified_contract_check_ndlm_main <- function(
       add_check(sprintf("ndlm.%s.len_ge_1", nm), length(obj) >= 1L, sprintf("length=%d", length(obj)))
       add_check(sprintf("ndlm.%s.finite", nm), unified_contract_all_finite(obj), sprintf("%s contains non-finite values", nm))
     }
+  }
+  if (!is.null(seq_scale)) {
+    add_check("ndlm.seq_scale.numeric", is.numeric(seq_scale), "seq_scale must be numeric")
+    add_check("ndlm.seq_scale.len_ge_1", length(seq_scale) >= 1L, sprintf("length=%d", length(seq_scale)))
+    add_check("ndlm.seq_scale.finite", unified_contract_all_finite(seq_scale), "seq_scale contains non-finite values")
   }
 
   if (!is.null(summary_log_path) && nzchar(summary_log_path)) {

@@ -49,7 +49,7 @@ This tracker is the operational source of truth for:
 
 ### Phase 4: Full Extractions
 - [x] Full `v2.0` point extraction
-- [ ] Full `v1.2` point extraction
+- [ ] Full `v1.2` point extraction (in progress; year-sharded tmux workers running)
 - [x] Re-validate local `v2.1` and `v3.0` series against same schema/audit
 - [x] Full `v2.1`/`v3.0` point extractions from Zarr (schema-aligned with `v2.0`)
 
@@ -58,6 +58,10 @@ This tracker is the operational source of truth for:
 - [ ] Validate readiness for `forecats.png` integration
   - Provisional artifact created: `repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z/point_series/nwm_unified_daily.csv`
   - Current non-NA counts: `NWS1.2=2` (pilot only), `NWS2.0=9496`, `NWS2.1=15310`, `NWS3.0=16071`
+  - Full compare rerender completed for all baseline cutoffs using multiple NWS retrospective overlays:
+    - run id: `20260218_paper_default_nws_multiretro_compare_r02`
+    - figures generated: `1176/1176` (`2019-11-05` through `2023-01-31`)
+    - note: `NWS v2.0` is configured but not visible in these windows because v2.0 coverage ends `2018-12-31`.
 
 ---
 
@@ -80,6 +84,10 @@ This tracker is the operational source of truth for:
   - `feature_id=17682474` is valid in all tested versions (`v1.2/v2.0/v2.1/v3.0` pilots).
   - `v1.2` pilot (`1993-01-01` to `1993-01-02`) succeeded with 48/48 hourly files and no missing-hour fetches.
   - Repository scan found no pre-existing full `v1.2` point-series artifact to reuse; `.comp` extraction remains required for full coverage.
+  - Legacy-local vs re-extracted equivalence check for NWS point series:
+    - `v3.0`: overlap `16071` days, correlation `1.0`, max abs diff `2.84e-14`.
+    - `v2.1`: overlap `15310` days, correlation `1.0`, max abs diff `5.68e-14`.
+    - conclusion: legacy-local and re-extracted `v2.1/v3.0` are numerically identical up to floating-point epsilon.
   - Full-run extraction scripts now available for all versions:
     - `scripts/nwm_retrospective_extract_point_zarr.py`
     - `scripts/nwm_retrospective_extract_point_v12_comp.py`

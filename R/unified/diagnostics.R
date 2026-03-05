@@ -443,6 +443,7 @@ unified_diag_ndlm_main_theory <- function(
   obj_theta_ens <- diag_env_get(env, required[[4]])
   obj_elbo <- diag_env_get(env, required[[5]])
   obj_seq_sigma <- diag_env_get(env, required[[6]])
+  obj_seq_scale <- diag_env_get(env, "seq.scale_50_NDLM_synth_DISC")
   obj_delta <- diag_env_get(env, required[[7]])
   obj_state <- diag_env_get(env, required[[8]])
 
@@ -649,6 +650,12 @@ unified_diag_ndlm_main_theory <- function(
           ))
         }
       }
+      if ("sigma_by_source" %in% names(obj_state)) {
+        sbs <- suppressWarnings(as.numeric(obj_state$sigma_by_source))
+        add(diag_result("ndlm.theory_state.sigma_by_source.len_ge_3", length(sbs) >= 3L, sprintf("length=%d", length(sbs))))
+        add(diag_result("ndlm.theory_state.sigma_by_source.finite", all(is.finite(sbs)), "sigma_by_source must be finite"))
+        add(diag_result("ndlm.theory_state.sigma_by_source.positive", all(sbs > 0), "sigma_by_source must be strictly positive"))
+      }
     }
   }
 
@@ -683,6 +690,7 @@ unified_diag_ndlm_main_theory <- function(
 
   if (!is.null(obj_elbo)) add(diag_check_finite(obj_elbo, "ndlm.seq.elbo"))
   if (!is.null(obj_seq_sigma)) add(diag_check_finite(obj_seq_sigma, "ndlm.seq.sigma"))
+  if (!is.null(obj_seq_scale)) add(diag_check_finite(obj_seq_scale, "ndlm.seq.scale"))
   if (!is.null(obj_delta)) {
     add(diag_check_finite(obj_delta, "ndlm.delta"))
     delta_vals <- as.numeric(obj_delta)
@@ -705,8 +713,31 @@ unified_diag_ndlm_main_theory <- function(
     w_hist <- suppressWarnings(as.numeric(summary_vals$w_hist))
     w_fore <- suppressWarnings(as.numeric(summary_vals$w_fore))
     add(diag_result("ndlm.summary.sigma_positive", is.finite(sigma) && sigma > 0, sprintf("sigma=%s", as.character(summary_vals$sigma))))
-    add(diag_result("ndlm.summary.w_hist_nonnegative", is.finite(w_hist) && w_hist >= 0, sprintf("w_hist=%s", as.character(summary_vals$w_hist))))
-    add(diag_result("ndlm.summary.w_fore_nonnegative", is.finite(w_fore) && w_fore >= 0, sprintf("w_fore=%s", as.character(summary_vals$w_fore))))
+    if (is.finite(w_hist) && is.finite(w_fore)) {
+      add(diag_result("ndlm.summary.w_hist_nonnegative", w_hist >= 0, sprintf("w_hist=%s", as.character(summary_vals$w_hist))))
+      add(diag_result("ndlm.summary.w_fore_nonnegative", w_fore >= 0, sprintf("w_fore=%s", as.character(summary_vals$w_fore))))
+    } else {
+      add(diag_result("ndlm.summary.w_hist_nonnegative", TRUE, "w_hist not emitted; using discount-factor contract"))
+      add(diag_result("ndlm.summary.w_fore_nonnegative", TRUE, "w_fore not emitted; using discount-factor contract"))
+    }
+    for (nm in c("df_t", "df_s1", "df_s2", "df_s67", "df_discrep", "lambda", "df_trans", "df_covs")) {
+      cur <- suppressWarnings(as.numeric(summary_vals[[nm]]))
+      add(diag_result(
+        sprintf("ndlm.summary.%s_in_unit_interval", nm),
+        is.finite(cur) && cur > 0 && cur < 1,
+        sprintf("%s=%s", nm, as.character(summary_vals[[nm]]))
+      ))
+    }
+    for (nm in c("sigma_usgs", "sigma_nws", "sigma_glofas", "sigma_mean")) {
+      cur <- suppressWarnings(as.numeric(summary_vals[[nm]]))
+      if (is.finite(cur)) {
+        add(diag_result(
+          sprintf("ndlm.summary.%s_positive", nm),
+          cur > 0,
+          sprintf("%s=%s", nm, as.character(summary_vals[[nm]]))
+        ))
+      }
+    }
   } else {
     add(diag_result("ndlm.summary.log_present", FALSE, "summary log missing or unreadable"))
   }

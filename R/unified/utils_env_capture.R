@@ -51,6 +51,20 @@ unified_capture_env_artifacts <- function(run_root) {
   )
 }
 
+unified_normalize_ld_library_path <- function(value) {
+  value <- as.character(value)
+  if (!length(value) || is.na(value[[1L]])) return("")
+  value <- trimws(value[[1L]])
+  if (!nzchar(value)) return("")
+  parts <- strsplit(value, ":", fixed = TRUE)[[1L]]
+  parts <- trimws(parts)
+  parts <- parts[nzchar(parts)]
+  if (!length(parts)) return("")
+  # Canonicalize by removing duplicates while keeping first-occurrence order.
+  parts <- parts[!duplicated(parts)]
+  paste(parts, collapse = ":")
+}
+
 unified_env_drift_report <- function(current_env_dir, canonical_env_dir, out_json_path = NULL) {
   required <- c("R_sessionInfo.txt", "R_installed_packages.csv", "python_pip_freeze.txt", "renviron_snapshot.txt", "threads_snapshot.txt")
   normalize_lines <- function(path, name) {
@@ -58,6 +72,13 @@ unified_env_drift_report <- function(current_env_dir, canonical_env_dir, out_jso
     lines <- readLines(path, warn = FALSE)
     if (name %in% c("R_sessionInfo.txt", "renviron_snapshot.txt", "threads_snapshot.txt")) {
       lines <- lines[!grepl("^captured_at_utc=", lines)]
+    }
+    if (identical(name, "renviron_snapshot.txt") && length(lines) > 0L) {
+      lines <- unname(vapply(lines, function(line) {
+        if (!grepl("^LD_LIBRARY_PATH=", line)) return(line)
+        raw_val <- sub("^LD_LIBRARY_PATH=", "", line)
+        sprintf("LD_LIBRARY_PATH=%s", unified_normalize_ld_library_path(raw_val))
+      }, character(1)))
     }
     lines
   }

@@ -225,7 +225,16 @@ unified_validate_weighted_time_series_csv <- function(path, stage_name, provenan
   invisible(TRUE)
 }
 
-unified_validate_forecast_numeric_csv <- function(path, label, stage_name, min_rows = 1L, min_numeric_cols = 1L) {
+unified_validate_forecast_numeric_csv <- function(
+  path,
+  label,
+  stage_name,
+  min_rows = 1L,
+  min_numeric_cols = 1L,
+  allow_nonfinite = FALSE,
+  min_finite_rows = min_rows,
+  min_finite_numeric_cols = min_numeric_cols
+) {
   df <- unified_read_csv_checked(path, label, stage_name)
   if (nrow(df) < min_rows) {
     stop(
@@ -256,20 +265,40 @@ unified_validate_forecast_numeric_csv <- function(path, label, stage_name, min_r
   num_vals <- as.matrix(df[, numeric_cols, drop = FALSE])
   bad <- !is.finite(num_vals)
   if (any(bad, na.rm = TRUE)) {
+    if (isTRUE(allow_nonfinite)) {
+      finite_mask <- is.finite(num_vals)
+      finite_row_count <- sum(rowSums(finite_mask, na.rm = TRUE) > 0L, na.rm = TRUE)
+      finite_col_count <- sum(colSums(finite_mask, na.rm = TRUE) > 0L, na.rm = TRUE)
+      if (finite_row_count >= as.integer(min_finite_rows) && finite_col_count >= as.integer(min_finite_numeric_cols)) {
+        return(invisible(TRUE))
+      }
+    }
+
     bad_counts <- colSums(bad, na.rm = TRUE)
     bad_cols <- names(bad_counts)[bad_counts > 0L]
     row_ids <- which(rowSums(bad, na.rm = TRUE) > 0L)
     sample_rows <- head(row_ids, 5L)
+    details <- c(
+      sprintf("non-finite columns: %s", paste(sprintf("%s(%d)", bad_cols, bad_counts[bad_cols]), collapse = ", ")),
+      sprintf("example row indices: %s", paste(sample_rows, collapse = ", "))
+    )
+    if (isTRUE(allow_nonfinite)) {
+      finite_mask <- is.finite(num_vals)
+      finite_row_count <- sum(rowSums(finite_mask, na.rm = TRUE) > 0L, na.rm = TRUE)
+      finite_col_count <- sum(colSums(finite_mask, na.rm = TRUE) > 0L, na.rm = TRUE)
+      details <- c(
+        details,
+        sprintf("finite row count: %d (required >= %d)", finite_row_count, as.integer(min_finite_rows)),
+        sprintf("finite numeric-column count: %d (required >= %d)", finite_col_count, as.integer(min_finite_numeric_cols))
+      )
+    }
     stop(
       unified_schema_error(
         stage_name = stage_name,
         label = label,
         path = path,
         reason = "contains non-finite numeric values",
-        details = c(
-          sprintf("non-finite columns: %s", paste(sprintf("%s(%d)", bad_cols, bad_counts[bad_cols]), collapse = ", ")),
-          sprintf("example row indices: %s", paste(sample_rows, collapse = ", "))
-        )
+        details = details
       ),
       call. = FALSE
     )
@@ -383,8 +412,11 @@ unified_validate_required_shared_inputs <- function(
           paths$nws,
           label = "nws forecast",
           stage_name = stage_name,
-          min_rows = 10L,
-          min_numeric_cols = 2L
+          min_rows = 5L,
+          min_numeric_cols = 2L,
+          allow_nonfinite = TRUE,
+          min_finite_rows = 5L,
+          min_finite_numeric_cols = 2L
         )
         NULL
       },

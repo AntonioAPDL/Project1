@@ -169,7 +169,7 @@ univar_theory_run_cavi <- function(inputs, constants) {
   }
   policy_max_iter <- suppressWarnings(as.integer(policy$max_iter))
   if (!is.finite(policy_max_iter) || policy_max_iter < 1L) {
-    policy_max_iter <- 800L
+    policy_max_iter <- 100L
   }
   max_iter <- suppressWarnings(as.integer(max(
     constants$n_iter,
@@ -178,7 +178,7 @@ univar_theory_run_cavi <- function(inputs, constants) {
     policy_max_iter
   )))
   if (!is.finite(max_iter) || max_iter < 1L) {
-    max_iter <- 800L
+    max_iter <- 100L
   }
 
   Ev <- rep(1, Tn)

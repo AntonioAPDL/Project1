@@ -7,6 +7,7 @@ ndlm_theory_pack_compat_outputs <- function(fit_result) {
   assign(sprintf("samp.theta_ens_%s", suffix), fit_result$samp_theta_ens, envir = out_env)
   assign(sprintf("new.theta.out_%s", suffix), fit_result$new_theta, envir = out_env)
   assign(sprintf("seq.sigma_%s", suffix), fit_result$seq_sigma, envir = out_env)
+  assign(sprintf("seq.scale_%s", suffix), fit_result$seq_scale, envir = out_env)
   assign(sprintf("seq.elbo_%s", suffix), ndlm_theory_elbo_trace(fit_result), envir = out_env)
   assign(sprintf("delta_%s", suffix), fit_result$delta, envir = out_env)
 
@@ -14,6 +15,8 @@ ndlm_theory_pack_compat_outputs <- function(fit_result) {
     "ndlm_main_theory_state",
     list(
       sigma = fit_result$sigma,
+      sigma_by_source = fit_result$sigma_by_source,
+      sigma_mean = fit_result$sigma_mean,
       w_hist = fit_result$w_hist,
       w_fore = fit_result$w_fore,
       discount_factors = fit_result$discount_factors,

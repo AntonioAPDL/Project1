@@ -7,12 +7,12 @@ but generalized to any cutoff_date and output bundle directory.
 
 Key conventions (matches `glofas_forecasts.ipynb` in default mode):
 - Extract raw discharge (cms) from GRIB shortName `dis24` at a chosen grid cell.
-- Transform values with log1p(cms).
+- Transform values with a configured working scale.
 - For each (target_date, member), compute a weighted average over contributing forecasts:
     weights = lead_time_hours ** power   (power < 0 => shorter lead gets more weight)
     normalized within each (target_date, member)
-    weighted_avg_log1p = sum(weights * log1p(value))
-- Store outputs in raw cms by inverting: cms = expm1(weighted_avg_log1p).
+    weighted_avg = sum(weights * transformed_value)
+- Store outputs in raw cms by inverting from the working transform scale.
 
 Paper-mode support:
 
@@ -22,7 +22,7 @@ Paper-mode support:
 
     weights = (r_days + 1) ** (-alpha)   where r_days = cutoff_date - issue_date
 
-  and still compute the weighted average on the log1p scale (so only the weight kernel
+  and still compute the weighted average on the transformed scale (so only the weight kernel
   differs, not the value transform).
 
 Target-date convention (matches notebook):
@@ -48,6 +48,8 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import xarray as xr
+
+from flow_scale import TRANSFORM_SCALES, forward_transform_cms, inverse_transform_to_cms
 
 
 def _to_0_360(lon: float) -> float:
@@ -278,13 +280,19 @@ def main() -> int:
         choices=["notebook", "paper", "latest"],
         help=(
             "Weighting scheme: "
-            "'notebook' (lead-time power on log1p), "
-            "'paper' (age-based power on log1p), or "
+            "'notebook' (lead-time power on transformed values), "
+            "'paper' (age-based power on transformed values), or "
             "'latest' (alpha->inf: pick the most recent issue_date per (target_date, member))."
         ),
     )
     ap.add_argument("--power", default=-1.001, type=float)
     ap.add_argument("--alpha", default=1.0, type=float, help="Paper-mode exponent alpha (weights ~ (r_days+1)^-alpha).")
+    ap.add_argument(
+        "--aggregation-scale",
+        default="log1p_cms",
+        choices=list(TRANSFORM_SCALES),
+        help="Working scale for forecast weighting aggregation.",
+    )
     ap.add_argument("--shift-days", default=1, type=int)
     ap.add_argument("--cache-dir", default=None, type=Path)
     ap.add_argument("--cell-json", required=True, type=Path)
@@ -358,6 +366,7 @@ def main() -> int:
     if args.verbose:
         print(f"[INFO] ref_issue_date={ref_issue.isoformat()} var={var} picked_cell=({cell_lat:.5f},{cell_lon:.5f}) dist_km={dist_km:.2f}")
         print(f"[INFO] scanning issue_dates: {issue_start.isoformat()}..{cutoff.isoformat()} (n={len(issue_dates)})")
+        print(f"[INFO] aggregation_scale={args.aggregation_scale}")
 
     cache_dir = args.cache_dir
     if cache_dir is not None:
@@ -409,8 +418,8 @@ def main() -> int:
 
     df = pd.concat(dfs, ignore_index=True)
 
-    # Weighting always happens on log1p scale for comparability.
-    df["log1p_cms"] = np.log1p(df["discharge_cms"].astype("float64"))
+    # Weighting always happens on configured working scale.
+    df["work_value"] = forward_transform_cms(df["discharge_cms"].astype("float64"), args.aggregation_scale)
     if args.weighting_scheme == "notebook":
         lead = df["lead_time_h"].astype("float64").replace(0.0, 1.0)
         df["w_raw"] = np.power(lead, args.power)
@@ -430,30 +439,34 @@ def main() -> int:
         r_days = (pd.Timestamp(cutoff) - issue_dt).dt.days.astype("float64")
         # Keep only rows with minimal r_days per group.
         r_min = r_days.groupby([df["target_date"], df["member"]]).transform("min")
-        keep = (r_days == r_min) & np.isfinite(df["log1p_cms"].to_numpy())
+        keep = (r_days == r_min) & np.isfinite(df["work_value"].to_numpy())
         df = df.loc[keep].copy()
         # If there are any ties, average them uniformly (rare; mostly a no-op).
         df["w_raw"] = 1.0
     else:
         raise SystemExit(f"Unknown weighting_scheme: {args.weighting_scheme}")
 
-    # Normalize within (target_date, member) and compute weighted mean on log1p scale.
+    # Normalize within (target_date, member) and compute weighted mean on transform scale.
     denom = df.groupby(["target_date", "member"])["w_raw"].transform("sum")
     df["w"] = df["w_raw"] / denom
-    df["w_log1p"] = df["w"] * df["log1p_cms"]
+    df["w_work"] = df["w"] * df["work_value"]
 
-    out_log1p = (
-        df.groupby(["target_date", "member"], as_index=False)["w_log1p"]
+    out_work = (
+        df.groupby(["target_date", "member"], as_index=False)["w_work"]
         .sum()
-        .pivot(index="target_date", columns="member", values="w_log1p")
+        .pivot(index="target_date", columns="member", values="w_work")
         .sort_index()
     )
 
     # Ensure full date coverage in the requested window.
     full_idx = pd.date_range(start=forecast_start, end=forecast_end, freq="D").strftime("%Y-%m-%d")
-    out_log1p = out_log1p.reindex(full_idx)
+    out_work = out_work.reindex(full_idx)
 
-    out_cms = np.expm1(out_log1p)
+    out_cms = pd.DataFrame(
+        inverse_transform_to_cms(out_work.to_numpy(dtype="float64"), args.aggregation_scale),
+        index=out_work.index,
+        columns=out_work.columns,
+    )
 
     # Column naming: member_00..member_50
     cols: Dict[int, str] = {int(m): f"member_{int(m):02d}" for m in out_cms.columns}

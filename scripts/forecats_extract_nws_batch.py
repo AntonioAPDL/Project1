@@ -16,8 +16,8 @@ Semantics match `scripts/forecats_build_nws_weighted.py`:
 - Filter to issue_date <= cutoff_date (no peeking).
 - For each (target_date, target_hour, ensemble):
     - latest  : pick the most recent issue_datetime
-    - paper   : age weights ~(r_days+1)^-alpha on log1p(cms)
-    - notebook: lead-time weights ~1/(lead_time_h^exponent[ensemble]) on log1p(cms)
+    - paper   : age weights ~(r_days+1)^-alpha on transformed(cms)
+    - notebook: lead-time weights ~1/(lead_time_h^exponent[ensemble]) on transformed(cms)
 - Then average across target_hour to daily (simple mean).
 - Store outputs in raw cms (m^3/s).
 
@@ -38,6 +38,8 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
+from flow_scale import TRANSFORM_SCALES, forward_transform_cms, inverse_transform_to_cms
 
 
 ISSUE_DATE_RE = re.compile(r"^(?:nwm|nwm2|nwmv3|nwmv2)\.(\d{8})/")
@@ -119,6 +121,12 @@ def main() -> int:
     )
     ap.add_argument("--alpha", default=1.0, type=float)
     ap.add_argument("--exponents", default="", type=str, help='Notebook-mode: e.g. "1=0,2=0.3,...".')
+    ap.add_argument(
+        "--aggregation-scale",
+        default="log1p_cms",
+        choices=list(TRANSFORM_SCALES),
+        help="Working scale for weighting/hourly->daily averaging.",
+    )
     ap.add_argument("--overwrite", action="store_true")
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
@@ -187,10 +195,11 @@ def main() -> int:
         columns=["issue_date", "issue_hour", "target_date", "target_hour", "ensemble", "lead_time_h", "value_cms"],
     )
     df_all["issue_dt"] = pd.to_datetime(df_all["issue_date"]) + pd.to_timedelta(df_all["issue_hour"].astype(int), unit="h")
-    df_all["log1p_cms"] = np.log1p(df_all["value_cms"].astype("float64"))
+    df_all["work_value"] = forward_transform_cms(df_all["value_cms"].astype("float64"), args.aggregation_scale)
 
     if args.verbose:
         print(f"[INFO] parsed_keys={parsed} kept_rows={kept} df_rows={len(df_all)}")
+        print(f"[INFO] aggregation_scale={args.aggregation_scale}")
 
     n_ok = 0
     n_skip = 0
@@ -225,7 +234,7 @@ def main() -> int:
         if args.weighting_scheme == "latest":
             issue_ts = pd.Series(df["issue_dt"].values, index=df.index)
             issue_max = issue_ts.groupby([df["target_date"], df["target_hour"], df["ensemble"]]).transform("max")
-            keep = (issue_ts == issue_max) & np.isfinite(df["log1p_cms"].to_numpy())
+            keep = (issue_ts == issue_max) & np.isfinite(df["work_value"].to_numpy())
             df = df.loc[keep].copy()
             df["w_raw"] = 1.0
         elif args.weighting_scheme == "paper":
@@ -241,20 +250,23 @@ def main() -> int:
 
         denom = df.groupby(["target_date", "target_hour", "ensemble"])["w_raw"].transform("sum")
         df["w"] = df["w_raw"] / denom
-        df["w_log1p"] = df["w"] * df["log1p_cms"]
+        df["w_work"] = df["w"] * df["work_value"]
 
         w_by_time = (
-            df.groupby(["target_date", "target_hour", "ensemble"], as_index=False)["w_log1p"]
+            df.groupby(["target_date", "target_hour", "ensemble"], as_index=False)["w_work"]
             .sum()
-            .rename(columns={"w_log1p": "weighted_log1p"})
+            .rename(columns={"w_work": "weighted_work"})
         )
 
         daily = (
-            w_by_time.groupby(["target_date", "ensemble"], as_index=False)["weighted_log1p"]
+            w_by_time.groupby(["target_date", "ensemble"], as_index=False)["weighted_work"]
             .mean()
-            .rename(columns={"weighted_log1p": "daily_weighted_log1p"})
+            .rename(columns={"weighted_work": "daily_weighted_work"})
         )
-        daily["value_cms"] = np.expm1(daily["daily_weighted_log1p"].astype("float64"))
+        daily["value_cms"] = inverse_transform_to_cms(
+            daily["daily_weighted_work"].astype("float64"),
+            args.aggregation_scale,
+        )
 
         wide = daily.pivot(index="target_date", columns="ensemble", values="value_cms").sort_index()
         full_idx = pd.date_range(start=forecast_start, end=forecast_end, freq="D").strftime("%Y-%m-%d")
@@ -277,4 +289,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

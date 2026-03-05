@@ -45,6 +45,9 @@ POST_CACHE_DIR <- Sys.getenv("UNIFIED_POST_CACHE_DIR", "")
 POST_OUTPUT_SUBDIR <- Sys.getenv("UNIFIED_POST_OUTPUT_SUBDIR", "")
 POST_OUTPUT_SUBDIR <- gsub("[^A-Za-z0-9._-]+", "_", POST_OUTPUT_SUBDIR)
 POST_OUTPUT_SUBDIR <- gsub("^_+|_+$", "", POST_OUTPUT_SUBDIR)
+POST_OUTPUT_SUFFIX <- Sys.getenv("UNIFIED_POST_OUTPUT_SUFFIX", "")
+POST_OUTPUT_SUFFIX <- gsub("[^A-Za-z0-9._-]+", "_", POST_OUTPUT_SUFFIX)
+POST_PRESERVE_OUT_DIR <- env_flag("UNIFIED_POST_PRESERVE_OUT_DIR", "FALSE")
 UNIFIED_REPRO_MODE <- tolower(Sys.getenv("UNIFIED_REPRO_MODE", ""))
 STRICT_RUNSCOPED_POST <- env_flag("UNIFIED_REQUIRE_RUNSCOPED_POST", "FALSE") || identical(UNIFIED_REPRO_MODE, "strict")
 ALLOW_LEGACY_ROOT_FALLBACK <- env_flag("UNIFIED_ALLOW_LEGACY_POST_FALLBACK", "FALSE")
@@ -142,6 +145,8 @@ git_hash <- tryCatch(system("git rev-parse HEAD", intern = TRUE), error = functi
 cat(sprintf("GIT_COMMIT: %s\n", git_hash))
 cat(sprintf("OUT_DIR: %s\n", OUT_DIR))
 cat(sprintf("POST_OUTPUT_SUBDIR: %s\n", if (nzchar(POST_OUTPUT_SUBDIR)) POST_OUTPUT_SUBDIR else "<root>"))
+cat(sprintf("POST_OUTPUT_SUFFIX: %s\n", if (nzchar(POST_OUTPUT_SUFFIX)) POST_OUTPUT_SUFFIX else "<none>"))
+cat(sprintf("POST_PRESERVE_OUT_DIR: %s\n", POST_PRESERVE_OUT_DIR))
 cat(sprintf("SEED: %s\n", SEED))
 cat(sprintf("PROFILE: %s\n", PROFILE))
 cat(sprintf("PROFILE_DETAIL: %s\n", PROFILE_DETAIL))
@@ -208,6 +213,23 @@ is_runscoped_target <- function(path) {
 }
 
 redirect_path <- function(filename) {
+  append_suffix <- function(path_value, suffix_value) {
+    path_chr <- as.character(path_value)
+    if (!nzchar(path_chr) || !nzchar(suffix_value)) return(path_chr)
+    ext <- tools::file_ext(path_chr)
+    stem <- if (nzchar(ext)) {
+      substr(path_chr, 1L, nchar(path_chr) - nchar(ext) - 1L)
+    } else {
+      path_chr
+    }
+    if (endsWith(stem, suffix_value)) return(path_chr)
+    if (nzchar(ext)) {
+      sprintf("%s%s.%s", stem, suffix_value, ext)
+    } else {
+      paste0(stem, suffix_value)
+    }
+  }
+
   dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
   if (is.null(filename)) return(filename)
   filename_chr <- as.character(filename)
@@ -219,11 +241,11 @@ redirect_path <- function(filename) {
     return(normalizePath(filename_chr, mustWork = FALSE))
   }
 
-  file.path(OUT_DIR, basename(filename_chr))
+  file.path(OUT_DIR, append_suffix(basename(filename_chr), POST_OUTPUT_SUFFIX))
 }
 
 # Clean only OUT_DIR
-if (dir.exists(OUT_DIR)) {
+if (dir.exists(OUT_DIR) && !isTRUE(POST_PRESERVE_OUT_DIR)) {
   unlink(OUT_DIR, recursive = TRUE, force = TRUE)
 }
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
@@ -449,7 +471,10 @@ post_contract <- unified_post_contract_check(
   cache_dir = if (nzchar(POST_CACHE_DIR)) POST_CACHE_DIR else NULL,
   post_figures = isTRUE(POST_FIGURES),
   export_tables = isTRUE(EXPORT_TABLES),
-  post_smoke_fast = isTRUE(POST_SMOKE_FAST_EFFECTIVE)
+  post_smoke_fast = isTRUE(POST_SMOKE_FAST_EFFECTIVE),
+  model_run_exdqlm_multivar = isTRUE(MODEL_RUN_EXDQLM_MULTIVAR),
+  model_run_exdqlm_univar = isTRUE(MODEL_RUN_EXDQLM_UNIVAR),
+  model_run_ndlm_main = isTRUE(MODEL_RUN_NDLM_MAIN)
 )
 post_artifact_reports <- unified_write_post_artifact_reports(
   artifacts_df = post_artifacts,

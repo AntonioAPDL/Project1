@@ -56,7 +56,7 @@ unified_ndlm_diag_pick_numeric_column <- function(df, preferred = character(0)) 
 
 unified_ndlm_diag_parse_progress_log <- function(log_path) {
   cols <- c(
-    "iter", "elbo", "crit_elbo", "sigma_exp", "gamma_exp", "state_norm_sq",
+    "iter", "elbo", "crit_elbo", "sigma_exp", "sigma_usgs_exp", "sigma_nws_exp", "sigma_glofas_exp", "gamma_exp", "state_norm_sq",
     "w_hist", "w_fore", "df_t", "df_s1", "df_s2", "df_s67", "df_discrep", "lambda"
   )
   empty <- stats::setNames(data.frame(matrix(ncol = length(cols), nrow = 0L)), cols)
@@ -82,6 +82,9 @@ unified_ndlm_diag_parse_progress_log <- function(log_path) {
       elbo = unified_ndlm_diag_num(extract_token("elbo")),
       crit_elbo = unified_ndlm_diag_num(extract_token("crit_elbo")),
       sigma_exp = unified_ndlm_diag_num(extract_token("sigma_exp")),
+      sigma_usgs_exp = unified_ndlm_diag_num(extract_token("sigma_usgs_exp")),
+      sigma_nws_exp = unified_ndlm_diag_num(extract_token("sigma_nws_exp")),
+      sigma_glofas_exp = unified_ndlm_diag_num(extract_token("sigma_glofas_exp")),
       gamma_exp = unified_ndlm_diag_num(extract_token("gamma_exp")),
       state_norm_sq = unified_ndlm_diag_num(extract_token("state_norm_sq")),
       w_hist = unified_ndlm_diag_num(extract_token("w_hist")),
@@ -238,7 +241,12 @@ unified_ndlm_diag_safe_filename <- function(x) {
 }
 
 unified_ndlm_diag_extract_sigma_long <- function(iter_trace, env) {
-  # Prefer explicit sigma sequence object if present; fallback to parsed progress log.
+  # Prefer explicit scale-sequence object if present; fallback to sigma/log traces.
+  scale_obj <- if (exists("seq.scale_50_NDLM_synth_DISC", envir = env, inherits = FALSE)) {
+    get("seq.scale_50_NDLM_synth_DISC", envir = env, inherits = FALSE)
+  } else {
+    NULL
+  }
   sigma_obj <- if (exists("seq.sigma_50_NDLM_synth_DISC", envir = env, inherits = FALSE)) {
     get("seq.sigma_50_NDLM_synth_DISC", envir = env, inherits = FALSE)
   } else {
@@ -252,67 +260,103 @@ unified_ndlm_diag_extract_sigma_long <- function(iter_trace, env) {
   }
   if (!is.finite(iter_n) || iter_n < 1L) iter_n <- NA_integer_
 
-  rows <- list()
-
-  if (!is.null(sigma_obj) && is.numeric(sigma_obj)) {
-    if (is.null(dim(sigma_obj))) {
-      v <- as.numeric(sigma_obj)
-      if (length(v) > 0L) {
-        rows[[length(rows) + 1L]] <- data.frame(
-          iter = seq_along(v),
-          scale_key = "scale_01",
-          scale_label = "scale_01",
-          sigma = v,
-          stringsAsFactors = FALSE
-        )
-      }
-    } else if (length(dim(sigma_obj)) == 2L) {
-      mat <- as.matrix(sigma_obj)
+  normalize_trace_matrix <- function(x, iter_n) {
+    if (is.null(x) || !is.numeric(x)) return(NULL)
+    if (is.null(dim(x))) {
+      mat <- matrix(as.numeric(x), ncol = 1L)
+      colnames(mat) <- "sigma_exp"
+      return(mat)
+    }
+    d <- dim(x)
+    if (length(d) == 2L) {
+      mat <- as.matrix(x)
       nr <- nrow(mat)
       nc <- ncol(mat)
       if (is.finite(iter_n)) {
         if (nr == iter_n) {
-          # as-is
+          # keep orientation
         } else if (nc == iter_n) {
           mat <- t(mat)
           nr <- nrow(mat)
           nc <- ncol(mat)
         } else if (nc > nr) {
           mat <- t(mat)
-          nr <- nrow(mat)
-          nc <- ncol(mat)
         }
       } else if (nc > nr) {
         mat <- t(mat)
-        nr <- nrow(mat)
-        nc <- ncol(mat)
       }
-      scale_names <- colnames(mat)
-      if (is.null(scale_names) || length(scale_names) != nc) {
-        scale_names <- sprintf("scale_%02d", seq_len(nc))
-      } else {
-        scale_names <- ifelse(nzchar(scale_names), scale_names, sprintf("scale_%02d", seq_len(nc)))
+      return(mat)
+    }
+    iter_dim <- if (is.finite(iter_n) && any(d == iter_n)) {
+      which(d == iter_n)[1L]
+    } else {
+      length(d)
+    }
+    perm <- c(iter_dim, setdiff(seq_along(d), iter_dim))
+    arr <- aperm(array(as.numeric(x), dim = d), perm = perm)
+    mat <- matrix(arr, nrow = d[[iter_dim]])
+    mat
+  }
+
+  append_rows_from_matrix <- function(mat, default_label = "scale") {
+    if (is.null(mat) || !is.matrix(mat) || nrow(mat) < 1L || ncol(mat) < 1L) {
+      return(list())
+    }
+    lbls <- colnames(mat)
+    if (is.null(lbls) || length(lbls) != ncol(mat)) {
+      lbls <- sprintf("%s_%02d", default_label, seq_len(ncol(mat)))
+    } else {
+      lbls <- ifelse(nzchar(lbls), lbls, sprintf("%s_%02d", default_label, seq_len(ncol(mat))))
+    }
+    out <- vector("list", ncol(mat))
+    for (j in seq_len(ncol(mat))) {
+      out[[j]] <- data.frame(
+        iter = seq_len(nrow(mat)),
+        scale_key = sprintf("scale_%02d", j),
+        scale_label = as.character(lbls[[j]]),
+        sigma = as.numeric(mat[, j]),
+        stringsAsFactors = FALSE
+      )
+    }
+    out
+  }
+
+  rows <- list()
+  scale_mat <- normalize_trace_matrix(scale_obj, iter_n = iter_n)
+  if (!is.null(scale_mat)) {
+    rows <- append_rows_from_matrix(scale_mat, default_label = "scale")
+  }
+
+  if (length(rows) == 0L) {
+    sigma_mat <- normalize_trace_matrix(sigma_obj, iter_n = iter_n)
+    if (!is.null(sigma_mat)) {
+      if (ncol(sigma_mat) == 1L && (is.null(colnames(sigma_mat)) || !nzchar(colnames(sigma_mat)[[1L]]))) {
+        colnames(sigma_mat) <- "sigma_exp"
       }
-      for (j in seq_len(nc)) {
+      rows <- append_rows_from_matrix(sigma_mat, default_label = "sigma")
+    }
+  }
+
+  if (length(rows) == 0L && is.data.frame(iter_trace) && nrow(iter_trace) > 0L) {
+    scale_cols <- c("sigma_usgs_exp", "sigma_nws_exp", "sigma_glofas_exp", "sigma_exp", "w_hist", "w_fore", "df_t", "df_s1", "df_s2", "df_s67", "df_discrep", "lambda", "df_trans", "df_covs")
+    scale_cols <- scale_cols[scale_cols %in% names(iter_trace)]
+    if (length(scale_cols) > 0L && "iter" %in% names(iter_trace)) {
+      iter_vals <- suppressWarnings(as.integer(iter_trace$iter))
+      j <- 0L
+      for (nm in scale_cols) {
+        vals <- suppressWarnings(as.numeric(iter_trace[[nm]]))
+        ok <- is.finite(iter_vals) & is.finite(vals)
+        if (sum(ok) < 1L) next
+        j <- j + 1L
         rows[[length(rows) + 1L]] <- data.frame(
-          iter = seq_len(nr),
+          iter = iter_vals[ok],
           scale_key = sprintf("scale_%02d", j),
-          scale_label = as.character(scale_names[[j]]),
-          sigma = as.numeric(mat[, j]),
+          scale_label = nm,
+          sigma = vals[ok],
           stringsAsFactors = FALSE
         )
       }
     }
-  }
-
-  if (length(rows) == 0L && is.data.frame(iter_trace) && nrow(iter_trace) > 0L && "sigma_exp" %in% names(iter_trace)) {
-    rows[[1L]] <- data.frame(
-      iter = suppressWarnings(as.integer(iter_trace$iter)),
-      scale_key = "scale_01",
-      scale_label = "sigma_exp",
-      sigma = suppressWarnings(as.numeric(iter_trace$sigma_exp)),
-      stringsAsFactors = FALSE
-    )
   }
 
   if (length(rows) == 0L) {
@@ -358,6 +402,90 @@ unified_ndlm_diag_write_sigma_traces <- function(sigma_long, output_dir, primary
   paths
 }
 
+unified_ndlm_diag_loglog1p_from_log1p <- function(x) {
+  vals <- suppressWarnings(as.numeric(x))
+  out <- rep(NA_real_, length(vals))
+  ok <- is.finite(vals) & vals > 0
+  if (any(ok)) {
+    out[ok] <- log(vals[ok])
+  }
+  out
+}
+
+unified_ndlm_diag_pick_usgs_flow_col <- function(df) {
+  if (!is.data.frame(df) || nrow(df) < 1L) return("")
+  nms <- names(df)
+  preferred <- c("X_00060_00003", "X_00060_00003.y", "Flow", "flow", "value")
+  for (nm in preferred) {
+    if (nm %in% nms && is.numeric(df[[nm]])) return(nm)
+  }
+  hit <- grep("00060_00003", nms, fixed = TRUE, value = TRUE)
+  if (length(hit) > 0L) {
+    hit <- hit[vapply(hit, function(nm) is.numeric(df[[nm]]), logical(1))]
+    if (length(hit) > 0L) return(hit[[1L]])
+  }
+  numeric_cols <- nms[vapply(df, is.numeric, logical(1))]
+  if (length(numeric_cols) < 1L) return("")
+  numeric_cols[[1L]]
+}
+
+unified_ndlm_diag_fetch_future_usgs <- function(usgs_site, start_date, end_date) {
+  empty <- data.frame(
+    date = as.Date(character(0)),
+    observed_cfs = numeric(0),
+    observed_log1p = numeric(0),
+    observed = numeric(0),
+    stringsAsFactors = FALSE
+  )
+
+  usgs_site <- if (is.null(usgs_site)) "" else as.character(usgs_site)
+  if (!nzchar(usgs_site)) return(empty)
+  start_date <- suppressWarnings(as.Date(start_date))
+  end_date <- suppressWarnings(as.Date(end_date))
+  if (length(start_date) < 1L || length(end_date) < 1L || is.na(start_date[[1L]]) || is.na(end_date[[1L]])) {
+    return(empty)
+  }
+  if (end_date[[1L]] < start_date[[1L]]) return(empty)
+  if (!requireNamespace("dataRetrieval", quietly = TRUE)) return(empty)
+
+  raw <- tryCatch(
+    dataRetrieval::readNWISdv(
+      siteNumbers = usgs_site,
+      parameterCd = "00060",
+      statCd = "00003",
+      startDate = as.character(start_date[[1L]]),
+      endDate = as.character(end_date[[1L]])
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(raw) || !is.data.frame(raw) || nrow(raw) < 1L) return(empty)
+
+  date_col <- if ("Date" %in% names(raw)) "Date" else if ("dateTime" %in% names(raw)) "dateTime" else ""
+  if (!nzchar(date_col)) return(empty)
+  d <- suppressWarnings(as.Date(raw[[date_col]]))
+
+  flow_col <- unified_ndlm_diag_pick_usgs_flow_col(raw)
+  if (!nzchar(flow_col)) return(empty)
+  flow_cfs <- suppressWarnings(as.numeric(raw[[flow_col]]))
+  ok <- !is.na(d) & is.finite(flow_cfs)
+  if (sum(ok) < 1L) return(empty)
+
+  cfs_to_cms <- 0.0283168466
+  flow_log1p <- log(flow_cfs[ok] * cfs_to_cms + 1)
+  flow_loglog1p <- unified_ndlm_diag_loglog1p_from_log1p(flow_log1p)
+
+  out <- data.frame(
+    date = d[ok],
+    observed_cfs = as.numeric(flow_cfs[ok]),
+    observed_log1p = as.numeric(flow_log1p),
+    observed = as.numeric(flow_loglog1p),
+    stringsAsFactors = FALSE
+  )
+  out <- out[order(out$date), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
 unified_ndlm_diag_write_fit_plot <- function(
   dates,
   obs,
@@ -400,7 +528,7 @@ unified_ndlm_diag_write_fit_plot <- function(
     lwd = 1.2,
     col = "#171A1F",
     xlab = xlab,
-    ylab = "log1p(cms)",
+    ylab = "log(log1p(cms))",
     ylim = y_lim,
     main = title
   )
@@ -449,7 +577,7 @@ unified_ndlm_diag_write_fit_modes_plot <- function(df, path, title) {
     lwd = 1.0,
     col = "#171A1F",
     xlab = if (use_date) "Date" else "Index",
-    ylab = "log1p(cms)",
+    ylab = "log(log1p(cms))",
     ylim = y_lim,
     main = title
   )
@@ -473,6 +601,131 @@ unified_ndlm_diag_write_fit_modes_plot <- function(df, path, title) {
   TRUE
 }
 
+unified_ndlm_diag_build_mu_obs_long <- function(exps, retros_df, retros_dates) {
+  if (!is.numeric(exps) || is.null(dim(exps)) || length(dim(exps)) != 2L) {
+    return(data.frame())
+  }
+  exps_mat <- as.matrix(exps)
+  n_mu <- nrow(exps_mat)
+  n_t <- ncol(exps_mat)
+  if (!is.finite(n_mu) || !is.finite(n_t) || n_mu < 1L || n_t < 1L) {
+    return(data.frame())
+  }
+
+  obs_cols <- names(retros_df)[vapply(retros_df, is.numeric, logical(1))]
+  n_obs <- length(obs_cols)
+  n_hist <- nrow(retros_df)
+  if (!is.finite(n_hist) || n_hist < 0L) n_hist <- 0L
+
+  dates_hist <- suppressWarnings(as.Date(retros_dates))
+  if (length(dates_hist) < n_hist) {
+    dates_hist <- c(dates_hist, rep(as.Date(NA_character_), n_hist - length(dates_hist)))
+  } else if (length(dates_hist) > n_hist) {
+    dates_hist <- dates_hist[seq_len(n_hist)]
+  }
+  if (n_t > n_hist) {
+    dates_full <- c(dates_hist, rep(as.Date(NA_character_), n_t - n_hist))
+  } else {
+    dates_full <- dates_hist[seq_len(n_t)]
+  }
+
+  rows <- vector("list", n_mu)
+  for (j in seq_len(n_mu)) {
+    mu_vals <- suppressWarnings(as.numeric(exps_mat[j, ]))
+    obs_vals_log1p <- rep(NA_real_, n_t)
+    src_label <- sprintf("series_%02d", j)
+    if (j <= n_obs) {
+      src_label <- as.character(obs_cols[[j]])
+      obs_j <- suppressWarnings(as.numeric(retros_df[[obs_cols[[j]]]]))
+      n_copy <- min(length(obs_j), n_t)
+      if (n_copy > 0L) {
+        obs_vals_log1p[seq_len(n_copy)] <- obs_j[seq_len(n_copy)]
+      }
+    }
+    obs_vals <- unified_ndlm_diag_loglog1p_from_log1p(obs_vals_log1p)
+
+    rows[[j]] <- data.frame(
+      source_index = as.integer(j),
+      source_label = src_label,
+      t_index = as.integer(seq_len(n_t)),
+      date = dates_full,
+      segment = ifelse(seq_len(n_t) <= n_hist, "historical", "forecast"),
+      observed_log1p = obs_vals_log1p,
+      observed = obs_vals,
+      mu = mu_vals,
+      stringsAsFactors = FALSE
+    )
+  }
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+unified_ndlm_diag_write_mu_obs_panels <- function(mu_obs_df, path, title, historical_only = FALSE) {
+  req <- c("source_index", "source_label", "t_index", "date", "observed", "mu", "segment")
+  if (!is.data.frame(mu_obs_df) || !all(req %in% names(mu_obs_df)) || nrow(mu_obs_df) < 2L) return(FALSE)
+
+  work <- mu_obs_df
+  if (isTRUE(historical_only)) {
+    work <- work[work$segment == "historical", , drop = FALSE]
+    if (nrow(work) < 2L) return(FALSE)
+  }
+
+  src_ids <- sort(unique(suppressWarnings(as.integer(work$source_index))))
+  src_ids <- src_ids[is.finite(src_ids)]
+  if (length(src_ids) < 1L) return(FALSE)
+
+  n_panels <- length(src_ids)
+  n_col <- min(3L, max(1L, ceiling(sqrt(n_panels))))
+  n_row <- max(1L, ceiling(n_panels / n_col))
+  width_px <- max(1400L, 520L * n_col)
+  height_px <- max(900L, 320L * n_row)
+
+  grDevices::png(filename = path, width = width_px, height = height_px, res = 140)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  graphics::par(mfrow = c(n_row, n_col), mar = c(3.1, 3.8, 2.2, 1.2), oma = c(0.5, 0.5, 2.0, 0))
+
+  for (sid in src_ids) {
+    sub <- work[suppressWarnings(as.integer(work$source_index)) == sid, , drop = FALSE]
+    obs <- suppressWarnings(as.numeric(sub$observed))
+    mu <- suppressWarnings(as.numeric(sub$mu))
+    x_idx <- suppressWarnings(as.integer(sub$t_index))
+    x_date <- suppressWarnings(as.Date(sub$date))
+    use_date <- isTRUE(historical_only) && any(!is.na(x_date))
+    x <- if (use_date) x_date else x_idx
+    ok_obs <- is.finite(obs) & if (use_date) !is.na(x) else is.finite(x)
+    ok_mu <- is.finite(mu) & if (use_date) !is.na(x) else is.finite(x)
+    y_rng <- range(c(obs[ok_obs], mu[ok_mu]), finite = TRUE)
+    if (!all(is.finite(y_rng))) {
+      graphics::plot.new()
+      graphics::title(main = as.character(sub$source_label[[1L]]))
+      next
+    }
+    pad <- 0.05 * max(diff(y_rng), 1e-8)
+    y_lim <- c(y_rng[1] - pad, y_rng[2] + pad)
+
+    graphics::plot(x[ok_mu], mu[ok_mu], type = "l", col = "#D1495B", lwd = 2.1,
+                   xlab = if (use_date) "Date" else "Time index", ylab = "log(log1p(cms))",
+                   ylim = y_lim, main = as.character(sub$source_label[[1L]]))
+    if (sum(ok_obs) >= 1L) {
+      graphics::lines(x[ok_obs], obs[ok_obs], col = "#1A1A1A", lwd = 1.3)
+      graphics::points(x[ok_obs], obs[ok_obs], col = "#1A1A1A", pch = 16, cex = 0.22)
+    }
+    if (!isTRUE(historical_only)) {
+      hist_idx <- suppressWarnings(as.integer(sub$t_index[sub$segment == "historical"]))
+      if (length(hist_idx) > 0L && is.finite(max(hist_idx, na.rm = TRUE))) {
+        graphics::abline(v = max(hist_idx, na.rm = TRUE), col = "#6B7280", lty = 2)
+      }
+    }
+    graphics::grid(col = "#D6DCE5", lty = "dotted")
+    graphics::legend("topright", legend = c("mu_t", "observed"),
+                     col = c("#D1495B", "#1A1A1A"), lty = 1, lwd = c(2.1, 1.3),
+                     pch = c(NA, 16), pt.cex = c(NA, 0.55), bty = "n", cex = 0.8)
+  }
+  graphics::mtext(title, outer = TRUE, line = 0.3, cex = 1.0)
+  TRUE
+}
+
 unified_ndlm_diag_component_label <- function(component_id) {
   component_id <- suppressWarnings(as.integer(component_id[[1L]]))
   if (!is.finite(component_id) || component_id < 1L) {
@@ -487,7 +740,7 @@ unified_ndlm_diag_component_label <- function(component_id) {
   sprintf("transfer_%02d (theta_%02d)", component_id - 14L, component_id)
 }
 
-unified_ndlm_diag_extract_theta_draws <- function(env) {
+unified_ndlm_diag_extract_theta_draws <- function(env, max_draws = NULL) {
   if (!exists("samp.theta_50_NDLM_synth_DISC", envir = env, inherits = FALSE)) {
     return(NULL)
   }
@@ -496,6 +749,19 @@ unified_ndlm_diag_extract_theta_draws <- function(env) {
   if (!is.numeric(arr)) return(NULL)
   d <- dim(arr)
   if (is.null(d) || length(d) != 3L) return(NULL)
+
+  max_draws_i <- suppressWarnings(as.integer(max_draws))
+  if (!length(max_draws_i)) {
+    max_draws_i <- NA_integer_
+  } else {
+    max_draws_i <- max_draws_i[[1L]]
+  }
+  draw_dim <- suppressWarnings(as.integer(d[3]))
+  if (is.finite(max_draws_i) && max_draws_i > 0L && is.finite(draw_dim) && draw_dim > max_draws_i) {
+    idx <- unique(round(seq(1, draw_dim, length.out = max_draws_i)))
+    idx <- idx[idx >= 1L & idx <= draw_dim]
+    arr <- arr[, , idx, drop = FALSE]
+  }
   arr
 }
 
@@ -628,6 +894,743 @@ unified_ndlm_diag_write_state_components_ci_plot <- function(summary_df, path, t
     )
     graphics::lines(x[ok], md[ok], col = "#0B3C5D", lwd = 1.7)
     graphics::grid(col = "#D6DCE5", lty = "dotted")
+  }
+
+  graphics::mtext(title, outer = TRUE, line = 0.2, cex = 1.0)
+  TRUE
+}
+
+unified_ndlm_diag_extract_member_matrix <- function(df) {
+  if (!is.data.frame(df) || nrow(df) < 1L) {
+    return(matrix(numeric(0), nrow = 0L, ncol = 0L))
+  }
+  num_cols <- names(df)[vapply(df, is.numeric, logical(1))]
+  if (length(num_cols) < 1L) {
+    return(matrix(numeric(0), nrow = nrow(df), ncol = 0L))
+  }
+  as.matrix(df[, num_cols, drop = FALSE])
+}
+
+unified_ndlm_diag_build_ensemble_summary <- function(source_key, source_label, dates, members_mat_loglog) {
+  if (!is.numeric(members_mat_loglog) || is.null(dim(members_mat_loglog)) ||
+      length(dim(members_mat_loglog)) != 2L || nrow(members_mat_loglog) < 1L ||
+      ncol(members_mat_loglog) < 1L) {
+    return(data.frame())
+  }
+  n <- as.integer(nrow(members_mat_loglog))
+  if (length(dates) < n) {
+    dates <- c(dates, rep(as.Date(NA_character_), n - length(dates)))
+  } else if (length(dates) > n) {
+    dates <- dates[seq_len(n)]
+  }
+
+  qfun <- function(v, p) {
+    vv <- v[is.finite(v)]
+    if (length(vv) < 1L) return(NA_real_)
+    as.numeric(stats::quantile(vv, probs = p, names = FALSE, na.rm = TRUE, type = 7L))
+  }
+
+  q05 <- apply(members_mat_loglog, 1L, qfun, p = 0.05)
+  q50 <- apply(members_mat_loglog, 1L, qfun, p = 0.50)
+  q95 <- apply(members_mat_loglog, 1L, qfun, p = 0.95)
+  mn <- rowMeans(members_mat_loglog, na.rm = TRUE)
+  n_mem <- apply(members_mat_loglog, 1L, function(v) sum(is.finite(v)))
+
+  data.frame(
+    source_key = source_key,
+    source_label = source_label,
+    lead = seq_len(n),
+    date = dates,
+    ensemble_q05 = as.numeric(q05),
+    ensemble_q50 = as.numeric(q50),
+    ensemble_q95 = as.numeric(q95),
+    ensemble_mean = as.numeric(mn),
+    n_members = as.integer(n_mem),
+    stringsAsFactors = FALSE
+  )
+}
+
+unified_ndlm_diag_build_ensemble_members_long <- function(source_key, source_label, dates, members_mat_loglog) {
+  if (!is.numeric(members_mat_loglog) || is.null(dim(members_mat_loglog)) ||
+      length(dim(members_mat_loglog)) != 2L || nrow(members_mat_loglog) < 1L ||
+      ncol(members_mat_loglog) < 1L) {
+    return(data.frame())
+  }
+  n <- as.integer(nrow(members_mat_loglog))
+  if (length(dates) < n) {
+    dates <- c(dates, rep(as.Date(NA_character_), n - length(dates)))
+  } else if (length(dates) > n) {
+    dates <- dates[seq_len(n)]
+  }
+
+  rows <- vector("list", as.integer(ncol(members_mat_loglog)))
+  for (j in seq_len(ncol(members_mat_loglog))) {
+    rows[[j]] <- data.frame(
+      source_key = source_key,
+      source_label = source_label,
+      member = sprintf("member_%03d", as.integer(j)),
+      lead = seq_len(n),
+      date = dates,
+      value = as.numeric(members_mat_loglog[, j]),
+      stringsAsFactors = FALSE
+    )
+  }
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+unified_ndlm_diag_match_forecast_sources <- function(row_leads, row_labels, source_leads) {
+  if (length(row_leads) < 1L || length(source_leads) < 1L) {
+    return(rep(NA_character_, length(row_leads)))
+  }
+  if (is.null(names(source_leads))) {
+    names(source_leads) <- sprintf("source_%02d", seq_along(source_leads))
+  }
+
+  row_leads <- suppressWarnings(as.integer(row_leads))
+  row_labels <- as.character(row_labels)
+  out <- rep(NA_character_, length(row_leads))
+  used <- rep(FALSE, length(source_leads))
+
+  ord <- order(row_leads, decreasing = TRUE, na.last = TRUE)
+  for (ii in ord) {
+    k <- row_leads[[ii]]
+    if (!is.finite(k) || k <= 0L) next
+    diffs <- abs(as.numeric(source_leads) - k)
+    diffs[used] <- Inf
+    if (!any(is.finite(diffs))) next
+    cand <- which(diffs == min(diffs, na.rm = TRUE))
+    if (length(cand) > 1L) {
+      lbl <- if (length(row_labels) >= ii) tolower(row_labels[[ii]]) else ""
+      cand_keys <- names(source_leads)[cand]
+      if (grepl("nws", lbl, fixed = TRUE) && "nws_forecast" %in% cand_keys) {
+        cand <- cand[which(cand_keys == "nws_forecast")[1L]]
+      } else if (grepl("glofas", lbl, fixed = TRUE) && "glofas_forecast" %in% cand_keys) {
+        cand <- cand[which(cand_keys == "glofas_forecast")[1L]]
+      } else {
+        cand <- cand[[1L]]
+      }
+    } else {
+      cand <- cand[[1L]]
+    }
+    out[[ii]] <- names(source_leads)[[cand]]
+    used[[cand]] <- TRUE
+  }
+
+  # Fallback assignment for unassigned rows with forecast content.
+  for (ii in seq_along(row_leads)) {
+    if (!is.na(out[[ii]])) next
+    k <- row_leads[[ii]]
+    if (!is.finite(k) || k <= 0L) next
+    diffs <- abs(as.numeric(source_leads) - k)
+    if (!any(is.finite(diffs))) next
+    out[[ii]] <- names(source_leads)[which.min(diffs)][[1L]]
+  }
+
+  out
+}
+
+unified_ndlm_diag_build_forecast_bundle <- function(exps, retros_df, nws_df, glofas_df, sigma_draws = NULL) {
+  empty <- list(
+    ensemble_summary = data.frame(),
+    ensemble_members = data.frame(),
+    ndlm_forecast = data.frame(),
+    row_source_map = data.frame()
+  )
+
+  if (!is.numeric(exps) || is.null(dim(exps)) || length(dim(exps)) != 2L || ncol(exps) < 1L) {
+    return(empty)
+  }
+
+  build_source <- function(df, source_key, source_label) {
+    dates <- unified_ndlm_diag_extract_date_column(df)
+    members_raw <- unified_ndlm_diag_extract_member_matrix(df)
+    if (!is.numeric(members_raw) || is.null(dim(members_raw)) ||
+        nrow(members_raw) < 1L || ncol(members_raw) < 1L) {
+      return(list(
+        key = source_key,
+        label = source_label,
+        dates = as.Date(character(0)),
+        n = 0L,
+        summary = data.frame(),
+        members = data.frame()
+      ))
+    }
+    members_loglog <- matrix(
+      unified_ndlm_diag_loglog1p_from_log1p(as.numeric(members_raw)),
+      nrow = nrow(members_raw),
+      ncol = ncol(members_raw),
+      dimnames = dimnames(members_raw)
+    )
+    summary_df <- unified_ndlm_diag_build_ensemble_summary(
+      source_key = source_key,
+      source_label = source_label,
+      dates = dates,
+      members_mat_loglog = members_loglog
+    )
+    members_long <- unified_ndlm_diag_build_ensemble_members_long(
+      source_key = source_key,
+      source_label = source_label,
+      dates = dates,
+      members_mat_loglog = members_loglog
+    )
+    list(
+      key = source_key,
+      label = source_label,
+      dates = suppressWarnings(as.Date(summary_df$date)),
+      n = if (is.data.frame(summary_df)) as.integer(nrow(summary_df)) else 0L,
+      summary = summary_df,
+      members = members_long
+    )
+  }
+
+  src_nws <- build_source(nws_df, "nws_forecast", "NWS forecast ensemble")
+  src_glofas <- build_source(glofas_df, "glofas_forecast", "GloFAS forecast ensemble")
+  source_list <- list(src_nws, src_glofas)
+  source_lengths <- vapply(source_list, function(s) as.integer(s$n), integer(1))
+  names(source_lengths) <- vapply(source_list, function(s) as.character(s$key), character(1))
+  source_dates <- lapply(source_list, function(s) suppressWarnings(as.Date(s$dates)))
+  names(source_dates) <- names(source_lengths)
+
+  n_state_rows <- as.integer(nrow(exps))
+  retros_n <- as.integer(nrow(retros_df))
+  if (!is.finite(retros_n) || retros_n < 0L) retros_n <- 0L
+  if (ncol(exps) <= retros_n) {
+    return(list(
+      ensemble_summary = do.call(rbind, lapply(source_list, function(s) s$summary)),
+      ensemble_members = do.call(rbind, lapply(source_list, function(s) s$members)),
+      ndlm_forecast = data.frame(),
+      row_source_map = data.frame(
+        source_index = as.integer(seq_len(n_state_rows)),
+        row_label = if (n_state_rows > 0L) sprintf("series_%02d", seq_len(n_state_rows)) else character(0),
+        forecast_finite_leads = 0L,
+        mapped_source = NA_character_,
+        mapped_source_leads = NA_integer_,
+        lead_diff = NA_integer_,
+        sigma_var = NA_real_,
+        sigma_sd = NA_real_,
+        stringsAsFactors = FALSE
+      )
+    ))
+  }
+
+  mu_fore <- as.matrix(exps[, (retros_n + 1L):ncol(exps), drop = FALSE])
+  row_labels <- names(retros_df)[vapply(retros_df, is.numeric, logical(1))]
+  if (length(row_labels) < n_state_rows) {
+    row_labels <- c(row_labels, sprintf("series_%02d", (length(row_labels) + 1L):n_state_rows))
+  } else if (length(row_labels) > n_state_rows) {
+    row_labels <- row_labels[seq_len(n_state_rows)]
+  }
+  if (length(row_labels) == 0L && n_state_rows > 0L) {
+    row_labels <- sprintf("series_%02d", seq_len(n_state_rows))
+  }
+
+  row_leads <- apply(mu_fore, 1L, function(v) sum(is.finite(v)))
+  mapped_source <- unified_ndlm_diag_match_forecast_sources(
+    row_leads = row_leads,
+    row_labels = row_labels,
+    source_leads = source_lengths
+  )
+
+  sigma_var <- rep(NA_real_, n_state_rows)
+  if (is.numeric(sigma_draws)) {
+    sigma_mat <- as.matrix(sigma_draws)
+    if (is.null(dim(sigma_mat))) {
+      sigma_mat <- matrix(as.numeric(sigma_mat), ncol = 1L)
+    }
+    if (ncol(sigma_mat) < n_state_rows && nrow(sigma_mat) == n_state_rows) {
+      sigma_mat <- t(sigma_mat)
+    }
+    if (ncol(sigma_mat) >= n_state_rows) {
+      for (j in seq_len(n_state_rows)) {
+        vals <- suppressWarnings(as.numeric(sigma_mat[, j]))
+        vals <- vals[is.finite(vals)]
+        sigma_var[[j]] <- if (length(vals) > 0L) stats::median(vals) else NA_real_
+      }
+    }
+  }
+  sigma_sd <- sqrt(pmax(sigma_var, 0))
+
+  row_source_map <- data.frame(
+    source_index = as.integer(seq_len(n_state_rows)),
+    row_label = as.character(row_labels),
+    forecast_finite_leads = as.integer(row_leads),
+    mapped_source = as.character(mapped_source),
+    mapped_source_leads = as.integer(ifelse(
+      !is.na(mapped_source) & mapped_source %in% names(source_lengths),
+      source_lengths[mapped_source],
+      NA_integer_
+    )),
+    lead_diff = as.integer(ifelse(
+      !is.na(mapped_source) & mapped_source %in% names(source_lengths),
+      abs(source_lengths[mapped_source] - as.integer(row_leads)),
+      NA_integer_
+    )),
+    sigma_var = as.numeric(sigma_var),
+    sigma_sd = as.numeric(sigma_sd),
+    stringsAsFactors = FALSE
+  )
+
+  ndlm_rows <- list()
+  row_i <- 0L
+  for (j in seq_len(n_state_rows)) {
+    vals <- suppressWarnings(as.numeric(mu_fore[j, ]))
+    idx <- which(is.finite(vals))
+    if (length(idx) < 1L) next
+    src_key <- mapped_source[[j]]
+    src_dates <- if (!is.na(src_key) && src_key %in% names(source_dates)) source_dates[[src_key]] else as.Date(character(0))
+    dvals <- rep(as.Date(NA_character_), length(idx))
+    if (length(src_dates) > 0L) {
+      ok_idx <- idx[idx <= length(src_dates)]
+      if (length(ok_idx) > 0L) {
+        dvals[match(ok_idx, idx)] <- src_dates[ok_idx]
+      }
+    }
+    sd_j <- sigma_sd[[j]]
+    q05 <- rep(NA_real_, length(idx))
+    q95 <- rep(NA_real_, length(idx))
+    if (is.finite(sd_j)) {
+      q05 <- vals[idx] + sd_j * stats::qnorm(0.05)
+      q95 <- vals[idx] + sd_j * stats::qnorm(0.95)
+    }
+
+    row_i <- row_i + 1L
+    ndlm_rows[[row_i]] <- data.frame(
+      source_index = as.integer(j),
+      row_label = as.character(row_labels[[j]]),
+      mapped_source = as.character(src_key),
+      lead = as.integer(idx),
+      date = dvals,
+      mu = as.numeric(vals[idx]),
+      q05 = as.numeric(q05),
+      q50 = as.numeric(vals[idx]),
+      q95 = as.numeric(q95),
+      sigma_var = as.numeric(sigma_var[[j]]),
+      sigma_sd = as.numeric(sd_j),
+      stringsAsFactors = FALSE
+    )
+  }
+  ndlm_forecast <- if (length(ndlm_rows) > 0L) do.call(rbind, ndlm_rows) else data.frame()
+  ensemble_summary <- do.call(rbind, lapply(source_list, function(s) s$summary))
+  ensemble_members <- do.call(rbind, lapply(source_list, function(s) s$members))
+  if (!is.data.frame(ensemble_summary)) ensemble_summary <- data.frame()
+  if (!is.data.frame(ensemble_members)) ensemble_members <- data.frame()
+  if (!is.data.frame(ndlm_forecast)) ndlm_forecast <- data.frame()
+
+  list(
+    ensemble_summary = ensemble_summary,
+    ensemble_members = ensemble_members,
+    ndlm_forecast = ndlm_forecast,
+    row_source_map = row_source_map
+  )
+}
+
+unified_ndlm_diag_write_forecast_overlay_panels <- function(ensemble_summary, ndlm_forecast, usgs_future_obs, path, title) {
+  req_e <- c("source_key", "source_label", "lead", "date", "ensemble_q05", "ensemble_q50", "ensemble_q95")
+  if (!is.data.frame(ensemble_summary) || !all(req_e %in% names(ensemble_summary)) || nrow(ensemble_summary) < 2L) {
+    return(FALSE)
+  }
+
+  src_keys <- unique(as.character(ensemble_summary$source_key))
+  src_keys <- src_keys[nzchar(src_keys)]
+  if (length(src_keys) < 1L) return(FALSE)
+
+  n_panels <- length(src_keys)
+  n_col <- min(2L, max(1L, n_panels))
+  n_row <- max(1L, ceiling(n_panels / n_col))
+  width_px <- max(1400L, 700L * n_col)
+  height_px <- max(900L, 420L * n_row)
+
+  grDevices::png(filename = path, width = width_px, height = height_px, res = 140)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  graphics::par(mfrow = c(n_row, n_col), mar = c(3.5, 4.1, 2.2, 1.1), oma = c(0.5, 0.5, 2.0, 0))
+
+  for (src in src_keys) {
+    e <- ensemble_summary[as.character(ensemble_summary$source_key) == src, , drop = FALSE]
+    e <- e[order(suppressWarnings(as.integer(e$lead))), , drop = FALSE]
+    x_date <- suppressWarnings(as.Date(e$date))
+    use_date <- any(!is.na(x_date))
+    x <- if (use_date) x_date else suppressWarnings(as.numeric(e$lead))
+
+    q05e <- suppressWarnings(as.numeric(e$ensemble_q05))
+    q50e <- suppressWarnings(as.numeric(e$ensemble_q50))
+    q95e <- suppressWarnings(as.numeric(e$ensemble_q95))
+
+    n <- ndlm_forecast
+    if (is.data.frame(n) && nrow(n) > 0L && ("mapped_source" %in% names(n))) {
+      n <- n[as.character(n$mapped_source) == src, , drop = FALSE]
+      n <- n[order(suppressWarnings(as.integer(n$lead))), , drop = FALSE]
+    } else {
+      n <- data.frame()
+    }
+    x_n <- if (nrow(n) > 0L) {
+      if (use_date) suppressWarnings(as.Date(n$date)) else suppressWarnings(as.numeric(n$lead))
+    } else {
+      numeric(0)
+    }
+    q05n <- if (nrow(n) > 0L) suppressWarnings(as.numeric(n$q05)) else numeric(0)
+    q50n <- if (nrow(n) > 0L) suppressWarnings(as.numeric(n$q50)) else numeric(0)
+    q95n <- if (nrow(n) > 0L) suppressWarnings(as.numeric(n$q95)) else numeric(0)
+
+    ok_e <- is.finite(q50e) & (if (use_date) !is.na(x) else is.finite(x))
+    y_stack <- c(q05e, q50e, q95e, q05n, q50n, q95n)
+    y_rng <- range(y_stack, finite = TRUE)
+    if (!all(is.finite(y_rng))) {
+      graphics::plot.new()
+      graphics::title(main = as.character(e$source_label[[1L]]))
+      next
+    }
+    pad <- 0.07 * max(diff(y_rng), 1e-8)
+    y_lim <- c(y_rng[1] - pad, y_rng[2] + pad)
+
+    graphics::plot(
+      x[ok_e], q50e[ok_e],
+      type = "n",
+      xlab = if (use_date) "Date" else "Forecast lead",
+      ylab = "log(log1p(cms))",
+      ylim = y_lim,
+      main = as.character(e$source_label[[1L]]),
+      xaxt = if (use_date) "n" else "s"
+    )
+    if (use_date && sum(ok_e) >= 2L) {
+      at_num <- pretty(as.numeric(x[ok_e]), n = 7L)
+      at_date <- suppressWarnings(as.Date(at_num, origin = "1970-01-01"))
+      at_date <- at_date[!is.na(at_date)]
+      if (length(at_date) > 0L) graphics::axis.Date(1, at = at_date, format = "%b %d")
+    }
+
+    ok_erib <- is.finite(q05e) & is.finite(q95e) & (if (use_date) !is.na(x) else is.finite(x))
+    if (sum(ok_erib) >= 2L) {
+      xp <- if (use_date) as.numeric(x[ok_erib]) else x[ok_erib]
+      graphics::polygon(
+        x = c(xp, rev(xp)),
+        y = c(q05e[ok_erib], rev(q95e[ok_erib])),
+        col = grDevices::adjustcolor("#9CA3AF", alpha.f = 0.32),
+        border = NA
+      )
+    }
+    if (sum(ok_e) >= 2L) {
+      graphics::lines(x[ok_e], q50e[ok_e], col = "#374151", lwd = 1.8)
+    }
+
+    ok_n <- is.finite(q50n) & (if (use_date) !is.na(x_n) else is.finite(x_n))
+    ok_nrib <- is.finite(q05n) & is.finite(q95n) & (if (use_date) !is.na(x_n) else is.finite(x_n))
+    if (sum(ok_nrib) >= 2L) {
+      xp <- if (use_date) as.numeric(x_n[ok_nrib]) else x_n[ok_nrib]
+      graphics::polygon(
+        x = c(xp, rev(xp)),
+        y = c(q05n[ok_nrib], rev(q95n[ok_nrib])),
+        col = grDevices::adjustcolor("#F59E0B", alpha.f = 0.24),
+        border = NA
+      )
+    }
+    if (sum(ok_n) >= 2L) {
+      graphics::lines(x_n[ok_n], q50n[ok_n], col = "#B45309", lwd = 2.1)
+    }
+
+    if (is.data.frame(usgs_future_obs) && nrow(usgs_future_obs) > 0L && use_date) {
+      u <- usgs_future_obs
+      if (all(c("date", "observed") %in% names(u))) {
+        u_date <- suppressWarnings(as.Date(u$date))
+        u_val <- suppressWarnings(as.numeric(u$observed))
+        date_min <- suppressWarnings(min(as.Date(e$date), na.rm = TRUE))
+        date_max <- suppressWarnings(max(as.Date(e$date), na.rm = TRUE))
+        ok_u <- !is.na(u_date) & is.finite(u_val) & !is.na(date_min) & !is.na(date_max) &
+          u_date >= date_min & u_date <= date_max
+        if (sum(ok_u) >= 1L) {
+          ord_u <- order(u_date[ok_u])
+          graphics::points(u_date[ok_u][ord_u], u_val[ok_u][ord_u], pch = 16, cex = 0.65, col = "#A21CAF")
+          if (sum(ok_u) >= 2L) {
+            graphics::lines(u_date[ok_u][ord_u], u_val[ok_u][ord_u], lwd = 1.1, lty = 3, col = "#A21CAF")
+          }
+        }
+      }
+    }
+
+    x0 <- if (use_date && any(!is.na(x))) {
+      min(x, na.rm = TRUE)
+    } else if (!use_date && any(is.finite(x))) {
+      min(x, na.rm = TRUE)
+    } else {
+      NA
+    }
+    if ((use_date && !is.na(x0)) || (!use_date && is.finite(x0))) {
+      graphics::abline(v = x0, col = "#6B7280", lty = 3, lwd = 1.0)
+    }
+    graphics::grid(col = "#E5E7EB", lty = "dotted")
+    graphics::legend(
+      "topright",
+      legend = c("Ensemble median", "Ensemble 5-95%", "NDLM mu_t", "NDLM q05-q95", "USGS realized future (unobserved at fit)"),
+      col = c("#374151", "#9CA3AF", "#B45309", "#F59E0B", "#A21CAF"),
+      lwd = c(1.8, 5.0, 2.1, 5.0, 1.1),
+      lty = c(1, 1, 1, 1, 3),
+      pch = c(NA, NA, NA, NA, 16),
+      pt.cex = c(NA, NA, NA, NA, 0.65),
+      bty = "n",
+      cex = 0.78
+    )
+  }
+
+  graphics::mtext(title, outer = TRUE, line = 0.2, cex = 1.0)
+  TRUE
+}
+
+unified_ndlm_diag_write_forecast_member_panels <- function(ensemble_members, ndlm_forecast, usgs_future_obs, path, title) {
+  req <- c("source_key", "source_label", "member", "lead", "date", "value")
+  if (!is.data.frame(ensemble_members) || !all(req %in% names(ensemble_members)) || nrow(ensemble_members) < 2L) {
+    return(FALSE)
+  }
+
+  src_keys <- unique(as.character(ensemble_members$source_key))
+  src_keys <- src_keys[nzchar(src_keys)]
+  if (length(src_keys) < 1L) return(FALSE)
+
+  n_panels <- length(src_keys)
+  n_col <- min(2L, max(1L, n_panels))
+  n_row <- max(1L, ceiling(n_panels / n_col))
+  width_px <- max(1400L, 700L * n_col)
+  height_px <- max(900L, 420L * n_row)
+
+  grDevices::png(filename = path, width = width_px, height = height_px, res = 140)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  graphics::par(mfrow = c(n_row, n_col), mar = c(3.5, 4.1, 2.2, 1.1), oma = c(0.5, 0.5, 2.0, 0))
+
+  for (src in src_keys) {
+    e <- ensemble_members[as.character(ensemble_members$source_key) == src, , drop = FALSE]
+    if (nrow(e) < 2L) {
+      graphics::plot.new()
+      graphics::title(main = src)
+      next
+    }
+    x_date <- suppressWarnings(as.Date(e$date))
+    use_date <- any(!is.na(x_date))
+    x <- if (use_date) x_date else suppressWarnings(as.numeric(e$lead))
+    y <- suppressWarnings(as.numeric(e$value))
+
+    n <- ndlm_forecast
+    if (is.data.frame(n) && nrow(n) > 0L && ("mapped_source" %in% names(n))) {
+      n <- n[as.character(n$mapped_source) == src, , drop = FALSE]
+      n <- n[order(suppressWarnings(as.integer(n$lead))), , drop = FALSE]
+    } else {
+      n <- data.frame()
+    }
+    x_n <- if (nrow(n) > 0L) {
+      if (use_date) suppressWarnings(as.Date(n$date)) else suppressWarnings(as.numeric(n$lead))
+    } else {
+      numeric(0)
+    }
+    q05n <- if (nrow(n) > 0L) suppressWarnings(as.numeric(n$q05)) else numeric(0)
+    q50n <- if (nrow(n) > 0L) suppressWarnings(as.numeric(n$q50)) else numeric(0)
+    q95n <- if (nrow(n) > 0L) suppressWarnings(as.numeric(n$q95)) else numeric(0)
+
+    ok <- is.finite(y) & (if (use_date) !is.na(x) else is.finite(x))
+    y_rng <- range(c(y[ok], q05n, q50n, q95n), finite = TRUE)
+    if (!all(is.finite(y_rng))) {
+      graphics::plot.new()
+      graphics::title(main = as.character(e$source_label[[1L]]))
+      next
+    }
+    pad <- 0.07 * max(diff(y_rng), 1e-8)
+    y_lim <- c(y_rng[1] - pad, y_rng[2] + pad)
+    plot_x <- if (sum(ok) >= 1L) x[ok] else if (use_date) as.Date(Sys.Date()) else 1
+    plot_y <- if (sum(ok) >= 1L) y[ok] else 0
+
+    graphics::plot(
+      plot_x, plot_y,
+      type = "n",
+      xlab = if (use_date) "Date" else "Forecast lead",
+      ylab = "log(log1p(cms))",
+      ylim = y_lim,
+      main = as.character(e$source_label[[1L]]),
+      xaxt = if (use_date) "n" else "s"
+    )
+    if (use_date && sum(ok) >= 2L) {
+      at_num <- pretty(as.numeric(x[ok]), n = 7L)
+      at_date <- suppressWarnings(as.Date(at_num, origin = "1970-01-01"))
+      at_date <- at_date[!is.na(at_date)]
+      if (length(at_date) > 0L) graphics::axis.Date(1, at = at_date, format = "%b %d")
+    }
+
+    members <- unique(as.character(e$member))
+    for (m in members) {
+      sub <- e[as.character(e$member) == m, , drop = FALSE]
+      sub <- sub[order(suppressWarnings(as.integer(sub$lead))), , drop = FALSE]
+      xs <- if (use_date) suppressWarnings(as.Date(sub$date)) else suppressWarnings(as.numeric(sub$lead))
+      ys <- suppressWarnings(as.numeric(sub$value))
+      okm <- is.finite(ys) & (if (use_date) !is.na(xs) else is.finite(xs))
+      if (sum(okm) >= 2L) {
+        graphics::lines(xs[okm], ys[okm], col = grDevices::adjustcolor("#6B7280", alpha.f = 0.25), lwd = 0.8)
+      }
+    }
+
+    ok_n <- is.finite(q50n) & (if (use_date) !is.na(x_n) else is.finite(x_n))
+    ok_nrib <- is.finite(q05n) & is.finite(q95n) & (if (use_date) !is.na(x_n) else is.finite(x_n))
+    if (sum(ok_nrib) >= 2L) {
+      xp <- if (use_date) as.numeric(x_n[ok_nrib]) else x_n[ok_nrib]
+      graphics::polygon(
+        x = c(xp, rev(xp)),
+        y = c(q05n[ok_nrib], rev(q95n[ok_nrib])),
+        col = grDevices::adjustcolor("#F59E0B", alpha.f = 0.24),
+        border = NA
+      )
+    }
+    if (sum(ok_n) >= 2L) {
+      graphics::lines(x_n[ok_n], q50n[ok_n], col = "#B45309", lwd = 2.1)
+    }
+
+    if (is.data.frame(usgs_future_obs) && nrow(usgs_future_obs) > 0L && use_date) {
+      u <- usgs_future_obs
+      if (all(c("date", "observed") %in% names(u))) {
+        u_date <- suppressWarnings(as.Date(u$date))
+        u_val <- suppressWarnings(as.numeric(u$observed))
+        date_min <- suppressWarnings(min(as.Date(e$date), na.rm = TRUE))
+        date_max <- suppressWarnings(max(as.Date(e$date), na.rm = TRUE))
+        ok_u <- !is.na(u_date) & is.finite(u_val) & !is.na(date_min) & !is.na(date_max) &
+          u_date >= date_min & u_date <= date_max
+        if (sum(ok_u) >= 1L) {
+          ord_u <- order(u_date[ok_u])
+          graphics::points(u_date[ok_u][ord_u], u_val[ok_u][ord_u], pch = 16, cex = 0.65, col = "#A21CAF")
+          if (sum(ok_u) >= 2L) {
+            graphics::lines(u_date[ok_u][ord_u], u_val[ok_u][ord_u], lwd = 1.1, lty = 3, col = "#A21CAF")
+          }
+        }
+      }
+    }
+
+    x0 <- if (use_date && any(!is.na(x))) {
+      min(x, na.rm = TRUE)
+    } else if (!use_date && any(is.finite(x))) {
+      min(x, na.rm = TRUE)
+    } else {
+      NA
+    }
+    if ((use_date && !is.na(x0)) || (!use_date && is.finite(x0))) {
+      graphics::abline(v = x0, col = "#6B7280", lty = 3, lwd = 1.0)
+    }
+    graphics::grid(col = "#E5E7EB", lty = "dotted")
+    graphics::legend(
+      "topright",
+      legend = c("Ensemble members", "NDLM mu_t", "NDLM q05-q95", "USGS realized future (unobserved at fit)"),
+      col = c("#6B7280", "#B45309", "#F59E0B", "#A21CAF"),
+      lwd = c(1.2, 2.1, 5.0, 1.1),
+      lty = c(1, 1, 1, 3),
+      pch = c(NA, NA, NA, 16),
+      pt.cex = c(NA, NA, NA, 0.65),
+      bty = "n",
+      cex = 0.78
+    )
+  }
+
+  graphics::mtext(title, outer = TRUE, line = 0.2, cex = 1.0)
+  TRUE
+}
+
+unified_ndlm_diag_write_forecast_quantile_panels <- function(ensemble_summary, ndlm_forecast, path, title) {
+  req_e <- c("source_key", "source_label", "lead", "date", "ensemble_q05", "ensemble_q50", "ensemble_q95")
+  req_n <- c("mapped_source", "lead", "date", "q05", "q50", "q95")
+  if (!is.data.frame(ensemble_summary) || !all(req_e %in% names(ensemble_summary)) || nrow(ensemble_summary) < 2L) {
+    return(FALSE)
+  }
+  if (!is.data.frame(ndlm_forecast) || !all(req_n %in% names(ndlm_forecast)) || nrow(ndlm_forecast) < 2L) {
+    return(FALSE)
+  }
+
+  src_keys <- intersect(
+    unique(as.character(ensemble_summary$source_key)),
+    unique(as.character(ndlm_forecast$mapped_source))
+  )
+  src_keys <- src_keys[nzchar(src_keys)]
+  if (length(src_keys) < 1L) return(FALSE)
+
+  n_panels <- length(src_keys)
+  n_col <- min(2L, max(1L, n_panels))
+  n_row <- max(1L, ceiling(n_panels / n_col))
+  width_px <- max(1400L, 700L * n_col)
+  height_px <- max(900L, 420L * n_row)
+
+  grDevices::png(filename = path, width = width_px, height = height_px, res = 140)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  graphics::par(mfrow = c(n_row, n_col), mar = c(3.5, 4.1, 2.2, 1.1), oma = c(0.5, 0.5, 2.0, 0))
+
+  for (src in src_keys) {
+    e <- ensemble_summary[as.character(ensemble_summary$source_key) == src, , drop = FALSE]
+    e <- e[order(suppressWarnings(as.integer(e$lead))), , drop = FALSE]
+    n <- ndlm_forecast[as.character(ndlm_forecast$mapped_source) == src, , drop = FALSE]
+    n <- n[order(suppressWarnings(as.integer(n$lead))), , drop = FALSE]
+
+    x_date <- suppressWarnings(as.Date(e$date))
+    use_date <- any(!is.na(x_date))
+    x_e <- if (use_date) x_date else suppressWarnings(as.numeric(e$lead))
+    x_n <- if (use_date) suppressWarnings(as.Date(n$date)) else suppressWarnings(as.numeric(n$lead))
+
+    eq05 <- suppressWarnings(as.numeric(e$ensemble_q05))
+    eq50 <- suppressWarnings(as.numeric(e$ensemble_q50))
+    eq95 <- suppressWarnings(as.numeric(e$ensemble_q95))
+    nq05 <- suppressWarnings(as.numeric(n$q05))
+    nq50 <- suppressWarnings(as.numeric(n$q50))
+    nq95 <- suppressWarnings(as.numeric(n$q95))
+
+    y_rng <- range(c(eq05, eq50, eq95, nq05, nq50, nq95), finite = TRUE)
+    if (!all(is.finite(y_rng))) {
+      graphics::plot.new()
+      graphics::title(main = as.character(e$source_label[[1L]]))
+      next
+    }
+    pad <- 0.07 * max(diff(y_rng), 1e-8)
+    y_lim <- c(y_rng[1] - pad, y_rng[2] + pad)
+
+    ok_e <- is.finite(eq50) & (if (use_date) !is.na(x_e) else is.finite(x_e))
+    graphics::plot(
+      x_e[ok_e], eq50[ok_e],
+      type = "n",
+      xlab = if (use_date) "Date" else "Forecast lead",
+      ylab = "log(log1p(cms))",
+      ylim = y_lim,
+      main = as.character(e$source_label[[1L]]),
+      xaxt = if (use_date) "n" else "s"
+    )
+    if (use_date && sum(ok_e) >= 2L) {
+      at_num <- pretty(as.numeric(x_e[ok_e]), n = 7L)
+      at_date <- suppressWarnings(as.Date(at_num, origin = "1970-01-01"))
+      at_date <- at_date[!is.na(at_date)]
+      if (length(at_date) > 0L) graphics::axis.Date(1, at = at_date, format = "%b %d")
+    }
+
+    ok_eq <- is.finite(eq05) & is.finite(eq50) & is.finite(eq95) & (if (use_date) !is.na(x_e) else is.finite(x_e))
+    if (sum(ok_eq) >= 2L) {
+      graphics::lines(x_e[ok_eq], eq05[ok_eq], col = "#6B7280", lwd = 1.2, lty = 2)
+      graphics::lines(x_e[ok_eq], eq50[ok_eq], col = "#374151", lwd = 2.0, lty = 1)
+      graphics::lines(x_e[ok_eq], eq95[ok_eq], col = "#6B7280", lwd = 1.2, lty = 2)
+    }
+
+    ok_nq <- is.finite(nq05) & is.finite(nq50) & is.finite(nq95) & (if (use_date) !is.na(x_n) else is.finite(x_n))
+    if (sum(ok_nq) >= 2L) {
+      graphics::lines(x_n[ok_nq], nq05[ok_nq], col = "#F59E0B", lwd = 1.3, lty = 2)
+      graphics::lines(x_n[ok_nq], nq50[ok_nq], col = "#B45309", lwd = 2.1, lty = 1)
+      graphics::lines(x_n[ok_nq], nq95[ok_nq], col = "#F59E0B", lwd = 1.3, lty = 2)
+    }
+
+    x0 <- if (use_date && any(!is.na(x_e))) {
+      min(x_e, na.rm = TRUE)
+    } else if (!use_date && any(is.finite(x_e))) {
+      min(x_e, na.rm = TRUE)
+    } else {
+      NA
+    }
+    if ((use_date && !is.na(x0)) || (!use_date && is.finite(x0))) {
+      graphics::abline(v = x0, col = "#6B7280", lty = 3, lwd = 1.0)
+    }
+    graphics::grid(col = "#E5E7EB", lty = "dotted")
+    graphics::legend(
+      "topright",
+      legend = c("Ensemble q05/q95", "Ensemble q50", "NDLM q05/q95", "NDLM q50"),
+      col = c("#6B7280", "#374151", "#F59E0B", "#B45309"),
+      lwd = c(1.2, 2.0, 1.3, 2.1),
+      lty = c(2, 1, 2, 1),
+      bty = "n",
+      cex = 0.8
+    )
   }
 
   graphics::mtext(title, outer = TRUE, line = 0.2, cex = 1.0)
@@ -781,7 +1784,11 @@ unified_generate_ndlm_post_diagnostics <- function(
   glofas_csv_path,
   fit_log_path = "",
   output_dir = NULL,
-  strict_contract = FALSE
+  usgs_site = "11160500",
+  forecast_start_date = NULL,
+  forecast_end_date = NULL,
+  strict_contract = FALSE,
+  state_ci_max_draws = NULL
 ) {
   if (is.null(output_dir) || !nzchar(output_dir)) {
     output_dir <- file.path(run_root, "diagnostics", "ndlm")
@@ -821,16 +1828,64 @@ unified_generate_ndlm_post_diagnostics <- function(
   iter_trace <- unified_ndlm_diag_parse_progress_log(fit_log_path)
   if (nrow(iter_trace) == 0L && exists("seq.elbo_50_NDLM_synth_DISC", envir = env, inherits = FALSE)) {
     elbo <- as.numeric(get("seq.elbo_50_NDLM_synth_DISC", envir = env, inherits = FALSE))
-    sigma <- if (exists("seq.sigma_50_NDLM_synth_DISC", envir = env, inherits = FALSE)) {
-      as.numeric(get("seq.sigma_50_NDLM_synth_DISC", envir = env, inherits = FALSE))
-    } else {
-      rep(NA_real_, length(elbo))
+    sigma_usgs <- rep(NA_real_, length(elbo))
+    sigma_nws <- rep(NA_real_, length(elbo))
+    sigma_glofas <- rep(NA_real_, length(elbo))
+    if (exists("seq.sigma_50_NDLM_synth_DISC", envir = env, inherits = FALSE)) {
+      sigma_obj <- get("seq.sigma_50_NDLM_synth_DISC", envir = env, inherits = FALSE)
+      sigma_mat <- NULL
+      if (is.numeric(sigma_obj)) {
+        if (is.null(dim(sigma_obj))) {
+          sigma_mat <- matrix(as.numeric(sigma_obj), ncol = 1L)
+        } else if (length(dim(sigma_obj)) == 2L) {
+          sigma_mat <- as.matrix(sigma_obj)
+        }
+      }
+      if (!is.null(sigma_mat)) {
+        nr <- nrow(sigma_mat)
+        nc <- ncol(sigma_mat)
+        if (nr != length(elbo) && nc == length(elbo)) {
+          sigma_mat <- t(sigma_mat)
+          nr <- nrow(sigma_mat)
+          nc <- ncol(sigma_mat)
+        }
+        if (nr < length(elbo) && nr > 0L) {
+          pad <- matrix(NA_real_, nrow = length(elbo) - nr, ncol = nc)
+          sigma_mat <- rbind(sigma_mat, pad)
+          nr <- nrow(sigma_mat)
+        }
+        if (nr > length(elbo)) {
+          sigma_mat <- sigma_mat[seq_len(length(elbo)), , drop = FALSE]
+          nr <- nrow(sigma_mat)
+        }
+        nm_norm <- if (!is.null(colnames(sigma_mat))) gsub("[^a-z0-9]+", "", tolower(colnames(sigma_mat))) else rep("", ncol(sigma_mat))
+        pick_col <- function(keys, fallback_idx) {
+          for (k in keys) {
+            hit <- which(nm_norm == k)
+            if (length(hit) > 0L) return(hit[[1L]])
+          }
+          if (is.finite(fallback_idx) && fallback_idx >= 1L && fallback_idx <= ncol(sigma_mat)) {
+            return(as.integer(fallback_idx))
+          }
+          NA_integer_
+        }
+        idx_usgs <- pick_col(c("sigmausgsexp", "sigmausgs", "usgs"), 1L)
+        idx_nws <- pick_col(c("sigmanwsexp", "sigmanws", "nws"), if (ncol(sigma_mat) >= 2L) 2L else NA_integer_)
+        idx_glofas <- pick_col(c("sigmaglofasexp", "sigmaglofas", "glofas"), if (ncol(sigma_mat) >= 3L) 3L else NA_integer_)
+        if (is.finite(idx_usgs)) sigma_usgs <- as.numeric(sigma_mat[, idx_usgs])
+        if (is.finite(idx_nws)) sigma_nws <- as.numeric(sigma_mat[, idx_nws])
+        if (is.finite(idx_glofas)) sigma_glofas <- as.numeric(sigma_mat[, idx_glofas])
+      }
     }
+    sigma <- sigma_usgs
     iter_trace <- data.frame(
       iter = seq_along(elbo),
       elbo = elbo,
       crit_elbo = c(NA_real_, abs(diff(elbo))),
       sigma_exp = sigma,
+      sigma_usgs_exp = sigma_usgs,
+      sigma_nws_exp = sigma_nws,
+      sigma_glofas_exp = sigma_glofas,
       gamma_exp = NA_real_,
       state_norm_sq = NA_real_,
       w_hist = NA_real_,
@@ -969,7 +2024,8 @@ unified_generate_ndlm_post_diagnostics <- function(
     stringsAsFactors = FALSE
   )
 
-  obs_series <- unified_ndlm_diag_pick_numeric_column(retros_df, preferred = c("USGS", "y", "obs", "flow", "value"))
+  obs_series_log1p <- unified_ndlm_diag_pick_numeric_column(retros_df, preferred = c("USGS", "y", "obs", "flow", "value"))
+  obs_series <- unified_ndlm_diag_loglog1p_from_log1p(obs_series_log1p)
   smooth_series <- if (is.numeric(exps) && !is.null(dim(exps)) && length(dim(exps)) == 2L && dim(exps)[1] >= 2L) {
     as.numeric(exps[2, ])
   } else {
@@ -1076,9 +2132,71 @@ unified_generate_ndlm_post_diagnostics <- function(
     stringsAsFactors = FALSE
   )
 
+  mu_obs_long <- unified_ndlm_diag_build_mu_obs_long(
+    exps = exps,
+    retros_df = retros_df,
+    retros_dates = retros_dates
+  )
+
+  sigma_draws <- if (exists("samp.sigma_50_NDLM_synth_DISC", envir = env, inherits = FALSE)) {
+    get("samp.sigma_50_NDLM_synth_DISC", envir = env, inherits = FALSE)
+  } else {
+    NULL
+  }
+  forecast_bundle <- unified_ndlm_diag_build_forecast_bundle(
+    exps = exps,
+    retros_df = retros_df,
+    nws_df = nws_df,
+    glofas_df = glofas_df,
+    sigma_draws = sigma_draws
+  )
+  ensemble_summary <- forecast_bundle$ensemble_summary
+  ensemble_members <- forecast_bundle$ensemble_members
+  ndlm_forecast <- forecast_bundle$ndlm_forecast
+  row_source_map <- forecast_bundle$row_source_map
+
+  infer_min_date <- function(x) {
+    dx <- suppressWarnings(as.Date(x))
+    if (length(dx) < 1L || all(is.na(dx))) return(as.Date(NA_character_))
+    min(dx, na.rm = TRUE)
+  }
+  infer_max_date <- function(x) {
+    dx <- suppressWarnings(as.Date(x))
+    if (length(dx) < 1L || all(is.na(dx))) return(as.Date(NA_character_))
+    max(dx, na.rm = TRUE)
+  }
+
+  as_date_or_na <- function(x) {
+    d <- suppressWarnings(as.Date(x))
+    if (length(d) < 1L) return(as.Date(NA_character_))
+    d[[1L]]
+  }
+
+  usgs_start <- as_date_or_na(forecast_start_date)
+  usgs_end <- as_date_or_na(forecast_end_date)
+  if (is.na(usgs_start)) {
+    if (is.data.frame(ensemble_summary) && nrow(ensemble_summary) > 0L && "date" %in% names(ensemble_summary)) {
+      usgs_start <- infer_min_date(ensemble_summary$date)
+    } else {
+      usgs_start <- infer_min_date(c(nws_dates, glofas_dates))
+    }
+  }
+  if (is.na(usgs_end)) {
+    if (is.data.frame(ensemble_summary) && nrow(ensemble_summary) > 0L && "date" %in% names(ensemble_summary)) {
+      usgs_end <- infer_max_date(ensemble_summary$date)
+    } else {
+      usgs_end <- infer_max_date(c(nws_dates, glofas_dates))
+    }
+  }
+  usgs_future_obs <- unified_ndlm_diag_fetch_future_usgs(
+    usgs_site = usgs_site,
+    start_date = usgs_start,
+    end_date = usgs_end
+  )
+
   sigma_long <- unified_ndlm_diag_extract_sigma_long(iter_trace = iter_trace, env = env)
 
-  theta_draws <- unified_ndlm_diag_extract_theta_draws(env)
+  theta_draws <- unified_ndlm_diag_extract_theta_draws(env, max_draws = state_ci_max_draws)
   state_ci <- NULL
   if (!is.null(theta_draws)) {
     state_ci <- unified_ndlm_diag_summarize_state_draws(theta_draws = theta_draws, dates = retros_dates)
@@ -1108,6 +2226,14 @@ unified_generate_ndlm_post_diagnostics <- function(
     ndlm_fit_series = file.path(output_dir, "ndlm_fit_series.csv"),
     ndlm_fit_modes_coverage = file.path(output_dir, "ndlm_fit_modes_coverage.csv"),
     ndlm_fit_modes_series = file.path(output_dir, "ndlm_fit_modes_series.csv"),
+    ndlm_mu_vs_observed_long = file.path(output_dir, "ndlm_mu_vs_observed_long.csv"),
+    ndlm_mu_vs_observed_all_sources = file.path(output_dir, "ndlm_mu_vs_observed_all_sources.png"),
+    ndlm_mu_vs_observed_historical_sources = file.path(output_dir, "ndlm_mu_vs_observed_historical_sources.png"),
+    ndlm_forecast_ensemble_summary = file.path(output_dir, "ndlm_forecast_ensemble_summary.csv"),
+    ndlm_forecast_ensemble_members_long = file.path(output_dir, "ndlm_forecast_ensemble_members_long.csv"),
+    ndlm_forecast_mu_quantiles_by_source = file.path(output_dir, "ndlm_forecast_mu_quantiles_by_source.csv"),
+    ndlm_forecast_row_source_map = file.path(output_dir, "ndlm_forecast_row_source_map.csv"),
+    ndlm_forecast_usgs_future_observed = file.path(output_dir, "ndlm_forecast_usgs_future_observed.csv"),
     ndlm_sigma_trace_long = file.path(output_dir, "ndlm_sigma_trace_long.csv"),
     ndlm_state_components_ci_summary = file.path(output_dir, "ndlm_state_components_ci_summary.csv"),
     ndlm_state_components_ci_coverage = file.path(output_dir, "ndlm_state_components_ci_coverage.csv"),
@@ -1123,6 +2249,9 @@ unified_generate_ndlm_post_diagnostics <- function(
     ndlm_state_components_ci_hist = file.path(output_dir, "ndlm_state_components_ci_hist.png"),
     ndlm_state_components_ci_discrep = file.path(output_dir, "ndlm_state_components_ci_discrep.png"),
     ndlm_state_components_ci_transfer = file.path(output_dir, "ndlm_state_components_ci_transfer.png"),
+    ndlm_forecast_window_ndlm_vs_ensembles = file.path(output_dir, "ndlm_forecast_window_ndlm_vs_ensembles.png"),
+    ndlm_forecast_window_ensemble_members = file.path(output_dir, "ndlm_forecast_window_ensemble_members.png"),
+    ndlm_forecast_window_quantiles = file.path(output_dir, "ndlm_forecast_window_quantiles.png"),
     ndlm_dynamic_fit_2012_2016 = file.path(output_dir, "ndlm_dynamic_fit_2012_2016.png"),
     ndlm_dynamic_fit_2017_2019 = file.path(output_dir, "ndlm_dynamic_fit_2017_2019.png"),
     ndlm_dynamic_fit_2018_2020 = file.path(output_dir, "ndlm_dynamic_fit_2018_2020.png")
@@ -1139,6 +2268,24 @@ unified_generate_ndlm_post_diagnostics <- function(
   utils::write.csv(fit_series, paths$ndlm_fit_series, row.names = FALSE)
   utils::write.csv(mode_coverage, paths$ndlm_fit_modes_coverage, row.names = FALSE)
   utils::write.csv(mode_series, paths$ndlm_fit_modes_series, row.names = FALSE)
+  if (is.data.frame(mu_obs_long) && nrow(mu_obs_long) > 0L) {
+    utils::write.csv(mu_obs_long, paths$ndlm_mu_vs_observed_long, row.names = FALSE)
+  }
+  if (is.data.frame(ensemble_summary) && nrow(ensemble_summary) > 0L) {
+    utils::write.csv(ensemble_summary, paths$ndlm_forecast_ensemble_summary, row.names = FALSE)
+  }
+  if (is.data.frame(ensemble_members) && nrow(ensemble_members) > 0L) {
+    utils::write.csv(ensemble_members, paths$ndlm_forecast_ensemble_members_long, row.names = FALSE)
+  }
+  if (is.data.frame(ndlm_forecast) && nrow(ndlm_forecast) > 0L) {
+    utils::write.csv(ndlm_forecast, paths$ndlm_forecast_mu_quantiles_by_source, row.names = FALSE)
+  }
+  if (is.data.frame(row_source_map) && nrow(row_source_map) > 0L) {
+    utils::write.csv(row_source_map, paths$ndlm_forecast_row_source_map, row.names = FALSE)
+  }
+  if (is.data.frame(usgs_future_obs) && nrow(usgs_future_obs) > 0L) {
+    utils::write.csv(usgs_future_obs, paths$ndlm_forecast_usgs_future_observed, row.names = FALSE)
+  }
   if (is.data.frame(sigma_long) && nrow(sigma_long) > 0L) {
     utils::write.csv(sigma_long, paths$ndlm_sigma_trace_long, row.names = FALSE)
   }
@@ -1181,6 +2328,49 @@ unified_generate_ndlm_post_diagnostics <- function(
     main = "NDLM State-Norm Trace",
     ylab = "State Norm Sq"
   ))
+
+  if (is.data.frame(mu_obs_long) && nrow(mu_obs_long) > 1L) {
+    invisible(unified_ndlm_diag_write_mu_obs_panels(
+      mu_obs_df = mu_obs_long,
+      path = paths$ndlm_mu_vs_observed_all_sources,
+      title = "NDLM Expected Location (all mu_t rows) vs Observed (full span)",
+      historical_only = FALSE
+    ))
+    invisible(unified_ndlm_diag_write_mu_obs_panels(
+      mu_obs_df = mu_obs_long,
+      path = paths$ndlm_mu_vs_observed_historical_sources,
+      title = "NDLM Expected Location (all mu_t rows) vs Observed (historical only)",
+      historical_only = TRUE
+    ))
+  }
+
+  if (is.data.frame(ensemble_summary) && nrow(ensemble_summary) > 1L &&
+      is.data.frame(ndlm_forecast) && nrow(ndlm_forecast) > 1L) {
+    invisible(unified_ndlm_diag_write_forecast_overlay_panels(
+      ensemble_summary = ensemble_summary,
+      ndlm_forecast = ndlm_forecast,
+      usgs_future_obs = usgs_future_obs,
+      path = paths$ndlm_forecast_window_ndlm_vs_ensembles,
+      title = "NDLM Forecast Window: NDLM dynamic location vs forecast ensembles"
+    ))
+    invisible(unified_ndlm_diag_write_forecast_quantile_panels(
+      ensemble_summary = ensemble_summary,
+      ndlm_forecast = ndlm_forecast,
+      path = paths$ndlm_forecast_window_quantiles,
+      title = "NDLM Forecast Window: implied quantile shifts (q05/q50/q95) vs ensemble quantiles"
+    ))
+  }
+
+  if (is.data.frame(ensemble_members) && nrow(ensemble_members) > 1L &&
+      is.data.frame(ndlm_forecast) && nrow(ndlm_forecast) > 1L) {
+    invisible(unified_ndlm_diag_write_forecast_member_panels(
+      ensemble_members = ensemble_members,
+      ndlm_forecast = ndlm_forecast,
+      usgs_future_obs = usgs_future_obs,
+      path = paths$ndlm_forecast_window_ensemble_members,
+      title = "NDLM Forecast Window: ensemble members with NDLM overlay"
+    ))
+  }
 
   if (n_overlap > 1L) {
     invisible(unified_ndlm_diag_write_fit_modes_plot(

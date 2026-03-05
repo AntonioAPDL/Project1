@@ -103,6 +103,40 @@ test_that("full post contract fails fast on missing synthesis cache", {
   expect_true(any(grepl("y_reps.rds", contract$missing_paths, fixed = TRUE)))
 })
 
+test_that("multivar-only post contract accepts multivar diagnostics without synthesis cubes", {
+  outputs_dir <- tempfile("post_outputs_multivar_only_")
+  cache_dir <- tempfile("post_cache_multivar_only_")
+  dir.create(outputs_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+
+  create_dummy_png(file.path(outputs_dir, "multivar_fit_mu_vs_observed_loglog.png"))
+  create_dummy_png(file.path(outputs_dir, "multivar_forecast_window_mu_vs_future_usgs.png"))
+  create_dummy_png(file.path(outputs_dir, "multivar_elbo_trace_q50.png"))
+
+  write.csv(data.frame(x = 1), file.path(outputs_dir, "multivar_trace_summary_q50.csv"), row.names = FALSE)
+  write.csv(data.frame(x = 1), file.path(outputs_dir, "multivar_forecast_window_q50_summary.csv"), row.names = FALSE)
+  write.csv(data.frame(x = 1), file.path(outputs_dir, "multivar_forecast_window_q50_metrics.csv"), row.names = FALSE)
+
+  contract <- unified_post_contract_check(
+    artifacts_df = NULL,
+    outputs_dir = outputs_dir,
+    cache_dir = cache_dir,
+    post_figures = TRUE,
+    export_tables = TRUE,
+    post_smoke_fast = FALSE,
+    model_run_exdqlm_multivar = TRUE,
+    model_run_exdqlm_univar = FALSE,
+    model_run_ndlm_main = FALSE
+  )
+
+  expect_true(isTRUE(contract$status))
+  expect_true(isTRUE(contract$checks$multivar_fit_figure_present))
+  expect_true(isTRUE(contract$checks$multivar_forecast_figure_present))
+  expect_true(isTRUE(contract$checks$multivar_trace_figure_present))
+  expect_true(isTRUE(contract$checks$multivar_summary_csv_present))
+  expect_true(isTRUE(contract$checks$table_exports_present))
+})
+
 test_that("artifact report writer creates manifest and summary files", {
   outputs_dir <- tempfile("post_outputs_report_")
   cache_dir <- tempfile("post_cache_report_")

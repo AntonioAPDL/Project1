@@ -1,0 +1,222 @@
+config_version: 1
+
+run:
+  run_id: "prod_allmodels_legacybridge_shared_onecore_r12_20260228_multivdelta097_cfactor1_schedfix"
+  run_root: "repro/runs"
+  repro_mode: "strict"
+  seed: 777
+  overwrite: false
+  dry_run: false
+  git_require_clean: false
+  threads:
+    omp: 1
+    openblas: 1
+    mkl: 1
+    veclib: 1
+    numexpr: 1
+    mc_cores: 1
+
+stages:
+  forecats: true
+  data_prep_shared: true
+  fit: true
+  post: true
+  validate: true
+  report: true
+
+models:
+  run_exdqlm_multivar: true
+  run_exdqlm_univar: true
+  run_ndlm_main: true
+  exdqlm_multivar:
+    implementation_mode: "legacy_bridge"
+    forecast_transfer_mode: "drop"
+    state_evolution:
+      df_t: 0.9999
+      df_s1: 0.9995
+      df_s2: 0.9995
+      df_s67: 0.9999
+      df_discrep: 0.992
+      lambda: 0.97
+      df_trans: 0.99999999
+      df_covs: 0.99999999
+  exdqlm_univar:
+    implementation_mode: "legacy_bridge"
+    state_evolution:
+      df_t: 0.9999995
+      df_s1: 0.9997
+      df_s2: 0.9997
+      df_s67: 0.9997
+      lambda: 0.8995
+      df_trans: 0.99999999
+      df_covs: 0.99999
+  ndlm_main:
+    implementation_mode: "legacy_bridge"
+    kalman_backend: "cpp"
+    state_evolution:
+      df_t: 0.9999999
+      df_s1: 0.9999999
+      df_s2: 0.9999999
+      df_s67: 0.9999999
+      df_discrep: 0.9999999
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.9999999
+
+site:
+  usgs_site: "11160500"
+  lat: 37.0443931
+  lon: -122.072464
+
+dates:
+  cutoff_date: "2022-12-25"
+  plot_start: "2022-12-07"
+  plot_end: "2023-01-22"
+  data_start: "2010-01-01"
+
+inputs:
+  fit:
+    parameters_path: "repro/quarantine/cleanup_runs/20260218T201412Z/prod_canonical_parallel_allmodels_20260218_040313/inputs/shared/parameters/parameters.txt"
+    retros_path: "repro/quarantine/cleanup_runs/20260218T201412Z/prod_canonical_parallel_allmodels_20260218_040313/inputs/shared/retros/retros.csv"
+    retros_storage_scale: "log1p_cms"
+    nws_forecast_path: "repro/quarantine/cleanup_runs/20260218T201412Z/prod_canonical_parallel_allmodels_20260218_040313/inputs/shared/forecasts/nws_forecast.csv"
+    nws_storage_scale: "raw_cms"
+    glofas_forecast_path: "repro/quarantine/cleanup_runs/20260218T201412Z/prod_canonical_parallel_allmodels_20260218_040313/inputs/shared/forecasts/glofas_forecast.csv"
+    glofas_storage_scale: "raw_cms"
+    usgs_mode: "live"
+    usgs_cache_path: null
+    covariates:
+      - name: "ELI"
+        path: "repro/quarantine/cleanup_runs/20260218T201412Z/prod_canonical_parallel_allmodels_20260218_040313/inputs/shared/covariates/cov_01_ELI.csv"
+      - name: "ONI"
+        path: "repro/quarantine/cleanup_runs/20260218T201412Z/prod_canonical_parallel_allmodels_20260218_040313/inputs/shared/covariates/cov_02_ONI.csv"
+      - name: "PPT"
+        path: "repro/quarantine/cleanup_runs/20260218T201412Z/prod_canonical_parallel_allmodels_20260218_040313/inputs/shared/covariates/cov_03_PPT.csv"
+      - name: "SOIL"
+        path: "repro/quarantine/cleanup_runs/20260218T201412Z/prod_canonical_parallel_allmodels_20260218_040313/inputs/shared/covariates/cov_04_SOIL.csv"
+      - name: "PCA"
+        path: "repro/quarantine/cleanup_runs/20260218T201412Z/prod_canonical_parallel_allmodels_20260218_040313/inputs/shared/covariates/cov_05_PCA.csv"
+  post:
+    use_fit_outputs_from_run: true
+  forecats:
+    mode: "use_existing"
+    pipeline_config_path: "config/forecats_pipeline.template.yaml"
+    existing_bundle_path: "repro/quarantine/cleanup_runs/20260218T201412Z/prod_canonical_parallel_allmodels_20260218_040313/inputs/shared/forecats_bundle"
+    snapshot:
+      enabled: true
+      dest_rel: "inputs/shared/forecats_bundle"
+      copy_list: []
+  shared:
+    prefer_forecats_snapshot: true
+
+fit:
+  parallel:
+    mode: "one_core_per_model"
+    workers: null
+  quantiles: [0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95]
+  exdqlm_multivar:
+    gamma_sigma:
+      warmup_freeze_iters: 5
+      min_update_iters: 50
+      min_total_iters: 50
+      max_iter: 100
+      convergence_tol: 1.0e-6
+      convergence:
+        elbo_tol: 1.0e-6
+        state_norm_sq_tol: 1.0e-6
+        sigma_exp_tol: 1.0e-6
+        gamma_exp_tol: 1.0e-6
+      freeze_target: "gamma_sigma"
+      guard_refreeze_iters: 10
+      init:
+        mode: "robust"
+        gamma: 0.0
+        sigma_floor: 1.0e-3
+        sigma_scale: 1.0
+      objective_guard:
+        enabled: true
+        fail_fast: false
+        log_failures: true
+        mode: "adaptive_freeze"
+        penalty: 1.0e12
+    legacy:
+      lam1: 0.999999
+      lam2: 0.999999
+      n_samp: 2000
+      sims_enabled: true
+      use_covariates: true
+      forecast_cov:
+        c_factor: 1
+  exdqlm_univar:
+    gamma_sigma:
+      min_total_iters: 50
+      max_iter: 800
+      convergence_tol: 1.0e-6
+      convergence:
+        elbo_tol: 1.0e-6
+        elbo_rel_tol: 2.5e-4
+    legacy:
+      lam1: 0.9999999999999999
+      lam2: 0.9999999999999999
+      n_samp: 2000
+      sims_enabled: true
+      use_covariates: true
+  ndlm_main:
+    gamma_sigma:
+      min_total_iters: 50
+      max_iter: 2000
+      convergence_tol: 1.0e-6
+      convergence:
+        elbo_tol: 1.0e-6
+        elbo_rel_tol: 2.5e-4
+    legacy:
+      lam1: 0.999999
+      lam2: 0.9
+      n_samp: 2000
+      sims_enabled: true
+      use_covariates: true
+  warm_start:
+    enabled: false
+    source_run_id: null
+    mode: "resume"
+  contract_checks:
+    enabled: false
+    fail_fast: true
+    write_reports: true
+  diagnostics:
+    enabled: false
+    fail_fast: true
+    write_reports: true
+    max_time_checks: 25
+    seed: 777
+    psd_tol: -1.0e-10
+
+post:
+  figures: true
+  smoke_fast: false
+  profile: false
+  profile_detail: false
+  allow_legacy_root_fallback: false
+  sort_keep_na: true
+  export_tables: true
+
+validation:
+  profile: "smoke"
+  canonical_run_id: "__SELF__"
+  compare:
+    mode: "none"
+    numeric_abs_tol: 0.0
+    numeric_rel_tol: 0.0
+    pixel_max_abs_tol: 0.0
+
+scale_contract:
+  canonical_storage_scale: "raw_cms"
+  legacy_fit_input_scale: "log1p_cms"
+  legacy_post_input_scale: "log1p_cms"
+  analysis_scale_fit_internal: "log_log1p_cms"
+  analysis_scale_post_internal: "log_log1p_cms"
+
+write_audit:
+  enabled: true
+  enforce_from_stage: 4
+  allowlist_outside_run_root: []

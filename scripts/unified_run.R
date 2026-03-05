@@ -69,7 +69,29 @@ if (is.null(run_id) || !nzchar(run_id)) {
 run_root <- file.path(cfg$run$run_root, run_id)
 
 if (dir.exists(run_root) && !isTRUE(cfg$run$overwrite)) {
-  stop(sprintf("Run root exists and overwrite=false: %s", run_root), call. = FALSE)
+  if (isTRUE(cfg$run$auto_suffix_on_collision)) {
+    ts <- format(Sys.time(), "%Y%m%d_%H%M%S")
+    base_id <- as.character(run_id)
+    candidate_id <- sprintf("%s_rerun_%s", base_id, ts)
+    candidate_root <- file.path(cfg$run$run_root, candidate_id)
+    counter <- 1L
+    while (dir.exists(candidate_root) && counter < 1000L) {
+      counter <- counter + 1L
+      candidate_id <- sprintf("%s_rerun_%s_%03d", base_id, ts, as.integer(counter))
+      candidate_root <- file.path(cfg$run$run_root, candidate_id)
+    }
+    if (dir.exists(candidate_root)) {
+      stop(
+        sprintf("Run root exists and could not resolve collision automatically: %s", run_root),
+        call. = FALSE
+      )
+    }
+    message(sprintf("Run root collision detected; using auto-suffixed run_id: %s", candidate_id))
+    run_id <- candidate_id
+    run_root <- candidate_root
+  } else {
+    stop(sprintf("Run root exists and overwrite=false: %s", run_root), call. = FALSE)
+  }
 }
 
 dir.create(run_root, recursive = TRUE, showWarnings = FALSE)

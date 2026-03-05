@@ -12,6 +12,7 @@
   "start_date": "1979-02-01",
   "end_date": "2020-12-31",
   "aggregate": "daily",
+  "aggregation_scale": "log_log1p_cms",
   "rows_out": 15310,
-  "created_utc": "2026-02-18T02:54:48.682513+00:00"
+  "created_utc": "2026-02-19T00:39:41.644228+00:00"
 }

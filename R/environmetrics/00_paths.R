@@ -17,6 +17,15 @@ env_or_default <- function(key, default) {
   if (nzchar(val)) val else default
 }
 
+parse_date_env <- function(key, default) {
+  raw <- env_or_default(key, default)
+  parsed <- suppressWarnings(as.Date(raw))
+  if (is.na(parsed)) {
+    parsed <- as.Date(default)
+  }
+  parsed
+}
+
 env_flag <- function(key, default = "FALSE") {
   isTRUE(as.logical(Sys.getenv(key, default)))
 }
@@ -140,6 +149,12 @@ require_runscoped_path <- function(path_value, what, fallback_path = NULL) {
 # Canonical/reference output folder (do not write to directly in runs)
 CANONICAL_FIG_DIR <- file.path(PROJECT_ROOT, "Environmetrics_reproduce")
 
+# Date anchors for cutoff-dependent plots/data splits.
+CUTOFF_DATE <- parse_date_env("UNIFIED_CUTOFF_DATE", "2022-12-25")
+FORECAST_START_DATE <- parse_date_env("UNIFIED_FORECAST_START_DATE", as.character(CUTOFF_DATE + 1L))
+PLOT_START_DATE <- parse_date_env("UNIFIED_PLOT_START", as.character(CUTOFF_DATE - 18L))
+PLOT_END_DATE <- parse_date_env("UNIFIED_PLOT_END", as.character(CUTOFF_DATE + 28L))
+
 # Core inputs
 COV_ELI_PATH <- "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_ELI.csv"
 COV_ONI_PATH <- "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_2_ONI.csv"
@@ -150,7 +165,12 @@ GLOFAS_FORECAST_PATH <- env_or_default("ENV_GLOFAS_FORECAST_PATH", file.path(PRO
 PPT_PATH <- file.path(PROJECT_ROOT, "prism_precipitation_santa_cruz_1987_2023.csv")
 SOIL_PATH <- file.path(PROJECT_ROOT, "soil_moisture_data", "soil_moisture_big_trees_daily_avg_1987_2023.csv")
 PCA_PATH <- file.path(PROJECT_ROOT, "pca.csv")
-RETROS_PATH <- env_or_default("ENV_RETROS_PATH", file.path(PROJECT_ROOT, "retros_2022-12-25.csv"))
+retros_default_cutoff <- file.path(PROJECT_ROOT, sprintf("retros_%s.csv", format(CUTOFF_DATE, "%Y-%m-%d")))
+retros_default_legacy <- file.path(PROJECT_ROOT, "retros_2022-12-25.csv")
+RETROS_PATH <- env_or_default(
+  "ENV_RETROS_PATH",
+  if (file.exists(retros_default_cutoff)) retros_default_cutoff else retros_default_legacy
+)
 
 DATA_CBIND_RDS <- file.path(PROJECT_ROOT, "data_cbind_tY_X.rds")
 DATA_CBIND_CSV <- file.path(PROJECT_ROOT, "data_cbind_tY_X.csv")

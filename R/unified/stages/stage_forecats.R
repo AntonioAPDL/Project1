@@ -41,7 +41,13 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
     num_cols <- names(dat)[vapply(dat, is.numeric, logical(1))]
     if (length(num_cols) < min_numeric_cols) return(FALSE)
     vals <- as.matrix(dat[, num_cols, drop = FALSE])
-    !any(!is.finite(vals), na.rm = TRUE)
+    finite_mask <- is.finite(vals)
+    if (!any(finite_mask, na.rm = TRUE)) return(FALSE)
+    finite_rows <- rowSums(finite_mask, na.rm = TRUE) > 0L
+    finite_cols <- colSums(finite_mask, na.rm = TRUE) > 0L
+    if (sum(finite_rows, na.rm = TRUE) < min_rows) return(FALSE)
+    if (sum(finite_cols, na.rm = TRUE) < min_numeric_cols) return(FALSE)
+    TRUE
   }
 
   choose_snapshot_alias_source <- function(snapshot_root, candidates, label, min_rows = 1L, min_numeric_cols = 1L) {
@@ -66,6 +72,349 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
       ),
       call. = FALSE
     )
+  }
+
+  parse_first_date_col <- function(df) {
+    candidates <- c("Date", "date", "timestamp", "time", "target_date")
+    for (nm in candidates) {
+      if (nm %in% names(df)) {
+        d <- suppressWarnings(as.Date(df[[nm]]))
+        if (any(!is.na(d))) {
+          return(list(name = nm, values = d))
+        }
+      }
+    }
+    NULL
+  }
+
+  coerce_numeric_col <- function(df, candidates) {
+    for (nm in candidates) {
+      if (nm %in% names(df)) {
+        v <- suppressWarnings(as.numeric(df[[nm]]))
+        if (any(is.finite(v))) return(v)
+      }
+    }
+    rep(NA_real_, nrow(df))
+  }
+
+  drop_incomplete_retros <- function(df) {
+    keep <- is.finite(df$USGS) & is.finite(df$GloFAS) & is.finite(df$NWS3.0)
+    df[keep, c("Date", "USGS", "GloFAS", "NWS3.0"), drop = FALSE]
+  }
+
+  floor_nonpositive_retros <- function(df, floor_value = 1.0e-8) {
+    cols <- c("USGS", "GloFAS", "NWS3.0")
+    for (nm in cols) {
+      vals <- suppressWarnings(as.numeric(df[[nm]]))
+      bad <- is.finite(vals) & vals <= 0
+      if (any(bad, na.rm = TRUE)) {
+        vals[bad] <- floor_value
+      }
+      df[[nm]] <- vals
+    }
+    df
+  }
+
+  build_snapshot_retros <- function(snapshot_root, bundle_root, cutoff_date_raw = "") {
+    cutoff_date <- suppressWarnings(as.Date(as.character(cutoff_date_raw)))
+
+    resolve_snapshot_or_bundle <- function(rel_path) {
+      candidates <- c(
+        file.path(snapshot_root, rel_path),
+        if (nzchar(bundle_root)) file.path(bundle_root, rel_path) else ""
+      )
+      candidates <- candidates[nzchar(candidates)]
+      existing <- candidates[file.exists(candidates)]
+      if (length(existing) == 0L) return("")
+      normalizePath(existing[[1L]], mustWork = FALSE)
+    }
+
+    read_csv_safe <- function(path) {
+      tryCatch(utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE), error = function(e) NULL)
+    }
+
+    normalize_retros_wide <- function(df) {
+      date_info <- parse_first_date_col(df)
+      if (is.null(date_info)) return(NULL)
+      usgs <- coerce_numeric_col(df, c("USGS", "usgs", "usgs_cms", "usgs_discharge_cms"))
+      glofas <- coerce_numeric_col(df, c("GloFAS", "glofas", "glofas_cms", "selected_glofas_retrospective_value"))
+      nws <- coerce_numeric_col(df, c("NWS3.0", "NWS", "nws", "nws_cms", "selected_nws_synthetic_value"))
+      data.frame(
+        Date = as.Date(date_info$values),
+        USGS = usgs,
+        GloFAS = glofas,
+        NWS3.0 = nws,
+        stringsAsFactors = FALSE
+      )
+    }
+
+    canonical_usgs_path <- resolve_snapshot_or_bundle(file.path("inputs", "usgs_daily.csv"))
+
+    infer_retros_scale <- function(out, usgs_path) {
+      if (!nzchar(usgs_path) || !file.exists(usgs_path) || !is.data.frame(out) || nrow(out) < 10L) {
+        return("unknown")
+      }
+      usgs <- read_csv_safe(usgs_path)
+      if (!is.data.frame(usgs)) return("unknown")
+      usgs_date <- parse_first_date_col(usgs)
+      if (is.null(usgs_date)) return("unknown")
+      usgs_ref <- data.frame(
+        Date = as.Date(usgs_date$values),
+        usgs_raw = coerce_numeric_col(usgs, c("discharge_cms", "USGS", "usgs")),
+        stringsAsFactors = FALSE
+      )
+      cmp <- merge(out[, c("Date", "USGS"), drop = FALSE], usgs_ref, by = "Date", all = FALSE)
+      cmp <- cmp[is.finite(cmp$USGS) & is.finite(cmp$usgs_raw), , drop = FALSE]
+      if (nrow(cmp) < 10L) return("unknown")
+      mae_raw <- mean(abs(cmp$USGS - cmp$usgs_raw), na.rm = TRUE)
+      mae_log1p <- mean(abs(expm1(cmp$USGS) - cmp$usgs_raw), na.rm = TRUE)
+      if (is.finite(mae_raw) && is.finite(mae_log1p)) {
+        if (mae_raw <= mae_log1p) return("raw_cms")
+        return("log1p_cms")
+      }
+      "unknown"
+    }
+
+    finalize_out <- function(out, usgs_path) {
+      if (!is.data.frame(out)) return(NULL)
+      out <- out[!is.na(out$Date), , drop = FALSE]
+      if (is.finite(cutoff_date)) {
+        out <- out[out$Date <= cutoff_date, , drop = FALSE]
+      }
+      out <- drop_incomplete_retros(out)
+      if (!is.data.frame(out) || nrow(out) < 10L) return(NULL)
+
+      scale_mode <- infer_retros_scale(out, usgs_path)
+      if (identical(scale_mode, "raw_cms")) {
+        for (nm in c("USGS", "GloFAS", "NWS3.0")) {
+          vals <- suppressWarnings(as.numeric(out[[nm]]))
+          vals[!is.finite(vals)] <- NA_real_
+          vals <- pmax(vals, 1.0e-8)
+          out[[nm]] <- log1p(vals)
+        }
+      }
+
+      out <- floor_nonpositive_retros(out)
+      out
+    }
+
+    parse_selection_policy <- function(bundle_root, cutoff_date) {
+      glofas_priority <- c(
+        "glofas_hist_v40_lisflood_cons",
+        "glofas_hist_v31_lisflood_cons",
+        "glofas_hist_v21_htessel_cons",
+        "glofas_legacy_reanalysis_v30",
+        "glofas_synth_retro_ens_mean"
+      )
+      nws_priority <- c(
+        "nws_synth_retro_ens_mean",
+        "nws_retro_v30",
+        "nws_retro_v21",
+        "nws_retro_v20",
+        "nws_retro_v12"
+      )
+      meta_path <- if (nzchar(bundle_root)) file.path(bundle_root, "meta.yaml") else ""
+      if (!nzchar(meta_path) || !file.exists(meta_path)) {
+        return(list(glofas_priority = glofas_priority, nws_priority = nws_priority))
+      }
+      meta <- tryCatch(yaml::read_yaml(meta_path), error = function(e) NULL)
+      if (!is.list(meta)) {
+        return(list(glofas_priority = glofas_priority, nws_priority = nws_priority))
+      }
+      sel <- meta$config$inputs$retros$selection_policy
+      if (!is.list(sel)) {
+        return(list(glofas_priority = glofas_priority, nws_priority = nws_priority))
+      }
+
+      `%or_default%` <- function(x, y) {
+        if (is.null(x)) return(y)
+        x
+      }
+
+      pick_window_source <- function(windows, cutoff_date) {
+        if (!is.list(windows) || is.na(cutoff_date)) return("")
+        for (w in windows) {
+          if (!is.list(w)) next
+          src <- tolower(as.character(w$source_id %or_default% ""))
+          if (!nzchar(src)) next
+          start <- suppressWarnings(as.Date(as.character(w$start %or_default% NA_character_)))
+          end <- suppressWarnings(as.Date(as.character(w$end %or_default% NA_character_)))
+          if (is.na(start) || is.na(end)) next
+          if (cutoff_date >= start && cutoff_date <= end) return(src)
+        }
+        ""
+      }
+
+      keep_ids <- tolower(as.character(unlist(sel$keep_source_ids %or_default% character(0), use.names = FALSE)))
+      keep_ids <- keep_ids[nzchar(keep_ids)]
+      keep_glofas <- keep_ids[grepl("glofas", keep_ids)]
+      keep_nws <- keep_ids[grepl("^nws", keep_ids)]
+      if (length(keep_glofas) > 0L) {
+        glofas_priority <- unique(c(keep_glofas, glofas_priority))
+      }
+      if (length(keep_nws) > 0L) {
+        nws_priority <- unique(c(keep_nws, nws_priority))
+      }
+
+      win_glofas <- pick_window_source(sel$glofas_by_cutoff_windows, cutoff_date)
+      win_nws <- pick_window_source(sel$nws_by_cutoff_windows, cutoff_date)
+      if (nzchar(win_glofas)) {
+        glofas_priority <- unique(c(win_glofas, glofas_priority))
+      }
+      if (nzchar(win_nws)) {
+        nws_priority <- unique(c(win_nws, nws_priority))
+      }
+
+      list(glofas_priority = glofas_priority, nws_priority = nws_priority)
+    }
+
+    choose_preferred_by_date <- function(retro_tbl, source_regex, priorities) {
+      rows <- retro_tbl[grepl(source_regex, retro_tbl$source_id), c("Date", "source_id", "discharge_cms"), drop = FALSE]
+      if (nrow(rows) == 0L) return(data.frame(Date = as.Date(character(0)), discharge_cms = numeric(0)))
+      rows$priority <- match(rows$source_id, priorities)
+      rows$priority[is.na(rows$priority)] <- length(priorities) + 1L
+      rows <- rows[order(rows$Date, rows$priority, rows$source_id), , drop = FALSE]
+      rows <- rows[!duplicated(rows$Date), c("Date", "discharge_cms"), drop = FALSE]
+      rows
+    }
+
+    # 1) Prefer long retros_daily reconstruction with explicit source policy.
+    # This guarantees cutoff-aware source selection (including synthetic NWS priority)
+    # and avoids blindly trusting pre-aggregated wide files with unknown lineage.
+    long_retros_path <- resolve_snapshot_or_bundle(file.path("inputs", "retros_daily.csv"))
+    usgs_path <- resolve_snapshot_or_bundle(file.path("inputs", "usgs_daily.csv"))
+    if (nzchar(long_retros_path) && nzchar(usgs_path) && file.exists(long_retros_path) && file.exists(usgs_path)) {
+      long_retros <- read_csv_safe(long_retros_path)
+      usgs <- read_csv_safe(usgs_path)
+      if (is.data.frame(long_retros) && is.data.frame(usgs) &&
+          ("source_id" %in% names(long_retros)) && ("discharge_cms" %in% names(long_retros))) {
+        retro_date <- parse_first_date_col(long_retros)
+        usgs_date <- parse_first_date_col(usgs)
+        if (!is.null(retro_date) && !is.null(usgs_date)) {
+          retro_tbl <- data.frame(
+            Date = as.Date(retro_date$values),
+            source_id = tolower(as.character(long_retros$source_id)),
+            discharge_cms = suppressWarnings(as.numeric(long_retros$discharge_cms)),
+            stringsAsFactors = FALSE
+          )
+          retro_tbl <- retro_tbl[!is.na(retro_tbl$Date) & is.finite(retro_tbl$discharge_cms), , drop = FALSE]
+          if (nrow(retro_tbl) > 0L) {
+            policy <- parse_selection_policy(bundle_root, cutoff_date)
+            glofas_by_date <- choose_preferred_by_date(retro_tbl, "glofas", policy$glofas_priority)
+            nws_by_date <- choose_preferred_by_date(retro_tbl, "^nws", policy$nws_priority)
+            if (nrow(glofas_by_date) > 0L && nrow(nws_by_date) > 0L) {
+              names(glofas_by_date)[2] <- "GloFAS"
+              names(nws_by_date)[2] <- "NWS3.0"
+              usgs_tbl <- data.frame(
+                Date = as.Date(usgs_date$values),
+                USGS = coerce_numeric_col(usgs, c("discharge_cms", "USGS", "usgs")),
+                stringsAsFactors = FALSE
+              )
+              out <- merge(usgs_tbl, glofas_by_date, by = "Date", all = FALSE)
+              out <- merge(out, nws_by_date, by = "Date", all = FALSE)
+              out <- finalize_out(out, usgs_path)
+              if (is.data.frame(out) && nrow(out) >= 10L) return(out)
+            }
+          }
+        }
+      }
+    }
+
+    # 2) Build wide retros from retrospective-preparation + USGS daily.
+    prep_path <- resolve_snapshot_or_bundle(file.path("inputs", "retrospective_preparation.csv"))
+    usgs_path <- resolve_snapshot_or_bundle(file.path("inputs", "usgs_daily.csv"))
+    if (nzchar(prep_path) && nzchar(usgs_path) && file.exists(prep_path) && file.exists(usgs_path)) {
+      prep <- read_csv_safe(prep_path)
+      usgs <- read_csv_safe(usgs_path)
+      if (is.data.frame(prep) && is.data.frame(usgs)) {
+        prep_date <- parse_first_date_col(prep)
+        usgs_date <- parse_first_date_col(usgs)
+        if (!is.null(prep_date) && !is.null(usgs_date)) {
+          prep_norm <- data.frame(
+            Date = as.Date(prep_date$values),
+            GloFAS = coerce_numeric_col(prep, c("selected_glofas_retrospective_value", "glofas", "GloFAS")),
+            NWS3.0 = coerce_numeric_col(prep, c("selected_nws_synthetic_value", "nws", "NWS3.0")),
+            stringsAsFactors = FALSE
+          )
+          usgs_norm <- data.frame(
+            Date = as.Date(usgs_date$values),
+            USGS = coerce_numeric_col(usgs, c("discharge_cms", "USGS", "usgs")),
+            stringsAsFactors = FALSE
+          )
+          out <- merge(usgs_norm, prep_norm, by = "Date", all = FALSE)
+          out <- finalize_out(out, usgs_path)
+          if (is.data.frame(out) && nrow(out) >= 10L) return(out)
+        }
+      }
+    }
+
+    # 3) Fallback: prefer already-wide retros candidates if policy reconstruction
+    # is unavailable.
+    wide_candidates <- c("inputs/retros.csv", "inputs/retros_daily.csv")
+    for (rel in wide_candidates) {
+      path <- resolve_snapshot_or_bundle(rel)
+      if (!nzchar(path) || !file.exists(path)) next
+      dat <- read_csv_safe(path)
+      if (!is.data.frame(dat)) next
+      out <- normalize_retros_wide(dat)
+      out <- finalize_out(out, canonical_usgs_path)
+      if (is.data.frame(out) && nrow(out) >= 10L) return(out)
+    }
+
+    stop(
+      paste(
+        "Unable to construct snapshot retros.csv in required wide format.",
+        "Expected either a wide retros CSV or",
+        "inputs/retrospective_preparation.csv + inputs/usgs_daily.csv."
+      ),
+      call. = FALSE
+    )
+  }
+
+  sanitize_member_forecast_csv <- function(src, dst, label, min_numeric_cols = 2L) {
+    dat <- tryCatch(
+      utils::read.csv(src, stringsAsFactors = FALSE, check.names = FALSE),
+      error = function(e) NULL
+    )
+    if (!is.data.frame(dat)) {
+      stop(sprintf("failed to parse %s source CSV: %s", label, src), call. = FALSE)
+    }
+    numeric_cols <- names(dat)[vapply(dat, is.numeric, logical(1))]
+    if (length(numeric_cols) < min_numeric_cols) {
+      stop(
+        sprintf(
+          "%s source CSV has too few numeric member columns (%d < %d): %s",
+          label, length(numeric_cols), min_numeric_cols, src
+        ),
+        call. = FALSE
+      )
+    }
+    mat <- as.matrix(dat[, numeric_cols, drop = FALSE])
+    finite_col_mask <- colSums(is.finite(mat), na.rm = TRUE) > 0L
+    keep_numeric <- numeric_cols[finite_col_mask]
+    if (length(keep_numeric) < min_numeric_cols) {
+      stop(
+        sprintf(
+          "%s source CSV has insufficient finite member columns after filtering (%d < %d): %s",
+          label, length(keep_numeric), min_numeric_cols, src
+        ),
+        call. = FALSE
+      )
+    }
+    mat_keep <- as.matrix(dat[, keep_numeric, drop = FALSE])
+    row_all_finite <- rowSums(!is.finite(mat_keep), na.rm = TRUE) == 0L
+    row_keep <- which(row_all_finite)
+    if (length(row_keep) == 0L) {
+      row_any_finite <- which(rowSums(is.finite(mat_keep), na.rm = TRUE) > 0L)
+      row_keep <- row_any_finite
+    }
+    if (length(row_keep) == 0L) {
+      stop(sprintf("%s source CSV has no rows with finite member values: %s", label, src), call. = FALSE)
+    }
+    non_numeric <- setdiff(names(dat), numeric_cols)
+    dat_out <- dat[row_keep, c(non_numeric, keep_numeric), drop = FALSE]
+    utils::write.csv(dat_out, dst, row.names = FALSE)
+    invisible(normalizePath(dst, mustWork = FALSE))
   }
 
   resolve_member_source <- function(bundle_root, kind, cfg, repo_root) {
@@ -178,6 +527,9 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
     }
 
     snapshot_root <- file.path(run_root, snapshot_dest_rel)
+    if (dir.exists(snapshot_root)) {
+      unlink(snapshot_root, recursive = TRUE, force = TRUE)
+    }
     dir.create(snapshot_root, recursive = TRUE, showWarnings = FALSE)
 
     rel_files <- snapshot_copy_list
@@ -271,19 +623,27 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
       role = "input_snapshot"
     )
 
+    retros_generated <- build_snapshot_retros(
+      snapshot_root = snapshot_root,
+      bundle_root = bundle_root,
+      cutoff_date_raw = cfg$dates$cutoff_date
+    )
+    retros_generated_path <- file.path(snapshot_root, "retros_generated.csv")
+    utils::write.csv(retros_generated, retros_generated_path, row.names = FALSE)
+    manifest <- unified_manifest_add_artifact(
+      manifest,
+      normalizePath(retros_generated_path, mustWork = FALSE),
+      storage_scale = "log1p_cms",
+      role = "input_snapshot"
+    )
+
     alias_sources <- list(
-      retros = choose_snapshot_alias_source(
-        snapshot_root = snapshot_root,
-        candidates = c("inputs/retros_daily.csv", "retros.csv"),
-        label = "retros",
-        min_rows = 10L,
-        min_numeric_cols = 2L
-      ),
+      retros = retros_generated_path,
       nws_forecast = choose_snapshot_alias_source(
         snapshot_root = snapshot_root,
         candidates = c("inputs/nws_members.csv", "inputs/nws_weighted_daily.csv", "inputs/nws_forecast.csv"),
         label = "nws_forecast",
-        min_rows = 10L,
+        min_rows = 5L,
         min_numeric_cols = 2L
       ),
       glofas_forecast = choose_snapshot_alias_source(
@@ -302,14 +662,24 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
         stop(sprintf("forecats snapshot alias source missing for %s: %s", nm, src), call. = FALSE)
       }
       dst <- file.path(snapshot_root, sprintf("%s.csv", nm))
-      ok <- file.copy(src, dst, overwrite = TRUE)
+      if (nm %in% c("nws_forecast", "glofas_forecast")) {
+        min_cols <- if (identical(nm, "glofas_forecast")) 20L else 2L
+        sanitize_member_forecast_csv(src, dst, label = nm, min_numeric_cols = min_cols)
+        ok <- file.exists(dst)
+      } else {
+        if (identical(normalizePath(src, mustWork = FALSE), normalizePath(dst, mustWork = FALSE))) {
+          ok <- TRUE
+        } else {
+          ok <- file.copy(src, dst, overwrite = TRUE)
+        }
+      }
       if (!isTRUE(ok) || !file.exists(dst)) {
         stop(sprintf("failed to create forecats snapshot alias: %s -> %s", src, dst), call. = FALSE)
       }
       manifest <- unified_manifest_add_artifact(
         manifest,
         normalizePath(dst, mustWork = FALSE),
-        storage_scale = "raw_cms",
+        storage_scale = if (identical(nm, "retros")) "log1p_cms" else "raw_cms",
         role = "input_snapshot"
       )
     }

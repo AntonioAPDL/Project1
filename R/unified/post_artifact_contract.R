@@ -121,7 +121,10 @@ unified_post_contract_check <- function(
   cache_dir = NULL,
   post_figures = TRUE,
   export_tables = TRUE,
-  post_smoke_fast = FALSE
+  post_smoke_fast = FALSE,
+  model_run_exdqlm_multivar = TRUE,
+  model_run_exdqlm_univar = TRUE,
+  model_run_ndlm_main = TRUE
 ) {
   if (is.null(artifacts_df)) {
     artifacts_df <- unified_collect_post_artifacts(outputs_dir = outputs_dir, cache_dir = cache_dir)
@@ -137,10 +140,18 @@ unified_post_contract_check <- function(
     if (!nchar(name)) return(FALSE)
     any(output_basenames == name)
   }
+  has_any_output_file <- function(names_vec) {
+    if (length(names_vec) == 0L) return(FALSE)
+    any(vapply(as.character(names_vec), has_output_file, logical(1)))
+  }
   checks$outputs_nonempty <- nrow(outputs_df) > 0L
   if (!checks$outputs_nonempty) {
     messages <- c(messages, "post outputs directory has no files.")
   }
+
+  multivar_only_mode <- isTRUE(model_run_exdqlm_multivar) &&
+    !isTRUE(model_run_exdqlm_univar) &&
+    !isTRUE(model_run_ndlm_main)
 
   if (!isTRUE(post_figures)) {
     marker_path <- file.path(outputs_dir, "post_smoke_marker.txt")
@@ -161,6 +172,53 @@ unified_post_contract_check <- function(
       checks$synthesis_cache_files_present <- TRUE
       checks$synthesis_core_shapes_ok <- TRUE
       checks$table_exports_present <- TRUE
+    } else if (multivar_only_mode) {
+      # Multivariate-only post runs use the dedicated 40_figures_multivar_only
+      # module. They intentionally skip full synthesis-cache cubes and
+      # cross-family table exports, but must still produce core diagnostics.
+      checks$synthesis_cache_files_present <- TRUE
+      checks$synthesis_core_shapes_ok <- TRUE
+
+      checks$multivar_fit_figure_present <- has_any_output_file(c(
+        "multivar_fit_mu_vs_observed_loglog.png",
+        "multivar_fit_mu_vs_observed_recent_loglog.png"
+      ))
+      if (!checks$multivar_fit_figure_present) {
+        messages <- c(messages, "missing multivariate fit figure outputs.")
+      }
+
+      checks$multivar_forecast_figure_present <- has_any_output_file(c(
+        "multivar_forecast_window_mu_vs_future_usgs.png",
+        "multivar_forecast_window_multivar_vs_ensembles.png",
+        "multivar_forecast_window_ensemble_members.png"
+      ))
+      if (!checks$multivar_forecast_figure_present) {
+        messages <- c(messages, "missing multivariate forecast-window figure outputs.")
+      }
+
+      checks$multivar_trace_figure_present <- has_output_file("multivar_elbo_trace_q50.png")
+      if (!checks$multivar_trace_figure_present) {
+        messages <- c(messages, "missing multivariate ELBO trace figure output.")
+      }
+
+      required_multivar_csv <- c(
+        "multivar_trace_summary_q50.csv",
+        "multivar_forecast_window_q50_summary.csv",
+        "multivar_forecast_window_q50_metrics.csv"
+      )
+      missing_multivar_csv <- required_multivar_csv[!vapply(required_multivar_csv, has_output_file, logical(1))]
+      checks$multivar_summary_csv_present <- length(missing_multivar_csv) == 0L
+      if (!checks$multivar_summary_csv_present) {
+        missing_paths <- c(missing_paths, file.path(outputs_dir, missing_multivar_csv))
+        messages <- c(messages, sprintf("missing multivariate summary exports: %s", paste(basename(missing_multivar_csv), collapse = ", ")))
+      }
+
+      # For multivar-only profiles, treat required multivar CSV diagnostics as
+      # the table contract when export_tables is enabled.
+      checks$table_exports_present <- TRUE
+      if (isTRUE(export_tables)) {
+        checks$table_exports_present <- isTRUE(checks$multivar_summary_csv_present)
+      }
     } else {
       required_cache <- c("y_reps_f.rds", "y_reps.rds", "y_reps_f_new.rds", "y_reps_new.rds")
       cache_paths <- file.path(cache_dir, required_cache)

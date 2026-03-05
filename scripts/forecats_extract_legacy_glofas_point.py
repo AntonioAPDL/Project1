@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Extract nearest non-NaN point time series from legacy GloFAS global NetCDF."""
+"""Extract nearest valid point time series from legacy GloFAS global NetCDF.
+
+This implementation avoids loading the full 3D cube to locate the nearest
+valid cell. It builds a sampled-time spatial validity mask (start/mid/end),
+then extracts the full-time point series for the selected grid cell.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
-import math
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -14,9 +18,12 @@ import pandas as pd
 import xarray as xr
 
 
-def to_0_360(lon: float) -> float:
-    lon = lon % 360.0
-    return 0.0 if abs(lon - 360.0) < 1e-12 else lon
+def to_0_360(lon):
+    arr = np.mod(np.asarray(lon, dtype="float64"), 360.0)
+    arr = np.where(np.isclose(arr, 360.0), 0.0, arr)
+    if np.isscalar(lon):
+        return float(arr)
+    return arr
 
 
 def to_m180_180(lon_0_360: float) -> float:
@@ -59,22 +66,62 @@ def resolve_coords(ds: xr.Dataset) -> Tuple[str, str, str]:
     return lat_name, lon_name, list(ds.data_vars)[0]
 
 
-def nearest_non_nan_cell(da: xr.DataArray, lat_name: str, lon_name: str, target_lat: float, target_lon: float):
+def _time_dim_name(da: xr.DataArray) -> str:
+    for cand in ["time", "valid_time", "date"]:
+        if cand in da.dims:
+            return cand
+    for dim in da.dims:
+        if dim not in {"lat", "latitude", "lon", "longitude"}:
+            return dim
+    raise ValueError("Could not resolve time dimension name")
+
+
+def _valid_mask_2d(values_2d: np.ndarray, fill_value: float | None) -> np.ndarray:
+    mask = np.isfinite(values_2d)
+    if fill_value is not None:
+        mask &= values_2d != fill_value
+    return mask
+
+
+def nearest_valid_cell_sampled_mask(
+    da: xr.DataArray,
+    lat_name: str,
+    lon_name: str,
+    target_lat: float,
+    target_lon: float,
+) -> Tuple[int, int, float, int]:
     lats = da[lat_name].values
     lons = da[lon_name].values
+
+    tdim = _time_dim_name(da)
+    nt = int(da.sizes[tdim])
+    if nt < 1:
+        raise ValueError("Time dimension is empty")
+    sample_idx = sorted({0, nt // 2, nt - 1})
+
+    fill_value = da.encoding.get("_FillValue")
+    if fill_value is None:
+        fill_value = da.attrs.get("_FillValue")
+    if fill_value is None:
+        fill_value = da.attrs.get("missing_value")
+    fill_value = float(fill_value) if fill_value is not None else None
+
+    valid = np.ones((lats.size, lons.size), dtype=bool)
+    for k in sample_idx:
+        slice_2d = da.isel({tdim: k}).values
+        valid &= _valid_mask_2d(slice_2d, fill_value)
+
+    valid_count = int(valid.sum())
+    if valid_count == 0:
+        raise ValueError("No valid cells found in sampled-time validity mask")
+
     lat2d = np.repeat(lats[:, None], lons.size, axis=1)
     lon2d = np.repeat(lons[None, :], lats.size, axis=0)
-
-    dist = haversine_km(target_lat, to_0_360(target_lon), lat2d, lon2d)
-
-    # Assume first dimension is time; select cells with any finite value across time.
-    arr = da.values
-    finite_any = np.isfinite(arr).any(axis=0)
-    if finite_any.any():
-        dist = np.where(finite_any, dist, np.inf)
+    dist = haversine_km(target_lat, to_0_360(target_lon), lat2d, to_0_360(lon2d))
+    dist = np.where(valid, dist, np.inf)
 
     lat_i, lon_i = np.unravel_index(int(np.argmin(dist)), dist.shape)
-    return int(lat_i), int(lon_i), float(dist[lat_i, lon_i])
+    return int(lat_i), int(lon_i), float(dist[lat_i, lon_i]), valid_count
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,11 +134,18 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--var", default="", help="Optional variable override")
     ap.add_argument("--start-date", default="", help="Optional YYYY-MM-DD inclusive")
     ap.add_argument("--end-date", default="", help="Optional YYYY-MM-DD inclusive")
+    ap.add_argument(
+        "--cell-mode",
+        choices=("sampled_mask",),
+        default="sampled_mask",
+        help="Strategy to resolve nearest valid cell.",
+    )
     return ap.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    print(f"[INFO] opening dataset: {args.input_nc}")
     ds = xr.open_dataset(args.input_nc)
 
     lat_name, lon_name, auto_var = resolve_coords(ds)
@@ -101,14 +155,21 @@ def main() -> int:
 
     da = ds[var]
 
-    lat_i, lon_i, dist_km = nearest_non_nan_cell(
+    lat_i, lon_i, dist_km, valid_count = nearest_valid_cell_sampled_mask(
         da=da,
         lat_name=lat_name,
         lon_name=lon_name,
         target_lat=args.lat,
         target_lon=args.lon,
     )
+    print(
+        "[INFO] selected cell "
+        f"lat_idx={lat_i} lon_idx={lon_i} lat={float(ds[lat_name].values[lat_i]):.6f} "
+        f"lon={float(ds[lon_name].values[lon_i]):.6f} distance_km={dist_km:.3f} "
+        f"sampled_valid_cells={valid_count}"
+    )
 
+    print("[INFO] reading full-time point series (this may take time for large chunked NetCDF)...")
     series = da.isel({lat_name: lat_i, lon_name: lon_i})
 
     # Normalize time axis name.
@@ -124,6 +185,7 @@ def main() -> int:
     y = series.values.astype("float64")
 
     df = pd.DataFrame({"date": t, "discharge_cms": y})
+    print(f"[INFO] extracted raw rows={df.shape[0]}")
     if args.start_date:
         df = df[df["date"] >= pd.Timestamp(args.start_date)]
     if args.end_date:
@@ -143,6 +205,8 @@ def main() -> int:
         "lon_coord_name": lon_name,
         "target_lat": args.lat,
         "target_lon": args.lon,
+        "cell_mode": args.cell_mode,
+        "sampled_mask_valid_cells": valid_count,
         "cell_lat_index": lat_i,
         "cell_lon_index": lon_i,
         "cell_lat": cell_lat,

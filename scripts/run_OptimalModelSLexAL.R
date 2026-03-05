@@ -1,0 +1,50 @@
+#!/usr/bin/env Rscript
+
+message("DEPRECATED entrypoint for unified workflow orchestration. Prefer: scripts/unified_run.R")
+
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 1L) {
+  stop("Usage: Rscript scripts/run_OptimalModelSLexAL.R <p0> [seed]", call. = FALSE)
+}
+
+p0 <- as.numeric(args[[1L]])
+if (!is.finite(p0)) stop("p0 must be numeric.", call. = FALSE)
+
+seed <- if (length(args) >= 2L) {
+  as.integer(args[[2L]])
+} else {
+  as.integer(Sys.getenv("UNIV_SEED", Sys.getenv("DISC_BASE_SEED", "777")))
+}
+if (!is.finite(seed)) stop("seed must be integer-like.", call. = FALSE)
+
+# Determinism / stability baseline:
+# - single-threaded math + OpenMP backends
+# - stable RNG
+Sys.setenv(
+  OMP_NUM_THREADS = Sys.getenv("OMP_NUM_THREADS", "1"),
+  OPENBLAS_NUM_THREADS = Sys.getenv("OPENBLAS_NUM_THREADS", "1"),
+  MKL_NUM_THREADS = Sys.getenv("MKL_NUM_THREADS", "1"),
+  VECLIB_MAXIMUM_THREADS = Sys.getenv("VECLIB_MAXIMUM_THREADS", "1"),
+  NUMEXPR_NUM_THREADS = Sys.getenv("NUMEXPR_NUM_THREADS", "1"),
+  DISC_BASE_SEED = as.character(seed),
+  UNIV_BASE_SEED = as.character(seed),
+  UNIV_SEED = as.character(seed)
+)
+options(mc.cores = 1)
+
+set.seed(seed)
+RNGkind("Mersenne-Twister", "Inversion", "Rejection")
+
+# Keep the contract: call the existing entrypoint without editing it.
+# `commandArgs(trailingOnly=TRUE)` inside the sourced script will see the same args.
+if (Sys.getenv("UNIV_RPROF", "") == "1") {
+  dir.create("repro/perf", recursive = TRUE, showWarnings = FALSE)
+  Rprof("repro/perf/Rprof_univar_legacy.out")
+  on.exit(Rprof(NULL), add = TRUE)
+}
+
+preflight_path <- file.path("R", "unified", "preflight.R")
+if (file.exists(preflight_path)) {
+  source(preflight_path)
+}
+source("OptimalModelSLexAL.r", chdir = TRUE)

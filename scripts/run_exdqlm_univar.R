@@ -79,10 +79,10 @@ if (!nzchar(summary_log)) {
 }
 
 gamma_sigma_policy <- list(
-  warmup_freeze_iters = env_nonneg_int("UNIV_GAMSIG_FREEZE_ITERS", 20L),
+  warmup_freeze_iters = env_nonneg_int("UNIV_GAMSIG_FREEZE_ITERS", 5L),
   min_update_iters = env_nonneg_int("UNIV_GAMSIG_MIN_UPDATE_ITERS", 50L),
   min_total_iters = env_nonneg_int("UNIV_GAMSIG_MIN_TOTAL_ITERS", 50L),
-  max_iter = env_nonneg_int("UNIV_GAMSIG_MAX_ITER", 800L),
+  max_iter = env_nonneg_int("UNIV_GAMSIG_MAX_ITER", 100L),
   convergence_tol = env_pos_num("UNIV_GAMSIG_CONVERGENCE_TOL", 1e-6),
   convergence = list(
     elbo_tol = env_pos_num("UNIV_GAMSIG_ELBO_TOL", env_pos_num("UNIV_GAMSIG_CONVERGENCE_TOL", 1e-6)),

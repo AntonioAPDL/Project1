@@ -31,6 +31,28 @@ ndlm_theory_pick_numeric_column <- function(df, preferred = character(0)) {
   df[[num_cols[[1L]]]]
 }
 
+ndlm_theory_pick_numeric_column_fuzzy <- function(df, preferred = character(0)) {
+  exact <- ndlm_theory_pick_numeric_column(df, preferred = preferred)
+  if (!is.null(exact)) {
+    return(exact)
+  }
+  if (length(preferred) == 0L || ncol(df) < 1L) {
+    return(NULL)
+  }
+  nm_norm <- gsub("[^a-z0-9]+", "", tolower(names(df)))
+  for (cand in preferred) {
+    key <- gsub("[^a-z0-9]+", "", tolower(as.character(cand)))
+    if (!nzchar(key)) next
+    hit <- which(nm_norm == key)
+    if (length(hit) < 1L) next
+    idx <- hit[[1L]]
+    if (is.numeric(df[[idx]])) {
+      return(df[[idx]])
+    }
+  }
+  NULL
+}
+
 ndlm_theory_align_series <- function(x, target_len, fill = 0) {
   x <- as.numeric(x)
   x <- x[is.finite(x)]
@@ -61,16 +83,48 @@ ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
   nws_df <- ndlm_theory_read_csv(nws_path, "nws_forecast")
   glofas_df <- ndlm_theory_read_csv(glofas_path, "glofas_forecast")
 
-  y <- ndlm_theory_pick_numeric_column(retros_df, preferred = c("USGS", "y", "obs", "flow", "value"))
-  if (is.null(y)) {
+  y_raw <- ndlm_theory_pick_numeric_column_fuzzy(
+    retros_df,
+    preferred = c("USGS", "y", "obs", "flow", "value")
+  )
+  if (is.null(y_raw)) {
     stop(sprintf("ndlm theory retros has no numeric target column: %s", retros_path), call. = FALSE)
   }
-  y <- as.numeric(y)
-  y <- y[is.finite(y)]
+  y_raw <- as.numeric(y_raw)
+  valid_idx <- which(is.finite(y_raw))
+  y <- y_raw[valid_idx]
   if (length(y) < 30L) {
     stop("ndlm theory requires at least 30 finite observations in retros", call. = FALSE)
   }
   Tn <- length(y)
+
+  retros_nws_raw <- ndlm_theory_pick_numeric_column_fuzzy(
+    retros_df,
+    preferred = c("NWS3.0", "NWS", "nws", "z_nws", "retros_nws")
+  )
+  retros_glofas_raw <- ndlm_theory_pick_numeric_column_fuzzy(
+    retros_df,
+    preferred = c("GloFAS", "glofas", "GLOFAS", "z_glofas", "retros_glofas")
+  )
+  if (is.null(retros_nws_raw)) {
+    retros_nws_raw <- rep(NA_real_, nrow(retros_df))
+  }
+  if (is.null(retros_glofas_raw)) {
+    retros_glofas_raw <- rep(NA_real_, nrow(retros_df))
+  }
+  retros_nws_raw <- as.numeric(retros_nws_raw)
+  retros_glofas_raw <- as.numeric(retros_glofas_raw)
+  if (length(retros_nws_raw) < max(valid_idx)) {
+    retros_nws_raw <- c(retros_nws_raw, rep(NA_real_, max(valid_idx) - length(retros_nws_raw)))
+  }
+  if (length(retros_glofas_raw) < max(valid_idx)) {
+    retros_glofas_raw <- c(retros_glofas_raw, rep(NA_real_, max(valid_idx) - length(retros_glofas_raw)))
+  }
+  retros_hist <- list(
+    usgs = y,
+    nws = retros_nws_raw[valid_idx],
+    glofas = retros_glofas_raw[valid_idx]
+  )
 
   cov_keys <- c(
     "NDLM_COV1_ELI_CSV",
@@ -127,6 +181,7 @@ ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
 
   list(
     y = y,
+    retros = retros_hist,
     X = X,
     T = Tn,
     forecast = list(
