@@ -12,8 +12,10 @@ RUN_TS="${RUN_TS:-$(timestamp_utc)}"
 LOG_ROOT="${LOG_ROOT:-$ROOT/repro/tmp/unified_detclim_batches_${RUN_TS}}"
 STATUS_TSV="${LOG_ROOT}/status.tsv"
 RUNNER_LOG="${LOG_ROOT}/runner.log"
+SNAPSHOT_CFG_DIR="${LOG_ROOT}/resolved_configs"
 
 mkdir -p "$LOG_ROOT"
+mkdir -p "$SNAPSHOT_CFG_DIR"
 
 log() {
   local msg="$1"
@@ -40,15 +42,22 @@ run_one() {
   local cfg_path="$3"
   local run_dir="$ROOT/repro/runs/${run_id}"
   local run_log="${LOG_ROOT}/${run_id}.log"
+  local snapshot_cfg="${SNAPSHOT_CFG_DIR}/${run_id}.yaml"
 
   log "Starting ${run_id} from ${cfg_path}"
+  if [[ ! -f "$cfg_path" ]]; then
+    log "Missing config ${cfg_path}"
+    record_status "$batch" "$run_id" "fail_missing_config" "$run_log"
+    return 1
+  fi
+  cp "$cfg_path" "$snapshot_cfg"
   if [[ -d "$run_dir" ]]; then
     log "Removing existing run directory ${run_dir}"
     rm -rf "$run_dir"
   fi
   mkdir -p "$(dirname "$run_dir")"
 
-  if nice -n 10 Rscript --vanilla scripts/unified_run.R --config "$cfg_path" >"$run_log" 2>&1; then
+  if nice -n 10 Rscript --vanilla scripts/unified_run.R --config "$snapshot_cfg" >"$run_log" 2>&1; then
     record_status "$batch" "$run_id" "pass" "$run_log"
     log "Completed ${run_id}"
   else
