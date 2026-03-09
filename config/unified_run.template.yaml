@@ -109,6 +109,15 @@ inputs:
       copy_list: []                # optional relative paths from bundle root; empty => minimal default set
   shared:
     prefer_forecats_snapshot: true
+  deterministic_climate:
+    enabled: false
+    handoff_root: null             # handoff cache root with catalogs/ and forecast_cache/
+    horizon_days: null             # null => derive from run-scoped GloFAS forecast window
+    require_full_horizon: true
+    precip:
+      reduction: "mean"           # mean | median across daily GEFS member totals
+    soil:
+      reduction: "mean"           # mean | median across daily NWM member averages
   shared_covariates: []            # legacy compatibility: list of covariate paths
 
 fit:

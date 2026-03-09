@@ -13,6 +13,13 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
   dir.create(forecasts_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(covariates_dir, recursive = TRUE, showWarnings = FALSE)
   shared_storage_scales <- list()
+  shared_cov_paths <- list(
+    eli = "",
+    oni = "",
+    ppt = "",
+    soil = "",
+    pca = ""
+  )
 
   add_shared_file <- function(src_path, dst_path, storage_scale, role = "shared_input") {
     if (is.null(src_path) || !nzchar(src_path) || !file.exists(src_path)) {
@@ -57,6 +64,15 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
     )
   }
 
+  assign_cov_path <- function(cov_name, cov_path) {
+    key <- tolower(as.character(cov_name))
+    if (grepl("eli", key, fixed = TRUE)) shared_cov_paths$eli <<- cov_path
+    if (grepl("oni", key, fixed = TRUE)) shared_cov_paths$oni <<- cov_path
+    if (grepl("ppt", key, fixed = TRUE) || grepl("precip", key, fixed = TRUE)) shared_cov_paths$ppt <<- cov_path
+    if (grepl("soil", key, fixed = TRUE)) shared_cov_paths$soil <<- cov_path
+    if (grepl("pca", key, fixed = TRUE)) shared_cov_paths$pca <<- cov_path
+  }
+
   detect_date_info <- function(df, label, path, required) {
     nm <- names(df)
     candidates <- nm[grepl("date|time", tolower(nm))]
@@ -80,6 +96,36 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
       )
     }
     NULL
+  }
+
+  assert_csv_daily_continuity <- function(path, label) {
+    df <- unified_read_csv_checked(path, label, "data_prep_shared/continuity")
+    date_info <- detect_date_info(df, label, path, required = TRUE)
+    d <- sort(unique(as.Date(date_info$dates)))
+    d <- d[!is.na(d)]
+    if (length(d) < 2L) return(invisible(TRUE))
+    gaps <- as.integer(diff(d))
+    bad <- which(gaps > 1L)
+    if (length(bad) == 0L) return(invisible(TRUE))
+    max_gap <- max(gaps[bad], na.rm = TRUE)
+    samples <- head(
+      sprintf("%s->%s (%dd)", as.character(d[bad]), as.character(d[bad + 1L]), gaps[bad]),
+      5L
+    )
+    stop(
+      sprintf(
+        paste0(
+          "data_prep_shared detected non-daily gaps in %s (%s): ",
+          "%d gaps, max gap %d days. Examples: %s"
+        ),
+        label,
+        path,
+        length(bad),
+        max_gap,
+        paste(samples, collapse = "; ")
+      ),
+      call. = FALSE
+    )
   }
 
   snapshot_dest_rel <- cfg$inputs$forecats$snapshot$dest_rel
@@ -221,6 +267,7 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
         file.path(covariates_dir, sprintf("cov_%02d_%s.csv", i, cov_tag)),
         storage_scale = "table_csv"
       )
+      assign_cov_path(cov_name, file.path(covariates_dir, sprintf("cov_%02d_%s.csv", i, cov_tag)))
     }
   } else {
     shared_covariates <- cfg$inputs$shared_covariates
@@ -236,6 +283,73 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
           cov_path,
           file.path(covariates_dir, basename(cov_path)),
           storage_scale = "table_csv"
+        )
+        assign_cov_path(basename(cov_path), file.path(covariates_dir, basename(cov_path)))
+      }
+    }
+  }
+
+  detclim_result <- unified_materialize_deterministic_climate_covariates(
+    cfg = cfg,
+    shared_paths = shared_paths,
+    cov_path_map = shared_cov_paths,
+    repo_root = repo_root
+  )
+  if (!is.null(detclim_result)) {
+    manifest$deterministic_climate <- list(
+      enabled = TRUE,
+      handoff_root = detclim_result$handoff_root,
+      horizon_days = as.integer(detclim_result$horizon_days),
+      require_full_horizon = isTRUE(detclim_result$require_full_horizon),
+      cutoff_date = as.character(detclim_result$cutoff_date),
+      summary_path = detclim_result$debug_artifact_paths$summary_path,
+      summary_sha256 = unified_sha256(detclim_result$debug_artifact_paths$summary_path),
+      precip_future_path = detclim_result$debug_artifact_paths$precip_future_path,
+      soil_future_path = detclim_result$debug_artifact_paths$soil_future_path,
+      soil_family_support_path = detclim_result$debug_artifact_paths$soil_family_support_path,
+      precip = list(
+        source = detclim_result$precip_source,
+        reduction = detclim_result$precip_reduction,
+        output_path = shared_cov_paths$ppt,
+        history_rows = as.integer(detclim_result$ppt_history_rows),
+        future_rows = as.integer(detclim_result$ppt_future_rows)
+      ),
+      soil = list(
+        source = detclim_result$soil_source,
+        reduction = detclim_result$soil_reduction,
+        output_path = shared_cov_paths$soil,
+        history_rows = as.integer(detclim_result$soil_history_rows),
+        future_rows = as.integer(detclim_result$soil_future_rows),
+        porosity = unname(detclim_result$porosity_info$porosity),
+        porosity_q10 = unname(detclim_result$porosity_info$q10),
+        porosity_q90 = unname(detclim_result$porosity_info$q90),
+        porosity_sample_count = as.integer(detclim_result$porosity_info$sample_count)
+      ),
+      pca = list(
+        mode = "passthrough",
+        output_path = shared_cov_paths$pca
+      ),
+      verified_in_data_prep_shared = TRUE
+    )
+    for (cov_path in unlist(detclim_result$updated_covariates, use.names = FALSE)) {
+      if (!nzchar(as.character(cov_path))) next
+      refresh_shared_manifest_entry(cov_path, role = "shared_input")
+    }
+    for (artifact_path in detclim_result$debug_artifacts) {
+      if (!file.exists(artifact_path)) next
+      if (grepl("\\.csv$", artifact_path, ignore.case = TRUE)) {
+        manifest <- unified_manifest_add_artifact(
+          manifest,
+          normalizePath(artifact_path, mustWork = FALSE),
+          storage_scale = "table_csv",
+          role = "shared_input"
+        )
+      } else {
+        manifest <- unified_manifest_add_artifact(
+          manifest,
+          normalizePath(artifact_path, mustWork = FALSE),
+          storage_scale = "text",
+          role = "shared_input"
         )
       }
     }
@@ -347,6 +461,10 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
 
   cov_required <- list.files(covariates_dir, full.names = TRUE)
   if (length(cov_required) == 0L) cov_required <- character(0)
+
+  # Hard gate: retros used by legacy bridges must be daily-continuous.
+  assert_csv_daily_continuity(shared_paths$retros, "retros")
+
   unified_validate_required_shared_inputs(
     run_root = run_root,
     stage_name = "data_prep_shared",

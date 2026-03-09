@@ -218,6 +218,24 @@ unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record
       validator_profile = unified_get(cfg, c("validation", "profile"), default = "production"),
       status = "pending"
     ),
+    deterministic_climate = list(
+      enabled = isTRUE(unified_get(cfg, c("inputs", "deterministic_climate", "enabled"), default = FALSE)),
+      handoff_root = unified_get(cfg, c("inputs", "deterministic_climate", "handoff_root"), default = NULL),
+      horizon_days = unified_get(cfg, c("inputs", "deterministic_climate", "horizon_days"), default = NULL),
+      require_full_horizon = unified_get(cfg, c("inputs", "deterministic_climate", "require_full_horizon"), default = TRUE),
+      precip = list(
+        reduction = unified_get(cfg, c("inputs", "deterministic_climate", "precip", "reduction"), default = "mean")
+      ),
+      soil = list(
+        reduction = unified_get(cfg, c("inputs", "deterministic_climate", "soil", "reduction"), default = "mean")
+      ),
+      summary_path = NULL,
+      summary_sha256 = NULL,
+      precip_future_path = NULL,
+      soil_future_path = NULL,
+      soil_family_support_path = NULL,
+      verified_in_data_prep_shared = FALSE
+    ),
     schema_migration = list(
       previous_manifest_version = NULL,
       migration_notes = NULL

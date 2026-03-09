@@ -147,6 +147,7 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
   compare_report_path <- manifest$validation$compare_report_path
   compare_metrics <- list(matched = NA_integer_, missing = NA_integer_, extra = NA_integer_, mismatched = NA_integer_)
   env_drift_status <- NA_character_
+  detclim_validation <- NULL
   if (!is.null(compare_report_path) && file.exists(compare_report_path) && requireNamespace("jsonlite", quietly = TRUE)) {
     cmp <- tryCatch(jsonlite::read_json(compare_report_path, simplifyVector = TRUE), error = function(e) NULL)
     if (!is.null(cmp) && !is.null(cmp$metrics)) {
@@ -154,6 +155,9 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     }
     if (!is.null(cmp) && !is.null(cmp$env_drift) && !is.null(cmp$env_drift$status)) {
       env_drift_status <- as.character(cmp$env_drift$status)
+    }
+    if (!is.null(cmp) && !is.null(cmp$deterministic_climate)) {
+      detclim_validation <- cmp$deterministic_climate
     }
   }
 
@@ -283,6 +287,28 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     )
   )
 
+  detclim_manifest <- manifest$deterministic_climate
+  detclim_summary <- list(
+    enabled = if (is.list(detclim_manifest)) isTRUE(detclim_manifest$enabled) else FALSE,
+    status = if (!is.null(detclim_validation) && !is.null(detclim_validation$status)) {
+      as.character(detclim_validation$status)
+    } else if (is.list(detclim_manifest) && isTRUE(detclim_manifest$enabled)) {
+      "configured"
+    } else {
+      "disabled"
+    },
+    handoff_root = if (is.list(detclim_manifest) && !is.null(detclim_manifest$handoff_root)) as.character(detclim_manifest$handoff_root) else NA_character_,
+    horizon_days = if (is.list(detclim_manifest)) detclim_manifest$horizon_days else NA,
+    require_full_horizon = if (is.list(detclim_manifest)) detclim_manifest$require_full_horizon else NA,
+    cutoff_date = if (is.list(detclim_manifest) && !is.null(detclim_manifest$cutoff_date)) as.character(detclim_manifest$cutoff_date) else NA_character_,
+    summary_path = if (is.list(detclim_manifest) && !is.null(detclim_manifest$summary_path)) as.character(detclim_manifest$summary_path) else NA_character_,
+    summary_sha256 = if (is.list(detclim_manifest) && !is.null(detclim_manifest$summary_sha256)) as.character(detclim_manifest$summary_sha256) else NA_character_,
+    precip = if (is.list(detclim_manifest) && is.list(detclim_manifest$precip)) detclim_manifest$precip else list(),
+    soil = if (is.list(detclim_manifest) && is.list(detclim_manifest$soil)) detclim_manifest$soil else list(),
+    pca = if (is.list(detclim_manifest) && is.list(detclim_manifest$pca)) detclim_manifest$pca else list(),
+    validation = detclim_validation
+  )
+
   summary_json <- list(
     run_id = cfg$run$run_id,
     run_root = run_root,
@@ -299,6 +325,7 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     compare_report_path = compare_report_path,
     profile_summary_path = if (is.null(profile_summary_path)) NA_character_ else profile_summary_path,
     artifacts_recorded = length(manifest$artifacts),
+    deterministic_climate = detclim_summary,
     report = list(
       families = families_summary
     )
@@ -329,6 +356,21 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     "",
     "## Inputs",
     sprintf("- input artifacts hashed: `%d`", length(input_hashes)),
+    sprintf("- deterministic_climate.enabled: `%s`", detclim_summary$enabled),
+    sprintf("- deterministic_climate.status: `%s`", detclim_summary$status),
+    sprintf("- deterministic_climate.handoff_root: `%s`", detclim_summary$handoff_root),
+    sprintf("- deterministic_climate.horizon_days: `%s`", detclim_summary$horizon_days),
+    sprintf("- deterministic_climate.require_full_horizon: `%s`", detclim_summary$require_full_horizon),
+    sprintf("- deterministic_climate.summary_path: `%s`", detclim_summary$summary_path),
+    sprintf("- deterministic_climate.precip: source=`%s` reduction=`%s` future_rows=`%s`",
+            if (!is.null(detclim_summary$precip$source)) detclim_summary$precip$source else NA_character_,
+            if (!is.null(detclim_summary$precip$reduction)) detclim_summary$precip$reduction else NA_character_,
+            if (!is.null(detclim_summary$precip$future_rows)) detclim_summary$precip$future_rows else NA),
+    sprintf("- deterministic_climate.soil: source=`%s` reduction=`%s` future_rows=`%s` porosity=`%s`",
+            if (!is.null(detclim_summary$soil$source)) detclim_summary$soil$source else NA_character_,
+            if (!is.null(detclim_summary$soil$reduction)) detclim_summary$soil$reduction else NA_character_,
+            if (!is.null(detclim_summary$soil$future_rows)) detclim_summary$soil$future_rows else NA,
+            if (!is.null(detclim_summary$soil$porosity)) detclim_summary$soil$porosity else NA),
     "",
     "## Outputs",
     sprintf("- artifacts_recorded: `%d`", length(manifest$artifacts)),

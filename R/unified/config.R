@@ -127,6 +127,18 @@ unified_config_defaults <- function() {
       shared = list(
         prefer_forecats_snapshot = TRUE
       ),
+      deterministic_climate = list(
+        enabled = FALSE,
+        handoff_root = NULL,
+        horizon_days = NULL,
+        require_full_horizon = TRUE,
+        precip = list(
+          reduction = "mean"
+        ),
+        soil = list(
+          reduction = "mean"
+        )
+      ),
       shared_covariates = list() # legacy compatibility
     ),
     fit = list(
@@ -423,7 +435,8 @@ unified_resolve_paths <- function(cfg, repo_root) {
     c("inputs", "fit", "usgs_cache_path"),
     c("inputs", "post", "source_run_root"),
     c("inputs", "forecats", "pipeline_config_path"),
-    c("inputs", "forecats", "existing_bundle_path")
+    c("inputs", "forecats", "existing_bundle_path"),
+    c("inputs", "deterministic_climate", "handoff_root")
   )
 
   for (key in path_keys) {
@@ -650,8 +663,8 @@ unified_validate_config <- function(cfg) {
 
   validate_prob_01 <- function(path, label) {
     val <- suppressWarnings(as.numeric(unified_get(cfg, path, default = NA_real_)))
-    if (!is.finite(val) || val <= 0 || val >= 1) {
-      add_err(sprintf("%s must be numeric in (0,1)", label))
+    if (!is.finite(val) || val <= 0 || val > 1) {
+      add_err(sprintf("%s must be numeric in (0,1]", label))
     }
   }
   validate_int_min <- function(path, label, min_value = 1L) {
@@ -700,6 +713,43 @@ unified_validate_config <- function(cfg) {
     check_required_file(unified_get(cfg, c("inputs", "fit", "retros_path")), "inputs.fit.retros_path")
     check_required_file(unified_get(cfg, c("inputs", "fit", "nws_forecast_path")), "inputs.fit.nws_forecast_path")
     check_required_file(unified_get(cfg, c("inputs", "fit", "glofas_forecast_path")), "inputs.fit.glofas_forecast_path")
+  }
+
+  detclim_enabled <- unified_get(cfg, c("inputs", "deterministic_climate", "enabled"), default = FALSE)
+  if (!isTRUE(detclim_enabled) && !identical(detclim_enabled, FALSE)) {
+    add_err("inputs.deterministic_climate.enabled must be boolean (true/false)")
+  }
+  if (isTRUE(detclim_enabled)) {
+    handoff_root <- unified_get(cfg, c("inputs", "deterministic_climate", "handoff_root"), default = NULL)
+    if (is.null(handoff_root) || !nzchar(as.character(handoff_root))) {
+      add_err("inputs.deterministic_climate.handoff_root is required when deterministic_climate.enabled=true")
+    } else if (!dir.exists(as.character(handoff_root))) {
+      add_err(sprintf("inputs.deterministic_climate.handoff_root does not exist: %s", as.character(handoff_root)))
+    }
+    horizon_days <- unified_get(cfg, c("inputs", "deterministic_climate", "horizon_days"), default = NULL)
+    if (!is.null(horizon_days)) {
+      horizon_days_num <- suppressWarnings(as.integer(horizon_days))
+      if (!is.finite(horizon_days_num) || horizon_days_num < 1L) {
+        add_err("inputs.deterministic_climate.horizon_days must be null or an integer >= 1")
+      }
+    }
+    require_full_horizon <- unified_get(cfg, c("inputs", "deterministic_climate", "require_full_horizon"), default = TRUE)
+    if (!isTRUE(require_full_horizon) && !identical(require_full_horizon, FALSE)) {
+      add_err("inputs.deterministic_climate.require_full_horizon must be boolean (true/false)")
+    }
+    for (series_name in c("precip", "soil")) {
+      reduction <- tolower(as.character(unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "reduction"),
+        default = "mean"
+      ))[[1L]])
+      if (!(reduction %in% c("mean", "median"))) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.reduction must be one of: mean, median",
+          series_name
+        ))
+      }
+    }
   }
 
   shared_covariates <- unified_get(cfg, c("inputs", "shared_covariates"), default = list())

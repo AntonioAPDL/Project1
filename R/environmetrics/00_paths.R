@@ -146,6 +146,28 @@ require_runscoped_path <- function(path_value, what, fallback_path = NULL) {
   ""
 }
 
+resolve_covariate_path <- function(env_key, fallback_path, what) {
+  env_path <- Sys.getenv(env_key, "")
+  if (nzchar(env_path) && file.exists(env_path)) {
+    return(normalizePath(env_path, mustWork = FALSE))
+  }
+  if (STRICT_RUNSCOPED_POST) {
+    stop(
+      sprintf(
+        "Strict run-scoped mode: missing required %s path from %s",
+        what,
+        env_key
+      ),
+      call. = FALSE
+    )
+  }
+  if (file.exists(fallback_path)) {
+    return(normalizePath(fallback_path, mustWork = FALSE))
+  }
+  warning(sprintf("Missing %s path. env=%s fallback=%s", what, env_key, fallback_path), call. = FALSE)
+  ""
+}
+
 # Canonical/reference output folder (do not write to directly in runs)
 CANONICAL_FIG_DIR <- file.path(PROJECT_ROOT, "Environmetrics_reproduce")
 
@@ -156,15 +178,35 @@ PLOT_START_DATE <- parse_date_env("UNIFIED_PLOT_START", as.character(CUTOFF_DATE
 PLOT_END_DATE <- parse_date_env("UNIFIED_PLOT_END", as.character(CUTOFF_DATE + 28L))
 
 # Core inputs
-COV_ELI_PATH <- "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_ELI.csv"
-COV_ONI_PATH <- "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_2_ONI.csv"
+COV_ELI_PATH <- resolve_covariate_path(
+  "ENV_COV_ELI_PATH",
+  "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_ELI.csv",
+  "ELI covariate"
+)
+COV_ONI_PATH <- resolve_covariate_path(
+  "ENV_COV_ONI_PATH",
+  "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_2_ONI.csv",
+  "ONI covariate"
+)
 
 NWS_FORECAST_PATH <- env_or_default("ENV_NWS_FORECAST_PATH", file.path(PROJECT_ROOT, "nws_forecast.csv"))
 GLOFAS_FORECAST_PATH <- env_or_default("ENV_GLOFAS_FORECAST_PATH", file.path(PROJECT_ROOT, "weighted_time_series.csv"))
 
-PPT_PATH <- file.path(PROJECT_ROOT, "prism_precipitation_santa_cruz_1987_2023.csv")
-SOIL_PATH <- file.path(PROJECT_ROOT, "soil_moisture_data", "soil_moisture_big_trees_daily_avg_1987_2023.csv")
-PCA_PATH <- file.path(PROJECT_ROOT, "pca.csv")
+PPT_PATH <- resolve_covariate_path(
+  "ENV_PPT_PATH",
+  file.path(PROJECT_ROOT, "prism_precipitation_santa_cruz_1987_2023.csv"),
+  "precipitation covariate"
+)
+SOIL_PATH <- resolve_covariate_path(
+  "ENV_SOIL_PATH",
+  file.path(PROJECT_ROOT, "soil_moisture_data", "soil_moisture_big_trees_daily_avg_1987_2023.csv"),
+  "soil covariate"
+)
+PCA_PATH <- resolve_covariate_path(
+  "ENV_PCA_PATH",
+  file.path(PROJECT_ROOT, "pca.csv"),
+  "PCA covariate"
+)
 retros_default_cutoff <- file.path(PROJECT_ROOT, sprintf("retros_%s.csv", format(CUTOFF_DATE, "%Y-%m-%d")))
 retros_default_legacy <- file.path(PROJECT_ROOT, "retros_2022-12-25.csv")
 RETROS_PATH <- env_or_default(

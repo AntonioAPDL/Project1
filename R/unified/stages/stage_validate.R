@@ -31,6 +31,132 @@ unified_parse_compare_report_txt <- function(path) {
   )
 }
 
+unified_parse_key_value_text <- function(path) {
+  if (!file.exists(path)) {
+    return(list())
+  }
+  lines <- readLines(path, warn = FALSE)
+  lines <- lines[nzchar(lines)]
+  out <- list()
+  for (line in lines) {
+    parts <- strsplit(line, "=", fixed = TRUE)[[1]]
+    if (length(parts) < 2L) next
+    key <- trimws(parts[[1L]])
+    val <- paste(parts[-1L], collapse = "=")
+    out[[key]] <- val
+  }
+  out
+}
+
+unified_validate_detclim_report <- function(cfg, manifest, run_root) {
+  det_manifest <- manifest$deterministic_climate
+  det_enabled <- isTRUE(unified_get(cfg, c("inputs", "deterministic_climate", "enabled"), default = FALSE)) ||
+    (is.list(det_manifest) && isTRUE(det_manifest$enabled))
+
+  if (!det_enabled) {
+    return(list(enabled = FALSE, status = "disabled"))
+  }
+
+  if (!is.list(det_manifest)) {
+    return(list(
+      enabled = TRUE,
+      status = "fail",
+      error = "deterministic climate enabled but manifest metadata is missing"
+    ))
+  }
+
+  required_paths <- list(
+    summary_path = det_manifest$summary_path,
+    precip_future_path = det_manifest$precip_future_path,
+    soil_future_path = det_manifest$soil_future_path,
+    soil_family_support_path = det_manifest$soil_family_support_path
+  )
+  path_report <- lapply(required_paths, function(p) {
+    p <- if (is.null(p)) "" else as.character(p)
+    list(
+      path = p,
+      exists = nzchar(p) && file.exists(p),
+      sha256 = if (nzchar(p) && file.exists(p)) unified_sha256(p) else NA_character_,
+      bytes = if (nzchar(p) && file.exists(p)) as.numeric(file.info(p)$size) else NA_real_
+    )
+  })
+
+  missing_required <- names(path_report)[!vapply(path_report, function(x) isTRUE(x$exists), logical(1))]
+  summary_kv <- list()
+  if (isTRUE(path_report$summary_path$exists)) {
+    summary_kv <- unified_parse_key_value_text(path_report$summary_path$path)
+  }
+
+  manifest_sha_ok <- TRUE
+  manifest_summary_sha <- if (is.null(det_manifest$summary_sha256)) "" else as.character(det_manifest$summary_sha256)
+  if (nzchar(manifest_summary_sha) && isTRUE(path_report$summary_path$exists)) {
+    manifest_sha_ok <- identical(manifest_summary_sha, path_report$summary_path$sha256)
+  }
+
+  canonical_run_id <- cfg$validation$canonical_run_id
+  if (!is.null(canonical_run_id) && nzchar(canonical_run_id) && identical(toupper(canonical_run_id), "__SELF__")) {
+    canonical_run_id <- cfg$run$run_id
+  }
+  canonical_summary_path <- ""
+  canonical_summary_exists <- FALSE
+  canonical_summary_sha <- NA_character_
+  canonical_summary_sha_match <- NA
+  if (!is.null(canonical_run_id) && nzchar(canonical_run_id)) {
+    canonical_summary_path <- file.path(
+      cfg$run$run_root,
+      canonical_run_id,
+      "inputs",
+      "shared",
+      "deterministic_climate",
+      "deterministic_climate_summary.txt"
+    )
+    canonical_summary_exists <- file.exists(canonical_summary_path)
+    if (canonical_summary_exists) {
+      canonical_summary_sha <- unified_sha256(canonical_summary_path)
+      if (isTRUE(path_report$summary_path$exists)) {
+        canonical_summary_sha_match <- identical(canonical_summary_sha, path_report$summary_path$sha256)
+      }
+    }
+  }
+
+  errors <- character(0)
+  if (length(missing_required) > 0L) {
+    errors <- c(errors, sprintf("missing deterministic climate artifacts: %s", paste(missing_required, collapse = ", ")))
+  }
+  if (!isTRUE(manifest_sha_ok)) {
+    errors <- c(errors, "deterministic climate summary hash does not match manifest metadata")
+  }
+  if (!isTRUE(det_manifest$verified_in_data_prep_shared)) {
+    errors <- c(errors, "deterministic climate manifest flag verified_in_data_prep_shared is not true")
+  }
+
+  list(
+    enabled = TRUE,
+    status = if (length(errors) == 0L) "pass" else "fail",
+    errors = errors,
+    handoff_root = if (is.null(det_manifest$handoff_root)) NA_character_ else as.character(det_manifest$handoff_root),
+    horizon_days = det_manifest$horizon_days,
+    require_full_horizon = det_manifest$require_full_horizon,
+    cutoff_date = det_manifest$cutoff_date,
+    manifest_summary_sha256 = if (nzchar(manifest_summary_sha)) manifest_summary_sha else NA_character_,
+    manifest_summary_sha_match = manifest_sha_ok,
+    current = list(
+      summary = path_report$summary_path,
+      precip_future = path_report$precip_future_path,
+      soil_future = path_report$soil_future_path,
+      soil_family_support = path_report$soil_family_support_path
+    ),
+    summary = summary_kv,
+    canonical = list(
+      run_id = if (is.null(canonical_run_id) || !nzchar(canonical_run_id)) NA_character_ else canonical_run_id,
+      summary_path = if (nzchar(canonical_summary_path)) canonical_summary_path else NA_character_,
+      summary_exists = canonical_summary_exists,
+      summary_sha256 = canonical_summary_sha,
+      summary_sha_match = canonical_summary_sha_match
+    )
+  )
+}
+
 unified_stage_validate <- function(cfg, run_root, repo_root, manifest) {
   validate_root <- file.path(run_root, "validate")
   dir.create(validate_root, recursive = TRUE, showWarnings = FALSE)
@@ -121,6 +247,13 @@ unified_stage_validate <- function(cfg, run_root, repo_root, manifest) {
       status <- "fail"
       report$status <- "fail"
     }
+  }
+
+  detclim_report <- unified_validate_detclim_report(cfg, manifest, run_root)
+  report$deterministic_climate <- detclim_report
+  if (identical(detclim_report$status, "fail")) {
+    status <- "fail"
+    report$status <- "fail"
   }
 
   if (requireNamespace("jsonlite", quietly = TRUE)) {

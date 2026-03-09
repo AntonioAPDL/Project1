@@ -77,6 +77,51 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     source_glofas_scale <- cfg$inputs$fit$glofas_storage_scale
   }
 
+  fit_covariates <- cfg$inputs$fit$covariates
+  if (is.null(fit_covariates)) fit_covariates <- list()
+  shared_cov_paths <- list(
+    eli = "",
+    oni = "",
+    ppt = "",
+    soil = "",
+    pca = ""
+  )
+  assign_cov_path <- function(cov_name, cov_path) {
+    key <- tolower(as.character(cov_name))
+    if (grepl("eli", key, fixed = TRUE)) shared_cov_paths$eli <<- cov_path
+    if (grepl("oni", key, fixed = TRUE)) shared_cov_paths$oni <<- cov_path
+    if (grepl("ppt", key, fixed = TRUE) || grepl("precip", key, fixed = TRUE)) shared_cov_paths$ppt <<- cov_path
+    if (grepl("soil", key, fixed = TRUE)) shared_cov_paths$soil <<- cov_path
+    if (grepl("pca", key, fixed = TRUE)) shared_cov_paths$pca <<- cov_path
+  }
+
+  if (use_shared_inputs) {
+    sanitize_cov_tag <- function(x) {
+      tag <- gsub("[^A-Za-z0-9]+", "_", as.character(x))
+      tag <- gsub("^_+|_+$", "", tag)
+      if (!nzchar(tag)) "cov" else tag
+    }
+    if (length(fit_covariates) > 0L) {
+      for (i in seq_along(fit_covariates)) {
+        entry <- fit_covariates[[i]]
+        if (!is.list(entry)) next
+        cov_name <- if (is.null(entry$name)) "" else as.character(entry$name)
+        if (!nzchar(cov_name)) next
+        cov_path <- file.path(shared_paths$covariates_dir, sprintf("cov_%02d_%s.csv", i, sanitize_cov_tag(cov_name)))
+        if (!file.exists(cov_path)) next
+        assign_cov_path(cov_name, cov_path)
+      }
+    }
+  } else if (length(fit_covariates) > 0L) {
+    for (entry in fit_covariates) {
+      if (!is.list(entry)) next
+      cov_name <- if (is.null(entry$name)) "" else as.character(entry$name)
+      cov_path <- if (is.null(entry$path)) "" else as.character(entry$path)
+      if (!nzchar(cov_name) || !nzchar(cov_path) || !file.exists(cov_path)) next
+      assign_cov_path(cov_name, cov_path)
+    }
+  }
+
   legacy_scale <- cfg$scale_contract$legacy_post_input_scale
   unified_assert_known_scale(legacy_scale, "scale_contract.legacy_post_input_scale")
 
@@ -402,7 +447,12 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     ENV_PROJECT_ROOT = repo_root_abs,
     ENV_RETROS_PATH = normalizePath(adapted_retros, mustWork = FALSE),
     ENV_NWS_FORECAST_PATH = normalizePath(adapted_nws, mustWork = FALSE),
-    ENV_GLOFAS_FORECAST_PATH = normalizePath(adapted_glofas, mustWork = FALSE)
+    ENV_GLOFAS_FORECAST_PATH = normalizePath(adapted_glofas, mustWork = FALSE),
+    if (nzchar(shared_cov_paths$eli)) c(ENV_COV_ELI_PATH = normalizePath(shared_cov_paths$eli, mustWork = FALSE)) else character(0),
+    if (nzchar(shared_cov_paths$oni)) c(ENV_COV_ONI_PATH = normalizePath(shared_cov_paths$oni, mustWork = FALSE)) else character(0),
+    if (nzchar(shared_cov_paths$ppt)) c(ENV_PPT_PATH = normalizePath(shared_cov_paths$ppt, mustWork = FALSE)) else character(0),
+    if (nzchar(shared_cov_paths$soil)) c(ENV_SOIL_PATH = normalizePath(shared_cov_paths$soil, mustWork = FALSE)) else character(0),
+    if (nzchar(shared_cov_paths$pca)) c(ENV_PCA_PATH = normalizePath(shared_cov_paths$pca, mustWork = FALSE)) else character(0)
   )
   run_post_runner <- function(env_overrides, log_path) {
     env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
