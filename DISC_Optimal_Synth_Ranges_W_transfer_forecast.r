@@ -223,6 +223,7 @@ DISC_W_LAM2 <- disc_env_prob("DISC_W_LAM2", 1 - 1e-6)
 DISC_W_SIMS_ENABLED <- disc_env_flag("DISC_W_SIMS_ENABLED", default = TRUE)
 DISC_W_USE_COVARIATES <- disc_env_flag("DISC_W_USE_COVARIATES", default = TRUE)
 DISC_W_C_FACTOR <- disc_env_pos_num("DISC_W_C_FACTOR", 1e2)
+DISC_W_FORECAST_COV_EPSILON <- disc_env_pos_num("DISC_W_FORECAST_COV_EPSILON", NA_real_)
 
 print(c(n.samp, 444))
 flush.console()
@@ -2200,7 +2201,7 @@ r_vec <- rev(ranges_per)
 
 # Hyperparams for prior
 c_factor <- DISC_W_C_FACTOR
-epsilon <- TT
+epsilon <- if (is.finite(DISC_W_FORECAST_COV_EPSILON)) DISC_W_FORECAST_COV_EPSILON else TT
 nu <- dim_theta + 1 + epsilon 
 
 # Preallocate the list of 3D arrays (diagonal matrices)
@@ -2359,7 +2360,8 @@ while (isTRUE(FLAG) && iter < max_iter) {
                                             FFF_forecast, QQQ_forecast,
                                             DF.MAT, DF.MAT_k,
                                             ensembles_forecast, ranges, Ones_ens,
-                                            sum(num_mem), num_mem, cur.covs_list)
+                                            sum(num_mem), num_mem, cur.covs_list,
+                                            epsilon)
 
     FF_t <- aperm(FF, c(2, 1, 3))
     multiply_matrices <- function(slice_index) {

@@ -47,6 +47,38 @@ arma::mat regularize(const arma::mat& matrix, double epsilon = 1e-15) {
     return matrix + epsilon * arma::eye<arma::mat>(matrix.n_rows, matrix.n_cols);
 }
 
+arma::mat robust_svd_inv(const arma::mat& matrix, double tolerance);
+
+arma::mat iw_expected_precision_from_mean(const arma::mat& w_mean, double forecast_cov_epsilon) {
+    if (!std::isfinite(forecast_cov_epsilon) || forecast_cov_epsilon <= 0.0) {
+        Rcpp::stop("iw_expected_precision_from_mean requires a positive finite forecast_cov_epsilon");
+    }
+    arma::mat clean_mean = regularize((w_mean + w_mean.t()) / 2.0);
+    double dim_theta = static_cast<double>(clean_mean.n_rows);
+    double nu = dim_theta + 1.0 + forecast_cov_epsilon;
+    double scale = nu / forecast_cov_epsilon;
+    return scale * robust_svd_inv(clean_mean, 1e-20);
+}
+
+double iw_expected_logdet_from_mean(const arma::mat& w_mean, double forecast_cov_epsilon) {
+    if (!std::isfinite(forecast_cov_epsilon) || forecast_cov_epsilon <= 0.0) {
+        Rcpp::stop("iw_expected_logdet_from_mean requires a positive finite forecast_cov_epsilon");
+    }
+    arma::mat clean_mean = regularize((w_mean + w_mean.t()) / 2.0);
+    double dim_theta = static_cast<double>(clean_mean.n_rows);
+    double nu = dim_theta + 1.0 + forecast_cov_epsilon;
+    MatrixXd A = Eigen::Map<MatrixXd>(const_cast<double*>(clean_mean.memptr()), clean_mean.n_rows, clean_mean.n_cols);
+    double log_det_mean = logDetCholesky(A);
+    double digamma_sum = 0.0;
+    for (arma::uword i = 0; i < clean_mean.n_rows; ++i) {
+        digamma_sum += R::digamma((nu - static_cast<double>(i)) / 2.0);
+    }
+    return dim_theta * std::log(forecast_cov_epsilon) +
+        log_det_mean -
+        dim_theta * std::log(2.0) -
+        digamma_sum;
+}
+
 void ensure_finite_square(const arma::mat& matrix, const std::string& label) {
     if (matrix.n_rows == 0 || matrix.n_cols == 0) {
         std::ostringstream oss;
@@ -1007,7 +1039,8 @@ Rcpp::List DISC_update_theta_synth_cpp_W(arma::cube GG,
     arma::cube ex_df_mat_list_ens, arma::cube ex_df_mat_k_list_ens,
     Rcpp::List y_list_ens, arma::vec k_ens, arma::mat Ones_ens,
     int tot_ens, arma::vec num_mem,
-    Rcpp::List W_list_ens) {
+    Rcpp::List W_list_ens,
+    double forecast_cov_epsilon) {
       
 // Print initial debug information
 // // Rcpp::Rcout << "Debug: Entering update_theta_cpp function" << std::endl;
@@ -1470,14 +1503,11 @@ arma::mat final_result = intermediate_result * sB.t();
 sC_ens[index].slice(k_j-1) = C_slice + final_result;
 sC_ens[index].slice(k_j-1) = (sC_ens[index].slice(k_j-1) + sC_ens[index].slice(k_j-1).t()) / 2;
 
-arma::mat W_t_1 = P % project_cov_head_tail(ex_df_mat_list_ens.slice(1), static_cast<arma::uword>(p * (j + 1)), static_cast<arma::uword>(ppx));
-W_t_1 = regularize((W_t_1 + W_t_1.t()) / 2);
-arma::mat W_inv = robust_svd_inv(W_t_1);
+arma::mat W_t_mean = regularize((W_list_ens_mat + W_list_ens_mat.t()) / 2.0);
+arma::mat W_inv = iw_expected_precision_from_mean(W_t_mean, forecast_cov_epsilon);
 arma::mat CBRB = sC_ens[index].slice(k_j-1)  - sB * sC_ens[index+1].slice(0) * sB.t();
 
-A = Eigen::Map<Eigen::MatrixXd>(W_t_1.memptr(), W_t_1.n_rows, W_t_1.n_cols);
-log_det = logDetCholesky(A);
-elbo_ens -= 0.5 * log_det; 
+elbo_ens -= 0.5 * iw_expected_logdet_from_mean(W_t_mean, forecast_cov_epsilon);
 
 A = Eigen::Map<Eigen::MatrixXd>(CBRB.memptr(), CBRB.n_rows, CBRB.n_cols); 
 log_det = logDetCholesky(A);
@@ -1489,7 +1519,7 @@ arma::mat intermediate1 = P * R_inv;
 arma::mat intermediate2 = intermediate1 * sC_next_slice;
 XX = XX - 2 * intermediate2 + ee * ee.t();
 
-arma::mat xXX =  robust_linear_solve(W_t_1, XX);
+arma::mat xXX = W_inv * XX;
 elbo_ens -= 0.5 * arma::accu(xXX.diag());
 
 // a = GG_ens.slice(0) * m.col(k_j-1).subvec(0, p*(j+1) - 1);
@@ -1600,13 +1630,8 @@ sC_ens[index].slice(kk) = C_slice + intermediate_result * sB.t();
 sC_ens[index].slice(kk) = (sC_ens[index].slice(kk) + sC_ens[index].slice(kk).t()) / 2;
 
 // Calculate W_t_1 and its inverse
-arma::mat W_t_1 = P % project_cov_head_tail(
-    ex_df_mat_list_ens.slice(1),
-    static_cast<arma::uword>(p * (j + 2)),
-    static_cast<arma::uword>(ppx)
-);
-W_t_1 = regularize((W_t_1 + W_t_1.t()) / 2);
-arma::mat W_inv = robust_svd_inv(W_t_1);
+arma::mat W_t_mean = regularize((W_list_ens_mat + W_list_ens_mat.t()) / 2.0);
+arma::mat W_inv = iw_expected_precision_from_mean(W_t_mean, forecast_cov_epsilon);
 
 // Calculate CBRB matrix and its inverse
 arma::mat CBRB = sC_ens[index].slice(kk) - sB * sC_next_slice * sB.t();
@@ -1614,9 +1639,7 @@ CBRB = regularize((CBRB + CBRB.t()) / 2);
 arma::mat CBRB_inv = robust_svd_inv(CBRB);
 
 // Compute log determinant for W_t_1 and update elbo
-A = Eigen::Map<Eigen::MatrixXd>(W_t_1.memptr(), W_t_1.n_rows, W_t_1.n_cols);
-log_det = logDetCholesky(A);
-elbo_ens -= 0.5 * log_det; 
+elbo_ens -= 0.5 * iw_expected_logdet_from_mean(W_t_mean, forecast_cov_epsilon);
 
 // Update XX and elbo
 arma::vec ee_ = sm_next_col_ - GG_list_ens_mat * sm_col_;
@@ -1740,18 +1763,11 @@ sm.col(TT-1) = m.col(TT-1) + sB * (sm_col - a);
 sC.slice(TT-1) = C.slice(TT-1) + sB * (sC_slice - R) * sB.t();
 sC.slice(TT-1) = (sC.slice(TT-1) + sC.slice(TT-1).t()) / 2;
 
-arma::mat W_t_1 = P % project_cov_head_tail(
-    ex_df_mat_list_ens.slice(0),
-    static_cast<arma::uword>(p * (J + 1)),
-    static_cast<arma::uword>(ppx)
-);
-W_t_1 = regularize((W_t_1 + W_t_1.t()) / 2);
-arma::mat W_inv = robust_svd_inv(W_t_1);
+arma::mat W_t_mean = regularize((W_list_ens_mat + W_list_ens_mat.t()) / 2.0);
+arma::mat W_inv = iw_expected_precision_from_mean(W_t_mean, forecast_cov_epsilon);
 arma::mat CBRB = sC.slice(TT-1) - sB * sC_slice * sB.t();
 
-A = Eigen::Map<Eigen::MatrixXd>(W_t_1.memptr(), W_t_1.n_rows, W_t_1.n_cols);
-log_det = logDetCholesky(A);
-elbo_ens -= 0.5 * log_det; 
+elbo_ens -= 0.5 * iw_expected_logdet_from_mean(W_t_mean, forecast_cov_epsilon);
 
 A = Eigen::Map<Eigen::MatrixXd>(CBRB.memptr(), CBRB.n_rows, CBRB.n_cols); 
 log_det = logDetCholesky(A);
@@ -1769,7 +1785,7 @@ arma::mat XX = sC_slice + GG_list_ens_mat * project_cov_head_tail(
 ) * GG_list_ens_mat.t();
 XX = XX - 2*(P*R_inv*sC_slice) + ee * ee.t();
 
-arma::mat xXX =  robust_linear_solve(W_t_1, XX);
+arma::mat xXX = W_inv * XX;
 elbo_ens -= 0.5 * arma::accu(xXX.diag());
 
 a = GG_list_ens_mat * project_state_head_tail(
@@ -1801,7 +1817,7 @@ sm.col(t) = m.col(t) + sB * (sm.col(t+1) - a);
 sC.slice(t) = C.slice(t) + sB * (sC.slice(t+1) - R) * sB.t();
 sC.slice(t) = (sC.slice(t) + sC.slice(t).t()) / 2;
 
-W_t_1 = ex_df_mat % P;
+arma::mat W_t_1 = ex_df_mat % P;
 W_t_1 = regularize((W_t_1 + W_t_1.t()) / 2);
 W_inv = robust_svd_inv(W_t_1);
 CBRB = sC.slice(t) - sB * sC.slice(t+1) * sB.t();
@@ -1847,7 +1863,7 @@ arma::vec sm_0 = m0 + sB * (sm.col(0) - GG.slice(0) * m0);
 arma::mat sC_0 = C0 + sB * (sC.slice(0) - R) * sB.t();
 sC_0 = (sC_0 + sC_0.t()) / 2;
 
-W_t_1 = ex_df_mat % P;
+arma::mat W_t_1 = ex_df_mat % P;
 W_t_1 = regularize((W_t_1 + W_t_1.t()) / 2);
 W_inv = robust_svd_inv(W_t_1);
 
