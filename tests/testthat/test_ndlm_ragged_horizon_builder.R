@@ -1,3 +1,4 @@
+source(testthat::test_path("..", "..", "R", "unified", "families", "ndlm_main", "00_constants.R"))
 source(testthat::test_path("..", "..", "R", "unified", "families", "ndlm_main", "03_vb_updates.R"))
 
 test_that("NDLM ragged horizon metadata is derived correctly for glofas extension", {
@@ -92,4 +93,56 @@ test_that("NDLM covariance diagnostics summarize slice validity", {
   row_bad <- out[out$object == "forecast_cov_segment_1", , drop = FALSE]
   expect_true(nrow(row_bad) == 1L)
   expect_true(row_bad$base_chol_fail_slices[[1L]] >= 1L)
+})
+
+test_that("NDLM constants normalize forecast transfer mode", {
+  old_mode <- Sys.getenv("NDLM_FORECAST_TRANSFER_MODE", unset = "")
+  on.exit(Sys.setenv(NDLM_FORECAST_TRANSFER_MODE = old_mode), add = TRUE)
+
+  Sys.setenv(NDLM_FORECAST_TRANSFER_MODE = "drop")
+  constants <- ndlm_theory_constants(seed = 123L)
+  expect_equal(constants$forecast_transfer_mode, "drop")
+
+  Sys.setenv(NDLM_FORECAST_TRANSFER_MODE = "BAD")
+  constants_bad <- ndlm_theory_constants(seed = 123L)
+  expect_equal(constants_bad$forecast_transfer_mode, "keep")
+})
+
+test_that("NDLM local covariance stabilization enforces eigen floor/cap", {
+  constants <- ndlm_theory_constants(seed = 777L)
+  constants$stabilization$cov_eig_floor <- 1e-5
+  constants$stabilization$cov_eig_cap <- 5
+  constants$stabilization$cov_diag_jitter <- 0
+
+  S <- matrix(c(
+    9, 7, 0,
+    7, 2, 0,
+    0, 0, 100
+  ), nrow = 3, byrow = TRUE)
+  out <- ndlm_theory_stabilize_covariance_local(S, constants = constants)
+  eigs <- eigen(out$cov, symmetric = TRUE, only.values = TRUE)$values
+
+  expect_true(is.list(out$stats))
+  expect_true(as.integer(out$stats$cov_projected) >= 1L)
+  expect_true(min(eigs) >= 1e-5 - 1e-9)
+  expect_true(max(eigs) <= 5 + 1e-6)
+})
+
+test_that("NDLM segment covariance reports stabilization stats", {
+  constants <- ndlm_theory_constants(seed = 777L)
+  constants$stabilization$cov_eig_floor <- 1e-6
+  constants$stabilization$cov_eig_cap <- 1
+  constants$stabilization$cov_diag_jitter <- 1e-10
+
+  cov_arr <- ndlm_theory_alloc_segment_cov(
+    k_len = 3L,
+    constants = constants,
+    base_cov = diag(c(10, 9, 8, 7, 6, 5, 4), 7L),
+    inactive_row = integer(0),
+    start_k = 1L
+  )
+  stats <- attr(cov_arr, "stabilization_stats")
+  expect_true(is.list(stats))
+  expect_true(as.integer(stats$calls) >= 1L)
+  expect_true(as.integer(stats$cov_cap_clipped) >= 1L)
 })

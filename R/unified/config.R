@@ -2,6 +2,27 @@
 
 unified_scale_enum <- c("raw_cms", "log_cms", "log1p_cms", "log_log_cms", "log_log1p_cms")
 
+unified_resolve_source_run_dir <- function(source_run_root, source_run_id, fallback_run_root = NULL) {
+  source_run_id <- if (is.null(source_run_id)) "" else as.character(source_run_id[[1L]])
+  if (!nzchar(source_run_id)) {
+    return(NULL)
+  }
+
+  root <- source_run_root
+  if (is.null(root) || !nzchar(as.character(root))) {
+    root <- fallback_run_root
+  }
+  if (is.null(root) || !nzchar(as.character(root))) {
+    return(NULL)
+  }
+
+  root <- normalizePath(path.expand(as.character(root[[1L]])), mustWork = FALSE)
+  if (identical(basename(root), source_run_id)) {
+    return(root)
+  }
+  normalizePath(file.path(root, source_run_id), mustWork = FALSE)
+}
+
 unified_config_defaults <- function() {
   list(
     config_version = 1L,
@@ -45,6 +66,7 @@ unified_config_defaults <- function() {
       run_ndlm_main = FALSE,
       exdqlm_multivar = list(
         implementation_mode = "legacy_bridge",
+        likelihood_mode = "exal",
         forecast_transfer_mode = "drop",
         forecast_transfer_modes = NULL,
         state_evolution = list(
@@ -60,6 +82,7 @@ unified_config_defaults <- function() {
       ),
       exdqlm_univar = list(
         implementation_mode = "theory_aligned",
+        likelihood_mode = "exal",
         state_evolution = list(
           df_t = 0.9999995,
           df_s1 = 0.9997,
@@ -73,6 +96,7 @@ unified_config_defaults <- function() {
       ndlm_main = list(
         implementation_mode = "theory_aligned",
         kalman_backend = "cpp",
+        forecast_transfer_mode = "keep",
         state_evolution = list(
           df_t = 0.95,
           df_s1 = 0.98,
@@ -82,6 +106,15 @@ unified_config_defaults <- function() {
           lambda = 0.99,
           df_trans = 0.99999999,
           df_covs = 0.99999
+        ),
+        stabilization = list(
+          cov_eig_floor = 1e-8,
+          cov_eig_cap = 1e8,
+          cov_diag_jitter = 1e-10,
+          sigma_upper_cap = 1e12,
+          sigma_update_damping = 1.0,
+          latent_var_cap_mult = 1e4,
+          latent_var_cap_abs = 1e8
         )
       )
     ),
@@ -133,10 +166,40 @@ unified_config_defaults <- function() {
         horizon_days = NULL,
         require_full_horizon = TRUE,
         precip = list(
-          reduction = "mean"
+          enabled = TRUE,
+          reduction = "mean",
+          dry_day_threshold_mm = 0,
+          tail_blend = list(
+            enabled = FALSE,
+            target = "climatology_median",
+            start_day = 7L,
+            end_day = 14L
+          ),
+          noisy_blend = list(
+            enabled = FALSE,
+            lambda_mode = "constant",
+            lambda = 0.5,
+            lambda_start = 0.8,
+            lambda_end = 0.2,
+            noise_sd_multiplier = 0.5,
+            noise_seed = 20260309L,
+            floor_at_zero = TRUE,
+            zero_zero_force_prob = 0
+          )
         ),
         soil = list(
-          reduction = "mean"
+          enabled = TRUE,
+          reduction = "mean",
+          noisy_blend = list(
+            enabled = FALSE,
+            lambda_mode = "constant",
+            lambda = 0.5,
+            lambda_start = 0.8,
+            lambda_end = 0.2,
+            noise_sd_multiplier = 0.5,
+            noise_seed = 20260309L,
+            floor_at_zero = FALSE
+          )
         )
       ),
       shared_covariates = list() # legacy compatibility
@@ -187,6 +250,14 @@ unified_config_defaults <- function() {
             min_total_iters = 20L,
             max_iter = 20L
           )
+        ),
+        forecast_health = list(
+          enabled = TRUE,
+          fail_fast = TRUE,
+          write_reports = TRUE,
+          latent_limit = 650,
+          sigma_limit = 100,
+          state_limit = 1000
         ),
         legacy = list(
           lam1 = 1 - 1e-6,
@@ -333,6 +404,55 @@ unified_get <- function(x, path, default = NULL) {
     cur <- cur[[p]]
   }
   cur
+}
+
+unified_normalize_likelihood_mode <- function(mode, default = "exal") {
+  raw <- as.character(mode)
+  if (!length(raw) || is.na(raw[[1L]]) || !nzchar(raw[[1L]])) {
+    raw <- default
+  } else {
+    raw <- raw[[1L]]
+  }
+  raw <- tolower(trimws(raw))
+  if (!(raw %in% c("exal", "al"))) {
+    raw <- tolower(trimws(as.character(default)[[1L]]))
+    if (!(raw %in% c("exal", "al"))) {
+      raw <- "exal"
+    }
+  }
+  raw
+}
+
+unified_resolve_univar_likelihood_mode <- function(cfg, default = "exal") {
+  unified_normalize_likelihood_mode(
+    unified_get(cfg, c("models", "exdqlm_univar", "likelihood_mode"), default = default),
+    default = default
+  )
+}
+
+unified_resolve_multivar_likelihood_mode <- function(cfg, default = "exal") {
+  unified_normalize_likelihood_mode(
+    unified_get(cfg, c("models", "exdqlm_multivar", "likelihood_mode"), default = default),
+    default = default
+  )
+}
+
+unified_resolve_ndlm_forecast_transfer_mode <- function(cfg, default = "keep") {
+  mode <- as.character(unified_get(
+    cfg,
+    c("models", "ndlm_main", "forecast_transfer_mode"),
+    default = default
+  ))
+  if (!length(mode) || is.na(mode[[1L]]) || !nzchar(mode[[1L]])) {
+    mode <- default
+  } else {
+    mode <- mode[[1L]]
+  }
+  mode <- tolower(trimws(mode))
+  if (!(mode %in% c("drop", "keep"))) {
+    mode <- default
+  }
+  mode
 }
 
 unified_resolve_multivar_transfer_modes <- function(cfg, default_mode = "drop") {
@@ -562,14 +682,11 @@ unified_validate_config <- function(cfg) {
       isTRUE(post_use_fit_outputs_from_run) &&
       !is.null(post_source_run_id) &&
       nzchar(post_source_run_id)) {
-    if (is.null(post_source_run_root) || !nzchar(post_source_run_root)) {
-      post_source_run_root <- unified_get(cfg, c("run", "run_root"), default = NULL)
-    }
-    source_run_dir <- if (!is.null(post_source_run_root) && nzchar(post_source_run_root)) {
-      file.path(post_source_run_root, post_source_run_id)
-    } else {
-      NULL
-    }
+    source_run_dir <- unified_resolve_source_run_dir(
+      source_run_root = post_source_run_root,
+      source_run_id = post_source_run_id,
+      fallback_run_root = unified_get(cfg, c("run", "run_root"), default = NULL)
+    )
     if (is.null(source_run_dir) || !dir.exists(source_run_dir)) {
       add_err(sprintf(
         "inputs.post.source_run_id is set but source run directory does not exist: %s",
@@ -596,15 +713,30 @@ unified_validate_config <- function(cfg) {
   if (!isTRUE(run_ndlm_main) && !identical(run_ndlm_main, FALSE)) {
     add_err("models.run_ndlm_main must be boolean (true/false)")
   }
+  read_mode_scalar <- function(path, default) {
+    raw <- as.character(unified_get(cfg, path, default = default))
+    if (!length(raw) || is.na(raw[[1L]]) || !nzchar(raw[[1L]])) {
+      return(tolower(trimws(as.character(default)[[1L]])))
+    }
+    tolower(trimws(raw[[1L]]))
+  }
 
   univar_mode <- unified_get(cfg, c("models", "exdqlm_univar", "implementation_mode"), default = "theory_aligned")
   if (!(univar_mode %in% c("legacy_bridge", "theory_aligned"))) {
     add_err("models.exdqlm_univar.implementation_mode must be one of: legacy_bridge, theory_aligned")
   }
+  univar_likelihood_mode <- read_mode_scalar(c("models", "exdqlm_univar", "likelihood_mode"), "exal")
+  if (!(univar_likelihood_mode %in% c("exal", "al"))) {
+    add_err("models.exdqlm_univar.likelihood_mode must be one of: exal, al")
+  }
 
   ndlm_mode <- unified_get(cfg, c("models", "ndlm_main", "implementation_mode"), default = "theory_aligned")
   if (!(ndlm_mode %in% c("legacy_bridge", "theory_aligned"))) {
     add_err("models.ndlm_main.implementation_mode must be one of: legacy_bridge, theory_aligned")
+  }
+  multivar_likelihood_mode <- read_mode_scalar(c("models", "exdqlm_multivar", "likelihood_mode"), "exal")
+  if (!(multivar_likelihood_mode %in% c("exal", "al"))) {
+    add_err("models.exdqlm_multivar.likelihood_mode must be one of: exal, al")
   }
   multivar_forecast_transfer_mode <- unified_get(
     cfg,
@@ -639,6 +771,10 @@ unified_validate_config <- function(cfg) {
   if (!(ndlm_kalman_backend %in% c("r", "cpp"))) {
     add_err("models.ndlm_main.kalman_backend must be one of: r, cpp")
   }
+  ndlm_forecast_transfer_mode <- read_mode_scalar(c("models", "ndlm_main", "forecast_transfer_mode"), "keep")
+  if (!(ndlm_forecast_transfer_mode %in% c("drop", "keep"))) {
+    add_err("models.ndlm_main.forecast_transfer_mode must be one of: drop, keep")
+  }
   multivar_prob_keys <- c("df_t", "df_s1", "df_s2", "df_s67", "df_discrep", "lambda", "df_trans", "df_covs")
   for (nm in multivar_prob_keys) {
     val <- suppressWarnings(as.numeric(unified_get(cfg, c("models", "exdqlm_multivar", "state_evolution", nm), default = NA_real_)))
@@ -652,6 +788,64 @@ unified_validate_config <- function(cfg) {
     if (!is.finite(val) || val <= 0 || val >= 1) {
       add_err(sprintf("models.ndlm_main.state_evolution.%s must be numeric in (0,1)", nm))
     }
+  }
+  ndlm_cov_floor <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_main", "stabilization", "cov_eig_floor"),
+    default = 1e-8
+  )))
+  if (!is.finite(ndlm_cov_floor) || ndlm_cov_floor <= 0) {
+    add_err("models.ndlm_main.stabilization.cov_eig_floor must be numeric > 0")
+  }
+  ndlm_cov_cap <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_main", "stabilization", "cov_eig_cap"),
+    default = 1e8
+  )))
+  if (!is.finite(ndlm_cov_cap) || ndlm_cov_cap <= 0) {
+    add_err("models.ndlm_main.stabilization.cov_eig_cap must be numeric > 0")
+  } else if (is.finite(ndlm_cov_floor) && ndlm_cov_cap <= ndlm_cov_floor) {
+    add_err("models.ndlm_main.stabilization.cov_eig_cap must be greater than cov_eig_floor")
+  }
+  ndlm_cov_jitter <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_main", "stabilization", "cov_diag_jitter"),
+    default = 1e-10
+  )))
+  if (!is.finite(ndlm_cov_jitter) || ndlm_cov_jitter < 0) {
+    add_err("models.ndlm_main.stabilization.cov_diag_jitter must be numeric >= 0")
+  }
+  ndlm_sigma_cap <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_main", "stabilization", "sigma_upper_cap"),
+    default = 1e12
+  )))
+  if (!is.finite(ndlm_sigma_cap) || ndlm_sigma_cap <= 0) {
+    add_err("models.ndlm_main.stabilization.sigma_upper_cap must be numeric > 0")
+  }
+  ndlm_sigma_damping <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_main", "stabilization", "sigma_update_damping"),
+    default = 1.0
+  )))
+  if (!is.finite(ndlm_sigma_damping) || ndlm_sigma_damping < 0 || ndlm_sigma_damping > 1) {
+    add_err("models.ndlm_main.stabilization.sigma_update_damping must be numeric in [0,1]")
+  }
+  ndlm_latent_mult <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_main", "stabilization", "latent_var_cap_mult"),
+    default = 1e4
+  )))
+  if (!is.finite(ndlm_latent_mult) || ndlm_latent_mult <= 0) {
+    add_err("models.ndlm_main.stabilization.latent_var_cap_mult must be numeric > 0")
+  }
+  ndlm_latent_abs <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_main", "stabilization", "latent_var_cap_abs"),
+    default = 1e8
+  )))
+  if (!is.finite(ndlm_latent_abs) || ndlm_latent_abs <= 0) {
+    add_err("models.ndlm_main.stabilization.latent_var_cap_abs must be numeric > 0")
   }
   univar_prob_keys <- c("df_t", "df_s1", "df_s2", "df_s67", "lambda", "df_trans", "df_covs")
   for (nm in univar_prob_keys) {
@@ -673,6 +867,12 @@ unified_validate_config <- function(cfg) {
       add_err(sprintf("%s must be an integer >= %d", label, as.integer(min_value)))
     }
   }
+  validate_real_min <- function(path, label, min_value = 0) {
+    val <- suppressWarnings(as.numeric(unified_get(cfg, path, default = NA_real_)))
+    if (!is.finite(val) || val < as.numeric(min_value)) {
+      add_err(sprintf("%s must be numeric >= %s", label, format(as.numeric(min_value), digits = 10)))
+    }
+  }
   validate_bool <- function(path, label) {
     val <- unified_get(cfg, path, default = NULL)
     if (!isTRUE(val) && !identical(val, FALSE)) {
@@ -691,6 +891,12 @@ unified_validate_config <- function(cfg) {
   validate_int_min(c("fit", "exdqlm_multivar", "legacy", "n_samp"), "fit.exdqlm_multivar.legacy.n_samp", min_value = 1L)
   validate_bool(c("fit", "exdqlm_multivar", "legacy", "sims_enabled"), "fit.exdqlm_multivar.legacy.sims_enabled")
   validate_bool(c("fit", "exdqlm_multivar", "legacy", "use_covariates"), "fit.exdqlm_multivar.legacy.use_covariates")
+  validate_bool(c("fit", "exdqlm_multivar", "forecast_health", "enabled"), "fit.exdqlm_multivar.forecast_health.enabled")
+  validate_bool(c("fit", "exdqlm_multivar", "forecast_health", "fail_fast"), "fit.exdqlm_multivar.forecast_health.fail_fast")
+  validate_bool(c("fit", "exdqlm_multivar", "forecast_health", "write_reports"), "fit.exdqlm_multivar.forecast_health.write_reports")
+  validate_real_min(c("fit", "exdqlm_multivar", "forecast_health", "latent_limit"), "fit.exdqlm_multivar.forecast_health.latent_limit", min_value = 1e-6)
+  validate_real_min(c("fit", "exdqlm_multivar", "forecast_health", "sigma_limit"), "fit.exdqlm_multivar.forecast_health.sigma_limit", min_value = 1e-6)
+  validate_real_min(c("fit", "exdqlm_multivar", "forecast_health", "state_limit"), "fit.exdqlm_multivar.forecast_health.state_limit", min_value = 1e-6)
 
   validate_prob_01(c("fit", "ndlm_main", "legacy", "lam1"), "fit.ndlm_main.legacy.lam1")
   validate_prob_01(c("fit", "ndlm_main", "legacy", "lam2"), "fit.ndlm_main.legacy.lam2")
@@ -738,17 +944,179 @@ unified_validate_config <- function(cfg) {
       add_err("inputs.deterministic_climate.require_full_horizon must be boolean (true/false)")
     }
     for (series_name in c("precip", "soil")) {
+      series_enabled <- unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "enabled"),
+        default = TRUE
+      )
+      if (!isTRUE(series_enabled) && !identical(series_enabled, FALSE)) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.enabled must be boolean (true/false)",
+          series_name
+        ))
+      }
       reduction <- tolower(as.character(unified_get(
         cfg,
         c("inputs", "deterministic_climate", series_name, "reduction"),
         default = "mean"
       ))[[1L]])
-      if (!(reduction %in% c("mean", "median"))) {
+      if (!(reduction %in% c("mean", "median", "q70", "q90", "max"))) {
         add_err(sprintf(
-          "inputs.deterministic_climate.%s.reduction must be one of: mean, median",
+          "inputs.deterministic_climate.%s.reduction must be one of: mean, median, q70, q90, max",
           series_name
         ))
       }
+      noisy_blend_enabled <- unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "noisy_blend", "enabled"),
+        default = FALSE
+      )
+      if (!is.logical(noisy_blend_enabled) || length(noisy_blend_enabled) != 1L || is.na(noisy_blend_enabled)) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.noisy_blend.enabled must be boolean (true/false)",
+          series_name
+        ))
+      }
+      noisy_blend_lambda_mode <- tolower(as.character(unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "noisy_blend", "lambda_mode"),
+        default = "constant"
+      ))[[1L]])
+      if (!(noisy_blend_lambda_mode %in% c("constant", "dynamic"))) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.noisy_blend.lambda_mode must be one of: constant, dynamic",
+          series_name
+        ))
+      }
+      noisy_blend_lambda <- suppressWarnings(as.numeric(unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "noisy_blend", "lambda"),
+        default = 0.5
+      )))
+      if (!is.finite(noisy_blend_lambda) || noisy_blend_lambda < 0 || noisy_blend_lambda > 1) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.noisy_blend.lambda must be numeric in [0, 1]",
+          series_name
+        ))
+      }
+      noisy_blend_lambda_start <- suppressWarnings(as.numeric(unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "noisy_blend", "lambda_start"),
+        default = 0.8
+      )))
+      if (!is.finite(noisy_blend_lambda_start) || noisy_blend_lambda_start < 0 || noisy_blend_lambda_start > 1) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.noisy_blend.lambda_start must be numeric in [0, 1]",
+          series_name
+        ))
+      }
+      noisy_blend_lambda_end <- suppressWarnings(as.numeric(unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "noisy_blend", "lambda_end"),
+        default = 0.2
+      )))
+      if (!is.finite(noisy_blend_lambda_end) || noisy_blend_lambda_end < 0 || noisy_blend_lambda_end > 1) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.noisy_blend.lambda_end must be numeric in [0, 1]",
+          series_name
+        ))
+      }
+      noisy_blend_sd_mult <- suppressWarnings(as.numeric(unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "noisy_blend", "noise_sd_multiplier"),
+        default = 0.5
+      )))
+      if (!is.finite(noisy_blend_sd_mult) || noisy_blend_sd_mult < 0) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.noisy_blend.noise_sd_multiplier must be numeric >= 0",
+          series_name
+        ))
+      }
+      noisy_blend_seed <- suppressWarnings(as.integer(unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "noisy_blend", "noise_seed"),
+        default = 20260309L
+      )))
+      if (!is.finite(noisy_blend_seed)) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.noisy_blend.noise_seed must be an integer",
+          series_name
+        ))
+      }
+      noisy_blend_floor <- unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "noisy_blend", "floor_at_zero"),
+        default = identical(series_name, "precip")
+      )
+      if (!is.logical(noisy_blend_floor) || length(noisy_blend_floor) != 1L || is.na(noisy_blend_floor)) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.noisy_blend.floor_at_zero must be boolean (true/false)",
+          series_name
+        ))
+      }
+      if (identical(series_name, "precip")) {
+        noisy_blend_zero_zero_force_prob <- suppressWarnings(as.numeric(unified_get(
+          cfg,
+          c("inputs", "deterministic_climate", series_name, "noisy_blend", "zero_zero_force_prob"),
+          default = 0
+        )))
+        if (!is.finite(noisy_blend_zero_zero_force_prob) || noisy_blend_zero_zero_force_prob < 0 || noisy_blend_zero_zero_force_prob > 1) {
+          add_err("inputs.deterministic_climate.precip.noisy_blend.zero_zero_force_prob must be numeric in [0, 1]")
+        }
+        dry_day_threshold_mm <- suppressWarnings(as.numeric(unified_get(
+          cfg,
+          c("inputs", "deterministic_climate", series_name, "dry_day_threshold_mm"),
+          default = 0
+        )))
+        if (!is.finite(dry_day_threshold_mm) || dry_day_threshold_mm < 0) {
+          add_err("inputs.deterministic_climate.precip.dry_day_threshold_mm must be numeric >= 0")
+        }
+        tail_blend_enabled <- unified_get(
+          cfg,
+          c("inputs", "deterministic_climate", series_name, "tail_blend", "enabled"),
+          default = FALSE
+        )
+        if (!is.logical(tail_blend_enabled) || length(tail_blend_enabled) != 1L || is.na(tail_blend_enabled)) {
+          add_err("inputs.deterministic_climate.precip.tail_blend.enabled must be boolean (true/false)")
+        }
+        tail_blend_target <- tolower(as.character(unified_get(
+          cfg,
+          c("inputs", "deterministic_climate", series_name, "tail_blend", "target"),
+          default = "climatology_median"
+        ))[[1L]])
+        if (!(tail_blend_target %in% c("climatology_mean", "climatology_median", "zero"))) {
+          add_err("inputs.deterministic_climate.precip.tail_blend.target must be one of: climatology_mean, climatology_median, zero")
+        }
+        tail_blend_start_day <- suppressWarnings(as.integer(unified_get(
+          cfg,
+          c("inputs", "deterministic_climate", series_name, "tail_blend", "start_day"),
+          default = 7L
+        )))
+        tail_blend_end_day <- suppressWarnings(as.integer(unified_get(
+          cfg,
+          c("inputs", "deterministic_climate", series_name, "tail_blend", "end_day"),
+          default = 14L
+        )))
+        if (!is.finite(tail_blend_start_day) || tail_blend_start_day < 1L) {
+          add_err("inputs.deterministic_climate.precip.tail_blend.start_day must be an integer >= 1")
+        }
+        if (!is.finite(tail_blend_end_day) || tail_blend_end_day < tail_blend_start_day) {
+          add_err("inputs.deterministic_climate.precip.tail_blend.end_day must be an integer >= start_day")
+        }
+      }
+    }
+    precip_enabled <- isTRUE(unified_get(
+      cfg,
+      c("inputs", "deterministic_climate", "precip", "enabled"),
+      default = TRUE
+    ))
+    soil_enabled <- isTRUE(unified_get(
+      cfg,
+      c("inputs", "deterministic_climate", "soil", "enabled"),
+      default = TRUE
+    ))
+    if (!precip_enabled && !soil_enabled) {
+      add_err("inputs.deterministic_climate requires at least one enabled replacement series (precip or soil)")
     }
   }
 

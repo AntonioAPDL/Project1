@@ -19,6 +19,12 @@ ndlm_theory_constants <- function(seed = 777L) {
     raw <- min(raw, as.numeric(max_val))
     raw
   }
+  env_choice <- function(name, choices, default) {
+    raw <- tolower(trimws(Sys.getenv(name, as.character(default))))
+    if (!nzchar(raw)) raw <- as.character(default)
+    if (!(raw %in% choices)) raw <- as.character(default)
+    raw
+  }
 
   horizon_cap <- suppressWarnings(as.integer(Sys.getenv("NDLM_FORECAST_HORIZON_CAP", "1080")))
   if (!is.finite(horizon_cap) || horizon_cap <= 0L) {
@@ -28,6 +34,11 @@ ndlm_theory_constants <- function(seed = 777L) {
   if (!(kalman_backend %in% c("r", "cpp"))) {
     kalman_backend <- "cpp"
   }
+  forecast_transfer_mode <- env_choice(
+    "NDLM_FORECAST_TRANSFER_MODE",
+    choices = c("keep", "drop"),
+    default = "keep"
+  )
 
   max_iter <- env_int("NDLM_GAMSIG_MAX_ITER", default = 100L, min_val = 1L)
   min_total_iters <- env_int("NDLM_GAMSIG_MIN_TOTAL_ITERS", default = 50L, min_val = 1L)
@@ -44,12 +55,21 @@ ndlm_theory_constants <- function(seed = 777L) {
   lambda <- env_prob("NDLM_LAMBDA", default = 0.99)
   df_trans <- env_prob("NDLM_DF_TRANS", default = 0.99999999)
   df_covs <- env_prob("NDLM_DF_COVS", default = 0.99999)
+  cov_eig_floor <- env_num("NDLM_COV_EIG_FLOOR", default = 1e-8, min_val = 1e-12)
+  cov_eig_cap <- env_num("NDLM_COV_EIG_CAP", default = 1e8, min_val = cov_eig_floor * 10)
+  cov_diag_jitter <- env_num("NDLM_COV_DIAG_JITTER", default = 1e-10, min_val = 0)
+  sigma_upper_cap <- env_num("NDLM_SIGMA_UPPER_CAP", default = 1e12, min_val = 1e-6)
+  sigma_update_damping <- env_num("NDLM_SIGMA_UPDATE_DAMPING", default = 1.0, min_val = 0)
+  sigma_update_damping <- min(sigma_update_damping, 1.0)
+  latent_var_cap_mult <- env_num("NDLM_LATENT_VAR_CAP_MULT", default = 1e4, min_val = 1)
+  latent_var_cap_abs <- env_num("NDLM_LATENT_VAR_CAP_ABS", default = 1e8, min_val = 1e-6)
 
   list(
     state_dim = 26L,
     active_hist_dim = 14L,
     forecast_horizon_cap = horizon_cap,
     kalman_backend = kalman_backend,
+    forecast_transfer_mode = forecast_transfer_mode,
     ensemble_block_dim = 7L,
     max_iter = max_iter,
     min_total_iters = min_total_iters,
@@ -70,6 +90,15 @@ ndlm_theory_constants <- function(seed = 777L) {
     lambda = lambda,
     df_trans = df_trans,
     df_covs = df_covs,
+    stabilization = list(
+      cov_eig_floor = cov_eig_floor,
+      cov_eig_cap = cov_eig_cap,
+      cov_diag_jitter = cov_diag_jitter,
+      sigma_upper_cap = sigma_upper_cap,
+      sigma_update_damping = sigma_update_damping,
+      latent_var_cap_mult = latent_var_cap_mult,
+      latent_var_cap_abs = latent_var_cap_abs
+    ),
     p0 = 0.5
   )
 }

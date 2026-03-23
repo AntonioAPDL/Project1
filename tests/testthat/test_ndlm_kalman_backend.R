@@ -104,3 +104,46 @@ test_that("ndlm kalman smoother discount path matches between r and cpp", {
   expect_equal(as.numeric(out_cpp$smoothed_mean), as.numeric(out_r$smoothed_mean), tolerance = 1e-7)
   expect_equal(as.numeric(out_cpp$smooth_mean), as.numeric(out_r$smooth_mean), tolerance = 1e-6)
 })
+
+test_that("ndlm kalman smoother exposes stabilization metadata and repairs covariance", {
+  set.seed(779)
+  Tn <- 40L
+  d <- 4L
+  H <- matrix(rnorm(Tn * d), nrow = Tn, ncol = d)
+  y <- rnorm(Tn)
+  R_vec <- rep(0.25, Tn)
+  q_diag <- rep(0.05, d)
+  m0 <- rep(0, d)
+  C0 <- matrix(c(
+    2.0, 5.0, 0.0, 0.0,
+    5.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 50.0, 0.0,
+    0.0, 0.0, 0.0, 30.0
+  ), nrow = d, byrow = TRUE)
+
+  out <- ndlm_theory_kalman_smoother(
+    y = y,
+    H_mat = H,
+    R_vec = R_vec,
+    q_diag = q_diag,
+    m0 = m0,
+    C0 = C0,
+    backend = "r",
+    stabilization = list(
+      cov_eig_floor = 1e-6,
+      cov_eig_cap = 10,
+      cov_diag_jitter = 1e-10
+    )
+  )
+
+  expect_true(is.list(out$stabilization))
+  expect_true(as.integer(out$stabilization$calls) > 0L)
+  expect_true(as.integer(out$stabilization$cov_projected) > 0L)
+  mins <- vapply(
+    seq_len(dim(out$smooth_cov)[3]),
+    function(k) min(eigen(out$smooth_cov[, , k], symmetric = TRUE, only.values = TRUE)$values),
+    numeric(1)
+  )
+  expect_true(all(is.finite(mins)))
+  expect_true(min(mins) >= -1e-8)
+})

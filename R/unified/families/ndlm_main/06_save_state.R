@@ -32,6 +32,7 @@ ndlm_theory_pack_compat_outputs <- function(fit_result) {
       state_dim_by_lead = fit_result$state_dim_by_lead,
       covariance_diagnostics = fit_result$covariance_diagnostics,
       fit_diagnostics = fit_result$fit_diagnostics,
+      stabilization = fit_result$stabilization,
       K_cap = fit_result$K_cap,
       nws_len = fit_result$nws_len,
       glofas_len = fit_result$glofas_len

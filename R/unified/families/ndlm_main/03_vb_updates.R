@@ -111,6 +111,96 @@ ndlm_theory_q_diag_from_discount <- function(constants, state_dim) {
   pmax(as.numeric(q_diag), 1e-8)
 }
 
+ndlm_theory_local_stabilization_defaults <- function(constants) {
+  st <- constants$stabilization
+  if (!is.list(st)) st <- list()
+  read_num <- function(x, default, min_val = -Inf, max_val = Inf) {
+    out <- suppressWarnings(if (is.null(x) || length(x) < 1L) NA_real_ else as.numeric(x[[1L]]))
+    if (!is.finite(out)) out <- suppressWarnings(as.numeric(default))
+    if (!is.finite(out)) out <- 0
+    out <- max(out, as.numeric(min_val))
+    out <- min(out, as.numeric(max_val))
+    out
+  }
+  cov_eig_floor <- read_num(st$cov_eig_floor, 1e-8, min_val = 1e-12)
+  cov_eig_cap <- read_num(st$cov_eig_cap, 1e8, min_val = cov_eig_floor * 10)
+  cov_diag_jitter <- read_num(st$cov_diag_jitter, 1e-10, min_val = 0)
+  sigma_upper_cap <- read_num(st$sigma_upper_cap, 1e12, min_val = 1e-6)
+  sigma_update_damping <- read_num(st$sigma_update_damping, 1.0, min_val = 0, max_val = 1)
+  latent_var_cap_mult <- read_num(st$latent_var_cap_mult, 1e4, min_val = 1)
+  latent_var_cap_abs <- read_num(st$latent_var_cap_abs, 1e8, min_val = 1e-6)
+  list(
+    cov_eig_floor = cov_eig_floor,
+    cov_eig_cap = cov_eig_cap,
+    cov_diag_jitter = cov_diag_jitter,
+    sigma_upper_cap = sigma_upper_cap,
+    sigma_update_damping = sigma_update_damping,
+    latent_var_cap_mult = latent_var_cap_mult,
+    latent_var_cap_abs = latent_var_cap_abs
+  )
+}
+
+ndlm_theory_stabilize_covariance_local <- function(Sigma, constants) {
+  params <- ndlm_theory_local_stabilization_defaults(constants)
+  stats <- list(
+    calls = 1L,
+    cov_projected = 0L,
+    cov_floor_clipped = 0L,
+    cov_cap_clipped = 0L,
+    cov_nonfinite_inputs = 0L
+  )
+  Sigma <- as.matrix(Sigma)
+  if (!is.numeric(Sigma) || nrow(Sigma) != ncol(Sigma)) {
+    stop("NDLM local covariance stabilization requires a numeric square matrix", call. = FALSE)
+  }
+  d <- nrow(Sigma)
+  if (!all(is.finite(Sigma))) {
+    Sigma[!is.finite(Sigma)] <- 0
+    stats$cov_nonfinite_inputs <- 1L
+  }
+  Sigma <- (Sigma + t(Sigma)) / 2
+
+  eig_vals <- tryCatch(
+    suppressWarnings(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values),
+    error = function(e) rep(NA_real_, d)
+  )
+  has_nonfinite_eigs <- any(!is.finite(eig_vals))
+  floor_hit <- has_nonfinite_eigs || min(eig_vals, na.rm = TRUE) < params$cov_eig_floor
+  cap_hit <- has_nonfinite_eigs || max(eig_vals, na.rm = TRUE) > params$cov_eig_cap
+  if (isTRUE(floor_hit) || isTRUE(cap_hit)) {
+    stats$cov_projected <- 1L
+    stats$cov_floor_clipped <- as.integer(isTRUE(floor_hit))
+    stats$cov_cap_clipped <- as.integer(isTRUE(cap_hit))
+    eig <- tryCatch(suppressWarnings(eigen(Sigma, symmetric = TRUE)), error = function(e) NULL)
+    if (is.null(eig) || any(!is.finite(eig$values)) || any(!is.finite(eig$vectors))) {
+      Sigma <- diag(params$cov_eig_floor, d)
+    } else {
+      vals <- as.numeric(eig$values)
+      vals <- pmin(pmax(vals, params$cov_eig_floor), params$cov_eig_cap)
+      Sigma <- eig$vectors %*% diag(vals, length(vals)) %*% t(eig$vectors)
+    }
+  }
+  Sigma <- (Sigma + t(Sigma)) / 2
+  if (isTRUE(params$cov_diag_jitter > 0)) {
+    Sigma <- Sigma + diag(params$cov_diag_jitter, d)
+  }
+  for (ii in seq_len(3L)) {
+    final_min <- tryCatch(
+      suppressWarnings(min(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values)),
+      error = function(e) NA_real_
+    )
+    if (is.finite(final_min) && final_min >= params$cov_eig_floor) {
+      break
+    }
+    shift <- if (!is.finite(final_min)) params$cov_eig_floor else (params$cov_eig_floor - final_min)
+    shift <- max(shift + params$cov_diag_jitter, params$cov_diag_jitter)
+    Sigma <- Sigma + diag(shift, d)
+    stats$cov_projected <- max(stats$cov_projected, 1L)
+    stats$cov_floor_clipped <- max(stats$cov_floor_clipped, 1L)
+  }
+  list(cov = Sigma, stats = stats)
+}
+
 ndlm_theory_discount_matrix_full <- function(constants, state_dim, k = 1L) {
   state_dim <- suppressWarnings(as.integer(state_dim[[1L]]))
   if (!is.finite(state_dim) || state_dim < 14L) {
@@ -250,18 +340,65 @@ ndlm_theory_collect_covariance_diagnostics <- function(fit_sC, sC_ens_1, sC_ens_
   out
 }
 
+ndlm_theory_stabilize_cov_array <- function(cov_arr, constants) {
+  dims <- dim(cov_arr)
+  if (is.null(dims) || length(dims) != 3L || dims[1] != dims[2]) {
+    stop("ndlm_theory_stabilize_cov_array expects a square 3D covariance array", call. = FALSE)
+  }
+  out <- cov_arr
+  stats <- list(
+    calls = 0L,
+    cov_projected = 0L,
+    cov_floor_clipped = 0L,
+    cov_cap_clipped = 0L,
+    cov_nonfinite_inputs = 0L
+  )
+  add_stats <- function(piece) {
+    for (nm in names(stats)) {
+      cur <- suppressWarnings(as.integer(piece[[nm]]))
+      if (!is.finite(cur)) cur <- 0L
+      stats[[nm]] <<- stats[[nm]] + cur
+    }
+  }
+  for (k in seq_len(dims[3])) {
+    cur <- ndlm_theory_stabilize_covariance_local(out[, , k, drop = TRUE], constants = constants)
+    out[, , k] <- cur$cov
+    add_stats(cur$stats)
+  }
+  list(cov = out, stats = stats)
+}
+
 ndlm_theory_alloc_segment_cov <- function(k_len, constants, base_cov, inactive_row = integer(0), start_k = 1L) {
   k_len <- suppressWarnings(as.integer(k_len[[1L]]))
   if (!is.finite(k_len) || k_len < 0L) k_len <- 0L
   start_k <- suppressWarnings(as.integer(start_k[[1L]]))
   if (!is.finite(start_k) || start_k < 1L) start_k <- 1L
   out <- array(0, dim = c(7L, 7L, k_len))
-  if (k_len == 0L) return(out)
+  stab_stats <- list(
+    calls = 0L,
+    cov_projected = 0L,
+    cov_floor_clipped = 0L,
+    cov_cap_clipped = 0L,
+    cov_nonfinite_inputs = 0L
+  )
+  add_stats <- function(piece) {
+    for (nm in names(stab_stats)) {
+      cur <- suppressWarnings(as.integer(piece[[nm]]))
+      if (!is.finite(cur)) cur <- 0L
+      stab_stats[[nm]] <<- stab_stats[[nm]] + cur
+    }
+  }
+  if (k_len == 0L) {
+    attr(out, "stabilization_stats") <- stab_stats
+    return(out)
+  }
   base_cov <- as.matrix(base_cov)
   if (!all(dim(base_cov) == c(7L, 7L))) {
     stop("base_cov must be 7x7 for ndlm forecast segment covariance construction", call. = FALSE)
   }
-  P_prev <- (base_cov + t(base_cov)) / 2 + diag(1e-8, 7L)
+  base_stab <- ndlm_theory_stabilize_covariance_local(base_cov, constants = constants)
+  add_stats(base_stab$stats)
+  P_prev <- base_stab$cov
   inactive_row <- suppressWarnings(as.integer(inactive_row))
   for (k in seq_len(k_len)) {
     k_abs <- as.integer(start_k + k - 1L)
@@ -284,9 +421,12 @@ ndlm_theory_alloc_segment_cov <- function(k_len, constants, base_cov, inactive_r
       }
     }
     d <- (d + t(d)) / 2 + diag(1e-8, 7L)
-    out[, , k] <- d
-    P_prev <- d
+    d_stab <- ndlm_theory_stabilize_covariance_local(d, constants = constants)
+    add_stats(d_stab$stats)
+    out[, , k] <- d_stab$cov
+    P_prev <- d_stab$cov
   }
+  attr(out, "stabilization_stats") <- stab_stats
   out
 }
 
@@ -491,6 +631,27 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   iterations_completed <- 0L
   df_mat_full <- ndlm_theory_discount_matrix_full(constants, state_dim = d, k = 1L)
   q_diag <- ndlm_theory_q_diag_from_discount(constants, state_dim = d)
+  stab_params <- ndlm_theory_local_stabilization_defaults(constants)
+  cov_stab_totals <- list(
+    calls = 0L,
+    cov_projected = 0L,
+    cov_floor_clipped = 0L,
+    cov_cap_clipped = 0L,
+    cov_nonfinite_inputs = 0L
+  )
+  accumulate_cov_stats <- function(piece) {
+    if (!is.list(piece)) return(invisible(NULL))
+    for (nm in names(cov_stab_totals)) {
+      cur <- suppressWarnings(as.integer(piece[[nm]]))
+      if (!is.finite(cur)) cur <- 0L
+      cov_stab_totals[[nm]] <<- cov_stab_totals[[nm]] + cur
+    }
+    invisible(NULL)
+  }
+  latent_var_clipped_total <- 0L
+  sigma_capped_total <- 0L
+  sigma_damped_total <- 0L
+  latent_var_cap_last <- stab_params$latent_var_cap_abs
   hist_assim <- ndlm_theory_build_hist_pseudo_obs(
     source_obs = source_obs,
     sigma_by_source = sigma_by_source,
@@ -516,15 +677,30 @@ ndlm_theory_run_vb <- function(inputs, constants) {
       df_mat = df_mat_full,
       m0 = m0,
       C0 = C0,
-      backend = constants$kalman_backend
+      backend = constants$kalman_backend,
+      stabilization = stab_params
     )
+    accumulate_cov_stats(fit$stabilization)
 
     fitted_mean <- as.numeric(fit$fitted_mean)
-    fitted_latent_var <- pmax(vapply(
+    fitted_latent_var_raw <- pmax(vapply(
       seq_len(Tn),
       function(tt) as.numeric(crossprod(H_mat[tt, ], fit$smooth_cov[, , tt] %*% H_mat[tt, ])),
       numeric(1)
     ), 1e-10)
+    assim_var <- suppressWarnings(stats::var(hist_assim$y[is.finite(hist_assim$y)], na.rm = TRUE))
+    if (!is.finite(assim_var) || assim_var <= 0) {
+      assim_var <- suppressWarnings(stats::var(inputs$y[is.finite(inputs$y)], na.rm = TRUE))
+    }
+    if (!is.finite(assim_var) || assim_var <= 0) {
+      assim_var <- 1.0
+    }
+    latent_var_cap <- max(stab_params$latent_var_cap_abs, stab_params$latent_var_cap_mult * assim_var)
+    latent_var_cap_last <- latent_var_cap
+    latent_var_clipped_total <- latent_var_clipped_total +
+      as.integer(sum(is.finite(fitted_latent_var_raw) & (fitted_latent_var_raw > latent_var_cap)))
+    fitted_latent_var <- pmin(fitted_latent_var_raw, latent_var_cap)
+    fitted_latent_var <- pmax(fitted_latent_var, 1e-10)
 
     source_elbo <- rep(0, length(source_names))
     names(source_elbo) <- source_names
@@ -540,8 +716,20 @@ ndlm_theory_run_vb <- function(inputs, constants) {
         resid <- obs[ok] - fitted_mean[ok]
         sigma_rate <- sigma_rate + 0.5 * sum(resid^2 + fitted_latent_var[ok])
       }
-      sigma_new <- sigma_rate / max(sigma_shape - 1, 1.01)
-      sigma_new <- max(sigma_new, 1e-6)
+      sigma_new_raw <- sigma_rate / max(sigma_shape - 1, 1.01)
+      sigma_prev <- suppressWarnings(as.numeric(sigma_by_source[[nm]]))
+      if (!is.finite(sigma_prev) || sigma_prev <= 0) sigma_prev <- 1e-6
+      if (!is.finite(sigma_new_raw) || sigma_new_raw <= 0) sigma_new_raw <- sigma_prev
+      if (sigma_new_raw > stab_params$sigma_upper_cap) {
+        sigma_capped_total <- sigma_capped_total + 1L
+      }
+      sigma_new <- min(max(sigma_new_raw, 1e-6), stab_params$sigma_upper_cap)
+      if (stab_params$sigma_update_damping < 1) {
+        sigma_damped_total <- sigma_damped_total + 1L
+      }
+      sigma_new <- stab_params$sigma_update_damping * sigma_new +
+        (1 - stab_params$sigma_update_damping) * sigma_prev
+      sigma_new <- min(max(sigma_new, 1e-6), stab_params$sigma_upper_cap)
       sigma_next[[nm]] <- sigma_new
       sigma_shape_final[[nm]] <- sigma_shape
       sigma_rate_final[[nm]] <- sigma_rate
@@ -594,7 +782,7 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     }
     cat(
       sprintf(
-        "[gamsig_progress] family=ndlm_main p0=NA iter=%d elbo=%s crit_elbo=%s crit_elbo_rel=%s sigma_exp=%s sigma_usgs_exp=%s sigma_nws_exp=%s sigma_glofas_exp=%s gamma_exp=NA state_norm_sq=%s w_hist=%s w_fore=%s df_t=%s df_s1=%s df_s2=%s df_s67=%s df_discrep=%s lambda=%s\n",
+        "[gamsig_progress] family=ndlm_main p0=NA iter=%d elbo=%s crit_elbo=%s crit_elbo_rel=%s sigma_exp=%s sigma_usgs_exp=%s sigma_nws_exp=%s sigma_glofas_exp=%s gamma_exp=NA state_norm_sq=%s w_hist=%s w_fore=%s df_t=%s df_s1=%s df_s2=%s df_s67=%s df_discrep=%s lambda=%s latent_var_cap=%s cov_proj_total=%d sigma_cap_total=%d\n",
         as.integer(iter),
         fmt_iter_num(seq_elbo[iter]),
         fmt_iter_num(crit_elbo),
@@ -611,7 +799,10 @@ ndlm_theory_run_vb <- function(inputs, constants) {
         fmt_iter_num(constants$df_s2),
         fmt_iter_num(constants$df_s67),
         fmt_iter_num(constants$df_discrep),
-        fmt_iter_num(constants$lambda)
+        fmt_iter_num(constants$lambda),
+        fmt_iter_num(latent_var_cap_last),
+        as.integer(cov_stab_totals$cov_projected),
+        as.integer(sigma_capped_total)
       )
     )
 
@@ -638,6 +829,9 @@ ndlm_theory_run_vb <- function(inputs, constants) {
   seq_sigma <- seq_sigma[seq_len(iterations_completed), , drop = FALSE]
   seq_elbo <- seq_elbo[seq_len(iterations_completed)]
   seq_scale <- seq_scale[seq_len(iterations_completed), , drop = FALSE]
+  smooth_cov_stab <- ndlm_theory_stabilize_cov_array(fit$smooth_cov, constants = constants)
+  fit$smooth_cov <- smooth_cov_stab$cov
+  accumulate_cov_stats(smooth_cov_stab$stats)
 
   exps <- rbind(fit$fitted_mean, fit$fitted_mean)
   rownames(exps) <- c("median", "mean")
@@ -679,17 +873,23 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     residual_smoothed = y_obs - y_smooth,
     residual_source_usgs = as.numeric(source_obs$usgs) - y_smooth,
     residual_source_nws = as.numeric(source_obs$nws) - y_smooth,
-    residual_source_glofas = as.numeric(source_obs$glofas) - y_smooth
+    residual_source_glofas = as.numeric(source_obs$glofas) - y_smooth,
+    latent_var_cap_last = latent_var_cap_last,
+    latent_var_clipped_total = as.integer(latent_var_clipped_total)
   )
 
   nws_std <- ndlm_theory_standardize(inputs$forecast$nws)
   glofas_std <- ndlm_theory_standardize(inputs$forecast$glofas)
+  keep_transfer_forecast <- identical(
+    tolower(trimws(as.character(constants$forecast_transfer_mode))),
+    "keep"
+  )
 
   base_hist <- fit$smooth_mean[8:14, Tn]
   sm_ens_1 <- matrix(0, nrow = 7L, ncol = K_overlap)
   sm_ens_1[1, ] <- nws_std[seq_len(K_overlap)]
   sm_ens_1[2, ] <- glofas_std[seq_len(K_overlap)]
-  if (K_overlap > 0L) {
+  if (K_overlap > 0L && isTRUE(keep_transfer_forecast)) {
     decay_1 <- matrix(constants$lambda ^ (seq_len(K_overlap) - 1L), nrow = 1L, ncol = K_overlap)
     sm_ens_1[3:7, ] <- matrix(base_hist[3:7], nrow = 5L, ncol = K_overlap) * matrix(rep(decay_1, 5L), nrow = 5L)
   }
@@ -711,25 +911,49 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     }
     if (!is.finite(bridge_value)) bridge_value <- 0
     sm_ens_2[2, ] <- rep(bridge_value, K_tail)
-    decay_2 <- matrix(constants$lambda ^ (seq.int(K_overlap + 1L, K_max) - 1L), nrow = 1L, ncol = K_tail)
-    sm_ens_2[3:7, ] <- matrix(base_hist[3:7], nrow = 5L, ncol = K_tail) * matrix(rep(decay_2, 5L), nrow = 5L)
+    if (isTRUE(keep_transfer_forecast)) {
+      decay_2 <- matrix(constants$lambda ^ (seq.int(K_overlap + 1L, K_max) - 1L), nrow = 1L, ncol = K_tail)
+      sm_ens_2[3:7, ] <- matrix(base_hist[3:7], nrow = 5L, ncol = K_tail) * matrix(rep(decay_2, 5L), nrow = 5L)
+    }
   }
 
-  base_fore_cov <- fit$smooth_cov[8:14, 8:14, Tn, drop = TRUE]
+  base_fore_cov_raw <- fit$smooth_cov[8:14, 8:14, Tn, drop = TRUE]
+  base_fore_cov_stab <- ndlm_theory_stabilize_covariance_local(base_fore_cov_raw, constants = constants)
+  accumulate_cov_stats(base_fore_cov_stab$stats)
+  base_fore_cov <- base_fore_cov_stab$cov
+  transfer_inactive_rows <- if (isTRUE(keep_transfer_forecast)) integer(0) else 3:7
   sC_ens_1 <- ndlm_theory_alloc_segment_cov(
     k_len = K_overlap,
     constants = constants,
     base_cov = base_fore_cov,
-    inactive_row = integer(0),
+    inactive_row = transfer_inactive_rows,
     start_k = 1L
   )
+  accumulate_cov_stats(attr(sC_ens_1, "stabilization_stats"))
+  sC_ens_1_post <- ndlm_theory_stabilize_cov_array(sC_ens_1, constants = constants)
+  sC_ens_1 <- sC_ens_1_post$cov
+  accumulate_cov_stats(sC_ens_1_post$stats)
+  inactive_row_2 <- unique(c(inactive_row, transfer_inactive_rows))
   sC_ens_2 <- ndlm_theory_alloc_segment_cov(
     k_len = K_tail,
     constants = constants,
     base_cov = if (K_overlap > 0L) sC_ens_1[, , K_overlap, drop = TRUE] else base_fore_cov,
-    inactive_row = inactive_row,
+    inactive_row = inactive_row_2,
     start_k = K_overlap + 1L
   )
+  accumulate_cov_stats(attr(sC_ens_2, "stabilization_stats"))
+  sC_ens_2_post <- ndlm_theory_stabilize_cov_array(sC_ens_2, constants = constants)
+  sC_ens_2 <- sC_ens_2_post$cov
+  accumulate_cov_stats(sC_ens_2_post$stats)
+  smooth_cov_final <- ndlm_theory_stabilize_cov_array(fit$smooth_cov, constants = constants)
+  fit$smooth_cov <- smooth_cov_final$cov
+  accumulate_cov_stats(smooth_cov_final$stats)
+  sC_ens_1_final <- ndlm_theory_stabilize_cov_array(sC_ens_1, constants = constants)
+  sC_ens_1 <- sC_ens_1_final$cov
+  accumulate_cov_stats(sC_ens_1_final$stats)
+  sC_ens_2_final <- ndlm_theory_stabilize_cov_array(sC_ens_2, constants = constants)
+  sC_ens_2 <- sC_ens_2_final$cov
+  accumulate_cov_stats(sC_ens_2_final$stats)
   cov_diag <- ndlm_theory_collect_covariance_diagnostics(
     fit_sC = fit$smooth_cov,
     sC_ens_1 = sC_ens_1,
@@ -802,6 +1026,23 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     stringsAsFactors = FALSE
   )
 
+  # Final covariance contract pass after all sampling-side computations to
+  # guarantee exported tensors and diagnostics are synchronized.
+  smooth_cov_export <- ndlm_theory_stabilize_cov_array(fit$smooth_cov, constants = constants)
+  fit$smooth_cov <- smooth_cov_export$cov
+  accumulate_cov_stats(smooth_cov_export$stats)
+  sC_ens_1_export <- ndlm_theory_stabilize_cov_array(sC_ens_1, constants = constants)
+  sC_ens_1 <- sC_ens_1_export$cov
+  accumulate_cov_stats(sC_ens_1_export$stats)
+  sC_ens_2_export <- ndlm_theory_stabilize_cov_array(sC_ens_2, constants = constants)
+  sC_ens_2 <- sC_ens_2_export$cov
+  accumulate_cov_stats(sC_ens_2_export$stats)
+  cov_diag <- ndlm_theory_collect_covariance_diagnostics(
+    fit_sC = fit$smooth_cov,
+    sC_ens_1 = sC_ens_1,
+    sC_ens_2 = sC_ens_2
+  )
+
   new_theta <- list(
     sm = fit$smooth_mean,
     sC = fit$smooth_cov,
@@ -817,7 +1058,9 @@ ndlm_theory_run_vb <- function(inputs, constants) {
       K_max = ragged$K_max,
       segment_lengths = ragged$segment_lengths,
       extension_source = ragged$extension_source,
-      bridge_source = ragged$bridge_source
+      bridge_source = ragged$bridge_source,
+      forecast_transfer_mode = if (isTRUE(keep_transfer_forecast)) "keep" else "drop",
+      transfer_active_forecast_window = isTRUE(keep_transfer_forecast)
     )
   )
 
@@ -862,10 +1105,27 @@ ndlm_theory_run_vb <- function(inputs, constants) {
     segment_lengths = ragged$segment_lengths,
     extension_source = ragged$extension_source,
     bridge_source = ragged$bridge_source,
+    forecast_transfer_mode = if (isTRUE(keep_transfer_forecast)) "keep" else "drop",
+    transfer_active_forecast_window = isTRUE(keep_transfer_forecast),
     active_set_by_lead = active_set_by_lead,
     state_dim_by_lead = state_dim_by_lead,
     covariance_diagnostics = cov_diag,
     fit_diagnostics = fit_diagnostics,
+    stabilization = list(
+      cov_calls = as.integer(cov_stab_totals$calls),
+      cov_projected = as.integer(cov_stab_totals$cov_projected),
+      cov_floor_clipped = as.integer(cov_stab_totals$cov_floor_clipped),
+      cov_cap_clipped = as.integer(cov_stab_totals$cov_cap_clipped),
+      cov_nonfinite_inputs = as.integer(cov_stab_totals$cov_nonfinite_inputs),
+      sigma_upper_cap = as.numeric(stab_params$sigma_upper_cap),
+      sigma_update_damping = as.numeric(stab_params$sigma_update_damping),
+      sigma_capped_total = as.integer(sigma_capped_total),
+      sigma_damped_total = as.integer(sigma_damped_total),
+      latent_var_cap_abs = as.numeric(stab_params$latent_var_cap_abs),
+      latent_var_cap_mult = as.numeric(stab_params$latent_var_cap_mult),
+      latent_var_cap_last = as.numeric(latent_var_cap_last),
+      latent_var_clipped_total = as.integer(latent_var_clipped_total)
+    ),
     K_cap = inputs$forecast$K_cap,
     nws_len = inputs$forecast$nws_len,
     glofas_len = inputs$forecast$glofas_len,

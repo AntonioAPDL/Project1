@@ -2,7 +2,7 @@
 
 ## Metadata
 - Created: 2026-03-22 (America/Los_Angeles)
-- Last updated: 2026-03-22 23:40 (America/Los_Angeles)
+- Last updated: 2026-03-23 00:55 (America/Los_Angeles)
 - Repository root: `/data/muscat_data/jaguir26/project1_ucsc_phd`
 - Tracker path: `repro/TRACKER_AL_DQLM_NDLM_KEEP.md`
 - Owner: Codex + user
@@ -112,6 +112,22 @@ Status: **PARTIAL (operational PASS, diagnostics FAIL)**
 - Contract artifacts produced
 - Diagnostics file status is fail due covariance PSD violations (`ndlm.new_theta.sC.psd`, `ndlm.new_theta.sC_ens[2].psd`)
 
+### Phase G: NDLM keep stabilization root-cause fix
+Status: **PASS (diagnostics + smoke pipeline)**
+- Root cause validated from Phase E fail artifacts:
+  - covariance PSD drift in NDLM smoother/forecast covariances inflated latent variance terms and destabilized sigma updates.
+- Implemented principled stabilization:
+  - SPD/eigen-floor/eigen-cap covariance stabilization in both R and C++ Kalman backends.
+  - NDLM local covariance stabilization for forecast segment builders and export-time covariance tensors.
+  - sigma-update guardrails:
+    - latent variance cap (data-scale + absolute cap)
+    - sigma upper cap
+    - optional damping hook (default 1.0, backward compatible)
+  - added stabilization diagnostics counters to NDLM theory summary/state.
+- Validation:
+  - targeted NDLM tests pass (backend, constants/env, ragged+stabilization, config validation).
+  - NDLM keep smoke rerun passes fit+post and diagnostics (`status: pass`).
+
 ### Phase F: Post + CRPS inclusion for new IDs
 Status: **PASS (with replay workaround)**
 - Initial all-model run failed in post due NDLM exps indexing OOB in `40_figures.R`
@@ -121,24 +137,25 @@ Status: **PASS (with replay workaround)**
 - Required new IDs present across summary tables
 
 ## Risk Log (Current)
-1. R1: NDLM numerical instability under keep mode
-- Evidence: very large sigma, PSD failures in diagnostics
-- Impact: NDLM may be unsuitable for production comparison without stabilization
-- Mitigation next: tighten NDLM prior/discount setup and add PSD guard/fallback logic in fit
-
-2. R2: Legacy post coupling to NDLM matrix shape
+1. R1: Legacy post coupling to NDLM matrix shape
 - Evidence: prior OOB in `40_figures.R` on `exps` indexing
 - Mitigation applied: safe index/range wrappers returning NA+warning instead of hard fail
 
-3. R3: CRPS magnitude blow-ups for some synthesis outputs
+2. R2: CRPS magnitude blow-ups for some synthesis outputs
 - Evidence: extremely large CRPS values in keep summary for univar/NDLM rows
 - Mitigation next: add scale/finite-range guards and explicit clipping policy diagnostics
+
+3. R3: Full-slice PSD margin remains near tolerance in offline exhaustive scans
+- Evidence: sampled diagnostics pass (`psd_tol=-1e-8`), but full-slice eigen scans can show small negative minima at ~1e-8 scale.
+- Mitigation next: optional stricter full-slice PSD audit mode for NDLM diagnostics and/or stronger default jitter policy once benchmark sensitivity is measured.
 
 ## Test Matrix (Executed)
 ### Unit / contract tests
 - `tests/testthat/test_config_mode_resolution.R` -> pass
 - `tests/testthat/test_univar_convergence_contract.R` -> pass
 - `tests/testthat/test_ndlm_ragged_horizon_builder.R` -> pass
+- `tests/testthat/test_ndlm_kalman_backend.R` -> pass
+- `tests/testthat/test_ndlm_fitloop_contract.R` -> pass
 - `tests/testthat/test_post_crps_tables.R` -> pass
 
 ### Smoke test scope
@@ -160,6 +177,7 @@ Status: **PASS (with replay workaround)**
 
 ### Targeted tests
 - `Rscript -e 'library(testthat); test_file("tests/testthat/test_config_mode_resolution.R"); test_file("tests/testthat/test_univar_convergence_contract.R"); test_file("tests/testthat/test_ndlm_ragged_horizon_builder.R"); test_file("tests/testthat/test_post_crps_tables.R")'`
+- `Rscript -e 'library(testthat); test_file("tests/testthat/test_config_mode_resolution.R"); test_file("tests/testthat/test_ndlm_fitloop_contract.R"); test_file("tests/testthat/test_ndlm_ragged_horizon_builder.R"); test_file("tests/testthat/test_ndlm_kalman_backend.R")'`
 
 ## Phase Status Checklist
 - [x] Phase 0 audit complete
@@ -170,6 +188,7 @@ Status: **PASS (with replay workaround)**
 - [x] Phase D multivar AL keep smoke
 - [x] Phase E NDLM keep smoke executed (diagnostics fail tracked)
 - [x] Phase F post + CRPS inclusion
+- [x] Phase G NDLM keep stabilization fix + smoke revalidation
 
 ## Evidence Register
 ### Phase A (PASS)
@@ -290,6 +309,55 @@ Evidence:
 - Post completion:
   - `post/logs/post_runner.log` ends with `END: 2026-03-22 20:25:29`
 
+### Phase G (PASS: stabilization fix + validated rerun)
+Key implementation files:
+- `R/unified/families/ndlm_main/00_constants.R`
+- `R/unified/families/ndlm_main/02_model_spec.R`
+- `R/unified/families/ndlm_main/03_vb_updates.R`
+- `R/unified/families/ndlm_main/06_save_state.R`
+- `R/unified/families/ndlm_main/zz_run.R`
+- `R/unified/families/ndlm_main/ndlm_kalman_backend.cpp`
+- `R/unified/stages/stage_fit.R`
+- `R/unified/config.R`
+- `config/unified_run.template.yaml`
+- `tests/testthat/test_ndlm_kalman_backend.R`
+- `tests/testthat/test_ndlm_fitloop_contract.R`
+- `tests/testthat/test_ndlm_ragged_horizon_builder.R`
+- `tests/testthat/test_config_mode_resolution.R`
+
+Root-cause evidence (pre-fix):
+- `repro/runs/dev_al_phaseE_ndlm_keep_smoke_20260322_rerun_20260322_202402/fit/diagnostics/ndlm_main/ndlm_main_diagnostics.yaml`
+  - PSD failures on `ndlm.new_theta.sC.psd` and `ndlm.new_theta.sC_ens[2].psd`
+- `.../fit/ndlm_main/logs/ndlm_theory_summary.log`
+  - catastrophic sigma scale and severe covariance failures (historical fail snapshot).
+
+Validation runs:
+- transitional reruns:
+  - `repro/runs/dev_al_phaseE_ndlm_keep_smoke_20260322_rerun_20260323_001705`
+  - `..._20260323_002300`
+  - `..._20260323_002922`
+  - `..._20260323_003820`
+  - `..._20260323_004504`
+- final stabilization evidence run:
+  - `repro/runs/dev_al_phaseE_ndlm_keep_smoke_20260322_rerun_20260323_005054`
+
+Final evidence (`..._20260323_005054`):
+- `run_manifest.yaml`
+  - `fit.status: pass`
+  - `post.status: pass`
+- `fit/diagnostics/ndlm_main/ndlm_main_diagnostics.yaml`
+  - `status: pass`
+  - `ndlm.new_theta.sC.psd: pass`
+  - `ndlm.new_theta.sC_ens[1].psd: pass`
+  - `ndlm.new_theta.sC_ens[2].psd: pass`
+- `fit/ndlm_main/logs/ndlm_theory_summary.log`
+  - `forecast_transfer_mode=keep`
+  - `transfer_active_forecast_window=true`
+  - finite sigma (`sigma_usgs=493.67278272`, `sigma_nws=493.67102109`, `sigma_glofas=493.68117230`)
+  - stabilization counters emitted (`stabilization.*` lines present)
+- RData finite check:
+  - `nonfinite_total=0`
+
 ### Phase F (PASS with replay workaround)
 Initial full run (expected all models):
 - Config: `config/unified_runs/al_phaseF_allmodels_crps_smoke_20260322.yaml`
@@ -330,16 +398,17 @@ CRPS export evidence:
     - `ndlm_main_synth_keep`
 
 ## Open Issues
-1. NDLM keep diagnostics are unstable (PSD fail, huge sigma) despite run completion.
+1. Full-slice PSD audit (all time slices) can still show tiny negative eigenvalues around tolerance scale, while sampled diagnostics pass; decide whether to promote full-slice PSD auditing to a strict gate.
 2. CRPS magnitudes for univar/NDLM in keep replay can be extremely large; interpretability guardrails still needed.
 3. `post_runner.log` can lag/reflect earlier pass; authoritative post completion for replay is in per-run `run_log.txt` and run manifest.
 
 ## Recommended Next Steps for Production Scale-Up
-1. Stabilize NDLM keep numerics first (covariance PSD + sigma control), then rerun Phase E smoke to PASS diagnostics.
+1. Add optional strict full-slice PSD audit mode for NDLM (`all slices`, not sampled subset) and decide threshold policy (`-1e-8` vs tighter/looser) before multi-cutoff production.
 2. Add CRPS value-range diagnostics/alerts to flag pathological scale before leaderboard comparisons.
-3. Run multi-cutoff production matrix only after (1) and (2), using same model IDs and replay-compatible post config.
+3. Run multi-cutoff production matrix only after (1) and (2), using the same model IDs and replay-compatible post config.
 
 ## Changelog
 - 2026-03-22: Created tracker with baseline audit, assumptions, risks, and phased plan.
 - 2026-03-22: Updated tracker with completed implementation evidence for Phases A-D, partial Phase E, and Phase F replay-based PASS.
 - 2026-03-22: Patched `OptimalModelSLexAL.r` to support AL collapse in legacy bridge with sigma-only Laplace-Delta optimization when `UNIV_LIKELIHOOD_MODE=al` (`gamma=0`, `s_t=0`), and validated via Phase B2 smoke run.
+- 2026-03-23: Added NDLM stabilization controls and root-cause fix across R/C++ Kalman paths, sigma update safeguards, diagnostics counters, new NDLM tests, and validated Phase G NDLM keep smoke rerun PASS (`..._20260323_005054`).

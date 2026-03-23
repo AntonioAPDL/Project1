@@ -37,6 +37,7 @@ models:
   run_ndlm_main: false
   exdqlm_multivar:
     implementation_mode: "legacy_bridge"   # legacy_bridge
+    likelihood_mode: "exal"                # exal | al
     forecast_transfer_mode: "drop"         # drop | keep (keep retains transfer block during forecast window)
     # Optional: run both transfer regimes in one unified run (repeats multivar fit/post per mode)
     # forecast_transfer_modes: ["drop", "keep"]
@@ -51,6 +52,7 @@ models:
       df_covs:    0.99999999
   exdqlm_univar:
     implementation_mode: "theory_aligned"   # legacy_bridge | theory_aligned
+    likelihood_mode: "exal"                 # exal | al
     state_evolution:
       df_t: 0.9999995
       df_s1: 0.9997
@@ -62,6 +64,7 @@ models:
   ndlm_main:
     implementation_mode: "theory_aligned"    # legacy_bridge | theory_aligned
     kalman_backend: "cpp"                     # r | cpp
+    forecast_transfer_mode: "keep"            # keep | drop (keep = transfer active in forecast window)
     state_evolution:
       df_t: 0.95
       df_s1: 0.98
@@ -71,6 +74,14 @@ models:
       lambda: 0.99
       df_trans: 0.99999999
       df_covs: 0.99999
+    stabilization:
+      cov_eig_floor: 1.0e-8
+      cov_eig_cap: 1.0e8
+      cov_diag_jitter: 1.0e-10
+      sigma_upper_cap: 1.0e12
+      sigma_update_damping: 1.0
+      latent_var_cap_mult: 1.0e4
+      latent_var_cap_abs: 1.0e8
 
 site:
   usgs_site: "11160500"
@@ -115,9 +126,36 @@ inputs:
     horizon_days: null             # null => derive from run-scoped GloFAS forecast window
     require_full_horizon: true
     precip:
-      reduction: "mean"           # mean | median across daily GEFS member totals
+      enabled: true
+      reduction: "mean"           # mean | median | q70 | q90 | max across daily GEFS member totals
+      dry_day_threshold_mm: 0.0   # optional post-reduction censoring to zero for low-confidence drizzle
+      tail_blend:
+        enabled: false
+        target: "climatology_median"  # climatology_mean | climatology_median | zero
+        start_day: 7                  # keep raw forecast through this lead day
+        end_day: 14                   # fully blended to target by this lead day
+      noisy_blend:
+        enabled: false
+        lambda_mode: "constant"       # constant | dynamic
+        lambda: 0.5
+        lambda_start: 0.8             # used when lambda_mode = dynamic
+        lambda_end: 0.2               # used when lambda_mode = dynamic
+        noise_sd_multiplier: 0.5
+        noise_seed: 20260309
+        floor_at_zero: true
+        zero_zero_force_prob: 0.0     # precip only: when retro=0 and forecast=0, force blend to 0 with this probability
     soil:
-      reduction: "mean"           # mean | median across daily NWM member averages
+      enabled: true
+      reduction: "mean"           # mean | median | q70 | q90 | max across daily NWM member averages
+      noisy_blend:
+        enabled: false
+        lambda_mode: "constant"       # constant | dynamic
+        lambda: 0.5
+        lambda_start: 0.8             # used when lambda_mode = dynamic
+        lambda_end: 0.2               # used when lambda_mode = dynamic
+        noise_sd_multiplier: 0.5
+        noise_seed: 20260309
+        floor_at_zero: false
   shared_covariates: []            # legacy compatibility: list of covariate paths
 
 fit:
@@ -160,6 +198,13 @@ fit:
         min_update_iters: 15
         min_total_iters: 20
         max_iter: 20
+    forecast_health:
+      enabled: true
+      fail_fast: true
+      write_reports: true
+      latent_limit: 650
+      sigma_limit: 100
+      state_limit: 1000
     legacy:
       lam1: 0.999999
       lam2: 0.999999

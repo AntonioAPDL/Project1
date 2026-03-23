@@ -47,7 +47,91 @@ ndlm_theory_kalman_load_cpp <- function() {
   invisible(TRUE)
 }
 
-ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0, df_mat = NULL) {
+ndlm_theory_cov_stabilization_defaults <- function(stabilization = NULL) {
+  if (!is.list(stabilization)) stabilization <- list()
+  read_num <- function(x, default, min_val = -Inf, max_val = Inf) {
+    out <- suppressWarnings(if (is.null(x) || length(x) < 1L) NA_real_ else as.numeric(x[[1L]]))
+    if (!is.finite(out)) out <- suppressWarnings(as.numeric(default))
+    if (!is.finite(out)) out <- 0
+    out <- max(out, as.numeric(min_val))
+    out <- min(out, as.numeric(max_val))
+    out
+  }
+  cov_eig_floor <- read_num(stabilization$cov_eig_floor, 1e-8, min_val = 1e-12)
+  cov_eig_cap <- read_num(stabilization$cov_eig_cap, 1e8, min_val = cov_eig_floor * 10)
+  cov_diag_jitter <- read_num(stabilization$cov_diag_jitter, 1e-10, min_val = 0)
+  list(
+    cov_eig_floor = cov_eig_floor,
+    cov_eig_cap = cov_eig_cap,
+    cov_diag_jitter = cov_diag_jitter
+  )
+}
+
+ndlm_theory_cov_stabilize_one <- function(Sigma, stabilization = NULL) {
+  params <- ndlm_theory_cov_stabilization_defaults(stabilization)
+  stats <- list(
+    calls = 1L,
+    cov_projected = 0L,
+    cov_floor_clipped = 0L,
+    cov_cap_clipped = 0L,
+    cov_nonfinite_inputs = 0L
+  )
+  Sigma <- as.matrix(Sigma)
+  if (!is.numeric(Sigma) || nrow(Sigma) != ncol(Sigma)) {
+    stop("NDLM covariance stabilization requires a numeric square matrix", call. = FALSE)
+  }
+  d <- nrow(Sigma)
+  if (!all(is.finite(Sigma))) {
+    Sigma[!is.finite(Sigma)] <- 0
+    stats$cov_nonfinite_inputs <- 1L
+  }
+  Sigma <- (Sigma + t(Sigma)) / 2
+
+  eig_vals <- tryCatch(
+    suppressWarnings(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values),
+    error = function(e) rep(NA_real_, d)
+  )
+  has_nonfinite_eigs <- any(!is.finite(eig_vals))
+  floor_hit <- has_nonfinite_eigs || min(eig_vals, na.rm = TRUE) < params$cov_eig_floor
+  cap_hit <- has_nonfinite_eigs || max(eig_vals, na.rm = TRUE) > params$cov_eig_cap
+  if (isTRUE(floor_hit) || isTRUE(cap_hit)) {
+    stats$cov_projected <- 1L
+    stats$cov_floor_clipped <- as.integer(isTRUE(floor_hit))
+    stats$cov_cap_clipped <- as.integer(isTRUE(cap_hit))
+    eig <- tryCatch(
+      suppressWarnings(eigen(Sigma, symmetric = TRUE)),
+      error = function(e) NULL
+    )
+    if (is.null(eig) || any(!is.finite(eig$values)) || any(!is.finite(eig$vectors))) {
+      Sigma <- diag(params$cov_eig_floor, d)
+    } else {
+      vals <- as.numeric(eig$values)
+      vals <- pmin(pmax(vals, params$cov_eig_floor), params$cov_eig_cap)
+      Sigma <- eig$vectors %*% diag(vals, length(vals)) %*% t(eig$vectors)
+    }
+  }
+  Sigma <- (Sigma + t(Sigma)) / 2
+  if (isTRUE(params$cov_diag_jitter > 0)) {
+    Sigma <- Sigma + diag(params$cov_diag_jitter, d)
+  }
+  for (ii in seq_len(3L)) {
+    final_min <- tryCatch(
+      suppressWarnings(min(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values)),
+      error = function(e) NA_real_
+    )
+    if (is.finite(final_min) && final_min >= params$cov_eig_floor) {
+      break
+    }
+    shift <- if (!is.finite(final_min)) params$cov_eig_floor else (params$cov_eig_floor - final_min)
+    shift <- max(shift + params$cov_diag_jitter, params$cov_diag_jitter)
+    Sigma <- Sigma + diag(shift, d)
+    stats$cov_projected <- max(stats$cov_projected, 1L)
+    stats$cov_floor_clipped <- max(stats$cov_floor_clipped, 1L)
+  }
+  list(cov = Sigma, stats = stats)
+}
+
+ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0, df_mat = NULL, stabilization = NULL) {
   y <- as.numeric(y)
   H_mat <- as.matrix(H_mat)
   Tn <- length(y)
@@ -72,6 +156,26 @@ ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0, df_ma
   }
   m0 <- as.numeric(m0)
   C0 <- as.matrix(C0)
+  stab <- ndlm_theory_cov_stabilization_defaults(stabilization)
+  stab_stats <- list(
+    calls = 0L,
+    cov_projected = 0L,
+    cov_floor_clipped = 0L,
+    cov_cap_clipped = 0L,
+    cov_nonfinite_inputs = 0L
+  )
+  accumulate_stats <- function(piece) {
+    for (nm in names(stab_stats)) {
+      cur <- suppressWarnings(as.integer(piece[[nm]]))
+      if (!is.finite(cur)) cur <- 0L
+      stab_stats[[nm]] <<- stab_stats[[nm]] + cur
+    }
+  }
+  stabilize_cov <- function(S) {
+    out <- ndlm_theory_cov_stabilize_one(S, stabilization = stab)
+    accumulate_stats(out$stats)
+    out$cov
+  }
 
   a <- matrix(0, nrow = d, ncol = Tn)
   m <- matrix(0, nrow = d, ncol = Tn)
@@ -83,26 +187,24 @@ ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0, df_ma
   filter_var <- rep(NA_real_, Tn)
 
   m_prev <- m0
-  C_prev <- C0
+  C_prev <- stabilize_cov(C0)
 
   for (t in seq_len(Tn)) {
     H_t <- matrix(H_mat[t, ], ncol = 1)
     a_t <- m_prev
-    P_t <- C_prev
+    P_t <- stabilize_cov(C_prev)
     if (use_discount) {
       W_t <- df_mat * P_t
-      R_t <- P_t + W_t + Q
+      R_t <- stabilize_cov(P_t + W_t + Q)
     } else {
-      R_t <- C_prev + Q
+      R_t <- stabilize_cov(C_prev + Q)
     }
-    R_t <- (R_t + t(R_t)) / 2
     Qy <- as.numeric(crossprod(H_t, R_t %*% H_t)) + R_vec[t]
     Qy <- max(Qy, 1e-10)
     K <- as.vector((R_t %*% H_t) / Qy)
     innov <- y[t] - as.numeric(crossprod(H_t, a_t))
     m_t <- a_t + K * innov
-    C_t <- R_t - (R_t %*% (H_t %*% t(H_t)) %*% R_t) / Qy
-    C_t <- (C_t + t(C_t)) / 2
+    C_t <- stabilize_cov(R_t - (R_t %*% (H_t %*% t(H_t)) %*% R_t) / Qy)
     pred_mean[t] <- as.numeric(crossprod(H_t, a_t))
     pred_var[t] <- max(as.numeric(crossprod(H_t, R_t %*% H_t)) + R_vec[t], 1e-10)
     filter_mean[t] <- as.numeric(crossprod(H_t, m_t))
@@ -120,15 +222,15 @@ ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0, df_ma
   Cs <- C
   if (Tn >= 2) {
     for (t in (Tn - 1):1) {
-      R_next <- Rpred[, , t + 1]
+      R_next <- stabilize_cov(Rpred[, , t + 1])
       R_next_inv <- tryCatch(
         solve(R_next),
-        error = function(e) solve(R_next + diag(1e-8, d))
+        error = function(e) solve(R_next + diag(max(stab$cov_diag_jitter, 1e-8), d))
       )
       J_t <- C[, , t] %*% R_next_inv
       ms[, t] <- m[, t] + as.vector(J_t %*% (ms[, t + 1] - a[, t + 1]))
       Cs_t <- C[, , t] + J_t %*% (Cs[, , t + 1] - R_next) %*% t(J_t)
-      Cs[, , t] <- (Cs_t + t(Cs_t)) / 2
+      Cs[, , t] <- stabilize_cov(Cs_t)
     }
   }
 
@@ -149,12 +251,14 @@ ndlm_theory_kalman_smoother_r <- function(y, H_mat, R_vec, q_diag, m0, C0, df_ma
     smoothed_mean = as.numeric(smooth_obs_mean),
     smoothed_var = pmax(as.numeric(smooth_obs_var), 1e-10),
     fitted_mean = as.numeric(smooth_obs_mean),
-    fitted_var = pmax(as.numeric(smooth_obs_var), 1e-10)
+    fitted_var = pmax(as.numeric(smooth_obs_var), 1e-10),
+    stabilization = stab_stats
   )
 }
 
-ndlm_theory_kalman_smoother <- function(y, H_mat, R_vec, q_diag, m0, C0, df_mat = NULL, backend = "r") {
+ndlm_theory_kalman_smoother <- function(y, H_mat, R_vec, q_diag, m0, C0, df_mat = NULL, backend = "r", stabilization = NULL) {
   backend <- ndlm_theory_kalman_backend_normalize(backend)
+  stab <- ndlm_theory_cov_stabilization_defaults(stabilization)
   if (identical(backend, "cpp")) {
     ndlm_theory_kalman_load_cpp()
     out <- ndlm_kalman_smoother_cpp(
@@ -164,7 +268,10 @@ ndlm_theory_kalman_smoother <- function(y, H_mat, R_vec, q_diag, m0, C0, df_mat 
       q_diag_in = as.numeric(q_diag),
       df_mat_in = if (is.null(df_mat)) NULL else as.matrix(df_mat),
       m0 = as.numeric(m0),
-      C0 = as.matrix(C0)
+      C0 = as.matrix(C0),
+      cov_eig_floor = as.numeric(stab$cov_eig_floor),
+      cov_eig_cap = as.numeric(stab$cov_eig_cap),
+      cov_diag_jitter = as.numeric(stab$cov_diag_jitter)
     )
     out$predicted_mean <- as.numeric(out$predicted_mean)
     out$predicted_var <- pmax(as.numeric(out$predicted_var), 1e-10)
@@ -174,7 +281,25 @@ ndlm_theory_kalman_smoother <- function(y, H_mat, R_vec, q_diag, m0, C0, df_mat 
     out$smoothed_var <- pmax(as.numeric(out$smoothed_var), 1e-10)
     out$fitted_mean <- as.numeric(out$fitted_mean)
     out$fitted_var <- pmax(as.numeric(out$fitted_var), 1e-10)
+    if (is.null(out$stabilization) || !is.list(out$stabilization)) {
+      out$stabilization <- list(
+        calls = 0L,
+        cov_projected = 0L,
+        cov_floor_clipped = 0L,
+        cov_cap_clipped = 0L,
+        cov_nonfinite_inputs = 0L
+      )
+    }
     return(out)
   }
-  ndlm_theory_kalman_smoother_r(y = y, H_mat = H_mat, R_vec = R_vec, q_diag = q_diag, m0 = m0, C0 = C0, df_mat = df_mat)
+  ndlm_theory_kalman_smoother_r(
+    y = y,
+    H_mat = H_mat,
+    R_vec = R_vec,
+    q_diag = q_diag,
+    m0 = m0,
+    C0 = C0,
+    df_mat = df_mat,
+    stabilization = stab
+  )
 }

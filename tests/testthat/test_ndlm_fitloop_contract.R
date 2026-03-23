@@ -13,7 +13,14 @@ test_that("ndlm constants read fit-loop controls from environment", {
     "NDLM_DF_S2",
     "NDLM_DF_S67",
     "NDLM_DF_DISCREP",
-    "NDLM_LAMBDA"
+    "NDLM_LAMBDA",
+    "NDLM_COV_EIG_FLOOR",
+    "NDLM_COV_EIG_CAP",
+    "NDLM_COV_DIAG_JITTER",
+    "NDLM_SIGMA_UPPER_CAP",
+    "NDLM_SIGMA_UPDATE_DAMPING",
+    "NDLM_LATENT_VAR_CAP_MULT",
+    "NDLM_LATENT_VAR_CAP_ABS"
   ), unset = NA_character_)
   on.exit({
     for (nm in names(old)) {
@@ -37,7 +44,14 @@ test_that("ndlm constants read fit-loop controls from environment", {
     NDLM_DF_S2 = "0.93",
     NDLM_DF_S67 = "0.94",
     NDLM_DF_DISCREP = "0.95",
-    NDLM_LAMBDA = "0.96"
+    NDLM_LAMBDA = "0.96",
+    NDLM_COV_EIG_FLOOR = "1e-07",
+    NDLM_COV_EIG_CAP = "2e06",
+    NDLM_COV_DIAG_JITTER = "1e-09",
+    NDLM_SIGMA_UPPER_CAP = "7e05",
+    NDLM_SIGMA_UPDATE_DAMPING = "0.65",
+    NDLM_LATENT_VAR_CAP_MULT = "3210",
+    NDLM_LATENT_VAR_CAP_ABS = "654321"
   )
 
   cst <- ndlm_theory_constants(seed = 777L)
@@ -52,6 +66,13 @@ test_that("ndlm constants read fit-loop controls from environment", {
   expect_equal(cst$df_s67, 0.94)
   expect_equal(cst$df_discrep, 0.95)
   expect_equal(cst$lambda, 0.96)
+  expect_equal(cst$stabilization$cov_eig_floor, 1e-07)
+  expect_equal(cst$stabilization$cov_eig_cap, 2e06)
+  expect_equal(cst$stabilization$cov_diag_jitter, 1e-09)
+  expect_equal(cst$stabilization$sigma_upper_cap, 7e05)
+  expect_equal(cst$stabilization$sigma_update_damping, 0.65)
+  expect_equal(cst$stabilization$latent_var_cap_mult, 3210)
+  expect_equal(cst$stabilization$latent_var_cap_abs, 654321)
 })
 
 test_that("ndlm convergence gate requires min iters plus abs/rel ELBO criteria", {

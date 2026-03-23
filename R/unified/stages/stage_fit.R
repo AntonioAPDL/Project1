@@ -16,6 +16,128 @@ unified_normalize_fit_worker_result <- function(res, context_label = "fit stage 
   )
 }
 
+unified_multivar_fit_health_check <- function(
+  rdata_path,
+  quantile,
+  transfer_mode,
+  report_path = NULL,
+  latent_limit = 650,
+  sigma_limit = 100,
+  state_limit = 1000
+) {
+  if (!file.exists(rdata_path)) {
+    stop(sprintf("[FIT_FORECAST_HEALTH_MISSING] missing RData: %s", rdata_path), call. = FALSE)
+  }
+
+  env <- new.env(parent = emptyenv())
+  load(rdata_path, envir = env)
+  theta_name <- grep("^new\\.theta\\.out", ls(env), value = TRUE)
+  gamsig_name <- grep("^new\\.gamsig\\.out", ls(env), value = TRUE)
+  if (length(theta_name) != 1L) {
+    stop(
+      sprintf(
+        "[FIT_FORECAST_HEALTH_OBJECT] expected exactly one new.theta.out object in %s; found %d",
+        rdata_path,
+        length(theta_name)
+      ),
+      call. = FALSE
+    )
+  }
+
+  theta <- get(theta_name[[1L]], envir = env)
+  gamsig <- if (length(gamsig_name) == 1L) get(gamsig_name[[1L]], envir = env) else NULL
+
+  max_abs_sm_ens <- NA_real_
+  nonfinite_sm_ens <- 0L
+  if (is.list(theta$sm_ens) && length(theta$sm_ens) > 0L) {
+    sm_vals <- unlist(lapply(theta$sm_ens, function(x) as.numeric(as.matrix(x))), use.names = FALSE)
+    if (length(sm_vals) > 0L) {
+      nonfinite_sm_ens <- sum(!is.finite(sm_vals))
+      sm_vals <- sm_vals[is.finite(sm_vals)]
+      if (length(sm_vals) > 0L) {
+        max_abs_sm_ens <- max(abs(sm_vals), na.rm = TRUE)
+      }
+    }
+  }
+
+  TT <- NA_integer_
+  if (is.numeric(theta$sm) && !is.null(dim(theta$sm)) && length(dim(theta$sm)) == 2L) {
+    TT <- as.integer(ncol(theta$sm))
+  }
+
+  max_abs_forecast_exps <- NA_real_
+  nonfinite_forecast_exps <- 0L
+  finite_forecast_exps <- 0L
+  if (is.numeric(theta$exps) && !is.null(dim(theta$exps)) && length(dim(theta$exps)) == 2L &&
+      is.finite(TT) && TT >= 0L && ncol(theta$exps) > TT) {
+    exps_fore <- theta$exps[, (TT + 1L):ncol(theta$exps), drop = FALSE]
+    nonfinite_forecast_exps <- sum(!is.finite(exps_fore))
+    finite_vals <- exps_fore[is.finite(exps_fore)]
+    finite_forecast_exps <- length(finite_vals)
+    if (length(finite_vals) > 0L) {
+      max_abs_forecast_exps <- max(abs(finite_vals), na.rm = TRUE)
+    }
+  }
+
+  max_E_sigma <- NA_real_
+  if (is.list(gamsig) && !is.null(gamsig$E.sigma)) {
+    sigma_vals <- as.numeric(gamsig$E.sigma)
+    sigma_vals <- sigma_vals[is.finite(sigma_vals)]
+    if (length(sigma_vals) > 0L) {
+      max_E_sigma <- max(sigma_vals, na.rm = TRUE)
+    }
+  }
+
+  summary_lines <- c(
+    sprintf("rdata_path=%s", normalizePath(rdata_path, mustWork = FALSE)),
+    sprintf("transfer_mode=%s", as.character(transfer_mode)),
+    sprintf("quantile=%s", as.character(quantile)),
+    sprintf("theta_object=%s", theta_name[[1L]]),
+    sprintf("gamsig_object=%s", if (length(gamsig_name) == 1L) gamsig_name[[1L]] else ""),
+    sprintf("TT=%s", if (is.finite(TT)) as.character(TT) else "NA"),
+    sprintf("max_abs_sm_ens=%s", if (is.finite(max_abs_sm_ens)) format(max_abs_sm_ens, digits = 10) else "NA"),
+    sprintf("nonfinite_sm_ens=%d", as.integer(nonfinite_sm_ens)),
+    sprintf("max_abs_forecast_exps=%s", if (is.finite(max_abs_forecast_exps)) format(max_abs_forecast_exps, digits = 10) else "NA"),
+    sprintf("finite_forecast_exps=%d", as.integer(finite_forecast_exps)),
+    sprintf("nonfinite_forecast_exps=%d", as.integer(nonfinite_forecast_exps)),
+    sprintf("max_E_sigma=%s", if (is.finite(max_E_sigma)) format(max_E_sigma, digits = 10) else "NA"),
+    sprintf("latent_limit=%s", format(as.numeric(latent_limit), digits = 10)),
+    sprintf("sigma_limit=%s", format(as.numeric(sigma_limit), digits = 10)),
+    sprintf("state_limit=%s", format(as.numeric(state_limit), digits = 10))
+  )
+  if (!is.null(report_path) && nzchar(report_path)) {
+    writeLines(summary_lines, con = report_path)
+  }
+
+  violations <- character(0)
+  if (nonfinite_sm_ens > 0L) {
+    violations <- c(violations, sprintf("nonfinite_sm_ens=%d", as.integer(nonfinite_sm_ens)))
+  }
+  if (finite_forecast_exps <= 0L) {
+    violations <- c(violations, "finite_forecast_exps=0")
+  }
+  if (is.finite(max_abs_sm_ens) && max_abs_sm_ens > state_limit) {
+    violations <- c(violations, sprintf("max_abs_sm_ens=%.6f > %.6f", max_abs_sm_ens, as.numeric(state_limit)))
+  }
+  if (is.finite(max_abs_forecast_exps) && max_abs_forecast_exps > latent_limit) {
+    violations <- c(violations, sprintf("max_abs_forecast_exps=%.6f > %.6f", max_abs_forecast_exps, as.numeric(latent_limit)))
+  }
+  if (is.finite(max_E_sigma) && max_E_sigma > sigma_limit) {
+    violations <- c(violations, sprintf("max_E_sigma=%.6f > %.6f", max_E_sigma, as.numeric(sigma_limit)))
+  }
+
+  list(
+    violations = violations,
+    report_path = report_path,
+    max_abs_sm_ens = max_abs_sm_ens,
+    nonfinite_sm_ens = nonfinite_sm_ens,
+    max_abs_forecast_exps = max_abs_forecast_exps,
+    finite_forecast_exps = finite_forecast_exps,
+    nonfinite_forecast_exps = nonfinite_forecast_exps,
+    max_E_sigma = max_E_sigma
+  )
+}
+
 unified_resolve_fit_parallel_mode <- function(cfg) {
   mode <- as.character(unified_get(cfg, c("fit", "parallel", "mode"), default = "one_core_per_model"))
   if (!length(mode) || is.na(mode[[1]]) || !nzchar(mode[[1]])) {
@@ -52,9 +174,42 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   fit_logs_root <- file.path(fit_root, "logs")
   preflight_dir <- file.path(run_root, "preflight")
   fit_preflight_log <- file.path(fit_logs_root, "preflight.log")
+  fit_stage_log <- file.path(fit_logs_root, "fit_stage.log")
+  fit_worker_error_log <- file.path(fit_logs_root, "fit_worker_errors.log")
   dir.create(fit_inputs, recursive = TRUE, showWarnings = FALSE)
   dir.create(fit_logs_root, recursive = TRUE, showWarnings = FALSE)
   dir.create(preflight_dir, recursive = TRUE, showWarnings = FALSE)
+  if (!file.exists(fit_stage_log)) {
+    file.create(fit_stage_log)
+  }
+  append_fit_stage_log <- function(msg) {
+    line <- sprintf("[%s] %s", format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"), as.character(msg))
+    try(write(line, file = fit_stage_log, append = TRUE), silent = TRUE)
+    invisible(NULL)
+  }
+  append_fit_stage_log(sprintf("stage_fit start run_root=%s", run_root_abs))
+
+  run_exdqlm_multivar <- isTRUE(cfg$models$run_exdqlm_multivar)
+  run_exdqlm_univar <- isTRUE(cfg$models$run_exdqlm_univar)
+  run_ndlm_main <- isTRUE(cfg$models$run_ndlm_main)
+  if (!run_exdqlm_multivar && !run_exdqlm_univar && !run_ndlm_main) {
+    no_models_msg <- "stage_fit no-op: all model families disabled"
+    message(no_models_msg)
+    append_fit_stage_log(no_models_msg)
+    append_fit_stage_log("stage_fit complete")
+    if (file.exists(fit_stage_log)) {
+      manifest <- unified_manifest_add_artifact(manifest, fit_stage_log, storage_scale = "text")
+    }
+    if (file.exists(fit_preflight_log)) {
+      manifest <- unified_manifest_add_artifact(
+        manifest,
+        fit_preflight_log,
+        storage_scale = "text",
+        role = "preflight"
+      )
+    }
+    return(list(manifest = manifest))
+  }
 
   shared_paths <- unified_shared_input_paths(run_root)
   use_shared_inputs <- isTRUE(cfg$stages$data_prep_shared) || dir.exists(shared_paths$root)
@@ -89,6 +244,23 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     source_retros_scale <- cfg$inputs$fit$retros_storage_scale
     source_nws_scale <- cfg$inputs$fit$nws_storage_scale
     source_glofas_scale <- cfg$inputs$fit$glofas_storage_scale
+  }
+
+  cutoff_raw <- unified_get(cfg, c("dates", "cutoff_date"), default = NA_character_)
+  cutoff_date <- suppressWarnings(as.Date(cutoff_raw))
+  if (!is.na(cutoff_date) && isTRUE(use_shared_inputs)) {
+    unified_validate_forecast_window_csv(
+      source_glofas,
+      label = "shared glofas_forecast",
+      stage_name = "fit/shared_inputs",
+      cutoff_date = cutoff_date
+    )
+    unified_validate_forecast_window_csv(
+      source_nws,
+      label = "shared nws_forecast",
+      stage_name = "fit/shared_inputs",
+      cutoff_date = cutoff_date
+    )
   }
 
   legacy_scale <- cfg$scale_contract$legacy_fit_input_scale
@@ -199,6 +371,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   }
 
   quantiles <- as.numeric(cfg$fit$quantiles)
+  univar_likelihood_mode <- unified_resolve_univar_likelihood_mode(cfg, default = "exal")
+  multivar_likelihood_mode <- unified_resolve_multivar_likelihood_mode(cfg, default = "exal")
+  ndlm_forecast_transfer_mode <- unified_resolve_ndlm_forecast_transfer_mode(cfg, default = "keep")
   univar_impl_mode <- unified_get(
     cfg,
     c("models", "exdqlm_univar", "implementation_mode"),
@@ -209,6 +384,12 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     c("models", "ndlm_main", "implementation_mode"),
     default = "theory_aligned"
   )
+  append_fit_stage_log(sprintf(
+    "fit model_modes multivar_likelihood=%s univar_likelihood=%s ndlm_forecast_transfer_mode=%s",
+    as.character(multivar_likelihood_mode),
+    as.character(univar_likelihood_mode),
+    as.character(ndlm_forecast_transfer_mode)
+  ))
   if (isTRUE(cfg$models$run_exdqlm_univar) && identical(univar_impl_mode, "legacy_bridge")) {
     warning(
       "models.exdqlm_univar.implementation_mode=legacy_bridge is supported but deprecated; prefer theory_aligned.",
@@ -231,6 +412,38 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     max_time_checks = as.integer(unified_get(cfg, c("fit", "diagnostics", "max_time_checks"), default = 25L)),
     seed = as.integer(unified_get(cfg, c("fit", "diagnostics", "seed"), default = cfg$run$seed)),
     psd_tol = as.numeric(unified_get(cfg, c("fit", "diagnostics", "psd_tol"), default = -1e-10))
+  )
+  multivar_forecast_health_enabled <- isTRUE(unified_get(
+    cfg,
+    c("fit", "exdqlm_multivar", "forecast_health", "enabled"),
+    default = TRUE
+  ))
+  multivar_forecast_health_fail_fast <- isTRUE(unified_get(
+    cfg,
+    c("fit", "exdqlm_multivar", "forecast_health", "fail_fast"),
+    default = TRUE
+  ))
+  multivar_forecast_health_write_reports <- isTRUE(unified_get(
+    cfg,
+    c("fit", "exdqlm_multivar", "forecast_health", "write_reports"),
+    default = TRUE
+  ))
+  multivar_forecast_health_limits <- list(
+    latent = as.numeric(unified_get(
+      cfg,
+      c("fit", "exdqlm_multivar", "forecast_health", "latent_limit"),
+      default = 650
+    )),
+    sigma = as.numeric(unified_get(
+      cfg,
+      c("fit", "exdqlm_multivar", "forecast_health", "sigma_limit"),
+      default = 100
+    )),
+    state = as.numeric(unified_get(
+      cfg,
+      c("fit", "exdqlm_multivar", "forecast_health", "state_limit"),
+      default = 1000
+    ))
   )
 
   add_report_artifacts <- function(manifest, report_paths, role) {
@@ -311,7 +524,11 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       forecast_transfer_mode <- primary_multivar_transfer_mode
     }
     is_primary_multivar_mode <- identical(forecast_transfer_mode, primary_multivar_transfer_mode)
-    use_legacy_multivar_layout <- !multivar_dual_mode || is_primary_multivar_mode
+    # Reserve the legacy root fit/q=* layout for drop-mode outputs only. A keep-only
+    # rerun must still write into fit/exdqlm_multivar/keep/... so it cannot clobber
+    # the persisted drop artifacts that post expects at the legacy path.
+    use_legacy_multivar_layout <- identical(forecast_transfer_mode, "drop") &&
+      (!multivar_dual_mode || is_primary_multivar_mode)
     if (use_legacy_multivar_layout) {
       q_root <- file.path(fit_root, sprintf("q=%s", q_label))
     } else {
@@ -390,6 +607,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     env_overrides <- c(
       DISC_BASE_SEED = as.character(cfg$run$seed),
       DISC_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
+      DISC_W_LIKELIHOOD_MODE = as.character(multivar_likelihood_mode),
       DISC_W_FORECAST_TRANSFER_MODE = forecast_transfer_mode,
       DISC_W_CUTOFF_DATE = as.character(cutoff_date),
       DISC_W_FORECAST_START_DATE = as.character(forecast_start_date),
@@ -439,6 +657,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       ))) "TRUE" else "FALSE",
       DISC_W_C_FACTOR = as.character(unified_get(
         cfg, c("fit", "exdqlm_multivar", "legacy", "forecast_cov", "c_factor"), default = 1e2
+      )),
+      DISC_W_FORECAST_COV_EPSILON = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "forecast_cov", "epsilon"), default = NA_real_
       )),
       DISC_GAMSIG_FREEZE_ITERS = gamsig_freeze_iters,
       DISC_GAMSIG_MIN_UPDATE_ITERS = gamsig_min_update_iters,
@@ -516,12 +737,49 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     if (!is.finite(cmd_status)) cmd_status <- 0L
 
     output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_DISC.RData", q_num))
+    forecast_health_path <- file.path(q_outputs, "multivar_forecast_health.txt")
+    forecast_health <- NULL
+    if (!is.null(cmd_status) && is.finite(cmd_status) && as.integer(cmd_status) == 0L &&
+        multivar_forecast_health_enabled) {
+      report_target <- if (isTRUE(multivar_forecast_health_write_reports)) forecast_health_path else NULL
+      forecast_health <- unified_multivar_fit_health_check(
+        rdata_path = output_path,
+        quantile = q,
+        transfer_mode = forecast_transfer_mode,
+        report_path = report_target,
+        latent_limit = multivar_forecast_health_limits$latent,
+        sigma_limit = multivar_forecast_health_limits$sigma,
+        state_limit = multivar_forecast_health_limits$state
+      )
+      if (length(forecast_health$violations) > 0L) {
+        msg <- sprintf(
+          paste0(
+            "[FIT_FORECAST_HEALTH_FAIL] multivar %s q=%s violated forecast-health limits: %s. ",
+            "See %s"
+          ),
+          forecast_transfer_mode,
+          q_label,
+          paste(forecast_health$violations, collapse = " | "),
+          if (!is.null(forecast_health$report_path) && nzchar(forecast_health$report_path)) {
+            forecast_health$report_path
+          } else {
+            output_path
+          }
+        )
+        if (isTRUE(multivar_forecast_health_fail_fast)) {
+          stop(msg, call. = FALSE)
+        } else {
+          warning(msg, call. = FALSE)
+        }
+      }
+    }
     list(
       model_family = "exdqlm_multivar",
       transfer_mode = forecast_transfer_mode,
       quantile = q,
       output_path = output_path,
       log_path = log_path,
+      forecast_health_path = if (file.exists(forecast_health_path)) forecast_health_path else "",
       status = as.integer(cmd_status)
     )
   }
@@ -544,6 +802,24 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       storage_scale = "model_state",
       flow_domain = cfg$scale_contract$analysis_scale_fit_internal
     )
+    if (!is.null(res$forecast_health_path) &&
+        nzchar(as.character(res$forecast_health_path)) &&
+        file.exists(as.character(res$forecast_health_path))) {
+      manifest <- unified_manifest_add_artifact(
+        manifest,
+        as.character(res$forecast_health_path),
+        storage_scale = "text",
+        role = "diagnostics"
+      )
+    }
+    if (!is.null(res$log_path) && file.exists(as.character(res$log_path))) {
+      manifest <- unified_manifest_add_artifact(
+        manifest,
+        as.character(res$log_path),
+        storage_scale = "text"
+      )
+    }
+    manifest
   }
 
   univar_script <- NULL
@@ -604,7 +880,11 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
 
     output_path <- file.path(q_outputs, sprintf("variables_%s_exAL_synth_DISC_uni.RData", q_lab))
-    log_name <- if (identical(univar_impl_mode, "theory_aligned")) "univar_theory.log" else "univar_legacy.log"
+    log_name <- if (identical(univar_impl_mode, "theory_aligned")) {
+      sprintf("univar_theory_%s.log", as.character(univar_likelihood_mode))
+    } else {
+      "univar_legacy.log"
+    }
     log_path <- file.path(q_logs, log_name)
 
     env_overrides <- c(
@@ -624,6 +904,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       UNIV_PCA_CSV = shared_cov_paths$pca,
       UNIV_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
       UNIV_PREV_RDATA = output_path,
+      UNIV_LIKELIHOOD_MODE = as.character(univar_likelihood_mode),
       UNIV_GAMSIG_FREEZE_ITERS = as.character(unified_get(
         cfg, c("fit", "exdqlm_univar", "gamma_sigma", "warmup_freeze_iters"), default = 5L
       )),
@@ -934,6 +1215,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       NDLM_PCA_CSV = shared_cov_paths$pca,
       NDLM_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
       NDLM_PREV_RDATA = output_path,
+      NDLM_FORECAST_TRANSFER_MODE = as.character(ndlm_forecast_transfer_mode),
       NDLM_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
         cfg, c("fit", "ndlm_main", "gamma_sigma", "min_total_iters"), default = 50L
       )),
@@ -975,6 +1257,27 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       )),
       NDLM_DF_COVS = as.character(unified_get(
         cfg, c("models", "ndlm_main", "state_evolution", "df_covs"), default = 0.99999
+      )),
+      NDLM_COV_EIG_FLOOR = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "stabilization", "cov_eig_floor"), default = 1e-8
+      )),
+      NDLM_COV_EIG_CAP = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "stabilization", "cov_eig_cap"), default = 1e8
+      )),
+      NDLM_COV_DIAG_JITTER = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "stabilization", "cov_diag_jitter"), default = 1e-10
+      )),
+      NDLM_SIGMA_UPPER_CAP = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "stabilization", "sigma_upper_cap"), default = 1e12
+      )),
+      NDLM_SIGMA_UPDATE_DAMPING = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "stabilization", "sigma_update_damping"), default = 1.0
+      )),
+      NDLM_LATENT_VAR_CAP_MULT = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "stabilization", "latent_var_cap_mult"), default = 1e4
+      )),
+      NDLM_LATENT_VAR_CAP_ABS = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "stabilization", "latent_var_cap_abs"), default = 1e8
       )),
       NDLM_LAM1 = as.character(unified_get(
         cfg, c("fit", "ndlm_main", "legacy", "lam1"), default = 1 - 1e-6
@@ -1100,8 +1403,34 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
 
   execute_fit_jobs <- function(fit_jobs, workers) {
     if (length(fit_jobs) == 0L) return(list())
+    safe_run <- function(job) {
+      tryCatch(
+        job$runner(),
+        error = function(e) {
+          job_family <- if (!is.null(job$family)) as.character(job$family) else ""
+          job_label <- if (!is.null(job$label)) as.character(job$label) else job_family
+          if (!length(job_label) || is.na(job_label[[1L]]) || !nzchar(job_label[[1L]])) {
+            job_label <- job_family
+          }
+          msg <- conditionMessage(e)
+          if (!is.null(fit_worker_error_log) && nzchar(fit_worker_error_log)) {
+            write(
+              sprintf("[%s] family=%s label=%s error=%s", Sys.time(), job_family, job_label, msg),
+              file = fit_worker_error_log,
+              append = TRUE
+            )
+          }
+          list(
+            model_family = job_family,
+            job_label = job_label,
+            status = 1L,
+            error = msg
+          )
+        }
+      )
+    }
     if (workers > 1L && .Platform$OS.type != "windows") {
-      parallel::mclapply(fit_jobs, function(job) job$runner(), mc.cores = workers)
+      parallel::mclapply(fit_jobs, function(job) safe_run(job), mc.cores = workers)
     } else {
       if (workers > 1L && .Platform$OS.type == "windows") {
         warning(
@@ -1109,7 +1438,50 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
           call. = FALSE
         )
       }
-      lapply(fit_jobs, function(job) job$runner())
+      lapply(fit_jobs, function(job) safe_run(job))
+    }
+  }
+
+  check_fit_worker_results <- function(results, context_label) {
+    if (length(results) == 0L) return(invisible(NULL))
+    failures <- character(0)
+    for (idx in seq_along(results)) {
+      res <- results[[idx]]
+      if (inherits(res, "try-error")) {
+        failures <- c(
+          failures,
+          sprintf("%s worker #%d returned try-error: %s", context_label, idx, as.character(res))
+        )
+        next
+      }
+      if (!is.list(res)) {
+        failures <- c(
+          failures,
+          sprintf(
+            "%s worker #%d returned invalid type: %s",
+            context_label,
+            idx,
+            paste(class(res), collapse = "/")
+          )
+        )
+        next
+      }
+      if (!is.null(res$error)) {
+        label <- res$job_label
+        if (is.null(label) || !length(label) || is.na(label[[1L]]) || !nzchar(label[[1L]])) {
+          label <- res$model_family
+        }
+        if (is.null(label) || !length(label) || is.na(label[[1L]]) || !nzchar(label[[1L]])) {
+          label <- sprintf("worker_%d", idx)
+        }
+        failures <- c(failures, sprintf("%s %s: %s", context_label, label, res$error))
+      }
+    }
+    if (length(failures) > 0L) {
+      stop(
+        paste0("fit stage worker errors:\n- ", paste(failures, collapse = "\n- ")),
+        call. = FALSE
+      )
     }
   }
 
@@ -1121,9 +1493,12 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         for (q in quantiles) {
           fit_jobs[[length(fit_jobs) + 1L]] <- local({
             q_local <- q
+            q_num <- as.integer(round(q_local * 100))
+            q_label <- sprintf("%02d", q_num)
             mode_local <- mode
             list(
               family = sprintf("exdqlm_multivar_%s", mode_local),
+              label = sprintf("exdqlm_multivar_%s q=%s", mode_local, q_label),
               runner = function() run_one_quantile(q_local, mode_local)
             )
           })
@@ -1134,8 +1509,11 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       for (q in quantiles) {
         fit_jobs[[length(fit_jobs) + 1L]] <- local({
           q_local <- q
+          q_num <- as.integer(round(q_local * 100))
+          q_label <- sprintf("%02d", q_num)
           list(
             family = "exdqlm_univar",
+            label = sprintf("exdqlm_univar q=%s", q_label),
             runner = function() run_one_univar_quantile(q_local)
           )
         })
@@ -1144,6 +1522,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     if (run_ndlm_main) {
       fit_jobs[[length(fit_jobs) + 1L]] <- list(
         family = "ndlm_main",
+        label = "ndlm_main",
         runner = function() run_ndlm_fit()
       )
     }
@@ -1195,15 +1574,21 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       )
     }
     if (length(family_jobs) > 0L) {
+      scheduler_msg <- sprintf(
+        "fit scheduler mode=%s workers=%d model_jobs=%d task_jobs=%d",
+        fit_parallel_mode, workers, length(family_jobs), as.integer(task_count)
+      )
       message(
         sprintf(
-          "fit scheduler mode=%s workers=%d model_jobs=%d task_jobs=%d",
-          fit_parallel_mode, workers, length(family_jobs), as.integer(task_count)
+          "%s",
+          scheduler_msg
         )
       )
+      append_fit_stage_log(scheduler_msg)
     }
     nested_results <- execute_fit_jobs(family_jobs, workers = workers)
     results <- unlist(nested_results, recursive = FALSE)
+    check_fit_worker_results(results, fit_parallel_mode)
     for (res in results) {
       family <- as.character(res$model_family)
       if (!length(family) || is.na(family[[1]]) || !nzchar(family[[1]])) {
@@ -1222,9 +1607,12 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     fit_jobs <- build_fit_jobs()
     workers <- unified_resolve_fit_parallel_workers(cfg, length(fit_jobs), default_workers = default_workers)
     if (length(fit_jobs) > 0L) {
-      message(sprintf("fit scheduler mode=%s workers=%d jobs=%d", fit_parallel_mode, workers, length(fit_jobs)))
+      scheduler_msg <- sprintf("fit scheduler mode=%s workers=%d jobs=%d", fit_parallel_mode, workers, length(fit_jobs))
+      message(scheduler_msg)
+      append_fit_stage_log(scheduler_msg)
     }
     results <- execute_fit_jobs(fit_jobs, workers = workers)
+    check_fit_worker_results(results, fit_parallel_mode)
     for (res in results) {
       family <- as.character(res$model_family)
       if (!length(family) || is.na(family[[1]]) || !nzchar(family[[1]])) {
@@ -1247,13 +1635,17 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         results <- execute_fit_jobs(
           lapply(quantiles, function(q) {
             q_local <- q
+            q_num <- as.integer(round(q_local * 100))
+            q_label <- sprintf("%02d", q_num)
             list(
               family = sprintf("exdqlm_multivar_%s", mode_local),
+              label = sprintf("exdqlm_multivar_%s q=%s", mode_local, q_label),
               runner = function() run_one_quantile(q_local, mode_local)
             )
           }),
           workers = workers
         )
+        check_fit_worker_results(results, fit_parallel_mode)
         for (res in results) {
           manifest <- process_multivar_result(manifest, res)
         }
@@ -1265,10 +1657,17 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       results <- execute_fit_jobs(
         lapply(quantiles, function(q) {
           q_local <- q
-          list(family = "exdqlm_univar", runner = function() run_one_univar_quantile(q_local))
+          q_num <- as.integer(round(q_local * 100))
+          q_label <- sprintf("%02d", q_num)
+          list(
+            family = "exdqlm_univar",
+            label = sprintf("exdqlm_univar q=%s", q_label),
+            runner = function() run_one_univar_quantile(q_local)
+          )
         }),
         workers = workers
       )
+      check_fit_worker_results(results, fit_parallel_mode)
       for (res in results) {
         manifest <- process_univar_result(manifest, res)
       }
@@ -1277,6 +1676,11 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     if (run_ndlm_main) {
       manifest <- process_ndlm_result(manifest, run_ndlm_fit())
     }
+  }
+
+  append_fit_stage_log("stage_fit complete")
+  if (file.exists(fit_stage_log)) {
+    manifest <- unified_manifest_add_artifact(manifest, fit_stage_log, storage_scale = "text")
   }
 
   if (file.exists(fit_preflight_log)) {

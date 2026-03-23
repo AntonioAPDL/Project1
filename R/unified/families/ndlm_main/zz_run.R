@@ -10,6 +10,11 @@ unified_run_ndlm_main_theory <- function(seed, output_path, log_path = NULL) {
   summary_lines <- c(
     "implementation_mode=theory_aligned",
     sprintf("kalman_backend=%s", constants$kalman_backend),
+    sprintf("forecast_transfer_mode=%s", as.character(constants$forecast_transfer_mode)),
+    sprintf(
+      "transfer_active_forecast_window=%s",
+      if (!is.null(fit_result$transfer_active_forecast_window) && isTRUE(fit_result$transfer_active_forecast_window)) "true" else "false"
+    ),
     sprintf("output_path=%s", output_path),
     sprintf("max_iter=%d", fit_result$max_iter),
     sprintf("min_total_iters=%d", constants$min_total_iters),
@@ -63,6 +68,23 @@ unified_run_ndlm_main_theory <- function(seed, output_path, log_path = NULL) {
       sprintf("cov_diag.nonfinite_slices_total=%s", as.character(cov_nonfinite))
     )
   }
+  if (is.list(fit_result$stabilization)) {
+    stab <- fit_result$stabilization
+    summary_lines <- c(
+      summary_lines,
+      sprintf("stabilization.cov_calls=%s", as.character(stab[["cov_calls"]])),
+      sprintf("stabilization.cov_projected=%s", as.character(stab[["cov_projected"]])),
+      sprintf("stabilization.cov_floor_clipped=%s", as.character(stab[["cov_floor_clipped"]])),
+      sprintf("stabilization.cov_cap_clipped=%s", as.character(stab[["cov_cap_clipped"]])),
+      sprintf("stabilization.cov_nonfinite_inputs=%s", as.character(stab[["cov_nonfinite_inputs"]])),
+      sprintf("stabilization.sigma_upper_cap=%s", as.character(stab[["sigma_upper_cap"]])),
+      sprintf("stabilization.sigma_update_damping=%s", as.character(stab[["sigma_update_damping"]])),
+      sprintf("stabilization.sigma_capped_total=%s", as.character(stab[["sigma_capped_total"]])),
+      sprintf("stabilization.sigma_damped_total=%s", as.character(stab[["sigma_damped_total"]])),
+      sprintf("stabilization.latent_var_cap_last=%s", as.character(stab[["latent_var_cap_last"]])),
+      sprintf("stabilization.latent_var_clipped_total=%s", as.character(stab[["latent_var_clipped_total"]]))
+    )
+  }
   if (!is.null(log_path) && nzchar(log_path)) {
     dir.create(dirname(log_path), recursive = TRUE, showWarnings = FALSE)
     writeLines(summary_lines, con = log_path)
@@ -79,7 +101,13 @@ unified_run_ndlm_main_theory <- function(seed, output_path, log_path = NULL) {
       w_hist = fit_result$w_hist,
       w_fore = fit_result$w_fore,
       discount_factors = fit_result$discount_factors,
-      kalman_backend = constants$kalman_backend
+      kalman_backend = constants$kalman_backend,
+      forecast_transfer_mode = as.character(constants$forecast_transfer_mode),
+      transfer_active_forecast_window = if (!is.null(fit_result$transfer_active_forecast_window)) {
+        isTRUE(fit_result$transfer_active_forecast_window)
+      } else {
+        FALSE
+      }
     )
   )
 }
