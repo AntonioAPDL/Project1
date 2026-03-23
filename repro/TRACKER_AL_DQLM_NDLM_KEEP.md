@@ -2,7 +2,7 @@
 
 ## Metadata
 - Created: 2026-03-22 (America/Los_Angeles)
-- Last updated: 2026-03-23 03:03 (America/Los_Angeles)
+- Last updated: 2026-03-23 11:43 (America/Los_Angeles)
 - Repository root: `/data/muscat_data/jaguir26/project1_ucsc_phd`
 - Tracker path: `repro/TRACKER_AL_DQLM_NDLM_KEEP.md`
 - Owner: Codex + user
@@ -511,6 +511,256 @@ Phase I execution evidence (PASS):
 2. Add CRPS value-range diagnostics/alerts to flag pathological scale before leaderboard comparisons.
 3. Run multi-cutoff production matrix only after (1) and (2), using the same model IDs and replay-compatible post config.
 
+## Hardening Plan v1 (Execution-Ready)
+Goal: close Open Issues R2/R3 with strict diagnostics gates, then scale to multi-cutoff production safely.
+
+### Hard Gates (Do Not Bypass)
+- Gate G1: all NDLM covariance PSD diagnostics pass under full-slice audit policy.
+- Gate G2: no NaN/Inf in fit/post artifacts and CRPS exports.
+- Gate G3: CRPS table must include required model IDs:
+  - `dqlm_univar_al_synth`
+  - `dqlm_multivar_al_synth_drop`
+  - `ndlm_main_synth_keep`
+  - `ndlm_univar_synth_keep`
+- Gate G4: stage status pass in `run_manifest.yaml` for `data_prep_shared`, `fit`, `post`, `report`.
+
+### Phase J0 — Preflight Baseline Lock
+Checklist:
+- [x] Record current commit and branch.
+- [x] Confirm execution context and artifact paths.
+- [x] Create hardening log directory.
+
+Status: **PASS**
+
+Evidence:
+- Baseline metadata/log capture exists under `repro/hardening_logs/` (including `J0_baseline.txt`).
+- Subsequent hardening runs reference branch/commit in manifests, e.g.:
+  - `repro/runs/dev_al_phaseJ2_hardening_smoke_20260323_v6/run_manifest.yaml`
+  - `repro/runs/dev_al_phaseJ2_hardening_post_replay_20260323_v7/run_manifest.yaml`
+
+Command block:
+```bash
+cd /data/muscat_data/jaguir26/project1_ucsc_phd
+git rev-parse --abbrev-ref HEAD
+git rev-parse --short HEAD
+date -u
+mkdir -p repro/hardening_logs
+```
+
+### Phase J1 — Implement Full-Slice PSD Audit + Contracts
+Checklist:
+- [x] Add full-slice PSD diagnostics in NDLM fit diagnostics output.
+- [x] Add fail criteria with warn/fail tolerances.
+- [x] Wire PSD fail to fail-fast diagnostics gate in fit stage.
+- [x] Add unit tests for pass/fail PSD scenarios.
+
+Status: **PASS**
+
+Evidence:
+- Config/schema wiring:
+  - `R/unified/config.R`
+  - `config/unified_run.template.yaml`
+- Fit-stage diagnostics + hardening wiring:
+  - `R/unified/stages/stage_fit.R`
+  - `R/unified/diagnostics.R`
+- Tests:
+  - `tests/testthat/test_fit_diagnostics_psd_scan.R` (full-slice detects unsampled bad slice)
+  - `tests/testthat/test_ndlm_kalman_backend.R`
+  - `tests/testthat/test_ndlm_univar_wh_recursions.R`
+- Targeted test command passed:
+  - `Rscript --vanilla -e 'library(testthat); test_file("tests/testthat/test_fit_diagnostics_psd_scan.R"); test_file("tests/testthat/test_ndlm_kalman_backend.R"); test_file("tests/testthat/test_ndlm_univar_wh_recursions.R")'`
+
+Code targets:
+- `R/unified/contract_checks.R`
+- `R/unified/families/ndlm_main/*` (diagnostics path)
+- `R/unified/families/ndlm_univar/*` (diagnostics path)
+- `tests/testthat/` (new PSD full-slice tests)
+
+Command block (post-implementation validation):
+```bash
+cd /data/muscat_data/jaguir26/project1_ucsc_phd
+Rscript --vanilla -e 'library(testthat); \
+  test_file("tests/testthat/test_ndlm_kalman_backend.R"); \
+  test_file("tests/testthat/test_ndlm_univar_wh_recursions.R"); \
+  test_file("tests/testthat/test_config_mode_resolution.R"); \
+  test_file("tests/testthat/test_post_crps_tables.R")'
+```
+
+### Phase J2 — Add CRPS Input-Health Diagnostics (Root-Cause First)
+Checklist:
+- [x] Add `crps_input_health.csv` export in post stage.
+- [x] Include draw-scale and tail diagnostics by model + horizon (`*_per_time` + aggregate).
+- [x] Add fail-fast checks for nonfinite/health-threshold violations.
+- [x] Keep CRPS scoring unchanged; add diagnostics as sidecar exports.
+
+Status: **PASS (strict fit hardening + full post replay)**
+
+Evidence:
+- Strict hardening smoke (fit + smoke post) now passes with full-slice PSD gate:
+  - Run ID: `dev_al_phaseJ2_hardening_smoke_20260323_v6`
+  - Manifest: `repro/runs/dev_al_phaseJ2_hardening_smoke_20260323_v6/run_manifest.yaml` (`fit/post/report: pass`)
+  - NDLM diagnostics: `repro/runs/dev_al_phaseJ2_hardening_smoke_20260323_v6/fit/diagnostics/ndlm_main/ndlm_main_diagnostics.yaml` (`status: pass`, `ndlm.new_theta.sC.psd` pass).
+  - Hardening log shows repaired minimum eigenvalue above floor:
+    - `repro/runs/dev_al_phaseJ2_hardening_smoke_20260323_v6/fit/ndlm_main/logs/ndlm_covariance_hardening.log`
+    - `smooth_min_eig_before=-3.958777e-08`, `smooth_min_eig_after=1.003471e-08`, `smooth_below_floor_after=0`.
+- Full post replay (non-smoke) passes and exports CRPS + input-health tables:
+  - Run ID: `dev_al_phaseJ2_hardening_post_replay_20260323_v7`
+  - Manifest: `repro/runs/dev_al_phaseJ2_hardening_post_replay_20260323_v7/run_manifest.yaml` (`post/report: pass`)
+  - Tables dir:
+    - `repro/runs/dev_al_phaseJ2_hardening_post_replay_20260323_v7/post/outputs/dev_al_phaseJ2_hardening_post_replay_20260323_v7/tables/`
+    - includes `crps_forecast_summary.csv`, `crps_forecast_per_time.csv`, `crps_input_health.csv`, `crps_input_health_per_time.csv`.
+  - Required model IDs present in CRPS summary and CRPS input-health tables:
+    - `dqlm_univar_al_synth`
+    - `dqlm_multivar_al_synth_drop`
+    - `ndlm_main_synth_keep`
+    - `ndlm_univar_synth_keep`
+  - Input-health fail-fast condition satisfied (no `status="fail"` rows in either input-health CSV).
+- Root-cause post stabilization applied (sample-count contract):
+  - `R/environmetrics/40_figures.R`
+  - `normalize_theta_time_sample()` now handles mismatched available-vs-target sample counts via deterministic truncate/recycle with one-time warnings.
+
+Code targets:
+- `R/environmetrics/40_figures.R`
+- `R/environmetrics/02_helpers_core.R`
+- `R/unified/stages/stage_post.R` (artifact registration)
+
+Command block (single-cutoff hardening smoke config generation + run):
+```bash
+cd /data/muscat_data/jaguir26/project1_ucsc_phd
+Rscript --vanilla - <<'RS'
+library(yaml)
+src <- "config/unified_runs/al_phaseI_allmodels_plus_ndlm_univar_crps_smoke_20260323.yaml"
+dst <- "config/unified_runs/al_phaseJ2_hardening_smoke_20260323.yaml"
+cfg <- read_yaml(src)
+cfg$run$run_id <- "dev_al_phaseJ2_hardening_smoke_20260323"
+cfg$fit$diagnostics$enabled <- TRUE
+cfg$fit$diagnostics$fail_fast <- TRUE
+cfg$fit$diagnostics$max_time_checks <- 200000
+cfg$fit$diagnostics$psd_tol <- -1e-8
+cfg$post$smoke_fast <- TRUE
+cfg$fit$exdqlm_multivar$legacy$n_samp <- 500
+cfg$fit$exdqlm_univar$legacy$n_samp <- 500
+cfg$fit$ndlm_main$legacy$n_samp <- 500
+cfg$models$ndlm_univar$posterior_draws <- 64
+write_yaml(cfg, dst)
+RS
+
+Rscript --vanilla scripts/unified_run.R --config config/unified_runs/al_phaseJ2_hardening_smoke_20260323.yaml
+```
+
+Command block (J2 evidence checks):
+```bash
+cd /data/muscat_data/jaguir26/project1_ucsc_phd
+RUN_ROOT="repro/runs/dev_al_phaseJ2_hardening_smoke_20260323"
+sed -n '24,54p' "$RUN_ROOT/run_manifest.yaml"
+ls -la "$RUN_ROOT/post/outputs/dev_al_phaseJ2_hardening_smoke_20260323/tables"
+rg -n "ndlm_univar_synth_keep|ndlm_main_synth_keep|dqlm_univar_al_synth|dqlm_multivar_al_synth_drop" \
+  "$RUN_ROOT/post/outputs/dev_al_phaseJ2_hardening_smoke_20260323/tables/crps_forecast_summary.csv"
+```
+
+### Phase J3 — Mini-Matrix Validation (3 Cutoffs, Sequential)
+Cutoffs selected from available bundles:
+- `20210123`, `20211112`, `20221225`
+
+Checklist:
+- [ ] Generate per-cutoff configs from known-good Phase I template.
+- [ ] Run sequentially to isolate failures.
+- [ ] Verify all hard gates per run.
+
+Command block (config generation):
+```bash
+cd /data/muscat_data/jaguir26/project1_ucsc_phd
+Rscript --vanilla - <<'RS'
+library(yaml)
+base_cfg <- "config/unified_runs/al_phaseI_allmodels_plus_ndlm_univar_crps_smoke_20260323.yaml"
+cuts <- c("20210123", "20211112", "20221225")
+project_root <- "/data/muscat_data/jaguir26/project1_ucsc_phd"
+for (cut in cuts) {
+  cfg <- read_yaml(base_cfg)
+  cutoff_date <- as.Date(cut, "%Y%m%d")
+  run_id <- sprintf("dev_al_phaseJ3_mini_%s", cut)
+  bundle <- file.path(project_root, "repro/runs", sprintf("multimodel_%s", cut), "inputs/shared/forecats_bundle")
+  cfg$run$run_id <- run_id
+  cfg$dates$cutoff_date <- format(cutoff_date, "%Y-%m-%d")
+  cfg$dates$plot_start <- format(cutoff_date - 18, "%Y-%m-%d")
+  cfg$dates$plot_end <- format(cutoff_date + 28, "%Y-%m-%d")
+  cfg$inputs$fit$retros_path <- file.path(bundle, "retros.csv")
+  cfg$inputs$fit$nws_forecast_path <- file.path(bundle, "nws_forecast.csv")
+  cfg$inputs$fit$glofas_forecast_path <- file.path(bundle, "glofas_forecast.csv")
+  cfg$fit$diagnostics$enabled <- TRUE
+  cfg$fit$diagnostics$fail_fast <- TRUE
+  cfg$post$smoke_fast <- TRUE
+  cfg$fit$exdqlm_multivar$legacy$n_samp <- 500
+  cfg$fit$exdqlm_univar$legacy$n_samp <- 500
+  cfg$fit$ndlm_main$legacy$n_samp <- 500
+  cfg$models$ndlm_univar$posterior_draws <- 64
+  out <- sprintf("config/unified_runs/al_phaseJ3_mini_%s.yaml", cut)
+  write_yaml(cfg, out)
+}
+RS
+```
+
+Command block (run matrix):
+```bash
+cd /data/muscat_data/jaguir26/project1_ucsc_phd
+for cfg in config/unified_runs/al_phaseJ3_mini_*.yaml; do
+  echo "=== RUNNING $cfg ==="
+  Rscript --vanilla scripts/unified_run.R --config "$cfg"
+done
+```
+
+Command block (matrix gate checks):
+```bash
+cd /data/muscat_data/jaguir26/project1_ucsc_phd
+for cut in 20210123 20211112 20221225; do
+  run_id="dev_al_phaseJ3_mini_${cut}"
+  root="repro/runs/${run_id}"
+  echo "=== ${run_id} ==="
+  sed -n '24,54p' "${root}/run_manifest.yaml"
+  rg -n "status: fail" "${root}/run_manifest.yaml" && echo "FAIL: stage status"
+  crps="${root}/post/outputs/${run_id}/tables/crps_forecast_summary.csv"
+  rg -n "ndlm_univar_synth_keep|ndlm_main_synth_keep|dqlm_univar_al_synth|dqlm_multivar_al_synth_drop" "$crps"
+done
+```
+
+### Phase J4 — Production Matrix Launch (After J3 PASS)
+Checklist:
+- [ ] Promote mini-matrix template to full cutoff set.
+- [ ] Run in batches, not all at once.
+- [ ] Run gate checks after each batch.
+
+Command block (discover available multimodel cutoffs):
+```bash
+cd /data/muscat_data/jaguir26/project1_ucsc_phd
+ls -1 repro/runs | rg '^multimodel_[0-9]{8}$' | sort
+```
+
+Command block (batch gate check helper):
+```bash
+cd /data/muscat_data/jaguir26/project1_ucsc_phd
+for run_id in $(ls -1 repro/runs | rg '^prod_al_phaseJ4_' | sort); do
+  root="repro/runs/${run_id}"
+  echo "=== ${run_id} ==="
+  sed -n '24,54p' "${root}/run_manifest.yaml"
+  rg -n "status: fail" "${root}/run_manifest.yaml" && echo "FAIL: stage status"
+  crps="${root}/post/outputs/${run_id}/tables/crps_forecast_summary.csv"
+  test -s "$crps" || echo "FAIL: missing CRPS summary"
+done
+```
+
+### Phase J5 — Closeout + Tracker Evidence Completion
+Checklist:
+- [ ] Record PASS/FAIL for each J-phase.
+- [ ] Record exact run IDs, commands, artifact paths.
+- [ ] Add unresolved risks and production recommendation.
+
+Command block:
+```bash
+cd /data/muscat_data/jaguir26/project1_ucsc_phd
+git rev-parse --short HEAD
+date -u
+```
+
 ## Changelog
 - 2026-03-22: Created tracker with baseline audit, assumptions, risks, and phased plan.
 - 2026-03-22: Updated tracker with completed implementation evidence for Phases A-D, partial Phase E, and Phase F replay-based PASS.
@@ -519,3 +769,8 @@ Phase I execution evidence (PASS):
 - 2026-03-23: Added Phase H `ndlm_univar` family wiring, C++/R West-Harrison closed-form implementation integration, sampler/contract bug fixes, and validated smoke rerun PASS (`..._20260323_023419`).
 - 2026-03-23: Added `tests/testthat/test_ndlm_univar_wh_recursions.R` for scalar WH recursion checks, backend parity checks, and sampler dimension/finite checks; test passes.
 - 2026-03-23: Completed Phase I all-model smoke including `ndlm_univar` CRPS export validation (`dev_al_phaseI_allmodels_plus_ndlm_univar_crps_smoke_20260323`).
+- 2026-03-23: Completed J1/J2 hardening closure:
+  - strengthened NDLM fit-stage covariance hardening (strict floor enforcement + diagnostic before/after logging),
+  - cleared strict full-slice PSD gate in `dev_al_phaseJ2_hardening_smoke_20260323_v6`,
+  - fixed full-post replay failure in `normalize_theta_time_sample()` for reduced draw counts,
+  - validated full post replay pass with CRPS + CRPS input-health exports in `dev_al_phaseJ2_hardening_post_replay_20260323_v7`.

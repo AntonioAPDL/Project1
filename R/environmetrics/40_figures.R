@@ -471,24 +471,60 @@ profile_detail_section("figures.build_xbs_discrep", {
 	      if (!is.numeric(theta_arr) || is.null(dim(theta_arr)) || length(dim(theta_arr)) != 3L) {
         stop(sprintf("[%s_SHAPE] expected theta_arr as numeric 3D array.", context))
       }
-      d <- dim(theta_arr)
+
+      d <- as.integer(dim(theta_arr))
       arr <- theta_arr
-      if (d[2] == target_time && d[3] == target_samples) {
+      if (d[2] == target_time) {
         arr <- theta_arr
-      } else if (d[3] == target_time && d[2] == target_samples) {
+      } else if (d[3] == target_time) {
         arr <- aperm(theta_arr, c(1, 3, 2))
       } else {
         stop(
           sprintf(
-            "[%s_DIM] unsupported theta_arr dimensions %s for target_time=%d target_samples=%d.",
+            "[%s_DIM] unsupported theta_arr dimensions %s for target_time=%d.",
             context,
             paste(d, collapse = "x"),
-            as.integer(target_time),
-            as.integer(target_samples)
+            as.integer(target_time)
           )
         )
       }
-      arr
+
+      s_cur <- as.integer(dim(arr)[3])
+      s_tar <- as.integer(target_samples)
+      if (!is.finite(s_tar) || s_tar <= 0L) {
+        stop(sprintf("[%s_NSAMP_TARGET] target_samples must be positive; got %s.", context, as.character(target_samples)))
+      }
+      if (!is.finite(s_cur) || s_cur <= 0L) {
+        stop(sprintf("[%s_NSAMP_CUR] normalized theta_arr has invalid sample dimension %s.", context, as.character(s_cur)))
+      }
+      if (s_cur == s_tar) {
+        return(arr)
+      }
+
+      if (s_cur > s_tar) {
+        agg_disc_warn_once(
+          paste0("theta_nsamp_truncate:", context),
+          sprintf(
+            "[%s_NSAMP_TRUNCATE] truncating theta samples from %d to %d.",
+            context,
+            s_cur,
+            s_tar
+          )
+        )
+        return(arr[, , seq_len(s_tar), drop = FALSE])
+      }
+
+      agg_disc_warn_once(
+        paste0("theta_nsamp_recycle:", context),
+        sprintf(
+          "[%s_NSAMP_RECYCLE] recycling theta samples from %d to %d (deterministic index repeat).",
+          context,
+          s_cur,
+          s_tar
+        )
+      )
+      idx <- rep(seq_len(s_cur), length.out = s_tar)
+      arr[, , idx, drop = FALSE]
     }
 
     project_discrep_block <- function(theta_arr, row_idx, context) {
@@ -5269,6 +5305,17 @@ if (!crps_ndlm_univar_transfer_mode %in% c("drop", "keep")) {
 }
 crps_output_suffix <- Sys.getenv("UNIFIED_POST_OUTPUT_SUFFIX", "")
 crps_exports_enabled <- isTRUE(as.logical(Sys.getenv("UNIFIED_POST_EXPORT_CRPS", "TRUE")))
+crps_input_health_enabled <- isTRUE(as.logical(Sys.getenv("UNIFIED_POST_CRPS_INPUT_HEALTH_ENABLED", "TRUE")))
+crps_input_health_fail_fast <- isTRUE(as.logical(Sys.getenv("UNIFIED_POST_CRPS_INPUT_HEALTH_FAIL_FAST", "FALSE")))
+crps_input_health_min_finite_share <- suppressWarnings(as.numeric(Sys.getenv("UNIFIED_POST_CRPS_INPUT_HEALTH_MIN_FINITE_SHARE", "1")))
+if (!is.finite(crps_input_health_min_finite_share) ||
+    crps_input_health_min_finite_share < 0 || crps_input_health_min_finite_share > 1) {
+  crps_input_health_min_finite_share <- 1
+}
+crps_input_health_max_abs <- suppressWarnings(as.numeric(Sys.getenv("UNIFIED_POST_CRPS_INPUT_HEALTH_MAX_ABS", "NA")))
+if (!is.finite(crps_input_health_max_abs) || crps_input_health_max_abs <= 0) {
+  crps_input_health_max_abs <- NA_real_
+}
 
 if (crps_exports_enabled) {
   profile_section("figures.export_crps_tables", {
@@ -5305,6 +5352,48 @@ if (crps_exports_enabled) {
 
     crps_per_time_rows <- list()
     crps_summary_rows <- list()
+    crps_input_health_rows <- list()
+    crps_input_health_per_time_rows <- list()
+    crps_input_health_failures <- character(0)
+
+    collect_crps_input_health <- function(
+      model_id,
+      model_family,
+      model_variant,
+      sample_mat,
+      forecast_dates,
+      transfer_mode,
+      context
+    ) {
+      if (!isTRUE(crps_input_health_enabled)) return(invisible(NULL))
+      health <- post_crps_input_health_tables(
+        model_id = model_id,
+        model_family = model_family,
+        model_variant = model_variant,
+        sample_mat = sample_mat,
+        forecast_dates = forecast_dates,
+        cutoff_date = crps_cutoff_date,
+        forecast_start_date = crps_forecast_start,
+        transfer_mode = transfer_mode,
+        min_finite_share = crps_input_health_min_finite_share,
+        max_abs = crps_input_health_max_abs,
+        context = paste0(context, ".input_health")
+      )
+      crps_input_health_rows[[length(crps_input_health_rows) + 1L]] <<- health$summary
+      crps_input_health_per_time_rows[[length(crps_input_health_per_time_rows) + 1L]] <<- health$per_time
+      if (isTRUE(crps_input_health_fail_fast) && !isTRUE(health$pass)) {
+        violation_msg <- if (length(health$violations) > 0L) {
+          paste(health$violations, collapse = " | ")
+        } else {
+          "input health failed"
+        }
+        crps_input_health_failures <<- c(
+          crps_input_health_failures,
+          sprintf("%s (%s): %s", model_id, context, violation_msg)
+        )
+      }
+      invisible(NULL)
+    }
 
     if (length(ensembles) >= 1L) {
       glofas_mat <- as.matrix(ensembles[[1]])
@@ -5324,6 +5413,19 @@ if (crps_exports_enabled) {
         )
         crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- glofas_tbl$per_time
         crps_summary_rows[[length(crps_summary_rows) + 1L]] <- glofas_tbl$summary
+        collect_crps_input_health(
+          model_id = "glofas_ensemble",
+          model_family = "ensemble",
+          model_variant = "glofas",
+          sample_mat = t(glofas_mat),
+          forecast_dates = daily_dates_for_matrix_rows(
+            glofas_mat,
+            start_date = crps_forecast_start,
+            context = "crps.glofas.health.dates"
+          ),
+          transfer_mode = NA_character_,
+          context = "crps.glofas"
+        )
       } else {
         warning("[CRPS_GLOFAS_SKIP] Unable to compute GloFAS CRPS (invalid ensemble matrix).", call. = FALSE)
       }
@@ -5349,6 +5451,19 @@ if (crps_exports_enabled) {
         )
         crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- nws_tbl$per_time
         crps_summary_rows[[length(crps_summary_rows) + 1L]] <- nws_tbl$summary
+        collect_crps_input_health(
+          model_id = "nws_nwm_ensemble",
+          model_family = "ensemble",
+          model_variant = "nws_nwm",
+          sample_mat = t(nws_mat),
+          forecast_dates = daily_dates_for_matrix_rows(
+            nws_mat,
+            start_date = crps_forecast_start,
+            context = "crps.nws.health.dates"
+          ),
+          transfer_mode = NA_character_,
+          context = "crps.nws"
+        )
       } else {
         warning("[CRPS_NWS_SKIP] Unable to compute NWS/NWM CRPS (invalid ensemble matrix).", call. = FALSE)
       }
@@ -5379,6 +5494,19 @@ if (crps_exports_enabled) {
         )
         crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- univar_tbl$per_time
         crps_summary_rows[[length(crps_summary_rows) + 1L]] <- univar_tbl$summary
+        collect_crps_input_health(
+          model_id = univar_meta$model_id,
+          model_family = "synthesis",
+          model_variant = univar_meta$model_variant,
+          sample_mat = synth_uni_mat,
+          forecast_dates = daily_dates_for_matrix_cols(
+            synth_uni_mat,
+            start_date = crps_forecast_start,
+            context = "crps.univar.health.dates"
+          ),
+          transfer_mode = NA_character_,
+          context = "crps.univar"
+        )
       } else {
         warning("[CRPS_UNIVAR_SKIP] Unable to compute univariate synthesis CRPS (invalid synth_f2 matrix).", call. = FALSE)
       }
@@ -5409,6 +5537,19 @@ if (crps_exports_enabled) {
       )
       crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- multivar_tbl$per_time
       crps_summary_rows[[length(crps_summary_rows) + 1L]] <- multivar_tbl$summary
+      collect_crps_input_health(
+        model_id = multivar_meta$model_id,
+        model_family = "synthesis",
+        model_variant = multivar_meta$model_variant,
+        sample_mat = synth_multivar_mat,
+        forecast_dates = daily_dates_for_matrix_cols(
+          synth_multivar_mat,
+          start_date = crps_forecast_start,
+          context = "crps.multivar.health.dates"
+        ),
+        transfer_mode = crps_transfer_mode,
+        context = "crps.multivar"
+      )
     } else {
       warning("[CRPS_MULTIVAR_SKIP] Unable to compute multivariate synthesis CRPS (invalid synth_f matrix).", call. = FALSE)
     }
@@ -5447,6 +5588,19 @@ if (crps_exports_enabled) {
         )
         crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- ndlm_tbl$per_time
         crps_summary_rows[[length(crps_summary_rows) + 1L]] <- ndlm_tbl$summary
+        collect_crps_input_health(
+          model_id = ndlm_meta$model_id,
+          model_family = "synthesis",
+          model_variant = ndlm_meta$model_variant,
+          sample_mat = ndlm_sample_mat,
+          forecast_dates = daily_dates_for_matrix_cols(
+            ndlm_sample_mat,
+            start_date = crps_forecast_start,
+            context = "crps.ndlm.health.dates"
+          ),
+          transfer_mode = crps_ndlm_transfer_mode,
+          context = "crps.ndlm"
+        )
       } else {
         warning("[CRPS_NDLM_SKIP] Unable to compute NDLM CRPS (invalid xbs_ndlm sample matrix).", call. = FALSE)
       }
@@ -5498,6 +5652,19 @@ if (crps_exports_enabled) {
         )
         crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- ndlm_univar_tbl$per_time
         crps_summary_rows[[length(crps_summary_rows) + 1L]] <- ndlm_univar_tbl$summary
+        collect_crps_input_health(
+          model_id = ndlm_univar_meta$model_id,
+          model_family = "synthesis",
+          model_variant = ndlm_univar_meta$model_variant,
+          sample_mat = ndlm_univar_sample_mat,
+          forecast_dates = daily_dates_for_matrix_cols(
+            ndlm_univar_sample_mat,
+            start_date = crps_forecast_start,
+            context = "crps.ndlm_univar.health.dates"
+          ),
+          transfer_mode = crps_ndlm_univar_transfer_mode,
+          context = "crps.ndlm_univar"
+        )
       } else {
         warning("[CRPS_NDLM_UNIVAR_SKIP] Unable to compute NDLM univar CRPS (invalid y.fore.draws matrix).", call. = FALSE)
       }
@@ -5523,6 +5690,37 @@ if (crps_exports_enabled) {
       posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, crps_export$manifest)
     } else {
       warning("[CRPS_EXPORT_SKIP] No CRPS rows were produced for export.", call. = FALSE)
+    }
+
+    if (isTRUE(crps_input_health_enabled) &&
+        length(crps_input_health_rows) > 0L &&
+        length(crps_input_health_per_time_rows) > 0L) {
+      crps_input_health_df <- do.call(rbind, crps_input_health_rows)
+      crps_input_health_per_time_df <- do.call(rbind, crps_input_health_per_time_rows)
+      rownames(crps_input_health_df) <- NULL
+      rownames(crps_input_health_per_time_df) <- NULL
+      health_export <- post_export_crps_input_health_tables(
+        summary_df = crps_input_health_df,
+        per_time_df = crps_input_health_per_time_df,
+        output_dir = posterior_table_output_dir,
+        table_formats = posterior_table_formats,
+        keep_na = posterior_table_keep_na,
+        numeric_digits = 17L,
+        file_suffix = crps_output_suffix
+      )
+      posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, health_export$manifest)
+    } else if (isTRUE(crps_input_health_enabled)) {
+      warning("[CRPS_INPUT_HEALTH_EXPORT_SKIP] No CRPS input-health rows were produced for export.", call. = FALSE)
+    }
+
+    if (isTRUE(crps_input_health_fail_fast) && length(crps_input_health_failures) > 0L) {
+      stop(
+        sprintf(
+          "[CRPS_INPUT_HEALTH_FAIL_FAST] non-finite or out-of-contract draws detected: %s",
+          paste(crps_input_health_failures, collapse = " || ")
+        ),
+        call. = FALSE
+      )
     }
   })
 }

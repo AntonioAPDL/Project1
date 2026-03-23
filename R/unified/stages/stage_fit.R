@@ -434,7 +434,18 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   diagnostics_settings <- list(
     max_time_checks = as.integer(unified_get(cfg, c("fit", "diagnostics", "max_time_checks"), default = 25L)),
     seed = as.integer(unified_get(cfg, c("fit", "diagnostics", "seed"), default = cfg$run$seed)),
-    psd_tol = as.numeric(unified_get(cfg, c("fit", "diagnostics", "psd_tol"), default = -1e-10))
+    psd_tol = as.numeric(unified_get(cfg, c("fit", "diagnostics", "psd_tol"), default = -1e-10)),
+    full_slice_psd = isTRUE(unified_get(cfg, c("fit", "diagnostics", "full_slice_psd"), default = FALSE)),
+    psd_warn_tol = as.numeric(unified_get(
+      cfg,
+      c("fit", "diagnostics", "psd_warn_tol"),
+      default = unified_get(cfg, c("fit", "diagnostics", "psd_tol"), default = -1e-10)
+    )),
+    psd_fail_tol = as.numeric(unified_get(
+      cfg,
+      c("fit", "diagnostics", "psd_fail_tol"),
+      default = unified_get(cfg, c("fit", "diagnostics", "psd_tol"), default = -1e-10)
+    ))
   )
   multivar_forecast_health_enabled <- isTRUE(unified_get(
     cfg,
@@ -1341,6 +1352,256 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     )
   }
 
+  ndlm_cov_stabilize_matrix_for_export <- function(Sigma, floor_val, cap_val, jitter_val) {
+    Sigma <- as.matrix(Sigma)
+    if (!is.numeric(Sigma) || nrow(Sigma) != ncol(Sigma)) {
+      stop("ndlm covariance hardening expects a numeric square matrix", call. = FALSE)
+    }
+    d <- nrow(Sigma)
+    Sigma[!is.finite(Sigma)] <- 0
+    Sigma <- (Sigma + t(Sigma)) / 2
+
+    eig_vals <- tryCatch(
+      suppressWarnings(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values),
+      error = function(e) rep(NA_real_, d)
+    )
+    has_nonfinite_eigs <- any(!is.finite(eig_vals))
+    floor_hit <- has_nonfinite_eigs || min(eig_vals, na.rm = TRUE) < floor_val
+    cap_hit <- has_nonfinite_eigs || max(eig_vals, na.rm = TRUE) > cap_val
+    if (isTRUE(floor_hit) || isTRUE(cap_hit)) {
+      eig <- tryCatch(
+        suppressWarnings(eigen(Sigma, symmetric = TRUE)),
+        error = function(e) NULL
+      )
+      if (is.null(eig) || any(!is.finite(eig$values)) || any(!is.finite(eig$vectors))) {
+        Sigma <- diag(floor_val, d)
+      } else {
+        vals <- as.numeric(eig$values)
+        vals <- pmin(pmax(vals, floor_val), cap_val)
+        Sigma <- eig$vectors %*% diag(vals, length(vals)) %*% t(eig$vectors)
+      }
+    }
+    Sigma <- (Sigma + t(Sigma)) / 2
+    if (jitter_val > 0) {
+      Sigma <- Sigma + diag(jitter_val, d)
+    }
+
+    for (ii in seq_len(3L)) {
+      final_min <- tryCatch(
+        suppressWarnings(min(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values)),
+        error = function(e) NA_real_
+      )
+      if (is.finite(final_min) && final_min >= floor_val) {
+        break
+      }
+      shift <- if (!is.finite(final_min)) floor_val else (floor_val - final_min)
+      shift <- max(shift + jitter_val, jitter_val)
+      Sigma <- Sigma + diag(shift, d)
+      Sigma <- (Sigma + t(Sigma)) / 2
+    }
+
+    chol_pad <- max(floor_val, jitter_val, 1e-12)
+    has_chol_contract <- !is.null(tryCatch(
+      chol(Sigma + diag(chol_pad, d)),
+      error = function(e) NULL
+    ))
+    if (!isTRUE(has_chol_contract)) {
+      eig <- tryCatch(suppressWarnings(eigen(Sigma, symmetric = TRUE)), error = function(e) NULL)
+      if (!is.null(eig) && all(is.finite(eig$values)) && all(is.finite(eig$vectors))) {
+        vals <- as.numeric(eig$values)
+        vals <- pmin(pmax(vals, floor_val), cap_val)
+        Sigma <- eig$vectors %*% diag(vals, length(vals)) %*% t(eig$vectors)
+        Sigma <- (Sigma + t(Sigma)) / 2
+      }
+      for (ii in seq_len(6L)) {
+        has_chol_contract <- !is.null(tryCatch(
+          chol(Sigma + diag(chol_pad, d)),
+          error = function(e) NULL
+        ))
+        if (isTRUE(has_chol_contract)) break
+        bump <- max(chol_pad * (2 ^ (ii - 1L)), jitter_val)
+        Sigma <- Sigma + diag(bump, d)
+        Sigma <- (Sigma + t(Sigma)) / 2
+      }
+    }
+
+    final_min <- tryCatch(
+      suppressWarnings(min(eigen(Sigma, symmetric = TRUE, only.values = TRUE)$values)),
+      error = function(e) NA_real_
+    )
+    if (!is.finite(final_min) || final_min < floor_val) {
+      shift <- if (!is.finite(final_min)) floor_val else (floor_val - final_min + jitter_val)
+      Sigma <- Sigma + diag(shift, d)
+      Sigma <- (Sigma + t(Sigma)) / 2
+    }
+    Sigma
+  }
+
+  ndlm_cov_harden_array_for_export <- function(cov_arr, floor_val, cap_val, jitter_val) {
+    dims <- dim(cov_arr)
+    if (is.null(dims) || length(dims) != 3L || dims[1] != dims[2]) {
+      stop("ndlm covariance hardening expects a square 3D covariance array", call. = FALSE)
+    }
+    out <- cov_arr
+    repaired <- 0L
+    before_mins <- rep(NA_real_, dims[3])
+    after_mins <- rep(NA_real_, dims[3])
+    for (k in seq_len(dims[3])) {
+      before <- tryCatch(
+        suppressWarnings(min(eigen((out[, , k, drop = TRUE] + t(out[, , k, drop = TRUE])) / 2, symmetric = TRUE, only.values = TRUE)$values)),
+        error = function(e) NA_real_
+      )
+      out[, , k] <- ndlm_cov_stabilize_matrix_for_export(out[, , k, drop = TRUE], floor_val, cap_val, jitter_val)
+      after <- tryCatch(
+        suppressWarnings(min(eigen((out[, , k, drop = TRUE] + t(out[, , k, drop = TRUE])) / 2, symmetric = TRUE, only.values = TRUE)$values)),
+        error = function(e) NA_real_
+      )
+      before_mins[[k]] <- before
+      after_mins[[k]] <- after
+      if (!is.finite(before) || !is.finite(after) || abs(after - before) > 1e-12) {
+        repaired <- repaired + 1L
+      }
+    }
+    list(
+      cov = out,
+      repaired_slices = as.integer(repaired),
+      min_eig_before = if (all(!is.finite(before_mins))) NA_real_ else min(before_mins, na.rm = TRUE),
+      min_eig_after = if (all(!is.finite(after_mins))) NA_real_ else min(after_mins, na.rm = TRUE),
+      below_floor_before = as.integer(sum(is.finite(before_mins) & before_mins < floor_val)),
+      below_floor_after = as.integer(sum(is.finite(after_mins) & after_mins < floor_val))
+    )
+  }
+
+  ndlm_cov_diag_one <- function(object_name, cov_arr) {
+    dims <- dim(cov_arr)
+    if (is.null(dims) || length(dims) != 3L || dims[1] != dims[2]) {
+      stop(sprintf("[NDLM_COV_SHAPE] %s must be a square 3D covariance array", object_name), call. = FALSE)
+    }
+    n_slices <- as.integer(dims[3])
+    min_eigs <- rep(NA_real_, n_slices)
+    min_diags <- rep(NA_real_, n_slices)
+    max_asym <- rep(NA_real_, n_slices)
+    nonfinite <- rep(FALSE, n_slices)
+    base_chol_fail <- rep(FALSE, n_slices)
+    for (k in seq_len(n_slices)) {
+      S <- as.matrix(cov_arr[, , k, drop = TRUE])
+      if (!all(is.finite(S))) {
+        nonfinite[k] <- TRUE
+        next
+      }
+      S <- (S + t(S)) / 2
+      max_asym[k] <- max(abs(S - t(S)))
+      min_diags[k] <- min(diag(S))
+      min_eigs[k] <- min(eigen(S, symmetric = TRUE, only.values = TRUE)$values)
+      base_try <- tryCatch(chol(S + diag(1e-8, nrow(S))), error = function(e) NULL)
+      base_chol_fail[k] <- is.null(base_try)
+    }
+    data.frame(
+      object = object_name,
+      n_slices = n_slices,
+      matrix_dim = as.integer(dims[1]),
+      nonfinite_slices = as.integer(sum(nonfinite)),
+      asymmetry_max = if (all(is.na(max_asym))) NA_real_ else max(max_asym, na.rm = TRUE),
+      min_diag_min = if (all(is.na(min_diags))) NA_real_ else min(min_diags, na.rm = TRUE),
+      min_eig_min = if (all(is.na(min_eigs))) NA_real_ else min(min_eigs, na.rm = TRUE),
+      min_eig_p01 = if (all(is.na(min_eigs))) NA_real_ else as.numeric(stats::quantile(min_eigs, probs = 0.01, na.rm = TRUE, names = FALSE)),
+      base_chol_fail_slices = as.integer(sum(base_chol_fail, na.rm = TRUE)),
+      base_chol_fail_rate = mean(base_chol_fail, na.rm = TRUE),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  ndlm_cov_harden_rdata <- function(rdata_path, floor_val, cap_val, jitter_val, report_path = NULL) {
+    if (!file.exists(rdata_path)) {
+      stop(sprintf("ndlm covariance hardening target does not exist: %s", rdata_path), call. = FALSE)
+    }
+    env <- new.env(parent = emptyenv())
+    load(rdata_path, envir = env)
+    theta_name <- "new.theta.out_50_NDLM_synth_DISC"
+    if (!exists(theta_name, envir = env, inherits = FALSE)) {
+      return(list(applied = FALSE, repaired_slices_total = 0L, report_path = report_path))
+    }
+    theta <- get(theta_name, envir = env, inherits = FALSE)
+    if (!is.list(theta) || !("sC" %in% names(theta)) || !("sC_ens" %in% names(theta))) {
+      return(list(applied = FALSE, repaired_slices_total = 0L, report_path = report_path))
+    }
+
+    smooth_fix <- ndlm_cov_harden_array_for_export(theta$sC, floor_val = floor_val, cap_val = cap_val, jitter_val = jitter_val)
+    theta$sC <- smooth_fix$cov
+
+    seg_fix_total <- 0L
+    seg_min_before <- numeric(0)
+    seg_min_after <- numeric(0)
+    seg_below_floor_before <- integer(0)
+    seg_below_floor_after <- integer(0)
+    if (is.list(theta$sC_ens) && length(theta$sC_ens) > 0L) {
+      for (ii in seq_along(theta$sC_ens)) {
+        seg_fix <- ndlm_cov_harden_array_for_export(theta$sC_ens[[ii]], floor_val = floor_val, cap_val = cap_val, jitter_val = jitter_val)
+        theta$sC_ens[[ii]] <- seg_fix$cov
+        seg_fix_total <- seg_fix_total + seg_fix$repaired_slices
+        seg_min_before <- c(seg_min_before, seg_fix$min_eig_before)
+        seg_min_after <- c(seg_min_after, seg_fix$min_eig_after)
+        seg_below_floor_before <- c(seg_below_floor_before, seg_fix$below_floor_before)
+        seg_below_floor_after <- c(seg_below_floor_after, seg_fix$below_floor_after)
+      }
+    }
+
+    assign(theta_name, theta, envir = env)
+
+    state_name <- "ndlm_main_theory_state"
+    if (exists(state_name, envir = env, inherits = FALSE)) {
+      st <- get(state_name, envir = env, inherits = FALSE)
+      if (is.list(st)) {
+        sC1 <- if (is.list(theta$sC_ens) && length(theta$sC_ens) >= 1L) theta$sC_ens[[1L]] else array(0, dim = c(7L, 7L, 0L))
+        sC2 <- if (is.list(theta$sC_ens) && length(theta$sC_ens) >= 2L) theta$sC_ens[[2L]] else array(0, dim = c(7L, 7L, 0L))
+        st$covariance_diagnostics <- do.call(rbind, list(
+          ndlm_cov_diag_one("smooth_cov", theta$sC),
+          ndlm_cov_diag_one("forecast_cov_segment_1", sC1),
+          ndlm_cov_diag_one("forecast_cov_segment_2", sC2)
+        ))
+        rownames(st$covariance_diagnostics) <- NULL
+        assign(state_name, st, envir = env)
+      }
+    }
+
+    save(list = ls(env), file = rdata_path, envir = env)
+
+    repaired_total <- as.integer(smooth_fix$repaired_slices + seg_fix_total)
+    if (!is.null(report_path) && nzchar(report_path)) {
+      lines <- c(
+        sprintf("rdata_path=%s", normalizePath(rdata_path, mustWork = FALSE)),
+        sprintf("cov_eig_floor=%s", format(floor_val, digits = 12)),
+        sprintf("cov_eig_cap=%s", format(cap_val, digits = 12)),
+        sprintf("cov_diag_jitter=%s", format(jitter_val, digits = 12)),
+        sprintf("smooth_repaired_slices=%d", as.integer(smooth_fix$repaired_slices)),
+        sprintf("segment_repaired_slices=%d", as.integer(seg_fix_total)),
+        sprintf("repaired_slices_total=%d", repaired_total),
+        sprintf("smooth_min_eig_before=%s", if (is.finite(smooth_fix$min_eig_before)) format(smooth_fix$min_eig_before, digits = 12) else "NA"),
+        sprintf("smooth_min_eig_after=%s", if (is.finite(smooth_fix$min_eig_after)) format(smooth_fix$min_eig_after, digits = 12) else "NA"),
+        sprintf("smooth_below_floor_before=%d", as.integer(smooth_fix$below_floor_before)),
+        sprintf("smooth_below_floor_after=%d", as.integer(smooth_fix$below_floor_after)),
+        sprintf(
+          "segments_min_eig_before=%s",
+          if (length(seg_min_before) > 0L) paste(ifelse(is.finite(seg_min_before), format(seg_min_before, digits = 12), "NA"), collapse = ",") else "NA"
+        ),
+        sprintf(
+          "segments_min_eig_after=%s",
+          if (length(seg_min_after) > 0L) paste(ifelse(is.finite(seg_min_after), format(seg_min_after, digits = 12), "NA"), collapse = ",") else "NA"
+        ),
+        sprintf(
+          "segments_below_floor_before=%s",
+          if (length(seg_below_floor_before) > 0L) paste(as.integer(seg_below_floor_before), collapse = ",") else "NA"
+        ),
+        sprintf(
+          "segments_below_floor_after=%s",
+          if (length(seg_below_floor_after) > 0L) paste(as.integer(seg_below_floor_after), collapse = ",") else "NA"
+        )
+      )
+      writeLines(lines, con = report_path, useBytes = TRUE)
+    }
+    list(applied = TRUE, repaired_slices_total = repaired_total, report_path = report_path)
+  }
+
   process_ndlm_result <- function(manifest, res_raw) {
     res <- unified_normalize_fit_worker_result(res_raw, context_label = "NDLM fit worker")
     if (!is.null(res$status) && res$status != 0) {
@@ -1364,6 +1625,32 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     )
     if (file.exists(res$log_path)) {
       manifest <- unified_manifest_add_artifact(manifest, res$log_path, storage_scale = "text")
+    }
+
+    if (identical(ndlm_impl_mode, "theory_aligned")) {
+      cov_harden_log <- file.path(ndlm_logs, "ndlm_covariance_hardening.log")
+      cov_floor <- as.numeric(unified_get(
+        cfg, c("models", "ndlm_main", "stabilization", "cov_eig_floor"), default = 1e-8
+      ))
+      cov_cap <- as.numeric(unified_get(
+        cfg, c("models", "ndlm_main", "stabilization", "cov_eig_cap"), default = 1e8
+      ))
+      cov_jitter <- as.numeric(unified_get(
+        cfg, c("models", "ndlm_main", "stabilization", "cov_diag_jitter"), default = 1e-10
+      ))
+      if (!is.finite(cov_floor) || cov_floor <= 0) cov_floor <- 1e-8
+      if (!is.finite(cov_cap) || cov_cap <= cov_floor) cov_cap <- max(1e8, cov_floor * 10)
+      if (!is.finite(cov_jitter) || cov_jitter < 0) cov_jitter <- 1e-10
+      harden_res <- ndlm_cov_harden_rdata(
+        rdata_path = res$output_path,
+        floor_val = cov_floor,
+        cap_val = cov_cap,
+        jitter_val = cov_jitter,
+        report_path = cov_harden_log
+      )
+      if (isTRUE(harden_res$applied) && file.exists(cov_harden_log)) {
+        manifest <- unified_manifest_add_artifact(manifest, cov_harden_log, storage_scale = "text")
+      }
     }
 
     if (contract_checks_enabled && identical(ndlm_impl_mode, "theory_aligned")) {
@@ -1590,6 +1877,38 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       if (!identical(check_result$status, "pass")) {
         err_msg <- sprintf("NDLM univar contract check failed: %s", paste(check_result$errors, collapse = " | "))
         if (contract_checks_fail_fast) {
+          stop(err_msg, call. = FALSE)
+        } else {
+          warning(err_msg, call. = FALSE)
+        }
+      }
+    }
+
+    if (diagnostics_enabled && ndlm_univar_impl_mode %in% c("theory_aligned_closed_form", "theory_aligned")) {
+      diag_dir <- file.path(fit_root, "diagnostics", "ndlm_univar")
+      summary_log_path <- file.path(ndlm_univar_logs, "ndlm_univar_theory_summary.log")
+      diag_result <- unified_diag_ndlm_univar_theory(
+        rdata_path = res$output_path,
+        report_dir = diag_dir,
+        summary_log_path = summary_log_path,
+        settings = diagnostics_settings,
+        write_reports = diagnostics_write_reports
+      )
+      manifest <- add_report_artifacts(manifest, diag_result$report_paths, role = "diagnostics")
+      if (!identical(diag_result$status, "pass")) {
+        report_pointer <- unlist(diag_result$report_paths, use.names = FALSE)
+        report_pointer <- report_pointer[nzchar(report_pointer)]
+        pointer_msg <- if (length(report_pointer) > 0L) {
+          sprintf(" (see %s)", report_pointer[[1]])
+        } else {
+          ""
+        }
+        err_msg <- sprintf(
+          "NDLM univar diagnostics failed%s: %s",
+          pointer_msg,
+          paste(diag_result$errors, collapse = " | ")
+        )
+        if (diagnostics_fail_fast) {
           stop(err_msg, call. = FALSE)
         } else {
           warning(err_msg, call. = FALSE)
