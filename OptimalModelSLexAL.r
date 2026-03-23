@@ -72,6 +72,13 @@ read_env_int <- function(key, default, min_val = 1L) {
   as.integer(val)
 }
 
+read_env_choice <- function(key, choices, default) {
+  raw <- trimws(tolower(Sys.getenv(key, "")))
+  if (!nzchar(raw)) return(default)
+  if (raw %in% choices) return(raw)
+  default
+}
+
 require_readable_path <- function(path, label) {
   if (!file.exists(path)) {
     stop(sprintf("%s does not exist at path: %s", label, path), call. = FALSE)
@@ -123,6 +130,12 @@ if (nzchar(UNIV_COVARIATES_DIR)) {
 }
 USE_PREV <- env_flag("UNIV_USE_PREV", USE_PREV)
 n.samp <- read_env_int("UNIV_N_SAMP", n.samp, min_val = 1L)
+UNIV_LIKELIHOOD_MODE <- read_env_choice(
+  key = "UNIV_LIKELIHOOD_MODE",
+  choices = c("exal", "al"),
+  default = "exal"
+)
+UNIV_AL_MODE <- identical(UNIV_LIKELIHOOD_MODE, "al")
 
 Sys.setenv("PKG_CXXFLAGS"="-I/data/muscat_data/jaguir26/libs/eigen -I/data/muscat_data/jaguir26/libs/boost/include -DEIGEN_DONT_VECTORIZE")
 Sys.setenv("PKG_LIBS"="-L/data/muscat_data/jaguir26/libs/lib64 -L/data/muscat_data/jaguir26/libs/boost/lib -llapack -lblas -lboost_random -lboost_system -fopenmp")
@@ -134,6 +147,8 @@ Rcpp::sourceCpp("/data/muscat_data/jaguir26/project1_ucsc_phd/sampling_exal.cpp"
 Rcpp::sourceCpp("/data/muscat_data/jaguir26/project1_ucsc_phd/sampling_truncnorm.cpp")
 
 print(c(n.samp, 444))
+flush.console()
+cat(sprintf("[univar_legacy] likelihood_mode=%s\n", UNIV_LIKELIHOOD_MODE))
 flush.console()
 
 
@@ -1274,6 +1289,9 @@ for (j in 1:(J+1)) {
 ########### For every j
 gam0 = gam.init 
 sig0 = sig.init 
+if (isTRUE(UNIV_AL_MODE)) {
+  gam0[,] <- 0
+}
 ###########################################################################################
 ########### For every j 
 E1 <- array(NA_real_, c(J+1,1))
@@ -1298,9 +1316,17 @@ new.gamsig.out = list(E.gam = gam0,
 ###########################################################################################
 ########### For every j
 E1 <- array(NA_real_, c(J+1,TT_sub))
-E1[,] <- truncnorm::etruncnorm(a = 0, b = Inf,  mean = 1, sd = 1)
+if (isTRUE(UNIV_AL_MODE)) {
+  E1[,] <- 0
+} else {
+  E1[,] <- truncnorm::etruncnorm(a = 0, b = Inf,  mean = 1, sd = 1)
+}
 E2 <- array(NA_real_, c(J+1,TT_sub))
-E2[,] <- E1[,]^2 
+if (isTRUE(UNIV_AL_MODE)) {
+  E2[,] <- 0
+} else {
+  E2[,] <- E1[,]^2
+}
 new.sts.out = list(E.sts = E1, 
                     E.sts2 = E2,
                     tot.entrop = array(0, c(J+1,1)) )
@@ -1339,11 +1365,18 @@ seq.gamma = new.gamsig.out$E.gam
 seq.sigma = new.gamsig.out$E.sigma
 ###########################################################################################
 update_sts<-function(y, exps,inv.uts,c2.invb.absgam2.sigma,c.invb.absgam,c.a.invb.absgam){
+  nn_local <- length(y)
+  if (isTRUE(UNIV_AL_MODE)) {
+    z <- rep(0, nn_local)
+    return(list(sts.sig2=rep(1, nn_local),sts.mu=z,
+                E.sts=z,E.sts2=z,
+                tot.entrop = 0))
+  }
   s.sig2<-1/(1+c2.invb.absgam2.sigma*inv.uts); s.sig = sqrt(s.sig2)
   s.mu<-s.sig2*(c.invb.absgam*(y-exps)*inv.uts-c.a.invb.absgam)
   #
-  E.sts = truncnorm::etruncnorm(a=rep(0,TT_sub),b=rep(Inf,TT_sub),mean=s.mu,sd=s.sig)
-  V.sts = truncnorm::vtruncnorm(a=rep(0,TT_sub),b=rep(Inf,TT_sub),mean=s.mu,sd=s.sig)
+  E.sts = truncnorm::etruncnorm(a=rep(0,nn_local),b=rep(Inf,nn_local),mean=s.mu,sd=s.sig)
+  V.sts = truncnorm::vtruncnorm(a=rep(0,nn_local),b=rep(Inf,nn_local),mean=s.mu,sd=s.sig)
   E.sts2 = s.mu^2 + s.sig2 + s.mu*s.sig*exp(stats::dnorm(-s.mu/s.sig,log = TRUE)-stats::pnorm(s.mu/s.sig,log.p = TRUE))
   return(list(sts.sig2=s.sig2,sts.mu=s.mu,
               E.sts=E.sts,E.sts2=E.sts2,
@@ -1397,10 +1430,18 @@ LL <- min(L+0.01,0)
 UU <- max(U-0.01,0)
 update_gamma_sigma<-function(y, nn, prior_g, prior_s, gamma,var.gam,sigma,var.sig,exps,exps2,sts,sts2,uts,inv.uts, s_init, g_init){
   #############################################################################################################################################
+  gamma_from_theta <- function(theta_g) {
+    LL + (UU - LL) * exp(-exp(theta_g))
+  }
+  theta_from_gamma <- function(gam) {
+    uu <- (gam - LL) / (UU - LL)
+    uu <- pmin(pmax(uu, 1e-12), 1 - 1e-12)
+    log(-log(uu))
+  }
 
   dq_transf <- function(theta_s,theta_g){
       sig <- exp(theta_s)
-      gam <- LL+(-LL+UU)*exp(-exp(theta_g))
+      gam <- gamma_from_theta(theta_g)
           a = A.fn(p0,gam); b = B.fn(p0,gam); c = C.fn(p0,gam); p.fn(p0,gam)
 
       yy <- log(PriorGammaDens(gam, prior_g)) - (prior_s[1] + 1) * log(sig) - prior_s[2]/sig
@@ -1414,9 +1455,66 @@ update_gamma_sigma<-function(y, nn, prior_g, prior_s, gamma,var.gam,sigma,var.si
       return(yy)
   }
 
-  theta_s_init <- log(s_init)
-  theta_g_init <- log(log((-L+U)/(-L+g_init)))
+  s_seed <- suppressWarnings(as.numeric(s_init)[1])
+  if (!is.finite(s_seed) || s_seed <= 0) {
+    s_seed <- 1
+  }
+  g_seed <- suppressWarnings(as.numeric(g_init)[1])
+  if (!is.finite(g_seed)) {
+    g_seed <- 0
+  }
+
+  theta_s_init <- log(s_seed)
+  if (isTRUE(UNIV_AL_MODE)) {
+    g_seed <- 0
+    theta_g_init <- theta_from_gamma(g_seed)
+  } else {
+    g_seed <- pmin(pmax(g_seed, L + 1e-8), U - 1e-8)
+    theta_g_init <- log(log((-L+U)/(-L+g_seed)))
+  }
   initial_values <- c(theta_s_init, theta_g_init)
+
+  if (isTRUE(UNIV_AL_MODE)) {
+    theta_g_fixed <- theta_from_gamma(0)
+    sigma_obj <- function(theta_s_val) {
+      yy <- dq_transf(theta_s_val, theta_g_fixed)
+      if (!is.finite(yy)) return(Inf)
+      -yy
+    }
+    sigma_opt <- tryCatch(
+      stats::optimize(sigma_obj, interval = log(c(1e-5, 1e3))),
+      error = function(e) e
+    )
+    theta_s_star <- if (inherits(sigma_opt, "error") || !is.finite(sigma_opt$minimum)) {
+      theta_s_init
+    } else {
+      sigma_opt$minimum
+    }
+    sig <- exp(theta_s_star)
+    gam <- 0
+    a <- A.fn(p0, gam); b <- B.fn(p0, gam); c <- C.fn(p0, gam)
+    var_sig_seed <- suppressWarnings(as.numeric(var.sig)[1])
+    var_gam_seed <- suppressWarnings(as.numeric(var.gam)[1])
+    if (!is.finite(var_sig_seed) || var_sig_seed <= 0) var_sig_seed <- 1e-4
+    if (!is.finite(var_gam_seed) || var_gam_seed <= 0) var_gam_seed <- 1e-8
+    hess_ld <- diag(c(var_sig_seed, var_gam_seed), nrow = 2L)
+    prior_gamma_log <- suppressWarnings(crch::dtt(
+      gam, location = prior_g[1], scale = prior_g[2], df = prior_g[3], left = L, right = U, log = TRUE
+    ))
+    if (!is.finite(prior_gamma_log)) prior_gamma_log <- -Inf
+    prior_sigma_log <- suppressWarnings(nimble::dinvgamma(sig, shape = prior_s[1], scale = prior_s[2], log = TRUE))
+    if (!is.finite(prior_sigma_log)) prior_sigma_log <- -Inf
+    return(list(E.sigma=sig,E.inv.sigma=1/sig,E.gam=gam,
+                E.c2.invb.absgam2.sigma = c^2*sig*abs(gam)^2/b, E.c.invb.absgam = c*abs(gam)/b,
+                E.c.a.invb.absgam = c*abs(gam)*a/b, E.a2.invb.inv.sigma = a^2/(sig*b),
+                E.invb.inv.sigma = 1/(sig*b), E.a.invb.inv.sigma = a/(sig*b),
+                Hess.LD = hess_ld,
+                E.log.sig.b=log(sig*b),
+                E.log.sig = log(sig),
+                E.prior.sig.gam= prior_gamma_log + prior_sigma_log,
+                E.theta = c(theta_s_star, theta_g_fixed),
+                entrop = 0))
+  }
 
   # Optimization step
   optim_results <- optim(par = initial_values, 
@@ -2147,12 +2245,20 @@ for (j in 1:(J+1) ) {
   theta_s <- gamsig.dummy$E.theta[1]
   theta_g <- gamsig.dummy$E.theta[2]
   samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = gamsig.dummy$Hess.LD)
-  samp.gamma[j,] = LL+(-LL+UU)*exp(-exp(samp.LD[,2]))
+  if (isTRUE(UNIV_AL_MODE)) {
+    samp.gamma[j,] = rep(0, n.samp)
+  } else {
+    samp.gamma[j,] = LL+(-LL+UU)*exp(-exp(samp.LD[,2]))
+  }
   samp.sigma[j,] = exp(samp.LD[,1]) 
   # Generalized Inverse Gausian Sampling
   samp.uts[j,,] = t(sample_gig_devroye_vector(n.samp, uts.dummy$uts.lambda, uts.dummy$uts.psi, uts.dummy$uts.chi))
   # Truncated normal
-  samp.sts[j,,] = t(sample_truncnorm(n.samp, TT, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
+  if (isTRUE(UNIV_AL_MODE)) {
+    samp.sts[j,,] = 0
+  } else {
+    samp.sts[j,,] = t(sample_truncnorm(n.samp, TT, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
+  }
 }   
 ########################
 FFF <- (new.gamsig.out$E.c.invb.absgam[,] * new.sts.out$E.sts + new.gamsig.out$E.a.invb.inv.sigma[,]/new.uts.out$E.inv.uts) / new.gamsig.out$E.invb.inv.sigma[,] 
