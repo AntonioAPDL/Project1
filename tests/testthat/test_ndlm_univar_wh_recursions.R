@@ -228,3 +228,20 @@ test_that("ndlm_univar Student-t samplers return expected shapes and finite valu
   expect_equal(dim(seg), c(p, 7L, n_draws))
   expect_true(all(is.finite(seg)))
 })
+
+test_that("ndlm_univar covariance array hardening enforces PSD floor", {
+  p <- 3L
+  arr <- array(0, dim = c(p, p, 2L))
+  arr[, , 1] <- matrix(c(1, 0.2, 0.1, 0.2, 0.8, -0.1, 0.1, -0.1, 0.6), nrow = p, byrow = TRUE)
+  arr[, , 2] <- matrix(c(1, 0.9999999999, 0, 0.9999999999, 1, 0, 0, 0, -1e-12), nrow = p, byrow = TRUE)
+  arr[, , 2] <- (arr[, , 2] + t(arr[, , 2])) / 2
+
+  stab <- list(cov_eig_floor = 1e-8, cov_eig_cap = 1e8, cov_diag_jitter = 1e-10)
+  out <- ndlm_univar_cov_stabilize_array(arr, stabilization = stab)
+
+  mins <- vapply(seq_len(dim(out)[3]), function(k) {
+    min(eigen(out[, , k], symmetric = TRUE, only.values = TRUE)$values)
+  }, numeric(1))
+  expect_true(all(is.finite(mins)))
+  expect_true(all(mins >= 1e-8 - 1e-12))
+})

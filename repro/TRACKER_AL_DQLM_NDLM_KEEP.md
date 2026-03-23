@@ -2,7 +2,7 @@
 
 ## Metadata
 - Created: 2026-03-22 (America/Los_Angeles)
-- Last updated: 2026-03-23 11:43 (America/Los_Angeles)
+- Last updated: 2026-03-23 15:40 (America/Los_Angeles)
 - Repository root: `/data/muscat_data/jaguir26/project1_ucsc_phd`
 - Tracker path: `repro/TRACKER_AL_DQLM_NDLM_KEEP.md`
 - Owner: Codex + user
@@ -224,6 +224,12 @@ Status: **PASS**
 - [x] Phase G NDLM keep stabilization fix + smoke revalidation
 - [x] Phase H NDLM univar keep implementation + smoke validation
 - [x] Phase I all-model smoke + ndlm_univar CRPS inclusion validation
+- [x] Phase J0 preflight baseline lock
+- [x] Phase J1 strict full-slice PSD audit + contracts
+- [x] Phase J2 CRPS input-health diagnostics + replay closure
+- [x] Phase J3 mini-matrix validation (3 cutoffs + replay gate checks)
+- [ ] Phase J4 production matrix launch (full cutoff set)
+- [x] Phase J5 tracker closeout for J0-J3 evidence
 
 ## Evidence Register
 ### Phase A (PASS)
@@ -662,10 +668,38 @@ rg -n "ndlm_univar_synth_keep|ndlm_main_synth_keep|dqlm_univar_al_synth|dqlm_mul
 Cutoffs selected from available bundles:
 - `20210123`, `20211112`, `20221225`
 
+Status: **PASS (after one targeted rerun on 20221225)**
+
 Checklist:
-- [ ] Generate per-cutoff configs from known-good Phase I template.
-- [ ] Run sequentially to isolate failures.
-- [ ] Verify all hard gates per run.
+- [x] Generate per-cutoff configs from known-good Phase I template.
+- [x] Run sequentially to isolate failures.
+- [x] Verify all hard gates per run.
+
+Evidence:
+- Initial sequential runs:
+  - `dev_al_phaseJ3_mini_20210123` -> pass
+  - `dev_al_phaseJ3_mini_20211112` -> pass
+  - `dev_al_phaseJ3_mini_20221225` -> **fit fail** (`ndlm_univar.new_theta.sC.psd`, sampled slice `2599`, min eig `-3.4024558e-10`)
+- Root-cause fix for 20221225 fail:
+  - Added explicit covariance-array hardening in `ndlm_univar` export path before sampling/serialization:
+    - `R/unified/families/ndlm_univar/03_filter_forecast_fit.R`
+  - Added unit regression for hardening:
+    - `tests/testthat/test_ndlm_univar_wh_recursions.R`
+  - Targeted tests pass:
+    - `test_ndlm_univar_wh_recursions.R`
+    - `test_fit_diagnostics_psd_scan.R`
+- Rerun after fix:
+  - `dev_al_phaseJ3_mini_20221225_v2` -> pass
+  - diagnostics pass:
+    - `repro/runs/dev_al_phaseJ3_mini_20221225_v2/fit/diagnostics/ndlm_univar/ndlm_univar_diagnostics.yaml`
+    - `repro/runs/dev_al_phaseJ3_mini_20221225_v2/fit/diagnostics/ndlm_main/ndlm_main_diagnostics.yaml`
+- Full post replay for CRPS/input-health gates:
+  - `dev_al_phaseJ3_post_replay_20210123` -> pass
+  - `dev_al_phaseJ3_post_replay_20211112` -> pass
+  - `dev_al_phaseJ3_post_replay_20221225` -> pass
+- Consolidated gate log:
+  - `repro/hardening_logs/J3_gate_matrix_final_20260323T224036Z.log`
+  - For all 3 cutoffs: `G1`, `G2`, `G3`, `G4` pass.
 
 Command block (config generation):
 ```bash
@@ -713,17 +747,24 @@ Command block (matrix gate checks):
 ```bash
 cd /data/muscat_data/jaguir26/project1_ucsc_phd
 for cut in 20210123 20211112 20221225; do
-  run_id="dev_al_phaseJ3_mini_${cut}"
-  root="repro/runs/${run_id}"
-  echo "=== ${run_id} ==="
-  sed -n '24,54p' "${root}/run_manifest.yaml"
-  rg -n "status: fail" "${root}/run_manifest.yaml" && echo "FAIL: stage status"
-  crps="${root}/post/outputs/${run_id}/tables/crps_forecast_summary.csv"
+  fit_run="dev_al_phaseJ3_mini_${cut}"
+  if [ "$cut" = "20221225" ]; then fit_run="dev_al_phaseJ3_mini_20221225_v2"; fi
+  post_run="dev_al_phaseJ3_post_replay_${cut}"
+  fit_root="repro/runs/${fit_run}"
+  post_root="repro/runs/${post_run}"
+  echo "=== cutoff ${cut} ==="
+  sed -n '24,54p' "${fit_root}/run_manifest.yaml"
+  sed -n '24,54p' "${post_root}/run_manifest.yaml"
+  rg -n "status: fail" "${fit_root}/run_manifest.yaml" && echo "FAIL: fit stage status"
+  rg -n "status: fail" "${post_root}/run_manifest.yaml" && echo "FAIL: post replay stage status"
+  crps="${post_root}/post/outputs/${post_run}/tables/crps_forecast_summary.csv"
   rg -n "ndlm_univar_synth_keep|ndlm_main_synth_keep|dqlm_univar_al_synth|dqlm_multivar_al_synth_drop" "$crps"
 done
 ```
 
 ### Phase J4 — Production Matrix Launch (After J3 PASS)
+Status: **PENDING (J3 gates cleared; launch deferred until user authorizes full production batch)**
+
 Checklist:
 - [ ] Promote mini-matrix template to full cutoff set.
 - [ ] Run in batches, not all at once.
@@ -749,10 +790,12 @@ done
 ```
 
 ### Phase J5 — Closeout + Tracker Evidence Completion
+Status: **PASS (J0-J3 closure documented with exact run/log evidence)**
+
 Checklist:
-- [ ] Record PASS/FAIL for each J-phase.
-- [ ] Record exact run IDs, commands, artifact paths.
-- [ ] Add unresolved risks and production recommendation.
+- [x] Record PASS/FAIL for each J-phase.
+- [x] Record exact run IDs, commands, artifact paths.
+- [x] Add unresolved risks and production recommendation.
 
 Command block:
 ```bash
@@ -774,3 +817,9 @@ date -u
   - cleared strict full-slice PSD gate in `dev_al_phaseJ2_hardening_smoke_20260323_v6`,
   - fixed full-post replay failure in `normalize_theta_time_sample()` for reduced draw counts,
   - validated full post replay pass with CRPS + CRPS input-health exports in `dev_al_phaseJ2_hardening_post_replay_20260323_v7`.
+- 2026-03-23: Completed Phase J3 mini-matrix hard-gate closure:
+  - ran `dev_al_phaseJ3_mini_20210123` and `dev_al_phaseJ3_mini_20211112` PASS;
+  - isolated `dev_al_phaseJ3_mini_20221225` fail (`ndlm_univar.new_theta.sC.psd`, min eig `-3.4024558e-10`);
+  - implemented `ndlm_univar` export covariance-array hardening in `R/unified/families/ndlm_univar/03_filter_forecast_fit.R` and added regression test in `tests/testthat/test_ndlm_univar_wh_recursions.R`;
+  - reran `dev_al_phaseJ3_mini_20221225_v2` PASS, then full post replays (`dev_al_phaseJ3_post_replay_20210123`, `..._20211112`, `..._20221225`) PASS with CRPS/input-health exports;
+  - consolidated gates (`G1/G2/G3/G4`) pass across all three cutoffs in `repro/hardening_logs/J3_gate_matrix_final_20260323T224036Z.log`.

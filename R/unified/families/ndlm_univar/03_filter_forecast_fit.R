@@ -111,6 +111,22 @@ ndlm_univar_cov_diag_one <- function(object_name, cov_arr) {
   )
 }
 
+ndlm_univar_cov_stabilize_array <- function(cov_arr, stabilization = NULL) {
+  dims <- dim(cov_arr)
+  if (is.null(dims) || length(dims) != 3L || dims[1] != dims[2]) {
+    stop("ndlm_univar covariance array stabilization expects a square 3D array", call. = FALSE)
+  }
+  out <- cov_arr
+  n_slices <- as.integer(dims[3])
+  if (!is.finite(n_slices) || n_slices < 1L) {
+    return(out)
+  }
+  for (k in seq_len(n_slices)) {
+    out[, , k] <- ndlm_univar_cov_stabilize(out[, , k, drop = TRUE], stabilization = stabilization)
+  }
+  out
+}
+
 ndlm_univar_build_model_sequences <- function(inputs, constants) {
   y <- as.numeric(inputs$y)
   X_hist <- as.matrix(inputs$X_hist)
@@ -302,6 +318,17 @@ ndlm_univar_run_closed_form <- function(inputs, constants) {
     stabilization = constants$stabilization
   )
 
+  # Exported covariances are consumed by diagnostics/post; harden all slices
+  # to avoid residual numerical PSD drift after backend scaling/conversions.
+  smoother_out$R_smooth_star <- ndlm_univar_cov_stabilize_array(
+    smoother_out$R_smooth_star,
+    stabilization = constants$stabilization
+  )
+  smoother_out$R_smooth_scale <- ndlm_univar_cov_stabilize_array(
+    smoother_out$R_smooth_scale,
+    stabilization = constants$stabilization
+  )
+
   n_T <- as.numeric(filter_out$n[Tn])
   S_T <- as.numeric(filter_out$S[Tn])
   sigma_post_mean <- if (isTRUE(n_T > 2)) (n_T * S_T) / (n_T - 2) else S_T
@@ -330,14 +357,24 @@ ndlm_univar_run_closed_form <- function(inputs, constants) {
   sm_fore <- forecast_out$a[, -1, drop = FALSE]
   sC_fore <- forecast_out$R_star[, , -1, drop = FALSE]
   for (kk in seq_len(dim(sC_fore)[3])) {
-    sC_fore[, , kk] <- S_T * sC_fore[, , kk]
+    sC_fore[, , kk] <- ndlm_univar_cov_stabilize(
+      S_T * sC_fore[, , kk],
+      stabilization = constants$stabilization
+    )
   }
+  sC_fore <- ndlm_univar_cov_stabilize_array(sC_fore, stabilization = constants$stabilization)
 
   sm_ens_1 <- if (K_overlap > 0L) sm_fore[, seq_len(K_overlap), drop = FALSE] else matrix(0, nrow = nrow(sm_fore), ncol = 0L)
   sm_ens_2 <- if (K_tail > 0L) sm_fore[, seq.int(K_overlap + 1L, K_max), drop = FALSE] else matrix(0, nrow = nrow(sm_fore), ncol = 0L)
 
   sC_ens_1 <- if (K_overlap > 0L) sC_fore[, , seq_len(K_overlap), drop = FALSE] else array(0, dim = c(nrow(sm_fore), nrow(sm_fore), 0L))
   sC_ens_2 <- if (K_tail > 0L) sC_fore[, , seq.int(K_overlap + 1L, K_max), drop = FALSE] else array(0, dim = c(nrow(sm_fore), nrow(sm_fore), 0L))
+  if (dim(sC_ens_1)[3] > 0L) {
+    sC_ens_1 <- ndlm_univar_cov_stabilize_array(sC_ens_1, stabilization = constants$stabilization)
+  }
+  if (dim(sC_ens_2)[3] > 0L) {
+    sC_ens_2 <- ndlm_univar_cov_stabilize_array(sC_ens_2, stabilization = constants$stabilization)
+  }
 
   n_draws <- as.integer(constants$n_draws)
   if (!is.finite(n_draws) || n_draws < 2L) n_draws <- 64L
