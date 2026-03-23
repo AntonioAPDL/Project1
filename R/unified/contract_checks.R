@@ -555,3 +555,264 @@ unified_contract_check_ndlm_main <- function(
   report$report_paths <- report_paths
   report
 }
+
+unified_contract_check_ndlm_univar <- function(
+  rdata_path,
+  report_dir,
+  summary_log_path = NULL,
+  write_reports = TRUE
+) {
+  checks <- list()
+  errors <- character(0)
+  warnings <- character(0)
+
+  add_check <- function(id, ok, detail) {
+    checks[[length(checks) + 1L]] <<- list(
+      id = id,
+      status = if (isTRUE(ok)) "pass" else "fail",
+      detail = as.character(detail)
+    )
+    if (!isTRUE(ok)) {
+      errors <<- c(errors, sprintf("%s: %s", id, detail))
+    }
+  }
+  add_warning <- function(msg) {
+    warnings <<- c(warnings, as.character(msg))
+  }
+
+  env <- unified_contract_env_load(rdata_path)
+  required_names <- c(
+    "new.theta.out_50_NDLM_univar_synth_DISC",
+    "samp.theta_50_NDLM_univar_synth_DISC",
+    "samp.sigma_50_NDLM_univar_synth_DISC",
+    "samp.theta.ens_50_NDLM_univar_synth_DISC",
+    "seq.elbo_50_NDLM_univar_synth_DISC",
+    "seq.sigma_50_NDLM_univar_synth_DISC",
+    "seq.scale_50_NDLM_univar_synth_DISC",
+    "delta_50_NDLM_univar_synth_DISC",
+    "y.fore.draws_50_NDLM_univar_synth_DISC",
+    "ndlm_univar_theory_state"
+  )
+  for (nm in required_names) {
+    add_check(
+      sprintf("ndlm_univar.%s.exists", nm),
+      exists(nm, envir = env, inherits = FALSE),
+      "required object missing"
+    )
+  }
+
+  new_theta <- unified_contract_object(env, "new.theta.out_50_NDLM_univar_synth_DISC")
+  samp_theta <- unified_contract_object(env, "samp.theta_50_NDLM_univar_synth_DISC")
+  samp_sigma <- unified_contract_object(env, "samp.sigma_50_NDLM_univar_synth_DISC")
+  samp_theta_ens <- unified_contract_object(env, "samp.theta.ens_50_NDLM_univar_synth_DISC")
+  seq_elbo <- unified_contract_object(env, "seq.elbo_50_NDLM_univar_synth_DISC")
+  seq_sigma <- unified_contract_object(env, "seq.sigma_50_NDLM_univar_synth_DISC")
+  seq_scale <- unified_contract_object(env, "seq.scale_50_NDLM_univar_synth_DISC")
+  delta <- unified_contract_object(env, "delta_50_NDLM_univar_synth_DISC")
+  y_fore_draws <- unified_contract_object(env, "y.fore.draws_50_NDLM_univar_synth_DISC")
+  theory_state <- unified_contract_object(env, "ndlm_univar_theory_state")
+
+  Tn <- NA_integer_
+  Kn <- NA_integer_
+  if (!is.null(new_theta)) {
+    add_check("ndlm_univar.new_theta.is_list", is.list(new_theta), "new.theta must be a list")
+    if (is.list(new_theta)) {
+      req_fields <- c("sm", "sC", "sm_ens", "sC_ens", "exps", "standard_forecast_errors")
+      missing_fields <- req_fields[!req_fields %in% names(new_theta)]
+      add_check(
+        "ndlm_univar.new_theta.required_fields",
+        length(missing_fields) == 0L,
+        if (length(missing_fields) == 0L) "ok" else sprintf("missing fields: %s", paste(missing_fields, collapse = ", "))
+      )
+      if (length(missing_fields) == 0L) {
+        sm <- new_theta$sm
+        sC <- new_theta$sC
+        exps <- new_theta$exps
+        sm_ens <- new_theta$sm_ens
+        sC_ens <- new_theta$sC_ens
+        sfe <- new_theta$standard_forecast_errors
+
+        add_check("ndlm_univar.new_theta.sm.matrix", is.numeric(sm) && !is.null(dim(sm)) && length(dim(sm)) == 2L, "sm must be numeric matrix")
+        if (!is.null(dim(sm)) && length(dim(sm)) == 2L) {
+          Tn <- as.integer(dim(sm)[2])
+        }
+        add_check("ndlm_univar.new_theta.sm.finite", unified_contract_all_finite(sm), "sm contains non-finite values")
+
+        add_check("ndlm_univar.new_theta.sC.array3", is.numeric(sC) && !is.null(dim(sC)) && length(dim(sC)) == 3L, "sC must be numeric 3D array")
+        if (!is.null(dim(sC)) && length(dim(sC)) == 3L && is.finite(Tn)) {
+          add_check(
+            "ndlm_univar.new_theta.sC.T_matches",
+            as.integer(dim(sC)[3]) == as.integer(Tn),
+            sprintf("sC third dim=%d, sm T=%d", as.integer(dim(sC)[3]), as.integer(Tn))
+          )
+        }
+        add_check("ndlm_univar.new_theta.sC.finite", unified_contract_all_finite(sC), "sC contains non-finite values")
+
+        add_check("ndlm_univar.new_theta.exps.matrix", is.numeric(exps) && !is.null(dim(exps)) && length(dim(exps)) == 2L, "exps must be numeric matrix")
+        add_check("ndlm_univar.new_theta.exps.finite", unified_contract_all_finite(exps), "exps contains non-finite values")
+
+        add_check(
+          "ndlm_univar.new_theta.sm_ens.list_matrix",
+          is.list(sm_ens) && length(sm_ens) > 0L &&
+            all(vapply(sm_ens, function(x) is.numeric(x) && !is.null(dim(x)) && length(dim(x)) == 2L, logical(1))),
+          "sm_ens must be non-empty list of numeric matrices"
+        )
+        add_check(
+          "ndlm_univar.new_theta.sC_ens.list_array3",
+          is.list(sC_ens) && length(sC_ens) > 0L &&
+            all(vapply(sC_ens, function(x) is.numeric(x) && !is.null(dim(x)) && length(dim(x)) == 3L, logical(1))),
+          "sC_ens must be non-empty list of numeric 3D arrays"
+        )
+        add_check("ndlm_univar.new_theta.sm_ens.finite", unified_contract_all_finite(sm_ens), "sm_ens contains non-finite values")
+        add_check("ndlm_univar.new_theta.sC_ens.finite", unified_contract_all_finite(sC_ens), "sC_ens contains non-finite values")
+
+        add_check("ndlm_univar.new_theta.standard_forecast_errors.matrix", is.numeric(sfe) && !is.null(dim(sfe)) && length(dim(sfe)) == 2L, "standard_forecast_errors must be numeric matrix")
+        if (!is.null(dim(sfe)) && length(dim(sfe)) == 2L) {
+          Kn <- as.integer(dim(sfe)[2])
+          add_check("ndlm_univar.new_theta.standard_forecast_errors.K_ge_1", is.finite(Kn) && Kn >= 1L, sprintf("K=%s", as.character(Kn)))
+        }
+        add_check("ndlm_univar.new_theta.standard_forecast_errors.finite", unified_contract_all_finite(sfe), "standard_forecast_errors contains non-finite values")
+      }
+    }
+  }
+
+  if (!is.null(samp_theta)) {
+    if (is.list(samp_theta) && ("samp_theta" %in% names(samp_theta))) {
+      samp_theta <- samp_theta$samp_theta
+    }
+    add_check("ndlm_univar.samp_theta.numeric", is.numeric(samp_theta), "samp.theta must be numeric")
+    st_dim <- dim(samp_theta)
+    add_check("ndlm_univar.samp_theta.has_dim", !is.null(st_dim), "samp.theta must have dimensions")
+    if (!is.null(st_dim) && is.finite(Tn)) {
+      add_check(
+        "ndlm_univar.samp_theta.contains_T",
+        any(as.integer(st_dim) == as.integer(Tn)),
+        sprintf("dims=%s, expected one dim == T=%d", paste(st_dim, collapse = "x"), as.integer(Tn))
+      )
+    }
+    add_check("ndlm_univar.samp_theta.finite", unified_contract_all_finite(samp_theta), "samp.theta contains non-finite values")
+  }
+  if (!is.null(samp_sigma)) {
+    if (is.list(samp_sigma) && ("samp_sigma" %in% names(samp_sigma))) {
+      samp_sigma <- samp_sigma$samp_sigma
+    }
+    add_check("ndlm_univar.samp_sigma.numeric", is.numeric(samp_sigma), "samp.sigma must be numeric")
+    add_check("ndlm_univar.samp_sigma.len_ge_1", length(samp_sigma) >= 1L, sprintf("length=%d", length(samp_sigma)))
+    add_check("ndlm_univar.samp_sigma.finite", unified_contract_all_finite(samp_sigma), "samp.sigma contains non-finite values")
+  }
+  if (!is.null(samp_theta_ens)) {
+    if (is.list(samp_theta_ens) && ("samp_theta_ens" %in% names(samp_theta_ens))) {
+      samp_theta_ens <- samp_theta_ens$samp_theta_ens
+    }
+    collect_numeric_leaves <- function(x) {
+      if (is.null(x)) return(list())
+      if (is.numeric(x)) return(list(x))
+      if (!is.list(x) || length(x) == 0L) return(list())
+      out <- list()
+      for (ii in seq_along(x)) {
+        out <- c(out, collect_numeric_leaves(x[[ii]]))
+      }
+      out
+    }
+    leaf_arrays <- collect_numeric_leaves(samp_theta_ens)
+    add_check(
+      "ndlm_univar.samp_theta_ens.numeric_leaves",
+      length(leaf_arrays) > 0L,
+      "samp.theta.ens must contain numeric leaves"
+    )
+    if (length(leaf_arrays) > 0L) {
+      add_check(
+        "ndlm_univar.samp_theta_ens.finite",
+        all(vapply(leaf_arrays, unified_contract_all_finite, logical(1))),
+        "samp.theta.ens contains non-finite values"
+      )
+      dims_ok <- vapply(leaf_arrays, function(x) {
+        d <- dim(x)
+        !is.null(d) && length(d) >= 2L
+      }, logical(1))
+      add_check(
+        "ndlm_univar.samp_theta_ens.dim_rank_ge_2",
+        all(dims_ok),
+        "samp.theta.ens numeric leaves must have rank >= 2"
+      )
+    }
+  }
+  for (nm in c("seq_elbo", "seq_sigma", "seq_scale", "delta")) {
+    obj <- switch(
+      nm,
+      seq_elbo = seq_elbo,
+      seq_sigma = seq_sigma,
+      seq_scale = seq_scale,
+      delta = delta
+    )
+    if (!is.null(obj)) {
+      add_check(sprintf("ndlm_univar.%s.numeric", nm), is.numeric(obj), sprintf("%s must be numeric", nm))
+      add_check(sprintf("ndlm_univar.%s.finite", nm), unified_contract_all_finite(obj), sprintf("%s contains non-finite values", nm))
+    }
+  }
+  if (!is.null(y_fore_draws)) {
+    add_check(
+      "ndlm_univar.y_fore_draws.matrix",
+      is.numeric(y_fore_draws) && !is.null(dim(y_fore_draws)) && length(dim(y_fore_draws)) == 2L,
+      "y.fore.draws must be numeric matrix"
+    )
+    add_check("ndlm_univar.y_fore_draws.finite", unified_contract_all_finite(y_fore_draws), "y.fore.draws contains non-finite values")
+    if (!is.null(dim(y_fore_draws)) && length(dim(y_fore_draws)) == 2L && is.finite(Kn)) {
+      add_check(
+        "ndlm_univar.y_fore_draws.K_matches",
+        as.integer(dim(y_fore_draws)[2]) == as.integer(Kn),
+        sprintf("y.fore.draws ncol=%d, expected K=%d", as.integer(dim(y_fore_draws)[2]), as.integer(Kn))
+      )
+    }
+  }
+  if (!is.null(theory_state)) {
+    add_check("ndlm_univar.theory_state.is_list", is.list(theory_state), "ndlm_univar_theory_state must be a list")
+    if (is.list(theory_state)) {
+      add_check(
+        "ndlm_univar.theory_state.transfer_flag",
+        "transfer_active_forecast_window" %in% names(theory_state),
+        "missing transfer_active_forecast_window"
+      )
+      add_check(
+        "ndlm_univar.theory_state.K_positive",
+        is.finite(suppressWarnings(as.integer(theory_state$K))) &&
+          suppressWarnings(as.integer(theory_state$K)) >= 1L,
+        sprintf("K=%s", as.character(theory_state$K))
+      )
+    }
+  }
+
+  if (!is.null(summary_log_path) && nzchar(summary_log_path)) {
+    add_check("ndlm_univar.summary_log.exists", file.exists(summary_log_path), "summary log file missing")
+    if (file.exists(summary_log_path)) {
+      add_check(
+        "ndlm_univar.summary_log.nonempty",
+        file.info(summary_log_path)$size > 0L,
+        sprintf("summary log size=%d", as.integer(file.info(summary_log_path)$size))
+      )
+    }
+  } else {
+    add_warning("summary log path was not provided to NDLM univar contract check.")
+  }
+
+  status <- if (length(errors) == 0L) "pass" else "fail"
+  report <- list(
+    family = "ndlm_univar",
+    implementation_mode = "theory_aligned_closed_form",
+    rdata_path = normalizePath(rdata_path, mustWork = FALSE),
+    summary_log_path = if (is.null(summary_log_path)) NULL else normalizePath(summary_log_path, mustWork = FALSE),
+    status = status,
+    errors = unname(errors),
+    warnings = unname(warnings),
+    checks = checks,
+    checked_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  )
+  report_paths <- unified_contract_write_report(
+    report = report,
+    report_dir = report_dir,
+    stem = "ndlm_univar",
+    write_reports = write_reports
+  )
+  report$report_paths <- report_paths
+  report
+}

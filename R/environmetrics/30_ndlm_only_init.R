@@ -5,8 +5,11 @@
 #   - Explicitly avoid univariate/multivariate exDQLM bundle loading.
 ###############################################################################
 
-if (!isTRUE(MODEL_RUN_NDLM_MAIN)) {
-  stop("[POST_NDLM_ONLY_INIT] MODEL_RUN_NDLM_MAIN must be TRUE for NDLM-only init module.", call. = FALSE)
+if (!isTRUE(MODEL_RUN_NDLM_MAIN) && !isTRUE(MODEL_RUN_NDLM_UNIVAR)) {
+  stop(
+    "[POST_NDLM_ONLY_INIT] either MODEL_RUN_NDLM_MAIN or MODEL_RUN_NDLM_UNIVAR must be TRUE for NDLM-only init module.",
+    call. = FALSE
+  )
 }
 if (isTRUE(MODEL_RUN_EXDQLM_MULTIVAR) || isTRUE(MODEL_RUN_EXDQLM_UNIVAR)) {
   stop("[POST_NDLM_ONLY_INIT] NDLM-only init module was selected while exDQLM families are enabled.", call. = FALSE)

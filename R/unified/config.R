@@ -64,6 +64,7 @@ unified_config_defaults <- function() {
       run_exdqlm_multivar = TRUE,
       run_exdqlm_univar = FALSE,
       run_ndlm_main = FALSE,
+      run_ndlm_univar = FALSE,
       exdqlm_multivar = list(
         implementation_mode = "legacy_bridge",
         likelihood_mode = "exal",
@@ -115,6 +116,31 @@ unified_config_defaults <- function() {
           sigma_update_damping = 1.0,
           latent_var_cap_mult = 1e4,
           latent_var_cap_abs = 1e8
+        )
+      ),
+      ndlm_univar = list(
+        implementation_mode = "theory_aligned_closed_form",
+        kalman_backend = "cpp",
+        forecast_transfer_mode = "keep",
+        horizon_cap = 1080L,
+        posterior_draws = 64L,
+        prior = list(
+          n0 = 20,
+          S0 = 1
+        ),
+        state_evolution = list(
+          df_t = 0.95,
+          df_s1 = 0.98,
+          df_s2 = 0.98,
+          df_s67 = 0.98,
+          lambda = 0.99,
+          df_trans = 0.99999999,
+          df_covs = 0.99999
+        ),
+        stabilization = list(
+          cov_eig_floor = 1e-8,
+          cov_eig_cap = 1e8,
+          cov_diag_jitter = 1e-10
         )
       )
     ),
@@ -455,6 +481,24 @@ unified_resolve_ndlm_forecast_transfer_mode <- function(cfg, default = "keep") {
   mode
 }
 
+unified_resolve_ndlm_univar_forecast_transfer_mode <- function(cfg, default = "keep") {
+  mode <- as.character(unified_get(
+    cfg,
+    c("models", "ndlm_univar", "forecast_transfer_mode"),
+    default = default
+  ))
+  if (!length(mode) || is.na(mode[[1L]]) || !nzchar(mode[[1L]])) {
+    mode <- default
+  } else {
+    mode <- mode[[1L]]
+  }
+  mode <- tolower(trimws(mode))
+  if (!(mode %in% c("drop", "keep"))) {
+    mode <- default
+  }
+  mode
+}
+
 unified_resolve_multivar_transfer_modes <- function(cfg, default_mode = "drop") {
   single_mode <- as.character(unified_get(
     cfg,
@@ -713,6 +757,10 @@ unified_validate_config <- function(cfg) {
   if (!isTRUE(run_ndlm_main) && !identical(run_ndlm_main, FALSE)) {
     add_err("models.run_ndlm_main must be boolean (true/false)")
   }
+  run_ndlm_univar <- unified_get(cfg, c("models", "run_ndlm_univar"), default = FALSE)
+  if (!isTRUE(run_ndlm_univar) && !identical(run_ndlm_univar, FALSE)) {
+    add_err("models.run_ndlm_univar must be boolean (true/false)")
+  }
   read_mode_scalar <- function(path, default) {
     raw <- as.character(unified_get(cfg, path, default = default))
     if (!length(raw) || is.na(raw[[1L]]) || !nzchar(raw[[1L]])) {
@@ -733,6 +781,14 @@ unified_validate_config <- function(cfg) {
   ndlm_mode <- unified_get(cfg, c("models", "ndlm_main", "implementation_mode"), default = "theory_aligned")
   if (!(ndlm_mode %in% c("legacy_bridge", "theory_aligned"))) {
     add_err("models.ndlm_main.implementation_mode must be one of: legacy_bridge, theory_aligned")
+  }
+  ndlm_univar_mode <- unified_get(
+    cfg,
+    c("models", "ndlm_univar", "implementation_mode"),
+    default = "theory_aligned_closed_form"
+  )
+  if (!(ndlm_univar_mode %in% c("theory_aligned_closed_form", "theory_aligned"))) {
+    add_err("models.ndlm_univar.implementation_mode must be one of: theory_aligned_closed_form, theory_aligned")
   }
   multivar_likelihood_mode <- read_mode_scalar(c("models", "exdqlm_multivar", "likelihood_mode"), "exal")
   if (!(multivar_likelihood_mode %in% c("exal", "al"))) {
@@ -771,9 +827,17 @@ unified_validate_config <- function(cfg) {
   if (!(ndlm_kalman_backend %in% c("r", "cpp"))) {
     add_err("models.ndlm_main.kalman_backend must be one of: r, cpp")
   }
+  ndlm_univar_kalman_backend <- unified_get(cfg, c("models", "ndlm_univar", "kalman_backend"), default = "cpp")
+  if (!(ndlm_univar_kalman_backend %in% c("r", "cpp"))) {
+    add_err("models.ndlm_univar.kalman_backend must be one of: r, cpp")
+  }
   ndlm_forecast_transfer_mode <- read_mode_scalar(c("models", "ndlm_main", "forecast_transfer_mode"), "keep")
   if (!(ndlm_forecast_transfer_mode %in% c("drop", "keep"))) {
     add_err("models.ndlm_main.forecast_transfer_mode must be one of: drop, keep")
+  }
+  ndlm_univar_forecast_transfer_mode <- read_mode_scalar(c("models", "ndlm_univar", "forecast_transfer_mode"), "keep")
+  if (!(ndlm_univar_forecast_transfer_mode %in% c("drop", "keep"))) {
+    add_err("models.ndlm_univar.forecast_transfer_mode must be one of: drop, keep")
   }
   multivar_prob_keys <- c("df_t", "df_s1", "df_s2", "df_s67", "df_discrep", "lambda", "df_trans", "df_covs")
   for (nm in multivar_prob_keys) {
@@ -787,6 +851,13 @@ unified_validate_config <- function(cfg) {
     val <- suppressWarnings(as.numeric(unified_get(cfg, c("models", "ndlm_main", "state_evolution", nm), default = NA_real_)))
     if (!is.finite(val) || val <= 0 || val >= 1) {
       add_err(sprintf("models.ndlm_main.state_evolution.%s must be numeric in (0,1)", nm))
+    }
+  }
+  ndlm_univar_prob_keys <- c("df_t", "df_s1", "df_s2", "df_s67", "lambda", "df_trans", "df_covs")
+  for (nm in ndlm_univar_prob_keys) {
+    val <- suppressWarnings(as.numeric(unified_get(cfg, c("models", "ndlm_univar", "state_evolution", nm), default = NA_real_)))
+    if (!is.finite(val) || val <= 0 || val >= 1) {
+      add_err(sprintf("models.ndlm_univar.state_evolution.%s must be numeric in (0,1)", nm))
     }
   }
   ndlm_cov_floor <- suppressWarnings(as.numeric(unified_get(
@@ -847,6 +918,66 @@ unified_validate_config <- function(cfg) {
   if (!is.finite(ndlm_latent_abs) || ndlm_latent_abs <= 0) {
     add_err("models.ndlm_main.stabilization.latent_var_cap_abs must be numeric > 0")
   }
+
+  ndlm_univar_horizon_cap <- suppressWarnings(as.integer(unified_get(
+    cfg,
+    c("models", "ndlm_univar", "horizon_cap"),
+    default = 1080L
+  )))
+  if (!is.finite(ndlm_univar_horizon_cap) || ndlm_univar_horizon_cap < 1L) {
+    add_err("models.ndlm_univar.horizon_cap must be an integer >= 1")
+  }
+  ndlm_univar_draws <- suppressWarnings(as.integer(unified_get(
+    cfg,
+    c("models", "ndlm_univar", "posterior_draws"),
+    default = 64L
+  )))
+  if (!is.finite(ndlm_univar_draws) || ndlm_univar_draws < 1L) {
+    add_err("models.ndlm_univar.posterior_draws must be an integer >= 1")
+  }
+  ndlm_univar_n0 <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_univar", "prior", "n0"),
+    default = 20
+  )))
+  if (!is.finite(ndlm_univar_n0) || ndlm_univar_n0 <= 0) {
+    add_err("models.ndlm_univar.prior.n0 must be numeric > 0")
+  }
+  ndlm_univar_S0 <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_univar", "prior", "S0"),
+    default = 1
+  )))
+  if (!is.finite(ndlm_univar_S0) || ndlm_univar_S0 <= 0) {
+    add_err("models.ndlm_univar.prior.S0 must be numeric > 0")
+  }
+  ndlm_univar_cov_floor <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_univar", "stabilization", "cov_eig_floor"),
+    default = 1e-8
+  )))
+  if (!is.finite(ndlm_univar_cov_floor) || ndlm_univar_cov_floor <= 0) {
+    add_err("models.ndlm_univar.stabilization.cov_eig_floor must be numeric > 0")
+  }
+  ndlm_univar_cov_cap <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_univar", "stabilization", "cov_eig_cap"),
+    default = 1e8
+  )))
+  if (!is.finite(ndlm_univar_cov_cap) || ndlm_univar_cov_cap <= 0) {
+    add_err("models.ndlm_univar.stabilization.cov_eig_cap must be numeric > 0")
+  } else if (is.finite(ndlm_univar_cov_floor) && ndlm_univar_cov_cap <= ndlm_univar_cov_floor) {
+    add_err("models.ndlm_univar.stabilization.cov_eig_cap must be greater than cov_eig_floor")
+  }
+  ndlm_univar_cov_jitter <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_univar", "stabilization", "cov_diag_jitter"),
+    default = 1e-10
+  )))
+  if (!is.finite(ndlm_univar_cov_jitter) || ndlm_univar_cov_jitter < 0) {
+    add_err("models.ndlm_univar.stabilization.cov_diag_jitter must be numeric >= 0")
+  }
+
   univar_prob_keys <- c("df_t", "df_s1", "df_s2", "df_s67", "lambda", "df_trans", "df_covs")
   for (nm in univar_prob_keys) {
     val <- suppressWarnings(as.numeric(unified_get(cfg, c("models", "exdqlm_univar", "state_evolution", nm), default = NA_real_)))

@@ -74,6 +74,78 @@ unified_read_csv_checked <- function(path, label, stage_name) {
   out
 }
 
+unified_detect_date_info <- function(df, label, path, required = FALSE) {
+  nm <- names(df)
+  candidates <- nm[grepl("date|time", tolower(nm))]
+  if (length(nm) > 0L) {
+    candidates <- unique(c(candidates, nm[[1L]]))
+  }
+  for (cand in candidates) {
+    vals <- suppressWarnings(as.Date(df[[cand]]))
+    good <- sum(!is.na(vals))
+    if (good >= max(1L, floor(0.8 * length(vals)))) {
+      return(list(col = cand, dates = vals))
+    }
+  }
+  if (isTRUE(required)) {
+    stop(
+      unified_schema_error(
+        stage_name = "shared_inputs/date_detect",
+        label = label,
+        path = path,
+        reason = "no parseable date column detected"
+      ),
+      call. = FALSE
+    )
+  }
+  NULL
+}
+
+unified_validate_forecast_window_csv <- function(path, label, stage_name, cutoff_date) {
+  cutoff_date <- suppressWarnings(as.Date(cutoff_date))
+  if (is.na(cutoff_date)) return(invisible(TRUE))
+  forecast_start <- cutoff_date + 1L
+
+  df <- unified_read_csv_checked(path, label, stage_name)
+  date_info <- unified_detect_date_info(df, label, path, required = TRUE)
+  dates <- suppressWarnings(as.Date(date_info$dates))
+  dates <- dates[!is.na(dates)]
+  if (length(dates) == 0L) {
+    stop(
+      unified_schema_error(
+        stage_name = stage_name,
+        label = label,
+        path = path,
+        reason = "no valid forecast dates found"
+      ),
+      call. = FALSE
+    )
+  }
+
+  max_date <- max(dates, na.rm = TRUE)
+  min_date <- min(dates, na.rm = TRUE)
+  if (max_date < forecast_start) {
+    stop(
+      unified_schema_error(
+        stage_name = stage_name,
+        label = label,
+        path = path,
+        reason = sprintf(
+          "forecast dates end before forecast_start_date (%s). min=%s max=%s cutoff=%s",
+          as.character(forecast_start),
+          as.character(min_date),
+          as.character(max_date),
+          as.character(cutoff_date)
+        ),
+        hint = "This usually indicates a stale shared forecats snapshot from another cutoff."
+      ),
+      call. = FALSE
+    )
+  }
+
+  invisible(TRUE)
+}
+
 unified_csv_quick_validate <- function(path, label) {
   out <- tryCatch(
     utils::read.csv(path, nrows = 2L, stringsAsFactors = FALSE, check.names = FALSE),
@@ -310,7 +382,12 @@ unified_validate_required_shared_inputs <- function(
   run_root,
   stage_name,
   manifest = NULL,
-  enabled_models = list(run_exdqlm_multivar = TRUE, run_exdqlm_univar = FALSE, run_ndlm_main = FALSE),
+  enabled_models = list(
+    run_exdqlm_multivar = TRUE,
+    run_exdqlm_univar = FALSE,
+    run_ndlm_main = FALSE,
+    run_ndlm_univar = FALSE
+  ),
   required_covariates = character(0)
 ) {
   paths <- unified_shared_input_paths(run_root)
@@ -321,6 +398,7 @@ unified_validate_required_shared_inputs <- function(
   if (isTRUE(enabled_models$run_exdqlm_multivar)) families <- c(families, "exdqlm_multivar")
   if (isTRUE(enabled_models$run_exdqlm_univar)) families <- c(families, "exdqlm_univar")
   if (isTRUE(enabled_models$run_ndlm_main)) families <- c(families, "ndlm_main")
+  if (isTRUE(enabled_models$run_ndlm_univar)) families <- c(families, "ndlm_univar")
   if (length(families) == 0L) families <- "shared_bundle_only"
 
   errs <- character(0)

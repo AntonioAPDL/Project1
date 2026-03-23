@@ -141,9 +141,11 @@ unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record
   multivar_mode <- unified_get(cfg, c("models", "exdqlm_multivar", "implementation_mode"), default = "legacy_bridge")
   univar_mode <- unified_get(cfg, c("models", "exdqlm_univar", "implementation_mode"), default = "theory_aligned")
   ndlm_mode <- unified_get(cfg, c("models", "ndlm_main", "implementation_mode"), default = "theory_aligned")
+  ndlm_univar_mode <- unified_get(cfg, c("models", "ndlm_univar", "implementation_mode"), default = "theory_aligned_closed_form")
   multivar_authoritative <- isTRUE(unified_get(cfg, c("models", "exdqlm_multivar", "authoritative"), default = TRUE))
   univar_authoritative <- isTRUE(unified_get(cfg, c("models", "exdqlm_univar", "authoritative"), default = FALSE))
   ndlm_authoritative <- isTRUE(unified_get(cfg, c("models", "ndlm_main", "authoritative"), default = FALSE))
+  ndlm_univar_authoritative <- isTRUE(unified_get(cfg, c("models", "ndlm_univar", "authoritative"), default = FALSE))
 
   list(
     manifest_version = 1L,
@@ -187,6 +189,12 @@ unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record
         implementation_mode = ndlm_mode,
         kalman_backend = as.character(unified_get(cfg, c("models", "ndlm_main", "kalman_backend"), default = "cpp")),
         authoritative = ndlm_authoritative
+      ),
+      ndlm_univar = list(
+        enabled = isTRUE(cfg$models$run_ndlm_univar),
+        implementation_mode = ndlm_univar_mode,
+        kalman_backend = as.character(unified_get(cfg, c("models", "ndlm_univar", "kalman_backend"), default = "cpp")),
+        authoritative = ndlm_univar_authoritative
       )
     ),
     inputs = inputs,

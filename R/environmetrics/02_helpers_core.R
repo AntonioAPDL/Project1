@@ -85,6 +85,42 @@ sort_to_len <- function(x, target_len, keep_na = NULL, fill = NA_real_, context 
   sorted[seq_len(target_len)]
 }
 
+safe_exp_limit <- function(margin = 5) {
+  margin <- suppressWarnings(as.numeric(margin[[1L]]))
+  if (!is.finite(margin) || margin < 0) margin <- 5
+  log(.Machine$double.xmax) - margin
+}
+
+assert_exp_safe_matrix <- function(mat, context = "latent_matrix", margin = 5) {
+  if (!is.numeric(mat) || is.null(dim(mat)) || length(dim(mat)) != 2L) {
+    stop(sprintf("[EXP_INPUT_SHAPE] %s must be a numeric 2D matrix.", context), call. = FALSE)
+  }
+
+  finite_vals <- as.numeric(mat[is.finite(mat)])
+  if (length(finite_vals) == 0L) {
+    stop(sprintf("[EXP_INPUT_EMPTY] %s has no finite values to exponentiate.", context), call. = FALSE)
+  }
+
+  limit <- safe_exp_limit(margin = margin)
+  max_val <- max(finite_vals, na.rm = TRUE)
+  if (!is.finite(max_val)) {
+    stop(sprintf("[EXP_INPUT_NONFINITE] %s max latent value is non-finite.", context), call. = FALSE)
+  }
+  if (max_val > limit) {
+    stop(
+      sprintf(
+        "[EXP_OVERFLOW_RISK] %s max latent value %.6f exceeds safe exp limit %.6f.",
+        context,
+        max_val,
+        limit
+      ),
+      call. = FALSE
+    )
+  }
+
+  invisible(list(max = max_val, limit = limit))
+}
+
 build_agg_discrep_quantile_df <- function(
   q_array,
   idx,
@@ -712,6 +748,8 @@ post_write_table_exports_readme <- function(output_dir, ci_digits = 3L, table_fo
     "- gamma_summary.csv: gamma by source x quantile with center=posterior median and 95% CI",
     "- sigma_summary.csv: sigma by source x quantile with center=posterior median and 95% CI",
     "- covariate_effects_summary.csv: transfer-function covariate effects with center=posterior mean and 95% CI at final time index",
+    "- crps_forecast_per_time*.csv: lead-wise forecast CRPS using quantile/check-loss approximation",
+    "- crps_forecast_summary*.csv: mean and dispersion CRPS summaries by forecast model",
     "",
     "Optional LaTeX snippets:",
     "- gamma_summary.tex",
@@ -759,6 +797,259 @@ C_fn <- function(p0, gam) {
 check_loss_fn <- function(p0, diff) {
   diff * p0 - diff * as.numeric(diff < 0)
 }
+
+post_sanitize_file_suffix <- function(file_suffix = "") {
+  suffix_raw <- if (is.null(file_suffix)) "" else file_suffix
+  suffix <- as.character(suffix_raw)
+  if (!nzchar(suffix)) return("")
+  suffix <- gsub("[^A-Za-z0-9._-]+", "_", suffix)
+  suffix <- gsub("^_+|_+$", "", suffix)
+  if (!nzchar(suffix)) return("")
+  if (!startsWith(suffix, "_")) suffix <- paste0("_", suffix)
+  suffix
+}
+
+post_crps_quantile_approx <- function(obs, sample_mat, context = "crps.quantile") {
+  if (!is.matrix(sample_mat)) {
+    sample_mat <- as.matrix(sample_mat)
+  }
+  if (!is.numeric(sample_mat) || length(dim(sample_mat)) != 2L) {
+    stop(sprintf("[%s_SHAPE] sample_mat must be a numeric 2D matrix [sample x horizon].", context), call. = FALSE)
+  }
+  n_samp <- as.integer(nrow(sample_mat))
+  horizon <- as.integer(ncol(sample_mat))
+  if (!is.finite(n_samp) || !is.finite(horizon) || n_samp < 2L || horizon < 1L) {
+    stop(
+      sprintf("[%s_DIM] sample_mat must have at least 2 samples and 1 horizon point.", context),
+      call. = FALSE
+    )
+  }
+
+  obs_num <- as.numeric(obs)
+  if (length(obs_num) < horizon) {
+    warning(
+      sprintf("[%s_OBS_SHORT] obs length (%d) is shorter than horizon (%d); padding with NA.", context, length(obs_num), horizon),
+      call. = FALSE
+    )
+    obs_num <- c(obs_num, rep(NA_real_, horizon - length(obs_num)))
+  }
+  if (length(obs_num) > horizon) {
+    obs_num <- obs_num[seq_len(horizon)]
+  }
+
+  out <- rep(NA_real_, horizon)
+  n_eff <- integer(horizon)
+
+  for (t_idx in seq_len(horizon)) {
+    yy <- obs_num[[t_idx]]
+    sample_vec <- sample_mat[, t_idx]
+    sample_vec <- sample_vec[is.finite(sample_vec)]
+    n_eff[[t_idx]] <- length(sample_vec)
+    if (!is.finite(yy) || length(sample_vec) < 2L) {
+      next
+    }
+    sample_vec <- sort(sample_vec)
+    mm <- length(sample_vec)
+    tau <- seq_len(mm) / (mm + 1)
+    out[[t_idx]] <- 2 * mean(check_loss_fn(tau, yy - sample_vec))
+  }
+
+  list(
+    crps = out,
+    n_samples_eff = as.integer(n_eff),
+    n_samples_nominal = n_samp,
+    tau_rule = "k_over_m_plus_1",
+    method = "quantile_check_loss_sum"
+  )
+}
+
+post_crps_synth_model_meta <- function(
+  family = c("univar", "multivar", "ndlm", "ndlm_main", "ndlm_univar"),
+  likelihood_mode = "exal",
+  transfer_mode = NA_character_
+) {
+  fam <- tolower(trimws(as.character(family)[[1L]]))
+  if (!(fam %in% c("univar", "multivar", "ndlm", "ndlm_main", "ndlm_univar"))) {
+    stop(sprintf("post_crps_synth_model_meta unsupported family: %s", fam), call. = FALSE)
+  }
+
+  lik <- tolower(trimws(as.character(likelihood_mode)[[1L]]))
+  if (!(lik %in% c("exal", "al"))) {
+    lik <- "exal"
+  }
+  mode <- as.character(transfer_mode)[[1L]]
+  mode <- tolower(trimws(mode))
+  if (!nzchar(mode) || is.na(mode) || !(mode %in% c("drop", "keep"))) {
+    mode <- NA_character_
+  }
+
+  if (identical(fam, "univar")) {
+    if (identical(lik, "al")) {
+      return(list(model_id = "dqlm_univar_al_synth", model_variant = "dqlm_univar_al"))
+    }
+    return(list(model_id = "exdqlm_univar_synth", model_variant = "exdqlm_univar"))
+  }
+
+  if (identical(fam, "multivar")) {
+    if (identical(lik, "al")) {
+      prefix_id <- "dqlm_multivar_al_synth"
+      prefix_variant <- "dqlm_multivar_al"
+    } else {
+      prefix_id <- "exdqlm_multivar_synth"
+      prefix_variant <- "exdqlm_multivar"
+    }
+    if (is.na(mode)) {
+      return(list(model_id = prefix_id, model_variant = prefix_variant))
+    }
+    return(list(
+      model_id = paste0(prefix_id, "_", mode),
+      model_variant = paste0(prefix_variant, "_", mode)
+    ))
+  }
+
+  if (identical(fam, "ndlm_univar")) {
+    if (is.na(mode)) {
+      return(list(model_id = "ndlm_univar_synth", model_variant = "ndlm_univar"))
+    }
+    return(list(
+      model_id = paste0("ndlm_univar_synth_", mode),
+      model_variant = paste0("ndlm_univar_", mode)
+    ))
+  }
+
+  if (is.na(mode)) {
+    return(list(model_id = "ndlm_main_synth", model_variant = "ndlm_main"))
+  }
+  list(
+    model_id = paste0("ndlm_main_synth_", mode),
+    model_variant = paste0("ndlm_main_", mode)
+  )
+}
+
+post_crps_model_tables <- function(
+  model_id,
+  model_family,
+  model_variant,
+  sample_mat,
+  obs,
+  forecast_dates,
+  cutoff_date,
+  forecast_start_date,
+  transfer_mode = NA_character_,
+  score_scale = "log_cms_plus1",
+  context = "crps.model"
+) {
+  model_id <- as.character(if (is.null(model_id)) "" else model_id)
+  model_family <- as.character(if (is.null(model_family)) "" else model_family)
+  model_variant <- as.character(if (is.null(model_variant)) "" else model_variant)
+  if (!nzchar(model_id)) stop(sprintf("[%s_MODEL_ID] model_id must be non-empty.", context), call. = FALSE)
+  if (!nzchar(model_family)) stop(sprintf("[%s_MODEL_FAMILY] model_family must be non-empty.", context), call. = FALSE)
+  if (!nzchar(model_variant)) stop(sprintf("[%s_MODEL_VARIANT] model_variant must be non-empty.", context), call. = FALSE)
+
+  if (!is.matrix(sample_mat)) sample_mat <- as.matrix(sample_mat)
+  horizon <- as.integer(ncol(sample_mat))
+
+  dates <- as.Date(forecast_dates)
+  if (length(dates) < horizon) {
+    warning(
+      sprintf("[%s_DATES_SHORT] forecast_dates length (%d) is shorter than horizon (%d); padding with NA.", context, length(dates), horizon),
+      call. = FALSE
+    )
+    dates <- c(dates, rep(as.Date(NA), horizon - length(dates)))
+  }
+  if (length(dates) > horizon) {
+    dates <- dates[seq_len(horizon)]
+  }
+
+  crps_out <- post_crps_quantile_approx(
+    obs = obs,
+    sample_mat = sample_mat,
+    context = paste0(context, ".", model_id)
+  )
+  crps_vec <- as.numeric(crps_out$crps)
+  finite <- is.finite(crps_vec)
+  n_valid <- sum(finite)
+
+  per_time <- data.frame(
+    cutoff_date = as.character(as.Date(cutoff_date)),
+    forecast_start_date = as.character(as.Date(forecast_start_date)),
+    model_id = model_id,
+    model_family = model_family,
+    model_variant = model_variant,
+    transfer_mode = as.character(ifelse(is.na(transfer_mode), NA_character_, transfer_mode)),
+    lead_day = seq_len(horizon),
+    forecast_date = as.character(dates),
+    crps = crps_vec,
+    n_samples_eff = as.integer(crps_out$n_samples_eff),
+    n_samples_nominal = as.integer(crps_out$n_samples_nominal),
+    score_method = as.character(crps_out$method),
+    tau_rule = as.character(crps_out$tau_rule),
+    score_scale = as.character(score_scale),
+    stringsAsFactors = FALSE
+  )
+
+  summary <- data.frame(
+    cutoff_date = as.character(as.Date(cutoff_date)),
+    forecast_start_date = as.character(as.Date(forecast_start_date)),
+    model_id = model_id,
+    model_family = model_family,
+    model_variant = model_variant,
+    transfer_mode = as.character(ifelse(is.na(transfer_mode), NA_character_, transfer_mode)),
+    horizon_days = as.integer(horizon),
+    n_valid = as.integer(n_valid),
+    mean_crps = if (n_valid > 0L) mean(crps_vec[finite]) else NA_real_,
+    median_crps = if (n_valid > 0L) stats::median(crps_vec[finite]) else NA_real_,
+    sd_crps = if (n_valid > 1L) stats::sd(crps_vec[finite]) else NA_real_,
+    min_crps = if (n_valid > 0L) min(crps_vec[finite]) else NA_real_,
+    max_crps = if (n_valid > 0L) max(crps_vec[finite]) else NA_real_,
+    n_samples_nominal = as.integer(crps_out$n_samples_nominal),
+    n_samples_eff_min = if (length(crps_out$n_samples_eff) > 0L) min(crps_out$n_samples_eff, na.rm = TRUE) else NA_integer_,
+    n_samples_eff_max = if (length(crps_out$n_samples_eff) > 0L) max(crps_out$n_samples_eff, na.rm = TRUE) else NA_integer_,
+    score_method = as.character(crps_out$method),
+    tau_rule = as.character(crps_out$tau_rule),
+    score_scale = as.character(score_scale),
+    stringsAsFactors = FALSE
+  )
+
+  list(per_time = per_time, summary = summary)
+}
+
+post_export_crps_tables <- function(
+  per_time_df,
+  summary_df,
+  output_dir,
+  table_formats = c("csv"),
+  keep_na = TRUE,
+  numeric_digits = 17L,
+  file_suffix = ""
+) {
+  suffix <- post_sanitize_file_suffix(file_suffix)
+  stems <- list(
+    per_time = paste0("crps_forecast_per_time", suffix),
+    summary = paste0("crps_forecast_summary", suffix)
+  )
+  formats <- unique(tolower(as.character(table_formats)))
+  formats <- formats[formats %in% c("csv", "rds")]
+  if (length(formats) == 0L) formats <- "csv"
+
+  per_time_df <- as.data.frame(per_time_df, stringsAsFactors = FALSE)
+  summary_df <- as.data.frame(summary_df, stringsAsFactors = FALSE)
+
+  manifest <- post_export_tables(
+    tables = list(per_time = per_time_df, summary = summary_df),
+    output_dir = output_dir,
+    file_stems = stems,
+    formats = formats,
+    keep_na = keep_na,
+    sort_keys = list(
+      per_time = c("model_id", "transfer_mode", "forecast_date", "lead_day"),
+      summary = c("model_id", "transfer_mode")
+    ),
+    numeric_digits = numeric_digits
+  )
+  list(per_time = per_time_df, summary = summary_df, manifest = manifest)
+}
+
 dlm_df = function(y, model, df, dim.df, s.priors = list(l0=1,S0=10), just.lik=FALSE){
   ### Gets the     Time Series Length / Replicate number
   y = check_ts(y)

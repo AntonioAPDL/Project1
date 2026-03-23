@@ -4,6 +4,7 @@ unified_post_select_modules <- function(
   model_run_exdqlm_multivar,
   model_run_exdqlm_univar,
   model_run_ndlm_main,
+  model_run_ndlm_univar,
   core_modules
 ) {
   stopifnot(is.logical(post_figures), length(post_figures) == 1L)
@@ -11,23 +12,25 @@ unified_post_select_modules <- function(
   stopifnot(is.logical(model_run_exdqlm_multivar), length(model_run_exdqlm_multivar) == 1L)
   stopifnot(is.logical(model_run_exdqlm_univar), length(model_run_exdqlm_univar) == 1L)
   stopifnot(is.logical(model_run_ndlm_main), length(model_run_ndlm_main) == 1L)
+  stopifnot(is.logical(model_run_ndlm_univar), length(model_run_ndlm_univar) == 1L)
   stopifnot(is.character(core_modules), length(core_modules) > 0L)
 
   if (!isTRUE(post_figures)) {
     return(core_modules)
   }
 
-  ndlm_only_mode <- isTRUE(model_run_ndlm_main) &&
+  ndlm_any_mode <- isTRUE(model_run_ndlm_main) || isTRUE(model_run_ndlm_univar)
+  ndlm_only_mode <- isTRUE(ndlm_any_mode) &&
     !isTRUE(model_run_exdqlm_multivar) &&
     !isTRUE(model_run_exdqlm_univar)
 
   univar_only_mode <- isTRUE(model_run_exdqlm_univar) &&
     !isTRUE(model_run_exdqlm_multivar) &&
-    !isTRUE(model_run_ndlm_main)
+    !isTRUE(ndlm_any_mode)
 
   multivar_only_mode <- isTRUE(model_run_exdqlm_multivar) &&
     !isTRUE(model_run_exdqlm_univar) &&
-    !isTRUE(model_run_ndlm_main)
+    !isTRUE(ndlm_any_mode)
 
   if (isTRUE(post_smoke_fast)) {
     if (multivar_only_mode) {

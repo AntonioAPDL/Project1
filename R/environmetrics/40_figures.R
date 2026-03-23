@@ -1371,6 +1371,36 @@ align_to_len <- function(x, target_len, context = "q_exps") {
   warning(sprintf("%s length %d > %d; truncating", context, length(x), target_len), call. = FALSE)
   x[seq_len(target_len)]
 }
+safe_exps_index <- function(theta_obj, row, idx, context = "exps.index") {
+  idx <- as.integer(idx)
+  target_len <- length(idx)
+  exps <- theta_obj$exps
+  if (!is.matrix(exps) || nrow(exps) < row) {
+    warning(sprintf("%s unavailable; returning NA length %d", context, target_len), call. = FALSE)
+    return(rep(NA_real_, target_len))
+  }
+  out <- rep(NA_real_, target_len)
+  valid <- idx >= 1L & idx <= ncol(exps)
+  if (any(valid)) {
+    out[valid] <- as.numeric(exps[row, idx[valid]])
+  }
+  if (any(!valid)) {
+    warning(
+      sprintf(
+        "%s out-of-bounds for %d indices (ncol(exps)=%d); filling NA",
+        context,
+        sum(!valid),
+        ncol(exps)
+      ),
+      call. = FALSE
+    )
+  }
+  out
+}
+safe_exps_range <- function(theta_obj, row, start_idx, end_idx, context = "exps.range") {
+  idx <- seq.int(as.integer(start_idx), as.integer(end_idx))
+  safe_exps_index(theta_obj, row = row, idx = idx, context = context)
+}
 png("/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_reproduce/Allth_exal_DISC.png", width = 6000, height = 4000, res = 600)
 # Base plot
 plot.ts((new.theta.out_95_exAL_synth_DISC$exps[2,idx_all]) * 0, ylim = c(-2.5, 2.5),
@@ -1979,9 +2009,24 @@ discrep <- ndlm_discrepancy_pair(
   target_len = ranges[1],
   context = "ndlm.q50.allth"
 )
-estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2, (TT + 1):(TT + ranges[1])] - discrep
+estim_dqlm <- safe_exps_range(
+  new.theta.out_50_NDLM_synth_DISC,
+  row = 2L,
+  start_idx = TT + 1L,
+  end_idx = TT + ranges[1],
+  context = "ndlm.q50.allth.exps2.forecast"
+) - discrep
 lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.5), col = "orange", lwd = 2)
-lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.5), col = 'orange', lwd = 2)
+lines(
+  safe_exps_index(
+    new.theta.out_50_NDLM_synth_DISC,
+    row = 1L,
+    idx = idx1,
+    context = "ndlm.q50.allth.exps1.idx1"
+  ) + sd_ndlm * qnorm(0.5),
+  col = "orange",
+  lwd = 2
+)
 
 percs <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.65, 0.8, 0.95)
 for (i in 1:length(percs)) {
@@ -2189,9 +2234,24 @@ discrep <- ndlm_discrepancy_pair(
   context = "ndlm.q50.all3"
 )
 
-estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
+estim_dqlm <- safe_exps_range(
+  new.theta.out_50_NDLM_synth_DISC,
+  row = 2L,
+  start_idx = TT + 1L,
+  end_idx = TT + ranges[1],
+  context = "ndlm.q50.all3.exps2.forecast"
+) - discrep
 lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.5), col = "orange", lwd = 2)
-lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.5), col = 'orange', lwd = 2)
+lines(
+  safe_exps_index(
+    new.theta.out_50_NDLM_synth_DISC,
+    row = 1L,
+    idx = idx1,
+    context = "ndlm.q50.all3.exps1.idx1"
+  ) + sd_ndlm * qnorm(0.5),
+  col = "orange",
+  lwd = 2
+)
 
 percs <- c(0.05, 0.5, 0.95)
 for (i in 1:length(percs)) {
@@ -2303,9 +2363,24 @@ discrep <- ndlm_discrepancy_pair(
   target_len = ranges[1],
   context = "ndlm.q50.p95"
 )
-estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
+estim_dqlm <- safe_exps_range(
+  new.theta.out_50_NDLM_synth_DISC,
+  row = 2L,
+  start_idx = TT + 1L,
+  end_idx = TT + ranges[1],
+  context = "ndlm.q50.p95.exps2.forecast"
+) - discrep
 lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.95), col = "orange", lwd = 2)
-lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.95), col = 'orange', lwd = 2)
+lines(
+  safe_exps_index(
+    new.theta.out_50_NDLM_synth_DISC,
+    row = 1L,
+    idx = idx1,
+    context = "ndlm.q50.p95.exps1.idx1"
+  ) + sd_ndlm * qnorm(0.95),
+  col = "orange",
+  lwd = 2
+)
 
 
 idx <- safe_time_index(TT - iii, TT, TT, context = "40_figures.tt_minus_iii")
@@ -2421,9 +2496,24 @@ discrep <- ndlm_discrepancy_pair(
   target_len = ranges[1],
   context = "ndlm.q50.p50"
 )
-estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
+estim_dqlm <- safe_exps_range(
+  new.theta.out_50_NDLM_synth_DISC,
+  row = 2L,
+  start_idx = TT + 1L,
+  end_idx = TT + ranges[1],
+  context = "ndlm.q50.p50.exps2.forecast"
+) - discrep
 lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.5), col = "orange", lwd = 2)
-lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.5), col = 'orange', lwd = 2)
+lines(
+  safe_exps_index(
+    new.theta.out_50_NDLM_synth_DISC,
+    row = 1L,
+    idx = idx1,
+    context = "ndlm.q50.p50.exps1.idx1"
+  ) + sd_ndlm * qnorm(0.5),
+  col = "orange",
+  lwd = 2
+)
 
 
 idx <- safe_time_index(TT - iii, TT, TT, context = "40_figures.tt_minus_iii")
@@ -2533,10 +2623,25 @@ discrep <- ndlm_discrepancy_pair(
   target_len = ranges[1],
   context = "ndlm.q50.p05"
 )
-estim_dqlm <- new.theta.out_50_NDLM_synth_DISC$exps[2,(TT+1):(TT+ranges[1])] - discrep
+estim_dqlm <- safe_exps_range(
+  new.theta.out_50_NDLM_synth_DISC,
+  row = 2L,
+  start_idx = TT + 1L,
+  end_idx = TT + ranges[1],
+  context = "ndlm.q50.p05.exps2.forecast"
+) - discrep
 q_exps[4,] <- align_to_len(estim_dqlm, ncol(q_exps), "q_exps[4,]")
 lines(idx_f, estim_dqlm + sd_ndlm * qnorm(0.05), col = "orange", lwd = 2)
-lines(new.theta.out_50_NDLM_synth_DISC$exps[1,idx1] + sd_ndlm * qnorm(0.05), col = 'orange', lwd = 2)
+lines(
+  safe_exps_index(
+    new.theta.out_50_NDLM_synth_DISC,
+    row = 1L,
+    idx = idx1,
+    context = "ndlm.q50.p05.exps1.idx1"
+  ) + sd_ndlm * qnorm(0.05),
+  col = "orange",
+  lwd = 2
+)
 
 
 idx <- safe_time_index(TT - iii, TT, TT, context = "40_figures.tt_minus_iii")
@@ -4683,50 +4788,57 @@ profile_section("figures.build_y_post_forecast", {
   xb_05_f <- t(xbs[1, , ])
   gam_05_f <- samp.gamma_5_exAL_synth_DISC[1, ]
   sig_05_f <- samp.sigma_5_exAL_synth_DISC[1, ]
-  y_post_5_f <- (generate_y_post(p0_05, xb_05_f, gam_05_f, sig_05_f))
-  exp_y_post_5_f <- exp(generate_y_post(p0_05, xb_05_f, gam_05_f, sig_05_f))
+  y_post_5_f <- generate_y_post(p0_05, xb_05_f, gam_05_f, sig_05_f)
+  assert_exp_safe_matrix(y_post_5_f, context = "y_post_5_f")
+  exp_y_post_5_f <- exp(y_post_5_f)
   # Case 2: p0 = 0.5
   p0_50 <- 0.5
   xb_50_f <- t(xbs[4, , ])
   gam_50_f <- samp.gamma_50_exAL_synth_DISC[1, ]
   sig_50_f <- samp.sigma_50_exAL_synth_DISC[1, ]
-  y_post_50_f <- (generate_y_post(p0_50, xb_50_f, gam_50_f, sig_50_f))
-  exp_y_post_50_f <- exp(generate_y_post(p0_50, xb_50_f, gam_50_f, sig_50_f))
+  y_post_50_f <- generate_y_post(p0_50, xb_50_f, gam_50_f, sig_50_f)
+  assert_exp_safe_matrix(y_post_50_f, context = "y_post_50_f")
+  exp_y_post_50_f <- exp(y_post_50_f)
   # Case 3: p0 = 0.95
   p0_95 <- 0.95
   xb_95_f <- t(xbs[7, , ])
   gam_95_f <- samp.gamma_95_exAL_synth_DISC[1, ]
   sig_95_f <- samp.sigma_95_exAL_synth_DISC[1, ]
-  y_post_95_f <- (generate_y_post(p0_95, xb_95_f, gam_95_f, sig_95_f))
-  exp_y_post_95_f <- exp(generate_y_post(p0_95, xb_95_f, gam_95_f, sig_95_f))
+  y_post_95_f <- generate_y_post(p0_95, xb_95_f, gam_95_f, sig_95_f)
+  assert_exp_safe_matrix(y_post_95_f, context = "y_post_95_f")
+  exp_y_post_95_f <- exp(y_post_95_f)
   # Case 4: p0 = 0.20
   p0_20 <- 0.20
   xb_20_f <- t(xbs[2, , ])
   gam_20_f <- samp.gamma_20_exAL_synth_DISC[1, ]
   sig_20_f <- samp.sigma_20_exAL_synth_DISC[1, ]
-  y_post_20_f <- (generate_y_post(p0_20, xb_20_f, gam_20_f, sig_20_f))
-  exp_y_post_20_f <- exp(generate_y_post(p0_20, xb_20_f, gam_20_f, sig_20_f))
+  y_post_20_f <- generate_y_post(p0_20, xb_20_f, gam_20_f, sig_20_f)
+  assert_exp_safe_matrix(y_post_20_f, context = "y_post_20_f")
+  exp_y_post_20_f <- exp(y_post_20_f)
   # Case 5: p0 = 0.80
   p0_80 <- 0.80
   xb_80_f <- t(xbs[6, , ])
   gam_80_f <- samp.gamma_80_exAL_synth_DISC[1, ]
   sig_80_f <- samp.sigma_80_exAL_synth_DISC[1, ]
-  y_post_80_f <- (generate_y_post(p0_80, xb_80_f, gam_80_f, sig_80_f))
-  exp_y_post_80_f <- exp(generate_y_post(p0_80, xb_80_f, gam_80_f, sig_80_f))
+  y_post_80_f <- generate_y_post(p0_80, xb_80_f, gam_80_f, sig_80_f)
+  assert_exp_safe_matrix(y_post_80_f, context = "y_post_80_f")
+  exp_y_post_80_f <- exp(y_post_80_f)
   # Case 6: p0 = 0.35
   p0_35 <- 0.35
   xb_35_f <- t(xbs[3, , ])
   gam_35_f <- samp.gamma_35_exAL_synth_DISC[1, ]
   sig_35_f <- samp.sigma_35_exAL_synth_DISC[1, ]
-  y_post_35_f <- (generate_y_post(p0_35, xb_35_f, gam_35_f, sig_35_f))
-  exp_y_post_35_f <- exp(generate_y_post(p0_35, xb_35_f, gam_35_f, sig_35_f))
+  y_post_35_f <- generate_y_post(p0_35, xb_35_f, gam_35_f, sig_35_f)
+  assert_exp_safe_matrix(y_post_35_f, context = "y_post_35_f")
+  exp_y_post_35_f <- exp(y_post_35_f)
   # Case 7: p0 = 0.65
   p0_65 <- 0.65
   xb_65_f <- t(xbs[5, , ])
   gam_65_f <- samp.gamma_65_exAL_synth_DISC[1, ]
   sig_65_f <- samp.sigma_65_exAL_synth_DISC[1, ]
-  y_post_65_f <- (generate_y_post(p0_65, xb_65_f, gam_65_f, sig_65_f))
-  exp_y_post_65_f <- exp(generate_y_post(p0_65, xb_65_f, gam_65_f, sig_65_f))
+  y_post_65_f <- generate_y_post(p0_65, xb_65_f, gam_65_f, sig_65_f)
+  assert_exp_safe_matrix(y_post_65_f, context = "y_post_65_f")
+  exp_y_post_65_f <- exp(y_post_65_f)
 })
 ############################################################################
 y_post_5_f <- align_sample_time_matrix(y_post_5_f, n.samp, ranges[1], "y_post_5_f")
@@ -5131,6 +5243,289 @@ profile_section("figures.sort_synth_f_exp", {
     synth_f[, t] <- sort_to_len(synth_f[, t], target_len = nrow(synth_f), context = sprintf("synth_f_exp[,%d]", t))
   }
 })
+
+crps_transfer_mode <- tolower(trimws(Sys.getenv("UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE", "drop")))
+if (!crps_transfer_mode %in% c("drop", "keep")) {
+  crps_transfer_mode <- NA_character_
+}
+crps_univar_likelihood_mode <- tolower(trimws(Sys.getenv("UNIFIED_EXDQLM_UNIVAR_LIKELIHOOD_MODE", "exal")))
+if (!crps_univar_likelihood_mode %in% c("exal", "al")) {
+  crps_univar_likelihood_mode <- "exal"
+}
+crps_multivar_likelihood_mode <- tolower(trimws(Sys.getenv("UNIFIED_EXDQLM_MULTIVAR_LIKELIHOOD_MODE", "exal")))
+if (!crps_multivar_likelihood_mode %in% c("exal", "al")) {
+  crps_multivar_likelihood_mode <- "exal"
+}
+crps_ndlm_transfer_mode <- tolower(trimws(Sys.getenv("UNIFIED_NDLM_FORECAST_TRANSFER_MODE", "keep")))
+if (!crps_ndlm_transfer_mode %in% c("drop", "keep")) {
+  crps_ndlm_transfer_mode <- NA_character_
+}
+crps_ndlm_univar_transfer_mode <- tolower(trimws(Sys.getenv(
+  "UNIFIED_NDLM_UNIVAR_FORECAST_TRANSFER_MODE",
+  if (is.na(crps_ndlm_transfer_mode)) "keep" else crps_ndlm_transfer_mode
+)))
+if (!crps_ndlm_univar_transfer_mode %in% c("drop", "keep")) {
+  crps_ndlm_univar_transfer_mode <- NA_character_
+}
+crps_output_suffix <- Sys.getenv("UNIFIED_POST_OUTPUT_SUFFIX", "")
+crps_exports_enabled <- isTRUE(as.logical(Sys.getenv("UNIFIED_POST_EXPORT_CRPS", "TRUE")))
+
+if (crps_exports_enabled) {
+  profile_section("figures.export_crps_tables", {
+    crps_cutoff_date <- as.Date(CUTOFF_DATE)
+    crps_forecast_start <- as.Date(FORECAST_START_DATE)
+    usgs_date_col <- if ("Date" %in% names(San_Lorenzo_Daily_USGS_R)) {
+      as.Date(San_Lorenzo_Daily_USGS_R$Date)
+    } else {
+      as.Date(San_Lorenzo_Daily_USGS_R$time)
+    }
+    usgs_truth_all <- as.numeric(San_Lorenzo_Daily_USGS_R$data0)
+
+    truth_from_start <- function(horizon, context) {
+      hz <- as.integer(horizon[[1L]])
+      if (!is.finite(hz) || hz < 1L) {
+        stop(sprintf("[%s_HORIZON] horizon must be a positive integer.", context), call. = FALSE)
+      }
+      idx <- which(!is.na(usgs_date_col) & usgs_date_col >= crps_forecast_start)
+      if (length(idx) == 0L) {
+        stop(sprintf("[%s_TRUTH_MISSING] no USGS truth rows available at/after %s.", context, as.character(crps_forecast_start)), call. = FALSE)
+      }
+      truth <- usgs_truth_all[idx]
+      if (length(truth) < hz) {
+        warning(
+          sprintf("[%s_TRUTH_SHORT] truth length (%d) shorter than horizon (%d); padding with NA.", context, length(truth), hz),
+          call. = FALSE
+        )
+        truth <- c(truth, rep(NA_real_, hz - length(truth)))
+      } else {
+        truth <- truth[seq_len(hz)]
+      }
+      truth
+    }
+
+    crps_per_time_rows <- list()
+    crps_summary_rows <- list()
+
+    if (length(ensembles) >= 1L) {
+      glofas_mat <- as.matrix(ensembles[[1]])
+      if (is.numeric(glofas_mat) && nrow(glofas_mat) > 0L && ncol(glofas_mat) >= 2L) {
+        glofas_tbl <- post_crps_model_tables(
+          model_id = "glofas_ensemble",
+          model_family = "ensemble",
+          model_variant = "glofas",
+          sample_mat = t(glofas_mat),
+          obs = truth_from_start(nrow(glofas_mat), "crps.glofas.truth"),
+          forecast_dates = daily_dates_for_matrix_rows(glofas_mat, start_date = crps_forecast_start, context = "crps.glofas.dates"),
+          cutoff_date = crps_cutoff_date,
+          forecast_start_date = crps_forecast_start,
+          transfer_mode = NA_character_,
+          score_scale = "log_cms_plus1",
+          context = "crps.glofas"
+        )
+        crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- glofas_tbl$per_time
+        crps_summary_rows[[length(crps_summary_rows) + 1L]] <- glofas_tbl$summary
+      } else {
+        warning("[CRPS_GLOFAS_SKIP] Unable to compute GloFAS CRPS (invalid ensemble matrix).", call. = FALSE)
+      }
+    } else {
+      warning("[CRPS_GLOFAS_SKIP] Unable to compute GloFAS CRPS (ensembles[[1]] missing).", call. = FALSE)
+    }
+
+    if (length(ensembles) >= 2L) {
+      nws_mat <- as.matrix(ensembles[[2]])
+      if (is.numeric(nws_mat) && nrow(nws_mat) > 0L && ncol(nws_mat) >= 2L) {
+        nws_tbl <- post_crps_model_tables(
+          model_id = "nws_nwm_ensemble",
+          model_family = "ensemble",
+          model_variant = "nws_nwm",
+          sample_mat = t(nws_mat),
+          obs = truth_from_start(nrow(nws_mat), "crps.nws.truth"),
+          forecast_dates = daily_dates_for_matrix_rows(nws_mat, start_date = crps_forecast_start, context = "crps.nws.dates"),
+          cutoff_date = crps_cutoff_date,
+          forecast_start_date = crps_forecast_start,
+          transfer_mode = NA_character_,
+          score_scale = "log_cms_plus1",
+          context = "crps.nws"
+        )
+        crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- nws_tbl$per_time
+        crps_summary_rows[[length(crps_summary_rows) + 1L]] <- nws_tbl$summary
+      } else {
+        warning("[CRPS_NWS_SKIP] Unable to compute NWS/NWM CRPS (invalid ensemble matrix).", call. = FALSE)
+      }
+    } else {
+      warning("[CRPS_NWS_SKIP] Unable to compute NWS/NWM CRPS (ensembles[[2]] missing).", call. = FALSE)
+    }
+
+    if (exists("synth_f2", inherits = TRUE)) {
+      synth_uni_mat <- as.matrix(get("synth_f2", inherits = TRUE))
+      if (is.numeric(synth_uni_mat) && nrow(synth_uni_mat) > 0L && ncol(synth_uni_mat) > 0L) {
+        univar_meta <- post_crps_synth_model_meta(
+          family = "univar",
+          likelihood_mode = crps_univar_likelihood_mode,
+          transfer_mode = NA_character_
+        )
+        univar_tbl <- post_crps_model_tables(
+          model_id = univar_meta$model_id,
+          model_family = "synthesis",
+          model_variant = univar_meta$model_variant,
+          sample_mat = synth_uni_mat,
+          obs = truth_from_start(ncol(synth_uni_mat), "crps.univar.truth"),
+          forecast_dates = daily_dates_for_matrix_cols(synth_uni_mat, start_date = crps_forecast_start, context = "crps.univar.dates"),
+          cutoff_date = crps_cutoff_date,
+          forecast_start_date = crps_forecast_start,
+          transfer_mode = NA_character_,
+          score_scale = "log_cms_plus1",
+          context = "crps.univar"
+        )
+        crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- univar_tbl$per_time
+        crps_summary_rows[[length(crps_summary_rows) + 1L]] <- univar_tbl$summary
+      } else {
+        warning("[CRPS_UNIVAR_SKIP] Unable to compute univariate synthesis CRPS (invalid synth_f2 matrix).", call. = FALSE)
+      }
+    } else {
+      warning("[CRPS_UNIVAR_SKIP] Unable to compute univariate synthesis CRPS (synth_f2 missing).", call. = FALSE)
+    }
+
+    multivar_meta <- post_crps_synth_model_meta(
+      family = "multivar",
+      likelihood_mode = crps_multivar_likelihood_mode,
+      transfer_mode = crps_transfer_mode
+    )
+
+    synth_multivar_mat <- as.matrix(synth_f)
+    if (is.numeric(synth_multivar_mat) && nrow(synth_multivar_mat) > 0L && ncol(synth_multivar_mat) > 0L) {
+      multivar_tbl <- post_crps_model_tables(
+        model_id = multivar_meta$model_id,
+        model_family = "synthesis",
+        model_variant = multivar_meta$model_variant,
+        sample_mat = synth_multivar_mat,
+        obs = truth_from_start(ncol(synth_multivar_mat), "crps.multivar.truth"),
+        forecast_dates = daily_dates_for_matrix_cols(synth_multivar_mat, start_date = crps_forecast_start, context = "crps.multivar.dates"),
+        cutoff_date = crps_cutoff_date,
+        forecast_start_date = crps_forecast_start,
+        transfer_mode = crps_transfer_mode,
+        score_scale = "log_cms_plus1",
+        context = "crps.multivar"
+      )
+      crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- multivar_tbl$per_time
+      crps_summary_rows[[length(crps_summary_rows) + 1L]] <- multivar_tbl$summary
+    } else {
+      warning("[CRPS_MULTIVAR_SKIP] Unable to compute multivariate synthesis CRPS (invalid synth_f matrix).", call. = FALSE)
+    }
+
+    ndlm_main_enabled <- isTRUE(exists("MODEL_RUN_NDLM_MAIN", inherits = TRUE) &&
+      get("MODEL_RUN_NDLM_MAIN", inherits = TRUE))
+    if (ndlm_main_enabled && exists("xbs_ndlm", inherits = TRUE)) {
+      ndlm_raw <- get("xbs_ndlm", inherits = TRUE)
+      ndlm_sample_mat <- NULL
+      if (is.numeric(ndlm_raw) && !is.null(dim(ndlm_raw)) && length(dim(ndlm_raw)) == 3L &&
+          dim(ndlm_raw)[1] >= 1L && dim(ndlm_raw)[2] > 0L && dim(ndlm_raw)[3] > 1L) {
+        ndlm_sample_mat <- t(ndlm_raw[1, , , drop = FALSE][1, , ])
+      } else if (is.matrix(ndlm_raw) && is.numeric(ndlm_raw) && nrow(ndlm_raw) > 1L && ncol(ndlm_raw) > 0L) {
+        ndlm_sample_mat <- ndlm_raw
+      }
+
+      if (!is.null(ndlm_sample_mat) && is.numeric(ndlm_sample_mat) &&
+          nrow(ndlm_sample_mat) > 1L && ncol(ndlm_sample_mat) > 0L) {
+        ndlm_meta <- post_crps_synth_model_meta(
+          family = "ndlm",
+          likelihood_mode = "exal",
+          transfer_mode = crps_ndlm_transfer_mode
+        )
+        ndlm_tbl <- post_crps_model_tables(
+          model_id = ndlm_meta$model_id,
+          model_family = "synthesis",
+          model_variant = ndlm_meta$model_variant,
+          sample_mat = ndlm_sample_mat,
+          obs = truth_from_start(ncol(ndlm_sample_mat), "crps.ndlm.truth"),
+          forecast_dates = daily_dates_for_matrix_cols(ndlm_sample_mat, start_date = crps_forecast_start, context = "crps.ndlm.dates"),
+          cutoff_date = crps_cutoff_date,
+          forecast_start_date = crps_forecast_start,
+          transfer_mode = crps_ndlm_transfer_mode,
+          score_scale = "log_cms_plus1",
+          context = "crps.ndlm"
+        )
+        crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- ndlm_tbl$per_time
+        crps_summary_rows[[length(crps_summary_rows) + 1L]] <- ndlm_tbl$summary
+      } else {
+        warning("[CRPS_NDLM_SKIP] Unable to compute NDLM CRPS (invalid xbs_ndlm sample matrix).", call. = FALSE)
+      }
+    } else if (ndlm_main_enabled) {
+      warning("[CRPS_NDLM_SKIP] Unable to compute NDLM CRPS (xbs_ndlm missing).", call. = FALSE)
+    }
+
+    ndlm_univar_path <- if (exists("NDLM_UNIVAR_VAR_50", inherits = TRUE)) {
+      as.character(get("NDLM_UNIVAR_VAR_50", inherits = TRUE))
+    } else {
+      ""
+    }
+    ndlm_univar_enabled <- isTRUE(exists("MODEL_RUN_NDLM_UNIVAR", inherits = TRUE) &&
+      get("MODEL_RUN_NDLM_UNIVAR", inherits = TRUE))
+    if ((ndlm_univar_enabled || nzchar(ndlm_univar_path)) &&
+        length(ndlm_univar_path) > 0L && nzchar(ndlm_univar_path) && file.exists(ndlm_univar_path)) {
+      ndlm_univar_env <- new.env(parent = emptyenv())
+      load(ndlm_univar_path, envir = ndlm_univar_env)
+      y_fore_name <- "y.fore.draws_50_NDLM_univar_synth_DISC"
+      if (!exists(y_fore_name, envir = ndlm_univar_env, inherits = FALSE)) {
+        y_fore_candidates <- grep("^y\\.fore\\.draws_.*NDLM_univar.*$", ls(ndlm_univar_env), value = TRUE)
+        y_fore_name <- if (length(y_fore_candidates) > 0L) y_fore_candidates[[1L]] else ""
+      }
+      ndlm_univar_draws <- if (nzchar(y_fore_name) && exists(y_fore_name, envir = ndlm_univar_env, inherits = FALSE)) {
+        get(y_fore_name, envir = ndlm_univar_env, inherits = FALSE)
+      } else {
+        NULL
+      }
+      ndlm_univar_sample_mat <- if (!is.null(ndlm_univar_draws)) as.matrix(ndlm_univar_draws) else NULL
+      if (!is.null(ndlm_univar_sample_mat) && is.numeric(ndlm_univar_sample_mat) &&
+          nrow(ndlm_univar_sample_mat) > 1L && ncol(ndlm_univar_sample_mat) > 0L) {
+        ndlm_univar_meta <- post_crps_synth_model_meta(
+          family = "ndlm_univar",
+          likelihood_mode = "exal",
+          transfer_mode = crps_ndlm_univar_transfer_mode
+        )
+        ndlm_univar_tbl <- post_crps_model_tables(
+          model_id = ndlm_univar_meta$model_id,
+          model_family = "synthesis",
+          model_variant = ndlm_univar_meta$model_variant,
+          sample_mat = ndlm_univar_sample_mat,
+          obs = truth_from_start(ncol(ndlm_univar_sample_mat), "crps.ndlm_univar.truth"),
+          forecast_dates = daily_dates_for_matrix_cols(ndlm_univar_sample_mat, start_date = crps_forecast_start, context = "crps.ndlm_univar.dates"),
+          cutoff_date = crps_cutoff_date,
+          forecast_start_date = crps_forecast_start,
+          transfer_mode = crps_ndlm_univar_transfer_mode,
+          score_scale = "log_cms_plus1",
+          context = "crps.ndlm_univar"
+        )
+        crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- ndlm_univar_tbl$per_time
+        crps_summary_rows[[length(crps_summary_rows) + 1L]] <- ndlm_univar_tbl$summary
+      } else {
+        warning("[CRPS_NDLM_UNIVAR_SKIP] Unable to compute NDLM univar CRPS (invalid y.fore.draws matrix).", call. = FALSE)
+      }
+    } else if (ndlm_univar_enabled || nzchar(ndlm_univar_path)) {
+      warning("[CRPS_NDLM_UNIVAR_SKIP] Unable to compute NDLM univar CRPS (artifact path missing).", call. = FALSE)
+    }
+
+    if (length(crps_per_time_rows) > 0L && length(crps_summary_rows) > 0L) {
+      crps_per_time_df <- do.call(rbind, crps_per_time_rows)
+      crps_summary_df <- do.call(rbind, crps_summary_rows)
+      rownames(crps_per_time_df) <- NULL
+      rownames(crps_summary_df) <- NULL
+
+      crps_export <- post_export_crps_tables(
+        per_time_df = crps_per_time_df,
+        summary_df = crps_summary_df,
+        output_dir = posterior_table_output_dir,
+        table_formats = posterior_table_formats,
+        keep_na = posterior_table_keep_na,
+        numeric_digits = 17L,
+        file_suffix = crps_output_suffix
+      )
+      posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, crps_export$manifest)
+    } else {
+      warning("[CRPS_EXPORT_SKIP] No CRPS rows were produced for export.", call. = FALSE)
+    }
+  })
+}
 
 plot.ts(rep(0,n.times), ylim = c(0,10))
 

@@ -2,7 +2,7 @@
 
 ## Metadata
 - Created: 2026-03-22 (America/Los_Angeles)
-- Last updated: 2026-03-23 00:55 (America/Los_Angeles)
+- Last updated: 2026-03-23 03:03 (America/Los_Angeles)
 - Repository root: `/data/muscat_data/jaguir26/project1_ucsc_phd`
 - Tracker path: `repro/TRACKER_AL_DQLM_NDLM_KEEP.md`
 - Owner: Codex + user
@@ -136,6 +136,35 @@ Status: **PASS (with replay workaround)**
 - CRPS tables exported for both drop and keep passes
 - Required new IDs present across summary tables
 
+### Phase H: NDLM univariate keep implementation (West-Harrison closed form, C++ backend)
+Status: **PASS**
+- Added first-class `ndlm_univar` family wiring in unified config, manifest, fit/post/report orchestration, contracts, and CRPS metadata.
+- Added dedicated run entry script: `scripts/run_ndlm_univar.R`.
+- Added compatibility output aliases (`NDLM_univar` + legacy `NDLM` object names) for downstream post modules.
+- Implemented and validated C++ Kalman backend path and R wrappers for:
+  - filter step / full forward filter
+  - h-step forecast
+  - backward smoother
+- Debugged two root-cause fit failures in posterior state sampling:
+  - non-conformable scaling multiply in Student-t sampler
+  - non-conformable mean broadcast in Student-t sampler
+- Patched samplers using explicit column sweep + explicit mean draw matrix.
+- Updated `ndlm_univar` contract checker to accept list-wrapped `samp.theta`/`samp.sigma` and nested ensemble leaves (same convention as other families).
+- Final Phase H rerun completes `data_prep_shared + fit + post + report`.
+
+### Phase I: all-model smoke with ndlm_univar CRPS inclusion
+Status: **PASS**
+- Run completed end-to-end:
+  - `data_prep_shared=pass`, `fit=pass`, `post=pass`, `report=pass`
+  - run: `repro/runs/dev_al_phaseI_allmodels_plus_ndlm_univar_crps_smoke_20260323`
+- CRPS summary includes required `ndlm_univar` model row:
+  - `model_id=ndlm_univar_synth_keep`
+  - `model_variant=ndlm_univar_keep`
+- Prior required IDs remain present in same summary:
+  - `dqlm_univar_al_synth`
+  - `dqlm_multivar_al_synth_drop`
+  - `ndlm_main_synth_keep`
+
 ## Risk Log (Current)
 1. R1: Legacy post coupling to NDLM matrix shape
 - Evidence: prior OOB in `40_figures.R` on `exps` indexing
@@ -157,6 +186,7 @@ Status: **PASS (with replay workaround)**
 - `tests/testthat/test_ndlm_kalman_backend.R` -> pass
 - `tests/testthat/test_ndlm_fitloop_contract.R` -> pass
 - `tests/testthat/test_post_crps_tables.R` -> pass
+- `tests/testthat/test_ndlm_univar_wh_recursions.R` -> pass
 
 ### Smoke test scope
 - Single cutoff: `2022-12-25`
@@ -174,10 +204,13 @@ Status: **PASS (with replay workaround)**
 - `Rscript --vanilla scripts/unified_run.R --config config/unified_runs/al_phaseE_ndlm_keep_smoke_20260322.yaml`
 - `Rscript --vanilla scripts/unified_run.R --config config/unified_runs/al_phaseF_allmodels_crps_smoke_20260322.yaml`
 - `Rscript --vanilla scripts/unified_run.R --config config/unified_runs/al_phaseF_post_replay_crps_20260322.yaml`
+- `Rscript --vanilla scripts/unified_run.R --config config/unified_runs/al_phaseH_ndlm_univar_keep_smoke_20260323.yaml`
+- `Rscript --vanilla scripts/unified_run.R --config config/unified_runs/al_phaseI_allmodels_plus_ndlm_univar_crps_smoke_20260323.yaml`
 
 ### Targeted tests
 - `Rscript -e 'library(testthat); test_file("tests/testthat/test_config_mode_resolution.R"); test_file("tests/testthat/test_univar_convergence_contract.R"); test_file("tests/testthat/test_ndlm_ragged_horizon_builder.R"); test_file("tests/testthat/test_post_crps_tables.R")'`
 - `Rscript -e 'library(testthat); test_file("tests/testthat/test_config_mode_resolution.R"); test_file("tests/testthat/test_ndlm_fitloop_contract.R"); test_file("tests/testthat/test_ndlm_ragged_horizon_builder.R"); test_file("tests/testthat/test_ndlm_kalman_backend.R")'`
+- `Rscript --vanilla -e 'library(testthat); test_file("tests/testthat/test_ndlm_univar_wh_recursions.R"); test_file("tests/testthat/test_config_mode_resolution.R"); test_file("tests/testthat/test_post_module_plan.R"); test_file("tests/testthat/test_post_crps_tables.R")'`
 
 ## Phase Status Checklist
 - [x] Phase 0 audit complete
@@ -189,6 +222,8 @@ Status: **PASS (with replay workaround)**
 - [x] Phase E NDLM keep smoke executed (diagnostics fail tracked)
 - [x] Phase F post + CRPS inclusion
 - [x] Phase G NDLM keep stabilization fix + smoke revalidation
+- [x] Phase H NDLM univar keep implementation + smoke validation
+- [x] Phase I all-model smoke + ndlm_univar CRPS inclusion validation
 
 ## Evidence Register
 ### Phase A (PASS)
@@ -397,6 +432,75 @@ CRPS export evidence:
     - `dqlm_multivar_al_synth_keep`
     - `ndlm_main_synth_keep`
 
+### Phase H (PASS: ndlm_univar keep, closed-form implementation + smoke)
+Key implementation files:
+- `R/unified/config.R`
+- `R/unified/manifest.R`
+- `R/unified/inputs_shared_validate.R`
+- `R/unified/stages/stage_fit.R`
+- `R/unified/stages/stage_post.R`
+- `R/unified/stages/stage_report.R`
+- `R/unified/post_module_plan.R`
+- `R/unified/post_artifact_contract.R`
+- `R/unified/contract_checks.R`
+- `R/unified/families/ndlm_univar/00_constants.R`
+- `R/unified/families/ndlm_univar/01_inputs.R`
+- `R/unified/families/ndlm_univar/02_model_spec.R`
+- `R/unified/families/ndlm_univar/03_filter_forecast_fit.R`
+- `R/unified/families/ndlm_univar/04_save_state.R`
+- `R/unified/families/ndlm_univar/05_fitloop.R`
+- `R/unified/families/ndlm_univar/zz_run.R`
+- `R/unified/families/ndlm_univar/ndlm_univar_kalman_backend.cpp`
+- `R/environmetrics/00_paths.R`
+- `R/environmetrics/02_helpers_core.R`
+- `R/environmetrics/30_ndlm_only_init.R`
+- `R/environmetrics/30_univariate_and_misc.R`
+- `R/environmetrics/40_figures.R`
+- `scripts/run_ndlm_univar.R`
+- `scripts/run_environmetrics_figures.R`
+- `config/unified_run.template.yaml`
+- `config/unified_runs/al_phaseH_ndlm_univar_keep_smoke_20260323.yaml`
+- `config/unified_runs/al_phaseI_allmodels_plus_ndlm_univar_crps_smoke_20260323.yaml`
+- `tests/testthat/test_config_mode_resolution.R`
+- `tests/testthat/test_post_module_plan.R`
+- `tests/testthat/test_post_crps_tables.R`
+
+Debug/fix evidence:
+- failing run #1:
+  - `repro/runs/dev_al_phaseH_ndlm_univar_keep_smoke_20260323_rerun_20260323_023149/fit/ndlm_univar/logs/ndlm_univar_theory.log`
+  - error: `matrix(scale_vec, nrow = 1L) * Z : non-conformable arrays`
+- failing run #2:
+  - `repro/runs/dev_al_phaseH_ndlm_univar_keep_smoke_20260323_rerun_20260323_023241/run_manifest.yaml`
+  - fit contract error: `ndlm_univar.samp_theta.numeric: samp.theta must be numeric`
+- final passing run:
+  - `repro/runs/dev_al_phaseH_ndlm_univar_keep_smoke_20260323_rerun_20260323_023419/run_manifest.yaml`
+  - stage statuses: `data_prep_shared=pass`, `fit=pass`, `post=pass`, `report=pass`
+  - contract output:
+    - `repro/runs/dev_al_phaseH_ndlm_univar_keep_smoke_20260323_rerun_20260323_023419/fit/contract_checks/ndlm_univar/ndlm_univar_contract_check.yaml`
+  - fit output:
+    - `repro/runs/dev_al_phaseH_ndlm_univar_keep_smoke_20260323_rerun_20260323_023419/fit/ndlm_univar/outputs/DISC_variables_50_NDLM_univar_synth_DISC.RData`
+
+Phase I execution evidence (PASS):
+- run root:
+  - `repro/runs/dev_al_phaseI_allmodels_plus_ndlm_univar_crps_smoke_20260323`
+- stage status evidence:
+  - `run_manifest.yaml`:
+    - `data_prep_shared.status: pass`
+    - `fit.status: pass`
+    - `post.status: pass`
+    - `report.status: pass`
+- fit artifacts:
+  - `fit/ndlm_univar/outputs/DISC_variables_50_NDLM_univar_synth_DISC.RData`
+  - `fit/contract_checks/ndlm_univar/ndlm_univar_contract_check.yaml`
+- post completion evidence:
+  - `post/logs/dev_al_phaseI_allmodels_plus_ndlm_univar_crps_smoke_20260323/run_log.txt`
+  - contains `END: 2026-03-23 02:59:23`
+- CRPS inclusion evidence:
+  - `post/outputs/dev_al_phaseI_allmodels_plus_ndlm_univar_crps_smoke_20260323/tables/crps_forecast_summary.csv`
+  - contains row with:
+    - `model_id=ndlm_univar_synth_keep`
+    - `model_variant=ndlm_univar_keep`
+
 ## Open Issues
 1. Full-slice PSD audit (all time slices) can still show tiny negative eigenvalues around tolerance scale, while sampled diagnostics pass; decide whether to promote full-slice PSD auditing to a strict gate.
 2. CRPS magnitudes for univar/NDLM in keep replay can be extremely large; interpretability guardrails still needed.
@@ -412,3 +516,6 @@ CRPS export evidence:
 - 2026-03-22: Updated tracker with completed implementation evidence for Phases A-D, partial Phase E, and Phase F replay-based PASS.
 - 2026-03-22: Patched `OptimalModelSLexAL.r` to support AL collapse in legacy bridge with sigma-only Laplace-Delta optimization when `UNIV_LIKELIHOOD_MODE=al` (`gamma=0`, `s_t=0`), and validated via Phase B2 smoke run.
 - 2026-03-23: Added NDLM stabilization controls and root-cause fix across R/C++ Kalman paths, sigma update safeguards, diagnostics counters, new NDLM tests, and validated Phase G NDLM keep smoke rerun PASS (`..._20260323_005054`).
+- 2026-03-23: Added Phase H `ndlm_univar` family wiring, C++/R West-Harrison closed-form implementation integration, sampler/contract bug fixes, and validated smoke rerun PASS (`..._20260323_023419`).
+- 2026-03-23: Added `tests/testthat/test_ndlm_univar_wh_recursions.R` for scalar WH recursion checks, backend parity checks, and sampler dimension/finite checks; test passes.
+- 2026-03-23: Completed Phase I all-model smoke including `ndlm_univar` CRPS export validation (`dev_al_phaseI_allmodels_plus_ndlm_univar_crps_smoke_20260323`).

@@ -246,7 +246,10 @@ load_ndlm_bundle_with_normalize <- function(
 }
 
 has_ndlm_bundle <- function() {
-  isTRUE(MODEL_RUN_NDLM_MAIN) || nzchar(NDLM_VAR_50)
+  isTRUE(MODEL_RUN_NDLM_MAIN) ||
+    isTRUE(MODEL_RUN_NDLM_UNIVAR) ||
+    nzchar(NDLM_VAR_50) ||
+    nzchar(NDLM_UNIVAR_VAR_50)
 }
 
 has_disc_w_bundle <- function() {
@@ -1135,12 +1138,26 @@ if (has_ndlm_bundle()) {
   text(x = tick_positions, y = par("usr")[3] - 0.025 * diff(par("usr")[3:4]), labels = tick_labels, srt = 45, adj = 1, xpd = TRUE, cex = 0.8)
     mtext("Forest Green: 50th Quantile | Dark Red: 5th Quantile | Dark Blue: 95th Quantile | Orange: Average", side = 1, outer = TRUE, line = 2, cex = 0.8)
 
-  plot.ts(t(new.theta.out_50_NDLM_synth_DISC$sm[22:26,]))
+  if (nrow(new.theta.out_50_NDLM_synth_DISC$sm) >= 26L) {
+    plot.ts(t(new.theta.out_50_NDLM_synth_DISC$sm[22:26, ]))
+  } else {
+    warning("Skipping NDLM demo block sm[22:26,] because state dimension < 26.", call. = FALSE)
+  }
 
-  plot.ts(idx,(new.theta.out_50_NDLM_synth_DISC$sm[c(1),idx]), ylim = c(-2,2))
-  lines(idx,Y[1,idx], col = 'gray')
-  lines(new.theta.out_50_NDLM_synth_DISC$sm[22,]+(new.theta.out_50_NDLM_synth_DISC$sm[c(1),]), col = 'red')
-  lines(idx,new.theta.out_50_NDLM_synth_DISC$sm[22,idx]+(new.theta.out_50_NDLM_synth_DISC$sm[c(2),idx])+(new.theta.out_50_NDLM_synth_DISC$sm[c(1),idx]), col = 'blue')
+  plot.ts(idx, (new.theta.out_50_NDLM_synth_DISC$sm[c(1), idx]), ylim = c(-2, 2))
+  lines(idx, Y[1, idx], col = 'gray')
+  if (nrow(new.theta.out_50_NDLM_synth_DISC$sm) >= 22L) {
+    lines(new.theta.out_50_NDLM_synth_DISC$sm[22, ] + (new.theta.out_50_NDLM_synth_DISC$sm[c(1), ]), col = 'red')
+    lines(
+      idx,
+      new.theta.out_50_NDLM_synth_DISC$sm[22, idx] +
+        (new.theta.out_50_NDLM_synth_DISC$sm[c(2), idx]) +
+        (new.theta.out_50_NDLM_synth_DISC$sm[c(1), idx]),
+      col = 'blue'
+    )
+  } else {
+    warning("Skipping NDLM demo lines that require state index 22.", call. = FALSE)
+  }
 
   invisible(try({
     covs_list <- vector("list", J)

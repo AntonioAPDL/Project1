@@ -140,6 +140,16 @@ unified_detect_ndlm_output_present <- function(paths) {
   ))
 }
 
+unified_detect_ndlm_univar_output_present <- function(paths) {
+  paths <- as.character(paths)
+  paths <- paths[nzchar(paths)]
+  any(grepl(
+    "fit/ndlm_univar/outputs/(DISC_variables_50_NDLM_univar_synth_DISC|ndlm_univar_state|ndlm_univar[^/]*)\\.RData$",
+    paths,
+    perl = TRUE
+  ))
+}
+
 unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
   report_root <- file.path(run_root, "report")
   dir.create(report_root, recursive = TRUE, showWarnings = FALSE)
@@ -258,6 +268,7 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
   }
   univar_found <- unified_extract_artifact_quantiles(artifact_paths, family = "univar")
   ndlm_present <- unified_detect_ndlm_output_present(artifact_paths)
+  ndlm_univar_present <- unified_detect_ndlm_univar_output_present(artifact_paths)
 
   families_summary <- list(
     exdqlm_multivar = list(
@@ -284,6 +295,10 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     ndlm_main = list(
       enabled = isTRUE(cfg$models$run_ndlm_main),
       output_present = if (isTRUE(cfg$models$run_ndlm_main)) ndlm_present else FALSE
+    ),
+    ndlm_univar = list(
+      enabled = isTRUE(cfg$models$run_ndlm_univar),
+      output_present = if (isTRUE(cfg$models$run_ndlm_univar)) ndlm_univar_present else FALSE
     )
   )
 
@@ -382,7 +397,9 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     sprintf("- families.exdqlm_univar.enabled: `%s`", families_summary$exdqlm_univar$enabled),
     sprintf("- families.exdqlm_univar.quantiles_found: `%s`", paste(families_summary$exdqlm_univar$quantiles_found, collapse = ", ")),
     sprintf("- families.ndlm_main.enabled: `%s`", families_summary$ndlm_main$enabled),
-    sprintf("- families.ndlm_main.output_present: `%s`", families_summary$ndlm_main$output_present)
+    sprintf("- families.ndlm_main.output_present: `%s`", families_summary$ndlm_main$output_present),
+    sprintf("- families.ndlm_univar.enabled: `%s`", families_summary$ndlm_univar$enabled),
+    sprintf("- families.ndlm_univar.output_present: `%s`", families_summary$ndlm_univar$output_present)
   )
 
   if (isTRUE(families_summary$exdqlm_multivar$enabled) &&

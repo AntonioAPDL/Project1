@@ -97,6 +97,10 @@ MODEL_RUN_NDLM_MAIN <- env_flag(
   "UNIFIED_MODEL_RUN_NDLM_MAIN",
   if (isTRUE(getOption("unified.model_run_ndlm_main", FALSE))) "TRUE" else "FALSE"
 )
+MODEL_RUN_NDLM_UNIVAR <- env_flag(
+  "UNIFIED_MODEL_RUN_NDLM_UNIVAR",
+  if (isTRUE(getOption("unified.model_run_ndlm_univar", FALSE))) "TRUE" else "FALSE"
+)
 
 POST_CACHE_DIR <- env_or_default("UNIFIED_POST_CACHE_DIR", as.character(getOption("unified.post_cache_dir", "")))
 if (!nzchar(POST_CACHE_DIR)) {
@@ -231,6 +235,10 @@ NDLM_RDATA_PATH <- env_or_default("UNIFIED_NDLM_RDATA_PATH", "")
 if (nzchar(NDLM_RDATA_PATH)) {
   NDLM_RDATA_PATH <- path.expand(NDLM_RDATA_PATH)
 }
+NDLM_UNIVAR_RDATA_PATH <- env_or_default("UNIFIED_NDLM_UNIVAR_RDATA_PATH", "")
+if (nzchar(NDLM_UNIVAR_RDATA_PATH)) {
+  NDLM_UNIVAR_RDATA_PATH <- path.expand(NDLM_UNIVAR_RDATA_PATH)
+}
 
 UNIV_RDATA_MAP <- index_by_labels(UNIV_RDATA_PATHS, quantile_labels)
 DISC_W_RDATA_MAP <- index_by_labels(DISC_W_RDATA_PATHS, quantile_labels)
@@ -270,6 +278,11 @@ resolve_disc_w_path_if_present <- function(label) {
 resolve_ndlm_path <- function() {
   fallback <- legacy_root_path("DISC_variables_50_NDLM_synth_DISC.RData")
   require_runscoped_path(NDLM_RDATA_PATH, "NDLM artifact q=50", fallback)
+}
+
+resolve_ndlm_univar_path <- function() {
+  fallback <- legacy_root_path("DISC_variables_50_NDLM_univar_synth_DISC.RData")
+  require_runscoped_path(NDLM_UNIVAR_RDATA_PATH, "NDLM univar artifact q=50", fallback)
 }
 
 resolve_univar_path_with_source <- function(label) {
@@ -384,6 +397,14 @@ if (isTRUE(MODEL_RUN_EXDQLM_MULTIVAR) || length(DISC_W_RDATA_PATHS) > 0L) {
 
 if (isTRUE(MODEL_RUN_NDLM_MAIN) || nzchar(NDLM_RDATA_PATH)) {
   NDLM_VAR_50 <- resolve_ndlm_path()
+} else if (isTRUE(MODEL_RUN_NDLM_UNIVAR) || nzchar(NDLM_UNIVAR_RDATA_PATH)) {
+  NDLM_VAR_50 <- resolve_ndlm_univar_path()
 } else {
   NDLM_VAR_50 <- ""
+}
+
+if (isTRUE(MODEL_RUN_NDLM_UNIVAR) || nzchar(NDLM_UNIVAR_RDATA_PATH)) {
+  NDLM_UNIVAR_VAR_50 <- resolve_ndlm_univar_path()
+} else {
+  NDLM_UNIVAR_VAR_50 <- ""
 }

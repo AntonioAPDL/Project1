@@ -192,7 +192,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   run_exdqlm_multivar <- isTRUE(cfg$models$run_exdqlm_multivar)
   run_exdqlm_univar <- isTRUE(cfg$models$run_exdqlm_univar)
   run_ndlm_main <- isTRUE(cfg$models$run_ndlm_main)
-  if (!run_exdqlm_multivar && !run_exdqlm_univar && !run_ndlm_main) {
+  run_ndlm_univar <- isTRUE(cfg$models$run_ndlm_univar)
+  run_ndlm_univar <- isTRUE(cfg$models$run_ndlm_univar)
+  if (!run_exdqlm_multivar && !run_exdqlm_univar && !run_ndlm_main && !run_ndlm_univar) {
     no_models_msg <- "stage_fit no-op: all model families disabled"
     message(no_models_msg)
     append_fit_stage_log(no_models_msg)
@@ -374,6 +376,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   univar_likelihood_mode <- unified_resolve_univar_likelihood_mode(cfg, default = "exal")
   multivar_likelihood_mode <- unified_resolve_multivar_likelihood_mode(cfg, default = "exal")
   ndlm_forecast_transfer_mode <- unified_resolve_ndlm_forecast_transfer_mode(cfg, default = "keep")
+  ndlm_univar_forecast_transfer_mode <- unified_resolve_ndlm_univar_forecast_transfer_mode(cfg, default = "keep")
   univar_impl_mode <- unified_get(
     cfg,
     c("models", "exdqlm_univar", "implementation_mode"),
@@ -384,11 +387,20 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     c("models", "ndlm_main", "implementation_mode"),
     default = "theory_aligned"
   )
+  ndlm_univar_impl_mode <- unified_get(
+    cfg,
+    c("models", "ndlm_univar", "implementation_mode"),
+    default = "theory_aligned_closed_form"
+  )
   append_fit_stage_log(sprintf(
-    "fit model_modes multivar_likelihood=%s univar_likelihood=%s ndlm_forecast_transfer_mode=%s",
+    paste0(
+      "fit model_modes multivar_likelihood=%s univar_likelihood=%s ",
+      "ndlm_forecast_transfer_mode=%s ndlm_univar_forecast_transfer_mode=%s"
+    ),
     as.character(multivar_likelihood_mode),
     as.character(univar_likelihood_mode),
-    as.character(ndlm_forecast_transfer_mode)
+    as.character(ndlm_forecast_transfer_mode),
+    as.character(ndlm_univar_forecast_transfer_mode)
   ))
   if (isTRUE(cfg$models$run_exdqlm_univar) && identical(univar_impl_mode, "legacy_bridge")) {
     warning(
@@ -399,6 +411,17 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   if (isTRUE(cfg$models$run_ndlm_main) && identical(ndlm_impl_mode, "legacy_bridge")) {
     warning(
       "models.ndlm_main.implementation_mode=legacy_bridge is supported but deprecated; prefer theory_aligned.",
+      call. = FALSE
+    )
+  }
+  if (isTRUE(cfg$models$run_ndlm_univar) &&
+      !identical(ndlm_univar_impl_mode, "theory_aligned_closed_form") &&
+      !identical(ndlm_univar_impl_mode, "theory_aligned")) {
+    stop(
+      sprintf(
+        "unsupported models.ndlm_univar.implementation_mode=%s; expected theory_aligned_closed_form/theory_aligned",
+        as.character(ndlm_univar_impl_mode)
+      ),
       call. = FALSE
     )
   }
@@ -1401,6 +1424,182 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     manifest
   }
 
+  ndlm_univar_script <- NULL
+  ndlm_univar_outputs <- NULL
+  ndlm_univar_logs <- NULL
+  if (run_ndlm_univar) {
+    if (!use_shared_inputs) {
+      stop(
+        "ndlm_univar requires run-scoped shared inputs. Enable stages.data_prep_shared and provide shared bundle inputs.",
+        call. = FALSE
+      )
+    }
+    required_cov_keys <- c("eli", "oni", "ppt", "soil", "pca")
+    missing_cov <- required_cov_keys[!nzchar(unlist(shared_cov_paths[required_cov_keys], use.names = FALSE))]
+    if (length(missing_cov) > 0L) {
+      stop(
+        sprintf(
+          "ndlm_univar missing shared covariates in run bundle: %s",
+          paste(missing_cov, collapse = ", ")
+        ),
+        call. = FALSE
+      )
+    }
+
+    ndlm_univar_script <- file.path(repo_root, "scripts", "run_ndlm_univar.R")
+    if (!file.exists(ndlm_univar_script)) {
+      stop(sprintf("ndlm_univar script not found: %s", ndlm_univar_script), call. = FALSE)
+    }
+
+    ndlm_univar_root <- file.path(fit_root, "ndlm_univar")
+    ndlm_univar_outputs <- file.path(ndlm_univar_root, "outputs")
+    ndlm_univar_logs <- file.path(ndlm_univar_root, "logs")
+    dir.create(ndlm_univar_outputs, recursive = TRUE, showWarnings = FALSE)
+    dir.create(ndlm_univar_logs, recursive = TRUE, showWarnings = FALSE)
+    if (isTRUE(io_settings$enabled)) {
+      ndlm_univar_preflight <- run_preflight_check(
+        path = ndlm_univar_outputs,
+        check_point = "continue",
+        context = "stage_fit ndlm_univar",
+        stage_label = "fit_ndlm_univar"
+      )
+      manifest <- add_preflight_artifact(manifest, ndlm_univar_preflight)
+    }
+  }
+
+  run_ndlm_univar_fit <- function() {
+    output_path <- file.path(ndlm_univar_outputs, "DISC_variables_50_NDLM_univar_synth_DISC.RData")
+    log_path <- file.path(ndlm_univar_logs, "ndlm_univar_theory.log")
+    summary_log_path <- file.path(ndlm_univar_logs, "ndlm_univar_theory_summary.log")
+    env_overrides <- c(
+      UNIFIED_NDLM_UNIVAR_RDATA_OUT = output_path,
+      NDLM_UNIV_RUN_ROOT = run_root_abs,
+      NDLM_UNIV_OUT_DIR = ndlm_univar_outputs,
+      NDLM_SHARED_INPUT_ROOT = shared_paths$root,
+      NDLM_RETROS_CSV = source_retros,
+      NDLM_NWS_FORECAST_CSV = source_nws,
+      NDLM_GLOFAS_FORECAST_CSV = source_glofas,
+      NDLM_COV1_ELI_CSV = shared_cov_paths$eli,
+      NDLM_COV2_ONI_CSV = shared_cov_paths$oni,
+      NDLM_PPT_CSV = shared_cov_paths$ppt,
+      NDLM_SOIL_CSV = shared_cov_paths$soil,
+      NDLM_PCA_CSV = shared_cov_paths$pca,
+      NDLM_UNIV_KALMAN_BACKEND = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "kalman_backend"), default = "cpp"
+      )),
+      NDLM_UNIV_FORECAST_TRANSFER_MODE = as.character(ndlm_univar_forecast_transfer_mode),
+      NDLM_UNIV_DF_T = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "state_evolution", "df_t"), default = 0.95
+      )),
+      NDLM_UNIV_DF_S1 = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "state_evolution", "df_s1"), default = 0.98
+      )),
+      NDLM_UNIV_DF_S2 = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "state_evolution", "df_s2"), default = 0.98
+      )),
+      NDLM_UNIV_DF_S67 = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "state_evolution", "df_s67"), default = 0.98
+      )),
+      NDLM_UNIV_DF_TRANS = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "state_evolution", "df_trans"), default = 0.99999999
+      )),
+      NDLM_UNIV_DF_COVS = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "state_evolution", "df_covs"), default = 0.99999
+      )),
+      NDLM_UNIV_LAMBDA = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "state_evolution", "lambda"), default = 0.99
+      )),
+      NDLM_UNIV_N0 = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "prior", "n0"), default = 20
+      )),
+      NDLM_UNIV_S0 = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "prior", "S0"), default = 1
+      )),
+      NDLM_UNIV_FORECAST_HORIZON_CAP = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "horizon_cap"), default = 1080L
+      )),
+      NDLM_UNIV_POSTERIOR_DRAWS = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "posterior_draws"), default = 64L
+      )),
+      NDLM_UNIV_COV_EIG_FLOOR = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "stabilization", "cov_eig_floor"), default = 1e-8
+      )),
+      NDLM_UNIV_COV_EIG_CAP = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "stabilization", "cov_eig_cap"), default = 1e8
+      )),
+      NDLM_UNIV_COV_DIAG_JITTER = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "stabilization", "cov_diag_jitter"), default = 1e-10
+      )),
+      NDLM_UNIV_THEORY_SUMMARY_LOG = summary_log_path
+    )
+    env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
+
+    script_args <- c("--vanilla", ndlm_univar_script, as.character(cfg$run$seed))
+    cmd_out <- system2(
+      "Rscript",
+      script_args,
+      stdout = TRUE,
+      stderr = TRUE,
+      env = env_kv
+    )
+    writeLines(cmd_out, log_path, useBytes = TRUE)
+    status <- attr(cmd_out, "status")
+    if (is.null(status) || !is.finite(status)) status <- 0L
+    list(
+      model_family = "ndlm_univar",
+      quantile = NA_real_,
+      output_path = output_path,
+      log_path = log_path,
+      status = as.integer(status)
+    )
+  }
+
+  process_ndlm_univar_result <- function(manifest, res_raw) {
+    res <- unified_normalize_fit_worker_result(res_raw, context_label = "NDLM univar fit worker")
+    if (!is.null(res$status) && res$status != 0) {
+      stop(sprintf("NDLM univar fit failed; see %s", res$log_path), call. = FALSE)
+    }
+    if (!file.exists(res$output_path)) {
+      stop(sprintf("NDLM univar output missing: %s", res$output_path), call. = FALSE)
+    }
+    file_size <- suppressWarnings(file.info(res$output_path)$size)
+    if (!is.finite(file_size) || file_size <= 0) {
+      stop(sprintf("NDLM univar output is empty: %s", res$output_path), call. = FALSE)
+    }
+
+    manifest <- unified_manifest_add_artifact(
+      manifest,
+      res$output_path,
+      storage_scale = "model_state",
+      flow_domain = cfg$scale_contract$analysis_scale_fit_internal
+    )
+    if (file.exists(res$log_path)) {
+      manifest <- unified_manifest_add_artifact(manifest, res$log_path, storage_scale = "text")
+    }
+
+    if (contract_checks_enabled) {
+      check_dir <- file.path(fit_root, "contract_checks", "ndlm_univar")
+      summary_log_path <- file.path(ndlm_univar_logs, "ndlm_univar_theory_summary.log")
+      check_result <- unified_contract_check_ndlm_univar(
+        rdata_path = res$output_path,
+        report_dir = check_dir,
+        summary_log_path = summary_log_path,
+        write_reports = contract_checks_write_reports
+      )
+      manifest <- add_report_artifacts(manifest, check_result$report_paths, role = "contract_check")
+      if (!identical(check_result$status, "pass")) {
+        err_msg <- sprintf("NDLM univar contract check failed: %s", paste(check_result$errors, collapse = " | "))
+        if (contract_checks_fail_fast) {
+          stop(err_msg, call. = FALSE)
+        } else {
+          warning(err_msg, call. = FALSE)
+        }
+      }
+    }
+
+    manifest
+  }
+
   execute_fit_jobs <- function(fit_jobs, workers) {
     if (length(fit_jobs) == 0L) return(list())
     safe_run <- function(job) {
@@ -1526,6 +1725,13 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         runner = function() run_ndlm_fit()
       )
     }
+    if (run_ndlm_univar) {
+      fit_jobs[[length(fit_jobs) + 1L]] <- list(
+        family = "ndlm_univar",
+        label = "ndlm_univar",
+        runner = function() run_ndlm_univar_fit()
+      )
+    }
     fit_jobs
   }
 
@@ -1558,6 +1764,13 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       family_jobs[[length(family_jobs) + 1L]] <- list(
         family = "ndlm_main",
         runner = function() list(run_ndlm_fit())
+      )
+    }
+    if (run_ndlm_univar) {
+      task_count <- task_count + 1L
+      family_jobs[[length(family_jobs) + 1L]] <- list(
+        family = "ndlm_univar",
+        runner = function() list(run_ndlm_univar_fit())
       )
     }
 
@@ -1600,6 +1813,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         exdqlm_multivar = process_multivar_result(manifest, res),
         exdqlm_univar = process_univar_result(manifest, res),
         ndlm_main = process_ndlm_result(manifest, res),
+        ndlm_univar = process_ndlm_univar_result(manifest, res),
         stop(sprintf("unknown fit stage family result in %s mode: %s", fit_parallel_mode, family), call. = FALSE)
       )
     }
@@ -1624,6 +1838,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         exdqlm_multivar = process_multivar_result(manifest, res),
         exdqlm_univar = process_univar_result(manifest, res),
         ndlm_main = process_ndlm_result(manifest, res),
+        ndlm_univar = process_ndlm_univar_result(manifest, res),
         stop(sprintf("unknown fit stage family result in %s mode: %s", fit_parallel_mode, family), call. = FALSE)
       )
     }
@@ -1675,6 +1890,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
 
     if (run_ndlm_main) {
       manifest <- process_ndlm_result(manifest, run_ndlm_fit())
+    }
+    if (run_ndlm_univar) {
+      manifest <- process_ndlm_univar_result(manifest, run_ndlm_univar_fit())
     }
   }
 

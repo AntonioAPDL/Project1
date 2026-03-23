@@ -54,6 +54,7 @@ ALLOW_LEGACY_ROOT_FALLBACK <- env_flag("UNIFIED_ALLOW_LEGACY_POST_FALLBACK", "FA
 MODEL_RUN_EXDQLM_MULTIVAR <- env_flag("UNIFIED_MODEL_RUN_EXDQLM_MULTIVAR", "TRUE")
 MODEL_RUN_EXDQLM_UNIVAR <- env_flag("UNIFIED_MODEL_RUN_EXDQLM_UNIVAR", "FALSE")
 MODEL_RUN_NDLM_MAIN <- env_flag("UNIFIED_MODEL_RUN_NDLM_MAIN", "FALSE")
+MODEL_RUN_NDLM_UNIVAR <- env_flag("UNIFIED_MODEL_RUN_NDLM_UNIVAR", "FALSE")
 POST_FIGURES <- env_flag("UNIFIED_POST_FIGURES", "TRUE")
 POST_SMOKE_FAST <- env_flag("UNIFIED_POST_SMOKE_FAST", "FALSE")
 
@@ -76,6 +77,8 @@ DISC_W_RDATA_PATHS <- split_env_paths("UNIFIED_DISC_W_RDATA_PATHS")
 UNIV_RDATA_PATHS <- split_env_paths("UNIFIED_UNIV_RDATA_PATHS")
 NDLM_RDATA_PATH <- Sys.getenv("UNIFIED_NDLM_RDATA_PATH", "")
 if (nzchar(NDLM_RDATA_PATH)) NDLM_RDATA_PATH <- path.expand(NDLM_RDATA_PATH)
+NDLM_UNIVAR_RDATA_PATH <- Sys.getenv("UNIFIED_NDLM_UNIVAR_RDATA_PATH", "")
+if (nzchar(NDLM_UNIVAR_RDATA_PATH)) NDLM_UNIVAR_RDATA_PATH <- path.expand(NDLM_UNIVAR_RDATA_PATH)
 
 options(
   unified.run_root = RUN_ROOT,
@@ -86,13 +89,16 @@ options(
   unified.disc_w_rdata_paths = DISC_W_RDATA_PATHS,
   unified.univ_rdata_paths = UNIV_RDATA_PATHS,
   unified.ndlm_rdata_path = NDLM_RDATA_PATH,
+  unified.ndlm_univar_rdata_path = NDLM_UNIVAR_RDATA_PATH,
   unified.model_run_exdqlm_multivar = MODEL_RUN_EXDQLM_MULTIVAR,
   unified.model_run_exdqlm_univar = MODEL_RUN_EXDQLM_UNIVAR,
   unified.model_run_ndlm_main = MODEL_RUN_NDLM_MAIN,
+  unified.model_run_ndlm_univar = MODEL_RUN_NDLM_UNIVAR,
   unified.post_figures = POST_FIGURES
 )
 
-NDLM_ONLY_MODE <- isTRUE(MODEL_RUN_NDLM_MAIN) &&
+NDLM_ANY_MODE <- isTRUE(MODEL_RUN_NDLM_MAIN) || isTRUE(MODEL_RUN_NDLM_UNIVAR)
+NDLM_ONLY_MODE <- isTRUE(NDLM_ANY_MODE) &&
   !isTRUE(MODEL_RUN_EXDQLM_MULTIVAR) &&
   !isTRUE(MODEL_RUN_EXDQLM_UNIVAR)
 POST_SMOKE_FAST_EFFECTIVE <- isTRUE(POST_SMOKE_FAST) || (isTRUE(POST_FIGURES) && NDLM_ONLY_MODE)
@@ -159,6 +165,7 @@ cat(sprintf("ALLOW_LEGACY_ROOT_FALLBACK: %s\n", ALLOW_LEGACY_ROOT_FALLBACK))
 cat(sprintf("MODEL_RUN_EXDQLM_MULTIVAR: %s\n", MODEL_RUN_EXDQLM_MULTIVAR))
 cat(sprintf("MODEL_RUN_EXDQLM_UNIVAR: %s\n", MODEL_RUN_EXDQLM_UNIVAR))
 cat(sprintf("MODEL_RUN_NDLM_MAIN: %s\n", MODEL_RUN_NDLM_MAIN))
+cat(sprintf("MODEL_RUN_NDLM_UNIVAR: %s\n", MODEL_RUN_NDLM_UNIVAR))
 cat(sprintf("POST_FIGURES: %s\n", POST_FIGURES))
 cat(sprintf("POST_SMOKE_FAST: %s\n", POST_SMOKE_FAST))
 if (length(DISC_W_RDATA_PATHS) > 0L) {
@@ -174,6 +181,7 @@ if (length(UNIV_RDATA_PATHS) > 0L) {
   cat("UNIV_RDATA_PATHS: <none>\n")
 }
 cat(sprintf("NDLM_RDATA_PATH: %s\n", if (nzchar(NDLM_RDATA_PATH)) NDLM_RDATA_PATH else "<none>"))
+cat(sprintf("NDLM_UNIVAR_RDATA_PATH: %s\n", if (nzchar(NDLM_UNIVAR_RDATA_PATH)) NDLM_UNIVAR_RDATA_PATH else "<none>"))
 
 check_required_paths <- function(paths, label) {
   if (length(paths) == 0L) {
@@ -192,6 +200,7 @@ if (STRICT_RUNSCOPED_POST) {
   if (MODEL_RUN_EXDQLM_MULTIVAR) check_required_paths(DISC_W_RDATA_PATHS, "DISC-W artifact")
   if (MODEL_RUN_EXDQLM_UNIVAR) check_required_paths(UNIV_RDATA_PATHS, "univariate artifact")
   if (MODEL_RUN_NDLM_MAIN) check_required_paths(NDLM_RDATA_PATH, "NDLM artifact")
+  if (MODEL_RUN_NDLM_UNIVAR) check_required_paths(NDLM_UNIVAR_RDATA_PATH, "NDLM univar artifact")
 }
 
 # capture session info
@@ -361,6 +370,7 @@ modules <- unified_post_select_modules(
   model_run_exdqlm_multivar = MODEL_RUN_EXDQLM_MULTIVAR,
   model_run_exdqlm_univar = MODEL_RUN_EXDQLM_UNIVAR,
   model_run_ndlm_main = MODEL_RUN_NDLM_MAIN,
+  model_run_ndlm_univar = MODEL_RUN_NDLM_UNIVAR,
   core_modules = core_modules
 )
 
@@ -454,7 +464,8 @@ if (!POST_FIGURES) {
       sprintf("strict_runscoped_post=%s", STRICT_RUNSCOPED_POST),
       sprintf("disc_w_paths=%d", length(DISC_W_RDATA_PATHS)),
       sprintf("univ_paths=%d", length(UNIV_RDATA_PATHS)),
-      sprintf("ndlm_path_present=%s", nzchar(NDLM_RDATA_PATH))
+      sprintf("ndlm_path_present=%s", nzchar(NDLM_RDATA_PATH)),
+      sprintf("ndlm_univar_path_present=%s", nzchar(NDLM_UNIVAR_RDATA_PATH))
     ),
     marker
   )
@@ -474,7 +485,8 @@ post_contract <- unified_post_contract_check(
   post_smoke_fast = isTRUE(POST_SMOKE_FAST_EFFECTIVE),
   model_run_exdqlm_multivar = isTRUE(MODEL_RUN_EXDQLM_MULTIVAR),
   model_run_exdqlm_univar = isTRUE(MODEL_RUN_EXDQLM_UNIVAR),
-  model_run_ndlm_main = isTRUE(MODEL_RUN_NDLM_MAIN)
+  model_run_ndlm_main = isTRUE(MODEL_RUN_NDLM_MAIN),
+  model_run_ndlm_univar = isTRUE(MODEL_RUN_NDLM_UNIVAR)
 )
 post_artifact_reports <- unified_write_post_artifact_reports(
   artifacts_df = post_artifacts,

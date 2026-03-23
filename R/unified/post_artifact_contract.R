@@ -124,7 +124,8 @@ unified_post_contract_check <- function(
   post_smoke_fast = FALSE,
   model_run_exdqlm_multivar = TRUE,
   model_run_exdqlm_univar = TRUE,
-  model_run_ndlm_main = TRUE
+  model_run_ndlm_main = TRUE,
+  model_run_ndlm_univar = FALSE
 ) {
   if (is.null(artifacts_df)) {
     artifacts_df <- unified_collect_post_artifacts(outputs_dir = outputs_dir, cache_dir = cache_dir)
@@ -149,9 +150,10 @@ unified_post_contract_check <- function(
     messages <- c(messages, "post outputs directory has no files.")
   }
 
+  ndlm_any_mode <- isTRUE(model_run_ndlm_main) || isTRUE(model_run_ndlm_univar)
   multivar_only_mode <- isTRUE(model_run_exdqlm_multivar) &&
     !isTRUE(model_run_exdqlm_univar) &&
-    !isTRUE(model_run_ndlm_main)
+    !isTRUE(ndlm_any_mode)
 
   if (!isTRUE(post_figures)) {
     marker_path <- file.path(outputs_dir, "post_smoke_marker.txt")
