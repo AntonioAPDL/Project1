@@ -53,10 +53,14 @@ Start from:
 Model-family implementation modes are configured under `models.<family>.implementation_mode`.
 
 - Default modes:
-  - `models.exdqlm_univar.implementation_mode: theory_aligned`
+  - `models.exdqlm_univar.implementation_mode: legacy_bridge`
   - `models.ndlm_main.implementation_mode: theory_aligned`
 - Legacy fallback remains supported explicitly with:
   - `legacy_bridge`
+
+Current comparison-policy note:
+- `dqlm_univar_al_synth` and `exdqlm_univar_synth` use `implementation_mode=legacy_bridge` in accepted comparison workflows.
+- `theory_aligned + al` remains available for research/debugging, but it is not the accepted comparison/canonical path yet.
 
 Example legacy override:
 

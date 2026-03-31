@@ -1,7 +1,7 @@
 # Unified Multi-Model Workflow Tracker (Living)
 
 Date: 2026-02-10  
-Last verified: 2026-02-25 (NDLM-only calibration lane closed PASS for wiring/execution, but NDLM model-spec mismatch was identified: theory-aligned path currently omits legacy/multiv discount-factor + lambda structure)  
+Last verified: 2026-03-31 (comparison univariate AL policy closed: `legacy_bridge + al` validated on five cutoffs; corrected `20210123` lane-1 replay accepted)  
 Repo root: `/data/muscat_data/jaguir26/project1_ucsc_phd`  
 Status: Active planning + execution tracker  
 Primary audience: project maintainer + Codex
@@ -28,7 +28,7 @@ This is a living document and must be updated when:
 
 - Unified runner calls stages: `forecats`, `fit`, `post`, `validate`, `report`.
 - Unified runner now also supports `data_prep_shared` stage between `forecats` and `fit`.
-- Current `fit` stage orchestrates multivariate exDQLM (DISC-W) and can optionally run univariate exDQLM + NDLM via per-family toggles and `implementation_mode` dispatch (`theory_aligned` default; `legacy_bridge` fallback).
+- Current `fit` stage orchestrates multivariate exDQLM (DISC-W) and can optionally run univariate exDQLM + NDLM via per-family toggles and `implementation_mode` dispatch (current default `legacy_bridge` for `exdqlm_univar`; `theory_aligned` remains the active default for `ndlm_main`).
 - Current `post` stage runs `scripts/run_environmetrics_figures.R`.
 
 Repo references:
@@ -188,12 +188,169 @@ Per-cutoff outputs (bundle `inputs/`):
 4. `meta.yaml` now records `retrospective_policy` selection fields and preparation artifact paths.
 5. `retrospective_preparation.csv` includes synthetic-fill diagnostics (`selected_nws_synthetic_fill_*`, filled/unresolved flags).
 
+## 2.7 Reintegration Proof Update (2026-03-29)
+
+### Run-area reorganization
+
+- Protected canonical lineage roots under `repro/runs/` were preserved in place:
+  - `multimodel_20210123*`
+  - `multimodel_20211112*`
+  - `multimodel_20211221*`
+  - `multimodel_20220511*`
+  - `multimodel_20221225*`
+- One-off debug / repair / control runs were archived to:
+  - `repro/runs_archive_20260329/`
+- Inventory and classification evidence:
+  - `repro/reports/run_cleanup_20260329/run_inventory_classification_20260329.csv`
+
+### Accepted NDLM bounded full-history evidence
+
+- `drop` accepted reference:
+  - `repro/runs/decision_ndlm_main_drop_fullhist_bounded_20210123_19870529_20260327/run_manifest.yaml`
+  - `fit=pass`, `post=pass`, `converged=true`, `iterations_completed=14`
+- `keep` accepted reference:
+  - `repro/runs/decision_ndlm_main_keep_fullhist_bounded_20210123_19870529_20260327_rerun_20260328_054731/run_manifest.yaml`
+  - `fit=pass`, `post=pass`, `converged=true`, `iterations_completed=15`
+
+Interpretation:
+- The revised exact NDLM full-history bounded configuration is accepted for both `drop` and `keep`.
+
+### 9-model proof split
+
+Proof configs:
+- `config/unified_runs/proof_mm9_20210123_l1_20260329.yaml`
+- `config/unified_runs/proof_mm9_20210123_l2_20260329.yaml`
+
+`l1` outcome:
+- run: `proof_mm9_20210123_l1_20260329`
+- `data_prep_shared=pass`, `fit=pass`, `post=pass`, `validate=pass`, `report=pass`
+- validator profile: `production_proof`
+- successful CRPS/export coverage for:
+  - `dqlm_univar_al_synth`
+  - `dqlm_multivar_al_synth_drop`
+  - `dqlm_multivar_al_synth_keep`
+  - `ndlm_main_synth_keep`
+  - `ndlm_univar_synth_keep`
+
+`l2` outcome:
+- run: `proof_mm9_20210123_l2_20260329`
+- `data_prep_shared=pass`, `fit=pass`, `post=fail`
+- failure localized to mixed post univariate synthesis:
+  - `repro/runs/proof_mm9_20210123_l2_20260329/post/logs/post_runner.log`
+  - `R/environmetrics/30_univariate_and_misc.R`
+- exact error:
+  - `Invalid gamma: -11.7161, Allowed range: (-3.75165, 0.298837)`
+  - `Error: gamma is out of bounds.`
+
+Fit-side evidence for the failing univariate exDQLM lane:
+- `q=05`: `gamma=11.48552162`, `converged=false`, `max_iter_reached`
+- `q=50`: `gamma=-1.07686870`, `converged=false`, `max_iter_reached`
+- `q=95`: `gamma=-11.71607908`, `converged=false`, `max_iter_reached`
+- source:
+  - `repro/runs/proof_mm9_20210123_l2_20260329/fit/exdqlm_univar/q=*/logs/univar_theory_summary.log`
+
+### Current workflow readiness
+
+Status:
+- The prior univariate comparison blocker is **resolved for current workflows**.
+
+Accepted current policy:
+- `exdqlm_univar_synth` and `dqlm_univar_al_synth` use `implementation_mode=legacy_bridge` in accepted comparison workflows.
+- `theory_aligned + al` remains experimental for research/debugging and is not the accepted comparison/canonical mode.
+
+Remaining workflow note:
+- Full multimodel comparison bundles must still be refreshed/replayed to ingest the accepted AL-univariate policy, but this is now a relaunch task rather than a root-cause model repair task.
+
+### Comparison-Ready `20210123 v7` Closure (2026-03-29)
+
+Accepted lane configs:
+- `config/unified_runs/multimodel_20210123_v7_l1.yaml`
+- `config/unified_runs/multimodel_20210123_v7_l2.yaml`
+
+Accepted lane outcomes:
+- `v7_l1` comparison source:
+  - fit root: `repro/runs/multimodel_20210123_v7_l1/`
+  - post replay run: `repro/runs/multimodel_20210123_v7_l1_postreplay_fix1_20260329_rerun_20260329_150051/`
+  - status: `post=pass`, `validate=pass`, `report=pass`
+- `v7_l2` full run:
+  - run: `repro/runs/multimodel_20210123_v7_l2/`
+  - status: `data_prep_shared=pass`, `fit=pass`, `post=pass`, `validate=pass`, `report=pass`
+
+Aggregate comparison bundle:
+- `repro/reports/multimodel_20210123_v7_compare/crps_forecast_summary_all_models.csv`
+- `repro/reports/multimodel_20210123_v7_compare/crps_input_health_all_models.csv`
+- `repro/reports/multimodel_20210123_v7_compare/model_coverage.csv`
+- `repro/reports/multimodel_20210123_v7_compare/summary.md`
+
+Coverage result:
+- All 9 target model variants are exported and covered:
+  - `exdqlm_univar_synth`
+  - `dqlm_univar_al_synth`
+  - `exdqlm_multivar_synth_drop`
+  - `exdqlm_multivar_synth_keep`
+  - `dqlm_multivar_al_synth_drop`
+  - `dqlm_multivar_al_synth_keep`
+  - `ndlm_main_synth_drop`
+  - `ndlm_main_synth_keep`
+  - `ndlm_univar_synth_keep`
+
+Operational interpretation:
+- `20210123` is now comparison-ready under the supported mixed `smoke_fast` tables-first post route.
+- The accepted `v7_l1` evidence is a post replay on the accepted fit root, not a single bare-manifest run, but the resulting comparison artifacts are closed and validated.
+- Residual quality caveats remain visible in the aggregate tables:
+  - `ndlm_main_synth_keep` remains materially larger-scale than `ndlm_main_synth_drop`, though still operationally valid for comparison.
+
+Superseding note (2026-03-31):
+- The original `dqlm_univar_al_synth` scale caveat in the first `20210123_v7_compare` bundle is superseded by the repaired `legacy_bridge + al` validation and corrected lane-1 replay:
+  - `multimodel_20210123_v7_l1_alfix_postreplay_20260331`
+  - `repro/reports/multimodel_20210123_v7_compare_alfix_20260331`
+- Under the accepted AL policy, `dqlm_univar_al_synth` returns to the same CRPS order of magnitude as `exdqlm_univar_synth`.
+
+Rollout recommendation:
+- Reuse the same two-lane `v7` structure, canonical shared-input contract, lineage-default policy, and supported tables-first mixed post route for the remaining protected cutoffs:
+  - `20211112`
+  - `20211221`
+  - `20220511`
+  - `20221225`
+- Do not reopen NDLM main or multivariate exDQLM calibration unless a new cutoff-specific regression appears.
+
 Fallback/error behavior:
 
 1. If cutoff is outside local shared origin span, render fails fast with explicit bounds error.
 2. If cutoff is a known missing-origin date (`2020-03-12..2020-03-16`, `2020-07-29`, `2020-11-14`, `2022-07-14`), render fails fast with explicit date list.
 3. If required selected retrospective source is missing from cache, render fails fast with actionable source-id inventory.
 4. If automatic policy is explicitly disabled, legacy/manual selection policy is used and a fallback preparation table is still emitted.
+
+### `dqlm_univar_al_synth` comparison-policy closure (2026-03-31)
+
+Accepted current policy:
+- `dqlm_univar_al_synth` should use:
+  - `likelihood_mode=al`
+  - `implementation_mode=legacy_bridge`
+- `theory_aligned + al` remains available for research/debugging, but it is not the accepted comparison/canonical workflow.
+
+Evidence:
+- Cross-cutoff isolated lineage-aligned validations:
+  - `repair_p8_univar_al_lineage_legacy_20210123_19870529_20260331`
+  - `repair_p8_univar_al_lineage_legacy_20211112_20260331`
+  - `repair_p8_univar_al_lineage_legacy_20211221_20260331`
+  - `repair_p8_univar_al_lineage_legacy_20220511_20260331`
+  - `repair_p8_univar_al_lineage_legacy_20221225_20260331`
+- Summary report:
+  - `repro/reports/dqlm_univar_al_legacy_bridge_validation_20260331/summary.md`
+  - `repro/reports/dqlm_univar_al_legacy_bridge_validation_20260331/cross_cutoff_validation.csv`
+- Corrected `20210123` lane-1 replay and aggregate bundle:
+  - `multimodel_20210123_v7_l1_alfix_postreplay_20260331`
+  - `repro/reports/multimodel_20210123_v7_compare_alfix_20260331`
+
+Interpretation:
+- The large AL-vs-exAL CRPS gap in the earlier comparison lane came from the old `theory_aligned + al` predictive/post contract, not from the AL likelihood itself.
+- Under the accepted `legacy_bridge + al` policy, repaired AL CRPS is now close to exAL on every cutoff with an existing comparison bundle:
+  - `20210123`: `0.2955` vs `0.2969` (old bad AL `6.5113`)
+  - `20211112`: `0.1340` vs `0.1350` (old bad AL `3.8349`)
+  - `20211221`: `1.0965` vs `1.1526` (old bad AL `3.4983`)
+  - `20220511`: `0.0697` vs `0.0738` (old bad AL `11.7865`)
+- `20221225` isolated repaired AL validation also closes cleanly with `fit=pass`, `post=pass`, `validate=pass`, `report=pass`, `mean_crps=1.5653`, and `input-health=status=pass`.
 
 ## 3) Theory Source-of-Truth Policy (Locked)
 
@@ -1722,11 +1879,11 @@ None currently tracked.
    - Fit/post shared-input validation logs source-map evidence under `fit/logs/shared_input_source_map.log` and `post/logs/shared_input_source_map.log`.
    - For `production` / `production_proof`, validator now enforces snapshot evidence when config declares `inputs.forecats.mode=build`, `inputs.forecats.snapshot.enabled=true`, and `inputs.shared.prefer_forecats_snapshot=true` (`snapshot_check.*` + `shared_source_*` / `snapshot_source_mode` lines).
    - Validator output reports shared/snapshot source-map paths and provenance fields for auditability.
-10. P8A implementation-mode defaults are locked:
-   - `models.exdqlm_univar.implementation_mode` defaults to `theory_aligned`.
+10. Current implementation-mode defaults are locked:
+   - `models.exdqlm_univar.implementation_mode` defaults to `legacy_bridge`.
    - `models.ndlm_main.implementation_mode` defaults to `theory_aligned`.
    - `models.run_exdqlm_univar` and `models.run_ndlm_main` remain default `false`; no behavior change unless families are enabled.
-   - `legacy_bridge` remains supported as explicit fallback and now emits a non-fatal deprecation warning when selected for an enabled family.
+   - `legacy_bridge` is the accepted current comparison mode for `exdqlm_univar`; `theory_aligned + al` remains experimental and emits an explicit warning when selected for AL runs.
 11. P9 exDQLM gamma/sigma stabilization defaults are locked for both multivar + univar:
    - `warmup_freeze_iters: 20`
    - `freeze_target: gamma_sigma`
@@ -2217,7 +2374,7 @@ artifacts:
 | `run.seed` | `777` | `unified_apply_seed` and fit wrapper seed env (`scripts/unified_run.R:82`, `R/unified/stages/stage_fit.R:79-93`) |
 | `run.threads.mc_cores` | `1` | quantile parallelism (`R/unified/stages/stage_fit.R:108-116`) |
 | `fit.quantiles` | `[0.05,...,0.95]` | per-quantile execution (`R/unified/stages/stage_fit.R:67-76`) |
-| `models.exdqlm_univar.implementation_mode`, `models.ndlm_main.implementation_mode` | `theory_aligned` | family runner dispatch (`R/unified/stages/stage_fit.R`) |
+| `models.exdqlm_univar.implementation_mode`, `models.ndlm_main.implementation_mode` | `legacy_bridge` for `exdqlm_univar`; `theory_aligned` for `ndlm_main` | family runner dispatch (`R/unified/stages/stage_fit.R`) |
 | `fit.warm_start.enabled` | `false` | forwarded as `DISC_USE_PREV` env (`R/unified/stages/stage_fit.R:80`) |
 | `inputs.fit.*_path` | `null` | validated in `R/unified/config.R:210-215`; consumed in fit/post adapters |
 | `inputs.fit.*_storage_scale` | `log1p_cms` | adapter conversion in fit/post (`R/unified/stages/stage_fit.R:18-61`, `R/unified/stages/stage_post.R:16-59`) |
@@ -2328,7 +2485,7 @@ Recommendation for continuing hardening:
 
 1. DISC-W bridge (already unified): `stage_fit` runs wrapper `scripts/run_DISC_Optimal_Synth_Ranges_W.R`, which sources legacy script (`source("DISC_Optimal_Synth_Ranges_W.r", chdir=TRUE)`), injecting run-scoped input/output paths through `DISC_W_*` env vars (`R/unified/stages/stage_fit.R:78-96`, `scripts/run_DISC_Optimal_Synth_Ranges_W.R:32-39`, `R/disc_w/01_paths_inputs.R:16-27`).
 2. Post bridge (already unified): `stage_post` runs `scripts/run_environmetrics_figures.R` with env overrides for run root + adapted CSV paths (`R/unified/stages/stage_post.R:70-91`, `scripts/run_environmetrics_figures.R:11-27`).
-3. Univariate execution in unified runs: `stage_fit` dispatches to `scripts/run_exdqlm_univar.R` (`theory_aligned`) or `OptimalModelSLexAL.r` (`legacy_bridge`) with run-scoped env-overridden inputs/outputs.
+3. Univariate execution in unified runs: `stage_fit` dispatches to `scripts/run_exdqlm_univar.R` (`theory_aligned`) or `OptimalModelSLexAL.r` (`legacy_bridge`) with run-scoped env-overridden inputs/outputs. Current accepted comparison workflow for both `exdqlm_univar_synth` and `dqlm_univar_al_synth` uses `legacy_bridge`.
 4. NDLM execution in unified runs: `stage_fit` dispatches to `scripts/run_ndlm_main.R` (`theory_aligned`) or `DISC_Optimal_Synth_Ranges_NDLM.r` (`legacy_bridge`) with run-scoped env-overridden inputs/outputs.
 5. Standalone legacy launchers (`run_scripts_SL.py`, direct legacy Rscript usage) remain outside unified-run reproducibility guarantees unless explicitly routed to run-scoped paths.
 
