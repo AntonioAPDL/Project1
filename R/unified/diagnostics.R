@@ -141,6 +141,15 @@ diag_sample_time_idx <- function(Tn, max_checks, seed) {
   sort(sample.int(Tn, size = max_checks, replace = FALSE))
 }
 
+diag_resolve_time_idx <- function(total_slices, sample_idx, full_scan = FALSE) {
+  total_slices <- as.integer(total_slices)
+  if (!is.finite(total_slices) || total_slices <= 0L) return(integer(0))
+  if (isTRUE(full_scan)) return(seq_len(total_slices))
+  idx <- as.integer(sample_idx)
+  idx <- idx[idx >= 1L & idx <= total_slices]
+  unique(idx)
+}
+
 diag_check_symmetry_3d <- function(A, sample_idx, name, tol = 1e-8) {
   tol <- as.numeric(tol)
   dims <- dim(A)
@@ -179,31 +188,31 @@ diag_check_symmetry_3d <- function(A, sample_idx, name, tol = 1e-8) {
   )
 }
 
-diag_check_psd_3d <- function(A, sample_idx, name, psd_tol = -1e-10) {
+diag_check_psd_3d <- function(A, sample_idx, name, psd_tol = -1e-10, full_scan = FALSE, id_suffix = "psd") {
   psd_tol <- as.numeric(psd_tol)
   dims <- dim(A)
   if (!is.numeric(A) || is.null(dims) || length(dims) != 3L) {
-    return(diag_result(sprintf("%s.psd", name), FALSE, "expected numeric 3D array"))
+    return(diag_result(sprintf("%s.%s", name, id_suffix), FALSE, "expected numeric 3D array"))
   }
   if (dims[1] != dims[2]) {
-    return(diag_result(sprintf("%s.psd", name), FALSE, sprintf("non-square slices: %dx%d", dims[1], dims[2])))
+    return(diag_result(sprintf("%s.%s", name, id_suffix), FALSE, sprintf("non-square slices: %dx%d", dims[1], dims[2])))
   }
 
-  idx <- as.integer(sample_idx)
-  idx <- idx[idx >= 1L & idx <= dims[3]]
-  idx <- unique(idx)
+  idx <- diag_resolve_time_idx(total_slices = dims[3], sample_idx = sample_idx, full_scan = full_scan)
   if (length(idx) == 0L) {
-    return(diag_result(sprintf("%s.psd", name), TRUE, "no sampled slices"))
+    return(diag_result(sprintf("%s.%s", name, id_suffix), TRUE, "no sampled slices"))
   }
 
   min_eig <- Inf
   bad_idx <- integer(0)
+  nonfinite_idx <- integer(0)
   for (ti in idx) {
     sl <- A[, , ti, drop = TRUE]
     sl <- (sl + t(sl)) / 2
     vals <- tryCatch(eigen(sl, symmetric = TRUE, only.values = TRUE)$values, error = function(e) NA_real_)
     if (any(!is.finite(vals))) {
       bad_idx <- c(bad_idx, ti)
+      nonfinite_idx <- c(nonfinite_idx, ti)
       next
     }
     cur_min <- min(vals)
@@ -212,11 +221,25 @@ diag_check_psd_3d <- function(A, sample_idx, name, psd_tol = -1e-10) {
   }
 
   if (!is.finite(min_eig)) min_eig <- NA_real_
+  scan_mode <- if (isTRUE(full_scan)) "full" else "sampled"
   diag_result(
-    id = sprintf("%s.psd", name),
+    id = sprintf("%s.%s", name, id_suffix),
     pass = length(bad_idx) == 0L,
-    detail = if (length(bad_idx) == 0L) sprintf("min_eig=%0.3e (tol=%0.3e)", min_eig, psd_tol) else sprintf("eigenvalue below tol at slices: %s", paste(head(bad_idx, 8), collapse = ",")),
-    metrics = list(min_eigenvalue = min_eig, psd_tol = psd_tol, sampled_slices = as.list(idx), violating_slices = as.list(unique(bad_idx)))
+    detail = if (length(bad_idx) == 0L) {
+      sprintf("%s scan min_eig=%0.3e (tol=%0.3e)", scan_mode, min_eig, psd_tol)
+    } else {
+      sprintf("%s scan eigenvalue below tol at slices: %s", scan_mode, paste(head(bad_idx, 8), collapse = ","))
+    },
+    metrics = list(
+      min_eigenvalue = min_eig,
+      psd_tol = psd_tol,
+      scan_mode = scan_mode,
+      checked_slices_count = as.integer(length(idx)),
+      total_slices = as.integer(dims[3]),
+      sampled_slices = as.list(idx),
+      violating_slices = as.list(unique(bad_idx)),
+      nonfinite_slices = as.list(unique(nonfinite_idx))
+    )
   )
 }
 
@@ -282,6 +305,11 @@ unified_diag_exdqlm_univar_theory <- function(
   max_checks <- as.integer(diag_default(settings$max_time_checks, 25L))
   seed <- as.integer(diag_default(settings$seed, 777L))
   psd_tol <- as.numeric(diag_default(settings$psd_tol, -1e-10))
+  psd_warn_tol <- as.numeric(diag_default(settings$psd_warn_tol, psd_tol))
+  psd_fail_tol <- as.numeric(diag_default(settings$psd_fail_tol, psd_tol))
+  full_slice_psd <- isTRUE(diag_default(settings$full_slice_psd, FALSE))
+  if (!is.finite(psd_warn_tol)) psd_warn_tol <- psd_tol
+  if (!is.finite(psd_fail_tol)) psd_fail_tol <- psd_tol
 
   store <- list(checks = list(), errors = character(0), warnings = character(0))
   add <- function(res, severity = "error") {
@@ -331,7 +359,22 @@ unified_diag_exdqlm_univar_theory <- function(
           add(diag_result("univar.new_theta.sC.T_match", as.integer(dim(sC)[3]) == as.integer(Tn), sprintf("sC_T=%d T=%d", as.integer(dim(sC)[3]), as.integer(Tn))))
           idx <- diag_sample_time_idx(Tn, max_checks = max_checks, seed = seed)
           add(diag_check_symmetry_3d(sC, sample_idx = idx, name = "univar.new_theta.sC", tol = 1e-8))
-          add(diag_check_psd_3d(sC, sample_idx = idx, name = "univar.new_theta.sC", psd_tol = psd_tol))
+          add(diag_check_psd_3d(
+            sC,
+            sample_idx = idx,
+            name = "univar.new_theta.sC",
+            psd_tol = psd_fail_tol,
+            full_scan = full_slice_psd,
+            id_suffix = "psd"
+          ))
+          add(diag_check_psd_3d(
+            sC,
+            sample_idx = idx,
+            name = "univar.new_theta.sC",
+            psd_tol = psd_warn_tol,
+            full_scan = full_slice_psd,
+            id_suffix = "psd_warn"
+          ), severity = "warning")
           min_diag <- Inf
           bad_diag <- integer(0)
           for (ti in idx) {
@@ -384,7 +427,14 @@ unified_diag_exdqlm_univar_theory <- function(
     quantile = q_num,
     rdata_path = normalizePath(rdata_path, mustWork = FALSE),
     summary_log_path = if (!is.null(summary_log_path) && nzchar(summary_log_path)) normalizePath(summary_log_path, mustWork = FALSE) else NULL,
-    settings = list(max_time_checks = max_checks, seed = seed, psd_tol = psd_tol),
+    settings = list(
+      max_time_checks = max_checks,
+      seed = seed,
+      psd_tol = psd_tol,
+      psd_warn_tol = psd_warn_tol,
+      psd_fail_tol = psd_fail_tol,
+      full_slice_psd = full_slice_psd
+    ),
     status = status,
     errors = unname(store$errors),
     warnings = unname(store$warnings),
@@ -415,6 +465,11 @@ unified_diag_ndlm_main_theory <- function(
   max_checks <- as.integer(diag_default(settings$max_time_checks, 25L))
   seed <- as.integer(diag_default(settings$seed, 777L))
   psd_tol <- as.numeric(diag_default(settings$psd_tol, -1e-10))
+  psd_warn_tol <- as.numeric(diag_default(settings$psd_warn_tol, psd_tol))
+  psd_fail_tol <- as.numeric(diag_default(settings$psd_fail_tol, psd_tol))
+  full_slice_psd <- isTRUE(diag_default(settings$full_slice_psd, FALSE))
+  if (!is.finite(psd_warn_tol)) psd_warn_tol <- psd_tol
+  if (!is.finite(psd_fail_tol)) psd_fail_tol <- psd_tol
 
   store <- list(checks = list(), errors = character(0), warnings = character(0))
   add <- function(res, severity = "error") {
@@ -478,7 +533,22 @@ unified_diag_ndlm_main_theory <- function(
           add(diag_result("ndlm.new_theta.sC.T_match", as.integer(dim(sC)[3]) == as.integer(Tn), sprintf("sC_T=%d T=%d", as.integer(dim(sC)[3]), as.integer(Tn))))
           idx <- diag_sample_time_idx(Tn, max_checks = max_checks, seed = seed)
           add(diag_check_symmetry_3d(sC, sample_idx = idx, name = "ndlm.new_theta.sC", tol = 1e-8))
-          add(diag_check_psd_3d(sC, sample_idx = idx, name = "ndlm.new_theta.sC", psd_tol = psd_tol))
+          add(diag_check_psd_3d(
+            sC,
+            sample_idx = idx,
+            name = "ndlm.new_theta.sC",
+            psd_tol = psd_fail_tol,
+            full_scan = full_slice_psd,
+            id_suffix = "psd"
+          ))
+          add(diag_check_psd_3d(
+            sC,
+            sample_idx = idx,
+            name = "ndlm.new_theta.sC",
+            psd_tol = psd_warn_tol,
+            full_scan = full_slice_psd,
+            id_suffix = "psd_warn"
+          ), severity = "warning")
         }
 
         add(diag_result("ndlm.new_theta.sm_ens.is_list", is.list(sm_ens), "sm_ens must be list"))
@@ -499,7 +569,22 @@ unified_diag_ndlm_main_theory <- function(
                 Kc <- as.integer(dim(sC_i)[3])
                 idx_k <- diag_sample_time_idx(Kc, max_checks = min(max_checks, 5L), seed = seed + i)
                 add(diag_check_symmetry_3d(sC_i, sample_idx = idx_k, name = sprintf("ndlm.new_theta.sC_ens[%d]", i), tol = 1e-8))
-                add(diag_check_psd_3d(sC_i, sample_idx = idx_k, name = sprintf("ndlm.new_theta.sC_ens[%d]", i), psd_tol = psd_tol))
+                add(diag_check_psd_3d(
+                  sC_i,
+                  sample_idx = idx_k,
+                  name = sprintf("ndlm.new_theta.sC_ens[%d]", i),
+                  psd_tol = psd_fail_tol,
+                  full_scan = full_slice_psd,
+                  id_suffix = "psd"
+                ))
+                add(diag_check_psd_3d(
+                  sC_i,
+                  sample_idx = idx_k,
+                  name = sprintf("ndlm.new_theta.sC_ens[%d]", i),
+                  psd_tol = psd_warn_tol,
+                  full_scan = full_slice_psd,
+                  id_suffix = "psd_warn"
+                ), severity = "warning")
               }
             }
           }
@@ -748,7 +833,14 @@ unified_diag_ndlm_main_theory <- function(
     implementation_mode = "theory_aligned",
     rdata_path = normalizePath(rdata_path, mustWork = FALSE),
     summary_log_path = if (!is.null(summary_log_path) && nzchar(summary_log_path)) normalizePath(summary_log_path, mustWork = FALSE) else NULL,
-    settings = list(max_time_checks = max_checks, seed = seed, psd_tol = psd_tol),
+    settings = list(
+      max_time_checks = max_checks,
+      seed = seed,
+      psd_tol = psd_tol,
+      psd_warn_tol = psd_warn_tol,
+      psd_fail_tol = psd_fail_tol,
+      full_slice_psd = full_slice_psd
+    ),
     status = status,
     errors = unname(store$errors),
     warnings = unname(store$warnings),
@@ -761,6 +853,290 @@ unified_diag_ndlm_main_theory <- function(
       report = report,
       out_dir = report_dir,
       base_name = "ndlm_main"
+    )
+  } else {
+    list(yaml_path = NULL, json_path = NULL)
+  }
+  report$report_paths <- report_paths
+  report
+}
+
+unified_diag_ndlm_univar_theory <- function(
+  rdata_path,
+  report_dir,
+  summary_log_path = NULL,
+  settings = list(),
+  write_reports = TRUE
+) {
+  max_checks <- as.integer(diag_default(settings$max_time_checks, 25L))
+  seed <- as.integer(diag_default(settings$seed, 777L))
+  psd_tol <- as.numeric(diag_default(settings$psd_tol, -1e-10))
+  psd_warn_tol <- as.numeric(diag_default(settings$psd_warn_tol, psd_tol))
+  psd_fail_tol <- as.numeric(diag_default(settings$psd_fail_tol, psd_tol))
+  full_slice_psd <- isTRUE(diag_default(settings$full_slice_psd, FALSE))
+  if (!is.finite(psd_warn_tol)) psd_warn_tol <- psd_tol
+  if (!is.finite(psd_fail_tol)) psd_fail_tol <- psd_tol
+
+  store <- list(checks = list(), errors = character(0), warnings = character(0))
+  add <- function(res, severity = "error") {
+    store <<- diag_collect_result(store, res, severity = severity)
+  }
+
+  required <- c(
+    "new.theta.out_50_NDLM_univar_synth_DISC",
+    "samp.theta_50_NDLM_univar_synth_DISC",
+    "samp.sigma_50_NDLM_univar_synth_DISC",
+    "samp.theta.ens_50_NDLM_univar_synth_DISC",
+    "seq.elbo_50_NDLM_univar_synth_DISC",
+    "seq.sigma_50_NDLM_univar_synth_DISC",
+    "seq.scale_50_NDLM_univar_synth_DISC",
+    "delta_50_NDLM_univar_synth_DISC",
+    "y.fore.draws_50_NDLM_univar_synth_DISC",
+    "ndlm_univar_theory_state"
+  )
+
+  env <- diag_env_load(rdata_path)
+  for (nm in required) {
+    add(diag_result(
+      sprintf("ndlm_univar.%s.exists", nm),
+      exists(nm, envir = env, inherits = FALSE),
+      if (exists(nm, envir = env, inherits = FALSE)) "present" else "missing"
+    ))
+  }
+
+  obj_new <- diag_env_get(env, required[[1]])
+  obj_theta <- diag_env_get(env, required[[2]])
+  obj_sigma <- diag_env_get(env, required[[3]])
+  obj_theta_ens <- diag_env_get(env, required[[4]])
+  obj_elbo <- diag_env_get(env, required[[5]])
+  obj_seq_sigma <- diag_env_get(env, required[[6]])
+  obj_seq_scale <- diag_env_get(env, required[[7]])
+  obj_delta <- diag_env_get(env, required[[8]])
+  obj_y_fore <- diag_env_get(env, required[[9]])
+  obj_state <- diag_env_get(env, required[[10]])
+
+  Tn <- NA_integer_
+  Kn <- NA_integer_
+  if (!is.null(obj_new)) {
+    add(diag_result("ndlm_univar.new_theta.is_list", is.list(obj_new), "expected list"))
+    if (is.list(obj_new)) {
+      req_fields <- c("sm", "sC", "sm_ens", "sC_ens", "exps", "standard_forecast_errors")
+      miss <- req_fields[!req_fields %in% names(obj_new)]
+      add(diag_result(
+        "ndlm_univar.new_theta.fields",
+        length(miss) == 0L,
+        if (length(miss) == 0L) "all required fields present" else paste("missing:", paste(miss, collapse = ","))
+      ))
+      if (length(miss) == 0L) {
+        sm <- obj_new$sm
+        sC <- obj_new$sC
+        sm_ens <- obj_new$sm_ens
+        sC_ens <- obj_new$sC_ens
+        exps <- obj_new$exps
+        sfe <- obj_new$standard_forecast_errors
+
+        add(diag_check_dims(sm, expected = list(rank = 2L), name = "ndlm_univar.new_theta.sm"))
+        add(diag_check_finite(sm, "ndlm_univar.new_theta.sm"))
+        if (!is.null(dim(sm)) && length(dim(sm)) == 2L) {
+          Tn <- as.integer(dim(sm)[2])
+        }
+
+        add(diag_check_dims(sC, expected = list(rank = 3L), name = "ndlm_univar.new_theta.sC"))
+        add(diag_check_finite(sC, "ndlm_univar.new_theta.sC"))
+        if (!is.null(dim(sC)) && length(dim(sC)) == 3L && is.finite(Tn)) {
+          add(diag_result(
+            "ndlm_univar.new_theta.sC.T_match",
+            as.integer(dim(sC)[3]) == as.integer(Tn),
+            sprintf("sC_T=%d T=%d", as.integer(dim(sC)[3]), as.integer(Tn))
+          ))
+          idx <- diag_sample_time_idx(Tn, max_checks = max_checks, seed = seed)
+          add(diag_check_symmetry_3d(sC, sample_idx = idx, name = "ndlm_univar.new_theta.sC", tol = 1e-8))
+          add(diag_check_psd_3d(
+            sC,
+            sample_idx = idx,
+            name = "ndlm_univar.new_theta.sC",
+            psd_tol = psd_fail_tol,
+            full_scan = full_slice_psd,
+            id_suffix = "psd"
+          ))
+          add(diag_check_psd_3d(
+            sC,
+            sample_idx = idx,
+            name = "ndlm_univar.new_theta.sC",
+            psd_tol = psd_warn_tol,
+            full_scan = full_slice_psd,
+            id_suffix = "psd_warn"
+          ), severity = "warning")
+        }
+
+        add(diag_result("ndlm_univar.new_theta.sm_ens.is_list", is.list(sm_ens), "sm_ens must be list"))
+        add(diag_result("ndlm_univar.new_theta.sC_ens.is_list", is.list(sC_ens), "sC_ens must be list"))
+        if (is.list(sm_ens) && is.list(sC_ens)) {
+          add(diag_result(
+            "ndlm_univar.new_theta.ens_list_length_match",
+            length(sm_ens) == length(sC_ens),
+            sprintf("sm_ens=%d sC_ens=%d", length(sm_ens), length(sC_ens))
+          ))
+          for (i in seq_len(min(length(sm_ens), length(sC_ens)))) {
+            sm_i <- sm_ens[[i]]
+            sC_i <- sC_ens[[i]]
+            add(diag_check_dims(sm_i, expected = list(rank = 2L), name = sprintf("ndlm_univar.new_theta.sm_ens[%d]", i)))
+            add(diag_check_finite(sm_i, sprintf("ndlm_univar.new_theta.sm_ens[%d]", i)))
+            add(diag_check_dims(sC_i, expected = list(rank = 3L), name = sprintf("ndlm_univar.new_theta.sC_ens[%d]", i)))
+            add(diag_check_finite(sC_i, sprintf("ndlm_univar.new_theta.sC_ens[%d]", i)))
+            if (!is.null(dim(sC_i)) && length(dim(sC_i)) == 3L) {
+              Kc <- as.integer(dim(sC_i)[3])
+              idx_k <- diag_sample_time_idx(Kc, max_checks = min(max_checks, 10L), seed = seed + i)
+              add(diag_check_symmetry_3d(sC_i, sample_idx = idx_k, name = sprintf("ndlm_univar.new_theta.sC_ens[%d]", i), tol = 1e-8))
+              add(diag_check_psd_3d(
+                sC_i,
+                sample_idx = idx_k,
+                name = sprintf("ndlm_univar.new_theta.sC_ens[%d]", i),
+                psd_tol = psd_fail_tol,
+                full_scan = full_slice_psd,
+                id_suffix = "psd"
+              ))
+              add(diag_check_psd_3d(
+                sC_i,
+                sample_idx = idx_k,
+                name = sprintf("ndlm_univar.new_theta.sC_ens[%d]", i),
+                psd_tol = psd_warn_tol,
+                full_scan = full_slice_psd,
+                id_suffix = "psd_warn"
+              ), severity = "warning")
+            }
+          }
+        }
+
+        add(diag_check_dims(exps, expected = list(rank = 2L, ncol = Tn), name = "ndlm_univar.new_theta.exps"))
+        add(diag_check_finite(exps, "ndlm_univar.new_theta.exps"))
+
+        add(diag_check_dims(sfe, expected = list(rank = 2L), name = "ndlm_univar.new_theta.standard_forecast_errors"))
+        add(diag_check_finite(sfe, "ndlm_univar.new_theta.standard_forecast_errors"))
+        sfe_dim <- dim(sfe)
+        if (!is.null(sfe_dim) && length(sfe_dim) == 2L) {
+          Kn <- as.integer(sfe_dim[2])
+          add(diag_result("ndlm_univar.new_theta.standard_forecast_errors.K_ge_1", is.finite(Kn) && Kn >= 1L, sprintf("K=%s", as.character(Kn))))
+        }
+      }
+    }
+  }
+
+  if (!is.null(obj_theta)) {
+    target <- if (is.list(obj_theta) && ("samp_theta" %in% names(obj_theta))) obj_theta$samp_theta else obj_theta
+    add(diag_check_finite(target, "ndlm_univar.samp.theta"))
+    if (is.finite(Tn)) {
+      add(diag_check_dims(target, expected = list(contains = c(Tn)), name = "ndlm_univar.samp.theta"))
+    }
+  }
+  if (!is.null(obj_sigma)) {
+    target <- if (is.list(obj_sigma) && ("samp_sigma" %in% names(obj_sigma))) obj_sigma$samp_sigma else obj_sigma
+    add(diag_check_finite(target, "ndlm_univar.samp.sigma"))
+    add(diag_result("ndlm_univar.samp.sigma.positive", all(as.numeric(target) > 0), "samp.sigma must be strictly positive"))
+  }
+  if (!is.null(obj_theta_ens)) {
+    leaves <- list()
+    walk <- function(x) {
+      if (is.list(x)) {
+        if (length(x) == 0L) return(invisible(NULL))
+        for (y in x) walk(y)
+      } else if (is.numeric(x)) {
+        leaves[[length(leaves) + 1L]] <<- x
+      }
+      invisible(NULL)
+    }
+    walk(obj_theta_ens)
+    add(diag_result("ndlm_univar.samp.theta.ens.numeric_leaves", length(leaves) > 0L, sprintf("leaf_count=%d", length(leaves))))
+    if (length(leaves) > 0L) {
+      add(diag_result(
+        "ndlm_univar.samp.theta.ens.finite",
+        all(vapply(leaves, diag_all_finite, logical(1))),
+        "samp.theta.ens leaves must be finite"
+      ))
+    }
+  }
+
+  for (nm in c("seq_elbo", "seq_sigma", "seq_scale", "delta")) {
+    obj <- switch(
+      nm,
+      seq_elbo = obj_elbo,
+      seq_sigma = obj_seq_sigma,
+      seq_scale = obj_seq_scale,
+      delta = obj_delta
+    )
+    if (!is.null(obj)) {
+      add(diag_check_finite(obj, sprintf("ndlm_univar.%s", nm)))
+    }
+  }
+  if (!is.null(obj_y_fore)) {
+    add(diag_check_dims(obj_y_fore, expected = list(rank = 2L), name = "ndlm_univar.y_fore_draws"))
+    add(diag_check_finite(obj_y_fore, "ndlm_univar.y_fore_draws"))
+    if (!is.null(dim(obj_y_fore)) && length(dim(obj_y_fore)) == 2L && is.finite(Kn)) {
+      add(diag_result(
+        "ndlm_univar.y_fore_draws.K_match",
+        as.integer(dim(obj_y_fore)[2]) == as.integer(Kn),
+        sprintf("y.fore.draws K=%d expected K=%d", as.integer(dim(obj_y_fore)[2]), as.integer(Kn))
+      ))
+    }
+  }
+
+  if (!is.null(obj_state)) {
+    add(diag_result("ndlm_univar.theory_state.is_list", is.list(obj_state), "ndlm_univar_theory_state must be a list"))
+    if (is.list(obj_state)) {
+      add(diag_result(
+        "ndlm_univar.theory_state.transfer_flag",
+        "transfer_active_forecast_window" %in% names(obj_state),
+        "missing transfer_active_forecast_window"
+      ))
+      K_state <- suppressWarnings(as.integer(obj_state$K))
+      add(diag_result("ndlm_univar.theory_state.K_positive", is.finite(K_state) && K_state >= 1L, sprintf("K=%s", as.character(obj_state$K))))
+    }
+  }
+
+  summary_vals <- diag_parse_summary_log(summary_log_path)
+  if (length(summary_vals) > 0L) {
+    sigma <- suppressWarnings(as.numeric(summary_vals$sigma))
+    add(diag_result("ndlm_univar.summary.sigma_positive", is.finite(sigma) && sigma > 0, sprintf("sigma=%s", as.character(summary_vals$sigma))))
+    for (nm in c("df_t", "df_s1", "df_s2", "df_s67", "lambda", "df_trans", "df_covs")) {
+      cur <- suppressWarnings(as.numeric(summary_vals[[nm]]))
+      if (is.finite(cur)) {
+        add(diag_result(
+          sprintf("ndlm_univar.summary.%s_in_unit_interval", nm),
+          cur > 0 && cur < 1,
+          sprintf("%s=%s", nm, as.character(summary_vals[[nm]]))
+        ))
+      }
+    }
+  } else {
+    add(diag_result("ndlm_univar.summary.log_present", FALSE, "summary log missing or unreadable"), severity = "warning")
+  }
+
+  status <- if (length(store$errors) == 0L) "pass" else "fail"
+  report <- list(
+    family = "ndlm_univar",
+    implementation_mode = "theory_aligned_closed_form",
+    rdata_path = normalizePath(rdata_path, mustWork = FALSE),
+    summary_log_path = if (!is.null(summary_log_path) && nzchar(summary_log_path)) normalizePath(summary_log_path, mustWork = FALSE) else NULL,
+    settings = list(
+      max_time_checks = max_checks,
+      seed = seed,
+      psd_tol = psd_tol,
+      psd_warn_tol = psd_warn_tol,
+      psd_fail_tol = psd_fail_tol,
+      full_slice_psd = full_slice_psd
+    ),
+    status = status,
+    errors = unname(store$errors),
+    warnings = unname(store$warnings),
+    checks = store$checks,
+    summary_values = summary_vals,
+    checked_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  )
+  report_paths <- if (isTRUE(write_reports)) {
+    diag_write_reports(
+      report = report,
+      out_dir = report_dir,
+      base_name = "ndlm_univar"
     )
   } else {
     list(yaml_path = NULL, json_path = NULL)

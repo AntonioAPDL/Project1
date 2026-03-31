@@ -32,30 +32,44 @@ unified_post_select_modules <- function(
     !isTRUE(model_run_exdqlm_univar) &&
     !isTRUE(ndlm_any_mode)
 
-  if (isTRUE(post_smoke_fast)) {
-    if (multivar_only_mode) {
-      # Multivariate isolation lane: run DISC-only post figures without
-      # requiring NDLM/univariate artifacts.
-      return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures_multivar_only.R"))
-    }
-    return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "40_figures_smoke_fast.R"))
-  }
-
   if (ndlm_only_mode) {
-    # NDLM isolation lane: avoid exDQLM init/load codepaths entirely.
-    return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_ndlm_only_init.R", "40_figures_smoke_fast.R"))
+    # NDLM isolation lane: run the dedicated NDLM-only full post module so
+    # forecast diagnostics/CRPS do not depend on exDQLM notebook objects.
+    return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_ndlm_only_init.R", "40_figures_ndlm_only.R"))
   }
 
   if (univar_only_mode) {
-    # Univariate isolation lane: keep the univariate synthesis path, but avoid
-    # full cross-family figure contracts that require NDLM/multiv objects.
-    return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures_smoke_fast.R"))
+    if (isTRUE(post_smoke_fast)) {
+      return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures_smoke_fast.R"))
+    }
+    # Univariate isolation lane: go directly to the dedicated full post module.
+    # The legacy smoke-fast figures assume broader notebook objects and can fail
+    # on targeted repair runs with only a subset of fitted quantiles.
+    return(c(
+      core_modules,
+      "10_data_inputs.R",
+      "20_model_setup.R",
+      "30_univariate_and_misc.R",
+      "40_figures_univar_only.R"
+    ))
   }
 
   if (multivar_only_mode) {
     # Multivariate isolation lane: generate DISC-only diagnostics/forecast plots
     # without touching NDLM-specific figure sections.
     return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures_multivar_only.R"))
+  }
+
+  if (isTRUE(post_smoke_fast)) {
+    if (multivar_only_mode) {
+      # Multivariate isolation lane: run DISC-only post figures without
+      # requiring NDLM/univariate artifacts.
+      return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures_multivar_only.R"))
+    }
+    # Mixed smoke-fast lane still needs the lightweight synthesis/post objects
+    # from 30_univariate_and_misc.R so CRPS/input-health tables can export
+    # without running the full legacy figure stack.
+    return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures_smoke_fast.R"))
   }
 
   c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures.R")

@@ -43,38 +43,42 @@ models:
     # Optional: run both transfer regimes in one unified run (repeats multivar fit/post per mode)
     # forecast_transfer_modes: ["drop", "keep"]
     state_evolution:
-      df_t:       0.9999
-      df_s1:      0.9995
-      df_s2:      0.9995
+      df_t:       0.99999999
+      df_s1:      0.9999
+      df_s2:      0.9999
       df_s67:     0.9999
-      df_discrep: 0.992
+      df_discrep: 0.999
       lambda:     0.97
-      df_trans:   0.99999999
-      df_covs:    0.99999999
+      df_trans:   0.9999999
+      df_covs:    0.99999
   exdqlm_univar:
-    implementation_mode: "theory_aligned"   # legacy_bridge | theory_aligned
+    implementation_mode: "legacy_bridge"    # legacy_bridge | theory_aligned
     likelihood_mode: "exal"                 # exal | al
     state_evolution:
-      df_t: 0.9999995
-      df_s1: 0.9997
-      df_s2: 0.9997
-      df_s67: 0.9997
-      lambda: 0.8995
-      df_trans: 0.99999999
+      df_t: 0.99999999
+      df_s1: 0.9999
+      df_s2: 0.9999
+      df_s67: 0.9999
+      lambda: 0.97
+      df_trans: 0.9999999
       df_covs: 0.99999
   ndlm_main:
     implementation_mode: "theory_aligned"    # legacy_bridge | theory_aligned
     kalman_backend: "cpp"                     # r | cpp
     forecast_transfer_mode: "keep"            # keep | drop (keep = transfer active in forecast window)
     state_evolution:
-      df_t: 0.95
-      df_s1: 0.98
-      df_s2: 0.98
-      df_s67: 0.98
-      df_discrep: 0.98
-      lambda: 0.99
-      df_trans: 0.99999999
-      df_covs: 0.99999
+      df_t: 0.99999999
+      df_s1: 0.9999
+      df_s2: 0.9999
+      df_s67: 0.9999
+      df_discrep: 0.999
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.9999
+    prior:
+      forecast_cov:
+        c_factor: 1.0
+        epsilon: null
     stabilization:
       cov_eig_floor: 1.0e-8
       cov_eig_cap: 1.0e8
@@ -93,12 +97,12 @@ models:
       n0: 20
       S0: 1
     state_evolution:
-      df_t: 0.95
-      df_s1: 0.98
-      df_s2: 0.98
-      df_s67: 0.98
-      lambda: 0.99
-      df_trans: 0.99999999
+      df_t: 0.99999999
+      df_s1: 0.9999
+      df_s2: 0.9999
+      df_s67: 0.9999
+      lambda: 0.97
+      df_trans: 0.9999999
       df_covs: 0.99999
     stabilization:
       cov_eig_floor: 1.0e-8
@@ -122,9 +126,9 @@ inputs:
     retros_path: null
     retros_storage_scale: "log1p_cms"
     nws_forecast_path: null
-    nws_storage_scale: "log1p_cms"
+    nws_storage_scale: "raw_cms"
     glofas_forecast_path: null
-    glofas_storage_scale: "log1p_cms"
+    glofas_storage_scale: "raw_cms"
     usgs_mode: "live"
     usgs_cache_path: null
     covariates: []   # optional list of {name, path}
@@ -291,6 +295,9 @@ fit:
     max_time_checks: 25
     seed: 777
     psd_tol: -1.0e-10
+    full_slice_psd: false
+    psd_warn_tol: -1.0e-10
+    psd_fail_tol: -1.0e-10
 
 post:
   figures: true
@@ -299,6 +306,11 @@ post:
   allow_legacy_root_fallback: false  # deprecated compatibility path; removed from production/proof validation contracts
   export_tables: true
   table_formats: ["csv"]        # supported: csv, rds
+  crps_input_health:
+    enabled: true
+    fail_fast: false
+    min_finite_share: 1.0
+    max_abs: null
 
 validation:
   profile: "production"          # production | production_proof | smoke

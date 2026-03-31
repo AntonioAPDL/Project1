@@ -1,5 +1,17 @@
 source(testthat::test_path("..", "..", "R", "environmetrics", "02_helpers_core.R"))
 
+test_that("shared daily date helpers are available for smoke-fast CRPS exports", {
+  mat <- matrix(1, nrow = 3, ncol = 2)
+  expect_equal(
+    daily_dates_for_matrix_rows(mat, start_date = as.Date("2022-12-26"), context = "ut.rows"),
+    as.Date("2022-12-26") + 0:2
+  )
+  expect_equal(
+    daily_dates_for_matrix_cols(mat, start_date = as.Date("2022-12-26"), context = "ut.cols"),
+    as.Date("2022-12-26") + 0:1
+  )
+})
+
 test_that("post_crps_quantile_approx returns zero for perfect forecast samples", {
   sample_mat <- matrix(2, nrow = 7, ncol = 5)
   obs <- rep(2, 5)
@@ -133,4 +145,129 @@ test_that("post_crps_synth_model_meta resolves IDs for exAL and AL families", {
   expect_equal(n_keep$model_variant, "ndlm_main_keep")
   expect_equal(nu_keep$model_id, "ndlm_univar_synth_keep")
   expect_equal(nu_keep$model_variant, "ndlm_univar_keep")
+})
+
+test_that("post lightweight helper names caches and sample subsets deterministically", {
+  expect_equal(
+    post_cache_file_name(
+      "synth_multivar_forecast_log1p.rds",
+      model_id = "dqlm_multivar_al_synth_keep",
+      transfer_mode = "keep"
+    ),
+    "dqlm_multivar_al_synth_keep__mode-keep__synth_multivar_forecast_log1p.rds"
+  )
+  expect_equal(
+    post_cache_file_name("plain.rds", model_id = "", transfer_mode = NA_character_),
+    "plain.rds"
+  )
+
+  expect_equal(post_plot_sample_indices(5, cap = 10), 1:5)
+  expect_equal(post_plot_sample_indices(0, cap = 10), integer(0))
+  expect_equal(post_plot_sample_indices(10, cap = 4), c(1L, 4L, 7L, 10L))
+})
+
+test_that("post_crps_input_health_tables reports nonfinite draw health failures", {
+  sample_mat <- matrix(
+    c(1, 2, 3, NaN, 5, 6, Inf, 8),
+    nrow = 4,
+    ncol = 2
+  )
+  out <- post_crps_input_health_tables(
+    model_id = "toy_health",
+    model_family = "synthesis",
+    model_variant = "toy_variant",
+    sample_mat = sample_mat,
+    forecast_dates = as.Date("2022-12-26") + 0:1,
+    cutoff_date = as.Date("2022-12-25"),
+    forecast_start_date = as.Date("2022-12-26"),
+    transfer_mode = "keep",
+    min_finite_share = 1,
+    max_abs = NA_real_,
+    context = "ut.crps.health"
+  )
+
+  expect_false(out$pass)
+  expect_equal(nrow(out$summary), 1L)
+  expect_equal(nrow(out$per_time), 2L)
+  expect_equal(out$summary$status[[1L]], "fail")
+  expect_true(out$summary$n_nonfinite_cells[[1L]] > 0L)
+  expect_true(all(out$per_time$n_nonfinite >= 0L))
+})
+
+test_that("post_export_crps_input_health_tables writes expected files", {
+  td <- tempfile("crps_input_health_export_")
+  dir.create(td, recursive = TRUE, showWarnings = FALSE)
+
+  summary <- data.frame(
+    cutoff_date = "2022-12-25",
+    forecast_start_date = "2022-12-26",
+    model_id = "toy_health",
+    model_family = "synthesis",
+    model_variant = "toy_variant",
+    transfer_mode = "keep",
+    horizon_days = 2L,
+    n_samples_nominal = 4L,
+    n_total_cells = 8L,
+    n_finite_cells = 6L,
+    n_nonfinite_cells = 2L,
+    finite_share_cells = 0.75,
+    n_horizon_with_nonfinite = 2L,
+    min_finite_share_threshold = 1,
+    min_finite_share_observed = 0.5,
+    max_abs_threshold = NA_real_,
+    max_abs_observed = 8,
+    min_draw = 1,
+    q01_draw = 1.05,
+    median_draw = 4,
+    q99_draw = 7.95,
+    max_draw = 8,
+    mean_draw = 4.1666667,
+    sd_draw = 2.6394444,
+    status = "fail",
+    violations = "nonfinite_cells=2",
+    stringsAsFactors = FALSE
+  )
+  per_time <- data.frame(
+    cutoff_date = "2022-12-25",
+    forecast_start_date = "2022-12-26",
+    model_id = "toy_health",
+    model_family = "synthesis",
+    model_variant = "toy_variant",
+    transfer_mode = "keep",
+    lead_day = 1:2,
+    forecast_date = as.character(as.Date("2022-12-26") + 0:1),
+    n_samples_nominal = 4L,
+    n_finite = c(3L, 3L),
+    n_nonfinite = c(1L, 1L),
+    finite_share = c(0.75, 0.75),
+    min_draw = c(1, 2),
+    q01_draw = c(1.02, 2.02),
+    median_draw = c(2, 5),
+    q99_draw = c(2.98, 7.98),
+    max_draw = c(3, 8),
+    mean_draw = c(2, 5),
+    sd_draw = c(1, 1.7320508),
+    max_abs_draw = c(3, 8),
+    stringsAsFactors = FALSE
+  )
+
+  out <- post_export_crps_input_health_tables(
+    summary_df = summary,
+    per_time_df = per_time,
+    output_dir = td,
+    table_formats = c("csv", "rds"),
+    keep_na = TRUE,
+    numeric_digits = 17L,
+    file_suffix = "_keep"
+  )
+
+  expect_true(file.exists(file.path(td, "crps_input_health_keep.csv")))
+  expect_true(file.exists(file.path(td, "crps_input_health_per_time_keep.csv")))
+  expect_true(file.exists(file.path(td, "crps_input_health_keep.rds")))
+  expect_true(file.exists(file.path(td, "crps_input_health_per_time_keep.rds")))
+  expect_equal(
+    names(out$manifest),
+    c("table_name", "file_path", "nrow", "ncol", "sha256")
+  )
+  expect_equal(nrow(out$manifest), 4L)
 })

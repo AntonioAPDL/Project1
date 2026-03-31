@@ -85,6 +85,36 @@ sort_to_len <- function(x, target_len, keep_na = NULL, fill = NA_real_, context 
   sorted[seq_len(target_len)]
 }
 
+# Shared date helpers used by both full and smoke-fast post modules.
+daily_dates_for_n <- function(start_date, n_days, context = "dates") {
+  start_date <- as.Date(start_date)
+  if (length(start_date) != 1L || !is.finite(start_date)) {
+    stop(sprintf("[%s] start_date must be a valid scalar Date.", context), call. = FALSE)
+  }
+  n_use <- as.integer(n_days[[1]])
+  if (!is.finite(n_use) || n_use <= 0L) {
+    stop(
+      sprintf("[%s] n_days must be a positive finite integer, got '%s'.", context, as.character(n_days[[1]])),
+      call. = FALSE
+    )
+  }
+  seq(start_date, by = "1 day", length.out = n_use)
+}
+
+daily_dates_for_matrix_rows <- function(mat, start_date, context = "dates.rows") {
+  if (is.null(dim(mat)) || length(dim(mat)) != 2L) {
+    stop(sprintf("[%s] expected a 2D object for row-based date construction.", context), call. = FALSE)
+  }
+  daily_dates_for_n(start_date = start_date, n_days = nrow(mat), context = context)
+}
+
+daily_dates_for_matrix_cols <- function(mat, start_date, context = "dates.cols") {
+  if (is.null(dim(mat)) || length(dim(mat)) != 2L) {
+    stop(sprintf("[%s] expected a 2D object for column-based date construction.", context), call. = FALSE)
+  }
+  daily_dates_for_n(start_date = start_date, n_days = ncol(mat), context = context)
+}
+
 safe_exp_limit <- function(margin = 5) {
   margin <- suppressWarnings(as.numeric(margin[[1L]]))
   if (!is.finite(margin) || margin < 0) margin <- 5
@@ -119,6 +149,390 @@ assert_exp_safe_matrix <- function(mat, context = "latent_matrix", margin = 5) {
   }
 
   invisible(list(max = max_val, limit = limit))
+}
+
+post_transform_loglog1p_to_log1p_mat <- function(sample_mat, context = "sample_mat") {
+  if (!is.matrix(sample_mat)) {
+    sample_mat <- as.matrix(sample_mat)
+  }
+  if (!is.numeric(sample_mat) || length(dim(sample_mat)) != 2L) {
+    stop(sprintf("[%s_SHAPE] sample_mat must be a numeric 2D matrix.", context), call. = FALSE)
+  }
+  assert_exp_safe_matrix(sample_mat, context = paste0(context, ".loglog1p"))
+  exp(sample_mat)
+}
+
+post_extract_ndlm_mean_sample_mat <- function(ndlm_raw, context = "ndlm.mean_sample_mat") {
+  sample_mat <- NULL
+  if (is.numeric(ndlm_raw) && !is.null(dim(ndlm_raw)) && length(dim(ndlm_raw)) == 3L &&
+      dim(ndlm_raw)[1] >= 1L && dim(ndlm_raw)[2] > 0L && dim(ndlm_raw)[3] > 1L) {
+    sample_mat <- t(ndlm_raw[1, , , drop = FALSE][1, , ])
+  } else if (is.matrix(ndlm_raw) && is.numeric(ndlm_raw) && nrow(ndlm_raw) > 1L && ncol(ndlm_raw) > 0L) {
+    sample_mat <- ndlm_raw
+  }
+
+  if (is.null(sample_mat)) {
+    stop(sprintf("[%s_SHAPE] unable to extract NDLM mean sample matrix.", context), call. = FALSE)
+  }
+  if (!is.matrix(sample_mat)) {
+    sample_mat <- as.matrix(sample_mat)
+  }
+  if (!is.numeric(sample_mat) || length(dim(sample_mat)) != 2L || nrow(sample_mat) <= 1L || ncol(sample_mat) <= 0L) {
+    stop(sprintf("[%s_SHAPE] NDLM mean sample matrix must be numeric [sample x horizon] with n_sample > 1.", context), call. = FALSE)
+  }
+  if (!all(is.finite(sample_mat))) {
+    stop(sprintf("[%s_FINITE] NDLM mean sample matrix contains non-finite values.", context), call. = FALSE)
+  }
+  sample_mat
+}
+
+post_ndlm_predictive_draws <- function(
+  ndlm_raw,
+  sigma_draws,
+  context = "ndlm.predictive",
+  seed = 777L
+) {
+  mean_loglog1p <- post_extract_ndlm_mean_sample_mat(
+    ndlm_raw,
+    context = paste0(context, ".mean")
+  )
+
+  sigma_vec <- suppressWarnings(as.numeric(sigma_draws))
+  sigma_vec <- sigma_vec[is.finite(sigma_vec)]
+  if (length(sigma_vec) < 1L) {
+    stop(sprintf("[%s_SIGMA] sigma draws are missing or non-finite.", context), call. = FALSE)
+  }
+  if (any(sigma_vec < 0)) {
+    stop(sprintf("[%s_SIGMA_NEG] sigma draws must be non-negative.", context), call. = FALSE)
+  }
+
+  n_eff <- min(nrow(mean_loglog1p), length(sigma_vec))
+  if (!is.finite(n_eff) || n_eff <= 1L) {
+    stop(sprintf("[%s_N_EFF] effective predictive sample size must exceed 1.", context), call. = FALSE)
+  }
+  mean_loglog1p <- mean_loglog1p[seq_len(n_eff), , drop = FALSE]
+  sd_vec <- sqrt(sigma_vec[seq_len(n_eff)])
+
+  had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  if (had_seed) {
+    old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  }
+  on.exit({
+    if (had_seed) {
+      assign(".Random.seed", old_seed, envir = .GlobalEnv)
+    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+  }, add = TRUE)
+
+  set.seed(as.integer(seed))
+  z <- matrix(stats::rnorm(length(mean_loglog1p)), nrow = n_eff, ncol = ncol(mean_loglog1p))
+  predictive_loglog1p <- mean_loglog1p + sweep(z, 1L, sd_vec, `*`)
+  predictive_log1p <- post_transform_loglog1p_to_log1p_mat(
+    predictive_loglog1p,
+    context = paste0(context, ".predictive")
+  )
+
+  list(
+    mean_loglog1p = mean_loglog1p,
+    predictive_loglog1p = predictive_loglog1p,
+    predictive_log1p = predictive_log1p,
+    sigma_sd = sd_vec
+  )
+}
+
+post_build_ndlm_state_draw_array <- function(
+  ndlm_obj,
+  ranges,
+  FF_list,
+  n_samp,
+  p_state = 7L,
+  eps_reg = 0,
+  seed = 777L,
+  context = "ndlm.state_draws"
+) {
+  if (!is.list(ndlm_obj)) {
+    stop(sprintf("[%s_OBJ] ndlm_obj must be a list.", context), call. = FALSE)
+  }
+  if (!is.list(ndlm_obj$sm_ens) || !is.list(ndlm_obj$sC_ens)) {
+    stop(sprintf("[%s_FIELDS] ndlm_obj must contain sm_ens and sC_ens lists.", context), call. = FALSE)
+  }
+  ranges <- suppressWarnings(as.integer(ranges))
+  if (length(ranges) < 1L || any(!is.finite(ranges)) || any(ranges < 1L)) {
+    stop(sprintf("[%s_RANGES] ranges must be positive integers.", context), call. = FALSE)
+  }
+  if (!is.list(FF_list) || length(FF_list) < 1L) {
+    stop(sprintf("[%s_FF] FF_list must be a non-empty list.", context), call. = FALSE)
+  }
+  n_samp <- suppressWarnings(as.integer(n_samp[[1L]]))
+  if (!is.finite(n_samp) || n_samp <= 1L) {
+    stop(sprintf("[%s_N_SAMP] n_samp must exceed 1.", context), call. = FALSE)
+  }
+  p_state <- suppressWarnings(as.integer(p_state[[1L]]))
+  if (!is.finite(p_state) || p_state < 1L) {
+    stop(sprintf("[%s_P_STATE] p_state must be >= 1.", context), call. = FALSE)
+  }
+
+  next_idx_block <- function(prev_idx, block_len) {
+    block_len <- suppressWarnings(as.integer(block_len[[1L]]))
+    start <- if (length(prev_idx) == 0L) 0L else as.integer(prev_idx[[length(prev_idx)]])
+    if (!is.finite(block_len) || block_len <= 0L) return(integer(0))
+    seq_len(block_len) + start
+  }
+
+  ks <- -diff(c(ranges, 0L))
+  J <- min(length(ks), length(FF_list), length(ndlm_obj$sm_ens), length(ndlm_obj$sC_ens))
+  if (J < 1L) {
+    stop(sprintf("[%s_J] unable to resolve forecast segments.", context), call. = FALSE)
+  }
+
+  had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  if (had_seed) {
+    old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  }
+  on.exit({
+    if (had_seed) {
+      assign(".Random.seed", old_seed, envir = .GlobalEnv)
+    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+  }, add = TRUE)
+
+  set.seed(as.integer(seed))
+  xbs_ndlm <- array(NA_real_, c(1L, as.integer(ranges[[1L]]), n_samp))
+  idx <- c(0L)
+
+  for (j in seq_len(J)) {
+    idx <- next_idx_block(idx, ks[J - j + 1L])
+    if (length(idx) == 0L) next
+
+    sm_j <- ndlm_obj$sm_ens[[j]]
+    sC_j <- ndlm_obj$sC_ens[[j]]
+    if (!is.numeric(sm_j) || is.null(dim(sm_j)) || length(dim(sm_j)) != 2L ||
+        !is.numeric(sC_j) || is.null(dim(sC_j)) || length(dim(sC_j)) != 3L) {
+      next
+    }
+
+    n_avail <- min(length(idx), ncol(sm_j), dim(sC_j)[3])
+    if (!is.finite(n_avail) || n_avail <= 0L) next
+
+    Ft <- FF_list[[j]][seq_len(min(p_state, nrow(FF_list[[j]]))), 1]
+    for (tt in seq_len(n_avail)) {
+      t_idx <- idx[[tt]]
+      Mu <- sm_j[, tt]
+      Sigma <- sC_j[, , tt]
+      p_use <- min(length(Ft), length(Mu), nrow(Sigma), ncol(Sigma))
+      if (!is.finite(p_use) || p_use <= 0L) next
+      Ft_use <- matrix(Ft[seq_len(p_use)], ncol = 1L)
+      S <- Sigma[seq_len(p_use), seq_len(p_use), drop = FALSE] + diag(p_use) * eps_reg
+      mean_use <- as.numeric(crossprod(Ft_use, Mu[seq_len(p_use)]))
+      var_use <- as.numeric(t(Ft_use) %*% S %*% Ft_use)
+      sd_use <- sqrt(max(var_use, 0))
+      xbs_ndlm[1L, t_idx, ] <- stats::rnorm(n = n_samp, mean = mean_use, sd = sd_use)
+    }
+  }
+
+  xbs_ndlm
+}
+
+post_quantile_crossing_summary <- function(sample_cube, q_probs, context = "quantile.crossing") {
+  if (!is.numeric(sample_cube) || is.null(dim(sample_cube)) || length(dim(sample_cube)) != 3L) {
+    stop(sprintf("[%s_SHAPE] sample_cube must be numeric 3D [quantile x sample x horizon].", context), call. = FALSE)
+  }
+  q_probs <- as.numeric(q_probs)
+  if (length(q_probs) != dim(sample_cube)[1]) {
+    stop(sprintf("[%s_Q_LEN] q_probs length must match sample_cube quantile dimension.", context), call. = FALSE)
+  }
+  if (is.unsorted(q_probs)) {
+    stop(sprintf("[%s_Q_ORDER] q_probs must be sorted ascending.", context), call. = FALSE)
+  }
+
+  horizon <- as.integer(dim(sample_cube)[3])
+  per_time <- vector("list", horizon)
+  for (h in seq_len(horizon)) {
+    qmat <- sample_cube[, , h, drop = FALSE][, , 1L]
+    finite_cols <- apply(qmat, 2L, function(x) all(is.finite(x)))
+    qmat <- qmat[, finite_cols, drop = FALSE]
+    if (ncol(qmat) < 1L) {
+      per_time[[h]] <- data.frame(
+        lead_day = as.integer(h),
+        n_sample_paths = 0L,
+        n_crossing_paths = 0L,
+        crossing_rate = NA_real_,
+        stringsAsFactors = FALSE
+      )
+      next
+    }
+    crossing <- apply(qmat, 2L, function(x) any(diff(as.numeric(x)) < 0))
+    per_time[[h]] <- data.frame(
+      lead_day = as.integer(h),
+      n_sample_paths = as.integer(length(crossing)),
+      n_crossing_paths = as.integer(sum(crossing, na.rm = TRUE)),
+      crossing_rate = mean(crossing, na.rm = TRUE),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  per_time_df <- do.call(rbind, per_time)
+  list(
+    per_time = per_time_df,
+    summary = data.frame(
+      n_horizon = as.integer(horizon),
+      n_sample_paths_total = as.integer(sum(per_time_df$n_sample_paths, na.rm = TRUE)),
+      n_crossing_paths_total = as.integer(sum(per_time_df$n_crossing_paths, na.rm = TRUE)),
+      max_crossing_rate = if (nrow(per_time_df) > 0L) max(per_time_df$crossing_rate, na.rm = TRUE) else NA_real_,
+      mean_crossing_rate = if (nrow(per_time_df) > 0L) mean(per_time_df$crossing_rate, na.rm = TRUE) else NA_real_,
+      stringsAsFactors = FALSE
+    )
+  )
+}
+
+post_quantile_curve_from_sample_cube <- function(sample_cube, q_probs, context = "quantile.curve") {
+  if (!is.numeric(sample_cube) || is.null(dim(sample_cube)) || length(dim(sample_cube)) != 3L) {
+    stop(sprintf("[%s_SHAPE] sample_cube must be numeric 3D [quantile x sample x horizon].", context), call. = FALSE)
+  }
+  q_probs <- as.numeric(q_probs)
+  if (length(q_probs) != dim(sample_cube)[1]) {
+    stop(sprintf("[%s_Q_LEN] q_probs length must match sample_cube quantile dimension.", context), call. = FALSE)
+  }
+  if (is.unsorted(q_probs)) {
+    stop(sprintf("[%s_Q_ORDER] q_probs must be sorted ascending.", context), call. = FALSE)
+  }
+
+  n_q <- dim(sample_cube)[1]
+  horizon <- dim(sample_cube)[3]
+  out <- matrix(NA_real_, nrow = n_q, ncol = horizon)
+  rownames(out) <- sprintf("q_%0.2f", q_probs)
+
+  for (i in seq_len(n_q)) {
+    mat <- sample_cube[i, , , drop = TRUE]
+    if (!is.matrix(mat)) {
+      mat <- matrix(mat, nrow = dim(sample_cube)[2], ncol = dim(sample_cube)[3])
+    }
+    out[i, ] <- as.numeric(fast_col_quantiles_t(mat, probs = q_probs[i], na.rm = TRUE)[1, ])
+  }
+
+  out
+}
+
+post_quantile_curve_crossing_summary <- function(q_curve, q_probs, context = "quantile.curve.crossing") {
+  if (!is.numeric(q_curve) || is.null(dim(q_curve)) || length(dim(q_curve)) != 2L) {
+    stop(sprintf("[%s_SHAPE] q_curve must be numeric 2D [quantile x horizon].", context), call. = FALSE)
+  }
+  q_probs <- as.numeric(q_probs)
+  if (length(q_probs) != nrow(q_curve)) {
+    stop(sprintf("[%s_Q_LEN] q_probs length must match q_curve quantile dimension.", context), call. = FALSE)
+  }
+  if (is.unsorted(q_probs)) {
+    stop(sprintf("[%s_Q_ORDER] q_probs must be sorted ascending.", context), call. = FALSE)
+  }
+
+  horizon <- ncol(q_curve)
+  per_time <- vector("list", horizon)
+  for (h in seq_len(horizon)) {
+    vals <- as.numeric(q_curve[, h])
+    neg_diffs <- diff(vals)
+    bad <- neg_diffs[is.finite(neg_diffs) & neg_diffs < 0]
+    per_time[[h]] <- data.frame(
+      lead_day = as.integer(h),
+      n_quantiles = as.integer(length(vals)),
+      has_crossing = as.integer(length(bad) > 0L),
+      n_crossings = as.integer(length(bad)),
+      max_negative_gap = if (length(bad) > 0L) min(bad) else 0,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  per_time_df <- do.call(rbind, per_time)
+  list(
+    per_time = per_time_df,
+    summary = data.frame(
+      n_horizon = as.integer(horizon),
+      n_times_with_crossing = as.integer(sum(per_time_df$has_crossing, na.rm = TRUE)),
+      crossing_share = mean(per_time_df$has_crossing, na.rm = TRUE),
+      max_negative_gap = if (nrow(per_time_df) > 0L) min(per_time_df$max_negative_gap, na.rm = TRUE) else NA_real_,
+      stringsAsFactors = FALSE
+    )
+  )
+}
+
+post_quantile_curve_long_values <- function(q_curve, q_probs, horizon = ncol(q_curve), context = "quantile.curve.long_values") {
+  if (!is.numeric(q_curve) || is.null(dim(q_curve)) || length(dim(q_curve)) != 2L) {
+    stop(sprintf("[%s_SHAPE] q_curve must be numeric 2D [quantile x horizon].", context), call. = FALSE)
+  }
+  q_probs <- as.numeric(q_probs)
+  if (length(q_probs) != nrow(q_curve)) {
+    stop(sprintf("[%s_Q_LEN] q_probs length must match q_curve quantile dimension.", context), call. = FALSE)
+  }
+  horizon <- as.integer(horizon[[1L]])
+  if (!is.finite(horizon) || horizon < 1L || ncol(q_curve) != horizon) {
+    stop(sprintf("[%s_HORIZON] q_curve horizon mismatch.", context), call. = FALSE)
+  }
+  # R stores matrices column-major, so this preserves the desired
+  # lead-major/quantile-minor ordering:
+  # lead1: q1,q2,... ; lead2: q1,q2,... ; ...
+  as.numeric(q_curve)
+}
+
+post_exdqlm_synthesize_from_sample_cube <- function(
+  sample_cube,
+  q_probs,
+  n_samp = 1000L,
+  seed = NULL,
+  enforce_isotonic = TRUE,
+  rearrange = TRUE,
+  grid_M = 1001L,
+  context = "exdqlm.synthesize"
+) {
+  if (!requireNamespace("exdqlm", quietly = TRUE)) {
+    stop(sprintf("[%s_PACKAGE] package 'exdqlm' is required for univariate synthesis repair.", context), call. = FALSE)
+  }
+  if (!is.numeric(sample_cube) || is.null(dim(sample_cube)) || length(dim(sample_cube)) != 3L) {
+    stop(sprintf("[%s_SHAPE] sample_cube must be numeric 3D [quantile x sample x horizon].", context), call. = FALSE)
+  }
+  q_probs <- as.numeric(q_probs)
+  if (length(q_probs) != dim(sample_cube)[1]) {
+    stop(sprintf("[%s_Q_LEN] q_probs length must match sample_cube quantile dimension.", context), call. = FALSE)
+  }
+  if (length(q_probs) < 2L) {
+    stop(sprintf("[%s_Q_MIN] at least two quantile fits are required for synthesis.", context), call. = FALSE)
+  }
+  if (is.unsorted(q_probs)) {
+    stop(sprintf("[%s_Q_ORDER] q_probs must be sorted ascending.", context), call. = FALSE)
+  }
+
+  horizon <- as.integer(dim(sample_cube)[3])
+  draws_list <- lapply(seq_along(q_probs), function(i) {
+    mat <- sample_cube[i, , , drop = TRUE]
+    if (!is.matrix(mat)) {
+      mat <- matrix(mat, nrow = dim(sample_cube)[2], ncol = dim(sample_cube)[3])
+    }
+    t(mat)
+  })
+
+  out <- exdqlm::exdqlm_synthesize_from_draws(
+    draws_list = draws_list,
+    p = q_probs,
+    enforce_isotonic = isTRUE(enforce_isotonic),
+    rearrange = isTRUE(rearrange),
+    grid_M = as.integer(grid_M),
+    n_samp = as.integer(n_samp),
+    seed = seed,
+    T_expected = horizon
+  )
+
+  synth_draws <- t(as.matrix(out$draws))
+  anchor_q <- t(as.matrix(out$quantiles))
+  empirical_q <- fast_col_quantiles_t(synth_draws, probs = out$levels, na.rm = TRUE)
+
+  list(
+    draws = synth_draws,
+    levels = as.numeric(out$levels),
+    anchor_quantiles = anchor_q,
+    empirical_quantiles = empirical_q,
+    summary = out$summary,
+    method = out$method
+  )
 }
 
 build_agg_discrep_quantile_df <- function(
@@ -809,6 +1223,41 @@ post_sanitize_file_suffix <- function(file_suffix = "") {
   suffix
 }
 
+post_cache_file_name <- function(base_name, model_id = "", transfer_mode = NA_character_) {
+  base_name <- as.character(base_name %||% "")
+  if (!nzchar(base_name)) {
+    stop("post_cache_file_name requires a non-empty base_name.", call. = FALSE)
+  }
+
+  model_tag <- gsub("[^A-Za-z0-9._-]+", "_", as.character(model_id %||% ""))
+  model_tag <- gsub("^_+|_+$", "", model_tag)
+
+  mode_tag <- tolower(trimws(as.character(transfer_mode %||% "")))
+  if (!nzchar(mode_tag) || is.na(mode_tag) || !(mode_tag %in% c("drop", "keep"))) {
+    mode_tag <- ""
+  }
+
+  ext <- if (grepl("\\.[^.]+$", base_name)) sub("^.*(\\.[^.]+)$", "\\1", base_name) else ""
+  stem <- if (nzchar(ext)) substr(base_name, 1L, nchar(base_name) - nchar(ext)) else base_name
+
+  prefix_parts <- c(model_tag, if (nzchar(mode_tag)) paste0("mode-", mode_tag) else "")
+  prefix_parts <- prefix_parts[nzchar(prefix_parts)]
+  if (length(prefix_parts) == 0L) {
+    return(base_name)
+  }
+  paste0(paste(prefix_parts, collapse = "__"), "__", stem, ext)
+}
+
+post_plot_sample_indices <- function(n_available, cap = 128L) {
+  n_use <- suppressWarnings(as.integer(n_available[[1L]]))
+  cap_use <- suppressWarnings(as.integer(cap[[1L]]))
+  if (!is.finite(n_use) || n_use <= 0L) return(integer(0))
+  if (!is.finite(cap_use) || cap_use <= 0L) cap_use <- min(n_use, 128L)
+  if (n_use <= cap_use) return(seq_len(n_use))
+  idx <- unique(as.integer(round(seq(1, n_use, length.out = cap_use))))
+  idx[idx >= 1L & idx <= n_use]
+}
+
 post_crps_quantile_approx <- function(obs, sample_mat, context = "crps.quantile") {
   if (!is.matrix(sample_mat)) {
     sample_mat <- as.matrix(sample_mat)
@@ -1014,6 +1463,203 @@ post_crps_model_tables <- function(
   list(per_time = per_time, summary = summary)
 }
 
+post_safe_numeric_summary <- function(x) {
+  vals <- as.numeric(x)
+  finite <- vals[is.finite(vals)]
+  if (length(finite) == 0L) {
+    return(list(
+      min = NA_real_,
+      q01 = NA_real_,
+      median = NA_real_,
+      q99 = NA_real_,
+      max = NA_real_,
+      mean = NA_real_,
+      sd = NA_real_,
+      max_abs = NA_real_
+    ))
+  }
+  qs <- stats::quantile(finite, probs = c(0.01, 0.5, 0.99), names = FALSE, na.rm = TRUE, type = 8)
+  list(
+    min = min(finite),
+    q01 = as.numeric(qs[[1L]]),
+    median = as.numeric(qs[[2L]]),
+    q99 = as.numeric(qs[[3L]]),
+    max = max(finite),
+    mean = mean(finite),
+    sd = if (length(finite) > 1L) stats::sd(finite) else 0,
+    max_abs = max(abs(finite))
+  )
+}
+
+post_crps_input_health_tables <- function(
+  model_id,
+  model_family,
+  model_variant,
+  sample_mat,
+  forecast_dates,
+  cutoff_date,
+  forecast_start_date,
+  transfer_mode = NA_character_,
+  min_finite_share = 1,
+  max_abs = NA_real_,
+  context = "crps.input_health"
+) {
+  model_id <- as.character(if (is.null(model_id)) "" else model_id)
+  model_family <- as.character(if (is.null(model_family)) "" else model_family)
+  model_variant <- as.character(if (is.null(model_variant)) "" else model_variant)
+  if (!nzchar(model_id)) stop(sprintf("[%s_MODEL_ID] model_id must be non-empty.", context), call. = FALSE)
+  if (!nzchar(model_family)) stop(sprintf("[%s_MODEL_FAMILY] model_family must be non-empty.", context), call. = FALSE)
+  if (!nzchar(model_variant)) stop(sprintf("[%s_MODEL_VARIANT] model_variant must be non-empty.", context), call. = FALSE)
+
+  if (!is.matrix(sample_mat)) sample_mat <- as.matrix(sample_mat)
+  if (!is.numeric(sample_mat) || length(dim(sample_mat)) != 2L) {
+    stop(sprintf("[%s_SHAPE] sample_mat must be numeric matrix [sample x horizon].", context), call. = FALSE)
+  }
+  n_samp <- as.integer(nrow(sample_mat))
+  horizon <- as.integer(ncol(sample_mat))
+  if (!is.finite(n_samp) || !is.finite(horizon) || n_samp < 1L || horizon < 1L) {
+    stop(sprintf("[%s_DIM] sample_mat must have nrow>=1 and ncol>=1.", context), call. = FALSE)
+  }
+
+  min_finite_share <- suppressWarnings(as.numeric(min_finite_share))
+  if (!is.finite(min_finite_share) || min_finite_share < 0 || min_finite_share > 1) {
+    min_finite_share <- 1
+  }
+  max_abs <- suppressWarnings(as.numeric(max_abs))
+  if (!is.finite(max_abs) || max_abs <= 0) {
+    max_abs <- NA_real_
+  }
+
+  dates <- as.Date(forecast_dates)
+  if (length(dates) < horizon) {
+    warning(
+      sprintf("[%s_DATES_SHORT] forecast_dates length (%d) is shorter than horizon (%d); padding with NA.", context, length(dates), horizon),
+      call. = FALSE
+    )
+    dates <- c(dates, rep(as.Date(NA), horizon - length(dates)))
+  }
+  if (length(dates) > horizon) {
+    dates <- dates[seq_len(horizon)]
+  }
+
+  n_finite <- integer(horizon)
+  n_nonfinite <- integer(horizon)
+  finite_share <- numeric(horizon)
+  min_vec <- rep(NA_real_, horizon)
+  q01_vec <- rep(NA_real_, horizon)
+  median_vec <- rep(NA_real_, horizon)
+  q99_vec <- rep(NA_real_, horizon)
+  max_vec <- rep(NA_real_, horizon)
+  mean_vec <- rep(NA_real_, horizon)
+  sd_vec <- rep(NA_real_, horizon)
+  max_abs_vec <- rep(NA_real_, horizon)
+
+  for (h in seq_len(horizon)) {
+    vec <- as.numeric(sample_mat[, h])
+    finite_idx <- is.finite(vec)
+    n_finite[[h]] <- sum(finite_idx)
+    n_nonfinite[[h]] <- sum(!finite_idx)
+    finite_share[[h]] <- n_finite[[h]] / n_samp
+    stats_h <- post_safe_numeric_summary(vec[finite_idx])
+    min_vec[[h]] <- stats_h$min
+    q01_vec[[h]] <- stats_h$q01
+    median_vec[[h]] <- stats_h$median
+    q99_vec[[h]] <- stats_h$q99
+    max_vec[[h]] <- stats_h$max
+    mean_vec[[h]] <- stats_h$mean
+    sd_vec[[h]] <- stats_h$sd
+    max_abs_vec[[h]] <- stats_h$max_abs
+  }
+
+  per_time <- data.frame(
+    cutoff_date = as.character(as.Date(cutoff_date)),
+    forecast_start_date = as.character(as.Date(forecast_start_date)),
+    model_id = model_id,
+    model_family = model_family,
+    model_variant = model_variant,
+    transfer_mode = as.character(ifelse(is.na(transfer_mode), NA_character_, transfer_mode)),
+    lead_day = seq_len(horizon),
+    forecast_date = as.character(dates),
+    n_samples_nominal = as.integer(n_samp),
+    n_finite = as.integer(n_finite),
+    n_nonfinite = as.integer(n_nonfinite),
+    finite_share = as.numeric(finite_share),
+    min_draw = min_vec,
+    q01_draw = q01_vec,
+    median_draw = median_vec,
+    q99_draw = q99_vec,
+    max_draw = max_vec,
+    mean_draw = mean_vec,
+    sd_draw = sd_vec,
+    max_abs_draw = max_abs_vec,
+    stringsAsFactors = FALSE
+  )
+
+  n_total_cells <- as.integer(length(sample_mat))
+  finite_all <- is.finite(as.numeric(sample_mat))
+  n_finite_cells <- as.integer(sum(finite_all))
+  n_nonfinite_cells <- as.integer(n_total_cells - n_finite_cells)
+  finite_share_cells <- if (n_total_cells > 0L) n_finite_cells / n_total_cells else NA_real_
+  stats_all <- post_safe_numeric_summary(sample_mat[finite_all])
+  n_horizon_with_nonfinite <- as.integer(sum(n_nonfinite > 0L))
+  min_finite_share_observed <- min(finite_share, na.rm = TRUE)
+  if (!is.finite(min_finite_share_observed)) min_finite_share_observed <- NA_real_
+  max_abs_observed <- max(max_abs_vec, na.rm = TRUE)
+  if (!is.finite(max_abs_observed)) max_abs_observed <- NA_real_
+
+  pass_min_finite_share <- is.finite(min_finite_share_observed) && min_finite_share_observed >= min_finite_share
+  pass_max_abs <- if (is.na(max_abs)) TRUE else (is.finite(max_abs_observed) && max_abs_observed <= max_abs)
+  pass <- n_nonfinite_cells == 0L && pass_min_finite_share && pass_max_abs
+
+  violations <- character(0)
+  if (n_nonfinite_cells > 0L) {
+    violations <- c(violations, sprintf("nonfinite_cells=%d", n_nonfinite_cells))
+  }
+  if (!pass_min_finite_share) {
+    violations <- c(violations, sprintf("min_finite_share_observed=%0.6f < threshold=%0.6f", min_finite_share_observed, min_finite_share))
+  }
+  if (!pass_max_abs) {
+    violations <- c(violations, sprintf("max_abs_observed=%0.6f > threshold=%0.6f", max_abs_observed, max_abs))
+  }
+
+  summary <- data.frame(
+    cutoff_date = as.character(as.Date(cutoff_date)),
+    forecast_start_date = as.character(as.Date(forecast_start_date)),
+    model_id = model_id,
+    model_family = model_family,
+    model_variant = model_variant,
+    transfer_mode = as.character(ifelse(is.na(transfer_mode), NA_character_, transfer_mode)),
+    horizon_days = as.integer(horizon),
+    n_samples_nominal = as.integer(n_samp),
+    n_total_cells = n_total_cells,
+    n_finite_cells = n_finite_cells,
+    n_nonfinite_cells = n_nonfinite_cells,
+    finite_share_cells = as.numeric(finite_share_cells),
+    n_horizon_with_nonfinite = n_horizon_with_nonfinite,
+    min_finite_share_threshold = as.numeric(min_finite_share),
+    min_finite_share_observed = as.numeric(min_finite_share_observed),
+    max_abs_threshold = if (is.na(max_abs)) NA_real_ else as.numeric(max_abs),
+    max_abs_observed = as.numeric(max_abs_observed),
+    min_draw = stats_all$min,
+    q01_draw = stats_all$q01,
+    median_draw = stats_all$median,
+    q99_draw = stats_all$q99,
+    max_draw = stats_all$max,
+    mean_draw = stats_all$mean,
+    sd_draw = stats_all$sd,
+    status = if (isTRUE(pass)) "pass" else "fail",
+    violations = if (length(violations) == 0L) "" else paste(violations, collapse = " | "),
+    stringsAsFactors = FALSE
+  )
+
+  list(
+    per_time = per_time,
+    summary = summary,
+    pass = isTRUE(pass),
+    violations = violations
+  )
+}
+
 post_export_crps_tables <- function(
   per_time_df,
   summary_df,
@@ -1048,6 +1694,41 @@ post_export_crps_tables <- function(
     numeric_digits = numeric_digits
   )
   list(per_time = per_time_df, summary = summary_df, manifest = manifest)
+}
+
+post_export_crps_input_health_tables <- function(
+  summary_df,
+  per_time_df,
+  output_dir,
+  table_formats = c("csv"),
+  keep_na = TRUE,
+  numeric_digits = 17L,
+  file_suffix = ""
+) {
+  suffix <- post_sanitize_file_suffix(file_suffix)
+  stems <- list(
+    summary = paste0("crps_input_health", suffix),
+    per_time = paste0("crps_input_health_per_time", suffix)
+  )
+  formats <- unique(tolower(as.character(table_formats)))
+  formats <- formats[formats %in% c("csv", "rds")]
+  if (length(formats) == 0L) formats <- "csv"
+
+  summary_df <- as.data.frame(summary_df, stringsAsFactors = FALSE)
+  per_time_df <- as.data.frame(per_time_df, stringsAsFactors = FALSE)
+  manifest <- post_export_tables(
+    tables = list(summary = summary_df, per_time = per_time_df),
+    output_dir = output_dir,
+    file_stems = stems,
+    formats = formats,
+    keep_na = keep_na,
+    sort_keys = list(
+      summary = c("model_id", "transfer_mode"),
+      per_time = c("model_id", "transfer_mode", "forecast_date", "lead_day")
+    ),
+    numeric_digits = numeric_digits
+  )
+  list(summary = summary_df, per_time = per_time_df, manifest = manifest)
 }
 
 dlm_df = function(y, model, df, dim.df, s.priors = list(l0=1,S0=10), just.lik=FALSE){
@@ -1693,6 +2374,147 @@ extract_kde_eval_points <- function(kde_obj, d, context = "jsd_kde") {
   out
 }
 
+jsd_warn_once <- local({
+  warned <- new.env(parent = emptyenv())
+  function(key, message_text) {
+    if (!exists(key, envir = warned, inherits = FALSE)) {
+      assign(key, TRUE, envir = warned)
+      warning(message_text, call. = FALSE)
+    }
+    invisible(NULL)
+  }
+})
+
+compute_jsd_axis_bandwidth <- function(x, context = "jsd", axis = 1L) {
+  vals <- as.numeric(x[is.finite(x)])
+  if (length(vals) < 2L) {
+    stop(sprintf("[JSD_BANDWIDTH_ROWS] %s axis %d has fewer than 2 finite values.", context, as.integer(axis)))
+  }
+
+  bw_primary <- suppressWarnings(tryCatch(stats::bw.nrd0(vals), error = function(e) NA_real_))
+  sd_x <- suppressWarnings(stats::sd(vals))
+  iqr_x <- suppressWarnings(stats::IQR(vals) / 1.349)
+  mad_x <- suppressWarnings(stats::mad(vals, center = stats::median(vals), constant = 1.4826))
+  range_x <- suppressWarnings(diff(range(vals)))
+
+  scale_ref <- suppressWarnings(max(c(sd_x, iqr_x, mad_x, range_x / 4, 1.0), na.rm = TRUE))
+  if (!is.finite(scale_ref) || scale_ref <= 0) {
+    scale_ref <- 1.0
+  }
+
+  bw_fallback <- 0.9 * scale_ref * length(vals)^(-1 / 5)
+  if (!is.finite(bw_fallback) || bw_fallback <= 0) {
+    bw_fallback <- scale_ref
+  }
+
+  bw_floor <- max(1.0e-6, sqrt(.Machine$double.eps) * scale_ref)
+  bw <- bw_primary
+  if (!is.finite(bw) || bw <= 0) {
+    bw <- bw_fallback
+    jsd_warn_once(
+      paste0("jsd_bw_primary:", context, ":", axis),
+      sprintf(
+        "[JSD_BANDWIDTH_PRIMARY] %s axis %d could not use bw.nrd0; falling back to scale-based bandwidth %.6g.",
+        context,
+        as.integer(axis),
+        bw
+      )
+    )
+  }
+  if (!is.finite(bw) || bw <= 0) {
+    bw <- bw_floor
+  }
+  if (bw < bw_floor) {
+    jsd_warn_once(
+      paste0("jsd_bw_floor:", context, ":", axis),
+      sprintf(
+        "[JSD_BANDWIDTH_FLOOR] %s axis %d bandwidth %.6g raised to floor %.6g.",
+        context,
+        as.integer(axis),
+        bw,
+        bw_floor
+      )
+    )
+    bw <- bw_floor
+  }
+  as.numeric(bw)
+}
+
+repair_jsd_bandwidth_matrix <- function(H, context = "jsd", eig_floor = 1.0e-8) {
+  if (!is.numeric(H) || is.null(dim(H)) || length(dim(H)) != 2L || nrow(H) != ncol(H)) {
+    return(NULL)
+  }
+  H <- 0.5 * (H + t(H))
+  if (any(!is.finite(H))) {
+    return(NULL)
+  }
+  eig <- tryCatch(eigen(H, symmetric = TRUE, only.values = TRUE), error = function(e) NULL)
+  if (is.null(eig) || any(!is.finite(eig$values))) {
+    return(NULL)
+  }
+  min_eig <- min(eig$values)
+  floor_val <- max(as.numeric(eig_floor), .Machine$double.eps)
+  if (min_eig < floor_val) {
+    ridge <- floor_val - min_eig
+    H <- H + diag(ridge, nrow(H))
+    jsd_warn_once(
+      paste0("jsd_bw_pd:", context),
+      sprintf(
+        "[JSD_BANDWIDTH_PD] %s added diagonal ridge %.6g to stabilize KDE bandwidth matrix.",
+        context,
+        ridge
+      )
+    )
+  }
+  H
+}
+
+compute_jsd_bandwidth_spec <- function(sample_m, context = "jsd") {
+  d <- ncol(sample_m)
+  if (d == 1L) {
+    return(list(
+      arg = "h",
+      value = compute_jsd_axis_bandwidth(sample_m[, 1L], context = context, axis = 1L),
+      strategy = "bw.nrd0"
+    ))
+  }
+
+  hpi_err <- NULL
+  H_full <- tryCatch(
+    ks::Hpi(sample_m),
+    error = function(e) {
+      hpi_err <<- conditionMessage(e)
+      NULL
+    }
+  )
+  H_full <- repair_jsd_bandwidth_matrix(H_full, context = paste0(context, ".Hpi"))
+  if (!is.null(H_full) && all(dim(H_full) == c(d, d))) {
+    return(list(arg = "H", value = H_full, strategy = "Hpi"))
+  }
+
+  bw_diag <- vapply(
+    seq_len(d),
+    function(j) compute_jsd_axis_bandwidth(sample_m[, j], context = context, axis = j),
+    numeric(1)
+  )
+  H_diag <- diag(pmax(bw_diag, 1.0e-6)^2, d)
+  H_diag <- repair_jsd_bandwidth_matrix(H_diag, context = paste0(context, ".diag"))
+  if (is.null(H_diag)) {
+    stop(sprintf("[JSD_BANDWIDTH_DIAG] %s failed to construct a positive-definite diagonal KDE bandwidth matrix.", context))
+  }
+
+  jsd_warn_once(
+    paste0("jsd_bw_fallback:", context),
+    sprintf(
+      "[JSD_BANDWIDTH_FALLBACK] %s falling back to diagonal KDE bandwidths%s.",
+      context,
+      if (!is.null(hpi_err) && nzchar(hpi_err)) paste0(" after Hpi error: ", hpi_err) else ""
+    )
+  )
+
+  list(arg = "H", value = H_diag, strategy = "diag_bw")
+}
+
 # Jensen-Shannon divergence between sample KDE and standard Normal in matching dimension.
 compute_jsd_to_standard_normal <- function(sample, gridsize = 100L, context = "jsd") {
   if (!requireNamespace("ks", quietly = TRUE)) {
@@ -1709,7 +2531,12 @@ compute_jsd_to_standard_normal <- function(sample, gridsize = 100L, context = "j
   }
 
   gs <- normalize_jsd_gridsize(gridsize, d)
-  kde_obj <- ks::kde(sample_m, gridsize = gs)
+  bandwidth_spec <- compute_jsd_bandwidth_spec(sample_m, context = context)
+  kde_obj <- if (identical(bandwidth_spec$arg, "h")) {
+    ks::kde(sample_m, h = bandwidth_spec$value, gridsize = gs)
+  } else {
+    ks::kde(sample_m, H = bandwidth_spec$value, gridsize = gs)
+  }
 
   pdf_p <- kde_obj$estimate
   dim_p <- dim(pdf_p)

@@ -137,6 +137,109 @@ test_that("multivar-only post contract accepts multivar diagnostics without synt
   expect_true(isTRUE(contract$checks$table_exports_present))
 })
 
+test_that("univar-only post contract accepts isolated univariate diagnostics and CRPS exports", {
+  outputs_dir <- tempfile("post_outputs_univar_only_")
+  cache_dir <- tempfile("post_cache_univar_only_")
+  dir.create(outputs_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+  tables_dir <- file.path(outputs_dir, "tables")
+  dir.create(tables_dir, recursive = TRUE, showWarnings = FALSE)
+
+  create_dummy_png(file.path(outputs_dir, "univar_fit_mu_vs_observed_loglog.png"))
+  create_dummy_png(file.path(outputs_dir, "univar_fit_mu_vs_observed_recent_loglog.png"))
+  create_dummy_png(file.path(outputs_dir, "univar_forecast_window_mu_vs_future_usgs.png"))
+  create_dummy_png(file.path(outputs_dir, "univar_forecast_window_predictive_q50_vs_future_usgs.png"))
+  create_dummy_png(file.path(outputs_dir, "univar_forecast_window_univar_vs_ensembles.png"))
+  create_dummy_png(file.path(outputs_dir, "univar_forecast_window_ensemble_members.png"))
+  create_dummy_png(file.path(outputs_dir, "univar_forecast_window_quantiles_raw_cms.png"))
+  create_dummy_png(file.path(outputs_dir, "univar_elbo_traces.png"))
+
+  write.csv(data.frame(forecast_date = "2021-01-24", value = 1), file.path(outputs_dir, "univar_forecast_window_quantiles.csv"), row.names = FALSE)
+  write.csv(data.frame(forecast_index = 1, crossing = 0), file.path(outputs_dir, "univar_forecast_quantile_crossing_per_time.csv"), row.names = FALSE)
+  write.csv(data.frame(metric = "median_curve_times_with_crossing", value = 0), file.path(outputs_dir, "univar_forecast_quantile_crossing_summary.csv"), row.names = FALSE)
+
+  write.csv(data.frame(x = 1), file.path(tables_dir, "crps_forecast_summary.csv"), row.names = FALSE)
+  write.csv(data.frame(x = 1), file.path(tables_dir, "crps_forecast_per_time.csv"), row.names = FALSE)
+  write.csv(data.frame(x = 1), file.path(tables_dir, "crps_input_health.csv"), row.names = FALSE)
+  write.csv(data.frame(x = 1), file.path(tables_dir, "crps_input_health_per_time.csv"), row.names = FALSE)
+  write.csv(data.frame(x = 1), file.path(tables_dir, "posterior_table_exports_manifest.csv"), row.names = FALSE)
+  writeLines("readme", con = file.path(tables_dir, "posterior_table_exports_README.md"))
+
+  saveRDS(array(1, dim = c(7, 3, 2)), file.path(cache_dir, "y_hist_uni.rds"))
+  saveRDS(array(1, dim = c(7, 3, 2)), file.path(cache_dir, "y_forecast_uni.rds"))
+  saveRDS(matrix(1, nrow = 3, ncol = 2), file.path(cache_dir, "synth_univar_hist_log1p.rds"))
+  saveRDS(matrix(1, nrow = 3, ncol = 2), file.path(cache_dir, "synth_univar_forecast_log1p.rds"))
+
+  contract <- unified_post_contract_check(
+    artifacts_df = NULL,
+    outputs_dir = outputs_dir,
+    cache_dir = cache_dir,
+    post_figures = TRUE,
+    export_tables = TRUE,
+    post_smoke_fast = FALSE,
+    model_run_exdqlm_multivar = FALSE,
+    model_run_exdqlm_univar = TRUE,
+    model_run_ndlm_main = FALSE,
+    model_run_ndlm_univar = FALSE
+  )
+
+  expect_true(isTRUE(contract$status))
+  expect_true(isTRUE(contract$checks$univar_fit_figure_present))
+  expect_true(isTRUE(contract$checks$univar_forecast_figure_present))
+  expect_true(isTRUE(contract$checks$univar_trace_figure_present))
+  expect_true(isTRUE(contract$checks$univar_summary_exports_present))
+  expect_true(isTRUE(contract$checks$synthesis_cache_files_present))
+  expect_true(isTRUE(contract$checks$synthesis_core_shapes_ok))
+  expect_true(isTRUE(contract$checks$table_exports_present))
+})
+
+test_that("univar-only post contract accepts dedicated repair outputs without legacy fit/trace figures", {
+  outputs_dir <- tempfile("post_outputs_univar_repair_only_")
+  cache_dir <- tempfile("post_cache_univar_repair_only_")
+  dir.create(outputs_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+  tables_dir <- file.path(outputs_dir, "tables")
+  dir.create(tables_dir, recursive = TRUE, showWarnings = FALSE)
+
+  create_dummy_png(file.path(outputs_dir, "univar_forecast_window_quantiles_raw_cms.png"))
+
+  write.csv(data.frame(forecast_date = "2021-01-24", value = 1), file.path(outputs_dir, "univar_forecast_window_quantiles.csv"), row.names = FALSE)
+  write.csv(data.frame(forecast_index = 1, crossing = 0), file.path(outputs_dir, "univar_forecast_quantile_crossing_per_time.csv"), row.names = FALSE)
+  write.csv(data.frame(metric = "median_curve_times_with_crossing", value = 0), file.path(outputs_dir, "univar_forecast_quantile_crossing_summary.csv"), row.names = FALSE)
+
+  write.csv(data.frame(x = 1), file.path(tables_dir, "crps_forecast_summary.csv"), row.names = FALSE)
+  write.csv(data.frame(x = 1), file.path(tables_dir, "crps_forecast_per_time.csv"), row.names = FALSE)
+  write.csv(data.frame(x = 1), file.path(tables_dir, "crps_input_health.csv"), row.names = FALSE)
+  write.csv(data.frame(x = 1), file.path(tables_dir, "crps_input_health_per_time.csv"), row.names = FALSE)
+  write.csv(data.frame(x = 1), file.path(tables_dir, "posterior_table_exports_manifest.csv"), row.names = FALSE)
+  writeLines("readme", con = file.path(tables_dir, "posterior_table_exports_README.md"))
+
+  saveRDS(array(1, dim = c(3, 5, 2)), file.path(cache_dir, "y_hist_uni.rds"))
+  saveRDS(array(1, dim = c(3, 5, 2)), file.path(cache_dir, "y_forecast_uni.rds"))
+  saveRDS(matrix(1, nrow = 3, ncol = 2), file.path(cache_dir, "synth_univar_hist_log1p.rds"))
+  saveRDS(matrix(1, nrow = 3, ncol = 2), file.path(cache_dir, "synth_univar_forecast_log1p.rds"))
+
+  contract <- unified_post_contract_check(
+    artifacts_df = NULL,
+    outputs_dir = outputs_dir,
+    cache_dir = cache_dir,
+    post_figures = TRUE,
+    export_tables = TRUE,
+    post_smoke_fast = FALSE,
+    model_run_exdqlm_multivar = FALSE,
+    model_run_exdqlm_univar = TRUE,
+    model_run_ndlm_main = FALSE,
+    model_run_ndlm_univar = FALSE
+  )
+
+  expect_true(isTRUE(contract$status))
+  expect_true(isTRUE(contract$checks$univar_fit_figure_present))
+  expect_true(isTRUE(contract$checks$univar_forecast_figure_present))
+  expect_true(isTRUE(contract$checks$univar_trace_figure_present))
+  expect_true(isTRUE(contract$checks$univar_summary_exports_present))
+  expect_true(isTRUE(contract$checks$table_exports_present))
+})
+
 test_that("artifact report writer creates manifest and summary files", {
   outputs_dir <- tempfile("post_outputs_report_")
   cache_dir <- tempfile("post_cache_report_")

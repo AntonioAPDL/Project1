@@ -1,34 +1,9 @@
 ndlm_theory_read_csv <- function(path, label) {
-  if (is.null(path) || !nzchar(path)) {
-    stop(sprintf("ndlm theory input %s path is empty", label), call. = FALSE)
-  }
-  if (!file.exists(path)) {
-    stop(sprintf("ndlm theory input %s missing: %s", label, path), call. = FALSE)
-  }
-  out <- tryCatch(
-    utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE),
-    error = function(e) e
-  )
-  if (inherits(out, "error") || !is.data.frame(out)) {
-    stop(sprintf("ndlm theory input %s unreadable CSV: %s", label, path), call. = FALSE)
-  }
-  if (nrow(out) < 1L || ncol(out) < 1L) {
-    stop(sprintf("ndlm theory input %s is empty: %s", label, path), call. = FALSE)
-  }
-  out
+  family_shared_read_csv(path, label)
 }
 
 ndlm_theory_pick_numeric_column <- function(df, preferred = character(0)) {
-  if (length(preferred) > 0L) {
-    for (nm in preferred) {
-      if (nm %in% names(df) && is.numeric(df[[nm]])) {
-        return(df[[nm]])
-      }
-    }
-  }
-  num_cols <- names(df)[vapply(df, is.numeric, logical(1))]
-  if (length(num_cols) == 0L) return(NULL)
-  df[[num_cols[[1L]]]]
+  family_shared_pick_numeric_column(df, preferred = preferred, exclude_time_like = TRUE)
 }
 
 ndlm_theory_pick_numeric_column_fuzzy <- function(df, preferred = character(0)) {
@@ -54,12 +29,27 @@ ndlm_theory_pick_numeric_column_fuzzy <- function(df, preferred = character(0)) 
 }
 
 ndlm_theory_align_series <- function(x, target_len, fill = 0) {
-  x <- as.numeric(x)
-  x <- x[is.finite(x)]
-  if (target_len <= 0L) return(numeric(0))
-  if (length(x) == 0L) return(rep(as.numeric(fill), target_len))
-  if (length(x) >= target_len) return(tail(x, target_len))
-  c(rep(as.numeric(fill), target_len - length(x)), x)
+  family_shared_tail_align_series(x, target_len = target_len, fill = fill)
+}
+
+ndlm_theory_loglog1p_from_log1p <- function(x, label) {
+  vals <- as.numeric(x)
+  ok <- is.finite(vals)
+  out <- rep(NA_real_, length(vals))
+  if (!any(ok)) {
+    return(out)
+  }
+  if (any(vals[ok] <= 0)) {
+    stop(
+      sprintf(
+        "%s contains non-positive log1p values; cannot map to log(log1p(.)) safely",
+        label
+      ),
+      call. = FALSE
+    )
+  }
+  out[ok] <- log(vals[ok])
+  out
 }
 
 ndlm_theory_find_input <- function(env_key, shared_root, rel_path) {
@@ -83,91 +73,88 @@ ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
   nws_df <- ndlm_theory_read_csv(nws_path, "nws_forecast")
   glofas_df <- ndlm_theory_read_csv(glofas_path, "glofas_forecast")
 
-  y_raw <- ndlm_theory_pick_numeric_column_fuzzy(
+  y_log1p <- ndlm_theory_pick_numeric_column_fuzzy(
     retros_df,
     preferred = c("USGS", "y", "obs", "flow", "value")
   )
-  if (is.null(y_raw)) {
+  if (is.null(y_log1p)) {
     stop(sprintf("ndlm theory retros has no numeric target column: %s", retros_path), call. = FALSE)
   }
-  y_raw <- as.numeric(y_raw)
-  valid_idx <- which(is.finite(y_raw))
-  y <- y_raw[valid_idx]
+  y_log1p <- as.numeric(y_log1p)
+  y_internal_all <- ndlm_theory_loglog1p_from_log1p(y_log1p, label = "ndlm theory retros target")
+  retros_dates_all <- family_shared_pick_date_column(retros_df, cov_name = "RETROS")
+  valid_idx <- which(is.finite(y_internal_all))
+  y <- y_internal_all[valid_idx]
   if (length(y) < 30L) {
     stop("ndlm theory requires at least 30 finite observations in retros", call. = FALSE)
   }
   Tn <- length(y)
+  dates_hist <- as.Date(retros_dates_all[valid_idx])
+  if (all(is.na(dates_hist))) {
+    dates_hist <- seq(as.Date("1970-01-01"), by = "1 day", length.out = Tn)
+  }
 
-  retros_nws_raw <- ndlm_theory_pick_numeric_column_fuzzy(
+  retros_nws_log1p <- ndlm_theory_pick_numeric_column_fuzzy(
     retros_df,
     preferred = c("NWS3.0", "NWS", "nws", "z_nws", "retros_nws")
   )
-  retros_glofas_raw <- ndlm_theory_pick_numeric_column_fuzzy(
+  retros_glofas_log1p <- ndlm_theory_pick_numeric_column_fuzzy(
     retros_df,
     preferred = c("GloFAS", "glofas", "GLOFAS", "z_glofas", "retros_glofas")
   )
-  if (is.null(retros_nws_raw)) {
-    retros_nws_raw <- rep(NA_real_, nrow(retros_df))
+  if (is.null(retros_nws_log1p)) {
+    retros_nws_log1p <- rep(NA_real_, nrow(retros_df))
   }
-  if (is.null(retros_glofas_raw)) {
-    retros_glofas_raw <- rep(NA_real_, nrow(retros_df))
+  if (is.null(retros_glofas_log1p)) {
+    retros_glofas_log1p <- rep(NA_real_, nrow(retros_df))
   }
-  retros_nws_raw <- as.numeric(retros_nws_raw)
-  retros_glofas_raw <- as.numeric(retros_glofas_raw)
-  if (length(retros_nws_raw) < max(valid_idx)) {
-    retros_nws_raw <- c(retros_nws_raw, rep(NA_real_, max(valid_idx) - length(retros_nws_raw)))
+  retros_nws_log1p <- as.numeric(retros_nws_log1p)
+  retros_glofas_log1p <- as.numeric(retros_glofas_log1p)
+  if (length(retros_nws_log1p) < max(valid_idx)) {
+    retros_nws_log1p <- c(retros_nws_log1p, rep(NA_real_, max(valid_idx) - length(retros_nws_log1p)))
   }
-  if (length(retros_glofas_raw) < max(valid_idx)) {
-    retros_glofas_raw <- c(retros_glofas_raw, rep(NA_real_, max(valid_idx) - length(retros_glofas_raw)))
+  if (length(retros_glofas_log1p) < max(valid_idx)) {
+    retros_glofas_log1p <- c(retros_glofas_log1p, rep(NA_real_, max(valid_idx) - length(retros_glofas_log1p)))
   }
   retros_hist <- list(
     usgs = y,
-    nws = retros_nws_raw[valid_idx],
-    glofas = retros_glofas_raw[valid_idx]
+    nws = ndlm_theory_loglog1p_from_log1p(retros_nws_log1p[valid_idx], label = "ndlm theory retros nws"),
+    glofas = ndlm_theory_loglog1p_from_log1p(retros_glofas_log1p[valid_idx], label = "ndlm theory retros glofas")
   )
-
-  cov_keys <- c(
-    "NDLM_COV1_ELI_CSV",
-    "NDLM_COV2_ONI_CSV",
-    "NDLM_PPT_CSV",
-    "NDLM_SOIL_CSV",
-    "NDLM_PCA_CSV"
-  )
-  cov_series <- vector("list", length(cov_keys))
-  for (i in seq_along(cov_keys)) {
-    pth <- Sys.getenv(cov_keys[[i]], "")
-    if (!nzchar(pth) || !file.exists(pth)) {
-      cov_series[[i]] <- rep(0, Tn)
-      next
-    }
-    cdf <- ndlm_theory_read_csv(pth, cov_keys[[i]])
-    col <- ndlm_theory_pick_numeric_column(cdf)
-    if (is.null(col)) {
-      cov_series[[i]] <- rep(0, Tn)
-      next
-    }
-    cov_series[[i]] <- ndlm_theory_align_series(col, Tn, fill = 0)
-  }
-  X <- do.call(cbind, cov_series)
-  colnames(X) <- c("ELI", "ONI", "PPT", "SOIL", "PCA")
-
-  nws_vec <- ndlm_theory_pick_numeric_column(nws_df, preferred = c("nws", "forecast", "value", "flow"))
-  glofas_vec <- ndlm_theory_pick_numeric_column(glofas_df, preferred = c("glofas", "forecast", "value", "flow", "member_value"))
-  if (is.null(nws_vec) || is.null(glofas_vec)) {
-    stop("ndlm theory forecast inputs require numeric forecast columns", call. = FALSE)
-  }
-  nws_vec <- as.numeric(nws_vec)
-  nws_vec <- nws_vec[is.finite(nws_vec)]
-  glofas_vec <- as.numeric(glofas_vec)
-  glofas_vec <- glofas_vec[is.finite(glofas_vec)]
 
   horizon_cap <- suppressWarnings(as.integer(horizon_cap[[1L]]))
   if (!is.finite(horizon_cap) || horizon_cap <= 0L) {
     stop(sprintf("ndlm theory forecast horizon cap must be a positive integer; got '%s'", as.character(horizon_cap)), call. = FALSE)
   }
 
-  nws_len_raw <- length(nws_vec)
-  glofas_len_raw <- length(glofas_vec)
+  forecast_start <- suppressWarnings(as.Date(max(dates_hist, na.rm = TRUE) + 1))
+  if (!is.finite(forecast_start) || is.na(forecast_start)) {
+    forecast_start <- as.Date("1970-01-01")
+  }
+  forecast_dates_cap <- seq.Date(forecast_start, by = "day", length.out = horizon_cap)
+
+  nws_forecast <- family_shared_extract_forecast_ensemble(
+    nws_df,
+    label = "ndlm_theory_nws_forecast",
+    transform = "log",
+    target_dates = forecast_dates_cap
+  )
+  glofas_forecast <- family_shared_extract_forecast_ensemble(
+    glofas_df,
+    label = "ndlm_theory_glofas_forecast",
+    transform = "log",
+    target_dates = forecast_dates_cap
+  )
+
+  last_active_lead <- function(member_mat) {
+    if (!is.matrix(member_mat) || nrow(member_mat) < 1L) return(0L)
+    active_rows <- which(rowSums(is.finite(member_mat)) > 0L)
+    if (length(active_rows) < 1L) return(0L)
+    as.integer(max(active_rows))
+  }
+
+  nws_len_raw <- last_active_lead(nws_forecast$members)
+  glofas_len_raw <- last_active_lead(glofas_forecast$members)
   nws_len <- min(nws_len_raw, horizon_cap)
   glofas_len <- min(glofas_len_raw, horizon_cap)
   K_overlap <- min(nws_len, glofas_len)
@@ -176,17 +163,54 @@ ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
     stop("ndlm theory requires at least 3 overlapping finite forecast leads across sources", call. = FALSE)
   }
   if (K_max < 3L) {
-    stop("ndlm theory requires forecast vectors with at least 3 finite rows after horizon capping", call. = FALSE)
+    stop("ndlm theory requires forecast matrices with at least 3 active leads after horizon capping", call. = FALSE)
   }
+
+  forecast_dates <- forecast_dates_cap[seq_len(K_max)]
+  nws_members <- nws_forecast$members[seq_len(K_max), , drop = FALSE]
+  glofas_members <- glofas_forecast$members[seq_len(K_max), , drop = FALSE]
+  nws_mean <- as.numeric(nws_forecast$row_means[seq_len(K_max)])
+  glofas_mean <- as.numeric(glofas_forecast$row_means[seq_len(K_max)])
+
+  cov_keys <- c(
+    "NDLM_COV1_ELI_CSV",
+    "NDLM_COV2_ONI_CSV",
+    "NDLM_PPT_CSV",
+    "NDLM_SOIL_CSV",
+    "NDLM_PCA_CSV"
+  )
+  cov_series_hist <- vector("list", length(cov_keys))
+  cov_series_fore <- vector("list", length(cov_keys))
+  cov_names <- c("ELI", "ONI", "PPT", "SOIL", "PCA")
+  for (i in seq_along(cov_keys)) {
+    pth <- Sys.getenv(cov_keys[[i]], "")
+    cov_piece <- family_shared_build_covariate_series(
+      path = pth,
+      cov_name = cov_names[[i]],
+      history_dates = dates_hist,
+      forecast_dates = forecast_dates,
+      fill_value = 0,
+      scale_with_history = TRUE
+    )
+    cov_series_hist[[i]] <- cov_piece$history
+    cov_series_fore[[i]] <- cov_piece$forecast
+  }
+  X <- do.call(cbind, cov_series_hist)
+  X_future <- do.call(cbind, cov_series_fore)
+  colnames(X) <- cov_names
+  colnames(X_future) <- cov_names
 
   list(
     y = y,
     retros = retros_hist,
     X = X,
+    X_future = X_future,
     T = Tn,
     forecast = list(
-      nws = nws_vec[seq_len(nws_len)],
-      glofas = glofas_vec[seq_len(glofas_len)],
+      nws = nws_mean[seq_len(nws_len)],
+      glofas = glofas_mean[seq_len(glofas_len)],
+      nws_members = nws_members,
+      glofas_members = glofas_members,
       K = K_max,
       K_overlap = K_overlap,
       K_max = K_max,
@@ -195,7 +219,8 @@ ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
       nws_len = nws_len,
       glofas_len = glofas_len,
       nws_len_raw = nws_len_raw,
-      glofas_len_raw = glofas_len_raw
+      glofas_len_raw = glofas_len_raw,
+      forecast_dates = forecast_dates
     ),
     input_paths = list(
       retros = retros_path,

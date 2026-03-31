@@ -5,12 +5,19 @@ seed <- if (length(args) >= 1L) as.integer(args[[1L]]) else as.integer(Sys.geten
 if (!is.finite(seed)) seed <- 777L
 
 repo_root <- normalizePath(getwd(), mustWork = TRUE)
+shared_helpers <- file.path(repo_root, "R", "unified", "families", "shared_input_helpers.R")
+if (!file.exists(shared_helpers)) {
+  stop(sprintf("Missing shared family input helpers: %s", shared_helpers), call. = FALSE)
+}
+source(shared_helpers, local = .GlobalEnv)
 module_root <- file.path(repo_root, "R", "unified", "families", "ndlm_main")
 module_files <- c(
   "00_constants.R",
   "01_inputs.R",
   "02_model_spec.R",
   "03_vb_updates.R",
+  "07_state_registry.R",
+  "08_vb_cavi_exact.R",
   "04_elbo.R",
   "05_fitloop.R",
   "06_save_state.R",
@@ -47,6 +54,11 @@ result <- unified_run_ndlm_main_theory(
 
 cat(sprintf("ndlm_theory_complete output=%s\n", output_path))
 cat(sprintf("kalman_backend=%s\n", result$kalman_backend))
+cat(sprintf(
+  "forecast_transfer_mode=%s transfer_active_forecast_window=%s\n",
+  as.character(result$forecast_transfer_mode),
+  if (isTRUE(result$transfer_active_forecast_window)) "true" else "false"
+))
 cat(sprintf("sigma=%.8f sigma_mean=%.8f w_hist=%.8f w_fore=%.8f\n", result$sigma, result$sigma_mean, result$w_hist, result$w_fore))
 if (is.numeric(result$sigma_by_source)) {
   sig <- result$sigma_by_source

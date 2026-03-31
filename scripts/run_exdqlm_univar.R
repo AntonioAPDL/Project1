@@ -45,6 +45,11 @@ env_pos_num <- function(name, default) {
 }
 
 repo_root <- normalizePath(getwd(), mustWork = TRUE)
+shared_helpers <- file.path(repo_root, "R", "unified", "families", "shared_input_helpers.R")
+if (!file.exists(shared_helpers)) {
+  stop(sprintf("Missing shared family input helpers: %s", shared_helpers), call. = FALSE)
+}
+source(shared_helpers, local = .GlobalEnv)
 module_root <- file.path(repo_root, "R", "unified", "families", "exdqlm_univar")
 module_files <- c(
   "00_constants.R",
@@ -69,6 +74,7 @@ q_lab <- sprintf("%02d", q_num)
 default_out <- file.path(repo_root, sprintf("variables_%s_exAL_synth_DISC_uni.RData", q_lab))
 output_path <- Sys.getenv("UNIFIED_UNIV_RDATA_OUT", default_out)
 output_path <- normalizePath(output_path, mustWork = FALSE)
+likelihood_mode <- env_choice("UNIV_LIKELIHOOD_MODE", choices = c("exal", "al"), default = "exal")
 
 summary_log <- Sys.getenv("UNIV_THEORY_SUMMARY_LOG", "")
 if (!nzchar(summary_log)) {
@@ -118,10 +124,12 @@ result <- unified_run_exdqlm_univar_theory(
   seed = seed,
   output_path = output_path,
   log_path = summary_log,
-  gamma_sigma_policy = gamma_sigma_policy
+  gamma_sigma_policy = gamma_sigma_policy,
+  likelihood_mode = likelihood_mode
 )
 
 cat(sprintf("univar_theory_complete quantile=%.2f output=%s\n", q, output_path))
+cat(sprintf("likelihood_mode=%s\n", as.character(likelihood_mode)))
 if (!is.null(result$sigma) && !is.null(result$gamma)) {
   cat(sprintf("sigma=%.8f gamma=%.8f\n", result$sigma, result$gamma))
 }

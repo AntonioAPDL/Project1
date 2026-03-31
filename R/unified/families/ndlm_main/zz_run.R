@@ -51,7 +51,8 @@ unified_run_ndlm_main_theory <- function(seed, output_path, log_path = NULL) {
     sprintf("bridge_source=%s", fit_result$bridge_source),
     sprintf("K_cap=%d", fit_result$K_cap),
     sprintf("nws_len=%d", fit_result$nws_len),
-    sprintf("glofas_len=%d", fit_result$glofas_len)
+    sprintf("glofas_len=%d", fit_result$glofas_len),
+    sprintf("progress_log_path=%s", as.character(fit_result$progress_log_path %||% NA_character_))
   )
   if (is.data.frame(fit_result$covariance_diagnostics) && nrow(fit_result$covariance_diagnostics) > 0L) {
     cov_diag <- fit_result$covariance_diagnostics

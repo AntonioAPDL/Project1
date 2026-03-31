@@ -71,26 +71,26 @@ unified_config_defaults <- function() {
         forecast_transfer_mode = "drop",
         forecast_transfer_modes = NULL,
         state_evolution = list(
-          df_t = 0.9999995,
-          df_s1 = 0.9997,
-          df_s2 = 0.9997,
-          df_s67 = 0.9997,
+          df_t = 0.99999999,
+          df_s1 = 0.9999,
+          df_s2 = 0.9999,
+          df_s67 = 0.9999,
           df_discrep = 0.999,
-          lambda = 0.8995,
-          df_trans = 0.99999999,
+          lambda = 0.97,
+          df_trans = 0.9999999,
           df_covs = 0.99999
         )
       ),
       exdqlm_univar = list(
-        implementation_mode = "theory_aligned",
+        implementation_mode = "legacy_bridge",
         likelihood_mode = "exal",
         state_evolution = list(
-          df_t = 0.9999995,
-          df_s1 = 0.9997,
-          df_s2 = 0.9997,
-          df_s67 = 0.9997,
-          lambda = 0.8995,
-          df_trans = 0.99999999,
+          df_t = 0.99999999,
+          df_s1 = 0.9999,
+          df_s2 = 0.9999,
+          df_s67 = 0.9999,
+          lambda = 0.97,
+          df_trans = 0.9999999,
           df_covs = 0.99999
         )
       ),
@@ -99,14 +99,14 @@ unified_config_defaults <- function() {
         kalman_backend = "cpp",
         forecast_transfer_mode = "keep",
         state_evolution = list(
-          df_t = 0.95,
-          df_s1 = 0.98,
-          df_s2 = 0.98,
-          df_s67 = 0.98,
-          df_discrep = 0.98,
-          lambda = 0.99,
-          df_trans = 0.99999999,
-          df_covs = 0.99999
+          df_t = 0.99999999,
+          df_s1 = 0.9999,
+          df_s2 = 0.9999,
+          df_s67 = 0.9999,
+          df_discrep = 0.999,
+          lambda = 0.97,
+          df_trans = 0.9999999,
+          df_covs = 0.9999
         ),
         stabilization = list(
           cov_eig_floor = 1e-8,
@@ -129,12 +129,12 @@ unified_config_defaults <- function() {
           S0 = 1
         ),
         state_evolution = list(
-          df_t = 0.95,
-          df_s1 = 0.98,
-          df_s2 = 0.98,
-          df_s67 = 0.98,
-          lambda = 0.99,
-          df_trans = 0.99999999,
+          df_t = 0.99999999,
+          df_s1 = 0.9999,
+          df_s2 = 0.9999,
+          df_s67 = 0.9999,
+          lambda = 0.97,
+          df_trans = 0.9999999,
           df_covs = 0.99999
         ),
         stabilization = list(
@@ -161,9 +161,9 @@ unified_config_defaults <- function() {
         retros_path = NULL,
         retros_storage_scale = "log1p_cms",
         nws_forecast_path = NULL,
-        nws_storage_scale = "log1p_cms",
+        nws_storage_scale = "raw_cms",
         glofas_forecast_path = NULL,
-        glofas_storage_scale = "log1p_cms",
+        glofas_storage_scale = "raw_cms",
         usgs_mode = "live",
         usgs_cache_path = NULL,
         covariates = list()
@@ -359,7 +359,10 @@ unified_config_defaults <- function() {
         write_reports = TRUE,
         max_time_checks = 25L,
         seed = 777L,
-        psd_tol = -1e-10
+        psd_tol = -1e-10,
+        full_slice_psd = FALSE,
+        psd_warn_tol = -1e-10,
+        psd_fail_tol = -1e-10
       )
     ),
     post = list(
@@ -368,7 +371,13 @@ unified_config_defaults <- function() {
       profile_detail = FALSE,
       sort_keep_na = TRUE,
       export_tables = TRUE,
-      allow_legacy_root_fallback = FALSE
+      allow_legacy_root_fallback = FALSE,
+      crps_input_health = list(
+        enabled = TRUE,
+        fail_fast = FALSE,
+        min_finite_share = 1,
+        max_abs = NA_real_
+      )
     ),
     validation = list(
       profile = "production",
@@ -742,6 +751,27 @@ unified_validate_config <- function(cfg) {
   if (!isTRUE(post_allow_legacy_root_fallback) && !identical(post_allow_legacy_root_fallback, FALSE)) {
     add_err("post.allow_legacy_root_fallback must be boolean (true/false)")
   }
+  post_crps_health_enabled <- unified_get(cfg, c("post", "crps_input_health", "enabled"), default = TRUE)
+  if (!isTRUE(post_crps_health_enabled) && !identical(post_crps_health_enabled, FALSE)) {
+    add_err("post.crps_input_health.enabled must be boolean (true/false)")
+  }
+  post_crps_health_fail_fast <- unified_get(cfg, c("post", "crps_input_health", "fail_fast"), default = FALSE)
+  if (!isTRUE(post_crps_health_fail_fast) && !identical(post_crps_health_fail_fast, FALSE)) {
+    add_err("post.crps_input_health.fail_fast must be boolean (true/false)")
+  }
+  post_crps_health_min_finite_share <- suppressWarnings(as.numeric(unified_get(
+    cfg, c("post", "crps_input_health", "min_finite_share"), default = 1
+  )))
+  if (!is.finite(post_crps_health_min_finite_share) ||
+      post_crps_health_min_finite_share < 0 || post_crps_health_min_finite_share > 1) {
+    add_err("post.crps_input_health.min_finite_share must be numeric in [0, 1]")
+  }
+  post_crps_health_max_abs <- suppressWarnings(as.numeric(unified_get(
+    cfg, c("post", "crps_input_health", "max_abs"), default = NA_real_
+  )))
+  if (!is.na(post_crps_health_max_abs) && (!is.finite(post_crps_health_max_abs) || post_crps_health_max_abs <= 0)) {
+    add_err("post.crps_input_health.max_abs must be null/NA or numeric > 0")
+  }
 
   run_exdqlm_multivar <- unified_get(cfg, c("models", "run_exdqlm_multivar"), default = TRUE)
   if (!isTRUE(run_exdqlm_multivar) && !identical(run_exdqlm_multivar, FALSE)) {
@@ -769,7 +799,7 @@ unified_validate_config <- function(cfg) {
     tolower(trimws(raw[[1L]]))
   }
 
-  univar_mode <- unified_get(cfg, c("models", "exdqlm_univar", "implementation_mode"), default = "theory_aligned")
+  univar_mode <- unified_get(cfg, c("models", "exdqlm_univar", "implementation_mode"), default = "legacy_bridge")
   if (!(univar_mode %in% c("legacy_bridge", "theory_aligned"))) {
     add_err("models.exdqlm_univar.implementation_mode must be one of: legacy_bridge, theory_aligned")
   }
@@ -851,6 +881,25 @@ unified_validate_config <- function(cfg) {
     val <- suppressWarnings(as.numeric(unified_get(cfg, c("models", "ndlm_main", "state_evolution", nm), default = NA_real_)))
     if (!is.finite(val) || val <= 0 || val >= 1) {
       add_err(sprintf("models.ndlm_main.state_evolution.%s must be numeric in (0,1)", nm))
+    }
+  }
+  ndlm_forecast_cov_c_factor <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("models", "ndlm_main", "prior", "forecast_cov", "c_factor"),
+    default = 1.0
+  )))
+  if (!is.finite(ndlm_forecast_cov_c_factor) || ndlm_forecast_cov_c_factor <= 0) {
+    add_err("models.ndlm_main.prior.forecast_cov.c_factor must be numeric > 0")
+  }
+  ndlm_forecast_cov_epsilon <- unified_get(
+    cfg,
+    c("models", "ndlm_main", "prior", "forecast_cov", "epsilon"),
+    default = NULL
+  )
+  if (!is.null(ndlm_forecast_cov_epsilon)) {
+    ndlm_forecast_cov_epsilon <- suppressWarnings(as.numeric(ndlm_forecast_cov_epsilon))
+    if (!is.finite(ndlm_forecast_cov_epsilon) || ndlm_forecast_cov_epsilon <= 0) {
+      add_err("models.ndlm_main.prior.forecast_cov.epsilon must be null or numeric > 0")
     }
   }
   ndlm_univar_prob_keys <- c("df_t", "df_s1", "df_s2", "df_s67", "lambda", "df_trans", "df_covs")
@@ -1371,6 +1420,22 @@ unified_validate_config <- function(cfg) {
   diagnostics_psd_tol <- suppressWarnings(as.numeric(unified_get(cfg, c("fit", "diagnostics", "psd_tol"), -1e-10)))
   if (!is.finite(diagnostics_psd_tol)) {
     add_err("fit.diagnostics.psd_tol must be numeric and finite")
+  }
+  diagnostics_full_slice_psd <- unified_get(cfg, c("fit", "diagnostics", "full_slice_psd"), FALSE)
+  if (!isTRUE(diagnostics_full_slice_psd) && !identical(diagnostics_full_slice_psd, FALSE)) {
+    add_err("fit.diagnostics.full_slice_psd must be boolean (true/false)")
+  }
+  diagnostics_psd_warn_tol <- suppressWarnings(as.numeric(unified_get(
+    cfg, c("fit", "diagnostics", "psd_warn_tol"), diagnostics_psd_tol
+  )))
+  if (!is.finite(diagnostics_psd_warn_tol)) {
+    add_err("fit.diagnostics.psd_warn_tol must be numeric and finite")
+  }
+  diagnostics_psd_fail_tol <- suppressWarnings(as.numeric(unified_get(
+    cfg, c("fit", "diagnostics", "psd_fail_tol"), diagnostics_psd_tol
+  )))
+  if (!is.finite(diagnostics_psd_fail_tol)) {
+    add_err("fit.diagnostics.psd_fail_tol must be numeric and finite")
   }
 
   validate_exdqlm_gamma_sigma_block <- function(model_key, defaults) {

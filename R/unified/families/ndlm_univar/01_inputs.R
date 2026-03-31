@@ -1,122 +1,28 @@
 ndlm_univar_read_csv <- function(path, label) {
-  if (is.null(path) || !nzchar(path)) {
-    stop(sprintf("ndlm_univar input %s path is empty", label), call. = FALSE)
-  }
-  if (!file.exists(path)) {
-    stop(sprintf("ndlm_univar input %s missing: %s", label, path), call. = FALSE)
-  }
-  out <- tryCatch(
-    utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE),
-    error = function(e) e
-  )
-  if (inherits(out, "error") || !is.data.frame(out)) {
-    stop(sprintf("ndlm_univar input %s unreadable CSV: %s", label, path), call. = FALSE)
-  }
-  if (nrow(out) < 1L || ncol(out) < 1L) {
-    stop(sprintf("ndlm_univar input %s is empty: %s", label, path), call. = FALSE)
-  }
-  out
+  family_shared_read_csv(path, label)
 }
 
 ndlm_univar_pick_numeric_column <- function(df, preferred = character(0)) {
-  if (length(preferred) > 0L) {
-    nm_norm <- gsub("[^a-z0-9]+", "", tolower(names(df)))
-    for (cand in preferred) {
-      key <- gsub("[^a-z0-9]+", "", tolower(as.character(cand)))
-      if (!nzchar(key)) next
-      idx <- which(nm_norm == key)
-      if (length(idx) < 1L) next
-      col <- suppressWarnings(as.numeric(df[[idx[[1L]]]]))
-      if (any(is.finite(col))) {
-        return(col)
-      }
-    }
-  }
-  num_cols <- names(df)[vapply(df, is.numeric, logical(1))]
-  if (length(num_cols) == 0L) return(NULL)
-  col <- suppressWarnings(as.numeric(df[[num_cols[[1L]]]]))
-  if (!any(is.finite(col))) return(NULL)
-  col
+  family_shared_pick_numeric_column(df, preferred = preferred, exclude_time_like = TRUE)
 }
 
 ndlm_univar_pick_date_column <- function(df) {
-  nms <- names(df)
-  if (!length(nms)) return(rep(as.Date(NA), nrow(df)))
-  candidates <- c(
-    nms[grepl("date|time", tolower(nms))],
-    nms[[1L]]
-  )
-  candidates <- unique(candidates)
-  for (nm in candidates) {
-    vals <- suppressWarnings(as.Date(df[[nm]]))
-    if (sum(!is.na(vals)) >= max(10L, floor(0.7 * nrow(df)))) {
-      return(vals)
-    }
-  }
-  rep(as.Date(NA), nrow(df))
+  family_shared_pick_date_column(df, cov_name = "GENERIC")
 }
 
 ndlm_univar_align_cov_by_dates <- function(dates_src, values_src, target_dates, fill_value = 0) {
-  values_src <- as.numeric(values_src)
-  if (length(values_src) < length(dates_src)) {
-    values_src <- c(values_src, rep(NA_real_, length(dates_src) - length(values_src)))
-  }
-  if (length(target_dates) == 0L) return(numeric(0))
-
-  if (all(is.na(dates_src))) {
-    fin <- values_src[is.finite(values_src)]
-    if (length(fin) == 0L) {
-      return(rep(as.numeric(fill_value), length(target_dates)))
-    }
-    if (length(fin) >= length(target_dates)) {
-      return(tail(fin, length(target_dates)))
-    }
-    return(c(rep(fin[[1L]], length(target_dates) - length(fin)), fin))
-  }
-
-  ord <- order(dates_src)
-  dates_ord <- as.Date(dates_src[ord])
-  vals_ord <- values_src[ord]
-
-  # keep latest duplicate per date
-  keep <- !duplicated(dates_ord, fromLast = TRUE)
-  dates_ord <- dates_ord[keep]
-  vals_ord <- vals_ord[keep]
-
-  out <- rep(as.numeric(fill_value), length(target_dates))
-  mt <- match(as.Date(target_dates), dates_ord)
-  matched <- which(is.finite(mt))
-  if (length(matched) > 0L) {
-    out[matched] <- vals_ord[mt[matched]]
-  }
-  out[!is.finite(out)] <- as.numeric(fill_value)
-  out
+  family_shared_align_by_dates(dates_src, values_src, target_dates, fill_value = fill_value)
 }
 
 ndlm_univar_build_covariate_series <- function(path, cov_name, history_dates, forecast_dates) {
-  if (is.null(path) || !nzchar(path) || !file.exists(path)) {
-    return(list(
-      history = rep(0, length(history_dates)),
-      forecast = rep(0, length(forecast_dates))
-    ))
-  }
-
-  df <- ndlm_univar_read_csv(path, sprintf("covariate_%s", cov_name))
-  val <- ndlm_univar_pick_numeric_column(
-    df,
-    preferred = c(cov_name, paste0(cov_name, "_value"), "value", "x", "data")
+  family_shared_build_covariate_series(
+    path = path,
+    cov_name = cov_name,
+    history_dates = history_dates,
+    forecast_dates = forecast_dates,
+    fill_value = 0,
+    scale_with_history = TRUE
   )
-  if (is.null(val)) {
-    return(list(
-      history = rep(0, length(history_dates)),
-      forecast = rep(0, length(forecast_dates))
-    ))
-  }
-
-  dt <- ndlm_univar_pick_date_column(df)
-  hist_vals <- ndlm_univar_align_cov_by_dates(dt, val, history_dates, fill_value = 0)
-  fore_vals <- ndlm_univar_align_cov_by_dates(dt, val, forecast_dates, fill_value = if (length(hist_vals) > 0L) tail(hist_vals, 1L) else 0)
-  list(history = hist_vals, forecast = fore_vals)
 }
 
 ndlm_univar_find_input <- function(env_key, shared_root, rel_path) {
@@ -171,15 +77,10 @@ ndlm_univar_load_inputs <- function(constants) {
     dates_hist <- seq(cutoff_date - (length(y_hist) - 1L), cutoff_date, by = "1 day")
   }
 
-  nws_vec <- ndlm_univar_pick_numeric_column(nws_df, preferred = c("nws", "forecast", "value", "flow"))
-  glofas_vec <- ndlm_univar_pick_numeric_column(glofas_df, preferred = c("glofas", "forecast", "value", "flow", "member_value"))
-  if (is.null(nws_vec) || is.null(glofas_vec)) {
-    stop("ndlm_univar forecast CSVs require numeric forecast columns", call. = FALSE)
-  }
-  nws_vec <- as.numeric(nws_vec)
-  glofas_vec <- as.numeric(glofas_vec)
-  nws_vec <- nws_vec[is.finite(nws_vec)]
-  glofas_vec <- glofas_vec[is.finite(glofas_vec)]
+  nws_vec <- family_shared_extract_forecast_mean(nws_df, label = "ndlm_univar_nws_forecast", transform = "log1p")
+  glofas_vec <- family_shared_extract_forecast_mean(glofas_df, label = "ndlm_univar_glofas_forecast", transform = "log1p")
+  nws_vec <- as.numeric(nws_vec[is.finite(nws_vec)])
+  glofas_vec <- as.numeric(glofas_vec[is.finite(glofas_vec)])
 
   k_nws <- min(length(nws_vec), constants$horizon_cap)
   k_glofas <- min(length(glofas_vec), constants$horizon_cap)

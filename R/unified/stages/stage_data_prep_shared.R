@@ -138,6 +138,10 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
   snapshot_nws <- file.path(snapshot_root, "nws_forecast.csv")
   snapshot_glofas <- file.path(snapshot_root, "glofas_forecast.csv")
   snapshot_ready <- file.exists(snapshot_retros) && file.exists(snapshot_nws) && file.exists(snapshot_glofas)
+  snapshot_valid <- TRUE
+
+  cutoff_date <- suppressWarnings(as.Date(unified_get(cfg, c("dates", "cutoff_date"), default = NA_character_)))
+  forecast_start_date <- if (!is.na(cutoff_date)) cutoff_date + 1L else as.Date(NA)
 
   source_retros <- cfg$inputs$fit$retros_path
   source_nws <- cfg$inputs$fit$nws_forecast_path
@@ -149,6 +153,37 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
   source_retros_origin <- "configured"
   source_nws_origin <- "configured"
   source_glofas_origin <- "configured"
+
+  if (prefer_snapshot && snapshot_ready && !is.na(cutoff_date)) {
+    snapshot_valid <- tryCatch(
+      {
+        unified_validate_forecast_window_csv(
+          snapshot_glofas,
+          label = "forecats snapshot glofas_forecast",
+          stage_name = "data_prep_shared/source_glofas_snapshot",
+          cutoff_date = cutoff_date
+        )
+        unified_validate_forecast_window_csv(
+          snapshot_nws,
+          label = "forecats snapshot nws_forecast",
+          stage_name = "data_prep_shared/source_nws_snapshot",
+          cutoff_date = cutoff_date
+        )
+        TRUE
+      },
+      error = function(e) {
+        warning(
+          sprintf(
+            "data_prep_shared: forecats snapshot failed cutoff-date validation; falling back to configured paths. Details: %s",
+            conditionMessage(e)
+          ),
+          call. = FALSE
+        )
+        FALSE
+      }
+    )
+    if (!isTRUE(snapshot_valid)) snapshot_ready <- FALSE
+  }
 
   if (prefer_snapshot && snapshot_ready) {
     source_mode <- "forecats_snapshot_mixed"
@@ -235,11 +270,14 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
         sprintf("source.retros=%s", source_retros),
         sprintf("source.retros_origin=%s", source_retros_origin),
         sprintf("source.nws=%s", source_nws),
-        sprintf("source.nws_origin=%s", source_nws_origin),
-        sprintf("source.glofas=%s", source_glofas),
+      sprintf("source.nws_origin=%s", source_nws_origin),
+      sprintf("source.glofas=%s", source_glofas),
       sprintf("source.glofas_origin=%s", source_glofas_origin),
       sprintf("snapshot_root=%s", snapshot_root),
-      sprintf("snapshot_ready=%s", if (snapshot_ready) "TRUE" else "FALSE")
+      sprintf("snapshot_ready=%s", if (snapshot_ready) "TRUE" else "FALSE"),
+      sprintf("snapshot_valid=%s", if (snapshot_valid) "TRUE" else "FALSE"),
+      sprintf("cutoff_date=%s", as.character(cutoff_date)),
+      sprintf("forecast_start_date=%s", as.character(forecast_start_date))
     ),
     con = source_map_path
   )
@@ -308,6 +346,7 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
       soil_future_path = detclim_result$debug_artifact_paths$soil_future_path,
       soil_family_support_path = detclim_result$debug_artifact_paths$soil_family_support_path,
       precip = list(
+        enabled = isTRUE(detclim_result$precip_enabled),
         source = detclim_result$precip_source,
         reduction = detclim_result$precip_reduction,
         output_path = shared_cov_paths$ppt,
@@ -315,6 +354,7 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
         future_rows = as.integer(detclim_result$ppt_future_rows)
       ),
       soil = list(
+        enabled = isTRUE(detclim_result$soil_enabled),
         source = detclim_result$soil_source,
         reduction = detclim_result$soil_reduction,
         output_path = shared_cov_paths$soil,

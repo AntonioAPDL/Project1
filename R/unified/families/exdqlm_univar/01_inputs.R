@@ -1,49 +1,13 @@
 univar_theory_read_csv <- function(path, label) {
-  if (is.null(path) || !nzchar(path)) {
-    stop(sprintf("univar theory input %s path is empty", label), call. = FALSE)
-  }
-  if (!file.exists(path)) {
-    stop(sprintf("univar theory input %s missing: %s", label, path), call. = FALSE)
-  }
-  out <- tryCatch(
-    utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE),
-    error = function(e) e
-  )
-  if (inherits(out, "error") || !is.data.frame(out)) {
-    stop(sprintf("univar theory input %s unreadable CSV: %s", label, path), call. = FALSE)
-  }
-  if (nrow(out) < 1L || ncol(out) < 1L) {
-    stop(sprintf("univar theory input %s is empty: %s", label, path), call. = FALSE)
-  }
-  out
+  family_shared_read_csv(path, label)
 }
 
 univar_theory_pick_numeric_column <- function(df, preferred = character(0)) {
-  if (length(preferred) > 0L) {
-    for (nm in preferred) {
-      if (nm %in% names(df) && is.numeric(df[[nm]])) {
-        return(df[[nm]])
-      }
-    }
-  }
-  numeric_cols <- names(df)[vapply(df, is.numeric, logical(1))]
-  if (length(numeric_cols) == 0L) {
-    return(NULL)
-  }
-  df[[numeric_cols[[1L]]]]
+  family_shared_pick_numeric_column(df, preferred = preferred, exclude_time_like = TRUE)
 }
 
 univar_theory_align_series <- function(x, target_len, fill = 0) {
-  x <- as.numeric(x)
-  x <- x[is.finite(x)]
-  if (target_len <= 0L) return(numeric(0))
-  if (length(x) == 0L) {
-    return(rep(as.numeric(fill), target_len))
-  }
-  if (length(x) >= target_len) {
-    return(tail(x, target_len))
-  }
-  c(rep(as.numeric(fill), target_len - length(x)), x)
+  family_shared_tail_align_series(x, target_len = target_len, fill = fill)
 }
 
 univar_theory_load_inputs <- function() {
@@ -66,11 +30,17 @@ univar_theory_load_inputs <- function() {
     )
   }
   y <- as.numeric(y)
-  y <- y[is.finite(y)]
+  retros_dates <- family_shared_pick_date_column(retros_df, cov_name = "RETROS")
+  keep_idx <- is.finite(y)
+  y <- y[keep_idx]
   if (length(y) < 30L) {
     stop("univar theory requires at least 30 finite observations in retros", call. = FALSE)
   }
   Tn <- length(y)
+  history_dates <- as.Date(retros_dates[keep_idx])
+  if (all(is.na(history_dates))) {
+    history_dates <- seq(as.Date("1970-01-01"), by = "1 day", length.out = Tn)
+  }
 
   cov_keys <- c(
     "UNIV_COV1_ELI_CSV",
@@ -80,22 +50,21 @@ univar_theory_load_inputs <- function() {
     "UNIV_PCA_CSV"
   )
   cov_series <- vector("list", length(cov_keys))
+  cov_names <- c("ELI", "ONI", "PPT", "SOIL", "PCA")
   for (i in seq_along(cov_keys)) {
     pth <- Sys.getenv(cov_keys[[i]], "")
-    if (!nzchar(pth) || !file.exists(pth)) {
-      cov_series[[i]] <- rep(0, Tn)
-      next
-    }
-    cdf <- univar_theory_read_csv(pth, cov_keys[[i]])
-    col <- univar_theory_pick_numeric_column(cdf)
-    if (is.null(col)) {
-      cov_series[[i]] <- rep(0, Tn)
-      next
-    }
-    cov_series[[i]] <- univar_theory_align_series(col, Tn, fill = 0)
+    cov_piece <- family_shared_build_covariate_series(
+      path = pth,
+      cov_name = cov_names[[i]],
+      history_dates = history_dates,
+      forecast_dates = as.Date(character(0)),
+      fill_value = 0,
+      scale_with_history = TRUE
+    )
+    cov_series[[i]] <- cov_piece$history
   }
   X <- do.call(cbind, cov_series)
-  colnames(X) <- c("ELI", "ONI", "PPT", "SOIL", "PCA")
+  colnames(X) <- cov_names
 
   list(
     y = y,

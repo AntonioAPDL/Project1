@@ -115,6 +115,22 @@ unified_validate_synthesis_cube_file <- function(path, context) {
   list(ok = TRUE, message = "")
 }
 
+unified_validate_matrix_rds_file <- function(path, context) {
+  if (!file.exists(path)) {
+    return(list(ok = FALSE, message = sprintf("%s missing: %s", context, path)))
+  }
+  obj <- tryCatch(readRDS(path), error = function(e) e)
+  if (inherits(obj, "error")) {
+    return(list(ok = FALSE, message = sprintf("%s unreadable (%s)", context, conditionMessage(obj))))
+  }
+  d <- dim(obj)
+  ok <- is.numeric(obj) && !is.null(d) && length(d) == 2L && all(is.finite(d)) && all(d > 0)
+  if (!ok) {
+    return(list(ok = FALSE, message = sprintf("%s invalid shape; expected numeric 2D matrix.", context)))
+  }
+  list(ok = TRUE, message = "")
+}
+
 unified_post_contract_check <- function(
   artifacts_df,
   outputs_dir,
@@ -151,6 +167,12 @@ unified_post_contract_check <- function(
   }
 
   ndlm_any_mode <- isTRUE(model_run_ndlm_main) || isTRUE(model_run_ndlm_univar)
+  ndlm_only_mode <- isTRUE(ndlm_any_mode) &&
+    !isTRUE(model_run_exdqlm_multivar) &&
+    !isTRUE(model_run_exdqlm_univar)
+  univar_only_mode <- isTRUE(model_run_exdqlm_univar) &&
+    !isTRUE(model_run_exdqlm_multivar) &&
+    !isTRUE(ndlm_any_mode)
   multivar_only_mode <- isTRUE(model_run_exdqlm_multivar) &&
     !isTRUE(model_run_exdqlm_univar) &&
     !isTRUE(ndlm_any_mode)
@@ -174,6 +196,99 @@ unified_post_contract_check <- function(
       checks$synthesis_cache_files_present <- TRUE
       checks$synthesis_core_shapes_ok <- TRUE
       checks$table_exports_present <- TRUE
+    } else if (univar_only_mode) {
+      required_univar_cache <- c(
+        "y_hist_uni.rds",
+        "y_forecast_uni.rds",
+        "synth_univar_hist_log1p.rds",
+        "synth_univar_forecast_log1p.rds"
+      )
+      univar_cache_paths <- file.path(cache_dir, required_univar_cache)
+      missing_univar_cache <- univar_cache_paths[!file.exists(univar_cache_paths)]
+      checks$synthesis_cache_files_present <- length(missing_univar_cache) == 0L
+      if (!checks$synthesis_cache_files_present) {
+        missing_paths <- c(missing_paths, missing_univar_cache)
+        messages <- c(messages, sprintf("missing univariate-only cache files: %s", paste(basename(missing_univar_cache), collapse = ", ")))
+      }
+
+      univar_shape_checks <- list(
+        unified_validate_synthesis_cube_file(file.path(cache_dir, "y_hist_uni.rds"), "y_hist_uni.rds"),
+        unified_validate_synthesis_cube_file(file.path(cache_dir, "y_forecast_uni.rds"), "y_forecast_uni.rds"),
+        unified_validate_matrix_rds_file(file.path(cache_dir, "synth_univar_hist_log1p.rds"), "synth_univar_hist_log1p.rds"),
+        unified_validate_matrix_rds_file(file.path(cache_dir, "synth_univar_forecast_log1p.rds"), "synth_univar_forecast_log1p.rds")
+      )
+      checks$synthesis_core_shapes_ok <- all(vapply(univar_shape_checks, `[[`, logical(1), "ok"))
+      if (!isTRUE(checks$synthesis_core_shapes_ok)) {
+        bad_msgs <- vapply(univar_shape_checks[!vapply(univar_shape_checks, `[[`, logical(1), "ok")], `[[`, character(1), "message")
+        messages <- c(messages, bad_msgs)
+      }
+
+      legacy_univar_fit_figures_present <- has_any_output_file(c(
+        "univar_fit_mu_vs_observed_loglog.png",
+        "univar_fit_mu_vs_observed_recent_loglog.png"
+      ))
+
+      checks$univar_forecast_figure_present <- has_any_output_file(c(
+        "univar_forecast_window_mu_vs_future_usgs.png",
+        "univar_forecast_window_predictive_q50_vs_future_usgs.png",
+        "univar_forecast_window_univar_vs_ensembles.png",
+        "univar_forecast_window_ensemble_members.png",
+        "univar_forecast_window_quantiles_raw_cms.png"
+      ))
+      if (!checks$univar_forecast_figure_present) {
+        messages <- c(messages, "missing univariate forecast-window figure outputs.")
+      }
+
+      legacy_univar_trace_figures_present <- has_any_output_file(c(
+        "univar_elbo_traces.png",
+        "univar_gamma_traces.png",
+        "univar_sigma_traces.png",
+        "All_ELBOS_DISC.png"
+      ))
+
+      required_univar_outputs <- c(
+        "univar_forecast_window_quantiles.csv",
+        "univar_forecast_quantile_crossing_per_time.csv",
+        "univar_forecast_quantile_crossing_summary.csv"
+      )
+      missing_univar_outputs <- required_univar_outputs[!vapply(required_univar_outputs, has_output_file, logical(1))]
+      checks$univar_summary_exports_present <- length(missing_univar_outputs) == 0L
+      if (!checks$univar_summary_exports_present) {
+        missing_paths <- c(missing_paths, file.path(outputs_dir, missing_univar_outputs))
+        messages <- c(messages, sprintf("missing univariate summary exports: %s", paste(basename(missing_univar_outputs), collapse = ", ")))
+      }
+
+      # The isolated univariate repair module is intentionally forecast-window
+      # centric and does not emit the legacy fit/trace figures. Accept either
+      # the legacy figure set or the new dedicated forecast-window diagnostics.
+      checks$univar_fit_figure_present <- legacy_univar_fit_figures_present || isTRUE(checks$univar_forecast_figure_present)
+      if (!checks$univar_fit_figure_present) {
+        messages <- c(messages, "missing univariate fit or dedicated forecast-window figure outputs.")
+      }
+
+      checks$univar_trace_figure_present <- legacy_univar_trace_figures_present || isTRUE(checks$univar_summary_exports_present)
+      if (!checks$univar_trace_figure_present) {
+        messages <- c(messages, "missing univariate trace or dedicated summary exports.")
+      }
+
+      if (isTRUE(export_tables)) {
+        required_univar_tables <- c(
+          "crps_forecast_summary.csv",
+          "crps_forecast_per_time.csv",
+          "crps_input_health.csv",
+          "crps_input_health_per_time.csv",
+          "posterior_table_exports_manifest.csv",
+          "posterior_table_exports_README.md"
+        )
+        missing_univar_tables <- required_univar_tables[!vapply(required_univar_tables, has_output_file, logical(1))]
+        checks$table_exports_present <- length(missing_univar_tables) == 0L
+        if (!checks$table_exports_present) {
+          missing_paths <- c(missing_paths, file.path(outputs_dir, "tables", missing_univar_tables))
+          messages <- c(messages, sprintf("missing univariate-only table exports: %s", paste(basename(missing_univar_tables), collapse = ", ")))
+        }
+      } else {
+        checks$table_exports_present <- TRUE
+      }
     } else if (multivar_only_mode) {
       # Multivariate-only post runs use the dedicated 40_figures_multivar_only
       # module. They intentionally skip full synthesis-cache cubes and
@@ -220,6 +335,50 @@ unified_post_contract_check <- function(
       checks$table_exports_present <- TRUE
       if (isTRUE(export_tables)) {
         checks$table_exports_present <- isTRUE(checks$multivar_summary_csv_present)
+      }
+    } else if (ndlm_only_mode) {
+      required_ndlm_cache <- c("xbs_ndlm_log1p.rds", "y_reps_ndlm_log1p.rds")
+      ndlm_cache_paths <- file.path(cache_dir, required_ndlm_cache)
+      missing_ndlm_cache <- ndlm_cache_paths[!file.exists(ndlm_cache_paths)]
+      checks$synthesis_cache_files_present <- length(missing_ndlm_cache) == 0L
+      if (!checks$synthesis_cache_files_present) {
+        missing_paths <- c(missing_paths, missing_ndlm_cache)
+        messages <- c(messages, sprintf("missing NDLM cache files: %s", paste(basename(missing_ndlm_cache), collapse = ", ")))
+      }
+
+      ndlm_shape_checks <- list(
+        unified_validate_matrix_rds_file(file.path(cache_dir, "xbs_ndlm_log1p.rds"), "xbs_ndlm_log1p.rds"),
+        unified_validate_matrix_rds_file(file.path(cache_dir, "y_reps_ndlm_log1p.rds"), "y_reps_ndlm_log1p.rds")
+      )
+      checks$synthesis_core_shapes_ok <- all(vapply(ndlm_shape_checks, `[[`, logical(1), "ok"))
+      if (!isTRUE(checks$synthesis_core_shapes_ok)) {
+        bad_msgs <- vapply(ndlm_shape_checks[!vapply(ndlm_shape_checks, `[[`, logical(1), "ok")], `[[`, character(1), "message")
+        messages <- c(messages, bad_msgs)
+      }
+
+      checks$ndlm_forecast_figure_present <- has_any_output_file(c(
+        "ndlm_forecast_window_quantiles_raw_cms.png",
+        "ndlm_fit_recent_log1p.png",
+        "All_ELBOS_DISC.png"
+      ))
+      if (!checks$ndlm_forecast_figure_present) {
+        messages <- c(messages, "missing NDLM-only forecast/fit figure outputs.")
+      }
+
+      required_ndlm_tables <- c(
+        "crps_forecast_summary.csv",
+        "crps_forecast_per_time.csv",
+        "crps_input_health.csv",
+        "crps_input_health_per_time.csv",
+        "ndlm_forecast_window_quantiles.csv",
+        "posterior_table_exports_manifest.csv",
+        "posterior_table_exports_README.md"
+      )
+      missing_ndlm_tables <- required_ndlm_tables[!vapply(required_ndlm_tables, has_output_file, logical(1))]
+      checks$table_exports_present <- length(missing_ndlm_tables) == 0L
+      if (!checks$table_exports_present) {
+        missing_paths <- c(missing_paths, file.path(outputs_dir, "tables", missing_ndlm_tables))
+        messages <- c(messages, sprintf("missing NDLM-only table exports: %s", paste(basename(missing_ndlm_tables), collapse = ", ")))
       }
     } else {
       required_cache <- c("y_reps_f.rds", "y_reps.rds", "y_reps_f_new.rds", "y_reps_new.rds")

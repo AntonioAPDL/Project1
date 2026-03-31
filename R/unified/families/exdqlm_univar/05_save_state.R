@@ -86,7 +86,18 @@ univar_theory_pack_compat_outputs <- function(fit_result, constants) {
       p0 = fit_result$p0,
       sigma = fit_result$sigma,
       gamma = fit_result$gamma,
-      T = Tn
+      T = Tn,
+      active_dim = as.integer(constants$active_dim),
+      state_dim = as.integer(constants$state_dim),
+      state_model = "rw_identity",
+      q_diag = c(0.05, rep(0.01, max(as.integer(constants$active_dim) - 1L, 0L))),
+      likelihood_mode = if (!is.null(fit_result$likelihood_mode)) {
+        as.character(fit_result$likelihood_mode)
+      } else if (!is.null(constants$likelihood_mode)) {
+        as.character(constants$likelihood_mode)
+      } else {
+        "exal"
+      }
     ),
     envir = out_env
   )

@@ -204,25 +204,48 @@ for (j in 1:J) {
   FF_tsc <- result_FF[1:core_dim, 2:(jj+1), drop = FALSE]
 
   if (keep_transfer_forecast) {
+    seg_len <- as.integer(r_vec_local[j])
     state_dim <- core_dim + ppx
-    GG_keep <- matrix(0, nrow = state_dim, ncol = state_dim)
-    GG_keep[1:core_dim, 1:core_dim] <- GG_tsc
-
     G_transfer <- as.matrix(bdiag(lambda, diag(px)))
-    GG_keep[(core_dim + 1L):state_dim, (core_dim + 1L):state_dim] <- G_transfer
+    GG_base <- matrix(0, nrow = state_dim, ncol = state_dim)
+    GG_base[1:core_dim, 1:core_dim] <- GG_tsc
+    GG_base[(core_dim + 1L):state_dim, (core_dim + 1L):state_dim] <- G_transfer
 
-    if (ppx > 1L && exists("X_f", inherits = TRUE) && is.numeric(X_f) && nrow(X_f) > 0L) {
+    has_time_varying_future_covs <-
+      ppx > 1L &&
+      exists("X_f", inherits = TRUE) &&
+      is.numeric(X_f) &&
+      nrow(X_f) > 0L &&
+      is.finite(seg_len) &&
+      seg_len > 0L
+
+    if (has_time_varying_future_covs) {
       seg_from <- seg_start_local[j]
-      seg_to <- seg_from + r_vec_local[j] - 1L
+      seg_to <- seg_from + seg_len - 1L
       seg_to <- min(seg_to, nrow(X_f))
       seg_from <- max(1L, min(seg_from, seg_to))
-      x_seg <- as.matrix(X_f[seg_from:seg_to, seq_len(ppx - 1L), drop = FALSE])
-      x_mean <- colMeans(x_seg, na.rm = TRUE)
-      x_mean[!is.finite(x_mean)] <- 0
-      GG_keep[core_dim + 1L, (core_dim + 2L):state_dim] <- as.numeric(x_mean)
-    }
+      X_seg <- as.matrix(X_f[seg_from:seg_to, seq_len(ppx - 1L), drop = FALSE])
+      if (nrow(X_seg) < seg_len) {
+        pad_n <- seg_len - nrow(X_seg)
+        X_seg <- rbind(
+          X_seg,
+          matrix(rep(X_seg[nrow(X_seg), ], each = pad_n), nrow = pad_n, byrow = TRUE)
+        )
+      }
+      if (nrow(X_seg) > seg_len) {
+        X_seg <- X_seg[seq_len(seg_len), , drop = FALSE]
+      }
 
-    GG_list[[j]] <- GG_keep
+      GG_seg <- array(0, dim = c(state_dim, state_dim, seg_len))
+      for (tt in seq_len(seg_len)) {
+        GG_tt <- GG_base
+        GG_tt[core_dim + 1L, (core_dim + 2L):state_dim] <- as.numeric(X_seg[tt, , drop = TRUE])
+        GG_seg[, , tt] <- GG_tt
+      }
+      GG_list[[j]] <- GG_seg
+    } else {
+      GG_list[[j]] <- GG_base
+    }
     transfer_load <- rbind(rep(1, jj), matrix(0, nrow = px, ncol = jj))
     FF_list[[j]] <- rbind(FF_tsc, transfer_load)
   } else {

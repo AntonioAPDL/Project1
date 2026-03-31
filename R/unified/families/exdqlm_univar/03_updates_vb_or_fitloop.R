@@ -7,9 +7,24 @@ univar_theory_log_joint_sigma_gamma <- function(
   Es,
   p0,
   constants,
-  bounds = NULL
+  bounds = NULL,
+  likelihood_mode = "exal"
 ) {
+  likelihood_mode <- univar_theory_normalize_likelihood_mode(likelihood_mode, default = "exal")
   if (!is.finite(sigma) || sigma <= 0 || !is.finite(gamma)) return(-Inf)
+
+  if (identical(likelihood_mode, "al")) {
+    map <- tryCatch(univar_theory_exal_map(p0, 0), error = function(e) NULL)
+    if (is.null(map)) return(-Inf)
+    v <- pmax(Ev, 1e-10)
+    resid <- y - eta - map$A * v
+    ll <- -0.5 * sum(log(sigma * map$B * v) + resid^2 / (sigma * map$B * v))
+
+    a_sigma <- constants$a_sigma
+    b_sigma <- constants$b_sigma
+    lp_sigma <- a_sigma * log(b_sigma) - lgamma(a_sigma) - (a_sigma + 1) * log(sigma) - b_sigma / sigma
+    return(ll + lp_sigma)
+  }
 
   if (is.null(bounds)) {
     bounds <- univar_theory_gamma_bounds(p0)
@@ -83,7 +98,8 @@ univar_theory_run_cavi <- function(inputs, constants) {
   }
 
   p0 <- constants$p0
-  bounds <- univar_theory_gamma_bounds(p0)
+  likelihood_mode <- univar_theory_normalize_likelihood_mode(constants$likelihood_mode, default = "exal")
+  bounds <- if (identical(likelihood_mode, "al")) c(L = -1, U = 1) else univar_theory_gamma_bounds(p0)
   policy <- constants$gamma_sigma_policy
   if (!is.list(policy)) {
     policy <- univar_theory_default_gamma_sigma_policy()
@@ -98,19 +114,24 @@ univar_theory_run_cavi <- function(inputs, constants) {
       robust_spread <- 0.1
     }
     sigma <- max(policy$init$sigma_floor, policy$init$sigma_scale * robust_spread)
-    gamma <- min(max(policy$init$gamma, bounds["L"] + 1e-6), bounds["U"] - 1e-6)
+    gamma <- if (identical(likelihood_mode, "al")) {
+      0
+    } else {
+      min(max(policy$init$gamma, bounds["L"] + 1e-6), bounds["U"] - 1e-6)
+    }
     if (isTRUE(policy$objective_guard$log_failures)) {
       cat(
         sprintf(
-          "[gamsig_init] p0=%s mode=robust gamma_seed=%0.6f sigma_seed=%0.6f\n",
+          "[gamsig_init] p0=%s mode=robust likelihood_mode=%s gamma_seed=%0.6f sigma_seed=%0.6f\n",
           as.character(p0),
+          as.character(likelihood_mode),
           as.numeric(gamma),
           as.numeric(sigma)
         )
       )
     }
   } else {
-    gamma <- max(min(0, bounds["U"] - 1e-4), bounds["L"] + 1e-4)
+    gamma <- if (identical(likelihood_mode, "al")) 0 else max(min(0, bounds["U"] - 1e-4), bounds["L"] + 1e-4)
     sigma <- max(stats::sd(y), 0.1)
   }
 
@@ -183,7 +204,7 @@ univar_theory_run_cavi <- function(inputs, constants) {
 
   Ev <- rep(1, Tn)
   E1v <- rep(1, Tn)
-  Es <- rep(sqrt(2 / pi), Tn)
+  Es <- if (identical(likelihood_mode, "al")) rep(0, Tn) else rep(sqrt(2 / pi), Tn)
   elbo <- rep(NA_real_, max_iter)
   gamsig_update_iters <- 0L
   iterations_completed <- 0L
@@ -228,6 +249,7 @@ univar_theory_run_cavi <- function(inputs, constants) {
         as.integer(policy$guard_refreeze_iters)
       )
     )
+    cat(sprintf("[gamsig_policy] likelihood_mode=%s\n", as.character(likelihood_mode)))
   }
 
   smoother <- NULL
@@ -251,13 +273,22 @@ univar_theory_run_cavi <- function(inputs, constants) {
     }
 
     if (!state_frozen_now) {
-      map <- univar_theory_exal_map(p0, gamma)
-      y_tilde <- y - map$C * sigma * abs(gamma) * Es - map$A * Ev
+      gamma_eff <- if (identical(likelihood_mode, "al")) 0 else gamma
+      map <- univar_theory_exal_map(p0, gamma_eff)
+      if (identical(likelihood_mode, "al")) {
+        y_tilde <- y - map$A * Ev
+      } else {
+        y_tilde <- y - map$C * sigma * abs(gamma_eff) * Es - map$A * Ev
+      }
       R_vec <- pmax(sigma * map$B * Ev, 1e-8)
       smoother <- univar_theory_kalman_smoother(y_tilde, F_mat, R_vec, q_diag, m0, C0)
       eta <- smoother$fitted_mean
 
-      r <- y - eta - map$C * sigma * abs(gamma) * Es
+      if (identical(likelihood_mode, "al")) {
+        r <- y - eta
+      } else {
+        r <- y - eta - map$C * sigma * abs(gamma_eff) * Es
+      }
       chi <- pmax(r^2 / (sigma * map$B), 1e-10)
       psi <- pmax((map$A^2) / (sigma * map$B) + 2 / sigma, 1e-10)
 
@@ -268,11 +299,15 @@ univar_theory_run_cavi <- function(inputs, constants) {
       Ev <- pmax(Ev_new, 1e-8)
       E1v <- pmax(E1v_new, 1e-8)
 
-      y_circ <- y - eta - map$A * Ev
-      Vs <- 1 / (1 + (map$C^2) * sigma * gamma^2 / (map$B * Ev))
-      ms <- Vs * (map$C * abs(gamma) / (map$B * Ev)) * y_circ
-      tm <- univar_theory_truncnorm_pos_moments(ms, Vs)
-      Es <- pmax(tm$mean, 1e-8)
+      if (identical(likelihood_mode, "al")) {
+        Es <- rep(0, Tn)
+      } else {
+        y_circ <- y - eta - map$A * Ev
+        Vs <- 1 / (1 + (map$C^2) * sigma * gamma^2 / (map$B * Ev))
+        ms <- Vs * (map$C * abs(gamma) / (map$B * Ev)) * y_circ
+        tm <- univar_theory_truncnorm_pos_moments(ms, Vs)
+        Es <- pmax(tm$mean, 1e-8)
+      }
     }
 
     gamsig_frozen_now <- identical(policy$freeze_target, "gamma_sigma") &&
@@ -322,36 +357,41 @@ univar_theory_run_cavi <- function(inputs, constants) {
     gamsig_updated_now <- FALSE
     if (!gamsig_frozen_now) {
       gamsig_updated_now <- TRUE
-      gamma_obj <- function(g) {
-        raw <- -univar_theory_log_joint_sigma_gamma(
-          sigma = sigma,
-          gamma = g,
-          y = y,
-          eta = eta,
-          Ev = Ev,
-          Es = Es,
-          p0 = p0,
-          constants = constants,
-          bounds = bounds
+      if (!identical(likelihood_mode, "al")) {
+        gamma_obj <- function(g) {
+          raw <- -univar_theory_log_joint_sigma_gamma(
+            sigma = sigma,
+            gamma = g,
+            y = y,
+            eta = eta,
+            Ev = Ev,
+            Es = Es,
+            p0 = p0,
+            constants = constants,
+            bounds = bounds,
+            likelihood_mode = likelihood_mode
+          )
+          guard_eval(raw, context_label = "univar_gamma_opt", theta_s = sigma, theta_g = g)
+        }
+        gamma_opt <- tryCatch(
+          stats::optimize(gamma_obj, interval = c(bounds["L"] + 1e-5, bounds["U"] - 1e-5)),
+          error = function(e) e
         )
-        guard_eval(raw, context_label = "univar_gamma_opt", theta_s = sigma, theta_g = g)
-      }
-      gamma_opt <- tryCatch(
-        stats::optimize(gamma_obj, interval = c(bounds["L"] + 1e-5, bounds["U"] - 1e-5)),
-        error = function(e) e
-      )
-      if (inherits(gamma_opt, "error")) {
-        msg <- sprintf("gamma optimize failed at iter=%d: %s", iter_int, conditionMessage(gamma_opt))
-        if (isTRUE(policy$objective_guard$log_failures)) cat(sprintf("[gamsig_guard] %s\n", msg))
-        if (isTRUE(policy$objective_guard$enabled)) {
-          guard_triggered <- TRUE
-          guard_message <- msg
-          if (isTRUE(policy$objective_guard$fail_fast)) stop(msg, call. = FALSE)
-        } else if (isTRUE(policy$objective_guard$fail_fast)) {
-          stop(msg, call. = FALSE)
+        if (inherits(gamma_opt, "error")) {
+          msg <- sprintf("gamma optimize failed at iter=%d: %s", iter_int, conditionMessage(gamma_opt))
+          if (isTRUE(policy$objective_guard$log_failures)) cat(sprintf("[gamsig_guard] %s\n", msg))
+          if (isTRUE(policy$objective_guard$enabled)) {
+            guard_triggered <- TRUE
+            guard_message <- msg
+            if (isTRUE(policy$objective_guard$fail_fast)) stop(msg, call. = FALSE)
+          } else if (isTRUE(policy$objective_guard$fail_fast)) {
+            stop(msg, call. = FALSE)
+          }
+        } else {
+          gamma <- max(min(gamma_opt$minimum, bounds["U"] - 1e-6), bounds["L"] + 1e-6)
         }
       } else {
-        gamma <- max(min(gamma_opt$minimum, bounds["U"] - 1e-6), bounds["L"] + 1e-6)
+        gamma <- 0
       }
 
       sigma_obj <- function(log_sigma) {
@@ -365,7 +405,8 @@ univar_theory_run_cavi <- function(inputs, constants) {
           Es = Es,
           p0 = p0,
           constants = constants,
-          bounds = bounds
+          bounds = bounds,
+          likelihood_mode = likelihood_mode
         )
         guard_eval(raw, context_label = "univar_sigma_opt", theta_s = sigma_candidate, theta_g = gamma)
       }
@@ -422,7 +463,8 @@ univar_theory_run_cavi <- function(inputs, constants) {
       Es = Es,
       p0 = p0,
       constants = constants,
-      bounds = bounds
+      bounds = bounds,
+      likelihood_mode = likelihood_mode
     )
     delta_elbo <- univar_theory_metric_delta(
       current = elbo[iter],
@@ -495,6 +537,7 @@ univar_theory_run_cavi <- function(inputs, constants) {
           ifelse(isTRUE(gamsig_frozen_now), "true", "false")
         )
       )
+      cat(sprintf("[gamsig_progress] likelihood_mode=%s\n", as.character(likelihood_mode)))
     }
 
     conv_elbo <- isTRUE(delta_elbo$converged)
@@ -555,6 +598,7 @@ univar_theory_run_cavi <- function(inputs, constants) {
     converged = isTRUE(converged),
     convergence_reason = as.character(convergence_reason),
     p0 = p0,
-    bounds = bounds
+    bounds = bounds,
+    likelihood_mode = likelihood_mode
   )
 }

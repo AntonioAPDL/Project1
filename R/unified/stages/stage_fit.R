@@ -169,13 +169,14 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
 
   run_root_abs <- normalizePath(run_root, mustWork = FALSE)
   io_settings <- unified_get_run_io_settings(cfg)
-  fit_root <- file.path(run_root, "fit")
+  fit_root <- file.path(run_root_abs, "fit")
   fit_inputs <- file.path(fit_root, "inputs")
   fit_logs_root <- file.path(fit_root, "logs")
-  preflight_dir <- file.path(run_root, "preflight")
+  preflight_dir <- file.path(run_root_abs, "preflight")
   fit_preflight_log <- file.path(fit_logs_root, "preflight.log")
   fit_stage_log <- file.path(fit_logs_root, "fit_stage.log")
   fit_worker_error_log <- file.path(fit_logs_root, "fit_worker_errors.log")
+  dir.create(fit_root, recursive = TRUE, showWarnings = FALSE)
   dir.create(fit_inputs, recursive = TRUE, showWarnings = FALSE)
   dir.create(fit_logs_root, recursive = TRUE, showWarnings = FALSE)
   dir.create(preflight_dir, recursive = TRUE, showWarnings = FALSE)
@@ -380,7 +381,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   univar_impl_mode <- unified_get(
     cfg,
     c("models", "exdqlm_univar", "implementation_mode"),
-    default = "theory_aligned"
+    default = "legacy_bridge"
   )
   ndlm_impl_mode <- unified_get(
     cfg,
@@ -402,9 +403,15 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     as.character(ndlm_forecast_transfer_mode),
     as.character(ndlm_univar_forecast_transfer_mode)
   ))
-  if (isTRUE(cfg$models$run_exdqlm_univar) && identical(univar_impl_mode, "legacy_bridge")) {
+  if (isTRUE(cfg$models$run_exdqlm_univar) &&
+      identical(univar_impl_mode, "theory_aligned") &&
+      identical(univar_likelihood_mode, "al")) {
     warning(
-      "models.exdqlm_univar.implementation_mode=legacy_bridge is supported but deprecated; prefer theory_aligned.",
+      paste(
+        "models.exdqlm_univar.implementation_mode=theory_aligned with likelihood_mode=al",
+        "is experimental and is not the accepted comparison workflow.",
+        "Prefer legacy_bridge for dqlm_univar_al_synth."
+      ),
       call. = FALSE
     )
   }
@@ -1232,6 +1239,11 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     output_path <- file.path(ndlm_outputs, "DISC_variables_50_NDLM_synth_DISC.RData")
     log_name <- if (identical(ndlm_impl_mode, "theory_aligned")) "ndlm_theory.log" else "ndlm_legacy.log"
     log_path <- file.path(ndlm_logs, log_name)
+    ndlm_forecast_iw_epsilon <- unified_get(
+      cfg,
+      c("models", "ndlm_main", "prior", "forecast_cov", "epsilon"),
+      default = NULL
+    )
     env_overrides <- c(
       UNIFIED_NDLM_RDATA_OUT = output_path,
       NDLM_RUN_ROOT = run_root_abs,
@@ -1292,6 +1304,14 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       NDLM_DF_COVS = as.character(unified_get(
         cfg, c("models", "ndlm_main", "state_evolution", "df_covs"), default = 0.99999
       )),
+      NDLM_FORECAST_IW_C_FACTOR = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "prior", "forecast_cov", "c_factor"), default = 1.0
+      )),
+      NDLM_FORECAST_IW_EPSILON0 = if (is.null(ndlm_forecast_iw_epsilon) || length(ndlm_forecast_iw_epsilon) < 1L || all(is.na(ndlm_forecast_iw_epsilon))) {
+        ""
+      } else {
+        as.character(ndlm_forecast_iw_epsilon[[1L]])
+      },
       NDLM_COV_EIG_FLOOR = as.character(unified_get(
         cfg, c("models", "ndlm_main", "stabilization", "cov_eig_floor"), default = 1e-8
       )),

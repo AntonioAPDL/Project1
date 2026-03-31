@@ -12,6 +12,16 @@ ndlm_theory_constants <- function(seed = 777L) {
     if (is.finite(min_val)) raw <- max(raw, as.numeric(min_val))
     raw
   }
+  env_num_optional <- function(name, default = NA_real_, min_val = NA_real_) {
+    raw_chr <- trimws(Sys.getenv(name, ""))
+    if (!nzchar(raw_chr) || tolower(raw_chr) %in% c("na", "null", "none")) {
+      return(as.numeric(default))
+    }
+    raw <- suppressWarnings(as.numeric(raw_chr))
+    if (!is.finite(raw)) return(as.numeric(default))
+    if (is.finite(min_val)) raw <- max(raw, as.numeric(min_val))
+    raw
+  }
   env_prob <- function(name, default, min_val = 1e-8, max_val = 1 - 1e-8) {
     raw <- suppressWarnings(as.numeric(Sys.getenv(name, as.character(default))))
     if (!is.finite(raw)) raw <- as.numeric(default)
@@ -63,6 +73,11 @@ ndlm_theory_constants <- function(seed = 777L) {
   sigma_update_damping <- min(sigma_update_damping, 1.0)
   latent_var_cap_mult <- env_num("NDLM_LATENT_VAR_CAP_MULT", default = 1e4, min_val = 1)
   latent_var_cap_abs <- env_num("NDLM_LATENT_VAR_CAP_ABS", default = 1e8, min_val = 1e-6)
+  forecast_iw_c_factor <- env_num("NDLM_FORECAST_IW_C_FACTOR", default = 1.0, min_val = 1e-12)
+  forecast_iw_epsilon0 <- env_num_optional("NDLM_FORECAST_IW_EPSILON0", default = NA_real_, min_val = 1e-12)
+  forecast_iw_dof_offset <- env_int("NDLM_FORECAST_IW_DOF_OFFSET", default = 4L, min_val = 2L)
+  forecast_iw_scale_mult <- env_num("NDLM_FORECAST_IW_SCALE_MULT", default = 1.0, min_val = 1e-8)
+  forecast_iw_jitter <- env_num("NDLM_FORECAST_IW_JITTER", default = 1e-8, min_val = 0)
 
   list(
     state_dim = 26L,
@@ -90,6 +105,11 @@ ndlm_theory_constants <- function(seed = 777L) {
     lambda = lambda,
     df_trans = df_trans,
     df_covs = df_covs,
+    forecast_iw_c_factor = forecast_iw_c_factor,
+    forecast_iw_epsilon0 = forecast_iw_epsilon0,
+    forecast_iw_dof_offset = forecast_iw_dof_offset,
+    forecast_iw_scale_mult = forecast_iw_scale_mult,
+    forecast_iw_jitter = forecast_iw_jitter,
     stabilization = list(
       cov_eig_floor = cov_eig_floor,
       cov_eig_cap = cov_eig_cap,

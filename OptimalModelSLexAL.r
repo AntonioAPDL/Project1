@@ -79,6 +79,14 @@ read_env_choice <- function(key, choices, default) {
   default
 }
 
+write_summary_log <- function(path, lines) {
+  path <- as.character(path)
+  if (!nzchar(path)) return(invisible(FALSE))
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  writeLines(as.character(lines), con = path, useBytes = TRUE)
+  invisible(TRUE)
+}
+
 require_readable_path <- function(path, label) {
   if (!file.exists(path)) {
     stop(sprintf("%s does not exist at path: %s", label, path), call. = FALSE)
@@ -2359,6 +2367,27 @@ assign(seq.elbo_name, seq.elbo)
 vars_to_save <- c(samp.gamma_name, samp.sigma_name, samp.uts_name, samp.sts_name, samp.theta_name, samp.post.pred_name, new.uts.out_name, new.sts.out_name, new.gamsig.out_name, new.theta.out_name, seq.gamma_name, seq.sigma_name, seq.elbo_name, delta_name)
 # Save the variables
 save_variables(vars_to_save, paste0("variables_", result_suffix, ending,".RData"), "/data/muscat_data/jaguir26/project1_ucsc_phd")
+
+summary_log <- Sys.getenv("UNIV_THEORY_SUMMARY_LOG", "")
+final_sigma <- suppressWarnings(as.numeric(new.gamsig.out$E.sigma[1, 1]))
+final_gamma <- suppressWarnings(as.numeric(new.gamsig.out$E.gam[1, 1]))
+final_elbo <- suppressWarnings(as.numeric(utils::tail(seq.elbo, 1L)))
+write_summary_log(
+  summary_log,
+  c(
+    "implementation_mode=legacy_bridge",
+    sprintf("likelihood_mode=%s", UNIV_LIKELIHOOD_MODE),
+    sprintf("quantile=%.2f", as.numeric(p0)),
+    sprintf("q_num=%d", as.integer(round(p0 * 100))),
+    sprintf("output_path=%s", Sys.getenv("UNIFIED_UNIV_RDATA_OUT", "")),
+    sprintf("sigma=%.8f", final_sigma),
+    sprintf("gamma=%.8f", final_gamma),
+    sprintf("T=%d", as.integer(TT)),
+    sprintf("p0=%.6f", as.numeric(p0)),
+    sprintf("n_samp=%d", as.integer(n.samp)),
+    sprintf("elbo_final=%.10f", final_elbo)
+  )
+)
 }
 errors <- matrix(new.theta.out$standard_forecast_errors[1,], ncol = 1)
 s <- 0.5 * compute_kl_divergence(errors)

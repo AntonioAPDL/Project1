@@ -336,3 +336,164 @@ Rcpp::List ndlm_kalman_smoother_cpp(
     )
   );
 }
+
+// [[Rcpp::export]]
+Rcpp::List ndlm_kalman_smoother_tv_cpp(
+    const Rcpp::List& y_list,
+    const Rcpp::List& H_list,
+    const Rcpp::List& R_list,
+    const Rcpp::List& G_list,
+    const Rcpp::List& Q_list,
+    const arma::vec& m0,
+    const arma::mat& C0,
+    const double cov_eig_floor = 1e-8,
+    const double cov_eig_cap = 1e8,
+    const double cov_diag_jitter = 1e-10) {
+  const int Tn = y_list.size();
+  if (Tn <= 0) {
+    Rcpp::stop("ndlm_kalman_smoother_tv_cpp requires non-empty sequence inputs");
+  }
+  if (H_list.size() != Tn || R_list.size() != Tn || G_list.size() != Tn || Q_list.size() != Tn) {
+    Rcpp::stop("ndlm_kalman_smoother_tv_cpp requires equal-length sequence lists");
+  }
+  if (C0.n_rows != m0.n_elem || C0.n_cols != m0.n_elem) {
+    Rcpp::stop("ndlm_kalman_smoother_tv_cpp: C0 shape must match length(m0)");
+  }
+
+  auto as_numeric_vector = [](SEXP x) -> arma::vec {
+    if (Rf_isNull(x)) return arma::vec();
+    arma::vec out = Rcpp::as<arma::vec>(x);
+    if (!out.is_finite()) {
+      for (arma::uword i = 0; i < out.n_elem; ++i) {
+        if (!std::isfinite(out[i])) out[i] = 0.0;
+      }
+    }
+    return out;
+  };
+
+  auto as_numeric_matrix = [](SEXP x) -> arma::mat {
+    if (Rf_isNull(x)) return arma::mat();
+    arma::mat out = Rcpp::as<arma::mat>(x);
+    if (!out.is_finite()) {
+      out.transform([](double v) { return std::isfinite(v) ? v : 0.0; });
+    }
+    return out;
+  };
+
+  std::vector<int> dims(Tn, 0);
+  dims[0] = static_cast<int>(m0.n_elem);
+  StabilizationStats stab_stats;
+
+  std::vector<arma::vec> a(Tn);
+  std::vector<arma::vec> m(Tn);
+  std::vector<arma::mat> Rpred(Tn);
+  std::vector<arma::mat> C(Tn);
+  std::vector<arma::vec> ms(Tn);
+  std::vector<arma::mat> Cs(Tn);
+  std::vector<arma::mat> lag_next(Tn);
+
+  arma::vec m_prev = m0;
+  arma::mat C_prev = stabilize_covariance(C0, cov_eig_floor, cov_eig_cap, cov_diag_jitter, &stab_stats);
+
+  for (int t = 0; t < Tn; ++t) {
+    arma::vec y_t = as_numeric_vector(y_list[t]);
+    arma::mat H_t = as_numeric_matrix(H_list[t]);
+    arma::vec R_obs = as_numeric_vector(R_list[t]);
+    if (H_t.n_rows != y_t.n_elem || R_obs.n_elem != y_t.n_elem) {
+      Rcpp::stop("ndlm_kalman_smoother_tv_cpp: observation dimensions do not match");
+    }
+
+    arma::vec a_t;
+    arma::mat R_t;
+    if (t == 0) {
+      if (H_t.n_cols != m0.n_elem) {
+        Rcpp::stop("ndlm_kalman_smoother_tv_cpp: first H_list state dimension must match length(m0)");
+      }
+      dims[t] = static_cast<int>(H_t.n_cols);
+      a_t = m_prev;
+      R_t = C_prev;
+    } else {
+      arma::mat G_t = as_numeric_matrix(G_list[t]);
+      arma::mat Q_t = as_numeric_matrix(Q_list[t]);
+      if (G_t.n_cols != static_cast<arma::uword>(dims[t - 1])) {
+        Rcpp::stop("ndlm_kalman_smoother_tv_cpp: G_list state transition has wrong previous-state dimension");
+      }
+      if (Q_t.n_rows != G_t.n_rows || Q_t.n_cols != G_t.n_rows) {
+        Rcpp::stop("ndlm_kalman_smoother_tv_cpp: Q_list covariance shape must match current state dimension");
+      }
+      if (H_t.n_cols != G_t.n_rows) {
+        Rcpp::stop("ndlm_kalman_smoother_tv_cpp: H_list state dimension must match transition row count");
+      }
+      dims[t] = static_cast<int>(G_t.n_rows);
+      a_t = G_t * m_prev;
+      arma::mat P_t = G_t * C_prev * G_t.t();
+      R_t = stabilize_covariance(P_t + Q_t, cov_eig_floor, cov_eig_cap, cov_diag_jitter, &stab_stats);
+    }
+
+    arma::vec m_t = a_t;
+    arma::mat C_t = stabilize_covariance(R_t, cov_eig_floor, cov_eig_cap, cov_diag_jitter, &stab_stats);
+    for (arma::uword i = 0; i < y_t.n_elem; ++i) {
+      arma::vec h = H_t.row(i).t();
+      double r = (i < R_obs.n_elem && std::isfinite(R_obs[i]) && R_obs[i] > 1e-10) ? R_obs[i] : 1e-10;
+      double qy = arma::as_scalar(h.t() * C_t * h) + r;
+      if (!std::isfinite(qy) || qy < 1e-10) qy = 1e-10;
+      arma::vec K = (C_t * h) / qy;
+      double innov = y_t[i] - arma::as_scalar(h.t() * m_t);
+      m_t = m_t + K * innov;
+      C_t = stabilize_covariance(C_t - (C_t * (h * h.t()) * C_t) / qy, cov_eig_floor, cov_eig_cap, cov_diag_jitter, &stab_stats);
+    }
+
+    a[t] = a_t;
+    Rpred[t] = R_t;
+    m[t] = m_t;
+    C[t] = C_t;
+    ms[t] = m_t;
+    Cs[t] = C_t;
+
+    m_prev = m_t;
+    C_prev = C_t;
+  }
+
+  lag_next[Tn - 1] = arma::mat();
+  if (Tn >= 2) {
+    for (int t = Tn - 2; t >= 0; --t) {
+      arma::mat G_next = as_numeric_matrix(G_list[t + 1]);
+      arma::mat R_next = stabilize_covariance(Rpred[t + 1], cov_eig_floor, cov_eig_cap, cov_diag_jitter, &stab_stats);
+      arma::mat R_next_inv = safe_inv_with_svd(R_next, cov_diag_jitter);
+      arma::mat J_t = C[t] * G_next.t() * R_next_inv;
+      ms[t] = m[t] + J_t * (ms[t + 1] - a[t + 1]);
+      arma::mat Cs_t = C[t] + J_t * (Cs[t + 1] - R_next) * J_t.t();
+      Cs[t] = stabilize_covariance(Cs_t, cov_eig_floor, cov_eig_cap, cov_diag_jitter, &stab_stats);
+      lag_next[t] = J_t * Cs[t + 1];
+    }
+  }
+
+  Rcpp::List pred_mean_out(Tn), pred_cov_out(Tn), filt_mean_out(Tn), filt_cov_out(Tn), smooth_mean_out(Tn), smooth_cov_out(Tn), lag_cov_out(Tn);
+  for (int t = 0; t < Tn; ++t) {
+    pred_mean_out[t] = a[t];
+    pred_cov_out[t] = Rpred[t];
+    filt_mean_out[t] = m[t];
+    filt_cov_out[t] = C[t];
+    smooth_mean_out[t] = ms[t];
+    smooth_cov_out[t] = Cs[t];
+    lag_cov_out[t] = lag_next[t];
+  }
+
+  return Rcpp::List::create(
+    Rcpp::Named("pred_mean") = pred_mean_out,
+    Rcpp::Named("pred_cov") = pred_cov_out,
+    Rcpp::Named("filter_mean") = filt_mean_out,
+    Rcpp::Named("filter_cov") = filt_cov_out,
+    Rcpp::Named("smooth_mean") = smooth_mean_out,
+    Rcpp::Named("smooth_cov") = smooth_cov_out,
+    Rcpp::Named("lag_cov_next") = lag_cov_out,
+    Rcpp::Named("state_dim") = Rcpp::wrap(dims),
+    Rcpp::Named("stabilization") = Rcpp::List::create(
+      Rcpp::Named("calls") = stab_stats.calls,
+      Rcpp::Named("cov_projected") = stab_stats.cov_projected,
+      Rcpp::Named("cov_floor_clipped") = stab_stats.cov_floor_clipped,
+      Rcpp::Named("cov_cap_clipped") = stab_stats.cov_cap_clipped,
+      Rcpp::Named("cov_nonfinite_inputs") = stab_stats.cov_nonfinite_inputs
+    )
+  );
+}

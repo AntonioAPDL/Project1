@@ -372,6 +372,20 @@ profile_detail_section("figures.build_xbs_discrep", {
     ks <- -diff(c(ranges,0))
     xbs <- array(NA_real_, c(7,ranges[1],n.samp))
     xbs_ndlm <- array(NA_real_, c(1,ranges[1],n.samp))
+    ndlm_direct_mean_draws <- NULL
+    if (exists("new.theta.out_50_NDLM_synth_DISC", inherits = TRUE)) {
+      ndlm_obj_direct <- get("new.theta.out_50_NDLM_synth_DISC", inherits = TRUE)
+      if (is.list(ndlm_obj_direct) &&
+          is.matrix(ndlm_obj_direct$forecast_mean_draws_loglog1p) &&
+          is.numeric(ndlm_obj_direct$forecast_mean_draws_loglog1p) &&
+          nrow(ndlm_obj_direct$forecast_mean_draws_loglog1p) > 1L &&
+          ncol(ndlm_obj_direct$forecast_mean_draws_loglog1p) > 0L &&
+          all(is.finite(ndlm_obj_direct$forecast_mean_draws_loglog1p))) {
+        ndlm_direct_mean_draws <- as.matrix(ndlm_obj_direct$forecast_mean_draws_loglog1p)
+        xbs_ndlm <- array(NA_real_, c(1L, ncol(ndlm_direct_mean_draws), nrow(ndlm_direct_mean_draws)))
+        xbs_ndlm[1, , ] <- t(ndlm_direct_mean_draws)
+      }
+    }
 
 	    xb_discrep1 <- array(NA_real_ , c(7,TT,n.samp))
 	    xb_discrep2 <- array(NA_real_ , c(7,TT,n.samp))
@@ -894,6 +908,7 @@ eps <- 0.0
 
 
 
+if (is.null(ndlm_direct_mean_draws)) {
 idx <- c(0)
 for(j in 1:J){
     idx <- next_idx_block(idx, ks[J-j+1])
@@ -963,6 +978,7 @@ for(j in 1:J){
       xbs_samp <- rnorm(n = n.samp, mean = mean_use, sd = sd_use)
       xbs_ndlm[1, t, ] <- xbs_samp
     }
+}
 }
 
 set.seed(777)
@@ -5558,16 +5574,28 @@ if (crps_exports_enabled) {
       get("MODEL_RUN_NDLM_MAIN", inherits = TRUE))
     if (ndlm_main_enabled && exists("xbs_ndlm", inherits = TRUE)) {
       ndlm_raw <- get("xbs_ndlm", inherits = TRUE)
-      ndlm_sample_mat <- NULL
-      if (is.numeric(ndlm_raw) && !is.null(dim(ndlm_raw)) && length(dim(ndlm_raw)) == 3L &&
-          dim(ndlm_raw)[1] >= 1L && dim(ndlm_raw)[2] > 0L && dim(ndlm_raw)[3] > 1L) {
-        ndlm_sample_mat <- t(ndlm_raw[1, , , drop = FALSE][1, , ])
-      } else if (is.matrix(ndlm_raw) && is.numeric(ndlm_raw) && nrow(ndlm_raw) > 1L && ncol(ndlm_raw) > 0L) {
-        ndlm_sample_mat <- ndlm_raw
+      ndlm_sigma_draws <- if (exists("samp.sigma_50_NDLM_synth_DISC", inherits = TRUE)) {
+        get("samp.sigma_50_NDLM_synth_DISC", inherits = TRUE)
+      } else {
+        NULL
       }
 
-      if (!is.null(ndlm_sample_mat) && is.numeric(ndlm_sample_mat) &&
-          nrow(ndlm_sample_mat) > 1L && ncol(ndlm_sample_mat) > 0L) {
+      ndlm_pred <- tryCatch(
+        post_ndlm_predictive_draws(
+          ndlm_raw = ndlm_raw,
+          sigma_draws = ndlm_sigma_draws,
+          context = "crps.ndlm",
+          seed = 777L
+        ),
+        error = function(e) e
+      )
+
+      if (!inherits(ndlm_pred, "error")) {
+        ndlm_sample_mat_log1p <- ndlm_pred$predictive_log1p
+        saveRDS(ndlm_pred$mean_loglog1p, file = post_cache_path("xbs_ndlm_mean_loglog1p.rds"))
+        saveRDS(ndlm_pred$predictive_loglog1p, file = post_cache_path("y_reps_ndlm_loglog1p.rds"))
+        saveRDS(ndlm_sample_mat_log1p, file = post_cache_path("xbs_ndlm_log1p.rds"))
+        saveRDS(ndlm_sample_mat_log1p, file = post_cache_path("y_reps_ndlm_log1p.rds"))
         ndlm_meta <- post_crps_synth_model_meta(
           family = "ndlm",
           likelihood_mode = "exal",
@@ -5577,9 +5605,9 @@ if (crps_exports_enabled) {
           model_id = ndlm_meta$model_id,
           model_family = "synthesis",
           model_variant = ndlm_meta$model_variant,
-          sample_mat = ndlm_sample_mat,
-          obs = truth_from_start(ncol(ndlm_sample_mat), "crps.ndlm.truth"),
-          forecast_dates = daily_dates_for_matrix_cols(ndlm_sample_mat, start_date = crps_forecast_start, context = "crps.ndlm.dates"),
+          sample_mat = ndlm_sample_mat_log1p,
+          obs = truth_from_start(ncol(ndlm_sample_mat_log1p), "crps.ndlm.truth"),
+          forecast_dates = daily_dates_for_matrix_cols(ndlm_sample_mat_log1p, start_date = crps_forecast_start, context = "crps.ndlm.dates"),
           cutoff_date = crps_cutoff_date,
           forecast_start_date = crps_forecast_start,
           transfer_mode = crps_ndlm_transfer_mode,
@@ -5592,9 +5620,9 @@ if (crps_exports_enabled) {
           model_id = ndlm_meta$model_id,
           model_family = "synthesis",
           model_variant = ndlm_meta$model_variant,
-          sample_mat = ndlm_sample_mat,
+          sample_mat = ndlm_sample_mat_log1p,
           forecast_dates = daily_dates_for_matrix_cols(
-            ndlm_sample_mat,
+            ndlm_sample_mat_log1p,
             start_date = crps_forecast_start,
             context = "crps.ndlm.health.dates"
           ),
@@ -5602,7 +5630,13 @@ if (crps_exports_enabled) {
           context = "crps.ndlm"
         )
       } else {
-        warning("[CRPS_NDLM_SKIP] Unable to compute NDLM CRPS (invalid xbs_ndlm sample matrix).", call. = FALSE)
+        warning(
+          sprintf(
+            "[CRPS_NDLM_SKIP] Unable to compute NDLM CRPS (%s).",
+            conditionMessage(ndlm_pred)
+          ),
+          call. = FALSE
+        )
       }
     } else if (ndlm_main_enabled) {
       warning("[CRPS_NDLM_SKIP] Unable to compute NDLM CRPS (xbs_ndlm missing).", call. = FALSE)
@@ -5619,17 +5653,60 @@ if (crps_exports_enabled) {
         length(ndlm_univar_path) > 0L && nzchar(ndlm_univar_path) && file.exists(ndlm_univar_path)) {
       ndlm_univar_env <- new.env(parent = emptyenv())
       load(ndlm_univar_path, envir = ndlm_univar_env)
-      y_fore_name <- "y.fore.draws_50_NDLM_univar_synth_DISC"
-      if (!exists(y_fore_name, envir = ndlm_univar_env, inherits = FALSE)) {
-        y_fore_candidates <- grep("^y\\.fore\\.draws_.*NDLM_univar.*$", ls(ndlm_univar_env), value = TRUE)
-        y_fore_name <- if (length(y_fore_candidates) > 0L) y_fore_candidates[[1L]] else ""
+      ndlm_univar_obj_name <- "new.theta.out_50_NDLM_univar_synth_DISC"
+      if (!exists(ndlm_univar_obj_name, envir = ndlm_univar_env, inherits = FALSE)) {
+        obj_candidates <- grep("^new\\.theta\\.out_.*NDLM_univar.*$", ls(ndlm_univar_env), value = TRUE)
+        ndlm_univar_obj_name <- if (length(obj_candidates) > 0L) obj_candidates[[1L]] else ""
       }
-      ndlm_univar_draws <- if (nzchar(y_fore_name) && exists(y_fore_name, envir = ndlm_univar_env, inherits = FALSE)) {
-        get(y_fore_name, envir = ndlm_univar_env, inherits = FALSE)
-      } else {
+      ndlm_univar_sigma_name <- "samp.sigma_50_NDLM_univar_synth_DISC"
+      if (!exists(ndlm_univar_sigma_name, envir = ndlm_univar_env, inherits = FALSE)) {
+        sigma_candidates <- grep("^samp\\.sigma_.*NDLM_univar.*$", ls(ndlm_univar_env), value = TRUE)
+        ndlm_univar_sigma_name <- if (length(sigma_candidates) > 0L) sigma_candidates[[1L]] else ""
+      }
+      ndlm_univar_sample_mat <- tryCatch({
+        ndlm_univar_obj <- if (nzchar(ndlm_univar_obj_name) && exists(ndlm_univar_obj_name, envir = ndlm_univar_env, inherits = FALSE)) {
+          get(ndlm_univar_obj_name, envir = ndlm_univar_env, inherits = FALSE)
+        } else {
+          NULL
+        }
+        ndlm_univar_sigma_draws <- if (nzchar(ndlm_univar_sigma_name) && exists(ndlm_univar_sigma_name, envir = ndlm_univar_env, inherits = FALSE)) {
+          get(ndlm_univar_sigma_name, envir = ndlm_univar_env, inherits = FALSE)
+        } else {
+          NULL
+        }
+        if (is.null(ndlm_univar_obj) || is.null(ndlm_univar_sigma_draws) ||
+            !exists("ranges", inherits = TRUE) || !exists("FF_list", inherits = TRUE)) {
+          NULL
+        } else {
+          n_samp_ndlm_univar <- suppressWarnings(as.integer(length(as.numeric(ndlm_univar_sigma_draws))))
+          if (!is.finite(n_samp_ndlm_univar) || n_samp_ndlm_univar <= 1L) {
+            NULL
+          } else {
+            ndlm_univar_mean_draws <- post_build_ndlm_state_draw_array(
+              ndlm_obj = ndlm_univar_obj,
+              ranges = get("ranges", inherits = TRUE),
+              FF_list = get("FF_list", inherits = TRUE),
+              n_samp = n_samp_ndlm_univar,
+              p_state = if (exists("p", inherits = TRUE)) get("p", inherits = TRUE) else 7L,
+              eps_reg = 0,
+              seed = 777L,
+              context = "crps.ndlm_univar.mean"
+            )
+            post_ndlm_predictive_draws(
+              ndlm_raw = ndlm_univar_mean_draws,
+              sigma_draws = ndlm_univar_sigma_draws,
+              context = "crps.ndlm_univar",
+              seed = 777L
+            )$predictive_log1p
+          }
+        }
+      }, error = function(e) {
+        warning(
+          sprintf("[CRPS_NDLM_UNIVAR_SKIP] Unable to compute NDLM univar CRPS (%s).", conditionMessage(e)),
+          call. = FALSE
+        )
         NULL
-      }
-      ndlm_univar_sample_mat <- if (!is.null(ndlm_univar_draws)) as.matrix(ndlm_univar_draws) else NULL
+      })
       if (!is.null(ndlm_univar_sample_mat) && is.numeric(ndlm_univar_sample_mat) &&
           nrow(ndlm_univar_sample_mat) > 1L && ncol(ndlm_univar_sample_mat) > 0L) {
         ndlm_univar_meta <- post_crps_synth_model_meta(
@@ -5666,7 +5743,7 @@ if (crps_exports_enabled) {
           context = "crps.ndlm_univar"
         )
       } else {
-        warning("[CRPS_NDLM_UNIVAR_SKIP] Unable to compute NDLM univar CRPS (invalid y.fore.draws matrix).", call. = FALSE)
+        warning("[CRPS_NDLM_UNIVAR_SKIP] Unable to compute NDLM univar CRPS (invalid predictive draw matrix).", call. = FALSE)
       }
     } else if (ndlm_univar_enabled || nzchar(ndlm_univar_path)) {
       warning("[CRPS_NDLM_UNIVAR_SKIP] Unable to compute NDLM univar CRPS (artifact path missing).", call. = FALSE)

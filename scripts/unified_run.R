@@ -124,7 +124,11 @@ if (!requireNamespace("yaml", quietly = TRUE)) {
 }
 
 resolved_config_path <- file.path(run_root, "resolved_config.yaml")
-writeLines(yaml::as.yaml(cfg, indent.mapping.sequence = TRUE), con = resolved_config_path, useBytes = TRUE)
+writeLines(
+  yaml::as.yaml(cfg, indent.mapping.sequence = TRUE, precision = 15),
+  con = resolved_config_path,
+  useBytes = TRUE
+)
 
 repro_record <- unified_apply_seed(seed = cfg$run$seed, mode = cfg$run$repro_mode)
 manifest <- unified_manifest_init(cfg, run_id = run_id, run_root = run_root, repo_root = repo_root, repro_record = repro_record)
@@ -172,7 +176,7 @@ stage_index <- c(
 stage_log_paths <- c(
   forecats = file.path(run_root, "forecats", "forecats_pipeline.log"),
   data_prep_shared = file.path(run_root, "data_prep_shared", "data_prep_shared.log"),
-  fit = file.path(run_root, "fit", "logs", "fit.log"),
+  fit = file.path(run_root, "fit", "logs", "fit_stage.log"),
   post = file.path(run_root, "post", "logs", "post_runner.log"),
   validate = file.path(run_root, "validate", "validate.log"),
   report = file.path(run_root, "report", "summary.md")
@@ -182,6 +186,33 @@ stage_log_path <- function(stage) {
   path <- stage_log_paths[[stage]]
   if (is.null(path) || !nzchar(path)) return(NULL)
   path
+}
+
+cleanup_rdata_after_post_enabled <- {
+  v <- tolower(trimws(Sys.getenv("CLEANUP_RDATA_AFTER_POST", "0")))
+  v %in% c("1", "true", "yes")
+}
+
+cleanup_rdata_under_run <- function(run_root) {
+  rdata_paths <- list.files(
+    run_root,
+    pattern = "\\.[Rr][Dd]ata$",
+    recursive = TRUE,
+    full.names = TRUE
+  )
+  rdata_paths <- rdata_paths[file.exists(rdata_paths)]
+  before <- length(rdata_paths)
+  removed <- 0L
+  if (before > 0L) {
+    removed <- sum(file.remove(rdata_paths), na.rm = TRUE)
+  }
+  after <- length(list.files(
+    run_root,
+    pattern = "\\.[Rr][Dd]ata$",
+    recursive = TRUE,
+    full.names = TRUE
+  ))
+  list(before = as.integer(before), removed = as.integer(removed), remaining = as.integer(after))
 }
 
 run_stage <- function(stage, manifest) {
@@ -258,6 +289,18 @@ for (stage in stage_order) {
       try(unified_manifest_write(manifest, manifest_path), silent = TRUE)
       stop(conditionMessage(audit_error), call. = FALSE)
     }
+  }
+
+  if (identical(stage, "post") && isTRUE(cleanup_rdata_after_post_enabled)) {
+    cleanup_info <- cleanup_rdata_under_run(run_root)
+    cat(
+      sprintf(
+        "Post-stage .RData cleanup: before=%d removed=%d remaining=%d\n",
+        cleanup_info$before,
+        cleanup_info$removed,
+        cleanup_info$remaining
+      )
+    )
   }
 }
 

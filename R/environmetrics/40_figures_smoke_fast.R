@@ -322,6 +322,889 @@ build_univar_location_forecast_summary <- function() {
   )
 }
 
+posterior_table_exports_enabled <- post_export_tables_enabled(default = TRUE)
+posterior_table_output_dir <- if (exists("OUT_DIR", inherits = TRUE)) {
+  file.path(get("OUT_DIR", inherits = TRUE), "tables")
+} else {
+  file.path(getwd(), "tables")
+}
+posterior_table_formats <- post_table_formats(default = c("csv"))
+posterior_table_keep_na <- TRUE
+posterior_table_keep_na_env <- tolower(trimws(Sys.getenv("ENV_SORT_KEEP_NA", "")))
+if (identical(posterior_table_keep_na_env, "true")) {
+  posterior_table_keep_na <- TRUE
+} else if (identical(posterior_table_keep_na_env, "false")) {
+  posterior_table_keep_na <- FALSE
+}
+posterior_table_export_manifest <- NULL
+smoke_figure_export_manifest <- NULL
+
+smoke_next_idx_block <- function(prev_idx, block_len) {
+  block_len <- suppressWarnings(as.integer(block_len[[1L]]))
+  start <- if (length(prev_idx) == 0L) 0L else as.integer(prev_idx[[length(prev_idx)]])
+  if (!is.finite(block_len) || block_len <= 0L) return(integer(0))
+  seq_len(block_len) + start
+}
+
+smoke_forecast_core_dim <- function(seg_id) {
+  as.integer(p * (J - as.integer(seg_id) + 2L))
+}
+
+smoke_build_usgs_projection_weights <- function(ff_seg, state_len, seg_id, context = "smoke.forecast_projection") {
+  state_len <- as.integer(state_len)
+  if (!is.finite(state_len) || state_len <= 0L) {
+    stop(sprintf("[%s_STATE_LEN] invalid state_len=%s.", context, as.character(state_len)), call. = FALSE)
+  }
+  if (!is.matrix(ff_seg) || ncol(ff_seg) < 1L) {
+    stop(sprintf("[%s_FF_SHAPE] expected FF segment matrix with at least one column.", context), call. = FALSE)
+  }
+
+  forecast_transfer_mode_local <- tolower(trimws(Sys.getenv("UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE", "drop")))
+  if (!forecast_transfer_mode_local %in% c("drop", "keep")) {
+    forecast_transfer_mode_local <- "drop"
+  }
+  ppx_local <- if (exists("ppx", inherits = TRUE)) suppressWarnings(as.integer(get("ppx", inherits = TRUE))) else 0L
+  use_transfer_forecast_projection <- isTRUE(get0("use_covariates", ifnotfound = FALSE, inherits = TRUE)) &&
+    identical(forecast_transfer_mode_local, "keep") &&
+    is.finite(ppx_local) &&
+    ppx_local > 0L
+
+  ff_n <- nrow(ff_seg)
+  weights <- rep(0, state_len)
+  base_len <- min(get("p", inherits = TRUE), ff_n, state_len)
+  if (base_len > 0L) {
+    base_vals <- as.numeric(ff_seg[seq_len(base_len), 1, drop = TRUE])
+    base_vals[!is.finite(base_vals)] <- 0
+    weights[seq_len(base_len)] <- base_vals
+  }
+
+  if (isTRUE(use_transfer_forecast_projection)) {
+    core_dim <- smoke_forecast_core_dim(seg_id)
+    zeta_idx <- core_dim + 1L
+    if (zeta_idx <= ff_n && zeta_idx <= state_len) {
+      zeta_w <- as.numeric(ff_seg[zeta_idx, 1, drop = TRUE])
+      if (!is.finite(zeta_w)) zeta_w <- 0
+      weights[zeta_idx] <- zeta_w
+    }
+  }
+
+  weights
+}
+
+smoke_project_state_gaussian <- function(Mu, Sigma, ff_seg, seg_id, eps_reg = 0, context = "smoke.forecast_projection") {
+  if (!is.numeric(Mu)) {
+    stop(sprintf("[%s_MU] expected numeric Mu vector.", context), call. = FALSE)
+  }
+  if (!is.numeric(Sigma) || is.null(dim(Sigma)) || length(dim(Sigma)) != 2L) {
+    stop(sprintf("[%s_SIGMA] expected 2D numeric Sigma matrix.", context), call. = FALSE)
+  }
+  if (nrow(Sigma) < length(Mu) || ncol(Sigma) < length(Mu)) {
+    stop(
+      sprintf(
+        "[%s_SIGMA_DIM] Sigma dims %dx%d do not cover Mu length %d.",
+        context, as.integer(nrow(Sigma)), as.integer(ncol(Sigma)), as.integer(length(Mu))
+      ),
+      call. = FALSE
+    )
+  }
+
+  w <- smoke_build_usgs_projection_weights(ff_seg, state_len = length(Mu), seg_id = seg_id, context = context)
+  idx_use <- which(abs(w) > 0)
+  if (length(idx_use) == 0L) {
+    return(c(mean = NA_real_, sd = NA_real_))
+  }
+
+  Mu_use <- as.numeric(Mu[idx_use])
+  Mu_use[!is.finite(Mu_use)] <- 0
+  S_use <- as.matrix(Sigma[idx_use, idx_use, drop = FALSE])
+  S_use[!is.finite(S_use)] <- 0
+  if (is.finite(eps_reg) && eps_reg > 0) {
+    S_use <- S_use + diag(length(idx_use)) * eps_reg
+  }
+  w_use <- as.numeric(w[idx_use])
+  mean_use <- sum(w_use * Mu_use)
+  var_use <- as.numeric(crossprod(w_use, S_use %*% w_use))
+  if (!is.finite(var_use) || var_use < 0) var_use <- 0
+  c(mean = mean_use, sd = sqrt(var_use))
+}
+
+smoke_multivar_likelihood_mode <- function() {
+  lik <- tolower(trimws(Sys.getenv("UNIFIED_EXDQLM_MULTIVAR_LIKELIHOOD_MODE", "exal")))
+  if (!lik %in% c("exal", "al")) lik <- "exal"
+  lik
+}
+
+smoke_multivar_transfer_mode <- function() {
+  mode <- tolower(trimws(Sys.getenv("UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE", "drop")))
+  if (!mode %in% c("drop", "keep")) mode <- "drop"
+  mode
+}
+
+smoke_multivar_meta <- function() {
+  mode <- smoke_multivar_transfer_mode()
+  lik <- smoke_multivar_likelihood_mode()
+  meta <- post_crps_synth_model_meta(
+    family = "multivar",
+    likelihood_mode = lik,
+    transfer_mode = mode
+  )
+  meta$transfer_mode <- mode
+  meta$likelihood_mode <- lik
+  meta
+}
+
+smoke_read_numeric_matrix_rds <- function(path) {
+  if (!nzchar(path) || !file.exists(path)) return(NULL)
+  obj <- tryCatch(readRDS(path), error = function(e) NULL)
+  if (is.null(obj)) return(NULL)
+  mat <- suppressWarnings(as.matrix(obj))
+  if (!is.numeric(mat) || nrow(mat) <= 0L || ncol(mat) <= 0L) return(NULL)
+  mat
+}
+
+smoke_matrix_quantiles <- function(sample_mat, probs = c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95)) {
+  if (!is.matrix(sample_mat) || ncol(sample_mat) <= 0L) {
+    return(matrix(NA_real_, nrow = length(probs), ncol = 0L))
+  }
+  out <- apply(sample_mat, 2L, stats::quantile, probs = probs, na.rm = TRUE, type = 8, names = FALSE)
+  matrix(out, nrow = length(probs), byrow = FALSE)
+}
+
+smoke_resolve_hist_dates <- function() {
+  ts_obj <- get0("timestamps", ifnotfound = NULL, inherits = TRUE)
+  if (is.null(ts_obj)) {
+    ts_obj <- get0("timestamps_keep", ifnotfound = NULL, inherits = TRUE)
+  }
+  dates <- suppressWarnings(as.Date(ts_obj))
+  if (length(dates) > 0L && any(!is.na(dates))) {
+    return(dates)
+  }
+  tt <- suppressWarnings(as.integer(get0("TT", ifnotfound = NA_integer_, inherits = TRUE)))
+  fc_start <- suppressWarnings(as.Date(get0("FORECAST_START_DATE", ifnotfound = NA_character_, inherits = TRUE)))
+  if (is.finite(tt) && !is.na(fc_start) && tt > 0L) {
+    return(seq.Date(fc_start - tt, by = "day", length.out = tt))
+  }
+  as.Date(character(0))
+}
+
+smoke_usgs_log1p_by_dates <- function(dates) {
+  dates <- suppressWarnings(as.Date(dates))
+  out <- rep(NA_real_, length(dates))
+  if (!exists("San_Lorenzo_Daily_USGS_R", inherits = TRUE)) {
+    return(out)
+  }
+  sl <- get("San_Lorenzo_Daily_USGS_R", inherits = TRUE)
+  if (!is.data.frame(sl) || !"data0" %in% names(sl)) {
+    return(out)
+  }
+  sl_dates <- if ("Date" %in% names(sl)) {
+    suppressWarnings(as.Date(sl$Date))
+  } else if ("time" %in% names(sl)) {
+    suppressWarnings(as.Date(sl$time))
+  } else {
+    as.Date(rep(NA_character_, nrow(sl)))
+  }
+  idx <- match(dates, sl_dates)
+  keep <- !is.na(idx)
+  if (any(keep)) out[keep] <- as.numeric(sl$data0[idx[keep]])
+  out
+}
+
+smoke_build_multivar_synth_f <- function() {
+  multivar_meta <- smoke_multivar_meta()
+  cache_path <- post_cache_path(post_cache_file_name(
+    "synth_multivar_forecast_log1p.rds",
+    model_id = multivar_meta$model_id,
+    transfer_mode = multivar_meta$transfer_mode
+  ))
+  cache_draws_path <- post_cache_path(post_cache_file_name(
+    "y_reps_f_new_smoke.rds",
+    model_id = multivar_meta$model_id,
+    transfer_mode = multivar_meta$transfer_mode
+  ))
+
+  if (exists("synth_f", inherits = TRUE)) {
+    synth_existing <- as.matrix(get("synth_f", inherits = TRUE))
+    if (is.numeric(synth_existing) && nrow(synth_existing) > 0L && ncol(synth_existing) > 0L) {
+      return(synth_existing)
+    }
+  }
+
+  synth_cached <- smoke_read_numeric_matrix_rds(cache_path)
+  if (!is.null(synth_cached)) {
+    return(synth_cached)
+  }
+
+  required_objs <- c(
+    "new.theta.out_5_exAL_synth_DISC",
+    "new.theta.out_20_exAL_synth_DISC",
+    "new.theta.out_35_exAL_synth_DISC",
+    "new.theta.out_50_exAL_synth_DISC",
+    "new.theta.out_65_exAL_synth_DISC",
+    "new.theta.out_80_exAL_synth_DISC",
+    "new.theta.out_95_exAL_synth_DISC",
+    "samp.gamma_5_exAL_synth_DISC",
+    "samp.gamma_20_exAL_synth_DISC",
+    "samp.gamma_35_exAL_synth_DISC",
+    "samp.gamma_50_exAL_synth_DISC",
+    "samp.gamma_65_exAL_synth_DISC",
+    "samp.gamma_80_exAL_synth_DISC",
+    "samp.gamma_95_exAL_synth_DISC",
+    "samp.sigma_5_exAL_synth_DISC",
+    "samp.sigma_20_exAL_synth_DISC",
+    "samp.sigma_35_exAL_synth_DISC",
+    "samp.sigma_50_exAL_synth_DISC",
+    "samp.sigma_65_exAL_synth_DISC",
+    "samp.sigma_80_exAL_synth_DISC",
+    "samp.sigma_95_exAL_synth_DISC",
+    "ranges",
+    "J",
+    "FF_list",
+    "p"
+  )
+  missing_objs <- required_objs[!vapply(required_objs, exists, logical(1), inherits = TRUE)]
+  if (length(missing_objs) > 0L) {
+    warning(
+      sprintf(
+        "[CRPS_MULTIVAR_SKIP] Unable to compute multivariate synthesis CRPS (missing objects: %s).",
+        paste(missing_objs, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+    return(NULL)
+  }
+
+  q_probs <- c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95)
+  theta_objs <- list(
+    get("new.theta.out_5_exAL_synth_DISC", inherits = TRUE),
+    get("new.theta.out_20_exAL_synth_DISC", inherits = TRUE),
+    get("new.theta.out_35_exAL_synth_DISC", inherits = TRUE),
+    get("new.theta.out_50_exAL_synth_DISC", inherits = TRUE),
+    get("new.theta.out_65_exAL_synth_DISC", inherits = TRUE),
+    get("new.theta.out_80_exAL_synth_DISC", inherits = TRUE),
+    get("new.theta.out_95_exAL_synth_DISC", inherits = TRUE)
+  )
+  gamma_mats <- list(
+    get("samp.gamma_5_exAL_synth_DISC", inherits = TRUE),
+    get("samp.gamma_20_exAL_synth_DISC", inherits = TRUE),
+    get("samp.gamma_35_exAL_synth_DISC", inherits = TRUE),
+    get("samp.gamma_50_exAL_synth_DISC", inherits = TRUE),
+    get("samp.gamma_65_exAL_synth_DISC", inherits = TRUE),
+    get("samp.gamma_80_exAL_synth_DISC", inherits = TRUE),
+    get("samp.gamma_95_exAL_synth_DISC", inherits = TRUE)
+  )
+  sigma_mats <- list(
+    get("samp.sigma_5_exAL_synth_DISC", inherits = TRUE),
+    get("samp.sigma_20_exAL_synth_DISC", inherits = TRUE),
+    get("samp.sigma_35_exAL_synth_DISC", inherits = TRUE),
+    get("samp.sigma_50_exAL_synth_DISC", inherits = TRUE),
+    get("samp.sigma_65_exAL_synth_DISC", inherits = TRUE),
+    get("samp.sigma_80_exAL_synth_DISC", inherits = TRUE),
+    get("samp.sigma_95_exAL_synth_DISC", inherits = TRUE)
+  )
+
+  n_samp <- min(vapply(gamma_mats, function(x) if (is.null(dim(x))) length(x) else dim(x)[2], integer(1)))
+  if (!is.finite(n_samp) || n_samp <= 1L) {
+    warning("[CRPS_MULTIVAR_SKIP] Unable to compute multivariate synthesis CRPS (invalid sample size).", call. = FALSE)
+    return(NULL)
+  }
+  horizon <- suppressWarnings(as.integer(get("ranges", inherits = TRUE)[[1L]]))
+  if (!is.finite(horizon) || horizon <= 0L) {
+    warning("[CRPS_MULTIVAR_SKIP] Unable to compute multivariate synthesis CRPS (invalid forecast horizon).", call. = FALSE)
+    return(NULL)
+  }
+
+  xbs <- array(NA_real_, c(7L, horizon, n_samp))
+  ks <- -diff(c(as.integer(get("ranges", inherits = TRUE)), 0L))
+  J_use <- min(
+    suppressWarnings(as.integer(get("J", inherits = TRUE))),
+    length(get("FF_list", inherits = TRUE)),
+    min(vapply(theta_objs, function(obj) min(length(obj$sm_ens), length(obj$sC_ens)), integer(1)))
+  )
+  idx <- c(0L)
+
+  for (j in seq_len(J_use)) {
+    idx <- smoke_next_idx_block(idx, ks[J_use - j + 1L])
+    if (length(idx) == 0L) next
+
+    seg_cap <- min(vapply(theta_objs, function(obj) {
+      sm_j <- obj$sm_ens[[j]]
+      sC_j <- obj$sC_ens[[j]]
+      if (!is.numeric(sm_j) || is.null(dim(sm_j)) || length(dim(sm_j)) != 2L ||
+          !is.numeric(sC_j) || is.null(dim(sC_j)) || length(dim(sC_j)) != 3L) {
+        return(0L)
+      }
+      as.integer(min(ncol(sm_j), dim(sC_j)[3]))
+    }, integer(1)))
+    if (!is.finite(seg_cap) || seg_cap <= 0L) next
+
+    tt <- 1L
+    for (t_idx in idx[seq_len(min(length(idx), seg_cap))]) {
+      for (row_idx in seq_along(theta_objs)) {
+        Mu <- theta_objs[[row_idx]]$sm_ens[[j]][, tt]
+        Sigma <- theta_objs[[row_idx]]$sC_ens[[j]][, , tt]
+        proj <- smoke_project_state_gaussian(
+          Mu = Mu,
+          Sigma = Sigma,
+          ff_seg = get("FF_list", inherits = TRUE)[[j]],
+          seg_id = j,
+          eps_reg = 0,
+          context = sprintf("smoke_xbs_qrow%d_seg%d_t%d", as.integer(row_idx), as.integer(j), as.integer(tt))
+        )
+        mu_use <- as.numeric(proj[["mean"]])
+        sd_use <- as.numeric(proj[["sd"]])
+        if (!is.finite(mu_use)) mu_use <- NA_real_
+        if (!is.finite(sd_use) || sd_use < 0) sd_use <- 0
+        xbs[row_idx, t_idx, ] <- stats::rnorm(n = n_samp, mean = mu_use, sd = sd_use)
+      }
+      tt <- tt + 1L
+    }
+  }
+
+  for (t_idx in seq_len(horizon)) {
+    for (row_idx in seq_len(dim(xbs)[1])) {
+      xbs[row_idx, t_idx, ] <- sort_keep_na(xbs[row_idx, t_idx, ])
+    }
+  }
+
+  y_reps_f_new <- array(NA_real_, c(7L, n_samp, horizon))
+  gamma_vecs <- lapply(gamma_mats, function(mat) as.numeric(mat[1L, seq_len(n_samp)]))
+  sigma_vecs <- lapply(sigma_mats, function(mat) as.numeric(mat[1L, seq_len(n_samp)]))
+
+  for (t_idx in seq_len(horizon)) {
+    for (s_idx in seq_len(n_samp)) {
+      for (row_idx in seq_along(q_probs)) {
+        y_reps_f_new[row_idx, s_idx, t_idx] <- exdqlm::rexal(
+          1L,
+          q_probs[[row_idx]],
+          xbs[row_idx, t_idx, s_idx],
+          sigma_vecs[[row_idx]][[s_idx]],
+          gamma_vecs[[row_idx]][[s_idx]]
+        )
+      }
+    }
+  }
+
+  for (t_idx in seq_len(horizon)) {
+    for (row_idx in seq_len(dim(y_reps_f_new)[1])) {
+      y_reps_f_new[row_idx, , t_idx] <- sort_keep_na(y_reps_f_new[row_idx, , t_idx])
+    }
+  }
+
+  synth_f <- synthesize_samples(exp(y_reps_f_new), q_probs)
+  for (t_idx in seq_len(ncol(synth_f))) {
+    synth_f[, t_idx] <- sort_keep_na(synth_f[, t_idx])
+  }
+
+  saveRDS(y_reps_f_new, file = cache_draws_path)
+  saveRDS(synth_f, file = cache_path)
+  synth_f
+}
+
+smoke_build_ndlm_main_raw_draws <- function() {
+  if (exists("xbs_ndlm", inherits = TRUE)) {
+    ndlm_existing <- get("xbs_ndlm", inherits = TRUE)
+    if (is.numeric(ndlm_existing) && !is.null(dim(ndlm_existing)) && length(dim(ndlm_existing)) == 3L) {
+      return(ndlm_existing)
+    }
+  }
+  if (!exists("new.theta.out_50_NDLM_synth_DISC", inherits = TRUE)) {
+    return(NULL)
+  }
+
+  ndlm_obj <- get("new.theta.out_50_NDLM_synth_DISC", inherits = TRUE)
+  if (is.list(ndlm_obj) &&
+      is.matrix(ndlm_obj$forecast_mean_draws_loglog1p) &&
+      is.numeric(ndlm_obj$forecast_mean_draws_loglog1p) &&
+      nrow(ndlm_obj$forecast_mean_draws_loglog1p) > 1L &&
+      ncol(ndlm_obj$forecast_mean_draws_loglog1p) > 0L &&
+      all(is.finite(ndlm_obj$forecast_mean_draws_loglog1p))) {
+    ndlm_direct_mean_draws <- as.matrix(ndlm_obj$forecast_mean_draws_loglog1p)
+    xbs_ndlm <- array(NA_real_, c(1L, ncol(ndlm_direct_mean_draws), nrow(ndlm_direct_mean_draws)))
+    xbs_ndlm[1L, , ] <- t(ndlm_direct_mean_draws)
+    return(xbs_ndlm)
+  }
+
+  if (!exists("samp.sigma_50_NDLM_synth_DISC", inherits = TRUE) ||
+      !exists("ranges", inherits = TRUE) ||
+      !exists("FF_list", inherits = TRUE)) {
+    return(NULL)
+  }
+
+  n_samp_ndlm <- suppressWarnings(as.integer(length(as.numeric(get("samp.sigma_50_NDLM_synth_DISC", inherits = TRUE)))))
+  if (!is.finite(n_samp_ndlm) || n_samp_ndlm <= 1L) {
+    return(NULL)
+  }
+
+  post_build_ndlm_state_draw_array(
+    ndlm_obj = ndlm_obj,
+    ranges = get("ranges", inherits = TRUE),
+    FF_list = get("FF_list", inherits = TRUE),
+    n_samp = n_samp_ndlm,
+    p_state = if (exists("p", inherits = TRUE)) get("p", inherits = TRUE) else 7L,
+    eps_reg = 0,
+    seed = 777L,
+    context = "crps.ndlm.smoke"
+  )
+}
+
+smoke_inverse_cdf_al <- function(U, mu, sigma, p) {
+  ifelse(
+    U < p,
+    mu + (sigma / (1 - p)) * log(U / p),
+    mu - (sigma / p) * log((1 - U) / (1 - p))
+  )
+}
+
+smoke_window_dates <- function(start_date, end_date) {
+  start_date <- suppressWarnings(as.Date(start_date))
+  end_date <- suppressWarnings(as.Date(end_date))
+  if (is.na(start_date) || is.na(end_date) || end_date < start_date) {
+    return(as.Date(character(0)))
+  }
+  seq.Date(start_date, end_date, by = "day")
+}
+
+smoke_write_csv <- function(df, path) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  post_write_csv_deterministic(df, path, numeric_digits = 15L)
+  invisible(path)
+}
+
+smoke_quantile_df <- function(model_id, dates, observed, quantile_mat, probs, segment, center_name = "q50") {
+  out <- data.frame(
+    model_id = as.character(model_id),
+    date = as.character(as.Date(dates)),
+    segment = as.character(segment),
+    observed = as.numeric(observed),
+    stringsAsFactors = FALSE
+  )
+  for (i in seq_along(probs)) {
+    out[[sprintf("q%02d", as.integer(round(100 * probs[[i]])))]] <- as.numeric(quantile_mat[i, ])
+  }
+  if (!(center_name %in% names(out)) && nrow(quantile_mat) >= 1L) {
+    out[[center_name]] <- as.numeric(quantile_mat[ceiling(nrow(quantile_mat) / 2L), ])
+  }
+  out
+}
+
+smoke_sample_subset_df <- function(model_id, sample_mat, dates, segment, cap = 128L) {
+  empty_df <- data.frame(
+    model_id = character(0),
+    draw_id = character(0),
+    sample_index = integer(0),
+    date = character(0),
+    segment = character(0),
+    value = numeric(0),
+    stringsAsFactors = FALSE
+  )
+  if (!is.matrix(sample_mat) || nrow(sample_mat) <= 0L || ncol(sample_mat) <= 0L) {
+    return(empty_df)
+  }
+  idx <- post_plot_sample_indices(nrow(sample_mat), cap = cap)
+  if (length(idx) == 0L) return(empty_df)
+  sub_mat <- sample_mat[idx, , drop = FALSE]
+  out <- data.frame(
+    model_id = as.character(model_id),
+    draw_id = rep(sprintf("draw_%03d", seq_along(idx)), each = ncol(sub_mat)),
+    sample_index = rep(idx, each = ncol(sub_mat)),
+    date = rep(as.character(as.Date(dates)), times = nrow(sub_mat)),
+    segment = as.character(segment),
+    value = as.numeric(t(sub_mat)),
+    stringsAsFactors = FALSE
+  )
+  out
+}
+
+smoke_plot_synthesis_window <- function(
+  model_id,
+  title_text,
+  out_file,
+  hist_dates,
+  hist_obs,
+  hist_samples,
+  hist_q,
+  fc_dates,
+  fc_obs,
+  fc_samples,
+  fc_q,
+  probs = c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95)
+) {
+  all_dates <- c(as.Date(hist_dates), as.Date(fc_dates))
+  ylim_vals <- range(c(hist_obs, fc_obs, hist_q, fc_q), finite = TRUE)
+  if (!all(is.finite(ylim_vals))) ylim_vals <- c(0, 1)
+
+  open_png(out_file, width = 3200, height = 1600, res = 320)
+  on.exit(dev.off(), add = TRUE)
+
+  plot(all_dates, c(as.numeric(hist_obs), as.numeric(fc_obs)), type = "n",
+       xlab = "Date", ylab = "USGS / model scale (log1p cms)",
+       main = title_text, ylim = ylim_vals)
+  abline(v = as.Date(CUTOFF_DATE), lty = 2, col = "black", lwd = 1.2)
+
+  if (is.matrix(hist_samples) && nrow(hist_samples) > 0L) {
+    hist_idx <- post_plot_sample_indices(nrow(hist_samples), cap = 128L)
+    matlines(as.Date(hist_dates), t(hist_samples[hist_idx, , drop = FALSE]), col = "#bdbdbd55", lwd = 0.6)
+  }
+  if (is.matrix(fc_samples) && nrow(fc_samples) > 0L) {
+    fc_idx <- post_plot_sample_indices(nrow(fc_samples), cap = 128L)
+    matlines(as.Date(fc_dates), t(fc_samples[fc_idx, , drop = FALSE]), col = "#9ecae155", lwd = 0.6)
+  }
+
+  line_cols <- c("#b2182b", "#d6604d", "#f4a582", "#1b7837", "#92c5de", "#4393c3", "#2166ac")
+  for (i in seq_along(probs)) {
+    lines(as.Date(hist_dates), hist_q[i, ], col = line_cols[i], lwd = if (i == 4L) 2.2 else 1.3)
+    lines(as.Date(fc_dates), fc_q[i, ], col = line_cols[i], lwd = if (i == 4L) 2.2 else 1.3)
+  }
+
+  lines(as.Date(hist_dates), hist_obs, col = "black", lwd = 1.6)
+  lines(as.Date(fc_dates), fc_obs, col = "black", lwd = 1.6)
+  legend(
+    "topleft",
+    legend = c("Observed USGS", "Posterior/predictive spaghetti", paste0("q=", sprintf("%0.2f", probs))),
+    col = c("black", "#9ecae1", line_cols[4L]),
+    lwd = c(1.6, 1.0, 2.2),
+    bty = "n"
+  )
+}
+
+smoke_plot_ndlm_window <- function(
+  model_id,
+  title_text,
+  out_file,
+  hist_dates,
+  hist_obs,
+  hist_q,
+  fc_dates,
+  fc_obs,
+  fc_q
+) {
+  all_dates <- c(as.Date(hist_dates), as.Date(fc_dates))
+  ylim_vals <- range(c(hist_obs, fc_obs, hist_q, fc_q), finite = TRUE)
+  if (!all(is.finite(ylim_vals))) ylim_vals <- c(0, 1)
+
+  open_png(out_file, width = 3200, height = 1600, res = 320)
+  on.exit(dev.off(), add = TRUE)
+
+  plot(all_dates, c(as.numeric(hist_obs), as.numeric(fc_obs)), type = "n",
+       xlab = "Date", ylab = "USGS / model scale (log1p cms)",
+       main = title_text, ylim = ylim_vals)
+  abline(v = as.Date(CUTOFF_DATE), lty = 2, col = "black", lwd = 1.2)
+
+  polygon(c(as.Date(hist_dates), rev(as.Date(hist_dates))),
+          c(hist_q[1, ], rev(hist_q[3, ])),
+          col = "#a6bddb55", border = NA)
+  polygon(c(as.Date(fc_dates), rev(as.Date(fc_dates))),
+          c(fc_q[1, ], rev(fc_q[3, ])),
+          col = "#74a9cf55", border = NA)
+
+  lines(as.Date(hist_dates), hist_q[2, ], col = "#045a8d", lwd = 2.0)
+  lines(as.Date(fc_dates), fc_q[2, ], col = "#045a8d", lwd = 2.0)
+  lines(as.Date(hist_dates), hist_obs, col = "black", lwd = 1.6)
+  lines(as.Date(fc_dates), fc_obs, col = "black", lwd = 1.6)
+  legend(
+    "topleft",
+    legend = c("Observed USGS", "Model median", "90% band"),
+    col = c("black", "#045a8d", "#74a9cf"),
+    lwd = c(1.6, 2.0, 6.0),
+    bty = "n"
+  )
+}
+
+smoke_build_multivar_hist_synth <- function() {
+  meta <- smoke_multivar_meta()
+  hist_cache <- post_cache_path(post_cache_file_name(
+    "synth_multivar_hist_log1p.rds",
+    model_id = meta$model_id,
+    transfer_mode = meta$transfer_mode
+  ))
+  hist_q_cache <- post_cache_path(post_cache_file_name(
+    "synth_multivar_hist_quantiles_log1p.rds",
+    model_id = meta$model_id,
+    transfer_mode = meta$transfer_mode
+  ))
+
+  hist_dates_all <- smoke_resolve_hist_dates()
+  hist_idx <- which(hist_dates_all >= as.Date(PLOT_START_DATE) & hist_dates_all <= as.Date(CUTOFF_DATE))
+  if (length(hist_idx) <= 0L) {
+    return(NULL)
+  }
+
+  hist_cached <- smoke_read_numeric_matrix_rds(hist_cache)
+  hist_q_cached <- smoke_read_numeric_matrix_rds(hist_q_cache)
+  if (!is.null(hist_cached) && !is.null(hist_q_cached) &&
+      ncol(hist_cached) == length(hist_idx) && ncol(hist_q_cached) == length(hist_idx)) {
+    return(list(
+      sample_mat = hist_cached,
+      quantiles = hist_q_cached,
+      dates = hist_dates_all[hist_idx]
+    ))
+  }
+
+  q_tags <- c("5", "20", "35", "50", "65", "80", "95")
+  q_probs <- c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95)
+  required_objs <- c("FF")
+  if (any(!vapply(required_objs, exists, logical(1), inherits = TRUE))) {
+    return(NULL)
+  }
+
+  n_samp <- min(vapply(q_tags, function(q) {
+    theta_obj <- get(sprintf("samp.theta_%s_exAL_synth_DISC", q), inherits = TRUE)
+    dim(theta_obj$samp_theta)[3]
+  }, integer(1)))
+  if (!is.finite(n_samp) || n_samp <= 1L) {
+    return(NULL)
+  }
+
+  y_hist_cube <- array(NA_real_, c(length(q_tags), n_samp, length(hist_idx)))
+  FF_use <- get("FF", inherits = TRUE)
+
+  for (i in seq_along(q_tags)) {
+    q_tag <- q_tags[[i]]
+    p0 <- q_probs[[i]]
+    theta_obj <- get(sprintf("samp.theta_%s_exAL_synth_DISC", q_tag), inherits = TRUE)
+    th <- theta_obj$samp_theta[, , seq_len(n_samp), drop = FALSE]
+    sts_arr <- get(sprintf("samp.sts_%s_exAL_synth_DISC", q_tag), inherits = TRUE)[1L, hist_idx, seq_len(n_samp), drop = FALSE]
+    stj <- matrix(sts_arr, nrow = length(hist_idx), ncol = n_samp)
+    gamj <- as.numeric(get(sprintf("samp.gamma_%s_exAL_synth_DISC", q_tag), inherits = TRUE)[1L, seq_len(n_samp)])
+    sigj <- as.numeric(get(sprintf("samp.sigma_%s_exAL_synth_DISC", q_tag), inherits = TRUE)[1L, seq_len(n_samp)])
+    p_exAL <- p_fn(p0, gamj)
+
+    xb <- matrix(NA_real_, nrow = length(hist_idx), ncol = n_samp)
+    for (k in seq_along(hist_idx)) {
+      t_idx <- hist_idx[[k]]
+      th_t <- matrix(th[, t_idx, ], nrow = dim(th)[1], ncol = n_samp)
+      p_use <- min(nrow(FF_use), nrow(th_t))
+      xb[k, ] <- as.vector(t(FF_use[seq_len(p_use), 1L, t_idx, drop = FALSE][, 1L, 1L]) %*% th_t[seq_len(p_use), , drop = FALSE])
+    }
+
+    set.seed(770L + i)
+    u_values <- matrix(stats::runif(length(hist_idx) * n_samp), nrow = length(hist_idx), ncol = n_samp)
+    mu <- xb + sweep(stj, 2L, sigj * abs(gamj) * C_fn(p0, gamj), `*`)
+    y_hist <- t(smoke_inverse_cdf_al(u_values, mu, sigj, p_exAL))
+    for (k in seq_len(ncol(y_hist))) {
+      y_hist[, k] <- sort_keep_na(y_hist[, k])
+    }
+    y_hist_cube[i, , ] <- exp(y_hist)
+  }
+
+  synth_hist <- synthesize_samples(y_hist_cube, q_probs)
+  hist_q <- smoke_matrix_quantiles(synth_hist, probs = q_probs)
+  saveRDS(synth_hist, hist_cache)
+  saveRDS(hist_q, hist_q_cache)
+  list(sample_mat = synth_hist, quantiles = hist_q, dates = hist_dates_all[hist_idx])
+}
+
+smoke_trim_dates <- function(dates, n_expected) {
+  dates <- suppressWarnings(as.Date(dates))
+  n_expected <- suppressWarnings(as.integer(n_expected[[1L]]))
+  if (!is.finite(n_expected) || n_expected <= 0L) {
+    return(as.Date(character(0)))
+  }
+  if (length(dates) >= n_expected) {
+    return(dates[seq_len(n_expected)])
+  }
+  if (length(dates) == 0L || all(is.na(dates))) {
+    return(as.Date(rep(NA_character_, n_expected)))
+  }
+  last_date <- max(dates, na.rm = TRUE)
+  extra <- seq.Date(last_date + 1L, by = "day", length.out = n_expected - length(dates))
+  c(dates, extra)
+}
+
+smoke_forecast_dates <- function(horizon) {
+  smoke_trim_dates(
+    smoke_window_dates(FORECAST_START_DATE, PLOT_END_DATE),
+    n_expected = horizon
+  )
+}
+
+smoke_manifest_row <- function(model_id, plot_type, path, note = "") {
+  data.frame(
+    model_id = as.character(model_id),
+    plot_type = as.character(plot_type),
+    path = normalizePath(path, mustWork = FALSE),
+    source_run = as.character(get0("RUN_ID", ifnotfound = "", inherits = TRUE)),
+    note = as.character(note),
+    stringsAsFactors = FALSE
+  )
+}
+
+smoke_register_figure_artifact <- function(model_id, plot_type, path, note = "") {
+  smoke_figure_export_manifest <<- rbind(
+    smoke_figure_export_manifest,
+    smoke_manifest_row(model_id = model_id, plot_type = plot_type, path = path, note = note)
+  )
+  invisible(path)
+}
+
+smoke_write_figure_manifest <- function() {
+  if (is.null(smoke_figure_export_manifest) || nrow(smoke_figure_export_manifest) == 0L) {
+    return(invisible(NULL))
+  }
+  manifest_path <- file.path(OUT_DIR, "figure_manifest.csv")
+  existing <- if (file.exists(manifest_path)) {
+    utils::read.csv(manifest_path, stringsAsFactors = FALSE, check.names = FALSE)
+  } else {
+    NULL
+  }
+  merged <- rbind(existing, smoke_figure_export_manifest)
+  merged[] <- lapply(merged, function(col) if (is.factor(col)) as.character(col) else col)
+  key <- do.call(paste, c(lapply(merged, function(col) ifelse(is.na(col), "<NA>", as.character(col))), sep = "\r"))
+  merged <- merged[!duplicated(key), , drop = FALSE]
+  ord <- order(merged$model_id, merged$plot_type, merged$path, method = "radix", na.last = TRUE)
+  merged <- merged[ord, , drop = FALSE]
+  rownames(merged) <- NULL
+  smoke_write_csv(merged, manifest_path)
+  invisible(manifest_path)
+}
+
+smoke_quantile_band_from_moments <- function(
+  mean_vec,
+  var_vec,
+  probs = c(0.05, 0.50, 0.95),
+  transform = c("identity", "loglog1p_to_log1p"),
+  context = "smoke.quantile_band"
+) {
+  transform <- match.arg(transform)
+  mean_vec <- as.numeric(mean_vec)
+  var_vec <- pmax(as.numeric(var_vec), 1e-10)
+  sd_vec <- sqrt(var_vec)
+  z <- stats::qnorm(probs)
+  latent <- matrix(mean_vec, nrow = length(probs), ncol = length(mean_vec), byrow = TRUE) +
+    outer(z, sd_vec)
+  if (identical(transform, "loglog1p_to_log1p")) {
+    return(post_transform_loglog1p_to_log1p_mat(latent, context = context))
+  }
+  latent
+}
+
+smoke_emit_synthesis_bundle <- function(
+  model_id,
+  title_text,
+  hist_dates,
+  hist_obs,
+  hist_samples,
+  hist_q,
+  fc_dates,
+  fc_obs,
+  fc_samples,
+  fc_q,
+  probs = c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95),
+  sample_cap = 128L,
+  note = "plot_scale=log1p_cms; deterministic_sample_cap=128"
+) {
+  plot_path <- file.path(OUT_DIR, sprintf("%s_cutoff_window_posterior_samples.png", model_id))
+  quant_path <- file.path(OUT_DIR, sprintf("%s_cutoff_window_quantiles.csv", model_id))
+  sample_path <- file.path(OUT_DIR, sprintf("%s_cutoff_window_sample_subset.csv", model_id))
+
+  smoke_plot_synthesis_window(
+    model_id = model_id,
+    title_text = title_text,
+    out_file = plot_path,
+    hist_dates = hist_dates,
+    hist_obs = hist_obs,
+    hist_samples = hist_samples,
+    hist_q = hist_q,
+    fc_dates = fc_dates,
+    fc_obs = fc_obs,
+    fc_samples = fc_samples,
+    fc_q = fc_q,
+    probs = probs
+  )
+
+  quant_df <- rbind(
+    smoke_quantile_df(model_id, hist_dates, hist_obs, hist_q, probs, segment = "history"),
+    smoke_quantile_df(model_id, fc_dates, fc_obs, fc_q, probs, segment = "forecast")
+  )
+  sample_df <- rbind(
+    smoke_sample_subset_df(model_id, hist_samples, hist_dates, segment = "history", cap = sample_cap),
+    smoke_sample_subset_df(model_id, fc_samples, fc_dates, segment = "forecast", cap = sample_cap)
+  )
+  smoke_write_csv(quant_df, quant_path)
+  smoke_write_csv(sample_df, sample_path)
+
+  smoke_register_figure_artifact(model_id, "cutoff_window_posterior_samples", plot_path, note = note)
+  smoke_register_figure_artifact(model_id, "cutoff_window_quantiles", quant_path, note = "segment_quantiles_on_log1p_cms")
+  smoke_register_figure_artifact(model_id, "cutoff_window_sample_subset", sample_path, note = sprintf("deterministic_sample_cap=%d", as.integer(sample_cap)))
+}
+
+smoke_emit_ndlm_bundle <- function(
+  model_id,
+  title_text,
+  hist_dates,
+  hist_obs,
+  hist_q,
+  fc_dates,
+  fc_obs,
+  fc_q,
+  note = "plot_scale=log1p_cms; historical_band_from_exps_vars"
+) {
+  plot_path <- file.path(OUT_DIR, sprintf("%s_cutoff_window_predictive_bands.png", model_id))
+  quant_path <- file.path(OUT_DIR, sprintf("%s_cutoff_window_quantiles.csv", model_id))
+
+  smoke_plot_ndlm_window(
+    model_id = model_id,
+    title_text = title_text,
+    out_file = plot_path,
+    hist_dates = hist_dates,
+    hist_obs = hist_obs,
+    hist_q = hist_q,
+    fc_dates = fc_dates,
+    fc_obs = fc_obs,
+    fc_q = fc_q
+  )
+
+  quant_df <- rbind(
+    smoke_quantile_df(model_id, hist_dates, hist_obs, hist_q, probs = c(0.05, 0.50, 0.95), segment = "history"),
+    smoke_quantile_df(model_id, fc_dates, fc_obs, fc_q, probs = c(0.05, 0.50, 0.95), segment = "forecast")
+  )
+  smoke_write_csv(quant_df, quant_path)
+
+  smoke_register_figure_artifact(model_id, "cutoff_window_predictive_bands", plot_path, note = note)
+  smoke_register_figure_artifact(model_id, "cutoff_window_quantiles", quant_path, note = "segment_quantiles_on_log1p_cms")
+}
+
+smoke_load_ndlm_univar_artifact <- function() {
+  ndlm_univar_path <- if (exists("NDLM_UNIVAR_VAR_50", inherits = TRUE)) {
+    as.character(get("NDLM_UNIVAR_VAR_50", inherits = TRUE))
+  } else {
+    ""
+  }
+  ndlm_univar_enabled <- isTRUE(exists("MODEL_RUN_NDLM_UNIVAR", inherits = TRUE) &&
+    get("MODEL_RUN_NDLM_UNIVAR", inherits = TRUE))
+  if (!(ndlm_univar_enabled || nzchar(ndlm_univar_path)) ||
+      !nzchar(ndlm_univar_path) || !file.exists(ndlm_univar_path)) {
+    return(NULL)
+  }
+  ndlm_univar_env <- new.env(parent = emptyenv())
+  load(ndlm_univar_path, envir = ndlm_univar_env)
+  obj_name <- "new.theta.out_50_NDLM_univar_synth_DISC"
+  if (!exists(obj_name, envir = ndlm_univar_env, inherits = FALSE)) {
+    obj_candidates <- grep("^new\\.theta\\.out_.*NDLM_univar.*$", ls(ndlm_univar_env), value = TRUE)
+    obj_name <- if (length(obj_candidates) > 0L) obj_candidates[[1L]] else ""
+  }
+  sigma_name <- "samp.sigma_50_NDLM_univar_synth_DISC"
+  if (!exists(sigma_name, envir = ndlm_univar_env, inherits = FALSE)) {
+    sigma_candidates <- grep("^samp\\.sigma_.*NDLM_univar.*$", ls(ndlm_univar_env), value = TRUE)
+    sigma_name <- if (length(sigma_candidates) > 0L) sigma_candidates[[1L]] else ""
+  }
+  obj <- if (nzchar(obj_name) && exists(obj_name, envir = ndlm_univar_env, inherits = FALSE)) {
+    get(obj_name, envir = ndlm_univar_env, inherits = FALSE)
+  } else {
+    NULL
+  }
+  sigma_draws <- if (nzchar(sigma_name) && exists(sigma_name, envir = ndlm_univar_env, inherits = FALSE)) {
+    get(sigma_name, envir = ndlm_univar_env, inherits = FALSE)
+  } else {
+    NULL
+  }
+  if (is.null(obj) || is.null(sigma_draws)) {
+    return(NULL)
+  }
+  list(obj = obj, sigma_draws = sigma_draws, path = ndlm_univar_path)
+}
+
 profile_section("figures_smoke_fast.univar_load_inputs", {
   ensure_univar_bundles_loaded()
 })
@@ -644,4 +1527,747 @@ profile_section("figures_smoke_fast.univar_forecast_window", {
            pch = c(NA, NA, NA, 16),
            bty = "n")
   }
+})
+
+crps_transfer_mode <- tolower(trimws(Sys.getenv("UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE", "drop")))
+if (!crps_transfer_mode %in% c("drop", "keep")) {
+  crps_transfer_mode <- NA_character_
+}
+crps_univar_likelihood_mode <- tolower(trimws(Sys.getenv("UNIFIED_EXDQLM_UNIVAR_LIKELIHOOD_MODE", "exal")))
+if (!crps_univar_likelihood_mode %in% c("exal", "al")) {
+  crps_univar_likelihood_mode <- "exal"
+}
+crps_multivar_likelihood_mode <- tolower(trimws(Sys.getenv("UNIFIED_EXDQLM_MULTIVAR_LIKELIHOOD_MODE", "exal")))
+if (!crps_multivar_likelihood_mode %in% c("exal", "al")) {
+  crps_multivar_likelihood_mode <- "exal"
+}
+crps_ndlm_transfer_mode <- tolower(trimws(Sys.getenv("UNIFIED_NDLM_FORECAST_TRANSFER_MODE", "keep")))
+if (!crps_ndlm_transfer_mode %in% c("drop", "keep")) {
+  crps_ndlm_transfer_mode <- NA_character_
+}
+crps_ndlm_univar_transfer_mode <- tolower(trimws(Sys.getenv(
+  "UNIFIED_NDLM_UNIVAR_FORECAST_TRANSFER_MODE",
+  if (is.na(crps_ndlm_transfer_mode)) "keep" else crps_ndlm_transfer_mode
+)))
+if (!crps_ndlm_univar_transfer_mode %in% c("drop", "keep")) {
+  crps_ndlm_univar_transfer_mode <- NA_character_
+}
+crps_output_suffix <- Sys.getenv("UNIFIED_POST_OUTPUT_SUFFIX", "")
+crps_exports_enabled <- isTRUE(as.logical(Sys.getenv("UNIFIED_POST_EXPORT_CRPS", "TRUE")))
+crps_input_health_enabled <- isTRUE(as.logical(Sys.getenv("UNIFIED_POST_CRPS_INPUT_HEALTH_ENABLED", "TRUE")))
+crps_input_health_fail_fast <- isTRUE(as.logical(Sys.getenv("UNIFIED_POST_CRPS_INPUT_HEALTH_FAIL_FAST", "FALSE")))
+crps_input_health_min_finite_share <- suppressWarnings(as.numeric(Sys.getenv("UNIFIED_POST_CRPS_INPUT_HEALTH_MIN_FINITE_SHARE", "1")))
+if (!is.finite(crps_input_health_min_finite_share) ||
+    crps_input_health_min_finite_share < 0 || crps_input_health_min_finite_share > 1) {
+  crps_input_health_min_finite_share <- 1
+}
+crps_input_health_max_abs <- suppressWarnings(as.numeric(Sys.getenv("UNIFIED_POST_CRPS_INPUT_HEALTH_MAX_ABS", "NA")))
+if (!is.finite(crps_input_health_max_abs) || crps_input_health_max_abs <= 0) {
+  crps_input_health_max_abs <- NA_real_
+}
+
+if (crps_exports_enabled && posterior_table_exports_enabled) {
+  profile_section("figures_smoke_fast.export_crps_tables", {
+    crps_cutoff_date <- as.Date(CUTOFF_DATE)
+    crps_forecast_start <- as.Date(FORECAST_START_DATE)
+    usgs_date_col <- if ("Date" %in% names(San_Lorenzo_Daily_USGS_R)) {
+      as.Date(San_Lorenzo_Daily_USGS_R$Date)
+    } else {
+      as.Date(San_Lorenzo_Daily_USGS_R$time)
+    }
+    usgs_truth_all <- as.numeric(San_Lorenzo_Daily_USGS_R$data0)
+
+    truth_from_start <- function(horizon, context) {
+      hz <- as.integer(horizon[[1L]])
+      if (!is.finite(hz) || hz < 1L) {
+        stop(sprintf("[%s_HORIZON] horizon must be a positive integer.", context), call. = FALSE)
+      }
+      idx <- which(!is.na(usgs_date_col) & usgs_date_col >= crps_forecast_start)
+      if (length(idx) == 0L) {
+        stop(sprintf("[%s_TRUTH_MISSING] no USGS truth rows available at/after %s.", context, as.character(crps_forecast_start)), call. = FALSE)
+      }
+      truth <- usgs_truth_all[idx]
+      if (length(truth) < hz) {
+        warning(
+          sprintf("[%s_TRUTH_SHORT] truth length (%d) shorter than horizon (%d); padding with NA.", context, length(truth), hz),
+          call. = FALSE
+        )
+        truth <- c(truth, rep(NA_real_, hz - length(truth)))
+      } else {
+        truth <- truth[seq_len(hz)]
+      }
+      truth
+    }
+
+    crps_per_time_rows <- list()
+    crps_summary_rows <- list()
+    crps_input_health_rows <- list()
+    crps_input_health_per_time_rows <- list()
+    crps_input_health_failures <- character(0)
+
+    collect_crps_input_health <- function(
+      model_id,
+      model_family,
+      model_variant,
+      sample_mat,
+      forecast_dates,
+      transfer_mode,
+      context
+    ) {
+      if (!isTRUE(crps_input_health_enabled)) return(invisible(NULL))
+      health <- post_crps_input_health_tables(
+        model_id = model_id,
+        model_family = model_family,
+        model_variant = model_variant,
+        sample_mat = sample_mat,
+        forecast_dates = forecast_dates,
+        cutoff_date = crps_cutoff_date,
+        forecast_start_date = crps_forecast_start,
+        transfer_mode = transfer_mode,
+        min_finite_share = crps_input_health_min_finite_share,
+        max_abs = crps_input_health_max_abs,
+        context = paste0(context, ".input_health")
+      )
+      crps_input_health_rows[[length(crps_input_health_rows) + 1L]] <<- health$summary
+      crps_input_health_per_time_rows[[length(crps_input_health_per_time_rows) + 1L]] <<- health$per_time
+      if (isTRUE(crps_input_health_fail_fast) && !isTRUE(health$pass)) {
+        violation_msg <- if (length(health$violations) > 0L) {
+          paste(health$violations, collapse = " | ")
+        } else {
+          "input health failed"
+        }
+        crps_input_health_failures <<- c(
+          crps_input_health_failures,
+          sprintf("%s (%s): %s", model_id, context, violation_msg)
+        )
+      }
+      invisible(NULL)
+    }
+
+    if (length(ensembles) >= 1L) {
+      glofas_mat <- as.matrix(ensembles[[1]])
+      if (is.numeric(glofas_mat) && nrow(glofas_mat) > 0L && ncol(glofas_mat) >= 2L) {
+        glofas_tbl <- post_crps_model_tables(
+          model_id = "glofas_ensemble",
+          model_family = "ensemble",
+          model_variant = "glofas",
+          sample_mat = t(glofas_mat),
+          obs = truth_from_start(nrow(glofas_mat), "crps.glofas.truth"),
+          forecast_dates = daily_dates_for_matrix_rows(glofas_mat, start_date = crps_forecast_start, context = "crps.glofas.dates"),
+          cutoff_date = crps_cutoff_date,
+          forecast_start_date = crps_forecast_start,
+          transfer_mode = NA_character_,
+          score_scale = "log_cms_plus1",
+          context = "crps.glofas"
+        )
+        crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- glofas_tbl$per_time
+        crps_summary_rows[[length(crps_summary_rows) + 1L]] <- glofas_tbl$summary
+        collect_crps_input_health(
+          model_id = "glofas_ensemble",
+          model_family = "ensemble",
+          model_variant = "glofas",
+          sample_mat = t(glofas_mat),
+          forecast_dates = daily_dates_for_matrix_rows(
+            glofas_mat,
+            start_date = crps_forecast_start,
+            context = "crps.glofas.health.dates"
+          ),
+          transfer_mode = NA_character_,
+          context = "crps.glofas"
+        )
+      } else {
+        warning("[CRPS_GLOFAS_SKIP] Unable to compute GloFAS CRPS (invalid ensemble matrix).", call. = FALSE)
+      }
+    } else {
+      warning("[CRPS_GLOFAS_SKIP] Unable to compute GloFAS CRPS (ensembles[[1]] missing).", call. = FALSE)
+    }
+
+    if (length(ensembles) >= 2L) {
+      nws_mat <- as.matrix(ensembles[[2]])
+      if (is.numeric(nws_mat) && nrow(nws_mat) > 0L && ncol(nws_mat) >= 2L) {
+        nws_tbl <- post_crps_model_tables(
+          model_id = "nws_nwm_ensemble",
+          model_family = "ensemble",
+          model_variant = "nws_nwm",
+          sample_mat = t(nws_mat),
+          obs = truth_from_start(nrow(nws_mat), "crps.nws.truth"),
+          forecast_dates = daily_dates_for_matrix_rows(nws_mat, start_date = crps_forecast_start, context = "crps.nws.dates"),
+          cutoff_date = crps_cutoff_date,
+          forecast_start_date = crps_forecast_start,
+          transfer_mode = NA_character_,
+          score_scale = "log_cms_plus1",
+          context = "crps.nws"
+        )
+        crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- nws_tbl$per_time
+        crps_summary_rows[[length(crps_summary_rows) + 1L]] <- nws_tbl$summary
+        collect_crps_input_health(
+          model_id = "nws_nwm_ensemble",
+          model_family = "ensemble",
+          model_variant = "nws_nwm",
+          sample_mat = t(nws_mat),
+          forecast_dates = daily_dates_for_matrix_rows(
+            nws_mat,
+            start_date = crps_forecast_start,
+            context = "crps.nws.health.dates"
+          ),
+          transfer_mode = NA_character_,
+          context = "crps.nws"
+        )
+      } else {
+        warning("[CRPS_NWS_SKIP] Unable to compute NWS/NWM CRPS (invalid ensemble matrix).", call. = FALSE)
+      }
+    } else {
+      warning("[CRPS_NWS_SKIP] Unable to compute NWS/NWM CRPS (ensembles[[2]] missing).", call. = FALSE)
+    }
+
+    if (exists("synth_f2", inherits = TRUE)) {
+      synth_uni_mat <- as.matrix(get("synth_f2", inherits = TRUE))
+      if (is.numeric(synth_uni_mat) && nrow(synth_uni_mat) > 0L && ncol(synth_uni_mat) > 0L) {
+        univar_meta <- post_crps_synth_model_meta(
+          family = "univar",
+          likelihood_mode = crps_univar_likelihood_mode,
+          transfer_mode = NA_character_
+        )
+        univar_tbl <- post_crps_model_tables(
+          model_id = univar_meta$model_id,
+          model_family = "synthesis",
+          model_variant = univar_meta$model_variant,
+          sample_mat = synth_uni_mat,
+          obs = truth_from_start(ncol(synth_uni_mat), "crps.univar.truth"),
+          forecast_dates = daily_dates_for_matrix_cols(synth_uni_mat, start_date = crps_forecast_start, context = "crps.univar.dates"),
+          cutoff_date = crps_cutoff_date,
+          forecast_start_date = crps_forecast_start,
+          transfer_mode = NA_character_,
+          score_scale = "log_cms_plus1",
+          context = "crps.univar"
+        )
+        crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- univar_tbl$per_time
+        crps_summary_rows[[length(crps_summary_rows) + 1L]] <- univar_tbl$summary
+        collect_crps_input_health(
+          model_id = univar_meta$model_id,
+          model_family = "synthesis",
+          model_variant = univar_meta$model_variant,
+          sample_mat = synth_uni_mat,
+          forecast_dates = daily_dates_for_matrix_cols(
+            synth_uni_mat,
+            start_date = crps_forecast_start,
+            context = "crps.univar.health.dates"
+          ),
+          transfer_mode = NA_character_,
+          context = "crps.univar"
+        )
+      } else {
+        warning("[CRPS_UNIVAR_SKIP] Unable to compute univariate synthesis CRPS (invalid synth_f2 matrix).", call. = FALSE)
+      }
+    } else {
+      warning("[CRPS_UNIVAR_SKIP] Unable to compute univariate synthesis CRPS (synth_f2 missing).", call. = FALSE)
+    }
+
+    synth_f_smoke <- smoke_build_multivar_synth_f()
+    if (!is.null(synth_f_smoke)) {
+      multivar_meta <- post_crps_synth_model_meta(
+        family = "multivar",
+        likelihood_mode = crps_multivar_likelihood_mode,
+        transfer_mode = crps_transfer_mode
+      )
+
+      synth_multivar_mat <- as.matrix(synth_f_smoke)
+      if (is.numeric(synth_multivar_mat) && nrow(synth_multivar_mat) > 0L && ncol(synth_multivar_mat) > 0L) {
+        multivar_tbl <- post_crps_model_tables(
+          model_id = multivar_meta$model_id,
+          model_family = "synthesis",
+          model_variant = multivar_meta$model_variant,
+          sample_mat = synth_multivar_mat,
+          obs = truth_from_start(ncol(synth_multivar_mat), "crps.multivar.truth"),
+          forecast_dates = daily_dates_for_matrix_cols(synth_multivar_mat, start_date = crps_forecast_start, context = "crps.multivar.dates"),
+          cutoff_date = crps_cutoff_date,
+          forecast_start_date = crps_forecast_start,
+          transfer_mode = crps_transfer_mode,
+          score_scale = "log_cms_plus1",
+          context = "crps.multivar"
+        )
+        crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- multivar_tbl$per_time
+        crps_summary_rows[[length(crps_summary_rows) + 1L]] <- multivar_tbl$summary
+        collect_crps_input_health(
+          model_id = multivar_meta$model_id,
+          model_family = "synthesis",
+          model_variant = multivar_meta$model_variant,
+          sample_mat = synth_multivar_mat,
+          forecast_dates = daily_dates_for_matrix_cols(
+            synth_multivar_mat,
+            start_date = crps_forecast_start,
+            context = "crps.multivar.health.dates"
+          ),
+          transfer_mode = crps_transfer_mode,
+          context = "crps.multivar"
+        )
+      } else {
+        warning("[CRPS_MULTIVAR_SKIP] Unable to compute multivariate synthesis CRPS (invalid synth_f matrix).", call. = FALSE)
+      }
+    } else {
+      warning("[CRPS_MULTIVAR_SKIP] Unable to compute multivariate synthesis CRPS (synth_f unavailable after smoke rebuild).", call. = FALSE)
+    }
+
+    ndlm_main_enabled <- isTRUE(exists("MODEL_RUN_NDLM_MAIN", inherits = TRUE) &&
+      get("MODEL_RUN_NDLM_MAIN", inherits = TRUE))
+    ndlm_raw <- if (ndlm_main_enabled) smoke_build_ndlm_main_raw_draws() else NULL
+    if (ndlm_main_enabled && !is.null(ndlm_raw)) {
+      ndlm_sigma_draws <- if (exists("samp.sigma_50_NDLM_synth_DISC", inherits = TRUE)) {
+        get("samp.sigma_50_NDLM_synth_DISC", inherits = TRUE)
+      } else {
+        NULL
+      }
+
+      ndlm_pred <- tryCatch(
+        post_ndlm_predictive_draws(
+          ndlm_raw = ndlm_raw,
+          sigma_draws = ndlm_sigma_draws,
+          context = "crps.ndlm",
+          seed = 777L
+        ),
+        error = function(e) e
+      )
+
+      if (!inherits(ndlm_pred, "error")) {
+        ndlm_sample_mat_log1p <- ndlm_pred$predictive_log1p
+        saveRDS(ndlm_pred$mean_loglog1p, file = post_cache_path("xbs_ndlm_mean_loglog1p.rds"))
+        saveRDS(ndlm_pred$predictive_loglog1p, file = post_cache_path("y_reps_ndlm_loglog1p.rds"))
+        saveRDS(ndlm_sample_mat_log1p, file = post_cache_path("xbs_ndlm_log1p.rds"))
+        saveRDS(ndlm_sample_mat_log1p, file = post_cache_path("y_reps_ndlm_log1p.rds"))
+        ndlm_meta <- post_crps_synth_model_meta(
+          family = "ndlm",
+          likelihood_mode = "exal",
+          transfer_mode = crps_ndlm_transfer_mode
+        )
+        saveRDS(
+          ndlm_sample_mat_log1p,
+          file = post_cache_path(post_cache_file_name(
+            "ndlm_predictive_log1p.rds",
+            model_id = ndlm_meta$model_id,
+            transfer_mode = crps_ndlm_transfer_mode
+          ))
+        )
+        ndlm_tbl <- post_crps_model_tables(
+          model_id = ndlm_meta$model_id,
+          model_family = "synthesis",
+          model_variant = ndlm_meta$model_variant,
+          sample_mat = ndlm_sample_mat_log1p,
+          obs = truth_from_start(ncol(ndlm_sample_mat_log1p), "crps.ndlm.truth"),
+          forecast_dates = daily_dates_for_matrix_cols(ndlm_sample_mat_log1p, start_date = crps_forecast_start, context = "crps.ndlm.dates"),
+          cutoff_date = crps_cutoff_date,
+          forecast_start_date = crps_forecast_start,
+          transfer_mode = crps_ndlm_transfer_mode,
+          score_scale = "log_cms_plus1",
+          context = "crps.ndlm"
+        )
+        crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- ndlm_tbl$per_time
+        crps_summary_rows[[length(crps_summary_rows) + 1L]] <- ndlm_tbl$summary
+        collect_crps_input_health(
+          model_id = ndlm_meta$model_id,
+          model_family = "synthesis",
+          model_variant = ndlm_meta$model_variant,
+          sample_mat = ndlm_sample_mat_log1p,
+          forecast_dates = daily_dates_for_matrix_cols(
+            ndlm_sample_mat_log1p,
+            start_date = crps_forecast_start,
+            context = "crps.ndlm.health.dates"
+          ),
+          transfer_mode = crps_ndlm_transfer_mode,
+          context = "crps.ndlm"
+        )
+      } else {
+        warning(
+          sprintf(
+            "[CRPS_NDLM_SKIP] Unable to compute NDLM CRPS (%s).",
+            conditionMessage(ndlm_pred)
+          ),
+          call. = FALSE
+        )
+      }
+    } else if (ndlm_main_enabled) {
+      warning("[CRPS_NDLM_SKIP] Unable to compute NDLM CRPS (xbs_ndlm unavailable after smoke rebuild).", call. = FALSE)
+    }
+
+    ndlm_univar_path <- if (exists("NDLM_UNIVAR_VAR_50", inherits = TRUE)) {
+      as.character(get("NDLM_UNIVAR_VAR_50", inherits = TRUE))
+    } else {
+      ""
+    }
+    ndlm_univar_enabled <- isTRUE(exists("MODEL_RUN_NDLM_UNIVAR", inherits = TRUE) &&
+      get("MODEL_RUN_NDLM_UNIVAR", inherits = TRUE))
+    if ((ndlm_univar_enabled || nzchar(ndlm_univar_path)) &&
+        length(ndlm_univar_path) > 0L && nzchar(ndlm_univar_path) && file.exists(ndlm_univar_path)) {
+      ndlm_univar_env <- new.env(parent = emptyenv())
+      load(ndlm_univar_path, envir = ndlm_univar_env)
+      ndlm_univar_obj_name <- "new.theta.out_50_NDLM_univar_synth_DISC"
+      if (!exists(ndlm_univar_obj_name, envir = ndlm_univar_env, inherits = FALSE)) {
+        obj_candidates <- grep("^new\\.theta\\.out_.*NDLM_univar.*$", ls(ndlm_univar_env), value = TRUE)
+        ndlm_univar_obj_name <- if (length(obj_candidates) > 0L) obj_candidates[[1L]] else ""
+      }
+      ndlm_univar_sigma_name <- "samp.sigma_50_NDLM_univar_synth_DISC"
+      if (!exists(ndlm_univar_sigma_name, envir = ndlm_univar_env, inherits = FALSE)) {
+        sigma_candidates <- grep("^samp\\.sigma_.*NDLM_univar.*$", ls(ndlm_univar_env), value = TRUE)
+        ndlm_univar_sigma_name <- if (length(sigma_candidates) > 0L) sigma_candidates[[1L]] else ""
+      }
+      ndlm_univar_sample_mat <- tryCatch({
+        ndlm_univar_obj <- if (nzchar(ndlm_univar_obj_name) && exists(ndlm_univar_obj_name, envir = ndlm_univar_env, inherits = FALSE)) {
+          get(ndlm_univar_obj_name, envir = ndlm_univar_env, inherits = FALSE)
+        } else {
+          NULL
+        }
+        ndlm_univar_sigma_draws <- if (nzchar(ndlm_univar_sigma_name) && exists(ndlm_univar_sigma_name, envir = ndlm_univar_env, inherits = FALSE)) {
+          get(ndlm_univar_sigma_name, envir = ndlm_univar_env, inherits = FALSE)
+        } else {
+          NULL
+        }
+        if (is.null(ndlm_univar_obj) || is.null(ndlm_univar_sigma_draws) ||
+            !exists("ranges", inherits = TRUE) || !exists("FF_list", inherits = TRUE)) {
+          NULL
+        } else {
+          n_samp_ndlm_univar <- suppressWarnings(as.integer(length(as.numeric(ndlm_univar_sigma_draws))))
+          if (!is.finite(n_samp_ndlm_univar) || n_samp_ndlm_univar <= 1L) {
+            NULL
+          } else {
+            ndlm_univar_mean_draws <- post_build_ndlm_state_draw_array(
+              ndlm_obj = ndlm_univar_obj,
+              ranges = get("ranges", inherits = TRUE),
+              FF_list = get("FF_list", inherits = TRUE),
+              n_samp = n_samp_ndlm_univar,
+              p_state = if (exists("p", inherits = TRUE)) get("p", inherits = TRUE) else 7L,
+              eps_reg = 0,
+              seed = 777L,
+              context = "crps.ndlm_univar.mean"
+            )
+            post_ndlm_predictive_draws(
+              ndlm_raw = ndlm_univar_mean_draws,
+              sigma_draws = ndlm_univar_sigma_draws,
+              context = "crps.ndlm_univar",
+              seed = 777L
+            )$predictive_log1p
+          }
+        }
+      }, error = function(e) {
+        warning(
+          sprintf("[CRPS_NDLM_UNIVAR_SKIP] Unable to compute NDLM univar CRPS (%s).", conditionMessage(e)),
+          call. = FALSE
+        )
+        NULL
+      })
+      if (!is.null(ndlm_univar_sample_mat) && is.numeric(ndlm_univar_sample_mat) &&
+          nrow(ndlm_univar_sample_mat) > 1L && ncol(ndlm_univar_sample_mat) > 0L) {
+        ndlm_univar_meta <- post_crps_synth_model_meta(
+          family = "ndlm_univar",
+          likelihood_mode = "exal",
+          transfer_mode = crps_ndlm_univar_transfer_mode
+        )
+        saveRDS(
+          ndlm_univar_sample_mat,
+          file = post_cache_path(post_cache_file_name(
+            "ndlm_univar_predictive_log1p.rds",
+            model_id = ndlm_univar_meta$model_id,
+            transfer_mode = crps_ndlm_univar_transfer_mode
+          ))
+        )
+        ndlm_univar_tbl <- post_crps_model_tables(
+          model_id = ndlm_univar_meta$model_id,
+          model_family = "synthesis",
+          model_variant = ndlm_univar_meta$model_variant,
+          sample_mat = ndlm_univar_sample_mat,
+          obs = truth_from_start(ncol(ndlm_univar_sample_mat), "crps.ndlm_univar.truth"),
+          forecast_dates = daily_dates_for_matrix_cols(ndlm_univar_sample_mat, start_date = crps_forecast_start, context = "crps.ndlm_univar.dates"),
+          cutoff_date = crps_cutoff_date,
+          forecast_start_date = crps_forecast_start,
+          transfer_mode = crps_ndlm_univar_transfer_mode,
+          score_scale = "log_cms_plus1",
+          context = "crps.ndlm_univar"
+        )
+        crps_per_time_rows[[length(crps_per_time_rows) + 1L]] <- ndlm_univar_tbl$per_time
+        crps_summary_rows[[length(crps_summary_rows) + 1L]] <- ndlm_univar_tbl$summary
+        collect_crps_input_health(
+          model_id = ndlm_univar_meta$model_id,
+          model_family = "synthesis",
+          model_variant = ndlm_univar_meta$model_variant,
+          sample_mat = ndlm_univar_sample_mat,
+          forecast_dates = daily_dates_for_matrix_cols(
+            ndlm_univar_sample_mat,
+            start_date = crps_forecast_start,
+            context = "crps.ndlm_univar.health.dates"
+          ),
+          transfer_mode = crps_ndlm_univar_transfer_mode,
+          context = "crps.ndlm_univar"
+        )
+      } else {
+        warning("[CRPS_NDLM_UNIVAR_SKIP] Unable to compute NDLM univar CRPS (invalid predictive draw matrix).", call. = FALSE)
+      }
+    } else if (ndlm_univar_enabled || nzchar(ndlm_univar_path)) {
+      warning("[CRPS_NDLM_UNIVAR_SKIP] Unable to compute NDLM univar CRPS (artifact path missing).", call. = FALSE)
+    }
+
+    if (length(crps_per_time_rows) > 0L && length(crps_summary_rows) > 0L) {
+      crps_per_time_df <- do.call(rbind, crps_per_time_rows)
+      crps_summary_df <- do.call(rbind, crps_summary_rows)
+      rownames(crps_per_time_df) <- NULL
+      rownames(crps_summary_df) <- NULL
+
+      crps_export <- post_export_crps_tables(
+        per_time_df = crps_per_time_df,
+        summary_df = crps_summary_df,
+        output_dir = posterior_table_output_dir,
+        table_formats = posterior_table_formats,
+        keep_na = posterior_table_keep_na,
+        numeric_digits = 17L,
+        file_suffix = crps_output_suffix
+      )
+      posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, crps_export$manifest)
+    } else {
+      warning("[CRPS_EXPORT_SKIP] No CRPS rows were produced for export.", call. = FALSE)
+    }
+
+    if (isTRUE(crps_input_health_enabled) &&
+        length(crps_input_health_rows) > 0L &&
+        length(crps_input_health_per_time_rows) > 0L) {
+      crps_input_health_df <- do.call(rbind, crps_input_health_rows)
+      crps_input_health_per_time_df <- do.call(rbind, crps_input_health_per_time_rows)
+      rownames(crps_input_health_df) <- NULL
+      rownames(crps_input_health_per_time_df) <- NULL
+      health_export <- post_export_crps_input_health_tables(
+        summary_df = crps_input_health_df,
+        per_time_df = crps_input_health_per_time_df,
+        output_dir = posterior_table_output_dir,
+        table_formats = posterior_table_formats,
+        keep_na = posterior_table_keep_na,
+        numeric_digits = 17L,
+        file_suffix = crps_output_suffix
+      )
+      posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, health_export$manifest)
+    } else if (isTRUE(crps_input_health_enabled)) {
+      warning("[CRPS_INPUT_HEALTH_EXPORT_SKIP] No CRPS input-health rows were produced for export.", call. = FALSE)
+    }
+
+    if (isTRUE(crps_input_health_fail_fast) && length(crps_input_health_failures) > 0L) {
+      stop(
+        sprintf(
+          "[CRPS_INPUT_HEALTH_FAIL_FAST] non-finite or out-of-contract draws detected: %s",
+          paste(crps_input_health_failures, collapse = " || ")
+        ),
+        call. = FALSE
+      )
+    }
+
+    if (!is.null(posterior_table_export_manifest) && nrow(as.data.frame(posterior_table_export_manifest)) > 0L) {
+      post_write_table_exports_manifest(
+        manifest_df = posterior_table_export_manifest,
+        output_dir = posterior_table_output_dir
+      )
+      post_write_table_exports_readme(
+        output_dir = posterior_table_output_dir,
+        ci_digits = 3L,
+        table_formats = posterior_table_formats
+      )
+    }
+  })
+}
+
+profile_section("figures_smoke_fast.comparison_figures", {
+  q_probs_synth <- c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95)
+  q_probs_ndlm <- c(0.05, 0.50, 0.95)
+  secondary_multivar_keep_pass <- nzchar(crps_output_suffix)
+
+  if (!secondary_multivar_keep_pass && isTRUE(get0("MODEL_RUN_EXDQLM_UNIVAR", ifnotfound = FALSE, inherits = TRUE))) {
+    univar_meta <- post_crps_synth_model_meta(
+      family = "univar",
+      likelihood_mode = crps_univar_likelihood_mode,
+      transfer_mode = NA_character_
+    )
+    hist_samples <- smoke_read_numeric_matrix_rds(post_cache_path("synth_univar_hist_log1p.rds"))
+    hist_q <- smoke_read_numeric_matrix_rds(post_cache_path("synth_univar_hist_quantiles_log1p.rds"))
+    fc_samples <- smoke_read_numeric_matrix_rds(post_cache_path("synth_univar_forecast_log1p.rds"))
+    fc_q <- smoke_read_numeric_matrix_rds(post_cache_path("synth_univar_forecast_quantiles_log1p.rds"))
+    if (!is.null(hist_samples) && !is.null(fc_samples)) {
+      hist_dates <- smoke_trim_dates(smoke_window_dates(PLOT_START_DATE, CUTOFF_DATE), ncol(hist_samples))
+      fc_dates <- smoke_forecast_dates(ncol(fc_samples))
+      if (is.null(hist_q)) hist_q <- smoke_matrix_quantiles(hist_samples, probs = q_probs_synth)
+      if (is.null(fc_q)) fc_q <- smoke_matrix_quantiles(fc_samples, probs = q_probs_synth)
+      smoke_emit_synthesis_bundle(
+        model_id = univar_meta$model_id,
+        title_text = sprintf("%s cutoff-window posterior synthesis", univar_meta$model_id),
+        hist_dates = hist_dates,
+        hist_obs = smoke_usgs_log1p_by_dates(hist_dates),
+        hist_samples = hist_samples,
+        hist_q = hist_q,
+        fc_dates = fc_dates,
+        fc_obs = smoke_usgs_log1p_by_dates(fc_dates),
+        fc_samples = fc_samples,
+        fc_q = fc_q,
+        probs = q_probs_synth
+      )
+    }
+  }
+
+  if (isTRUE(get0("MODEL_RUN_EXDQLM_MULTIVAR", ifnotfound = FALSE, inherits = TRUE))) {
+    multivar_meta <- post_crps_synth_model_meta(
+      family = "multivar",
+      likelihood_mode = crps_multivar_likelihood_mode,
+      transfer_mode = crps_transfer_mode
+    )
+    hist_bundle <- smoke_build_multivar_hist_synth()
+    fc_samples <- smoke_build_multivar_synth_f()
+    if (!is.null(hist_bundle) && !is.null(fc_samples)) {
+      fc_quant_cache <- post_cache_path(post_cache_file_name(
+        "synth_multivar_forecast_quantiles_log1p.rds",
+        model_id = multivar_meta$model_id,
+        transfer_mode = crps_transfer_mode
+      ))
+      fc_q <- smoke_read_numeric_matrix_rds(fc_quant_cache)
+      if (is.null(fc_q)) {
+        fc_q <- smoke_matrix_quantiles(fc_samples, probs = q_probs_synth)
+        saveRDS(fc_q, fc_quant_cache)
+      }
+      fc_dates <- smoke_forecast_dates(ncol(fc_samples))
+      smoke_emit_synthesis_bundle(
+        model_id = multivar_meta$model_id,
+        title_text = sprintf("%s cutoff-window posterior synthesis", multivar_meta$model_id),
+        hist_dates = hist_bundle$dates,
+        hist_obs = smoke_usgs_log1p_by_dates(hist_bundle$dates),
+        hist_samples = hist_bundle$sample_mat,
+        hist_q = hist_bundle$quantiles,
+        fc_dates = fc_dates,
+        fc_obs = smoke_usgs_log1p_by_dates(fc_dates),
+        fc_samples = fc_samples,
+        fc_q = fc_q,
+        probs = q_probs_synth
+      )
+    }
+  }
+
+  if (!secondary_multivar_keep_pass &&
+      isTRUE(get0("MODEL_RUN_NDLM_MAIN", ifnotfound = FALSE, inherits = TRUE)) &&
+      exists("new.theta.out_50_NDLM_synth_DISC", inherits = TRUE)) {
+    ndlm_meta <- post_crps_synth_model_meta(
+      family = "ndlm",
+      likelihood_mode = "exal",
+      transfer_mode = crps_ndlm_transfer_mode
+    )
+    ndlm_obj <- get("new.theta.out_50_NDLM_synth_DISC", inherits = TRUE)
+    fc_cache <- post_cache_path(post_cache_file_name(
+      "ndlm_predictive_log1p.rds",
+      model_id = ndlm_meta$model_id,
+      transfer_mode = crps_ndlm_transfer_mode
+    ))
+    fc_samples <- smoke_read_numeric_matrix_rds(fc_cache)
+    if (is.null(fc_samples)) {
+      fc_samples <- smoke_read_numeric_matrix_rds(post_cache_path("y_reps_ndlm_log1p.rds"))
+    }
+    if (!is.null(fc_samples) && is.matrix(ndlm_obj$exps) && is.matrix(ndlm_obj$vars)) {
+      hist_dates_all <- smoke_trim_dates(smoke_resolve_hist_dates(), ncol(ndlm_obj$exps))
+      hist_idx <- which(hist_dates_all >= as.Date(PLOT_START_DATE) & hist_dates_all <= as.Date(CUTOFF_DATE))
+      if (length(hist_idx) > 0L) {
+        hist_dates <- hist_dates_all[hist_idx]
+        hist_q <- smoke_quantile_band_from_moments(
+          mean_vec = ndlm_obj$exps[1L, hist_idx],
+          var_vec = ndlm_obj$vars[1L, hist_idx],
+          probs = q_probs_ndlm,
+          transform = "loglog1p_to_log1p",
+          context = paste0(ndlm_meta$model_id, ".history")
+        )
+        fc_dates <- smoke_forecast_dates(ncol(fc_samples))
+        fc_q <- fast_col_quantiles_t(fc_samples, probs = q_probs_ndlm)
+        saveRDS(
+          fc_q,
+          file = post_cache_path(post_cache_file_name(
+            "ndlm_predictive_quantiles_log1p.rds",
+            model_id = ndlm_meta$model_id,
+            transfer_mode = crps_ndlm_transfer_mode
+          ))
+        )
+        smoke_emit_ndlm_bundle(
+          model_id = ndlm_meta$model_id,
+          title_text = sprintf("%s cutoff-window predictive bands", ndlm_meta$model_id),
+          hist_dates = hist_dates,
+          hist_obs = smoke_usgs_log1p_by_dates(hist_dates),
+          hist_q = hist_q,
+          fc_dates = fc_dates,
+          fc_obs = smoke_usgs_log1p_by_dates(fc_dates),
+          fc_q = fc_q,
+          note = "plot_scale=log1p_cms; historical_band_from_exps_vars_loglog1p"
+        )
+      }
+    }
+  }
+
+  if (!secondary_multivar_keep_pass && isTRUE(get0("MODEL_RUN_NDLM_UNIVAR", ifnotfound = FALSE, inherits = TRUE))) {
+    ndlm_univar_meta <- post_crps_synth_model_meta(
+      family = "ndlm_univar",
+      likelihood_mode = "exal",
+      transfer_mode = crps_ndlm_univar_transfer_mode
+    )
+    ndlm_univar_artifact <- smoke_load_ndlm_univar_artifact()
+    fc_cache <- post_cache_path(post_cache_file_name(
+      "ndlm_univar_predictive_log1p.rds",
+      model_id = ndlm_univar_meta$model_id,
+      transfer_mode = crps_ndlm_univar_transfer_mode
+    ))
+    fc_samples <- smoke_read_numeric_matrix_rds(fc_cache)
+    if (is.null(fc_samples) && !is.null(ndlm_univar_artifact) &&
+        exists("ranges", inherits = TRUE) && exists("FF_list", inherits = TRUE)) {
+      n_samp_ndlm_univar <- suppressWarnings(as.integer(length(as.numeric(ndlm_univar_artifact$sigma_draws))))
+      if (is.finite(n_samp_ndlm_univar) && n_samp_ndlm_univar > 1L) {
+        ndlm_univar_mean_draws <- post_build_ndlm_state_draw_array(
+          ndlm_obj = ndlm_univar_artifact$obj,
+          ranges = get("ranges", inherits = TRUE),
+          FF_list = get("FF_list", inherits = TRUE),
+          n_samp = n_samp_ndlm_univar,
+          p_state = if (exists("p", inherits = TRUE)) get("p", inherits = TRUE) else 7L,
+          eps_reg = 0,
+          seed = 777L,
+          context = "figures.ndlm_univar.mean"
+        )
+        fc_samples <- post_ndlm_predictive_draws(
+          ndlm_raw = ndlm_univar_mean_draws,
+          sigma_draws = ndlm_univar_artifact$sigma_draws,
+          context = "figures.ndlm_univar",
+          seed = 777L
+        )$predictive_log1p
+        saveRDS(fc_samples, fc_cache)
+      }
+    }
+    if (!is.null(ndlm_univar_artifact) && !is.null(fc_samples) &&
+        is.matrix(ndlm_univar_artifact$obj$exps) && is.matrix(ndlm_univar_artifact$obj$vars)) {
+      hist_dates_all <- smoke_trim_dates(smoke_resolve_hist_dates(), ncol(ndlm_univar_artifact$obj$exps))
+      hist_idx <- which(hist_dates_all >= as.Date(PLOT_START_DATE) & hist_dates_all <= as.Date(CUTOFF_DATE))
+      if (length(hist_idx) > 0L) {
+        hist_dates <- hist_dates_all[hist_idx]
+        hist_q <- smoke_quantile_band_from_moments(
+          mean_vec = ndlm_univar_artifact$obj$exps[1L, hist_idx],
+          var_vec = ndlm_univar_artifact$obj$vars[1L, hist_idx],
+          probs = q_probs_ndlm,
+          transform = "identity",
+          context = paste0(ndlm_univar_meta$model_id, ".history")
+        )
+        fc_dates <- smoke_forecast_dates(ncol(fc_samples))
+        fc_q <- fast_col_quantiles_t(fc_samples, probs = q_probs_ndlm)
+        saveRDS(
+          fc_q,
+          file = post_cache_path(post_cache_file_name(
+            "ndlm_univar_predictive_quantiles_log1p.rds",
+            model_id = ndlm_univar_meta$model_id,
+            transfer_mode = crps_ndlm_univar_transfer_mode
+          ))
+        )
+        smoke_emit_ndlm_bundle(
+          model_id = ndlm_univar_meta$model_id,
+          title_text = sprintf("%s cutoff-window predictive bands", ndlm_univar_meta$model_id),
+          hist_dates = hist_dates,
+          hist_obs = smoke_usgs_log1p_by_dates(hist_dates),
+          hist_q = hist_q,
+          fc_dates = fc_dates,
+          fc_obs = smoke_usgs_log1p_by_dates(fc_dates),
+          fc_q = fc_q,
+          note = "plot_scale=log1p_cms; ndlm_univar_lightweight_cache"
+        )
+      }
+    }
+  }
+
+  smoke_write_figure_manifest()
 })

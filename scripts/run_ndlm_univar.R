@@ -5,6 +5,11 @@ seed <- if (length(args) >= 1L) as.integer(args[[1L]]) else as.integer(Sys.geten
 if (!is.finite(seed)) seed <- 777L
 
 repo_root <- normalizePath(getwd(), mustWork = TRUE)
+shared_helpers <- file.path(repo_root, "R", "unified", "families", "shared_input_helpers.R")
+if (!file.exists(shared_helpers)) {
+  stop(sprintf("Missing shared family input helpers: %s", shared_helpers), call. = FALSE)
+}
+source(shared_helpers, local = .GlobalEnv)
 module_root <- file.path(repo_root, "R", "unified", "families", "ndlm_univar")
 module_files <- c(
   "00_constants.R",

@@ -222,6 +222,8 @@ DISC_W_LAM1 <- disc_env_prob("DISC_W_LAM1", 1 - 1e-6)
 DISC_W_LAM2 <- disc_env_prob("DISC_W_LAM2", 1 - 1e-6)
 DISC_W_SIMS_ENABLED <- disc_env_flag("DISC_W_SIMS_ENABLED", default = TRUE)
 DISC_W_USE_COVARIATES <- disc_env_flag("DISC_W_USE_COVARIATES", default = TRUE)
+DISC_W_LIKELIHOOD_MODE <- disc_env_choice("DISC_W_LIKELIHOOD_MODE", choices = c("exal", "al"), default = "exal")
+DISC_W_AL_MODE <- identical(DISC_W_LIKELIHOOD_MODE, "al")
 DISC_W_C_FACTOR <- disc_env_pos_num("DISC_W_C_FACTOR", 1e2)
 DISC_W_FORECAST_COV_EPSILON <- disc_env_pos_num("DISC_W_FORECAST_COV_EPSILON", NA_real_)
 
@@ -1079,7 +1081,11 @@ if (identical(DISC_GAMSIG_INIT_MODE, "robust")) {
   })
   robust_spread <- as.numeric(robust_spread)
   sigma_seed <- pmax(DISC_GAMSIG_INIT_SIGMA_FLOOR, DISC_GAMSIG_INIT_SIGMA_SCALE * robust_spread)
-  gamma_seed <- pmin(pmax(DISC_GAMSIG_INIT_GAMMA, L + 1e-6), U - 1e-6)
+  gamma_seed <- if (isTRUE(DISC_W_AL_MODE)) {
+    0
+  } else {
+    pmin(pmax(DISC_GAMSIG_INIT_GAMMA, L + 1e-6), U - 1e-6)
+  }
   sig.init[, 1] <- sigma_seed
   gam.init[, 1] <- gamma_seed
   if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
@@ -1283,6 +1289,12 @@ seq.gamma = new.gamsig.out$E.gam
 seq.sigma = new.gamsig.out$E.sigma
 ###########################################################################################
 update_sts<-function(y, exps,inv.uts,c2.invb.absgam2.sigma,c.invb.absgam,c.a.invb.absgam, TTT){
+  if (isTRUE(DISC_W_AL_MODE)) {
+    z <- rep(0, TTT)
+    return(list(sts.sig2=rep(1, TTT),sts.mu=z,
+                E.sts=z,E.sts2=z,
+                tot.entrop = 0))
+  }
   s.sig2<-1/(1+c2.invb.absgam2.sigma*inv.uts); s.sig = sqrt(s.sig2)
   s.mu<-s.sig2*(c.invb.absgam*(y-exps)*inv.uts-c.a.invb.absgam)
   #
@@ -1396,13 +1408,16 @@ g_seed <- suppressWarnings(as.numeric(g_init)[1])
 if (!is.finite(g_seed)) {
   g_seed <- 0
 }
+if (isTRUE(DISC_W_AL_MODE)) {
+  g_seed <- 0
+}
 g_seed <- pmin(pmax(g_seed, L + 1e-12), U - 1e-12)
 
-build_guard_fallback <- function(theta_s_val, theta_g_val, guard_msg = "") {
+build_mode_result <- function(theta_s_val, theta_g_val, guard = FALSE, guard_msg = "") {
   pi <- plogis(theta_g_val)
   pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
   sig <- exp(theta_s_val)
-  gam <- L + (U - L) * pi
+  gam <- if (isTRUE(DISC_W_AL_MODE)) 0 else L + (U - L) * pi
   a <- A.fn(p0, gam)
   b <- B.fn(p0, gam)
   c <- C.fn(p0, gam)
@@ -1433,9 +1448,13 @@ build_guard_fallback <- function(theta_s_val, theta_g_val, guard_msg = "") {
     E.prior.sig.gam = prior_gamma_log + prior_sigma_log,
     E.theta = c(theta_s_val, theta_g_val),
     entrop = 0,
-    guard_triggered = TRUE,
+    guard_triggered = isTRUE(guard),
     guard_message = guard_msg
   )
+}
+
+build_guard_fallback <- function(theta_s_val, theta_g_val, guard_msg = "") {
+  build_mode_result(theta_s_val, theta_g_val, guard = TRUE, guard_msg = guard_msg)
 }
 
 if(!Climate_Center){
@@ -1532,6 +1551,28 @@ if(!Climate_Center){
   pi_init <- pmin(pmax(pi_init, 1e-12), 1 - 1e-12)
   theta_g_init <- qlogis(pi_init)
   initial_values <- c(theta_s_init, theta_g_init)
+  if (isTRUE(DISC_W_AL_MODE)) {
+    theta_g_fixed <- qlogis(pmin(pmax((0 - L) / (U - L), 1e-12), 1 - 1e-12))
+    sigma_obj <- function(theta_s_val) {
+      yy <- dq_transf(theta_s_val, theta_g_fixed)
+      if (!is.finite(yy)) {
+        if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED)) {
+          return(DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY)
+        }
+        return(Inf)
+      }
+      -yy
+    }
+    sigma_opt <- tryCatch(
+      stats::optimize(sigma_obj, interval = log(c(1e-5, 1e3))),
+      error = function(e) e
+    )
+    if (inherits(sigma_opt, "error") || !is.finite(sigma_opt$minimum)) {
+      msg <- if (inherits(sigma_opt, "error")) conditionMessage(sigma_opt) else "invalid sigma optimum"
+      return(build_guard_fallback(theta_s_init, theta_g_fixed, guard_msg = msg))
+    }
+    return(build_mode_result(sigma_opt$minimum, theta_g_fixed, guard = FALSE, guard_msg = ""))
+  }
 
   # Optimization step
   guard_triggered <- FALSE
@@ -2931,9 +2972,13 @@ for (j in 1:(J+1)) {
         theta_g <- gamsig.dummy$E.theta[2]
         # Normal Aproximation
         samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = gamsig.dummy$Hess.LD)
-        pi_gamma <- plogis(samp.LD[,2])
-        pi_gamma <- pmin(pmax(pi_gamma, 1e-12), 1 - 1e-12)
-        samp.gamma[j,] = L + (U - L) * pi_gamma
+        if (isTRUE(DISC_W_AL_MODE)) {
+          samp.gamma[j,] = rep(0, n.samp)
+        } else {
+          pi_gamma <- plogis(samp.LD[,2])
+          pi_gamma <- pmin(pmax(pi_gamma, 1e-12), 1 - 1e-12)
+          samp.gamma[j,] = L + (U - L) * pi_gamma
+        }
         samp.sigma[j,] = exp(samp.LD[,1]) 
         ########################
         ########################
@@ -3036,9 +3081,13 @@ for (j in 1:(J+1)) {
         ########################
         # Normal Aproximation
         samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = gamsig.dummy$Hess.LD)
-        pi_gamma <- plogis(samp.LD[,2])
-        pi_gamma <- pmin(pmax(pi_gamma, 1e-12), 1 - 1e-12)
-        samp.gamma[j,] = L + (U - L) * pi_gamma
+        if (isTRUE(DISC_W_AL_MODE)) {
+          samp.gamma[j,] = rep(0, n.samp)
+        } else {
+          pi_gamma <- plogis(samp.LD[,2])
+          pi_gamma <- pmin(pmax(pi_gamma, 1e-12), 1 - 1e-12)
+          samp.gamma[j,] = L + (U - L) * pi_gamma
+        }
         samp.sigma[j,] = exp(samp.LD[,1]) 
         ########################
         ########################

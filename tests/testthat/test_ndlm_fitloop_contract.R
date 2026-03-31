@@ -20,7 +20,12 @@ test_that("ndlm constants read fit-loop controls from environment", {
     "NDLM_SIGMA_UPPER_CAP",
     "NDLM_SIGMA_UPDATE_DAMPING",
     "NDLM_LATENT_VAR_CAP_MULT",
-    "NDLM_LATENT_VAR_CAP_ABS"
+    "NDLM_LATENT_VAR_CAP_ABS",
+    "NDLM_FORECAST_IW_C_FACTOR",
+    "NDLM_FORECAST_IW_EPSILON0",
+    "NDLM_FORECAST_IW_DOF_OFFSET",
+    "NDLM_FORECAST_IW_SCALE_MULT",
+    "NDLM_FORECAST_IW_JITTER"
   ), unset = NA_character_)
   on.exit({
     for (nm in names(old)) {
@@ -51,7 +56,12 @@ test_that("ndlm constants read fit-loop controls from environment", {
     NDLM_SIGMA_UPPER_CAP = "7e05",
     NDLM_SIGMA_UPDATE_DAMPING = "0.65",
     NDLM_LATENT_VAR_CAP_MULT = "3210",
-    NDLM_LATENT_VAR_CAP_ABS = "654321"
+    NDLM_LATENT_VAR_CAP_ABS = "654321",
+    NDLM_FORECAST_IW_C_FACTOR = "1.25",
+    NDLM_FORECAST_IW_EPSILON0 = "42",
+    NDLM_FORECAST_IW_DOF_OFFSET = "6",
+    NDLM_FORECAST_IW_SCALE_MULT = "1.5",
+    NDLM_FORECAST_IW_JITTER = "1e-7"
   )
 
   cst <- ndlm_theory_constants(seed = 777L)
@@ -73,6 +83,11 @@ test_that("ndlm constants read fit-loop controls from environment", {
   expect_equal(cst$stabilization$sigma_update_damping, 0.65)
   expect_equal(cst$stabilization$latent_var_cap_mult, 3210)
   expect_equal(cst$stabilization$latent_var_cap_abs, 654321)
+  expect_equal(cst$forecast_iw_c_factor, 1.25)
+  expect_equal(cst$forecast_iw_epsilon0, 42)
+  expect_equal(cst$forecast_iw_dof_offset, 6L)
+  expect_equal(cst$forecast_iw_scale_mult, 1.5)
+  expect_equal(cst$forecast_iw_jitter, 1e-7)
 })
 
 test_that("ndlm convergence gate requires min iters plus abs/rel ELBO criteria", {
@@ -104,38 +119,35 @@ test_that("ndlm convergence gate requires min iters plus abs/rel ELBO criteria",
   ))
 })
 
-test_that("ndlm historical pseudo-observations use all available source channels", {
-  source_obs <- list(
-    usgs = c(1, NA, 4, NA),
-    nws = c(2, 3, NA, NA),
-    glofas = c(4, 5, 6, NA)
+test_that("ndlm observation-list builder preserves separate source channels and forecast export dimensions", {
+  constants <- ndlm_theory_constants(seed = 777L)
+  inputs <- list(
+    y = c(1.1, 1.2, 1.3, 1.4),
+    retros = list(
+      usgs = c(1.1, 1.2, 1.3, 1.4),
+      nws = c(1.0, NA, 1.5, 1.6),
+      glofas = c(0.9, 1.0, NA, 1.7)
+    ),
+    X = matrix(seq_len(20), nrow = 4, ncol = 5),
+    X_future = matrix(seq_len(15), nrow = 3, ncol = 5),
+    T = 4L,
+    forecast = list(
+      nws = c(2.0, 2.1),
+      glofas = c(1.9, 2.0, 2.1),
+      K_overlap = 2L,
+      K_max = 3L,
+      K_vec = c(nws = 2L, glofas = 3L)
+    )
   )
-  sigma_by_source <- c(usgs = 1, nws = 4, glofas = 9)
 
-  out <- ndlm_theory_build_hist_pseudo_obs(
-    source_obs = source_obs,
-    sigma_by_source = sigma_by_source,
-    source_names = c("usgs", "nws", "glofas"),
-    fallback_y = c(10, 11, 12, 13),
-    fallback_var = 1e6
-  )
+  out <- ndlm_theory_build_obslist_sequences(inputs = inputs, constants = constants)
 
-  expect_equal(length(out$y), 4L)
-  expect_equal(length(out$R_vec), 4L)
-  expect_equal(as.integer(out$n_sources), c(3L, 2L, 2L, 0L))
-
-  p1 <- 1 + 1 / 4 + 1 / 9
-  expect_equal(out$R_vec[1], 1 / p1, tolerance = 1e-12)
-  expect_equal(out$y[1], (1 * 1 + 2 * (1 / 4) + 4 * (1 / 9)) / p1, tolerance = 1e-12)
-
-  p2 <- 1 / 4 + 1 / 9
-  expect_equal(out$R_vec[2], 1 / p2, tolerance = 1e-12)
-  expect_equal(out$y[2], (3 * (1 / 4) + 5 * (1 / 9)) / p2, tolerance = 1e-12)
-
-  p3 <- 1 + 1 / 9
-  expect_equal(out$R_vec[3], 1 / p3, tolerance = 1e-12)
-  expect_equal(out$y[3], (4 * 1 + 6 * (1 / 9)) / p3, tolerance = 1e-12)
-
-  expect_equal(out$R_vec[4], 1e6, tolerance = 1e-12)
-  expect_equal(out$y[4], 13, tolerance = 1e-12)
+  expect_equal(out$state_dim, 27L)
+  expect_equal(length(out$hist_seq), 4L)
+  expect_equal(vapply(out$hist_seq, `[[`, integer(1), "n_sources"), c(3L, 2L, 2L, 3L))
+  expect_equal(vapply(out$future_seq, `[[`, integer(1), "n_sources"), c(2L, 2L, 1L))
+  expect_equal(length(out$overlap_export_idx), 27L)
+  expect_equal(length(out$tail_export_idx), 20L)
+  expect_equal(length(out$future_H$usgs), 27L)
+  expect_equal(which(out$future_H$usgs != 0)[1], 1L)
 })

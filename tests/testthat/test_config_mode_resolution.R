@@ -3,6 +3,7 @@ source(testthat::test_path("..", "..", "R", "unified", "config.R"))
 test_that("unified config defaults include new likelihood and ndlm transfer modes", {
   cfg <- unified_config_defaults()
 
+  expect_equal(cfg$models$exdqlm_univar$implementation_mode, "legacy_bridge")
   expect_equal(cfg$models$exdqlm_univar$likelihood_mode, "exal")
   expect_equal(cfg$models$exdqlm_multivar$likelihood_mode, "exal")
   expect_equal(cfg$models$ndlm_main$forecast_transfer_mode, "keep")
@@ -12,6 +13,13 @@ test_that("unified config defaults include new likelihood and ndlm transfer mode
   expect_equal(cfg$models$ndlm_main$stabilization$cov_eig_floor, 1e-8)
   expect_equal(cfg$models$ndlm_main$stabilization$cov_eig_cap, 1e8)
   expect_equal(cfg$models$ndlm_main$stabilization$sigma_update_damping, 1.0)
+  expect_equal(cfg$fit$diagnostics$full_slice_psd, FALSE)
+  expect_equal(cfg$fit$diagnostics$psd_warn_tol, -1e-10)
+  expect_equal(cfg$fit$diagnostics$psd_fail_tol, -1e-10)
+  expect_equal(cfg$post$crps_input_health$enabled, TRUE)
+  expect_equal(cfg$post$crps_input_health$fail_fast, FALSE)
+  expect_equal(cfg$post$crps_input_health$min_finite_share, 1)
+  expect_true(is.na(cfg$post$crps_input_health$max_abs))
 })
 
 test_that("mode resolvers normalize invalid values safely", {
@@ -57,4 +65,24 @@ test_that("config validation rejects invalid ndlm stabilization controls", {
   expect_true(any(grepl("models\\.ndlm_main\\.stabilization\\.sigma_update_damping", errs)))
   expect_true(any(grepl("models\\.ndlm_univar\\.stabilization\\.cov_eig_floor", errs)))
   expect_true(any(grepl("models\\.ndlm_univar\\.stabilization\\.cov_eig_cap", errs)))
+})
+
+test_that("config validation rejects invalid diagnostics and crps input health controls", {
+  cfg <- unified_config_defaults()
+  cfg$fit$diagnostics$full_slice_psd <- "nope"
+  cfg$fit$diagnostics$psd_warn_tol <- "bad"
+  cfg$fit$diagnostics$psd_fail_tol <- "bad"
+  cfg$post$crps_input_health$enabled <- "bad"
+  cfg$post$crps_input_health$fail_fast <- "bad"
+  cfg$post$crps_input_health$min_finite_share <- 2
+  cfg$post$crps_input_health$max_abs <- 0
+
+  errs <- unified_validate_config(cfg)
+  expect_true(any(grepl("fit\\.diagnostics\\.full_slice_psd", errs)))
+  expect_true(any(grepl("fit\\.diagnostics\\.psd_warn_tol", errs)))
+  expect_true(any(grepl("fit\\.diagnostics\\.psd_fail_tol", errs)))
+  expect_true(any(grepl("post\\.crps_input_health\\.enabled", errs)))
+  expect_true(any(grepl("post\\.crps_input_health\\.fail_fast", errs)))
+  expect_true(any(grepl("post\\.crps_input_health\\.min_finite_share", errs)))
+  expect_true(any(grepl("post\\.crps_input_health\\.max_abs", errs)))
 })

@@ -139,7 +139,7 @@ unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record
   git <- unified_git_info(repo_root)
   inputs <- unified_collect_input_records(cfg)
   multivar_mode <- unified_get(cfg, c("models", "exdqlm_multivar", "implementation_mode"), default = "legacy_bridge")
-  univar_mode <- unified_get(cfg, c("models", "exdqlm_univar", "implementation_mode"), default = "theory_aligned")
+  univar_mode <- unified_get(cfg, c("models", "exdqlm_univar", "implementation_mode"), default = "legacy_bridge")
   ndlm_mode <- unified_get(cfg, c("models", "ndlm_main", "implementation_mode"), default = "theory_aligned")
   ndlm_univar_mode <- unified_get(cfg, c("models", "ndlm_univar", "implementation_mode"), default = "theory_aligned_closed_form")
   multivar_authoritative <- isTRUE(unified_get(cfg, c("models", "exdqlm_multivar", "authoritative"), default = TRUE))

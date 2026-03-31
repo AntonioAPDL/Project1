@@ -3,13 +3,15 @@ unified_run_exdqlm_univar_theory <- function(
   seed,
   output_path,
   log_path = NULL,
-  gamma_sigma_policy = NULL
+  gamma_sigma_policy = NULL,
+  likelihood_mode = "exal"
 ) {
   q_num <- as.integer(round(as.numeric(q) * 100))
   constants <- univar_theory_constants(
     q_num = q_num,
     seed = seed,
-    gamma_sigma_policy = gamma_sigma_policy
+    gamma_sigma_policy = gamma_sigma_policy,
+    likelihood_mode = likelihood_mode
   )
   inputs <- univar_theory_load_inputs()
   fit_result <- univar_theory_run_cavi(inputs, constants)
@@ -21,6 +23,7 @@ unified_run_exdqlm_univar_theory <- function(
 
   summary_lines <- c(
     sprintf("implementation_mode=theory_aligned"),
+    sprintf("likelihood_mode=%s", constants$likelihood_mode),
     sprintf("quantile=%0.2f", as.numeric(q)),
     sprintf("q_num=%d", q_num),
     sprintf("output_path=%s", output_path),
@@ -65,7 +68,8 @@ unified_run_exdqlm_univar_theory <- function(
       q_num = q_num,
       output_path = output_path,
       sigma = fit_result$sigma,
-      gamma = fit_result$gamma
+      gamma = fit_result$gamma,
+      likelihood_mode = constants$likelihood_mode
     )
   )
 }

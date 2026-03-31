@@ -33,6 +33,12 @@ test_that("ndlm compatibility output packs fit diagnostics into theory state", {
     bridge_source = "nws",
     active_set_by_lead = data.frame(lead = 1:3, active_nws = c(1, 1, 0), active_glofas = c(1, 1, 1), active_count = c(2, 2, 1)),
     state_dim_by_lead = data.frame(lead = 1:3, state_dim = c(14, 14, 7)),
+    forecast_prior = list(c_factor = 1, epsilon0 = 12, anchor_mode = "terminal_Q_hist", trace_W_T_hist = 9.5),
+    forecast_cov_diagnostics = data.frame(
+      lead = 1:3,
+      trace_Q_anchor = c(1, 2, 3),
+      stringsAsFactors = FALSE
+    ),
     covariance_diagnostics = data.frame(object = "smooth_cov", n_slices = 4L),
     fit_diagnostics = list(
       y_observed = c(1, 2, 3, 4),
@@ -51,4 +57,7 @@ test_that("ndlm compatibility output packs fit diagnostics into theory state", {
   expect_true(is.list(st$fit_diagnostics))
   expect_equal(as.numeric(st$fit_diagnostics$y_smoothed), c(0.9, 1.9, 2.9, 3.9))
   expect_equal(as.numeric(st$sigma_by_source[c("usgs", "nws", "glofas")]), c(0.9, 1.1, 0.8))
+  expect_equal(st$forecast_prior$anchor_mode, "terminal_Q_hist")
+  expect_true(is.data.frame(st$forecast_cov_diagnostics))
+  expect_equal(as.numeric(st$forecast_cov_diagnostics$trace_Q_anchor), c(1, 2, 3))
 })

@@ -72,3 +72,67 @@ test_that("compute_jsd_to_standard_normal accepts vector input and returns finit
   expect_true(is.finite(jsd))
   expect_gte(jsd, 0)
 })
+
+test_that("compute_jsd_to_standard_normal handles tied univariate samples with zero IQR", {
+  skip_if_not_installed("ks")
+  skip_if_not_installed("mvtnorm")
+
+  tied_sample <- c(
+    rep(0.99288822064787, 16),
+    rep(0.96163822064787, 5),
+    1.11415553136375,
+    1.09706604607862,
+    1.07831118264989,
+    1.05706160616933,
+    1.03331039082590,
+    1.00997123760308,
+    0.98622152547626
+  )
+  expect_equal(IQR(tied_sample), 0)
+  expect_gt(stats::sd(tied_sample), 0)
+
+  jsd <- compute_jsd_to_standard_normal(
+    tied_sample,
+    gridsize = 40L,
+    context = "test.tied_1d"
+  )
+
+  expect_true(is.finite(jsd))
+  expect_gte(jsd, 0)
+})
+
+test_that("compute_jsd_to_standard_normal handles exact constant univariate samples", {
+  skip_if_not_installed("ks")
+  skip_if_not_installed("mvtnorm")
+
+  const_sample <- rep(1, 40)
+  jsd <- compute_jsd_to_standard_normal(
+    const_sample,
+    gridsize = 30L,
+    context = "test.constant_1d"
+  )
+
+  expect_true(is.finite(jsd))
+  expect_gte(jsd, 0)
+})
+
+test_that("compute_jsd_to_standard_normal falls back for multivariate samples with degenerate axes", {
+  skip_if_not_installed("ks")
+  skip_if_not_installed("mvtnorm")
+
+  set.seed(20260324)
+  sample_3d <- cbind(
+    rep(0, 120),
+    rnorm(120),
+    rnorm(120, sd = 0.1)
+  )
+
+  jsd <- compute_jsd_to_standard_normal(
+    sample_3d,
+    gridsize = c(8L, 8L, 8L),
+    context = "test.degenerate_axis_3d"
+  )
+
+  expect_true(is.finite(jsd))
+  expect_gte(jsd, 0)
+})

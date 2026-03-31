@@ -146,3 +146,56 @@ test_that("NDLM segment covariance reports stabilization stats", {
   expect_true(as.integer(stats$calls) >= 1L)
   expect_true(as.integer(stats$cov_cap_clipped) >= 1L)
 })
+
+test_that("NDLM obs-list builder uses all active forecast ensemble members", {
+  inputs <- list(
+    y = seq(-0.5, 0.5, length.out = 40L),
+    retros = list(
+      usgs = seq(-0.5, 0.5, length.out = 40L),
+      glofas = seq(-0.4, 0.6, length.out = 40L),
+      nws = seq(-0.3, 0.7, length.out = 40L)
+    ),
+    X = matrix(0, nrow = 40L, ncol = 5L),
+    X_future = matrix(0, nrow = 3L, ncol = 5L),
+    T = 40L,
+    forecast = list(
+      nws = c(-0.1, -0.2),
+      glofas = c(0.1, 0.2, 0.3),
+      nws_members = rbind(
+        c(-0.1, -0.2, -0.3),
+        c(-0.2, -0.3, -0.4),
+        c(NA_real_, NA_real_, NA_real_)
+      ),
+      glofas_members = rbind(
+        c(0.1, 0.2),
+        c(0.2, 0.3),
+        c(0.3, 0.4)
+      ),
+      K = 3L,
+      K_overlap = 2L,
+      K_max = 3L,
+      K_vec = c(nws = 2L, glofas = 3L)
+    )
+  )
+  constants <- list(
+    forecast_transfer_mode = "drop",
+    df_t = 0.95,
+    df_s1 = 0.98,
+    df_s2 = 0.98,
+    df_s67 = 0.98,
+    df_discrep = 0.98,
+    df_trans = 0.99999999,
+    df_covs = 0.99999,
+    lambda = 0.99
+  )
+
+  model <- ndlm_theory_build_obslist_sequences(inputs, constants)
+
+  expect_equal(model$future_seq[[1L]]$n_sources, 5L)
+  expect_equal(model$future_seq[[2L]]$n_sources, 5L)
+  expect_equal(model$future_seq[[3L]]$n_sources, 2L)
+  expect_equal(nrow(model$future_seq[[1L]]$H), 5L)
+  expect_equal(nrow(model$future_seq[[3L]]$H), 2L)
+  expect_equal(model$extension_source, "glofas")
+  expect_equal(model$bridge_source, "nws")
+})

@@ -101,7 +101,7 @@ NDLM_ANY_MODE <- isTRUE(MODEL_RUN_NDLM_MAIN) || isTRUE(MODEL_RUN_NDLM_UNIVAR)
 NDLM_ONLY_MODE <- isTRUE(NDLM_ANY_MODE) &&
   !isTRUE(MODEL_RUN_EXDQLM_MULTIVAR) &&
   !isTRUE(MODEL_RUN_EXDQLM_UNIVAR)
-POST_SMOKE_FAST_EFFECTIVE <- isTRUE(POST_SMOKE_FAST) || (isTRUE(POST_FIGURES) && NDLM_ONLY_MODE)
+POST_SMOKE_FAST_EFFECTIVE <- isTRUE(POST_SMOKE_FAST)
 
 OUT_PARENT <- if (nzchar(RUN_ROOT)) {
   file.path(RUN_ROOT, "post", "outputs")
@@ -373,10 +373,6 @@ modules <- unified_post_select_modules(
   model_run_ndlm_univar = MODEL_RUN_NDLM_UNIVAR,
   core_modules = core_modules
 )
-
-if (isTRUE(NDLM_ONLY_MODE) && !isTRUE(POST_SMOKE_FAST)) {
-  cat("[INFO] NDLM-only mode: forcing smoke-fast figure path to avoid non-NDLM family initialization.\n")
-}
 
 missing <- modules[!file.exists(file.path(modules_dir, modules))]
 if (length(missing) > 0) {

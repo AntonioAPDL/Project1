@@ -1,4 +1,5 @@
 source(testthat::test_path("..", "..", "R", "unified", "families", "exdqlm_univar", "00_constants.R"))
+source(testthat::test_path("..", "..", "R", "unified", "families", "exdqlm_univar", "02_model_spec.R"))
 source(testthat::test_path("..", "..", "R", "unified", "families", "exdqlm_univar", "03_updates_vb_or_fitloop.R"))
 
 test_that("univar default gamma-sigma policy defines relative tolerances", {
@@ -67,4 +68,42 @@ test_that("metric delta convergence remains true for absolute criterion and fals
   expect_false(out_bad$converged)
   expect_false(out_bad$conv_abs)
   expect_false(out_bad$conv_rel)
+})
+
+test_that("univar likelihood-mode normalization and AL objective behavior are stable", {
+  expect_equal(univar_theory_normalize_likelihood_mode("AL"), "al")
+  expect_equal(univar_theory_normalize_likelihood_mode("bad"), "exal")
+
+  constants <- univar_theory_constants(q_num = 50L, seed = 777L, likelihood_mode = "al")
+  y <- c(0.1, -0.2, 0.3)
+  eta <- c(0, 0, 0)
+  Ev <- c(1, 1, 1)
+  Es <- c(0, 0, 0)
+
+  val_g0 <- univar_theory_log_joint_sigma_gamma(
+    sigma = 0.8,
+    gamma = 0,
+    y = y,
+    eta = eta,
+    Ev = Ev,
+    Es = Es,
+    p0 = constants$p0,
+    constants = constants,
+    likelihood_mode = "al"
+  )
+  val_g1 <- univar_theory_log_joint_sigma_gamma(
+    sigma = 0.8,
+    gamma = 0.6,
+    y = y,
+    eta = eta,
+    Ev = Ev,
+    Es = Es,
+    p0 = constants$p0,
+    constants = constants,
+    likelihood_mode = "al"
+  )
+
+  expect_true(is.finite(val_g0))
+  expect_true(is.finite(val_g1))
+  expect_equal(val_g0, val_g1)
 })

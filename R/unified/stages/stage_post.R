@@ -8,6 +8,11 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     stop(sprintf("Missing NDLM post diagnostics helpers: %s", ndlm_diag_helpers), call. = FALSE)
   }
   source(ndlm_diag_helpers, local = environment())
+  post_table_helpers <- file.path(repo_root_abs, "R", "environmetrics", "02_helpers_core.R")
+  if (!file.exists(post_table_helpers)) {
+    stop(sprintf("Missing post table helpers: %s", post_table_helpers), call. = FALSE)
+  }
+  source(post_table_helpers, local = environment())
   run_id <- cfg$run$run_id
   post_use_fit_outputs_from_run <- isTRUE(unified_get(cfg, c("inputs", "post", "use_fit_outputs_from_run"), default = TRUE))
   post_source_run_id <- unified_get(cfg, c("inputs", "post", "source_run_id"), default = NULL)
@@ -410,14 +415,20 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   multivar_only_mode <- isTRUE(cfg$models$run_exdqlm_multivar) &&
     !isTRUE(cfg$models$run_exdqlm_univar) &&
     !isTRUE(ndlm_any_mode)
-  post_smoke_fast_effective <- isTRUE(cfg$post$smoke_fast) || univar_only_mode || multivar_only_mode
-  if (univar_only_mode && !isTRUE(cfg$post$smoke_fast)) {
+  force_isolation_smoke_fast <- isTRUE(unified_get(
+    cfg,
+    c("post", "force_isolation_smoke_fast"),
+    default = TRUE
+  ))
+  post_smoke_fast_effective <- isTRUE(cfg$post$smoke_fast) ||
+    (isTRUE(force_isolation_smoke_fast) && (univar_only_mode || multivar_only_mode))
+  if (univar_only_mode && !isTRUE(cfg$post$smoke_fast) && isTRUE(force_isolation_smoke_fast)) {
     warning(
       "stage_post: enabling smoke-fast post artifact contract for univariate-only mode to avoid cross-family artifact requirements.",
       call. = FALSE
     )
   }
-  if (multivar_only_mode && !isTRUE(cfg$post$smoke_fast)) {
+  if (multivar_only_mode && !isTRUE(cfg$post$smoke_fast) && isTRUE(force_isolation_smoke_fast)) {
     warning(
       "stage_post: enabling smoke-fast post artifact contract for multivariate-only mode to avoid cross-family artifact requirements.",
       call. = FALSE
@@ -460,6 +471,19 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   } else {
     ""
   }
+  exdqlm_univar_impl_mode <- as.character(unified_get(
+    cfg,
+    c("models", "exdqlm_univar", "implementation_mode"),
+    default = "legacy_bridge"
+  ))
+  if (!length(exdqlm_univar_impl_mode) ||
+      is.na(exdqlm_univar_impl_mode[[1L]]) ||
+      !nzchar(exdqlm_univar_impl_mode[[1L]])) {
+    exdqlm_univar_impl_mode <- "legacy_bridge"
+  } else {
+    exdqlm_univar_impl_mode <- exdqlm_univar_impl_mode[[1L]]
+  }
+  out_dir <- file.path(run_root, "post", "outputs", run_id)
 
   base_env_overrides <- c(
     UNIFIED_RUN_ROOT = run_root_abs,
@@ -475,6 +499,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_MODEL_RUN_NDLM_UNIVAR = if (isTRUE(cfg$models$run_ndlm_univar)) "TRUE" else "FALSE",
     UNIFIED_EXDQLM_MULTIVAR_LIKELIHOOD_MODE = as.character(multivar_likelihood_mode),
     UNIFIED_EXDQLM_UNIVAR_LIKELIHOOD_MODE = as.character(univar_likelihood_mode),
+    UNIFIED_EXDQLM_UNIVAR_IMPLEMENTATION_MODE = as.character(exdqlm_univar_impl_mode),
     UNIFIED_NDLM_FORECAST_TRANSFER_MODE = as.character(ndlm_forecast_transfer_mode),
     UNIFIED_NDLM_UNIVAR_FORECAST_TRANSFER_MODE = as.character(ndlm_univar_forecast_transfer_mode),
     UNIFIED_NDLM_CRPS_PRIMARY_FAMILY = as.character(ndlm_crps_primary_family),
@@ -485,6 +510,18 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE = post_primary_multivar_mode,
     UNIFIED_POST_OUTPUT_SUFFIX = "",
     UNIFIED_POST_PRESERVE_OUT_DIR = "FALSE",
+    UNIFIED_POST_CRPS_INPUT_HEALTH_ENABLED = if (isTRUE(unified_get(
+      cfg, c("post", "crps_input_health", "enabled"), default = TRUE
+    ))) "TRUE" else "FALSE",
+    UNIFIED_POST_CRPS_INPUT_HEALTH_FAIL_FAST = if (isTRUE(unified_get(
+      cfg, c("post", "crps_input_health", "fail_fast"), default = FALSE
+    ))) "TRUE" else "FALSE",
+    UNIFIED_POST_CRPS_INPUT_HEALTH_MIN_FINITE_SHARE = as.character(unified_get(
+      cfg, c("post", "crps_input_health", "min_finite_share"), default = 1
+    )),
+    UNIFIED_POST_CRPS_INPUT_HEALTH_MAX_ABS = as.character(unified_get(
+      cfg, c("post", "crps_input_health", "max_abs"), default = NA_real_
+    )),
     UNIFIED_CUTOFF_DATE = as.character(post_cutoff_date),
     UNIFIED_FORECAST_START_DATE = as.character(post_forecast_start_date),
     UNIFIED_PLOT_START = as.character(post_plot_start_date),
@@ -525,6 +562,139 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     }
   }
 
+  merge_dual_mode_crps_exports <- function(output_dir, table_formats, keep_na) {
+    tables_dir <- file.path(output_dir, "tables")
+    if (!dir.exists(tables_dir)) {
+      return(invisible(FALSE))
+    }
+
+    read_optional_csv <- function(path) {
+      if (!file.exists(path)) return(NULL)
+      utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE)
+    }
+
+    bind_union_rows <- function(dfs) {
+      dfs <- Filter(Negate(is.null), dfs)
+      if (length(dfs) == 0L) return(NULL)
+      cols <- unique(unlist(lapply(dfs, names), use.names = FALSE))
+      aligned <- lapply(dfs, function(df) {
+        missing_cols <- setdiff(cols, names(df))
+        for (nm in missing_cols) df[[nm]] <- NA
+        df <- df[, cols, drop = FALSE]
+        for (nm in names(df)) {
+          if (is.factor(df[[nm]])) df[[nm]] <- as.character(df[[nm]])
+        }
+        df
+      })
+      out <- do.call(rbind, aligned)
+      dup_key <- do.call(
+        paste,
+        c(lapply(out, function(col) ifelse(is.na(col), "<NA>", as.character(col))), sep = "\r")
+      )
+      out <- out[!duplicated(dup_key), , drop = FALSE]
+      rownames(out) <- NULL
+      out
+    }
+
+    order_by_keys <- function(df, keys) {
+      if (is.null(df) || nrow(df) == 0L) return(df)
+      keys <- intersect(keys, names(df))
+      if (length(keys) == 0L) return(df)
+      ord_args <- lapply(keys, function(nm) {
+        col <- df[[nm]]
+        if (inherits(col, "Date")) return(col)
+        if (is.numeric(col) || is.integer(col)) return(col)
+        as.character(col)
+      })
+      ord <- do.call(order, c(ord_args, list(method = "radix", na.last = TRUE)))
+      df <- df[ord, , drop = FALSE]
+      rownames(df) <- NULL
+      df
+    }
+
+    merge_pair <- function(base_name, keep_name, sort_keys) {
+      merged <- bind_union_rows(list(
+        read_optional_csv(file.path(tables_dir, base_name)),
+        read_optional_csv(file.path(tables_dir, keep_name))
+      ))
+      order_by_keys(merged, sort_keys)
+    }
+
+    merged_summary <- merge_pair(
+      "crps_forecast_summary.csv",
+      "crps_forecast_summary_keep.csv",
+      c("model_id", "transfer_mode", "cutoff_date", "forecast_start_date")
+    )
+    merged_per_time <- merge_pair(
+      "crps_forecast_per_time.csv",
+      "crps_forecast_per_time_keep.csv",
+      c("model_id", "transfer_mode", "forecast_date", "lead_day")
+    )
+    merged_health_summary <- merge_pair(
+      "crps_input_health.csv",
+      "crps_input_health_keep.csv",
+      c("model_id", "transfer_mode", "cutoff_date", "forecast_start_date")
+    )
+    merged_health_per_time <- merge_pair(
+      "crps_input_health_per_time.csv",
+      "crps_input_health_per_time_keep.csv",
+      c("model_id", "transfer_mode", "forecast_date", "lead_day")
+    )
+
+    rewrote_any <- FALSE
+    manifest_rows <- list()
+    existing_manifest_path <- file.path(tables_dir, "posterior_table_exports_manifest.csv")
+    existing_manifest <- if (file.exists(existing_manifest_path)) {
+      utils::read.csv(existing_manifest_path, stringsAsFactors = FALSE, check.names = FALSE)
+    } else {
+      data.frame(
+        table_name = character(0),
+        file_path = character(0),
+        nrow = integer(0),
+        ncol = integer(0),
+        sha256 = character(0),
+        stringsAsFactors = FALSE
+      )
+    }
+
+    if (!is.null(merged_summary) && !is.null(merged_per_time)) {
+      crps_export <- post_export_crps_tables(
+        per_time_df = merged_per_time,
+        summary_df = merged_summary,
+        output_dir = tables_dir,
+        table_formats = table_formats,
+        keep_na = keep_na,
+        numeric_digits = 17L,
+        file_suffix = ""
+      )
+      manifest_rows[[length(manifest_rows) + 1L]] <- crps_export$manifest
+      rewrote_any <- TRUE
+    }
+
+    if (!is.null(merged_health_summary) && !is.null(merged_health_per_time)) {
+      health_export <- post_export_crps_input_health_tables(
+        summary_df = merged_health_summary,
+        per_time_df = merged_health_per_time,
+        output_dir = tables_dir,
+        table_formats = table_formats,
+        keep_na = keep_na,
+        numeric_digits = 17L,
+        file_suffix = ""
+      )
+      manifest_rows[[length(manifest_rows) + 1L]] <- health_export$manifest
+      rewrote_any <- TRUE
+    }
+
+    if (!isTRUE(rewrote_any)) {
+      return(invisible(FALSE))
+    }
+
+    merged_manifest <- bind_union_rows(c(list(existing_manifest), manifest_rows))
+    merged_manifest <- order_by_keys(merged_manifest, c("table_name", "file_path"))
+    post_write_table_exports_manifest(merged_manifest, tables_dir)
+    invisible(TRUE)
+  }
+
   run_post_runner(
     env_overrides = base_env_overrides,
     log_path = file.path(post_logs, "post_runner.log")
@@ -545,6 +715,11 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     run_post_runner(
       env_overrides = keep_env,
       log_path = file.path(post_logs, "post_runner_keep.log")
+    )
+    merge_dual_mode_crps_exports(
+      output_dir = out_dir,
+      table_formats = table_formats,
+      keep_na = isTRUE(sort_keep_na)
     )
   }
 
@@ -651,7 +826,6 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     manifest_obj
   }
 
-  out_dir <- file.path(run_root, "post", "outputs", run_id)
   manifest <- add_stage_post_artifacts(manifest, out_dir, role_tag = "post_output")
   manifest <- add_stage_post_artifacts(manifest, post_cache_dir, role_tag = "post_cache")
 

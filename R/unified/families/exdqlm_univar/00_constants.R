@@ -33,6 +33,21 @@ univar_theory_default_gamma_sigma_policy <- function() {
   )
 }
 
+univar_theory_normalize_likelihood_mode <- function(mode = "exal", default = "exal") {
+  raw <- as.character(mode)
+  if (!length(raw) || is.na(raw[[1L]]) || !nzchar(raw[[1L]])) {
+    raw <- default
+  } else {
+    raw <- raw[[1L]]
+  }
+  raw <- tolower(trimws(raw))
+  if (!(raw %in% c("exal", "al"))) {
+    raw <- tolower(trimws(as.character(default)[[1L]]))
+    if (!(raw %in% c("exal", "al"))) raw <- "exal"
+  }
+  raw
+}
+
 univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
   out <- univar_theory_default_gamma_sigma_policy()
   if (is.null(policy) || !is.list(policy)) {
@@ -152,7 +167,7 @@ univar_theory_resolve_gamma_sigma_policy <- function(policy = NULL) {
   out
 }
 
-univar_theory_constants <- function(q_num, seed = 777L, gamma_sigma_policy = NULL) {
+univar_theory_constants <- function(q_num, seed = 777L, gamma_sigma_policy = NULL, likelihood_mode = "exal") {
   q_num <- as.integer(q_num)
   p0 <- max(min(q_num / 100, 0.995), 0.005)
 
@@ -170,6 +185,7 @@ univar_theory_constants <- function(q_num, seed = 777L, gamma_sigma_policy = NUL
     m_gamma = 0.0,
     s_gamma = 1.0,
     nu_gamma = 6.0,
-    gamma_sigma_policy = univar_theory_resolve_gamma_sigma_policy(gamma_sigma_policy)
+    gamma_sigma_policy = univar_theory_resolve_gamma_sigma_policy(gamma_sigma_policy),
+    likelihood_mode = univar_theory_normalize_likelihood_mode(likelihood_mode, default = "exal")
   )
 }
