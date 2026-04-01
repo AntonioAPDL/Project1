@@ -291,3 +291,29 @@ Legacy scripts are preserved and now emit deprecation notices:
 - `scripts/run_environmetrics_figures.R`
 
 Use `scripts/unified_run.R` for all new orchestration.
+
+## Authoritative corrected multimodel `v7` comparison set
+
+As of `2026-04-01`, the authoritative corrected five-cutoff comparison set is:
+
+- `repro/reports/multimodel_20210123_v7_compare_alfix_20260331`
+- `repro/reports/multimodel_20211112_v7_compare_alfix_20260331`
+- `repro/reports/multimodel_20211221_v7_compare_alfix_20260331`
+- `repro/reports/multimodel_20220511_v7_compare_alfix_20260331`
+- `repro/reports/multimodel_20221225_v7_compare_alfix_20260331`
+
+Authoritative cross-cutoff summaries:
+
+- `repro/reports/multimodel_v7_compare_alfix_20260331/cross_cutoff_rankings.csv`
+- `repro/reports/multimodel_v7_compare_alfix_20260331/cross_cutoff_summary.md`
+- `repro/reports/multimodel_v7_compare_alfix_20260331/cross_cutoff_model_summary.csv`
+
+Packaged handoff directory:
+
+- `repro/reports/multimodel_v7_authoritative_20260401`
+
+Interpretation rules:
+
+- treat the `_alfix_20260331` bundles as authoritative for comparison work
+- treat stale pre-fix `v7` bundles as superseded for comparison purposes
+- do not reopen model calibration from these bundles unless a new, separate model-development task is explicitly started

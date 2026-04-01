@@ -4164,3 +4164,31 @@ Handoff rule:
   - `r04` currently active with `fit=pending`.
 - Next action:
   - Continue periodic health checks; if `r04` still fails, capture first failing covariance diagnostics and tighten/trace the exact offending slice source (`smooth_cov` vs forecast segments).
+
+### Progress Update 2026-04-01 final multimodel `v7` comparison signoff
+
+- Phase: corrected multimodel `v7` comparison program (`20210123`, `20211112`, `20211221`, `20220511`, `20221225`)
+- Status: complete and authoritative
+- Summary:
+  - final corrected lane closure achieved for `20221225`:
+    - `repro/runs/multimodel_20221225_v7_l2_rerun2_20260331/run_manifest.yaml`
+    - `fit=pass`, `post=pass`, `validate=pass`, `report=pass`
+  - final corrected per-cutoff bundles now exist for all five protected cutoffs:
+    - `repro/reports/multimodel_<cutoff>_v7_compare_alfix_20260331`
+  - final corrected cross-cutoff outputs now exist:
+    - `repro/reports/multimodel_v7_compare_alfix_20260331/cross_cutoff_rankings.csv`
+    - `repro/reports/multimodel_v7_compare_alfix_20260331/cross_cutoff_summary.md`
+    - `repro/reports/multimodel_v7_compare_alfix_20260331/cross_cutoff_model_summary.csv`
+  - final authoritative handoff package created:
+    - `repro/reports/multimodel_v7_authoritative_20260401`
+- Validation notes:
+  - `9/9` target model coverage on every corrected cutoff
+  - repaired `dqlm_univar_al_synth` remains comparable in scale and CRPS to `exdqlm_univar_synth`
+  - no NDLM regression in the corrected final set
+  - stale pre-fix bundles are superseded for comparison purposes
+- Comparison conclusions:
+  - multivariate `keep` variants are the strongest performers overall
+  - repaired AL-univar is no longer pathological
+  - NDLM variants are healthy but generally less competitive than the strongest multivariate lanes
+- Next action:
+  - comparison phase signoff complete; any future work should start from the authoritative `_alfix_20260331` bundles and the packaged deliverable set

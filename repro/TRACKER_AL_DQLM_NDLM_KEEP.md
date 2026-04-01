@@ -2419,3 +2419,35 @@ Reintegration evidence:
 Decision:
 - `dqlm_univar_al_synth` model repair is now closed for current comparison workflows.
 - The remaining work is later multimodel relaunch/replay to ingest the accepted AL policy into aggregate bundles, not further root-cause repair of the AL likelihood path.
+
+### 2026-04-01 final corrected multimodel `v7` signoff
+Status: **PASS**
+
+Authoritative corrected comparison bundles:
+- `repro/reports/multimodel_20210123_v7_compare_alfix_20260331`
+- `repro/reports/multimodel_20211112_v7_compare_alfix_20260331`
+- `repro/reports/multimodel_20211221_v7_compare_alfix_20260331`
+- `repro/reports/multimodel_20220511_v7_compare_alfix_20260331`
+- `repro/reports/multimodel_20221225_v7_compare_alfix_20260331`
+
+Authoritative cross-cutoff outputs:
+- `repro/reports/multimodel_v7_compare_alfix_20260331/cross_cutoff_rankings.csv`
+- `repro/reports/multimodel_v7_compare_alfix_20260331/cross_cutoff_summary.md`
+- `repro/reports/multimodel_v7_compare_alfix_20260331/cross_cutoff_model_summary.csv`
+- packaged handoff: `repro/reports/multimodel_v7_authoritative_20260401`
+
+Signoff evidence:
+- all five corrected bundles contain:
+  - `crps_forecast_summary_all_models.csv`
+  - `crps_input_health_all_models.csv`
+  - `model_coverage.csv`
+  - `figure_manifest.csv`
+  - `summary.md`
+- all five corrected bundles have `9/9` exported target models
+- repaired `dqlm_univar_al_synth` remains in the same CRPS order of magnitude as `exdqlm_univar_synth` on every authoritative cutoff
+- NDLM rows remain operationally healthy in the final corrected set (`crps_input_health` status `pass`)
+
+Interpretation:
+- the stale pre-fix comparison bundles are superseded for comparison purposes
+- the corrected `_alfix_20260331` bundle set is now the authoritative five-cutoff comparison reference
+- remaining caveats are scientific/model-comparison caveats, not unresolved workflow defects
