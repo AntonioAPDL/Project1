@@ -55,17 +55,18 @@ unified_post_select_modules <- function(
   }
 
   if (multivar_only_mode) {
+    if (isTRUE(post_smoke_fast)) {
+      # Multivariate comparison lanes in smoke-fast mode should use the same
+      # lightweight comparison exporter as the mixed v7 workflow so CRPS,
+      # input-health, and figure manifests stay on one contract.
+      return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures_smoke_fast.R"))
+    }
     # Multivariate isolation lane: generate DISC-only diagnostics/forecast plots
     # without touching NDLM-specific figure sections.
     return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures_multivar_only.R"))
   }
 
   if (isTRUE(post_smoke_fast)) {
-    if (multivar_only_mode) {
-      # Multivariate isolation lane: run DISC-only post figures without
-      # requiring NDLM/univariate artifacts.
-      return(c(core_modules, "10_data_inputs.R", "20_model_setup.R", "30_univariate_and_misc.R", "40_figures_multivar_only.R"))
-    }
     # Mixed smoke-fast lane still needs the lightweight synthesis/post objects
     # from 30_univariate_and_misc.R so CRPS/input-health tables can export
     # without running the full legacy figure stack.
