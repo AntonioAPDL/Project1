@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from multimodel_v8_lib import ENSEMBLE_IDS, EPSILON_SENSITIVE_MODEL_IDS, TARGET_MODELS, TARGET_MODEL_IDS, v8_compare_dir
+from multimodel_v8_lib import ENSEMBLE_IDS, EPSILON_SENSITIVE_MODEL_IDS, TARGET_MODELS, TARGET_MODEL_IDS, runs_dir, v8_compare_dir
 
 
 @dataclass(frozen=True)
@@ -17,9 +17,8 @@ class LaneSpec:
     run_id: str
     source_type: str
 
-    @property
-    def output_root(self) -> Path:
-        return Path("repro/runs") / self.run_id / "post" / "outputs" / self.run_id
+    def output_root(self, artifact_root: str | Path | None = None) -> Path:
+        return runs_dir(artifact_root) / self.run_id / "post" / "outputs" / self.run_id
 
 
 def _read_csv(path: Path) -> pd.DataFrame:
@@ -28,8 +27,8 @@ def _read_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
-def _lane_tables(lane: LaneSpec) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    root = lane.output_root
+def _lane_tables(lane: LaneSpec, artifact_root: str | Path | None = None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    root = lane.output_root(artifact_root)
     crps = _read_csv(root / "tables" / "crps_forecast_summary.csv")
     health = _read_csv(root / "tables" / "crps_input_health.csv")
     fig_path = root / "figure_manifest.csv"
@@ -176,7 +175,16 @@ def _write_summary(outdir: Path, cutoff: str, epsilon: str, source_map: pd.DataF
     (outdir / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def build_bundle(cutoff: str, epsilon: str, baseline_l1: LaneSpec, baseline_l2: LaneSpec, outdir: Path, mv_l1: LaneSpec | None = None, mv_l2: LaneSpec | None = None) -> None:
+def build_bundle(
+    cutoff: str,
+    epsilon: str,
+    baseline_l1: LaneSpec,
+    baseline_l2: LaneSpec,
+    outdir: Path,
+    mv_l1: LaneSpec | None = None,
+    mv_l2: LaneSpec | None = None,
+    artifact_root: str | Path | None = None,
+) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
 
     lane_specs = [baseline_l1, baseline_l2] + ([mv_l1] if mv_l1 else []) + ([mv_l2] if mv_l2 else [])
@@ -185,7 +193,7 @@ def build_bundle(cutoff: str, epsilon: str, baseline_l1: LaneSpec, baseline_l2: 
     health_frames = []
     fig_frames = []
     for lane in lane_specs:
-        crps, health, fig = _lane_tables(lane)
+        crps, health, fig = _lane_tables(lane, artifact_root)
         crps_frames.append(crps)
         health_frames.append(health)
         fig_frames.append(fig)
@@ -226,12 +234,13 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--outdir", required=False)
     ap.add_argument("--mv-l1-run")
     ap.add_argument("--mv-l2-run")
+    ap.add_argument("--artifact-root", required=False)
     return ap.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    outdir = Path(args.outdir) if args.outdir else v8_compare_dir(args.cutoff, args.epsilon)
+    outdir = Path(args.outdir) if args.outdir else v8_compare_dir(args.cutoff, args.epsilon, args.artifact_root)
     build_bundle(
         cutoff=args.cutoff,
         epsilon=args.epsilon,
@@ -240,6 +249,7 @@ def main() -> None:
         mv_l1=LaneSpec(label=f"v8_{args.epsilon}_l1_mv", run_id=args.mv_l1_run, source_type="epsilon_specific_mv") if args.mv_l1_run else None,
         mv_l2=LaneSpec(label=f"v8_{args.epsilon}_l2_mv", run_id=args.mv_l2_run, source_type="epsilon_specific_mv") if args.mv_l2_run else None,
         outdir=outdir,
+        artifact_root=args.artifact_root,
     )
 
 

@@ -13,9 +13,20 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import yaml
 
-from multimodel_v8_lib import CUTOFFS, HEAVY_CUTOFF, ROOT, RUNS_DIR, matrix_report_dir, v8_compare_dir, v8_run_id
+from multimodel_v8_lib import (
+    CUTOFFS,
+    HEAVY_CUTOFF,
+    ROOT,
+    artifact_disk_free_gb,
+    control_dir,
+    load_yaml,
+    matrix_report_dir,
+    resolve_artifact_root,
+    runs_dir,
+    v8_compare_dir,
+    v8_run_id,
+)
 
 REQUIRED_COMPARE_FILES = {
     "crps_forecast_summary_all_models.csv",
@@ -31,12 +42,6 @@ PILOT_EPSILONS = ["epsTT", "eps30"]
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def load_yaml(path: Path) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle)
-    return data if isinstance(data, dict) else {}
 
 
 def stage_status(manifest_path: Path) -> tuple[str, str]:
@@ -58,8 +63,8 @@ def stage_status(manifest_path: Path) -> tuple[str, str]:
     return "unknown", status or "unknown"
 
 
-def disk_free_gb() -> float:
-    return round(shutil.disk_usage(ROOT).free / (1024 ** 3), 1)
+def disk_free_gb(artifact_root: str | Path | None = None) -> float:
+    return artifact_disk_free_gb(artifact_root)
 
 
 def pgrep_active_v8() -> list[dict[str, str]]:
@@ -83,30 +88,30 @@ def pgrep_active_v8() -> list[dict[str, str]]:
     return list(rows_by_config.values())
 
 
-def manifest_path_for(run_id: str) -> Path:
-    return RUNS_DIR / run_id / "run_manifest.yaml"
+def manifest_path_for(run_id: str, artifact_root: str | Path | None = None) -> Path:
+    return runs_dir(artifact_root) / run_id / "run_manifest.yaml"
 
 
-def compare_ready(cutoff: str, epsilon: str) -> bool:
-    outdir = v8_compare_dir(cutoff, epsilon)
+def compare_ready(cutoff: str, epsilon: str, artifact_root: str | Path | None = None) -> bool:
+    outdir = v8_compare_dir(cutoff, epsilon, artifact_root)
     return outdir.exists() and REQUIRED_COMPARE_FILES.issubset({p.name for p in outdir.iterdir() if p.is_file()})
 
 
-def run_passed(run_id: str) -> bool:
-    _phase, status = stage_status(manifest_path_for(run_id))
+def run_passed(run_id: str, artifact_root: str | Path | None = None) -> bool:
+    _phase, status = stage_status(manifest_path_for(run_id, artifact_root))
     return status == "pass"
 
 
-def run_failed(run_id: str) -> bool:
-    _phase, status = stage_status(manifest_path_for(run_id))
+def run_failed(run_id: str, artifact_root: str | Path | None = None) -> bool:
+    _phase, status = stage_status(manifest_path_for(run_id, artifact_root))
     return status == "fail"
 
 
-def run_started(run_id: str) -> bool:
-    return manifest_path_for(run_id).exists()
+def run_started(run_id: str, artifact_root: str | Path | None = None) -> bool:
+    return manifest_path_for(run_id, artifact_root).exists()
 
 
-def build_compare_bundle(cutoff: str, epsilon: str, matrix_dir: Path, log_handle) -> None:
+def build_compare_bundle(cutoff: str, epsilon: str, matrix_dir: Path, log_handle, artifact_root: str | Path | None = None) -> None:
     baseline_l1 = v8_run_id(cutoff, "epsTT", "l1")
     baseline_l2 = v8_run_id(cutoff, "epsTT", "l2")
     cmd = [
@@ -116,29 +121,31 @@ def build_compare_bundle(cutoff: str, epsilon: str, matrix_dir: Path, log_handle
         "--epsilon", epsilon,
         "--baseline-l1-run", baseline_l1,
         "--baseline-l2-run", baseline_l2,
-        "--outdir", str(v8_compare_dir(cutoff, epsilon)),
+        "--outdir", str(v8_compare_dir(cutoff, epsilon, artifact_root)),
     ]
+    if artifact_root is not None:
+        cmd.extend(["--artifact-root", str(artifact_root)])
     if epsilon != "epsTT":
         cmd.extend(["--mv-l1-run", v8_run_id(cutoff, epsilon, "l1_mv")])
         cmd.extend(["--mv-l2-run", v8_run_id(cutoff, epsilon, "l2_mv")])
     subprocess.run(cmd, cwd=ROOT, check=True, stdout=log_handle, stderr=subprocess.STDOUT)
 
 
-def maybe_build_compares(cells: list[tuple[str, str]], matrix_dir: Path, log_handle) -> None:
+def maybe_build_compares(cells: list[tuple[str, str]], matrix_dir: Path, log_handle, artifact_root: str | Path | None = None) -> None:
     for cutoff, epsilon in cells:
-        if compare_ready(cutoff, epsilon):
+        if compare_ready(cutoff, epsilon, artifact_root):
             continue
         required_runs = [v8_run_id(cutoff, "epsTT", "l1"), v8_run_id(cutoff, "epsTT", "l2")]
         if epsilon != "epsTT":
             required_runs.extend([v8_run_id(cutoff, epsilon, "l1_mv"), v8_run_id(cutoff, epsilon, "l2_mv")])
-        if all(run_passed(run_id) for run_id in required_runs):
+        if all(run_passed(run_id, artifact_root) for run_id in required_runs):
             print(f"[{utc_now()}] building compare bundle cutoff={cutoff} epsilon={epsilon}", file=log_handle, flush=True)
-            build_compare_bundle(cutoff, epsilon, matrix_dir, log_handle)
+            build_compare_bundle(cutoff, epsilon, matrix_dir, log_handle, artifact_root)
 
 
-def write_pilot_summary(matrix_dir: Path) -> None:
-    tt_dir = v8_compare_dir(PILOT_CUTOFF, "epsTT")
-    eps30_dir = v8_compare_dir(PILOT_CUTOFF, "eps30")
+def write_pilot_summary(matrix_dir: Path, artifact_root: str | Path | None = None) -> None:
+    tt_dir = v8_compare_dir(PILOT_CUTOFF, "epsTT", artifact_root)
+    eps30_dir = v8_compare_dir(PILOT_CUTOFF, "eps30", artifact_root)
     tt_cov = pd.read_csv(tt_dir / "model_coverage.csv")
     eps_cov = pd.read_csv(eps30_dir / "model_coverage.csv")
     eps_prov = pd.read_csv(eps30_dir / "source_provenance.csv")
@@ -175,8 +182,8 @@ def write_pilot_summary(matrix_dir: Path) -> None:
     (matrix_dir / "pilot_summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_final_summary(matrix_dir: Path, cells: list[tuple[str, str]]) -> None:
-    built = [f"multimodel_{cutoff}_v8_{epsilon}_compare" for cutoff, epsilon in cells if compare_ready(cutoff, epsilon)]
+def write_final_summary(matrix_dir: Path, cells: list[tuple[str, str]], artifact_root: str | Path | None = None) -> None:
+    built = [f"multimodel_{cutoff}_v8_{epsilon}_compare" for cutoff, epsilon in cells if compare_ready(cutoff, epsilon, artifact_root)]
     lines = [
         "# v8 matrix summary",
         "",
@@ -221,13 +228,17 @@ def launch_run(config_path: Path, log_path: Path) -> int:
     return proc.pid
 
 
-def refresh_health(matrix_dir: Path, log_handle) -> None:
-    subprocess.run(["python3", "scripts/check_multimodel_v8_matrix_health.py", "--matrix-dir", str(matrix_dir)], cwd=ROOT, stdout=log_handle, stderr=subprocess.STDOUT, check=True)
+def refresh_health(matrix_dir: Path, log_handle, artifact_root: str | Path | None = None) -> None:
+    cmd = ["python3", "scripts/check_multimodel_v8_matrix_health.py", "--matrix-dir", str(matrix_dir)]
+    if artifact_root is not None:
+        cmd.extend(["--artifact-root", str(artifact_root)])
+    subprocess.run(cmd, cwd=ROOT, stdout=log_handle, stderr=subprocess.STDOUT, check=True)
 
 
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Run disciplined v8 multimodel queue.")
-    ap.add_argument("--matrix-dir", default=str(matrix_report_dir("20260401")))
+    ap.add_argument("--matrix-dir")
+    ap.add_argument("--artifact-root")
     ap.add_argument("--pilot-only", action="store_true")
     ap.add_argument("--ordinary-max-concurrent", type=int, default=2)
     ap.add_argument("--pause-free-gb", type=float, default=180)
@@ -239,7 +250,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    matrix_dir = Path(args.matrix_dir)
+    artifact_root = resolve_artifact_root(args.artifact_root)
+    matrix_dir = Path(args.matrix_dir) if args.matrix_dir else (control_dir(artifact_root) if args.artifact_root else matrix_report_dir("20260401"))
     plan = pd.read_csv(matrix_dir / "matrix_plan.csv")
     for col in ("cutoff", "epsilon", "lane", "run_id", "config_path"):
         if col in plan.columns:
@@ -256,32 +268,32 @@ def main() -> int:
     queue_log.parent.mkdir(parents=True, exist_ok=True)
 
     with queue_log.open("a", encoding="utf-8") as log_handle:
-        print(f"[{utc_now()}] controller start pilot_only={args.pilot_only}", file=log_handle, flush=True)
+        print(f"[{utc_now()}] controller start pilot_only={args.pilot_only} artifact_root={artifact_root}", file=log_handle, flush=True)
         while True:
-            refresh_health(matrix_dir, log_handle)
-            maybe_build_compares(compare_cells, matrix_dir, log_handle)
+            refresh_health(matrix_dir, log_handle, artifact_root if args.artifact_root else None)
+            maybe_build_compares(compare_cells, matrix_dir, log_handle, artifact_root if args.artifact_root else None)
 
             # Fail fast if any planned run failed.
             for _, row in plan.iterrows():
-                if run_failed(str(row["run_id"])):
+                if run_failed(str(row["run_id"]), artifact_root if args.artifact_root else None):
                     print(f"[{utc_now()}] aborting: run failed {row['run_id']}", file=log_handle, flush=True)
                     return 1
 
-            all_runs_pass = all(run_passed(str(row["run_id"])) for _, row in plan.iterrows())
-            all_compares_ready = all(compare_ready(cutoff, epsilon) for cutoff, epsilon in compare_cells)
+            all_runs_pass = all(run_passed(str(row["run_id"]), artifact_root if args.artifact_root else None) for _, row in plan.iterrows())
+            all_compares_ready = all(compare_ready(cutoff, epsilon, artifact_root if args.artifact_root else None) for cutoff, epsilon in compare_cells)
             if all_runs_pass and all_compares_ready:
                 if args.pilot_only:
-                    write_pilot_summary(matrix_dir)
-                write_final_summary(matrix_dir, compare_cells)
+                    write_pilot_summary(matrix_dir, artifact_root if args.artifact_root else None)
+                write_final_summary(matrix_dir, compare_cells, artifact_root if args.artifact_root else None)
                 print(f"[{utc_now()}] controller complete pilot_only={args.pilot_only}", file=log_handle, flush=True)
                 return 0
 
             active = pgrep_active_v8()
-            free_gb = disk_free_gb()
+            free_gb = disk_free_gb(artifact_root if args.artifact_root else None)
             launched = False
             for _, row in plan.iterrows():
                 run_id = str(row["run_id"])
-                phase, status = stage_status(manifest_path_for(run_id))
+                phase, status = stage_status(manifest_path_for(run_id, artifact_root if args.artifact_root else None))
                 if status == "pass":
                     continue
                 if status == "pending":

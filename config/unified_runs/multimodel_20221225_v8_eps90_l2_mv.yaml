@@ -1,7 +1,7 @@
 config_version: 1
 run:
   run_id: multimodel_20221225_v8_eps90_l2_mv
-  run_root: repro/runs
+  run_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs
   repro_mode: strict
   seed: 777
   overwrite: false
@@ -264,4 +264,4 @@ debug_v8_matrix:
   shared_input_contract: run_local_snapshot_from_stable_forecats_bundle
   historical_mapping_note: 'Preserved historical mapping: base=TT/null, v2=30, v3=90,
     v4=30 duplicate, v5=180, v6=360.'
-  compare_bundle_outdir: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/reports/multimodel_20221225_v8_eps90_compare
+  compare_bundle_outdir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20221225_v8_eps90_compare

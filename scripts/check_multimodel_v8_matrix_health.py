@@ -8,9 +8,8 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import yaml
 
-from multimodel_v8_lib import ROOT, RUNS_DIR, matrix_report_dir
+from multimodel_v8_lib import artifact_disk_free_gb, control_dir, load_yaml, matrix_report_dir, resolve_artifact_root, runs_dir
 
 STAGE_ORDER = ["forecats", "data_prep_shared", "fit", "post", "validate", "report"]
 
@@ -19,12 +18,6 @@ def _iso_mtime(path: Path | None) -> str:
     if path is None or not path.exists():
         return ""
     return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def _load_yaml(path: Path) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle)
-    return data if isinstance(data, dict) else {}
 
 
 def _latest_stage_log_mtime(run_root: Path, stage: str, fallback: Path | None) -> str:
@@ -80,7 +73,7 @@ def _stage_view(manifest: dict[str, Any], run_root: Path) -> tuple[str, str, str
     )
 
 
-def build_status(matrix_dir: Path) -> pd.DataFrame:
+def build_status(matrix_dir: Path, artifact_root: str | Path | None = None) -> pd.DataFrame:
     plan = pd.read_csv(matrix_dir / "matrix_plan.csv")
     for col in ("cutoff", "epsilon", "lane", "run_id"):
         if col in plan.columns:
@@ -88,11 +81,12 @@ def build_status(matrix_dir: Path) -> pd.DataFrame:
     if "cutoff" in plan.columns:
         plan["cutoff"] = plan["cutoff"].str.zfill(8)
     rows = []
-    free_gb = round(shutil.disk_usage(ROOT).free / (1024 ** 3), 1)
+    active_runs_dir = runs_dir(artifact_root)
+    free_gb = artifact_disk_free_gb(artifact_root)
     for _, row in plan.iterrows():
-        manifest_path = RUNS_DIR / str(row["run_id"]) / "run_manifest.yaml"
+        manifest_path = active_runs_dir / str(row["run_id"]) / "run_manifest.yaml"
         if manifest_path.exists():
-            manifest = _load_yaml(manifest_path)
+            manifest = load_yaml(manifest_path)
             phase, status, started_at, finished_at, latest_log_mtime = _stage_view(manifest, manifest_path.parent)
             note = ""
             if status == "pass":
@@ -143,14 +137,16 @@ def write_status_markdown(df: pd.DataFrame, out_path: Path) -> None:
 
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Check health of v8 multimodel matrix runs.")
-    ap.add_argument("--matrix-dir", default=str(matrix_report_dir("20260401")))
+    ap.add_argument("--matrix-dir")
+    ap.add_argument("--artifact-root")
     return ap.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    matrix_dir = Path(args.matrix_dir)
-    df = build_status(matrix_dir)
+    artifact_root = resolve_artifact_root(args.artifact_root)
+    matrix_dir = Path(args.matrix_dir) if args.matrix_dir else (control_dir(artifact_root) if args.artifact_root else matrix_report_dir("20260401"))
+    df = build_status(matrix_dir, artifact_root=artifact_root if args.artifact_root else None)
     df.to_csv(matrix_dir / "matrix_status.csv", index=False)
     write_status_markdown(df, matrix_dir / "matrix_status.md")
     print(matrix_dir / "matrix_status.csv")

@@ -16,13 +16,14 @@ os.sys.path.insert(0, str(ROOT / "scripts"))
 from build_multimodel_v8_matrix_configs import build_v8_config  # noqa: E402
 from build_multimodel_v8_compare_bundle import LaneSpec, build_bundle  # noqa: E402
 from check_multimodel_v8_matrix_health import build_status  # noqa: E402
-from multimodel_v8_lib import TARGET_MODELS, build_lane_plan_rows, load_yaml, v7_template_config_path  # noqa: E402
+from multimodel_v8_lib import TARGET_MODELS, build_lane_plan_rows, load_yaml, reports_dir, runs_dir, v7_template_config_path  # noqa: E402
 from run_multimodel_v8_queue import pgrep_active_v8  # noqa: E402
 
 
 class MultimodelV8ToolingTests(unittest.TestCase):
     def test_build_v8_config_scopes_mv_lane_correctly(self) -> None:
         template = load_yaml(v7_template_config_path("20211112", "l1"))
+        artifact_root = ROOT / "tmp" / "v8_test_artifacts"
         cfg = build_v8_config(
             template_cfg=template,
             run_id="multimodel_20211112_v8_eps30_l1_mv",
@@ -30,34 +31,39 @@ class MultimodelV8ToolingTests(unittest.TestCase):
             epsilon_value=30.0,
             lane="l1_mv",
             cutoff="20211112",
+            artifact_root=artifact_root,
         )
         self.assertTrue(cfg["models"]["run_exdqlm_multivar"])
         self.assertFalse(cfg["models"]["run_exdqlm_univar"])
         self.assertFalse(cfg["models"]["run_ndlm_main"])
         self.assertFalse(cfg["models"]["run_ndlm_univar"])
         self.assertEqual(cfg["fit"]["exdqlm_multivar"]["legacy"]["forecast_cov"]["epsilon"], 30.0)
+        self.assertEqual(cfg["run"]["run_root"], str(runs_dir(artifact_root)))
         self.assertTrue(cfg["stages"]["forecats"])
         self.assertTrue(cfg["post"]["smoke_fast"])
         self.assertEqual(cfg["inputs"]["forecats"]["mode"], "use_existing")
         self.assertTrue(str(cfg["inputs"]["forecats"]["existing_bundle_path"]).endswith("meta.yaml"))
         self.assertTrue(cfg["inputs"]["shared"]["prefer_forecats_snapshot"])
         self.assertEqual(cfg["models"]["exdqlm_univar"]["implementation_mode"], "legacy_bridge")
+        self.assertEqual(
+            cfg["debug_v8_matrix"]["compare_bundle_outdir"],
+            str(reports_dir(artifact_root) / "multimodel_20211112_v8_eps30_compare"),
+        )
 
     def test_compare_bundle_mixes_tt_and_mv_sources_explicitly(self) -> None:
         td = Path(tempfile.mkdtemp(prefix="v8_bundle_test_"))
-        old_cwd = Path.cwd()
+        artifact_root = td / "artifact_root"
         try:
-            os.chdir(td)
             for run_id in [
                 "multimodel_20211112_v8_epsTT_l1",
                 "multimodel_20211112_v8_epsTT_l2",
                 "multimodel_20211112_v8_eps30_l1_mv",
                 "multimodel_20211112_v8_eps30_l2_mv",
             ]:
-                (td / "repro" / "runs" / run_id / "post" / "outputs" / run_id / "tables").mkdir(parents=True, exist_ok=True)
+                (runs_dir(artifact_root) / run_id / "post" / "outputs" / run_id / "tables").mkdir(parents=True, exist_ok=True)
 
             def write_lane(run_id: str, rows: list[dict], fig_rows: list[dict]) -> None:
-                root = td / "repro" / "runs" / run_id / "post" / "outputs" / run_id
+                root = runs_dir(artifact_root) / run_id / "post" / "outputs" / run_id
                 crps = pd.DataFrame(rows)
                 health = pd.DataFrame([
                     {
@@ -134,6 +140,7 @@ class MultimodelV8ToolingTests(unittest.TestCase):
                 mv_l1=LaneSpec("v8_eps30_l1_mv", "multimodel_20211112_v8_eps30_l1_mv", "epsilon_specific_mv"),
                 mv_l2=LaneSpec("v8_eps30_l2_mv", "multimodel_20211112_v8_eps30_l2_mv", "epsilon_specific_mv"),
                 outdir=outdir,
+                artifact_root=artifact_root,
             )
             prov = pd.read_csv(outdir / "source_provenance.csv")
             self.assertEqual(len(prov), 9)
@@ -145,7 +152,6 @@ class MultimodelV8ToolingTests(unittest.TestCase):
             inv_rows = crps.loc[~crps["model_id"].str.contains("multivar") & crps["model_id"].isin([s["model_id"] for s in TARGET_MODELS])]
             self.assertTrue((inv_rows["source_type"] == "baseline_tt").all())
         finally:
-            os.chdir(old_cwd)
             shutil.rmtree(td, ignore_errors=True)
 
     def test_health_checker_parses_plan_and_manifest(self) -> None:
@@ -153,6 +159,7 @@ class MultimodelV8ToolingTests(unittest.TestCase):
         try:
             matrix_dir = td / "matrix"
             matrix_dir.mkdir(parents=True, exist_ok=True)
+            artifact_root = td / "artifact_root"
             plan = pd.DataFrame([
                 {
                     "order_index": 1,
@@ -169,7 +176,7 @@ class MultimodelV8ToolingTests(unittest.TestCase):
                 }
             ])
             plan.to_csv(matrix_dir / "matrix_plan.csv", index=False)
-            run_root = ROOT / "repro" / "runs" / "multimodel_20990101_v8_epsTT_l1"
+            run_root = runs_dir(artifact_root) / "multimodel_20990101_v8_epsTT_l1"
             manifest_path = run_root / "run_manifest.yaml"
             run_root.mkdir(parents=True, exist_ok=True)
             manifest = {
@@ -186,15 +193,11 @@ class MultimodelV8ToolingTests(unittest.TestCase):
             (run_root / "post" / "logs" / "post_runner.log").write_text("live\n", encoding="utf-8")
             (run_root / "post" / "module" / "logs" / "child.log").write_text("newer\n", encoding="utf-8")
             manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
-            df = build_status(matrix_dir)
+            df = build_status(matrix_dir, artifact_root=artifact_root)
             self.assertEqual(df.iloc[0]["phase"], "post")
             self.assertEqual(df.iloc[0]["status"], "pending")
             self.assertTrue(df.iloc[0]["latest_log_mtime"])
         finally:
-            # Only remove the synthetic manifest if we created it.
-            manifest_path = ROOT / "repro" / "runs" / "multimodel_20990101_v8_epsTT_l1" / "run_manifest.yaml"
-            if manifest_path.exists():
-                shutil.rmtree(manifest_path.parent.parent.parent, ignore_errors=True)
             shutil.rmtree(td, ignore_errors=True)
 
     def test_plan_rows_skip_duplicate_v4_epsilon(self) -> None:

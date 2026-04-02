@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import copy
+import os
+import shutil
+import time
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,8 +13,11 @@ from typing import Any, Iterable
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNS_DIR = ROOT / "repro" / "runs"
-REPORTS_DIR = ROOT / "repro" / "reports"
+DEFAULT_ARTIFACT_ROOT = ROOT / "repro"
+DEFAULT_RUNS_DIR = DEFAULT_ARTIFACT_ROOT / "runs"
+DEFAULT_REPORTS_DIR = DEFAULT_ARTIFACT_ROOT / "reports"
+RUNS_DIR = DEFAULT_RUNS_DIR
+REPORTS_DIR = DEFAULT_REPORTS_DIR
 CONFIG_DIR = ROOT / "config" / "unified_runs"
 
 CUTOFFS: list[tuple[str, str]] = [
@@ -125,12 +131,51 @@ def ensure_dir(path: Path) -> Path:
     return path
 
 
-def load_yaml(path: Path) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle)
-    if not isinstance(data, dict):
-        raise ValueError(f"YAML root is not a mapping: {path}")
-    return data
+def resolve_artifact_root(artifact_root: str | Path | None = None) -> Path:
+    raw = artifact_root or os.environ.get("MULTIMODEL_V8_ARTIFACT_ROOT")
+    if raw is None or str(raw).strip() == "":
+        return DEFAULT_ARTIFACT_ROOT
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = ROOT / path
+    return path.resolve()
+
+
+def runs_dir(artifact_root: str | Path | None = None) -> Path:
+    return resolve_artifact_root(artifact_root) / "runs"
+
+
+def reports_dir(artifact_root: str | Path | None = None) -> Path:
+    return resolve_artifact_root(artifact_root) / "reports"
+
+
+def control_dir(artifact_root: str | Path | None = None) -> Path:
+    return resolve_artifact_root(artifact_root) / "control"
+
+
+def artifact_disk_free_gb(artifact_root: str | Path | None = None) -> float:
+    probe = resolve_artifact_root(artifact_root)
+    if not probe.exists():
+        probe = probe.parent
+    return round(shutil.disk_usage(probe).free / (1024 ** 3), 1)
+
+
+def load_yaml(path: Path, retries: int = 5, delay_seconds: float = 0.2) -> dict[str, Any]:
+    last_err: Exception | None = None
+    for attempt in range(retries):
+        try:
+            with path.open("r", encoding="utf-8") as handle:
+                data = yaml.safe_load(handle)
+            if not isinstance(data, dict):
+                raise ValueError(f"YAML root is not a mapping: {path}")
+            return data
+        except (yaml.YAMLError, ValueError) as err:
+            last_err = err
+            if attempt == retries - 1:
+                break
+            time.sleep(delay_seconds)
+    assert last_err is not None
+    raise last_err
 
 
 def write_yaml(path: Path, data: dict[str, Any]) -> None:
@@ -164,12 +209,12 @@ def v8_config_path(cutoff: str, epsilon_label: str, lane: str) -> Path:
     return CONFIG_DIR / f"{v8_run_id(cutoff, epsilon_label, lane)}.yaml"
 
 
-def v8_compare_dir(cutoff: str, epsilon_label: str) -> Path:
-    return REPORTS_DIR / f"multimodel_{cutoff}_v8_{epsilon_label}_compare"
+def v8_compare_dir(cutoff: str, epsilon_label: str, artifact_root: str | Path | None = None) -> Path:
+    return reports_dir(artifact_root) / f"multimodel_{cutoff}_v8_{epsilon_label}_compare"
 
 
-def matrix_report_dir(date_tag: str) -> Path:
-    return REPORTS_DIR / f"multimodel_v8_matrix_{date_tag}"
+def matrix_report_dir(date_tag: str, artifact_root: str | Path | None = None) -> Path:
+    return reports_dir(artifact_root) / f"multimodel_v8_matrix_{date_tag}"
 
 
 def lane_label_for_bundle(epsilon_label: str, lane: str) -> str:

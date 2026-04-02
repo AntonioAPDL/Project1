@@ -14,27 +14,31 @@ from multimodel_v8_lib import (
     CONFIG_DIR,
     CUTOFF_TO_DATE,
     CUTOFFS,
+    DEFAULT_REPORTS_DIR,
+    DEFAULT_ARTIFACT_ROOT,
     EPSILON_LABEL_TO_VALUE,
     FALLBACK_INPUTS,
     FORECATS_BUNDLE_BY_CUTOFF,
     HEAVY_CUTOFF,
     HISTORICAL_SUFFIX_TO_EPSILON,
-    REPORTS_DIR,
     ROOT,
-    RUNS_DIR,
     build_lane_plan_rows,
+    control_dir,
     deep_copy_dict,
     ensure_dir,
     load_yaml,
     matrix_report_dir,
+    reports_dir,
+    resolve_artifact_root,
+    runs_dir,
     v7_template_config_path,
     v8_compare_dir,
     write_yaml,
 )
 
-V7_COMPARE_BUNDLES = [REPORTS_DIR / name for name in AUTHORITATIVE_V7_BUNDLE_NAMES]
-V7_CROSS_CUTOFF = REPORTS_DIR / "multimodel_v7_compare_alfix_20260331"
-V7_AUTHORITATIVE_PACKAGE = REPORTS_DIR / "multimodel_v7_authoritative_20260401"
+V7_COMPARE_BUNDLES = [DEFAULT_REPORTS_DIR / name for name in AUTHORITATIVE_V7_BUNDLE_NAMES]
+V7_CROSS_CUTOFF = DEFAULT_REPORTS_DIR / "multimodel_v7_compare_alfix_20260331"
+V7_AUTHORITATIVE_PACKAGE = DEFAULT_REPORTS_DIR / "multimodel_v7_authoritative_20260401"
 
 LIGHTWEIGHT_REQUIRED_FILES = [
     "crps_forecast_summary_all_models.csv",
@@ -66,7 +70,7 @@ def _historical_rows() -> list[dict[str, Any]]:
     for cutoff, _ in CUTOFFS:
         for suffix, epsilon in HISTORICAL_SUFFIX_TO_EPSILON.items():
             run_id = f"multimodel_{cutoff}{suffix}"
-            path = RUNS_DIR / run_id
+            path = DEFAULT_ARTIFACT_ROOT / "runs" / run_id
             role = "historical_canonical"
             reason = "Preserved pre-fix canonical epsilon lineage point."
             if suffix == "_v4":
@@ -135,7 +139,7 @@ def _report_rows(source_runs: set[str]) -> list[dict[str, Any]]:
     for run_id in sorted(source_runs):
         cutoff = _parse_cutoff_from_name(run_id) or "all"
         rows.append({
-            "path": str(RUNS_DIR / run_id),
+            "path": str(DEFAULT_ARTIFACT_ROOT / "runs" / run_id),
             "cutoff": cutoff,
             "lineage_role": "v7_authoritative_source_run",
             "epsilon_value": "TT",
@@ -150,9 +154,10 @@ def _report_rows(source_runs: set[str]) -> list[dict[str, Any]]:
 def _helper_run_rows(source_runs: set[str]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     historical_ids = {f"multimodel_{cutoff}{suffix}" for cutoff, _ in CUTOFFS for suffix in HISTORICAL_SUFFIX_TO_EPSILON}
-    if not RUNS_DIR.exists():
+    legacy_runs_dir = DEFAULT_ARTIFACT_ROOT / "runs"
+    if not legacy_runs_dir.exists():
         return rows
-    for path in sorted(RUNS_DIR.iterdir()):
+    for path in sorted(legacy_runs_dir.iterdir()):
         if not path.is_dir():
             continue
         name = path.name
@@ -209,10 +214,18 @@ def build_lineage_and_retention(matrix_dir: Path) -> tuple[pd.DataFrame, pd.Data
     return df, retention
 
 
-def build_v8_config(template_cfg: dict[str, Any], run_id: str, epsilon_label: str, epsilon_value: float | None, lane: str, cutoff: str) -> dict[str, Any]:
+def build_v8_config(
+    template_cfg: dict[str, Any],
+    run_id: str,
+    epsilon_label: str,
+    epsilon_value: float | None,
+    lane: str,
+    cutoff: str,
+    artifact_root: str | Path | None = None,
+) -> dict[str, Any]:
     cfg = deep_copy_dict(template_cfg)
     _set_nested(cfg, ["run", "run_id"], run_id)
-    _set_nested(cfg, ["run", "run_root"], "repro/runs")
+    _set_nested(cfg, ["run", "run_root"], str(runs_dir(artifact_root)))
     _set_nested(cfg, ["run", "overwrite"], False)
     _set_nested(cfg, ["run", "auto_suffix_on_collision"], False)
     _set_nested(cfg, ["run", "dry_run"], False)
@@ -272,12 +285,12 @@ def build_v8_config(template_cfg: dict[str, Any], run_id: str, epsilon_label: st
         "forecats_bundle_path": str(FORECATS_BUNDLE_BY_CUTOFF[cutoff]),
         "shared_input_contract": "run_local_snapshot_from_stable_forecats_bundle",
         "historical_mapping_note": "Preserved historical mapping: base=TT/null, v2=30, v3=90, v4=30 duplicate, v5=180, v6=360.",
-        "compare_bundle_outdir": str(v8_compare_dir(cutoff, epsilon_label)),
+        "compare_bundle_outdir": str(v8_compare_dir(cutoff, epsilon_label, artifact_root)),
     }
     return cfg
 
 
-def write_matrix_plan(matrix_dir: Path) -> pd.DataFrame:
+def write_matrix_plan(matrix_dir: Path, artifact_root: str | Path | None = None) -> pd.DataFrame:
     rows = []
     for order_index, plan in enumerate(build_lane_plan_rows(), start=1):
         rows.append({
@@ -289,7 +302,7 @@ def write_matrix_plan(matrix_dir: Path) -> pd.DataFrame:
             "run_scope": plan.run_scope,
             "run_id": plan.run_id,
             "config_path": str(plan.config_path),
-            "compare_outdir": str(v8_compare_dir(plan.cutoff, plan.epsilon_label)),
+            "compare_outdir": str(v8_compare_dir(plan.cutoff, plan.epsilon_label, artifact_root)),
             "priority_group": plan.priority_group,
             "max_concurrent_class": plan.max_concurrent_class,
         })
@@ -342,7 +355,7 @@ def build_dependency_table(config_paths: list[Path], matrix_dir: Path) -> pd.Dat
     return df
 
 
-def generate_configs(matrix_dir: Path) -> list[Path]:
+def generate_configs(matrix_dir: Path, artifact_root: str | Path | None = None) -> list[Path]:
     generated: list[Path] = []
     for cutoff, _date in CUTOFFS:
         for base_lane in ("l1", "l2"):
@@ -352,7 +365,7 @@ def generate_configs(matrix_dir: Path) -> list[Path]:
                 for lane in lanes:
                     run_id = f"multimodel_{cutoff}_v8_{epsilon_label}_{lane}"
                     out_path = CONFIG_DIR / f"{run_id}.yaml"
-                    cfg = build_v8_config(template, run_id, epsilon_label, epsilon_value, lane, cutoff)
+                    cfg = build_v8_config(template, run_id, epsilon_label, epsilon_value, lane, cutoff, artifact_root)
                     write_yaml(out_path, cfg)
                     generated.append(out_path)
     return generated
@@ -365,19 +378,22 @@ def write_placeholder_markdown(path: Path, title: str, body: str) -> None:
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Build corrected v8 multimodel matrix configs and planning artifacts.")
     ap.add_argument("--date-tag", default="20260401")
+    ap.add_argument("--artifact-root")
+    ap.add_argument("--matrix-dir")
     return ap.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    matrix_dir = ensure_dir(matrix_report_dir(args.date_tag))
-    ensure_dir(RUNS_DIR)
-    ensure_dir(REPORTS_DIR)
+    artifact_root = resolve_artifact_root(args.artifact_root)
+    matrix_dir = ensure_dir(Path(args.matrix_dir) if args.matrix_dir else (control_dir(artifact_root) if args.artifact_root else matrix_report_dir(args.date_tag)))
+    ensure_dir(runs_dir(artifact_root))
+    ensure_dir(reports_dir(artifact_root))
 
     lineage_df, retention_df = build_lineage_and_retention(matrix_dir)
-    generated = generate_configs(matrix_dir)
+    generated = generate_configs(matrix_dir, artifact_root)
     dep_df = build_dependency_table(generated, matrix_dir)
-    plan_df = write_matrix_plan(matrix_dir)
+    plan_df = write_matrix_plan(matrix_dir, artifact_root)
 
     status_path = matrix_dir / "matrix_status.csv"
     if not status_path.exists():
@@ -399,6 +415,7 @@ def main() -> int:
     )
     (matrix_dir / "queue.log").touch()
 
+    print(f"artifact_root={artifact_root}")
     print(f"matrix_dir={matrix_dir}")
     print(f"generated_configs={len(generated)}")
     print(f"lineage_rows={len(lineage_df)}")
