@@ -559,7 +559,8 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
                 next
               }
               if (data_idx >= 2L) {
-                candidate <- file.path(.Platform$file.sep, file.path(parts[seq_len(data_idx - 1L)]))
+                prefix_parts <- parts[seq_len(data_idx - 1L)]
+                candidate <- do.call(file.path, as.list(c(.Platform$file.sep, prefix_parts)))
                 roots <- c(roots, normalizePath(candidate, mustWork = FALSE))
               }
             }
