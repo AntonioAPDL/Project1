@@ -551,10 +551,18 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
         parts <- strsplit(bundle_norm, .Platform$file.sep, fixed = TRUE)[[1]]
         if (length(parts) > 0L) {
           parts <- parts[nzchar(parts)]
-          data_idx <- match("data", parts)
-          if (!is.na(data_idx) && data_idx >= 2L) {
-            candidate <- file.path(.Platform$file.sep, file.path(parts[seq_len(data_idx - 1L)]))
-            roots <- c(roots, normalizePath(candidate, mustWork = FALSE))
+          data_idxs <- which(parts == "data")
+          if (length(data_idxs) > 0L) {
+            for (data_idx in data_idxs) {
+              next_part <- if (data_idx < length(parts)) parts[[data_idx + 1L]] else ""
+              if (!identical(next_part, "forecats_inputs") && !identical(next_part, "forecats_cache")) {
+                next
+              }
+              if (data_idx >= 2L) {
+                candidate <- file.path(.Platform$file.sep, file.path(parts[seq_len(data_idx - 1L)]))
+                roots <- c(roots, normalizePath(candidate, mustWork = FALSE))
+              }
+            }
           }
         }
       }
