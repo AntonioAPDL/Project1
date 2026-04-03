@@ -21,6 +21,94 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
   if (is.null(snapshot_copy_list)) snapshot_copy_list <- list()
   snapshot_copy_list <- unlist(snapshot_copy_list, use.names = FALSE)
 
+  synthesize_bundle_meta <- function(cfg, bundle_root) {
+    cutoff_date <- suppressWarnings(as.Date(as.character(cfg$dates$cutoff_date)))
+    plot_start <- suppressWarnings(as.Date(as.character(cfg$dates$plot_start)))
+    plot_end <- suppressWarnings(as.Date(as.character(cfg$dates$plot_end)))
+    forecast_start <- if (is.na(cutoff_date)) as.Date(NA) else cutoff_date + 1L
+
+    list(
+      run = list(
+        run_id = basename(normalizePath(bundle_root, mustWork = FALSE)),
+        created = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+        synthesized_by = "unified_stage_forecats"
+      ),
+      processing = list(
+        storage_unit = "cms",
+        bias_correction = FALSE,
+        scale_correction = FALSE
+      ),
+      site = cfg$site,
+      dates = list(
+        cutoff_date = if (is.na(cutoff_date)) as.character(cfg$dates$cutoff_date) else format(cutoff_date, "%Y-%m-%d"),
+        forecast_start_date = if (is.na(forecast_start)) NA_character_ else format(forecast_start, "%Y-%m-%d"),
+        plot_start = if (is.na(plot_start)) as.character(cfg$dates$plot_start) else format(plot_start, "%Y-%m-%d"),
+        plot_end = if (is.na(plot_end)) as.character(cfg$dates$plot_end) else format(plot_end, "%Y-%m-%d")
+      ),
+      paths = list(
+        retros_daily = "inputs/retros_daily.csv",
+        nws_weighted_daily = "inputs/nws_weighted_daily.csv",
+        glofas_weighted_daily = "inputs/glofas_weighted_daily.csv"
+      ),
+      transforms = cfg$transforms,
+      plot = cfg$plot,
+      config = cfg
+    )
+  }
+
+  resolve_bundle_artifact <- function(bundle_root, rel) {
+    rel <- gsub("\\\\", "/", rel)
+    candidates <- switch(
+      rel,
+      "meta.yaml" = c("meta.yaml"),
+      "inputs/retros_daily.csv" = c(
+        "inputs/retros_daily.csv",
+        "inputs/retros.csv",
+        "retros_daily.csv",
+        "retros.csv",
+        "retros_base.csv"
+      ),
+      "inputs/retrospective_preparation.csv" = c(
+        "inputs/retrospective_preparation.csv",
+        "retrospective_preparation.csv",
+        "retros_policy_window.csv"
+      ),
+      "inputs/usgs_daily.csv" = c("inputs/usgs_daily.csv", "usgs_daily.csv"),
+      "inputs/nws_weighted_daily.csv" = c(
+        "inputs/nws_weighted_daily.csv",
+        "inputs/nws_forecast.csv",
+        "nws_weighted_daily.csv",
+        "nws_forecast.csv"
+      ),
+      "inputs/glofas_weighted_daily.csv" = c(
+        "inputs/glofas_weighted_daily.csv",
+        "inputs/glofas_forecast.csv",
+        "glofas_weighted_daily.csv",
+        "glofas_forecast.csv"
+      ),
+      "inputs/nws_members.csv" = c(
+        "inputs/nws_members.csv",
+        "inputs/nws_members_daily.csv",
+        "inputs/nws_forecast.csv",
+        "nws_members.csv",
+        "nws_forecast.csv"
+      ),
+      "inputs/glofas_members.csv" = c(
+        "inputs/glofas_members.csv",
+        "inputs/glofas_members_daily.csv",
+        "inputs/glofas_members_forecast.csv",
+        "inputs/glofas_forecast.csv",
+        "glofas_members.csv",
+        "glofas_forecast.csv"
+      ),
+      rel
+    )
+    paths <- normalizePath(file.path(bundle_root, candidates), mustWork = FALSE)
+    paths <- paths[file.exists(paths)]
+    if (length(paths) == 0L) return("")
+    paths[[1L]]
+  }
+
   pick_latest_file <- function(paths) {
     paths <- unique(normalizePath(paths[file.exists(paths)], mustWork = FALSE))
     if (length(paths) == 0L) return("")
@@ -115,6 +203,33 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
     df
   }
 
+  assert_retros_daily_continuity <- function(df, context_label = "retros_snapshot") {
+    if (!is.data.frame(df) || nrow(df) < 2L) return(invisible(TRUE))
+    d <- sort(unique(as.Date(df$Date)))
+    if (length(d) < 2L) return(invisible(TRUE))
+    g <- as.integer(diff(d))
+    bad <- which(g > 1L)
+    if (length(bad) == 0L) return(invisible(TRUE))
+    max_gap <- max(g[bad], na.rm = TRUE)
+    examples <- head(
+      sprintf("%s->%s (%dd)", format(d[bad], "%Y-%m-%d"), format(d[bad + 1L], "%Y-%m-%d"), g[bad]),
+      5L
+    )
+    stop(
+      sprintf(
+        paste0(
+          "%s has non-daily date continuity gaps (%d gaps; max=%d days). ",
+          "Examples: %s"
+        ),
+        context_label,
+        length(bad),
+        max_gap,
+        paste(examples, collapse = "; ")
+      ),
+      call. = FALSE
+    )
+  }
+
   build_snapshot_retros <- function(snapshot_root, bundle_root, cutoff_date_raw = "") {
     cutoff_date <- suppressWarnings(as.Date(as.character(cutoff_date_raw)))
 
@@ -195,6 +310,7 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
       }
 
       out <- floor_nonpositive_retros(out)
+      assert_retros_daily_continuity(out, context_label = "forecats snapshot retrospective")
       out
     }
 
@@ -208,8 +324,8 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
       )
       nws_priority <- c(
         "nws_synth_retro_ens_mean",
-        "nws_retro_v30",
         "nws_retro_v21",
+        "nws_retro_v30",
         "nws_retro_v20",
         "nws_retro_v12"
       )
@@ -263,6 +379,11 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
       }
       if (nzchar(win_nws)) {
         nws_priority <- unique(c(win_nws, nws_priority))
+        if (identical(win_nws, "nws_retro_v20")) {
+          nws_priority <- unique(c(win_nws, "nws_retro_v21", "nws_retro_v30", nws_priority))
+        } else if (identical(win_nws, "nws_retro_v21")) {
+          nws_priority <- unique(c(win_nws, "nws_retro_v30", nws_priority))
+        }
       }
 
       list(glofas_priority = glofas_priority, nws_priority = nws_priority)
@@ -420,18 +541,43 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
   resolve_member_source <- function(bundle_root, kind, cfg, repo_root) {
     stopifnot(kind %in% c("nws", "glofas"))
 
+    derive_cache_roots <- function(bundle_root, repo_root) {
+      roots <- character(0)
+      if (!is.null(repo_root) && nzchar(repo_root)) {
+        roots <- c(roots, normalizePath(repo_root, mustWork = FALSE))
+      }
+      if (!is.null(bundle_root) && nzchar(bundle_root)) {
+        bundle_norm <- normalizePath(bundle_root, mustWork = FALSE)
+        parts <- strsplit(bundle_norm, .Platform$file.sep, fixed = TRUE)[[1]]
+        if (length(parts) > 0L) {
+          parts <- parts[nzchar(parts)]
+          data_idx <- match("data", parts)
+          if (!is.na(data_idx) && data_idx >= 2L) {
+            candidate <- file.path(.Platform$file.sep, file.path(parts[seq_len(data_idx - 1L)]))
+            roots <- c(roots, normalizePath(candidate, mustWork = FALSE))
+          }
+        }
+      }
+      roots <- unique(roots[nzchar(roots)])
+      roots
+    }
+
     bundle_candidates <- if (identical(kind, "nws")) {
       c(
         "inputs/nws_members.csv",
         "inputs/nws_members_daily.csv",
-        "inputs/nws_forecast.csv"
+        "inputs/nws_forecast.csv",
+        "nws_members.csv",
+        "nws_forecast.csv"
       )
     } else {
       c(
         "inputs/glofas_members.csv",
         "inputs/glofas_members_daily.csv",
         "inputs/glofas_members_forecast.csv",
-        "inputs/glofas_forecast.csv"
+        "inputs/glofas_forecast.csv",
+        "glofas_members.csv",
+        "glofas_forecast.csv"
       )
     }
 
@@ -451,19 +597,24 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
       return("")
     }
 
-    cache_glob <- if (identical(kind, "nws")) {
-      file.path(
-        repo_root, "data", "forecats_cache", sprintf("site=%s", site_id),
-        "run_id=*", "forecast_cache", "nws", sprintf("cutoff_date=%s", cutoff), "nws_members.csv"
-      )
-    } else {
-      file.path(
-        repo_root, "data", "forecats_cache", sprintf("site=%s", site_id),
-        "run_id=*", "forecast_cache", "glofas", sprintf("issue_date=%s", cutoff), "glofas_members.csv"
-      )
+    cache_roots <- derive_cache_roots(bundle_root, repo_root)
+    cache_matches <- character(0)
+    for (cache_root in cache_roots) {
+      cache_glob <- if (identical(kind, "nws")) {
+        file.path(
+          cache_root, "data", "forecats_cache", sprintf("site=%s", site_id),
+          "run_id=*", "forecast_cache", "nws", sprintf("cutoff_date=%s", cutoff), "nws_members.csv"
+        )
+      } else {
+        file.path(
+          cache_root, "data", "forecats_cache", sprintf("site=%s", site_id),
+          "run_id=*", "forecast_cache", "glofas", sprintf("issue_date=%s", cutoff), "glofas_members.csv"
+        )
+      }
+      cache_matches <- c(cache_matches, Sys.glob(cache_glob))
     }
 
-    pick_latest_file(Sys.glob(cache_glob))
+    pick_latest_file(cache_matches)
   }
 
   if (identical(mode, "use_existing")) {
@@ -486,18 +637,17 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
   if (identical(mode, "build")) {
     cfg_path <- cfg$inputs$forecats$pipeline_config_path
     log_path <- file.path(fore_root, "forecats_pipeline.log")
-    out <- system2(
+    status <- system2(
       "Rscript",
       c("--vanilla", file.path("scripts", "forecats_pipeline.R"), "--config", cfg_path),
-      stdout = TRUE,
-      stderr = TRUE
+      stdout = log_path,
+      stderr = log_path
     )
-    writeLines(out, log_path, useBytes = TRUE)
-    status <- attr(out, "status")
-    if (!is.null(status) && status != 0) {
+    if (!is.null(status) && status != 0L) {
       stop(sprintf("forecats stage failed; see %s", log_path), call. = FALSE)
     }
 
+    out <- if (file.exists(log_path)) readLines(log_path, warn = FALSE) else character(0)
     bundle_lines <- grep("^Bundle ready:\\s*", out, value = TRUE)
     if (length(bundle_lines) > 0L) {
       bundle_root <- sub("^Bundle ready:\\s*", "", bundle_lines[[length(bundle_lines)]])
@@ -543,17 +693,34 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
     }
 
     copy_one <- function(rel) {
-      src <- file.path(bundle_root, rel)
-      if (!file.exists(src)) {
-        stop(sprintf("forecats snapshot missing required artifact: %s", src), call. = FALSE)
-      }
       dst <- file.path(snapshot_root, rel)
       dir.create(dirname(dst), recursive = TRUE, showWarnings = FALSE)
-      ok <- file.copy(src, dst, overwrite = TRUE)
-      if (!isTRUE(ok) || !file.exists(dst)) {
-        stop(sprintf("failed to copy forecats snapshot artifact: %s -> %s", src, dst), call. = FALSE)
+      src <- resolve_bundle_artifact(bundle_root, rel)
+      if (!nzchar(src)) {
+        if (identical(rel, "meta.yaml")) {
+          writeLines(yaml::as.yaml(synthesize_bundle_meta(cfg, bundle_root)), con = dst)
+        } else {
+          stop(
+            sprintf(
+              "forecats snapshot missing required artifact for %s under bundle root %s",
+              rel, bundle_root
+            ),
+            call. = FALSE
+          )
+        }
+      } else {
+        ok <- file.copy(src, dst, overwrite = TRUE)
+        if (!isTRUE(ok) || !file.exists(dst)) {
+          stop(sprintf("failed to copy forecats snapshot artifact: %s -> %s", src, dst), call. = FALSE)
+        }
       }
-      storage_scale <- if (grepl("\\.csv$", dst, ignore.case = TRUE)) "raw_cms" else "input_snapshot"
+      storage_scale <- if (grepl("retros", rel, ignore.case = TRUE)) {
+        "table_csv"
+      } else if (grepl("\\.csv$", dst, ignore.case = TRUE)) {
+        "raw_cms"
+      } else {
+        "input_snapshot"
+      }
       manifest <<- unified_manifest_add_artifact(
         manifest,
         normalizePath(dst, mustWork = FALSE),
@@ -648,7 +815,7 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
       ),
       glofas_forecast = choose_snapshot_alias_source(
         snapshot_root = snapshot_root,
-        candidates = c("inputs/glofas_members.csv"),
+        candidates = c("inputs/glofas_members.csv", "inputs/glofas_weighted_daily.csv", "inputs/glofas_forecast.csv"),
         label = "glofas_forecast",
         min_rows = 20L,
         min_numeric_cols = 20L
