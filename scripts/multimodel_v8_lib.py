@@ -57,7 +57,7 @@ FORECATS_BUNDLE_BY_CUTOFF: "OrderedDict[str, Path]" = OrderedDict([
     (
         "20221225",
         INPUT_SOURCE_ROOT / "data" / "forecats_inputs" / "site=11160500" / "cutoff_date=2022-12-25" /
-        "run_id=20260219_single_retro_policy_pre1080_r01" / "meta.yaml",
+        "run_id=20260404_single_retro_policy_pre1080_gapfix_r01" / "meta.yaml",
     ),
 ])
 

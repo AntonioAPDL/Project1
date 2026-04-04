@@ -107,7 +107,7 @@ inputs:
   forecats:
     mode: use_existing
     pipeline_config_path: config/forecats_pipeline.template.yaml
-    existing_bundle_path: /data/muscat_data/jaguir26/project1_ucsc_phd/data/forecats_inputs/site=11160500/cutoff_date=2022-12-25/run_id=20260219_single_retro_policy_pre1080_r01/meta.yaml
+    existing_bundle_path: /data/muscat_data/jaguir26/project1_ucsc_phd/data/forecats_inputs/site=11160500/cutoff_date=2022-12-25/run_id=20260404_single_retro_policy_pre1080_gapfix_r01/meta.yaml
     snapshot:
       enabled: true
       dest_rel: inputs/shared/forecats_bundle
@@ -260,7 +260,7 @@ debug_v8_matrix:
   epsilon_value: null
   run_scope: full_tt
   template_source: /data/muscat_data/jaguir26/project1_ucsc_phd_v8_launch_471fcfd/config/unified_runs/multimodel_20221225_v7_l2.yaml
-  forecats_bundle_path: /data/muscat_data/jaguir26/project1_ucsc_phd/data/forecats_inputs/site=11160500/cutoff_date=2022-12-25/run_id=20260219_single_retro_policy_pre1080_r01/meta.yaml
+  forecats_bundle_path: /data/muscat_data/jaguir26/project1_ucsc_phd/data/forecats_inputs/site=11160500/cutoff_date=2022-12-25/run_id=20260404_single_retro_policy_pre1080_gapfix_r01/meta.yaml
   shared_input_contract: run_local_snapshot_from_stable_forecats_bundle
   historical_mapping_note: 'Preserved historical mapping: base=TT/null, v2=30, v3=90,
     v4=30 duplicate, v5=180, v6=360.'
