@@ -13,6 +13,7 @@ from typing import Any, Iterable
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+INPUT_SOURCE_ROOT = Path(os.environ.get("MULTIMODEL_V8_INPUT_SOURCE_ROOT", ROOT))
 DEFAULT_ARTIFACT_ROOT = ROOT / "repro"
 DEFAULT_RUNS_DIR = DEFAULT_ARTIFACT_ROOT / "runs"
 DEFAULT_REPORTS_DIR = DEFAULT_ARTIFACT_ROOT / "reports"
@@ -35,37 +36,37 @@ HEAVY_CUTOFF = "20221225"
 FORECATS_BUNDLE_BY_CUTOFF: "OrderedDict[str, Path]" = OrderedDict([
     (
         "20210123",
-        ROOT / "data" / "forecats_inputs" / "site=11160500" / "cutoff_date=2021-01-23" /
+        INPUT_SOURCE_ROOT / "data" / "forecats_inputs" / "site=11160500" / "cutoff_date=2021-01-23" /
         "run_id=20260305_single_retro_policy_pre1080_gapfix_r01" / "meta.yaml",
     ),
     (
         "20211112",
-        ROOT / "data" / "forecats_inputs" / "site=11160500" / "cutoff_date=2021-11-12" /
+        INPUT_SOURCE_ROOT / "data" / "forecats_inputs" / "site=11160500" / "cutoff_date=2021-11-12" /
         "run_id=20260219_single_retro_policy_pre1080_r01" / "meta.yaml",
     ),
     (
         "20211221",
-        ROOT / "data" / "forecats_inputs" / "site=11160500" / "cutoff_date=2021-12-21" /
+        INPUT_SOURCE_ROOT / "data" / "forecats_inputs" / "site=11160500" / "cutoff_date=2021-12-21" /
         "run_id=20260219_single_retro_policy_pre1080_r01" / "meta.yaml",
     ),
     (
         "20220511",
-        ROOT / "data" / "forecats_inputs" / "site=11160500" / "cutoff_date=2022-05-11" /
+        INPUT_SOURCE_ROOT / "data" / "forecats_inputs" / "site=11160500" / "cutoff_date=2022-05-11" /
         "run_id=20260219_single_retro_policy_pre1080_r01" / "meta.yaml",
     ),
     (
         "20221225",
-        ROOT / "data" / "forecats_inputs" / "site=11160500" / "cutoff_date=2022-12-25" /
-        "run_id=20260220_single_retro_policy_pre20_r01" / "meta.yaml",
+        INPUT_SOURCE_ROOT / "data" / "forecats_inputs" / "site=11160500" / "cutoff_date=2022-12-25" /
+        "run_id=20260219_single_retro_policy_pre1080_r01" / "meta.yaml",
     ),
 ])
 
 FALLBACK_INPUTS = {
-    "retros_path": ROOT / "retros_2022-12-25.csv",
+    "retros_path": INPUT_SOURCE_ROOT / "retros_2022-12-25.csv",
     "retros_storage_scale": "log1p_cms",
-    "nws_forecast_path": ROOT / "nws_forecast.csv",
+    "nws_forecast_path": INPUT_SOURCE_ROOT / "nws_forecast.csv",
     "nws_storage_scale": "raw_cms",
-    "glofas_forecast_path": ROOT / "weighted_time_series.csv",
+    "glofas_forecast_path": INPUT_SOURCE_ROOT / "weighted_time_series.csv",
     "glofas_storage_scale": "raw_cms",
 }
 

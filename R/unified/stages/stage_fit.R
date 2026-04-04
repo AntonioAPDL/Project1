@@ -162,6 +162,101 @@ unified_resolve_fit_parallel_workers <- function(cfg, n_jobs, default_workers = 
   min(workers, as.integer(n_jobs))
 }
 
+unified_inspect_ndlm_retros_history <- function(retros_path) {
+  retros_path <- normalizePath(retros_path, mustWork = FALSE)
+  if (!file.exists(retros_path)) {
+    stop(sprintf("NDLM retros path does not exist: %s", retros_path), call. = FALSE)
+  }
+
+  retros <- tryCatch(
+    utils::read.csv(retros_path, stringsAsFactors = FALSE, check.names = FALSE),
+    error = function(e) {
+      stop(sprintf("unable to read NDLM retros CSV %s: %s", retros_path, conditionMessage(e)), call. = FALSE)
+    }
+  )
+  if (!is.data.frame(retros) || nrow(retros) < 1L) {
+    stop(sprintf("NDLM retros CSV is empty or invalid: %s", retros_path), call. = FALSE)
+  }
+
+  resolve_history_column <- function(df) {
+    preferred <- c("USGS", "usgs", "Observed", "observed", "retros", "Retros", "retrospective", "Retrospective")
+    for (nm in preferred) {
+      if (!(nm %in% names(df))) next
+      vals <- suppressWarnings(as.numeric(df[[nm]]))
+      if (any(is.finite(vals), na.rm = TRUE)) {
+        return(list(name = nm, values = vals))
+      }
+    }
+
+    fallback_names <- names(df)[!grepl("date|time|nws|glofas", names(df), ignore.case = TRUE)]
+    for (nm in fallback_names) {
+      vals <- suppressWarnings(as.numeric(df[[nm]]))
+      if (any(is.finite(vals), na.rm = TRUE)) {
+        return(list(name = nm, values = vals))
+      }
+    }
+
+    for (nm in names(df)) {
+      if (grepl("date|time", nm, ignore.case = TRUE)) next
+      vals <- suppressWarnings(as.numeric(df[[nm]]))
+      if (any(is.finite(vals), na.rm = TRUE)) {
+        return(list(name = nm, values = vals))
+      }
+    }
+
+    stop(
+      sprintf("unable to resolve NDLM retrospective history column from %s", retros_path),
+      call. = FALSE
+    )
+  }
+
+  history_col <- resolve_history_column(retros)
+  finite_count <- sum(is.finite(history_col$values), na.rm = TRUE)
+  list(
+    retros_path = retros_path,
+    history_column = history_col$name,
+    finite_count = as.integer(finite_count),
+    total_rows = as.integer(nrow(retros))
+  )
+}
+
+unified_assert_ndlm_retros_history <- function(retros_path, min_required = 30L, report_path = NULL) {
+  min_required <- suppressWarnings(as.integer(min_required))
+  if (!is.finite(min_required) || min_required < 1L) {
+    min_required <- 30L
+  }
+
+  inspection <- unified_inspect_ndlm_retros_history(retros_path)
+  lines <- c(
+    sprintf("retros_path=%s", inspection$retros_path),
+    sprintf("history_column=%s", inspection$history_column),
+    sprintf("finite_count=%d", inspection$finite_count),
+    sprintf("total_rows=%d", inspection$total_rows),
+    sprintf("minimum_required=%d", min_required)
+  )
+  if (!is.null(report_path) && nzchar(report_path)) {
+    writeLines(lines, con = report_path, useBytes = TRUE)
+  }
+
+  if (inspection$finite_count < min_required) {
+    stop(
+      sprintf(
+        paste0(
+          "[NDLM_RETROS_HISTORY] insufficient retrospective history for NDLM-enabled lane: ",
+          "retros_path=%s history_column=%s finite_count=%d minimum_required=%d"
+        ),
+        inspection$retros_path,
+        inspection$history_column,
+        inspection$finite_count,
+        min_required
+      ),
+      call. = FALSE
+    )
+  }
+
+  inspection
+}
+
 unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   oldwd <- getwd()
   on.exit(setwd(oldwd), add = TRUE)
@@ -188,12 +283,16 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     try(write(line, file = fit_stage_log, append = TRUE), silent = TRUE)
     invisible(NULL)
   }
+  append_fit_preflight_log <- function(msg) {
+    line <- sprintf("[%s] %s", format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"), as.character(msg))
+    try(write(line, file = fit_preflight_log, append = TRUE), silent = TRUE)
+    invisible(NULL)
+  }
   append_fit_stage_log(sprintf("stage_fit start run_root=%s", run_root_abs))
 
   run_exdqlm_multivar <- isTRUE(cfg$models$run_exdqlm_multivar)
   run_exdqlm_univar <- isTRUE(cfg$models$run_exdqlm_univar)
   run_ndlm_main <- isTRUE(cfg$models$run_ndlm_main)
-  run_ndlm_univar <- isTRUE(cfg$models$run_ndlm_univar)
   run_ndlm_univar <- isTRUE(cfg$models$run_ndlm_univar)
   if (!run_exdqlm_multivar && !run_exdqlm_univar && !run_ndlm_main && !run_ndlm_univar) {
     no_models_msg <- "stage_fit no-op: all model families disabled"
@@ -545,6 +644,40 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   run_exdqlm_multivar <- isTRUE(cfg$models$run_exdqlm_multivar)
   run_exdqlm_univar <- isTRUE(cfg$models$run_exdqlm_univar)
   run_ndlm_main <- isTRUE(cfg$models$run_ndlm_main)
+  run_ndlm_univar <- isTRUE(cfg$models$run_ndlm_univar)
+  if (run_ndlm_main || run_ndlm_univar) {
+    ndlm_history_report <- file.path(preflight_dir, "ndlm_retros_history_check.txt")
+    ndlm_history <- tryCatch(
+      unified_assert_ndlm_retros_history(
+        retros_path = source_retros,
+        min_required = 30L,
+        report_path = ndlm_history_report
+      ),
+      error = function(e) {
+        msg <- conditionMessage(e)
+        append_fit_preflight_log(msg)
+        append_fit_stage_log(msg)
+        stop(msg, call. = FALSE)
+      }
+    )
+    ndlm_history_msg <- sprintf(
+      "ndlm retros preflight pass retros_path=%s history_column=%s finite_count=%d minimum_required=%d",
+      ndlm_history$retros_path,
+      ndlm_history$history_column,
+      ndlm_history$finite_count,
+      30L
+    )
+    append_fit_preflight_log(ndlm_history_msg)
+    append_fit_stage_log(ndlm_history_msg)
+    if (file.exists(ndlm_history_report)) {
+      manifest <- unified_manifest_add_artifact(
+        manifest,
+        ndlm_history_report,
+        storage_scale = "text",
+        role = "preflight"
+      )
+    }
+  }
   multivar_transfer_modes <- unified_resolve_multivar_transfer_modes(cfg)
   primary_multivar_transfer_mode <- unified_resolve_multivar_primary_transfer_mode(
     cfg,
@@ -1625,16 +1758,14 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   process_ndlm_result <- function(manifest, res_raw) {
     res <- unified_normalize_fit_worker_result(res_raw, context_label = "NDLM fit worker")
     if (!is.null(res$status) && res$status != 0) {
-      stop(
-        sprintf("NDLM fit failed (implementation_mode=%s); see %s", ndlm_impl_mode, res$log_path),
-        call. = FALSE
-      )
+      err_msg <- sprintf("NDLM fit failed (implementation_mode=%s); see %s", ndlm_impl_mode, res$log_path)
+      append_fit_stage_log(err_msg)
+      stop(err_msg, call. = FALSE)
     }
     if (!file.exists(res$output_path)) {
-      stop(
-        sprintf("NDLM output missing (implementation_mode=%s): %s", ndlm_impl_mode, res$output_path),
-        call. = FALSE
-      )
+      err_msg <- sprintf("NDLM output missing (implementation_mode=%s): %s", ndlm_impl_mode, res$output_path)
+      append_fit_stage_log(err_msg)
+      stop(err_msg, call. = FALSE)
     }
 
     manifest <- unified_manifest_add_artifact(
@@ -1864,14 +1995,20 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   process_ndlm_univar_result <- function(manifest, res_raw) {
     res <- unified_normalize_fit_worker_result(res_raw, context_label = "NDLM univar fit worker")
     if (!is.null(res$status) && res$status != 0) {
-      stop(sprintf("NDLM univar fit failed; see %s", res$log_path), call. = FALSE)
+      err_msg <- sprintf("NDLM univar fit failed; see %s", res$log_path)
+      append_fit_stage_log(err_msg)
+      stop(err_msg, call. = FALSE)
     }
     if (!file.exists(res$output_path)) {
-      stop(sprintf("NDLM univar output missing: %s", res$output_path), call. = FALSE)
+      err_msg <- sprintf("NDLM univar output missing: %s", res$output_path)
+      append_fit_stage_log(err_msg)
+      stop(err_msg, call. = FALSE)
     }
     file_size <- suppressWarnings(file.info(res$output_path)$size)
     if (!is.finite(file_size) || file_size <= 0) {
-      stop(sprintf("NDLM univar output is empty: %s", res$output_path), call. = FALSE)
+      err_msg <- sprintf("NDLM univar output is empty: %s", res$output_path)
+      append_fit_stage_log(err_msg)
+      stop(err_msg, call. = FALSE)
     }
 
     manifest <- unified_manifest_add_artifact(
@@ -2016,6 +2153,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       }
     }
     if (length(failures) > 0L) {
+      for (msg in failures) {
+        append_fit_stage_log(msg)
+      }
       stop(
         paste0("fit stage worker errors:\n- ", paste(failures, collapse = "\n- ")),
         call. = FALSE

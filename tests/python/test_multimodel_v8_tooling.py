@@ -21,6 +21,22 @@ from run_multimodel_v8_queue import pgrep_active_v8  # noqa: E402
 
 
 class MultimodelV8ToolingTests(unittest.TestCase):
+    def test_build_v8_config_uses_pre1080_provider_for_20221225(self) -> None:
+        template = load_yaml(v7_template_config_path("20221225", "l1"))
+        artifact_root = ROOT / "tmp" / "v8_test_artifacts"
+        cfg = build_v8_config(
+            template_cfg=template,
+            run_id="multimodel_20221225_v8_epsTT_l1",
+            epsilon_label="epsTT",
+            epsilon_value=None,
+            lane="l1",
+            cutoff="20221225",
+            artifact_root=artifact_root,
+        )
+        bundle_path = str(cfg["inputs"]["forecats"]["existing_bundle_path"])
+        self.assertIn("20260219_single_retro_policy_pre1080_r01", bundle_path)
+        self.assertNotIn("pre20", bundle_path)
+
     def test_build_v8_config_scopes_mv_lane_correctly(self) -> None:
         template = load_yaml(v7_template_config_path("20211112", "l1"))
         artifact_root = ROOT / "tmp" / "v8_test_artifacts"
