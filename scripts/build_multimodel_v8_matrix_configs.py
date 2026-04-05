@@ -31,6 +31,7 @@ from multimodel_v8_lib import (
     reports_dir,
     resolve_artifact_root,
     runs_dir,
+    parse_epsilon_spec_list,
     v7_template_config_path,
     v8_compare_dir,
     write_yaml,
@@ -290,9 +291,9 @@ def build_v8_config(
     return cfg
 
 
-def write_matrix_plan(matrix_dir: Path, artifact_root: str | Path | None = None) -> pd.DataFrame:
+def write_matrix_plan(matrix_dir: Path, lane_plans: list, artifact_root: str | Path | None = None) -> pd.DataFrame:
     rows = []
-    for order_index, plan in enumerate(build_lane_plan_rows(), start=1):
+    for order_index, plan in enumerate(lane_plans, start=1):
         rows.append({
             "order_index": order_index,
             "cutoff": plan.cutoff,
@@ -355,12 +356,19 @@ def build_dependency_table(config_paths: list[Path], matrix_dir: Path) -> pd.Dat
     return df
 
 
-def generate_configs(matrix_dir: Path, artifact_root: str | Path | None = None) -> list[Path]:
+def generate_configs(
+    matrix_dir: Path,
+    artifact_root: str | Path | None = None,
+    cutoffs: list[str] | None = None,
+    epsilon_map: dict[str, float | None] | None = None,
+) -> list[Path]:
+    cutoff_list = cutoffs or [cutoff for cutoff, _ in CUTOFFS]
+    epsilon_map = epsilon_map or EPSILON_LABEL_TO_VALUE
     generated: list[Path] = []
-    for cutoff, _date in CUTOFFS:
+    for cutoff in cutoff_list:
         for base_lane in ("l1", "l2"):
             template = load_yaml(v7_template_config_path(cutoff, base_lane))
-            for epsilon_label, epsilon_value in EPSILON_LABEL_TO_VALUE.items():
+            for epsilon_label, epsilon_value in epsilon_map.items():
                 lanes = [base_lane] if epsilon_label == "epsTT" else [f"{base_lane}_mv"]
                 for lane in lanes:
                     run_id = f"multimodel_{cutoff}_v8_{epsilon_label}_{lane}"
@@ -380,6 +388,9 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--date-tag", default="20260401")
     ap.add_argument("--artifact-root")
     ap.add_argument("--matrix-dir")
+    ap.add_argument("--cutoffs", nargs="*")
+    ap.add_argument("--epsilon-spec", action="append", default=[])
+    ap.add_argument("--skip-tt", action="store_true")
     return ap.parse_args()
 
 
@@ -389,11 +400,16 @@ def main() -> int:
     matrix_dir = ensure_dir(Path(args.matrix_dir) if args.matrix_dir else (control_dir(artifact_root) if args.artifact_root else matrix_report_dir(args.date_tag)))
     ensure_dir(runs_dir(artifact_root))
     ensure_dir(reports_dir(artifact_root))
+    cutoffs = [str(cutoff) for cutoff in (args.cutoffs or [cutoff for cutoff, _ in CUTOFFS])]
+    epsilon_map = parse_epsilon_spec_list(args.epsilon_spec)
+    if args.skip_tt and "epsTT" in epsilon_map:
+        epsilon_map = {label: value for label, value in epsilon_map.items() if label != "epsTT"}
 
     lineage_df, retention_df = build_lineage_and_retention(matrix_dir)
-    generated = generate_configs(matrix_dir, artifact_root)
+    generated = generate_configs(matrix_dir, artifact_root, cutoffs=cutoffs, epsilon_map=epsilon_map)
     dep_df = build_dependency_table(generated, matrix_dir)
-    plan_df = write_matrix_plan(matrix_dir, artifact_root)
+    lane_plans = build_lane_plan_rows(cutoffs=cutoffs, epsilon_map=epsilon_map, include_tt=not args.skip_tt)
+    plan_df = write_matrix_plan(matrix_dir, lane_plans, artifact_root)
 
     status_path = matrix_dir / "matrix_status.csv"
     if not status_path.exists():

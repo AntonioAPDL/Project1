@@ -131,6 +131,11 @@ def build_compare_bundle(cutoff: str, epsilon: str, matrix_dir: Path, log_handle
     subprocess.run(cmd, cwd=ROOT, check=True, stdout=log_handle, stderr=subprocess.STDOUT)
 
 
+def compare_cells_from_plan(plan: pd.DataFrame) -> list[tuple[str, str]]:
+    ordered = plan.sort_values(["order_index", "lane"]).loc[:, ["cutoff", "epsilon"]].drop_duplicates()
+    return [(str(row["cutoff"]), str(row["epsilon"])) for _, row in ordered.iterrows()]
+
+
 def maybe_build_compares(cells: list[tuple[str, str]], matrix_dir: Path, log_handle, artifact_root: str | Path | None = None) -> None:
     for cutoff, epsilon in cells:
         if compare_ready(cutoff, epsilon, artifact_root):
@@ -260,9 +265,9 @@ def main() -> int:
         plan["cutoff"] = plan["cutoff"].str.zfill(8)
     if args.pilot_only:
         plan = plan.loc[(plan["cutoff"] == PILOT_CUTOFF) & (plan["epsilon"].isin(PILOT_EPSILONS))].copy()
-        compare_cells = [(PILOT_CUTOFF, eps) for eps in PILOT_EPSILONS]
+        compare_cells = compare_cells_from_plan(plan)
     else:
-        compare_cells = [(cutoff, epsilon) for cutoff, _ in CUTOFFS for epsilon in ["epsTT", "eps30", "eps90", "eps180", "eps360"]]
+        compare_cells = compare_cells_from_plan(plan)
     plan = plan.sort_values(["order_index", "lane"]).reset_index(drop=True)
     queue_log = matrix_dir / "queue.log"
     queue_log.parent.mkdir(parents=True, exist_ok=True)

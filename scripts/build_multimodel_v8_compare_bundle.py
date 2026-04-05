@@ -228,7 +228,7 @@ def build_bundle(
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Build v8 compare bundle with explicit per-model provenance.")
     ap.add_argument("--cutoff", required=True)
-    ap.add_argument("--epsilon", required=True, choices=["epsTT", "eps30", "eps90", "eps180", "eps360"])
+    ap.add_argument("--epsilon", required=True)
     ap.add_argument("--baseline-l1-run", required=True)
     ap.add_argument("--baseline-l2-run", required=True)
     ap.add_argument("--outdir", required=False)

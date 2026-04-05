@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import os
+import re
 import shutil
 import time
 from collections import OrderedDict
@@ -230,33 +231,70 @@ def latest_mtime(paths: Iterable[Path]) -> str:
     return _dt.datetime.utcfromtimestamp(max(mtimes)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def build_lane_plan_rows() -> list[LanePlan]:
+def parse_epsilon_spec_list(specs: Iterable[str] | None = None) -> "OrderedDict[str, float | None]":
+    if not specs:
+        return OrderedDict(EPSILON_LABEL_TO_VALUE)
+    out: "OrderedDict[str, float | None]" = OrderedDict()
+    for raw_spec in specs:
+        spec = str(raw_spec).strip()
+        if not spec:
+            continue
+        if "=" in spec:
+            label, raw_value = spec.split("=", 1)
+            label = label.strip()
+            raw_value = raw_value.strip()
+            if raw_value.lower() in {"tt", "none", "null"}:
+                value = None
+            else:
+                value = float(raw_value)
+            out[label] = value
+            continue
+        if spec in EPSILON_LABEL_TO_VALUE:
+            out[spec] = EPSILON_LABEL_TO_VALUE[spec]
+            continue
+        match = re.fullmatch(r"eps(\d+(?:\.\d+)?)", spec)
+        if match:
+            out[spec] = float(match.group(1))
+            continue
+        raise ValueError(f"Unsupported epsilon spec: {raw_spec}")
+    return out
+
+
+def build_lane_plan_rows(
+    cutoffs: Iterable[str] | None = None,
+    epsilon_map: "OrderedDict[str, float | None] | None" = None,
+    include_tt: bool = True,
+) -> list[LanePlan]:
+    cutoff_list = [str(c) for c in (cutoffs or [cutoff for cutoff, _ in CUTOFFS])]
+    epsilon_map = OrderedDict(epsilon_map or EPSILON_LABEL_TO_VALUE)
+    non_tt_labels = [label for label in epsilon_map if label != "epsTT"]
     rows: list[LanePlan] = []
     order = 0
     # Ordinary TT full baselines first.
-    for cutoff in ORDINARY_CUTOFFS:
-        for lane in ("l1", "l2"):
-            order += 1
-            rows.append(LanePlan(
-                cutoff=cutoff,
-                epsilon_label="epsTT",
-                epsilon_value=None,
-                lane=lane,
-                run_scope="full_tt",
-                run_id=v8_run_id(cutoff, "epsTT", lane),
-                config_path=v8_config_path(cutoff, "epsTT", lane),
-                priority_group=1,
-                max_concurrent_class="ordinary",
-            ))
+    for cutoff in [c for c in cutoff_list if c != HEAVY_CUTOFF]:
+        if include_tt and "epsTT" in epsilon_map:
+            for lane in ("l1", "l2"):
+                order += 1
+                rows.append(LanePlan(
+                    cutoff=cutoff,
+                    epsilon_label="epsTT",
+                    epsilon_value=None,
+                    lane=lane,
+                    run_scope="full_tt",
+                    run_id=v8_run_id(cutoff, "epsTT", lane),
+                    config_path=v8_config_path(cutoff, "epsTT", lane),
+                    priority_group=1,
+                    max_concurrent_class="ordinary",
+                ))
     # Ordinary epsilon-specific multivar reruns.
-    for cutoff in ORDINARY_CUTOFFS:
-        for eps_label in NON_TT_EPSILON_LABELS:
+    for cutoff in [c for c in cutoff_list if c != HEAVY_CUTOFF]:
+        for eps_label in non_tt_labels:
             for lane in ("l1_mv", "l2_mv"):
                 order += 1
                 rows.append(LanePlan(
                     cutoff=cutoff,
                     epsilon_label=eps_label,
-                    epsilon_value=EPSILON_LABEL_TO_VALUE[eps_label],
+                    epsilon_value=epsilon_map[eps_label],
                     lane=lane,
                     run_scope="multivar_only",
                     run_id=v8_run_id(cutoff, eps_label, lane),
@@ -265,34 +303,36 @@ def build_lane_plan_rows() -> list[LanePlan]:
                     max_concurrent_class="ordinary",
                 ))
     # Heavy cutoff TT alone.
-    for lane in ("l1", "l2"):
-        order += 1
-        rows.append(LanePlan(
-            cutoff=HEAVY_CUTOFF,
-            epsilon_label="epsTT",
-            epsilon_value=None,
-            lane=lane,
-            run_scope="full_tt",
-            run_id=v8_run_id(HEAVY_CUTOFF, "epsTT", lane),
-            config_path=v8_config_path(HEAVY_CUTOFF, "epsTT", lane),
-            priority_group=3,
-            max_concurrent_class="heavy",
-        ))
-    # Heavy cutoff epsilon-specific lanes one at a time.
-    for eps_label in NON_TT_EPSILON_LABELS:
-        for lane in ("l1_mv", "l2_mv"):
+    if HEAVY_CUTOFF in cutoff_list and include_tt and "epsTT" in epsilon_map:
+        for lane in ("l1", "l2"):
             order += 1
             rows.append(LanePlan(
                 cutoff=HEAVY_CUTOFF,
-                epsilon_label=eps_label,
-                epsilon_value=EPSILON_LABEL_TO_VALUE[eps_label],
+                epsilon_label="epsTT",
+                epsilon_value=None,
                 lane=lane,
-                run_scope="multivar_only",
-                run_id=v8_run_id(HEAVY_CUTOFF, eps_label, lane),
-                config_path=v8_config_path(HEAVY_CUTOFF, eps_label, lane),
-                priority_group=4,
+                run_scope="full_tt",
+                run_id=v8_run_id(HEAVY_CUTOFF, "epsTT", lane),
+                config_path=v8_config_path(HEAVY_CUTOFF, "epsTT", lane),
+                priority_group=3,
                 max_concurrent_class="heavy",
             ))
+    # Heavy cutoff epsilon-specific lanes one at a time.
+    if HEAVY_CUTOFF in cutoff_list:
+        for eps_label in non_tt_labels:
+            for lane in ("l1_mv", "l2_mv"):
+                order += 1
+                rows.append(LanePlan(
+                    cutoff=HEAVY_CUTOFF,
+                    epsilon_label=eps_label,
+                    epsilon_value=epsilon_map[eps_label],
+                    lane=lane,
+                    run_scope="multivar_only",
+                    run_id=v8_run_id(HEAVY_CUTOFF, eps_label, lane),
+                    config_path=v8_config_path(HEAVY_CUTOFF, eps_label, lane),
+                    priority_group=4,
+                    max_concurrent_class="heavy",
+                ))
     return rows
 
 
