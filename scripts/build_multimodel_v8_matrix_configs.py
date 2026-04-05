@@ -223,6 +223,9 @@ def build_v8_config(
     lane: str,
     cutoff: str,
     artifact_root: str | Path | None = None,
+    multivar_c_factor: float | None = None,
+    fit_parallel_mode: str | None = None,
+    fit_parallel_workers: int | None = None,
 ) -> dict[str, Any]:
     cfg = deep_copy_dict(template_cfg)
     _set_nested(cfg, ["run", "run_id"], run_id)
@@ -231,6 +234,8 @@ def build_v8_config(
     _set_nested(cfg, ["run", "auto_suffix_on_collision"], False)
     _set_nested(cfg, ["run", "dry_run"], False)
     _set_nested(cfg, ["run", "git_require_clean"], False)
+    if fit_parallel_workers is not None:
+        _set_nested(cfg, ["run", "threads", "mc_cores"], int(fit_parallel_workers))
 
     _set_nested(cfg, ["stages", "forecats"], True)
     _set_nested(cfg, ["stages", "data_prep_shared"], True)
@@ -259,6 +264,12 @@ def build_v8_config(
     _set_nested(cfg, ["inputs", "fit", "glofas_storage_scale"], FALLBACK_INPUTS["glofas_storage_scale"])
 
     _set_nested(cfg, ["fit", "exdqlm_multivar", "legacy", "forecast_cov", "epsilon"], epsilon_value)
+    if multivar_c_factor is not None:
+        _set_nested(cfg, ["fit", "exdqlm_multivar", "legacy", "forecast_cov", "c_factor"], float(multivar_c_factor))
+    if fit_parallel_mode is not None:
+        _set_nested(cfg, ["fit", "parallel", "mode"], str(fit_parallel_mode))
+    if fit_parallel_workers is not None:
+        _set_nested(cfg, ["fit", "parallel", "workers"], int(fit_parallel_workers))
 
     if lane.endswith("_mv"):
         _set_nested(cfg, ["models", "run_exdqlm_multivar"], True)
@@ -287,6 +298,9 @@ def build_v8_config(
         "shared_input_contract": "run_local_snapshot_from_stable_forecats_bundle",
         "historical_mapping_note": "Preserved historical mapping: base=TT/null, v2=30, v3=90, v4=30 duplicate, v5=180, v6=360.",
         "compare_bundle_outdir": str(v8_compare_dir(cutoff, epsilon_label, artifact_root)),
+        "multivar_c_factor": cfg.get("fit", {}).get("exdqlm_multivar", {}).get("legacy", {}).get("forecast_cov", {}).get("c_factor"),
+        "fit_parallel_mode": cfg.get("fit", {}).get("parallel", {}).get("mode"),
+        "fit_parallel_workers": cfg.get("fit", {}).get("parallel", {}).get("workers"),
     }
     return cfg
 
@@ -361,6 +375,9 @@ def generate_configs(
     artifact_root: str | Path | None = None,
     cutoffs: list[str] | None = None,
     epsilon_map: dict[str, float | None] | None = None,
+    multivar_c_factor: float | None = None,
+    fit_parallel_mode: str | None = None,
+    fit_parallel_workers: int | None = None,
 ) -> list[Path]:
     cutoff_list = cutoffs or [cutoff for cutoff, _ in CUTOFFS]
     epsilon_map = epsilon_map or EPSILON_LABEL_TO_VALUE
@@ -373,7 +390,18 @@ def generate_configs(
                 for lane in lanes:
                     run_id = f"multimodel_{cutoff}_v8_{epsilon_label}_{lane}"
                     out_path = CONFIG_DIR / f"{run_id}.yaml"
-                    cfg = build_v8_config(template, run_id, epsilon_label, epsilon_value, lane, cutoff, artifact_root)
+                    cfg = build_v8_config(
+                        template,
+                        run_id,
+                        epsilon_label,
+                        epsilon_value,
+                        lane,
+                        cutoff,
+                        artifact_root,
+                        multivar_c_factor=multivar_c_factor,
+                        fit_parallel_mode=fit_parallel_mode,
+                        fit_parallel_workers=fit_parallel_workers,
+                    )
                     write_yaml(out_path, cfg)
                     generated.append(out_path)
     return generated
@@ -391,6 +419,9 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--cutoffs", nargs="*")
     ap.add_argument("--epsilon-spec", action="append", default=[])
     ap.add_argument("--skip-tt", action="store_true")
+    ap.add_argument("--multivar-c-factor", type=float)
+    ap.add_argument("--fit-parallel-mode")
+    ap.add_argument("--fit-parallel-workers", type=int)
     return ap.parse_args()
 
 
@@ -406,7 +437,15 @@ def main() -> int:
         epsilon_map = {label: value for label, value in epsilon_map.items() if label != "epsTT"}
 
     lineage_df, retention_df = build_lineage_and_retention(matrix_dir)
-    generated = generate_configs(matrix_dir, artifact_root, cutoffs=cutoffs, epsilon_map=epsilon_map)
+    generated = generate_configs(
+        matrix_dir,
+        artifact_root,
+        cutoffs=cutoffs,
+        epsilon_map=epsilon_map,
+        multivar_c_factor=args.multivar_c_factor,
+        fit_parallel_mode=args.fit_parallel_mode,
+        fit_parallel_workers=args.fit_parallel_workers,
+    )
     dep_df = build_dependency_table(generated, matrix_dir)
     lane_plans = build_lane_plan_rows(cutoffs=cutoffs, epsilon_map=epsilon_map, include_tt=not args.skip_tt)
     plan_df = write_matrix_plan(matrix_dir, lane_plans, artifact_root)

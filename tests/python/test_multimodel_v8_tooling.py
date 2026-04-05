@@ -66,6 +66,30 @@ class MultimodelV8ToolingTests(unittest.TestCase):
             str(reports_dir(artifact_root) / "multimodel_20211112_v8_eps30_compare"),
         )
 
+    def test_build_v8_config_can_override_multivar_c_factor_and_parallel_settings(self) -> None:
+        template = load_yaml(v7_template_config_path("20221225", "l2"))
+        artifact_root = ROOT / "tmp" / "v8_test_artifacts"
+        cfg = build_v8_config(
+            template_cfg=template,
+            run_id="multimodel_20221225_v8_eps25cf1_l2_mv",
+            epsilon_label="eps25cf1",
+            epsilon_value=25.0,
+            lane="l2_mv",
+            cutoff="20221225",
+            artifact_root=artifact_root,
+            multivar_c_factor=1.0,
+            fit_parallel_mode="global_models",
+            fit_parallel_workers=14,
+        )
+        self.assertEqual(cfg["fit"]["exdqlm_multivar"]["legacy"]["forecast_cov"]["c_factor"], 1.0)
+        self.assertEqual(cfg["fit"]["exdqlm_multivar"]["legacy"]["forecast_cov"]["epsilon"], 25.0)
+        self.assertEqual(cfg["fit"]["parallel"]["mode"], "global_models")
+        self.assertEqual(cfg["fit"]["parallel"]["workers"], 14)
+        self.assertEqual(cfg["run"]["threads"]["mc_cores"], 14)
+        self.assertEqual(cfg["debug_v8_matrix"]["multivar_c_factor"], 1.0)
+        self.assertEqual(cfg["debug_v8_matrix"]["fit_parallel_mode"], "global_models")
+        self.assertEqual(cfg["debug_v8_matrix"]["fit_parallel_workers"], 14)
+
     def test_compare_bundle_mixes_tt_and_mv_sources_explicitly(self) -> None:
         td = Path(tempfile.mkdtemp(prefix="v8_bundle_test_"))
         artifact_root = td / "artifact_root"
@@ -231,6 +255,14 @@ class MultimodelV8ToolingTests(unittest.TestCase):
         self.assertTrue(all(row.cutoff == "20221225" for row in plan))
         self.assertTrue(all(row.lane in {"l1_mv", "l2_mv"} for row in plan))
         self.assertEqual({row.epsilon_label for row in plan}, set(epsilon_map.keys()))
+
+    def test_custom_null_tt_label_stays_multivar_only(self) -> None:
+        epsilon_map = parse_epsilon_spec_list(["epsTTcf1=tt", "eps30cf1=30"])
+        plan = build_lane_plan_rows(cutoffs=["20211112"], epsilon_map=epsilon_map, include_tt=True)
+        self.assertEqual(len(plan), 4)
+        self.assertEqual({row.epsilon_label for row in plan}, {"epsTTcf1", "eps30cf1"})
+        self.assertTrue(all(row.lane in {"l1_mv", "l2_mv"} for row in plan))
+        self.assertTrue(all(row.run_scope == "multivar_only" for row in plan))
 
     def test_compare_cells_follow_custom_plan_not_hardcoded_epsilons(self) -> None:
         plan = pd.DataFrame([
