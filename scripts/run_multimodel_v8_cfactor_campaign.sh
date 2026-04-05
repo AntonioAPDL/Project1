@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 ARTIFACT_ROOT="${MULTIMODEL_V8_ARTIFACT_ROOT:-/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402}"
-INPUT_SOURCE_ROOT="${MULTIMODEL_V8_INPUT_SOURCE_ROOT:-/data/muscat_data/jaguir26/project1_ucsc_phd}"
+INPUT_SOURCE_ROOT="${MULTIMODEL_V8_INPUT_SOURCE_ROOT:-${ROOT}}"
 
 PHASE_A_DIR="${ARTIFACT_ROOT}/control/cfactor1_main_20260405"
 PHASE_B_DIR="${ARTIFACT_ROOT}/control/cfactor1_20221225_loweps_20260405"
