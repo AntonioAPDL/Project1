@@ -1,0 +1,197 @@
+config_version: 1
+run:
+  run_id: dev_al_phaseK2_mini_20211112
+  run_root: repro/runs
+  repro_mode: strict
+  seed: 777
+  overwrite: no
+  auto_suffix_on_collision: yes
+  dry_run: no
+  git_require_clean: no
+  threads:
+    omp: 1
+    openblas: 1
+    mkl: 1
+    veclib: 1
+    numexpr: 1
+    mc_cores: 1
+stages:
+  forecats: no
+  data_prep_shared: yes
+  fit: yes
+  post: yes
+  validate: no
+  report: yes
+models:
+  run_exdqlm_multivar: yes
+  run_exdqlm_univar: yes
+  run_ndlm_main: yes
+  run_ndlm_univar: yes
+  exdqlm_multivar:
+    implementation_mode: legacy_bridge
+    likelihood_mode: al
+    forecast_transfer_mode: drop
+  exdqlm_univar:
+    implementation_mode: theory_aligned
+    likelihood_mode: al
+  ndlm_main:
+    implementation_mode: theory_aligned
+    kalman_backend: cpp
+    forecast_transfer_mode: drop
+  ndlm_univar:
+    implementation_mode: theory_aligned_closed_form
+    kalman_backend: cpp
+    forecast_transfer_mode: keep
+    horizon_cap: 90
+    posterior_draws: 64.0
+    prior:
+      n0: 20
+      S0: 1
+site:
+  usgs_site: '11160500'
+  lat: 37.0443931
+  lon: -122.072464
+dates:
+  cutoff_date: '2021-11-12'
+  plot_start: '2021-10-25'
+  plot_end: '2021-12-10'
+  data_start: '2010-01-01'
+inputs:
+  fit:
+    parameters_path: /data/muscat_data/jaguir26/projects/Project/Input/exAL/parameters/parameters.txt
+    retros_path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/multimodel_20211112/inputs/shared/forecats_bundle/retros.csv
+    retros_storage_scale: log1p_cms
+    nws_forecast_path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/multimodel_20211112/inputs/shared/forecats_bundle/nws_forecast.csv
+    nws_storage_scale: raw_cms
+    glofas_forecast_path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/multimodel_20211112/inputs/shared/forecats_bundle/glofas_forecast.csv
+    glofas_storage_scale: raw_cms
+    usgs_mode: live
+    usgs_cache_path: ~
+    covariates:
+    - name: ELI
+      path: /data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_ELI.csv
+    - name: ONI
+      path: /data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_2_ONI.csv
+    - name: PPT
+      path: /data/muscat_data/jaguir26/project1_ucsc_phd/prism_precipitation_santa_cruz_1987_2023.csv
+    - name: SOIL
+      path: /data/muscat_data/jaguir26/project1_ucsc_phd/soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv
+    - name: PCA
+      path: /data/muscat_data/jaguir26/project1_ucsc_phd/pca.csv
+  post:
+    use_fit_outputs_from_run: yes
+  forecats:
+    mode: use_existing
+    pipeline_config_path: config/forecats_pipeline.template.yaml
+    existing_bundle_path: ~
+    snapshot:
+      enabled: no
+  shared:
+    prefer_forecats_snapshot: no
+fit:
+  quantiles: 0.5
+  parallel:
+    mode: one_core_per_model
+    workers: ~
+  warm_start:
+    enabled: no
+    source_run_id: ~
+    mode: resume
+  exdqlm_multivar:
+    gamma_sigma:
+      warmup_freeze_iters: 0
+      min_update_iters: 1
+      min_total_iters: 1
+      max_iter: 20
+      convergence_tol: 1.0
+      convergence:
+        elbo_tol: 1.0
+        state_norm_sq_tol: 1.0
+        sigma_exp_tol: 1.0
+        gamma_exp_tol: 1.0
+      freeze_target: gamma_sigma
+      guard_refreeze_iters: 2
+      init:
+        mode: robust
+        gamma: 0.0
+        sigma_floor: 0.001
+        sigma_scale: 1.0
+      objective_guard:
+        enabled: yes
+        fail_fast: no
+        log_failures: yes
+        mode: adaptive_freeze
+        penalty: 1.0e12
+    legacy:
+      n_samp: 500.0
+      sims_enabled: yes
+      use_covariates: yes
+  exdqlm_univar:
+    gamma_sigma:
+      warmup_freeze_iters: 0
+      min_update_iters: 1
+      min_total_iters: 1
+      max_iter: 20
+      convergence_tol: 1.0
+      convergence:
+        elbo_tol: 1.0
+        elbo_rel_tol: 1.0
+        state_norm_sq_tol: 1.0
+        state_norm_sq_rel_tol: 1.0
+        sigma_exp_tol: 1.0
+        sigma_exp_rel_tol: 1.0
+        gamma_exp_tol: 1.0
+        gamma_exp_rel_tol: 1.0
+    legacy:
+      n_samp: 500.0
+  ndlm_main:
+    legacy:
+      n_samp: 500.0
+      sims_enabled: yes
+      use_covariates: yes
+  contract_checks:
+    enabled: yes
+    fail_fast: yes
+    write_reports: yes
+  diagnostics:
+    enabled: yes
+    fail_fast: yes
+    write_reports: yes
+    max_time_checks: 200000.0
+    seed: 777
+    psd_tol: -1.0e-08
+    full_slice_psd: yes
+    psd_warn_tol: -1.0e-10
+    psd_fail_tol: -1.0e-08
+post:
+  figures: yes
+  smoke_fast: no
+  profile: no
+  profile_detail: no
+  allow_legacy_root_fallback: no
+  sort_keep_na: yes
+  export_tables: yes
+  table_formats: csv
+  crps_input_health:
+    enabled: yes
+    fail_fast: yes
+    min_finite_share: 1.0
+    max_abs: .na.real
+validation:
+  profile: smoke
+  canonical_run_id: __SELF__
+  compare:
+    mode: none
+    numeric_abs_tol: 0.0
+    numeric_rel_tol: 0.0
+    pixel_max_abs_tol: 0.0
+scale_contract:
+  canonical_storage_scale: raw_cms
+  legacy_fit_input_scale: log1p_cms
+  legacy_post_input_scale: log1p_cms
+  analysis_scale_fit_internal: log_log1p_cms
+  analysis_scale_post_internal: log_log1p_cms
+write_audit:
+  enabled: yes
+  enforce_from_stage: 4
+  allowlist_outside_run_root: []

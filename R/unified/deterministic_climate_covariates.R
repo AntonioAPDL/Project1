@@ -120,6 +120,15 @@ unified_detclim_reduce_members <- function(values, reduction) {
   if (length(values) == 0L) {
     return(NA_real_)
   }
+  if (identical(reduction, "q70")) {
+    return(unname(stats::quantile(values, probs = 0.70, na.rm = TRUE, type = 7)))
+  }
+  if (identical(reduction, "q90")) {
+    return(unname(stats::quantile(values, probs = 0.90, na.rm = TRUE, type = 7)))
+  }
+  if (identical(reduction, "max")) {
+    return(max(values, na.rm = TRUE))
+  }
   if (identical(reduction, "median")) {
     return(stats::median(values, na.rm = TRUE))
   }
@@ -127,6 +136,248 @@ unified_detclim_reduce_members <- function(values, reduction) {
     stop(sprintf("Unsupported deterministic_climate reduction: %s", reduction), call. = FALSE)
   }
   mean(values, na.rm = TRUE)
+}
+
+unified_detclim_stable_seed <- function(base_seed, key) {
+  key_int <- sum(utf8ToInt(as.character(key[[1L]])))
+  as.integer((as.integer(base_seed[[1L]]) + key_int) %% .Machine$integer.max)
+}
+
+unified_detclim_apply_noisy_blend <- function(
+  future_df,
+  observed_df,
+  cutoff_date,
+  blend_cfg,
+  series_name,
+  floor_at_zero_default = FALSE
+) {
+  enabled <- isTRUE(unified_get(blend_cfg, c("enabled"), default = FALSE))
+  if (!enabled) {
+    future_df$blend_enabled <- FALSE
+    future_df$blend_lambda_mode <- "disabled"
+    future_df$blend_lambda <- NA_real_
+    future_df$blend_lambda_start <- NA_real_
+    future_df$blend_lambda_end <- NA_real_
+    future_df$blend_lambda_value <- NA_real_
+    future_df$blend_noise_sd_multiplier <- NA_real_
+    future_df$blend_noise_seed <- NA_integer_
+    future_df$blend_floor_at_zero <- floor_at_zero_default
+    future_df$blend_zero_zero_force_prob <- NA_real_
+    future_df$blend_zero_zero_pair <- FALSE
+    future_df$blend_zero_zero_forced <- FALSE
+    future_df$retrospective_value <- NA_real_
+    future_df$noisy_retrospective_value <- NA_real_
+    future_df$blend_noise_sd <- NA_real_
+    future_df$pre_blend_value <- future_df$value
+    return(future_df)
+  }
+
+  lambda_mode <- tolower(trimws(as.character(unified_get(blend_cfg, c("lambda_mode"), default = "constant")[[1L]])))
+  lambda <- suppressWarnings(as.numeric(unified_get(blend_cfg, c("lambda"), default = 0.5)))
+  lambda_start <- suppressWarnings(as.numeric(unified_get(blend_cfg, c("lambda_start"), default = 0.8)))
+  lambda_end <- suppressWarnings(as.numeric(unified_get(blend_cfg, c("lambda_end"), default = 0.2)))
+  noise_sd_multiplier <- suppressWarnings(as.numeric(unified_get(blend_cfg, c("noise_sd_multiplier"), default = 0.5)))
+  noise_seed_base <- suppressWarnings(as.integer(unified_get(blend_cfg, c("noise_seed"), default = 20260309L)))
+  floor_at_zero <- isTRUE(unified_get(blend_cfg, c("floor_at_zero"), default = floor_at_zero_default))
+  zero_zero_force_prob <- suppressWarnings(as.numeric(unified_get(blend_cfg, c("zero_zero_force_prob"), default = 0)))
+  if (!(lambda_mode %in% c("constant", "dynamic"))) {
+    stop(sprintf("deterministic_climate %s noisy_blend.lambda_mode must be one of: constant, dynamic.", series_name), call. = FALSE)
+  }
+  if (!is.finite(lambda) || lambda < 0 || lambda > 1) {
+    stop(sprintf("deterministic_climate %s noisy_blend.lambda must be numeric in [0, 1].", series_name), call. = FALSE)
+  }
+  if (!is.finite(lambda_start) || lambda_start < 0 || lambda_start > 1) {
+    stop(sprintf("deterministic_climate %s noisy_blend.lambda_start must be numeric in [0, 1].", series_name), call. = FALSE)
+  }
+  if (!is.finite(lambda_end) || lambda_end < 0 || lambda_end > 1) {
+    stop(sprintf("deterministic_climate %s noisy_blend.lambda_end must be numeric in [0, 1].", series_name), call. = FALSE)
+  }
+  if (!is.finite(noise_sd_multiplier) || noise_sd_multiplier < 0) {
+    stop(sprintf("deterministic_climate %s noisy_blend.noise_sd_multiplier must be numeric >= 0.", series_name), call. = FALSE)
+  }
+  if (!is.finite(noise_seed_base)) {
+    stop(sprintf("deterministic_climate %s noisy_blend.noise_seed must be an integer.", series_name), call. = FALSE)
+  }
+  if (!is.finite(zero_zero_force_prob) || zero_zero_force_prob < 0 || zero_zero_force_prob > 1) {
+    stop(sprintf("deterministic_climate %s noisy_blend.zero_zero_force_prob must be numeric in [0, 1].", series_name), call. = FALSE)
+  }
+
+  obs <- observed_df[, c("date", "value"), drop = FALSE]
+  names(obs)[[2L]] <- "retrospective_value"
+  out <- merge(future_df, obs, by = "date", all.x = TRUE, sort = FALSE)
+  out <- out[order(out$date), , drop = FALSE]
+  missing_retros <- out$date[!is.finite(out$retrospective_value)]
+  if (length(missing_retros) > 0L) {
+    stop(
+      sprintf(
+        "deterministic_climate %s noisy_blend is missing retrospective values for dates after cutoff %s. Examples: %s",
+        series_name,
+        as.character(cutoff_date),
+        paste(head(as.character(missing_retros), 5L), collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  retrospective_sd <- stats::sd(out$retrospective_value, na.rm = TRUE)
+  if (!is.finite(retrospective_sd)) {
+    retrospective_sd <- 0
+  }
+  noise_sd <- noise_sd_multiplier * retrospective_sd
+  noise_seed <- unified_detclim_stable_seed(noise_seed_base, sprintf("%s_%s", as.character(cutoff_date), series_name))
+  set.seed(noise_seed)
+  noisy_retrospective <- out$retrospective_value + stats::rnorm(nrow(out), mean = 0, sd = noise_sd)
+  if (floor_at_zero) {
+    noisy_retrospective <- pmax(noisy_retrospective, 0)
+  }
+
+  lambda_values <- if (identical(lambda_mode, "dynamic")) {
+    if (nrow(out) <= 1L) {
+      rep(lambda_start, nrow(out))
+    } else {
+      seq(from = lambda_start, to = lambda_end, length.out = nrow(out))
+    }
+  } else {
+    rep(lambda, nrow(out))
+  }
+
+  out$pre_blend_value <- out$value
+  out$noisy_retrospective_value <- noisy_retrospective
+  out$blend_lambda_value <- lambda_values
+  out$value <- (out$pre_blend_value * (1 - out$blend_lambda_value)) + (out$noisy_retrospective_value * out$blend_lambda_value)
+  out$blend_zero_zero_pair <- FALSE
+  out$blend_zero_zero_forced <- FALSE
+  if (identical(series_name, "precip") && zero_zero_force_prob > 0) {
+    dry_pair_idx <- which(abs(out$retrospective_value) < 1e-12 & abs(out$pre_blend_value) < 1e-12)
+    if (length(dry_pair_idx) > 0L) {
+      out$blend_zero_zero_pair[dry_pair_idx] <- TRUE
+      force_zero_draw <- stats::runif(length(dry_pair_idx)) < zero_zero_force_prob
+      if (any(force_zero_draw)) {
+        forced_idx <- dry_pair_idx[force_zero_draw]
+        out$value[forced_idx] <- 0
+        out$blend_zero_zero_forced[forced_idx] <- TRUE
+      }
+    }
+  }
+  out$blend_enabled <- TRUE
+  out$blend_lambda_mode <- lambda_mode
+  out$blend_lambda <- lambda
+  out$blend_lambda_start <- lambda_start
+  out$blend_lambda_end <- lambda_end
+  out$blend_noise_sd_multiplier <- noise_sd_multiplier
+  out$blend_noise_seed <- noise_seed
+  out$blend_floor_at_zero <- floor_at_zero
+  out$blend_zero_zero_force_prob <- zero_zero_force_prob
+  out$blend_noise_sd <- noise_sd
+  out
+}
+
+unified_detclim_precip_climatology_key <- function(dates) {
+  dates <- as.Date(dates)
+  format(dates, "%m-%d")
+}
+
+unified_detclim_precip_climatology <- function(observed_df, future_dates, target = "climatology_mean") {
+  target <- tolower(trimws(as.character(target[[1L]])))
+  future_dates <- as.Date(future_dates)
+  if (identical(target, "zero")) {
+    return(data.frame(
+      date = future_dates,
+      climatology_value = rep(0, length(future_dates)),
+      stringsAsFactors = FALSE
+    ))
+  }
+  if (!(target %in% c("climatology_mean", "climatology_median"))) {
+    stop(
+      sprintf(
+        "Unsupported deterministic_climate precip tail-blend target: %s",
+        target
+      ),
+      call. = FALSE
+    )
+  }
+
+  obs <- observed_df[, c("date", "value"), drop = FALSE]
+  obs <- obs[is.finite(obs$value), , drop = FALSE]
+  if (nrow(obs) == 0L) {
+    stop("Cannot build precipitation climatology from an empty observed series.", call. = FALSE)
+  }
+
+  obs$key <- unified_detclim_precip_climatology_key(obs$date)
+  reducer <- if (identical(target, "climatology_median")) stats::median else mean
+  clim_lookup <- stats::aggregate(value ~ key, data = obs, FUN = reducer, na.rm = TRUE)
+  fallback_value <- if (identical(target, "climatology_median")) {
+    stats::median(obs$value, na.rm = TRUE)
+  } else {
+    mean(obs$value, na.rm = TRUE)
+  }
+  if (!is.finite(fallback_value)) {
+    fallback_value <- 0
+  }
+
+  out <- data.frame(
+    date = future_dates,
+    key = unified_detclim_precip_climatology_key(future_dates),
+    stringsAsFactors = FALSE
+  )
+  out <- merge(out, clim_lookup, by = "key", all.x = TRUE, sort = FALSE)
+  out$date <- future_dates
+  out$value[!is.finite(out$value)] <- fallback_value
+  out <- out[, c("date", "value"), drop = FALSE]
+  names(out)[[2L]] <- "climatology_value"
+  out
+}
+
+unified_detclim_apply_precip_tail_blend <- function(daily_df, observed_df, cutoff_date, blend_cfg) {
+  enabled <- isTRUE(unified_get(blend_cfg, c("enabled"), default = FALSE))
+  if (!enabled) {
+    daily_df$tail_blend_target <- NA_character_
+    daily_df$tail_blend_start_day <- NA_integer_
+    daily_df$tail_blend_end_day <- NA_integer_
+    daily_df$tail_blend_forecast_weight <- 1
+    daily_df$tail_blend_target_value <- NA_real_
+    return(daily_df)
+  }
+
+  start_day <- suppressWarnings(as.integer(unified_get(blend_cfg, c("start_day"), default = 7L)))
+  end_day <- suppressWarnings(as.integer(unified_get(blend_cfg, c("end_day"), default = 14L)))
+  target <- tolower(trimws(as.character(unified_get(
+    blend_cfg,
+    c("target"),
+    default = "climatology_median"
+  )[[1L]])))
+
+  if (!is.finite(start_day) || start_day < 1L) {
+    stop("deterministic_climate precip tail_blend.start_day must be an integer >= 1.", call. = FALSE)
+  }
+  if (!is.finite(end_day) || end_day < start_day) {
+    stop("deterministic_climate precip tail_blend.end_day must be an integer >= start_day.", call. = FALSE)
+  }
+
+  out <- daily_df
+  out$lead_day <- seq_len(nrow(out))
+  clim_df <- unified_detclim_precip_climatology(observed_df, out$date, target = target)
+  out <- merge(out, clim_df, by = "date", all.x = TRUE, sort = FALSE)
+  out <- out[order(out$date), , drop = FALSE]
+  lead_day <- seq_len(nrow(out))
+  forecast_weight <- rep(1, nrow(out))
+  if (end_day == start_day) {
+    forecast_weight[lead_day > start_day] <- 0
+  } else {
+    interior <- lead_day > start_day & lead_day < end_day
+    forecast_weight[lead_day >= end_day] <- 0
+    forecast_weight[interior] <- 1 - ((lead_day[interior] - start_day) / (end_day - start_day))
+  }
+  forecast_weight <- pmax(0, pmin(1, forecast_weight))
+
+  out$pre_tail_blend_value <- out$value
+  out$value <- (forecast_weight * out$pre_tail_blend_value) + ((1 - forecast_weight) * out$climatology_value)
+  out$tail_blend_target <- target
+  out$tail_blend_start_day <- start_day
+  out$tail_blend_end_day <- end_day
+  out$tail_blend_forecast_weight <- forecast_weight
+  out$tail_blend_target_value <- out$climatology_value
+  out
 }
 
 unified_detclim_member_daily_by_date <- function(df, member_cols, cutoff_date, end_date, daily_fun, reduction) {
@@ -364,7 +615,16 @@ unified_detclim_complete_future_dates <- function(series_df, cutoff_date, horizo
   merged
 }
 
-unified_detclim_build_precip_forecast <- function(handoff_root, cutoff_date, horizon_days, reduction = "mean", require_full_horizon = TRUE) {
+unified_detclim_build_precip_forecast <- function(
+  handoff_root,
+  cutoff_date,
+  horizon_days,
+  observed_info,
+  reduction = "mean",
+  require_full_horizon = TRUE,
+  dry_day_threshold_mm = 0,
+  tail_blend_cfg = NULL
+) {
   apcp_path <- unified_detclim_resolve_gefs_apcp_path(handoff_root, cutoff_date)
   apcp_info <- unified_detclim_read_member_forecast(apcp_path, "GEFS APCP")
   end_date <- as.Date(cutoff_date) + as.integer(horizon_days)
@@ -383,6 +643,22 @@ unified_detclim_build_precip_forecast <- function(handoff_root, cutoff_date, hor
     require_full_horizon = require_full_horizon,
     label = "GEFS APCP deterministic precipitation"
   )
+  threshold_mm <- suppressWarnings(as.numeric(dry_day_threshold_mm))
+  if (!is.finite(threshold_mm) || threshold_mm < 0) {
+    stop("GEFS APCP dry_day_threshold_mm must be numeric >= 0.", call. = FALSE)
+  }
+  daily_df$raw_value <- daily_df$value
+  if (threshold_mm > 0) {
+    daily_df$value[daily_df$value < threshold_mm] <- 0
+  }
+  daily_df <- unified_detclim_apply_precip_tail_blend(
+    daily_df = daily_df,
+    observed_df = observed_info$data,
+    cutoff_date = cutoff_date,
+    blend_cfg = tail_blend_cfg
+  )
+  daily_df$dry_day_threshold_mm <- threshold_mm
+  daily_df$censored_to_zero <- as.integer(daily_df$value == 0 & daily_df$raw_value > 0)
   daily_df$source <- "GEFS_APCP"
   daily_df$reduction <- reduction
   daily_df$source_path <- apcp_info$source_path
@@ -479,7 +755,18 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
     return(NULL)
   }
 
-  required_covs <- c("ppt", "soil", "pca")
+  precip_enabled <- isTRUE(unified_get(det_cfg, c("precip", "enabled"), default = TRUE))
+  soil_enabled <- isTRUE(unified_get(det_cfg, c("soil", "enabled"), default = TRUE))
+  if (!precip_enabled && !soil_enabled) {
+    stop(
+      "deterministic_climate requires at least one enabled replacement series (precip or soil).",
+      call. = FALSE
+    )
+  }
+
+  required_covs <- c("pca")
+  if (precip_enabled) required_covs <- c(required_covs, "ppt")
+  if (soil_enabled) required_covs <- c(required_covs, "soil")
   missing_covs <- required_covs[!nzchar(unlist(cov_path_map[required_covs], use.names = FALSE))]
   if (length(missing_covs) > 0L) {
     stop(
@@ -505,45 +792,90 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
   require_full_horizon <- isTRUE(unified_get(det_cfg, c("require_full_horizon"), default = TRUE))
   precip_reduction <- tolower(as.character(unified_get(det_cfg, c("precip", "reduction"), default = "mean"))[[1L]])
   soil_reduction <- tolower(as.character(unified_get(det_cfg, c("soil", "reduction"), default = "mean"))[[1L]])
+  precip_dry_day_threshold_mm <- suppressWarnings(as.numeric(unified_get(
+    det_cfg,
+    c("precip", "dry_day_threshold_mm"),
+    default = 0
+  )))
+  if (!is.finite(precip_dry_day_threshold_mm) || precip_dry_day_threshold_mm < 0) {
+    stop("inputs.deterministic_climate.precip.dry_day_threshold_mm must be numeric >= 0.", call. = FALSE)
+  }
 
-  ppt_observed <- unified_detclim_read_observed_series(
-    cov_path_map$ppt,
-    label = "run-scoped precipitation covariate",
-    value_candidates = c("PRCP_mm", "ppt")
-  )
-  soil_observed <- unified_detclim_read_observed_series(
-    cov_path_map$soil,
-    label = "run-scoped soil covariate",
-    value_candidates = c("Daily_Avg_Soil_Moisture", "soil", "average_soil_moisture")
-  )
+  ppt_observed <- NULL
+  if (precip_enabled) {
+    ppt_observed <- unified_detclim_read_observed_series(
+      cov_path_map$ppt,
+      label = "run-scoped precipitation covariate",
+      value_candidates = c("PRCP_mm", "ppt")
+    )
+  }
+  soil_observed <- NULL
+  if (soil_enabled) {
+    soil_observed <- unified_detclim_read_observed_series(
+      cov_path_map$soil,
+      label = "run-scoped soil covariate",
+      value_candidates = c("Daily_Avg_Soil_Moisture", "soil", "average_soil_moisture")
+    )
+  }
 
-  precip_forecast <- unified_detclim_build_precip_forecast(
-    handoff_root = handoff_root,
-    cutoff_date = cutoff_date,
-    horizon_days = horizon_days,
-    reduction = precip_reduction,
-    require_full_horizon = require_full_horizon
-  )
-  soil_forecast <- unified_detclim_build_soil_forecast(
-    handoff_root = handoff_root,
-    cutoff_date = cutoff_date,
-    horizon_days = horizon_days,
-    reduction = soil_reduction,
-    require_full_horizon = require_full_horizon
-  )
+  precip_forecast <- NULL
+  if (precip_enabled) {
+    precip_forecast <- unified_detclim_build_precip_forecast(
+      handoff_root = handoff_root,
+      cutoff_date = cutoff_date,
+      horizon_days = horizon_days,
+      observed_info = ppt_observed,
+      reduction = precip_reduction,
+      require_full_horizon = require_full_horizon,
+      dry_day_threshold_mm = precip_dry_day_threshold_mm,
+      tail_blend_cfg = unified_get(det_cfg, c("precip", "tail_blend"), default = list(enabled = FALSE))
+    )
+    precip_forecast <- unified_detclim_apply_noisy_blend(
+      future_df = precip_forecast,
+      observed_df = ppt_observed$data,
+      cutoff_date = cutoff_date,
+      blend_cfg = unified_get(det_cfg, c("precip", "noisy_blend"), default = list(enabled = FALSE)),
+      series_name = "precip",
+      floor_at_zero_default = TRUE
+    )
+  }
+  soil_forecast <- NULL
+  if (soil_enabled) {
+    soil_forecast <- unified_detclim_build_soil_forecast(
+      handoff_root = handoff_root,
+      cutoff_date = cutoff_date,
+      horizon_days = horizon_days,
+      reduction = soil_reduction,
+      require_full_horizon = require_full_horizon
+    )
+    soil_forecast$daily <- unified_detclim_apply_noisy_blend(
+      future_df = soil_forecast$daily,
+      observed_df = soil_observed$data,
+      cutoff_date = cutoff_date,
+      blend_cfg = unified_get(det_cfg, c("soil", "noisy_blend"), default = list(enabled = FALSE)),
+      series_name = "soil",
+      floor_at_zero_default = FALSE
+    )
+  }
 
-  ppt_write <- unified_detclim_write_spliced_series(
-    observed_info = ppt_observed,
-    future_df = precip_forecast,
-    cutoff_date = cutoff_date,
-    output_path = cov_path_map$ppt
-  )
-  soil_write <- unified_detclim_write_spliced_series(
-    observed_info = soil_observed,
-    future_df = soil_forecast$daily,
-    cutoff_date = cutoff_date,
-    output_path = cov_path_map$soil
-  )
+  ppt_write <- NULL
+  if (precip_enabled) {
+    ppt_write <- unified_detclim_write_spliced_series(
+      observed_info = ppt_observed,
+      future_df = precip_forecast,
+      cutoff_date = cutoff_date,
+      output_path = cov_path_map$ppt
+    )
+  }
+  soil_write <- NULL
+  if (soil_enabled) {
+    soil_write <- unified_detclim_write_spliced_series(
+      observed_info = soil_observed,
+      future_df = soil_forecast$daily,
+      cutoff_date = cutoff_date,
+      output_path = cov_path_map$soil
+    )
+  }
 
   debug_root <- file.path(shared_paths$root, "deterministic_climate")
   dir.create(debug_root, recursive = TRUE, showWarnings = FALSE)
@@ -553,22 +885,26 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
   soil_family_path <- file.path(debug_root, "deterministic_soil_family_support.csv")
   summary_path <- file.path(debug_root, "deterministic_climate_summary.txt")
 
-  utils::write.csv(precip_forecast, precip_debug_path, row.names = FALSE)
-  utils::write.csv(soil_forecast$daily, soil_debug_path, row.names = FALSE)
-  soil_family_df <- do.call(
-    rbind,
-    lapply(names(soil_forecast$selected_families), function(fam) {
-      df <- soil_forecast$selected_families[[fam]]
-      data.frame(
-        date = df$date,
-        value = df$value,
-        source_family = fam,
-        source_path = df$source_path,
-        stringsAsFactors = FALSE
-      )
-    })
-  )
-  utils::write.csv(soil_family_df, soil_family_path, row.names = FALSE)
+  if (precip_enabled) {
+    utils::write.csv(precip_forecast, precip_debug_path, row.names = FALSE)
+  }
+  if (soil_enabled) {
+    utils::write.csv(soil_forecast$daily, soil_debug_path, row.names = FALSE)
+    soil_family_df <- do.call(
+      rbind,
+      lapply(names(soil_forecast$selected_families), function(fam) {
+        df <- soil_forecast$selected_families[[fam]]
+        data.frame(
+          date = df$date,
+          value = df$value,
+          source_family = fam,
+          source_path = df$source_path,
+          stringsAsFactors = FALSE
+        )
+      })
+    )
+    utils::write.csv(soil_family_df, soil_family_path, row.names = FALSE)
+  }
 
   summary_lines <- c(
     sprintf("enabled=TRUE"),
@@ -577,45 +913,100 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
     sprintf("forecast_start_date=%s", as.character(cutoff_date + 1L)),
     sprintf("horizon_days=%d", as.integer(horizon_days)),
     sprintf("require_full_horizon=%s", if (require_full_horizon) "TRUE" else "FALSE"),
-    sprintf("precip_source=GEFS_APCP"),
-    sprintf("precip_reduction=%s", precip_reduction),
+    sprintf("precip_enabled=%s", if (precip_enabled) "TRUE" else "FALSE"),
+    sprintf("precip_source=%s", if (precip_enabled) "GEFS_APCP" else "observed_passthrough"),
+    sprintf("precip_reduction=%s", if (precip_enabled) precip_reduction else "passthrough"),
+    sprintf("precip_dry_day_threshold_mm=%s", if (precip_enabled) format(precip_dry_day_threshold_mm, digits = 10) else "NA"),
+    sprintf("precip_tail_blend_enabled=%s", if (precip_enabled) if (isTRUE(unified_get(det_cfg, c("precip", "tail_blend", "enabled"), default = FALSE))) "TRUE" else "FALSE" else "FALSE"),
+    sprintf("precip_tail_blend_target=%s", if (precip_enabled) as.character(unified_get(det_cfg, c("precip", "tail_blend", "target"), default = "NA"))[[1L]] else "NA"),
+    sprintf("precip_tail_blend_start_day=%s", if (precip_enabled) as.character(unified_get(det_cfg, c("precip", "tail_blend", "start_day"), default = NA_integer_))[[1L]] else "NA"),
+    sprintf("precip_tail_blend_end_day=%s", if (precip_enabled) as.character(unified_get(det_cfg, c("precip", "tail_blend", "end_day"), default = NA_integer_))[[1L]] else "NA"),
+    sprintf("precip_noisy_blend_enabled=%s", if (precip_enabled) if (isTRUE(unified_get(det_cfg, c("precip", "noisy_blend", "enabled"), default = FALSE))) "TRUE" else "FALSE" else "FALSE"),
+    sprintf("precip_noisy_blend_lambda_mode=%s", if (precip_enabled) as.character(unified_get(det_cfg, c("precip", "noisy_blend", "lambda_mode"), default = "constant"))[[1L]] else "NA"),
+    sprintf("precip_noisy_blend_lambda=%s", if (precip_enabled) as.character(unified_get(det_cfg, c("precip", "noisy_blend", "lambda"), default = NA_real_))[[1L]] else "NA"),
+    sprintf("precip_noisy_blend_lambda_start=%s", if (precip_enabled) as.character(unified_get(det_cfg, c("precip", "noisy_blend", "lambda_start"), default = NA_real_))[[1L]] else "NA"),
+    sprintf("precip_noisy_blend_lambda_end=%s", if (precip_enabled) as.character(unified_get(det_cfg, c("precip", "noisy_blend", "lambda_end"), default = NA_real_))[[1L]] else "NA"),
+    sprintf("precip_noisy_blend_noise_sd_multiplier=%s", if (precip_enabled) as.character(unified_get(det_cfg, c("precip", "noisy_blend", "noise_sd_multiplier"), default = NA_real_))[[1L]] else "NA"),
+    sprintf("precip_noisy_blend_noise_seed=%s", if (precip_enabled) as.character(unified_get(det_cfg, c("precip", "noisy_blend", "noise_seed"), default = NA_integer_))[[1L]] else "NA"),
+    sprintf("precip_noisy_blend_floor_at_zero=%s", if (precip_enabled) if (isTRUE(unified_get(det_cfg, c("precip", "noisy_blend", "floor_at_zero"), default = TRUE))) "TRUE" else "FALSE" else "NA"),
+    sprintf("precip_noisy_blend_zero_zero_force_prob=%s", if (precip_enabled) as.character(unified_get(det_cfg, c("precip", "noisy_blend", "zero_zero_force_prob"), default = NA_real_))[[1L]] else "NA"),
+    sprintf("precip_zero_zero_pair_days=%d", if (precip_enabled) sum(precip_forecast$daily$blend_zero_zero_pair, na.rm = TRUE) else 0L),
+    sprintf("precip_zero_zero_forced_days=%d", if (precip_enabled) sum(precip_forecast$daily$blend_zero_zero_forced, na.rm = TRUE) else 0L),
+    sprintf("precip_censored_zero_days=%d", if (precip_enabled) sum(precip_forecast$censored_to_zero, na.rm = TRUE) else 0L),
     sprintf("precip_output=%s", cov_path_map$ppt),
-    sprintf("soil_source=NWM_SOILSAT_TOP"),
-    sprintf("soil_reduction=%s", soil_reduction),
+    sprintf("soil_enabled=%s", if (soil_enabled) "TRUE" else "FALSE"),
+    sprintf("soil_source=%s", if (soil_enabled) "NWM_SOILSAT_TOP" else "observed_passthrough"),
+    sprintf("soil_reduction=%s", if (soil_enabled) soil_reduction else "passthrough"),
+    sprintf("soil_noisy_blend_enabled=%s", if (soil_enabled) if (isTRUE(unified_get(det_cfg, c("soil", "noisy_blend", "enabled"), default = FALSE))) "TRUE" else "FALSE" else "FALSE"),
+    sprintf("soil_noisy_blend_lambda_mode=%s", if (soil_enabled) as.character(unified_get(det_cfg, c("soil", "noisy_blend", "lambda_mode"), default = "constant"))[[1L]] else "NA"),
+    sprintf("soil_noisy_blend_lambda=%s", if (soil_enabled) as.character(unified_get(det_cfg, c("soil", "noisy_blend", "lambda"), default = NA_real_))[[1L]] else "NA"),
+    sprintf("soil_noisy_blend_lambda_start=%s", if (soil_enabled) as.character(unified_get(det_cfg, c("soil", "noisy_blend", "lambda_start"), default = NA_real_))[[1L]] else "NA"),
+    sprintf("soil_noisy_blend_lambda_end=%s", if (soil_enabled) as.character(unified_get(det_cfg, c("soil", "noisy_blend", "lambda_end"), default = NA_real_))[[1L]] else "NA"),
+    sprintf("soil_noisy_blend_noise_sd_multiplier=%s", if (soil_enabled) as.character(unified_get(det_cfg, c("soil", "noisy_blend", "noise_sd_multiplier"), default = NA_real_))[[1L]] else "NA"),
+    sprintf("soil_noisy_blend_noise_seed=%s", if (soil_enabled) as.character(unified_get(det_cfg, c("soil", "noisy_blend", "noise_seed"), default = NA_integer_))[[1L]] else "NA"),
+    sprintf("soil_noisy_blend_floor_at_zero=%s", if (soil_enabled) if (isTRUE(unified_get(det_cfg, c("soil", "noisy_blend", "floor_at_zero"), default = FALSE))) "TRUE" else "FALSE" else "NA"),
     sprintf("soil_output=%s", cov_path_map$soil),
-    sprintf("nwm_soilsat_top_porosity=%.6f", soil_forecast$porosity_info$porosity),
-    sprintf("nwm_soilsat_top_porosity_q10=%.6f", soil_forecast$porosity_info$q10),
-    sprintf("nwm_soilsat_top_porosity_q90=%.6f", soil_forecast$porosity_info$q90),
-    sprintf("nwm_soilsat_top_porosity_samples=%d", soil_forecast$porosity_info$sample_count),
-    sprintf("ppt_history_rows=%d", ppt_write$history_rows),
-    sprintf("ppt_future_rows=%d", ppt_write$future_rows),
-    sprintf("soil_history_rows=%d", soil_write$history_rows),
-    sprintf("soil_future_rows=%d", soil_write$future_rows),
+    sprintf("nwm_soilsat_top_porosity=%s", if (soil_enabled) sprintf("%.6f", soil_forecast$porosity_info$porosity) else "NA"),
+    sprintf("nwm_soilsat_top_porosity_q10=%s", if (soil_enabled) sprintf("%.6f", soil_forecast$porosity_info$q10) else "NA"),
+    sprintf("nwm_soilsat_top_porosity_q90=%s", if (soil_enabled) sprintf("%.6f", soil_forecast$porosity_info$q90) else "NA"),
+    sprintf("nwm_soilsat_top_porosity_samples=%s", if (soil_enabled) as.character(soil_forecast$porosity_info$sample_count) else "NA"),
+    sprintf("ppt_history_rows=%d", if (precip_enabled) ppt_write$history_rows else 0L),
+    sprintf("ppt_future_rows=%d", if (precip_enabled) ppt_write$future_rows else 0L),
+    sprintf("soil_history_rows=%d", if (soil_enabled) soil_write$history_rows else 0L),
+    sprintf("soil_future_rows=%d", if (soil_enabled) soil_write$future_rows else 0L),
     sprintf("pca_passthrough=%s", cov_path_map$pca)
   )
   writeLines(summary_lines, con = summary_path)
 
+  debug_artifacts <- summary_path
+  if (precip_enabled && file.exists(precip_debug_path)) {
+    debug_artifacts <- c(debug_artifacts, precip_debug_path)
+  }
+  if (soil_enabled && file.exists(soil_debug_path)) {
+    debug_artifacts <- c(debug_artifacts, soil_debug_path)
+  }
+  if (soil_enabled && file.exists(soil_family_path)) {
+    debug_artifacts <- c(debug_artifacts, soil_family_path)
+  }
+
+  updated_covariates <- character(0)
+  if (precip_enabled) updated_covariates <- c(updated_covariates, ppt = cov_path_map$ppt)
+  if (soil_enabled) updated_covariates <- c(updated_covariates, soil = cov_path_map$soil)
+
   list(
-    updated_covariates = c(ppt = cov_path_map$ppt, soil = cov_path_map$soil),
-    debug_artifacts = c(precip_debug_path, soil_debug_path, soil_family_path, summary_path),
+    updated_covariates = updated_covariates,
+    debug_artifacts = debug_artifacts,
     debug_artifact_paths = list(
       summary_path = normalizePath(summary_path, mustWork = FALSE),
-      precip_future_path = normalizePath(precip_debug_path, mustWork = FALSE),
-      soil_future_path = normalizePath(soil_debug_path, mustWork = FALSE),
-      soil_family_support_path = normalizePath(soil_family_path, mustWork = FALSE)
+      precip_future_path = if (precip_enabled) normalizePath(precip_debug_path, mustWork = FALSE) else "",
+      soil_future_path = if (soil_enabled) normalizePath(soil_debug_path, mustWork = FALSE) else "",
+      soil_family_support_path = if (soil_enabled) normalizePath(soil_family_path, mustWork = FALSE) else ""
     ),
     horizon_days = horizon_days,
     cutoff_date = cutoff_date,
     handoff_root = handoff_root,
-    porosity_info = soil_forecast$porosity_info,
+    porosity_info = if (soil_enabled) {
+      soil_forecast$porosity_info
+    } else {
+      list(porosity = NA_real_, q10 = NA_real_, q90 = NA_real_, sample_count = 0L)
+    },
     require_full_horizon = require_full_horizon,
+    precip_enabled = precip_enabled,
+    soil_enabled = soil_enabled,
     precip_reduction = precip_reduction,
+    precip_dry_day_threshold_mm = precip_dry_day_threshold_mm,
     soil_reduction = soil_reduction,
-    precip_source = "GEFS_APCP",
-    soil_source = "NWM_SOILSAT_TOP",
-    ppt_history_rows = ppt_write$history_rows,
-    ppt_future_rows = ppt_write$future_rows,
-    soil_history_rows = soil_write$history_rows,
-    soil_future_rows = soil_write$future_rows
+    precip_noisy_blend_enabled = if (precip_enabled) isTRUE(unified_get(det_cfg, c("precip", "noisy_blend", "enabled"), default = FALSE)) else FALSE,
+    soil_noisy_blend_enabled = if (soil_enabled) isTRUE(unified_get(det_cfg, c("soil", "noisy_blend", "enabled"), default = FALSE)) else FALSE,
+    precip_noisy_blend_lambda_mode = if (precip_enabled) as.character(unified_get(det_cfg, c("precip", "noisy_blend", "lambda_mode"), default = "constant"))[[1L]] else "disabled",
+    soil_noisy_blend_lambda_mode = if (soil_enabled) as.character(unified_get(det_cfg, c("soil", "noisy_blend", "lambda_mode"), default = "constant"))[[1L]] else "disabled",
+    precip_source = if (precip_enabled) "GEFS_APCP" else "observed_passthrough",
+    soil_source = if (soil_enabled) "NWM_SOILSAT_TOP" else "observed_passthrough",
+    ppt_history_rows = if (precip_enabled) ppt_write$history_rows else 0L,
+    ppt_future_rows = if (precip_enabled) ppt_write$future_rows else 0L,
+    soil_history_rows = if (soil_enabled) soil_write$history_rows else 0L,
+    soil_future_rows = if (soil_enabled) soil_write$future_rows else 0L,
+    precip_zero_zero_pair_days = if (precip_enabled) sum(precip_forecast$daily$blend_zero_zero_pair, na.rm = TRUE) else 0L,
+    precip_zero_zero_forced_days = if (precip_enabled) sum(precip_forecast$daily$blend_zero_zero_forced, na.rm = TRUE) else 0L
   )
 }

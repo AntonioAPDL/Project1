@@ -629,17 +629,104 @@ select_source_for_cutoff <- function(windows, cutoff_date) {
 apply_retros_selection_policy <- function(retros_df, cutoff_date, policy) {
   if (is.null(policy) || nrow(retros_df) == 0) return(retros_df)
 
+  retros_df <- retros_df %>%
+    mutate(
+      source_id = as.character(source_id),
+      date = as.Date(date)
+    )
+
   keep_ids <- as.character(unlist(policy$keep_source_ids %||% character(0)))
-  keep_ids <- c(
-    keep_ids,
-    select_source_for_cutoff(policy$glofas_by_cutoff_windows, cutoff_date),
-    select_source_for_cutoff(policy$nws_by_cutoff_windows, cutoff_date)
-  )
+  selected_glofas <- select_source_for_cutoff(policy$glofas_by_cutoff_windows, cutoff_date)
+  selected_nws <- select_source_for_cutoff(policy$nws_by_cutoff_windows, cutoff_date)
+  keep_ids <- c(keep_ids, selected_glofas, selected_nws)
   keep_ids <- unique(keep_ids[!is.na(keep_ids) & nzchar(keep_ids)])
 
-  if (length(keep_ids) == 0) {
-    return(retros_df[0, ])
+  if (length(keep_ids) == 0L) {
+    return(retros_df[0, , drop = FALSE])
   }
+
+  available_ids <- unique(retros_df$source_id)
+  keep_ids <- intersect(keep_ids, available_ids)
+  if (length(keep_ids) == 0L) {
+    return(retros_df[0, , drop = FALSE])
+  }
+
+  # Continuity-aware NWS source selection:
+  # when a chosen "same-version" stream (e.g., v20) has historical gaps,
+  # include later retrospective versions to preserve daily support.
+  nws_available <- sort(unique(retros_df$source_id[grepl("^nws", retros_df$source_id)]))
+  if (length(nws_available) > 0L) {
+    nws_selected <- keep_ids[grepl("^nws", keep_ids)]
+    if (length(nws_selected) == 0L && nzchar(selected_nws) && selected_nws %in% nws_available) {
+      nws_selected <- selected_nws
+    }
+    if (length(nws_selected) > 0L) {
+      cutoff_date <- as.Date(cutoff_date)
+      target_dates <- sort(unique(retros_df$date[retros_df$source_id %in% nws_available & retros_df$date <= cutoff_date]))
+      if (length(target_dates) > 0L) {
+        selected_dates <- sort(unique(retros_df$date[retros_df$source_id %in% nws_selected & retros_df$date <= cutoff_date]))
+        missing_dates <- setdiff(target_dates, selected_dates)
+
+        fallback_order <- if (identical(selected_nws, "nws_retro_v20")) {
+          c("nws_retro_v21", "nws_retro_v30", "nws_synth_retro_ens_mean", "nws_retro_v12")
+        } else if (identical(selected_nws, "nws_retro_v21")) {
+          c("nws_retro_v30", "nws_synth_retro_ens_mean", "nws_retro_v20", "nws_retro_v12")
+        } else if (identical(selected_nws, "nws_retro_v30")) {
+          c("nws_synth_retro_ens_mean", "nws_retro_v21", "nws_retro_v20", "nws_retro_v12")
+        } else {
+          c("nws_retro_v30", "nws_retro_v21", "nws_retro_v20", "nws_retro_v12", "nws_synth_retro_ens_mean")
+        }
+        if (nzchar(selected_nws)) fallback_order <- unique(c(selected_nws, fallback_order))
+        fallback_order <- fallback_order[fallback_order %in% nws_available]
+
+        added_ids <- character(0)
+        if (length(missing_dates) > 0L) {
+          for (cand in fallback_order) {
+            if (cand %in% nws_selected) next
+            cand_dates <- sort(unique(retros_df$date[retros_df$source_id == cand & retros_df$date <= cutoff_date]))
+            if (!length(cand_dates)) next
+            if (length(intersect(missing_dates, cand_dates)) == 0L) next
+            nws_selected <- unique(c(nws_selected, cand))
+            added_ids <- c(added_ids, cand)
+            selected_dates <- sort(unique(retros_df$date[retros_df$source_id %in% nws_selected & retros_df$date <= cutoff_date]))
+            missing_dates <- setdiff(target_dates, selected_dates)
+            if (length(missing_dates) == 0L) break
+          }
+        }
+
+        if (length(added_ids) > 0L) {
+          cat(
+            sprintf(
+              "[INFO] retros policy continuity fallback added NWS sources for cutoff=%s: %s\n",
+              format(cutoff_date, "%Y-%m-%d"),
+              paste(unique(added_ids), collapse = ", ")
+            )
+          )
+        }
+        if (length(missing_dates) > 0L) {
+          miss_first <- format(head(missing_dates, 3), "%Y-%m-%d")
+          miss_last <- format(tail(missing_dates, 3), "%Y-%m-%d")
+          stop(
+            sprintf(
+              paste0(
+                "NWS retrospective coverage remains discontinuous after fallback for cutoff=%s. ",
+                "Missing dates count=%d (first=%s; last=%s)."
+              ),
+              format(cutoff_date, "%Y-%m-%d"),
+              length(missing_dates),
+              paste(miss_first, collapse = ", "),
+              paste(miss_last, collapse = ", ")
+            ),
+            call. = FALSE
+          )
+        }
+
+        non_nws_keep <- keep_ids[!grepl("^nws", keep_ids)]
+        keep_ids <- unique(c(non_nws_keep, nws_selected))
+      }
+    }
+  }
+
   retros_df %>% filter(source_id %in% keep_ids)
 }
 

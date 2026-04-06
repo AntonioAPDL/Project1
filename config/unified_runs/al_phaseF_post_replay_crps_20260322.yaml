@@ -1,0 +1,123 @@
+config_version: 1
+
+run:
+  run_id: "dev_al_phaseF_post_replay_crps_20260322"
+  run_root: "repro/runs"
+  repro_mode: "strict"
+  seed: 777
+  overwrite: false
+  auto_suffix_on_collision: true
+  dry_run: false
+  git_require_clean: false
+  threads:
+    omp: 1
+    openblas: 1
+    mkl: 1
+    veclib: 1
+    numexpr: 1
+    mc_cores: 1
+
+stages:
+  forecats: false
+  data_prep_shared: false
+  fit: false
+  post: true
+  validate: false
+  report: false
+
+models:
+  run_exdqlm_multivar: true
+  run_exdqlm_univar: true
+  run_ndlm_main: true
+  exdqlm_multivar:
+    implementation_mode: "legacy_bridge"
+    likelihood_mode: "al"
+    forecast_transfer_mode: "drop"
+    forecast_transfer_modes: ["drop", "keep"]
+  exdqlm_univar:
+    implementation_mode: "theory_aligned"
+    likelihood_mode: "al"
+  ndlm_main:
+    implementation_mode: "theory_aligned"
+    kalman_backend: "cpp"
+    forecast_transfer_mode: "keep"
+
+site:
+  usgs_site: "11160500"
+  lat: 37.0443931
+  lon: -122.072464
+
+dates:
+  cutoff_date: "2022-12-25"
+  plot_start: "2022-12-07"
+  plot_end: "2023-01-22"
+  data_start: "2010-01-01"
+
+inputs:
+  fit:
+    parameters_path: "/data/muscat_data/jaguir26/projects/Project/Input/exAL/parameters/parameters.txt"
+    retros_path: "/data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/multimodel_20221225/inputs/shared/forecats_bundle/retros.csv"
+    retros_storage_scale: "log1p_cms"
+    nws_forecast_path: "/data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/multimodel_20221225/inputs/shared/forecats_bundle/nws_forecast.csv"
+    nws_storage_scale: "raw_cms"
+    glofas_forecast_path: "/data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/multimodel_20221225/inputs/shared/forecats_bundle/glofas_forecast.csv"
+    glofas_storage_scale: "raw_cms"
+    usgs_mode: "live"
+    usgs_cache_path: null
+    covariates:
+      - name: "ELI"
+        path: "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_ELI.csv"
+      - name: "ONI"
+        path: "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_2_ONI.csv"
+      - name: "PPT"
+        path: "/data/muscat_data/jaguir26/project1_ucsc_phd/prism_precipitation_santa_cruz_1987_2023.csv"
+      - name: "SOIL"
+        path: "/data/muscat_data/jaguir26/project1_ucsc_phd/soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv"
+      - name: "PCA"
+        path: "/data/muscat_data/jaguir26/project1_ucsc_phd/pca.csv"
+  post:
+    use_fit_outputs_from_run: true
+    source_run_id: "dev_al_phaseF_allmodels_crps_smoke_20260322_rerun_20260322_203217"
+    source_run_root: "repro/runs"
+  forecats:
+    mode: "use_existing"
+    pipeline_config_path: "config/forecats_pipeline.template.yaml"
+    existing_bundle_path: null
+    snapshot:
+      enabled: false
+  shared:
+    prefer_forecats_snapshot: false
+
+fit:
+  quantiles: [0.50]
+
+post:
+  figures: true
+  smoke_fast: false
+  profile: false
+  profile_detail: false
+  allow_legacy_root_fallback: false
+  sort_keep_na: true
+  export_tables: true
+  table_formats: ["csv"]
+
+validation:
+  profile: "smoke"
+  canonical_run_id: "__SELF__"
+  compare:
+    mode: "none"
+    numeric_abs_tol: 0.0
+    numeric_rel_tol: 0.0
+    pixel_max_abs_tol: 0.0
+
+scale_contract:
+  canonical_storage_scale: "raw_cms"
+  legacy_fit_input_scale: "log1p_cms"
+  legacy_post_input_scale: "log1p_cms"
+  analysis_scale_fit_internal: "log_log1p_cms"
+  analysis_scale_post_internal: "log_log1p_cms"
+
+write_audit:
+  enabled: true
+  enforce_from_stage: 4
+  allowlist_outside_run_root: []
