@@ -533,6 +533,26 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     PROFILE = if (isTRUE(cfg$post$profile)) "TRUE" else "FALSE",
     PROFILE_DETAIL = if (isTRUE(cfg$post$profile_detail)) "TRUE" else "FALSE",
     UNIFIED_POST_FIGURES = if (isTRUE(cfg$post$figures)) "TRUE" else "FALSE",
+    UNIFIED_POST_PUBLICATION_FIGURES = if (isTRUE(unified_get(
+      cfg, c("post", "publication_figures", "enabled"), default = TRUE
+    ))) "TRUE" else "FALSE",
+    UNIFIED_POST_PUBLICATION_REWRITE_CANONICAL = if (isTRUE(unified_get(
+      cfg, c("post", "publication_figures", "rewrite_canonical_png"), default = TRUE
+    ))) "TRUE" else "FALSE",
+    UNIFIED_POST_PUBLICATION_EXPORT_PDF = if (isTRUE(unified_get(
+      cfg, c("post", "publication_figures", "export_pdf"), default = TRUE
+    ))) "TRUE" else "FALSE",
+    UNIFIED_POST_PUBLICATION_FAIL_FAST = if (isTRUE(unified_get(
+      cfg, c("post", "publication_figures", "fail_fast"), default = TRUE
+    ))) "TRUE" else "FALSE",
+    UNIFIED_POST_PUBLICATION_STYLE_PATH = normalizePath(
+      as.character(unified_get(
+        cfg,
+        c("post", "publication_figures", "style_config_path"),
+        default = file.path(repo_root_abs, "config", "post_publication_figures.yaml")
+      )),
+      mustWork = FALSE
+    ),
     ENV_SORT_KEEP_NA = if (isTRUE(sort_keep_na)) "TRUE" else "FALSE",
     EXPORT_TABLES = if (isTRUE(export_tables)) "TRUE" else "FALSE",
     EXPORT_TABLE_FORMATS = paste(unique(table_formats), collapse = ","),

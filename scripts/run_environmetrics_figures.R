@@ -57,6 +57,11 @@ MODEL_RUN_NDLM_MAIN <- env_flag("UNIFIED_MODEL_RUN_NDLM_MAIN", "FALSE")
 MODEL_RUN_NDLM_UNIVAR <- env_flag("UNIFIED_MODEL_RUN_NDLM_UNIVAR", "FALSE")
 POST_FIGURES <- env_flag("UNIFIED_POST_FIGURES", "TRUE")
 POST_SMOKE_FAST <- env_flag("UNIFIED_POST_SMOKE_FAST", "FALSE")
+POST_PUBLICATION_FIGURES <- env_flag("UNIFIED_POST_PUBLICATION_FIGURES", "TRUE")
+POST_PUBLICATION_REWRITE_CANONICAL <- env_flag("UNIFIED_POST_PUBLICATION_REWRITE_CANONICAL", "TRUE")
+POST_PUBLICATION_EXPORT_PDF <- env_flag("UNIFIED_POST_PUBLICATION_EXPORT_PDF", "TRUE")
+POST_PUBLICATION_FAIL_FAST <- env_flag("UNIFIED_POST_PUBLICATION_FAIL_FAST", "TRUE")
+POST_PUBLICATION_STYLE_PATH <- Sys.getenv("UNIFIED_POST_PUBLICATION_STYLE_PATH", "")
 
 if (STRICT_RUNSCOPED_POST) {
   required <- c("UNIFIED_RUN_ROOT", "UNIFIED_RUN_ID", "UNIFIED_POST_CACHE_DIR")
@@ -168,6 +173,11 @@ cat(sprintf("MODEL_RUN_NDLM_MAIN: %s\n", MODEL_RUN_NDLM_MAIN))
 cat(sprintf("MODEL_RUN_NDLM_UNIVAR: %s\n", MODEL_RUN_NDLM_UNIVAR))
 cat(sprintf("POST_FIGURES: %s\n", POST_FIGURES))
 cat(sprintf("POST_SMOKE_FAST: %s\n", POST_SMOKE_FAST))
+cat(sprintf("POST_PUBLICATION_FIGURES: %s\n", POST_PUBLICATION_FIGURES))
+cat(sprintf("POST_PUBLICATION_REWRITE_CANONICAL: %s\n", POST_PUBLICATION_REWRITE_CANONICAL))
+cat(sprintf("POST_PUBLICATION_EXPORT_PDF: %s\n", POST_PUBLICATION_EXPORT_PDF))
+cat(sprintf("POST_PUBLICATION_FAIL_FAST: %s\n", POST_PUBLICATION_FAIL_FAST))
+cat(sprintf("POST_PUBLICATION_STYLE_PATH: %s\n", if (nzchar(POST_PUBLICATION_STYLE_PATH)) POST_PUBLICATION_STYLE_PATH else "<default>"))
 if (length(DISC_W_RDATA_PATHS) > 0L) {
   cat("DISC_W_RDATA_PATHS:\n")
   cat(paste0(" - ", DISC_W_RDATA_PATHS, collapse = "\n"), "\n")
@@ -448,6 +458,33 @@ for (mod in modules) {
   t1 <- Sys.time()
   log_step(paste("END", mod))
   log_timing(mod, t0, t1)
+}
+
+publication_helpers <- file.path(PROJECT_ROOT, "R", "unified", "post_publication_figures.R")
+if (POST_FIGURES && POST_PUBLICATION_FIGURES) {
+  if (!file.exists(publication_helpers)) {
+    stop(sprintf("Missing publication figure helpers: %s", publication_helpers), call. = FALSE)
+  }
+  log_step("START publication_figure_rewrite")
+  t0 <- Sys.time()
+  source(publication_helpers)
+  pub_result <- unified_render_publication_figures(
+    outputs_dir = OUT_DIR,
+    run_id = RUN_ID,
+    project_root = PROJECT_ROOT,
+    enabled = TRUE,
+    rewrite_canonical_png = POST_PUBLICATION_REWRITE_CANONICAL,
+    export_pdf = POST_PUBLICATION_EXPORT_PDF,
+    fail_fast = POST_PUBLICATION_FAIL_FAST,
+    style_config_path = if (nzchar(POST_PUBLICATION_STYLE_PATH)) POST_PUBLICATION_STYLE_PATH else NULL
+  )
+  t1 <- Sys.time()
+  log_step(sprintf(
+    "END publication_figure_rewrite rendered=%d skipped=%d",
+    as.integer(pub_result$rendered %||% 0L),
+    as.integer(pub_result$skipped %||% 0L)
+  ))
+  log_timing("publication_figure_rewrite", t0, t1)
 }
 
 if (!POST_FIGURES) {
