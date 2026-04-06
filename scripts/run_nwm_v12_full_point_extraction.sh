@@ -4,18 +4,24 @@ set -euo pipefail
 # Launch full NWM v1.2 point-only extraction in background tmux workers.
 #
 # Usage:
-#   ./scripts/run_nwm_v12_full_point_extraction.sh [RUN_ID] [WORKERS] [AGG_SCALE]
+#   ./scripts/run_nwm_v12_full_point_extraction.sh [RUN_ID] [WORKERS] [AGG_SCALE] [RUN_BASE_ROOT]
 #
 # Defaults:
 #   RUN_ID=nwm_retrospective_campaign_20260218T024352Z
 #   WORKERS=4
 #   AGG_SCALE=log_log1p_cms
+#   RUN_BASE_ROOT=repro/nwm_retrospective_runs
+#
+# Environment overrides:
+#   NWM_V12_RUN_BASE_ROOT
+#   PROJECT_ROOT
 
 RUN_ID="${1:-nwm_retrospective_campaign_20260218T024352Z}"
 WORKERS="${2:-4}"
 AGG_SCALE="${3:-log_log1p_cms}"
+RUN_BASE_ROOT="${4:-${NWM_V12_RUN_BASE_ROOT:-repro/nwm_retrospective_runs}}"
 
-ROOT="/data/muscat_data/jaguir26/project1_ucsc_phd"
+ROOT="${PROJECT_ROOT:-/data/muscat_data/jaguir26/project1_ucsc_phd}"
 cd "$ROOT"
 
 if ! [[ "$WORKERS" =~ ^[0-9]+$ ]] || [[ "$WORKERS" -lt 1 ]]; then
@@ -23,7 +29,7 @@ if ! [[ "$WORKERS" =~ ^[0-9]+$ ]] || [[ "$WORKERS" -lt 1 ]]; then
   exit 2
 fi
 
-RUN_ROOT="repro/nwm_retrospective_runs/${RUN_ID}"
+RUN_ROOT="${RUN_BASE_ROOT}/${RUN_ID}"
 YEARLY_DIR="${RUN_ROOT}/point_series/v12_yearly"
 LOG_DIR="${RUN_ROOT}/logs/v12_yearly"
 mkdir -p "$YEARLY_DIR" "$LOG_DIR"
@@ -36,6 +42,7 @@ echo "[INFO] RUN_ID=$RUN_ID"
 echo "[INFO] WORKERS=$WORKERS"
 echo "[INFO] RUN_ROOT=$RUN_ROOT"
 echo "[INFO] AGG_SCALE=$AGG_SCALE"
+echo "[INFO] RUN_BASE_ROOT=$RUN_BASE_ROOT"
 
 RUN_ROOT="$RUN_ROOT" WORKERS="$WORKERS" LOG_DIR="$LOG_DIR" YEARLY_DIR="$YEARLY_DIR" python3 - <<'PY'
 from pathlib import Path

@@ -88,6 +88,24 @@ def run_cmd(cmd: List[str]) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, check=False)
 
 
+def parse_local_known_overrides(values: List[str]) -> Dict[str, Path]:
+    overrides: Dict[str, Path] = {}
+    for raw in values:
+        if "=" not in raw:
+            raise SystemExit(
+                f"Invalid --local-known value {raw!r}. Expected VERSION=/absolute/or/relative/path.csv"
+            )
+        version, path_text = raw.split("=", 1)
+        version = version.strip()
+        path_text = path_text.strip()
+        if not version or not path_text:
+            raise SystemExit(
+                f"Invalid --local-known value {raw!r}. Expected VERSION=/absolute/or/relative/path.csv"
+            )
+        overrides[version] = Path(path_text)
+    return overrides
+
+
 def probe_bucket(bucket: str) -> Dict[str, object]:
     cmd = ["aws", "s3", "ls", "--no-sign-request", f"s3://{bucket}/"]
     p = run_cmd(cmd)
@@ -165,6 +183,15 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Optional fixed run_id. If omitted, generated from UTC timestamp.",
     )
+    p.add_argument(
+        "--local-known",
+        action="append",
+        default=[],
+        help=(
+            "Optional override/addition for known local artifacts in the form "
+            "VERSION=/path/to/file.csv. May be provided multiple times."
+        ),
+    )
     return p.parse_args()
 
 
@@ -206,9 +233,12 @@ def main() -> int:
     probe_json_path.write_text(json.dumps(probes, indent=2))
 
     # 3) Local inventory.
+    local_known = dict(LOCAL_KNOWN)
+    local_known.update(parse_local_known_overrides(list(args.local_known)))
+
     rows = []
     for s in VERSION_SOURCES:
-        p = LOCAL_KNOWN.get(s.version)
+        p = local_known.get(s.version)
         row: Dict[str, object] = {
             "version": s.version,
             "local_path": str(p) if p is not None else "",
@@ -251,4 +281,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

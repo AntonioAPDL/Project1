@@ -3,11 +3,21 @@ set -euo pipefail
 
 # Template commands for legacy GloFAS global downloads.
 # This script is safe to run incrementally: curl uses resume (-C -).
+#
+# Usage:
+#   ./scripts/run_legacy_glofas_downloads.sh [OUT_DIR] [LOG_DIR]
+#
+# Environment overrides:
+#   GLOFAS_LEGACY_OUT_DIR
+#   GLOFAS_LEGACY_LOG_DIR
 
 ROOT="/data/muscat_data/jaguir26/project1_ucsc_phd"
-OUT_DIR="$ROOT/data/glofas_legacy_global"
-LOG_DIR="$OUT_DIR/logs"
+OUT_DIR="${1:-${GLOFAS_LEGACY_OUT_DIR:-$ROOT/data/glofas_legacy_global}}"
+LOG_DIR="${2:-${GLOFAS_LEGACY_LOG_DIR:-$OUT_DIR/logs}}"
 mkdir -p "$OUT_DIR" "$LOG_DIR"
+
+echo "[INFO] OUT_DIR=$OUT_DIR"
+echo "[INFO] LOG_DIR=$LOG_DIR"
 
 # Stable confirmed URL (v3.0 legacy reanalysis):
 V3_URL="https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/CEMS-GLOFAS-RA/streamflow_analysis/LATEST/dis_1980_2018.nc"
@@ -43,4 +53,3 @@ fi
 # tail -f "$LOG_DIR/v3_download.log"
 # ls -lh "$V3_OUT"
 # pgrep -af "curl.*dis_1980_2018"
-
