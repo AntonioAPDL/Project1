@@ -488,30 +488,6 @@ This writes:
 - a non-destructive reconciled canonical output under `extract_gefs_full_reconciled_<RETRY_ID>/`
 - GEFS-only retry and reconciled health summaries under `health_checks/`
 
-Shared-y cutoff plotting workflow for comparable same-unit plots across all cutoff dates:
-
-1. Render or rerender all cutoff plots in a same-unit style so each `cutoff_date=*/` directory contains a `plot_summary*.json`.
-2. Build one shared y-limit manifest for the full manifest run:
-
-```bash
-Rscript scripts/build_gefs_nwm_forecast_y_limit_manifest.R \
-  --manifest-run-dir "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>" \
-  --out-json "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>/plots/shared_y_limits.json"
-```
-
-3. Rerender each cutoff using the same shared y limits:
-
-```bash
-Rscript scripts/plot_gefs_nwm_forecast_cutoff.R \
-  --manifest-run-dir "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>" \
-  --cutoff-date 2022-12-25 \
-  --plot-style mean_only_same_units_bias_quantiles \
-  --overlay-covariates \
-  --shared-y-limits-json "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>/plots/shared_y_limits.json"
-```
-
-The plot summary JSON written for each cutoff now records the shared soil and precipitation y-limits that were applied, so the cutoff comparison remains auditable and reproducible.
-
 ### 6.5 USGS Daily Flow
 
 Dry run:
@@ -580,8 +556,7 @@ This stages:
    - legacy GLOFAS `v4.0`
    - NWM synthetic retrospective from `results.pkl`
    - NWM synthetic retrospective from missing `forecast_cache/nws`
-4. Use the shared-y plotting workflow once the desired forecast handoff/plot directories exist, so cutoff plots are directly comparable within each variable family.
-5. After each full lane finishes, write/update:
+4. After each full lane finishes, write/update:
    - family-level audit summary
    - missing/failure ledger
    - consolidated ready/partial/blocked status in this tracker

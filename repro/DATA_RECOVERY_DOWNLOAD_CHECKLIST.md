@@ -66,6 +66,5 @@ Purpose:
   - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/extract_gefs_full_reconciled_gefs_retry_20260406T224500Z`
 - The original GEFS base extract is still preserved for audit:
   - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/extract_gefs_full`
-- For comparable cutoff figures, first build `plots/shared_y_limits.json` with `scripts/build_gefs_nwm_forecast_y_limit_manifest.R`, then rerender each cutoff with `scripts/plot_gefs_nwm_forecast_cutoff.R --shared-y-limits-json ...`.
 - If we reuse surviving authoritative CSVs for `NWM-RETRO-21`, `NWM-RETRO-30`, `CLIMATE-PRISM`, or `CLIMATE-ERA5`, record that decision in the main tracker before launching other full backfills.
 - Do not let blocked synthetic/legacy lanes delay the main five-family recovery objective.
