@@ -1,7 +1,11 @@
 # Data Recovery Campaign Tracker
 
-Last updated: 2026-04-06  
+Last updated: 2026-04-06 (metadata plans + bounded smoke validation complete)  
 Status owner: this document is the operational source of truth for the post-cleanup recovery campaign at site `11160500`.
+
+Companion operator checklist:
+
+- `repro/DATA_RECOVERY_DOWNLOAD_CHECKLIST.md`
 
 ## 1) Scope Lock
 
@@ -114,7 +118,48 @@ This writes:
 Current initialized run:
 
 - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z`
-- status: layout initialized, bootstrap artifacts inventoried, no heavy backfills launched yet
+- status: layout initialized, bootstrap artifacts inventoried, metadata-only planning complete, bounded smoke downloads complete, no full backfills launched yet
+
+Metadata-only planning outputs now present:
+
+- NWM retrospective manifest:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=nwm_retrospective/nwm_retrospective_manifest_20260406T190344Z/manifests/manifest_summary.json`
+- GLOFAS historical campaign plan:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=glofas_historical/manifests/hist_campaign_20260406T190353Z/`
+- GEFS/NWM forecast manifest:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/gefs_nwm_forecast_manifest_20260406T190344Z/manifests/manifest_summary.json`
+- ERA5 dry-run ledger:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=climate_covariates/logs/era5_plan_20260406T190344Z.log`
+- PRISM dry-run ledger:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=climate_covariates/logs/prism_plan_20260406T190344Z.log`
+- USGS dry-run ledger:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/logs/usgs_plan_20260406T190344Z.log`
+
+Active full-backfill tranche now staged/launched:
+
+- tranche id:
+  - `source_native_tranche1_20260406T194500Z`
+- launch bundle root:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/backfill_groups/source_native_tranche1_20260406T194500Z`
+- launch manifest:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/backfill_groups/source_native_tranche1_20260406T194500Z/manifests/launch_manifest.json`
+- session list:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/backfill_groups/source_native_tranche1_20260406T194500Z/status/tmux_sessions.txt`
+
+Smoke-validation outputs now present:
+
+- NWM retrospective smoke root:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=nwm_retrospective/smoke/site11160500_nwm_retro_smoke_20260406T191500Z`
+- GLOFAS historical smoke root:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=glofas_historical/smoke/site11160500_glofas_historical_smoke_20260406T191700Z`
+- Climate smoke root:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=climate_covariates/smoke/site11160500_climate_smoke_20260406T191900Z`
+- GEFS/NWM forecast smoke root:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/gefs_nwm_forecast_manifest_20260406T190344Z/smoke`
+- GEFS/NWM forecast smoke health summary:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/gefs_nwm_forecast_manifest_20260406T190344Z/health_checks/forecast_extract_health_smoke_20260406T192000Z.json`
+- USGS smoke root:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/smoke/site11160500_usgs_daily_smoke_20260406T192100Z`
 
 ## 4) Inventory
 
@@ -126,7 +171,7 @@ Legend:
 
 | family | source | product | version(s) | variable(s) | spatial logic | temporal coverage | current script(s) | current status | fully rebuildable now | depends on missing local cache | important gaps / unknowns |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| NWM retrospective | NOAA NWM retrospective | channel point streamflow | `1.2` | `streamflow` | fixed `feature_id=17682474` for full run; target lat/lon only for pilot lookup | `1993-01-01` to `2017-12-31` | `scripts/nwm_retrospective_extract_point_v12_comp.py`, `scripts/run_nwm_v12_full_point_extraction.sh`, `scripts/nwm_retrospective_audit_point_series.py` | `partial` | `yes`, with year sharding | `no` | full run is expensive; wrapper now supports external run-base override, but no surviving authoritative full `v1.2` CSV was found |
+| NWM retrospective | NOAA NWM retrospective | channel point streamflow | `1.2` | `streamflow` | fixed `feature_id=17682474` for full run; target lat/lon only for pilot lookup | `1993-01-01` to `2017-12-31` | `scripts/nwm_retrospective_extract_point_v12_comp.py`, `scripts/run_nwm_v12_full_point_extraction.sh`, `scripts/nwm_retrospective_audit_point_series.py` | `ready_now` | `yes`, with year sharding | `no` | smoke validation confirmed `feature_id=17682474`; source files do not expose lat/lon for the selected feature in the pilot metadata |
 | NWM retrospective | NOAA NWM retrospective | channel point streamflow | `2.0` | `streamflow` | nearest valid feature from Zarr; prior full run selected `feature_id=17682474` | `1993-01-01` to `2018-12-31` | `scripts/nwm_retrospective_extract_point_zarr.py`, `scripts/nwm_retrospective_audit_point_series.py`, `scripts/nwm_retrospective_build_unified_table.py` | `ready_now` | `yes` | `no` | point-series outputs were lost from repo-local cache and need rerun under external root |
 | NWM retrospective | NOAA NWM retrospective | channel point streamflow | `2.1` | `streamflow` | nearest valid feature from Zarr; prior full run selected `feature_id=17682474` | `1979-02-01` to `2020-12-31` | `scripts/nwm_retrospective_extract_point_zarr.py`, `scripts/nwm_retrospective_audit_point_series.py`, `scripts/nwm_retrospective_build_unified_table.py` | `ready_now` | `yes` | `no` | external surviving hourly CSV backup exists and can be reused instead of redownload if desired |
 | NWM retrospective | NOAA NWM retrospective | channel point streamflow | `3.0` | `streamflow` | nearest valid feature from Zarr; prior full run selected `feature_id=17682474` | `1979-02-01` to `2023-01-31` | `scripts/nwm_retrospective_extract_point_zarr.py`, `scripts/nwm_retrospective_audit_point_series.py`, `scripts/nwm_retrospective_build_unified_table.py` | `ready_now` | `yes` | `no` | external surviving hourly CSV backup exists; backup has trailing `2023-02-01 00:00` timestamp and should be trimmed explicitly |
@@ -154,6 +199,15 @@ Already redownloadable automatically now:
 - PRISM precipitation
 - ERA5 soil moisture
 - GEFS precipitation and soil-moisture forecasts
+- USGS daily flow
+
+Smoke-validated under the external runtime root on 2026-04-06:
+
+- NWM retrospective `v1.2`, `v2.0`, `v2.1`, `v3.0`
+- GLOFAS historical `version_2_1`, `version_3_1`, `version_4_0`
+- ERA5 soil moisture
+- PRISM precipitation
+- GEFS precipitation + soil smoke extraction
 - USGS daily flow
 
 Rebuildable from surviving local artifacts now:
@@ -381,7 +435,7 @@ Smoke extraction:
 
 ```bash
 python3 scripts/gefs_nwm_point_smoke_extract.py \
-  --manifest-run-dir "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/manifests/<MANIFEST_RUN_ID>" \
+  --manifest-run-dir "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>" \
   --site-config config/forecats_pipeline.template.yaml \
   --gefs-init-date 2021-01-23 \
   --nwm-init-date 2021-11-12 \
@@ -389,11 +443,20 @@ python3 scripts/gefs_nwm_point_smoke_extract.py \
   --nwm-cycle 0
 ```
 
+Smoke health check:
+
+```bash
+python3 scripts/check_gefs_nwm_forecast_extract_health.py \
+  --manifest-run-dir "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>" \
+  --mode smoke \
+  --sources gefs,nwm
+```
+
 Full GEFS extraction after smoke approval:
 
 ```bash
 python3 scripts/extract_gefs_nwm_forecast_points.py \
-  --manifest-run-dir "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/manifests/<MANIFEST_RUN_ID>" \
+  --manifest-run-dir "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>" \
   --out-subdir extract_gefs_full \
   --sources gefs \
   --gefs-workers 16 \
@@ -405,9 +468,49 @@ Health check:
 
 ```bash
 python3 scripts/check_gefs_nwm_forecast_extract_health.py \
-  --manifest-run-dir "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/manifests/<MANIFEST_RUN_ID>" \
+  --manifest-run-dir "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>" \
+  --sources gefs \
   --gefs-out-subdir extract_gefs_full
 ```
+
+Targeted retry and non-destructive reconciliation for transient GEFS throttling failures:
+
+```bash
+bash scripts/run_gefs_failed_retry_pass.sh \
+  "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>" \
+  gefs_retry_$(date -u +%Y%m%dT%H%M%SZ)
+```
+
+This writes:
+
+- a retry-only manifest bundle under `retry_passes/<RETRY_ID>/`
+- retry extraction outputs under `retry_passes/<RETRY_ID>/extract_gefs_retry/`
+- a non-destructive reconciled canonical output under `extract_gefs_full_reconciled_<RETRY_ID>/`
+- GEFS-only retry and reconciled health summaries under `health_checks/`
+
+Shared-y cutoff plotting workflow for comparable same-unit plots across all cutoff dates:
+
+1. Render or rerender all cutoff plots in a same-unit style so each `cutoff_date=*/` directory contains a `plot_summary*.json`.
+2. Build one shared y-limit manifest for the full manifest run:
+
+```bash
+Rscript scripts/build_gefs_nwm_forecast_y_limit_manifest.R \
+  --manifest-run-dir "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>" \
+  --out-json "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>/plots/shared_y_limits.json"
+```
+
+3. Rerender each cutoff using the same shared y limits:
+
+```bash
+Rscript scripts/plot_gefs_nwm_forecast_cutoff.R \
+  --manifest-run-dir "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>" \
+  --cutoff-date 2022-12-25 \
+  --plot-style mean_only_same_units_bias_quantiles \
+  --overlay-covariates \
+  --shared-y-limits-json "${RECOVERY_FAMILY_GEFS_FORECASTS_ROOT}/<MANIFEST_RUN_ID>/plots/shared_y_limits.json"
+```
+
+The plot summary JSON written for each cutoff now records the shared soil and precipitation y-limits that were applied, so the cutoff comparison remains auditable and reproducible.
 
 ### 6.5 USGS Daily Flow
 
@@ -434,27 +537,51 @@ python3 scripts/fetch_usgs_daily_flow.py \
   --out-meta "${RECOVERY_FAMILY_USGS_DAILY_FLOW_ROOT}/logs/usgs_daily_flow_11160500.meta.json"
 ```
 
+### 6.6 Tranche Launcher
+
+Launch the first full source-native rebuild tranche under the external recovery root:
+
+```bash
+bash scripts/recovery_launch_source_native_tranche1.sh \
+  /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z \
+  source_native_tranche1_20260406T194500Z
+```
+
+This stages:
+
+- a dedicated launch bundle under `backfill_groups/`
+- NWM `v1.2` full yearly shards
+- NWM `v2.0` full yearly Zarr shards
+- GLOFAS historical full campaigns for `version_2_1`, `version_3_1`, `version_4_0`
+- a fresh GEFS full-run manifest plus full GEFS extraction
+- USGS full historical daily flow fetch
+
 ## 7) Smoke / Full / Health Checklist
 
 | family | smoke test | smoke status | full run status | health status | blocking note |
 |---|---|---|---|---|---|
-| NWM retrospective | one short-range Zarr pilot per version + `v1.2` two-day pilot | existing historical evidence only; rerun pending under external root | not started in new runtime root | not started in new runtime root | `v1.2` full sharded run remains the longest lane |
-| GLOFAS historical | one day or one month per product; use existing probe zips where possible | existing historical evidence only; rerun pending under external root | not started in new runtime root | not started in new runtime root | legacy `v4.0` direct file blocked |
-| Climate covariates | PRISM dry-run, ERA5 dry-run, NWM soil short extraction | pending | not started in new runtime root | not started in new runtime root | need external-root wrappers and ledgers |
-| GEFS forecasts | manifest build + one-date smoke extraction | prior repo-local evidence exists; rerun pending under external root | not started in new runtime root | not started in new runtime root | previous run directory missing |
-| USGS daily flow | explicit dry-run URL and one real fetch into runtime root | pending | not started in new runtime root | schema/date-range check pending | standalone materializer added, not yet executed |
+| NWM retrospective | `v2.0/v2.1/v3.0` three-day Zarr smoke + `v1.2` two-day `.comp` smoke | `pass` under `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=nwm_retrospective/smoke/site11160500_nwm_retro_smoke_20260406T191500Z` | `v2.0 complete`; `v1.2 in_progress` via tranche `source_native_tranche1_20260406T194500Z` | `pass` for smoke plus `v2.0` full audit at `family=nwm_retrospective/full_runs/source_native_tranche1_20260406T194500Z/nwm_v20_campaign_source_native_tranche1_20260406T194500Z/audits/v20_full_audit_summary.json` | `v1.2` full sharded run remains the longest lane; must keep `feature_id=17682474` fixed |
+| GLOFAS historical | one 2022-07 shard per historical product with point extraction | `pass` under `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=glofas_historical/smoke/site11160500_glofas_historical_smoke_20260406T191700Z` | `in_progress` via tranche `source_native_tranche1_20260406T194500Z` | `pass` by extractor metadata for `version_2_1`, `version_3_1`, `version_4_0` | legacy `v4.0` direct-file parity remains blocked |
+| Climate covariates | actual three-day ERA5 + PRISM extraction (`2023-01-01` to `2023-01-03`) | `pass` under `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=climate_covariates/smoke/site11160500_climate_smoke_20260406T191900Z` | not started in new runtime root | `manual pass` from schema/date-range review in smoke outputs | no standalone climate meta writer yet; rely on smoke logs + output schema review |
+| GEFS forecasts | manifest build + one-date smoke extraction (`GEFS 2021-01-23`, `NWM 2021-11-12`) | `pass` under `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/gefs_nwm_forecast_manifest_20260406T190344Z/smoke` | `complete` via base full extraction plus targeted retry/reconciliation under `family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/` | `pass` via `health_checks/gefs_reconciled_health_gefs_retry_20260406T224500Z.json` after recovering all transient failures | base run saw `24` `HTTP 503 Slow Down` file failures and `62` row failures; targeted retry recovered all of them without overwriting the original extract |
+| USGS daily flow | explicit dry-run URL + real six-day fetch (`2022-12-20` to `2022-12-25`) | `pass` under `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/smoke/site11160500_usgs_daily_smoke_20260406T192100Z` | `complete` for tranche `source_native_tranche1_20260406T194500Z` | `manual pass` from CSV/meta schema + units review | full historical fetch materialized at `family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv` |
 
 ## 8) Immediate Next Steps
 
-1. Initialize the runtime run root and record the bootstrap artifact inventory.
-2. Rebuild metadata-only manifests first:
-   - NWM retrospective manifest
-   - GLOFAS historical plan
-   - GEFS manifest
-3. Run one smoke test per family under the external runtime root.
-4. Review smoke outputs for:
-   - location/cell/feature identity
-   - version/product label correctness
-   - schema and units
-   - coverage framing
-5. Only then approve full backfills.
+1. Let tranche `source_native_tranche1_20260406T194500Z` continue until the remaining long lanes finish:
+   - NWM `v1.2`
+   - GLOFAS historical `version_2_1`, `version_3_1`, `version_4_0`
+2. Stage tranche-2 source-native rebuilds after tranche 1:
+   - NWM `v2.1`
+   - NWM `v3.0`
+   - PRISM precipitation
+   - ERA5 soil moisture
+3. Keep blocked items explicit and out of the main backfill queue:
+   - legacy GLOFAS `v4.0`
+   - NWM synthetic retrospective from `results.pkl`
+   - NWM synthetic retrospective from missing `forecast_cache/nws`
+4. Use the shared-y plotting workflow once the desired forecast handoff/plot directories exist, so cutoff plots are directly comparable within each variable family.
+5. After each full lane finishes, write/update:
+   - family-level audit summary
+   - missing/failure ledger
+   - consolidated ready/partial/blocked status in this tracker

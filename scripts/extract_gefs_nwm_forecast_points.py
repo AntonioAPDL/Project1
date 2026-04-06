@@ -25,7 +25,7 @@ import traceback
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import fsspec
 import h5py
@@ -793,9 +793,15 @@ def main() -> int:
     out_root = (run_dir / args.out_subdir).resolve()
     sources = normalize_sources(args.sources)
 
-    gefs_meta = read_json(smoke_meta_path(run_dir, "gefs/gefs_point_smoke_meta.json"))
-    nwm_meta = read_json(smoke_meta_path(run_dir, "nwm/nwm_point_smoke_meta.json"))
-    nwm_grid_meta = dict(nwm_meta["grid_reference"])
+    gefs_meta: Optional[Dict[str, Any]] = None
+    nwm_meta: Optional[Dict[str, Any]] = None
+    nwm_grid_meta: Optional[Dict[str, Any]] = None
+
+    if "gefs" in sources:
+        gefs_meta = read_json(smoke_meta_path(run_dir, "gefs/gefs_point_smoke_meta.json"))
+    if "nwm" in sources:
+        nwm_meta = read_json(smoke_meta_path(run_dir, "nwm/nwm_point_smoke_meta.json"))
+        nwm_grid_meta = dict(nwm_meta["grid_reference"])
 
     top_summary_path = out_root / "extract_summary.json"
     if top_summary_path.exists() and not args.overwrite:

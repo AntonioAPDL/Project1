@@ -41,6 +41,39 @@ as_abs_path <- function(p) {
   normalizePath(file.path(getwd(), p), mustWork = FALSE)
 }
 
+parse_limit_pair <- function(x) {
+  if (is.null(x) || identical(x, "") || length(x) == 0) return(NULL)
+  if (is.numeric(x)) {
+    vals <- as.numeric(x)
+  } else {
+    vals <- suppressWarnings(as.numeric(trimws(unlist(strsplit(as.character(x), ",", fixed = TRUE)))))
+  }
+  vals <- vals[is.finite(vals)]
+  if (length(vals) != 2) {
+    stop(sprintf("Expected exactly two numeric y-limit values, got: %s", paste(x, collapse = ",")), call. = FALSE)
+  }
+  sort(vals)
+}
+
+read_shared_y_limits <- function(path) {
+  if (is.null(path) || identical(path, "")) return(list())
+  if (!file.exists(path)) {
+    stop(sprintf("Shared y-limits JSON not found: %s", path), call. = FALSE)
+  }
+  obj <- jsonlite::fromJSON(path, simplifyVector = FALSE)
+  out <- list()
+  for (nm in names(obj)) {
+    entry <- obj[[nm]]
+    if (is.list(entry) && !is.null(entry$limits)) {
+      out[[nm]] <- parse_limit_pair(entry$limits)
+    } else {
+      try_vals <- try(parse_limit_pair(entry), silent = TRUE)
+      if (!inherits(try_vals, "try-error")) out[[nm]] <- try_vals
+    }
+  }
+  out
+}
+
 slugify <- function(x) {
   x <- gsub("[^A-Za-z0-9]+", "_", x)
   x <- gsub("_+", "_", x)
@@ -668,7 +701,8 @@ plot_harmonized_means <- function(
   caption,
   out_png,
   out_pdf,
-  y_label
+  y_label,
+  y_limits = NULL
 ) {
   if (nrow(plot_data$summary) == 0) {
     stop("No rows available for harmonized plot.", call. = FALSE)
@@ -699,6 +733,9 @@ plot_harmonized_means <- function(
     ),
     na.rm = TRUE
   )
+  if (!is.null(y_limits)) {
+    y_max <- max(y_limits, na.rm = TRUE)
+  }
   y_accuracy <- dplyr::case_when(
     y_max <= 1 ~ 0.01,
     y_max <= 10 ~ 0.1,
@@ -787,6 +824,10 @@ plot_harmonized_means <- function(
       color = guide_legend(override.aes = list(alpha = 1, linewidth = 1.5))
     )
 
+  if (!is.null(y_limits)) {
+    p <- p + coord_cartesian(ylim = y_limits)
+  }
+
   ggsave(out_png, p, width = 16, height = 10, dpi = 320, bg = "#F6F3EC")
   ggsave(out_pdf, p, width = 16, height = 10, bg = "#F6F3EC")
   invisible(p)
@@ -799,7 +840,8 @@ plot_harmonized_precip_quantiles <- function(
   caption,
   out_png,
   out_pdf,
-  y_label
+  y_label,
+  y_limits = NULL
 ) {
   if (nrow(plot_data$summary) == 0) {
     stop("No rows available for precipitation quantile plot.", call. = FALSE)
@@ -834,6 +876,9 @@ plot_harmonized_precip_quantiles <- function(
     ),
     na.rm = TRUE
   )
+  if (!is.null(y_limits)) {
+    y_max <- max(y_limits, na.rm = TRUE)
+  }
   y_accuracy <- dplyr::case_when(
     y_max <= 1 ~ 0.01,
     y_max <= 10 ~ 0.1,
@@ -960,6 +1005,10 @@ plot_harmonized_precip_quantiles <- function(
       color = guide_legend(order = 1, override.aes = list(alpha = 1, linewidth = 1.5, linetype = "solid")),
       linetype = guide_legend(order = 2, override.aes = list(color = "#3A332B", linewidth = c(1.5, 1.1, 0.8)))
     )
+
+  if (!is.null(y_limits)) {
+    p <- p + coord_cartesian(ylim = y_limits)
+  }
 
   ggsave(out_png, p, width = 16, height = 10, dpi = 320, bg = "#F6F3EC")
   ggsave(out_pdf, p, width = 16, height = 10, bg = "#F6F3EC")
@@ -1164,6 +1213,9 @@ main <- function() {
   overlay_covariates <- isTRUE(args$`overlay-covariates`)
   prism_csv <- as_abs_path(args$`prism-csv` %||% "prism_precipitation_santa_cruz_1987_2023.csv")
   era5_soil_csv <- as_abs_path(args$`era5-soil-csv` %||% "soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv")
+  shared_y_limits_arg <- args$`shared-y-limits-json` %||% ""
+  shared_y_limits_json <- if (nzchar(shared_y_limits_arg)) as_abs_path(shared_y_limits_arg) else ""
+  shared_y_limits <- read_shared_y_limits(shared_y_limits_json)
 
   cutoff_date <- as.character(args$`cutoff-date` %||% max(c(catalogs$gefs$init_date, catalogs$nwm$init_date), na.rm = TRUE))
   out_root <- file.path(run_dir, "plots", paste0("cutoff_date=", cutoff_date))
@@ -1230,6 +1282,8 @@ main <- function() {
   }
 
   site_label <- sprintf("USGS %s | Big Trees / San Lorenzo (%.4f, %.4f)", site$usgs_site, site$lat, site$lon)
+  soil_y_limits <- if (use_same_units) shared_y_limits$soil_same_units %||% NULL else NULL
+  precip_y_limits <- if (use_same_units) shared_y_limits$precip_same_units %||% NULL else NULL
   if (use_same_units) {
     subtitle_lines <- c(
       sprintf("Init / cutoff date: %s", cutoff_date),
@@ -1425,7 +1479,8 @@ main <- function() {
       caption = soil_caption,
       out_png = soil_png,
       out_pdf = soil_pdf,
-      y_label = "Daily mean soil moisture (m3/m3)"
+      y_label = "Daily mean soil moisture (m3/m3)",
+      y_limits = soil_y_limits
     )
     if (identical(plot_style, "mean_only_same_units_bias_quantiles")) {
       plot_harmonized_precip_quantiles(
@@ -1435,7 +1490,8 @@ main <- function() {
         caption = precip_caption,
         out_png = precip_png,
         out_pdf = precip_pdf,
-        y_label = "Daily precipitation (mm)"
+        y_label = "Daily precipitation (mm)",
+        y_limits = precip_y_limits
       )
     } else {
       plot_harmonized_means(
@@ -1445,7 +1501,8 @@ main <- function() {
         caption = precip_caption,
         out_png = precip_png,
         out_pdf = precip_pdf,
-        y_label = "Daily precipitation (mm)"
+        y_label = "Daily precipitation (mm)",
+        y_limits = precip_y_limits
       )
     }
   } else {
@@ -1492,6 +1549,9 @@ main <- function() {
     era5_soil_csv = if (overlay_covariates) era5_soil_csv else NULL,
     soil_covariate_points = if (overlay_covariates) nrow(soil_overlay) else NULL,
     precip_covariate_points = if (overlay_covariates) nrow(precip_overlay) else NULL,
+    shared_y_limits_json = if (nzchar(shared_y_limits_json)) shared_y_limits_json else NULL,
+    soil_y_limits_used = if (!is.null(soil_y_limits)) unname(as.numeric(soil_y_limits)) else NULL,
+    precip_y_limits_used = if (!is.null(precip_y_limits)) unname(as.numeric(precip_y_limits)) else NULL,
     nwm_soilsat_top_porosity = if (use_same_units) soil_data$porosity_info$porosity else NULL,
     nwm_soilsat_top_porosity_q10 = if (use_same_units) soil_data$porosity_info$q10 else NULL,
     nwm_soilsat_top_porosity_q90 = if (use_same_units) soil_data$porosity_info$q90 else NULL,
