@@ -52,6 +52,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--base-out-subdir", default=DEFAULT_BASE_OUT_SUBDIR)
     p.add_argument("--retry-out-subdir", default=DEFAULT_RETRY_OUT_SUBDIR)
     p.add_argument("--reconciled-out-subdir", default=DEFAULT_RECONCILED_OUT_SUBDIR)
+    p.add_argument(
+        "--allow-unresolved-retry",
+        action="store_true",
+        help="Allow reconciliation even if the retry status ledger still contains non-ok rows.",
+    )
     return p.parse_args()
 
 
@@ -72,6 +77,12 @@ def maybe_read(path: Path) -> pd.DataFrame:
     return pd.read_csv(path) if path.exists() else pd.DataFrame()
 
 
+def require_columns(df: pd.DataFrame, required: List[str], label: str) -> None:
+    missing = [col for col in required if col not in df.columns]
+    if missing:
+        raise SystemExit(f"{label} is missing required column(s): {missing}")
+
+
 def main() -> int:
     args = parse_args()
     base_run_dir = Path(args.base_manifest_run_dir).resolve()
@@ -89,9 +100,32 @@ def main() -> int:
     retry_series = read_csv(retry_root / "gefs_point_series.csv")
     retry_status = read_csv(retry_root / "gefs_file_status.csv")
     retry_failures = maybe_read(retry_root / "gefs_row_failures.csv")
+    require_columns(base_series, ["object_url"], "Base GEFS point series")
+    require_columns(base_status, ["object_url", "status"], "Base GEFS status ledger")
+    require_columns(retry_series, ["object_url"], "Retry GEFS point series")
+    require_columns(retry_status, ["object_url", "status"], "Retry GEFS status ledger")
+    if not base_failures.empty:
+        require_columns(base_failures, ["object_url"], "Base GEFS failure ledger")
+    if not retry_failures.empty:
+        require_columns(retry_failures, ["object_url"], "Retry GEFS failure ledger")
+
+    duplicate_retry_status_urls = int(retry_status["object_url"].astype(str).duplicated().sum())
+    if duplicate_retry_status_urls:
+        raise SystemExit(
+            f"Retry status ledger contains {duplicate_retry_status_urls} duplicate object_url row(s); "
+            "repair the retry extract before reconciliation."
+        )
 
     retry_urls = set(retry_status["object_url"].astype(str))
     retry_ok_urls = set(retry_status.loc[retry_status["status"].astype(str) == "ok", "object_url"].astype(str))
+    unresolved_retry = retry_status[retry_status["status"].astype(str) != "ok"].copy()
+    if unresolved_retry is not None and len(unresolved_retry) and not args.allow_unresolved_retry:
+        raise SystemExit(
+            "Retry status ledger still contains non-ok rows; rerun the targeted retry or pass "
+            "--allow-unresolved-retry only if you intentionally want a partial reconciliation."
+        )
+    if not retry_urls:
+        raise SystemExit("Retry status ledger is empty; nothing to reconcile.")
 
     merged_series = pd.concat(
         [
@@ -138,6 +172,7 @@ def main() -> int:
         "reconciled_out_subdir": args.reconciled_out_subdir,
         "retry_urls_considered": int(len(retry_urls)),
         "retry_urls_recovered_ok": int(len(retry_ok_urls)),
+        "retry_unresolved_status_rows": int(len(unresolved_retry)),
         "base_status_rows": int(len(base_status)),
         "base_failure_rows": int(len(base_failures)),
         "retry_status_rows": int(len(retry_status)),

@@ -41,7 +41,28 @@ GEFS_RETRY_ERROR_SUBSTRING="${GEFS_RETRY_ERROR_SUBSTRING:-503: Slow Down}"
 
 RETRY_RUN_DIR="${BASE_RUN_DIR}/retry_passes/${RETRY_ID}"
 RETRY_LOG_DIR="${RETRY_RUN_DIR}/logs"
-mkdir -p "$RETRY_LOG_DIR"
+RETRY_CMD_DIR="${RETRY_RUN_DIR}/commands"
+mkdir -p "$RETRY_LOG_DIR" "$RETRY_CMD_DIR"
+
+if [[ "$BASE_OUT_SUBDIR" == "$RETRY_OUT_SUBDIR" || "$BASE_OUT_SUBDIR" == "$RECONCILED_OUT_SUBDIR" || "$RETRY_OUT_SUBDIR" == "$RECONCILED_OUT_SUBDIR" ]]; then
+  echo "[FATAL] BASE_OUT_SUBDIR, RETRY_OUT_SUBDIR, and RECONCILED_OUT_SUBDIR must all be distinct." >&2
+  exit 2
+fi
+
+if [[ ! -d "$BASE_RUN_DIR" ]]; then
+  echo "[FATAL] Base manifest run dir does not exist: $BASE_RUN_DIR" >&2
+  exit 2
+fi
+
+if [[ ! -f "$BASE_RUN_DIR/manifests/gefs_manifest.csv" ]]; then
+  echo "[FATAL] Missing base GEFS manifest: $BASE_RUN_DIR/manifests/gefs_manifest.csv" >&2
+  exit 2
+fi
+
+if [[ ! -f "$BASE_RUN_DIR/$BASE_OUT_SUBDIR/gefs/gefs_file_status.csv" ]]; then
+  echo "[FATAL] Missing base GEFS status ledger: $BASE_RUN_DIR/$BASE_OUT_SUBDIR/gefs/gefs_file_status.csv" >&2
+  exit 2
+fi
 
 CMD_BUILD=(
   python3 scripts/build_gefs_failed_retry_bundle.py
@@ -84,7 +105,29 @@ CMD_RECONCILED_HEALTH=(
   --out-json "$BASE_RUN_DIR/health_checks/gefs_reconciled_health_${RETRY_ID}.json"
 )
 
+PLAN_FILE="$RETRY_CMD_DIR/retry_pass_plan.sh"
+{
+  printf '#!/usr/bin/env bash\n'
+  printf '# Auto-generated retry plan for %s\n' "$RETRY_ID"
+  printf 'set -euo pipefail\n\n'
+  printf '# Base manifest run dir\n'
+  printf 'BASE_RUN_DIR=%q\n' "$BASE_RUN_DIR"
+  printf 'RETRY_RUN_DIR=%q\n\n' "$RETRY_RUN_DIR"
+  printf '# Step 1: Build retry bundle\n'
+  printf '%q ' "${CMD_BUILD[@]}"; printf '\n\n'
+  printf '# Step 2: Extract retry rows\n'
+  printf '%q ' "${CMD_EXTRACT[@]}"; printf '\n\n'
+  printf '# Step 3: Validate retry outputs\n'
+  printf '%q ' "${CMD_RETRY_HEALTH[@]}"; printf '\n\n'
+  printf '# Step 4: Reconcile non-destructively\n'
+  printf '%q ' "${CMD_RECONCILE[@]}"; printf '\n\n'
+  printf '# Step 5: Validate reconciled outputs\n'
+  printf '%q ' "${CMD_RECONCILED_HEALTH[@]}"; printf '\n'
+} > "$PLAN_FILE"
+chmod +x "$PLAN_FILE"
+
 if [[ "$DRY_RUN" == "1" ]]; then
+  echo "[DRY-RUN] wrote command plan: $PLAN_FILE"
   printf '[DRY-RUN] %q ' "${CMD_BUILD[@]}"; echo
   printf '[DRY-RUN] %q ' "${CMD_EXTRACT[@]}"; echo
   printf '[DRY-RUN] %q ' "${CMD_RETRY_HEALTH[@]}"; echo
@@ -108,5 +151,6 @@ printf '[STEP] %q ' "${CMD_RECONCILE[@]}"; echo
 printf '[STEP] %q ' "${CMD_RECONCILED_HEALTH[@]}"; echo
 "${CMD_RECONCILED_HEALTH[@]}" |& tee "$RETRY_LOG_DIR/reconciled_health.log"
 
+echo "[OK] command_plan=${PLAN_FILE}"
 echo "[OK] retry_run_dir=${RETRY_RUN_DIR}"
 echo "[OK] reconciled_out_subdir=${RECONCILED_OUT_SUBDIR}"

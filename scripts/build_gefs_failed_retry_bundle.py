@@ -45,6 +45,19 @@ def read_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
+def require_columns(df: pd.DataFrame, required: list[str], label: str) -> None:
+    missing = [col for col in required if col not in df.columns]
+    if missing:
+        raise SystemExit(f"{label} is missing required column(s): {missing}")
+
+
+def sort_if_possible(df: pd.DataFrame, preferred_cols: list[str]) -> pd.DataFrame:
+    cols = [col for col in preferred_cols if col in df.columns]
+    if not cols or df.empty:
+        return df
+    return df.sort_values(cols, kind="mergesort")
+
+
 def copy_if_exists(src: Path, dst: Path) -> None:
     if src.exists():
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -64,6 +77,17 @@ def main() -> int:
     status_df = read_csv(status_path)
     failure_df = pd.read_csv(failure_path) if failure_path.exists() else pd.DataFrame()
     manifest_df = read_csv(manifest_path)
+    require_columns(status_df, ["object_url", "status", "error"], "GEFS status ledger")
+    require_columns(manifest_df, ["object_url"], "GEFS manifest")
+    if not failure_df.empty:
+        require_columns(failure_df, ["object_url"], "GEFS failure ledger")
+
+    duplicate_status_urls = int(status_df["object_url"].astype(str).duplicated().sum())
+    if duplicate_status_urls:
+        raise SystemExit(
+            f"GEFS status ledger contains {duplicate_status_urls} duplicate object_url row(s); "
+            "repair the base extract health before building a retry bundle."
+        )
 
     failed_status = status_df[status_df["status"].astype(str) != "ok"].copy()
     if not args.include_all_failed:
@@ -77,10 +101,22 @@ def main() -> int:
     retry_manifest = manifest_df[manifest_df["object_url"].astype(str).isin(failed_urls)].copy()
     if retry_manifest.empty:
         raise SystemExit("Retry manifest would be empty after filtering original manifest by failed URLs.")
+    failed_status = sort_if_possible(
+        failed_status,
+        ["init_date", "cycle_hour", "member_code", "product_family", "object_url"],
+    )
+    retry_manifest = sort_if_possible(
+        retry_manifest,
+        ["init_date", "cycle_hour", "member_number", "product_family", "lead_hours", "short_name", "object_url"],
+    )
 
     retry_failure_df = pd.DataFrame()
     if not failure_df.empty and "object_url" in failure_df.columns:
         retry_failure_df = failure_df[failure_df["object_url"].astype(str).isin(failed_urls)].copy()
+        retry_failure_df = sort_if_possible(
+            retry_failure_df,
+            ["init_date", "cycle_hour", "member_code", "product_family", "lead_hours", "short_name", "object_url"],
+        )
 
     manifests_dir = retry_run_dir / "manifests"
     provenance_dir = retry_run_dir / "provenance"
@@ -111,6 +147,7 @@ def main() -> int:
         },
         "failed_status_rows_selected": int(len(failed_status)),
         "failed_object_urls_selected": int(len(failed_urls)),
+        "failed_init_dates_selected": sorted({str(x) for x in failed_status.get("init_date", pd.Series(dtype=str)).dropna().astype(str).tolist()}),
         "retry_manifest_rows": int(len(retry_manifest)),
         "retry_manifest_unique_urls": int(retry_manifest["object_url"].nunique()),
         "row_failures_subset": int(len(retry_failure_df)),
