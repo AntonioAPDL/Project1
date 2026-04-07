@@ -3,6 +3,8 @@ site:
   name: "San Lorenzo / Big Trees"
   lat: 37.0443931
   lon: -122.072464
+  nws_operational_feature_id: 17684066
+  nwm_retrospective_feature_id: 17682474
 
 runtime:
   root: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime"
@@ -37,6 +39,8 @@ source_scripts:
   - "scripts/forecats_extract_legacy_glofas_point.py"
   - "glofas_operational_mediumrange_download_point.py"
   - "scripts/forecats_extract_glofas_batch.py"
+  - "scripts/check_glofas_operational_forecast_health.py"
+  - "scripts/run_glofas_operational_forecast_smoke.py"
   - "scripts/forecats_extract_glofas_historical_point.py"
   - "scripts/build_era5_soil_moisture_point_series.py"
   - "scripts/build_prism_ppt_point_series.R"
@@ -53,6 +57,8 @@ source_scripts:
   - "R/environmetrics/00_paths.R"
   - "R/environmetrics/10_data_inputs.R"
   - "forecast_download.py"
+  - "scripts/check_forecast_download_health.py"
+  - "scripts/run_forecast_download_smoke.py"
 
 families:
   - id: "nwm_retrospective"
@@ -61,12 +67,19 @@ families:
   - id: "glofas_historical"
     label: "GLOFAS historical and legacy reanalysis"
     versions: ["version_2_1", "version_3_1", "version_4_0", "legacy_v3_0", "legacy_v4_0"]
+  - id: "glofas_operational_forecasts"
+    label: "GLOFAS operational medium-range forecast cache rebuild"
+    versions: ["operational"]
+    issue_window: ["2019-11-05", "2023-01-31"]
   - id: "climate_covariates"
     label: "PRISM precipitation and ERA5 soil moisture"
     versions: ["prism_ppt", "era5_soil", "nwm_retro_soil_aux"]
   - id: "gefs_forecasts"
     label: "GEFS precipitation and soil-moisture forecasts"
     init_dates: ["2021-01-23", "2021-11-12", "2021-12-21", "2022-05-11", "2022-12-25"]
+  - id: "nws_operational_results_archive"
+    label: "Recovered and reproducible NWS/NWM operational results archive"
+    versions: ["results_pkl_operational_archive"]
   - id: "usgs_daily_flow"
     label: "USGS NWIS daily flow"
     versions: ["00060_00003"]
@@ -127,3 +140,18 @@ bootstrap_artifacts:
     role: "surviving_local_reference"
     path: "/data/muscat_data/jaguir26/projects/Project/Input/Retrospective_Analysis/GLOFAS/glofas_1979_2023"
     notes: "Legacy yearly GloFAS GRIB directory with unpinned lineage; not authoritative for versioned rebuild."
+  - id: "recovered_results_pkl_muscat_backup"
+    family: "nws_operational_results_archive"
+    role: "recovered_bootstrap"
+    path: "/data/muscat_data/jaguir26/project1_ucsc_phd/data/recovery_bootstrap/muscat_backup_20260406/results.pkl"
+    notes: "Recovered from Muscat backup tree; downstream extraction smoke validated on 2026-04-06."
+  - id: "recovered_saved_data_pkl_muscat_backup"
+    family: "nws_operational_results_archive"
+    role: "recovered_bootstrap"
+    path: "/data/muscat_data/jaguir26/project1_ucsc_phd/data/recovery_bootstrap/muscat_backup_20260406/Project/Input/NWS-Coordinates/saved_data.pkl"
+    notes: "Recovered nearest-feature bootstrap pickle from Muscat backup; resolves operational feature_id 17684066 for site 11160500."
+  - id: "recovered_hydrofabric_gdb_muscat_backup"
+    family: "nws_operational_results_archive"
+    role: "recovered_bootstrap"
+    path: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/bootstrap_recovered/muscat_backup_20260406/Project/Input/NWS-Coordinates/NWM_v3_hydrofabric.gdb"
+    notes: "Recovered 5.1 GB hydrofabric GDB from Muscat backup; fallback geometry source for forecast_download.py clean-state runs."
