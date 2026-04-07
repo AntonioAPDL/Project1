@@ -136,18 +136,24 @@ def default_output_path(out_root: Path, issue: date, req_id: str) -> Path:
     return issue_dir / f"{req_id}.grib"
 
 
-def manifest_path(out_root: Path) -> Path:
+def manifest_path(out_root: Path, explicit: Optional[Path] = None) -> Path:
+    if explicit is not None:
+        ensure_dir(explicit.parent)
+        return explicit
     ensure_dir(out_root / "manifests")
     return out_root / "manifests" / "download_manifest.csv"
 
 
-def log_path(out_root: Path) -> Path:
+def log_path(out_root: Path, explicit: Optional[Path] = None) -> Path:
+    if explicit is not None:
+        ensure_dir(explicit.parent)
+        return explicit
     ensure_dir(out_root / "logs")
     return out_root / "logs" / "download.log"
 
 
 def setup_logger(logfile: Path, verbose: bool) -> logging.Logger:
-    logger = logging.getLogger("glofas_download")
+    logger = logging.getLogger(f"glofas_download:{logfile}")
     logger.setLevel(logging.DEBUG)
 
     # Avoid duplicate handlers if re-imported
@@ -188,13 +194,15 @@ def run_download(
     lon: float,
     buffer_deg: float,
     out_root: Path,
+    manifest_file: Optional[Path],
+    log_file: Optional[Path],
     dry_run: bool,
     overwrite: bool,
     verbose: bool,
 ) -> None:
     ensure_dir(out_root)
-    logger = setup_logger(log_path(out_root), verbose)
-    mpath = manifest_path(out_root)
+    logger = setup_logger(log_path(out_root, log_file), verbose)
+    mpath = manifest_path(out_root, manifest_file)
 
     if cdsapi is None:
         raise RuntimeError(
@@ -349,6 +357,18 @@ def main() -> None:
         default=None,
         help="Optional file with intervals. If not set, uses built-in NWM 7-member blocks.",
     )
+    p.add_argument(
+        "--manifest-path",
+        type=Path,
+        default=None,
+        help="Optional manifest CSV path. Useful when running multiple disjoint splits in parallel.",
+    )
+    p.add_argument(
+        "--log-path",
+        type=Path,
+        default=None,
+        help="Optional log file path. Useful when running multiple disjoint splits in parallel.",
+    )
 
     args = p.parse_args()
 
@@ -367,6 +387,8 @@ def main() -> None:
         lon=args.lon,
         buffer_deg=args.buffer_deg,
         out_root=args.out_root,
+        manifest_file=args.manifest_path,
+        log_file=args.log_path,
         dry_run=dry_run,
         overwrite=args.overwrite,
         verbose=args.verbose,
