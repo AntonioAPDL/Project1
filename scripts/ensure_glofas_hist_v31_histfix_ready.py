@@ -101,7 +101,13 @@ def split_round_robin(shards: list[MonthShard], workers: int) -> list[list[Month
     return [group for group in groups if group]
 
 
-def run_split_workers(campaign_root: Path, split_groups: list[list[MonthShard]], retry_max: int, sleep_max: int) -> list[int]:
+def run_split_workers(
+    recovery_family_root: Path,
+    campaign_root: Path,
+    split_groups: list[list[MonthShard]],
+    retry_max: int,
+    sleep_max: int,
+) -> list[int]:
     cmd_root = campaign_root / "commands"
     log_root = campaign_root / "logs"
     split_root = campaign_root / "split_plans"
@@ -109,8 +115,8 @@ def run_split_workers(campaign_root: Path, split_groups: list[list[MonthShard]],
     log_root.mkdir(parents=True, exist_ok=True)
     split_root.mkdir(parents=True, exist_ok=True)
 
-    out_root = campaign_root.parent / "outputs" / "historical_zips"
-    plan_root = campaign_root.parent / "plans"
+    out_root = recovery_family_root / "outputs" / "historical_zips"
+    plan_root = recovery_family_root / "plans"
     procs: list[subprocess.Popen[bytes]] = []
 
     for idx, group in enumerate(split_groups, start=1):
@@ -270,7 +276,13 @@ def main() -> int:
             break
         last_remaining = len(missing)
         split_groups = split_round_robin(missing, max(1, args.workers))
-        exit_codes = run_split_workers(campaign_root / f"pass_{pass_idx:02d}", split_groups, args.retry_max, args.sleep_max)
+        exit_codes = run_split_workers(
+            recovery_family_root,
+            campaign_root / f"pass_{pass_idx:02d}",
+            split_groups,
+            args.retry_max,
+            args.sleep_max,
+        )
         print(f"[PASS {pass_idx}] worker exit codes={exit_codes}")
         time.sleep(max(0, args.poll_seconds))
 
