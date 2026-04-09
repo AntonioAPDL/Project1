@@ -96,6 +96,12 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Optional output CSV path for missing-hour keys.",
     )
+    p.add_argument(
+        "--progress-every-hours",
+        type=int,
+        default=168,
+        help="Emit a progress heartbeat every N requested hours (0 disables periodic heartbeats).",
+    )
     p.add_argument("--out-csv", required=True, help="Output CSV path.")
     p.add_argument("--out-meta", required=True, help="Output metadata JSON path.")
     return p.parse_args()
@@ -181,7 +187,8 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="nwm_v12_comp_") as tmpdir:
         tmp_path = Path(tmpdir) / "hour.comp"
-        for ts in hourly:
+        requested_total = int(len(hourly))
+        for idx, ts in enumerate(hourly, start=1):
             key = s3_key_for_hour(ts)
             src = f"s3://{args.bucket}/{key}"
             ok = aws_cp_no_sign_request(
@@ -224,6 +231,18 @@ def main() -> int:
                 )
             finally:
                 ds.close()
+
+            if args.progress_every_hours > 0 and (idx % int(args.progress_every_hours) == 0 or idx == requested_total):
+                print(
+                    "[PROGRESS] "
+                    f"start={args.start_date} "
+                    f"end={args.end_date} "
+                    f"requested_hours={requested_total} "
+                    f"processed_hours={idx} "
+                    f"downloaded_hours={len(rows)} "
+                    f"missing_hours={len(missing)} "
+                    f"current_key={key}"
+                )
 
     if len(rows) == 0:
         raise RuntimeError("No rows extracted. Check bucket access, dates, and variable.")

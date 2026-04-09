@@ -1,11 +1,19 @@
 # Data Recovery Campaign Tracker
 
-Last updated: 2026-04-06 (tranche-1 active; GLOFAS operational + forecast_download auxiliary smoke validation complete; Muscat bootstrap artifacts recovered)  
+Last updated: 2026-04-08 (priority pause/relaunch tooling staged; checkpoint + sequential queue workflow added)  
 Status owner: this document is the operational source of truth for the post-cleanup recovery campaign at site `11160500`.
 
 Companion operator checklist:
 
 - `repro/DATA_RECOVERY_DOWNLOAD_CHECKLIST.md`
+- `repro/DATA_RECOVERY_PRIORITY_RELAUNCH_PLAN.md`
+
+Current pause/relaunch tooling:
+
+- `scripts/freeze_recovery_checkpoint.py`
+- `scripts/stop_recovery_priority_lanes.py`
+- `scripts/run_prioritized_recovery_queue.py`
+- `scripts/ensure_glofas_historical_product_ready.py`
 
 ## 1) Scope Lock
 

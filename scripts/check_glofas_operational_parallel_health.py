@@ -24,6 +24,19 @@ def load_split_summary(path: Path) -> List[Dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
+def latest_status_by_issue_date(manifest_path: Path) -> Dict[str, Dict[str, str]]:
+    latest: Dict[str, Dict[str, str]] = {}
+    if not manifest_path.exists():
+        return latest
+    with manifest_path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            issue_date = str(row.get("issue_date", "")).strip()
+            if not issue_date:
+                continue
+            latest[issue_date] = row
+    return latest
+
+
 def count_nonempty_gribs(download_root: Path, issue_dates_file: Path) -> int:
     issue_dates = [line.strip() for line in issue_dates_file.read_text(encoding="utf-8").splitlines() if line.strip()]
     count = 0
@@ -59,28 +72,33 @@ def main() -> int:
         expected_total += expected_count
         issue_dates_file = split_dir / f"{split_id}_issue_dates.txt"
         manifest_path = manifest_dir / f"{split_id}_download_manifest.csv"
-        statuses: Counter[str] = Counter()
+        raw_statuses: Counter[str] = Counter()
+        latest_statuses: Counter[str] = Counter()
         manifest_rows = 0
         latest_timestamp = None
         if manifest_path.exists():
             with manifest_path.open(newline="", encoding="utf-8") as handle:
                 for manifest_row in csv.DictReader(handle):
                     manifest_rows += 1
-                    statuses[manifest_row.get("status", "")] += 1
+                    raw_statuses[manifest_row.get("status", "")] += 1
                     latest_timestamp = manifest_row.get("timestamp_utc") or latest_timestamp
+        latest_rows = latest_status_by_issue_date(manifest_path)
+        for manifest_row in latest_rows.values():
+            latest_statuses[manifest_row.get("status", "")] += 1
         actual_gribs = count_nonempty_gribs(download_root, issue_dates_file)
         actual_grib_total += actual_gribs
-        overall_counter.update(statuses)
-        done_count = statuses.get("downloaded", 0) + statuses.get("skipped_exists", 0)
+        overall_counter.update(latest_statuses)
+        done_like_manifest_count = latest_statuses.get("downloaded", 0) + latest_statuses.get("skipped_exists", 0)
         per_split.append(
             {
                 "split_id": split_id,
                 "expected_issue_dates": expected_count,
                 "manifest_rows": manifest_rows,
-                "status_counts": dict(statuses),
-                "done_like_count": done_count,
+                "raw_status_counts": dict(raw_statuses),
+                "latest_status_counts": dict(latest_statuses),
+                "done_like_manifest_count": done_like_manifest_count,
                 "grib_issue_dir_count": actual_gribs,
-                "percent_complete": round((done_count / expected_count) * 100.0, 1) if expected_count else 0.0,
+                "percent_complete": round((actual_gribs / expected_count) * 100.0, 1) if expected_count else 0.0,
                 "latest_timestamp_utc": latest_timestamp,
                 "ok": actual_gribs <= expected_count,
             }
@@ -91,14 +109,9 @@ def main() -> int:
         "campaign_root": str(campaign_root),
         "expected_issue_dates_total": expected_total,
         "grib_issue_dir_count_total": actual_grib_total,
-        "status_counts_total": dict(overall_counter),
-        "done_like_total": overall_counter.get("downloaded", 0) + overall_counter.get("skipped_exists", 0),
-        "percent_complete_total": round(
-            ((overall_counter.get("downloaded", 0) + overall_counter.get("skipped_exists", 0)) / expected_total) * 100.0,
-            1,
-        )
-        if expected_total
-        else 0.0,
+        "latest_status_counts_total": dict(overall_counter),
+        "done_like_manifest_total": overall_counter.get("downloaded", 0) + overall_counter.get("skipped_exists", 0),
+        "percent_complete_total": round((actual_grib_total / expected_total) * 100.0, 1) if expected_total else 0.0,
         "splits": per_split,
         "ok": all(split["ok"] for split in per_split),
     }

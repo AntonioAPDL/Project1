@@ -1,6 +1,6 @@
 # Data Recovery Download Checklist
 
-Last updated: 2026-04-06 (tranche-1 active; auxiliary GLOFAS operational parallel full download launch active)  
+Last updated: 2026-04-08 (priority reroute plan staged; checkpoint + sequential queue tooling added)  
 Primary tracker: `repro/DATA_RECOVERY_CAMPAIGN_TRACKER.md`  
 Current recovery run root: `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z`
 
@@ -21,8 +21,13 @@ Purpose:
 - [x] Muscat backup bootstrap artifacts recovered for NWS operational archive (`results.pkl`, `saved_data.pkl`, `NWM_v3_hydrofabric.gdb`)
 - [x] Auxiliary GLOFAS operational forecast smoke suite passed
 - [x] Auxiliary `forecast_download.py` smoke suite passed
+- [x] Priority pause/relaunch tooling staged
 - [ ] Remaining family full backfill health checks completed
 - [ ] Final recovered family outputs consolidated
+
+Priority reroute reference:
+
+- `repro/DATA_RECOVERY_PRIORITY_RELAUNCH_PLAN.md`
 
 ## 2) Main Download Queue
 

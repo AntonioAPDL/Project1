@@ -67,7 +67,7 @@ def iter_month_shards(start: date, end: date) -> Iterable[MonthShard]:
 
 def zip_exists(out_root: Path, shard: MonthShard) -> bool:
     month_dir = out_root / PRODUCT_ID / f"year={shard.start.year:04d}" / f"month={shard.start.month:02d}"
-    return any(month_dir.glob("*.zip"))
+    return any(path.stat().st_size > 0 for path in month_dir.glob("*.zip") if path.exists() and path.is_file())
 
 
 def plan_missing(out_root: Path, focus_start: date, focus_end: date) -> tuple[list[MonthShard], list[MonthShard]]:

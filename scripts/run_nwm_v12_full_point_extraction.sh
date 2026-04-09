@@ -20,6 +20,7 @@ RUN_ID="${1:-nwm_retrospective_campaign_20260218T024352Z}"
 WORKERS="${2:-4}"
 AGG_SCALE="${3:-log_log1p_cms}"
 RUN_BASE_ROOT="${4:-${NWM_V12_RUN_BASE_ROOT:-repro/nwm_retrospective_runs}}"
+PROGRESS_EVERY_HOURS="${NWM_V12_PROGRESS_EVERY_HOURS:-168}"
 
 ROOT="${PROJECT_ROOT:-/data/muscat_data/jaguir26/project1_ucsc_phd}"
 cd "$ROOT"
@@ -43,6 +44,7 @@ echo "[INFO] WORKERS=$WORKERS"
 echo "[INFO] RUN_ROOT=$RUN_ROOT"
 echo "[INFO] AGG_SCALE=$AGG_SCALE"
 echo "[INFO] RUN_BASE_ROOT=$RUN_BASE_ROOT"
+echo "[INFO] PROGRESS_EVERY_HOURS=$PROGRESS_EVERY_HOURS"
 
 RUN_ROOT="$RUN_ROOT" WORKERS="$WORKERS" LOG_DIR="$LOG_DIR" YEARLY_DIR="$YEARLY_DIR" python3 - <<'PY'
 from pathlib import Path
@@ -103,6 +105,7 @@ while read -r Y; do
     --aggregation-scale "$AGG_SCALE" \\
     --aws-retries 5 \\
     --retry-sleep-sec 2.0 \\
+    --progress-every-hours "$PROGRESS_EVERY_HOURS" \\
     --out-csv "\$OUT_CSV" \\
     --out-meta "\$OUT_META" \\
     --missing-hours-csv "\$OUT_MISS"
