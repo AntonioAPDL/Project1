@@ -149,3 +149,27 @@ Before trusting the rerun, confirm for at least one TT run that:
 - Hist-fix configs are written to a dedicated config directory.
 - Hist-fix bundles are stored in runtime, not under the repo root.
 - Queue/control/report artifacts are phase-scoped and resumable.
+
+## 2026-04-09 retry note
+
+The first wrapper launch never reached the model phases because the `hist_v31_histfix_ready.json`
+gate stayed stale while `GloFAS v3.1` completion work continued separately.
+
+As of `2026-04-09`:
+
+- the canonical recovery archive under
+  `.../family=glofas_historical/full_runs/source_native_tranche1_20260406T194500Z/outputs/historical_zips/hist_v31_lisflood_cons`
+  is complete for the hist-fix window `1987-05-29` to `2022-05-11`
+- `status/hist_v31_histfix_ready.json` has been refreshed to `status: ready`
+- the extracted point series already reaches beyond both target cutoffs
+- isolated hist-fix bundles were rebuilt successfully for:
+  - `2021-12-21`
+  - `2022-05-11`
+- TT matrix generation was smoke-tested successfully before relaunch
+
+The intended restart sequence on `2026-04-09` is:
+
+1. refresh source readiness
+2. rebuild isolated hist-fix bundles
+3. relaunch `scripts/run_multimodel_v8_histfix_campaign.sh`
+4. monitor the TT queue for first true model-side progress
