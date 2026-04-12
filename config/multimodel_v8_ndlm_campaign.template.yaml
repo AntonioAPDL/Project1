@@ -1,0 +1,201 @@
+version: 1
+
+campaign:
+  campaign_id: "multimodel_v8_ndlm_20260411"
+  artifact_root: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411"
+  matrix_dir: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/control/ndlm_matrix_current_v8"
+  config_output_dir: "config/unified_runs_ndlm_20260411"
+  launch_queue: false
+
+queue:
+  ordinary_max_concurrent: 3
+  pause_free_gb: 180
+  launch_free_gb: 220
+  heavy_free_gb: 240
+  poll_seconds: 60
+
+fit_parallel:
+  mode: "global_models"
+  default_workers: 1
+
+compare:
+  builder: "scripts/build_multimodel_v8_ndlm_compare_bundle.py"
+
+cutoffs:
+  "20210123":
+    enabled: true
+    template_l1_config: "config/unified_runs/multimodel_20210123_v8_epsTT_l1.yaml"
+    template_l2_config: "config/unified_runs/multimodel_20210123_v8_epsTT_l2.yaml"
+    authoritative_compare_dir: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20210123_v8_epsTT_compare"
+  "20211112":
+    enabled: true
+    template_l1_config: "config/unified_runs/multimodel_20211112_v8_epsTT_l1.yaml"
+    template_l2_config: "config/unified_runs/multimodel_20211112_v8_epsTT_l2.yaml"
+    authoritative_compare_dir: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20211112_v8_epsTT_compare"
+  "20211221":
+    enabled: true
+    template_l1_config: "config/unified_runs_histfix_20260407/multimodel_20211221_v8_epsTT_l1.yaml"
+    template_l2_config: "config/unified_runs_histfix_20260407/multimodel_20211221_v8_epsTT_l2.yaml"
+    authoritative_compare_dir: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports/multimodel_20211221_v8_epsTT_compare"
+  "20220511":
+    enabled: true
+    template_l1_config: "config/unified_runs_histfix_20260407/multimodel_20220511_v8_epsTT_l1.yaml"
+    template_l2_config: "config/unified_runs_histfix_20260407/multimodel_20220511_v8_epsTT_l2.yaml"
+    authoritative_compare_dir: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports/multimodel_20220511_v8_epsTT_compare"
+  "20221225":
+    enabled: true
+    template_l1_config: "config/unified_runs/multimodel_20221225_v8_epsTT_l1.yaml"
+    template_l2_config: "config/unified_runs/multimodel_20221225_v8_epsTT_l2.yaml"
+    authoritative_compare_dir: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20221225_v8_epsTT_compare"
+
+families:
+  ndlm_main_keep:
+    enabled: true
+    template_lane: "l1"
+    model_key: "ndlm_main"
+    model_id: "ndlm_main_synth_keep"
+    transfer_mode: "keep"
+    run_suffix: "ndlm_main_keep"
+    fit_parallel_workers: 1
+  ndlm_main_drop:
+    enabled: true
+    template_lane: "l2"
+    model_key: "ndlm_main"
+    model_id: "ndlm_main_synth_drop"
+    transfer_mode: "drop"
+    run_suffix: "ndlm_main_drop"
+    fit_parallel_workers: 1
+  ndlm_univar_keep:
+    enabled: true
+    template_lane: "l1"
+    model_key: "ndlm_univar"
+    model_id: "ndlm_univar_synth_keep"
+    transfer_mode: "keep"
+    run_suffix: "ndlm_univar_keep"
+    fit_parallel_workers: 1
+
+specs:
+  current_v8:
+    enabled: false
+    description: "Current live NDLM specification carried by the v8 baseline configs. Edit this block to propose tuned NDLM relaunch values."
+    ndlm_main:
+      implementation_mode: "theory_aligned"
+      kalman_backend: "cpp"
+      seasonality:
+        period: 363.5854
+        harmonics: [1, 2, 0.1469118904]
+      state_evolution:
+        df_t: 0.99999999
+        df_s1: 0.9999
+        df_s2: 0.9999
+        df_s67: 0.9999
+        df_discrep: 0.999
+        lambda: 0.97
+        df_trans: 0.9999999
+        df_covs: 0.9999
+      prior:
+        forecast_cov:
+          c_factor: 1.0
+          epsilon: null
+          dof_offset: 4
+          scale_mult: 1.0
+          jitter: 1.0e-8
+      stabilization:
+        cov_eig_floor: 1.0e-8
+        cov_eig_cap: 1.0e8
+        cov_diag_jitter: 1.0e-10
+    fit:
+      ndlm_main:
+        gamma_sigma:
+          min_total_iters: 50
+          max_iter: 100
+          convergence:
+            elbo_tol: 1.0e-6
+            elbo_rel_tol: 2.5e-4
+    ndlm_univar:
+      implementation_mode: "theory_aligned_closed_form"
+      kalman_backend: "cpp"
+      seasonality:
+        period: 363.5854
+        harmonics: [1, 2, 3]
+      horizon_cap: 90
+      posterior_draws: 64
+      prior:
+        n0: 20
+        S0: 1
+      state_evolution:
+        df_t: 0.99999999
+        df_s1: 0.9999
+        df_s2: 0.9999
+        df_s67: 0.9999
+        lambda: 0.97
+        df_trans: 0.9999999
+        df_covs: 0.99999
+      stabilization:
+        cov_eig_floor: 1.0e-8
+        cov_eig_cap: 1.0e8
+        cov_diag_jitter: 1.0e-10
+  ndlm_tune_20260411_v1:
+    enabled: true
+    description: "User-specified NDLM retune for all cutoffs on 2026-04-11."
+    ndlm_main:
+      implementation_mode: "theory_aligned"
+      kalman_backend: "cpp"
+      seasonality:
+        period: 363.5854
+        harmonics: [1, 2, 0.1469118904]
+      state_evolution:
+        df_t: 0.99999999
+        df_s1: 0.99999999
+        df_s2: 0.99999999
+        df_s67: 0.99999999
+        df_discrep: 0.99999999
+        lambda: 0.97
+        df_trans: 0.9999999
+        df_covs: 0.99999999
+      prior:
+        forecast_cov:
+          c_factor: 1.0
+          epsilon: null
+          dof_offset: 4
+          scale_mult: 1.0
+          jitter: 1.0e-8
+      stabilization:
+        cov_eig_floor: 1.0e-8
+        cov_eig_cap: 1.0e8
+        cov_diag_jitter: 1.0e-10
+        sigma_upper_cap: 1.0e12
+        sigma_update_damping: 1.0
+        latent_var_cap_mult: 1.0e4
+        latent_var_cap_abs: 1.0e8
+    ndlm_univar:
+      implementation_mode: "theory_aligned_closed_form"
+      kalman_backend: "cpp"
+      seasonality:
+        period: 363.5854
+        harmonics: [1, 2, 3]
+      horizon_cap: 90
+      posterior_draws: 64
+      prior:
+        n0: 20
+        S0: 1
+      state_evolution:
+        df_t: 0.99999999
+        df_s1: 0.99999999
+        df_s2: 0.99999999
+        df_s67: 0.99999999
+        lambda: 0.97
+        df_trans: 0.9999999
+        df_covs: 0.99999999
+      stabilization:
+        cov_eig_floor: 1.0e-8
+        cov_eig_cap: 1.0e8
+        cov_diag_jitter: 1.0e-10
+    fit:
+      ndlm_main:
+        gamma_sigma:
+          min_total_iters: 20
+          max_iter: 100
+          convergence:
+            elbo_tol: 1.0e-6
+            elbo_rel_tol: 2.5e-4

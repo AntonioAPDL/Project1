@@ -626,7 +626,10 @@ ndlm_theory_block_diag <- function(...) {
 }
 
 ndlm_theory_build_obslist_sequences <- function(inputs, constants) {
-  base <- ndlm_theory_build_base_state_model()
+  base <- ndlm_theory_build_base_state_model(
+    period = constants$period,
+    harmonics = constants$harmonics
+  )
   F_base <- base$F_base
   G_base <- base$G_base
   q <- length(F_base)

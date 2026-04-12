@@ -24,7 +24,10 @@ ndlm_exact_hist_discount_matrix <- function(constants, q, transfer_dim) {
 }
 
 ndlm_exact_build_registry <- function(inputs, constants) {
-  base <- ndlm_theory_build_base_state_model()
+  base <- ndlm_theory_build_base_state_model(
+    period = constants$period,
+    harmonics = constants$harmonics
+  )
   F_base <- as.numeric(base$F_base)
   G_base <- as.matrix(base$G_base)
   q <- length(F_base)

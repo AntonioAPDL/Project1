@@ -21,9 +21,9 @@ ndlm_univar_rotation_block <- function(freq) {
 }
 
 ndlm_univar_build_base_G <- function(constants) {
-  harmonics <- as.integer(constants$harmonics)
-  if (length(harmonics) != 3L) {
-    stop("ndlm_univar currently requires exactly three harmonics", call. = FALSE)
+  harmonics <- as.numeric(constants$harmonics)
+  if (length(harmonics) != 3L || any(!is.finite(harmonics))) {
+    stop("ndlm_univar currently requires exactly three finite harmonics", call. = FALSE)
   }
   G <- matrix(0, nrow = 7, ncol = 7)
   G[1, 1] <- 1

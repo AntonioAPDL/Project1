@@ -1437,6 +1437,16 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       NDLM_DF_COVS = as.character(unified_get(
         cfg, c("models", "ndlm_main", "state_evolution", "df_covs"), default = 0.99999
       )),
+      NDLM_SEASONAL_PERIOD = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "seasonality", "period"), default = 363.5854
+      )),
+      NDLM_SEASONAL_HARMONICS = paste(
+        as.character(unified_get(
+          cfg, c("models", "ndlm_main", "seasonality", "harmonics"),
+          default = c(1, 2, 1 / 6.8068493)
+        )),
+        collapse = ","
+      ),
       NDLM_FORECAST_IW_C_FACTOR = as.character(unified_get(
         cfg, c("models", "ndlm_main", "prior", "forecast_cov", "c_factor"), default = 1.0
       )),
@@ -1445,6 +1455,15 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       } else {
         as.character(ndlm_forecast_iw_epsilon[[1L]])
       },
+      NDLM_FORECAST_IW_DOF_OFFSET = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "prior", "forecast_cov", "dof_offset"), default = 4L
+      )),
+      NDLM_FORECAST_IW_SCALE_MULT = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "prior", "forecast_cov", "scale_mult"), default = 1.0
+      )),
+      NDLM_FORECAST_IW_JITTER = as.character(unified_get(
+        cfg, c("models", "ndlm_main", "prior", "forecast_cov", "jitter"), default = 1e-8
+      )),
       NDLM_COV_EIG_FLOOR = as.character(unified_get(
         cfg, c("models", "ndlm_main", "stabilization", "cov_eig_floor"), default = 1e-8
       )),
@@ -1947,6 +1966,16 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       NDLM_UNIV_LAMBDA = as.character(unified_get(
         cfg, c("models", "ndlm_univar", "state_evolution", "lambda"), default = 0.99
       )),
+      NDLM_UNIV_SEASONAL_PERIOD = as.character(unified_get(
+        cfg, c("models", "ndlm_univar", "seasonality", "period"), default = 363.5854
+      )),
+      NDLM_UNIV_SEASONAL_HARMONICS = paste(
+        as.character(unified_get(
+          cfg, c("models", "ndlm_univar", "seasonality", "harmonics"),
+          default = c(1, 2, 3)
+        )),
+        collapse = ","
+      ),
       NDLM_UNIV_N0 = as.character(unified_get(
         cfg, c("models", "ndlm_univar", "prior", "n0"), default = 20
       )),

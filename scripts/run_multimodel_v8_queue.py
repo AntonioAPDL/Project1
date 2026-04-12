@@ -92,6 +92,17 @@ def manifest_path_for(run_id: str, artifact_root: str | Path | None = None) -> P
     return runs_dir(artifact_root) / run_id / "run_manifest.yaml"
 
 
+def load_matrix_metadata(matrix_dir: Path) -> dict[str, Any]:
+    path = matrix_dir / "matrix_metadata.yaml"
+    if not path.exists():
+        return {}
+    try:
+        data = load_yaml(path)
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def compare_ready(cutoff: str, epsilon: str, artifact_root: str | Path | None = None) -> bool:
     outdir = v8_compare_dir(cutoff, epsilon, artifact_root)
     return outdir.exists() and REQUIRED_COMPARE_FILES.issubset({p.name for p in outdir.iterdir() if p.is_file()})
@@ -111,7 +122,37 @@ def run_started(run_id: str, artifact_root: str | Path | None = None) -> bool:
     return manifest_path_for(run_id, artifact_root).exists()
 
 
-def build_compare_bundle(cutoff: str, epsilon: str, matrix_dir: Path, log_handle, artifact_root: str | Path | None = None) -> None:
+def build_compare_bundle(
+    cutoff: str,
+    epsilon: str,
+    matrix_dir: Path,
+    log_handle,
+    artifact_root: str | Path | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    metadata = metadata or {}
+    compare_builder = str(metadata.get("compare_builder", "") or "").strip()
+    if compare_builder:
+        builder_path = Path(compare_builder)
+        if not builder_path.is_absolute():
+            builder_path = ROOT / builder_path
+        cmd = [
+            "python3",
+            str(builder_path),
+            "--cutoff",
+            cutoff,
+            "--epsilon",
+            epsilon,
+            "--matrix-dir",
+            str(matrix_dir),
+            "--outdir",
+            str(v8_compare_dir(cutoff, epsilon, artifact_root)),
+        ]
+        if artifact_root is not None:
+            cmd.extend(["--artifact-root", str(artifact_root)])
+        subprocess.run(cmd, cwd=ROOT, check=True, stdout=log_handle, stderr=subprocess.STDOUT)
+        return
+
     baseline_l1 = v8_run_id(cutoff, "epsTT", "l1")
     baseline_l2 = v8_run_id(cutoff, "epsTT", "l2")
     cmd = [
@@ -136,16 +177,31 @@ def compare_cells_from_plan(plan: pd.DataFrame) -> list[tuple[str, str]]:
     return [(str(row["cutoff"]), str(row["epsilon"])) for _, row in ordered.iterrows()]
 
 
-def maybe_build_compares(cells: list[tuple[str, str]], matrix_dir: Path, log_handle, artifact_root: str | Path | None = None) -> None:
+def maybe_build_compares(
+    cells: list[tuple[str, str]],
+    plan: pd.DataFrame,
+    matrix_dir: Path,
+    log_handle,
+    artifact_root: str | Path | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
     for cutoff, epsilon in cells:
         if compare_ready(cutoff, epsilon, artifact_root):
             continue
-        required_runs = [v8_run_id(cutoff, "epsTT", "l1"), v8_run_id(cutoff, "epsTT", "l2")]
-        if epsilon != "epsTT":
-            required_runs.extend([v8_run_id(cutoff, epsilon, "l1_mv"), v8_run_id(cutoff, epsilon, "l2_mv")])
+        cell_plan = plan.loc[(plan["cutoff"] == cutoff) & (plan["epsilon"] == epsilon)].copy()
+        required_runs = [str(run_id) for run_id in cell_plan["run_id"].astype(str).tolist()]
+        if len(required_runs) < 1:
+            continue
         if all(run_passed(run_id, artifact_root) for run_id in required_runs):
             print(f"[{utc_now()}] building compare bundle cutoff={cutoff} epsilon={epsilon}", file=log_handle, flush=True)
-            build_compare_bundle(cutoff, epsilon, matrix_dir, log_handle, artifact_root)
+            build_compare_bundle(
+                cutoff,
+                epsilon,
+                matrix_dir,
+                log_handle,
+                artifact_root,
+                metadata=metadata,
+            )
 
 
 def write_pilot_summary(matrix_dir: Path, artifact_root: str | Path | None = None) -> None:
@@ -274,9 +330,17 @@ def main() -> int:
 
     with queue_log.open("a", encoding="utf-8") as log_handle:
         print(f"[{utc_now()}] controller start pilot_only={args.pilot_only} artifact_root={artifact_root}", file=log_handle, flush=True)
+        metadata = load_matrix_metadata(matrix_dir)
         while True:
             refresh_health(matrix_dir, log_handle, artifact_root if args.artifact_root else None)
-            maybe_build_compares(compare_cells, matrix_dir, log_handle, artifact_root if args.artifact_root else None)
+            maybe_build_compares(
+                compare_cells,
+                plan,
+                matrix_dir,
+                log_handle,
+                artifact_root if args.artifact_root else None,
+                metadata=metadata,
+            )
 
             # Fail fast if any planned run failed.
             for _, row in plan.iterrows():

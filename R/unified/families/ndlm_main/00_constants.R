@@ -22,6 +22,21 @@ ndlm_theory_constants <- function(seed = 777L) {
     if (is.finite(min_val)) raw <- max(raw, as.numeric(min_val))
     raw
   }
+  env_num_vec <- function(name, default) {
+    raw_chr <- trimws(Sys.getenv(name, ""))
+    if (!nzchar(raw_chr)) {
+      return(as.numeric(default))
+    }
+    parts <- trimws(strsplit(raw_chr, ",", fixed = TRUE)[[1L]])
+    if (length(parts) < 1L) {
+      return(as.numeric(default))
+    }
+    vals <- suppressWarnings(as.numeric(parts))
+    if (length(vals) != length(default) || any(!is.finite(vals))) {
+      return(as.numeric(default))
+    }
+    vals
+  }
   env_prob <- function(name, default, min_val = 1e-8, max_val = 1 - 1e-8) {
     raw <- suppressWarnings(as.numeric(Sys.getenv(name, as.character(default))))
     if (!is.finite(raw)) raw <- as.numeric(default)
@@ -65,6 +80,8 @@ ndlm_theory_constants <- function(seed = 777L) {
   lambda <- env_prob("NDLM_LAMBDA", default = 0.99)
   df_trans <- env_prob("NDLM_DF_TRANS", default = 0.99999999)
   df_covs <- env_prob("NDLM_DF_COVS", default = 0.99999)
+  period <- env_num("NDLM_SEASONAL_PERIOD", default = 363.5854, min_val = 1e-8)
+  harmonics <- env_num_vec("NDLM_SEASONAL_HARMONICS", default = c(1, 2, 1 / 6.8068493))
   cov_eig_floor <- env_num("NDLM_COV_EIG_FLOOR", default = 1e-8, min_val = 1e-12)
   cov_eig_cap <- env_num("NDLM_COV_EIG_CAP", default = 1e8, min_val = cov_eig_floor * 10)
   cov_diag_jitter <- env_num("NDLM_COV_DIAG_JITTER", default = 1e-10, min_val = 0)
@@ -105,6 +122,8 @@ ndlm_theory_constants <- function(seed = 777L) {
     lambda = lambda,
     df_trans = df_trans,
     df_covs = df_covs,
+    period = period,
+    harmonics = harmonics,
     forecast_iw_c_factor = forecast_iw_c_factor,
     forecast_iw_epsilon0 = forecast_iw_epsilon0,
     forecast_iw_dof_offset = forecast_iw_dof_offset,

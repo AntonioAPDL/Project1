@@ -66,6 +66,9 @@ models:
     implementation_mode: "theory_aligned"    # legacy_bridge | theory_aligned
     kalman_backend: "cpp"                     # r | cpp
     forecast_transfer_mode: "keep"            # keep | drop (keep = transfer active in forecast window)
+    seasonality:
+      period: 363.5854
+      harmonics: [1, 2, 0.1469118904]
     state_evolution:
       df_t: 0.99999999
       df_s1: 0.9999
@@ -79,6 +82,9 @@ models:
       forecast_cov:
         c_factor: 1.0
         epsilon: null
+        dof_offset: 4
+        scale_mult: 1.0
+        jitter: 1.0e-8
     stabilization:
       cov_eig_floor: 1.0e-8
       cov_eig_cap: 1.0e8
@@ -91,6 +97,9 @@ models:
     implementation_mode: "theory_aligned_closed_form"  # theory_aligned_closed_form | theory_aligned
     kalman_backend: "cpp"                               # r | cpp
     forecast_transfer_mode: "keep"                      # keep | drop
+    seasonality:
+      period: 363.5854
+      harmonics: [1, 2, 3]
     horizon_cap: 1080
     posterior_draws: 64
     prior:
