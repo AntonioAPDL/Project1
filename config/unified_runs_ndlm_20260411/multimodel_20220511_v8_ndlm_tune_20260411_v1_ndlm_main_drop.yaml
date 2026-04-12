@@ -16,7 +16,7 @@ run:
     numexpr: 1
     mc_cores: 1
 stages:
-  forecats: true
+  forecats: false
   data_prep_shared: true
   fit: true
   post: true
@@ -129,7 +129,7 @@ inputs:
       enabled: true
       dest_rel: inputs/shared/forecats_bundle
   shared:
-    prefer_forecats_snapshot: true
+    prefer_forecats_snapshot: false
 fit:
   quantiles:
   - 0.05

@@ -192,7 +192,8 @@ def _build_run_config(
     _set_nested(cfg, ["run", "auto_suffix_on_collision"], False)
     _set_nested(cfg, ["run", "threads", "mc_cores"], int(max(fit_parallel_workers, 1)))
 
-    for stage in ["forecats", "data_prep_shared", "fit", "post", "validate", "report"]:
+    _set_nested(cfg, ["stages", "forecats"], False)
+    for stage in ["data_prep_shared", "fit", "post", "validate", "report"]:
         _set_nested(cfg, ["stages", stage], True)
     _set_nested(cfg, ["post", "figures"], True)
     _set_nested(cfg, ["post", "smoke_fast"], True)
@@ -201,6 +202,7 @@ def _build_run_config(
 
     _set_nested(cfg, ["fit", "parallel", "mode"], str(fit_parallel_mode))
     _set_nested(cfg, ["fit", "parallel", "workers"], int(max(fit_parallel_workers, 1)))
+    _set_nested(cfg, ["inputs", "shared", "prefer_forecats_snapshot"], False)
 
     _set_nested(cfg, ["models", "run_exdqlm_multivar"], False)
     _set_nested(cfg, ["models", "run_exdqlm_univar"], False)
