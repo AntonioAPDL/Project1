@@ -123,6 +123,53 @@ def _dependency_rows(config_path: Path, cfg: dict[str, Any]) -> list[dict[str, A
     return rows
 
 
+def _template_run_root(template_config: str, authoritative_compare_dir: str) -> Path:
+    template_run_id = Path(template_config).stem
+    compare_dir = Path(authoritative_compare_dir)
+    artifact_root = compare_dir.parent.parent
+    run_root = artifact_root / "runs" / template_run_id
+    if not run_root.exists():
+        raise FileNotFoundError(
+            f"Could not resolve template run root for {template_run_id} from authoritative_compare_dir={authoritative_compare_dir}"
+        )
+    return run_root
+
+
+def _rewrite_inputs_from_template_snapshot(
+    cfg: dict[str, Any],
+    *,
+    template_config: str,
+    authoritative_compare_dir: str,
+) -> None:
+    run_root = _template_run_root(template_config, authoritative_compare_dir)
+    shared_root = run_root / "inputs" / "shared"
+
+    snapshot_map = {
+        ("inputs", "fit", "parameters_path"): shared_root / "parameters" / "parameters.txt",
+        ("inputs", "fit", "retros_path"): shared_root / "retros" / "retros.csv",
+        ("inputs", "fit", "nws_forecast_path"): shared_root / "forecasts" / "nws_forecast.csv",
+        ("inputs", "fit", "glofas_forecast_path"): shared_root / "forecasts" / "glofas_forecast.csv",
+        ("inputs", "forecats", "existing_bundle_path"): shared_root / "forecats_bundle" / "meta.yaml",
+    }
+    for path_keys, source_path in snapshot_map.items():
+        if source_path.exists():
+            _set_nested(cfg, list(path_keys), str(source_path))
+
+    cov_dir = shared_root / "covariates"
+    covariates = cfg.get("inputs", {}).get("fit", {}).get("covariates", []) or []
+    if cov_dir.exists():
+        for idx, cov in enumerate(covariates):
+            if not isinstance(cov, dict):
+                continue
+            cov_name = str(cov.get("name", "")).strip()
+            if not cov_name:
+                continue
+            matches = sorted(cov_dir.glob(f"cov_*_{cov_name}.csv"))
+            if matches:
+                cov["path"] = str(matches[0])
+                covariates[idx] = cov
+
+
 def _build_run_config(
     template_cfg: dict[str, Any],
     run_id: str,
@@ -176,6 +223,12 @@ def _build_run_config(
     fit_overrides = deep_copy_dict(spec_cfg.get("fit", {}))
     if fit_overrides:
         _deep_update(cfg.setdefault("fit", {}), fit_overrides)
+
+    _rewrite_inputs_from_template_snapshot(
+        cfg,
+        template_config=template_config,
+        authoritative_compare_dir=authoritative_compare_dir,
+    )
 
     cfg["debug_ndlm_campaign"] = {
         "spec_id": spec_id,
