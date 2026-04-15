@@ -124,3 +124,48 @@ Stopping now is safe for already-finished outputs, but not free:
 - in-flight units that have not yet written their final output file will need to be redone
 
 That tradeoff is acceptable for this reroute, but it should be recorded explicitly in the checkpoint bundle before the stop is applied.
+
+## 9) Operational Tail Repair
+
+If the prioritized queue stalls at `GLOFAS operational forecasts` with `touched == expected` but `completed < expected`, do not full-relaunch the entire queue immediately.
+
+Instead:
+
+1. freeze a fresh checkpoint
+2. identify the latest non-done issue dates from the split manifests
+3. relaunch only the affected split tails against the existing campaign root and manifests
+4. let the live queue controller advance naturally once the missing GRIBs appear
+
+Plan-only dry run:
+
+```bash
+python3 scripts/repair_glofas_operational_tail.py \
+  --recovery-run-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z
+```
+
+Apply the targeted repair:
+
+```bash
+python3 scripts/repair_glofas_operational_tail.py \
+  --recovery-run-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z \
+  --apply
+```
+
+This writes a documented bundle under:
+
+- `.../family=glofas_operational_forecasts/full_runs/<campaign>/status/operational_tail_repair_<UTCSTAMP>/`
+
+The bundle contains:
+
+- `repair_plan.json`
+- `README.md`
+- per-split retry interval files
+- replayable retry commands
+- post-apply session and checkpoint records
+
+Why this is preferred:
+
+- keeps the already-completed operational issue dates on disk
+- appends successful retry rows into the existing split manifests
+- avoids restarting the whole prioritized queue from phase 2
+- keeps the handoff to `NWM retrospective v1.2` automatic once `1176 / 1176` is reached

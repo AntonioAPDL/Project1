@@ -81,6 +81,8 @@ class GlofasOperationalParallelHealthTests(unittest.TestCase):
         self.assertEqual(payload["percent_complete_total"], 100.0)
         self.assertEqual(payload["grib_issue_dir_count_total"], 1)
         self.assertEqual(payload["done_like_manifest_total"], 1)
+        self.assertEqual(payload["latest_problem_count"], 0)
+        self.assertEqual(payload["latest_problem_rows"], [])
         self.assertEqual(payload["latest_status_counts_total"], {"skipped_exists": 1})
         self.assertEqual(payload["splits"][0]["manifest_rows"], 2)
         self.assertEqual(payload["splits"][0]["raw_status_counts"], {"downloaded": 1, "skipped_exists": 1})

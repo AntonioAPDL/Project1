@@ -24,6 +24,7 @@ GLOFAS_PROJECT_FOCUS_END = date(2023, 5, 1)
 GLOFAS_V31_HISTFIX_END = date(2022, 5, 11)
 NWM_V12_EXPECTED_YEARS = list(range(1993, 2018))
 GLOFAS_OPERATIONAL_EXPECTED_ISSUE_DATES = 1176
+GLOFAS_OPERATIONAL_DONE_STATUSES = frozenset({"downloaded", "skipped_exists"})
 
 
 def run_text(command: str) -> str:
@@ -163,6 +164,52 @@ def list_v31_histfix_refill_pids() -> List[int]:
 def parse_split_summary(path: Path) -> List[Dict[str, str]]:
     with path.open(newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
+
+
+def latest_csv_rows_by_key(path: Path, key_field: str) -> Dict[str, Dict[str, str]]:
+    latest: Dict[str, Dict[str, str]] = {}
+    if not path.exists():
+        return latest
+    with path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            key = str(row.get(key_field, "")).strip()
+            if not key:
+                continue
+            latest[key] = row
+    return latest
+
+
+def split_id_from_manifest_path(path: Path) -> str:
+    return path.name.replace("_download_manifest.csv", "")
+
+
+def operational_manifest_paths(campaign_root: Path) -> List[Path]:
+    return sorted((campaign_root / "manifests").glob("split_*_download_manifest.csv"))
+
+
+def operational_latest_problem_rows(campaign_root: Path) -> List[Dict[str, str]]:
+    rows: List[Dict[str, str]] = []
+    for manifest_path in operational_manifest_paths(campaign_root):
+        split_id = split_id_from_manifest_path(manifest_path)
+        latest = latest_csv_rows_by_key(manifest_path, "issue_date")
+        for issue_date, row in sorted(latest.items()):
+            status = str(row.get("status", "")).strip()
+            if status in GLOFAS_OPERATIONAL_DONE_STATUSES:
+                continue
+            rows.append(
+                {
+                    "split_id": split_id,
+                    "issue_date": issue_date,
+                    "status": status,
+                    "path": str(row.get("path", "")).strip(),
+                    "req_id": str(row.get("req_id", "")).strip(),
+                    "hydrological_model": str(row.get("hydrological_model", "")).strip(),
+                    "notes": str(row.get("notes", "")).strip(),
+                    "timestamp_utc": str(row.get("timestamp_utc", "")).strip(),
+                    "manifest_path": str(manifest_path),
+                }
+            )
+    return rows
 
 
 def load_json(path: Path) -> Dict[str, object]:

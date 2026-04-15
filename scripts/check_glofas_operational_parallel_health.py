@@ -11,6 +11,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
+if __package__ is None or __package__ == "":
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.recovery_priority_lib import (
+    GLOFAS_OPERATIONAL_DONE_STATUSES,
+    latest_csv_rows_by_key,
+    operational_latest_problem_rows,
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Check health of a parallel GLOFAS operational download campaign.")
@@ -22,19 +33,6 @@ def parse_args() -> argparse.Namespace:
 def load_split_summary(path: Path) -> List[Dict[str, str]]:
     with path.open(newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
-
-
-def latest_status_by_issue_date(manifest_path: Path) -> Dict[str, Dict[str, str]]:
-    latest: Dict[str, Dict[str, str]] = {}
-    if not manifest_path.exists():
-        return latest
-    with manifest_path.open(newline="", encoding="utf-8") as handle:
-        for row in csv.DictReader(handle):
-            issue_date = str(row.get("issue_date", "")).strip()
-            if not issue_date:
-                continue
-            latest[issue_date] = row
-    return latest
 
 
 def count_nonempty_gribs(download_root: Path, issue_dates_file: Path) -> int:
@@ -82,13 +80,13 @@ def main() -> int:
                     manifest_rows += 1
                     raw_statuses[manifest_row.get("status", "")] += 1
                     latest_timestamp = manifest_row.get("timestamp_utc") or latest_timestamp
-        latest_rows = latest_status_by_issue_date(manifest_path)
+        latest_rows = latest_csv_rows_by_key(manifest_path, "issue_date")
         for manifest_row in latest_rows.values():
             latest_statuses[manifest_row.get("status", "")] += 1
         actual_gribs = count_nonempty_gribs(download_root, issue_dates_file)
         actual_grib_total += actual_gribs
         overall_counter.update(latest_statuses)
-        done_like_manifest_count = latest_statuses.get("downloaded", 0) + latest_statuses.get("skipped_exists", 0)
+        done_like_manifest_count = sum(latest_statuses.get(status, 0) for status in GLOFAS_OPERATIONAL_DONE_STATUSES)
         per_split.append(
             {
                 "split_id": split_id,
@@ -104,14 +102,17 @@ def main() -> int:
             }
         )
 
+    latest_problem_rows = operational_latest_problem_rows(campaign_root)
     summary = {
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "campaign_root": str(campaign_root),
         "expected_issue_dates_total": expected_total,
         "grib_issue_dir_count_total": actual_grib_total,
         "latest_status_counts_total": dict(overall_counter),
-        "done_like_manifest_total": overall_counter.get("downloaded", 0) + overall_counter.get("skipped_exists", 0),
+        "done_like_manifest_total": sum(overall_counter.get(status, 0) for status in GLOFAS_OPERATIONAL_DONE_STATUSES),
         "percent_complete_total": round((actual_grib_total / expected_total) * 100.0, 1) if expected_total else 0.0,
+        "latest_problem_count": len(latest_problem_rows),
+        "latest_problem_rows": latest_problem_rows,
         "splits": per_split,
         "ok": all(split["ok"] for split in per_split),
     }
