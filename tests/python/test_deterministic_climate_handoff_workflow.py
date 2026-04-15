@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import shutil
 import tempfile
 import unittest
@@ -31,6 +32,18 @@ class DeterministicClimateHandoffWorkflowTests(unittest.TestCase):
             "ok\n", encoding="utf-8"
         )
         (self.run_dir / "extract_full" / "nwm" / "nwm_point_series.csv").write_text("ok\n", encoding="utf-8")
+        (self.run_dir / "extract_full" / "nwm" / "nwm_summary.json").write_text(
+            json.dumps(
+                {
+                    "rows_expected": 10,
+                    "rows_written": 10,
+                    "failure_rows_written": 0,
+                    "files_processed": 4,
+                    "status_rows_written": 4,
+                }
+            ),
+            encoding="utf-8",
+        )
 
         self.site_config = self.td / "site.yaml"
         self.site_config.write_text(

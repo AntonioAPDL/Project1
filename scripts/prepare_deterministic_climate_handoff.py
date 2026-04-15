@@ -120,6 +120,20 @@ def sync_campaign_handoff_root(config_path: Path, handoff_root: Path) -> None:
     config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
 
+def extract_summary_is_complete(summary_path: Path) -> bool:
+    if not summary_path.exists():
+        return False
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    expected = int(payload.get("rows_expected", -1))
+    written = int(payload.get("rows_written", -2))
+    failures = int(payload.get("failure_rows_written", -3))
+    files_processed = int(payload.get("files_processed", -4))
+    status_rows = int(payload.get("status_rows_written", -5))
+    if expected < 0 or written < 0 or failures < 0 or files_processed < 0 or status_rows < 0:
+        return False
+    return expected == written and failures == 0 and files_processed == status_rows
+
+
 def build_plan(cfg: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
     config_path = resolve_repo_path(args.config)
     if config_path is None or not config_path.exists():
@@ -144,7 +158,9 @@ def build_plan(cfg: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
     nwm_cfg = cfg.get("nwm") or {}
     nwm_subdir = str(nwm_cfg.get("extract_subdir", "extract_full"))
     nwm_csv = run_dir / nwm_subdir / "nwm" / "nwm_point_series.csv"
-    need_nwm_extract = bool(args.force_nwm or not nwm_csv.exists())
+    nwm_summary_json = run_dir / nwm_subdir / "nwm" / "nwm_summary.json"
+    nwm_complete = extract_summary_is_complete(nwm_summary_json)
+    need_nwm_extract = bool(args.force_nwm or not nwm_complete)
 
     health_cfg = cfg.get("health") or {}
     health_out = resolve_run_path(run_dir, str(health_cfg.get("out_json", "health_checks/forecast_extract_health_detclim_ready.json")))
@@ -220,6 +236,8 @@ def build_plan(cfg: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
         "selected_gefs_extract_subdir": gefs_subdir,
         "selected_nwm_extract_subdir": nwm_subdir,
         "nwm_output_csv": str(nwm_csv),
+        "nwm_summary_json": str(nwm_summary_json),
+        "nwm_extract_complete": nwm_complete,
         "need_nwm_extract": need_nwm_extract,
         "health_out_json": str(health_out),
         "handoff_root": str(handoff_root),
