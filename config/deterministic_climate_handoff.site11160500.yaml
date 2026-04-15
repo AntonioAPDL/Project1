@@ -1,0 +1,26 @@
+version: 1
+
+manifest_run_dir: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z"
+site_config: "config/forecats_pipeline.template.yaml"
+
+gefs:
+  preferred_extract_subdirs:
+    - "extract_gefs_full_reconciled_gefs_retry_20260406T224500Z"
+    - "extract_gefs_full"
+
+nwm:
+  extract_subdir: "extract_full"
+  workers: 16
+  batch_size: 256
+  file_retries: 3
+
+health:
+  out_json: "health_checks/forecast_extract_health_detclim_ready.json"
+
+handoff:
+  out_subdir: "handoff_forecasts"
+  overwrite: true
+
+campaign_sync:
+  enabled: true
+  config_path: "config/multimodel_v8_all9_featurecov.template.yaml"
