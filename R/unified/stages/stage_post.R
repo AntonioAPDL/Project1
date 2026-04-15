@@ -131,6 +131,22 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     }
   }
 
+  covariate_feature_filename <- as.character(unified_get(
+    cfg,
+    c("inputs", "covariate_features", "output_filename"),
+    default = "covariate_features.csv"
+  )[[1L]])
+  if (!nzchar(covariate_feature_filename)) {
+    covariate_feature_filename <- "covariate_features.csv"
+  }
+  shared_feature_csv <- if (isTRUE(use_shared_inputs)) {
+    cand <- file.path(shared_paths$covariates_dir, covariate_feature_filename)
+    if (file.exists(cand)) normalizePath(cand, mustWork = FALSE) else ""
+  } else {
+    feature_env <- Sys.getenv("UNIFIED_COVARIATE_FEATURES_CSV", "")
+    if (nzchar(feature_env) && file.exists(feature_env)) normalizePath(feature_env, mustWork = FALSE) else ""
+  }
+
   legacy_scale <- cfg$scale_contract$legacy_post_input_scale
   unified_assert_known_scale(legacy_scale, "scale_contract.legacy_post_input_scale")
 
@@ -560,6 +576,8 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     ENV_RETROS_PATH = normalizePath(adapted_retros, mustWork = FALSE),
     ENV_NWS_FORECAST_PATH = normalizePath(adapted_nws, mustWork = FALSE),
     ENV_GLOFAS_FORECAST_PATH = normalizePath(adapted_glofas, mustWork = FALSE),
+    if (nzchar(shared_feature_csv)) c(UNIFIED_COVARIATE_FEATURES_CSV = shared_feature_csv) else character(0),
+    if (nzchar(shared_feature_csv)) c(ENV_COVARIATE_FEATURES_PATH = shared_feature_csv) else character(0),
     if (nzchar(shared_cov_paths$eli)) c(ENV_COV_ELI_PATH = normalizePath(shared_cov_paths$eli, mustWork = FALSE)) else character(0),
     if (nzchar(shared_cov_paths$oni)) c(ENV_COV_ONI_PATH = normalizePath(shared_cov_paths$oni, mustWork = FALSE)) else character(0),
     if (nzchar(shared_cov_paths$ppt)) c(ENV_PPT_PATH = normalizePath(shared_cov_paths$ppt, mustWork = FALSE)) else character(0),

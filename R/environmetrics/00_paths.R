@@ -78,6 +78,10 @@ nearest_available_label <- function(requested_label, path_map) {
 
 PROJECT_ROOT <- env_or_default("ENV_PROJECT_ROOT", "/data/muscat_data/jaguir26/project1_ucsc_phd")
 PROJECT_ROOT <- normalizePath(PROJECT_ROOT, mustWork = FALSE)
+shared_helpers_path <- file.path(PROJECT_ROOT, "R", "unified", "families", "shared_input_helpers.R")
+if (file.exists(shared_helpers_path)) {
+  source(shared_helpers_path)
+}
 RUN_ROOT <- env_or_default("UNIFIED_RUN_ROOT", as.character(getOption("unified.run_root", "")))
 RUN_ROOT <- if (nzchar(RUN_ROOT)) normalizePath(RUN_ROOT, mustWork = FALSE) else ""
 RUN_ID <- env_or_default("UNIFIED_RUN_ID", as.character(getOption("unified.run_id", "")))
@@ -150,12 +154,12 @@ require_runscoped_path <- function(path_value, what, fallback_path = NULL) {
   ""
 }
 
-resolve_covariate_path <- function(env_key, fallback_path, what) {
+resolve_covariate_path <- function(env_key, fallback_path, what, allow_missing = FALSE) {
   env_path <- Sys.getenv(env_key, "")
   if (nzchar(env_path) && file.exists(env_path)) {
     return(normalizePath(env_path, mustWork = FALSE))
   }
-  if (STRICT_RUNSCOPED_POST) {
+  if (STRICT_RUNSCOPED_POST && !isTRUE(allow_missing)) {
     stop(
       sprintf(
         "Strict run-scoped mode: missing required %s path from %s",
@@ -167,6 +171,9 @@ resolve_covariate_path <- function(env_key, fallback_path, what) {
   }
   if (file.exists(fallback_path)) {
     return(normalizePath(fallback_path, mustWork = FALSE))
+  }
+  if (isTRUE(allow_missing)) {
+    return("")
   }
   warning(sprintf("Missing %s path. env=%s fallback=%s", what, env_key, fallback_path), call. = FALSE)
   ""
@@ -181,16 +188,24 @@ FORECAST_START_DATE <- parse_date_env("UNIFIED_FORECAST_START_DATE", as.characte
 PLOT_START_DATE <- parse_date_env("UNIFIED_PLOT_START", as.character(CUTOFF_DATE - 18L))
 PLOT_END_DATE <- parse_date_env("UNIFIED_PLOT_END", as.character(CUTOFF_DATE + 28L))
 
+COVARIATE_FEATURES_PATH <- env_or_default("ENV_COVARIATE_FEATURES_PATH", env_or_default("UNIFIED_COVARIATE_FEATURES_CSV", ""))
+if (nzchar(COVARIATE_FEATURES_PATH)) {
+  COVARIATE_FEATURES_PATH <- normalizePath(path.expand(COVARIATE_FEATURES_PATH), mustWork = FALSE)
+}
+FEATURE_TABLE_PRESENT <- nzchar(COVARIATE_FEATURES_PATH) && file.exists(COVARIATE_FEATURES_PATH)
+
 # Core inputs
 COV_ELI_PATH <- resolve_covariate_path(
   "ENV_COV_ELI_PATH",
   "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_1_ELI.csv",
-  "ELI covariate"
+  "ELI covariate",
+  allow_missing = FEATURE_TABLE_PRESENT
 )
 COV_ONI_PATH <- resolve_covariate_path(
   "ENV_COV_ONI_PATH",
   "/data/muscat_data/jaguir26/projects/Project/Input/exAL/covariates/cov_2_ONI.csv",
-  "ONI covariate"
+  "ONI covariate",
+  allow_missing = FEATURE_TABLE_PRESENT
 )
 
 NWS_FORECAST_PATH <- env_or_default("ENV_NWS_FORECAST_PATH", file.path(PROJECT_ROOT, "nws_forecast.csv"))

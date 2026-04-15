@@ -191,6 +191,12 @@ inputs:
         noise_sd_multiplier: 0.5
         noise_seed: 20260309
         floor_at_zero: false
+  covariate_features:
+    enabled: false
+    output_filename: "covariate_features.csv"
+    lag_orders: [1, 2, 3]
+    include_squares: true
+    include_interaction: true
   shared_covariates: []            # legacy compatibility: list of covariate paths
 
 fit:

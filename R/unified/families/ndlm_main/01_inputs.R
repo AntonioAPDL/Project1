@@ -172,33 +172,46 @@ ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
   nws_mean <- as.numeric(nws_forecast$row_means[seq_len(K_max)])
   glofas_mean <- as.numeric(glofas_forecast$row_means[seq_len(K_max)])
 
-  cov_keys <- c(
-    "NDLM_COV1_ELI_CSV",
-    "NDLM_COV2_ONI_CSV",
-    "NDLM_PPT_CSV",
-    "NDLM_SOIL_CSV",
-    "NDLM_PCA_CSV"
-  )
-  cov_series_hist <- vector("list", length(cov_keys))
-  cov_series_fore <- vector("list", length(cov_keys))
-  cov_names <- c("ELI", "ONI", "PPT", "SOIL", "PCA")
-  for (i in seq_along(cov_keys)) {
-    pth <- Sys.getenv(cov_keys[[i]], "")
-    cov_piece <- family_shared_build_covariate_series(
-      path = pth,
-      cov_name = cov_names[[i]],
+  feature_path <- Sys.getenv("UNIFIED_COVARIATE_FEATURES_CSV", "")
+  if (nzchar(feature_path) && file.exists(feature_path)) {
+    feature_bundle <- family_shared_build_feature_matrices(
+      path = feature_path,
       history_dates = dates_hist,
       forecast_dates = forecast_dates,
       fill_value = 0,
       scale_with_history = TRUE
     )
-    cov_series_hist[[i]] <- cov_piece$history
-    cov_series_fore[[i]] <- cov_piece$forecast
+    X <- feature_bundle$history
+    X_future <- feature_bundle$forecast
+  } else {
+    cov_keys <- c(
+      "NDLM_COV1_ELI_CSV",
+      "NDLM_COV2_ONI_CSV",
+      "NDLM_PPT_CSV",
+      "NDLM_SOIL_CSV",
+      "NDLM_PCA_CSV"
+    )
+    cov_series_hist <- vector("list", length(cov_keys))
+    cov_series_fore <- vector("list", length(cov_keys))
+    cov_names <- c("ELI", "ONI", "PPT", "SOIL", "PCA")
+    for (i in seq_along(cov_keys)) {
+      pth <- Sys.getenv(cov_keys[[i]], "")
+      cov_piece <- family_shared_build_covariate_series(
+        path = pth,
+        cov_name = cov_names[[i]],
+        history_dates = dates_hist,
+        forecast_dates = forecast_dates,
+        fill_value = 0,
+        scale_with_history = TRUE
+      )
+      cov_series_hist[[i]] <- cov_piece$history
+      cov_series_fore[[i]] <- cov_piece$forecast
+    }
+    X <- do.call(cbind, cov_series_hist)
+    X_future <- do.call(cbind, cov_series_fore)
+    colnames(X) <- cov_names
+    colnames(X_future) <- cov_names
   }
-  X <- do.call(cbind, cov_series_hist)
-  X_future <- do.call(cbind, cov_series_fore)
-  colnames(X) <- cov_names
-  colnames(X_future) <- cov_names
 
   list(
     y = y,

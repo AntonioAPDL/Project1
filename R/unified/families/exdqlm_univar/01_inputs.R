@@ -42,29 +42,41 @@ univar_theory_load_inputs <- function() {
     history_dates <- seq(as.Date("1970-01-01"), by = "1 day", length.out = Tn)
   }
 
-  cov_keys <- c(
-    "UNIV_COV1_ELI_CSV",
-    "UNIV_COV2_ONI_CSV",
-    "UNIV_PPT_CSV",
-    "UNIV_SOIL_CSV",
-    "UNIV_PCA_CSV"
-  )
-  cov_series <- vector("list", length(cov_keys))
-  cov_names <- c("ELI", "ONI", "PPT", "SOIL", "PCA")
-  for (i in seq_along(cov_keys)) {
-    pth <- Sys.getenv(cov_keys[[i]], "")
-    cov_piece <- family_shared_build_covariate_series(
-      path = pth,
-      cov_name = cov_names[[i]],
+  feature_path <- Sys.getenv("UNIFIED_COVARIATE_FEATURES_CSV", "")
+  if (nzchar(feature_path) && file.exists(feature_path)) {
+    feature_bundle <- family_shared_build_feature_matrices(
+      path = feature_path,
       history_dates = history_dates,
       forecast_dates = as.Date(character(0)),
       fill_value = 0,
       scale_with_history = TRUE
     )
-    cov_series[[i]] <- cov_piece$history
+    X <- feature_bundle$history
+  } else {
+    cov_keys <- c(
+      "UNIV_COV1_ELI_CSV",
+      "UNIV_COV2_ONI_CSV",
+      "UNIV_PPT_CSV",
+      "UNIV_SOIL_CSV",
+      "UNIV_PCA_CSV"
+    )
+    cov_series <- vector("list", length(cov_keys))
+    cov_names <- c("ELI", "ONI", "PPT", "SOIL", "PCA")
+    for (i in seq_along(cov_keys)) {
+      pth <- Sys.getenv(cov_keys[[i]], "")
+      cov_piece <- family_shared_build_covariate_series(
+        path = pth,
+        cov_name = cov_names[[i]],
+        history_dates = history_dates,
+        forecast_dates = as.Date(character(0)),
+        fill_value = 0,
+        scale_with_history = TRUE
+      )
+      cov_series[[i]] <- cov_piece$history
+    }
+    X <- do.call(cbind, cov_series)
+    colnames(X) <- cov_names
   }
-  X <- do.call(cbind, cov_series)
-  colnames(X) <- cov_names
 
   list(
     y = y,

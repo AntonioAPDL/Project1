@@ -92,6 +92,7 @@ ndlm_univar_load_inputs <- function(constants) {
   K_max <- max(k_nws, k_glofas)
   forecast_dates <- seq(forecast_start_date, by = "1 day", length.out = K_max)
 
+  feature_path <- Sys.getenv("UNIFIED_COVARIATE_FEATURES_CSV", "")
   cov_paths <- c(
     ELI = Sys.getenv("NDLM_COV1_ELI_CSV", ""),
     ONI = Sys.getenv("NDLM_COV2_ONI_CSV", ""),
@@ -100,20 +101,32 @@ ndlm_univar_load_inputs <- function(constants) {
     PCA = Sys.getenv("NDLM_PCA_CSV", "")
   )
 
-  cov_hist <- matrix(0, nrow = length(y_hist), ncol = length(cov_paths))
-  cov_future <- matrix(0, nrow = K_max, ncol = length(cov_paths))
-  colnames(cov_hist) <- names(cov_paths)
-  colnames(cov_future) <- names(cov_paths)
-
-  for (j in seq_along(cov_paths)) {
-    ser <- ndlm_univar_build_covariate_series(
-      path = cov_paths[[j]],
-      cov_name = names(cov_paths)[[j]],
+  if (nzchar(feature_path) && file.exists(feature_path)) {
+    feature_bundle <- family_shared_build_feature_matrices(
+      path = feature_path,
       history_dates = dates_hist,
-      forecast_dates = forecast_dates
+      forecast_dates = forecast_dates,
+      fill_value = 0,
+      scale_with_history = TRUE
     )
-    cov_hist[, j] <- as.numeric(ser$history)
-    cov_future[, j] <- as.numeric(ser$forecast)
+    cov_hist <- feature_bundle$history
+    cov_future <- feature_bundle$forecast
+  } else {
+    cov_hist <- matrix(0, nrow = length(y_hist), ncol = length(cov_paths))
+    cov_future <- matrix(0, nrow = K_max, ncol = length(cov_paths))
+    colnames(cov_hist) <- names(cov_paths)
+    colnames(cov_future) <- names(cov_paths)
+
+    for (j in seq_along(cov_paths)) {
+      ser <- ndlm_univar_build_covariate_series(
+        path = cov_paths[[j]],
+        cov_name = names(cov_paths)[[j]],
+        history_dates = dates_hist,
+        forecast_dates = forecast_dates
+      )
+      cov_hist[, j] <- as.numeric(ser$history)
+      cov_future[, j] <- as.numeric(ser$forecast)
+    }
   }
 
   list(

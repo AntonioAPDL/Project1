@@ -472,6 +472,23 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     }
   }
 
+  covariate_feature_filename <- as.character(unified_get(
+    cfg,
+    c("inputs", "covariate_features", "output_filename"),
+    default = "covariate_features.csv"
+  )[[1L]])
+  if (!nzchar(covariate_feature_filename)) {
+    covariate_feature_filename <- "covariate_features.csv"
+  }
+  shared_feature_csv <- if (isTRUE(use_shared_inputs)) {
+    cand <- file.path(shared_paths$covariates_dir, covariate_feature_filename)
+    if (file.exists(cand)) normalizePath(cand, mustWork = FALSE) else ""
+  } else {
+    feature_env <- Sys.getenv("UNIFIED_COVARIATE_FEATURES_CSV", "")
+    if (nzchar(feature_env) && file.exists(feature_env)) normalizePath(feature_env, mustWork = FALSE) else ""
+  }
+  using_engineered_covariates <- nzchar(shared_feature_csv)
+
   quantiles <- as.numeric(cfg$fit$quantiles)
   univar_likelihood_mode <- unified_resolve_univar_likelihood_mode(cfg, default = "exal")
   multivar_likelihood_mode <- unified_resolve_multivar_likelihood_mode(cfg, default = "exal")
@@ -889,6 +906,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       ))
     )
     cov_env_overrides <- c(
+      if (using_engineered_covariates) c(UNIFIED_COVARIATE_FEATURES_CSV = shared_feature_csv) else character(0),
       if (nzchar(shared_cov_paths$eli)) c(DISC_W_COV1_PATH = shared_cov_paths$eli) else character(0),
       if (nzchar(shared_cov_paths$oni)) c(DISC_W_COV2_PATH = shared_cov_paths$oni) else character(0),
       if (nzchar(shared_cov_paths$ppt)) c(DISC_W_PRISM_PATH = shared_cov_paths$ppt) else character(0),
@@ -1004,7 +1022,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         call. = FALSE
       )
     }
-    required_cov_keys <- c("eli", "oni", "ppt", "soil", "pca")
+    required_cov_keys <- if (using_engineered_covariates) character(0) else c("eli", "oni", "ppt", "soil", "pca")
     missing_cov <- required_cov_keys[!nzchar(unlist(shared_cov_paths[required_cov_keys], use.names = FALSE))]
     if (length(missing_cov) > 0L) {
       stop(
@@ -1070,6 +1088,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       UNIV_RETROS_CSV = source_retros,
       UNIV_NWS_FORECAST_CSV = source_nws,
       UNIV_GLOFAS_FORECAST_CSV = source_glofas,
+      UNIFIED_COVARIATE_FEATURES_CSV = shared_feature_csv,
       UNIV_COVARIATES_DIR = shared_paths$covariates_dir,
       UNIV_COV1_ELI_CSV = shared_cov_paths$eli,
       UNIV_COV2_ONI_CSV = shared_cov_paths$oni,
@@ -1329,7 +1348,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         call. = FALSE
       )
     }
-    required_cov_keys <- c("eli", "oni", "ppt", "soil", "pca")
+    required_cov_keys <- if (using_engineered_covariates) character(0) else c("eli", "oni", "ppt", "soil", "pca")
     missing_cov <- required_cov_keys[!nzchar(unlist(shared_cov_paths[required_cov_keys], use.names = FALSE))]
     if (length(missing_cov) > 0L) {
       stop(
@@ -1386,6 +1405,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       NDLM_RETROS_CSV = source_retros,
       NDLM_NWS_FORECAST_CSV = source_nws,
       NDLM_GLOFAS_FORECAST_CSV = source_glofas,
+      UNIFIED_COVARIATE_FEATURES_CSV = shared_feature_csv,
       NDLM_COVARIATES_DIR = shared_paths$covariates_dir,
       NDLM_COV1_ELI_CSV = shared_cov_paths$eli,
       NDLM_COV2_ONI_CSV = shared_cov_paths$oni,
@@ -1891,7 +1911,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         call. = FALSE
       )
     }
-    required_cov_keys <- c("eli", "oni", "ppt", "soil", "pca")
+    required_cov_keys <- if (using_engineered_covariates) character(0) else c("eli", "oni", "ppt", "soil", "pca")
     missing_cov <- required_cov_keys[!nzchar(unlist(shared_cov_paths[required_cov_keys], use.names = FALSE))]
     if (length(missing_cov) > 0L) {
       stop(
@@ -1936,6 +1956,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       NDLM_RETROS_CSV = source_retros,
       NDLM_NWS_FORECAST_CSV = source_nws,
       NDLM_GLOFAS_FORECAST_CSV = source_glofas,
+      UNIFIED_COVARIATE_FEATURES_CSV = shared_feature_csv,
       NDLM_COV1_ELI_CSV = shared_cov_paths$eli,
       NDLM_COV2_ONI_CSV = shared_cov_paths$oni,
       NDLM_PPT_CSV = shared_cov_paths$ppt,

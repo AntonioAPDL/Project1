@@ -228,6 +228,13 @@ unified_config_defaults <- function() {
           )
         )
       ),
+      covariate_features = list(
+        enabled = FALSE,
+        output_filename = "covariate_features.csv",
+        lag_orders = c(1L, 2L, 3L),
+        include_squares = TRUE,
+        include_interaction = TRUE
+      ),
       shared_covariates = list() # legacy compatibility
     ),
     fit = list(
@@ -1297,6 +1304,34 @@ unified_validate_config <- function(cfg) {
     ))
     if (!precip_enabled && !soil_enabled) {
       add_err("inputs.deterministic_climate requires at least one enabled replacement series (precip or soil)")
+    }
+  }
+
+  covfeat_enabled <- unified_get(cfg, c("inputs", "covariate_features", "enabled"), default = FALSE)
+  if (!isTRUE(covfeat_enabled) && !identical(covfeat_enabled, FALSE)) {
+    add_err("inputs.covariate_features.enabled must be boolean (true/false)")
+  }
+  if (isTRUE(covfeat_enabled)) {
+    output_filename <- as.character(unified_get(
+      cfg,
+      c("inputs", "covariate_features", "output_filename"),
+      default = "covariate_features.csv"
+    )[[1L]])
+    if (!nzchar(output_filename)) {
+      add_err("inputs.covariate_features.output_filename must be a non-empty filename")
+    }
+    lag_orders <- unified_get(cfg, c("inputs", "covariate_features", "lag_orders"), default = c(1L, 2L, 3L))
+    lag_orders <- as.integer(unlist(lag_orders, use.names = FALSE))
+    if (length(lag_orders) < 1L || any(!is.finite(lag_orders)) || any(lag_orders < 1L)) {
+      add_err("inputs.covariate_features.lag_orders must be a non-empty list of integers >= 1")
+    }
+    include_squares <- unified_get(cfg, c("inputs", "covariate_features", "include_squares"), default = TRUE)
+    if (!is.logical(include_squares) || length(include_squares) != 1L || is.na(include_squares)) {
+      add_err("inputs.covariate_features.include_squares must be boolean (true/false)")
+    }
+    include_interaction <- unified_get(cfg, c("inputs", "covariate_features", "include_interaction"), default = TRUE)
+    if (!is.logical(include_interaction) || length(include_interaction) != 1L || is.na(include_interaction)) {
+      add_err("inputs.covariate_features.include_interaction must be boolean (true/false)")
     }
   }
 

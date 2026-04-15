@@ -105,6 +105,84 @@ family_shared_pick_date_column <- function(df, cov_name = NULL) {
   rep(as.Date(NA), nrow(df))
 }
 
+family_shared_feature_columns <- function(df) {
+  if (!is.data.frame(df) || ncol(df) < 1L) return(character(0))
+  nm <- names(df)
+  nm_norm <- family_shared_normalize_name(nm)
+  num_idx <- which(vapply(df, is.numeric, logical(1)))
+  if (length(num_idx) < 1L) return(character(0))
+  drop_pat <- "^(date|time|timestamp|index|idx|year|month|day|julian)$"
+  keep <- !grepl(drop_pat, nm_norm[num_idx])
+  if (any(keep)) {
+    num_idx <- num_idx[keep]
+  }
+  nm[num_idx]
+}
+
+family_shared_build_feature_matrices <- function(path, history_dates, forecast_dates = NULL, fill_value = 0, scale_with_history = TRUE) {
+  history_dates <- as.Date(history_dates)
+  forecast_dates <- as.Date(forecast_dates)
+  if (is.null(path) || !nzchar(path) || !file.exists(path)) {
+    return(list(
+      history = matrix(numeric(0), nrow = length(history_dates), ncol = 0L),
+      forecast = matrix(numeric(0), nrow = length(forecast_dates), ncol = 0L),
+      feature_names = character(0),
+      scales = numeric(0)
+    ))
+  }
+
+  df <- family_shared_read_csv(path, "covariate_features")
+  feature_cols <- family_shared_feature_columns(df)
+  if (length(feature_cols) < 1L) {
+    stop(sprintf("covariate feature table has no numeric feature columns: %s", path), call. = FALSE)
+  }
+  src_dates <- family_shared_pick_date_column(df, cov_name = "FEATURES")
+  if (all(is.na(src_dates))) {
+    stop(sprintf("covariate feature table has no parseable date column: %s", path), call. = FALSE)
+  }
+
+  hist_cols <- vector("list", length(feature_cols))
+  fore_cols <- vector("list", length(feature_cols))
+  scales <- rep(NA_real_, length(feature_cols))
+  for (i in seq_along(feature_cols)) {
+    vals <- suppressWarnings(as.numeric(df[[feature_cols[[i]]]]))
+    hist_vals_raw <- family_shared_align_by_dates(src_dates, vals, history_dates, fill_value = NA_real_)
+    fore_vals_raw <- family_shared_align_by_dates(src_dates, vals, forecast_dates, fill_value = NA_real_)
+    if (isTRUE(scale_with_history)) {
+      scaled <- family_shared_sd_scale_history_future(hist_vals_raw, fore_vals_raw)
+      fill_scaled <- as.numeric(fill_value) / scaled$sd
+      hist_vals <- scaled$history
+      fore_vals <- scaled$future
+      hist_vals[!is.finite(hist_vals_raw)] <- fill_scaled
+      fore_vals[!is.finite(fore_vals_raw)] <- fill_scaled
+      hist_cols[[i]] <- hist_vals
+      fore_cols[[i]] <- fore_vals
+      scales[[i]] <- scaled$sd
+    } else {
+      hist_vals <- hist_vals_raw
+      fore_vals <- fore_vals_raw
+      hist_vals[!is.finite(hist_vals)] <- as.numeric(fill_value)
+      fore_vals[!is.finite(fore_vals)] <- as.numeric(fill_value)
+      hist_cols[[i]] <- hist_vals
+      fore_cols[[i]] <- fore_vals
+    }
+  }
+
+  history_mat <- if (length(hist_cols) > 0L) do.call(cbind, hist_cols) else matrix(numeric(0), nrow = length(history_dates), ncol = 0L)
+  forecast_mat <- if (length(fore_cols) > 0L) do.call(cbind, fore_cols) else matrix(numeric(0), nrow = length(forecast_dates), ncol = 0L)
+  if (!is.matrix(history_mat)) history_mat <- matrix(history_mat, ncol = length(feature_cols))
+  if (!is.matrix(forecast_mat)) forecast_mat <- matrix(forecast_mat, ncol = length(feature_cols))
+  colnames(history_mat) <- feature_cols
+  colnames(forecast_mat) <- feature_cols
+
+  list(
+    history = history_mat,
+    forecast = forecast_mat,
+    feature_names = feature_cols,
+    scales = setNames(scales, feature_cols)
+  )
+}
+
 family_shared_tail_align_series <- function(x, target_len, fill = 0) {
   x <- as.numeric(x)
   x <- x[is.finite(x)]

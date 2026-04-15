@@ -208,53 +208,62 @@ timestamps <- all_data[, 'time']
 #############################
 ## Add Constant at the end ##
 #############################
-X <- cbind(all_data[,c('ppt','soil','Static_PCA')], rep(1, TT))
-X_f <- cbind(X_f[,-1], rep(1, ranges[1]))
-########### Adding covariates
-X_ext <- matrix(NA_real_, ncol = 5, nrow = TT)
+feature_ready <- nzchar(COVARIATE_FEATURES_PATH) && file.exists(COVARIATE_FEATURES_PATH)
 
-X_ext[,1] <- c(0,X[1:(TT-1),1])
-X_ext[,2] <- c(0,0,X[1:(TT-2),1])
-X_ext[,3] <- X[1:(TT),1]^2
-X_ext[,4] <- c(0,X[1:(TT-1),1])^2
-X_ext[,5] <- c(0,0,X[1:(TT-2),1])^2
+if (feature_ready) {
+  feature_bundle <- family_shared_build_feature_matrices(
+    path = COVARIATE_FEATURES_PATH,
+    history_dates = all_data[, "time"],
+    forecast_dates = X_f[, "time"],
+    fill_value = 0,
+    scale_with_history = TRUE
+  )
+  X <- cbind(data.matrix(feature_bundle$history), rep(1, TT))
+  X_f <- cbind(data.matrix(feature_bundle$forecast), rep(1, ranges[1]))
+} else {
+  X <- cbind(all_data[,c('ppt','soil','Static_PCA')], rep(1, TT))
+  X_f <- cbind(X_f[,-1], rep(1, ranges[1]))
+  ########### Adding covariates
+  X_ext <- matrix(NA_real_, ncol = 5, nrow = TT)
 
-########### Standarized added covariates
-ext_scaled <- standardize_matrix_cols(X_ext)
-X_ext <- ext_scaled$values
-sds_ext <- ext_scaled$sds
-sd1 <- sds_ext[1]
-sd2 <- sds_ext[2]
-sd3 <- sds_ext[3]
-sd4 <- sds_ext[4]
-sd5 <- sds_ext[5]
-###############################################
-###############################################
-###############################################
-########## Adding covariates at the future
-X_ext_f <- matrix(NA_real_, ncol = 5, nrow = ranges[1])
-X_ext_f[,1] <- c(X[TT,1],X_f[1:(ranges[1]-1),1])
-X_ext_f[,2] <- c(X[(TT-1),1],X[TT,1],X_f[1:(ranges[1]-2),1])
-X_ext_f[,3] <- X_f[,1]^2
-X_ext_f[,4] <- c(X[TT,1],X_f[1:(ranges[1]-1),1])^2
-X_ext_f[,5] <- c(X[(TT-1),1],X[TT,1],X_f[1:(ranges[1]-2),1])^2
-#####################
-## STANDARDIZATION ##
-#####################
-##### Standarized original covs
-main_scaled <- standardize_matrix_cols(X[, 1:3, drop = FALSE])
-X[, 1:3] <- main_scaled$values
-sds_main <- main_scaled$sds
-sd_ppt <- sds_main[1]
-sd_soil <- sds_main[2]
-sd_pca <- sds_main[3]
-X <- cbind(X,X_ext)
-###### Standarized future covs using historical sds
-X_f[,1] <- X_f[,1] / sd_ppt
-X_f[,2] <- X_f[,2] / sd_soil
-X_f[,3] <- X_f[,3] / sd_pca
-X_ext_f <- sweep(X_ext_f, 2, sds_ext, FUN = "/")
-X_f <- cbind(X_f,X_ext_f)
+  X_ext[,1] <- c(0,X[1:(TT-1),1])
+  X_ext[,2] <- c(0,0,X[1:(TT-2),1])
+  X_ext[,3] <- X[1:(TT),1]^2
+  X_ext[,4] <- c(0,X[1:(TT-1),1])^2
+  X_ext[,5] <- c(0,0,X[1:(TT-2),1])^2
+
+  ########### Standarized added covariates
+  ext_scaled <- standardize_matrix_cols(X_ext)
+  X_ext <- ext_scaled$values
+  sds_ext <- ext_scaled$sds
+  sd1 <- sds_ext[1]
+  sd2 <- sds_ext[2]
+  sd3 <- sds_ext[3]
+  sd4 <- sds_ext[4]
+  sd5 <- sds_ext[5]
+  ########## Adding covariates at the future
+  X_ext_f <- matrix(NA_real_, ncol = 5, nrow = ranges[1])
+  X_ext_f[,1] <- c(X[TT,1],X_f[1:(ranges[1]-1),1])
+  X_ext_f[,2] <- c(X[(TT-1),1],X[TT,1],X_f[1:(ranges[1]-2),1])
+  X_ext_f[,3] <- X_f[,1]^2
+  X_ext_f[,4] <- c(X[TT,1],X_f[1:(ranges[1]-1),1])^2
+  X_ext_f[,5] <- c(X[(TT-1),1],X[TT,1],X_f[1:(ranges[1]-2),1])^2
+  #####################
+  ## STANDARDIZATION ##
+  #####################
+  main_scaled <- standardize_matrix_cols(X[, 1:3, drop = FALSE])
+  X[, 1:3] <- main_scaled$values
+  sds_main <- main_scaled$sds
+  sd_ppt <- sds_main[1]
+  sd_soil <- sds_main[2]
+  sd_pca <- sds_main[3]
+  X <- cbind(X,X_ext)
+  X_f[,1] <- X_f[,1] / sd_ppt
+  X_f[,2] <- X_f[,2] / sd_soil
+  X_f[,3] <- X_f[,3] / sd_pca
+  X_ext_f <- sweep(X_ext_f, 2, sds_ext, FUN = "/")
+  X_f <- cbind(X_f,X_ext_f)
+}
 
 
 ## Build the matrix exactly as requested

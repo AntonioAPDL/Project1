@@ -395,6 +395,32 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
     }
   }
 
+  covfeat_result <- unified_materialize_covariate_features(
+    cfg = cfg,
+    shared_paths = shared_paths,
+    cov_path_map = shared_cov_paths
+  )
+  if (!is.null(covfeat_result)) {
+    manifest$covariate_features <- list(
+      enabled = TRUE,
+      csv_path = covfeat_result$csv_path,
+      summary_path = covfeat_result$summary_path,
+      lag_orders = as.integer(covfeat_result$lag_orders),
+      include_squares = isTRUE(covfeat_result$include_squares),
+      include_interaction = isTRUE(covfeat_result$include_interaction),
+      column_names = as.character(covfeat_result$column_names)
+    )
+    refresh_shared_manifest_entry(covfeat_result$csv_path, role = "shared_input")
+    if (file.exists(covfeat_result$summary_path)) {
+      manifest <- unified_manifest_add_artifact(
+        manifest,
+        covfeat_result$summary_path,
+        storage_scale = "text",
+        role = "shared_input"
+      )
+    }
+  }
+
   data_start <- unified_get(cfg, c("dates", "data_start"), default = NULL)
   if (!is.null(data_start) && nzchar(as.character(data_start))) {
     data_start_date <- suppressWarnings(as.Date(as.character(data_start)))

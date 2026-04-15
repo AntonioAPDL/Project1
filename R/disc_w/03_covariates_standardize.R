@@ -147,61 +147,70 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
   J <- dim(Y)[1] - 1
   timestamps <- all_data[, "time"]
 
-  # Remove constant?
-  #############################
-  ## Add Constant at the end ##
-  #############################
-  X <- cbind(all_data[, c("ppt", "soil", "Static_PCA")], rep(1, TT))
-  X_f <- cbind(X_f[, -1], rep(1, ranges[1]))
-  ########### Adding covariates
-  X_ext <- matrix(NA_real_, ncol = 5, nrow = TT)
-  X_ext[, 1] <- c(0, X[1:(TT - 1), 1])
-  X_ext[, 2] <- c(0, 0, X[1:(TT - 2), 1])
-  X_ext[, 3] <- X[1:(TT), 1]^2
-  X_ext[, 4] <- c(0, X[1:(TT - 1), 1])^2
-  X_ext[, 5] <- c(0, 0, X[1:(TT - 2), 1])^2
-  ########### Standarized added covariates
-  sd1 <- sd(X_ext[, 1])
-  sd2 <- sd(X_ext[, 2])
-  sd3 <- sd(X_ext[, 3])
-  sd4 <- sd(X_ext[, 4])
-  sd5 <- sd(X_ext[, 5])
-  X_ext[, 1] <- X_ext[, 1]/sd1
-  X_ext[, 2] <- X_ext[, 2]/sd2
-  X_ext[, 3] <- X_ext[, 3]/sd3
-  X_ext[, 4] <- X_ext[, 4]/sd4
-  X_ext[, 5] <- X_ext[, 5]/sd5
-  ###############################################
-  ###############################################
-  ###############################################
-  ########## Adding covariates at the future
-  X_ext_f <- matrix(NA_real_, ncol = 5, nrow = ranges[1])
-  X_ext_f[, 1] <- c(X[TT, 1], X_f[1:(ranges[1] - 1), 1])
-  X_ext_f[, 2] <- c(X[(TT - 1), 1], X[TT, 1], X_f[1:(ranges[1] - 2), 1])
-  X_ext_f[, 3] <- X_f[, 1]^2
-  X_ext_f[, 4] <- c(X[TT, 1], X_f[1:(ranges[1] - 1), 1])^2
-  X_ext_f[, 5] <- c(X[(TT - 1), 1], X[TT, 1], X_f[1:(ranges[1] - 2), 1])^2
-  #####################
-  ## STANDARDIZATION ##
-  #####################
-  ##### Standarized original covs
-  sd_ppt <- sd(X[, 1])
-  sd_soil <- sd(X[, 2])
-  sd_pca <- sd(X[, 3])
-  X[, 1] <- X[, 1]/sd_ppt
-  X[, 2] <- X[, 2]/sd_soil
-  X[, 3] <- X[, 3]/sd_pca
-  X <- cbind(X, X_ext)
-  ###### Standarized future covs using historical sds
-  X_f[, 1] <- X_f[, 1]/sd_ppt
-  X_f[, 2] <- X_f[, 2]/sd_soil
-  X_f[, 3] <- X_f[, 3]/sd_pca
-  X_ext_f[, 1] <- X_ext_f[, 1]/sd1
-  X_ext_f[, 2] <- X_ext_f[, 2]/sd2
-  X_ext_f[, 3] <- X_ext_f[, 3]/sd3
-  X_ext_f[, 4] <- X_ext_f[, 4]/sd4
-  X_ext_f[, 5] <- X_ext_f[, 5]/sd5
-  X_f <- cbind(X_f, X_ext_f)
+  feature_ready <- nzchar(Sys.getenv("UNIFIED_COVARIATE_FEATURES_CSV", "")) &&
+    file.exists(Sys.getenv("UNIFIED_COVARIATE_FEATURES_CSV", ""))
+
+  if (feature_ready) {
+    feature_bundle <- family_shared_build_feature_matrices(
+      path = Sys.getenv("UNIFIED_COVARIATE_FEATURES_CSV", ""),
+      history_dates = all_data[, "time"],
+      forecast_dates = X_f[, "time"],
+      fill_value = 0,
+      scale_with_history = TRUE
+    )
+    X <- cbind(data.matrix(feature_bundle$history), rep(1, TT))
+    X_f <- cbind(data.matrix(feature_bundle$forecast), rep(1, ranges[1]))
+  } else {
+    #############################
+    ## Add Constant at the end ##
+    #############################
+    X <- cbind(all_data[, c("ppt", "soil", "Static_PCA")], rep(1, TT))
+    X_f <- cbind(X_f[, -1], rep(1, ranges[1]))
+    ########### Adding covariates
+    X_ext <- matrix(NA_real_, ncol = 5, nrow = TT)
+    X_ext[, 1] <- c(0, X[1:(TT - 1), 1])
+    X_ext[, 2] <- c(0, 0, X[1:(TT - 2), 1])
+    X_ext[, 3] <- X[1:(TT), 1]^2
+    X_ext[, 4] <- c(0, X[1:(TT - 1), 1])^2
+    X_ext[, 5] <- c(0, 0, X[1:(TT - 2), 1])^2
+    ########### Standarized added covariates
+    sd1 <- sd(X_ext[, 1])
+    sd2 <- sd(X_ext[, 2])
+    sd3 <- sd(X_ext[, 3])
+    sd4 <- sd(X_ext[, 4])
+    sd5 <- sd(X_ext[, 5])
+    X_ext[, 1] <- X_ext[, 1]/sd1
+    X_ext[, 2] <- X_ext[, 2]/sd2
+    X_ext[, 3] <- X_ext[, 3]/sd3
+    X_ext[, 4] <- X_ext[, 4]/sd4
+    X_ext[, 5] <- X_ext[, 5]/sd5
+    ########## Adding covariates at the future
+    X_ext_f <- matrix(NA_real_, ncol = 5, nrow = ranges[1])
+    X_ext_f[, 1] <- c(X[TT, 1], X_f[1:(ranges[1] - 1), 1])
+    X_ext_f[, 2] <- c(X[(TT - 1), 1], X[TT, 1], X_f[1:(ranges[1] - 2), 1])
+    X_ext_f[, 3] <- X_f[, 1]^2
+    X_ext_f[, 4] <- c(X[TT, 1], X_f[1:(ranges[1] - 1), 1])^2
+    X_ext_f[, 5] <- c(X[(TT - 1), 1], X[TT, 1], X_f[1:(ranges[1] - 2), 1])^2
+    #####################
+    ## STANDARDIZATION ##
+    #####################
+    sd_ppt <- sd(X[, 1])
+    sd_soil <- sd(X[, 2])
+    sd_pca <- sd(X[, 3])
+    X[, 1] <- X[, 1]/sd_ppt
+    X[, 2] <- X[, 2]/sd_soil
+    X[, 3] <- X[, 3]/sd_pca
+    X <- cbind(X, X_ext)
+    X_f[, 1] <- X_f[, 1]/sd_ppt
+    X_f[, 2] <- X_f[, 2]/sd_soil
+    X_f[, 3] <- X_f[, 3]/sd_pca
+    X_ext_f[, 1] <- X_ext_f[, 1]/sd1
+    X_ext_f[, 2] <- X_ext_f[, 2]/sd2
+    X_ext_f[, 3] <- X_ext_f[, 3]/sd3
+    X_ext_f[, 4] <- X_ext_f[, 4]/sd4
+    X_ext_f[, 5] <- X_ext_f[, 5]/sd5
+    X_f <- cbind(X_f, X_ext_f)
+  }
 
   list(
     X = X,
