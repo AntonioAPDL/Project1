@@ -30,24 +30,24 @@ inputs:
       dry_day_threshold_mm: 0.0
       noisy_blend:
         enabled: true
-        noise_sd: 15.0
+        noise_sd: 20.0
         noise_seed: 20260415
         floor_at_zero: true
       observed_blend:
         enabled: true
-        observed_weight: 0.9
+        observed_weight: 0.5
     soil:
       enabled: true
       source: gefs_soilw_0_0.1m
       reduction: q85
       noisy_blend:
         enabled: true
-        noise_sd: 0.01
+        noise_sd: 0.05
         noise_seed: 20260415
         floor_at_zero: false
       observed_blend:
         enabled: true
-        observed_weight: 0.9
+        observed_weight: 0.5
   covariate_features:
     enabled: true
     output_filename: covariate_features.csv
