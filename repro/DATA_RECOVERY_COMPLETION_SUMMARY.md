@@ -34,6 +34,16 @@ Key files:
 - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/status/checkpoint_20260416T174311Z/checkpoint_summary.json`
 - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/status/checkpoint_20260416T174311Z/checkpoint_summary.md`
 
+Final safety bundle:
+
+- `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/status/final_safety_bundle_20260416T174522Z`
+
+Safety bundle contents:
+
+- `artifact_inventory.json`: final artifact roots, existence, file counts, and byte totals
+- `artifact_checksums.sha256`: SHA-256 checksums for the core completion metadata files
+- `README.md`: explains scope and limits of the bundle
+
 The priority queue status is complete:
 
 - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/status/priority_queue_20260409T010357Z/status/queue_status.json`
@@ -51,6 +61,7 @@ Final operational and historical outputs remain under the original campaign root
 - The recovered outputs are durable on disk and no longer depend on active worker processes.
 - The recovery queue has no remaining active target sessions or refill worker PIDs.
 - The operational-tail repair has been committed into the repo so the recovery path itself is reproducible.
+- The final safety bundle captures the current on-disk footprint of the key artifact roots plus checksums for the core completion metadata.
 
 Important honesty note:
 
