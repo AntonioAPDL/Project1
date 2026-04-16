@@ -200,11 +200,14 @@ unified_config_defaults <- function() {
             enabled = FALSE,
             noise_sd = 15,
             noise_seed = 20260415L,
+            noise_distribution = "normal",
             floor_at_zero = TRUE
           ),
           observed_blend = list(
             enabled = FALSE,
-            observed_weight = 0.9
+            observed_weight = 0.9,
+            observed_zero_stay_prob = NULL,
+            observed_zero_stay_seed = 20260415L
           )
         ),
         soil = list(
@@ -215,11 +218,14 @@ unified_config_defaults <- function() {
             enabled = FALSE,
             noise_sd = 0.01,
             noise_seed = 20260415L,
+            noise_distribution = "normal",
             floor_at_zero = FALSE
           ),
           observed_blend = list(
             enabled = FALSE,
-            observed_weight = 0.9
+            observed_weight = 0.9,
+            observed_zero_stay_prob = NULL,
+            observed_zero_stay_seed = 20260415L
           )
         )
       ),
@@ -1210,6 +1216,17 @@ unified_validate_config <- function(cfg) {
           series_name
         ))
       }
+      noisy_blend_distribution <- tolower(as.character(unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "noisy_blend", "noise_distribution"),
+        default = "normal"
+      ))[[1L]])
+      if (!(noisy_blend_distribution %in% c("normal", "abs_normal"))) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.noisy_blend.noise_distribution must be one of: normal, abs_normal",
+          series_name
+        ))
+      }
       observed_blend_enabled <- unified_get(
         cfg,
         c("inputs", "deterministic_climate", series_name, "observed_blend", "enabled"),
@@ -1231,6 +1248,34 @@ unified_validate_config <- function(cfg) {
           "inputs.deterministic_climate.%s.observed_blend.observed_weight must be numeric in [0, 1]",
           series_name
         ))
+      }
+      observed_zero_stay_prob_raw <- unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "observed_blend", "observed_zero_stay_prob"),
+        default = NULL
+      )
+      if (!is.null(observed_zero_stay_prob_raw)) {
+        observed_zero_stay_prob <- suppressWarnings(as.numeric(observed_zero_stay_prob_raw))
+        if (!is.finite(observed_zero_stay_prob) || observed_zero_stay_prob < 0 || observed_zero_stay_prob > 1) {
+          add_err(sprintf(
+            "inputs.deterministic_climate.%s.observed_blend.observed_zero_stay_prob must be null or numeric in [0, 1]",
+            series_name
+          ))
+        }
+      }
+      observed_zero_stay_seed_raw <- unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "observed_blend", "observed_zero_stay_seed"),
+        default = 20260415L
+      )
+      if (!is.null(observed_zero_stay_seed_raw)) {
+        observed_zero_stay_seed <- suppressWarnings(as.integer(observed_zero_stay_seed_raw))
+        if (!is.finite(observed_zero_stay_seed)) {
+          add_err(sprintf(
+            "inputs.deterministic_climate.%s.observed_blend.observed_zero_stay_seed must be null or an integer",
+            series_name
+          ))
+        }
       }
       if (identical(series_name, "precip")) {
         dry_day_threshold_mm <- suppressWarnings(as.numeric(unified_get(

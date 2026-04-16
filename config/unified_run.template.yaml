@@ -169,10 +169,13 @@ inputs:
         enabled: false
         noise_sd: 15.0
         noise_seed: 20260415
+        noise_distribution: "normal" # normal | abs_normal
         floor_at_zero: true
       observed_blend:
         enabled: false
         observed_weight: 0.9          # final = observed_weight * observed + (1-observed_weight) * noisy_forecast
+        observed_zero_stay_prob: null # optional: if observed precip is 0, keep final at 0 with this probability
+        observed_zero_stay_seed: 20260415
     soil:
       enabled: true
       source: "nwm_soilsat_top"   # currently supported: nwm_soilsat_top | gefs_soilw_0_0.1m
@@ -181,10 +184,13 @@ inputs:
         enabled: false
         noise_sd: 0.01
         noise_seed: 20260415
+        noise_distribution: "normal" # normal | abs_normal
         floor_at_zero: false
       observed_blend:
         enabled: false
         observed_weight: 0.9
+        observed_zero_stay_prob: null
+        observed_zero_stay_seed: 20260415
   covariate_features:
     enabled: false
     output_filename: "covariate_features.csv"

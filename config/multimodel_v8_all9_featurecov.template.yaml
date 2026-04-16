@@ -32,10 +32,13 @@ inputs:
         enabled: true
         noise_sd: 20.0
         noise_seed: 20260415
+        noise_distribution: normal
         floor_at_zero: true
       observed_blend:
         enabled: true
         observed_weight: 0.5
+        observed_zero_stay_prob: 0.9
+        observed_zero_stay_seed: 20260415
     soil:
       enabled: true
       source: gefs_soilw_0_0.1m
@@ -44,10 +47,13 @@ inputs:
         enabled: true
         noise_sd: 0.05
         noise_seed: 20260415
+        noise_distribution: abs_normal
         floor_at_zero: false
       observed_blend:
         enabled: true
         observed_weight: 0.5
+        observed_zero_stay_prob: null
+        observed_zero_stay_seed: 20260415
   covariate_features:
     enabled: true
     output_filename: covariate_features.csv

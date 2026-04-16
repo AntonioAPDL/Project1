@@ -181,10 +181,13 @@ inputs:
         floor_at_zero: true
         zero_zero_force_prob: 0.0
         noise_sd: 20.0
+        noise_distribution: normal
       source: gefs_apcp
       observed_blend:
         enabled: true
         observed_weight: 0.5
+        observed_zero_stay_prob: 0.9
+        observed_zero_stay_seed: 20260415
     soil:
       enabled: true
       reduction: q85
@@ -198,10 +201,13 @@ inputs:
         noise_seed: 20260415
         floor_at_zero: false
         noise_sd: 0.05
+        noise_distribution: abs_normal
       source: gefs_soilw_0_0.1m
       observed_blend:
         enabled: true
         observed_weight: 0.5
+        observed_zero_stay_prob: null
+        observed_zero_stay_seed: 20260415
     handoff_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
   shared_covariates: []
   covariate_features:

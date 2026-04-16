@@ -74,7 +74,7 @@ detclim_derive_seed <- function(base_seed, label) {
   as.integer(derived)
 }
 
-detclim_apply_noise <- function(values, noise_sd = 0, noise_seed = 1L, floor_at_zero = FALSE, label = "detclim") {
+detclim_apply_noise <- function(values, noise_sd = 0, noise_seed = 1L, floor_at_zero = FALSE, label = "detclim", noise_distribution = "normal") {
   values <- as.numeric(values)
   if (length(values) == 0L) {
     return(list(value = values, noise = numeric(0), seed = detclim_derive_seed(noise_seed, label)))
@@ -82,6 +82,16 @@ detclim_apply_noise <- function(values, noise_sd = 0, noise_seed = 1L, floor_at_
   sd_val <- suppressWarnings(as.numeric(noise_sd %||% 0))
   if (!is.finite(sd_val) || sd_val < 0) {
     stop(sprintf("deterministic_climate noise_sd must be numeric >= 0, got: %s", as.character(noise_sd)), call. = FALSE)
+  }
+  noise_distribution <- tolower(trimws(as.character(noise_distribution %||% "normal")[[1L]]))
+  if (!(noise_distribution %in% c("normal", "abs_normal"))) {
+    stop(
+      sprintf(
+        "deterministic_climate noise_distribution must be one of: normal, abs_normal; got: %s",
+        noise_distribution
+      ),
+      call. = FALSE
+    )
   }
   derived_seed <- detclim_derive_seed(noise_seed, label)
   old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
@@ -95,6 +105,9 @@ detclim_apply_noise <- function(values, noise_sd = 0, noise_seed = 1L, floor_at_
   }, add = TRUE)
   set.seed(derived_seed)
   noise <- if (sd_val > 0) stats::rnorm(length(values), mean = 0, sd = sd_val) else rep(0, length(values))
+  if (identical(noise_distribution, "abs_normal")) {
+    noise <- abs(noise)
+  }
   out <- values + noise
   if (isTRUE(floor_at_zero)) {
     out <- pmax(0, out)
@@ -102,7 +115,56 @@ detclim_apply_noise <- function(values, noise_sd = 0, noise_seed = 1L, floor_at_
   list(value = out, noise = noise, seed = derived_seed)
 }
 
-detclim_compose_future_series <- function(observed_df, forecast_df, observed_weight = 0.9, noise_sd = 0, noise_seed = 1L, floor_at_zero = FALSE, label = "detclim") {
+detclim_apply_zero_stay_gate <- function(values, observed_values, zero_stay_prob = NULL, zero_stay_seed = 1L, label = "detclim") {
+  values <- as.numeric(values)
+  observed_values <- as.numeric(observed_values)
+  if (length(values) == 0L) {
+    return(list(
+      value = values,
+      draw = numeric(0),
+      applied = logical(0),
+      seed = detclim_derive_seed(zero_stay_seed, paste(label, "zero_stay", sep = "|"))
+    ))
+  }
+  prob <- suppressWarnings(as.numeric(zero_stay_prob))
+  if (!is.finite(prob) || prob < 0 || prob > 1) {
+    stop(
+      sprintf(
+        "deterministic_climate observed_zero_stay_prob must be numeric in [0, 1], got: %s",
+        as.character(zero_stay_prob)
+      ),
+      call. = FALSE
+    )
+  }
+  derived_seed <- detclim_derive_seed(zero_stay_seed, paste(label, "zero_stay", sep = "|"))
+  old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  old_seed <- if (old_seed_exists) get(".Random.seed", envir = .GlobalEnv, inherits = FALSE) else NULL
+  on.exit({
+    if (old_seed_exists) {
+      assign(".Random.seed", old_seed, envir = .GlobalEnv)
+    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+  }, add = TRUE)
+  set.seed(derived_seed)
+  draw <- stats::runif(length(values))
+  applied <- is.finite(observed_values) & observed_values <= 0 & draw < prob
+  out <- ifelse(applied, 0, values)
+  list(value = out, draw = draw, applied = applied, seed = derived_seed)
+}
+
+detclim_compose_future_series <- function(
+  observed_df,
+  forecast_df,
+  observed_weight = 0.9,
+  noise_sd = 0,
+  noise_seed = 1L,
+  floor_at_zero = FALSE,
+  noise_distribution = "normal",
+  observed_zero_stay_prob = NULL,
+  observed_zero_stay_seed = NULL,
+  label = "detclim"
+) {
   observed_weight <- suppressWarnings(as.numeric(observed_weight))
   if (!is.finite(observed_weight) || observed_weight < 0 || observed_weight > 1) {
     stop(sprintf("deterministic_climate observed_weight must be numeric in [0, 1], got: %s", as.character(observed_weight)), call. = FALSE)
@@ -120,7 +182,8 @@ detclim_compose_future_series <- function(observed_df, forecast_df, observed_wei
     noise_sd = noise_sd,
     noise_seed = noise_seed,
     floor_at_zero = floor_at_zero,
-    label = label
+    label = label,
+    noise_distribution = noise_distribution
   )
   merged$noise <- noisy$noise
   merged$noisy_forecast_value <- noisy$value
@@ -128,6 +191,33 @@ detclim_compose_future_series <- function(observed_df, forecast_df, observed_wei
   merged$forecast_weight <- 1 - observed_weight
   merged$blended_value <- observed_weight * merged$observed_value + (1 - observed_weight) * merged$noisy_forecast_value
   merged$noise_seed_effective <- noisy$seed
+  merged$noise_distribution <- noise_distribution
+  zero_prob <- suppressWarnings(as.numeric(observed_zero_stay_prob))
+  if (length(zero_prob) < 1L || !is.finite(zero_prob[[1L]])) {
+    zero_prob <- NA_real_
+  } else {
+    zero_prob <- zero_prob[[1L]]
+  }
+  if (is.finite(zero_prob) && zero_prob > 0) {
+    zero_gate <- detclim_apply_zero_stay_gate(
+      values = merged$blended_value,
+      observed_values = merged$observed_value,
+      zero_stay_prob = zero_prob,
+      zero_stay_seed = observed_zero_stay_seed %||% noise_seed,
+      label = label
+    )
+    merged$observed_zero_stay_prob <- zero_prob
+    merged$observed_zero_stay_draw <- zero_gate$draw
+    merged$observed_zero_stay_applied <- zero_gate$applied
+    merged$observed_zero_stay_seed_effective <- zero_gate$seed
+    merged$blended_value_effective <- zero_gate$value
+  } else {
+    merged$observed_zero_stay_prob <- NA_real_
+    merged$observed_zero_stay_draw <- NA_real_
+    merged$observed_zero_stay_applied <- FALSE
+    merged$observed_zero_stay_seed_effective <- NA_integer_
+    merged$blended_value_effective <- merged$blended_value
+  }
   merged
 }
 
@@ -141,11 +231,14 @@ detclim_normalize_series_cfg <- function(det_cfg, series_name) {
       enabled = FALSE,
       noise_sd = 0,
       noise_seed = 20260415L,
+      noise_distribution = "normal",
       floor_at_zero = identical(series_name, "precip")
     ),
     observed_blend = list(
       enabled = FALSE,
-      observed_weight = 0.9
+      observed_weight = 0.9,
+      observed_zero_stay_prob = NULL,
+      observed_zero_stay_seed = 20260415L
     )
   )
   series_cfg <- detclim_get_nested(det_cfg, list(series_name), default = list())
@@ -159,8 +252,12 @@ detclim_normalize_series_cfg <- function(det_cfg, series_name) {
   out$noisy_blend$enabled <- isTRUE(detclim_get_nested(out, list("noisy_blend", "enabled"), default = FALSE))
   out$noisy_blend$noise_sd <- suppressWarnings(as.numeric(detclim_get_nested(out, list("noisy_blend", "noise_sd"), default = defaults$noisy_blend$noise_sd)))
   out$noisy_blend$noise_seed <- suppressWarnings(as.integer(detclim_get_nested(out, list("noisy_blend", "noise_seed"), default = defaults$noisy_blend$noise_seed)))
+  out$noisy_blend$noise_distribution <- tolower(trimws(as.character(detclim_get_nested(out, list("noisy_blend", "noise_distribution"), default = defaults$noisy_blend$noise_distribution))[[1L]]))
   out$noisy_blend$floor_at_zero <- isTRUE(detclim_get_nested(out, list("noisy_blend", "floor_at_zero"), default = defaults$noisy_blend$floor_at_zero))
   out$observed_blend$enabled <- isTRUE(detclim_get_nested(out, list("observed_blend", "enabled"), default = FALSE))
   out$observed_blend$observed_weight <- suppressWarnings(as.numeric(detclim_get_nested(out, list("observed_blend", "observed_weight"), default = defaults$observed_blend$observed_weight)))
+  prob_raw <- detclim_get_nested(out, list("observed_blend", "observed_zero_stay_prob"), default = defaults$observed_blend$observed_zero_stay_prob)
+  out$observed_blend$observed_zero_stay_prob <- if (is.null(prob_raw) || length(prob_raw) < 1L) NA_real_ else suppressWarnings(as.numeric(prob_raw[[1L]]))
+  out$observed_blend$observed_zero_stay_seed <- suppressWarnings(as.integer(detclim_get_nested(out, list("observed_blend", "observed_zero_stay_seed"), default = defaults$observed_blend$observed_zero_stay_seed)))
   out
 }

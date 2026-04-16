@@ -23,12 +23,15 @@
 - `SOIL` source: `GEFS SOILW 0-0.1 m below ground`
 - ensemble reduction: `q85` for both series
 - precipitation noisy forecast:
-  - additive Gaussian noise with `sd = 20`
+  - additive Gaussian noise `N(0, 20)`
   - values clamped to `max(0, forecast + noise)`
 - soil noisy forecast:
-  - additive Gaussian noise with `sd = 0.05`
+  - additive half-normal noise `|N(0, 0.05)|`
 - convex observed/forecast blend:
   - `0.5 * observed + 0.5 * noisy_forecast`
+- precipitation zero-stay gate:
+  - when retrospective precipitation is `0`, set the final precipitation input to `0` with probability `0.9`
+  - otherwise keep the blended value
 
 This configuration is centralized under:
 

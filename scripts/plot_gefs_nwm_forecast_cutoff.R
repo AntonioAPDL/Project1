@@ -564,12 +564,24 @@ blend_series_label_from_cfg <- function(series_name, series_cfg) {
     identical(series_cfg$source, "nwm_soilsat_top") ~ "NWM SOILSAT_TOP",
     TRUE ~ as.character(series_cfg$source)
   )
+  extra_bits <- c(
+    sprintf("obs_w=%.2f", as.numeric(series_cfg$observed_blend$observed_weight)),
+    if (identical(series_cfg$noisy_blend$noise_distribution, "abs_normal")) {
+      sprintf("|N| sd=%s", format(as.numeric(series_cfg$noisy_blend$noise_sd), trim = TRUE, scientific = FALSE))
+    } else {
+      sprintf("sd=%s", format(as.numeric(series_cfg$noisy_blend$noise_sd), trim = TRUE, scientific = FALSE))
+    },
+    if (is.finite(series_cfg$observed_blend$observed_zero_stay_prob) && series_cfg$observed_blend$observed_zero_stay_prob > 0) {
+      sprintf("p(obs0->0)=%.2f", as.numeric(series_cfg$observed_blend$observed_zero_stay_prob))
+    } else {
+      NULL
+    }
+  )
   sprintf(
-    "Configured blended input\n%s %s | obs_w=%.2f | sd=%s",
+    "Configured blended input\n%s %s | %s",
     source_label,
     toupper(as.character(series_cfg$reduction)),
-    as.numeric(series_cfg$observed_blend$observed_weight),
-    format(as.numeric(series_cfg$noisy_blend$noise_sd), trim = TRUE, scientific = FALSE)
+    paste(extra_bits, collapse = " | ")
   )
 }
 
@@ -602,6 +614,9 @@ append_configured_blend_series <- function(plot_data, series_name, series_cfg, c
     noise_sd = if (isTRUE(series_cfg$noisy_blend$enabled)) series_cfg$noisy_blend$noise_sd else 0,
     noise_seed = series_cfg$noisy_blend$noise_seed,
     floor_at_zero = isTRUE(series_cfg$noisy_blend$floor_at_zero),
+    noise_distribution = series_cfg$noisy_blend$noise_distribution,
+    observed_zero_stay_prob = if (isTRUE(series_cfg$observed_blend$enabled)) series_cfg$observed_blend$observed_zero_stay_prob else NULL,
+    observed_zero_stay_seed = series_cfg$observed_blend$observed_zero_stay_seed,
     label = sprintf("plot|%s|%s|%s", series_name, cutoff_date, series_cfg$source)
   ) %>%
     mutate(day_index = as.numeric(date - as.Date(cutoff_date)))
@@ -619,11 +634,11 @@ append_configured_blend_series <- function(plot_data, series_name, series_cfg, c
       series_order = series_order,
       day_index = day_index,
       member_count = 1L,
-      mean = blended_value
+      mean = blended_value_effective
     )
-  if ("median" %in% names(plot_data$summary)) summary_add$median <- blend_df$blended_value
-  if ("q05" %in% names(plot_data$summary)) summary_add$q05 <- blend_df$blended_value
-  if ("q95" %in% names(plot_data$summary)) summary_add$q95 <- blend_df$blended_value
+  if ("median" %in% names(plot_data$summary)) summary_add$median <- blend_df$blended_value_effective
+  if ("q05" %in% names(plot_data$summary)) summary_add$q05 <- blend_df$blended_value_effective
+  if ("q95" %in% names(plot_data$summary)) summary_add$q95 <- blend_df$blended_value_effective
   for (col in setdiff(names(plot_data$summary), names(summary_add))) {
     summary_add[[col]] <- NA
   }

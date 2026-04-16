@@ -655,15 +655,18 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
     noise_sd = if (isTRUE(precip_cfg$noisy_blend$enabled)) precip_cfg$noisy_blend$noise_sd else 0,
     noise_seed = precip_cfg$noisy_blend$noise_seed,
     floor_at_zero = isTRUE(precip_cfg$noisy_blend$floor_at_zero),
+    noise_distribution = precip_cfg$noisy_blend$noise_distribution,
+    observed_zero_stay_prob = if (isTRUE(precip_cfg$observed_blend$enabled)) precip_cfg$observed_blend$observed_zero_stay_prob else NULL,
+    observed_zero_stay_seed = precip_cfg$observed_blend$observed_zero_stay_seed,
     label = sprintf("precip|%s|%s", as.character(cutoff_date), precip_cfg$source)
   )
   precip_future_debug$source <- precip_forecast$source
   precip_future_debug$reduction <- precip_forecast$reduction
   precip_future_debug$source_path <- precip_forecast$source_path
   precip_future_debug$level_descriptor <- precip_forecast$level_descriptor
-  precip_future_debug$final_value <- if (isTRUE(precip_cfg$observed_blend$enabled)) precip_future_debug$blended_value else precip_future_debug$noisy_forecast_value
+  precip_future_debug$final_value <- if (isTRUE(precip_cfg$observed_blend$enabled)) precip_future_debug$blended_value_effective else precip_future_debug$noisy_forecast_value
   if (isTRUE(precip_cfg$observed_blend$enabled) && !isTRUE(precip_cfg$noisy_blend$enabled)) {
-    precip_future_debug$final_value <- precip_future_debug$blended_value
+    precip_future_debug$final_value <- precip_future_debug$blended_value_effective
   } else if (!isTRUE(precip_cfg$observed_blend$enabled) && !isTRUE(precip_cfg$noisy_blend$enabled)) {
     precip_future_debug$final_value <- precip_future_debug$forecast_value
   } else if (!isTRUE(precip_cfg$observed_blend$enabled) && isTRUE(precip_cfg$noisy_blend$enabled)) {
@@ -683,15 +686,18 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
     noise_sd = if (isTRUE(soil_cfg$noisy_blend$enabled)) soil_cfg$noisy_blend$noise_sd else 0,
     noise_seed = soil_cfg$noisy_blend$noise_seed,
     floor_at_zero = isTRUE(soil_cfg$noisy_blend$floor_at_zero),
+    noise_distribution = soil_cfg$noisy_blend$noise_distribution,
+    observed_zero_stay_prob = if (isTRUE(soil_cfg$observed_blend$enabled)) soil_cfg$observed_blend$observed_zero_stay_prob else NULL,
+    observed_zero_stay_seed = soil_cfg$observed_blend$observed_zero_stay_seed,
     label = sprintf("soil|%s|%s", as.character(cutoff_date), soil_cfg$source)
   )
   soil_future_debug$source <- soil_forecast$daily$source
   soil_future_debug$reduction <- soil_forecast$daily$reduction
   soil_future_debug$source_path <- soil_forecast$daily$source_path
   soil_future_debug$level_descriptor <- soil_forecast$daily$level_descriptor
-  soil_future_debug$final_value <- if (isTRUE(soil_cfg$observed_blend$enabled)) soil_future_debug$blended_value else soil_future_debug$noisy_forecast_value
+  soil_future_debug$final_value <- if (isTRUE(soil_cfg$observed_blend$enabled)) soil_future_debug$blended_value_effective else soil_future_debug$noisy_forecast_value
   if (isTRUE(soil_cfg$observed_blend$enabled) && !isTRUE(soil_cfg$noisy_blend$enabled)) {
-    soil_future_debug$final_value <- soil_future_debug$blended_value
+    soil_future_debug$final_value <- soil_future_debug$blended_value_effective
   } else if (!isTRUE(soil_cfg$observed_blend$enabled) && !isTRUE(soil_cfg$noisy_blend$enabled)) {
     soil_future_debug$final_value <- soil_future_debug$forecast_value
   } else if (!isTRUE(soil_cfg$observed_blend$enabled) && isTRUE(soil_cfg$noisy_blend$enabled)) {
@@ -749,17 +755,23 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
     sprintf("precip_reduction=%s", precip_cfg$reduction),
     sprintf("precip_noisy_blend.enabled=%s", if (isTRUE(precip_cfg$noisy_blend$enabled)) "TRUE" else "FALSE"),
     sprintf("precip_noisy_blend.noise_sd=%s", as.character(precip_cfg$noisy_blend$noise_sd)),
+    sprintf("precip_noisy_blend.noise_distribution=%s", as.character(precip_cfg$noisy_blend$noise_distribution)),
     sprintf("precip_noisy_blend.noise_seed_effective=%s", as.character(precip_future_debug$noise_seed_effective[[1L]])),
     sprintf("precip_observed_blend.enabled=%s", if (isTRUE(precip_cfg$observed_blend$enabled)) "TRUE" else "FALSE"),
     sprintf("precip_observed_blend.observed_weight=%s", as.character(precip_cfg$observed_blend$observed_weight)),
+    sprintf("precip_observed_blend.observed_zero_stay_prob=%s", as.character(precip_cfg$observed_blend$observed_zero_stay_prob)),
+    sprintf("precip_observed_blend.observed_zero_stay_seed_effective=%s", as.character(precip_future_debug$observed_zero_stay_seed_effective[[1L]])),
     sprintf("precip_output=%s", cov_path_map$ppt),
     sprintf("soil_source=%s", soil_cfg$source),
     sprintf("soil_reduction=%s", soil_cfg$reduction),
     sprintf("soil_noisy_blend.enabled=%s", if (isTRUE(soil_cfg$noisy_blend$enabled)) "TRUE" else "FALSE"),
     sprintf("soil_noisy_blend.noise_sd=%s", as.character(soil_cfg$noisy_blend$noise_sd)),
+    sprintf("soil_noisy_blend.noise_distribution=%s", as.character(soil_cfg$noisy_blend$noise_distribution)),
     sprintf("soil_noisy_blend.noise_seed_effective=%s", as.character(soil_future_debug$noise_seed_effective[[1L]])),
     sprintf("soil_observed_blend.enabled=%s", if (isTRUE(soil_cfg$observed_blend$enabled)) "TRUE" else "FALSE"),
     sprintf("soil_observed_blend.observed_weight=%s", as.character(soil_cfg$observed_blend$observed_weight)),
+    sprintf("soil_observed_blend.observed_zero_stay_prob=%s", as.character(soil_cfg$observed_blend$observed_zero_stay_prob)),
+    sprintf("soil_observed_blend.observed_zero_stay_seed_effective=%s", as.character(soil_future_debug$observed_zero_stay_seed_effective[[1L]])),
     sprintf("soil_output=%s", cov_path_map$soil),
     sprintf("nwm_soilsat_top_porosity=%s", if (!is.null(soil_forecast$porosity_info)) sprintf("%.6f", soil_forecast$porosity_info$porosity) else NA_character_),
     sprintf("nwm_soilsat_top_porosity_q10=%s", if (!is.null(soil_forecast$porosity_info)) sprintf("%.6f", soil_forecast$porosity_info$q10) else NA_character_),
