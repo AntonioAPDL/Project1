@@ -23,7 +23,7 @@
 - `SOIL` source: `GEFS SOILW 0-0.1 m below ground`
 - ensemble reduction: `q85` for both series
 - precipitation noisy forecast:
-  - additive Gaussian noise `N(0, 20)`
+  - additive Gaussian noise `N(0, 30)`
   - values clamped to `max(0, forecast + noise)`
 - soil noisy forecast:
   - additive half-normal noise `|N(0, 0.05)|`

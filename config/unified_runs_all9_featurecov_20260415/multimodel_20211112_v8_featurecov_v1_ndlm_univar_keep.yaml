@@ -177,7 +177,7 @@ inputs:
         noise_seed: 20260415
         floor_at_zero: true
         zero_zero_force_prob: 0.0
-        noise_sd: 20.0
+        noise_sd: 30.0
         noise_distribution: normal
       source: gefs_apcp
       observed_blend:

@@ -103,7 +103,7 @@ and currently means:
 - soil source: `GEFS SOILW 0-0.1 m below ground`
 - ensemble reduction: `q85` for both series
 - noisy forecast step:
-  - precipitation `N(0, 20)`, floored at zero
+  - precipitation `N(0, 30)`, floored at zero
   - soil `|N(0, 0.05)|`
 - observed/forecast convex blend:
   - `0.5 * observed + 0.5 * noisy_forecast`

@@ -30,7 +30,7 @@ inputs:
       dry_day_threshold_mm: 0.0
       noisy_blend:
         enabled: true
-        noise_sd: 20.0
+        noise_sd: 30.0
         noise_seed: 20260415
         noise_distribution: normal
         floor_at_zero: true
