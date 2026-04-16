@@ -128,11 +128,11 @@ inputs:
     usgs_mode: live
     covariates:
     - name: PPT
-      path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/supporting_inputs/covariates/cov_03_PPT.csv
+      path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs/multimodel_20220511_v8_epsTT_l1/inputs/shared/covariates/cov_03_PPT.csv
     - name: SOIL
-      path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/supporting_inputs/covariates/cov_04_SOIL.csv
+      path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs/multimodel_20220511_v8_epsTT_l1/inputs/shared/covariates/cov_04_SOIL.csv
     - name: PCA
-      path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/supporting_inputs/covariates/cov_05_PCA.csv
+      path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs/multimodel_20220511_v8_epsTT_l1/inputs/shared/covariates/cov_05_PCA.csv
   post:
     use_fit_outputs_from_run: true
     source_run_id: null

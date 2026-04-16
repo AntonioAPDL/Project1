@@ -150,6 +150,33 @@ def _rewrite_inputs_from_source_snapshot(
             _set_nested(cfg, list(path_keys), str(source_path))
 
 
+def _rewrite_fit_covariates_from_source_snapshot(
+    cfg: dict[str, Any],
+    *,
+    source_config: str,
+    keep_names: set[str],
+) -> None:
+    run_root = _source_config_run_root(source_config)
+    shared_cov_root = run_root / "inputs" / "shared" / "covariates"
+    filename_map = {
+        "ELI": "cov_01_ELI.csv",
+        "ONI": "cov_02_ONI.csv",
+        "PPT": "cov_03_PPT.csv",
+        "SOIL": "cov_04_SOIL.csv",
+        "PCA": "cov_05_PCA.csv",
+    }
+    rewritten: list[dict[str, Any]] = []
+    for name in sorted(keep_names):
+        source_path = shared_cov_root / filename_map[name]
+        if not source_path.exists():
+            raise FileNotFoundError(
+                f"Missing shared covariate snapshot for {name} in source run {run_root}: {source_path}"
+            )
+        rewritten.append({"name": name, "path": str(source_path)})
+    rewritten.sort(key=lambda item: list(filename_map).index(item["name"]))
+    _set_nested(cfg, ["inputs", "fit", "covariates"], rewritten)
+
+
 def _discover_compare_dirs(raw_paths: list[Any], cutoff: str) -> list[Path]:
     discovered: list[Path] = []
     seen: set[str] = set()
@@ -330,7 +357,11 @@ def _build_run_config(
         cfg,
         source_config=str(selection["source_config"]),
     )
-    _filter_fit_covariates(cfg, keep_names={"PPT", "SOIL", "PCA"})
+    _rewrite_fit_covariates_from_source_snapshot(
+        cfg,
+        source_config=str(selection["source_config"]),
+        keep_names={"PPT", "SOIL", "PCA"},
+    )
 
     cfg["debug_all9_feature_campaign"] = {
         "campaign_spec_id": campaign_spec_id,
