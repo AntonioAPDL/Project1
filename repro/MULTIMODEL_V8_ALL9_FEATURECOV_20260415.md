@@ -44,6 +44,25 @@ This configuration is centralized under:
 - Matrix rows: `45`
 - Launch wrapper blocks real launch while `handoff_root` is unset.
 
+## Prelaunch Validation
+
+Before any real all-9 launch, run the dedicated validator:
+
+- `python3 scripts/validate_all9_featurecov_prelaunch.py --config config/multimodel_v8_all9_featurecov.template.yaml`
+
+This validation is designed to be reproducible and to stop short of a real campaign launch. It checks:
+
+- deterministic-climate blend configuration and handoff-root availability
+- forecast-overlay review artifacts for all `5` cutoffs and `2` plot styles
+- builder regeneration of the `45` corrected-model configs
+- config integrity across all cutoffs and families
+- targeted Python and R unit tests
+- one `data_prep_shared` smoke run for each of the `9` model families
+
+The most recent successful validation report is documented in:
+
+- [ALL9_FEATURECOV_PRELAUNCH_VALIDATION_20260416.md](/data/muscat_data/jaguir26/project1_ucsc_phd/repro/ALL9_FEATURECOV_PRELAUNCH_VALIDATION_20260416.md)
+
 ## Selected Best Source Specs
 
 ### 20210123
