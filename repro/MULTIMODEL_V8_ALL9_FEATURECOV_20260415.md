@@ -13,9 +13,26 @@
 - Lag terms: `PPT_lag1..3`, `SOIL_lag1..3`
 - Forecast-window rule:
   - use observed `PPT` and `SOIL` through cutoff `T`
-  - use deterministic post-cutoff `PPT` and `SOIL` from the run-scoped climate substitution after `T`
+  - use blended post-cutoff `PPT` and `SOIL` from the run-scoped deterministic-climate substitution after `T`
   - keep `PCA` as passthrough
   - lags after cutoff are built from the stitched observed-plus-forecast `PPT`/`SOIL` series
+
+## Current Blended Forecast Specification
+
+- `PPT` source: `GEFS APCP`
+- `SOIL` source: `GEFS SOILW 0-0.1 m below ground`
+- ensemble reduction: `q85` for both series
+- precipitation noisy forecast:
+  - additive Gaussian noise with `sd = 15`
+  - values clamped to `max(0, forecast + noise)`
+- soil noisy forecast:
+  - additive Gaussian noise with `sd = 0.01`
+- convex observed/forecast blend:
+  - `0.9 * observed + 0.1 * noisy_forecast`
+
+This configuration is centralized under:
+
+- [multimodel_v8_all9_featurecov.template.yaml](/data/muscat_data/jaguir26/project1_ucsc_phd/config/multimodel_v8_all9_featurecov.template.yaml)
 
 ## Current Build Status
 

@@ -1,0 +1,33 @@
+version: 1
+
+review:
+  review_id: forecast_overlay_review_20260415
+  manifest_run_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
+  site_config: /data/muscat_data/jaguir26/project1_ucsc_phd/config/forecats_pipeline.template.yaml
+  expected_handoff_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
+  detclim_config_path: /data/muscat_data/jaguir26/project1_ucsc_phd/config/multimodel_v8_all9_featurecov.template.yaml
+  cutoffs:
+    - 2021-01-23
+    - 2021-11-12
+    - 2021-12-21
+    - 2022-05-11
+    - 2022-12-25
+  max_days: 30
+
+retrospective:
+  prism:
+    canonical_csv: /data/muscat_data/jaguir26/project1_ucsc_phd/prism_precipitation_santa_cruz_1987_2023.csv
+    reuse_source_csv: /data/muscat_data/jaguir26/antonio-aguirre.github.io/prism_precipitation_santa_cruz_1987_2023.csv
+    value_column: PRCP_mm
+    min_required_date: 2023-01-24
+  era5_soil:
+    canonical_csv: /data/muscat_data/jaguir26/project1_ucsc_phd/soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv
+    reuse_source_csv: /data/muscat_data/jaguir26/antonio-aguirre.github.io/soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv
+    value_column: Daily_Avg_Soil_Moisture
+    min_required_date: 2023-01-24
+
+plots:
+  overlay_covariates: true
+  styles:
+    - mean_only_same_units
+    - mean_only_same_units_bias_quantiles

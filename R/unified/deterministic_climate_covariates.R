@@ -4,6 +4,19 @@
 # This splices observed history through the cutoff date with forecast-derived
 # precipitation and soil covariates for the post-cutoff horizon.
 
+local({
+  ofile <- tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  candidates <- unique(c(
+    if (!is.null(ofile)) file.path(dirname(normalizePath(ofile, mustWork = FALSE)), "deterministic_climate_blend.R") else character(0),
+    file.path(getwd(), "R", "unified", "deterministic_climate_blend.R")
+  ))
+  helper_path <- candidates[file.exists(candidates)][[1L]]
+  if (!nzchar(helper_path)) {
+    stop("Could not locate R/unified/deterministic_climate_blend.R", call. = FALSE)
+  }
+  source(helper_path)
+})
+
 unified_detclim_detect_date_info <- function(df, label, path) {
   nm <- names(df)
   candidates <- nm[grepl("date|time", tolower(nm))]
@@ -114,19 +127,7 @@ unified_detclim_read_member_forecast <- function(path, label) {
 }
 
 unified_detclim_reduce_members <- function(values, reduction) {
-  reduction <- tolower(trimws(as.character(reduction[[1L]])))
-  values <- as.numeric(values)
-  values <- values[is.finite(values)]
-  if (length(values) == 0L) {
-    return(NA_real_)
-  }
-  if (identical(reduction, "median")) {
-    return(stats::median(values, na.rm = TRUE))
-  }
-  if (!identical(reduction, "mean")) {
-    stop(sprintf("Unsupported deterministic_climate reduction: %s", reduction), call. = FALSE)
-  }
-  mean(values, na.rm = TRUE)
+  detclim_reduce_values(values, reduction = reduction)
 }
 
 unified_detclim_member_daily_by_date <- function(df, member_cols, cutoff_date, end_date, daily_fun, reduction) {
@@ -223,16 +224,45 @@ unified_detclim_resolve_handoff_root <- function(path) {
 }
 
 unified_detclim_resolve_gefs_apcp_path <- function(handoff_root, cutoff_date) {
-  path <- file.path(
-    handoff_root,
-    "forecast_cache",
-    "gefs",
-    sprintf("issue_date=%s", as.character(cutoff_date)),
-    "variable=APCP_surface",
-    "gefs_members.csv"
+  unified_detclim_resolve_gefs_path(
+    handoff_root = handoff_root,
+    cutoff_date = cutoff_date,
+    short_name = "APCP",
+    level_descriptor = "surface"
   )
+}
+
+unified_detclim_read_gefs_catalog <- function(handoff_root) {
+  catalog_path <- file.path(handoff_root, "catalogs", "gefs_catalog.csv")
+  if (!file.exists(catalog_path)) {
+    stop(sprintf("GEFS catalog missing: %s", catalog_path), call. = FALSE)
+  }
+  unified_read_csv_checked(catalog_path, "GEFS handoff catalog", "deterministic_climate/gefs_catalog")
+}
+
+unified_detclim_resolve_gefs_path <- function(handoff_root, cutoff_date, short_name, level_descriptor) {
+  catalog_df <- unified_detclim_read_gefs_catalog(handoff_root)
+  hit <- catalog_df[
+    catalog_df$init_date == as.character(cutoff_date) &
+      catalog_df$short_name == short_name &
+      catalog_df$level_descriptor == level_descriptor,
+    ,
+    drop = FALSE
+  ]
+  if (nrow(hit) < 1L) {
+    stop(
+      sprintf(
+        "GEFS handoff catalog is missing %s %s for cutoff %s.",
+        short_name,
+        level_descriptor,
+        as.character(cutoff_date)
+      ),
+      call. = FALSE
+    )
+  }
+  path <- as.character(hit$file_path[[1L]])
   if (!file.exists(path)) {
-    stop(sprintf("GEFS APCP forecast cache missing for cutoff %s: %s", as.character(cutoff_date), path), call. = FALSE)
+    stop(sprintf("GEFS forecast cache missing for cutoff %s: %s", as.character(cutoff_date), path), call. = FALSE)
   }
   normalizePath(path, mustWork = FALSE)
 }
@@ -364,16 +394,32 @@ unified_detclim_complete_future_dates <- function(series_df, cutoff_date, horizo
   merged
 }
 
-unified_detclim_build_precip_forecast <- function(handoff_root, cutoff_date, horizon_days, reduction = "mean", require_full_horizon = TRUE) {
-  apcp_path <- unified_detclim_resolve_gefs_apcp_path(handoff_root, cutoff_date)
-  apcp_info <- unified_detclim_read_member_forecast(apcp_path, "GEFS APCP")
+unified_detclim_extract_observed_future <- function(observed_info, cutoff_date, horizon_days, require_full_horizon, label) {
+  future_df <- observed_info$data[observed_info$data$date > as.Date(cutoff_date), c("date", "value"), drop = FALSE]
+  unified_detclim_complete_future_dates(
+    future_df,
+    cutoff_date = cutoff_date,
+    horizon_days = horizon_days,
+    require_full_horizon = require_full_horizon,
+    label = label
+  )
+}
+
+unified_detclim_build_gefs_series <- function(handoff_root, cutoff_date, horizon_days, short_name, level_descriptor, daily_fun, reduction, require_full_horizon, label, source_label) {
+  path <- unified_detclim_resolve_gefs_path(
+    handoff_root = handoff_root,
+    cutoff_date = cutoff_date,
+    short_name = short_name,
+    level_descriptor = level_descriptor
+  )
+  info <- unified_detclim_read_member_forecast(path, label)
   end_date <- as.Date(cutoff_date) + as.integer(horizon_days)
   daily_df <- unified_detclim_member_daily_by_date(
-    df = apcp_info$data,
-    member_cols = apcp_info$member_cols,
+    df = info$data,
+    member_cols = info$member_cols,
     cutoff_date = cutoff_date,
     end_date = end_date,
-    daily_fun = "sum",
+    daily_fun = daily_fun,
     reduction = reduction
   )
   daily_df <- unified_detclim_complete_future_dates(
@@ -381,15 +427,35 @@ unified_detclim_build_precip_forecast <- function(handoff_root, cutoff_date, hor
     cutoff_date = cutoff_date,
     horizon_days = horizon_days,
     require_full_horizon = require_full_horizon,
-    label = "GEFS APCP deterministic precipitation"
+    label = label
   )
-  daily_df$source <- "GEFS_APCP"
+  daily_df$source <- source_label
   daily_df$reduction <- reduction
-  daily_df$source_path <- apcp_info$source_path
+  daily_df$source_path <- info$source_path
+  daily_df$level_descriptor <- level_descriptor
   daily_df
 }
 
-unified_detclim_build_soil_forecast <- function(handoff_root, cutoff_date, horizon_days, reduction = "mean", require_full_horizon = TRUE) {
+unified_detclim_build_precip_forecast <- function(handoff_root, cutoff_date, horizon_days, source = "gefs_apcp", reduction = "mean", require_full_horizon = TRUE) {
+  source <- tolower(as.character(source)[[1L]])
+  if (!identical(source, "gefs_apcp")) {
+    stop(sprintf("Unsupported deterministic_climate precip source: %s", source), call. = FALSE)
+  }
+  unified_detclim_build_gefs_series(
+    handoff_root = handoff_root,
+    cutoff_date = cutoff_date,
+    horizon_days = horizon_days,
+    short_name = "APCP",
+    level_descriptor = "surface",
+    daily_fun = "sum",
+    reduction = reduction,
+    require_full_horizon = require_full_horizon,
+    label = "GEFS APCP precipitation",
+    source_label = "GEFS_APCP"
+  )
+}
+
+unified_detclim_build_soil_forecast_nwm <- function(handoff_root, cutoff_date, horizon_days, reduction = "mean", require_full_horizon = TRUE) {
   soilsat_paths <- unified_detclim_resolve_nwm_soilsat_paths(handoff_root, cutoff_date)
   porosity_info <- unified_detclim_estimate_nwm_top_porosity(handoff_root)
   end_date <- as.Date(cutoff_date) + as.integer(horizon_days)
@@ -439,6 +505,39 @@ unified_detclim_build_soil_forecast <- function(handoff_root, cutoff_date, horiz
     daily = combined,
     porosity_info = porosity_info,
     selected_families = family_rows
+  )
+}
+
+unified_detclim_build_soil_forecast <- function(handoff_root, cutoff_date, horizon_days, source = "nwm_soilsat_top", reduction = "mean", require_full_horizon = TRUE) {
+  source <- tolower(as.character(source)[[1L]])
+  if (identical(source, "gefs_soilw_0_0.1m")) {
+    daily_df <- unified_detclim_build_gefs_series(
+      handoff_root = handoff_root,
+      cutoff_date = cutoff_date,
+      horizon_days = horizon_days,
+      short_name = "SOILW",
+      level_descriptor = "0-0.1 m below ground",
+      daily_fun = "mean",
+      reduction = reduction,
+      require_full_horizon = require_full_horizon,
+      label = "GEFS SOILW 0-0.1 m below ground soil",
+      source_label = "GEFS_SOILW_0_0.1M"
+    )
+    return(list(
+      daily = daily_df,
+      porosity_info = NULL,
+      selected_families = list(gefs_soilw_0_0.1m = daily_df)
+    ))
+  }
+  if (!identical(source, "nwm_soilsat_top")) {
+    stop(sprintf("Unsupported deterministic_climate soil source: %s", source), call. = FALSE)
+  }
+  unified_detclim_build_soil_forecast_nwm(
+    handoff_root = handoff_root,
+    cutoff_date = cutoff_date,
+    horizon_days = horizon_days,
+    reduction = reduction,
+    require_full_horizon = require_full_horizon
   )
 }
 
@@ -503,8 +602,8 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
     override_days = unified_get(det_cfg, c("horizon_days"), default = NULL)
   )
   require_full_horizon <- isTRUE(unified_get(det_cfg, c("require_full_horizon"), default = TRUE))
-  precip_reduction <- tolower(as.character(unified_get(det_cfg, c("precip", "reduction"), default = "mean"))[[1L]])
-  soil_reduction <- tolower(as.character(unified_get(det_cfg, c("soil", "reduction"), default = "mean"))[[1L]])
+  precip_cfg <- detclim_normalize_series_cfg(det_cfg, "precip")
+  soil_cfg <- detclim_normalize_series_cfg(det_cfg, "soil")
 
   ppt_observed <- unified_detclim_read_observed_series(
     cov_path_map$ppt,
@@ -517,30 +616,99 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
     value_candidates = c("Daily_Avg_Soil_Moisture", "soil", "average_soil_moisture")
   )
 
+  ppt_observed_future <- unified_detclim_extract_observed_future(
+    observed_info = ppt_observed,
+    cutoff_date = cutoff_date,
+    horizon_days = horizon_days,
+    require_full_horizon = require_full_horizon,
+    label = "observed precipitation future"
+  )
+  soil_observed_future <- unified_detclim_extract_observed_future(
+    observed_info = soil_observed,
+    cutoff_date = cutoff_date,
+    horizon_days = horizon_days,
+    require_full_horizon = require_full_horizon,
+    label = "observed soil future"
+  )
+
   precip_forecast <- unified_detclim_build_precip_forecast(
     handoff_root = handoff_root,
     cutoff_date = cutoff_date,
     horizon_days = horizon_days,
-    reduction = precip_reduction,
+    source = precip_cfg$source,
+    reduction = precip_cfg$reduction,
     require_full_horizon = require_full_horizon
   )
   soil_forecast <- unified_detclim_build_soil_forecast(
     handoff_root = handoff_root,
     cutoff_date = cutoff_date,
     horizon_days = horizon_days,
-    reduction = soil_reduction,
+    source = soil_cfg$source,
+    reduction = soil_cfg$reduction,
     require_full_horizon = require_full_horizon
   )
 
+  precip_future_debug <- detclim_compose_future_series(
+    observed_df = ppt_observed_future,
+    forecast_df = precip_forecast[, c("date", "value"), drop = FALSE],
+    observed_weight = if (isTRUE(precip_cfg$observed_blend$enabled)) precip_cfg$observed_blend$observed_weight else 0,
+    noise_sd = if (isTRUE(precip_cfg$noisy_blend$enabled)) precip_cfg$noisy_blend$noise_sd else 0,
+    noise_seed = precip_cfg$noisy_blend$noise_seed,
+    floor_at_zero = isTRUE(precip_cfg$noisy_blend$floor_at_zero),
+    label = sprintf("precip|%s|%s", as.character(cutoff_date), precip_cfg$source)
+  )
+  precip_future_debug$source <- precip_forecast$source
+  precip_future_debug$reduction <- precip_forecast$reduction
+  precip_future_debug$source_path <- precip_forecast$source_path
+  precip_future_debug$level_descriptor <- precip_forecast$level_descriptor
+  precip_future_debug$final_value <- if (isTRUE(precip_cfg$observed_blend$enabled)) precip_future_debug$blended_value else precip_future_debug$noisy_forecast_value
+  if (isTRUE(precip_cfg$observed_blend$enabled) && !isTRUE(precip_cfg$noisy_blend$enabled)) {
+    precip_future_debug$final_value <- precip_future_debug$blended_value
+  } else if (!isTRUE(precip_cfg$observed_blend$enabled) && !isTRUE(precip_cfg$noisy_blend$enabled)) {
+    precip_future_debug$final_value <- precip_future_debug$forecast_value
+  } else if (!isTRUE(precip_cfg$observed_blend$enabled) && isTRUE(precip_cfg$noisy_blend$enabled)) {
+    precip_future_debug$final_value <- precip_future_debug$noisy_forecast_value
+  }
+  dry_day_threshold_mm <- suppressWarnings(as.numeric(precip_cfg$dry_day_threshold_mm %||% 0))
+  if (is.finite(dry_day_threshold_mm) && dry_day_threshold_mm > 0) {
+    precip_future_debug$final_value <- ifelse(precip_future_debug$final_value < dry_day_threshold_mm, 0, precip_future_debug$final_value)
+  }
+  precip_future <- precip_future_debug[, c("date", "final_value"), drop = FALSE]
+  names(precip_future)[[2L]] <- "value"
+
+  soil_future_debug <- detclim_compose_future_series(
+    observed_df = soil_observed_future,
+    forecast_df = soil_forecast$daily[, c("date", "value"), drop = FALSE],
+    observed_weight = if (isTRUE(soil_cfg$observed_blend$enabled)) soil_cfg$observed_blend$observed_weight else 0,
+    noise_sd = if (isTRUE(soil_cfg$noisy_blend$enabled)) soil_cfg$noisy_blend$noise_sd else 0,
+    noise_seed = soil_cfg$noisy_blend$noise_seed,
+    floor_at_zero = isTRUE(soil_cfg$noisy_blend$floor_at_zero),
+    label = sprintf("soil|%s|%s", as.character(cutoff_date), soil_cfg$source)
+  )
+  soil_future_debug$source <- soil_forecast$daily$source
+  soil_future_debug$reduction <- soil_forecast$daily$reduction
+  soil_future_debug$source_path <- soil_forecast$daily$source_path
+  soil_future_debug$level_descriptor <- soil_forecast$daily$level_descriptor
+  soil_future_debug$final_value <- if (isTRUE(soil_cfg$observed_blend$enabled)) soil_future_debug$blended_value else soil_future_debug$noisy_forecast_value
+  if (isTRUE(soil_cfg$observed_blend$enabled) && !isTRUE(soil_cfg$noisy_blend$enabled)) {
+    soil_future_debug$final_value <- soil_future_debug$blended_value
+  } else if (!isTRUE(soil_cfg$observed_blend$enabled) && !isTRUE(soil_cfg$noisy_blend$enabled)) {
+    soil_future_debug$final_value <- soil_future_debug$forecast_value
+  } else if (!isTRUE(soil_cfg$observed_blend$enabled) && isTRUE(soil_cfg$noisy_blend$enabled)) {
+    soil_future_debug$final_value <- soil_future_debug$noisy_forecast_value
+  }
+  soil_future <- soil_future_debug[, c("date", "final_value"), drop = FALSE]
+  names(soil_future)[[2L]] <- "value"
+
   ppt_write <- unified_detclim_write_spliced_series(
     observed_info = ppt_observed,
-    future_df = precip_forecast,
+    future_df = precip_future,
     cutoff_date = cutoff_date,
     output_path = cov_path_map$ppt
   )
   soil_write <- unified_detclim_write_spliced_series(
     observed_info = soil_observed,
-    future_df = soil_forecast$daily,
+    future_df = soil_future,
     cutoff_date = cutoff_date,
     output_path = cov_path_map$soil
   )
@@ -553,8 +721,8 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
   soil_family_path <- file.path(debug_root, "deterministic_soil_family_support.csv")
   summary_path <- file.path(debug_root, "deterministic_climate_summary.txt")
 
-  utils::write.csv(precip_forecast, precip_debug_path, row.names = FALSE)
-  utils::write.csv(soil_forecast$daily, soil_debug_path, row.names = FALSE)
+  utils::write.csv(precip_future_debug, precip_debug_path, row.names = FALSE)
+  utils::write.csv(soil_future_debug, soil_debug_path, row.names = FALSE)
   soil_family_df <- do.call(
     rbind,
     lapply(names(soil_forecast$selected_families), function(fam) {
@@ -577,16 +745,26 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
     sprintf("forecast_start_date=%s", as.character(cutoff_date + 1L)),
     sprintf("horizon_days=%d", as.integer(horizon_days)),
     sprintf("require_full_horizon=%s", if (require_full_horizon) "TRUE" else "FALSE"),
-    sprintf("precip_source=GEFS_APCP"),
-    sprintf("precip_reduction=%s", precip_reduction),
+    sprintf("precip_source=%s", precip_cfg$source),
+    sprintf("precip_reduction=%s", precip_cfg$reduction),
+    sprintf("precip_noisy_blend.enabled=%s", if (isTRUE(precip_cfg$noisy_blend$enabled)) "TRUE" else "FALSE"),
+    sprintf("precip_noisy_blend.noise_sd=%s", as.character(precip_cfg$noisy_blend$noise_sd)),
+    sprintf("precip_noisy_blend.noise_seed_effective=%s", as.character(precip_future_debug$noise_seed_effective[[1L]])),
+    sprintf("precip_observed_blend.enabled=%s", if (isTRUE(precip_cfg$observed_blend$enabled)) "TRUE" else "FALSE"),
+    sprintf("precip_observed_blend.observed_weight=%s", as.character(precip_cfg$observed_blend$observed_weight)),
     sprintf("precip_output=%s", cov_path_map$ppt),
-    sprintf("soil_source=NWM_SOILSAT_TOP"),
-    sprintf("soil_reduction=%s", soil_reduction),
+    sprintf("soil_source=%s", soil_cfg$source),
+    sprintf("soil_reduction=%s", soil_cfg$reduction),
+    sprintf("soil_noisy_blend.enabled=%s", if (isTRUE(soil_cfg$noisy_blend$enabled)) "TRUE" else "FALSE"),
+    sprintf("soil_noisy_blend.noise_sd=%s", as.character(soil_cfg$noisy_blend$noise_sd)),
+    sprintf("soil_noisy_blend.noise_seed_effective=%s", as.character(soil_future_debug$noise_seed_effective[[1L]])),
+    sprintf("soil_observed_blend.enabled=%s", if (isTRUE(soil_cfg$observed_blend$enabled)) "TRUE" else "FALSE"),
+    sprintf("soil_observed_blend.observed_weight=%s", as.character(soil_cfg$observed_blend$observed_weight)),
     sprintf("soil_output=%s", cov_path_map$soil),
-    sprintf("nwm_soilsat_top_porosity=%.6f", soil_forecast$porosity_info$porosity),
-    sprintf("nwm_soilsat_top_porosity_q10=%.6f", soil_forecast$porosity_info$q10),
-    sprintf("nwm_soilsat_top_porosity_q90=%.6f", soil_forecast$porosity_info$q90),
-    sprintf("nwm_soilsat_top_porosity_samples=%d", soil_forecast$porosity_info$sample_count),
+    sprintf("nwm_soilsat_top_porosity=%s", if (!is.null(soil_forecast$porosity_info)) sprintf("%.6f", soil_forecast$porosity_info$porosity) else NA_character_),
+    sprintf("nwm_soilsat_top_porosity_q10=%s", if (!is.null(soil_forecast$porosity_info)) sprintf("%.6f", soil_forecast$porosity_info$q10) else NA_character_),
+    sprintf("nwm_soilsat_top_porosity_q90=%s", if (!is.null(soil_forecast$porosity_info)) sprintf("%.6f", soil_forecast$porosity_info$q90) else NA_character_),
+    sprintf("nwm_soilsat_top_porosity_samples=%s", if (!is.null(soil_forecast$porosity_info)) as.character(soil_forecast$porosity_info$sample_count) else NA_character_),
     sprintf("ppt_history_rows=%d", ppt_write$history_rows),
     sprintf("ppt_future_rows=%d", ppt_write$future_rows),
     sprintf("soil_history_rows=%d", soil_write$history_rows),
@@ -609,10 +787,14 @@ unified_materialize_deterministic_climate_covariates <- function(cfg, shared_pat
     handoff_root = handoff_root,
     porosity_info = soil_forecast$porosity_info,
     require_full_horizon = require_full_horizon,
-    precip_reduction = precip_reduction,
-    soil_reduction = soil_reduction,
-    precip_source = "GEFS_APCP",
-    soil_source = "NWM_SOILSAT_TOP",
+    precip_enabled = isTRUE(precip_cfg$enabled),
+    soil_enabled = isTRUE(soil_cfg$enabled),
+    precip_reduction = precip_cfg$reduction,
+    soil_reduction = soil_cfg$reduction,
+    precip_source = precip_cfg$source,
+    soil_source = soil_cfg$source,
+    precip_blend_cfg = precip_cfg,
+    soil_blend_cfg = soil_cfg,
     ppt_history_rows = ppt_write$history_rows,
     ppt_future_rows = ppt_write$future_rows,
     soil_history_rows = soil_write$history_rows,

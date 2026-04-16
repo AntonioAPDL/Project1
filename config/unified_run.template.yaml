@@ -162,35 +162,29 @@ inputs:
     require_full_horizon: true
     precip:
       enabled: true
-      reduction: "mean"           # mean | median | q70 | q90 | max across daily GEFS member totals
+      source: "gefs_apcp"         # currently supported: gefs_apcp
+      reduction: "mean"           # mean | median | max | q85 | q0.85 across daily GEFS member totals
       dry_day_threshold_mm: 0.0   # optional post-reduction censoring to zero for low-confidence drizzle
-      tail_blend:
-        enabled: false
-        target: "climatology_median"  # climatology_mean | climatology_median | zero
-        start_day: 7                  # keep raw forecast through this lead day
-        end_day: 14                   # fully blended to target by this lead day
       noisy_blend:
         enabled: false
-        lambda_mode: "constant"       # constant | dynamic
-        lambda: 0.5
-        lambda_start: 0.8             # used when lambda_mode = dynamic
-        lambda_end: 0.2               # used when lambda_mode = dynamic
-        noise_sd_multiplier: 0.5
-        noise_seed: 20260309
+        noise_sd: 15.0
+        noise_seed: 20260415
         floor_at_zero: true
-        zero_zero_force_prob: 0.0     # precip only: when retro=0 and forecast=0, force blend to 0 with this probability
+      observed_blend:
+        enabled: false
+        observed_weight: 0.9          # final = observed_weight * observed + (1-observed_weight) * noisy_forecast
     soil:
       enabled: true
-      reduction: "mean"           # mean | median | q70 | q90 | max across daily NWM member averages
+      source: "nwm_soilsat_top"   # currently supported: nwm_soilsat_top | gefs_soilw_0_0.1m
+      reduction: "mean"           # mean | median | max | q85 | q0.85 across the chosen source members
       noisy_blend:
         enabled: false
-        lambda_mode: "constant"       # constant | dynamic
-        lambda: 0.5
-        lambda_start: 0.8             # used when lambda_mode = dynamic
-        lambda_end: 0.2               # used when lambda_mode = dynamic
-        noise_sd_multiplier: 0.5
-        noise_seed: 20260309
+        noise_sd: 0.01
+        noise_seed: 20260415
         floor_at_zero: false
+      observed_blend:
+        enabled: false
+        observed_weight: 0.9
   covariate_features:
     enabled: false
     output_filename: "covariate_features.csv"

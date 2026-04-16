@@ -349,6 +349,7 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
         enabled = isTRUE(detclim_result$precip_enabled),
         source = detclim_result$precip_source,
         reduction = detclim_result$precip_reduction,
+        blend = detclim_result$precip_blend_cfg,
         output_path = shared_cov_paths$ppt,
         history_rows = as.integer(detclim_result$ppt_history_rows),
         future_rows = as.integer(detclim_result$ppt_future_rows)
@@ -357,13 +358,14 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
         enabled = isTRUE(detclim_result$soil_enabled),
         source = detclim_result$soil_source,
         reduction = detclim_result$soil_reduction,
+        blend = detclim_result$soil_blend_cfg,
         output_path = shared_cov_paths$soil,
         history_rows = as.integer(detclim_result$soil_history_rows),
         future_rows = as.integer(detclim_result$soil_future_rows),
-        porosity = unname(detclim_result$porosity_info$porosity),
-        porosity_q10 = unname(detclim_result$porosity_info$q10),
-        porosity_q90 = unname(detclim_result$porosity_info$q90),
-        porosity_sample_count = as.integer(detclim_result$porosity_info$sample_count)
+        porosity = if (!is.null(detclim_result$porosity_info)) unname(detclim_result$porosity_info$porosity) else NA_real_,
+        porosity_q10 = if (!is.null(detclim_result$porosity_info)) unname(detclim_result$porosity_info$q10) else NA_real_,
+        porosity_q90 = if (!is.null(detclim_result$porosity_info)) unname(detclim_result$porosity_info$q90) else NA_real_,
+        porosity_sample_count = if (!is.null(detclim_result$porosity_info)) as.integer(detclim_result$porosity_info$sample_count) else NA_integer_
       ),
       pca = list(
         mode = "passthrough",

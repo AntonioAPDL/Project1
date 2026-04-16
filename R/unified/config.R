@@ -193,38 +193,33 @@ unified_config_defaults <- function() {
         require_full_horizon = TRUE,
         precip = list(
           enabled = TRUE,
+          source = "gefs_apcp",
           reduction = "mean",
           dry_day_threshold_mm = 0,
-          tail_blend = list(
-            enabled = FALSE,
-            target = "climatology_median",
-            start_day = 7L,
-            end_day = 14L
-          ),
           noisy_blend = list(
             enabled = FALSE,
-            lambda_mode = "constant",
-            lambda = 0.5,
-            lambda_start = 0.8,
-            lambda_end = 0.2,
-            noise_sd_multiplier = 0.5,
-            noise_seed = 20260309L,
-            floor_at_zero = TRUE,
-            zero_zero_force_prob = 0
+            noise_sd = 15,
+            noise_seed = 20260415L,
+            floor_at_zero = TRUE
+          ),
+          observed_blend = list(
+            enabled = FALSE,
+            observed_weight = 0.9
           )
         ),
         soil = list(
           enabled = TRUE,
+          source = "nwm_soilsat_top",
           reduction = "mean",
           noisy_blend = list(
             enabled = FALSE,
-            lambda_mode = "constant",
-            lambda = 0.5,
-            lambda_start = 0.8,
-            lambda_end = 0.2,
-            noise_sd_multiplier = 0.5,
-            noise_seed = 20260309L,
+            noise_sd = 0.01,
+            noise_seed = 20260415L,
             floor_at_zero = FALSE
+          ),
+          observed_blend = list(
+            enabled = FALSE,
+            observed_weight = 0.9
           )
         )
       ),
@@ -1147,10 +1142,28 @@ unified_validate_config <- function(cfg) {
         c("inputs", "deterministic_climate", series_name, "reduction"),
         default = "mean"
       ))[[1L]])
-      if (!(reduction %in% c("mean", "median", "q70", "q90", "max"))) {
+      reduction_ok <- tryCatch({
+        detclim_parse_reduction_spec(reduction)
+        TRUE
+      }, error = function(e) FALSE)
+      if (!isTRUE(reduction_ok)) {
         add_err(sprintf(
-          "inputs.deterministic_climate.%s.reduction must be one of: mean, median, q70, q90, max",
+          "inputs.deterministic_climate.%s.reduction must be one of: mean, median, max, or a quantile like q85 / q0.85",
           series_name
+        ))
+      }
+      source <- tolower(as.character(unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "source"),
+        default = if (identical(series_name, "precip")) "gefs_apcp" else "nwm_soilsat_top"
+      ))[[1L]])
+      valid_sources <- if (identical(series_name, "precip")) c("gefs_apcp") else c("nwm_soilsat_top", "gefs_soilw_0_0.1m")
+      if (!(source %in% valid_sources)) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.source must be one of: %s",
+          series_name
+          ,
+          paste(valid_sources, collapse = ", ")
         ))
       }
       noisy_blend_enabled <- unified_get(
@@ -1164,65 +1177,21 @@ unified_validate_config <- function(cfg) {
           series_name
         ))
       }
-      noisy_blend_lambda_mode <- tolower(as.character(unified_get(
+      noisy_blend_sd <- suppressWarnings(as.numeric(unified_get(
         cfg,
-        c("inputs", "deterministic_climate", series_name, "noisy_blend", "lambda_mode"),
-        default = "constant"
-      ))[[1L]])
-      if (!(noisy_blend_lambda_mode %in% c("constant", "dynamic"))) {
-        add_err(sprintf(
-          "inputs.deterministic_climate.%s.noisy_blend.lambda_mode must be one of: constant, dynamic",
-          series_name
-        ))
-      }
-      noisy_blend_lambda <- suppressWarnings(as.numeric(unified_get(
-        cfg,
-        c("inputs", "deterministic_climate", series_name, "noisy_blend", "lambda"),
-        default = 0.5
+        c("inputs", "deterministic_climate", series_name, "noisy_blend", "noise_sd"),
+        default = if (identical(series_name, "precip")) 15 else 0.01
       )))
-      if (!is.finite(noisy_blend_lambda) || noisy_blend_lambda < 0 || noisy_blend_lambda > 1) {
+      if (!is.finite(noisy_blend_sd) || noisy_blend_sd < 0) {
         add_err(sprintf(
-          "inputs.deterministic_climate.%s.noisy_blend.lambda must be numeric in [0, 1]",
-          series_name
-        ))
-      }
-      noisy_blend_lambda_start <- suppressWarnings(as.numeric(unified_get(
-        cfg,
-        c("inputs", "deterministic_climate", series_name, "noisy_blend", "lambda_start"),
-        default = 0.8
-      )))
-      if (!is.finite(noisy_blend_lambda_start) || noisy_blend_lambda_start < 0 || noisy_blend_lambda_start > 1) {
-        add_err(sprintf(
-          "inputs.deterministic_climate.%s.noisy_blend.lambda_start must be numeric in [0, 1]",
-          series_name
-        ))
-      }
-      noisy_blend_lambda_end <- suppressWarnings(as.numeric(unified_get(
-        cfg,
-        c("inputs", "deterministic_climate", series_name, "noisy_blend", "lambda_end"),
-        default = 0.2
-      )))
-      if (!is.finite(noisy_blend_lambda_end) || noisy_blend_lambda_end < 0 || noisy_blend_lambda_end > 1) {
-        add_err(sprintf(
-          "inputs.deterministic_climate.%s.noisy_blend.lambda_end must be numeric in [0, 1]",
-          series_name
-        ))
-      }
-      noisy_blend_sd_mult <- suppressWarnings(as.numeric(unified_get(
-        cfg,
-        c("inputs", "deterministic_climate", series_name, "noisy_blend", "noise_sd_multiplier"),
-        default = 0.5
-      )))
-      if (!is.finite(noisy_blend_sd_mult) || noisy_blend_sd_mult < 0) {
-        add_err(sprintf(
-          "inputs.deterministic_climate.%s.noisy_blend.noise_sd_multiplier must be numeric >= 0",
+          "inputs.deterministic_climate.%s.noisy_blend.noise_sd must be numeric >= 0",
           series_name
         ))
       }
       noisy_blend_seed <- suppressWarnings(as.integer(unified_get(
         cfg,
         c("inputs", "deterministic_climate", series_name, "noisy_blend", "noise_seed"),
-        default = 20260309L
+        default = 20260415L
       )))
       if (!is.finite(noisy_blend_seed)) {
         add_err(sprintf(
@@ -1241,15 +1210,29 @@ unified_validate_config <- function(cfg) {
           series_name
         ))
       }
+      observed_blend_enabled <- unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "observed_blend", "enabled"),
+        default = FALSE
+      )
+      if (!is.logical(observed_blend_enabled) || length(observed_blend_enabled) != 1L || is.na(observed_blend_enabled)) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.observed_blend.enabled must be boolean (true/false)",
+          series_name
+        ))
+      }
+      observed_weight <- suppressWarnings(as.numeric(unified_get(
+        cfg,
+        c("inputs", "deterministic_climate", series_name, "observed_blend", "observed_weight"),
+        default = 0.9
+      )))
+      if (!is.finite(observed_weight) || observed_weight < 0 || observed_weight > 1) {
+        add_err(sprintf(
+          "inputs.deterministic_climate.%s.observed_blend.observed_weight must be numeric in [0, 1]",
+          series_name
+        ))
+      }
       if (identical(series_name, "precip")) {
-        noisy_blend_zero_zero_force_prob <- suppressWarnings(as.numeric(unified_get(
-          cfg,
-          c("inputs", "deterministic_climate", series_name, "noisy_blend", "zero_zero_force_prob"),
-          default = 0
-        )))
-        if (!is.finite(noisy_blend_zero_zero_force_prob) || noisy_blend_zero_zero_force_prob < 0 || noisy_blend_zero_zero_force_prob > 1) {
-          add_err("inputs.deterministic_climate.precip.noisy_blend.zero_zero_force_prob must be numeric in [0, 1]")
-        }
         dry_day_threshold_mm <- suppressWarnings(as.numeric(unified_get(
           cfg,
           c("inputs", "deterministic_climate", series_name, "dry_day_threshold_mm"),
@@ -1257,38 +1240,6 @@ unified_validate_config <- function(cfg) {
         )))
         if (!is.finite(dry_day_threshold_mm) || dry_day_threshold_mm < 0) {
           add_err("inputs.deterministic_climate.precip.dry_day_threshold_mm must be numeric >= 0")
-        }
-        tail_blend_enabled <- unified_get(
-          cfg,
-          c("inputs", "deterministic_climate", series_name, "tail_blend", "enabled"),
-          default = FALSE
-        )
-        if (!is.logical(tail_blend_enabled) || length(tail_blend_enabled) != 1L || is.na(tail_blend_enabled)) {
-          add_err("inputs.deterministic_climate.precip.tail_blend.enabled must be boolean (true/false)")
-        }
-        tail_blend_target <- tolower(as.character(unified_get(
-          cfg,
-          c("inputs", "deterministic_climate", series_name, "tail_blend", "target"),
-          default = "climatology_median"
-        ))[[1L]])
-        if (!(tail_blend_target %in% c("climatology_mean", "climatology_median", "zero"))) {
-          add_err("inputs.deterministic_climate.precip.tail_blend.target must be one of: climatology_mean, climatology_median, zero")
-        }
-        tail_blend_start_day <- suppressWarnings(as.integer(unified_get(
-          cfg,
-          c("inputs", "deterministic_climate", series_name, "tail_blend", "start_day"),
-          default = 7L
-        )))
-        tail_blend_end_day <- suppressWarnings(as.integer(unified_get(
-          cfg,
-          c("inputs", "deterministic_climate", series_name, "tail_blend", "end_day"),
-          default = 14L
-        )))
-        if (!is.finite(tail_blend_start_day) || tail_blend_start_day < 1L) {
-          add_err("inputs.deterministic_climate.precip.tail_blend.start_day must be an integer >= 1")
-        }
-        if (!is.finite(tail_blend_end_day) || tail_blend_end_day < tail_blend_start_day) {
-          add_err("inputs.deterministic_climate.precip.tail_blend.end_day must be an integer >= start_day")
         }
       }
     }

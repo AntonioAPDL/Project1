@@ -9,6 +9,21 @@ suppressPackageStartupMessages({
   library(scales)
 })
 
+local({
+  args_all <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args_all, value = TRUE)
+  script_dir <- if (length(file_arg) > 0) dirname(normalizePath(sub("^--file=", "", file_arg[[1L]]), mustWork = FALSE)) else file.path(getwd(), "scripts")
+  candidates <- unique(c(
+    file.path(script_dir, "..", "R", "unified", "deterministic_climate_blend.R"),
+    file.path(getwd(), "R", "unified", "deterministic_climate_blend.R")
+  ))
+  helper_path <- candidates[file.exists(candidates)][[1L]]
+  if (!nzchar(helper_path)) {
+    stop("Could not locate R/unified/deterministic_climate_blend.R", call. = FALSE)
+  }
+  source(helper_path)
+})
+
 parse_args <- function(argv) {
   out <- list()
   i <- 1
@@ -39,6 +54,15 @@ stop_if_missing <- function(x, msg) {
 as_abs_path <- function(p) {
   if (startsWith(p, "/")) return(p)
   normalizePath(file.path(getwd(), p), mustWork = FALSE)
+}
+
+parse_optional_positive_int <- function(x, flag_name) {
+  if (is.null(x) || identical(x, "")) return(NULL)
+  val <- suppressWarnings(as.integer(x))
+  if (!is.finite(val) || val < 1L) {
+    stop(sprintf("%s must be an integer >= 1", flag_name), call. = FALSE)
+  }
+  as.integer(val)
 }
 
 slugify <- function(x) {
@@ -73,7 +97,8 @@ source_palette <- c(
   "NWM medium-range land" = "#0B8F8C",
   "NWM long-range land" = "#5E8C31",
   "NWM short-range forcing" = "#7A4EAB",
-  "NWM medium-range forcing" = "#355C7D"
+  "NWM medium-range forcing" = "#355C7D",
+  "Configured blended input" = "#B8860B"
 )
 
 custom_theme <- function() {
@@ -105,6 +130,16 @@ read_site <- function(path) {
     usgs_site = as.character(site$usgs_site %||% "11160500"),
     lat = as.numeric(site$lat %||% 37.0443931),
     lon = as.numeric(site$lon %||% -122.072464)
+  )
+}
+
+read_detclim_plot_cfg <- function(path) {
+  if (is.null(path) || identical(path, "")) return(NULL)
+  cfg <- yaml::read_yaml(path)
+  det_cfg <- cfg$inputs$deterministic_climate %||% list()
+  list(
+    precip = detclim_normalize_series_cfg(det_cfg, "precip"),
+    soil = detclim_normalize_series_cfg(det_cfg, "soil")
   )
 }
 
@@ -400,6 +435,37 @@ build_plot_data <- function(catalog_df, mode) {
   )
 }
 
+crop_overlap_plot_data <- function(plot_data, max_days = NULL) {
+  if (is.null(max_days) || nrow(plot_data$long) == 0) return(plot_data)
+
+  long_df <- plot_data$long %>%
+    filter(lead_days >= 1, lead_days <= max_days)
+
+  summary_df <- plot_data$summary %>%
+    filter(lead_days >= 1, lead_days <= max_days)
+
+  endpoints_df <- summary_df %>%
+    group_by(series_key) %>%
+    filter(lead_days == max(lead_days, na.rm = TRUE)) %>%
+    slice_tail(n = 1) %>%
+    ungroup()
+
+  catalog_df <- plot_data$catalog %>%
+    filter(series_key %in% unique(summary_df$series_key))
+
+  series_levels <- catalog_df %>%
+    arrange(series_order) %>%
+    distinct(series_label) %>%
+    pull(series_label)
+
+  plot_data$long <- long_df
+  plot_data$summary <- summary_df
+  plot_data$endpoints <- endpoints_df
+  plot_data$catalog <- catalog_df
+  plot_data$series_levels <- series_levels
+  plot_data
+}
+
 estimate_nwm_top_porosity <- function(nwm_catalog_df) {
   ref_catalog <- nwm_catalog_df %>%
     filter(product_family == "medium_range_land") %>%
@@ -469,6 +535,125 @@ build_harmonized_covariate <- function(path, cutoff_date, max_day, series_name, 
     )
   }
   out
+}
+
+blend_series_key_for_cfg <- function(plot_data, series_name, series_cfg) {
+  catalog <- plot_data$catalog
+  if (nrow(catalog) == 0) {
+    stop(sprintf("No catalog rows available to select a blended %s source.", series_name), call. = FALSE)
+  }
+  source <- tolower(as.character(series_cfg$source %||% ""))
+  hit <- NULL
+  if (identical(series_name, "precip") && identical(source, "gefs_apcp")) {
+    hit <- catalog %>% filter(source == "GEFS", short_name == "APCP")
+  } else if (identical(series_name, "soil") && identical(source, "gefs_soilw_0_0.1m")) {
+    hit <- catalog %>% filter(source == "GEFS", short_name == "SOILW", level_descriptor == "0-0.1 m below ground")
+  } else {
+    stop(sprintf("Plot review does not yet support blended %s source: %s", series_name, source), call. = FALSE)
+  }
+  if (nrow(hit) < 1L) {
+    stop(sprintf("Could not locate the configured blended %s source in the plot catalog: %s", series_name, source), call. = FALSE)
+  }
+  hit %>% arrange(series_order) %>% slice(1)
+}
+
+blend_series_label_from_cfg <- function(series_name, series_cfg) {
+  source_label <- dplyr::case_when(
+    identical(series_cfg$source, "gefs_apcp") ~ "GEFS APCP",
+    identical(series_cfg$source, "gefs_soilw_0_0.1m") ~ "GEFS SOILW 0-0.1 m",
+    identical(series_cfg$source, "nwm_soilsat_top") ~ "NWM SOILSAT_TOP",
+    TRUE ~ as.character(series_cfg$source)
+  )
+  sprintf(
+    "Configured blended input\n%s %s | obs_w=%.2f | sd=%s",
+    source_label,
+    toupper(as.character(series_cfg$reduction)),
+    as.numeric(series_cfg$observed_blend$observed_weight),
+    format(as.numeric(series_cfg$noisy_blend$noise_sd), trim = TRUE, scientific = FALSE)
+  )
+}
+
+append_configured_blend_series <- function(plot_data, series_name, series_cfg, cutoff_date, source_plot_data = NULL) {
+  if (is.null(series_cfg) || !isTRUE(series_cfg$enabled) || !isTRUE(series_cfg$observed_blend$enabled)) {
+    return(plot_data)
+  }
+  source_plot_data <- source_plot_data %||% plot_data
+  if (nrow(source_plot_data$overlay) == 0 || nrow(source_plot_data$daily_member) == 0) {
+    stop(sprintf("Configured blended %s series requires both overlay and daily_member rows.", series_name), call. = FALSE)
+  }
+
+  selected_row <- blend_series_key_for_cfg(source_plot_data, series_name, series_cfg)
+  selected_daily <- source_plot_data$daily_member %>%
+    filter(series_key == selected_row$series_key) %>%
+    group_by(day_index) %>%
+    summarise(forecast_value = detclim_reduce_values(value_plot, reduction = series_cfg$reduction), .groups = "drop")
+  if (nrow(selected_daily) == 0) {
+    stop(sprintf("No daily member rows were available for the configured blended %s source.", series_name), call. = FALSE)
+  }
+
+  observed_df <- source_plot_data$overlay %>%
+    transmute(date = as.Date(as.Date(cutoff_date) + day_index), value = value)
+  forecast_df <- selected_daily %>%
+    transmute(date = as.Date(as.Date(cutoff_date) + day_index), value = forecast_value)
+  blend_df <- detclim_compose_future_series(
+    observed_df = observed_df,
+    forecast_df = forecast_df,
+    observed_weight = series_cfg$observed_blend$observed_weight,
+    noise_sd = if (isTRUE(series_cfg$noisy_blend$enabled)) series_cfg$noisy_blend$noise_sd else 0,
+    noise_seed = series_cfg$noisy_blend$noise_seed,
+    floor_at_zero = isTRUE(series_cfg$noisy_blend$floor_at_zero),
+    label = sprintf("plot|%s|%s|%s", series_name, cutoff_date, series_cfg$source)
+  ) %>%
+    mutate(day_index = as.numeric(date - as.Date(cutoff_date)))
+
+  series_key <- paste("CONFIGURED_BLEND", series_name, cutoff_date, sep = "||")
+  series_label <- blend_series_label_from_cfg(series_name, series_cfg)
+  source_type <- "Configured blended input"
+  series_order <- if (nrow(plot_data$catalog) > 0) max(plot_data$catalog$series_order, na.rm = TRUE) + 1L else 1L
+
+  summary_add <- blend_df %>%
+    transmute(
+      series_key = series_key,
+      series_label = series_label,
+      source_type = source_type,
+      series_order = series_order,
+      day_index = day_index,
+      member_count = 1L,
+      mean = blended_value
+    )
+  if ("median" %in% names(plot_data$summary)) summary_add$median <- blend_df$blended_value
+  if ("q05" %in% names(plot_data$summary)) summary_add$q05 <- blend_df$blended_value
+  if ("q95" %in% names(plot_data$summary)) summary_add$q95 <- blend_df$blended_value
+  for (col in setdiff(names(plot_data$summary), names(summary_add))) {
+    summary_add[[col]] <- NA
+  }
+  summary_add <- summary_add[, names(plot_data$summary), drop = FALSE]
+
+  catalog_add <- selected_row
+  catalog_add$source <- "BLEND"
+  catalog_add$product_family <- "configured_blend"
+  catalog_add$short_name <- paste0("BLEND_", toupper(series_name))
+  catalog_add$level_descriptor <- paste0("configured ", series_name, " blend")
+  catalog_add$source_type <- source_type
+  catalog_add$series_key <- series_key
+  catalog_add$series_label <- series_label
+  catalog_add$series_order <- series_order
+
+  plot_data$summary <- bind_rows(plot_data$summary, summary_add)
+  plot_data$catalog <- bind_rows(plot_data$catalog, catalog_add)
+  plot_data$endpoints <- plot_data$summary %>%
+    group_by(series_key) %>%
+    filter(day_index == max(day_index, na.rm = TRUE)) %>%
+    slice_tail(n = 1) %>%
+    ungroup()
+  plot_data$series_levels <- plot_data$catalog %>%
+    arrange(series_order) %>%
+    distinct(series_label) %>%
+    pull(series_label)
+  plot_data$blend_overlay_points <- nrow(blend_df)
+  plot_data$blend_label <- series_label
+  plot_data$blend_cfg <- series_cfg
+  plot_data
 }
 
 build_harmonized_precip_data <- function(catalog_df, cutoff_date, prism_csv = NULL) {
@@ -612,6 +797,44 @@ build_harmonized_soil_data <- function(catalog_df, nwm_catalog_df, cutoff_date, 
     series_levels = catalog_plot %>% arrange(series_order) %>% distinct(series_label) %>% pull(series_label),
     porosity_info = porosity_info
   )
+}
+
+crop_harmonized_plot_data <- function(plot_data, max_days = NULL) {
+  if (is.null(max_days) || nrow(plot_data$summary) == 0) return(plot_data)
+
+  daily_member <- plot_data$daily_member %>%
+    filter(day_index >= 1, day_index <= max_days)
+
+  summary_df <- plot_data$summary %>%
+    filter(day_index >= 1, day_index <= max_days)
+
+  overlay_df <- plot_data$overlay
+  if (nrow(overlay_df) > 0) {
+    overlay_df <- overlay_df %>%
+      filter(day_index >= 1, day_index <= max_days)
+  }
+
+  endpoints_df <- summary_df %>%
+    group_by(series_key) %>%
+    filter(day_index == max(day_index, na.rm = TRUE)) %>%
+    slice_tail(n = 1) %>%
+    ungroup()
+
+  catalog_df <- plot_data$catalog %>%
+    filter(series_key %in% unique(summary_df$series_key))
+
+  series_levels <- catalog_df %>%
+    arrange(series_order) %>%
+    distinct(series_label) %>%
+    pull(series_label)
+
+  plot_data$daily_member <- daily_member
+  plot_data$summary <- summary_df
+  plot_data$overlay <- overlay_df
+  plot_data$endpoints <- endpoints_df
+  plot_data$catalog <- catalog_df
+  plot_data$series_levels <- series_levels
+  plot_data
 }
 
 apply_soil_bias_match <- function(plot_data) {
@@ -1161,7 +1384,9 @@ main <- function() {
   site <- read_site(site_cfg)
   catalogs <- read_catalogs(run_dir, site$usgs_site)
   plot_style <- as.character(args$`plot-style` %||% "overlap_all_families")
+  max_plot_days <- parse_optional_positive_int(args$`max-days` %||% NULL, "--max-days")
   overlay_covariates <- isTRUE(args$`overlay-covariates`)
+  detclim_plot_cfg <- read_detclim_plot_cfg(args$`detclim-config` %||% NULL)
   prism_csv <- as_abs_path(args$`prism-csv` %||% "prism_precipitation_santa_cruz_1987_2023.csv")
   era5_soil_csv <- as_abs_path(args$`era5-soil-csv` %||% "soil_moisture_data/soil_moisture_big_trees_daily_avg_1987_2023.csv")
 
@@ -1200,10 +1425,38 @@ main <- function() {
       cutoff_date = cutoff_date,
       prism_csv = if (overlay_covariates) prism_csv else NULL
     )
+    soil_blend_source <- soil_data
+    precip_blend_source <- precip_data
     soil_overlay <- soil_data$overlay
     precip_overlay <- precip_data$overlay
+    if (!is.null(max_plot_days)) {
+      soil_blend_source <- crop_harmonized_plot_data(soil_blend_source, max_days = max_plot_days)
+      precip_blend_source <- crop_harmonized_plot_data(precip_blend_source, max_days = max_plot_days)
+    }
     if (identical(plot_style, "mean_only_same_units_bias_quantiles")) {
       soil_data <- apply_soil_bias_match(soil_data)
+    }
+    if (!is.null(max_plot_days)) {
+      soil_data <- crop_harmonized_plot_data(soil_data, max_days = max_plot_days)
+      precip_data <- crop_harmonized_plot_data(precip_data, max_days = max_plot_days)
+      soil_overlay <- soil_data$overlay
+      precip_overlay <- precip_data$overlay
+    }
+    if (!is.null(detclim_plot_cfg) && overlay_covariates) {
+      soil_data <- append_configured_blend_series(
+        soil_data,
+        series_name = "soil",
+        series_cfg = detclim_plot_cfg$soil,
+        cutoff_date = cutoff_date,
+        source_plot_data = soil_blend_source
+      )
+      precip_data <- append_configured_blend_series(
+        precip_data,
+        series_name = "precip",
+        series_cfg = detclim_plot_cfg$precip,
+        cutoff_date = cutoff_date,
+        source_plot_data = precip_blend_source
+      )
     }
   } else {
     soil_data <- build_plot_data(soil_catalog, mode = "soil")
@@ -1227,6 +1480,16 @@ main <- function() {
         value_candidates = c("PRCP_mm", "ppt")
       )
     }
+    if (!is.null(max_plot_days)) {
+      soil_data <- crop_overlap_plot_data(soil_data, max_days = max_plot_days)
+      precip_data <- crop_overlap_plot_data(precip_data, max_days = max_plot_days)
+      if (!is.null(soil_overlay) && nrow(soil_overlay) > 0) {
+        soil_overlay <- soil_overlay %>% filter(lead_days >= 1, lead_days <= max_plot_days)
+      }
+      if (!is.null(precip_overlay) && nrow(precip_overlay) > 0) {
+        precip_overlay <- precip_overlay %>% filter(lead_days >= 1, lead_days <= max_plot_days)
+      }
+    }
   }
 
   site_label <- sprintf("USGS %s | Big Trees / San Lorenzo (%.4f, %.4f)", site$usgs_site, site$lat, site$lon)
@@ -1248,6 +1511,17 @@ main <- function() {
         subtitle_lines,
         "Soil lines are additively bias-matched so each forecast family starts at the first retrospective soil value.",
         "Precipitation keeps the same-unit mean trajectories and adds the 5th percentile, median, and 95th percentile for any ensemble product with more than one member."
+      )
+    }
+    if (!is.null(detclim_plot_cfg) && overlay_covariates) {
+      subtitle_lines <- c(
+        subtitle_lines,
+        "Gold line is the currently configured blended model input built from retrospective truth and the configured noisy GEFS forecast reduction.",
+        if (identical(plot_style, "mean_only_same_units_bias_quantiles")) {
+          "For soil, the gold configured blend is computed from the raw configured source before the diagnostic bias-shift used for the other soil families."
+        } else {
+          NULL
+        }
       )
     }
     subtitle_lines <- c(
@@ -1278,6 +1552,11 @@ main <- function() {
       } else {
         NULL
       },
+      if (!is.null(detclim_plot_cfg) && !is.null(soil_data$blend_label)) {
+        "Gold line is the configured blended soil input that would be fed into the corrected-model relaunch."
+      } else {
+        NULL
+      },
       sep = "\n"
     )
     precip_caption <- paste(
@@ -1291,6 +1570,11 @@ main <- function() {
       "No long-range NWM forcing precipitation product was present in the confirmed public archive.",
       if (overlay_covariates) {
         "Black dashed line is the PRISM daily precipitation covariate used in the model workflow."
+      } else {
+        NULL
+      },
+      if (!is.null(detclim_plot_cfg) && !is.null(precip_data$blend_label)) {
+        "Gold line is the configured blended precipitation input that would be fed into the corrected-model relaunch."
       } else {
         NULL
       },
@@ -1475,7 +1759,9 @@ main <- function() {
     run_dir = run_dir,
     cutoff_date = cutoff_date,
     site = site,
+    plot_style = plot_style,
     plot_mode = plot_style,
+    max_days_requested = max_plot_days,
     overlay_covariates = overlay_covariates,
     x_axis = if (use_same_units) "forecast_day_after_initialization" else "lead_days_from_initialization",
     normalization = if (use_same_units) "none; plotted in harmonized physical units" else "per-family robust 5th-95th percentile range clipped to [0, 1]",
@@ -1492,6 +1778,13 @@ main <- function() {
     era5_soil_csv = if (overlay_covariates) era5_soil_csv else NULL,
     soil_covariate_points = if (overlay_covariates) nrow(soil_overlay) else NULL,
     precip_covariate_points = if (overlay_covariates) nrow(precip_overlay) else NULL,
+    detclim_config_path = args$`detclim-config` %||% NULL,
+    soil_blend_label = soil_data$blend_label %||% NULL,
+    precip_blend_label = precip_data$blend_label %||% NULL,
+    soil_blend_points = soil_data$blend_overlay_points %||% NULL,
+    precip_blend_points = precip_data$blend_overlay_points %||% NULL,
+    soil_blend_cfg = soil_data$blend_cfg %||% NULL,
+    precip_blend_cfg = precip_data$blend_cfg %||% NULL,
     nwm_soilsat_top_porosity = if (use_same_units) soil_data$porosity_info$porosity else NULL,
     nwm_soilsat_top_porosity_q10 = if (use_same_units) soil_data$porosity_info$q10 else NULL,
     nwm_soilsat_top_porosity_q90 = if (use_same_units) soil_data$porosity_info$q90 else NULL,

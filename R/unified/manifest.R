@@ -232,9 +232,11 @@ unified_manifest_init <- function(cfg, run_id, run_root, repo_root, repro_record
       horizon_days = unified_get(cfg, c("inputs", "deterministic_climate", "horizon_days"), default = NULL),
       require_full_horizon = unified_get(cfg, c("inputs", "deterministic_climate", "require_full_horizon"), default = TRUE),
       precip = list(
+        source = unified_get(cfg, c("inputs", "deterministic_climate", "precip", "source"), default = "gefs_apcp"),
         reduction = unified_get(cfg, c("inputs", "deterministic_climate", "precip", "reduction"), default = "mean")
       ),
       soil = list(
+        source = unified_get(cfg, c("inputs", "deterministic_climate", "soil", "source"), default = "nwm_soilsat_top"),
         reduction = unified_get(cfg, c("inputs", "deterministic_climate", "soil", "reduction"), default = "mean")
       ),
       summary_path = NULL,
