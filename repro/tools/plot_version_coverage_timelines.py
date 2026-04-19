@@ -29,6 +29,13 @@ from cutoff_version_pairing import GLOFAS_FORECAST_WINDOWS, NWS_FORECAST_WINDOWS
 
 SNAPSHOT_END = date(2026, 2, 16)
 STANDARD_COVERAGE_BAR_HEIGHT = 0.70
+PAPER_CUTOFFS: Sequence[Tuple[str, date]] = (
+    ("01/23/2021", date(2021, 1, 23)),
+    ("11/12/2021", date(2021, 11, 12)),
+    ("12/21/2021", date(2021, 12, 21)),
+    ("05/11/2022", date(2022, 5, 11)),
+    ("12/25/2022", date(2022, 12, 25)),
+)
 
 
 @dataclass(frozen=True)
@@ -199,6 +206,61 @@ def _fmt_range(start: date, end: date, is_open_ended: bool = False) -> str:
     if is_open_ended:
         return f"{start.isoformat()} to present"
     return f"{start.isoformat()} to {end.isoformat()}"
+
+
+def _draw_cutoff_markers(
+    ax: plt.Axes,
+    cutoffs: Sequence[Tuple[str, date]] = PAPER_CUTOFFS,
+    color: str = "#b91c1c",
+    text_y: float = 1.01,
+    show_labels: bool = False,
+) -> None:
+    for label, cutoff_date in cutoffs:
+        ax.axvline(
+            cutoff_date,
+            color=color,
+            linestyle="-",
+            linewidth=1.25,
+            alpha=0.8,
+            zorder=2,
+        )
+        if show_labels:
+            ax.annotate(
+                label,
+                xy=(mdates.date2num(cutoff_date), text_y),
+                xycoords=("data", "axes fraction"),
+                xytext=(0, 4),
+                textcoords="offset points",
+                rotation=90,
+                va="bottom",
+                ha="center",
+                fontsize=8.2,
+                fontweight="bold",
+                color=color,
+                bbox={"facecolor": "#f8fafc", "edgecolor": "none", "alpha": 0.85, "pad": 0.15},
+                clip_on=False,
+            )
+
+
+def _add_rule_box(ax: plt.Axes, title: str, bullets: Sequence[str], xy: Tuple[float, float]) -> None:
+    lines = [title] + [f"- {bullet}" for bullet in bullets]
+    ax.text(
+        xy[0],
+        xy[1],
+        "\n".join(lines),
+        transform=ax.transAxes,
+        fontsize=8.9,
+        color="#0f172a",
+        ha="left",
+        va="top",
+        bbox={
+            "facecolor": "#ffffff",
+            "edgecolor": "#94a3b8",
+            "boxstyle": "round,pad=0.35",
+            "alpha": 0.96,
+        },
+        zorder=10,
+    )
 
 
 def plot_nws_nwm(outdir: Path) -> Path:
@@ -811,16 +873,71 @@ def plot_variant_matrix(outdir: Path, nws_png: Optional[Path] = None, glofas_png
         xmin=date(2016, 1, 1),
     )
 
+    cutoff_handle = Line2D([0], [0], color="#b91c1c", lw=1.25, label="Study cutoffs")
+    for ax in axes:
+        _draw_cutoff_markers(ax)
+
+    nws_legend = axes[0].get_legend()
+    if nws_legend is not None:
+        nws_legend.remove()
+    axes[0].legend(
+        handles=[
+            Patch(facecolor="#2563eb", edgecolor="#1f2937", label="Forecast version coverage by issue date"),
+            Patch(
+                facecolor="#2563eb",
+                edgecolor="#1f2937",
+                hatch="//",
+                alpha=0.55,
+                label="Retrospective coverage by version",
+            ),
+            Line2D([0], [0], color="#64748b", linestyle=(0, (4, 4)), lw=1.0, label="Forecast version start"),
+            cutoff_handle,
+            Line2D([0], [0], color="#111827", lw=0, label="Same hue across rows => same version"),
+        ],
+        loc="lower left",
+        bbox_to_anchor=(0.0, 1.045),
+        ncol=2,
+        fontsize=8.5,
+        frameon=False,
+        borderaxespad=0.0,
+        columnspacing=1.0,
+        handletextpad=0.5,
+    )
+
+    _add_rule_box(
+        axes[0],
+        "Pairing rule",
+        (
+            "Use the forecast version active at the cutoff issue date.",
+            "Pair it with the same-version retrospective product first.",
+            "Report the retrospective coverage gap explicitly when it ends before the cutoff.",
+        ),
+        xy=(0.60, 0.33),
+    )
+    _add_rule_box(
+        axes[1],
+        "Pairing rule",
+        (
+            "Assign the forecast family by official issue-date chronology.",
+            "Pair it with the closest exposed historical family (v2.x->2.1, v3.x->3.1, v4.x->4.0).",
+            "Legacy JRC v3.0 is shown separately because it is not identical to EWDS historical v3.1.",
+        ),
+        xy=(0.57, 0.28),
+    )
+
     fig.text(
         0.5,
-        0.01,
-        "Both panels use the current working variant settings and x-axis start at 2016 for direct visual comparison.",
+        0.012,
+        "Version-audit matrix used to build valid cutoff-specific input bundles. Red lines mark the five study cutoffs "
+        "(01/23/2021, 11/12/2021, 12/21/2021, 05/11/2022, and 12/25/2022).\n"
+        "The version chronology shown here was combined with archive audits and provider verification before model fitting. "
+        "Associated preprocessing included manifests covering 56,110 GEFS files, 4,420 NWM files, and 1,289 GloFAS historical shards.",
         ha="center",
         va="bottom",
-        fontsize=10,
+        fontsize=9.2,
         color="#334155",
     )
-    fig.subplots_adjust(left=0.34, right=0.985, top=0.93, bottom=0.035, hspace=0.30)
+    fig.subplots_adjust(left=0.34, right=0.985, top=0.93, bottom=0.05, hspace=0.30)
 
     outbase = outdir / "nws_glofas_version_coverage_matrix_current"
     _save(fig, outbase)
