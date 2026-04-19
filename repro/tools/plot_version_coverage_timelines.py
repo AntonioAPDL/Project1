@@ -385,11 +385,11 @@ def plot_nws_nwm_paper(outdir: Path) -> Path:
     fig, ax = plt.subplots(figsize=(17.5, 6.6))
     _draw_nws_nwm_v21_v30_only(
         ax=ax,
-        legend_mode="inside",
+        legend_mode="top_outside",
         keep_versions=("2.0", "2.1", "3.0"),
         xmin=date(2018, 1, 1),
     )
-    fig.subplots_adjust(left=0.33, right=0.985, top=0.88, bottom=0.12)
+    fig.subplots_adjust(left=0.33, right=0.985, top=0.77, bottom=0.12)
     outbase = outdir / "nws_nwm_version_coverage_timeline_paper"
     _save(fig, outbase)
     plt.close(fig)
@@ -697,10 +697,10 @@ def plot_glofas_paper(outdir: Path) -> Path:
     fig, ax = plt.subplots(figsize=(18.5, 11.9))
     _draw_glofas_v2_v3_v4_family_variant(
         ax=ax,
-        legend_mode="inside",
+        legend_mode="top_outside",
         xmin=date(2018, 1, 1),
     )
-    fig.subplots_adjust(left=0.34, right=0.985, top=0.875, bottom=0.12)
+    fig.subplots_adjust(left=0.34, right=0.985, top=0.78, bottom=0.12)
     outbase = outdir / "glofas_version_coverage_timeline_paper"
     _save(fig, outbase)
     plt.close(fig)
