@@ -381,6 +381,21 @@ def plot_nws_nwm_v21_v30_only(outdir: Path) -> Path:
     return outbase.with_suffix(".png")
 
 
+def plot_nws_nwm_paper(outdir: Path) -> Path:
+    fig, ax = plt.subplots(figsize=(17.5, 6.6))
+    _draw_nws_nwm_v21_v30_only(
+        ax=ax,
+        legend_mode="inside",
+        keep_versions=("2.0", "2.1", "3.0"),
+        xmin=date(2018, 1, 1),
+    )
+    fig.subplots_adjust(left=0.33, right=0.985, top=0.88, bottom=0.12)
+    outbase = outdir / "nws_nwm_version_coverage_timeline_paper"
+    _save(fig, outbase)
+    plt.close(fig)
+    return outbase.with_suffix(".png")
+
+
 def _draw_nws_nwm_v21_v30_only(
     ax: plt.Axes,
     legend_mode: str = "inside",
@@ -678,6 +693,20 @@ def plot_glofas_v3x_v4x_family_palette(outdir: Path) -> Path:
     return outbase.with_suffix(".png")
 
 
+def plot_glofas_paper(outdir: Path) -> Path:
+    fig, ax = plt.subplots(figsize=(18.5, 11.9))
+    _draw_glofas_v2_v3_v4_family_variant(
+        ax=ax,
+        legend_mode="inside",
+        xmin=date(2018, 1, 1),
+    )
+    fig.subplots_adjust(left=0.34, right=0.985, top=0.875, bottom=0.12)
+    outbase = outdir / "glofas_version_coverage_timeline_paper"
+    _save(fig, outbase)
+    plt.close(fig)
+    return outbase.with_suffix(".png")
+
+
 def _draw_glofas_v2_v3_v4_family_variant(
     ax: plt.Axes,
     legend_mode: str = "inside",
@@ -949,9 +978,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate NWS/GloFAS version coverage timeline figures.")
     parser.add_argument(
         "--mode",
-        choices=("default", "variants", "all", "matrix"),
+        choices=("default", "variants", "all", "matrix", "paper"),
         default="default",
-        help="default: original pair; variants: variant pair + matrix; matrix: matrix only; all: defaults + variants + matrix.",
+        help="default: original pair; variants: variant pair + matrix; matrix: matrix only; paper: focused NWS/GloFAS pair used in manuscript drafts; all: defaults + variants + matrix.",
     )
     return parser.parse_args()
 
@@ -972,6 +1001,9 @@ def main() -> int:
             generated.append(nws_variant)
             generated.append(glofas_variant)
         generated.append(plot_variant_matrix(outdir, nws_png=nws_variant, glofas_png=glofas_variant))
+    if args.mode in {"paper", "all"}:
+        generated.append(plot_nws_nwm_paper(outdir))
+        generated.append(plot_glofas_paper(outdir))
 
     for p in generated:
         print(f"Generated: {p}")
