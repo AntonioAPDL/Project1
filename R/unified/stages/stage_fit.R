@@ -751,6 +751,13 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     cutoff_date <- suppressWarnings(as.Date(cutoff_raw))
     if (is.na(cutoff_date)) cutoff_date <- as.Date("2022-12-25")
     forecast_start_date <- cutoff_date + 1
+    exdqlm_structure_include_trend <- if (isTRUE(unified_get(
+      cfg, c("models", "exdqlm_multivar", "structure", "include_trend"), default = TRUE
+    ))) "TRUE" else "FALSE"
+    exdqlm_structure_harmonics <- as.character(unified_get(
+      cfg, c("models", "exdqlm_multivar", "structure", "enabled_harmonic_indices"), default = c(1L, 2L, 3L)
+    ))
+    exdqlm_structure_harmonics <- paste(exdqlm_structure_harmonics, collapse = ",")
 
     gamsig_freeze_iters <- as.character(unified_get(
       cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 5L
@@ -800,6 +807,8 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
       DISC_W_LIKELIHOOD_MODE = as.character(multivar_likelihood_mode),
       DISC_W_FORECAST_TRANSFER_MODE = forecast_transfer_mode,
+      DISC_W_INCLUDE_TREND = exdqlm_structure_include_trend,
+      DISC_W_ENABLED_HARMONIC_INDICES = exdqlm_structure_harmonics,
       DISC_W_CUTOFF_DATE = as.character(cutoff_date),
       DISC_W_FORECAST_START_DATE = as.character(forecast_start_date),
       DISC_W_OUTPUT_DIR = q_outputs,
@@ -928,7 +937,8 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     ))
     if (!is.finite(cmd_status)) cmd_status <- 0L
 
-    output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_DISC.RData", q_num))
+    output_suffix <- unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC")
+    output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_%s.RData", q_num, output_suffix))
     forecast_health_path <- file.path(q_outputs, "multivar_forecast_health.txt")
     forecast_health <- NULL
     if (!is.null(cmd_status) && is.finite(cmd_status) && as.integer(cmd_status) == 0L &&

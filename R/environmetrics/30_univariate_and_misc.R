@@ -136,7 +136,15 @@ quantile_label_tag <- function(label) {
   as.character(as.integer(to_quantile_label(label)))
 }
 
-load_quantile_bundle_with_alias <- function(path, target_label, source_label, suffix, attempts = 3L, sleep_sec = 0.5) {
+load_quantile_bundle_with_alias <- function(
+  path,
+  target_label,
+  source_label,
+  suffix,
+  target_suffix = suffix,
+  attempts = 3L,
+  sleep_sec = 0.5
+) {
   path <- as.character(path)
   if (!nzchar(path) || !file.exists(path)) {
     return(invisible(FALSE))
@@ -148,11 +156,11 @@ load_quantile_bundle_with_alias <- function(path, target_label, source_label, su
 
   obj_names <- ls(bundle_env, all.names = TRUE)
   src_token <- paste0("_", source_tag, "_", suffix)
-  tgt_token <- paste0("_", target_tag, "_", suffix)
+  tgt_token <- paste0("_", target_tag, "_", target_suffix)
   for (nm in obj_names) {
     value <- get(nm, envir = bundle_env, inherits = FALSE)
     assign(nm, value, envir = parent.frame())
-    if (!identical(source_tag, target_tag)) {
+    if (!identical(source_tag, target_tag) || !identical(suffix, target_suffix)) {
       alias_name <- sub(src_token, tgt_token, nm, fixed = TRUE)
       if (!identical(alias_name, nm)) {
         assign(alias_name, value, envir = parent.frame())
@@ -1783,46 +1791,90 @@ if (has_ndlm_bundle()) {
 }
 
 if (has_disc_w_bundle()) {
+  disc_w_source_suffix <- sprintf("exAL_synth_%s", DISC_W_OBJECT_SUFFIX)
+  disc_w_target_suffix <- "exAL_synth_DISC"
   file_path <- DISC_W_VAR_05
   profile_section(
     "univariate.load_disc_vars_exal_05",
-    load_quantile_bundle_with_alias(file_path, target_label = "05", source_label = DISC_W_VAR_SRC_05, suffix = "exAL_synth_DISC")
+    load_quantile_bundle_with_alias(
+      file_path,
+      target_label = "05",
+      source_label = DISC_W_VAR_SRC_05,
+      suffix = disc_w_source_suffix,
+      target_suffix = disc_w_target_suffix
+    )
   )
 
   file_path <- DISC_W_VAR_50
   profile_section(
     "univariate.load_disc_vars_exal_50",
-    load_quantile_bundle_with_alias(file_path, target_label = "50", source_label = DISC_W_VAR_SRC_50, suffix = "exAL_synth_DISC")
+    load_quantile_bundle_with_alias(
+      file_path,
+      target_label = "50",
+      source_label = DISC_W_VAR_SRC_50,
+      suffix = disc_w_source_suffix,
+      target_suffix = disc_w_target_suffix
+    )
   )
 
   file_path <- DISC_W_VAR_95
   profile_section(
     "univariate.load_disc_vars_exal_95",
-    load_quantile_bundle_with_alias(file_path, target_label = "95", source_label = DISC_W_VAR_SRC_95, suffix = "exAL_synth_DISC")
+    load_quantile_bundle_with_alias(
+      file_path,
+      target_label = "95",
+      source_label = DISC_W_VAR_SRC_95,
+      suffix = disc_w_source_suffix,
+      target_suffix = disc_w_target_suffix
+    )
   )
 
   file_path <- DISC_W_VAR_20
   profile_section(
     "univariate.load_disc_vars_exal_20",
-    load_quantile_bundle_with_alias(file_path, target_label = "20", source_label = DISC_W_VAR_SRC_20, suffix = "exAL_synth_DISC")
+    load_quantile_bundle_with_alias(
+      file_path,
+      target_label = "20",
+      source_label = DISC_W_VAR_SRC_20,
+      suffix = disc_w_source_suffix,
+      target_suffix = disc_w_target_suffix
+    )
   )
 
   file_path <- DISC_W_VAR_35
   profile_section(
     "univariate.load_disc_vars_exal_35",
-    load_quantile_bundle_with_alias(file_path, target_label = "35", source_label = DISC_W_VAR_SRC_35, suffix = "exAL_synth_DISC")
+    load_quantile_bundle_with_alias(
+      file_path,
+      target_label = "35",
+      source_label = DISC_W_VAR_SRC_35,
+      suffix = disc_w_source_suffix,
+      target_suffix = disc_w_target_suffix
+    )
   )
 
   file_path <- DISC_W_VAR_65
   profile_section(
     "univariate.load_disc_vars_exal_65",
-    load_quantile_bundle_with_alias(file_path, target_label = "65", source_label = DISC_W_VAR_SRC_65, suffix = "exAL_synth_DISC")
+    load_quantile_bundle_with_alias(
+      file_path,
+      target_label = "65",
+      source_label = DISC_W_VAR_SRC_65,
+      suffix = disc_w_source_suffix,
+      target_suffix = disc_w_target_suffix
+    )
   )
 
   file_path <- DISC_W_VAR_80
   profile_section(
     "univariate.load_disc_vars_exal_80",
-    load_quantile_bundle_with_alias(file_path, target_label = "80", source_label = DISC_W_VAR_SRC_80, suffix = "exAL_synth_DISC")
+    load_quantile_bundle_with_alias(
+      file_path,
+      target_label = "80",
+      source_label = DISC_W_VAR_SRC_80,
+      suffix = disc_w_source_suffix,
+      target_suffix = disc_w_target_suffix
+    )
   )
 } else {
   warning("Skipping DISC-W load block in 30_univariate_and_misc.R because multivariate family is disabled.", call. = FALSE)

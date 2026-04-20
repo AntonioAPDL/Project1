@@ -22,19 +22,25 @@ from multimodel_v8_lib import load_yaml, runs_dir  # noqa: E402
 
 
 class FeaturecovCf1EpsToolingTests(unittest.TestCase):
-    def _make_source_snapshot(self, td: Path, run_name: str = 'source_run') -> Path:
+    def _make_source_snapshot(self, td: Path, run_name: str = 'source_run', include_usgs: bool = False) -> Path:
         run_root = td / 'source_artifact' / 'runs' / run_name
         shared_root = run_root / 'inputs' / 'shared'
         (shared_root / 'parameters').mkdir(parents=True, exist_ok=True)
         (shared_root / 'retros').mkdir(parents=True, exist_ok=True)
         (shared_root / 'forecasts').mkdir(parents=True, exist_ok=True)
         (shared_root / 'forecats_bundle').mkdir(parents=True, exist_ok=True)
+        (shared_root / 'usgs').mkdir(parents=True, exist_ok=True)
         (shared_root / 'covariates').mkdir(parents=True, exist_ok=True)
         (shared_root / 'parameters' / 'parameters.txt').write_text('alpha=1\n', encoding='utf-8')
         (shared_root / 'retros' / 'retros.csv').write_text('Date,USGS,GloFAS,NWS3.0\n2021-01-01,1,2,3\n', encoding='utf-8')
         (shared_root / 'forecasts' / 'nws_forecast.csv').write_text('Date,value\n2021-01-24,1\n', encoding='utf-8')
         (shared_root / 'forecasts' / 'glofas_forecast.csv').write_text('Date,value\n2021-01-24,1\n', encoding='utf-8')
         (shared_root / 'forecats_bundle' / 'meta.yaml').write_text('bundle: ok\n', encoding='utf-8')
+        if include_usgs:
+            (shared_root / 'usgs' / 'usgs_daily.csv').write_text(
+                'date,discharge_cms\n2021-01-01,1.0\n',
+                encoding='utf-8',
+            )
         for name, filename in [('PPT', 'cov_03_PPT.csv'), ('SOIL', 'cov_04_SOIL.csv'), ('PCA', 'cov_05_PCA.csv')]:
             (shared_root / 'covariates' / filename).write_text(f'Date,{name}\n2021-01-01,1\n', encoding='utf-8')
 
@@ -98,7 +104,7 @@ class FeaturecovCf1EpsToolingTests(unittest.TestCase):
                 epsilon_value=90.0,
                 c_factor=1.0,
                 fit_parallel_mode='global_models',
-                fit_parallel_workers=1,
+                fit_parallel_workers=7,
                 transfer_covariates={'base_covariates': ['PPT', 'SOIL', 'PCA'], 'engineered_terms': ['PPT_sq', 'SOIL_sq', 'PPT_x_SOIL', 'PPT_lag1', 'PPT_lag2', 'PPT_lag3', 'SOIL_lag1', 'SOIL_lag2', 'SOIL_lag3']},
             )
             self.assertTrue(cfg['models']['run_exdqlm_multivar'])
@@ -107,10 +113,97 @@ class FeaturecovCf1EpsToolingTests(unittest.TestCase):
             self.assertEqual(cfg['models']['exdqlm_multivar']['forecast_transfer_mode'], 'keep')
             self.assertEqual(cfg['fit']['exdqlm_multivar']['legacy']['forecast_cov']['c_factor'], 1.0)
             self.assertEqual(cfg['fit']['exdqlm_multivar']['legacy']['forecast_cov']['epsilon'], 90.0)
-            self.assertEqual(cfg['run']['threads']['mc_cores'], 1)
-            self.assertEqual(cfg['fit']['parallel']['workers'], 1)
+            self.assertEqual(cfg['run']['threads']['mc_cores'], 7)
+            self.assertEqual(cfg['fit']['parallel']['workers'], 7)
             self.assertEqual([row['name'] for row in cfg['inputs']['fit']['covariates']], ['PPT', 'SOIL', 'PCA'])
             self.assertEqual(cfg['debug_featurecov_cf1_eps_campaign']['transfer_function_covariates']['base_covariates'], ['PPT', 'SOIL', 'PCA'])
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+    def test_featurecov_template_assigns_multivar_and_ndlm_workers_correctly(self) -> None:
+        template = load_yaml(ROOT / 'config' / 'multimodel_v8_featurecov_cf1_eps_sweep.template.yaml')
+        families = template['families']
+        expected = {
+            'exdqlm_multivar_keep': 7,
+            'exdqlm_multivar_drop': 7,
+            'dqlm_multivar_al_keep': 7,
+            'dqlm_multivar_al_drop': 7,
+            'ndlm_main_keep': 1,
+            'ndlm_main_drop': 1,
+        }
+        observed = {family_id: int(families[family_id]['fit_parallel_workers']) for family_id in expected}
+        self.assertEqual(observed, expected)
+
+    def test_build_run_config_prefers_source_run_usgs_snapshot(self) -> None:
+        td = Path(tempfile.mkdtemp(prefix='featurecov_cf1_eps_usgs_source_'))
+        try:
+            source_cfg = self._make_source_snapshot(td, include_usgs=True)
+            template_cfg = load_yaml(source_cfg)
+            artifact_root = td / 'artifact_root'
+            expected_usgs = (source_cfg.parent / 'inputs' / 'shared' / 'usgs' / 'usgs_daily.csv').resolve()
+            cfg = _build_run_config(
+                template_cfg=template_cfg,
+                run_id='multimodel_20221225_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1',
+                artifact_root=artifact_root,
+                family_id='exdqlm_multivar_keep',
+                family_cfg={
+                    'model_id': 'exdqlm_multivar_synth_keep',
+                    'model_key': 'exdqlm_multivar',
+                    'likelihood_mode': 'exal',
+                    'transfer_mode': 'keep',
+                },
+                inputs_overrides={
+                    'fit': {'usgs_cache_path': str((td / 'recovery' / 'usgs_daily.csv').resolve())},
+                    'deterministic_climate': {'enabled': True, 'handoff_root': '/tmp/handoff'},
+                    'covariate_features': {'enabled': True, 'output_filename': 'covariate_features.csv', 'lag_orders': [1, 2, 3], 'include_squares': True, 'include_interaction': True},
+                },
+                selection={'source_run': 'source_run', 'source_type': 'baseline', 'compare_dir': '/tmp/compare', 'mean_crps': 0.1, 'source_config': str(source_cfg)},
+                epsilon_label='eps180cf1',
+                epsilon_value=180.0,
+                c_factor=1.0,
+                fit_parallel_mode='global_models',
+                fit_parallel_workers=1,
+                transfer_covariates={'base_covariates': ['PPT', 'SOIL', 'PCA'], 'engineered_terms': ['PPT_sq', 'SOIL_sq']},
+            )
+            self.assertEqual(Path(cfg['inputs']['fit']['usgs_cache_path']).resolve(), expected_usgs)
+            self.assertEqual(Path(cfg['debug_featurecov_cf1_eps_campaign']['resolved_usgs_cache_path']).resolve(), expected_usgs)
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+    def test_build_run_config_keeps_configured_usgs_fallback_when_source_snapshot_missing(self) -> None:
+        td = Path(tempfile.mkdtemp(prefix='featurecov_cf1_eps_usgs_fallback_'))
+        try:
+            source_cfg = self._make_source_snapshot(td, include_usgs=False)
+            template_cfg = load_yaml(source_cfg)
+            artifact_root = td / 'artifact_root'
+            fallback_usgs = (td / 'recovery' / 'usgs_daily.csv').resolve()
+            fallback_usgs.parent.mkdir(parents=True, exist_ok=True)
+            fallback_usgs.write_text('date,discharge_cms\n2021-01-01,1.0\n', encoding='utf-8')
+            cfg = _build_run_config(
+                template_cfg=template_cfg,
+                run_id='multimodel_20221225_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1',
+                artifact_root=artifact_root,
+                family_id='exdqlm_multivar_keep',
+                family_cfg={
+                    'model_id': 'exdqlm_multivar_synth_keep',
+                    'model_key': 'exdqlm_multivar',
+                    'likelihood_mode': 'exal',
+                    'transfer_mode': 'keep',
+                },
+                inputs_overrides={
+                    'fit': {'usgs_cache_path': str(fallback_usgs)},
+                    'deterministic_climate': {'enabled': True, 'handoff_root': '/tmp/handoff'},
+                    'covariate_features': {'enabled': True, 'output_filename': 'covariate_features.csv', 'lag_orders': [1, 2, 3], 'include_squares': True, 'include_interaction': True},
+                },
+                selection={'source_run': 'source_run', 'source_type': 'baseline', 'compare_dir': '/tmp/compare', 'mean_crps': 0.1, 'source_config': str(source_cfg)},
+                epsilon_label='eps180cf1',
+                epsilon_value=180.0,
+                c_factor=1.0,
+                fit_parallel_mode='global_models',
+                fit_parallel_workers=1,
+                transfer_covariates={'base_covariates': ['PPT', 'SOIL', 'PCA'], 'engineered_terms': ['PPT_sq', 'SOIL_sq']},
+            )
+            self.assertEqual(Path(cfg['inputs']['fit']['usgs_cache_path']).resolve(), fallback_usgs)
         finally:
             shutil.rmtree(td, ignore_errors=True)
 
@@ -181,6 +274,9 @@ class FeaturecovCf1EpsToolingTests(unittest.TestCase):
             prior_cfg = yaml.safe_load(yaml.safe_dump(new_cfg))
             self.assertTrue(_configs_match_for_reuse(new_cfg, prior_cfg, family_cfg, 1.0, 180.0))
             prior_cfg['fit']['exdqlm_multivar']['legacy']['forecast_cov']['epsilon'] = 90.0
+            self.assertFalse(_configs_match_for_reuse(new_cfg, prior_cfg, family_cfg, 1.0, 180.0))
+            prior_cfg = yaml.safe_load(yaml.safe_dump(new_cfg))
+            prior_cfg['inputs']['fit']['usgs_cache_path'] = str((td / 'other' / 'usgs_daily.csv').resolve())
             self.assertFalse(_configs_match_for_reuse(new_cfg, prior_cfg, family_cfg, 1.0, 180.0))
         finally:
             shutil.rmtree(td, ignore_errors=True)

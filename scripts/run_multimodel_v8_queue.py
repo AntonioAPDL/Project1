@@ -4,10 +4,12 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import signal
 import shutil
 import subprocess
 import sys
 import time
+import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -42,6 +44,26 @@ PILOT_EPSILONS = ["epsTT", "eps30"]
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def install_signal_logging(log_handle) -> None:
+    def _handler(signum, _frame) -> None:
+        try:
+            signame = signal.Signals(signum).name
+        except Exception:
+            signame = f"SIG{signum}"
+        print(
+            f"[{utc_now()}] controller signal signame={signame} signum={signum}",
+            file=log_handle,
+            flush=True,
+        )
+        raise SystemExit(128 + int(signum))
+
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        try:
+            signal.signal(sig, _handler)
+        except Exception:
+            continue
 
 
 def stage_status(manifest_path: Path) -> tuple[str, str]:
@@ -329,70 +351,99 @@ def main() -> int:
     queue_log.parent.mkdir(parents=True, exist_ok=True)
 
     with queue_log.open("a", encoding="utf-8") as log_handle:
+        install_signal_logging(log_handle)
         print(f"[{utc_now()}] controller start pilot_only={args.pilot_only} artifact_root={artifact_root}", file=log_handle, flush=True)
         metadata = load_matrix_metadata(matrix_dir)
-        while True:
-            refresh_health(matrix_dir, log_handle, artifact_root if args.artifact_root else None)
-            maybe_build_compares(
-                compare_cells,
-                plan,
-                matrix_dir,
-                log_handle,
-                artifact_root if args.artifact_root else None,
-                metadata=metadata,
+        exit_code = 0
+        try:
+            while True:
+                refresh_health(matrix_dir, log_handle, artifact_root if args.artifact_root else None)
+                maybe_build_compares(
+                    compare_cells,
+                    plan,
+                    matrix_dir,
+                    log_handle,
+                    artifact_root if args.artifact_root else None,
+                    metadata=metadata,
+                )
+
+                # Fail fast if any planned run failed.
+                for _, row in plan.iterrows():
+                    if run_failed(str(row["run_id"]), artifact_root if args.artifact_root else None):
+                        print(f"[{utc_now()}] aborting: run failed {row['run_id']}", file=log_handle, flush=True)
+                        exit_code = 1
+                        return exit_code
+
+                all_runs_pass = all(
+                    run_passed(str(row["run_id"]), artifact_root if args.artifact_root else None)
+                    for _, row in plan.iterrows()
+                )
+                all_compares_ready = all(
+                    compare_ready(cutoff, epsilon, artifact_root if args.artifact_root else None)
+                    for cutoff, epsilon in compare_cells
+                )
+                if all_runs_pass and all_compares_ready:
+                    if args.pilot_only:
+                        write_pilot_summary(matrix_dir, artifact_root if args.artifact_root else None)
+                    write_final_summary(matrix_dir, compare_cells, artifact_root if args.artifact_root else None)
+                    print(f"[{utc_now()}] controller complete pilot_only={args.pilot_only}", file=log_handle, flush=True)
+                    exit_code = 0
+                    return exit_code
+
+                active = pgrep_active_v8()
+                free_gb = disk_free_gb(artifact_root if args.artifact_root else None)
+                launched = False
+                for _, row in plan.iterrows():
+                    run_id = str(row["run_id"])
+                    _phase, status = stage_status(manifest_path_for(run_id, artifact_root if args.artifact_root else None))
+                    if status == "pass":
+                        continue
+                    if status == "pending":
+                        continue
+                    if status == "fail":
+                        continue
+                    allowed, _note = launch_allowed(
+                        candidate=row,
+                        active=active,
+                        free_gb=free_gb,
+                        ordinary_max_concurrent=args.ordinary_max_concurrent,
+                        pause_free_gb=args.pause_free_gb,
+                        launch_free_gb=args.launch_free_gb,
+                        heavy_free_gb=args.heavy_free_gb,
+                    )
+                    if not allowed:
+                        continue
+                    log_path = matrix_dir / "run_logs" / f"{run_id}.log"
+                    pid = launch_run(Path(str(row["config_path"])), log_path)
+                    print(
+                        f"[{utc_now()}] launched run_id={run_id} pid={pid} cutoff={row['cutoff']} epsilon={row['epsilon']} lane={row['lane']} free_gb={free_gb}",
+                        file=log_handle,
+                        flush=True,
+                    )
+                    launched = True
+                    break
+
+                if not launched:
+                    print(f"[{utc_now()}] idle wait free_gb={free_gb} active={len(active)}", file=log_handle, flush=True)
+                time.sleep(max(args.poll_seconds, 5))
+        except KeyboardInterrupt:
+            exit_code = 130
+            print(f"[{utc_now()}] controller interrupted", file=log_handle, flush=True)
+        except SystemExit as exc:
+            code = exc.code
+            exit_code = int(code) if isinstance(code, int) else 1
+            print(f"[{utc_now()}] controller exit requested code={exit_code}", file=log_handle, flush=True)
+        except Exception as exc:
+            exit_code = 1
+            print(
+                f"[{utc_now()}] controller exception type={type(exc).__name__} message={exc}",
+                file=log_handle,
+                flush=True,
             )
-
-            # Fail fast if any planned run failed.
-            for _, row in plan.iterrows():
-                if run_failed(str(row["run_id"]), artifact_root if args.artifact_root else None):
-                    print(f"[{utc_now()}] aborting: run failed {row['run_id']}", file=log_handle, flush=True)
-                    return 1
-
-            all_runs_pass = all(run_passed(str(row["run_id"]), artifact_root if args.artifact_root else None) for _, row in plan.iterrows())
-            all_compares_ready = all(compare_ready(cutoff, epsilon, artifact_root if args.artifact_root else None) for cutoff, epsilon in compare_cells)
-            if all_runs_pass and all_compares_ready:
-                if args.pilot_only:
-                    write_pilot_summary(matrix_dir, artifact_root if args.artifact_root else None)
-                write_final_summary(matrix_dir, compare_cells, artifact_root if args.artifact_root else None)
-                print(f"[{utc_now()}] controller complete pilot_only={args.pilot_only}", file=log_handle, flush=True)
-                return 0
-
-            active = pgrep_active_v8()
-            free_gb = disk_free_gb(artifact_root if args.artifact_root else None)
-            launched = False
-            for _, row in plan.iterrows():
-                run_id = str(row["run_id"])
-                phase, status = stage_status(manifest_path_for(run_id, artifact_root if args.artifact_root else None))
-                if status == "pass":
-                    continue
-                if status == "pending":
-                    continue
-                if status == "fail":
-                    continue
-                allowed, note = launch_allowed(
-                    candidate=row,
-                    active=active,
-                    free_gb=free_gb,
-                    ordinary_max_concurrent=args.ordinary_max_concurrent,
-                    pause_free_gb=args.pause_free_gb,
-                    launch_free_gb=args.launch_free_gb,
-                    heavy_free_gb=args.heavy_free_gb,
-                )
-                if not allowed:
-                    continue
-                log_path = matrix_dir / "run_logs" / f"{run_id}.log"
-                pid = launch_run(Path(str(row["config_path"])), log_path)
-                print(
-                    f"[{utc_now()}] launched run_id={run_id} pid={pid} cutoff={row['cutoff']} epsilon={row['epsilon']} lane={row['lane']} free_gb={free_gb}",
-                    file=log_handle,
-                    flush=True,
-                )
-                launched = True
-                break
-
-            if not launched:
-                print(f"[{utc_now()}] idle wait free_gb={free_gb} active={len(active)}", file=log_handle, flush=True)
-            time.sleep(max(args.poll_seconds, 5))
+            traceback.print_exc(file=log_handle)
+        finally:
+            print(f"[{utc_now()}] controller stop exit_code={exit_code}", file=log_handle, flush=True)
+        return exit_code
 
 
 if __name__ == "__main__":

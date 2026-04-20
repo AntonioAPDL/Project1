@@ -6,11 +6,13 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
   parameters_dir <- file.path(shared_root, "parameters")
   retros_dir <- file.path(shared_root, "retros")
   forecasts_dir <- file.path(shared_root, "forecasts")
+  usgs_dir <- dirname(shared_paths$usgs)
   covariates_dir <- file.path(shared_root, "covariates")
 
   dir.create(parameters_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(retros_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(forecasts_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(usgs_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(covariates_dir, recursive = TRUE, showWarnings = FALSE)
   shared_storage_scales <- list()
   shared_cov_paths <- list(
@@ -149,10 +151,12 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
   source_retros_scale <- cfg$inputs$fit$retros_storage_scale
   source_nws_scale <- cfg$inputs$fit$nws_storage_scale
   source_glofas_scale <- cfg$inputs$fit$glofas_storage_scale
+  source_usgs <- ""
   source_mode <- "configured"
   source_retros_origin <- "configured"
   source_nws_origin <- "configured"
   source_glofas_origin <- "configured"
+  source_usgs_origin <- "unresolved"
 
   if (prefer_snapshot && snapshot_ready && !is.na(cutoff_date)) {
     snapshot_valid <- tryCatch(
@@ -228,6 +232,36 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
     }
   }
 
+  usgs_resolution <- unified_resolve_usgs_daily_path(cfg, snapshot_root = snapshot_root)
+  if (nzchar(usgs_resolution$path)) {
+    source_usgs <- usgs_resolution$path
+    source_usgs_origin <- usgs_resolution$origin
+  } else {
+    repro_mode <- tolower(trimws(as.character(cfg$run$repro_mode)))
+    require_local_usgs <- isTRUE(cfg$stages$post) && identical(repro_mode, "strict")
+    fit_usgs_mode <- tolower(trimws(as.character(cfg$inputs$fit$usgs_mode)))
+    if (identical(fit_usgs_mode, "cache")) {
+      require_local_usgs <- TRUE
+    }
+    if (isTRUE(require_local_usgs)) {
+      stop(
+        paste(
+          "data_prep_shared could not resolve a local USGS daily truth source.",
+          "Checked shared forecats snapshot, inputs.fit.usgs_cache_path, and inputs.forecats.existing_bundle_path/meta.yaml.",
+          "Strict post mode requires a run-scoped USGS truth CSV."
+        ),
+        call. = FALSE
+      )
+    }
+    warning(
+      paste(
+        "data_prep_shared: local USGS daily truth source not found.",
+        "Non-strict mode may still fall back to live NWIS in legacy post code."
+      ),
+      call. = FALSE
+    )
+  }
+
   unified_validate_glofas_members_csv(
     source_glofas,
     stage_name = "data_prep_shared/source_glofas"
@@ -261,6 +295,13 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
     shared_paths$glofas,
     storage_scale = source_glofas_scale
   )
+  if (nzchar(source_usgs)) {
+    add_shared_file(
+      source_usgs,
+      shared_paths$usgs,
+      storage_scale = "raw_cms"
+    )
+  }
 
   source_map_path <- file.path(shared_root, "source_map.txt")
   writeLines(
@@ -273,6 +314,8 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
       sprintf("source.nws_origin=%s", source_nws_origin),
       sprintf("source.glofas=%s", source_glofas),
       sprintf("source.glofas_origin=%s", source_glofas_origin),
+      sprintf("source.usgs=%s", source_usgs),
+      sprintf("source.usgs_origin=%s", source_usgs_origin),
       sprintf("snapshot_root=%s", snapshot_root),
       sprintf("snapshot_ready=%s", if (snapshot_ready) "TRUE" else "FALSE"),
       sprintf("snapshot_valid=%s", if (snapshot_valid) "TRUE" else "FALSE"),
@@ -538,7 +581,8 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
     stage_name = "data_prep_shared",
     manifest = manifest,
     enabled_models = cfg$models,
-    required_covariates = cov_required
+    required_covariates = cov_required,
+    required_usgs = isTRUE(cfg$stages$post)
   )
   message(sprintf("data_prep_shared: shared input validation passed under %s", shared_root))
 

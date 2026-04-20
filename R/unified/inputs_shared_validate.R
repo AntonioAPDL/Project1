@@ -1,5 +1,9 @@
 # unified/inputs_shared_validate.R
 
+`%||%` <- function(x, y) {
+  if (is.null(x)) y else x
+}
+
 unified_shared_input_paths <- function(run_root) {
   shared_root <- file.path(run_root, "inputs", "shared")
   list(
@@ -8,8 +12,112 @@ unified_shared_input_paths <- function(run_root) {
     retros = file.path(shared_root, "retros", "retros.csv"),
     nws = file.path(shared_root, "forecasts", "nws_forecast.csv"),
     glofas = file.path(shared_root, "forecasts", "glofas_forecast.csv"),
+    usgs = file.path(shared_root, "usgs", "usgs_daily.csv"),
     covariates_dir = file.path(shared_root, "covariates")
   )
+}
+
+unified_first_existing_path <- function(paths) {
+  paths <- unlist(paths, use.names = FALSE)
+  paths <- as.character(paths)
+  paths <- paths[!is.na(paths) & nzchar(paths)]
+  if (length(paths) == 0L) {
+    return("")
+  }
+  paths <- path.expand(paths)
+  existing <- paths[file.exists(paths)]
+  if (length(existing) == 0L) {
+    return("")
+  }
+  normalizePath(existing[[1L]], mustWork = FALSE)
+}
+
+unified_resolve_bundle_usgs_daily_path <- function(bundle_meta_path) {
+  bundle_meta_path <- as.character(bundle_meta_path %||% "")
+  if (!nzchar(bundle_meta_path)) {
+    return(list(path = "", origin = ""))
+  }
+  bundle_meta_path <- normalizePath(path.expand(bundle_meta_path), mustWork = FALSE)
+  bundle_root <- dirname(bundle_meta_path)
+
+  meta <- NULL
+  if (file.exists(bundle_meta_path) && requireNamespace("yaml", quietly = TRUE)) {
+    meta <- tryCatch(yaml::read_yaml(bundle_meta_path), error = function(e) NULL)
+  }
+
+  meta_usgs_rel <- ""
+  histfix_usgs_path <- ""
+  if (is.list(meta)) {
+    if (is.list(meta$paths) && is.character(meta$paths$usgs_daily) && nzchar(meta$paths$usgs_daily)) {
+      meta_usgs_rel <- as.character(meta$paths$usgs_daily[[1L]])
+    }
+    if (is.list(meta$histfix) && is.character(meta$histfix$usgs_daily_source_path) &&
+        nzchar(meta$histfix$usgs_daily_source_path)) {
+      histfix_usgs_path <- as.character(meta$histfix$usgs_daily_source_path[[1L]])
+    }
+  }
+
+  bundle_inputs_path <- unified_first_existing_path(file.path(bundle_root, "inputs", "usgs_daily.csv"))
+  if (nzchar(bundle_inputs_path)) {
+    return(list(path = bundle_inputs_path, origin = "bundle_inputs"))
+  }
+
+  bundle_root_path <- unified_first_existing_path(file.path(bundle_root, "usgs_daily.csv"))
+  if (nzchar(bundle_root_path)) {
+    return(list(path = bundle_root_path, origin = "bundle_root"))
+  }
+
+  if (nzchar(meta_usgs_rel)) {
+    meta_rel_path <- unified_first_existing_path(file.path(bundle_root, meta_usgs_rel))
+    if (nzchar(meta_rel_path)) {
+      return(list(path = meta_rel_path, origin = "bundle_meta_paths"))
+    }
+  }
+
+  histfix_path <- unified_first_existing_path(histfix_usgs_path)
+  if (nzchar(histfix_path)) {
+    return(list(path = histfix_path, origin = "bundle_histfix_source"))
+  }
+
+  list(path = "", origin = "")
+}
+
+unified_resolve_usgs_daily_path <- function(cfg, snapshot_root = NULL) {
+  snapshot_root <- as.character(snapshot_root %||% "")
+  if (nzchar(snapshot_root)) {
+    snapshot_root <- normalizePath(path.expand(snapshot_root), mustWork = FALSE)
+    snapshot_direct <- unified_first_existing_path(c(
+      file.path(snapshot_root, "inputs", "usgs_daily.csv"),
+      file.path(snapshot_root, "usgs_daily.csv")
+    ))
+    if (nzchar(snapshot_direct)) {
+      return(list(path = snapshot_direct, origin = "snapshot"))
+    }
+
+    snapshot_meta <- file.path(snapshot_root, "meta.yaml")
+    snapshot_meta_resolved <- unified_resolve_bundle_usgs_daily_path(snapshot_meta)
+    if (nzchar(snapshot_meta_resolved$path)) {
+      return(snapshot_meta_resolved)
+    }
+  }
+
+  fit_cfg <- if (is.list(cfg$inputs) && is.list(cfg$inputs$fit)) cfg$inputs$fit else list()
+  fit_cache <- as.character(fit_cfg$usgs_cache_path %||% "")
+  fit_cache_path <- unified_first_existing_path(fit_cache)
+  if (nzchar(fit_cache_path)) {
+    return(list(path = fit_cache_path, origin = "fit_cache"))
+  }
+
+  bundle_meta_path <- ""
+  if (is.list(cfg$inputs) && is.list(cfg$inputs$forecats)) {
+    bundle_meta_path <- as.character(cfg$inputs$forecats$existing_bundle_path %||% "")
+  }
+  bundle_resolved <- unified_resolve_bundle_usgs_daily_path(bundle_meta_path)
+  if (nzchar(bundle_resolved$path)) {
+    return(bundle_resolved)
+  }
+
+  list(path = "", origin = "")
 }
 
 unified_schema_error <- function(stage_name, label, path, reason, details = character(0), hint = NULL) {
@@ -378,6 +486,59 @@ unified_validate_forecast_numeric_csv <- function(
   invisible(TRUE)
 }
 
+unified_validate_usgs_daily_csv <- function(path, stage_name) {
+  df <- unified_read_csv_checked(path, "usgs daily truth", stage_name)
+  date_info <- unified_detect_date_info(df, "usgs daily truth", path, required = TRUE)
+  dates <- suppressWarnings(as.Date(date_info$dates))
+  if (sum(!is.na(dates)) < 5L) {
+    stop(
+      unified_schema_error(
+        stage_name = stage_name,
+        label = "usgs daily truth",
+        path = path,
+        reason = "expected at least 5 parseable dates"
+      ),
+      call. = FALSE
+    )
+  }
+
+  flow_candidates <- c("discharge_cfs", "discharge_cms", "X_00060_00003", "USGS", "usgs")
+  flow_vals <- NULL
+  for (nm in flow_candidates) {
+    if (!(nm %in% names(df))) next
+    vals <- suppressWarnings(as.numeric(df[[nm]]))
+    if (sum(is.finite(vals), na.rm = TRUE) >= 5L) {
+      flow_vals <- vals
+      break
+    }
+  }
+  if (is.null(flow_vals)) {
+    numeric_cols <- names(df)[vapply(df, is.numeric, logical(1))]
+    numeric_cols <- setdiff(numeric_cols, date_info$col)
+    for (nm in numeric_cols) {
+      vals <- suppressWarnings(as.numeric(df[[nm]]))
+      if (sum(is.finite(vals), na.rm = TRUE) >= 5L) {
+        flow_vals <- vals
+        break
+      }
+    }
+  }
+  if (is.null(flow_vals)) {
+    stop(
+      unified_schema_error(
+        stage_name = stage_name,
+        label = "usgs daily truth",
+        path = path,
+        reason = "no finite numeric discharge column detected",
+        hint = "Provide discharge_cfs, discharge_cms, X_00060_00003, or another numeric discharge column."
+      ),
+      call. = FALSE
+    )
+  }
+
+  invisible(TRUE)
+}
+
 unified_validate_required_shared_inputs <- function(
   run_root,
   stage_name,
@@ -388,7 +549,8 @@ unified_validate_required_shared_inputs <- function(
     run_ndlm_main = FALSE,
     run_ndlm_univar = FALSE
   ),
-  required_covariates = character(0)
+  required_covariates = character(0),
+  required_usgs = FALSE
 ) {
   paths <- unified_shared_input_paths(run_root)
   source_map_path <- file.path(paths$root, "source_map.txt")
@@ -405,6 +567,9 @@ unified_validate_required_shared_inputs <- function(
   add_err <- function(msg) errs <<- c(errs, msg)
 
   must_files <- c(parameters = paths$parameters, retros = paths$retros, nws = paths$nws, glofas = paths$glofas)
+  if (isTRUE(required_usgs)) {
+    must_files <- c(must_files, usgs = paths$usgs)
+  }
   for (nm in names(must_files)) {
     p <- must_files[[nm]]
     if (!file.exists(p)) {
@@ -427,6 +592,17 @@ unified_validate_required_shared_inputs <- function(
       csv_err <- unified_csv_quick_validate(p, sprintf("shared %s", nm))
       if (!is.null(csv_err)) add_err(csv_err)
     }
+  }
+
+  if (file.exists(paths$usgs) && isTRUE(file.info(paths$usgs)$size > 0) && file.access(paths$usgs, mode = 4L) == 0L) {
+    usgs_err <- tryCatch(
+      {
+        unified_validate_usgs_daily_csv(paths$usgs, stage_name = stage_name)
+        NULL
+      },
+      error = function(e) conditionMessage(e)
+    )
+    if (!is.null(usgs_err)) add_err(usgs_err)
   }
 
   if ((isTRUE(enabled_models$run_exdqlm_univar) || isTRUE(enabled_models$run_ndlm_main)) &&

@@ -35,6 +35,7 @@ library(FNN)
 
 DISC_DEBUG <- FALSE
 source("R/disc_w/_init.R")
+source("R/unified/families/exdqlm_multivar_structure.R")
 
 n.samp <- 2000
 cut <- 1
@@ -912,11 +913,30 @@ if(use_covariates){
 s_yy <- sd(Y, na.rm = TRUE)  
 m_yy <- mean(Y, na.rm = TRUE) + s_yy*qnorm(p0)
 kk <- 0.5 * s_yy
-trend.comp <- polytrendMod(1, m0 = m_yy, C0 = kk)
-harm <- harmonics
-seas.comp <- seasMod(p = 363.5854, h = harm, C0 = 0.5 * kk * diag(2 * length(harm)))
-model <- combineMods(trend.comp, seas.comp)
-p <- length(model$m0)
+structure_spec <- exdqlm_multivar_read_structure_spec_from_env(
+  include_trend_keys = c("DISC_W_INCLUDE_TREND", "UNIFIED_EXDQLM_MULTIVAR_INCLUDE_TREND"),
+  enabled_harmonic_keys = c("DISC_W_ENABLED_HARMONIC_INDICES", "UNIFIED_EXDQLM_MULTIVAR_ENABLED_HARMONIC_INDICES"),
+  default_harmonics = harmonics
+)
+structure_model <- exdqlm_multivar_build_structure(
+  m_yy = m_yy,
+  kk = kk,
+  df_t = df_t,
+  df_s1 = df_s1,
+  df_s2 = df_s2,
+  df_s67 = df_s67,
+  lam1 = lam1,
+  lam2 = lam2,
+  include_trend = structure_spec$include_trend,
+  enabled_harmonic_indices = structure_spec$enabled_harmonic_indices,
+  default_harmonics = harmonics,
+  season_period = 363.5854,
+  trend_c0_scale = 1.0,
+  season_c0_scale = 0.5
+)
+harm <- structure_model$enabled_harmonics
+model <- structure_model$model
+p <- structure_model$p
 #
 idx <- 1:TT
 y <- Y[,idx]
@@ -943,9 +963,9 @@ m0 <- c(model$m0, rep(0, p*J))
 C0 <- bdiag(model$C0, 0.5 * kk * diag(p*J))
 ##########################################  
 ##########################################
-df <- c(df_t, df_s1, df_s2, df_s67)
+df <- structure_model$df
 df.discrep <- df.discrep*rep(df,J)
-dim.df <- c(1, 2, 2, 2)
+dim.df <- structure_model$dim.df
 k <- 10
 ##########################################2
 ##########################################
@@ -959,10 +979,10 @@ model_simp$FF <- array(model_simp$FF, c(p, 1, TT))
 df.mat <- make_df_mat(df, dim.df, p)
 df.mat.k <- make_df_mat_k(df, dim.df, p, k)
 
-df1 <- c(df_t*lam1, df_s1, df_s2, df_s67)
+df1 <- structure_model$df1
 df.mat_f1 <- make_df_mat(df1, dim.df, p)
 df.mat.k_f1 <- make_df_mat_k(df1, dim.df, p, k)
-df2 <- c(df_t*lam2, df_s1, df_s2, df_s67)
+df2 <- structure_model$df2
 df.mat_f2 <- make_df_mat(df2, dim.df, p)
 df.mat.k_f2 <- make_df_mat_k(df2, dim.df, p, k)
 
@@ -1006,12 +1026,7 @@ if (J <= 0) {
 
 }
 
-create_block_diag <- function(A, n) {
-  if (!is.matrix(A)) stop("A must be a matrix.")
-  if (!is.numeric(n) || n <= 0 || n != floor(n)) stop("n must be a positive integer.")
-  block_diag_matrix <- bdiag(replicate(n, A, simplify = FALSE))
-  return(as.matrix(block_diag_matrix))
-}
+create_block_diag <- exdqlm_multivar_create_block_diag
 
 # Discrepancies
 A <- model$GG; n <- J+1;

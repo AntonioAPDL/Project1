@@ -21,7 +21,7 @@ run:
     mkl: 1
     veclib: 1
     numexpr: 1
-    mc_cores: 1
+    mc_cores: 7
   resolved_run_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20221225_v8_eps1cf1_l2_mv
   resolved_config_path: /data/muscat_data/jaguir26/project1_ucsc_phd_v8_launch_471fcfd/config/unified_runs/multimodel_20221225_v8_eps1cf1_l2_mv.yaml
 stages:
@@ -133,6 +133,7 @@ inputs:
       path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20221225_v8_eps1cf1_l2_mv/inputs/shared/covariates/cov_04_SOIL.csv
     - name: PCA
       path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20221225_v8_eps1cf1_l2_mv/inputs/shared/covariates/cov_05_PCA.csv
+    usgs_cache_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv
   post:
     use_fit_outputs_from_run: true
     source_run_id: null
@@ -234,7 +235,7 @@ fit:
   - 0.95
   parallel:
     mode: global_models
-    workers: 1
+    workers: 7
   warm_start:
     enabled: false
     source_run_id: null
@@ -406,8 +407,9 @@ debug_featurecov_cf1_eps_campaign:
   selected_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20221225_v8_eps1cf1_compare
   selected_mean_crps: 2.278512557109324
   selected_source_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20221225_v8_eps1cf1_l2_mv/resolved_config.yaml
+  resolved_usgs_cache_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv
   fit_parallel_mode: global_models
-  fit_parallel_workers: 1
+  fit_parallel_workers: 7
   transfer_function_covariates:
     base_covariates:
     - PPT

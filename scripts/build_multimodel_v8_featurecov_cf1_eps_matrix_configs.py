@@ -62,6 +62,8 @@ def _deep_update(dst: dict[str, Any], src: dict[str, Any]) -> dict[str, Any]:
 def _resolve_repo_path(raw: str | Path | None) -> Path | None:
     if raw is None:
         return None
+    if isinstance(raw, str) and not raw.strip():
+        return None
     path = Path(str(raw)).expanduser()
     if not path.is_absolute():
         path = ROOT / path
@@ -109,6 +111,7 @@ def _dependency_rows(config_path: Path, cfg: dict[str, Any]) -> list[dict[str, A
         ("fit_retros", cfg.get("inputs", {}).get("fit", {}).get("retros_path", "")),
         ("fit_nws_forecast", cfg.get("inputs", {}).get("fit", {}).get("nws_forecast_path", "")),
         ("fit_glofas_forecast", cfg.get("inputs", {}).get("fit", {}).get("glofas_forecast_path", "")),
+        ("fit_usgs_cache", cfg.get("inputs", {}).get("fit", {}).get("usgs_cache_path", "")),
     ]
     for cov in cfg.get("inputs", {}).get("fit", {}).get("covariates", []) or []:
         if isinstance(cov, dict):
@@ -134,6 +137,77 @@ def _source_config_run_root(source_config: str) -> Path:
     return run_root
 
 
+def _first_existing_path(candidates: list[Path | None]) -> str:
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        if candidate.exists():
+            return str(candidate.resolve())
+    return ""
+
+
+def _resolve_bundle_usgs_daily_path(bundle_meta_path: str | Path | None) -> tuple[str, str]:
+    meta_path = _resolve_repo_path(bundle_meta_path)
+    if meta_path is None:
+        return "", ""
+    bundle_root = meta_path.parent
+    meta: dict[str, Any] = {}
+    if meta_path.exists():
+        try:
+            loaded = load_yaml(meta_path)
+        except Exception:
+            loaded = {}
+        if isinstance(loaded, dict):
+            meta = loaded
+
+    direct_path = _first_existing_path([
+        bundle_root / "inputs" / "usgs_daily.csv",
+        bundle_root / "usgs_daily.csv",
+    ])
+    if direct_path:
+        origin = "bundle_inputs" if direct_path.endswith("/inputs/usgs_daily.csv") else "bundle_root"
+        return direct_path, origin
+
+    paths_cfg = meta.get("paths", {}) if isinstance(meta.get("paths"), dict) else {}
+    meta_usgs_rel = str(paths_cfg.get("usgs_daily", "") or "").strip()
+    if meta_usgs_rel:
+        rel_path = _first_existing_path([bundle_root / meta_usgs_rel])
+        if rel_path:
+            return rel_path, "bundle_meta_paths"
+
+    histfix_cfg = meta.get("histfix", {}) if isinstance(meta.get("histfix"), dict) else {}
+    histfix_usgs = str(histfix_cfg.get("usgs_daily_source_path", "") or "").strip()
+    histfix_path = _first_existing_path([_resolve_repo_path(histfix_usgs)])
+    if histfix_path:
+        return histfix_path, "bundle_histfix_source"
+
+    return "", ""
+
+
+def _resolve_source_usgs_daily_path(source_config: str) -> tuple[str, str]:
+    run_root = _source_config_run_root(source_config)
+    run_shared_usgs = _first_existing_path([run_root / "inputs" / "shared" / "usgs" / "usgs_daily.csv"])
+    if run_shared_usgs:
+        return run_shared_usgs, "source_run_shared"
+
+    source_cfg = load_yaml(Path(source_config))
+    fit_cache = _first_existing_path([
+        _resolve_repo_path(_get_nested(source_cfg, ["inputs", "fit", "usgs_cache_path"]))
+    ])
+    if fit_cache:
+        return fit_cache, "source_fit_cache"
+
+    for bundle_meta_path in [
+        run_root / "inputs" / "shared" / "forecats_bundle" / "meta.yaml",
+        _get_nested(source_cfg, ["inputs", "forecats", "existing_bundle_path"]),
+    ]:
+        path, origin = _resolve_bundle_usgs_daily_path(bundle_meta_path)
+        if path:
+            return path, f"source_{origin}"
+
+    return "", ""
+
+
 def _rewrite_inputs_from_source_snapshot(cfg: dict[str, Any], *, source_config: str) -> None:
     run_root = _source_config_run_root(source_config)
     shared_root = run_root / "inputs" / "shared"
@@ -147,6 +221,9 @@ def _rewrite_inputs_from_source_snapshot(cfg: dict[str, Any], *, source_config: 
     for path_keys, source_path in snapshot_map.items():
         if source_path.exists():
             _set_nested(cfg, list(path_keys), str(source_path))
+    source_usgs_path, _origin = _resolve_source_usgs_daily_path(source_config)
+    if source_usgs_path:
+        _set_nested(cfg, ["inputs", "fit", "usgs_cache_path"], source_usgs_path)
 
 
 def _rewrite_fit_covariates_from_source_snapshot(cfg: dict[str, Any], *, source_config: str, keep_names: set[str]) -> None:
@@ -323,6 +400,7 @@ def _normalize_input_snapshot(cfg: dict[str, Any]) -> dict[str, Any]:
         "retros_path": str(_get_nested(cfg, ["inputs", "fit", "retros_path"]) or ""),
         "nws_forecast_path": str(_get_nested(cfg, ["inputs", "fit", "nws_forecast_path"]) or ""),
         "glofas_forecast_path": str(_get_nested(cfg, ["inputs", "fit", "glofas_forecast_path"]) or ""),
+        "usgs_cache_path": str(_get_nested(cfg, ["inputs", "fit", "usgs_cache_path"]) or ""),
         "forecats_existing_bundle_path": str(_get_nested(cfg, ["inputs", "forecats", "existing_bundle_path"]) or ""),
         "fit_covariates": [
             {"name": str(row.get("name", "")), "path": str(row.get("path", ""))}
@@ -558,6 +636,7 @@ def _build_run_config(
         keep_names={"PPT", "SOIL", "PCA"},
     )
     _apply_forecast_cov_knobs(cfg, family_cfg, c_factor=c_factor, epsilon_value=epsilon_value)
+    resolved_usgs_cache_path = str(_get_nested(cfg, ["inputs", "fit", "usgs_cache_path"]) or "")
 
     cfg["debug_featurecov_cf1_eps_campaign"] = {
         "family_id": family_id,
@@ -573,6 +652,7 @@ def _build_run_config(
         "selected_compare_dir": selection["compare_dir"],
         "selected_mean_crps": selection["mean_crps"],
         "selected_source_config": selection["source_config"],
+        "resolved_usgs_cache_path": resolved_usgs_cache_path,
         "fit_parallel_mode": fit_parallel_mode,
         "fit_parallel_workers": fit_parallel_workers,
         "transfer_function_covariates": deep_copy_dict(transfer_covariates),

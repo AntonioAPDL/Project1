@@ -14,6 +14,10 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   }
   source(post_table_helpers, local = environment())
   run_id <- cfg$run$run_id
+  repro_mode <- cfg$run$repro_mode
+  if (is.null(repro_mode) || !nzchar(repro_mode)) repro_mode <- "strict"
+  repro_mode <- as.character(repro_mode)
+  strict_repro <- identical(tolower(repro_mode), "strict")
   post_use_fit_outputs_from_run <- isTRUE(unified_get(cfg, c("inputs", "post", "use_fit_outputs_from_run"), default = TRUE))
   post_source_run_id <- unified_get(cfg, c("inputs", "post", "source_run_id"), default = NULL)
   if (!is.null(post_source_run_id) && !is.character(post_source_run_id)) {
@@ -60,11 +64,13 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
       run_root = shared_input_run_root,
       stage_name = "post",
       manifest = manifest,
-      enabled_models = cfg$models
+      enabled_models = cfg$models,
+      required_usgs = TRUE
     )
     source_retros <- shared_validation$paths$retros
     source_nws <- shared_validation$paths$nws
     source_glofas <- shared_validation$paths$glofas
+    source_usgs <- shared_validation$paths$usgs
     source_retros_scale <- shared_validation$scales$retros
     if (is.null(source_retros_scale) || !nzchar(source_retros_scale)) {
       source_retros_scale <- cfg$inputs$fit$retros_storage_scale
@@ -81,9 +87,26 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     source_retros <- cfg$inputs$fit$retros_path
     source_nws <- cfg$inputs$fit$nws_forecast_path
     source_glofas <- cfg$inputs$fit$glofas_forecast_path
+    snapshot_dest_rel <- unified_get(cfg, c("inputs", "forecats", "snapshot", "dest_rel"), default = "inputs/shared/forecats_bundle")
+    if (is.null(snapshot_dest_rel) || !nzchar(as.character(snapshot_dest_rel))) {
+      snapshot_dest_rel <- "inputs/shared/forecats_bundle"
+    }
+    source_usgs <- unified_resolve_usgs_daily_path(
+      cfg,
+      snapshot_root = file.path(shared_input_run_root, as.character(snapshot_dest_rel))
+    )$path
     source_retros_scale <- cfg$inputs$fit$retros_storage_scale
     source_nws_scale <- cfg$inputs$fit$nws_storage_scale
     source_glofas_scale <- cfg$inputs$fit$glofas_storage_scale
+  }
+  if (strict_repro && (!nzchar(source_usgs) || !file.exists(source_usgs))) {
+    stop(
+      paste(
+        "post stage requires a run-scoped or cached USGS daily truth CSV in strict mode.",
+        "Enable data_prep_shared materialization or provide inputs.fit.usgs_cache_path / inputs.forecats.existing_bundle_path."
+      ),
+      call. = FALSE
+    )
   }
 
   fit_covariates <- cfg$inputs$fit$covariates
@@ -203,10 +226,6 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   manifest <- unified_manifest_add_artifact(manifest, adapted_nws, storage_scale = legacy_scale)
   manifest <- unified_manifest_add_artifact(manifest, adapted_glofas, storage_scale = legacy_scale)
 
-  repro_mode <- cfg$run$repro_mode
-  if (is.null(repro_mode) || !nzchar(repro_mode)) repro_mode <- "strict"
-  repro_mode <- as.character(repro_mode)
-  strict_repro <- identical(tolower(repro_mode), "strict")
   legacy_fallback_requested <- isTRUE(cfg$post$allow_legacy_root_fallback)
   if (legacy_fallback_requested) {
     warning(
@@ -284,26 +303,33 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
 
   disc_w_paths_by_mode <- list()
   if (isTRUE(cfg$models$run_exdqlm_multivar)) {
+    multivar_output_suffix <- unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC")
     resolve_disc_w_mode_paths <- function(mode) {
       mode <- tolower(trimws(as.character(mode)))
       use_legacy_primary <- identical(mode, "drop") &&
         identical(mode, primary_multivar_transfer_mode)
       if (use_legacy_primary) {
         patterns <- setNames(
-          sprintf("fit/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC\\.RData$", q_labels, q_num),
+          sprintf("fit/q=%s/outputs/DISC_variables_%d_exAL_synth_%s\\.RData$", q_labels, q_num, multivar_output_suffix),
           q_labels
         )
         fallback_rel <- setNames(
-          sprintf("fit/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC.RData", q_labels, q_num),
+          sprintf("fit/q=%s/outputs/DISC_variables_%d_exAL_synth_%s.RData", q_labels, q_num, multivar_output_suffix),
           q_labels
         )
       } else {
         patterns <- setNames(
-          sprintf("fit/exdqlm_multivar/%s/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC\\.RData$", mode, q_labels, q_num),
+          sprintf(
+            "fit/exdqlm_multivar/%s/q=%s/outputs/DISC_variables_%d_exAL_synth_%s\\.RData$",
+            mode, q_labels, q_num, multivar_output_suffix
+          ),
           q_labels
         )
         fallback_rel <- setNames(
-          sprintf("fit/exdqlm_multivar/%s/q=%s/outputs/DISC_variables_%d_exAL_synth_DISC.RData", mode, q_labels, q_num),
+          sprintf(
+            "fit/exdqlm_multivar/%s/q=%s/outputs/DISC_variables_%d_exAL_synth_%s.RData",
+            mode, q_labels, q_num, multivar_output_suffix
+          ),
           q_labels
         )
       }
@@ -499,6 +525,13 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   } else {
     exdqlm_univar_impl_mode <- exdqlm_univar_impl_mode[[1L]]
   }
+  exdqlm_structure_include_trend <- if (isTRUE(unified_get(
+    cfg, c("models", "exdqlm_multivar", "structure", "include_trend"), default = TRUE
+  ))) "TRUE" else "FALSE"
+  exdqlm_structure_harmonics <- as.character(unified_get(
+    cfg, c("models", "exdqlm_multivar", "structure", "enabled_harmonic_indices"), default = c(1L, 2L, 3L)
+  ))
+  exdqlm_structure_harmonics <- paste(exdqlm_structure_harmonics, collapse = ",")
   out_dir <- file.path(run_root, "post", "outputs", run_id)
 
   base_env_overrides <- c(
@@ -514,6 +547,9 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_MODEL_RUN_NDLM_MAIN = if (isTRUE(cfg$models$run_ndlm_main)) "TRUE" else "FALSE",
     UNIFIED_MODEL_RUN_NDLM_UNIVAR = if (isTRUE(cfg$models$run_ndlm_univar)) "TRUE" else "FALSE",
     UNIFIED_EXDQLM_MULTIVAR_LIKELIHOOD_MODE = as.character(multivar_likelihood_mode),
+    UNIFIED_EXDQLM_MULTIVAR_OUTPUT_SUFFIX = as.character(multivar_output_suffix),
+    UNIFIED_EXDQLM_MULTIVAR_INCLUDE_TREND = exdqlm_structure_include_trend,
+    UNIFIED_EXDQLM_MULTIVAR_ENABLED_HARMONIC_INDICES = exdqlm_structure_harmonics,
     UNIFIED_EXDQLM_UNIVAR_LIKELIHOOD_MODE = as.character(univar_likelihood_mode),
     UNIFIED_EXDQLM_UNIVAR_IMPLEMENTATION_MODE = as.character(exdqlm_univar_impl_mode),
     UNIFIED_NDLM_FORECAST_TRANSFER_MODE = as.character(ndlm_forecast_transfer_mode),
@@ -576,6 +612,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     ENV_RETROS_PATH = normalizePath(adapted_retros, mustWork = FALSE),
     ENV_NWS_FORECAST_PATH = normalizePath(adapted_nws, mustWork = FALSE),
     ENV_GLOFAS_FORECAST_PATH = normalizePath(adapted_glofas, mustWork = FALSE),
+    if (nzchar(source_usgs) && file.exists(source_usgs)) c(ENV_USGS_DAILY_PATH = normalizePath(source_usgs, mustWork = FALSE)) else character(0),
     if (nzchar(shared_feature_csv)) c(UNIFIED_COVARIATE_FEATURES_CSV = shared_feature_csv) else character(0),
     if (nzchar(shared_feature_csv)) c(ENV_COVARIATE_FEATURES_PATH = shared_feature_csv) else character(0),
     if (nzchar(shared_cov_paths$eli)) c(ENV_COV_ELI_PATH = normalizePath(shared_cov_paths$eli, mustWork = FALSE)) else character(0),

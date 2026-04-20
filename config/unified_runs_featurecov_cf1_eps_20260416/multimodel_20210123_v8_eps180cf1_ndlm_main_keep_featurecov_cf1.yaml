@@ -144,6 +144,7 @@ inputs:
       path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/runs/multimodel_20210123_v8_ndlm_tune_20260411_v1_ndlm_main_keep/inputs/shared/covariates/cov_04_SOIL.csv
     - name: PCA
       path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/runs/multimodel_20210123_v8_ndlm_tune_20260411_v1_ndlm_main_keep/inputs/shared/covariates/cov_05_PCA.csv
+    usgs_cache_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv
   post:
     use_fit_outputs_from_run: true
     source_run_id: null
@@ -424,6 +425,7 @@ debug_featurecov_cf1_eps_campaign:
   selected_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/reports/multimodel_20210123_v8_ndlm_tune_20260411_v1_compare
   selected_mean_crps: 2.406849875859137
   selected_source_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/runs/multimodel_20210123_v8_ndlm_tune_20260411_v1_ndlm_main_keep/resolved_config.yaml
+  resolved_usgs_cache_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv
   fit_parallel_mode: global_models
   fit_parallel_workers: 1
   transfer_function_covariates:

@@ -18,6 +18,65 @@ family_shared_read_csv <- function(path, label) {
   out
 }
 
+family_shared_read_usgs_daily <- function(path, min_date = as.Date("1979-01-01")) {
+  df <- family_shared_read_csv(path, "usgs_daily")
+  src_dates <- family_shared_pick_date_column(df, cov_name = "USGS")
+  if (all(is.na(src_dates))) {
+    stop(sprintf("input usgs_daily has no parseable date column: %s", path), call. = FALSE)
+  }
+
+  cfs_to_cms <- 0.0283168466
+  cfs <- NULL
+  cms <- NULL
+
+  if ("discharge_cfs" %in% names(df)) {
+    cfs <- suppressWarnings(as.numeric(df$discharge_cfs))
+  } else if ("X_00060_00003" %in% names(df)) {
+    cfs <- suppressWarnings(as.numeric(df$X_00060_00003))
+  }
+
+  if ("discharge_cms" %in% names(df)) {
+    cms <- suppressWarnings(as.numeric(df$discharge_cms))
+  }
+
+  if (is.null(cfs) && is.null(cms)) {
+    fallback <- family_shared_pick_numeric_column(
+      df,
+      preferred = c("USGS", "usgs", "flow", "value", "discharge")
+    )
+    if (is.null(fallback)) {
+      stop(sprintf("input usgs_daily has no numeric discharge column: %s", path), call. = FALSE)
+    }
+    cms <- suppressWarnings(as.numeric(fallback))
+  }
+
+  if (is.null(cms)) {
+    cms <- cfs * cfs_to_cms
+  }
+  if (is.null(cfs)) {
+    cfs <- cms / cfs_to_cms
+  }
+
+  keep <- !is.na(src_dates) & is.finite(cfs) & is.finite(cms)
+  out <- data.frame(
+    Date = as.Date(src_dates[keep]),
+    timestamp = as.Date(src_dates[keep]),
+    time = as.Date(src_dates[keep]),
+    discharge_cfs = as.numeric(cfs[keep]),
+    discharge_cms = as.numeric(cms[keep]),
+    X_00060_00003 = as.numeric(cfs[keep]),
+    data0 = log(as.numeric(cms[keep]) + 1),
+    stringsAsFactors = FALSE
+  )
+  out <- out[out$Date > as.Date(min_date), , drop = FALSE]
+  out <- out[order(out$Date), , drop = FALSE]
+  rownames(out) <- NULL
+  if (nrow(out) < 1L) {
+    stop(sprintf("input usgs_daily has no finite rows after filtering: %s", path), call. = FALSE)
+  }
+  out
+}
+
 family_shared_normalize_name <- function(x) {
   gsub("[^a-z0-9]+", "", tolower(as.character(x)))
 }

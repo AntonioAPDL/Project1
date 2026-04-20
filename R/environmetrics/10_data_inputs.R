@@ -18,12 +18,20 @@ ELI_lon$time <- ELI_lon$time - years(adjustment_years)
 #
 CFSToCMS_CONVERSION_FACTOR = 0.0283168466
 # Read and process USGS data
-data_usgs_r <- readNWISdv(siteNumbers = site_code[1], parameterCd = "00060", statCd = "00003")
-San_Lorenzo_Daily_USGS_R <- data_usgs_r %>%
-  mutate(timestamp = as.Date(Date),
-         data0 = log(X_00060_00003*CFSToCMS_CONVERSION_FACTOR + 1)) %>%
-  filter(timestamp > as.Date("1979-01-01"))
-San_Lorenzo_Daily_USGS_R$time <- San_Lorenzo_Daily_USGS_R$timestamp
+if (nzchar(USGS_DAILY_PATH) && file.exists(USGS_DAILY_PATH)) {
+  message(sprintf("Using local USGS daily truth CSV: %s", USGS_DAILY_PATH))
+  San_Lorenzo_Daily_USGS_R <- family_shared_read_usgs_daily(
+    USGS_DAILY_PATH,
+    min_date = as.Date("1979-01-01")
+  )
+} else {
+  data_usgs_r <- readNWISdv(siteNumbers = site_code[1], parameterCd = "00060", statCd = "00003")
+  San_Lorenzo_Daily_USGS_R <- data_usgs_r %>%
+    mutate(timestamp = as.Date(Date),
+           data0 = log(X_00060_00003*CFSToCMS_CONVERSION_FACTOR + 1)) %>%
+    filter(timestamp > as.Date("1979-01-01"))
+  San_Lorenzo_Daily_USGS_R$time <- San_Lorenzo_Daily_USGS_R$timestamp
+}
 
 cutoff_date <- if (exists("CUTOFF_DATE", inherits = TRUE)) as.Date(get("CUTOFF_DATE", inherits = TRUE)) else as.Date("2022-12-25")
 if (is.na(cutoff_date)) cutoff_date <- as.Date("2022-12-25")

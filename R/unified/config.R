@@ -581,6 +581,19 @@ unified_resolve_multivar_primary_transfer_mode <- function(cfg, modes = NULL, de
   modes[[1]]
 }
 
+unified_resolve_exdqlm_multivar_legacy_output_suffix <- function(cfg, default = "DISC") {
+  use_covariates <- isTRUE(unified_get(
+    cfg,
+    c("fit", "exdqlm_multivar", "legacy", "use_covariates"),
+    default = identical(toupper(default), "DISC")
+  ))
+  if (isTRUE(use_covariates)) {
+    "DISC"
+  } else {
+    "simp"
+  }
+}
+
 unified_set <- function(x, path, value) {
   if (length(path) == 1) {
     x[[path[[1]]]] <- value

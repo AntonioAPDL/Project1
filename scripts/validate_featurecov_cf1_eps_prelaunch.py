@@ -28,6 +28,14 @@ EXPECTED_FEATURE_COLUMNS = [
     'PPT', 'SOIL', 'PCA', 'PPT_sq', 'SOIL_sq', 'PPT_x_SOIL',
     'PPT_lag1', 'PPT_lag2', 'PPT_lag3', 'SOIL_lag1', 'SOIL_lag2', 'SOIL_lag3',
 ]
+EXPECTED_FIT_WORKERS_BY_FAMILY = {
+    'exdqlm_multivar_keep': 7,
+    'exdqlm_multivar_drop': 7,
+    'dqlm_multivar_al_keep': 7,
+    'dqlm_multivar_al_drop': 7,
+    'ndlm_main_keep': 1,
+    'ndlm_main_drop': 1,
+}
 
 
 def run(cmd: list[str], *, cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -151,9 +159,10 @@ def main() -> int:
         assert_true(payload['inputs']['covariate_features']['include_squares'] is True, f'{path.name}: squares disabled')
         assert_true(payload['inputs']['covariate_features']['include_interaction'] is True, f'{path.name}: interaction disabled')
         assert_true(payload['inputs']['deterministic_climate']['handoff_root'] == str(handoff_root), f'{path.name}: handoff_root mismatch')
-        assert_true(int(payload['run']['threads']['mc_cores']) == 1, f'{path.name}: mc_cores must be 1')
         assert_true(payload['fit']['parallel']['mode'] == 'global_models', f'{path.name}: fit.parallel.mode must be global_models')
-        assert_true(int(payload['fit']['parallel']['workers']) == 1, f'{path.name}: fit.parallel.workers must be 1')
+        expected_workers = EXPECTED_FIT_WORKERS_BY_FAMILY[family]
+        assert_true(int(payload['run']['threads']['mc_cores']) == expected_workers, f'{path.name}: mc_cores must be {expected_workers}')
+        assert_true(int(payload['fit']['parallel']['workers']) == expected_workers, f'{path.name}: fit.parallel.workers must be {expected_workers}')
         active = {
             'run_exdqlm_multivar': bool(payload['models']['run_exdqlm_multivar']),
             'run_exdqlm_univar': bool(payload['models']['run_exdqlm_univar']),

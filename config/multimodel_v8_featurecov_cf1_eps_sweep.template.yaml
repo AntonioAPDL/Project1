@@ -24,6 +24,8 @@ reuse:
       spec_id: featurecov_v1
       run_id_template: multimodel_{cutoff}_v8_{spec_id}_{run_suffix}
 inputs:
+  fit:
+    usgs_cache_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv
   deterministic_climate:
     enabled: true
     handoff_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
@@ -148,7 +150,7 @@ families:
     likelihood_mode: exal
     transfer_mode: keep
     run_suffix: exdqlm_multivar_keep
-    fit_parallel_workers: 1
+    fit_parallel_workers: 7
   exdqlm_multivar_drop:
     enabled: true
     model_id: exdqlm_multivar_synth_drop
@@ -156,7 +158,7 @@ families:
     likelihood_mode: exal
     transfer_mode: drop
     run_suffix: exdqlm_multivar_drop
-    fit_parallel_workers: 1
+    fit_parallel_workers: 7
   dqlm_multivar_al_keep:
     enabled: true
     model_id: dqlm_multivar_al_synth_keep
@@ -164,7 +166,7 @@ families:
     likelihood_mode: al
     transfer_mode: keep
     run_suffix: dqlm_multivar_al_keep
-    fit_parallel_workers: 1
+    fit_parallel_workers: 7
   dqlm_multivar_al_drop:
     enabled: true
     model_id: dqlm_multivar_al_synth_drop
@@ -172,7 +174,7 @@ families:
     likelihood_mode: al
     transfer_mode: drop
     run_suffix: dqlm_multivar_al_drop
-    fit_parallel_workers: 1
+    fit_parallel_workers: 7
   ndlm_main_keep:
     enabled: true
     model_id: ndlm_main_synth_keep

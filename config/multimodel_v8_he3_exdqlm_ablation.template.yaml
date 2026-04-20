@@ -1,0 +1,88 @@
+version: 1
+campaign:
+  campaign_id: multimodel_v8_he3_exdqlm_ablation_20260420
+  study_id: he3_exdqlm_ablation_v1
+  artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_20260420
+  matrix_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_20260420/control/he3_exdqlm_ablation_v1
+  config_output_dir: config/unified_runs_he3_exdqlm_ablation_20260420
+source:
+  cf1_sweep_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_featurecov_cf1_eps_sweep_20260416
+  cf1_config_dir: config/unified_runs_featurecov_cf1_eps_20260416
+  best_by_cutoff_csv: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_featurecov_cf1_eps_sweep_20260416/reports/final_featurecov_cf1_eps_analysis/best_by_cutoff_long.csv
+  selected_model_variant: exdqlm_multivar_keep
+queue:
+  ordinary_max_concurrent: 4
+  heavy_cutoff_max_concurrent: 1
+  pause_free_gb: 180
+  launch_free_gb: 220
+  heavy_free_gb: 240
+  poll_seconds: 60
+fit_parallel:
+  workers: 7
+pilot_sequence:
+  - 20211112
+  - 20221225
+variants:
+  full:
+    enabled: true
+    reuse_reference: true
+    manuscript_label: exAL-M-T1
+    include_trend: true
+    enabled_harmonic_indices:
+      - 1
+      - 2
+      - 3
+    use_covariates: true
+    forecast_transfer_mode: keep
+  noTrend:
+    enabled: true
+    reuse_reference: false
+    manuscript_label: exAL-M-T1-noTrend
+    include_trend: false
+    enabled_harmonic_indices:
+      - 1
+      - 2
+      - 3
+    use_covariates: true
+    forecast_transfer_mode: keep
+  noTF:
+    enabled: true
+    reuse_reference: false
+    manuscript_label: exAL-M-noTF
+    include_trend: true
+    enabled_harmonic_indices:
+      - 1
+      - 2
+      - 3
+    use_covariates: false
+    forecast_transfer_mode: drop
+  noH1:
+    enabled: true
+    reuse_reference: false
+    manuscript_label: exAL-M-T1-noH1
+    include_trend: true
+    enabled_harmonic_indices:
+      - 2
+      - 3
+    use_covariates: true
+    forecast_transfer_mode: keep
+  noH2:
+    enabled: true
+    reuse_reference: false
+    manuscript_label: exAL-M-T1-noH2
+    include_trend: true
+    enabled_harmonic_indices:
+      - 1
+      - 3
+    use_covariates: true
+    forecast_transfer_mode: keep
+  noH3:
+    enabled: true
+    reuse_reference: false
+    manuscript_label: exAL-M-T1-noH3
+    include_trend: true
+    enabled_harmonic_indices:
+      - 1
+      - 2
+    use_covariates: true
+    forecast_transfer_mode: keep

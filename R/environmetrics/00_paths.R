@@ -210,6 +210,10 @@ COV_ONI_PATH <- resolve_covariate_path(
 
 NWS_FORECAST_PATH <- env_or_default("ENV_NWS_FORECAST_PATH", file.path(PROJECT_ROOT, "nws_forecast.csv"))
 GLOFAS_FORECAST_PATH <- env_or_default("ENV_GLOFAS_FORECAST_PATH", file.path(PROJECT_ROOT, "weighted_time_series.csv"))
+USGS_DAILY_PATH <- require_runscoped_path(
+  env_or_default("ENV_USGS_DAILY_PATH", env_or_default("UNIFIED_USGS_DAILY_CSV", "")),
+  "USGS daily truth"
+)
 
 PPT_PATH <- resolve_covariate_path(
   "ENV_PPT_PATH",
@@ -258,6 +262,30 @@ if (nzchar(NDLM_UNIVAR_RDATA_PATH)) {
 UNIV_RDATA_MAP <- index_by_labels(UNIV_RDATA_PATHS, quantile_labels)
 DISC_W_RDATA_MAP <- index_by_labels(DISC_W_RDATA_PATHS, quantile_labels)
 
+detect_disc_w_object_suffix <- function(paths, default = "DISC") {
+  env_suffix <- trimws(Sys.getenv("UNIFIED_EXDQLM_MULTIVAR_OUTPUT_SUFFIX", ""))
+  if (nzchar(env_suffix)) {
+    env_suffix_lower <- tolower(env_suffix)
+    if (env_suffix_lower %in% c("disc", "simp")) {
+      return(if (identical(env_suffix_lower, "disc")) "DISC" else "simp")
+    }
+  }
+  if (length(paths) > 0L) {
+    for (path in as.character(paths)) {
+      base <- basename(path)
+      if (grepl("_exAL_synth_simp\\.RData$", base)) {
+        return("simp")
+      }
+      if (grepl("_exAL_synth_DISC\\.RData$", base)) {
+        return("DISC")
+      }
+    }
+  }
+  default
+}
+
+DISC_W_OBJECT_SUFFIX <- detect_disc_w_object_suffix(DISC_W_RDATA_PATHS, default = "DISC")
+
 resolve_univar_path <- function(label) {
   label <- to_quantile_label(label)
   fallback <- legacy_root_path(sprintf("variables_%d_exAL_synth_DISC_uni.RData", as.integer(label)))
@@ -266,7 +294,7 @@ resolve_univar_path <- function(label) {
 
 resolve_disc_w_path <- function(label) {
   label <- to_quantile_label(label)
-  fallback <- legacy_root_path(sprintf("DISC_variables_%d_exAL_synth_DISC.RData", as.integer(label)))
+  fallback <- legacy_root_path(sprintf("DISC_variables_%d_exAL_synth_%s.RData", as.integer(label), DISC_W_OBJECT_SUFFIX))
   require_runscoped_path(map_get(DISC_W_RDATA_MAP, label), sprintf("DISC-W artifact q=%s", label), fallback)
 }
 
