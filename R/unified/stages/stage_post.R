@@ -242,6 +242,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     cfg,
     modes = multivar_transfer_modes
   )
+  multivar_output_suffix <- unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC")
   univar_likelihood_mode <- unified_resolve_univar_likelihood_mode(cfg, default = "exal")
   multivar_likelihood_mode <- unified_resolve_multivar_likelihood_mode(cfg, default = "exal")
   ndlm_forecast_transfer_mode <- unified_resolve_ndlm_forecast_transfer_mode(cfg, default = "keep")
@@ -303,7 +304,6 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
 
   disc_w_paths_by_mode <- list()
   if (isTRUE(cfg$models$run_exdqlm_multivar)) {
-    multivar_output_suffix <- unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC")
     resolve_disc_w_mode_paths <- function(mode) {
       mode <- tolower(trimws(as.character(mode)))
       use_legacy_primary <- identical(mode, "drop") &&

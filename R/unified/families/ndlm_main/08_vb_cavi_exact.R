@@ -167,6 +167,14 @@ ndlm_exact_forecast_prior_anchor <- function(registry, hist_forward, inputs, con
   if (!is.finite(epsilon0) || epsilon0 <= 0) {
     epsilon0 <- as.numeric(inputs$T)
   }
+  dof_offset <- suppressWarnings(as.numeric(constants$forecast_iw_dof_offset))
+  if (!is.finite(dof_offset) || dof_offset < 2) {
+    dof_offset <- 4
+  }
+  scale_mult <- as.numeric(constants$forecast_iw_scale_mult)
+  if (!is.finite(scale_mult) || scale_mult <= 0) {
+    scale_mult <- 1
+  }
   iw_jitter <- as.numeric(constants$forecast_iw_jitter)
   if (!is.finite(iw_jitter) || iw_jitter < 0) iw_jitter <- 1e-8
   W_T_hist <- hist_forward$Q_hist[[inputs$T]]
@@ -187,9 +195,9 @@ ndlm_exact_forecast_prior_anchor <- function(registry, hist_forward, inputs, con
       as.matrix(W_T_hist[idx_k, idx_k, drop = FALSE]) + diag(max(iw_jitter, 1e-8), d_k),
       constants = constants
     )$cov
-    nu0 <- as.numeric(d_k + 1 + epsilon0)
+    nu0 <- as.numeric(d_k + dof_offset + epsilon0)
     S0 <- ndlm_theory_stabilize_covariance_local(
-      epsilon0 * c_factor * W_T_k + diag(iw_jitter, d_k),
+      epsilon0 * c_factor * scale_mult * W_T_k + diag(iw_jitter, d_k),
       constants = constants
     )$cov
     nu0_list[[k]] <- nu0
@@ -207,6 +215,8 @@ ndlm_exact_forecast_prior_anchor <- function(registry, hist_forward, inputs, con
     trace_W_T_k = trace_W_T_k,
     c_factor = c_factor,
     epsilon0 = epsilon0,
+    dof_offset = dof_offset,
+    scale_mult = scale_mult,
     anchor_mode = "terminal_Q_hist"
   )
 }
@@ -892,6 +902,8 @@ ndlm_exact_fit <- function(inputs, constants) {
       nu0 = as.numeric(w_factors[[k]]$nu0),
       epsilon0 = as.numeric(prior_anchor$epsilon0),
       c_factor = as.numeric(prior_anchor$c_factor),
+      dof_offset = as.numeric(prior_anchor$dof_offset),
+      scale_mult = as.numeric(prior_anchor$scale_mult),
       trace_S0 = sum(diag(w_factors[[k]]$S0)),
       trace_S0_over_epsilon0 = sum(diag(w_factors[[k]]$S0 / max(as.numeric(prior_anchor$epsilon0), 1e-8))),
       trace_scatter = sum(diag(scatter_k)),
@@ -1097,11 +1109,15 @@ ndlm_exact_fit <- function(inputs, constants) {
       latent_var_clipped_total = 0L,
       forecast_iw_c_factor = as.numeric(prior_anchor$c_factor),
       forecast_iw_epsilon0 = as.numeric(prior_anchor$epsilon0),
+      forecast_iw_dof_offset = as.numeric(prior_anchor$dof_offset),
+      forecast_iw_scale_mult = as.numeric(prior_anchor$scale_mult),
       forecast_iw_anchor_mode = as.character(prior_anchor$anchor_mode)
     ),
     forecast_prior = list(
       c_factor = as.numeric(prior_anchor$c_factor),
       epsilon0 = as.numeric(prior_anchor$epsilon0),
+      dof_offset = as.numeric(prior_anchor$dof_offset),
+      scale_mult = as.numeric(prior_anchor$scale_mult),
       anchor_mode = as.character(prior_anchor$anchor_mode),
       trace_W_T_hist = as.numeric(prior_anchor$trace_W_T_hist)
     ),
@@ -1119,6 +1135,8 @@ ndlm_exact_fit <- function(inputs, constants) {
         nu = fac$nu,
         epsilon0 = as.numeric(prior_anchor$epsilon0),
         c_factor = as.numeric(prior_anchor$c_factor),
+        dof_offset = as.numeric(prior_anchor$dof_offset),
+        scale_mult = as.numeric(prior_anchor$scale_mult),
         trace_W_T_k = as.numeric(sum(diag(prior_anchor$W_T[[k]]))),
         trace_S0 = sum(diag(fac$S0)),
         trace_S = sum(diag(fac$S)),

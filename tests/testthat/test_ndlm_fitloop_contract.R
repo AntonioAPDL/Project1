@@ -1,5 +1,6 @@
 source(testthat::test_path("..", "..", "R", "unified", "families", "ndlm_main", "00_constants.R"))
 source(testthat::test_path("..", "..", "R", "unified", "families", "ndlm_main", "03_vb_updates.R"))
+source(testthat::test_path("..", "..", "R", "unified", "families", "ndlm_main", "08_vb_cavi_exact.R"))
 
 test_that("ndlm constants read fit-loop controls from environment", {
   old <- Sys.getenv(c(
@@ -150,4 +151,46 @@ test_that("ndlm observation-list builder preserves separate source channels and 
   expect_equal(length(out$tail_export_idx), 20L)
   expect_equal(length(out$future_H$usgs), 27L)
   expect_equal(which(out$future_H$usgs != 0)[1], 1L)
+})
+
+test_that("ndlm forecast IW anchor uses dof_offset and scale_mult", {
+  constants <- ndlm_theory_constants(seed = 777L)
+  constants$forecast_iw_c_factor <- 1.5
+  constants$forecast_iw_epsilon0 <- 10
+  constants$forecast_iw_dof_offset <- 6L
+  constants$forecast_iw_scale_mult <- 2.0
+  constants$forecast_iw_jitter <- 1e-8
+
+  registry <- list(
+    K_max = 1L,
+    hist_dim = 4L,
+    lead_specs = list(list(hist_to_fore_idx = c(1L, 2L), state_dim = 2L))
+  )
+  hist_forward <- list(
+    Q_hist = list(
+      diag(4),
+      diag(4),
+      diag(c(2, 3, 4, 5))
+    )
+  )
+  inputs <- list(T = 3L)
+
+  out <- ndlm_exact_forecast_prior_anchor(
+    registry = registry,
+    hist_forward = hist_forward,
+    inputs = inputs,
+    constants = constants
+  )
+
+  expect_equal(out$epsilon0, 10)
+  expect_equal(out$c_factor, 1.5)
+  expect_equal(out$dof_offset, 6)
+  expect_equal(out$scale_mult, 2.0)
+  expect_equal(out$nu0[[1]], 18)
+  expect_equal(diag(out$W_T[[1]]), c(2, 3))
+  expect_equal(
+    diag(out$S0[[1]]),
+    c(10 * 1.5 * 2.0 * 2 + 1e-8, 10 * 1.5 * 2.0 * 3 + 1e-8),
+    tolerance = 1e-8
+  )
 })
