@@ -278,18 +278,33 @@ def write_final_summary(matrix_dir: Path, cells: list[tuple[str, str]], artifact
     (matrix_dir / "final_matrix_summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def launch_allowed(candidate: pd.Series, active: list[dict[str, str]], free_gb: float, ordinary_max_concurrent: int, pause_free_gb: float, launch_free_gb: float, heavy_free_gb: float) -> tuple[bool, str]:
+def launch_allowed(
+    candidate: pd.Series,
+    active: list[dict[str, str]],
+    free_gb: float,
+    ordinary_max_concurrent: int,
+    pause_free_gb: float,
+    launch_free_gb: float,
+    heavy_free_gb: float,
+    heavy_cutoff_max_concurrent: int = 1,
+    heavy_cutoff_blocks_ordinary: bool = True,
+) -> tuple[bool, str]:
     if free_gb < pause_free_gb:
         return False, f"paused: free_gb={free_gb} below pause threshold {pause_free_gb}"
     active_count = len(active)
-    active_heavy = any(f"multimodel_{HEAVY_CUTOFF}_v8_" in row["command"] for row in active)
+    active_heavy_count = sum(1 for row in active if f"multimodel_{HEAVY_CUTOFF}_v8_" in row["command"])
     if candidate["cutoff"] == HEAVY_CUTOFF:
-        if active_count > 0:
-            return False, "heavy cutoff waits until no other v8 lane is active"
+        active_ordinary_count = active_count - active_heavy_count
+        if heavy_cutoff_blocks_ordinary and active_ordinary_count > 0:
+            return False, "heavy cutoff waits until no ordinary v8 lane is active"
+        if active_count >= ordinary_max_concurrent:
+            return False, f"active_count={active_count} reached ordinary concurrency limit {ordinary_max_concurrent}"
+        if active_heavy_count >= heavy_cutoff_max_concurrent:
+            return False, f"heavy cutoff reached concurrency limit {heavy_cutoff_max_concurrent}"
         if free_gb <= heavy_free_gb:
             return False, f"heavy cutoff requires free_gb>{heavy_free_gb}, observed {free_gb}"
         return True, ""
-    if active_heavy:
+    if heavy_cutoff_blocks_ordinary and active_heavy_count > 0:
         return False, "ordinary cutoff waits while heavy cutoff is active"
     if active_count >= ordinary_max_concurrent:
         return False, f"active_count={active_count} reached ordinary concurrency limit {ordinary_max_concurrent}"
@@ -327,6 +342,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--pause-free-gb", type=float, default=180)
     ap.add_argument("--launch-free-gb", type=float, default=220)
     ap.add_argument("--heavy-free-gb", type=float, default=240)
+    ap.add_argument("--heavy-cutoff-max-concurrent", type=int, default=1)
+    ap.add_argument("--no-heavy-cutoff-blocks-ordinary", action="store_true")
     ap.add_argument("--poll-seconds", type=int, default=60)
     return ap.parse_args()
 
@@ -410,6 +427,8 @@ def main() -> int:
                         pause_free_gb=args.pause_free_gb,
                         launch_free_gb=args.launch_free_gb,
                         heavy_free_gb=args.heavy_free_gb,
+                        heavy_cutoff_max_concurrent=args.heavy_cutoff_max_concurrent,
+                        heavy_cutoff_blocks_ordinary=not args.no_heavy_cutoff_blocks_ordinary,
                     )
                     if not allowed:
                         continue

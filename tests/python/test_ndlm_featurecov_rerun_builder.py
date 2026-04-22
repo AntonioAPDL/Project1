@@ -11,6 +11,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = ROOT / "config" / "multimodel_v8_ndlm_featurecov_rerun.template.yaml"
+POSTFIX_CONFIG = ROOT / "config" / "multimodel_v8_ndlm_featurecov_rerun_postfix_20260421.template.yaml"
 BUILDER = ROOT / "scripts" / "build_multimodel_v8_ndlm_featurecov_rerun_matrix_configs.py"
 
 
@@ -103,6 +104,47 @@ class NdLmFeaturecovRerunBuilderTest(unittest.TestCase):
                     self.assertEqual(prior["n0"], 20)
                     self.assertEqual(prior["S0"], 1)
                     self.assertEqual(payload["models"]["ndlm_univar"]["state_evolution"]["df_covs"], 0.99999999)
+
+    def test_postfix_builder_writes_15_row_queue_contract(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="ndlm_featurecov_postfix_builder_") as tmpdir:
+            tmp = Path(tmpdir)
+            artifact_root = tmp / "artifact_root"
+            matrix_dir = tmp / "matrix_dir"
+            config_dir = tmp / "configs"
+            proc = subprocess.run(
+                [
+                    "python3",
+                    str(BUILDER),
+                    "--config",
+                    str(POSTFIX_CONFIG),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--matrix-dir",
+                    str(matrix_dir),
+                    "--config-output-dir",
+                    str(config_dir),
+                    "--cutoffs",
+                    "20210123",
+                    "20211112",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, msg=f"STDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}")
+            metadata = load_yaml(matrix_dir / "matrix_metadata.yaml")
+            queue = metadata["queue"]
+            self.assertEqual(queue["ordinary_max_concurrent"], 15)
+            self.assertEqual(queue["heavy_cutoff_max_concurrent"], 15)
+            self.assertFalse(queue["heavy_cutoff_blocks_ordinary"])
+            self.assertEqual(queue["poll_seconds"], 5)
+
+            launch_settings = (matrix_dir / "launch_settings.env").read_text(encoding="utf-8")
+            self.assertIn("ORDINARY_MAX_CONCURRENT=15", launch_settings)
+            self.assertIn("HEAVY_CUTOFF_MAX_CONCURRENT=15", launch_settings)
+            self.assertIn("HEAVY_CUTOFF_BLOCKS_ORDINARY=0", launch_settings)
+            self.assertIn("POLL_SECONDS=5", launch_settings)
 
 
 if __name__ == "__main__":

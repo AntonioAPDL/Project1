@@ -87,9 +87,13 @@ def main() -> int:
         launch_settings["LAUNCH_FREE_GB"],
         "--heavy-free-gb",
         launch_settings["HEAVY_FREE_GB"],
+        "--heavy-cutoff-max-concurrent",
+        launch_settings.get("HEAVY_CUTOFF_MAX_CONCURRENT", "1"),
         "--poll-seconds",
         launch_settings["POLL_SECONDS"],
     ]
+    if launch_settings.get("HEAVY_CUTOFF_BLOCKS_ORDINARY", "1") in {"0", "false", "False", "no"}:
+        queue_cmd.append("--no-heavy-cutoff-blocks-ordinary")
 
     if args.dry_run:
         print(" ".join(queue_cmd))

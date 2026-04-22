@@ -1,0 +1,192 @@
+version: 1
+
+campaign:
+  campaign_id: multimodel_v8_ndlm_featurecov_rerun_postfix_20260421
+  spec_id: ndlm_featurecov_v1_postfix
+  artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421
+  matrix_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421/control/ndlm_featurecov_v1
+  config_output_dir: config/unified_runs_ndlm_featurecov_rerun_postfix_20260421
+  launch_queue: false
+
+queue:
+  ordinary_max_concurrent: 15
+  pause_free_gb: 180
+  launch_free_gb: 220
+  heavy_free_gb: 240
+  heavy_cutoff_max_concurrent: 15
+  heavy_cutoff_blocks_ordinary: false
+  poll_seconds: 5
+
+fit_parallel:
+  mode: global_models
+  default_workers: 1
+
+compare:
+  builder: scripts/build_multimodel_v8_ndlm_compare_bundle.py
+
+inputs:
+  fit:
+    usgs_cache_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv
+  deterministic_climate:
+    enabled: true
+    handoff_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
+    horizon_days: null
+    require_full_horizon: true
+    precip:
+      enabled: true
+      source: gefs_apcp
+      reduction: q85
+      dry_day_threshold_mm: 0.0
+      noisy_blend:
+        enabled: true
+        noise_sd: 30.0
+        noise_seed: 20260415
+        noise_distribution: normal
+        floor_at_zero: true
+      observed_blend:
+        enabled: true
+        observed_weight: 0.5
+        observed_zero_stay_prob: 0.9
+        observed_zero_stay_seed: 20260415
+    soil:
+      enabled: true
+      source: gefs_soilw_0_0.1m
+      reduction: q85
+      noisy_blend:
+        enabled: true
+        noise_sd: 0.05
+        noise_seed: 20260415
+        noise_distribution: abs_normal
+        floor_at_zero: false
+      observed_blend:
+        enabled: true
+        observed_weight: 0.5
+        observed_zero_stay_prob: null
+        observed_zero_stay_seed: 20260415
+  covariate_features:
+    enabled: true
+    output_filename: covariate_features.csv
+    lag_orders: [1, 2, 3]
+    include_squares: true
+    include_interaction: true
+
+cutoffs:
+  "20210123":
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20210123_v8_epsTT_compare
+    candidate_report_roots:
+      - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports
+      - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/reports
+  "20211112":
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20211112_v8_epsTT_compare
+    candidate_report_roots:
+      - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports
+      - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/reports
+  "20211221":
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports/multimodel_20211221_v8_epsTT_compare
+    candidate_report_roots:
+      - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports
+      - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/reports
+  "20220511":
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports/multimodel_20220511_v8_epsTT_compare
+    candidate_report_roots:
+      - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports
+      - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/reports
+  "20221225":
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20221225_v8_epsTT_compare
+    candidate_report_roots:
+      - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports
+      - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/reports
+
+families:
+  ndlm_main_keep:
+    enabled: true
+    model_id: ndlm_main_synth_keep
+    model_key: ndlm_main
+    transfer_mode: keep
+    run_suffix: ndlm_main_keep
+    fit_parallel_workers: 1
+  ndlm_main_drop:
+    enabled: true
+    model_id: ndlm_main_synth_drop
+    model_key: ndlm_main
+    transfer_mode: drop
+    run_suffix: ndlm_main_drop
+    fit_parallel_workers: 1
+  ndlm_univar_keep:
+    enabled: true
+    model_id: ndlm_univar_synth_keep
+    model_key: ndlm_univar
+    transfer_mode: keep
+    run_suffix: ndlm_univar_keep
+    fit_parallel_workers: 1
+
+specs:
+  ndlm_featurecov_v1_postfix:
+    enabled: true
+    description: Corrected NDLM rerun under the shared featurecov/blended-forecast contract after the multivariate predictive sigma-row fix.
+    ndlm_main:
+      implementation_mode: theory_aligned
+      kalman_backend: cpp
+      seasonality:
+        period: 363.5854
+        harmonics: [1, 2, 0.1469118904]
+      state_evolution:
+        df_t: 0.99999999
+        df_s1: 0.99999999
+        df_s2: 0.99999999
+        df_s67: 0.99999999
+        df_discrep: 0.99999999
+        lambda: 0.97
+        df_trans: 0.9999999
+        df_covs: 0.99999999
+      prior:
+        forecast_cov:
+          c_factor: 1.0
+          epsilon: null
+          dof_offset: 4
+          scale_mult: 1.0
+          jitter: 1.0e-8
+      stabilization:
+        cov_eig_floor: 1.0e-8
+        cov_eig_cap: 1.0e8
+        cov_diag_jitter: 1.0e-10
+        sigma_upper_cap: 1.0e12
+        sigma_update_damping: 1.0
+        latent_var_cap_mult: 1.0e4
+        latent_var_cap_abs: 1.0e8
+    ndlm_univar:
+      implementation_mode: theory_aligned_closed_form
+      kalman_backend: cpp
+      seasonality:
+        period: 363.5854
+        harmonics: [1, 2, 3]
+      horizon_cap: 90
+      posterior_draws: 64
+      prior:
+        n0: 20
+        S0: 1
+      state_evolution:
+        df_t: 0.99999999
+        df_s1: 0.99999999
+        df_s2: 0.99999999
+        df_s67: 0.99999999
+        lambda: 0.97
+        df_trans: 0.9999999
+        df_covs: 0.99999999
+      stabilization:
+        cov_eig_floor: 1.0e-8
+        cov_eig_cap: 1.0e8
+        cov_diag_jitter: 1.0e-10
+    fit:
+      ndlm_main:
+        gamma_sigma:
+          min_total_iters: 20
+          max_iter: 100
+          convergence:
+            elbo_tol: 1.0e-6
+            elbo_rel_tol: 2.5e-4

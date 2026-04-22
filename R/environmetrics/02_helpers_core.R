@@ -197,7 +197,25 @@ post_ndlm_predictive_draws <- function(
     context = paste0(context, ".mean")
   )
 
-  sigma_vec <- suppressWarnings(as.numeric(sigma_draws))
+  sigma_source_used <- "vector"
+  if (is.matrix(sigma_draws) ||
+      (!is.null(dim(sigma_draws)) && length(dim(sigma_draws)) == 2L)) {
+    sigma_mat <- as.matrix(sigma_draws)
+    if (!is.numeric(sigma_mat) || ncol(sigma_mat) < 1L) {
+      stop(sprintf("[%s_SIGMA_SHAPE] sigma draw matrix must be numeric with ncol >= 1.", context), call. = FALSE)
+    }
+    sigma_row_idx <- 1L
+    sigma_row_names <- rownames(sigma_mat)
+    if (!is.null(sigma_row_names) && "usgs" %in% sigma_row_names) {
+      sigma_row_idx <- match("usgs", sigma_row_names)
+      sigma_source_used <- "matrix_row_usgs"
+    } else {
+      sigma_source_used <- "matrix_row_1"
+    }
+    sigma_vec <- suppressWarnings(as.numeric(sigma_mat[sigma_row_idx, , drop = TRUE]))
+  } else {
+    sigma_vec <- suppressWarnings(as.numeric(sigma_draws))
+  }
   sigma_vec <- sigma_vec[is.finite(sigma_vec)]
   if (length(sigma_vec) < 1L) {
     stop(sprintf("[%s_SIGMA] sigma draws are missing or non-finite.", context), call. = FALSE)
@@ -237,7 +255,8 @@ post_ndlm_predictive_draws <- function(
     mean_loglog1p = mean_loglog1p,
     predictive_loglog1p = predictive_loglog1p,
     predictive_log1p = predictive_log1p,
-    sigma_sd = sd_vec
+    sigma_sd = sd_vec,
+    sigma_source_used = sigma_source_used
   )
 }
 
