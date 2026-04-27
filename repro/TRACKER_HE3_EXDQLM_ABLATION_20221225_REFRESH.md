@@ -25,9 +25,9 @@ winner.
 - [x] Freeze a dedicated refresh template using the new published source run
 - [x] Add regression coverage for the focused refresh path
 - [x] Validate the focused refresh path locally
-- [ ] Launch the focused refresh campaign
-- [ ] Rebuild HE3 summary / audit outputs from the refreshed slice
-- [ ] Update the corrections repo if HE3 table values change materially
+- [x] Launch the focused refresh campaign
+- [x] Rebuild HE3 summary / audit outputs from the refreshed slice
+- [x] Update the corrections repo if HE3 table values change materially
 
 ## Scope Decision
 
@@ -72,3 +72,7 @@ current published HE2 `exAL-M-T1` rows exactly.
   [he3_ablation_refresh_investigation.md](/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he3_ablation_refresh_20221225/he3_ablation_refresh_investigation.md)
 - workflow:
   [HE3_EXDQLM_ABLATION_20221225_REFRESH_WORKFLOW.md](/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/HE3_EXDQLM_ABLATION_20221225_REFRESH_WORKFLOW.md)
+- refresh summary:
+  [/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_20221225_refresh_20260426/reports/he3_exdqlm_ablation/he3_ablation_summary.md](/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_20221225_refresh_20260426/reports/he3_exdqlm_ablation/he3_ablation_summary.md)
+- refresh audit:
+  [/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_20221225_refresh_20260426/reports/he3_exdqlm_ablation/audit/he3_ablation_audit.md](/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_20221225_refresh_20260426/reports/he3_exdqlm_ablation/audit/he3_ablation_audit.md)

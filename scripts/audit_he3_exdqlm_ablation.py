@@ -17,9 +17,7 @@ DEFAULT_STRUCTURE = {
     "enabled_harmonic_indices": [1, 2, 3],
 }
 
-INVARIANT_PATHS: list[tuple[str, ...]] = [
-    ("run", "threads"),
-    ("fit", "parallel"),
+SCIENTIFIC_INVARIANT_PATHS: list[tuple[str, ...]] = [
     ("models", "exdqlm_multivar", "state_evolution"),
     ("fit", "exdqlm_multivar", "gamma_sigma"),
     ("fit", "exdqlm_multivar", "forecast_health"),
@@ -28,6 +26,11 @@ INVARIANT_PATHS: list[tuple[str, ...]] = [
     ("fit", "exdqlm_multivar", "legacy", "n_samp"),
     ("fit", "exdqlm_multivar", "legacy", "sims_enabled"),
     ("fit", "exdqlm_multivar", "legacy", "forecast_cov"),
+]
+
+EXECUTION_PATHS: list[tuple[str, ...]] = [
+    ("run", "threads"),
+    ("fit", "parallel"),
 ]
 
 RUNTIME_HASH_PATHS = [
@@ -105,9 +108,13 @@ def compare_runtime_hashes(source_run_dir: Path, run_dir: Path) -> tuple[bool, l
     return not mismatches, mismatches
 
 
-def compare_invariants(source_cfg: dict[str, Any], ablation_cfg: dict[str, Any]) -> tuple[bool, list[str]]:
+def compare_paths(
+    source_cfg: dict[str, Any],
+    ablation_cfg: dict[str, Any],
+    paths: list[tuple[str, ...]],
+) -> tuple[bool, list[str]]:
     mismatches: list[str] = []
-    for path in INVARIANT_PATHS:
+    for path in paths:
         src_value = get_in(source_cfg, path)
         abl_value = get_in(ablation_cfg, path)
         if src_value != abl_value:
@@ -196,7 +203,7 @@ def main() -> int:
     output_dir = (
         Path(args.output_dir).resolve()
         if args.output_dir
-        else HE3_REPORT_DIR_DEFAULT / "audit"
+        else artifact_root / "reports" / "he3_exdqlm_ablation" / "audit"
     )
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -242,14 +249,15 @@ def main() -> int:
         covariate_ok = bool(
             get_in(ablation_cfg, ("fit", "exdqlm_multivar", "legacy", "use_covariates"))
         ) == bool(row["use_covariates"])
-        config_ok, config_mismatches = compare_invariants(source_cfg, ablation_cfg)
+        scientific_ok, scientific_mismatches = compare_paths(source_cfg, ablation_cfg, SCIENTIFIC_INVARIANT_PATHS)
+        execution_ok, execution_mismatches = compare_paths(source_cfg, ablation_cfg, EXECUTION_PATHS)
         runtime_hashes_ok, runtime_mismatches = compare_runtime_hashes(source_run_dir, run_dir)
         target_ok, mean_crps = target_model_present(run_dir, str(row["target_model_id"]))
         overall_ok = (
             structure_ok
             and transfer_ok
             and covariate_ok
-            and config_ok
+            and scientific_ok
             and runtime_hashes_ok
             and target_ok
         )
@@ -260,8 +268,10 @@ def main() -> int:
             note_parts.append("transfer_mode")
         if not covariate_ok:
             note_parts.append("use_covariates")
-        if config_mismatches:
-            note_parts.append("config:" + ",".join(config_mismatches))
+        if scientific_mismatches:
+            note_parts.append("config:" + ",".join(scientific_mismatches))
+        if execution_mismatches:
+            note_parts.append("exec:" + ",".join(execution_mismatches))
         if runtime_mismatches:
             note_parts.append("inputs:" + ",".join(runtime_mismatches))
         if not target_ok:
@@ -283,7 +293,8 @@ def main() -> int:
                 "variant": str(row["variant"]),
                 "run_id": str(row["run_id"]),
                 "status": str(row["status"]),
-                "config_ok": structure_ok and transfer_ok and covariate_ok and config_ok,
+                "config_ok": structure_ok and transfer_ok and covariate_ok and scientific_ok,
+                "execution_ok": execution_ok,
                 "runtime_hashes_ok": runtime_hashes_ok,
                 "target_model_ok": target_ok,
                 "overall_ok": overall_ok,

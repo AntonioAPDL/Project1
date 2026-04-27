@@ -6,13 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from he3_exdqlm_ablation_lib import (
-    HE3_REPORT_DIR_DEFAULT,
-    build_status_frame,
-    crps_summary_path,
-    cutoff_to_display,
-    read_model_mean_crps,
-)
+from he3_exdqlm_ablation_lib import build_status_frame, crps_summary_path, cutoff_to_display, read_model_mean_crps
 from multimodel_v8_lib import load_yaml
 
 VARIANT_DISPLAY_ORDER = ["full", "noTrend", "noTF", "noH1", "noH2", "noH3"]
@@ -21,7 +15,7 @@ VARIANT_DISPLAY_ORDER = ["full", "noTrend", "noTF", "noH1", "noH2", "noH3"]
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Build HE3 CRPS summary tables from the ablation matrix.")
     ap.add_argument("--matrix-dir", required=True)
-    ap.add_argument("--output-dir", default=str(HE3_REPORT_DIR_DEFAULT))
+    ap.add_argument("--output-dir", default=None)
     ap.add_argument("--allow-partial", action="store_true")
     return ap.parse_args()
 
@@ -58,11 +52,14 @@ def render_latex_rows(wide: pd.DataFrame) -> str:
 def main() -> int:
     args = parse_args()
     matrix_dir = Path(args.matrix_dir).resolve()
-    output_dir = Path(args.output_dir).resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     metadata = load_yaml(matrix_dir / "matrix_metadata.yaml")
     artifact_root = Path(metadata["artifact_root"]).resolve()
+    output_dir = (
+        Path(args.output_dir).resolve()
+        if args.output_dir
+        else artifact_root / "reports" / "he3_exdqlm_ablation"
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
     plan = pd.read_csv(matrix_dir / "matrix_plan.csv")
     status = build_status_frame(plan, artifact_root)
     status.to_csv(matrix_dir / "matrix_status.csv", index=False)
