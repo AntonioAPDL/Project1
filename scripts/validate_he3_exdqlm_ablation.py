@@ -14,6 +14,7 @@ from he3_exdqlm_ablation_lib import (
     HE3_TEMPLATE_DEFAULT,
     build_status_frame,
     crps_summary_path,
+    load_variant_specs,
     load_template,
     manifest_path,
     read_model_mean_crps,
@@ -115,15 +116,22 @@ def main() -> int:
     metadata = load_yaml(matrix_dir / "matrix_metadata.yaml")
     artifact_root = Path(metadata["artifact_root"]).resolve()
     fit_workers = int(metadata["fit_workers"])
+    variant_specs = load_variant_specs(template)
 
     findings: list[str] = []
-    if len(plan) != 30:
-        findings.append(f"Expected 30 HE3 rows, found {len(plan)}.")
+    expected_cutoffs = int(plan["cutoff"].astype(str).str.zfill(8).nunique())
+    expected_total = expected_cutoffs * len(variant_specs)
+    expected_reuse = expected_cutoffs * sum(1 for spec in variant_specs if spec.reuse_reference)
+    expected_launch = expected_total - expected_reuse
+    if len(plan) != expected_total:
+        findings.append(f"Expected {expected_total} HE3 rows, found {len(plan)}.")
     counts = plan["launch_mode"].value_counts().to_dict()
-    if int(counts.get("reuse_reference", 0)) != 5:
-        findings.append(f"Expected 5 reused full references, found {counts.get('reuse_reference', 0)}.")
-    if int(counts.get("launch", 0)) != 25:
-        findings.append(f"Expected 25 launch rows, found {counts.get('launch', 0)}.")
+    if int(counts.get("reuse_reference", 0)) != expected_reuse:
+        findings.append(
+            f"Expected {expected_reuse} reused full references, found {counts.get('reuse_reference', 0)}."
+        )
+    if int(counts.get("launch", 0)) != expected_launch:
+        findings.append(f"Expected {expected_launch} launch rows, found {counts.get('launch', 0)}.")
 
     # Validate reused full references match the finalized HE2 winners exactly.
     reuse_rows = plan[plan["launch_mode"] == "reuse_reference"].copy()

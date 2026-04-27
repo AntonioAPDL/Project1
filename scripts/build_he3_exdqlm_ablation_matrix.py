@@ -12,7 +12,9 @@ from he3_exdqlm_ablation_lib import (
     BEST_BY_CUTOFF_CSV_DEFAULT,
     HE3_CONFIG_OUTPUT_DIR_DEFAULT,
     HE3_TEMPLATE_DEFAULT,
+    SOURCE_INTERNAL_MODEL_ID,
     cutoff_to_display,
+    crps_summary_path,
     dump_yaml,
     ensure_parent,
     he3_run_id,
@@ -20,6 +22,7 @@ from he3_exdqlm_ablation_lib import (
     load_template,
     load_variant_specs,
     normalize_harmonic_string,
+    read_model_mean_crps,
     render_plan_summary,
     source_config_path,
     source_run_dir,
@@ -43,6 +46,80 @@ def resolve_order_group(cutoff: str, pilot_sequence: list[str]) -> int:
     if cutoff in pilot_sequence:
         return pilot_sequence.index(cutoff) + 1
     return len(pilot_sequence) + 1
+
+
+def normalize_cutoff_filter(source_cfg: dict[str, Any]) -> set[str] | None:
+    raw = source_cfg.get("cutoff_filter")
+    if raw is None:
+        return None
+    if not isinstance(raw, (list, tuple)):
+        raise ValueError("source.cutoff_filter must be a list when provided.")
+    values = {str(item).strip().zfill(8) for item in raw if str(item).strip()}
+    return values or None
+
+
+def normalize_source_overrides(source_cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    raw = source_cfg.get("cutoff_overrides", {})
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError("source.cutoff_overrides must be a mapping when provided.")
+    normalized: dict[str, dict[str, Any]] = {}
+    for cutoff, payload in raw.items():
+        if not isinstance(payload, dict):
+            raise ValueError(f"source.cutoff_overrides[{cutoff}] must be a mapping.")
+        normalized[str(cutoff).strip().zfill(8)] = payload
+    return normalized
+
+
+def resolve_source_contract(
+    *,
+    cutoff: str,
+    target_row: pd.Series,
+    source_override: dict[str, Any] | None,
+    cf1_config_dir: Path,
+    cf1_sweep_root: Path,
+) -> dict[str, Any]:
+    best_epsilon_label = str(target_row["best_epsilon_label"])
+    source_run_name = source_run_id(cutoff, best_epsilon_label)
+    source_cfg_path = source_config_path(cf1_config_dir, cutoff, best_epsilon_label)
+    source_run_root = source_run_dir(cf1_sweep_root, cutoff, best_epsilon_label)
+    source_full_crps = float(target_row["forecast_window_crps"])
+    source_label = best_epsilon_label
+
+    if source_override:
+        source_label = str(
+            source_override.get("source_label")
+            or source_override.get("best_epsilon_label")
+            or source_label
+        ).strip()
+        source_run_root = Path(
+            str(source_override.get("source_run_dir") or source_run_root)
+        ).resolve()
+        source_cfg_path = Path(
+            str(source_override.get("source_config_path") or source_cfg_path)
+        ).resolve()
+        source_run_name = str(
+            source_override.get("source_run_id")
+            or source_override.get("run_id")
+            or source_run_root.name
+            or source_run_name
+        ).strip()
+        if "source_full_crps" in source_override and source_override.get("source_full_crps") is not None:
+            source_full_crps = float(source_override["source_full_crps"])
+        else:
+            source_full_crps = read_model_mean_crps(
+                crps_summary_path(source_run_root),
+                SOURCE_INTERNAL_MODEL_ID,
+            )
+
+    return {
+        "source_label": source_label,
+        "source_run_id": source_run_name,
+        "source_config_path": source_cfg_path,
+        "source_run_dir": source_run_root,
+        "source_full_crps": source_full_crps,
+    }
 
 
 def reset_run_metadata(cfg: dict[str, Any]) -> dict[str, Any]:
@@ -149,24 +226,38 @@ def main() -> int:
         cf1_config_dir = (template_path.parents[1] / cf1_config_dir).resolve()
     best_by_cutoff_csv = Path(args.best_by_cutoff_csv or source_cfg.get("best_by_cutoff_csv", "")).resolve()
     selected_model_variant = str(source_cfg.get("selected_model_variant", "exdqlm_multivar_keep"))
+    cutoff_filter = normalize_cutoff_filter(source_cfg)
+    source_overrides = normalize_source_overrides(source_cfg)
 
     variant_specs = load_variant_specs(template_cfg)
     targets = load_best_targets(best_by_cutoff_csv, selected_model_variant=selected_model_variant)
+    if cutoff_filter is not None:
+        targets = targets[targets["cutoff"].isin(cutoff_filter)].copy()
+    if targets.empty:
+        raise ValueError("No HE3 source targets remain after applying source.cutoff_filter.")
     fit_workers = int(template_cfg.get("fit_parallel", {}).get("workers", 7))
     pilot_sequence = [str(x) for x in template_cfg.get("pilot_sequence", [])]
 
     rows: list[dict[str, Any]] = []
     for _, target in targets.iterrows():
         cutoff = str(target["cutoff"])
-        best_epsilon_label = str(target["best_epsilon_label"])
-        source_run_name = source_run_id(cutoff, best_epsilon_label)
-        source_cfg_path = source_config_path(cf1_config_dir, cutoff, best_epsilon_label)
-        source_run_root = source_run_dir(cf1_sweep_root, cutoff, best_epsilon_label)
+        resolved_source = resolve_source_contract(
+            cutoff=cutoff,
+            target_row=target,
+            source_override=source_overrides.get(cutoff),
+            cf1_config_dir=cf1_config_dir,
+            cf1_sweep_root=cf1_sweep_root,
+        )
+        best_epsilon_label = str(resolved_source["source_label"])
+        source_run_name = str(resolved_source["source_run_id"])
+        source_cfg_path = Path(str(resolved_source["source_config_path"])).resolve()
+        source_run_root = Path(str(resolved_source["source_run_dir"])).resolve()
+        source_full_crps = float(resolved_source["source_full_crps"])
         if not source_cfg_path.exists():
             raise FileNotFoundError(f"Missing source config for HE3 cutoff={cutoff}: {source_cfg_path}")
         if not source_run_root.exists():
             raise FileNotFoundError(f"Missing source run directory for HE3 cutoff={cutoff}: {source_run_root}")
-        frozen_cfg_copy = matrix_dir / "reference_configs" / source_cfg_path.name
+        frozen_cfg_copy = matrix_dir / "reference_configs" / f"{cutoff}__{source_run_name}.yaml"
         frozen_cfg_copy.write_text(source_cfg_path.read_text(encoding="utf-8"), encoding="utf-8")
         base_cfg = load_yaml(source_cfg_path)
         order_group = resolve_order_group(cutoff, pilot_sequence)
@@ -184,7 +275,7 @@ def main() -> int:
                     variant=variant,
                     cutoff=cutoff,
                     best_epsilon_label=best_epsilon_label,
-                    best_crps=float(target["forecast_window_crps"]),
+                    best_crps=source_full_crps,
                     source_run_name=source_run_name,
                 )
                 cfg_path = config_output_dir / f"{plan_run_id}.yaml"
@@ -207,12 +298,13 @@ def main() -> int:
                     "source_run_id": source_run_name,
                     "source_run_dir": str(source_run_root),
                     "source_config_path": str(source_cfg_path),
+                    "source_config_snapshot_path": str(frozen_cfg_copy),
                     "include_trend": bool(variant.include_trend),
                     "enabled_harmonic_indices": normalize_harmonic_string(variant.enabled_harmonic_indices),
                     "use_covariates": bool(variant.use_covariates),
                     "forecast_transfer_mode": variant.forecast_transfer_mode,
                     "target_model_id": variant.target_model_id,
-                    "source_full_crps": float(target["forecast_window_crps"]),
+                    "source_full_crps": source_full_crps,
                     "selection_basis": str(target.get("selection_basis", "")),
                 }
             )

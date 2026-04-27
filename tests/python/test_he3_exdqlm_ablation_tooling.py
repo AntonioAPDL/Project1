@@ -19,6 +19,9 @@ CUTOFFS = [
     ("20220511", "eps180cf1", 0.020966),
     ("20221225", "eps360cf1", 0.614397),
 ]
+REFRESH_CUTOFF = "20221225"
+REFRESH_SOURCE_RUN_ID = "multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep"
+REFRESH_SOURCE_CRPS = 0.4375250570387207
 
 
 def base_source_config(cutoff: str, epsilon: str) -> dict:
@@ -244,6 +247,42 @@ class He3ToolingTests(unittest.TestCase):
         with self.template_path.open("w", encoding="utf-8") as handle:
             yaml.safe_dump(template, handle, sort_keys=False)
 
+        self.refresh_source_run_dir = (
+            self.runtime_root
+            / "discount_exact"
+            / "runs"
+            / REFRESH_SOURCE_RUN_ID
+        )
+        self.refresh_source_run_dir.mkdir(parents=True, exist_ok=True)
+        refresh_cfg = base_source_config(REFRESH_CUTOFF, "eps360cf1")
+        refresh_cfg["run"]["run_id"] = REFRESH_SOURCE_RUN_ID
+        refresh_cfg["run"]["run_root"] = str(self.refresh_source_run_dir.parent)
+        refresh_cfg["models"]["exdqlm_multivar"]["state_evolution"] = {
+            "df_t": 0.99999999,
+            "df_s1": 0.9998,
+            "df_s2": 0.9998,
+            "df_s67": 0.9999,
+            "df_discrep": 0.998,
+            "lambda": 0.97,
+            "df_trans": 0.9999999,
+            "df_covs": 0.9999999,
+        }
+        with (self.refresh_source_run_dir / "resolved_config.yaml").open("w", encoding="utf-8") as handle:
+            yaml.safe_dump(refresh_cfg, handle, sort_keys=False)
+        tables_dir = self.refresh_source_run_dir / "post" / "outputs" / REFRESH_SOURCE_RUN_ID / "tables"
+        tables_dir.mkdir(parents=True, exist_ok=True)
+        with (self.refresh_source_run_dir / "run_manifest.yaml").open("w", encoding="utf-8") as handle:
+            yaml.safe_dump({"stages": {"report": {"status": "pass"}}}, handle, sort_keys=False)
+        pd.DataFrame(
+            [{"model_id": "exdqlm_multivar_synth_keep", "mean_crps": REFRESH_SOURCE_CRPS}]
+        ).to_csv(tables_dir / "crps_forecast_summary.csv", index=False)
+        pd.DataFrame(
+            [
+                {"lead_day": lead, "model_id": "exdqlm_multivar_synth_keep", "crps": REFRESH_SOURCE_CRPS + lead / 100.0}
+                for lead in range(1, 29)
+            ]
+        ).to_csv(tables_dir / "crps_forecast_per_time.csv", index=False)
+
     def tearDown(self) -> None:
         shutil.rmtree(self.td, ignore_errors=True)
 
@@ -293,6 +332,71 @@ class He3ToolingTests(unittest.TestCase):
         status = pd.read_csv(self.matrix_dir / "matrix_status.csv")
         full_rows = status[status["launch_mode"] == "reuse_reference"]
         self.assertTrue((full_rows["status"] == "pass").all())
+        self.assertTrue((status[status["launch_mode"] == "launch"]["status"] == "not_started").all())
+
+    def test_build_and_validate_support_focused_refresh_override(self) -> None:
+        refresh_template_path = self.td / "he3_refresh.template.yaml"
+        refresh_cfg = yaml.safe_load(self.template_path.read_text(encoding="utf-8"))
+        refresh_cfg["campaign"]["campaign_id"] = "he3_refresh_test"
+        refresh_cfg["campaign"]["study_id"] = "he3_refresh_test_v1"
+        refresh_cfg["campaign"]["artifact_root"] = str(self.td / "refresh_artifacts")
+        refresh_cfg["campaign"]["matrix_dir"] = str(self.td / "refresh_artifacts" / "control" / "he3_refresh")
+        refresh_cfg["campaign"]["config_output_dir"] = str(self.td / "refresh_configs")
+        refresh_cfg["source"]["cutoff_filter"] = [REFRESH_CUTOFF]
+        refresh_cfg["source"]["cutoff_overrides"] = {
+            REFRESH_CUTOFF: {
+                "source_label": "set09",
+                "source_run_id": REFRESH_SOURCE_RUN_ID,
+                "source_run_dir": str(self.refresh_source_run_dir),
+                "source_config_path": str(self.refresh_source_run_dir / "resolved_config.yaml"),
+                "source_full_crps": REFRESH_SOURCE_CRPS,
+            }
+        }
+        refresh_cfg["fit_parallel"]["workers"] = 1
+        refresh_cfg["queue"]["ordinary_max_concurrent"] = 4
+        refresh_cfg["queue"]["heavy_cutoff_max_concurrent"] = 4
+        refresh_cfg["pilot_sequence"] = [REFRESH_CUTOFF]
+        with refresh_template_path.open("w", encoding="utf-8") as handle:
+            yaml.safe_dump(refresh_cfg, handle, sort_keys=False)
+
+        self.run_script(
+            "python3",
+            "scripts/build_he3_exdqlm_ablation_matrix.py",
+            "--template",
+            str(refresh_template_path),
+        )
+        refresh_matrix_dir = Path(refresh_cfg["campaign"]["matrix_dir"])
+        plan = pd.read_csv(refresh_matrix_dir / "matrix_plan.csv")
+        plan["cutoff"] = plan["cutoff"].astype(str).str.zfill(8)
+        self.assertEqual(len(plan), 6)
+        self.assertEqual(int((plan["launch_mode"] == "reuse_reference").sum()), 1)
+        self.assertEqual(int((plan["launch_mode"] == "launch").sum()), 5)
+        self.assertEqual(plan["cutoff"].nunique(), 1)
+        full_row = plan[plan["variant"] == "full"].iloc[0]
+        self.assertEqual(full_row["source_run_id"], REFRESH_SOURCE_RUN_ID)
+        self.assertAlmostEqual(float(full_row["source_full_crps"]), REFRESH_SOURCE_CRPS)
+        self.assertEqual(full_row["best_epsilon_label"], "set09")
+
+        no_tf = plan[plan["variant"] == "noTF"].iloc[0]
+        cfg = yaml.safe_load(Path(no_tf["config_path"]).read_text(encoding="utf-8"))
+        self.assertEqual(cfg["fit"]["parallel"]["workers"], 1)
+        self.assertEqual(cfg["run"]["threads"]["mc_cores"], 1)
+        self.assertEqual(
+            cfg["models"]["exdqlm_multivar"]["state_evolution"]["df_s1"],
+            0.9998,
+        )
+
+        self.run_script(
+            "python3",
+            "scripts/validate_he3_exdqlm_ablation.py",
+            "--matrix-dir",
+            str(refresh_matrix_dir),
+            "--template",
+            str(refresh_template_path),
+        )
+        status = pd.read_csv(refresh_matrix_dir / "matrix_status.csv")
+        self.assertEqual(len(status), 6)
+        self.assertTrue((status[status["launch_mode"] == "reuse_reference"]["status"] == "pass").all())
         self.assertTrue((status[status["launch_mode"] == "launch"]["status"] == "not_started").all())
 
     def test_no_trend_block_diag_helper_accepts_vector_ff(self) -> None:
