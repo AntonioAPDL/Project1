@@ -121,6 +121,101 @@ safe_exp_limit <- function(margin = 5) {
   log(.Machine$double.xmax) - margin
 }
 
+post_write_exp_guard_report <- function(summary, report_path) {
+  if (is.null(report_path) || !nzchar(report_path)) {
+    return(invisible(FALSE))
+  }
+  dir.create(dirname(report_path), recursive = TRUE, showWarnings = FALSE)
+  lines <- c(
+    sprintf("context=%s", as.character(summary$context)),
+    sprintf("overflow_policy=%s", as.character(summary$overflow_policy)),
+    sprintf("safe_exp_limit=%0.6f", as.numeric(summary$safe_exp_limit)),
+    sprintf("max_input=%0.6f", as.numeric(summary$max_input)),
+    sprintf("n_input_nonfinite=%d", as.integer(summary$n_input_nonfinite)),
+    sprintf("n_overflow_risk=%d", as.integer(summary$n_overflow_risk)),
+    sprintf("n_capped=%d", as.integer(summary$n_capped))
+  )
+  writeLines(lines, con = report_path, useBytes = TRUE)
+  invisible(TRUE)
+}
+
+post_transform_loglog1p_array <- function(
+  arr,
+  context = "latent_array",
+  margin = 5,
+  overflow_policy = c("error", "cap"),
+  report_path = NULL
+) {
+  overflow_policy <- match.arg(overflow_policy)
+  if (!is.numeric(arr) || is.null(dim(arr)) || length(dim(arr)) < 2L) {
+    stop(sprintf("[EXP_INPUT_SHAPE] %s must be a numeric array with at least 2 dimensions.", context), call. = FALSE)
+  }
+
+  finite_mask <- is.finite(arr)
+  n_input_nonfinite <- sum(!finite_mask)
+  if (n_input_nonfinite > 0L) {
+    stop(sprintf("[EXP_INPUT_NONFINITE] %s contains %d non-finite latent values.", context, as.integer(n_input_nonfinite)), call. = FALSE)
+  }
+
+  finite_vals <- as.numeric(arr[finite_mask])
+  if (length(finite_vals) == 0L) {
+    stop(sprintf("[EXP_INPUT_EMPTY] %s has no finite values to exponentiate.", context), call. = FALSE)
+  }
+
+  limit <- safe_exp_limit(margin = margin)
+  max_val <- max(finite_vals, na.rm = TRUE)
+  if (!is.finite(max_val)) {
+    stop(sprintf("[EXP_INPUT_NONFINITE] %s max latent value is non-finite.", context), call. = FALSE)
+  }
+
+  overflow_mask <- finite_mask & (arr > limit)
+  n_overflow_risk <- sum(overflow_mask)
+  n_capped <- 0L
+  arr_use <- arr
+  if (n_overflow_risk > 0L) {
+    if (identical(overflow_policy, "error")) {
+      stop(
+        sprintf(
+          "[EXP_OVERFLOW_RISK] %s contains %d latent values above the safe exp limit %.6f (max_input=%.6f).",
+          context,
+          as.integer(n_overflow_risk),
+          limit,
+          max_val
+        ),
+        call. = FALSE
+      )
+    }
+    arr_use[overflow_mask] <- limit
+    n_capped <- as.integer(n_overflow_risk)
+    warning(
+      sprintf(
+        "[EXP_OVERFLOW_CAP] %s capped %d latent values above the safe exp limit %.6f (max_input=%.6f).",
+        context,
+        n_capped,
+        limit,
+        max_val
+      ),
+      call. = FALSE
+    )
+  }
+
+  summary <- list(
+    context = as.character(context),
+    overflow_policy = as.character(overflow_policy),
+    safe_exp_limit = as.numeric(limit),
+    max_input = as.numeric(max_val),
+    n_input_nonfinite = as.integer(n_input_nonfinite),
+    n_overflow_risk = as.integer(n_overflow_risk),
+    n_capped = as.integer(n_capped)
+  )
+  post_write_exp_guard_report(summary, report_path)
+
+  list(
+    values = exp(arr_use),
+    summary = summary
+  )
+}
+
 assert_exp_safe_matrix <- function(mat, context = "latent_matrix", margin = 5) {
   if (!is.numeric(mat) || is.null(dim(mat)) || length(dim(mat)) != 2L) {
     stop(sprintf("[EXP_INPUT_SHAPE] %s must be a numeric 2D matrix.", context), call. = FALSE)
@@ -158,8 +253,11 @@ post_transform_loglog1p_to_log1p_mat <- function(sample_mat, context = "sample_m
   if (!is.numeric(sample_mat) || length(dim(sample_mat)) != 2L) {
     stop(sprintf("[%s_SHAPE] sample_mat must be a numeric 2D matrix.", context), call. = FALSE)
   }
-  assert_exp_safe_matrix(sample_mat, context = paste0(context, ".loglog1p"))
-  exp(sample_mat)
+  post_transform_loglog1p_array(
+    sample_mat,
+    context = paste0(context, ".loglog1p"),
+    overflow_policy = "error"
+  )$values
 }
 
 post_extract_ndlm_mean_sample_mat <- function(ndlm_raw, context = "ndlm.mean_sample_mat") {

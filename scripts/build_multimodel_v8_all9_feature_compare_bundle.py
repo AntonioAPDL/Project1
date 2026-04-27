@@ -94,7 +94,7 @@ def _write_summary(outdir: Path, cutoff: str, spec_id: str, authoritative_compar
         f"- Spec: `{spec_id}`",
         f"- Authoritative compare source: `{authoritative_compare_dir}`",
         "- Raw ensemble rows are preserved from the authoritative compare source.",
-        "- All 9 model rows are replaced from the feature-covariate relaunch runs listed below.",
+        f"- Replaced model rows from relaunch inputs: `{len(source_map)}`.",
         "",
         "## Replaced rows",
     ]

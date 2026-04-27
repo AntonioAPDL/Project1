@@ -194,6 +194,36 @@ test_that("post_crps_input_health_tables reports nonfinite draw health failures"
   expect_true(all(out$per_time$n_nonfinite >= 0L))
 })
 
+test_that("post_transform_loglog1p_array can cap overflow-risk latent draws", {
+  limit <- safe_exp_limit()
+  latent <- array(
+    c(0, 1, limit + 1, limit + 25),
+    dim = c(2, 2, 1)
+  )
+
+  expect_error(
+    post_transform_loglog1p_array(latent, context = "ut.overflow", overflow_policy = "error"),
+    "EXP_OVERFLOW_RISK"
+  )
+
+  out <- suppressWarnings(
+    post_transform_loglog1p_array(latent, context = "ut.overflow", overflow_policy = "cap")
+  )
+  expect_true(all(is.finite(out$values)))
+  expect_equal(out$summary$n_overflow_risk, 2L)
+  expect_equal(out$summary$n_capped, 2L)
+  expect_equal(
+    out$values[1, 2, 1],
+    exp(limit),
+    tolerance = 1e-12
+  )
+  expect_equal(
+    out$values[2, 2, 1],
+    exp(limit),
+    tolerance = 1e-12
+  )
+})
+
 test_that("post_export_crps_input_health_tables writes expected files", {
   td <- tempfile("crps_input_health_export_")
   dir.create(td, recursive = TRUE, showWarnings = FALSE)

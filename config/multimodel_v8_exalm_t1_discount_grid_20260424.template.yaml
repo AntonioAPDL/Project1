@@ -1,0 +1,160 @@
+version: 1
+campaign:
+  campaign_id: multimodel_v8_exalm_t1_discount_grid_20260424
+  spec_id: exalm_t1_discount_grid_v1
+  artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_exalm_t1_discount_grid_20260424
+  matrix_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_exalm_t1_discount_grid_20260424/control/exalm_t1_discount_grid_v1
+  config_output_dir: config/unified_runs_exalm_t1_discount_grid_20260424
+  launch_queue: false
+
+queue:
+  ordinary_max_concurrent: 4
+  pause_free_gb: 180
+  launch_free_gb: 220
+  heavy_free_gb: 240
+  heavy_cutoff_max_concurrent: 4
+  heavy_cutoff_blocks_ordinary: false
+  poll_seconds: 15
+
+fit_parallel:
+  mode: global_models
+  default_workers: 7
+
+compare:
+  builder: scripts/build_multimodel_v8_all9_feature_compare_bundle.py
+
+selection:
+  parity_matrix_path: reports/ndlm_parity_audit/spec_parity_matrix.csv
+  multivar_artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_featurecov_cf1_eps_sweep_20260416
+
+inputs:
+  fit:
+    usgs_cache_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv
+
+discount_profiles:
+  - name: set01
+    description: High shared persistence; moderate covariate persistence.
+    state_evolution:
+      df_t: 0.99999
+      df_s1: 0.9999
+      df_s2: 0.9999
+      df_s67: 0.9999
+      df_discrep: 0.9999
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.99995
+  - name: set02
+    description: Near-static trend with lower s1/s2 persistence and df_discrep 0.998.
+    state_evolution:
+      df_t: 0.99999999
+      df_s1: 0.9995
+      df_s2: 0.9995
+      df_s67: 0.9999
+      df_discrep: 0.998
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.99999
+  - name: set03
+    description: Set02 with much tighter discrepancy evolution.
+    state_evolution:
+      df_t: 0.99999999
+      df_s1: 0.9995
+      df_s2: 0.9995
+      df_s67: 0.9999
+      df_discrep: 0.9999
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.99999
+  - name: set04
+    description: High shared persistence and very tight discrepancy evolution.
+    state_evolution:
+      df_t: 0.99999999
+      df_s1: 0.9999
+      df_s2: 0.9999
+      df_s67: 0.9999
+      df_discrep: 0.99999
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.99999
+  - name: set05
+    description: Lower s1/s2 persistence with df_discrep 0.999 and df_covs 0.99995.
+    state_evolution:
+      df_t: 0.99999999
+      df_s1: 0.9995
+      df_s2: 0.9995
+      df_s67: 0.9999
+      df_discrep: 0.999
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.99995
+  - name: set06
+    description: High shared persistence with df_discrep 0.999 and lower covariate persistence.
+    state_evolution:
+      df_t: 0.99999999
+      df_s1: 0.9999
+      df_s2: 0.9999
+      df_s67: 0.9999
+      df_discrep: 0.999
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.9999
+  - name: set07
+    description: Set06-like persistence with lambda 0.98 and higher covariate persistence.
+    state_evolution:
+      df_t: 0.99999999
+      df_s1: 0.9999
+      df_s2: 0.9999
+      df_s67: 0.9999
+      df_discrep: 0.999
+      lambda: 0.98
+      df_trans: 0.9999999
+      df_covs: 0.99999
+  - name: set08
+    description: Set06-like persistence with lambda 0.975 and higher covariate persistence.
+    state_evolution:
+      df_t: 0.99999999
+      df_s1: 0.9999
+      df_s2: 0.9999
+      df_s67: 0.9999
+      df_discrep: 0.999
+      lambda: 0.975
+      df_trans: 0.9999999
+      df_covs: 0.99999
+  - name: set09
+    description: Mid shared persistence, df_discrep 0.998, and near-static covariates.
+    state_evolution:
+      df_t: 0.99999999
+      df_s1: 0.9998
+      df_s2: 0.9998
+      df_s67: 0.9999
+      df_discrep: 0.998
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.9999999
+
+cutoffs:
+  "20210123":
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421/reports/multimodel_20210123_v8_ndlm_featurecov_v1_postfix_compare
+  "20211112":
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421/reports/multimodel_20211112_v8_ndlm_featurecov_v1_postfix_compare
+  "20211221":
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421/reports/multimodel_20211221_v8_ndlm_featurecov_v1_postfix_compare
+  "20220511":
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421/reports/multimodel_20220511_v8_ndlm_featurecov_v1_postfix_compare
+  "20221225":
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421/reports/multimodel_20221225_v8_ndlm_featurecov_v1_postfix_compare
+
+families:
+  exdqlm_multivar_keep:
+    enabled: true
+    model_id: exdqlm_multivar_synth_keep
+    model_key: exdqlm_multivar
+    likelihood_mode: exal
+    transfer_mode: keep
+    run_suffix: exdqlm_multivar_keep
+    fit_parallel_workers: 7

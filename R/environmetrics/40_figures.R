@@ -5168,7 +5168,14 @@ lines(result[2,], col = 'darkred', lwd = 1.5)
 lines(result[3,], col = 'red', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- fast_row_quantiles_t(exp(xbs[4, seq_len(n.times), ]), probs = c(0.025, 0.5, 0.975))
+result <- fast_row_quantiles_t(
+  post_transform_loglog1p_array(
+    xbs[4, seq_len(n.times), ],
+    context = "figures.xbs.q50",
+    overflow_policy = "cap"
+  )$values,
+  probs = c(0.025, 0.5, 0.975)
+)
 lines(result[1,], col = 'green', lty = 2, lwd = 1)
 lines(result[2,], col = 'forestgreen', lwd = 1.5)
 lines(result[3,], col = 'green', lty = 2, lwd = 1)
@@ -5283,7 +5290,16 @@ n.q     <- length(q_s)
 n.samp  <- n.samp
 n.times <- dim(y_reps_f)[3]
 
-synth_f <- profile_section("figures.synthesize_samples_y_reps_f_exp", synthesize_samples(exp(y_reps_f), q_s))
+forecast_exp_guard <- profile_section(
+  "figures.transform_y_reps_f_loglog1p",
+  post_transform_loglog1p_array(
+    y_reps_f,
+    context = "figures.y_reps_f.loglog1p",
+    overflow_policy = "cap",
+    report_path = post_cache_path("synth_multivar_forecast_exp_guard.txt")
+  )
+)
+synth_f <- profile_section("figures.synthesize_samples_y_reps_f_exp", synthesize_samples(forecast_exp_guard$values, q_s))
 dim(synth_f)
 
 synth_f_q <- colQuantiles(synth_f, probs = q_s, type = 8)
@@ -5844,19 +5860,68 @@ lines(result[3,], col = 'green', lty = 2, lwd = 1)
 #    lines(exp(y_reps_f_95[s,]), col = 'gray', lwd = 0.1)
 # }
 
-result <- fast_col_quantiles_t(exp(y_reps_f_95), probs = 0.95)[1, ]
+result <- fast_col_quantiles_t(
+  post_transform_loglog1p_array(
+    y_reps_f_95,
+    context = "figures.y_reps_f.q95",
+    overflow_policy = "cap"
+  )$values,
+  probs = 0.95
+)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_80), probs = 0.80)[1, ]
+result <- fast_col_quantiles_t(
+  post_transform_loglog1p_array(
+    y_reps_f_80,
+    context = "figures.y_reps_f.q80",
+    overflow_policy = "cap"
+  )$values,
+  probs = 0.80
+)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_65), probs = 0.65)[1, ]
+result <- fast_col_quantiles_t(
+  post_transform_loglog1p_array(
+    y_reps_f_65,
+    context = "figures.y_reps_f.q65",
+    overflow_policy = "cap"
+  )$values,
+  probs = 0.65
+)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_50), probs = 0.50)[1, ]
+result <- fast_col_quantiles_t(
+  post_transform_loglog1p_array(
+    y_reps_f_50,
+    context = "figures.y_reps_f.q50",
+    overflow_policy = "cap"
+  )$values,
+  probs = 0.50
+)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_35), probs = 0.35)[1, ]
+result <- fast_col_quantiles_t(
+  post_transform_loglog1p_array(
+    y_reps_f_35,
+    context = "figures.y_reps_f.q35",
+    overflow_policy = "cap"
+  )$values,
+  probs = 0.35
+)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_20), probs = 0.20)[1, ]
+result <- fast_col_quantiles_t(
+  post_transform_loglog1p_array(
+    y_reps_f_20,
+    context = "figures.y_reps_f.q20",
+    overflow_policy = "cap"
+  )$values,
+  probs = 0.20
+)[1, ]
 lines(result, col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_5), probs = 0.05)[1, ]
+result <- fast_col_quantiles_t(
+  post_transform_loglog1p_array(
+    y_reps_f_5,
+    context = "figures.y_reps_f.q05",
+    overflow_policy = "cap"
+  )$values,
+  probs = 0.05
+)[1, ]
 lines(result, col = 'black', lwd = 0.5)
 
 
@@ -5953,7 +6018,16 @@ y_reps <- profile_section("figures.read_y_reps_new_rds", readRDS(post_cache_path
 q_s    <- c(0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95)
 n.q     <- length(q_s)
 
-synth <- profile_section("figures.synthesize_samples_y_reps_hist", synthesize_samples(exp(y_reps[, , ]), q_s))
+hist_exp_guard <- profile_section(
+  "figures.transform_y_reps_hist_loglog1p",
+  post_transform_loglog1p_array(
+    y_reps[, , ],
+    context = "figures.y_reps_hist.loglog1p",
+    overflow_policy = "cap",
+    report_path = post_cache_path("synth_multivar_hist_exp_guard.txt")
+  )
+)
+synth <- profile_section("figures.synthesize_samples_y_reps_hist", synthesize_samples(hist_exp_guard$values, q_s))
 dim(synth)
 
 synth_q <- colQuantiles(synth, probs = q_s, type = 8)

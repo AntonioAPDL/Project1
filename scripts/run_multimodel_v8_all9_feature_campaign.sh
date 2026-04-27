@@ -74,6 +74,11 @@ fi
 # shellcheck disable=SC1090
 source "$LAUNCH_ENV"
 
+EXTRA_QUEUE_ARGS=()
+if [[ "${HEAVY_CUTOFF_BLOCKS_ORDINARY:-1}" == "0" ]]; then
+  EXTRA_QUEUE_ARGS+=(--no-heavy-cutoff-blocks-ordinary)
+fi
+
 bash scripts/run_multimodel_v8_queue.sh \
   --matrix-dir "$MATRIX_DIR" \
   --artifact-root "$ARTIFACT_ROOT" \
@@ -81,4 +86,6 @@ bash scripts/run_multimodel_v8_queue.sh \
   --pause-free-gb "$PAUSE_FREE_GB" \
   --launch-free-gb "$LAUNCH_FREE_GB" \
   --heavy-free-gb "$HEAVY_FREE_GB" \
+  --heavy-cutoff-max-concurrent "${HEAVY_CUTOFF_MAX_CONCURRENT:-1}" \
+  "${EXTRA_QUEUE_ARGS[@]}" \
   --poll-seconds "$POLL_SECONDS"

@@ -242,6 +242,127 @@ family_shared_build_feature_matrices <- function(path, history_dates, forecast_d
   )
 }
 
+family_shared_safe_sd <- function(x, default = 1) {
+  sd_val <- suppressWarnings(stats::sd(as.numeric(x), na.rm = TRUE))
+  if (!is.finite(sd_val) || sd_val <= 0) {
+    return(as.numeric(default))
+  }
+  as.numeric(sd_val)
+}
+
+family_shared_match_column <- function(df, candidates) {
+  if (!is.data.frame(df) || ncol(df) < 1L) return(NULL)
+  nm_norm <- family_shared_normalize_name(names(df))
+  cand_norm <- unique(family_shared_normalize_name(candidates))
+  for (cand in cand_norm) {
+    idx <- which(nm_norm == cand)
+    if (length(idx) < 1L) next
+    return(as.numeric(df[[idx[[1L]]]]))
+  }
+  NULL
+}
+
+family_shared_build_featurecov_design_matrices <- function(
+  history_df,
+  forecast_df,
+  history_dates,
+  forecast_dates,
+  feature_path = "",
+  fill_value = 0
+) {
+  history_dates <- as.Date(history_dates)
+  forecast_dates <- as.Date(forecast_dates)
+  history_n <- length(history_dates)
+  forecast_n <- length(forecast_dates)
+
+  if (!is.data.frame(history_df)) history_df <- as.data.frame(history_df)
+  if (!is.data.frame(forecast_df)) forecast_df <- as.data.frame(forecast_df)
+
+  if (nzchar(feature_path) && file.exists(feature_path)) {
+    feature_bundle <- family_shared_build_feature_matrices(
+      path = feature_path,
+      history_dates = history_dates,
+      forecast_dates = forecast_dates,
+      fill_value = fill_value,
+      scale_with_history = TRUE
+    )
+    X <- cbind(data.matrix(feature_bundle$history), rep(1, history_n))
+    X_f <- cbind(data.matrix(feature_bundle$forecast), rep(1, forecast_n))
+    if (!is.matrix(X)) X <- matrix(X, nrow = history_n)
+    if (!is.matrix(X_f)) X_f <- matrix(X_f, nrow = forecast_n)
+    colnames(X) <- c(feature_bundle$feature_names, "intercept")
+    colnames(X_f) <- c(feature_bundle$feature_names, "intercept")
+    return(list(
+      X = X,
+      X_f = X_f,
+      mode = "engineered_feature_table",
+      feature_names = feature_bundle$feature_names
+    ))
+  }
+
+  hist_ppt <- family_shared_match_column(history_df, c("ppt", "precip"))
+  hist_soil <- family_shared_match_column(history_df, c("soil", "soil_moisture"))
+  hist_pca <- family_shared_match_column(history_df, c("Static_PCA", "PCA"))
+  fore_ppt <- family_shared_match_column(forecast_df, c("ppt", "precip"))
+  fore_soil <- family_shared_match_column(forecast_df, c("soil", "soil_moisture"))
+  fore_pca <- family_shared_match_column(forecast_df, c("Static_PCA", "PCA"))
+  if (is.null(hist_ppt) || is.null(hist_soil) || is.null(hist_pca) ||
+      is.null(fore_ppt) || is.null(fore_soil) || is.null(fore_pca)) {
+    stop("legacy featurecov fallback requires PPT, SOIL, and PCA columns in history and forecast frames", call. = FALSE)
+  }
+
+  base_hist <- cbind(
+    PPT = hist_ppt,
+    SOIL = hist_soil,
+    PCA = hist_pca
+  )
+  base_fore <- cbind(
+    PPT = fore_ppt,
+    SOIL = fore_soil,
+    PCA = fore_pca
+  )
+
+  X <- cbind(base_hist, intercept = rep(1, history_n))
+  X_f <- cbind(base_fore, intercept = rep(1, forecast_n))
+
+  x_ext <- matrix(NA_real_, ncol = 5L, nrow = history_n)
+  x_ext[, 1L] <- c(0, X[seq_len(history_n - 1L), 1L])
+  x_ext[, 2L] <- c(0, 0, X[seq_len(history_n - 2L), 1L])
+  x_ext[, 3L] <- X[, 1L]^2
+  x_ext[, 4L] <- c(0, X[seq_len(history_n - 1L), 1L])^2
+  x_ext[, 5L] <- c(0, 0, X[seq_len(history_n - 2L), 1L])^2
+
+  ext_sds <- apply(x_ext, 2, family_shared_safe_sd)
+  x_ext <- sweep(x_ext, 2, ext_sds, FUN = "/")
+
+  x_ext_f <- matrix(NA_real_, ncol = 5L, nrow = forecast_n)
+  x_ext_f[, 1L] <- c(X[history_n, 1L], X_f[seq_len(forecast_n - 1L), 1L])
+  x_ext_f[, 2L] <- c(X[history_n - 1L, 1L], X[history_n, 1L], X_f[seq_len(forecast_n - 2L), 1L])
+  x_ext_f[, 3L] <- X_f[, 1L]^2
+  x_ext_f[, 4L] <- c(X[history_n, 1L], X_f[seq_len(forecast_n - 1L), 1L])^2
+  x_ext_f[, 5L] <- c(X[history_n - 1L, 1L], X[history_n, 1L], X_f[seq_len(forecast_n - 2L), 1L])^2
+
+  main_sds <- apply(X[, 1:3, drop = FALSE], 2, family_shared_safe_sd)
+  X[, 1:3] <- sweep(X[, 1:3, drop = FALSE], 2, main_sds, FUN = "/")
+  X_f[, 1:3] <- sweep(X_f[, 1:3, drop = FALSE], 2, main_sds, FUN = "/")
+  x_ext_f <- sweep(x_ext_f, 2, ext_sds, FUN = "/")
+
+  X <- cbind(X, x_ext)
+  X_f <- cbind(X_f, x_ext_f)
+  colnames(X) <- c(
+    "PPT", "SOIL", "PCA", "intercept",
+    "PPT_lag1", "PPT_lag2", "PPT_sq", "PPT_lag1_sq", "PPT_lag2_sq"
+  )
+  colnames(X_f) <- colnames(X)
+
+  list(
+    X = X,
+    X_f = X_f,
+    mode = "legacy_precip_extension",
+    feature_names = colnames(X)
+  )
+}
+
 family_shared_tail_align_series <- function(x, target_len, fill = 0) {
   x <- as.numeric(x)
   x <- x[is.finite(x)]

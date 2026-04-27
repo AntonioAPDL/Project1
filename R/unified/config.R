@@ -184,7 +184,8 @@ unified_config_defaults <- function() {
         )
       ),
       shared = list(
-        prefer_forecats_snapshot = TRUE
+        prefer_forecats_snapshot = TRUE,
+        exact_source_snapshot_root = NULL
       ),
       deterministic_climate = list(
         enabled = FALSE,
@@ -1408,6 +1409,15 @@ unified_validate_config <- function(cfg) {
   prefer_snapshot <- unified_get(cfg, c("inputs", "shared", "prefer_forecats_snapshot"), TRUE)
   if (!isTRUE(prefer_snapshot) && !identical(prefer_snapshot, FALSE)) {
     add_err("inputs.shared.prefer_forecats_snapshot must be boolean (true/false)")
+  }
+  exact_snapshot_root <- unified_get(cfg, c("inputs", "shared", "exact_source_snapshot_root"), NULL)
+  if (!is.null(exact_snapshot_root) && nzchar(as.character(exact_snapshot_root))) {
+    if (!dir.exists(as.character(exact_snapshot_root))) {
+      add_err(sprintf(
+        "inputs.shared.exact_source_snapshot_root does not exist or is not a directory: %s",
+        as.character(exact_snapshot_root)
+      ))
+    }
   }
 
   scale_keys <- list(

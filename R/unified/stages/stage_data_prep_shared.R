@@ -130,6 +130,133 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
     )
   }
 
+  guess_storage_scale <- function(path) {
+    npath <- normalizePath(path, mustWork = FALSE)
+    if (grepl("/parameters/parameters\\.txt$", npath)) {
+      return("parameters_text")
+    }
+    if (grepl("/retros/retros\\.csv$", npath)) {
+      return(as.character(cfg$inputs$fit$retros_storage_scale %||% "log1p_cms"))
+    }
+    if (grepl("/forecasts/nws_forecast\\.csv$", npath)) {
+      return(as.character(cfg$inputs$fit$nws_storage_scale %||% "raw_cms"))
+    }
+    if (grepl("/forecasts/glofas_forecast\\.csv$", npath)) {
+      return(as.character(cfg$inputs$fit$glofas_storage_scale %||% "raw_cms"))
+    }
+    if (grepl("/usgs/usgs_daily\\.csv$", npath)) {
+      return("raw_cms")
+    }
+    if (grepl("\\.csv$", npath, ignore.case = TRUE)) {
+      return("table_csv")
+    }
+    "text"
+  }
+
+  copy_exact_shared_snapshot <- function(source_root, target_root) {
+    source_root <- normalizePath(path.expand(as.character(source_root)), mustWork = TRUE)
+    if (!dir.exists(source_root)) {
+      stop(sprintf("inputs.shared.exact_source_snapshot_root is not a directory: %s", source_root), call. = FALSE)
+    }
+    if (dir.exists(target_root)) {
+      unlink(target_root, recursive = TRUE, force = TRUE)
+    }
+    dir.create(target_root, recursive = TRUE, showWarnings = FALSE)
+    rel_paths <- list.files(
+      source_root,
+      recursive = TRUE,
+      all.files = TRUE,
+      no.. = TRUE,
+      full.names = FALSE,
+      include.dirs = TRUE
+    )
+    if (length(rel_paths) < 1L) {
+      stop(sprintf("exact shared snapshot root is empty: %s", source_root), call. = FALSE)
+    }
+    src_full <- file.path(source_root, rel_paths)
+    info <- file.info(src_full)
+    is_dir <- !is.na(info$isdir) & info$isdir
+    dir_paths <- rel_paths[is_dir]
+    file_paths <- rel_paths[!is_dir]
+    for (rel in dir_paths) {
+      dir.create(file.path(target_root, rel), recursive = TRUE, showWarnings = FALSE)
+    }
+    copied_files <- character(0)
+    for (rel in file_paths) {
+      src <- file.path(source_root, rel)
+      dst <- file.path(target_root, rel)
+      dir.create(dirname(dst), recursive = TRUE, showWarnings = FALSE)
+      ok <- file.copy(src, dst, overwrite = TRUE)
+      if (!isTRUE(ok) || !file.exists(dst)) {
+        stop(sprintf("failed to preserve exact shared snapshot file: %s -> %s", src, dst), call. = FALSE)
+      }
+      copied_files <- c(copied_files, normalizePath(dst, mustWork = FALSE))
+    }
+    copied_files
+  }
+
+  exact_snapshot_root <- as.character(unified_get(
+    cfg,
+    c("inputs", "shared", "exact_source_snapshot_root"),
+    default = ""
+  )[[1L]])
+  if (nzchar(exact_snapshot_root)) {
+    copied_files <- copy_exact_shared_snapshot(exact_snapshot_root, shared_root)
+    exact_usgs_resolution <- unified_resolve_usgs_daily_path(cfg, snapshot_root = exact_snapshot_root)
+    if (!file.exists(shared_paths$usgs) && nzchar(exact_usgs_resolution$path)) {
+      dir.create(dirname(shared_paths$usgs), recursive = TRUE, showWarnings = FALSE)
+      ok <- file.copy(exact_usgs_resolution$path, shared_paths$usgs, overwrite = TRUE)
+      if (!isTRUE(ok) || !file.exists(shared_paths$usgs)) {
+        stop(
+          sprintf(
+            "failed to supplement exact shared snapshot with local USGS truth: %s -> %s",
+            exact_usgs_resolution$path,
+            shared_paths$usgs
+          ),
+          call. = FALSE
+        )
+      }
+      copied_files <- c(copied_files, normalizePath(shared_paths$usgs, mustWork = FALSE))
+    }
+    manifest$shared_snapshot <- list(
+      mode = "exact_copy",
+      source_root = normalizePath(path.expand(exact_snapshot_root), mustWork = TRUE),
+      copied_files = as.integer(length(copied_files)),
+      usgs_origin = if (nzchar(exact_usgs_resolution$path)) exact_usgs_resolution$origin else ""
+    )
+    for (copied_path in copied_files) {
+      storage_scale <- guess_storage_scale(copied_path)
+      manifest <- unified_manifest_add_artifact(
+        manifest,
+        copied_path,
+        storage_scale = storage_scale,
+        role = "shared_input"
+      )
+      manifest$inputs[[length(manifest$inputs) + 1L]] <- list(
+        path = copied_path,
+        sha256 = unified_sha256(copied_path),
+        storage_scale = storage_scale
+      )
+    }
+
+    cov_required <- list.files(covariates_dir, full.names = TRUE)
+    if (length(cov_required) == 0L) cov_required <- character(0)
+    assert_csv_daily_continuity(shared_paths$retros, "retros")
+    unified_validate_required_shared_inputs(
+      run_root = run_root,
+      stage_name = "data_prep_shared",
+      manifest = manifest,
+      enabled_models = cfg$models,
+      required_covariates = cov_required,
+      required_usgs = isTRUE(cfg$stages$post)
+    )
+    message(sprintf(
+      "data_prep_shared: preserved exact shared snapshot from %s",
+      normalizePath(path.expand(exact_snapshot_root), mustWork = TRUE)
+    ))
+    return(list(manifest = manifest))
+  }
+
   snapshot_dest_rel <- cfg$inputs$forecats$snapshot$dest_rel
   if (is.null(snapshot_dest_rel) || !nzchar(snapshot_dest_rel)) {
     snapshot_dest_rel <- "inputs/shared/forecats_bundle"

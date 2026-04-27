@@ -691,7 +691,17 @@ smoke_build_multivar_synth_f <- function() {
     }
   }
 
-  synth_f <- synthesize_samples(exp(y_reps_f_new), q_probs)
+  forecast_exp_guard <- post_transform_loglog1p_array(
+    y_reps_f_new,
+    context = sprintf("%s.multivar.forecast_loglog1p", multivar_meta$model_id),
+    overflow_policy = "cap",
+    report_path = post_cache_path(post_cache_file_name(
+      "synth_multivar_forecast_exp_guard.txt",
+      model_id = multivar_meta$model_id,
+      transfer_mode = multivar_meta$transfer_mode
+    ))
+  )
+  synth_f <- synthesize_samples(forecast_exp_guard$values, q_probs)
   for (t_idx in seq_len(ncol(synth_f))) {
     synth_f[, t_idx] <- sort_keep_na(synth_f[, t_idx])
   }
@@ -985,7 +995,10 @@ smoke_build_multivar_hist_synth <- function() {
     for (k in seq_len(ncol(y_hist))) {
       y_hist[, k] <- sort_keep_na(y_hist[, k])
     }
-    y_hist_cube[i, , ] <- exp(y_hist)
+    y_hist_cube[i, , ] <- post_transform_loglog1p_to_log1p_mat(
+      y_hist,
+      context = sprintf("%s.multivar.hist_loglog1p.q%s", meta$model_id, q_tag)
+    )
   }
 
   synth_hist <- synthesize_samples(y_hist_cube, q_probs)

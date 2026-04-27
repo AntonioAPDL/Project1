@@ -113,6 +113,19 @@ synthesize_samples <- function(y_reps, q_s, k = 1) {
   return(out)
 }
 
+post_transform_latent_log1p_cap <- function(arr, context, report_name = NULL) {
+  report_path <- NULL
+  if (!is.null(report_name) && nzchar(report_name)) {
+    report_path <- file.path(OUT_DIR, report_name)
+  }
+  post_transform_loglog1p_array(
+    arr,
+    context = paste0(context, ".loglog1p"),
+    overflow_policy = "cap",
+    report_path = report_path
+  )$values
+}
+
 file_path <- UNI_VAR_05
 load_rdata_with_retry <- function(path, attempts = 3L, sleep_sec = 0.5, envir = parent.frame()) {
   stopifnot(is.character(path), length(path) == 1L, attempts >= 1L)
@@ -398,16 +411,32 @@ univar_theory_post_rebuild_outputs <- function(days_hist_uni = 19L) {
   active_rows <- active_rows[active_order]
   q_s_active <- q_s_active[active_order]
 
+  theory_hist_cube_log1p <- profile_section(
+    "univariate.transform_hist.theory_rebuild",
+    post_transform_latent_log1p_cap(
+      y_hist_uni[active_rows, , , drop = FALSE],
+      context = "univariate.theory.hist",
+      report_name = "univar_theory_hist_exp_guard.txt"
+    )
+  )
   synth_hist_uni <- profile_section(
     "univariate.synthesize_hist.theory_rebuild",
-    synthesize_samples(exp(y_hist_uni[active_rows, , , drop = FALSE]), q_s_active)
+    synthesize_samples(theory_hist_cube_log1p, q_s_active)
   )
   synth_hist_uni_q <- t(colQuantiles(synth_hist_uni, probs = q_s_active, type = 8))
   for (tt in seq_len(days_hist_uni)) synth_hist_uni[, tt] <- sort_keep_na(synth_hist_uni[, tt])
 
+  theory_forecast_cube_log1p <- profile_section(
+    "univariate.transform_forecast.theory_rebuild",
+    post_transform_latent_log1p_cap(
+      y_forecast[active_rows, , , drop = FALSE],
+      context = "univariate.theory.forecast",
+      report_name = "univar_theory_forecast_exp_guard.txt"
+    )
+  )
   synth_f2 <- profile_section(
     "univariate.synthesize_forecast.theory_rebuild",
-    synthesize_samples(exp(y_forecast[active_rows, , , drop = FALSE]), q_s_active)
+    synthesize_samples(theory_forecast_cube_log1p, q_s_active)
   )
   synth_f2_q <- t(colQuantiles(synth_f2, probs = q_s_active, type = 8))
   for (k in seq_len(horizon)) synth_f2[, k] <- sort_keep_na(synth_f2[, k])
@@ -659,8 +688,22 @@ univar_legacy_post_rebuild_outputs <- function(active_q_tags, days_hist_uni = 19
     }
   }
 
-  hist_cube_log1p <- exp(y_hist_uni)
-  forecast_cube_log1p <- exp(y_forecast)
+  hist_cube_log1p <- profile_section(
+    "univariate.transform_hist.legacy",
+    post_transform_latent_log1p_cap(
+      y_hist_uni,
+      context = "univariate.legacy.hist",
+      report_name = "univar_legacy_hist_exp_guard.txt"
+    )
+  )
+  forecast_cube_log1p <- profile_section(
+    "univariate.transform_forecast.legacy",
+    post_transform_latent_log1p_cap(
+      y_forecast,
+      context = "univariate.legacy.forecast",
+      report_name = "univar_legacy_forecast_exp_guard.txt"
+    )
+  )
 
   raw_hist_q <- post_quantile_curve_from_sample_cube(hist_cube_log1p, q_probs, context = "univar.legacy.hist_curve")
   raw_forecast_q <- post_quantile_curve_from_sample_cube(forecast_cube_log1p, q_probs, context = "univar.legacy.forecast_curve")
@@ -1484,7 +1527,15 @@ n.q     <- length(q_s)
 n.samp  <- n.samp
 n.times <- ranges[1]
 
-synth_hist_uni <- profile_section("univariate.synthesize_hist", synthesize_samples(exp(y_reps_hist_uni), q_s))
+hist_cube_log1p_full <- profile_section(
+  "univariate.transform_hist.full",
+  post_transform_latent_log1p_cap(
+    y_reps_hist_uni,
+    context = "univariate.full.hist",
+    report_name = "univar_full_hist_exp_guard.txt"
+  )
+)
+synth_hist_uni <- profile_section("univariate.synthesize_hist", synthesize_samples(hist_cube_log1p_full, q_s))
 dim(synth_hist_uni)
 
 synth_hist_uni_q <- colQuantiles(synth_hist_uni, probs = q_s, type = 8)
@@ -1546,7 +1597,15 @@ n.q     <- length(q_s)
 n.samp  <- n.samp
 n.times <- ranges[1]
 
-synth_f2 <- profile_section("univariate.synthesize_forecast", synthesize_samples(exp(y_reps_uni), q_s))
+forecast_cube_log1p_full <- profile_section(
+  "univariate.transform_forecast.full",
+  post_transform_latent_log1p_cap(
+    y_reps_uni,
+    context = "univariate.full.forecast",
+    report_name = "univar_full_forecast_exp_guard.txt"
+  )
+)
+synth_f2 <- profile_section("univariate.synthesize_forecast", synthesize_samples(forecast_cube_log1p_full, q_s))
 dim(synth_f2)
 
 synth_f2_q <- colQuantiles(synth_f2, probs = q_s, type = 8)
@@ -1573,37 +1632,67 @@ for (i in 1:n.q) {
 }
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- fast_col_quantiles_t(exp(xb_forecast[7, , ]), probs = c(0.025, 0.5, 0.975))
+result <- fast_col_quantiles_t(
+  post_transform_latent_log1p_cap(xb_forecast[7, , ], context = "univariate.xb_forecast.q95"),
+  probs = c(0.025, 0.5, 0.975)
+)
 lines(result[1,], col = 'blue', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkblue', lwd = 1.5)
 lines(result[3,], col = 'blue', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- fast_col_quantiles_t(exp(xb_forecast[1, , ]), probs = c(0.025, 0.5, 0.975))
+result <- fast_col_quantiles_t(
+  post_transform_latent_log1p_cap(xb_forecast[1, , ], context = "univariate.xb_forecast.q05"),
+  probs = c(0.025, 0.5, 0.975)
+)
 lines(result[1,], col = 'red', lty = 2, lwd = 1)
 lines(result[2,], col = 'darkred', lwd = 1.5)
 lines(result[3,], col = 'red', lty = 2, lwd = 1)
 
 # Adding quantile bands (blue) for 95th Quantile estimation
-result <- fast_col_quantiles_t(exp(xb_forecast[4, , ]), probs = c(0.025, 0.5, 0.975))
+result <- fast_col_quantiles_t(
+  post_transform_latent_log1p_cap(xb_forecast[4, , ], context = "univariate.xb_forecast.q50"),
+  probs = c(0.025, 0.5, 0.975)
+)
 lines(result[1,], col = 'green', lty = 2, lwd = 1)
 lines(result[2,], col = 'forestgreen', lwd = 1.5)
 lines(result[3,], col = 'green', lty = 2, lwd = 1)
 
 
-result <- fast_col_quantiles_t(exp(y_reps_f_95), probs = 0.95)
+result <- fast_col_quantiles_t(
+  post_transform_latent_log1p_cap(y_reps_f_95, context = "univariate.forecast.q95_curve"),
+  probs = 0.95
+)
 lines(as.numeric(result), col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_80), probs = 0.80)
+result <- fast_col_quantiles_t(
+  post_transform_latent_log1p_cap(y_reps_f_80, context = "univariate.forecast.q80_curve"),
+  probs = 0.80
+)
 lines(as.numeric(result), col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_65), probs = 0.65)
+result <- fast_col_quantiles_t(
+  post_transform_latent_log1p_cap(y_reps_f_65, context = "univariate.forecast.q65_curve"),
+  probs = 0.65
+)
 lines(as.numeric(result), col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_50), probs = 0.50)
+result <- fast_col_quantiles_t(
+  post_transform_latent_log1p_cap(y_reps_f_50, context = "univariate.forecast.q50_curve"),
+  probs = 0.50
+)
 lines(as.numeric(result), col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_35), probs = 0.35)
+result <- fast_col_quantiles_t(
+  post_transform_latent_log1p_cap(y_reps_f_35, context = "univariate.forecast.q35_curve"),
+  probs = 0.35
+)
 lines(as.numeric(result), col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_20), probs = 0.20)
+result <- fast_col_quantiles_t(
+  post_transform_latent_log1p_cap(y_reps_f_20, context = "univariate.forecast.q20_curve"),
+  probs = 0.20
+)
 lines(as.numeric(result), col = 'black', lwd = 0.5)
-result <- fast_col_quantiles_t(exp(y_reps_f_5), probs = 0.05)
+result <- fast_col_quantiles_t(
+  post_transform_latent_log1p_cap(y_reps_f_5, context = "univariate.forecast.q05_curve"),
+  probs = 0.05
+)
 lines(as.numeric(result), col = 'black', lwd = 0.5)
 
 points(SL$data0, lwd = 0.8, pch = 16)

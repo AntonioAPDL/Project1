@@ -549,6 +549,8 @@ def main() -> int:
             "pause_free_gb": float(queue_cfg.get("pause_free_gb", 180)),
             "launch_free_gb": float(queue_cfg.get("launch_free_gb", 220)),
             "heavy_free_gb": float(queue_cfg.get("heavy_free_gb", 240)),
+            "heavy_cutoff_max_concurrent": int(queue_cfg.get("heavy_cutoff_max_concurrent", 1)),
+            "heavy_cutoff_blocks_ordinary": bool(queue_cfg.get("heavy_cutoff_blocks_ordinary", True)),
             "poll_seconds": int(queue_cfg.get("poll_seconds", 60)),
         },
     }
@@ -571,6 +573,8 @@ def main() -> int:
         f"PAUSE_FREE_GB={metadata['queue']['pause_free_gb']}",
         f"LAUNCH_FREE_GB={metadata['queue']['launch_free_gb']}",
         f"HEAVY_FREE_GB={metadata['queue']['heavy_free_gb']}",
+        f"HEAVY_CUTOFF_MAX_CONCURRENT={metadata['queue']['heavy_cutoff_max_concurrent']}",
+        f"HEAVY_CUTOFF_BLOCKS_ORDINARY={1 if metadata['queue']['heavy_cutoff_blocks_ordinary'] else 0}",
         f"POLL_SECONDS={metadata['queue']['poll_seconds']}",
         "",
     ])
@@ -594,6 +598,8 @@ def main() -> int:
         f"- pause_free_gb: `{metadata['queue']['pause_free_gb']}`",
         f"- launch_free_gb: `{metadata['queue']['launch_free_gb']}`",
         f"- heavy_free_gb: `{metadata['queue']['heavy_free_gb']}`",
+        f"- heavy_cutoff_max_concurrent: `{metadata['queue']['heavy_cutoff_max_concurrent']}`",
+        f"- heavy_cutoff_blocks_ordinary: `{metadata['queue']['heavy_cutoff_blocks_ordinary']}`",
         f"- poll_seconds: `{metadata['queue']['poll_seconds']}`",
         "",
         "## Current disk headroom",
