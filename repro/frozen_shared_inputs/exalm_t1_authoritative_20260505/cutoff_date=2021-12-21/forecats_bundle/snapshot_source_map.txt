@@ -1,0 +1,4 @@
+mode=use_existing
+bundle_root=/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/stable_inputs/site=11160500/cutoff_date=2021-12-21/run_id=20260407_long_history_r01
+nws_members_source=/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/stable_inputs/site=11160500/cutoff_date=2021-12-21/run_id=20260407_long_history_r01/inputs/nws_members.csv
+glofas_members_source=/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/stable_inputs/site=11160500/cutoff_date=2021-12-21/run_id=20260407_long_history_r01/inputs/glofas_members.csv

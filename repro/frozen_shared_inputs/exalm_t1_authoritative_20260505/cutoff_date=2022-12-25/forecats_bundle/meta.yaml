@@ -1,0 +1,255 @@
+run:
+  run_id: 20260404_single_retro_policy_pre1080_gapfix_r01
+  created: '2026-04-04 11:30:05'
+  git_commit: 95a183a02bb1af8018068496d0d3448b58f8093f
+processing:
+  storage_unit: cms
+  bias_correction: false
+  scale_correction: false
+  weighting_scale_internal: log_log1p_cms
+  gapfix:
+    applied: true
+    method: linear_interpolation_selected_output_gap
+    source_id: nws_synth_retro_ens_mean
+    dates_filled:
+    - '2022-07-15'
+site:
+  usgs_site: '11160500'
+  lat: 37.0443931
+  lon: -122.072464
+  usgs:
+    parameterCd: '00060'
+    statCd: '00003'
+    start_date: '1979-01-01'
+dates:
+  cutoff_date: '2022-12-25'
+  forecast_start_date: '2022-12-26'
+  plot_start: '2020-01-10'
+  plot_end: '2023-01-22'
+transforms:
+  plot_scale: log_log1p_cms
+paths:
+  usgs_daily: usgs_daily.csv
+  retros_daily: retros_daily.csv
+  glofas_weighted_daily: glofas_weighted_daily.csv
+  nws_weighted_daily: nws_weighted_daily.csv
+  retrospective_preparation: inputs/retrospective_preparation.csv
+plot:
+  title: Observed and Retrospective River Flow\nwith GloFAS and NWS Forecast Ensembles
+  flood_levels:
+  - label: Major Flooding
+    value: 15000
+    unit: cfs
+  - label: Minor Flooding
+    value: 6750
+    unit: cfs
+  markers:
+  - date: '2022-12-25'
+    label: Cutoff
+    color: gray40
+config:
+  run:
+    out_root: data/forecats_inputs
+    cache_root: data/forecats_cache
+    run_id: 20260404_single_retro_policy_pre1080_gapfix_r01
+    overwrite: true
+  site:
+    usgs_site: '11160500'
+    lat: 37.0443931
+    lon: -122.072464
+    usgs:
+      parameterCd: '00060'
+      statCd: '00003'
+      start_date: '1979-01-01'
+  dates:
+    intervals:
+    - start: '2019-11-05'
+      end: '2020-03-11'
+    - start: '2020-03-17'
+      end: '2020-07-28'
+    - start: '2020-07-30'
+      end: '2020-11-13'
+    - start: '2020-11-15'
+      end: '2022-07-13'
+    - start: '2022-07-15'
+      end: '2023-01-31'
+    plot_pre_days: 1080
+    plot_post_days: 28
+  transforms:
+    plot_scale: log_log1p_cms
+  processing:
+    aggregation_scale_internal: log_log1p_cms
+  inputs:
+    retros:
+      path: retros_2023-06-01.glofas_only.csv
+      scale: log1p_cms
+      extra_sources:
+      - source_id: glofas_hist_v21_htessel_cons
+        source_label: GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)
+        source_family: glofas_historical
+        path: data/glofas_historical_consolidated_point/point_series/hist_v21_htessel_cons_bigtrees.csv
+        date_col: date
+        value_col: discharge_cms
+      - source_id: glofas_hist_v31_lisflood_cons
+        source_label: GloFAS historical v3.1 (LISFLOOD, consolidated)
+        source_family: glofas_historical
+        path: data/glofas_historical_consolidated_point/point_series/hist_v31_lisflood_cons_bigtrees.csv
+        date_col: date
+        value_col: discharge_cms
+      - source_id: glofas_hist_v40_lisflood_cons
+        source_label: GloFAS historical v4.0 (LISFLOOD, consolidated)
+        source_family: glofas_historical
+        path: data/glofas_historical_consolidated_point/point_series/hist_v40_lisflood_cons_bigtrees.csv
+        date_col: date
+        value_col: discharge_cms
+      - source_id: glofas_legacy_reanalysis_v30
+        source_label: GloFAS legacy reanalysis v3.0
+        source_family: glofas_legacy_reanalysis
+        path: data/glofas_legacy_global/point_series/dis_1980_2018_v3_legacy_bigtrees.csv
+        date_col: date
+        value_col: discharge_cms
+      - source_id: nws_retro_v20
+        source_label: NWS retrospective v2.0
+        source_family: nwm_retrospective
+        path: repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z/point_series/v20_full_daily.csv
+        date_col: date
+        value_col: streamflow_cms
+      - source_id: nws_retro_v21
+        source_label: NWS retrospective v2.1
+        source_family: nwm_retrospective
+        path: repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z/point_series/v21_full_daily_from_zarr.csv
+        date_col: date
+        value_col: streamflow_cms
+      - source_id: nws_retro_v30
+        source_label: NWS retrospective v3.0
+        source_family: nwm_retrospective
+        path: repro/nwm_retrospective_runs/nwm_retrospective_campaign_20260218T024352Z/point_series/v30_full_daily_from_zarr.csv
+        date_col: date
+        value_col: streamflow_cms
+      - source_id: nws_synth_retro_ens_mean
+        source_label: NWS synthetic retrospective (ensemble mean)
+        source_family: nwm_retrospective
+        path: data/nwm_synthetic_retrospective/point_series/nws_synthetic_retro_ensemble_mean_daily.csv
+        date_col: date
+        value_col: discharge_cms
+      - source_id: glofas_synth_retro_ens_mean
+        source_label: GloFAS synthetic retrospective (ensemble mean)
+        source_family: glofas_historical
+        path: data/glofas_synthetic_retrospective/point_series/glofas_synthetic_retro_ensemble_mean_daily.csv
+        date_col: date
+        value_col: discharge_cms
+      selection_policy:
+        keep_source_ids: nws_synth_retro_ens_mean
+        glofas_by_cutoff_windows:
+        - start: '1900-01-01'
+          end: '2021-05-25'
+          source_id: glofas_hist_v21_htessel_cons
+        - start: '2021-05-26'
+          end: '2023-07-25'
+          source_id: glofas_hist_v31_lisflood_cons
+        - start: '2023-07-26'
+          end: '2999-12-31'
+          source_id: glofas_hist_v40_lisflood_cons
+        nws_by_cutoff_windows:
+        - start: '1900-01-01'
+          end: '2019-06-18'
+          source_id: nws_retro_v12
+        - start: '2019-06-19'
+          end: '2021-04-19'
+          source_id: nws_retro_v20
+        - start: '2021-04-20'
+          end: '2023-09-19'
+          source_id: nws_retro_v21
+        - start: '2023-09-20'
+          end: '2999-12-31'
+          source_id: nws_retro_v30
+    glofas:
+      grib_root: data/glofas_operational_medium_range/grib
+      var: dis24
+      data_types:
+        control: cf
+        perturbed: pf
+      nearest_valid_cell: true
+      shift_days: 1
+      weighting:
+        scheme: latest
+        alpha: 1.0
+        power: -1.001
+    nws:
+      pkl_path: results.pkl
+      parse_issue_hour: false
+      issue_lookback_days: 40
+      weighting:
+        scheme: latest
+        alpha: 1.0
+        exponents: {}
+  plot:
+    title: Observed and Retrospective River Flow\nwith GloFAS and NWS Forecast Ensembles
+    flood_levels:
+    - label: Major Flooding
+      value: 15000
+      unit: cfs
+    - label: Minor Flooding
+      value: 6750
+      unit: cfs
+retrospective_coverage:
+- source_id: glofas_hist_v21_htessel_cons
+  source_label: GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)
+  source_family: glofas_historical
+  coverage_start: '1987-05-29'
+  coverage_end: '2022-07-31'
+  n_points: 12848
+- source_id: glofas_hist_v31_lisflood_cons
+  source_label: GloFAS historical v3.1 (LISFLOOD, consolidated)
+  source_family: glofas_historical
+  coverage_start: '1987-05-29'
+  coverage_end: '2023-05-01'
+  n_points: 13122
+- source_id: glofas_hist_v40_lisflood_cons
+  source_label: GloFAS historical v4.0 (LISFLOOD, consolidated)
+  source_family: glofas_historical
+  coverage_start: '1987-05-29'
+  coverage_end: '2023-05-01'
+  n_points: 13122
+- source_id: glofas_synth_retro_ens_mean
+  source_label: GloFAS synthetic retrospective (ensemble mean)
+  source_family: glofas_historical
+  coverage_start: '2019-11-06'
+  coverage_end: '2023-02-01'
+  n_points: 1176
+- source_id: glofas_legacy_reanalysis_v30
+  source_label: GloFAS legacy reanalysis v3.0
+  source_family: glofas_legacy_reanalysis
+  coverage_start: '1980-01-01'
+  coverage_end: '2019-01-01'
+  n_points: 14246
+- source_id: baseline_glofas
+  source_label: GloFAS retrospective (baseline)
+  source_family: glofas_retrospective_baseline
+  coverage_start: '1979-02-01'
+  coverage_end: '2023-02-01'
+  n_points: 16072
+- source_id: nws_retro_v20
+  source_label: NWS retrospective v2.0
+  source_family: nwm_retrospective
+  coverage_start: '1993-01-01'
+  coverage_end: '2018-12-31'
+  n_points: 9496
+- source_id: nws_retro_v21
+  source_label: NWS retrospective v2.1
+  source_family: nwm_retrospective
+  coverage_start: '1979-02-01'
+  coverage_end: '2020-12-31'
+  n_points: 15310
+- source_id: nws_retro_v30
+  source_label: NWS retrospective v3.0
+  source_family: nwm_retrospective
+  coverage_start: '1979-02-01'
+  coverage_end: '2023-01-31'
+  n_points: 16071
+- source_id: nws_synth_retro_ens_mean
+  source_label: NWS synthetic retrospective (ensemble mean)
+  source_family: nwm_retrospective
+  coverage_start: '2019-11-06'
+  coverage_end: '2023-02-01'
+  n_points: 1176

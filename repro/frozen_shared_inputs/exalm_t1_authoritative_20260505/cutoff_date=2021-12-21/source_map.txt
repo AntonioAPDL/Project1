@@ -1,0 +1,13 @@
+source_mode=forecats_snapshot_mixed
+source.parameters=/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/supporting_inputs/parameters/parameters.txt
+source.retros=/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs/multimodel_20211221_v8_eps90_l2_mv/inputs/shared/forecats_bundle/retros.csv
+source.retros_origin=snapshot
+source.nws=/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs/multimodel_20211221_v8_eps90_l2_mv/inputs/shared/forecats_bundle/nws_forecast.csv
+source.nws_origin=snapshot
+source.glofas=/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs/multimodel_20211221_v8_eps90_l2_mv/inputs/shared/forecats_bundle/glofas_forecast.csv
+source.glofas_origin=snapshot
+snapshot_root=/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs/multimodel_20211221_v8_eps90_l2_mv/inputs/shared/forecats_bundle
+snapshot_ready=TRUE
+snapshot_valid=TRUE
+cutoff_date=2021-12-21
+forecast_start_date=2021-12-22

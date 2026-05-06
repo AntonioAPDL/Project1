@@ -1,0 +1,9 @@
+{
+  "compare_bundle": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20211112_v8_epsTTcf1_compare",
+  "cutoff_date": "2021-11-12",
+  "expected_mean_crps": 0.0201373509141342,
+  "source_run_id": "multimodel_20211112_v8_epsTTcf1_l2_mv",
+  "source_run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs",
+  "source_shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20211112_v8_epsTTcf1_l2_mv/inputs/shared",
+  "usgs_daily_source": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_quantile_featurecov_ndlm_discount_probe_20260422/runs/multimodel_20211112_v8_quantile_featurecov_ndlm_discount_probe_v1_exdqlm_multivar_keep/inputs/shared/usgs/usgs_daily.csv"
+}

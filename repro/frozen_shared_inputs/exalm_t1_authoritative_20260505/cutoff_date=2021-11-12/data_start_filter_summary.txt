@@ -1,0 +1,12 @@
+data_start=1987-05-29
+common_dates_count=1081
+common_date_min=2018-11-28
+common_date_max=2021-11-12
+/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20211112_v8_epsTTcf1_l2_mv/inputs/shared/retros/retros.csv rows=1081 date_col=Date
+/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20211112_v8_epsTTcf1_l2_mv/inputs/shared/forecasts/nws_forecast.csv rows=8 date_col=target_date
+/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20211112_v8_epsTTcf1_l2_mv/inputs/shared/forecasts/glofas_forecast.csv rows=28 date_col=target_date
+/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20211112_v8_epsTTcf1_l2_mv/inputs/shared/covariates/cov_01_ELI.csv rows=13328 date_col=time
+/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20211112_v8_epsTTcf1_l2_mv/inputs/shared/covariates/cov_02_ONI.csv rows=13180 date_col=time
+/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20211112_v8_epsTTcf1_l2_mv/inputs/shared/covariates/cov_03_PPT.csv rows=14152 date_col=Date
+/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20211112_v8_epsTTcf1_l2_mv/inputs/shared/covariates/cov_04_SOIL.csv rows=14148 date_col=Date
+/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20211112_v8_epsTTcf1_l2_mv/inputs/shared/covariates/cov_05_PCA.csv rows=13023 date_col=time
