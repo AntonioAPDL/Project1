@@ -37,12 +37,13 @@ This health check covers the representative replay work that was launched while 
 
 ## Main conclusion
 
-The current debugging work established two useful facts:
+The narrow retrack path is now in a much stronger state:
 
-1. the `exAL-M-T1` **fit stage is reproducible enough to complete** under the corrected runtime path
-2. the current blocker has moved to the **post-processing layer**, not the model fitting layer
+1. the publication-aligned `exAL-M-T1` fits complete cleanly under the authoritative `R 4.4.0` runtime
+2. the exact-snapshot deterministic-climate validation path is now consistent with the copied shared inputs
+3. the smoke-fast multivariate post path now emits the posterior tables needed for the revised article
 
-So the present bottleneck is not the VB fit itself. It is the manuscript-output / post-figure path.
+So the remaining work is no longer to debug the basic replay path. It is to scale this same verified path from the two canaries to the remaining three publication cutoffs.
 
 ## 2026-05-06 implementation update
 
@@ -60,42 +61,71 @@ Then we reran the two narrow `exAL-M-T1` canaries:
 
 ### What improved
 
-- the fresh canary reruns now complete fit and produce the key keep-lane synthesis outputs:
-  - `exdqlm_multivar_synth_keep_cutoff_window_posterior_samples.(png,pdf)`
-  - `exdqlm_multivar_synth_keep_cutoff_window_posterior_samples_with_raw_ensembles.(png,pdf)`
-  - `exdqlm_multivar_synth_keep_cutoff_window_quantiles.csv`
-  - `exdqlm_multivar_synth_keep_cutoff_window_sample_subset.csv`
-- this means the headless graphics failure that previously stopped the replay immediately is no longer blocking the synthesis figures we need for the revised article
+The workflow-side fixes are now sufficient to support the narrow article refresh path:
+
+1. `R/environmetrics/00_setup.R`
+   - keeps the headless Cairo bitmap fix in place for the multivariate synthesis figures
+2. `R/unified/stages/stage_data_prep_shared.R`
+   - hydrates deterministic-climate metadata correctly when the run uses an exact copied shared snapshot
+3. `R/environmetrics/40_figures_smoke_fast.R`
+   - exports the multivariate posterior tables needed for the revised article:
+     - `covariate_effects_summary.(csv,tex)`
+     - `gamma_summary.(csv,tex)`
+     - `sigma_summary.(csv,tex)`
+     - `posterior_table_exports_manifest.csv`
+     - `posterior_table_exports_README.md`
+
+The fresh canary reruns now produce the key keep-lane synthesis outputs:
+- `exdqlm_multivar_synth_keep_cutoff_window_posterior_samples.(png,pdf)`
+- `exdqlm_multivar_synth_keep_cutoff_window_posterior_samples_with_raw_ensembles.(png,pdf)`
+- `exdqlm_multivar_synth_keep_cutoff_window_quantiles.csv`
+- `exdqlm_multivar_synth_keep_cutoff_window_sample_subset.csv`
 
 ### Current canary status
 
 | Cutoff | Status | Mean CRPS from rerun | Result |
 |---|---|---:|---|
-| `01/23/2021` | `PASS` | `0.15685973014263893` | matches the published `0.1569` row to rounding; canary passes |
-| `12/25/2022` | `REPORT_PRESENT` | `0.43752505703872074` | matches the published `0.4375` row to rounding; synthesis outputs present, but validation still fails |
+| `01/23/2021` | `PASS` | `0.15685973014263893` | matches the published `0.1569` row to rounding; synthesis figures and posterior tables present |
+| `12/25/2022` | `PASS` | `0.43752505703872074` | matches the published `0.4375` row to rounding; exact-override deterministic-climate validation now passes |
 
-### Remaining blockers before scaling to all five runs
+### Current narrow-replay artifact contract now verified on both canaries
 
-1. Posterior table exports are still missing for both canaries:
-   - `covariate_effects_summary.(csv,tex,rds)`
-   - `gamma_summary.csv`
-   - `sigma_summary.csv`
-   - `posterior_table_exports_manifest.csv`
-   - `posterior_table_exports_README.md`
+Both canaries now emit:
 
-2. The `12/25/2022` exact-override canary still reports `validation_status=fail`
-   - the failure is now in the deterministic-climate validation block
-   - the replay still produced the correct synthesis outputs and the correct mean CRPS
-   - so this is no longer a fit/post graphics problem; it is a report/validation consistency problem for the exact-override lane
+- synthesis figures:
+  - `exdqlm_multivar_synth_keep_cutoff_window_posterior_samples.(png,pdf)`
+  - `exdqlm_multivar_synth_keep_cutoff_window_posterior_samples_with_raw_ensembles.(png,pdf)`
+- synthesis exports:
+  - `..._quantiles.csv`
+  - `..._sample_subset.csv`
+- posterior tables:
+  - `covariate_effects_summary.(csv,tex)`
+  - `gamma_summary.(csv,tex)`
+  - `sigma_summary.(csv,tex)`
+  - `posterior_table_exports_manifest.csv`
+  - `posterior_table_exports_README.md`
+- CRPS tables:
+  - `crps_forecast_summary.csv`
+  - `crps_forecast_per_time.csv`
+  - `crps_input_health.csv`
+  - `crps_input_health_per_time.csv`
 
 ### Practical interpretation
 
-- the narrow relaunch path is now much healthier than before
-- the graphics-side blocker for the article-critical synthesis figures is resolved
-- but we should **not** scale to the remaining three cutoffs yet, because the canary gate is not fully green:
-  - one canary passes cleanly
-  - one canary reproduces the score and figures but still fails the deterministic-climate validation contract
-  - neither canary emits the posterior table exports needed for `tab:components_23_31`
+- the narrow relaunch path is now healthy enough to scale
+- the graphics-side blocker for the synthesis figures is resolved
+- the exact-snapshot deterministic-climate validation issue is resolved
+- the posterior table export gap for `tab:components_23_31` is resolved on the canaries
+
+### Next execution step
+
+Scale this same verified path to the remaining three publication-aligned `exAL-M-T1` cutoffs only:
+
+1. `11/12/2021`
+2. `12/21/2021`
+3. `05/11/2022`
+
+Then use the five verified run roots to refresh the revised article artifacts in `Evironmetrics---REVISED-DOC-2`.
 
 ## What to ignore from the side-work
 
@@ -118,4 +148,4 @@ The next operational goal should be:
    - predictive synthesis figures
    - covariate / posterior summary tables
    - any additional figure/table artifacts needed by `Evironmetrics---REVISED-DOC-2`
-4. fix or bypass the post-layer graphics issue in the relaunch workflow so the outputs are actually produced headlessly
+4. keep the relaunch workflow locked to the verified headless-safe and exact-snapshot-safe path

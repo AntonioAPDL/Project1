@@ -153,6 +153,129 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
     "text"
   }
 
+  parse_detclim_summary_file <- function(summary_path) {
+    if (!nzchar(summary_path) || !file.exists(summary_path)) {
+      return(list())
+    }
+    lines <- readLines(summary_path, warn = FALSE)
+    lines <- lines[nzchar(lines)]
+    out <- list()
+    for (line in lines) {
+      parts <- strsplit(line, "=", fixed = TRUE)[[1L]]
+      if (length(parts) < 2L) next
+      key <- trimws(parts[[1L]])
+      val <- paste(parts[-1L], collapse = "=")
+      out[[key]] <- val
+    }
+    out
+  }
+
+  parse_detclim_flag <- function(x, default = FALSE) {
+    if (is.null(x) || !length(x)) return(isTRUE(default))
+    val <- tolower(trimws(as.character(x[[1L]])))
+    if (!nzchar(val) || identical(val, "na")) return(isTRUE(default))
+    val %in% c("true", "t", "1", "yes", "y")
+  }
+
+  parse_detclim_int <- function(x, default = NA_integer_) {
+    if (is.null(x) || !length(x)) return(as.integer(default))
+    out <- suppressWarnings(as.integer(x[[1L]]))
+    if (!is.finite(out)) return(as.integer(default))
+    out
+  }
+
+  parse_detclim_num <- function(x, default = NA_real_) {
+    if (is.null(x) || !length(x)) return(as.numeric(default))
+    txt <- trimws(as.character(x[[1L]]))
+    if (!nzchar(txt) || identical(tolower(txt), "na")) return(as.numeric(default))
+    out <- suppressWarnings(as.numeric(txt))
+    if (!is.finite(out)) return(as.numeric(default))
+    out
+  }
+
+  hydrate_exact_snapshot_detclim_manifest <- function(manifest) {
+    det_dir <- file.path(shared_root, "deterministic_climate")
+    summary_path <- file.path(det_dir, "deterministic_climate_summary.txt")
+    precip_future_path <- file.path(det_dir, "deterministic_precip_future.csv")
+    soil_future_path <- file.path(det_dir, "deterministic_soil_future.csv")
+    soil_family_support_path <- file.path(det_dir, "deterministic_soil_family_support.csv")
+    if (!file.exists(summary_path)) {
+      return(manifest)
+    }
+
+    cov_paths <- list.files(covariates_dir, full.names = TRUE)
+    for (cov_path in cov_paths) {
+      if (!file.exists(cov_path)) next
+      assign_cov_path(basename(cov_path), cov_path)
+    }
+
+    det_summary <- parse_detclim_summary_file(summary_path)
+    manifest$deterministic_climate <- list(
+      enabled = parse_detclim_flag(det_summary$enabled, default = TRUE),
+      handoff_root = if (!is.null(det_summary$handoff_root) && nzchar(det_summary$handoff_root)) {
+        det_summary$handoff_root
+      } else {
+        unified_get(cfg, c("inputs", "deterministic_climate", "handoff_root"), default = NULL)
+      },
+      horizon_days = parse_detclim_int(
+        det_summary$horizon_days,
+        default = unified_get(cfg, c("inputs", "deterministic_climate", "horizon_days"), default = NA_integer_)
+      ),
+      require_full_horizon = parse_detclim_flag(
+        det_summary$require_full_horizon,
+        default = unified_get(cfg, c("inputs", "deterministic_climate", "require_full_horizon"), default = TRUE)
+      ),
+      cutoff_date = if (!is.null(det_summary$cutoff_date) && nzchar(det_summary$cutoff_date)) det_summary$cutoff_date else NA_character_,
+      summary_path = summary_path,
+      summary_sha256 = unified_sha256(summary_path),
+      precip_future_path = if (file.exists(precip_future_path)) precip_future_path else NA_character_,
+      soil_future_path = if (file.exists(soil_future_path)) soil_future_path else NA_character_,
+      soil_family_support_path = if (file.exists(soil_family_support_path)) soil_family_support_path else NA_character_,
+      precip = list(
+        enabled = TRUE,
+        source = if (!is.null(det_summary$precip_source) && nzchar(det_summary$precip_source)) {
+          det_summary$precip_source
+        } else {
+          unified_get(cfg, c("inputs", "deterministic_climate", "precip", "source"), default = "gefs_apcp")
+        },
+        reduction = if (!is.null(det_summary$precip_reduction) && nzchar(det_summary$precip_reduction)) {
+          det_summary$precip_reduction
+        } else {
+          unified_get(cfg, c("inputs", "deterministic_climate", "precip", "reduction"), default = "mean")
+        },
+        output_path = if (nzchar(shared_cov_paths$ppt)) shared_cov_paths$ppt else NA_character_,
+        history_rows = parse_detclim_int(det_summary$ppt_history_rows),
+        future_rows = parse_detclim_int(det_summary$ppt_future_rows)
+      ),
+      soil = list(
+        enabled = TRUE,
+        source = if (!is.null(det_summary$soil_source) && nzchar(det_summary$soil_source)) {
+          det_summary$soil_source
+        } else {
+          unified_get(cfg, c("inputs", "deterministic_climate", "soil", "source"), default = "nwm_soilsat_top")
+        },
+        reduction = if (!is.null(det_summary$soil_reduction) && nzchar(det_summary$soil_reduction)) {
+          det_summary$soil_reduction
+        } else {
+          unified_get(cfg, c("inputs", "deterministic_climate", "soil", "reduction"), default = "mean")
+        },
+        output_path = if (nzchar(shared_cov_paths$soil)) shared_cov_paths$soil else NA_character_,
+        history_rows = parse_detclim_int(det_summary$soil_history_rows),
+        future_rows = parse_detclim_int(det_summary$soil_future_rows),
+        porosity = parse_detclim_num(det_summary$nwm_soilsat_top_porosity),
+        porosity_q10 = parse_detclim_num(det_summary$nwm_soilsat_top_porosity_q10),
+        porosity_q90 = parse_detclim_num(det_summary$nwm_soilsat_top_porosity_q90),
+        porosity_sample_count = parse_detclim_int(det_summary$nwm_soilsat_top_porosity_samples)
+      ),
+      pca = list(
+        mode = "passthrough",
+        output_path = if (nzchar(shared_cov_paths$pca)) shared_cov_paths$pca else NA_character_
+      ),
+      verified_in_data_prep_shared = TRUE
+    )
+    manifest
+  }
+
   copy_exact_shared_snapshot <- function(source_root, target_root) {
     source_root <- normalizePath(path.expand(as.character(source_root)), mustWork = TRUE)
     if (!dir.exists(source_root)) {
@@ -244,6 +367,8 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
         storage_scale = storage_scale
       )
     }
+
+    manifest <- hydrate_exact_snapshot_detclim_manifest(manifest)
 
     cov_required <- list.files(covariates_dir, full.names = TRUE)
     if (length(cov_required) == 0L) cov_required <- character(0)

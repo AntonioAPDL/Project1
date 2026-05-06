@@ -1008,6 +1008,106 @@ smoke_build_multivar_hist_synth <- function() {
   list(sample_mat = synth_hist, quantiles = hist_q, dates = hist_dates_all[hist_idx])
 }
 
+smoke_build_multivar_gamma_sigma_quantiles <- function() {
+  q_tags <- c("5", "20", "35", "50", "65", "80", "95")
+  q_labels <- c("5th", "20th", "35th", "50th", "65th", "80th", "95th")
+  sources <- c("USGS", "GLOFAS", "NWS")
+  rows <- list()
+
+  for (i in seq_along(q_tags)) {
+    gamma_name <- sprintf("samp.gamma_%s_exAL_synth_DISC", q_tags[[i]])
+    sigma_name <- sprintf("samp.sigma_%s_exAL_synth_DISC", q_tags[[i]])
+    if (!exists(gamma_name, inherits = TRUE) || !exists(sigma_name, inherits = TRUE)) {
+      return(NULL)
+    }
+    gamma_mat <- as.matrix(get(gamma_name, inherits = TRUE))
+    sigma_mat <- as.matrix(get(sigma_name, inherits = TRUE))
+    if (!is.numeric(gamma_mat) || !is.numeric(sigma_mat) ||
+        nrow(gamma_mat) < 3L || nrow(sigma_mat) < 3L ||
+        ncol(gamma_mat) < 2L || ncol(sigma_mat) < 2L) {
+      return(NULL)
+    }
+
+    for (src_idx in seq_along(sources)) {
+      gamma_draws <- as.numeric(gamma_mat[src_idx, ])
+      sigma_draws <- as.numeric(sigma_mat[src_idx, ])
+      rows[[length(rows) + 1L]] <- data.frame(
+        variable = "Gamma",
+        source = sources[[src_idx]],
+        quantile = q_labels[[i]],
+        quantile_025 = stats::quantile(gamma_draws, 0.025, na.rm = TRUE),
+        median = stats::quantile(gamma_draws, 0.5, na.rm = TRUE),
+        quantile_975 = stats::quantile(gamma_draws, 0.975, na.rm = TRUE),
+        stringsAsFactors = FALSE
+      )
+      rows[[length(rows) + 1L]] <- data.frame(
+        variable = "Sigma",
+        source = sources[[src_idx]],
+        quantile = q_labels[[i]],
+        quantile_025 = stats::quantile(sigma_draws, 0.025, na.rm = TRUE),
+        median = stats::quantile(sigma_draws, 0.5, na.rm = TRUE),
+        quantile_975 = stats::quantile(sigma_draws, 0.975, na.rm = TRUE),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+
+  do.call(rbind, rows)
+}
+
+smoke_build_multivar_covariate_effects_summary <- function() {
+  tt <- suppressWarnings(as.integer(get0("TT", ifnotfound = NA_integer_, inherits = TRUE)))
+  if (!is.finite(tt) || tt <= 0L) {
+    return(NULL)
+  }
+
+  theta_qs <- c("5", "50", "95")
+  theta_labels <- c("5th", "50th", "95th")
+  theta_names <- sprintf("samp.theta_%s_exAL_synth_DISC", theta_qs)
+  if (any(!vapply(theta_names, exists, logical(1), inherits = TRUE))) {
+    return(NULL)
+  }
+
+  scale_vec <- rep(1, 9L)
+  data_cbind_path <- file.path(OUT_DIR, "data_cbind_tY_X.csv")
+  if (file.exists(data_cbind_path)) {
+    design_df <- tryCatch(utils::read.csv(data_cbind_path, stringsAsFactors = FALSE), error = function(e) NULL)
+    if (!is.null(design_df)) {
+      scale_cols <- c("PPT", "SOIL", "PCA", "PPT_sq", "SOIL_sq", "PPT_x_SOIL", "PPT_lag1", "PPT_lag2", "PPT_lag3")
+      if (all(scale_cols %in% names(design_df))) {
+        scale_vals <- vapply(scale_cols, function(col) stats::sd(design_df[[col]], na.rm = TRUE), numeric(1))
+        scale_vals[!is.finite(scale_vals) | scale_vals <= 0] <- 1
+        scale_vec <- as.numeric(scale_vals)
+      }
+    }
+  }
+
+  component_idx <- 23:31
+  rows <- list()
+  for (j in seq_along(component_idx)) {
+    comp <- component_idx[[j]]
+    scale_fac <- scale_vec[[j]]
+    for (i in seq_along(theta_names)) {
+      theta_obj <- get(theta_names[[i]], inherits = TRUE)
+      if (is.null(theta_obj$samp_theta) || length(dim(theta_obj$samp_theta)) != 3L ||
+          dim(theta_obj$samp_theta)[1] < comp || dim(theta_obj$samp_theta)[2] < tt) {
+        return(NULL)
+      }
+      draws <- scale_fac * as.numeric(theta_obj$samp_theta[comp, tt, ])
+      rows[[length(rows) + 1L]] <- data.frame(
+        Component = comp,
+        Quantile = theta_labels[[i]],
+        Lower = stats::quantile(draws, 0.025, na.rm = TRUE),
+        Mean = mean(draws, na.rm = TRUE),
+        Upper = stats::quantile(draws, 0.975, na.rm = TRUE),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+
+  do.call(rbind, rows)
+}
+
 smoke_trim_dates <- function(dates, n_expected) {
   dates <- suppressWarnings(as.Date(dates))
   n_expected <- suppressWarnings(as.integer(n_expected[[1L]]))
@@ -2034,6 +2134,39 @@ if (crps_exports_enabled && posterior_table_exports_enabled) {
       posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, crps_export$manifest)
     } else {
       warning("[CRPS_EXPORT_SKIP] No CRPS rows were produced for export.", call. = FALSE)
+    }
+
+    multivar_gamma_sigma <- smoke_build_multivar_gamma_sigma_quantiles()
+    if (!is.null(multivar_gamma_sigma) && nrow(multivar_gamma_sigma) > 0L) {
+      gs_export <- post_export_gamma_sigma_tables(
+        all_quantiles = multivar_gamma_sigma,
+        output_dir = posterior_table_output_dir,
+        ci_digits = 3L,
+        write_tex = TRUE,
+        table_formats = posterior_table_formats,
+        keep_na = posterior_table_keep_na,
+        numeric_digits = 15L
+      )
+      posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, gs_export$manifest)
+    } else {
+      warning("[POSTERIOR_EXPORT_SKIP] Unable to assemble multivariate gamma/sigma summaries.", call. = FALSE)
+    }
+
+    multivar_covariate_summary <- smoke_build_multivar_covariate_effects_summary()
+    if (!is.null(multivar_covariate_summary) && nrow(multivar_covariate_summary) > 0L) {
+      cov_export <- post_export_covariate_effects_table(
+        summary_df = multivar_covariate_summary,
+        output_dir = posterior_table_output_dir,
+        time_index = suppressWarnings(as.integer(get0("TT", ifnotfound = NA_integer_, inherits = TRUE))),
+        ci_digits = 3L,
+        write_tex = TRUE,
+        table_formats = posterior_table_formats,
+        keep_na = posterior_table_keep_na,
+        numeric_digits = 15L
+      )
+      posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, cov_export$manifest)
+    } else {
+      warning("[POSTERIOR_EXPORT_SKIP] Unable to assemble multivariate covariate-effects summary.", call. = FALSE)
     }
 
     if (isTRUE(crps_input_health_enabled) &&
