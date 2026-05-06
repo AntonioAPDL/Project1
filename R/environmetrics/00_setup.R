@@ -9,45 +9,49 @@
 # Dependencies:
 #   - R packages listed below must be installed
 # =============================================================================
-.libPaths(c("~/R/libs", .libPaths()))
+.libPaths(unique(c(.libPaths(), path.expand("~/R/libs"))))
 print(.libPaths())
 
+load_required_pkg <- function(pkg) {
+  if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
+    stop(sprintf("Required package '%s' is not installed.", pkg), call. = FALSE)
+  }
+}
+
+load_optional_pkg <- function(pkg) {
+  if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
+    message(sprintf("Optional package '%s' is not installed; continuing without it.", pkg))
+    return(FALSE)
+  }
+  TRUE
+}
+
 # Core analysis + model dependencies
-library(parallel)
-library(dlm)
-library(exdqlm)
-library(mvtnorm)
-library(jmuOutlier)
-library(sn)
-library(Matrix)
-library(numDeriv)
-library(foreach)
-library(doParallel)
-library(dataRetrieval)
-library(zoo)
-library(tseries)
-library(patchwork)
-library(rvest)
-library(expint)
-library(nimble)
-library(nloptr)
-library(expm)
-library(RcppArmadillo)
-library(RcppEigen)
-library(ks)
-library(MASS)
-library(FNN)
-library(matrixStats)
-library(truncnorm)
-library(isotone)
+invisible(lapply(c(
+  "parallel", "dlm", "exdqlm", "mvtnorm", "jmuOutlier", "sn", "Matrix",
+  "numDeriv", "foreach", "doParallel", "zoo", "patchwork", "expint",
+  "nimble", "nloptr", "expm", "RcppArmadillo", "RcppEigen", "ks", "MASS",
+  "FNN", "matrixStats", "truncnorm", "isotone", "ggplot2", "dplyr", "readr",
+  "tidyr", "scales", "lubridate"
+), load_required_pkg))
+
+invisible(lapply(c("dataRetrieval", "tseries", "rvest", "tidyverse"), load_optional_pkg))
 
 # Tidyverse (explicit + meta)
-library(tidyverse)
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-library(scales)
-library(lubridate)
+# Already loaded above; keep the section for readability.
+
+# Legacy state-space helpers expected by older exAL scripts.
+if (!exists("combineMods", mode = "function")) {
+  combineMods <- function(mod1, mod2) {
+    if (inherits(mod1, "exdqlm") && inherits(mod2, "exdqlm")) {
+      return(mod1 + mod2)
+    }
+    if (inherits(mod1, "dlm") && inherits(mod2, "dlm")) {
+      return(get("%+%", envir = asNamespace("dlm"))(mod1, mod2))
+    }
+    stop("combineMods requires matching 'exdqlm' or 'dlm' objects.", call. = FALSE)
+  }
+}
 
 # =============================================================================
 # Lightweight profiling helpers (used by modules; controlled by PROFILE flag)

@@ -54,7 +54,9 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   dir.create(post_cache_dir, recursive = TRUE, showWarnings = FALSE)
 
   shared_input_run_root <- run_root
-  if (dir.exists(file.path(fit_outputs_root_abs, "inputs", "shared"))) {
+  run_scoped_shared_exists <- dir.exists(file.path(run_root_abs, "inputs", "shared"))
+  source_scoped_shared_exists <- dir.exists(file.path(fit_outputs_root_abs, "inputs", "shared"))
+  if (!run_scoped_shared_exists && source_scoped_shared_exists) {
     shared_input_run_root <- fit_outputs_root_abs
   }
   shared_paths <- unified_shared_input_paths(shared_input_run_root)

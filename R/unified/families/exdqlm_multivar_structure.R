@@ -9,6 +9,16 @@ exdqlm_multivar_default_harmonics <- function() {
   c(1, 2, 1 / 6.8068493)
 }
 
+exdqlm_multivar_combine_mods <- function(mod1, mod2) {
+  if (inherits(mod1, "exdqlm") && inherits(mod2, "exdqlm")) {
+    return(mod1 + mod2)
+  }
+  if (inherits(mod1, "dlm") && inherits(mod2, "dlm")) {
+    return(get("%+%", envir = asNamespace("dlm"))(mod1, mod2))
+  }
+  stop("exdqlm_multivar_combine_mods requires matching 'exdqlm' or 'dlm' objects.", call. = FALSE)
+}
+
 exdqlm_multivar_normalize_flag <- function(raw, default = TRUE) {
   if (is.null(raw) || length(raw) == 0L) {
     return(isTRUE(default))
@@ -175,7 +185,7 @@ exdqlm_multivar_build_structure <- function(
   model <- components[[1L]]
   if (length(components) > 1L) {
     for (ii in 2:length(components)) {
-      model <- combineMods(model, components[[ii]])
+      model <- exdqlm_multivar_combine_mods(model, components[[ii]])
     }
   }
 

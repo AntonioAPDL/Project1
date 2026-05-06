@@ -57,7 +57,7 @@ disc_w_read_forecasts <- function(nws_forecast_path, glofas_forecast_path) {
 # disc_w_read_prism_ppt(file_path)
 # Reads PRISM precipitation input using `readr::read_csv` (col-types suppressed).
 disc_w_read_prism_ppt <- function(file_path) {
-  read_csv(file_path, show_col_types = FALSE)
+  readr::read_csv(file_path, show_col_types = FALSE)
 }
 
 # disc_w_read_soil_moisture(csv_file_path)
@@ -69,13 +69,13 @@ disc_w_read_soil_moisture <- function(csv_file_path) {
 # disc_w_read_pca_components(components_file_path)
 # Reads PCA components input using `readr::read_csv` (col-types suppressed).
 disc_w_read_pca_components <- function(components_file_path) {
-  read_csv(components_file_path, show_col_types = FALSE)
+  readr::read_csv(components_file_path, show_col_types = FALSE)
 }
 
 # disc_w_read_retro_streamflow(data_path)
 # Reads retrospective streamflow input using `readr::read_csv` (col-types suppressed).
 disc_w_read_retro_streamflow <- function(data_path) {
-  read_csv(data_path, show_col_types = FALSE)
+  readr::read_csv(data_path, show_col_types = FALSE)
 }
 
 # disc_w_load_rdata(file_path, env)

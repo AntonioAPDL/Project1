@@ -1,5 +1,5 @@
-// Enable C++11 via this plugin (Rcpp 0.10.3 or later)
-// [[Rcpp::plugins(cpp11)]]
+// Use C++14 to match current RcppArmadillo requirements.
+// [[Rcpp::plugins(cpp14)]]
 
 // Dependencies for RcppArmadillo and RcppEigen
 // [[Rcpp::depends(RcppArmadillo, RcppEigen)]]

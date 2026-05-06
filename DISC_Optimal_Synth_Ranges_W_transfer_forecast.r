@@ -1,37 +1,19 @@
 #!/usr/bin/env Rscript
-.libPaths(c("~/R/libs", .libPaths()))
+.libPaths(unique(c(.libPaths(), path.expand("~/R/libs"))))
 print(.libPaths())
-library(dplyr)
 
-library(parallel)
-library(dlm)
-library(exdqlm)
-library(mvtnorm)
-library(jmuOutlier)
-library(sn)
-library(Matrix)
-library(future)
-library(future.apply)
-library(numDeriv)
-library(foreach)
-library(doParallel)
-library(dataRetrieval) 
-library(zoo)
-library(tseries)
-library(tidyverse)
-library(patchwork)
-library(rvest)
-library(expint)
-library(nimble)
-library(nloptr)
-library(expm)
-library(numDeriv)
-library(Rcpp)
-library(RcppArmadillo)
-library(RcppEigen)
-library(ks)
-library(MASS)
-library(FNN)
+load_required_pkg <- function(pkg) {
+  if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
+    stop(sprintf("Required package '%s' is not installed.", pkg), call. = FALSE)
+  }
+}
+
+invisible(lapply(c(
+  "dplyr", "parallel", "dlm", "exdqlm", "mvtnorm", "jmuOutlier", "sn",
+  "Matrix", "future", "future.apply", "numDeriv", "foreach", "doParallel",
+  "zoo", "expint", "nimble", "nloptr", "expm", "Rcpp", "RcppArmadillo",
+  "RcppEigen", "ks", "MASS", "FNN", "lubridate"
+), load_required_pkg))
 
 DISC_DEBUG <- FALSE
 source("R/disc_w/_init.R")
@@ -840,7 +822,10 @@ ELI_lon$time <- ELI_lon$time - years(adjustment_years)
 CFSToCMS_CONVERSION_FACTOR = 0.0283168466
 # Read and process USGS data (non-fatal if the external service is unavailable)
 San_Lorenzo_Daily_USGS_R <- tryCatch({
-  data_usgs_r <- readNWISdv(siteNumbers = site_code[1], parameterCd = "00060", statCd = "00003")
+  if (!requireNamespace("dataRetrieval", quietly = TRUE)) {
+    stop("package 'dataRetrieval' is not installed")
+  }
+  data_usgs_r <- dataRetrieval::readNWISdv(siteNumbers = site_code[1], parameterCd = "00060", statCd = "00003")
   out <- data_usgs_r %>%
     mutate(
       timestamp = as.Date(Date),
