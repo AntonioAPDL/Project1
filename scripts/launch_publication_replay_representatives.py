@@ -333,14 +333,15 @@ def main() -> int:
     args = parse_args()
     OUT_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     rows = load_matrix_rows()
-    representative_rows = [row for row in rows if row["representative_lineage_row"] == "True"]
     if args.slugs:
         requested = set(args.slugs)
-        representative_rows = [row for row in representative_rows if slug_for_row(row) in requested]
-    if not representative_rows:
-        raise SystemExit("No representative rows selected.")
+        selected_rows = [row for row in rows if slug_for_row(row) in requested]
+    else:
+        selected_rows = [row for row in rows if row["representative_lineage_row"] == "True"]
+    if not selected_rows:
+        raise SystemExit("No publication replay rows selected.")
 
-    for row in representative_rows:
+    for row in selected_rows:
         slug = slug_for_row(row)
         lineage = row["campaign_lineage"]
         spec = LINEAGE_SPECS[lineage]

@@ -176,14 +176,18 @@ def write_outputs(rows: list[dict[str, str]]) -> None:
 
 def main() -> int:
     args = parse_args()
-    templates = sorted(CONFIG_DIR.glob("*.template.yaml"))
+    all_templates = sorted(CONFIG_DIR.glob("*.template.yaml"))
+    templates = all_templates
     if args.slugs:
         selected = set(args.slugs)
         templates = [path for path in templates if path.stem.replace(".template", "") in selected]
     if not templates:
         raise SystemExit("No representative replay templates selected.")
-    rows = [inspect_template(path) for path in templates]
+    rows = [inspect_template(path) for path in all_templates]
     write_outputs(rows)
+    if args.slugs:
+        selected = set(args.slugs)
+        rows = [row for row in rows if row["slug"] in selected]
     for row in rows:
         print(f"{row['slug']}: {row['status']} - {row['note']}")
     return 0

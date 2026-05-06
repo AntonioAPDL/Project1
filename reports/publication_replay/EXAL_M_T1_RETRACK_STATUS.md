@@ -43,7 +43,7 @@ The narrow retrack path is now in a much stronger state:
 2. the exact-snapshot deterministic-climate validation path is now consistent with the copied shared inputs
 3. the smoke-fast multivariate post path now emits the posterior tables needed for the revised article
 
-So the remaining work is no longer to debug the basic replay path. It is to scale this same verified path from the two canaries to the remaining three publication cutoffs.
+So the remaining work is no longer to debug the basic replay path. It is to finish the same verified path on the remaining publication cutoffs and then lock the final five-run provenance.
 
 ## 2026-05-06 implementation update
 
@@ -117,15 +117,39 @@ Both canaries now emit:
 - the exact-snapshot deterministic-climate validation issue is resolved
 - the posterior table export gap for `tab:components_23_31` is resolved on the canaries
 
-### Next execution step
+### Five-run execution status
 
-Scale this same verified path to the remaining three publication-aligned `exAL-M-T1` cutoffs only:
+The same authoritative replay path has now been extended to the remaining three publication-aligned `exAL-M-T1` rows:
 
 1. `11/12/2021`
 2. `12/21/2021`
 3. `05/11/2022`
 
-Then use the five verified run roots to refresh the revised article artifacts in `Evironmetrics---REVISED-DOC-2`.
+Current narrow five-run status:
+
+| Cutoff | Run ID | Status | Mean CRPS from rerun | Notes |
+|---|---|---|---:|---|
+| `01/23/2021` | `multimodel_20210123_v8_eps360cf1_exdqlm_multivar_keep_featurecov_cf1` | `PASS` | `0.15685973014263893` | matches the published `0.1569` row to rounding |
+| `11/12/2021` | `multimodel_20211112_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1` | `PASS` | `0.02838779803717152` | matches the published `0.0284` row to rounding |
+| `12/21/2021` | `multimodel_20211221_v8_eps1cf1_exdqlm_multivar_keep_featurecov_cf1` | `RUNNING` | ~ | authoritative replay still in fit stage |
+| `05/11/2022` | `multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1` | `RUNNING` | ~ | authoritative replay still in fit stage |
+| `12/25/2022` | `multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep` | `PASS` | `0.43752505703872074` | matches the published `0.4375` row to rounding |
+
+### Current manuscript-side refresh status
+
+The revised article repo has already been refreshed from the verified representative `12/25/2022` selected-model run:
+
+- `DISC/posterior_samples_valid.png`
+- `tab:components_23_31`
+- `tab:gamma_sigma_intervals1`
+- `tab:gamma_sigma_intervals2`
+- local copied provenance bundle under `Evironmetrics---REVISED-DOC-2/generated/exal_m_t1_20221225/`
+
+### Next execution step
+
+1. let the `12/21/2021` and `05/11/2022` authoritative replays finish
+2. verify their CRPS values and artifact contracts
+3. then lock the final five-run provenance set for the revised manuscript
 
 ## What to ignore from the side-work
 

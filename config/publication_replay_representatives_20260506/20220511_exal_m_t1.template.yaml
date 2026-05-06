@@ -1,0 +1,204 @@
+version: 1
+campaign:
+  campaign_id: multimodel_v8_publication_replay_20220511_exal_m_t1_20260506
+  sweep_id: featurecov_cf1_eps_v1
+  artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506/20220511_exal_m_t1
+  matrix_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506/20220511_exal_m_t1/control/20220511_exal_m_t1_v1
+  config_output_dir: /data/muscat_data/jaguir26/project1_ucsc_phd/config/unified_runs_publication_replay_representatives_20260506/20220511_exal_m_t1
+  launch_queue: false
+queue:
+  ordinary_max_concurrent: 1
+  pause_free_gb: 180
+  launch_free_gb: 220
+  heavy_free_gb: 240
+  poll_seconds: 15
+fit_parallel:
+  mode: global_models
+  default_workers: 1
+compare:
+  builder: scripts/build_multimodel_v8_featurecov_cf1_eps_compare_bundle.py
+reuse:
+  enabled: true
+  prior_campaigns:
+  - artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_all9_featurecov_20260415
+    spec_id: featurecov_v1
+    run_id_template: multimodel_{cutoff}_v8_{spec_id}_{run_suffix}
+inputs:
+  fit:
+    usgs_cache_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv
+  deterministic_climate:
+    enabled: true
+    handoff_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
+    horizon_days: null
+    require_full_horizon: true
+    precip:
+      enabled: true
+      source: gefs_apcp
+      reduction: q85
+      dry_day_threshold_mm: 0.0
+      noisy_blend:
+        enabled: true
+        noise_sd: 30.0
+        noise_seed: 20260415
+        noise_distribution: normal
+        floor_at_zero: true
+      observed_blend:
+        enabled: true
+        observed_weight: 0.5
+        observed_zero_stay_prob: 0.9
+        observed_zero_stay_seed: 20260415
+    soil:
+      enabled: true
+      source: gefs_soilw_0_0.1m
+      reduction: q85
+      noisy_blend:
+        enabled: true
+        noise_sd: 0.05
+        noise_seed: 20260415
+        noise_distribution: abs_normal
+        floor_at_zero: false
+      observed_blend:
+        enabled: true
+        observed_weight: 0.5
+        observed_zero_stay_prob: null
+        observed_zero_stay_seed: 20260415
+  covariate_features:
+    enabled: true
+    output_filename: covariate_features.csv
+    lag_orders:
+    - 1
+    - 2
+    - 3
+    include_squares: true
+    include_interaction: true
+  transfer_function_covariates:
+    base_covariates:
+    - PPT
+    - SOIL
+    - PCA
+    engineered_terms:
+    - PPT_sq
+    - SOIL_sq
+    - PPT_x_SOIL
+    - PPT_lag1
+    - PPT_lag2
+    - PPT_lag3
+    - SOIL_lag1
+    - SOIL_lag2
+    - SOIL_lag3
+cutoffs:
+  '20210123':
+    enabled: false
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20210123_v8_epsTT_compare
+    candidate_report_roots:
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/reports
+  '20211112':
+    enabled: false
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20211112_v8_epsTT_compare
+    candidate_report_roots:
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/reports
+  '20211221':
+    enabled: false
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports/multimodel_20211221_v8_epsTT_compare
+    candidate_report_roots:
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/reports
+  '20220511':
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports/multimodel_20220511_v8_epsTT_compare
+    candidate_report_roots:
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/reports
+  '20221225':
+    enabled: false
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20221225_v8_epsTT_compare
+    candidate_report_roots:
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/reports
+epsilons:
+  eps1cf1:
+    enabled: false
+    epsilon_value: 1.0
+    c_factor: 1.0
+  eps30cf1:
+    enabled: false
+    epsilon_value: 30.0
+    c_factor: 1.0
+  eps60cf1:
+    enabled: false
+    epsilon_value: 60.0
+    c_factor: 1.0
+  eps90cf1:
+    enabled: false
+    epsilon_value: 90.0
+    c_factor: 1.0
+  eps180cf1:
+    enabled: true
+    epsilon_value: 180.0
+    c_factor: 1.0
+  eps360cf1:
+    enabled: false
+    epsilon_value: 360.0
+    c_factor: 1.0
+families:
+  exdqlm_multivar_keep:
+    enabled: true
+    model_id: exdqlm_multivar_synth_keep
+    model_key: exdqlm_multivar
+    likelihood_mode: exal
+    transfer_mode: keep
+    run_suffix: exdqlm_multivar_keep
+    fit_parallel_workers: 7
+  exdqlm_multivar_drop:
+    enabled: false
+    model_id: exdqlm_multivar_synth_drop
+    model_key: exdqlm_multivar
+    likelihood_mode: exal
+    transfer_mode: drop
+    run_suffix: exdqlm_multivar_drop
+    fit_parallel_workers: 7
+  dqlm_multivar_al_keep:
+    enabled: false
+    model_id: dqlm_multivar_al_synth_keep
+    model_key: exdqlm_multivar
+    likelihood_mode: al
+    transfer_mode: keep
+    run_suffix: dqlm_multivar_al_keep
+    fit_parallel_workers: 7
+  dqlm_multivar_al_drop:
+    enabled: false
+    model_id: dqlm_multivar_al_synth_drop
+    model_key: exdqlm_multivar
+    likelihood_mode: al
+    transfer_mode: drop
+    run_suffix: dqlm_multivar_al_drop
+    fit_parallel_workers: 7
+  ndlm_main_keep:
+    enabled: false
+    model_id: ndlm_main_synth_keep
+    model_key: ndlm_main
+    transfer_mode: keep
+    run_suffix: ndlm_main_keep
+    fit_parallel_workers: 1
+  ndlm_main_drop:
+    enabled: false
+    model_id: ndlm_main_synth_drop
+    model_key: ndlm_main
+    transfer_mode: drop
+    run_suffix: ndlm_main_drop
+    fit_parallel_workers: 1
+debug_publication_replay:
+  cutoff: '20220511'
+  cutoff_display: 05/11/2022
+  manuscript_label: exAL-M-T1
+  campaign_lineage: featurecov_cf1_eps_sweep_20260416
+  publication_run_id: multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1
+  publication_run_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_featurecov_cf1_eps_sweep_20260416/runs/multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1
+  publication_score_source: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_featurecov_cf1_eps_sweep_20260416/runs/multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1/post/outputs/multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1/tables/crps_forecast_summary.csv
+  expected_crps: 0.02096578542924306
+  publication_note: ''
+  row_note: Representative cf1-sweep row; selected epsilon `eps180cf1`.
+  source_r_version: 4.4.0 (2024-04-24)
+  source_runtime_profile: authoritative_r440
