@@ -1,5 +1,8 @@
 #!/usr/bin/env Rscript
-.libPaths(unique(c(.libPaths(), path.expand("~/R/libs"))))
+disc_libs_only <- identical(Sys.getenv("ENVIRONMETRICS_LIBS_ONLY", "0"), "1")
+if (!disc_libs_only) {
+  .libPaths(unique(c(.libPaths(), path.expand("~/R/libs"))))
+}
 print(.libPaths())
 
 load_required_pkg <- function(pkg) {

@@ -49,6 +49,7 @@ data/forecats_inputs/
 data/forecats_cache/
 data/glofas_operational_medium_range/
 repro/logs/
+repro/runtime/
 repro/forecats_alignment/
 repro/reports/
 prism_data/

@@ -9,7 +9,10 @@
 # Dependencies:
 #   - R packages listed below must be installed
 # =============================================================================
-.libPaths(unique(c(.libPaths(), path.expand("~/R/libs"))))
+libs_only <- identical(Sys.getenv("ENVIRONMETRICS_LIBS_ONLY", "0"), "1")
+if (!libs_only) {
+  .libPaths(unique(c(.libPaths(), path.expand("~/R/libs"))))
+}
 print(.libPaths())
 
 load_required_pkg <- function(pkg) {
