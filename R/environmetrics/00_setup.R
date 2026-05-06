@@ -15,6 +15,12 @@ if (!libs_only) {
 }
 print(.libPaths())
 
+# Prefer Cairo-backed bitmap devices so post-stage PNG rendering stays
+# headless-safe during replay and queue runs.
+if (isTRUE(capabilities("cairo"))) {
+  options(bitmapType = "cairo")
+}
+
 load_required_pkg <- function(pkg) {
   if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
     stop(sprintf("Required package '%s' is not installed.", pkg), call. = FALSE)
