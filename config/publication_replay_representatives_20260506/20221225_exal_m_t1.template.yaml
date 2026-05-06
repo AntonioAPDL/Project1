@@ -1,0 +1,77 @@
+version: 1
+campaign:
+  campaign_id: multimodel_v8_publication_replay_20221225_exal_m_t1_20260506
+  spec_id: exalm_t1_discount_grid_exact_v1
+  artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506/20221225_exal_m_t1
+  matrix_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506/20221225_exal_m_t1/control/20221225_exal_m_t1_v1
+  config_output_dir: /data/muscat_data/jaguir26/project1_ucsc_phd/config/unified_runs_publication_replay_representatives_20260506/20221225_exal_m_t1
+  launch_queue: false
+queue:
+  ordinary_max_concurrent: 1
+  pause_free_gb: 180
+  launch_free_gb: 220
+  heavy_free_gb: 240
+  heavy_cutoff_max_concurrent: 1
+  heavy_cutoff_blocks_ordinary: false
+  poll_seconds: 15
+fit_parallel:
+  mode: global_models
+  default_workers: 7
+compare:
+  builder: scripts/build_multimodel_v8_all9_feature_compare_bundle.py
+selection:
+  parity_matrix_path: reports/ndlm_parity_audit/spec_parity_matrix.csv
+  multivar_artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_featurecov_cf1_eps_sweep_20260416
+inputs:
+  fit:
+    usgs_cache_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv
+discount_profiles:
+- name: set09
+  description: Mid shared persistence, df_discrep 0.998, and near-static covariates.
+  state_evolution:
+    df_t: 0.99999999
+    df_s1: 0.9998
+    df_s2: 0.9998
+    df_s67: 0.9999
+    df_discrep: 0.998
+    lambda: 0.97
+    df_trans: 0.9999999
+    df_covs: 0.9999999
+cutoffs:
+  '20210123':
+    enabled: false
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421/reports/multimodel_20210123_v8_ndlm_featurecov_v1_postfix_compare
+  '20211112':
+    enabled: false
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421/reports/multimodel_20211112_v8_ndlm_featurecov_v1_postfix_compare
+  '20211221':
+    enabled: false
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421/reports/multimodel_20211221_v8_ndlm_featurecov_v1_postfix_compare
+  '20220511':
+    enabled: false
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421/reports/multimodel_20220511_v8_ndlm_featurecov_v1_postfix_compare
+  '20221225':
+    enabled: true
+    authoritative_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_featurecov_rerun_postfix_20260421/reports/multimodel_20221225_v8_ndlm_featurecov_v1_postfix_compare
+families:
+  exdqlm_multivar_keep:
+    enabled: true
+    model_id: exdqlm_multivar_synth_keep
+    model_key: exdqlm_multivar
+    likelihood_mode: exal
+    transfer_mode: keep
+    run_suffix: exdqlm_multivar_keep
+debug_publication_replay:
+  cutoff: '20221225'
+  cutoff_display: 12/25/2022
+  manuscript_label: exAL-M-T1
+  campaign_lineage: exalm_t1_discount_grid_exact_20260424:set09_override
+  publication_run_id: multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep
+  publication_run_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_exalm_t1_discount_grid_exact_20260424/runs/multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep
+  publication_score_source: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_exalm_t1_discount_grid_exact_20260424/runs/multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep/post/outputs/multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep/tables/crps_forecast_summary.csv
+  expected_crps: 0.43752505703872074
+  publication_note: 'HE2 publication override: exact-input apples-to-apples exAL-M-T1
+    discount-grid winner replaces the earlier cf1 sweep source run for cutoff 20221225.'
+  row_note: Publication override row; exact-input set09 representative.
+  source_r_version: 4.4.0 (2024-04-24)
+  source_runtime_profile: authoritative_r440

@@ -1090,6 +1090,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     log_path <- file.path(q_logs, log_name)
 
     env_overrides <- c(
+      ENVIRONMETRICS_LIBS_ONLY = "1",
       UNIFIED_UNIV_RDATA_OUT = output_path,
       UNIV_RUN_ROOT = run_root_abs,
       UNIV_OUT_DIR = q_outputs,

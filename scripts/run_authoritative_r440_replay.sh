@@ -18,12 +18,11 @@ if [[ ! -x "${R440_BIN}" ]]; then
   exit 1
 fi
 
-export R_LIBS="/home/jaguir26/R/x86_64-redhat-linux-gnu-library/4.4"
+export R_LIBS="/home/jaguir26/R/libs:/home/jaguir26/R/x86_64-redhat-linux-gnu-library/4.4"
 export R_LIBS_USER=""
 export R_LIBS_SITE=""
 export R_HOME="${R440_R_HOME}"
 export PATH="${R440_ROOT}/bin:${PATH}"
-export ENVIRONMETRICS_LIBS_ONLY="1"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"

@@ -1,3 +1,4 @@
+// [[Rcpp::plugins(cpp14)]]
 #include <RcppArmadillo.h>
 #include <boost/random.hpp>
 #include <boost/math/special_functions/erf.hpp>

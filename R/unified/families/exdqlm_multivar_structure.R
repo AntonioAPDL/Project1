@@ -11,7 +11,13 @@ exdqlm_multivar_default_harmonics <- function() {
 
 exdqlm_multivar_combine_mods <- function(mod1, mod2) {
   if (inherits(mod1, "exdqlm") && inherits(mod2, "exdqlm")) {
-    return(get("combineMods", envir = asNamespace("exdqlm"))(mod1, mod2))
+    if (exists("combineMods", envir = asNamespace("exdqlm"), inherits = FALSE)) {
+      return(get("combineMods", envir = asNamespace("exdqlm"), inherits = FALSE)(mod1, mod2))
+    }
+    if (exists("combineMods", mode = "function", inherits = TRUE)) {
+      return(get("combineMods", mode = "function", inherits = TRUE)(mod1, mod2))
+    }
+    return(mod1 + mod2)
   }
   if (inherits(mod1, "dlm") && inherits(mod2, "dlm")) {
     return(get("%+%", envir = asNamespace("dlm"))(mod1, mod2))

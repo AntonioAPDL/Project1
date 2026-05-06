@@ -1,38 +1,32 @@
 #!/usr/bin/env Rscript
-.libPaths(c("~/R/libs", .libPaths()))
+libs_only <- identical(Sys.getenv("ENVIRONMETRICS_LIBS_ONLY", "0"), "1")
+if (!libs_only) {
+  .libPaths(unique(c(path.expand("~/R/libs"), .libPaths())))
+}
 print(.libPaths())
-library(dplyr)
 
-library(parallel)
-library(dlm)
-library(exdqlm)
-library(mvtnorm)
-library(jmuOutlier)
-library(sn)
-library(Matrix)
-library(future)
-library(future.apply)
-library(numDeriv)
-library(foreach)
-library(doParallel)
-library(dataRetrieval)
-library(dplyr)
-library(zoo)
-library(tseries)
-library(tidyverse)
-library(patchwork)
-library(rvest)
-library(expint)
-library(nimble)
-library(nloptr)
-library(expm)
-library(numDeriv)
-library(Rcpp)
-library(RcppArmadillo)
-library(RcppEigen)
-library(ks)
-library(MASS)
-library(FNN)
+load_required_pkg <- function(pkg) {
+  if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
+    stop(sprintf("Required package '%s' is not installed.", pkg), call. = FALSE)
+  }
+}
+
+load_optional_pkg <- function(pkg) {
+  if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
+    message(sprintf("Optional package '%s' is not installed; continuing without it.", pkg))
+    return(FALSE)
+  }
+  TRUE
+}
+
+invisible(lapply(c(
+  "dplyr", "parallel", "dlm", "exdqlm", "mvtnorm", "jmuOutlier", "sn",
+  "Matrix", "future", "future.apply", "numDeriv", "foreach", "doParallel",
+  "zoo", "patchwork", "expint", "nimble", "nloptr", "expm", "Rcpp",
+  "RcppArmadillo", "RcppEigen", "ks", "MASS", "FNN"
+), load_required_pkg))
+
+invisible(lapply(c("dataRetrieval", "tseries", "tidyverse", "rvest"), load_optional_pkg))
 # library(prism)
 
 shared_helpers_path <- file.path(getwd(), "R", "unified", "families", "shared_input_helpers.R")

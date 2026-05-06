@@ -195,11 +195,17 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
     copied_files
   }
 
-  exact_snapshot_root <- as.character(unified_get(
+  exact_snapshot_root_raw <- unified_get(
     cfg,
     c("inputs", "shared", "exact_source_snapshot_root"),
     default = ""
-  )[[1L]])
+  )
+  exact_snapshot_root <- if (is.null(exact_snapshot_root_raw) || length(exact_snapshot_root_raw) < 1L) {
+    ""
+  } else {
+    out <- as.character(exact_snapshot_root_raw[[1L]])
+    if (!length(out) || is.na(out[[1L]])) "" else out[[1L]]
+  }
   if (nzchar(exact_snapshot_root)) {
     copied_files <- copy_exact_shared_snapshot(exact_snapshot_root, shared_root)
     exact_usgs_resolution <- unified_resolve_usgs_daily_path(cfg, snapshot_root = exact_snapshot_root)

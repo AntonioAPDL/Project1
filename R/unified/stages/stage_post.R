@@ -625,8 +625,9 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   )
   run_post_runner <- function(env_overrides, log_path) {
     env_kv <- sprintf("%s=%s", names(env_overrides), unname(env_overrides))
+    rscript_bin <- file.path(R.home("bin"), "Rscript")
     cmd_out <- system2(
-      "Rscript",
+      rscript_bin,
       c("--vanilla", file.path("scripts", "run_environmetrics_figures.R")),
       stdout = TRUE,
       stderr = TRUE,
