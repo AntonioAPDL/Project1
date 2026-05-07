@@ -9,6 +9,18 @@ Rscript --vanilla scripts/unified_run.R --config <yaml> [--dry-run]
 - `--config` is required.
 - `--dry-run` validates config, writes `resolved_config.yaml` and `run_manifest.yaml`, and exits.
 
+## Current revised-article runbook
+
+For the current revised article workflow, use:
+
+- `repro/run/CANONICAL_REVISED_ARTICLE_WORKFLOW.md`
+
+That runbook defines:
+- the canonical rerun path,
+- the canonical figure-generation path,
+- the article-side provenance-freeze path,
+- and which historical scripts should no longer be treated as the operational contract.
+
 ## Production Heavy Run Harness
 
 Committed heavy config:
