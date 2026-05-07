@@ -1,6 +1,6 @@
 # Canonical Revised Article Workflow
 
-Date: 2026-05-06
+Date: 2026-05-07
 
 ## Scope
 
@@ -41,15 +41,32 @@ This is the authoritative `R 4.4.0` replay path used for the sensitive publicati
 
 ### 4. Figure generation
 
-Use:
+Use two canonical figure paths:
+
+#### 4A. General publication figures
+
 - `R/environmetrics/40_figures.R`
 - `scripts/run_environmetrics_figures.R`
 - `R/unified/stages/stage_post.R`
 
-The intended current path is:
-- `stage_post.R` wires run-scoped shared inputs into the environment
-- `run_environmetrics_figures.R` runs the figure stack headlessly
-- `40_figures.R` generates the publication-facing figures
+This path covers the workflow-linked publication figures driven by the unified post stage.
+
+#### 4B. Cutoff-specific setup/support figures
+
+- `config/exal_m_t1_setup_support_by_cutoff_v2_20260507.json`
+- `scripts/render_exal_m_t1_setup_support_by_cutoff_v2.py`
+- `scripts/render_setup_support_bundle_v2.R`
+- `scripts/setup_support_bundle_v2_helpers.R`
+- `scripts/forecats_plot_bundle.R`
+- `scripts/build_exal_m_t1_setup_support_v2_review.py`
+- `scripts/validate_exal_m_t1_setup_support_v2.py`
+- `repro/run/EXAL_M_T1_SETUP_SUPPORT_BY_CUTOFF_V2_WORKFLOW.md`
+
+This path covers the cutoff-dependent setup/input/support figures for:
+- `usgs.png`
+- `precip_soilmoisture_climatePC1_faceted_labeled.png`
+- `retrospective_log_discharge_plot_faceted.png`
+- `forecats.png`
 
 ### 5. Article-side provenance freezing
 
@@ -57,8 +74,9 @@ Use:
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_local_provenance_bundles.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_exal_m_t1_generated_assets.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_he2_manifest_snapshot.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_setup_support_by_cutoff.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/build_setup_support_by_cutoff_review.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/refresh_setup_support_by_cutoff_v2.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/build_setup_support_by_cutoff_v2_review.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/promote_setup_support_v2_to_disc.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
 
 These are the canonical article-side refresh helpers.
@@ -99,15 +117,15 @@ Canonical source:
 ### C. Workflow-linked support assets
 
 Canonical source:
-- currently under audit; the `20260506` setup/support family is now treated as provisional `v1`
-- corrected replacement planning docs:
+- corrected `v2` cutoff-specific setup/support workflow:
+  - `repro/run/EXAL_M_T1_SETUP_SUPPORT_BY_CUTOFF_V2_WORKFLOW.md`
   - `repro/run/EXAL_M_T1_SETUP_SUPPORT_V2_SOURCE_MANIFEST.md`
   - `repro/run/EXAL_M_T1_SETUP_SUPPORT_V2_FILE_PLAN.md`
   - `repro/run/EXAL_M_T1_SETUP_SUPPORT_V2_ACCEPTANCE_CHECKLIST.md`
 - article-side bundle:
-  - `generated/setup_support_by_cutoff/`
+  - `generated/setup_support_by_cutoff_v2/`
 - article-side review:
-  - `generated/setup_support_by_cutoff_review/`
+  - `generated/setup_support_by_cutoff_v2_review/`
 
 These are the canonical per-cutoff setup/input/support figures for:
 - `usgs.png`
@@ -115,8 +133,14 @@ These are the canonical per-cutoff setup/input/support figures for:
 - `retrospective_log_discharge_plot_faceted.png`
 - `forecats.png`
 
-Important current note:
-- the existing `setup_support_by_cutoff` family is now a useful audit/debugging artifact, but it should not be treated as the final article-facing provenance freeze until the `v2` correction plan is implemented and validated.
+Article-facing promotion:
+- the current revised manuscript promotes the representative cutoff
+  - `20221225_exal_m_t1`
+  into `DISC/` through:
+  - `Evironmetrics---REVISED-DOC-2/scripts/promote_setup_support_v2_to_disc.py`
+
+Archival note:
+- the older `generated/setup_support_by_cutoff/` family remains a useful `v1` audit artifact only and is not the canonical provenance path.
 
 ### D. Workflow-linked appendix reference assets
 
@@ -176,9 +200,9 @@ That refreshes:
 - and the article asset review report.
 
 Generated review outputs:
-- `generated/setup_support_by_cutoff_review/SETUP_SUPPORT_BY_CUTOFF_REVIEW.md`
-- `generated/setup_support_by_cutoff_review/gallery.html`
-- `generated/setup_support_by_cutoff_review/figure_manifest.csv`
+- `generated/setup_support_by_cutoff_v2_review/SETUP_SUPPORT_BY_CUTOFF_V2_REVIEW.md`
+- `generated/setup_support_by_cutoff_v2_review/gallery.html`
+- `generated/setup_support_by_cutoff_v2_review/figure_manifest.csv`
 - `generated/article_asset_review/ARTICLE_ASSET_REVIEW.md`
 - `generated/article_asset_review/figure_gallery.html`
 - `generated/article_asset_review/figure_manifest.csv`
@@ -194,11 +218,12 @@ After provenance is refreshed:
 ## Practical rules from now on
 
 1. Treat `unified_run.R` as the canonical run entrypoint.
-2. Treat `stage_post.R -> run_environmetrics_figures.R -> 40_figures.R` as the canonical figure pipeline.
-3. Treat `refresh_all_generated_assets.py` as the canonical article-side refresh entrypoint.
-4. Use the narrower helper scripts only when intentionally refreshing one bundle family in isolation.
-5. Keep legacy notebook-style figure paths only as historical reference.
-6. Do not update article assets without updating the matching provenance bundle and review report.
+2. Treat `stage_post.R -> run_environmetrics_figures.R -> 40_figures.R` as the canonical figure pipeline for the workflow-linked publication figures.
+3. Treat the `setup_support_by_cutoff_v2` workflow as the canonical figure pipeline for the four cutoff-specific setup/support figures.
+4. Treat `refresh_all_generated_assets.py` as the canonical article-side refresh entrypoint.
+5. Use the narrower helper scripts only when intentionally refreshing one bundle family in isolation.
+6. Keep legacy notebook-style figure paths only as historical reference.
+7. Do not update article assets without updating the matching provenance bundle and review report.
 
 ## Why this runbook exists
 
