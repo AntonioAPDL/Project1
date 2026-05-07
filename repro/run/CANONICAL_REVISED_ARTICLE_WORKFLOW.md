@@ -81,6 +81,7 @@ Use:
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_he2_manifest_snapshot.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_setup_support_by_cutoff_v2.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/build_setup_support_by_cutoff_v2_review.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/build_setup_support_by_cutoff_v2_appendix.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/promote_setup_support_v2_to_disc.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/build_generated_asset_index.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
@@ -135,6 +136,8 @@ Canonical source:
   - `generated/setup_support_by_cutoff_v2/`
 - article-side review:
   - `generated/setup_support_by_cutoff_v2_review/`
+- article-side appendix-ready composites:
+  - `generated/setup_support_by_cutoff_v2_appendix/`
 
 These are the canonical per-cutoff setup/input/support figures for:
 - `usgs.png`
