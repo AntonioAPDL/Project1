@@ -1,5 +1,19 @@
 # exAL-M-T1 Setup/Support Figures by Cutoff Workflow
 
+Status: provisional `v1` workflow; retained for audit history only.
+
+Do not treat this document as the final article-facing contract.
+
+The corrected planning documents are now:
+- `repro/run/EXAL_M_T1_SETUP_SUPPORT_V2_SOURCE_MANIFEST.md`
+- `repro/run/EXAL_M_T1_SETUP_SUPPORT_V2_FILE_PLAN.md`
+- `repro/run/EXAL_M_T1_SETUP_SUPPORT_V2_ACCEPTANCE_CHECKLIST.md`
+
+Why this matters:
+- the `v1` workflow correctly targeted the five verified `exAL-M-T1` cutoffs,
+- but it rendered several figures from merged model matrices and incomplete replay-side metadata,
+- so it is no longer considered faithful enough for the final revised-article freeze.
+
 Date: 2026-05-06
 
 ## Scope

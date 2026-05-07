@@ -99,10 +99,11 @@ Canonical source:
 ### C. Workflow-linked support assets
 
 Canonical source:
-- verified five-run `exAL-M-T1` replay bundles ->
-  `scripts/render_exal_m_t1_setup_support_by_cutoff.py` ->
-  `scripts/render_setup_support_figures.R` ->
-  `R/environmetrics/40_figures_setup_support.R`
+- currently under audit; the `20260506` setup/support family is now treated as provisional `v1`
+- corrected replacement planning docs:
+  - `repro/run/EXAL_M_T1_SETUP_SUPPORT_V2_SOURCE_MANIFEST.md`
+  - `repro/run/EXAL_M_T1_SETUP_SUPPORT_V2_FILE_PLAN.md`
+  - `repro/run/EXAL_M_T1_SETUP_SUPPORT_V2_ACCEPTANCE_CHECKLIST.md`
 - article-side bundle:
   - `generated/setup_support_by_cutoff/`
 - article-side review:
@@ -113,6 +114,9 @@ These are the canonical per-cutoff setup/input/support figures for:
 - `precip_soilmoisture_climatePC1_faceted_labeled.png`
 - `retrospective_log_discharge_plot_faceted.png`
 - `forecats.png`
+
+Important current note:
+- the existing `setup_support_by_cutoff` family is now a useful audit/debugging artifact, but it should not be treated as the final article-facing provenance freeze until the `v2` correction plan is implemented and validated.
 
 ### D. Workflow-linked appendix reference assets
 
