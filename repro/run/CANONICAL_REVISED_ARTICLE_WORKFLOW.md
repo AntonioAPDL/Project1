@@ -82,12 +82,16 @@ Use:
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_setup_support_by_cutoff_v2.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/build_setup_support_by_cutoff_v2_review.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/promote_setup_support_v2_to_disc.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/build_generated_asset_index.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
 
 These are the canonical article-side refresh helpers.
 
 - `refresh_all_generated_assets.py` is the preferred top-level entrypoint.
 - The narrower helpers remain available when only one bundle family needs refresh.
+- The generated-asset inventory is refreshed automatically and written to:
+  - `Evironmetrics---REVISED-DOC-2/generated/README.md`
+  - `Evironmetrics---REVISED-DOC-2/generated/asset_inventory.csv`
 
 ## Non-canonical / legacy items to avoid
 
@@ -164,6 +168,16 @@ Canonical source:
 - article-side snapshot:
   - `generated/he2_publication_manifest_snapshot/`
 
+### F. Historical-support contract audit
+
+Canonical source:
+- `reports/he2_publication_manifest/historical_support_audit_20260507/historical_support_audit.md`
+- article-side snapshot:
+  - `generated/he2_historical_support_audit_20260507/`
+
+Forward repair planning source:
+- `repro/run/HE2_FULL_HISTORY_REPAIR_FORWARD_PLAN.md`
+
 ## Forward order of operations
 
 ### Step 1. Start from the canonical publication source of truth
@@ -212,6 +226,8 @@ Generated review outputs:
 - `generated/article_asset_review/figure_gallery.html`
 - `generated/article_asset_review/figure_manifest.csv`
 - `generated/article_asset_review/table_manifest.csv`
+- `generated/README.md`
+- `generated/asset_inventory.csv`
 
 ### Step 5. Only then update manuscript assets or wording
 
