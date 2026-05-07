@@ -55,8 +55,14 @@ The intended current path is:
 
 Use:
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_local_provenance_bundles.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/refresh_exal_m_t1_generated_assets.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/refresh_he2_manifest_snapshot.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
 
-This is the canonical article-side helper for rebuilding the local support bundles from the current `DISC/` assets and workflow gold manifest.
+These are the canonical article-side refresh helpers.
+
+- `refresh_all_generated_assets.py` is the preferred top-level entrypoint.
+- The narrower helpers remain available when only one bundle family needs refresh.
 
 ## Non-canonical / legacy items to avoid
 
@@ -131,9 +137,21 @@ Require:
 ### Step 4. Refresh article-side local bundles through the helper script
 
 Use:
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_local_provenance_bundles.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
 
-That keeps article-side copies, manifests, and hashes synchronized.
+That refreshes:
+- workflow-linked support bundles,
+- historical-summary bundles,
+- the representative `exAL-M-T1` generated bundle,
+- the five-run `exAL-M-T1` source freeze,
+- the HE2 publication-manifest snapshot,
+- and the article asset review report.
+
+Generated review outputs:
+- `generated/article_asset_review/ARTICLE_ASSET_REVIEW.md`
+- `generated/article_asset_review/figure_gallery.html`
+- `generated/article_asset_review/figure_manifest.csv`
+- `generated/article_asset_review/table_manifest.csv`
 
 ### Step 5. Only then update manuscript assets or wording
 
@@ -146,9 +164,10 @@ After provenance is refreshed:
 
 1. Treat `unified_run.R` as the canonical run entrypoint.
 2. Treat `stage_post.R -> run_environmetrics_figures.R -> 40_figures.R` as the canonical figure pipeline.
-3. Treat `refresh_local_provenance_bundles.py` as the canonical article-side bundle refresher.
-4. Keep legacy notebook-style figure paths only as historical reference.
-5. Do not update article assets without updating the matching provenance bundle.
+3. Treat `refresh_all_generated_assets.py` as the canonical article-side refresh entrypoint.
+4. Use the narrower helper scripts only when intentionally refreshing one bundle family in isolation.
+5. Keep legacy notebook-style figure paths only as historical reference.
+6. Do not update article assets without updating the matching provenance bundle and review report.
 
 ## Why this runbook exists
 
