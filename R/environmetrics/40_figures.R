@@ -45,6 +45,11 @@ if (!exists("PLOT_END_DATE", inherits = TRUE)) {
   PLOT_END_DATE <- CUTOFF_DATE + 28L
 }
 cutoff_label_short <- format(as.Date(CUTOFF_DATE), "%b %d")
+special_event_date <- suppressWarnings(as.Date(Sys.getenv("UNIFIED_FORECAST_EVENT_DATE", "")))
+if (length(special_event_date) == 0L || is.na(special_event_date[[1L]])) {
+  special_event_date <- as.Date(NA)
+}
+special_event_label <- Sys.getenv("UNIFIED_FORECAST_EVENT_LABEL", "")
 
 daily_dates_for_n <- function(start_date, n_days, context = "dates") {
   start_date <- as.Date(start_date)
@@ -6160,7 +6165,11 @@ p <- ggplot(flow_data, aes(x = Date, y = Flow)) +
   ) +
   labs(
     title = "Daily Flow of San Lorenzo River at Big Trees, CA",
-    subtitle = "Measurements from May 29, 1987, to December 25, 2022",
+    subtitle = sprintf(
+      "Measurements from %s to %s",
+      format(min(flow_data$Date, na.rm = TRUE), "%B %d, %Y"),
+      format(max(flow_data$Date, na.rm = TRUE), "%B %d, %Y")
+    ),
     x = "Year",
     y = expression("Water Flow (Log-Log cm^3/s)")
   ) +
@@ -6549,12 +6558,18 @@ ggsave(
 # 1. Filter USGS time series for plotting window
 plot_start <- PLOT_START_DATE
 plot_end <- PLOT_END_DATE
-flood_event_date <- as.Date("2023-01-09")
-show_jan9_flood_marker <- !is.na(CUTOFF_DATE) &&
-  (as.Date(CUTOFF_DATE) == as.Date("2022-12-25")) &&
-  !is.na(flood_event_date) &&
-  flood_event_date >= as.Date(plot_start) &&
-  flood_event_date <= as.Date(plot_end)
+if (is.na(special_event_date) &&
+    !is.na(CUTOFF_DATE) &&
+    as.Date(CUTOFF_DATE) == as.Date("2022-12-25")) {
+  special_event_date <- as.Date("2023-01-09")
+  if (!nzchar(special_event_label)) {
+    special_event_label <- "Jan 9: Flood"
+  }
+}
+show_special_event_marker <- !is.na(special_event_date) &&
+  nzchar(special_event_label) &&
+  special_event_date >= as.Date(plot_start) &&
+  special_event_date <= as.Date(plot_end)
 
 compute_jan9_label_y <- function(values, offset = 0.15, fallback = -0.15) {
   y <- suppressWarnings(min(values, na.rm = TRUE))
@@ -6570,10 +6585,10 @@ safe_max_date <- function(values, fallback_date) {
 }
 
 add_jan9_flood_marker <- function(plot_obj, label_y) {
-  if (!isTRUE(show_jan9_flood_marker)) return(plot_obj)
+  if (!isTRUE(show_special_event_marker)) return(plot_obj)
   plot_obj +
     geom_vline(
-      xintercept = as.numeric(flood_event_date),
+      xintercept = as.numeric(special_event_date),
       color = "#4a235a",
       linetype = "dashed",
       linewidth = 0.5,
@@ -6581,9 +6596,9 @@ add_jan9_flood_marker <- function(plot_obj, label_y) {
     ) +
     annotate(
       "text",
-      x = flood_event_date,
+      x = special_event_date,
       y = label_y,
-      label = "Jan 9: Flood",
+      label = special_event_label,
       color = "#4a235a",
       vjust = 4,
       hjust = -0.1,

@@ -57,6 +57,8 @@ Use:
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_local_provenance_bundles.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_exal_m_t1_generated_assets.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_he2_manifest_snapshot.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/refresh_setup_support_by_cutoff.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/build_setup_support_by_cutoff_review.py`
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
 
 These are the canonical article-side refresh helpers.
@@ -97,11 +99,32 @@ Canonical source:
 ### C. Workflow-linked support assets
 
 Canonical source:
+- verified five-run `exAL-M-T1` replay bundles ->
+  `scripts/render_exal_m_t1_setup_support_by_cutoff.py` ->
+  `scripts/render_setup_support_figures.R` ->
+  `R/environmetrics/40_figures_setup_support.R`
+- article-side bundle:
+  - `generated/setup_support_by_cutoff/`
+- article-side review:
+  - `generated/setup_support_by_cutoff_review/`
+
+These are the canonical per-cutoff setup/input/support figures for:
+- `usgs.png`
+- `precip_soilmoisture_climatePC1_faceted_labeled.png`
+- `retrospective_log_discharge_plot_faceted.png`
+- `forecats.png`
+
+### D. Workflow-linked appendix reference assets
+
+Canonical source:
 - unified post -> figure-runner -> `40_figures.R`
 - article-side bundle:
   - `generated/workflow_linked_support_sources/`
 
-### D. HE2 benchmark table freeze
+This bundle is now mainly archival/supporting for workflow-linked appendix assets such as:
+- `posterior_samples_counter_valid.png`
+
+### E. HE2 benchmark table freeze
 
 Canonical source:
 - `reports/he2_publication_manifest/he2_bayesian_publication_manifest.md`
@@ -141,6 +164,7 @@ Use:
 
 That refreshes:
 - workflow-linked support bundles,
+- cutoff-specific setup/support figure bundles and review outputs,
 - historical-summary bundles,
 - the representative `exAL-M-T1` generated bundle,
 - the five-run `exAL-M-T1` source freeze,
@@ -148,6 +172,9 @@ That refreshes:
 - and the article asset review report.
 
 Generated review outputs:
+- `generated/setup_support_by_cutoff_review/SETUP_SUPPORT_BY_CUTOFF_REVIEW.md`
+- `generated/setup_support_by_cutoff_review/gallery.html`
+- `generated/setup_support_by_cutoff_review/figure_manifest.csv`
 - `generated/article_asset_review/ARTICLE_ASSET_REVIEW.md`
 - `generated/article_asset_review/figure_gallery.html`
 - `generated/article_asset_review/figure_manifest.csv`
