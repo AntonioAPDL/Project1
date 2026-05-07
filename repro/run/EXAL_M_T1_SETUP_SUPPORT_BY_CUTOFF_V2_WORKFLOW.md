@@ -13,6 +13,12 @@ This runbook documents the corrected `v2` workflow for the four cutoff-dependent
 
 The `v2` workflow replaces the older `20260506` `v1` family as the canonical article-facing provenance path.
 
+Current corrected `v2` plotting contract:
+
+- `usgs.png` and the raw covariate figure use the full `1987-05-29 -> cutoff` daily history available in the selected-run shared inputs
+- `retrospective_log_discharge_plot_faceted.png` uses the retrospective support actually available for the cutoff-specific bundle, and the review metadata explicitly records whether that support reaches back to `1987-05-29`
+- `forecats.png` uses a strict `cutoff - 28 days` to `cutoff + 28 days` display window so the post-cutoff span matches the maximum GloFAS horizon
+
 ## Canonical source contract
 
 Each cutoff now has two linked roots:
@@ -95,6 +101,12 @@ It uses:
 - the covariate figure from raw cutoff-specific `cov_01_PPT.csv`, `cov_02_SOIL.csv`, and `cov_03_PCA.csv`
 - the retrospective figure from authoritative bundle-native retrospective lineage
 - `forecats.png` from bundle-native forecast inputs staged through `forecats_plot_bundle.R`
+
+The metadata beside each cutoff now distinguishes:
+
+- requested historical window
+- actual retrospective available window
+- missing-day counts within the requested and available windows
 
 ## Canonical commands
 

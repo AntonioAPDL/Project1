@@ -17,6 +17,9 @@ class ExalMT1SetupSupportV2ToolingTests(unittest.TestCase):
         cfg = load_config(ROOT / 'config' / 'exal_m_t1_setup_support_by_cutoff_v2_20260507.json')
         self.assertEqual(len(cfg['cutoffs']), 5)
         self.assertEqual(cfg['representative_article_cutoff'], '20221225_exal_m_t1')
+        self.assertEqual(cfg['history_start_date'], '1987-05-29')
+        self.assertEqual(cfg['forecast_plot_pre_days'], 28)
+        self.assertEqual(cfg['forecast_plot_post_days'], 28)
 
     def test_entries_point_to_existing_roots_and_expected_bundle_classes(self) -> None:
         cfg = load_config(ROOT / 'config' / 'exal_m_t1_setup_support_by_cutoff_v2_20260507.json')
@@ -31,7 +34,7 @@ class ExalMT1SetupSupportV2ToolingTests(unittest.TestCase):
             self.assertTrue(Path(entry['figure_bundle_root']).exists())
             self.assertRegex(entry['published_crps'], r'^0\.\d{4}$')
 
-    def test_support_start_matches_selected_run_retros(self) -> None:
+    def test_declared_retrospective_available_start_matches_selected_run_retros(self) -> None:
         cfg = load_config(ROOT / 'config' / 'exal_m_t1_setup_support_by_cutoff_v2_20260507.json')
         for entry in cfg['cutoffs']:
             retros_path = Path(entry['selected_run_root']) / 'inputs' / 'shared' / 'retros' / 'retros.csv'

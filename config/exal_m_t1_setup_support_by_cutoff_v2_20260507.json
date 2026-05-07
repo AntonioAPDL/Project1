@@ -1,6 +1,9 @@
 {
   "runtime_output_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exal_m_t1_setup_support_by_cutoff_v2_20260507",
   "representative_article_cutoff": "20221225_exal_m_t1",
+  "history_start_date": "1987-05-29",
+  "forecast_plot_pre_days": 28,
+  "forecast_plot_post_days": 28,
   "cutoffs": [
     {
       "slug": "20210123_exal_m_t1",

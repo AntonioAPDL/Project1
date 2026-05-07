@@ -27,12 +27,14 @@ def load_cutoff_records(output_root: Path) -> list[dict]:
         entry = json.loads((meta_dir / 'cutoff_entry.json').read_text())
         policy = __import__('yaml').safe_load((meta_dir / 'policy_summary.yaml').read_text())
         support = __import__('yaml').safe_load((meta_dir / 'support_window.yaml').read_text())
+        coverage = __import__('yaml').safe_load((meta_dir / 'coverage_audit.yaml').read_text())
         rows = list(csv.DictReader(figure_manifest.open()))
         records.append({
             'cutoff_dir': cutoff_dir,
             'entry': entry,
             'policy': policy,
             'support': support,
+            'coverage': coverage,
             'rows': rows,
         })
     return records
@@ -48,15 +50,19 @@ def build_review(output_root: Path) -> None:
         writer = csv.writer(f, lineterminator='\n')
         writer.writerow([
             'slug', 'cutoff_date', 'published_crps', 'bundle_class', 'support_start', 'support_end',
+            'retrospective_available_start', 'retrospective_full_history_available',
             'plot_start', 'plot_end', 'forecast_start_date', 'figure_name', 'figure_path', 'sha256', 'bytes'
         ])
         for record in records:
             entry = record['entry']
             support = record['support']
+            coverage = record['coverage']
             for row in record['rows']:
                 writer.writerow([
                     entry['slug'], entry['cutoff_date'], entry['published_crps'], entry['bundle_class'],
-                    support['support_start'], support['support_end'], support['plot_start'], support['plot_end'], support['forecast_start_date'],
+                    support['support_start'], support['support_end'],
+                    support['retrospective_available_start'], coverage['retrospective']['full_history_available'],
+                    support['plot_start'], support['plot_end'], support['forecast_start_date'],
                     row['figure_name'], row['path'], row['sha256'], row['bytes']
                 ])
 
@@ -64,14 +70,14 @@ def build_review(output_root: Path) -> None:
         '# exAL-M-T1 Setup/Support v2 Review\n\n',
         'This review bundle contains the corrected cutoff-specific setup/input/support figures rendered from the CRPS-linked `exAL-M-T1` run roots and the authoritative forecats/histfix bundles.\n\n',
         '## Cutoff summary\n',
-        '| Cutoff | Slug | Bundle class | Support window | Forecast window | Published CRPS |\n',
-        '|---|---|---|---|---|---:|\n',
+        '| Cutoff | Slug | Bundle class | Requested history | Retrospective available from | Forecast window | Published CRPS |\n',
+        '|---|---|---|---|---|---|---:|\n',
     ]
     for record in records:
         entry = record['entry']
         support = record['support']
         md_lines.append(
-            f"| {entry['cutoff_date']} | `{entry['slug']}` | `{entry['bundle_class']}` | {support['support_start']} to {support['support_end']} | {support['plot_start']} to {support['plot_end']} | {entry['published_crps']} |\n"
+            f"| {entry['cutoff_date']} | `{entry['slug']}` | `{entry['bundle_class']}` | {support['support_start']} to {support['support_end']} | {support['retrospective_available_start']} | {support['plot_start']} to {support['plot_end']} | {entry['published_crps']} |\n"
         )
     md_lines.append('\n## Policy summary\n')
     md_lines.append('| Cutoff | NWS policy | GloFAS policy | Notes |\n')
@@ -81,6 +87,17 @@ def build_review(output_root: Path) -> None:
         policy = record['policy']
         md_lines.append(
             f"| {entry['cutoff_date']} | {policy['nws_policy_summary']} | {policy['glofas_policy_summary']} | {policy.get('notes','')} |\n"
+        )
+    md_lines.append('\n## Coverage audit\n')
+    md_lines.append('| Cutoff | USGS full history | PPT full history | SOIL full history | PCA full history | Retros full history | Retros available start |\n')
+    md_lines.append('|---|---|---|---|---|---|---|\n')
+    for record in records:
+        entry = record['entry']
+        coverage = record['coverage']
+        md_lines.append(
+            f"| {entry['cutoff_date']} | {coverage['usgs']['full_history_available']} | {coverage['ppt']['full_history_available']} | "
+            f"{coverage['soil']['full_history_available']} | {coverage['pca']['full_history_available']} | "
+            f"{coverage['retrospective']['full_history_available']} | {coverage['retrospective']['available_start']} |\n"
         )
     md_lines.append('\n')
     (review_root / 'REVIEW.md').write_text(''.join(md_lines))
@@ -95,15 +112,22 @@ def build_review(output_root: Path) -> None:
         entry = record['entry']
         support = record['support']
         policy = record['policy']
+        coverage = record['coverage']
         html_lines.append(f'<div class="cutoff"><h2>{html.escape(entry["cutoff_date"])}</h2>')
         html_lines.append(
             '<p class="meta">'
             f'<strong>Slug:</strong> <code>{html.escape(entry["slug"])}</code><br>'
             f'<strong>Bundle class:</strong> <code>{html.escape(entry["bundle_class"])}</code><br>'
-            f'<strong>Support window:</strong> {html.escape(support["support_start"])} to {html.escape(support["support_end"])}<br>'
+            f'<strong>Requested history:</strong> {html.escape(support["support_start"])} to {html.escape(support["support_end"])}<br>'
+            f'<strong>Retrospective available from:</strong> {html.escape(support["retrospective_available_start"])}<br>'
             f'<strong>Forecast window:</strong> {html.escape(support["plot_start"])} to {html.escape(support["plot_end"])}<br>'
             f'<strong>NWS policy:</strong> {html.escape(policy["nws_policy_summary"])}<br>'
-            f'<strong>GloFAS policy:</strong> {html.escape(policy["glofas_policy_summary"])}'
+            f'<strong>GloFAS policy:</strong> {html.escape(policy["glofas_policy_summary"])}<br>'
+            f'<strong>Coverage audit:</strong> USGS={html.escape(str(coverage["usgs"]["full_history_available"]))}, '
+            f'PPT={html.escape(str(coverage["ppt"]["full_history_available"]))}, '
+            f'SOIL={html.escape(str(coverage["soil"]["full_history_available"]))}, '
+            f'PCA={html.escape(str(coverage["pca"]["full_history_available"]))}, '
+            f'Retros={html.escape(str(coverage["retrospective"]["full_history_available"]))}'
             '</p>'
         )
         html_lines.append('<div class="grid">')

@@ -34,7 +34,7 @@ def ensure(path: Path, label: str) -> None:
         raise AssertionError(f'Missing {label}: {path}')
 
 
-def validate_cutoff(entry: dict, output_root: Path) -> dict:
+def validate_cutoff(entry: dict, output_root: Path, config: dict) -> dict:
     slug_root = output_root / entry['slug']
     figures_dir = slug_root / 'figures'
     meta_dir = slug_root / 'metadata'
@@ -43,7 +43,7 @@ def validate_cutoff(entry: dict, output_root: Path) -> dict:
 
     for name in FIGURE_NAMES:
         ensure(figures_dir / name, f'figure {name}')
-    for name in ['source_model_run.txt', 'source_figure_bundle.txt', 'policy_summary.yaml', 'support_window.yaml', 'input_hashes.csv', 'cutoff_entry.json']:
+    for name in ['source_model_run.txt', 'source_figure_bundle.txt', 'policy_summary.yaml', 'support_window.yaml', 'coverage_audit.yaml', 'input_hashes.csv', 'cutoff_entry.json']:
         ensure(meta_dir / name, f'metadata {name}')
     ensure(logs_dir / 'render.log', 'render.log')
     ensure(review_dir / 'figure_manifest.csv', 'review manifest')
@@ -56,26 +56,49 @@ def validate_cutoff(entry: dict, output_root: Path) -> dict:
         raise AssertionError(f'{entry["slug"]}: source_figure_bundle mismatch')
 
     support = yaml.safe_load((meta_dir / 'support_window.yaml').read_text())
+    coverage = yaml.safe_load((meta_dir / 'coverage_audit.yaml').read_text())
     policy = yaml.safe_load((meta_dir / 'policy_summary.yaml').read_text())
 
     first_date, last_date = read_first_last_retros_date(Path(entry['selected_run_root']) / 'inputs' / 'shared' / 'retros' / 'retros.csv')
-    if support['support_start'] != first_date:
-        raise AssertionError(f'{entry["slug"]}: support_start {support["support_start"]} != selected-run retros start {first_date}')
     if support['support_end'] != entry['cutoff_date']:
         raise AssertionError(f'{entry["slug"]}: support_end {support["support_end"]} != cutoff_date {entry["cutoff_date"]}')
     if last_date != entry['cutoff_date']:
         raise AssertionError(f'{entry["slug"]}: selected-run retros end {last_date} != cutoff_date {entry["cutoff_date"]}')
+    if support['retrospective_available_start'] != first_date:
+        raise AssertionError(f'{entry["slug"]}: retrospective_available_start {support["retrospective_available_start"]} != selected-run retros start {first_date}')
 
-    bundle_meta = yaml.safe_load((Path(entry['figure_bundle_root']) / 'meta.yaml').read_text())
-    forecast_start_date = bundle_meta['dates'].get('forecast_start_date')
-    if not forecast_start_date:
-        forecast_start_date = str(dt.date.fromisoformat(bundle_meta['dates']['cutoff_date']) + dt.timedelta(days=1))
-    if support['plot_start'] != bundle_meta['dates']['plot_start']:
-        raise AssertionError(f'{entry["slug"]}: plot_start mismatch with bundle meta')
-    if support['plot_end'] != bundle_meta['dates']['plot_end']:
-        raise AssertionError(f'{entry["slug"]}: plot_end mismatch with bundle meta')
-    if support['forecast_start_date'] != forecast_start_date:
-        raise AssertionError(f'{entry["slug"]}: forecast_start_date mismatch with bundle meta')
+    cutoff_date = dt.date.fromisoformat(entry['cutoff_date'])
+    expected_plot_start = (cutoff_date - dt.timedelta(days=config['forecast_plot_pre_days'])).isoformat()
+    expected_plot_end = (cutoff_date + dt.timedelta(days=config['forecast_plot_post_days'])).isoformat()
+    expected_forecast_start = (cutoff_date + dt.timedelta(days=1)).isoformat()
+    if support['support_start'] != config['history_start_date']:
+        raise AssertionError(f'{entry["slug"]}: support_start {support["support_start"]} != requested history start {config["history_start_date"]}')
+    if support['history_start_requested'] != config['history_start_date']:
+        raise AssertionError(f'{entry["slug"]}: history_start_requested mismatch')
+    if support['plot_start'] != expected_plot_start:
+        raise AssertionError(f'{entry["slug"]}: plot_start {support["plot_start"]} != expected {expected_plot_start}')
+    if support['plot_end'] != expected_plot_end:
+        raise AssertionError(f'{entry["slug"]}: plot_end {support["plot_end"]} != expected {expected_plot_end}')
+    if support['forecast_start_date'] != expected_forecast_start:
+        raise AssertionError(f'{entry["slug"]}: forecast_start_date {support["forecast_start_date"]} != expected {expected_forecast_start}')
+    if int(support['forecast_plot_pre_days']) != int(config['forecast_plot_pre_days']):
+        raise AssertionError(f'{entry["slug"]}: forecast_plot_pre_days mismatch')
+    if int(support['forecast_plot_post_days']) != int(config['forecast_plot_post_days']):
+        raise AssertionError(f'{entry["slug"]}: forecast_plot_post_days mismatch')
+
+    for key in ['usgs', 'ppt', 'soil', 'pca']:
+        if coverage[key]['available_start'] != config['history_start_date']:
+            raise AssertionError(f'{entry["slug"]}: {key} available_start {coverage[key]["available_start"]} != requested history start')
+        if int(coverage[key]['missing_days_requested_window']) != 0:
+            raise AssertionError(f'{entry["slug"]}: {key} has missing requested-window days')
+        if not bool(coverage[key]['full_history_available']):
+            raise AssertionError(f'{entry["slug"]}: {key} should have full history available')
+
+    retro = coverage['retrospective']
+    if retro['available_start'] != first_date:
+        raise AssertionError(f'{entry["slug"]}: retrospective coverage available_start mismatch')
+    if int(retro['missing_days_available_window']) != 0:
+        raise AssertionError(f'{entry["slug"]}: retrospective has missing days within available window')
 
     if entry['bundle_class'] == 'short_window_synth_bundle' and 'nws_synth_retro_ens_mean' not in policy['nws_policy_summary']:
         raise AssertionError(f'{entry["slug"]}: missing synthetic-retro marker in NWS policy')
@@ -83,6 +106,11 @@ def validate_cutoff(entry: dict, output_root: Path) -> dict:
         npol = policy['nws_policy_summary']
         if 'nws_retro_v21' not in npol or 'nws_retro_v30' not in npol:
             raise AssertionError(f'{entry["slug"]}: histfix NWS policy summary incomplete')
+        if not bool(retro['full_history_available']):
+            raise AssertionError(f'{entry["slug"]}: histfix cutoff should have full retrospective history available')
+    else:
+        if bool(retro['full_history_available']):
+            raise AssertionError(f'{entry["slug"]}: short-window cutoff should not report full retrospective history available')
 
     rows = list(csv.DictReader((review_dir / 'figure_manifest.csv').open()))
     if len(rows) != 4:
@@ -96,6 +124,7 @@ def validate_cutoff(entry: dict, output_root: Path) -> dict:
         'cutoff_date': entry['cutoff_date'],
         'status': 'PASS',
         'support_start': support['support_start'],
+        'retrospective_available_start': support['retrospective_available_start'],
         'plot_start': support['plot_start'],
         'plot_end': support['plot_end'],
         'forecast_start_date': support['forecast_start_date'],
@@ -116,11 +145,14 @@ def main() -> None:
     for entry in config['cutoffs']:
         if wanted and entry['slug'] not in wanted:
             continue
-        rows.append(validate_cutoff(entry, output_root))
+        rows.append(validate_cutoff(entry, output_root, config))
 
     print('Validated exAL-M-T1 setup/support v2 outputs:')
     for row in rows:
-        print(f"- {row['cutoff_date']} ({row['slug']}): PASS | support {row['support_start']} -> {row['cutoff_date']} | forecast window {row['plot_start']} -> {row['plot_end']}")
+        print(
+            f"- {row['cutoff_date']} ({row['slug']}): PASS | requested history {row['support_start']} -> {row['cutoff_date']} | "
+            f"retros available from {row['retrospective_available_start']} | forecast window {row['plot_start']} -> {row['plot_end']}"
+        )
 
 
 if __name__ == '__main__':

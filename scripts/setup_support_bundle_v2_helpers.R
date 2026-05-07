@@ -255,7 +255,7 @@ compute_coverage_summary <- function(retros_long) {
     arrange(source_label)
 }
 
-stage_forecats_bundle <- function(bundle_root, selected_usgs_path, retros_long, stage_dir) {
+stage_forecats_bundle <- function(bundle_root, selected_usgs_path, retros_long, stage_dir, plot_start, plot_end) {
   meta <- read_bundle_meta(bundle_root)
   dir.create(file.path(stage_dir, "inputs"), recursive = TRUE, showWarnings = FALSE)
 
@@ -287,6 +287,8 @@ stage_forecats_bundle <- function(bundle_root, selected_usgs_path, retros_long, 
     forecast_start <- cutoff_use + 1
   }
   meta$dates$forecast_start_date <- format(forecast_start, "%Y-%m-%d")
+  meta$dates$plot_start <- format(safe_date(plot_start), "%Y-%m-%d")
+  meta$dates$plot_end <- format(safe_date(plot_end), "%Y-%m-%d")
 
   cov_tbl <- compute_coverage_summary(retros_long)
   meta$retrospective_coverage <- lapply(seq_len(nrow(cov_tbl)), function(i) {
@@ -320,7 +322,7 @@ plot_usgs_png <- function(out_path, usgs_df, cutoff_date, support_start, plot_sc
       x = "Date",
       y = expression("Water Flow (Log-Log m"^3*"/s)")
     ) +
-    scale_x_date(labels = label_date(x_label), breaks = pretty_breaks(7)) +
+    scale_x_date(labels = label_date(x_label), breaks = pretty_breaks(7), limits = c(support_start, cutoff_date)) +
     theme_minimal(base_size = 14) +
     theme(
       plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
@@ -354,7 +356,7 @@ plot_covariates_png <- function(out_path, covariate_df, cutoff_date, support_sta
       x = "Date",
       y = NULL
     ) +
-    scale_x_date(labels = label_date(x_label), breaks = pretty_breaks(7)) +
+    scale_x_date(labels = label_date(x_label), breaks = pretty_breaks(7), limits = c(support_start, cutoff_date)) +
     theme_minimal(base_size = 14) +
     theme(
       plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
@@ -369,7 +371,7 @@ plot_covariates_png <- function(out_path, covariate_df, cutoff_date, support_sta
   ggsave(out_path, plot = p, width = 12, height = 8, units = "in", dpi = 900)
 }
 
-plot_retrospective_png <- function(out_path, retros_wide, cutoff_date, support_start, plot_scale = "log_log1p_cms") {
+plot_retrospective_png <- function(out_path, retros_wide, cutoff_date, support_start, available_start, plot_scale = "log_log1p_cms") {
   df <- retros_wide %>%
     mutate(
       GloFAS = transform_flow(GloFAS, plot_scale),
@@ -377,16 +379,26 @@ plot_retrospective_png <- function(out_path, retros_wide, cutoff_date, support_s
     )
   span_days <- as.numeric(max(df$Date) - min(df$Date))
   x_label <- if (span_days > 3650) "%Y" else if (span_days > 730) "%Y-%m" else "%Y-%m-%d"
+  subtitle_text <- if (safe_date(available_start) <= safe_date(support_start)) {
+    sprintf("Historical support window for cutoff %s: %s to %s", format(cutoff_date, "%Y-%m-%d"), format(support_start, "%Y-%m-%d"), format(cutoff_date, "%Y-%m-%d"))
+  } else {
+    sprintf(
+      "Requested historical window: %s to %s; available retrospective support begins %s",
+      format(support_start, "%Y-%m-%d"),
+      format(cutoff_date, "%Y-%m-%d"),
+      format(available_start, "%Y-%m-%d")
+    )
+  }
 
   p_g <- ggplot(df, aes(x = Date, y = GloFAS)) +
     geom_line(color = "#E67E22", linewidth = 0.7, alpha = 0.92, na.rm = TRUE) +
     labs(
       title = "GloFAS Retrospective Analysis",
-      subtitle = sprintf("Historical support window for cutoff %s: %s to %s", format(cutoff_date, "%Y-%m-%d"), format(support_start, "%Y-%m-%d"), format(cutoff_date, "%Y-%m-%d")),
+      subtitle = subtitle_text,
       x = NULL,
       y = expression("Water Flow (Log-Log m"^3*"/s)")
     ) +
-    scale_x_date(labels = label_date(x_label), breaks = pretty_breaks(7)) +
+    scale_x_date(labels = label_date(x_label), breaks = pretty_breaks(7), limits = c(support_start, cutoff_date)) +
     theme_minimal(base_size = 14) +
     theme(
       plot.title = element_text(size = 15, face = "bold", hjust = 0.5),
@@ -403,7 +415,7 @@ plot_retrospective_png <- function(out_path, retros_wide, cutoff_date, support_s
       x = "Date",
       y = expression("Water Flow (Log-Log m"^3*"/s)")
     ) +
-    scale_x_date(labels = label_date(x_label), breaks = pretty_breaks(7)) +
+    scale_x_date(labels = label_date(x_label), breaks = pretty_breaks(7), limits = c(support_start, cutoff_date)) +
     theme_minimal(base_size = 14) +
     theme(
       plot.title = element_text(size = 15, face = "bold", hjust = 0.5),

@@ -20,6 +20,8 @@ FIGURE_NAMES = [
     'forecats.png',
 ]
 
+HISTORY_DATE_KEYS = ('Date', 'date', 'time')
+
 
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
@@ -42,12 +44,61 @@ def load_config(path: Path) -> dict:
     return json.loads(path.read_text())
 
 
+def choose_date_key(fieldnames: list[str]) -> str:
+    for key in HISTORY_DATE_KEYS:
+        if key in fieldnames:
+            return key
+    raise RuntimeError(f'Could not find a date column in {fieldnames}')
+
+
 def first_last_retros_dates(path: Path) -> tuple[str, str]:
-    rows = list(csv.DictReader(path.open()))
+    rows = list(csv.DictReader(path.open(newline='')))
     if not rows:
         raise RuntimeError(f'No rows found in {path}')
-    date_key = 'Date' if 'Date' in rows[0] else 'date'
+    date_key = choose_date_key(list(rows[0].keys()))
     return rows[0][date_key], rows[-1][date_key]
+
+
+def read_unique_dates(path: Path) -> list[dt.date]:
+    with path.open(newline='') as handle:
+        reader = csv.DictReader(handle)
+        if reader.fieldnames is None:
+            raise RuntimeError(f'No header found in {path}')
+        date_key = choose_date_key(list(reader.fieldnames))
+        values = sorted({dt.date.fromisoformat(row[date_key]) for row in reader if row.get(date_key)})
+    if not values:
+        raise RuntimeError(f'No valid dates found in {path}')
+    return values
+
+
+def daily_coverage(path: Path, requested_start: dt.date, requested_end: dt.date) -> dict:
+    dates = read_unique_dates(path)
+    observed = {d for d in dates if requested_start <= d <= requested_end}
+    if not observed:
+        raise RuntimeError(f'No dates from {requested_start} to {requested_end} found in {path}')
+    available_start = min(observed)
+    available_end = max(observed)
+    expected_requested = {
+        requested_start + dt.timedelta(days=offset)
+        for offset in range((requested_end - requested_start).days + 1)
+    }
+    expected_available = {
+        available_start + dt.timedelta(days=offset)
+        for offset in range((available_end - available_start).days + 1)
+    }
+    missing_requested = sorted(expected_requested - observed)
+    missing_available = sorted(expected_available - observed)
+    return {
+        'requested_start': requested_start.isoformat(),
+        'requested_end': requested_end.isoformat(),
+        'available_start': available_start.isoformat(),
+        'available_end': available_end.isoformat(),
+        'requested_window_days': len(expected_requested),
+        'available_window_days': len(expected_available),
+        'missing_days_requested_window': len(missing_requested),
+        'missing_days_available_window': len(missing_available),
+        'full_history_available': available_start <= requested_start and len(missing_requested) == 0,
+    }
 
 
 def build_policy_summary(entry: dict, bundle_meta: dict) -> dict:
@@ -66,7 +117,7 @@ def build_policy_summary(entry: dict, bundle_meta: dict) -> dict:
     }
 
 
-def build_input_hash_rows(entry: dict, support_start: str, plot_start: str, plot_end: str) -> list[dict]:
+def build_input_hash_rows(entry: dict) -> list[dict]:
     selected = Path(entry['selected_run_root'])
     bundle = Path(entry['figure_bundle_root'])
     rows: list[dict] = []
@@ -106,7 +157,34 @@ def build_input_hash_rows(entry: dict, support_start: str, plot_start: str, plot
     return rows
 
 
-def write_cutoff_artifacts(entry: dict, bundle_meta: dict, support_start: str, support_end: str, slug_root: Path) -> None:
+def build_coverage_audit(entry: dict, history_start: dt.date) -> dict:
+    selected = Path(entry['selected_run_root'])
+    cutoff_date = dt.date.fromisoformat(entry['cutoff_date'])
+    usgs = daily_coverage(selected / 'inputs/shared/usgs/usgs_daily.csv', history_start, cutoff_date)
+    ppt = daily_coverage(selected / 'inputs/shared/covariates/cov_01_PPT.csv', history_start, cutoff_date)
+    soil = daily_coverage(selected / 'inputs/shared/covariates/cov_02_SOIL.csv', history_start, cutoff_date)
+    pca = daily_coverage(selected / 'inputs/shared/covariates/cov_03_PCA.csv', history_start, cutoff_date)
+    retros = daily_coverage(selected / 'inputs/shared/retros/retros.csv', history_start, cutoff_date)
+    return {
+        'history_start_requested': history_start.isoformat(),
+        'cutoff_date': cutoff_date.isoformat(),
+        'usgs': usgs,
+        'ppt': ppt,
+        'soil': soil,
+        'pca': pca,
+        'retrospective': retros,
+    }
+
+
+def write_cutoff_artifacts(
+    entry: dict,
+    bundle_meta: dict,
+    history_start: dt.date,
+    support_end: str,
+    forecast_plot_pre_days: int,
+    forecast_plot_post_days: int,
+    slug_root: Path,
+) -> None:
     meta_dir = slug_root / 'metadata'
     review_dir = slug_root / 'review'
     figures_dir = slug_root / 'figures'
@@ -121,18 +199,28 @@ def write_cutoff_artifacts(entry: dict, bundle_meta: dict, support_start: str, s
     if not forecast_start_date:
         cutoff_date = bundle_meta['dates']['cutoff_date']
         forecast_start_date = str(dt.date.fromisoformat(cutoff_date) + dt.timedelta(days=1))
+    cutoff_use = dt.date.fromisoformat(entry['cutoff_date'])
+    plot_start = (cutoff_use - dt.timedelta(days=forecast_plot_pre_days)).isoformat()
+    plot_end = (cutoff_use + dt.timedelta(days=forecast_plot_post_days)).isoformat()
+    coverage_audit = build_coverage_audit(entry, history_start)
 
     support_window = {
-        'support_start': support_start,
+        'support_start': history_start.isoformat(),
         'support_end': support_end,
-        'plot_start': bundle_meta['dates']['plot_start'],
-        'plot_end': bundle_meta['dates']['plot_end'],
+        'history_start_requested': history_start.isoformat(),
+        'retrospective_available_start': coverage_audit['retrospective']['available_start'],
+        'retrospective_available_end': coverage_audit['retrospective']['available_end'],
+        'plot_start': plot_start,
+        'plot_end': plot_end,
         'forecast_start_date': forecast_start_date,
+        'forecast_plot_pre_days': forecast_plot_pre_days,
+        'forecast_plot_post_days': forecast_plot_post_days,
     }
     yaml.safe_dump(support_window, (meta_dir / 'support_window.yaml').open('w'), sort_keys=False)
     yaml.safe_dump(build_policy_summary(entry, bundle_meta), (meta_dir / 'policy_summary.yaml').open('w'), sort_keys=False)
+    yaml.safe_dump(coverage_audit, (meta_dir / 'coverage_audit.yaml').open('w'), sort_keys=False)
 
-    hash_rows = build_input_hash_rows(entry, support_start, bundle_meta['dates']['plot_start'], bundle_meta['dates']['plot_end'])
+    hash_rows = build_input_hash_rows(entry)
     with (meta_dir / 'input_hashes.csv').open('w', newline='') as f:
         writer = csv.writer(f, lineterminator='\n')
         writer.writerow(['label', 'path', 'sha256', 'bytes'])
@@ -162,6 +250,9 @@ def main() -> None:
     config = load_config(args.config.resolve())
     output_root = args.output_root.resolve() if args.output_root else Path(config['runtime_output_root']).resolve()
     wanted = set(args.slugs or [])
+    history_start = dt.date.fromisoformat(config['history_start_date'])
+    forecast_plot_pre_days = int(config.get('forecast_plot_pre_days', 28))
+    forecast_plot_post_days = int(config.get('forecast_plot_post_days', 28))
 
     if args.clean and output_root.exists() and not wanted:
         shutil.rmtree(output_root)
@@ -197,13 +288,23 @@ def main() -> None:
             '--figure-bundle-root', entry['figure_bundle_root'],
             '--bundle-class', entry['bundle_class'],
             '--output-dir', str((slug_root / 'figures').resolve()),
-            '--support-start', support_start,
+            '--history-start', history_start.isoformat(),
             '--cutoff-date', entry['cutoff_date'],
+            '--forecast-plot-pre-days', str(forecast_plot_pre_days),
+            '--forecast-plot-post-days', str(forecast_plot_post_days),
         ]
         run(cmd, slug_root / 'logs' / 'render.log')
 
         bundle_meta = yaml.safe_load((Path(entry['figure_bundle_root']) / 'meta.yaml').read_text())
-        write_cutoff_artifacts(entry, bundle_meta, support_start, support_end, slug_root)
+        write_cutoff_artifacts(
+            entry=entry,
+            bundle_meta=bundle_meta,
+            history_start=history_start,
+            support_end=support_end,
+            forecast_plot_pre_days=forecast_plot_pre_days,
+            forecast_plot_post_days=forecast_plot_post_days,
+            slug_root=slug_root,
+        )
 
     review_script = project_root / 'scripts' / 'build_exal_m_t1_setup_support_v2_review.py'
     validate_script = project_root / 'scripts' / 'validate_exal_m_t1_setup_support_v2.py'
