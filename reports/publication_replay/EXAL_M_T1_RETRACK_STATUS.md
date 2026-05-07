@@ -119,20 +119,14 @@ Both canaries now emit:
 
 ### Five-run execution status
 
-The same authoritative replay path has now been extended to the remaining three publication-aligned `exAL-M-T1` rows:
-
-1. `11/12/2021`
-2. `12/21/2021`
-3. `05/11/2022`
-
-Current narrow five-run status:
+The authoritative replay path has now completed for all five publication-aligned `exAL-M-T1` rows.
 
 | Cutoff | Run ID | Status | Mean CRPS from rerun | Notes |
 |---|---|---|---:|---|
 | `01/23/2021` | `multimodel_20210123_v8_eps360cf1_exdqlm_multivar_keep_featurecov_cf1` | `PASS` | `0.15685973014263893` | matches the published `0.1569` row to rounding |
 | `11/12/2021` | `multimodel_20211112_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1` | `PASS` | `0.02838779803717152` | matches the published `0.0284` row to rounding |
-| `12/21/2021` | `multimodel_20211221_v8_eps1cf1_exdqlm_multivar_keep_featurecov_cf1` | `RUNNING` | ~ | authoritative replay still in fit stage |
-| `05/11/2022` | `multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1` | `RUNNING` | ~ | authoritative replay still in fit stage |
+| `12/21/2021` | `multimodel_20211221_v8_eps1cf1_exdqlm_multivar_keep_featurecov_cf1` | `PASS` | `0.23693814285226766` | matches the published `0.2369` row to rounding |
+| `05/11/2022` | `multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1` | `PASS` | `0.020965785429243058` | matches the published `0.0210` row to rounding |
 | `12/25/2022` | `multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep` | `PASS` | `0.43752505703872074` | matches the published `0.4375` row to rounding |
 
 ### Current manuscript-side refresh status
@@ -147,9 +141,9 @@ The revised article repo has already been refreshed from the verified representa
 
 ### Next execution step
 
-1. let the `12/21/2021` and `05/11/2022` authoritative replays finish
-2. verify their CRPS values and artifact contracts
-3. then lock the final five-run provenance set for the revised manuscript
+1. treat these five verified run roots as the locked reproducible `exAL-M-T1` publication lineage
+2. refresh any remaining manuscript figures/tables only from those verified roots
+3. then synchronize the corrections letter and the final manuscript provenance notes
 
 ## What to ignore from the side-work
 
@@ -166,10 +160,10 @@ These should be treated as debugging/support infrastructure, not as the main exe
 
 The next operational goal should be:
 
-1. relaunch only the **five publication-relevant `exAL-M-T1` runs** listed above
+1. use only the **five publication-relevant `exAL-M-T1` runs** listed above
 2. preserve the publication-aligned inputs/specifications associated with the current CRPS table
-3. ensure those reruns emit the outputs needed for the revised manuscript:
+3. use those verified outputs for the revised manuscript:
    - predictive synthesis figures
    - covariate / posterior summary tables
    - any additional figure/table artifacts needed by `Evironmetrics---REVISED-DOC-2`
-4. keep the relaunch workflow locked to the verified headless-safe and exact-snapshot-safe path
+4. keep the replay workflow locked to the verified headless-safe and exact-snapshot-safe path
