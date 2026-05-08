@@ -44,6 +44,16 @@ def load_config(path: Path) -> dict:
     return json.loads(path.read_text())
 
 
+def axis_label_for_scale(plot_scale: str) -> str:
+    if plot_scale == 'raw_cms':
+        return 'Water Flow (m^3/s)'
+    if plot_scale == 'log1p_cms':
+        return 'Water Flow (log(1 + m^3/s))'
+    if plot_scale == 'log_log1p_cms':
+        return 'Water Flow (log(log(1 + m^3/s)))'
+    return f'Water Flow ({plot_scale})'
+
+
 def choose_date_key(fieldnames: list[str]) -> str:
     for key in HISTORY_DATE_KEYS:
         if key in fieldnames:
@@ -185,18 +195,22 @@ def build_coverage_audit(entry: dict, history_start: dt.date) -> dict:
     }
 
 
-def build_scale_contract(entry: dict, bundle_meta: dict) -> dict:
+def build_scale_contract(entry: dict, bundle_meta: dict, display_plot_scale: str) -> dict:
     bundle_root = Path(entry['figure_bundle_root'])
     selected_root = Path(entry['selected_run_root'])
-    plot_scale = (
-        bundle_meta.get('transforms', {}).get('plot_scale')
-        or bundle_meta.get('processing', {}).get('weighting_scale_internal')
-        or bundle_meta.get('config', {}).get('processing', {}).get('aggregation_scale_internal')
-        or 'log_log1p_cms'
-    )
+    selected_resolved = selected_root / 'resolved_config.yaml'
+    selected_internal_scale = None
+    if selected_resolved.exists():
+        selected_meta = yaml.safe_load(selected_resolved.read_text())
+        selected_internal_scale = (
+            selected_meta.get('scale_contract', {}).get('analysis_scale_fit_internal')
+            or selected_meta.get('scale_contract', {}).get('analysis_scale_post_internal')
+        )
     contract = {
-        'display_scale': plot_scale,
-        'display_axis_label': 'Water Flow (log(log(1 + m^3/s)))' if plot_scale == 'log_log1p_cms' else f'Water Flow ({plot_scale})',
+        'display_scale': display_plot_scale,
+        'display_axis_label': axis_label_for_scale(display_plot_scale),
+        'display_scale_basis': 'workflow_support_display_contract',
+        'selected_run_internal_analysis_scale': selected_internal_scale,
         'figure_inputs': {
             'usgs_daily': {
                 'path': str(selected_root / 'inputs/shared/usgs/usgs_daily.csv'),
@@ -246,6 +260,7 @@ def write_cutoff_artifacts(
     support_end: str,
     forecast_plot_pre_days: int,
     forecast_plot_post_days: int,
+    display_plot_scale: str,
     slug_root: Path,
 ) -> None:
     meta_dir = slug_root / 'metadata'
@@ -282,7 +297,7 @@ def write_cutoff_artifacts(
     yaml.safe_dump(support_window, (meta_dir / 'support_window.yaml').open('w'), sort_keys=False)
     yaml.safe_dump(build_policy_summary(entry, bundle_meta), (meta_dir / 'policy_summary.yaml').open('w'), sort_keys=False)
     yaml.safe_dump(coverage_audit, (meta_dir / 'coverage_audit.yaml').open('w'), sort_keys=False)
-    yaml.safe_dump(build_scale_contract(entry, bundle_meta), (meta_dir / 'scale_contract.yaml').open('w'), sort_keys=False)
+    yaml.safe_dump(build_scale_contract(entry, bundle_meta, display_plot_scale), (meta_dir / 'scale_contract.yaml').open('w'), sort_keys=False)
 
     hash_rows = build_input_hash_rows(entry)
     with (meta_dir / 'input_hashes.csv').open('w', newline='') as f:
@@ -317,6 +332,7 @@ def main() -> None:
     history_start = dt.date.fromisoformat(config['history_start_date'])
     forecast_plot_pre_days = int(config.get('forecast_plot_pre_days', 28))
     forecast_plot_post_days = int(config.get('forecast_plot_post_days', 28))
+    display_plot_scale = str(config.get('flow_figure_display_scale', 'log1p_cms'))
 
     if args.clean and output_root.exists() and not wanted:
         shutil.rmtree(output_root)
@@ -356,6 +372,7 @@ def main() -> None:
             '--cutoff-date', entry['cutoff_date'],
             '--forecast-plot-pre-days', str(forecast_plot_pre_days),
             '--forecast-plot-post-days', str(forecast_plot_post_days),
+            '--display-plot-scale', display_plot_scale,
         ]
         run(cmd, slug_root / 'logs' / 'render.log')
 
@@ -367,6 +384,7 @@ def main() -> None:
             support_end=support_end,
             forecast_plot_pre_days=forecast_plot_pre_days,
             forecast_plot_post_days=forecast_plot_post_days,
+            display_plot_scale=display_plot_scale,
             slug_root=slug_root,
         )
 
@@ -385,6 +403,7 @@ def main() -> None:
         '# exAL-M-T1 setup/support figures by cutoff (v2)\n\n'
         'This runtime family renders the corrected cutoff-specific setup/input/support figures from the CRPS-linked exAL-M-T1 run roots and the authoritative forecats/histfix bundles.\n\n'
         f'Config: `{args.config.resolve()}`\n\n'
+        f'Flow-figure display scale: `{display_plot_scale}`\n\n'
         'Review outputs:\n'
         '- `review/REVIEW.md`\n'
         '- `review/gallery.html`\n'

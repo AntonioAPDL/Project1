@@ -34,6 +34,7 @@ That means:
 - the workflow must carry both:
   - selected model run provenance,
   - and figure-bundle provenance
+  - and an explicit display-scale contract so the figure surface does not silently drift from the stored fit-input scale
 
 ## Files to create
 

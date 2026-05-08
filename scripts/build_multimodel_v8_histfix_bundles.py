@@ -450,7 +450,7 @@ def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run
             }
         },
         "transforms": {
-            "plot_scale": "log_log1p_cms",
+            "plot_scale": "log1p_cms",
         },
         "storage_scales": {
             "retros_daily": "log1p_cms",
@@ -459,6 +459,10 @@ def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run
             "glofas_weighted_daily": "raw_cms",
             "nws_members": "raw_cms",
             "glofas_members": "raw_cms",
+        },
+        "display_contract": {
+            "flow_support_figures_scale": "log1p_cms",
+            "note": "Support figures should display flow on the log1p support scale even though representative selected runs may continue to use a deeper internal log_log1p analysis scale."
         },
     }
     with (bundle_root / "meta.yaml").open("w", encoding="utf-8") as handle:

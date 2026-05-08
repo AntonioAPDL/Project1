@@ -4,6 +4,7 @@
   "history_start_date": "1987-05-29",
   "forecast_plot_pre_days": 28,
   "forecast_plot_post_days": 28,
+  "flow_figure_display_scale": "log1p_cms",
   "cutoffs": [
     {
       "slug": "20210123_exal_m_t1",

@@ -256,7 +256,7 @@ compute_coverage_summary <- function(retros_long) {
     arrange(source_label)
 }
 
-stage_forecats_bundle <- function(bundle_root, selected_usgs_path, retros_long, stage_dir, plot_start, plot_end) {
+stage_forecats_bundle <- function(bundle_root, selected_usgs_path, retros_long, stage_dir, plot_start, plot_end, plot_scale = "log1p_cms") {
   meta <- read_bundle_meta(bundle_root)
   dir.create(file.path(stage_dir, "inputs"), recursive = TRUE, showWarnings = FALSE)
 
@@ -285,8 +285,6 @@ stage_forecats_bundle <- function(bundle_root, selected_usgs_path, retros_long, 
     glofas_weighted_daily = "raw_cms",
     nws_weighted_daily = "raw_cms"
   )
-  plot_scale <- meta$transforms$plot_scale %||% meta$processing$weighting_scale_internal %||%
-    meta$config$processing$aggregation_scale_internal %||% "log_log1p_cms"
   meta$transforms <- list(plot_scale = as.character(plot_scale))
   cutoff_use <- safe_date(meta$dates$cutoff_date %||% NA_character_)
   forecast_start <- safe_date(meta$dates$forecast_start_date %||% NA_character_)
@@ -313,7 +311,7 @@ stage_forecats_bundle <- function(bundle_root, selected_usgs_path, retros_long, 
   invisible(stage_dir)
 }
 
-plot_usgs_png <- function(out_path, usgs_df, cutoff_date, support_start, plot_scale = "log_log1p_cms") {
+plot_usgs_png <- function(out_path, usgs_df, cutoff_date, support_start, plot_scale = "log1p_cms") {
   flood_cms <- c(15000, 6750) * CFSToCMS_CONVERSION_FACTOR
   flood_vals <- transform_flow(flood_cms, plot_scale)
   flow_data <- usgs_df %>% mutate(Value = transform_flow(discharge_cms, plot_scale))
@@ -366,7 +364,7 @@ plot_covariates_png <- function(out_path, covariate_df, cutoff_date, support_sta
   ggsave(out_path, plot = p, width = 12, height = 8, units = "in", dpi = 900)
 }
 
-plot_retrospective_png <- function(out_path, retros_wide, cutoff_date, support_start, available_start, plot_scale = "log_log1p_cms") {
+plot_retrospective_png <- function(out_path, retros_wide, cutoff_date, support_start, available_start, plot_scale = "log1p_cms") {
   df <- retros_wide %>%
     mutate(
       GloFAS = transform_flow(GloFAS, plot_scale),

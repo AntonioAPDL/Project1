@@ -18,6 +18,10 @@ Current corrected `v2` plotting contract:
 - `usgs.png` and the raw covariate figure use the full `1987-05-29 -> cutoff` daily history available in the selected-run shared inputs
 - `retrospective_log_discharge_plot_faceted.png` uses the retrospective support actually available for the cutoff-specific bundle, and the review metadata explicitly records whether that support reaches back to `1987-05-29`
 - `forecats.png` uses a strict `cutoff - 28 days` to `cutoff + 28 days` display window so the post-cutoff span matches the maximum GloFAS horizon
+- flow-support figures are displayed on `log1p_cms`, not the harsher internal `log_log1p_cms` model-analysis scale
+- the runtime metadata now records both:
+  - the display-scale contract used by the figures
+  - the selected-run internal analysis scale used by the fitted model lineage
 
 ## Canonical source contract
 

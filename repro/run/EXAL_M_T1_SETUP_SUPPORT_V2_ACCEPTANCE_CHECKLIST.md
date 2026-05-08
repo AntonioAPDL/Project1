@@ -90,6 +90,7 @@ Must satisfy:
 Must satisfy:
 - same historical support span as the retrospective fit support
 - no hard-coded y-limits
+- display scale recorded as `log1p_cms`
 
 ### `forecats.png`
 
@@ -98,6 +99,7 @@ Must satisfy:
   - `plot_start`
   - `plot_end`
   - `forecast_start_date`
+- display scale recorded as `log1p_cms`
 
 ## Gate 4: Source-layer correctness
 
@@ -128,6 +130,7 @@ For every cutoff output dir, require:
 - `metadata/policy_summary.yaml`
 - `metadata/support_window.yaml`
 - `metadata/input_hashes.csv`
+- `metadata/scale_contract.yaml`
 - `logs/render.log`
 - `review/figure_manifest.csv`
 

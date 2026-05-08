@@ -72,6 +72,8 @@ The current canonical `v2` contract is:
 - `usgs.png` and the raw covariate figure use the full `1987-05-29 -> cutoff` daily history available in the selected-run shared inputs
 - `retrospective_log_discharge_plot_faceted.png` uses the retrospective support actually available for the cutoff-specific bundle, with that availability surfaced explicitly in the review metadata
 - `forecats.png` uses a strict `cutoff - 28 days` to `cutoff + 28 days` display window
+- the support-flow figures are displayed on `log1p_cms`
+- the deeper `log_log1p_cms` scale remains model-internal unless and until the fitting workflow itself is reworked
 
 ### 5. Article-side provenance freezing
 

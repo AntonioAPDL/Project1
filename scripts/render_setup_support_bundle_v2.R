@@ -44,7 +44,7 @@ soil_path <- require_existing_path(file.path(selected_run_root, "inputs", "share
 pca_path <- require_existing_path(file.path(selected_run_root, "inputs", "shared", "covariates", "cov_03_PCA.csv"), "selected-run PCA covariate")
 
 meta <- read_bundle_meta(figure_bundle_root)
-plot_scale <- as.character(meta$transforms$plot_scale %||% "log_log1p_cms")
+plot_scale <- as.character(args[["display-plot-scale"]] %||% meta$transforms$plot_scale %||% "log1p_cms")
 forecast_plot_start <- cutoff_date - forecast_plot_pre_days
 forecast_plot_end <- cutoff_date + forecast_plot_post_days
 
@@ -103,7 +103,8 @@ stage_forecats_bundle(
   retros_long = retros_long,
   stage_dir = stage_dir,
   plot_start = forecast_plot_start,
-  plot_end = forecast_plot_end
+  plot_end = forecast_plot_end,
+  plot_scale = plot_scale
 )
 plot_forecats_bundle(stage_dir)
 file.copy(file.path(stage_dir, "figures", "forecats.png"), file.path(out_dir, "forecats.png"), overwrite = TRUE)
