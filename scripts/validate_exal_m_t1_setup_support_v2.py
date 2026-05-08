@@ -43,7 +43,7 @@ def validate_cutoff(entry: dict, output_root: Path, config: dict) -> dict:
 
     for name in FIGURE_NAMES:
         ensure(figures_dir / name, f'figure {name}')
-    for name in ['source_model_run.txt', 'source_figure_bundle.txt', 'policy_summary.yaml', 'support_window.yaml', 'coverage_audit.yaml', 'input_hashes.csv', 'cutoff_entry.json']:
+    for name in ['source_model_run.txt', 'source_figure_bundle.txt', 'policy_summary.yaml', 'support_window.yaml', 'coverage_audit.yaml', 'scale_contract.yaml', 'input_hashes.csv', 'cutoff_entry.json']:
         ensure(meta_dir / name, f'metadata {name}')
     ensure(logs_dir / 'render.log', 'render.log')
     ensure(review_dir / 'figure_manifest.csv', 'review manifest')
@@ -59,13 +59,8 @@ def validate_cutoff(entry: dict, output_root: Path, config: dict) -> dict:
     coverage = yaml.safe_load((meta_dir / 'coverage_audit.yaml').read_text())
     policy = yaml.safe_load((meta_dir / 'policy_summary.yaml').read_text())
 
-    first_date, last_date = read_first_last_retros_date(Path(entry['selected_run_root']) / 'inputs' / 'shared' / 'retros' / 'retros.csv')
     if support['support_end'] != entry['cutoff_date']:
         raise AssertionError(f'{entry["slug"]}: support_end {support["support_end"]} != cutoff_date {entry["cutoff_date"]}')
-    if last_date != entry['cutoff_date']:
-        raise AssertionError(f'{entry["slug"]}: selected-run retros end {last_date} != cutoff_date {entry["cutoff_date"]}')
-    if support['retrospective_available_start'] != first_date:
-        raise AssertionError(f'{entry["slug"]}: retrospective_available_start {support["retrospective_available_start"]} != selected-run retros start {first_date}')
 
     cutoff_date = dt.date.fromisoformat(entry['cutoff_date'])
     expected_plot_start = (cutoff_date - dt.timedelta(days=config['forecast_plot_pre_days'])).isoformat()
@@ -95,8 +90,8 @@ def validate_cutoff(entry: dict, output_root: Path, config: dict) -> dict:
             raise AssertionError(f'{entry["slug"]}: {key} should have full history available')
 
     retro = coverage['retrospective']
-    if retro['available_start'] != first_date:
-        raise AssertionError(f'{entry["slug"]}: retrospective coverage available_start mismatch')
+    if support['retrospective_available_start'] != retro['available_start']:
+        raise AssertionError(f'{entry["slug"]}: retrospective support window start does not match coverage audit')
     if int(retro['missing_days_available_window']) != 0:
         raise AssertionError(f'{entry["slug"]}: retrospective has missing days within available window')
 

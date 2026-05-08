@@ -32,6 +32,8 @@ bundle_class <- args[["bundle-class"]]
 forecast_plot_pre_days <- as.integer(args[["forecast-plot-pre-days"]])
 forecast_plot_post_days <- as.integer(args[["forecast-plot-post-days"]])
 
+style_helper_path <- file.path(project_root, "scripts", "figure_style_contract.R")
+source(style_helper_path, local = .GlobalEnv)
 helper_path <- file.path(project_root, "scripts", "setup_support_bundle_v2_helpers.R")
 source(helper_path, local = .GlobalEnv)
 source(file.path(project_root, "scripts", "forecats_plot_bundle.R"), local = .GlobalEnv)

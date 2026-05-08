@@ -108,7 +108,7 @@ This figure should be built on the `forecats_plot_bundle.R` logic, not on the me
 | `2021-11-12` | `0.0284` | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506/20211112_exal_m_t1/runs/multimodel_20211112_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1` | `/data/muscat_data/jaguir26/project1_ucsc_phd/repro/frozen_shared_inputs/exalm_t1_authoritative_20260505/cutoff_date=2021-11-12/forecats_bundle` | `short_window_synth_bundle` | `nws_synth_retro_ens_mean` keep-source policy | `glofas_hist_v31_lisflood_cons` | `2018-11-28` |
 | `2021-12-21` | `0.2369` | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506/20211221_exal_m_t1/runs/multimodel_20211221_v8_eps1cf1_exdqlm_multivar_keep_featurecov_cf1` | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/stable_inputs/site=11160500/cutoff_date=2021-12-21/run_id=20260407_long_history_r01` | `histfix_long_history_bundle` | `nws_retro_v21` with `nws_retro_v30` tail fill after natural v21 coverage end | `glofas_hist_v31_lisflood_cons` | `1987-05-29` |
 | `2022-05-11` | `0.0210` | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506/20220511_exal_m_t1/runs/multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1` | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/stable_inputs/site=11160500/cutoff_date=2022-05-11/run_id=20260407_long_history_r01` | `histfix_long_history_bundle` | `nws_retro_v21` with `nws_retro_v30` tail fill after natural v21 coverage end | `glofas_hist_v31_lisflood_cons` | `1987-05-29` |
-| `2022-12-25` | `0.4375` | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506/20221225_exal_m_t1/runs/multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep` | `/data/muscat_data/jaguir26/project1_ucsc_phd/repro/frozen_shared_inputs/exalm_t1_authoritative_20260505/cutoff_date=2022-12-25/forecats_bundle` | `short_window_synth_bundle` | `nws_synth_retro_ens_mean` keep-source policy with documented gapfix | `glofas_hist_v31_lisflood_cons` | `2020-01-10` |
+| `2022-12-25` | `0.4375` | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506/20221225_exal_m_t1/runs/multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep` | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/stable_inputs/site=11160500/cutoff_date=2022-12-25/run_id=20260407_long_history_r01` | `histfix_long_history_bundle` | `nws_retro_v21` with `nws_retro_v30` tail fill after natural v21 coverage end | `glofas_hist_v31_lisflood_cons` | `1987-05-29` |
 
 ## Figure-bundle details by bundle class
 
@@ -117,7 +117,6 @@ This figure should be built on the `forecats_plot_bundle.R` logic, not on the me
 Canonical examples:
 - `2021-01-23`
 - `2021-11-12`
-- `2022-12-25`
 
 Bundle characteristics:
 - authoritative frozen bundle under `repro/frozen_shared_inputs/exalm_t1_authoritative_20260505/.../forecats_bundle`
@@ -141,6 +140,7 @@ Operational implication:
 Canonical examples:
 - `2021-12-21`
 - `2022-05-11`
+- `2022-12-25`
 
 Bundle characteristics:
 - authoritative bundle under `multimodel_v8_histfix_20260407/stable_inputs/...`

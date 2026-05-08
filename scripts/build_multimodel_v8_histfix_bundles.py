@@ -18,10 +18,10 @@ from multimodel_v8_lib import ensure_dir
 SITE_ID = "11160500"
 SITE_LAT = 37.0443931
 SITE_LON = -122.072464
-DEFAULT_CUTOFFS = ["20211221", "20220511"]
+DEFAULT_CUTOFFS = ["20211221", "20220511", "20221225"]
 DEFAULT_DATA_START = "1987-05-29"
 DEFAULT_BUNDLE_RUN_ID = "20260407_long_history_r01"
-DEFAULT_GLOFAS_READY_END = "2022-05-11"
+DEFAULT_GLOFAS_READY_END = "2022-12-25"
 
 CURRENT_V8_RUNTIME_ROOT = Path(
     "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402"
@@ -48,15 +48,47 @@ NWS_RETRO_V30_HOURLY = Path(
     "11160500_nws_retro.csv"
 )
 LONG_HISTORY_SHARED_ROOT = CURRENT_V8_RUNTIME_ROOT / "runs" / "multimodel_20210123_v8_epsTT_l1" / "inputs" / "shared"
+REPRESENTATIVE_RUNTIME_ROOT = Path(
+    "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506"
+)
 
 CUTOFF_TO_DATE = {
     "20211221": "2021-12-21",
     "20220511": "2022-05-11",
+    "20221225": "2022-12-25",
 }
 GLOFAS_SOURCE_ID = "glofas_hist_v31_lisflood_cons"
 NWS_PRIMARY_SOURCE_ID = "nws_retro_v21"
 NWS_TAIL_FILL_SOURCE_ID = "nws_retro_v30"
 NWS_TAIL_FILL_START = "2021-01-01"
+NWS_SELECTED_WINDOW_SOURCE_ID = "nws_selected_window_retro"
+
+SELECTED_WINDOW_RETROS_BY_CUTOFF = {
+    "20211221": REPRESENTATIVE_RUNTIME_ROOT
+    / "20211221_exal_m_t1"
+    / "runs"
+    / "multimodel_20211221_v8_eps1cf1_exdqlm_multivar_keep_featurecov_cf1"
+    / "inputs"
+    / "shared"
+    / "retros"
+    / "retros.csv",
+    "20220511": REPRESENTATIVE_RUNTIME_ROOT
+    / "20220511_exal_m_t1"
+    / "runs"
+    / "multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1"
+    / "inputs"
+    / "shared"
+    / "retros"
+    / "retros.csv",
+    "20221225": REPRESENTATIVE_RUNTIME_ROOT
+    / "20221225_exal_m_t1"
+    / "runs"
+    / "multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep"
+    / "inputs"
+    / "shared"
+    / "retros"
+    / "retros.csv",
+}
 
 COVARIATE_SOURCE_FILES = {
     "ELI": LONG_HISTORY_SHARED_ROOT / "covariates" / "cov_01_ELI.csv",
@@ -217,6 +249,26 @@ def _load_nws_hybrid(v21_daily_csv: Path, v30_daily_csv: Path, cutoff_date: str)
     return hybrid.loc[:, ["date", "discharge_cms", "source_id"]]
 
 
+def _load_selected_window_retros(path: Path, cutoff_date: str) -> pd.DataFrame | None:
+    if not path.exists():
+        return None
+    df = pd.read_csv(path)
+    if "Date" not in df.columns:
+        raise RuntimeError(f"Selected-window retros is missing Date column: {path}")
+    cutoff_ts = pd.Timestamp(cutoff_date)
+    out = pd.DataFrame(
+        {
+            "date": pd.to_datetime(df["Date"]),
+            "usgs_cms_selected": np.expm1(pd.to_numeric(df["USGS"], errors="coerce")),
+            "glofas_cms_selected": np.expm1(pd.to_numeric(df["GloFAS"], errors="coerce")),
+            "nws_cms_selected": np.expm1(pd.to_numeric(df["NWS3.0"], errors="coerce")),
+        }
+    )
+    out = out.loc[out["date"] <= cutoff_ts].copy()
+    out["date"] = out["date"].dt.strftime("%Y-%m-%d")
+    return out
+
+
 def _require_daily_complete(df: pd.DataFrame, start_date: str, end_date: str, label: str) -> pd.DataFrame:
     full_dates = pd.date_range(start_date, end_date, freq="D").strftime("%Y-%m-%d")
     full = pd.DataFrame({"date": full_dates})
@@ -258,6 +310,28 @@ def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run
     raws = usgs.merge(glofas[["date", "discharge_cms", "source_id"]].rename(columns={"discharge_cms": "glofas_cms", "source_id": "glofas_source_id"}), on="date", how="left")
     raws = raws.merge(nws[["date", "discharge_cms", "source_id"]].rename(columns={"discharge_cms": "nws_cms", "source_id": "nws_source_id"}), on="date", how="left")
     raws = raws.rename(columns={"discharge_cms": "usgs_cms", "source_id": "usgs_source_id"})
+
+    selected_window_retros_path = SELECTED_WINDOW_RETROS_BY_CUTOFF.get(cutoff)
+    selected_window_overlap_start = ""
+    selected_window_overlap_end = ""
+    selected_window_rows = 0
+    if selected_window_retros_path is not None:
+        selected_window = _load_selected_window_retros(selected_window_retros_path, cutoff_date)
+        if selected_window is not None and not selected_window.empty:
+            selected_window_rows = int(len(selected_window))
+            selected_window_overlap_start = str(selected_window["date"].min())
+            selected_window_overlap_end = str(selected_window["date"].max())
+            raws = raws.merge(selected_window, on="date", how="left")
+            for raw_col, selected_col in [
+                ("usgs_cms", "usgs_cms_selected"),
+                ("glofas_cms", "glofas_cms_selected"),
+                ("nws_cms", "nws_cms_selected"),
+            ]:
+                mask = np.isfinite(pd.to_numeric(raws[selected_col], errors="coerce"))
+                raws.loc[mask, raw_col] = pd.to_numeric(raws.loc[mask, selected_col], errors="coerce")
+            nws_mask = np.isfinite(pd.to_numeric(raws["nws_cms_selected"], errors="coerce"))
+            raws.loc[nws_mask, "nws_source_id"] = NWS_SELECTED_WINDOW_SOURCE_ID
+            raws = raws.drop(columns=["usgs_cms_selected", "glofas_cms_selected", "nws_cms_selected"])
 
     for col in ["usgs_cms", "glofas_cms", "nws_cms"]:
         raws[col] = pd.to_numeric(raws[col], errors="coerce").clip(lower=0.0)
@@ -323,7 +397,7 @@ def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run
             "retros_source_lineage": "inputs/retros_source_lineage.csv",
         },
         "histfix": {
-            "purpose": "restore long-history retrospective support for the v8 20211221/20220511 rerun campaign",
+            "purpose": "restore long-history retrospective support for the v8 corrected support-bundle campaign",
             "glofas_source_id": GLOFAS_SOURCE_ID,
             "glofas_point_series_path": str(glofas_v31_csv),
             "glofas_point_series_meta": str(glofas_v31_meta),
@@ -340,6 +414,14 @@ def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run
             "forecast_member_sources": {
                 "nws": str(nws_forecast_src),
                 "glofas": str(glofas_forecast_src),
+            },
+            "selected_window_splice": {
+                "retros_path": str(selected_window_retros_path) if selected_window_retros_path is not None else "",
+                "overlap_start": selected_window_overlap_start,
+                "overlap_end": selected_window_overlap_end,
+                "rows_spliced": selected_window_rows,
+                "nws_source_id": NWS_SELECTED_WINDOW_SOURCE_ID,
+                "note": "When available, the representative selected-run retros window is spliced back into the repaired long-history bundle over the overlap so article support figures match the selected fit inputs near the cutoff.",
             },
         },
         "config": {
@@ -366,6 +448,17 @@ def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run
                     }
                 }
             }
+        },
+        "transforms": {
+            "plot_scale": "log_log1p_cms",
+        },
+        "storage_scales": {
+            "retros_daily": "log1p_cms",
+            "retros_source_lineage": "raw_cms",
+            "nws_weighted_daily": "raw_cms",
+            "glofas_weighted_daily": "raw_cms",
+            "nws_members": "raw_cms",
+            "glofas_members": "raw_cms",
         },
     }
     with (bundle_root / "meta.yaml").open("w", encoding="utf-8") as handle:

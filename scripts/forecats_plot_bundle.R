@@ -13,7 +13,8 @@
 #     figures/
 #       forecats.png   (created)
 #
-# All input flows are expected to be stored in raw cms (m^3/s).
+# Input storage scales may be declared in meta.yaml under `storage_scales`.
+# If omitted, all inputs default to raw cms (m^3/s).
 
 suppressPackageStartupMessages({
   library(yaml)
@@ -22,6 +23,58 @@ suppressPackageStartupMessages({
   library(tidyr)
   library(ggplot2)
 })
+
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(x, y) {
+    if (is.null(x) || length(x) == 0L) y else x
+  }
+}
+
+if (!exists("figure_flow_axis_label", mode = "function") ||
+    !exists("figure_date_label_format", mode = "function") ||
+    !exists("theme_manuscript_standard", mode = "function")) {
+  project_root_env <- Sys.getenv("ENV_PROJECT_ROOT", unset = "")
+  helper_path <- if (nzchar(project_root_env)) file.path(project_root_env, "scripts", "figure_style_contract.R") else NA_character_
+  if (is.character(helper_path) && length(helper_path) == 1L && !is.na(helper_path) && file.exists(helper_path)) {
+    source(helper_path, local = .GlobalEnv)
+  }
+}
+
+if (!exists("figure_flow_axis_label", mode = "function")) {
+  figure_flow_axis_label <- function(plot_scale) {
+    switch(
+      as.character(plot_scale %||% "log_log1p_cms"),
+      raw_cms = expression(Water~Flow~(m^3/s)),
+      log1p_cms = expression(Water~Flow~(log(1 + m^3/s))),
+      log_log1p_cms = expression(Water~Flow~(log(log(1 + m^3/s)))),
+      as.character(plot_scale)
+    )
+  }
+}
+if (!exists("figure_date_label_format", mode = "function")) {
+  figure_date_label_format <- function(dates) {
+    date_vals <- as.Date(dates)
+    span_days <- suppressWarnings(as.numeric(max(date_vals, na.rm = TRUE) - min(date_vals, na.rm = TRUE)))
+    if (!is.finite(span_days)) {
+      return("%Y-%m-%d")
+    }
+    if (span_days > 3650) return("%Y")
+    if (span_days > 730) return("%Y-%m")
+    "%Y-%m-%d"
+  }
+}
+if (!exists("theme_manuscript_standard", mode = "function")) {
+  theme_manuscript_standard <- function(base_size = 14, title_size = 16, legend_position = "bottom") {
+    theme_minimal(base_size = base_size) +
+      theme(
+        plot.title = element_text(size = title_size, face = "bold", hjust = 0.5, margin = margin(b = 8)),
+        axis.title = element_text(face = "bold"),
+        axis.text = element_text(size = 11),
+        panel.grid.minor = element_blank(),
+        legend.position = legend_position
+      )
+  }
+}
 
 parse_args <- function(argv) {
   out <- list()
@@ -72,6 +125,26 @@ transform_flow <- function(x_cms, scale) {
   stop(paste("Unknown plot_scale:", scale))
 }
 
+inverse_transform_flow <- function(x_value, scale) {
+  scale <- as.character(scale %||% "raw_cms")
+  x_value <- suppressWarnings(as.numeric(x_value))
+  if (scale == "raw_cms") {
+    return(x_value)
+  }
+  if (scale == "log1p_cms") {
+    return(expm1(x_value))
+  }
+  if (scale == "log_log1p_cms") {
+    return(expm1(exp(x_value)))
+  }
+  stop(paste("Unknown storage scale:", scale))
+}
+
+transform_between_scales <- function(x_value, storage_scale, plot_scale) {
+  raw_cms <- inverse_transform_flow(x_value, storage_scale %||% "raw_cms")
+  transform_flow(raw_cms, plot_scale)
+}
+
 format_coverage_date <- function(x) {
   if (inherits(x, "Date")) return(format(x, "%Y-%m-%d"))
   x_chr <- as.character(x %||% "")
@@ -99,6 +172,7 @@ plot_forecats_bundle <- function(bundle_dir) {
   nws_path <- file.path(inputs_dir, meta$paths$nws_weighted_daily)
 
   plot_scale <- meta$transforms$plot_scale
+  storage_scales <- meta$storage_scales %||% list()
   cutoff_date <- as.Date(meta$dates$cutoff_date)
   forecast_start <- as.Date(meta$dates$forecast_start_date)
   plot_start <- as.Date(meta$dates$plot_start)
@@ -115,7 +189,7 @@ plot_forecats_bundle <- function(bundle_dir) {
     filter(date >= plot_start & date <= plot_end) %>%
     mutate(
       obs_type = ifelse(date >= forecast_start, "After", "Before"),
-      value = transform_flow(discharge_cms, plot_scale)
+      value = transform_between_scales(discharge_cms, storage_scales$usgs_daily %||% "raw_cms", plot_scale)
     )
 
   retros_raw <- readr::read_csv(retros_path, show_col_types = FALSE) %>%
@@ -148,10 +222,15 @@ plot_forecats_bundle <- function(bundle_dir) {
 
   retros_long <- retros_long %>%
     filter(date >= plot_start & date < forecast_start) %>%
-    mutate(value = transform_flow(discharge_cms, plot_scale))
+    mutate(value = transform_between_scales(discharge_cms, storage_scales$retros_daily %||% "raw_cms", plot_scale))
 
   # Forecast ensembles (wide -> long)
   read_ens_long <- function(path, provider_label) {
+    provider_scale <- if (identical(provider_label, "GloFAS")) {
+      storage_scales$glofas_weighted_daily %||% "raw_cms"
+    } else {
+      storage_scales$nws_weighted_daily %||% "raw_cms"
+    }
     df <- readr::read_csv(path, show_col_types = FALSE) %>%
       mutate(target_date = as.Date(target_date)) %>%
       filter(target_date >= forecast_start & target_date <= plot_end)
@@ -161,7 +240,7 @@ plot_forecats_bundle <- function(bundle_dir) {
       mutate(
         provider = provider_label,
         cms = as.numeric(cms),
-        value = transform_flow(cms, plot_scale)
+        value = transform_between_scales(cms, provider_scale, plot_scale)
       )
     long
   }
@@ -380,13 +459,7 @@ plot_forecats_bundle <- function(bundle_dir) {
   # -------------------------
   # Plot
   # -------------------------
-  y_lab <- switch(
-    plot_scale,
-    raw_cms = "Water Flow (m^3/s)",
-    log1p_cms = expression(Water~Flow~(log(1 + m^3/s))),
-    log_log1p_cms = expression(Water~Flow~(log(log(1 + m^3/s)))),
-    paste0("Water Flow (", plot_scale, ")")
-  )
+  y_lab <- figure_flow_axis_label(plot_scale)
 
   p <- ggplot() +
     # Flood stage horizontal lines + labels (if configured)
@@ -486,7 +559,7 @@ plot_forecats_bundle <- function(bundle_dir) {
       breaks = legend_levels_shown,
       labels = legend_label_map[legend_levels_shown]
     ) +
-    scale_x_date(breaks = scales::pretty_breaks(6), date_labels = "%b %d") +
+    scale_x_date(breaks = scales::pretty_breaks(6), date_labels = figure_date_label_format(c(plot_start, plot_end))) +
     labs(
       title = plot_title,
       x = paste0(
@@ -509,14 +582,10 @@ plot_forecats_bundle <- function(bundle_dir) {
       ),
       shape = "none"
     ) +
-    theme_minimal(base_size = 14) +
+    theme_manuscript_standard(base_size = 14, title_size = 16, legend_position = "bottom") +
     theme(
-      plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
-      axis.title = element_text(face = "bold"),
-      legend.position = "bottom",
       legend.title = element_text(face = "bold"),
-      legend.text = element_text(size = 8.8),
-      panel.grid.minor = element_blank()
+      legend.text = element_text(size = 8.8)
     )
 
   # Optional markers

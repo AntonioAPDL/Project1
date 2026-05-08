@@ -157,6 +157,15 @@ def build_input_hash_rows(entry: dict) -> list[dict]:
     return rows
 
 
+def build_retrospective_coverage(entry: dict, history_start: dt.date) -> dict:
+    bundle = Path(entry['figure_bundle_root'])
+    cutoff_date = dt.date.fromisoformat(entry['cutoff_date'])
+    if entry['bundle_class'] == 'histfix_long_history_bundle':
+        lineage_path = bundle / 'inputs' / 'retros_source_lineage.csv'
+        return daily_coverage(lineage_path, history_start, cutoff_date)
+    return daily_coverage(Path(entry['selected_run_root']) / 'inputs/shared/retros/retros.csv', history_start, cutoff_date)
+
+
 def build_coverage_audit(entry: dict, history_start: dt.date) -> dict:
     selected = Path(entry['selected_run_root'])
     cutoff_date = dt.date.fromisoformat(entry['cutoff_date'])
@@ -164,7 +173,7 @@ def build_coverage_audit(entry: dict, history_start: dt.date) -> dict:
     ppt = daily_coverage(selected / 'inputs/shared/covariates/cov_01_PPT.csv', history_start, cutoff_date)
     soil = daily_coverage(selected / 'inputs/shared/covariates/cov_02_SOIL.csv', history_start, cutoff_date)
     pca = daily_coverage(selected / 'inputs/shared/covariates/cov_03_PCA.csv', history_start, cutoff_date)
-    retros = daily_coverage(selected / 'inputs/shared/retros/retros.csv', history_start, cutoff_date)
+    retros = build_retrospective_coverage(entry, history_start)
     return {
         'history_start_requested': history_start.isoformat(),
         'cutoff_date': cutoff_date.isoformat(),
@@ -174,6 +183,60 @@ def build_coverage_audit(entry: dict, history_start: dt.date) -> dict:
         'pca': pca,
         'retrospective': retros,
     }
+
+
+def build_scale_contract(entry: dict, bundle_meta: dict) -> dict:
+    bundle_root = Path(entry['figure_bundle_root'])
+    selected_root = Path(entry['selected_run_root'])
+    plot_scale = (
+        bundle_meta.get('transforms', {}).get('plot_scale')
+        or bundle_meta.get('processing', {}).get('weighting_scale_internal')
+        or bundle_meta.get('config', {}).get('processing', {}).get('aggregation_scale_internal')
+        or 'log_log1p_cms'
+    )
+    contract = {
+        'display_scale': plot_scale,
+        'display_axis_label': 'Water Flow (log(log(1 + m^3/s)))' if plot_scale == 'log_log1p_cms' else f'Water Flow ({plot_scale})',
+        'figure_inputs': {
+            'usgs_daily': {
+                'path': str(selected_root / 'inputs/shared/usgs/usgs_daily.csv'),
+                'storage_scale': 'raw_cms',
+            },
+            'covariate_ppt': {
+                'path': str(selected_root / 'inputs/shared/covariates/cov_01_PPT.csv'),
+                'storage_scale': 'native_covariate_scale',
+            },
+            'covariate_soil': {
+                'path': str(selected_root / 'inputs/shared/covariates/cov_02_SOIL.csv'),
+                'storage_scale': 'native_covariate_scale',
+            },
+            'covariate_pca': {
+                'path': str(selected_root / 'inputs/shared/covariates/cov_03_PCA.csv'),
+                'storage_scale': 'native_covariate_scale',
+            },
+            'forecast_glofas_weighted': {
+                'path': str(bundle_root / 'inputs/glofas_weighted_daily.csv'),
+                'storage_scale': 'raw_cms',
+            },
+            'forecast_nws_weighted': {
+                'path': str(bundle_root / 'inputs/nws_weighted_daily.csv'),
+                'storage_scale': 'raw_cms',
+            },
+        },
+    }
+    if entry['bundle_class'] == 'histfix_long_history_bundle':
+        contract['figure_inputs']['retrospective_history'] = {
+            'path': str(bundle_root / 'inputs/retros_source_lineage.csv'),
+            'storage_scale': 'raw_cms',
+            'note': 'inputs/retros_daily.csv remains a legacy log1p bundle artifact and is not used directly for the rendered retrospective or staged forecast-context plots.',
+        }
+    else:
+        contract['figure_inputs']['retrospective_history'] = {
+            'path': str(bundle_root / 'inputs/retros_daily.csv'),
+            'storage_scale': 'raw_cms',
+            'note': 'selected source coverage follows the bundle selection policy recorded in meta.yaml.',
+        }
+    return contract
 
 
 def write_cutoff_artifacts(
@@ -219,6 +282,7 @@ def write_cutoff_artifacts(
     yaml.safe_dump(support_window, (meta_dir / 'support_window.yaml').open('w'), sort_keys=False)
     yaml.safe_dump(build_policy_summary(entry, bundle_meta), (meta_dir / 'policy_summary.yaml').open('w'), sort_keys=False)
     yaml.safe_dump(coverage_audit, (meta_dir / 'coverage_audit.yaml').open('w'), sort_keys=False)
+    yaml.safe_dump(build_scale_contract(entry, bundle_meta), (meta_dir / 'scale_contract.yaml').open('w'), sort_keys=False)
 
     hash_rows = build_input_hash_rows(entry)
     with (meta_dir / 'input_hashes.csv').open('w', newline='') as f:
@@ -271,10 +335,10 @@ def main() -> None:
         (slug_root / 'logs').mkdir(parents=True, exist_ok=True)
 
         selected_retros = Path(entry['selected_run_root']) / 'inputs' / 'shared' / 'retros' / 'retros.csv'
-        support_start, support_end = first_last_retros_dates(selected_retros)
-        if support_start != entry['support_start']:
+        selected_support_start, support_end = first_last_retros_dates(selected_retros)
+        if entry['bundle_class'] == 'short_window_synth_bundle' and selected_support_start != entry['support_start']:
             raise RuntimeError(
-                f"Config support_start mismatch for {entry['slug']}: config={entry['support_start']} selected_run={support_start}"
+                f"Config support_start mismatch for {entry['slug']}: config={entry['support_start']} selected_run={selected_support_start}"
             )
         if support_end != entry['cutoff_date']:
             raise RuntimeError(
