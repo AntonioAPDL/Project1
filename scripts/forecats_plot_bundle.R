@@ -32,7 +32,11 @@ if (!exists("%||%", mode = "function")) {
 
 if (!exists("figure_flow_axis_label", mode = "function") ||
     !exists("figure_date_label_format", mode = "function") ||
-    !exists("theme_manuscript_standard", mode = "function")) {
+    !exists("theme_manuscript_standard", mode = "function") ||
+    !exists("figure_product_palette", mode = "function") ||
+    !exists("figure_default_retro_label", mode = "function") ||
+    !exists("figure_retro_color_map", mode = "function") ||
+    !exists("figure_retro_shape_map", mode = "function")) {
   project_root_env <- Sys.getenv("ENV_PROJECT_ROOT", unset = "")
   helper_path <- if (nzchar(project_root_env)) file.path(project_root_env, "scripts", "figure_style_contract.R") else NA_character_
   if (is.character(helper_path) && length(helper_path) == 1L && !is.na(helper_path) && file.exists(helper_path)) {
@@ -73,6 +77,51 @@ if (!exists("theme_manuscript_standard", mode = "function")) {
         panel.grid.minor = element_blank(),
         legend.position = legend_position
       )
+  }
+}
+if (!exists("figure_product_palette", mode = "function")) {
+  figure_product_palette <- function() {
+    c(usgs = "#238b45", glofas = "#E67E22", nws = "#756bb1", usgs_future = "#B22222")
+  }
+}
+if (!exists("figure_default_retro_label", mode = "function")) {
+  figure_default_retro_label <- function(source_id, meta = NULL, cutoff_date = NULL, selected_run_root = NULL) {
+    sid <- tolower(as.character(source_id %||% ""))
+    switch(
+      sid,
+      nws_synth_retro_ens_mean = "NWS retrospective (closest available)",
+      nws_retro_v12 = "NWS retrospective v1.2",
+      nws_retro_v20 = "NWS retrospective v2.0",
+      nws_retro_v21 = "NWS retrospective v2.1",
+      nws_retro_v30 = "NWS retrospective v3.0",
+      nws_selected_window_retro = "NWS retrospective (selected-run window)",
+      glofas_hist_v21_htessel_cons = "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)",
+      glofas_hist_v31_lisflood_cons = "GloFAS historical v3.1 (LISFLOOD, consolidated)",
+      glofas_hist_v40_lisflood_cons = "GloFAS historical v4.0 (LISFLOOD, consolidated)",
+      glofas_legacy_reanalysis_v30 = "GloFAS legacy reanalysis v3.0",
+      glofas_synth_retro_ens_mean = "GloFAS retrospective (closest available)",
+      baseline_glofas = "GloFAS retrospective (baseline)",
+      baseline_nws = "NWS retrospective (baseline)",
+      sid
+    )
+  }
+}
+if (!exists("figure_retro_color_map", mode = "function")) {
+  figure_retro_color_map <- function(labels) {
+    labels <- unique(as.character(labels))
+    palette <- figure_product_palette()
+    out <- setNames(rep("#4d4d4d", length(labels)), labels)
+    out[grepl("^GloFAS", labels)] <- palette[["glofas"]]
+    out[grepl("^NWS", labels)] <- palette[["nws"]]
+    out[grepl("^USGS", labels)] <- palette[["usgs"]]
+    out
+  }
+}
+if (!exists("figure_retro_shape_map", mode = "function")) {
+  figure_retro_shape_map <- function(labels) {
+    labels <- unique(as.character(labels))
+    out <- setNames(rep(16L, length(labels)), labels)
+    out
   }
 }
 
@@ -221,6 +270,18 @@ plot_forecats_bundle <- function(bundle_dir) {
   }
 
   retros_long <- retros_long %>%
+    mutate(
+      source_id = tolower(as.character(source_id)),
+      source_label = vapply(seq_len(n()), function(i) {
+        figure_default_retro_label(
+          source_id = source_id[[i]],
+          meta = meta,
+          cutoff_date = cutoff_date
+        ) %||% source_label[[i]] %||% source_id[[i]]
+      }, character(1))
+    )
+
+  retros_long <- retros_long %>%
     filter(date >= plot_start & date < forecast_start) %>%
     mutate(value = transform_between_scales(discharge_cms, storage_scales$retros_daily %||% "raw_cms", plot_scale))
 
@@ -251,92 +312,23 @@ plot_forecats_bundle <- function(bundle_dir) {
   # -------------------------
   # Styling
   # -------------------------
-  glofas_color <- "#E67E22"
-  nws_color <- "#756bb1"
-  usgs_color <- "#238b45"
-  retro_palette_fallback <- scales::hue_pal(h = c(15, 375), c = 85, l = 52)(max(1, length(unique(retros_long$source_label))))
-
-  build_retro_colors <- function(labels) {
-    labels <- unique(as.character(labels))
-    out <- setNames(rep(NA_character_, length(labels)), labels)
-
-    fixed <- c(
-      # GloFAS family (orange palette)
-      "GloFAS retrospective (baseline)" = "#E67E22",
-      "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)" = "#F5B041",
-      "GloFAS historical v3.1 (LISFLOOD, consolidated)" = "#EB984E",
-      "GloFAS historical v4.0 (LISFLOOD, consolidated)" = "#D35400",
-      "GloFAS legacy reanalysis v3.0" = "#BA4A00",
-      "GloFAS synthetic retrospective (ensemble mean)" = "#AF601A",
-      # NWS/NWM family (purple palette)
-      "NWS retrospective (baseline)" = "#756bb1",
-      "NWS retrospective v3.0 (baseline)" = "#756bb1",
-      "NWS retrospective v2.1 (baseline)" = "#8E79C6",
-      "NWS retrospective v2.0 (baseline)" = "#A491D3",
-      "NWS retrospective v3.0 (legacy local csv)" = "#6C5BA8",
-      "NWS retrospective v2.1 (legacy local csv)" = "#8A78C1",
-      "NWS retrospective v3.0 (re-extracted point)" = "#5B4B9A",
-      "NWS retrospective v2.1 (re-extracted point)" = "#7A68B5",
-      "NWS retrospective v2.0 (re-extracted point)" = "#9A8CC9",
-      "NWS retrospective v3.0" = "#5B4B9A",
-      "NWS retrospective v2.1" = "#7A68B5",
-      "NWS retrospective v2.0" = "#9A8CC9",
-      "NWS synthetic retrospective (ensemble mean)" = "#4B2E83"
-    )
-    for (nm in names(fixed)) if (nm %in% labels) out[[nm]] <- fixed[[nm]]
-
-    idx_na <- which(is.na(out))
-    if (length(idx_na) > 0) {
-      fill_cols <- retro_palette_fallback[seq_len(length(idx_na))]
-      out[idx_na] <- fill_cols
-    }
-    out
-  }
-
-  build_shape_map <- function(labels) {
-    labels <- unique(as.character(labels))
-    out <- setNames(rep(NA_integer_, length(labels)), labels)
-
-    fixed <- c(
-      "USGS observed" = 16,
-      "GloFAS retrospective (baseline)" = 15,
-      "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)" = 17,
-      "GloFAS historical v3.1 (LISFLOOD, consolidated)" = 18,
-      "GloFAS historical v4.0 (LISFLOOD, consolidated)" = 0,
-      "GloFAS legacy reanalysis v3.0" = 8,
-      "GloFAS synthetic retrospective (ensemble mean)" = 10,
-      "NWS retrospective (baseline)" = 1,
-      "NWS retrospective v3.0 (baseline)" = 1,
-      "NWS retrospective v2.1 (baseline)" = 2,
-      "NWS retrospective v2.0 (baseline)" = 5,
-      "NWS retrospective v3.0 (legacy local csv)" = 1,
-      "NWS retrospective v2.1 (legacy local csv)" = 2,
-      "NWS retrospective v3.0 (re-extracted point)" = 7,
-      "NWS retrospective v2.1 (re-extracted point)" = 6,
-      "NWS retrospective v2.0 (re-extracted point)" = 4,
-      "NWS retrospective v3.0" = 7,
-      "NWS retrospective v2.1" = 6,
-      "NWS retrospective v2.0" = 4,
-      "NWS synthetic retrospective (ensemble mean)" = 9
-    )
-    for (nm in names(fixed)) if (nm %in% labels) out[[nm]] <- fixed[[nm]]
-
-    idx_na <- which(is.na(out))
-    if (length(idx_na) > 0) {
-      fallback <- c(0:25)
-      used <- unname(out[!is.na(out)])
-      fallback <- fallback[!fallback %in% used]
-      out[idx_na] <- fallback[seq_len(min(length(idx_na), length(fallback)))]
-    }
-    out
-  }
+  palette <- figure_product_palette()
+  glofas_color <- unname(palette[["glofas"]])
+  nws_color <- unname(palette[["nws"]])
+  usgs_color <- unname(palette[["usgs"]])
 
   coverage_entries <- meta$retrospective_coverage
   coverage_df <- NULL
   if (!is.null(coverage_entries) && length(coverage_entries) > 0) {
     coverage_df <- dplyr::bind_rows(lapply(coverage_entries, function(x) {
+      source_id <- as.character(x$source_id %||% "")
+      source_label_raw <- as.character(x$source_label %||% source_id)
       tibble::tibble(
-        source_label = as.character(x$source_label %||% x$source_id %||% ""),
+        source_label = figure_default_retro_label(
+          source_id = source_id,
+          meta = meta,
+          cutoff_date = cutoff_date
+        ) %||% source_label_raw,
         coverage_start = format_coverage_date(x$coverage_start),
         coverage_end = format_coverage_date(x$coverage_end)
       )
@@ -348,10 +340,10 @@ plot_forecats_bundle <- function(bundle_dir) {
   retro_labels_from_window <- unique(as.character(retros_long$source_label))
   retro_labels <- unique(c(retro_labels_from_coverage, retro_labels_from_window))
 
-  retro_color_map <- build_retro_colors(retro_labels)
+  retro_color_map <- figure_retro_color_map(retro_labels)
   color_map <- c("USGS observed" = usgs_color, retro_color_map)
   legend_levels <- c("USGS observed", retro_labels)
-  shape_map <- build_shape_map(legend_levels)
+  shape_map <- figure_retro_shape_map(legend_levels)
 
   usgs_before <- usgs %>% filter(obs_type == "Before") %>% mutate(Source = "USGS observed")
   usgs_after <- usgs %>% filter(obs_type == "After") %>% mutate(Source = "USGS observed")
@@ -376,8 +368,8 @@ plot_forecats_bundle <- function(bundle_dir) {
         .groups = "drop"
       )
     retro_coverage_map <- split(cov_agg, cov_agg$source_label)
-  } else if (nrow(retros_raw) > 0 && all(c("source_label", "date") %in% names(retros_raw))) {
-    cov_agg <- retros_raw %>%
+  } else if (nrow(retros_long) > 0) {
+    cov_agg <- retros_long %>%
       group_by(source_label) %>%
       summarise(
         coverage_start = min(as.Date(date), na.rm = TRUE),
@@ -533,7 +525,7 @@ plot_forecats_bundle <- function(bundle_dir) {
     geom_line(
       data = usgs_after,
       aes(x = date, y = value),
-      color = "#B22222",
+      color = unname(palette[["usgs_future"]]),
       linewidth = 0.5,
       linetype = "dashed",
       show.legend = FALSE,
@@ -542,7 +534,7 @@ plot_forecats_bundle <- function(bundle_dir) {
     geom_point(
       data = usgs_after,
       aes(x = date, y = value),
-      color = "#B22222",
+      color = unname(palette[["usgs_future"]]),
       size = 1.8,
       show.legend = FALSE,
       na.rm = TRUE

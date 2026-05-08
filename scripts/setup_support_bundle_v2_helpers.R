@@ -62,7 +62,7 @@ transform_flow <- function(x_cms, scale) {
   stop(sprintf("Unknown plot scale: %s", scale), call. = FALSE)
 }
 
-build_source_label_map <- function(meta) {
+build_source_label_map <- function(meta, cutoff_date = NULL, selected_run_root = NULL) {
   label_map <- list()
   extras <- meta$config$inputs$retros$extra_sources %||% list()
   if (length(extras) > 0L) {
@@ -72,15 +72,28 @@ build_source_label_map <- function(meta) {
       if (nzchar(sid)) label_map[[sid]] <- slabel
     }
   }
-  label_map[["nws_synth_retro_ens_mean"]] <- label_map[["nws_synth_retro_ens_mean"]] %||% "NWS synthetic retrospective (ensemble mean)"
-  label_map[["nws_retro_v21"]] <- label_map[["nws_retro_v21"]] %||% "NWS retrospective v2.1"
-  label_map[["nws_retro_v30"]] <- label_map[["nws_retro_v30"]] %||% "NWS retrospective v3.0"
-  label_map[["nws_retro_v20"]] <- label_map[["nws_retro_v20"]] %||% "NWS retrospective v2.0"
-  label_map[["nws_selected_window_retro"]] <- label_map[["nws_selected_window_retro"]] %||% "NWS retrospective (selected-run window splice)"
-  label_map[["glofas_hist_v21_htessel_cons"]] <- label_map[["glofas_hist_v21_htessel_cons"]] %||% "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)"
-  label_map[["glofas_hist_v31_lisflood_cons"]] <- label_map[["glofas_hist_v31_lisflood_cons"]] %||% "GloFAS historical v3.1 (LISFLOOD, consolidated)"
-  label_map[["glofas_hist_v40_lisflood_cons"]] <- label_map[["glofas_hist_v40_lisflood_cons"]] %||% "GloFAS historical v4.0 (LISFLOOD, consolidated)"
-  label_map[["glofas_legacy_reanalysis_v30"]] <- label_map[["glofas_legacy_reanalysis_v30"]] %||% "GloFAS legacy reanalysis v3.0"
+  known_source_ids <- c(
+    "nws_synth_retro_ens_mean",
+    "nws_retro_v12",
+    "nws_retro_v20",
+    "nws_retro_v21",
+    "nws_retro_v30",
+    "nws_selected_window_retro",
+    "glofas_hist_v21_htessel_cons",
+    "glofas_hist_v31_lisflood_cons",
+    "glofas_hist_v40_lisflood_cons",
+    "glofas_legacy_reanalysis_v30",
+    "glofas_synth_retro_ens_mean"
+  )
+  for (sid in known_source_ids) {
+    resolved_label <- figure_default_retro_label(
+      source_id = sid,
+      meta = meta,
+      cutoff_date = cutoff_date,
+      selected_run_root = selected_run_root
+    )
+    label_map[[sid]] <- if (nzchar(as.character(resolved_label %||% ""))) resolved_label else (label_map[[sid]] %||% sid)
+  }
   label_map
 }
 
@@ -181,9 +194,9 @@ extract_short_window_priorities <- function(meta, cutoff_date) {
   list(glofas_priority = glofas_priority[!is.na(glofas_priority)], nws_priority = nws_priority[!is.na(nws_priority)])
 }
 
-build_retros_long_selected <- function(bundle_root, bundle_class, support_start, plot_end, cutoff_date) {
+build_retros_long_selected <- function(bundle_root, bundle_class, support_start, plot_end, cutoff_date, selected_run_root = NULL) {
   meta <- read_bundle_meta(bundle_root)
-  label_map <- build_source_label_map(meta)
+  label_map <- build_source_label_map(meta, cutoff_date = cutoff_date, selected_run_root = selected_run_root)
 
   if (identical(bundle_class, "short_window_synth_bundle")) {
     path <- require_existing_path(file.path(bundle_root, "inputs", "retros_daily.csv"), "short-window retros_daily.csv")
@@ -191,9 +204,15 @@ build_retros_long_selected <- function(bundle_root, bundle_class, support_start,
       transmute(
         Date = safe_date(.data[[choose_date_col(.)]]),
         source_id = tolower(as.character(source_id)),
-        source_label = as.character(source_label),
+        source_label_raw = as.character(source_label),
         discharge_cms = suppressWarnings(as.numeric(discharge_cms))
       ) %>%
+      mutate(
+        source_label = vapply(seq_len(n()), function(i) {
+          label_map[[source_id[[i]]]] %||% source_label_raw[[i]] %||% source_id[[i]]
+        }, character(1))
+      ) %>%
+      select(-source_label_raw) %>%
       filter(!is.na(Date), Date >= support_start, Date <= plot_end)
     pri <- extract_short_window_priorities(meta, cutoff_date)
     glofas <- select_source_by_priority(df, "glofas", pri$glofas_priority, support_start, plot_end)
@@ -312,12 +331,13 @@ stage_forecats_bundle <- function(bundle_root, selected_usgs_path, retros_long, 
 }
 
 plot_usgs_png <- function(out_path, usgs_df, cutoff_date, support_start, plot_scale = "log1p_cms") {
+  palette <- figure_product_palette()
   flood_cms <- c(15000, 6750) * CFSToCMS_CONVERSION_FACTOR
   flood_vals <- transform_flow(flood_cms, plot_scale)
   flow_data <- usgs_df %>% mutate(Value = transform_flow(discharge_cms, plot_scale))
   x_label <- figure_date_label_format(flow_data$Date)
   p <- ggplot(flow_data, aes(x = Date, y = Value)) +
-    geom_line(color = "#238b45", linewidth = 0.7, alpha = 0.95) +
+    geom_line(color = unname(palette[["usgs"]]), linewidth = 0.7, alpha = 0.95) +
     geom_hline(yintercept = flood_vals, linetype = "dashed", color = "gray40", linewidth = 0.7) +
     annotate("text", x = max(flow_data$Date), y = flood_vals, label = c("Major Flooding", "Minor Flooding"), hjust = 1.05, vjust = -0.3, fontface = "italic", size = 3.3) +
     labs(
@@ -365,6 +385,7 @@ plot_covariates_png <- function(out_path, covariate_df, cutoff_date, support_sta
 }
 
 plot_retrospective_png <- function(out_path, retros_wide, cutoff_date, support_start, available_start, plot_scale = "log1p_cms") {
+  palette <- figure_product_palette()
   df <- retros_wide %>%
     mutate(
       GloFAS = transform_flow(GloFAS, plot_scale),
@@ -383,7 +404,7 @@ plot_retrospective_png <- function(out_path, retros_wide, cutoff_date, support_s
   }
 
   p_g <- ggplot(df, aes(x = Date, y = GloFAS)) +
-    geom_line(color = "#E67E22", linewidth = 0.7, alpha = 0.92, na.rm = TRUE) +
+    geom_line(color = unname(palette[["glofas"]]), linewidth = 0.7, alpha = 0.92, na.rm = TRUE) +
     labs(
       title = "GloFAS Retrospective Analysis",
       subtitle = subtitle_text,
@@ -394,7 +415,7 @@ plot_retrospective_png <- function(out_path, retros_wide, cutoff_date, support_s
     theme_manuscript_standard(base_size = 14, title_size = 15, subtitle_size = 11.5, legend_position = "none")
 
   p_n <- ggplot(df, aes(x = Date, y = NWS)) +
-    geom_line(color = "#756bb1", linewidth = 0.7, alpha = 0.92, na.rm = TRUE) +
+    geom_line(color = unname(palette[["nws"]]), linewidth = 0.7, alpha = 0.92, na.rm = TRUE) +
     labs(
       title = "NWS Retrospective Analysis",
       x = "Date",

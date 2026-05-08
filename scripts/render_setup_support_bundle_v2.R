@@ -65,7 +65,8 @@ retros_long <- build_retros_long_selected(
   bundle_class = bundle_class,
   support_start = history_start,
   plot_end = cutoff_date,
-  cutoff_date = cutoff_date
+  cutoff_date = cutoff_date,
+  selected_run_root = selected_run_root
 )
 retros_wide <- build_retros_wide_for_history(retros_long, cutoff_date = cutoff_date)
 if (nrow(retros_wide) == 0L) {
