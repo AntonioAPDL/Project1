@@ -48,9 +48,9 @@ if (!exists("figure_flow_axis_label", mode = "function")) {
   figure_flow_axis_label <- function(plot_scale) {
     switch(
       as.character(plot_scale %||% "log_log1p_cms"),
-      raw_cms = expression(Water~Flow~(m^3/s)),
-      log1p_cms = expression(Water~Flow~(log(1 + m^3/s))),
-      log_log1p_cms = expression(Water~Flow~(log(log(1 + m^3/s)))),
+      raw_cms = bquote(River~flow~"["*m^3~s^-1*"]"),
+      log1p_cms = bquote(River~flow~"["*log(1 + m^3~s^-1)*"]"),
+      log_log1p_cms = bquote(River~flow~"["*log(log(1 + m^3~s^-1))*"]"),
       as.character(plot_scale)
     )
   }
@@ -89,19 +89,19 @@ if (!exists("figure_default_retro_label", mode = "function")) {
     sid <- tolower(as.character(source_id %||% ""))
     switch(
       sid,
-      nws_synth_retro_ens_mean = "NWS retrospective (closest available)",
+      nws_synth_retro_ens_mean = figure_selected_run_nws_label(cutoff_date),
       nws_retro_v12 = "NWS retrospective v1.2",
       nws_retro_v20 = "NWS retrospective v2.0",
       nws_retro_v21 = "NWS retrospective v2.1",
       nws_retro_v30 = "NWS retrospective v3.0",
-      nws_selected_window_retro = "NWS retrospective (selected-run window)",
-      glofas_hist_v21_htessel_cons = "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)",
-      glofas_hist_v31_lisflood_cons = "GloFAS historical v3.1 (LISFLOOD, consolidated)",
-      glofas_hist_v40_lisflood_cons = "GloFAS historical v4.0 (LISFLOOD, consolidated)",
+      nws_selected_window_retro = figure_selected_run_nws_label(cutoff_date),
+      glofas_hist_v21_htessel_cons = "GloFAS historical v2.1",
+      glofas_hist_v31_lisflood_cons = "GloFAS historical v3.1",
+      glofas_hist_v40_lisflood_cons = "GloFAS historical v4.0",
       glofas_legacy_reanalysis_v30 = "GloFAS legacy reanalysis v3.0",
-      glofas_synth_retro_ens_mean = "GloFAS retrospective (closest available)",
-      baseline_glofas = "GloFAS retrospective (baseline)",
-      baseline_nws = "NWS retrospective (baseline)",
+      glofas_synth_retro_ens_mean = figure_glofas_version_label(cutoff_date),
+      baseline_glofas = "GloFAS historical baseline",
+      baseline_nws = "NWS retrospective baseline",
       sid
     )
   }
@@ -264,8 +264,8 @@ plot_forecats_bundle <- function(bundle_dir) {
       select(date, glofas_cms, nws_cms) %>%
       pivot_longer(cols = c(glofas_cms, nws_cms), names_to = "source_id", values_to = "discharge_cms") %>%
       mutate(
-        source_id = recode(source_id, glofas_cms = "baseline_glofas", nws_cms = "baseline_nws"),
-        source_label = recode(source_id, baseline_glofas = "GloFAS retrospective (baseline)", baseline_nws = "NWS retrospective (baseline)")
+        source_id = recode(source_id, glofas_cms = "glofas_synth_retro_ens_mean", nws_cms = "nws_synth_retro_ens_mean"),
+        source_label = source_id
       )
   }
 
@@ -276,7 +276,8 @@ plot_forecats_bundle <- function(bundle_dir) {
         figure_default_retro_label(
           source_id = source_id[[i]],
           meta = meta,
-          cutoff_date = cutoff_date
+          cutoff_date = cutoff_date,
+          selected_run_root = selected_run_root
         ) %||% source_label[[i]] %||% source_id[[i]]
       }, character(1))
     )
@@ -327,7 +328,8 @@ plot_forecats_bundle <- function(bundle_dir) {
         source_label = figure_default_retro_label(
           source_id = source_id,
           meta = meta,
-          cutoff_date = cutoff_date
+          cutoff_date = cutoff_date,
+          selected_run_root = selected_run_root
         ) %||% source_label_raw,
         coverage_start = format_coverage_date(x$coverage_start),
         coverage_end = format_coverage_date(x$coverage_end)
@@ -379,18 +381,7 @@ plot_forecats_bundle <- function(bundle_dir) {
     retro_coverage_map <- split(cov_agg, cov_agg$source_label)
   }
 
-  format_retro_legend <- function(lbl) {
-    cov_row <- retro_coverage_map[[lbl]]
-    start_txt <- "NA"
-    end_txt <- "NA"
-    if (!is.null(cov_row) && nrow(cov_row) > 0) {
-      start_txt <- format(as.Date(cov_row$coverage_start[[1]]), "%Y-%m-%d")
-      end_txt <- format(as.Date(cov_row$coverage_end[[1]]), "%Y-%m-%d")
-    }
-    line1 <- wrap_legend_label(lbl, width = 36)
-    line2 <- wrap_legend_label(paste0(start_txt, " to ", end_txt), width = 44)
-    paste(line1, line2, sep = "\n")
-  }
+  format_retro_legend <- function(lbl) wrap_legend_label(lbl, width = 34)
 
   legend_label_map <- setNames(rep("", length(legend_levels)), legend_levels)
   legend_label_map[["USGS observed"]] <- "USGS observed"
@@ -404,49 +395,9 @@ plot_forecats_bundle <- function(bundle_dir) {
   #   - label: "Major Flooding"
   #     value: 15000
   #     unit: "cfs"   # or "cms"
-  flood_levels <- meta$plot$flood_levels
-  if ((is.null(flood_levels) || length(flood_levels) == 0) &&
-      !is.null(meta$site$usgs_site) &&
-      as.character(meta$site$usgs_site) == "11160500") {
-    # Backwards-compatible defaults for this project/site so flood lines
-    # always render even for older bundles/configs that predate flood_levels.
-    flood_levels <- list(
-      list(label = "Major Flooding", value = 15000, unit = "cfs"),
-      list(label = "Minor Flooding", value = 6750, unit = "cfs")
-    )
-  }
-  flood_df <- NULL
-  if (!is.null(flood_levels) && length(flood_levels) > 0) {
-    CFSToCMS <- 0.0283168466
-    to_cms <- function(v, unit) {
-      if (is.null(unit) || unit == "") stop("plot.flood_levels[*].unit is required (cfs or cms).")
-      if (unit == "cms") return(as.numeric(v))
-      if (unit == "cfs") return(as.numeric(v) * CFSToCMS)
-      stop(paste("Unknown flood_levels unit:", unit))
-    }
-    labels <- c()
-    yvals <- c()
-    for (lvl in flood_levels) {
-      if (is.null(lvl$label) || lvl$label == "") next
-      if (is.null(lvl$value)) next
-      cms <- to_cms(lvl$value, lvl$unit %||% "cfs")
-      yvals <- c(yvals, transform_flow(cms, plot_scale))
-      labels <- c(labels, lvl$label)
-    }
-    flood_df <- tibble::tibble(label = labels, y = yvals)
-    if (nrow(flood_df) > 1) {
-      all_vals <- c(usgs$value, retros_long$value, glofas_ens_long$value, nws_ens_long$value)
-      all_vals <- all_vals[is.finite(all_vals)]
-      span <- if (length(all_vals) > 1) diff(range(all_vals, na.rm = TRUE)) else 1
-      if (!is.finite(span) || span <= 0) span <- 1
-      offset <- 0.03 * span
-      flood_df <- flood_df %>%
-        arrange(desc(y)) %>%
-        mutate(label_y = y + seq(offset, -offset, length.out = n()))
-    } else {
-      flood_df <- flood_df %>% mutate(label_y = y)
-    }
-  }
+  all_vals <- c(usgs$value, retros_long$value, glofas_ens_long$value, nws_ens_long$value)
+  flood_df <- figure_flood_label_df(plot_scale = plot_scale, values = all_vals)
+  flood_style <- figure_flood_stage_style()
 
   # -------------------------
   # Plot
@@ -458,9 +409,9 @@ plot_forecats_bundle <- function(bundle_dir) {
     {if (!is.null(flood_df) && nrow(flood_df) > 0) geom_hline(
       data = flood_df,
       aes(yintercept = y),
-      linetype = "dashed",
-      color = "gray",
-      linewidth = 0.8
+      linetype = flood_style$line_type,
+      color = flood_style$line_color,
+      linewidth = flood_style$line_width
     )} +
     {if (!is.null(flood_df) && nrow(flood_df) > 0) annotate(
       "text",
@@ -469,9 +420,9 @@ plot_forecats_bundle <- function(bundle_dir) {
       label = flood_df$label,
       hjust = 1.02,
       vjust = 0.5,
-      color = "black",
-      fontface = "italic",
-      size = 3.5
+      color = flood_style$label_color,
+      fontface = flood_style$label_face,
+      size = flood_style$label_size
     )} +
     # Retrospective/historical/reanalysis before cutoff.
     geom_line(
@@ -554,10 +505,7 @@ plot_forecats_bundle <- function(bundle_dir) {
     scale_x_date(breaks = scales::pretty_breaks(6), date_labels = figure_date_label_format(c(plot_start, plot_end))) +
     labs(
       title = plot_title,
-      x = paste0(
-        "Cutoff date: ", format(cutoff_date, "%Y-%m-%d"),
-        " (forecast starts ", format(forecast_start, "%Y-%m-%d"), ")"
-      ),
+      x = "Date",
       y = y_lab
     ) +
     guides(

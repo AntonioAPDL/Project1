@@ -332,31 +332,45 @@ stage_forecats_bundle <- function(bundle_root, selected_usgs_path, retros_long, 
 
 plot_usgs_png <- function(out_path, usgs_df, cutoff_date, support_start, plot_scale = "log1p_cms") {
   palette <- figure_product_palette()
-  flood_cms <- c(15000, 6750) * CFSToCMS_CONVERSION_FACTOR
-  flood_vals <- transform_flow(flood_cms, plot_scale)
+  flood_df <- figure_flood_label_df(
+    plot_scale = plot_scale,
+    values = transform_flow(usgs_df$discharge_cms, plot_scale)
+  )
+  flood_style <- figure_flood_stage_style()
   flow_data <- usgs_df %>% mutate(Value = transform_flow(discharge_cms, plot_scale))
   x_label <- figure_date_label_format(flow_data$Date)
   p <- ggplot(flow_data, aes(x = Date, y = Value)) +
     geom_line(color = unname(palette[["usgs"]]), linewidth = 0.7, alpha = 0.95) +
-    geom_hline(yintercept = flood_vals, linetype = "dashed", color = "gray40", linewidth = 0.7) +
-    annotate("text", x = max(flow_data$Date), y = flood_vals, label = c("Major Flooding", "Minor Flooding"), hjust = 1.05, vjust = -0.3, fontface = "italic", size = 3.3) +
+    geom_hline(
+      data = flood_df,
+      aes(yintercept = y),
+      linetype = flood_style$line_type,
+      color = flood_style$line_color,
+      linewidth = flood_style$line_width
+    ) +
+    annotate(
+      "text",
+      x = max(flow_data$Date),
+      y = flood_df$label_y,
+      label = flood_df$label,
+      hjust = 1.02,
+      vjust = 0.2,
+      color = flood_style$label_color,
+      fontface = flood_style$label_face,
+      size = flood_style$label_size
+    ) +
     labs(
       title = "Daily Flow of San Lorenzo River at Big Trees, CA",
-      subtitle = sprintf("Historical support window for cutoff %s: %s to %s", format(cutoff_date, "%Y-%m-%d"), format(support_start, "%Y-%m-%d"), format(cutoff_date, "%Y-%m-%d")),
       x = "Date",
       y = figure_flow_axis_label(plot_scale)
     ) +
     scale_x_date(labels = label_date(x_label), breaks = pretty_breaks(7), limits = c(support_start, cutoff_date)) +
-    theme_manuscript_standard(base_size = 14, title_size = 16, subtitle_size = 12, legend_position = "none")
+    theme_manuscript_standard(base_size = 14, title_size = 16, legend_position = "none")
   ggsave(out_path, plot = p, width = 12, height = 6, units = "in", dpi = 900)
 }
 
 plot_covariates_png <- function(out_path, covariate_df, cutoff_date, support_start) {
-  facet_labels <- c(
-    Precipitation = "Precipitation",
-    Soil_Moisture = "Soil Moisture",
-    Climate_PC1 = "1st Principal Comp."
-  )
+  facet_labels <- figure_covariate_facet_labels()
   series_colors <- c(
     Precipitation = "#1b9e77",
     Soil_Moisture = "#386cb0",
@@ -369,7 +383,6 @@ plot_covariates_png <- function(out_path, covariate_df, cutoff_date, support_sta
     scale_color_manual(values = series_colors) +
     labs(
       title = "Historical Covariate Inputs",
-      subtitle = sprintf("Support window for cutoff %s: %s to %s", format(cutoff_date, "%Y-%m-%d"), format(support_start, "%Y-%m-%d"), format(cutoff_date, "%Y-%m-%d")),
       x = "Date",
       y = NULL
     ) +
@@ -392,32 +405,21 @@ plot_retrospective_png <- function(out_path, retros_wide, cutoff_date, support_s
       NWS = transform_flow(NWS, plot_scale)
     )
   x_label <- figure_date_label_format(df$Date)
-  subtitle_text <- if (safe_date(available_start) <= safe_date(support_start)) {
-    sprintf("Historical support window for cutoff %s: %s to %s", format(cutoff_date, "%Y-%m-%d"), format(support_start, "%Y-%m-%d"), format(cutoff_date, "%Y-%m-%d"))
-  } else {
-    sprintf(
-      "Requested historical window: %s to %s; available retrospective support begins %s",
-      format(support_start, "%Y-%m-%d"),
-      format(cutoff_date, "%Y-%m-%d"),
-      format(available_start, "%Y-%m-%d")
-    )
-  }
 
   p_g <- ggplot(df, aes(x = Date, y = GloFAS)) +
     geom_line(color = unname(palette[["glofas"]]), linewidth = 0.7, alpha = 0.92, na.rm = TRUE) +
     labs(
-      title = "GloFAS Retrospective Analysis",
-      subtitle = subtitle_text,
+      title = "GloFAS Retrospective Product",
       x = NULL,
       y = figure_flow_axis_label(plot_scale)
     ) +
     scale_x_date(labels = label_date(x_label), breaks = pretty_breaks(7), limits = c(support_start, cutoff_date)) +
-    theme_manuscript_standard(base_size = 14, title_size = 15, subtitle_size = 11.5, legend_position = "none")
+    theme_manuscript_standard(base_size = 14, title_size = 15, legend_position = "none")
 
   p_n <- ggplot(df, aes(x = Date, y = NWS)) +
     geom_line(color = unname(palette[["nws"]]), linewidth = 0.7, alpha = 0.92, na.rm = TRUE) +
     labs(
-      title = "NWS Retrospective Analysis",
+      title = "NWS Retrospective Product",
       x = "Date",
       y = figure_flow_axis_label(plot_scale)
     ) +

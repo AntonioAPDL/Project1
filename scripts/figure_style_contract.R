@@ -6,9 +6,9 @@ figure_flow_axis_label <- function(plot_scale) {
   }
   switch(
     as.character(plot_scale),
-    raw_cms = expression(Water~Flow~(m^3/s)),
-    log1p_cms = expression(Water~Flow~(log(1 + m^3/s))),
-    log_log1p_cms = expression(Water~Flow~(log(log(1 + m^3/s)))),
+    raw_cms = bquote(River~flow~"["*m^3~s^-1*"]"),
+    log1p_cms = bquote(River~flow~"["*log(1 + m^3~s^-1)*"]"),
+    log_log1p_cms = bquote(River~flow~"["*log(log(1 + m^3~s^-1))*"]"),
     as.character(plot_scale)
   )
 }
@@ -37,6 +37,72 @@ figure_product_palette <- function() {
     glofas = "#E67E22",
     nws = "#756bb1",
     usgs_future = "#B22222"
+  )
+}
+
+figure_transform_flow <- function(x_cms, plot_scale) {
+  vals <- suppressWarnings(as.numeric(x_cms))
+  out <- rep(NA_real_, length(vals))
+  if (identical(plot_scale, "raw_cms")) {
+    return(vals)
+  }
+  if (identical(plot_scale, "log1p_cms")) {
+    ok <- !is.na(vals) & vals > -1
+    out[ok] <- log(vals[ok] + 1)
+    return(out)
+  }
+  if (identical(plot_scale, "log_log1p_cms")) {
+    ok <- !is.na(vals) & vals >= 0
+    out[ok] <- log(log(vals[ok] + 1))
+    out[!is.finite(out)] <- NA_real_
+    return(out)
+  }
+  stop(sprintf("Unknown plot scale: %s", plot_scale), call. = FALSE)
+}
+
+figure_flood_stage_df <- function(plot_scale = "log1p_cms") {
+  flood_cfs <- c(15000, 6750)
+  flood_cms <- flood_cfs * 0.028316846592
+  data.frame(
+    label = c("Major Flooding", "Minor Flooding"),
+    y = figure_transform_flow(flood_cms, plot_scale),
+    stringsAsFactors = FALSE
+  )
+}
+
+figure_flood_label_df <- function(plot_scale = "log1p_cms", values = numeric()) {
+  out <- figure_flood_stage_df(plot_scale = plot_scale)
+  vals <- suppressWarnings(as.numeric(values))
+  vals <- vals[is.finite(vals)]
+  span <- suppressWarnings(diff(range(c(vals, out$y), na.rm = TRUE)))
+  if (!is.finite(span) || span <= 0) {
+    span <- 1
+  }
+  offset <- max(0.03 * span, 0.04)
+  if (nrow(out) > 1L) {
+    out$label_y <- out$y + c(offset, -offset)
+  } else {
+    out$label_y <- out$y
+  }
+  out
+}
+
+figure_flood_stage_style <- function() {
+  list(
+    line_color = "#6B7280",
+    line_width = 0.65,
+    line_type = "dashed",
+    label_color = "#4A5568",
+    label_size = 3.3,
+    label_face = "italic"
+  )
+}
+
+figure_covariate_facet_labels <- function() {
+  c(
+    Precipitation = "Precipitation [mm]",
+    Soil_Moisture = "Soil moisture [m^3 m^-3]",
+    Climate_PC1 = "1st GDPC"
   )
 }
 
@@ -70,27 +136,56 @@ figure_nws_version_label <- function(source_id) {
   )
 }
 
-figure_selected_run_nws_label <- function(selected_run_root, default_label = "NWS retrospective (selected-run window)") {
-  if (is.null(selected_run_root) || !nzchar(as.character(selected_run_root))) {
+figure_glofas_version_label <- function(source_id) {
+  sid <- tolower(as.character(source_id %||% ""))
+  switch(
+    sid,
+    glofas_hist_v21_htessel_cons = "GloFAS historical v2.1",
+    glofas_hist_v31_lisflood_cons = "GloFAS historical v3.1",
+    glofas_hist_v40_lisflood_cons = "GloFAS historical v4.0",
+    glofas_legacy_reanalysis_v30 = "GloFAS legacy reanalysis v3.0",
+    "GloFAS retrospective"
+  )
+}
+
+figure_selected_run_nws_label <- function(selected_run_root, default_label = "NWS retrospective") {
+  root <- as.character(selected_run_root %||% "")
+  if (!nzchar(root)) {
     return(default_label)
   }
-  retros_path <- file.path(as.character(selected_run_root), "inputs", "shared", "retros", "retros.csv")
+  cache <- get0(".figure_selected_run_nws_cache", envir = .GlobalEnv, inherits = FALSE)
+  if (!is.environment(cache)) {
+    cache <- new.env(parent = emptyenv())
+    assign(".figure_selected_run_nws_cache", cache, envir = .GlobalEnv)
+  }
+  if (exists(root, envir = cache, inherits = FALSE)) {
+    cached <- get(root, envir = cache, inherits = FALSE)
+    return(as.character(cached %||% default_label))
+  }
+
+  retros_path <- file.path(root, "inputs", "shared", "retros", "retros.csv")
   if (!file.exists(retros_path)) {
+    assign(root, default_label, envir = cache)
     return(default_label)
   }
   header <- tryCatch(utils::read.csv(retros_path, nrows = 0, check.names = FALSE), error = function(e) NULL)
   if (is.null(header)) {
+    assign(root, default_label, envir = cache)
     return(default_label)
   }
   nws_cols <- grep("^NWS", names(header), value = TRUE)
   if (length(nws_cols) == 0L) {
+    assign(root, default_label, envir = cache)
     return(default_label)
   }
   col <- nws_cols[[1L]]
   if (grepl("^NWS[0-9.]+$", col)) {
     version <- sub("^NWS", "", col)
-    return(sprintf("NWS retrospective v%s (selected-run window)", version))
+    label <- sprintf("NWS retrospective v%s", version)
+    assign(root, label, envir = cache)
+    return(label)
   }
+  assign(root, default_label, envir = cache)
   default_label
 }
 
@@ -99,14 +194,15 @@ figure_default_retro_label <- function(source_id, meta = NULL, cutoff_date = NUL
   if (!nzchar(sid)) {
     return("")
   }
+  selection_policy <- if (!is.null(meta)) meta$config$inputs$retros$selection_policy %||% list() else list()
 
   if (identical(sid, "nws_synth_retro_ens_mean")) {
-    chosen_sid <- figure_choose_cutoff_window_source_id(meta$config$inputs$retros$selection_policy$nws_by_cutoff_windows %||% list(), cutoff_date)
+    chosen_sid <- figure_choose_cutoff_window_source_id(selection_policy$nws_by_cutoff_windows %||% list(), cutoff_date)
     chosen_label <- figure_nws_version_label(chosen_sid)
     if (nzchar(chosen_label)) {
-      return(sprintf("%s (closest available)", chosen_label))
+      return(chosen_label)
     }
-    return("NWS retrospective (closest available)")
+    return(figure_selected_run_nws_label(selected_run_root, default_label = "NWS retrospective"))
   }
 
   if (identical(sid, "nws_selected_window_retro")) {
@@ -114,7 +210,12 @@ figure_default_retro_label <- function(source_id, meta = NULL, cutoff_date = NUL
   }
 
   if (identical(sid, "glofas_synth_retro_ens_mean")) {
-    return("GloFAS retrospective (closest available)")
+    chosen_sid <- figure_choose_cutoff_window_source_id(selection_policy$glofas_by_cutoff_windows %||% list(), cutoff_date)
+    chosen_label <- figure_glofas_version_label(chosen_sid)
+    if (nzchar(chosen_label)) {
+      return(chosen_label)
+    }
+    return("GloFAS retrospective")
   }
 
   if (!is.null(meta)) {
@@ -136,11 +237,11 @@ figure_default_retro_label <- function(source_id, meta = NULL, cutoff_date = NUL
     nws_retro_v20 = "NWS retrospective v2.0",
     nws_retro_v21 = "NWS retrospective v2.1",
     nws_retro_v30 = "NWS retrospective v3.0",
-    glofas_hist_v21_htessel_cons = "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)",
-    glofas_hist_v31_lisflood_cons = "GloFAS historical v3.1 (LISFLOOD, consolidated)",
-    glofas_hist_v40_lisflood_cons = "GloFAS historical v4.0 (LISFLOOD, consolidated)",
+    glofas_hist_v21_htessel_cons = "GloFAS historical v2.1",
+    glofas_hist_v31_lisflood_cons = "GloFAS historical v3.1",
+    glofas_hist_v40_lisflood_cons = "GloFAS historical v4.0",
     glofas_legacy_reanalysis_v30 = "GloFAS legacy reanalysis v3.0",
-    glofas_synth_retro_ens_mean = "GloFAS retrospective (closest available)",
+    glofas_synth_retro_ens_mean = "GloFAS retrospective",
     baseline_glofas = "GloFAS retrospective (baseline)",
     baseline_nws = "NWS retrospective (baseline)",
     sid
@@ -153,58 +254,10 @@ figure_retro_color_map <- function(labels) {
     return(setNames(character(0), character(0)))
   }
   palette <- figure_product_palette()
-  out <- setNames(rep(NA_character_, length(labels)), labels)
-
-  fixed <- c(
-    "GloFAS retrospective (baseline)" = "#E67E22",
-    "GloFAS retrospective (closest available)" = "#AF601A",
-    "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)" = "#F5B041",
-    "GloFAS historical v3.1 (LISFLOOD, consolidated)" = "#EB984E",
-    "GloFAS historical v4.0 (LISFLOOD, consolidated)" = "#D35400",
-    "GloFAS legacy reanalysis v3.0" = "#BA4A00",
-    "NWS retrospective (baseline)" = palette[["nws"]],
-    "NWS retrospective v1.2" = "#B7AADF",
-    "NWS retrospective v1.2 (closest available)" = "#B7AADF",
-    "NWS retrospective v2.0" = "#9A8CC9",
-    "NWS retrospective v2.0 (baseline)" = "#A491D3",
-    "NWS retrospective v2.0 (closest available)" = "#9A8CC9",
-    "NWS retrospective v2.1" = "#7A68B5",
-    "NWS retrospective v2.1 (baseline)" = "#8E79C6",
-    "NWS retrospective v2.1 (closest available)" = "#7A68B5",
-    "NWS retrospective v3.0" = "#5B4B9A",
-    "NWS retrospective v3.0 (baseline)" = palette[["nws"]],
-    "NWS retrospective v3.0 (selected-run window)" = "#5B4B9A",
-    "NWS retrospective v3.0 (closest available)" = "#5B4B9A",
-    "NWS retrospective v3.0 (legacy local csv)" = "#6C5BA8",
-    "NWS retrospective v2.1 (legacy local csv)" = "#8A78C1",
-    "NWS retrospective v3.0 (re-extracted point)" = "#5B4B9A",
-    "NWS retrospective v2.1 (re-extracted point)" = "#7A68B5",
-    "NWS retrospective v2.0 (re-extracted point)" = "#9A8CC9",
-    "NWS retrospective (selected-run window)" = "#5B4B9A",
-    "NWS retrospective (closest available)" = palette[["nws"]]
-  )
-  for (nm in names(fixed)) {
-    if (nm %in% labels) {
-      out[[nm]] <- fixed[[nm]]
-    }
-  }
-
-  idx_na <- which(is.na(out))
-  if (length(idx_na) > 0L) {
-    for (i in idx_na) {
-      lbl <- labels[[i]]
-      if (grepl("^GloFAS", lbl)) {
-        out[[lbl]] <- palette[["glofas"]]
-      } else if (grepl("^NWS", lbl)) {
-        out[[lbl]] <- palette[["nws"]]
-      } else if (grepl("^USGS", lbl)) {
-        out[[lbl]] <- palette[["usgs"]]
-      } else {
-        out[[lbl]] <- "#4d4d4d"
-      }
-    }
-  }
-
+  out <- setNames(rep("#4d4d4d", length(labels)), labels)
+  out[grepl("^GloFAS", labels)] <- palette[["glofas"]]
+  out[grepl("^NWS", labels)] <- palette[["nws"]]
+  out[grepl("^USGS", labels)] <- palette[["usgs"]]
   out
 }
 
@@ -213,48 +266,10 @@ figure_retro_shape_map <- function(labels) {
   if (length(labels) == 0L) {
     return(setNames(integer(0), character(0)))
   }
-  out <- setNames(rep(NA_integer_, length(labels)), labels)
-  fixed <- c(
-    "USGS observed" = 16,
-    "GloFAS retrospective (baseline)" = 15,
-    "GloFAS retrospective (closest available)" = 10,
-    "GloFAS historical v2.1 (HTESSEL-LISFLOOD, consolidated)" = 17,
-    "GloFAS historical v3.1 (LISFLOOD, consolidated)" = 18,
-    "GloFAS historical v4.0 (LISFLOOD, consolidated)" = 0,
-    "GloFAS legacy reanalysis v3.0" = 8,
-    "NWS retrospective (baseline)" = 1,
-    "NWS retrospective v1.2" = 3,
-    "NWS retrospective v1.2 (closest available)" = 3,
-    "NWS retrospective v2.0" = 4,
-    "NWS retrospective v2.0 (baseline)" = 5,
-    "NWS retrospective v2.0 (closest available)" = 4,
-    "NWS retrospective v2.1" = 6,
-    "NWS retrospective v2.1 (baseline)" = 2,
-    "NWS retrospective v2.1 (closest available)" = 6,
-    "NWS retrospective v3.0" = 7,
-    "NWS retrospective v3.0 (baseline)" = 1,
-    "NWS retrospective v3.0 (selected-run window)" = 7,
-    "NWS retrospective v3.0 (closest available)" = 7,
-    "NWS retrospective v3.0 (legacy local csv)" = 1,
-    "NWS retrospective v2.1 (legacy local csv)" = 2,
-    "NWS retrospective v3.0 (re-extracted point)" = 7,
-    "NWS retrospective v2.1 (re-extracted point)" = 6,
-    "NWS retrospective v2.0 (re-extracted point)" = 4,
-    "NWS retrospective (selected-run window)" = 7,
-    "NWS retrospective (closest available)" = 9
-  )
-  for (nm in names(fixed)) {
-    if (nm %in% labels) {
-      out[[nm]] <- fixed[[nm]]
-    }
-  }
-  idx_na <- which(is.na(out))
-  if (length(idx_na) > 0L) {
-    fallback <- c(0:25)
-    used <- unname(out[!is.na(out)])
-    fallback <- fallback[!fallback %in% used]
-    out[idx_na] <- fallback[seq_len(min(length(idx_na), length(fallback)))]
-  }
+  out <- setNames(rep(8L, length(labels)), labels)
+  out[grepl("^USGS", labels)] <- 16L
+  out[grepl("^GloFAS", labels)] <- 15L
+  out[grepl("^NWS", labels)] <- 17L
   out
 }
 

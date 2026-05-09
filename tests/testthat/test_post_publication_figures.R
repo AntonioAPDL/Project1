@@ -145,7 +145,7 @@ test_that("publication figure rewrite renders focus posterior plots with raw ens
   expect_true(any(updated_manifest$plot_type == "cutoff_window_predictive_bands_pdf"))
   expect_true(any(updated_manifest$plot_type == "cutoff_window_predictive_bands_with_raw_ensembles"))
   expect_true(any(updated_manifest$plot_type == "cutoff_window_predictive_bands_with_raw_ensembles_pdf"))
-  expect_true(any(grepl("style=publication_focus_v1", updated_manifest$note[updated_manifest$plot_type == "cutoff_window_posterior_samples"], fixed = TRUE)))
+  expect_true(any(grepl("style=publication_focus_v2", updated_manifest$note[updated_manifest$plot_type == "cutoff_window_posterior_samples"], fixed = TRUE)))
 
   pub_manifest <- utils::read.csv(file.path(outputs_dir, "publication_figure_manifest.csv"), stringsAsFactors = FALSE, check.names = FALSE)
   expect_true(any(pub_manifest$source_plot_type == "cutoff_window_posterior_samples_focus"))

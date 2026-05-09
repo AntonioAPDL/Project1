@@ -7,8 +7,8 @@ pdf:
   width_in: 11
   height_in: 5.8
 labels:
-  y: "Discharge [log1p(cms)]"
-  subtitle_scale: "log1p discharge (cms)"
+  y: "River flow [log(1 + m^3 s^-1)]"
+  subtitle_scale: "log(1 + m^3 s^-1)"
 theme:
   base_family: "sans"
   base_size: 12.5
@@ -21,11 +21,11 @@ theme:
   forecast_window_fill: "#F7F1E6"
   forecast_window_alpha: 0.75
 colors:
-  observed: "#1F2933"
-  median: "#0B5D7A"
-  interval_outer: "#9CC6DF"
-  interval_inner: "#5B96BF"
-  sample_paths: "#5D7489"
+  observed: "#238B45"
+  median: "#8C2D5B"
+  interval_outer: "#F2B6CF"
+  interval_inner: "#D97AA5"
+  sample_paths: "#C79AB2"
   cutoff: "#6B7280"
 intervals:
   outer: [5, 95]

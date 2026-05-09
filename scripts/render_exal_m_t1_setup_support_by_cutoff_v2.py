@@ -46,12 +46,12 @@ def load_config(path: Path) -> dict:
 
 def axis_label_for_scale(plot_scale: str) -> str:
     if plot_scale == 'raw_cms':
-        return 'Water Flow (m^3/s)'
+        return 'River flow [m^3 s^-1]'
     if plot_scale == 'log1p_cms':
-        return 'Water Flow (log(1 + m^3/s))'
+        return 'River flow [log(1 + m^3 s^-1)]'
     if plot_scale == 'log_log1p_cms':
-        return 'Water Flow (log(log(1 + m^3/s)))'
-    return f'Water Flow ({plot_scale})'
+        return 'River flow [log(log(1 + m^3 s^-1))]'
+    return f'River flow [{plot_scale}]'
 
 
 def choose_date_key(fieldnames: list[str]) -> str:

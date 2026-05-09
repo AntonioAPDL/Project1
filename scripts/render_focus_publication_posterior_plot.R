@@ -109,14 +109,14 @@ add_rows <- rbind(
     plot_type = "cutoff_window_posterior_samples_with_raw_ensembles",
     path = with_ens_png,
     source_run = source_run,
-    note = "style=publication_focus_v1; exact_interval=95_from_cache; includes_raw_ensembles"
+    note = "style=publication_focus_v2; exact_interval=95_from_cache; includes_adapter_scale_ensemble_references"
   ),
   post_publication_manifest_row(
     model_id = model_id,
     plot_type = "cutoff_window_posterior_samples_with_raw_ensembles_pdf",
     path = with_ens_pdf,
     source_run = source_run,
-    note = "paired_with=cutoff_window_posterior_samples_with_raw_ensembles; style=publication_focus_v1"
+    note = "paired_with=cutoff_window_posterior_samples_with_raw_ensembles; style=publication_focus_v2"
   )
 )
 update_rows <- rbind(
@@ -125,7 +125,7 @@ update_rows <- rbind(
     plot_type = "cutoff_window_posterior_samples",
     path = png_path,
     source_run = source_run,
-    note = "style=publication_focus_v1; exact_interval=95_from_cache; observed_split=fit_vs_heldout"
+    note = "style=publication_focus_v2; exact_interval=95_from_cache; observed_split=fit_vs_heldout"
   )
 )
 invisible(post_publication_update_main_manifest(manifest_path, rows_to_add = add_rows, png_note_updates = update_rows))
@@ -138,7 +138,7 @@ pub_rows <- data.frame(
   pdf_path = c(normalizePath(pdf_path, mustWork = FALSE), normalizePath(with_ens_pdf, mustWork = FALSE)),
   quantiles_path = c(normalizePath(quant_path, mustWork = FALSE), normalizePath(quant_path, mustWork = FALSE)),
   sample_subset_path = c(normalizePath(sample_path, mustWork = FALSE), normalizePath(sample_path, mustWork = FALSE)),
-  style_version = c("publication_focus_v1", "publication_focus_v1"),
+  style_version = c("publication_focus_v2", "publication_focus_v2"),
   style_source_path = c(style$style_source_path, style$style_source_path),
   style_snapshot_path = c(style_snapshot_path, style_snapshot_path),
   rewritten_canonical_png = c(TRUE, FALSE),
