@@ -92,14 +92,14 @@ def build_review(output_root: Path) -> None:
             f"| {entry['cutoff_date']} | {policy['nws_policy_summary']} | {policy['glofas_policy_summary']} | {policy.get('notes','')} |\n"
         )
     md_lines.append('\n## Coverage audit\n')
-    md_lines.append('| Cutoff | USGS full history | PPT full history | SOIL full history | PCA full history | Retros full history | Retros available start |\n')
+    md_lines.append('| Cutoff | USGS full history | PPT full history | SOIL full history | GDPC full history | Retros full history | Retros available start |\n')
     md_lines.append('|---|---|---|---|---|---|---|\n')
     for record in records:
         entry = record['entry']
         coverage = record['coverage']
         md_lines.append(
             f"| {entry['cutoff_date']} | {coverage['usgs']['full_history_available']} | {coverage['ppt']['full_history_available']} | "
-            f"{coverage['soil']['full_history_available']} | {coverage['pca']['full_history_available']} | "
+            f"{coverage['soil']['full_history_available']} | {coverage['gdpc']['full_history_available']} | "
             f"{coverage['retrospective']['full_history_available']} | {coverage['retrospective']['available_start']} |\n"
         )
     md_lines.append('\n')
@@ -132,7 +132,7 @@ def build_review(output_root: Path) -> None:
             f'<strong>Coverage audit:</strong> USGS={html.escape(str(coverage["usgs"]["full_history_available"]))}, '
             f'PPT={html.escape(str(coverage["ppt"]["full_history_available"]))}, '
             f'SOIL={html.escape(str(coverage["soil"]["full_history_available"]))}, '
-            f'PCA={html.escape(str(coverage["pca"]["full_history_available"]))}, '
+            f'GDPC={html.escape(str(coverage["gdpc"]["full_history_available"]))}, '
             f'Retros={html.escape(str(coverage["retrospective"]["full_history_available"]))}'
             '</p>'
         )

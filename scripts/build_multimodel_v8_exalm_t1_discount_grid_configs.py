@@ -424,7 +424,7 @@ def main() -> int:
         "## Source Contract",
         "- every row is `exAL-M-T1`: `exdqlm_multivar_keep`, `likelihood_mode=exal`, `forecast_transfer_mode=keep`.",
         "- cutoff-specific best epsilon is inherited from the corrected HE2 parity matrix and the actual executed `featurecov_cf1_eps_sweep` source run.",
-        "- generated configs preserve the exact selected-source `inputs/shared` snapshot before fit, so raw forecasts, PPT/SOIL/PCA covariates, deterministic-climate futures, and `covariate_features.csv` remain identical to the HE-table source run.",
+        "- generated configs preserve the exact selected-source `inputs/shared` snapshot before fit, so raw forecasts, PPT/SOIL/GDPC-compatibility covariates, deterministic-climate futures, and `covariate_features.csv` remain identical to the HE-table source run.",
         "- the only intended scientific difference across rows is the `models.exdqlm_multivar.state_evolution` discount-factor block.",
         "",
         "## Parallelism Contract",

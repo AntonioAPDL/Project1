@@ -43,17 +43,20 @@ def validate_cutoff(entry: dict, output_root: Path, config: dict) -> dict:
 
     for name in FIGURE_NAMES:
         ensure(figures_dir / name, f'figure {name}')
-    for name in ['source_model_run.txt', 'source_figure_bundle.txt', 'policy_summary.yaml', 'support_window.yaml', 'coverage_audit.yaml', 'scale_contract.yaml', 'input_hashes.csv', 'cutoff_entry.json']:
+    for name in ['source_model_run.txt', 'source_figure_bundle.txt', 'source_canonical_gdpc_factor.txt', 'source_canonical_gdpc_build_metadata.txt', 'policy_summary.yaml', 'support_window.yaml', 'coverage_audit.yaml', 'scale_contract.yaml', 'input_hashes.csv', 'cutoff_entry.json']:
         ensure(meta_dir / name, f'metadata {name}')
     ensure(logs_dir / 'render.log', 'render.log')
     ensure(review_dir / 'figure_manifest.csv', 'review manifest')
 
     source_model_run = (meta_dir / 'source_model_run.txt').read_text().strip()
     source_figure_bundle = (meta_dir / 'source_figure_bundle.txt').read_text().strip()
+    source_canonical_gdpc_factor = (meta_dir / 'source_canonical_gdpc_factor.txt').read_text().strip()
     if source_model_run != entry['selected_run_root']:
         raise AssertionError(f'{entry["slug"]}: source_model_run mismatch')
     if source_figure_bundle != entry['figure_bundle_root']:
         raise AssertionError(f'{entry["slug"]}: source_figure_bundle mismatch')
+    if not Path(source_canonical_gdpc_factor).exists():
+        raise AssertionError(f'{entry["slug"]}: canonical GDPC factor pointer does not exist')
 
     support = yaml.safe_load((meta_dir / 'support_window.yaml').read_text())
     coverage = yaml.safe_load((meta_dir / 'coverage_audit.yaml').read_text())
@@ -81,7 +84,7 @@ def validate_cutoff(entry: dict, output_root: Path, config: dict) -> dict:
     if int(support['forecast_plot_post_days']) != int(config['forecast_plot_post_days']):
         raise AssertionError(f'{entry["slug"]}: forecast_plot_post_days mismatch')
 
-    for key in ['usgs', 'ppt', 'soil', 'pca']:
+    for key in ['usgs', 'ppt', 'soil', 'gdpc']:
         if coverage[key]['available_start'] != config['history_start_date']:
             raise AssertionError(f'{entry["slug"]}: {key} available_start {coverage[key]["available_start"]} != requested history start')
         if int(coverage[key]['missing_days_requested_window']) != 0:

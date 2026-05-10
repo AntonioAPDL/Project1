@@ -14,7 +14,7 @@ parse_args <- function(argv) {
 }
 
 args <- parse_args(commandArgs(trailingOnly = TRUE))
-required <- c("project-root", "selected-run-root", "figure-bundle-root", "bundle-class", "output-dir", "history-start", "cutoff-date", "forecast-plot-pre-days", "forecast-plot-post-days")
+required <- c("project-root", "selected-run-root", "figure-bundle-root", "bundle-class", "output-dir", "history-start", "cutoff-date", "forecast-plot-pre-days", "forecast-plot-post-days", "canonical-gdpc-path")
 missing <- required[!vapply(required, function(k) !is.null(args[[k]]) && nzchar(args[[k]]), logical(1))]
 if (length(missing) > 0L) {
   stop(sprintf("Missing required args: %s", paste(missing, collapse = ", ")), call. = FALSE)
@@ -41,7 +41,7 @@ source(file.path(project_root, "scripts", "forecats_plot_bundle.R"), local = .Gl
 selected_usgs_path <- require_existing_path(file.path(selected_run_root, "inputs", "shared", "usgs", "usgs_daily.csv"), "selected-run USGS")
 ppt_path <- require_existing_path(file.path(selected_run_root, "inputs", "shared", "covariates", "cov_01_PPT.csv"), "selected-run PPT covariate")
 soil_path <- require_existing_path(file.path(selected_run_root, "inputs", "shared", "covariates", "cov_02_SOIL.csv"), "selected-run SOIL covariate")
-pca_path <- require_existing_path(file.path(selected_run_root, "inputs", "shared", "covariates", "cov_03_PCA.csv"), "selected-run PCA covariate")
+gdpc_path <- require_existing_path(args[["canonical-gdpc-path"]], "canonical GDPC factor")
 
 meta <- read_bundle_meta(figure_bundle_root)
 plot_scale <- as.character(args[["display-plot-scale"]] %||% meta$transforms$plot_scale %||% "log1p_cms")
@@ -56,7 +56,7 @@ if (nrow(usgs_df) == 0L) {
 covariate_df <- bind_rows(
   read_covariate_series(ppt_path, history_start, cutoff_date, "Precipitation", c("PRCP_mm", "ppt", "PPT")),
   read_covariate_series(soil_path, history_start, cutoff_date, "Soil_Moisture", c("Daily_Avg_Soil_Moisture", "soil", "SOIL")),
-  read_covariate_series(pca_path, history_start, cutoff_date, "Climate_PC1", c("Static_PCA", "PCA"))
+  read_covariate_series(gdpc_path, history_start, cutoff_date, "Climate_PC1", c("GDPC1", "Static_PCA", "PCA"))
 ) %>%
   mutate(Variable = factor(Variable, levels = c("Precipitation", "Soil_Moisture", "Climate_PC1")))
 

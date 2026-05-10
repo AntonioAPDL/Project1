@@ -575,7 +575,7 @@ def write_summary(rows: list[dict[str, str]], path: Path) -> None:
         f"- Intended featurecov fit covariates are `{', '.join(sorted(reference_fit_cov_sets))}`."
     )
     lines.append(
-        "- In the intended featurecov workflow, the reduced `PPT/SOIL/PCA` inputs are expanded through `covariate_features.csv` and deterministic-climate forecast substitution."
+        "- In the intended featurecov workflow, the reduced `PPT/SOIL/GDPC-compatibility` inputs are expanded through `covariate_features.csv` and deterministic-climate forecast substitution."
     )
     lines.append(
         "- The generated all-9 featurecov configs express that contract through reduced fit covariates, `inputs.covariate_features`, and `inputs.deterministic_climate`; they do not need a separate `transfer_function_covariates` key to enforce it."

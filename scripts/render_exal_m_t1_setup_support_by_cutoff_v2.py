@@ -13,6 +13,13 @@ from pathlib import Path
 
 import yaml
 
+from canonical_climate_indices_lib import (
+    canonical_paths as canonical_gdpc_paths,
+    gdpc_factor_output_path,
+    gdpc_metadata_output_path,
+    load_config as load_yaml_config,
+)
+
 FIGURE_NAMES = [
     'usgs.png',
     'precip_soilmoisture_climatePC1_faceted_labeled.png',
@@ -21,6 +28,7 @@ FIGURE_NAMES = [
 ]
 
 HISTORY_DATE_KEYS = ('Date', 'date', 'time')
+GDPC_CANONICAL_CONFIG = Path(__file__).resolve().parents[1] / 'config' / 'canonical_gdpc_master_covariate.yaml'
 
 
 def sha256(path: Path) -> str:
@@ -42,6 +50,28 @@ def run(cmd: list[str], log_path: Path) -> None:
 
 def load_config(path: Path) -> dict:
     return json.loads(path.read_text())
+
+
+def canonical_gdpc_factor_csv() -> Path:
+    cfg = load_yaml_config(GDPC_CANONICAL_CONFIG)
+    paths = canonical_gdpc_paths(cfg)
+    factor_path = gdpc_factor_output_path(cfg, paths)
+    if not factor_path.exists():
+        raise FileNotFoundError(
+            f"Canonical GDPC factor is missing: {factor_path}. Run run_canonical_gdpc_master_pipeline.py first."
+        )
+    return factor_path
+
+
+def canonical_gdpc_metadata_json() -> Path:
+    cfg = load_yaml_config(GDPC_CANONICAL_CONFIG)
+    paths = canonical_gdpc_paths(cfg)
+    metadata_path = gdpc_metadata_output_path(cfg, paths)
+    if not metadata_path.exists():
+        raise FileNotFoundError(
+            f"Canonical GDPC metadata is missing: {metadata_path}. Run run_canonical_gdpc_master_pipeline.py first."
+        )
+    return metadata_path
 
 
 def axis_label_for_scale(plot_scale: str) -> str:
@@ -127,7 +157,7 @@ def build_policy_summary(entry: dict, bundle_meta: dict) -> dict:
     }
 
 
-def build_input_hash_rows(entry: dict) -> list[dict]:
+def build_input_hash_rows(entry: dict, gdpc_factor_path: Path, gdpc_metadata_path: Path) -> list[dict]:
     selected = Path(entry['selected_run_root'])
     bundle = Path(entry['figure_bundle_root'])
     rows: list[dict] = []
@@ -146,7 +176,9 @@ def build_input_hash_rows(entry: dict) -> list[dict]:
     add('selected_run_glofas_forecast', selected / 'inputs/shared/forecasts/glofas_forecast.csv')
     add('selected_run_cov_ppt', selected / 'inputs/shared/covariates/cov_01_PPT.csv')
     add('selected_run_cov_soil', selected / 'inputs/shared/covariates/cov_02_SOIL.csv')
-    add('selected_run_cov_pca', selected / 'inputs/shared/covariates/cov_03_PCA.csv')
+    add('canonical_gdpc_factor', gdpc_factor_path)
+    add('canonical_gdpc_build_metadata', gdpc_metadata_path)
+    add('canonical_gdpc_config', GDPC_CANONICAL_CONFIG)
     add('selected_run_cov_features', selected / 'inputs/shared/covariates/covariate_features.csv')
     add('figure_bundle_meta', bundle / 'meta.yaml')
     if (bundle / 'snapshot_source_map.txt').exists():
@@ -176,13 +208,13 @@ def build_retrospective_coverage(entry: dict, history_start: dt.date) -> dict:
     return daily_coverage(Path(entry['selected_run_root']) / 'inputs/shared/retros/retros.csv', history_start, cutoff_date)
 
 
-def build_coverage_audit(entry: dict, history_start: dt.date) -> dict:
+def build_coverage_audit(entry: dict, history_start: dt.date, gdpc_factor_path: Path) -> dict:
     selected = Path(entry['selected_run_root'])
     cutoff_date = dt.date.fromisoformat(entry['cutoff_date'])
     usgs = daily_coverage(selected / 'inputs/shared/usgs/usgs_daily.csv', history_start, cutoff_date)
     ppt = daily_coverage(selected / 'inputs/shared/covariates/cov_01_PPT.csv', history_start, cutoff_date)
     soil = daily_coverage(selected / 'inputs/shared/covariates/cov_02_SOIL.csv', history_start, cutoff_date)
-    pca = daily_coverage(selected / 'inputs/shared/covariates/cov_03_PCA.csv', history_start, cutoff_date)
+    gdpc = daily_coverage(gdpc_factor_path, history_start, cutoff_date)
     retros = build_retrospective_coverage(entry, history_start)
     return {
         'history_start_requested': history_start.isoformat(),
@@ -190,12 +222,12 @@ def build_coverage_audit(entry: dict, history_start: dt.date) -> dict:
         'usgs': usgs,
         'ppt': ppt,
         'soil': soil,
-        'pca': pca,
+        'gdpc': gdpc,
         'retrospective': retros,
     }
 
 
-def build_scale_contract(entry: dict, bundle_meta: dict, display_plot_scale: str) -> dict:
+def build_scale_contract(entry: dict, bundle_meta: dict, display_plot_scale: str, gdpc_factor_path: Path) -> dict:
     bundle_root = Path(entry['figure_bundle_root'])
     selected_root = Path(entry['selected_run_root'])
     selected_resolved = selected_root / 'resolved_config.yaml'
@@ -224,9 +256,10 @@ def build_scale_contract(entry: dict, bundle_meta: dict, display_plot_scale: str
                 'path': str(selected_root / 'inputs/shared/covariates/cov_02_SOIL.csv'),
                 'storage_scale': 'native_covariate_scale',
             },
-            'covariate_pca': {
-                'path': str(selected_root / 'inputs/shared/covariates/cov_03_PCA.csv'),
-                'storage_scale': 'native_covariate_scale',
+            'covariate_gdpc': {
+                'path': str(gdpc_factor_path),
+                'storage_scale': 'dimensionless_canonical_gdpc_score',
+                'note': 'Rendered from the canonical GDPC1 master factor and sliced to the cutoff-specific support window; workflow-facing cov_03_PCA.csv remains a compatibility alias for downstream fit consumers.',
             },
             'forecast_glofas_weighted': {
                 'path': str(bundle_root / 'inputs/glofas_weighted_daily.csv'),
@@ -261,6 +294,8 @@ def write_cutoff_artifacts(
     forecast_plot_pre_days: int,
     forecast_plot_post_days: int,
     display_plot_scale: str,
+    gdpc_factor_path: Path,
+    gdpc_metadata_path: Path,
     slug_root: Path,
 ) -> None:
     meta_dir = slug_root / 'metadata'
@@ -271,6 +306,8 @@ def write_cutoff_artifacts(
 
     (meta_dir / 'source_model_run.txt').write_text(entry['selected_run_root'] + '\n')
     (meta_dir / 'source_figure_bundle.txt').write_text(entry['figure_bundle_root'] + '\n')
+    (meta_dir / 'source_canonical_gdpc_factor.txt').write_text(str(gdpc_factor_path) + '\n')
+    (meta_dir / 'source_canonical_gdpc_build_metadata.txt').write_text(str(gdpc_metadata_path) + '\n')
     (meta_dir / 'cutoff_entry.json').write_text(json.dumps(entry, indent=2) + '\n')
 
     forecast_start_date = bundle_meta['dates'].get('forecast_start_date')
@@ -280,7 +317,7 @@ def write_cutoff_artifacts(
     cutoff_use = dt.date.fromisoformat(entry['cutoff_date'])
     plot_start = (cutoff_use - dt.timedelta(days=forecast_plot_pre_days)).isoformat()
     plot_end = (cutoff_use + dt.timedelta(days=forecast_plot_post_days)).isoformat()
-    coverage_audit = build_coverage_audit(entry, history_start)
+    coverage_audit = build_coverage_audit(entry, history_start, gdpc_factor_path)
 
     support_window = {
         'support_start': history_start.isoformat(),
@@ -297,9 +334,9 @@ def write_cutoff_artifacts(
     yaml.safe_dump(support_window, (meta_dir / 'support_window.yaml').open('w'), sort_keys=False)
     yaml.safe_dump(build_policy_summary(entry, bundle_meta), (meta_dir / 'policy_summary.yaml').open('w'), sort_keys=False)
     yaml.safe_dump(coverage_audit, (meta_dir / 'coverage_audit.yaml').open('w'), sort_keys=False)
-    yaml.safe_dump(build_scale_contract(entry, bundle_meta, display_plot_scale), (meta_dir / 'scale_contract.yaml').open('w'), sort_keys=False)
+    yaml.safe_dump(build_scale_contract(entry, bundle_meta, display_plot_scale, gdpc_factor_path), (meta_dir / 'scale_contract.yaml').open('w'), sort_keys=False)
 
-    hash_rows = build_input_hash_rows(entry)
+    hash_rows = build_input_hash_rows(entry, gdpc_factor_path, gdpc_metadata_path)
     with (meta_dir / 'input_hashes.csv').open('w', newline='') as f:
         writer = csv.writer(f, lineterminator='\n')
         writer.writerow(['label', 'path', 'sha256', 'bytes'])
@@ -333,6 +370,8 @@ def main() -> None:
     forecast_plot_pre_days = int(config.get('forecast_plot_pre_days', 28))
     forecast_plot_post_days = int(config.get('forecast_plot_post_days', 28))
     display_plot_scale = str(config.get('flow_figure_display_scale', 'log1p_cms'))
+    gdpc_factor_path = canonical_gdpc_factor_csv()
+    gdpc_metadata_path = canonical_gdpc_metadata_json()
 
     if args.clean and output_root.exists() and not wanted:
         shutil.rmtree(output_root)
@@ -373,6 +412,7 @@ def main() -> None:
             '--forecast-plot-pre-days', str(forecast_plot_pre_days),
             '--forecast-plot-post-days', str(forecast_plot_post_days),
             '--display-plot-scale', display_plot_scale,
+            '--canonical-gdpc-path', str(gdpc_factor_path),
         ]
         run(cmd, slug_root / 'logs' / 'render.log')
 
@@ -385,6 +425,8 @@ def main() -> None:
             forecast_plot_pre_days=forecast_plot_pre_days,
             forecast_plot_post_days=forecast_plot_post_days,
             display_plot_scale=display_plot_scale,
+            gdpc_factor_path=gdpc_factor_path,
+            gdpc_metadata_path=gdpc_metadata_path,
             slug_root=slug_root,
         )
 
@@ -403,6 +445,7 @@ def main() -> None:
         '# exAL-M-T1 setup/support figures by cutoff (v2)\n\n'
         'This runtime family renders the corrected cutoff-specific setup/input/support figures from the CRPS-linked exAL-M-T1 run roots and the authoritative forecats/histfix bundles.\n\n'
         f'Config: `{args.config.resolve()}`\n\n'
+        f'Canonical GDPC factor: `{gdpc_factor_path}`\n\n'
         f'Flow-figure display scale: `{display_plot_scale}`\n\n'
         'Review outputs:\n'
         '- `review/REVIEW.md`\n'

@@ -554,7 +554,7 @@ def write_summary(rows: list[dict[str, Any]], path: Path) -> None:
         else f"- Fit covariate sets are not uniform across rows: {fit_covariate_sets}."
     )
     lines.append(
-        f"- The newer featurecov transfer-function blocks (`PPT/SOIL/PCA` with lags and interactions) are absent from all authoritative Phase 3 source configs: `{featurecov_blocks_present}` of `{len(rows)}` rows expose `inputs.transfer_function_covariates`."
+        f"- The newer featurecov transfer-function blocks (`PPT/SOIL/GDPC-compatibility` with lags and interactions) are absent from all authoritative Phase 3 source configs: `{featurecov_blocks_present}` of `{len(rows)}` rows expose `inputs.transfer_function_covariates`."
     )
     lines.append(
         f"- Snapshot preference differs by lineage: `{prefer_snapshot_counts.get('True', 0)}` rows prefer the older `forecats` snapshot path, while `{prefer_snapshot_counts.get('False', 0)}` rows do not."
