@@ -80,7 +80,7 @@ In scope:
 - all 45 Bayesian HE2 rows
 - all cutoffs with short-window effective support
 - the exact shared-input contract used by fit
-- PCA reproducibility hardening
+- canonical GDPC master-covariate reproducibility hardening
 - article and corrections auto-refresh after reruns
 
 ## Confirmed affected cutoffs
@@ -144,23 +144,35 @@ This means:
 - do not overwrite the article-side publication snapshots,
 - and always label new corrected artifacts as a new lineage.
 
-### Workstream C. PCA reproducibility hardening
+### Workstream C. Canonical GDPC master-covariate reproducibility hardening
 
 Goal:
-- make the PCA covariate generation and preservation as reproducible and inspectable as the other covariate inputs.
+- make the large-scale climate covariate generation and preservation as reproducible and inspectable as the other covariate inputs.
+- the chosen future contract is a canonical master `GDPC1`, not the legacy frozen static-PCA artifact.
 
-This work is required because PCA is part of the common covariate contract across the Bayesian rows, and we need a clear answer to:
+This work is required because the large-scale climate factor is part of the common covariate contract across the Bayesian rows, and we need a clear answer to:
 
-- where the preserved PCA input comes from,
+- where the preserved climate-factor input comes from,
 - how it is regenerated if needed,
 - what source data feed it,
-- and how article-side bundles will be refreshed if PCA changes.
+- and how article-side bundles will be refreshed if the canonical factor changes.
+
+Canonical design note:
+- see `/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/CANONICAL_GDPC_MASTER_COVARIATE_REPORT_20260509.md`
+- implementation tracker: `/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/CANONICAL_GDPC_IMPLEMENTATION_TRACKER_20260509.md`
+- source-pipeline runbook: `/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/CANONICAL_GDPC_SOURCE_PIPELINE_RUNBOOK_20260509.md`
+- full-pipeline runbook: `/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/CANONICAL_GDPC_MASTER_PIPELINE_RUNBOOK_20260509.md`
+- the agreed future direction is one master `GDPC1` built over `1987-05-29 -> 2023-01-22` using the 17-index daily climate matrix, with shared-master leakage across cutoffs accepted by design
+- no expensive automatic lag cross-validation will be used in the canonical implementation; the lag count will be frozen explicitly in metadata
+- the stationarity decision is also frozen now: keep the full 17 standardized daily series in levels and do not difference or detrend them before fitting `GDPC1`
+- the implemented canonical fit currently uses `k = 1`, `tol = 1e-3`, `niter_max = 200`, and criterion label `BIC`, with sign orientation anchored to positive correlation with `oni`
 
 Minimum deliverables for this workstream:
-- one PCA provenance note/runbook,
+- one GDPC provenance note/runbook,
 - one explicit regeneration path,
+- one canonical master GDPC artifact plus compatibility aliases for downstream workflow consumers,
 - one article-side frozen snapshot or manifest entry,
-- one validation check that the PCA file used by reruns matches the intended source.
+- one validation check that the GDPC file used by reruns matches the intended canonical source.
 
 ### Workstream D. Automatic article/corrections refresh after reruns
 
@@ -183,12 +195,12 @@ Done now:
 - historical-support audit
 - setup/support figure families mirrored in the article repo
 
-### Phase 1. PCA reproducibility hardening
+### Phase 1. Canonical GDPC master-covariate reproducibility hardening
 
 Do this before rerunning corrected Bayesian rows.
 
 Reason:
-- PCA is part of the common covariate contract and should not remain an under-documented dependency when we rebuild the affected cutoffs.
+- the large-scale climate covariate is part of the common covariate contract and should not remain an under-documented dependency when we rebuild the affected cutoffs.
 
 ### Phase 2. Full-history bundle reconstruction for affected cutoffs
 
@@ -257,7 +269,7 @@ We now have enough structure to move carefully.
 
 The next rerun cycle should not start with more modeling. It should start with:
 
-1. PCA reproducibility hardening,
+1. canonical GDPC master-covariate reproducibility hardening,
 2. corrected full-history bundle reconstruction for the three affected cutoffs,
 3. and then controlled reruns with automatic article-side refresh.
 

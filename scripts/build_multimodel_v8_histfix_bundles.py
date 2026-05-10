@@ -13,11 +13,14 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from canonical_climate_indices_lib import canonical_paths, gdpc_compat_alias_paths, load_config
 from multimodel_v8_lib import ensure_dir
 
 SITE_ID = "11160500"
 SITE_LAT = 37.0443931
 SITE_LON = -122.072464
+WORKFLOW_ROOT = Path(__file__).resolve().parents[1]
+GDPC_CANONICAL_CONFIG = WORKFLOW_ROOT / "config" / "canonical_gdpc_master_covariate.yaml"
 DEFAULT_CUTOFFS = ["20211221", "20220511", "20221225"]
 DEFAULT_DATA_START = "1987-05-29"
 DEFAULT_BUNDLE_RUN_ID = "20260407_long_history_r01"
@@ -95,7 +98,6 @@ COVARIATE_SOURCE_FILES = {
     "ONI": LONG_HISTORY_SHARED_ROOT / "covariates" / "cov_02_ONI.csv",
     "PPT": LONG_HISTORY_SHARED_ROOT / "covariates" / "cov_03_PPT.csv",
     "SOIL": LONG_HISTORY_SHARED_ROOT / "covariates" / "cov_04_SOIL.csv",
-    "PCA": LONG_HISTORY_SHARED_ROOT / "covariates" / "cov_05_PCA.csv",
 }
 PARAMETERS_SOURCE = LONG_HISTORY_SHARED_ROOT / "parameters" / "parameters.txt"
 
@@ -133,6 +135,20 @@ def _copy_file(src: Path, dst: Path) -> Path:
     ensure_dir(dst.parent)
     shutil.copy2(src, dst)
     return dst
+
+
+def _canonical_pca_alias_path(alias_filename: str = "cov_05_PCA.csv") -> Path:
+    cfg = load_config(GDPC_CANONICAL_CONFIG)
+    paths = canonical_paths(cfg)
+    aliases = gdpc_compat_alias_paths(cfg, paths)
+    alias_path = aliases.get(alias_filename)
+    if alias_path is None:
+        raise KeyError(f"Canonical GDPC alias '{alias_filename}' is not defined in {GDPC_CANONICAL_CONFIG}")
+    if not alias_path.exists():
+        raise FileNotFoundError(
+            f"Canonical GDPC alias is missing: {alias_path}. Run run_canonical_gdpc_master_pipeline.py first."
+        )
+    return alias_path
 
 
 def _build_nws_daily(hourly_path: Path, out_csv: Path, source_id: str) -> Path:
@@ -199,13 +215,17 @@ def _prepare_supporting_inputs(artifact_root: Path) -> dict[str, Path]:
         "SOIL": support_root / "covariates" / "cov_04_SOIL.csv",
         "PCA": support_root / "covariates" / "cov_05_PCA.csv",
     }
+    canonical_pca_source = _canonical_pca_alias_path("cov_05_PCA.csv")
     _copy_file(PARAMETERS_SOURCE, out["parameters"])
     for key, src in COVARIATE_SOURCE_FILES.items():
         _copy_file(src, out[key])
+    _copy_file(canonical_pca_source, out["PCA"])
     manifest = support_root / "support_manifest.json"
     payload = {
         "created_at_utc": utc_now(),
         "source_root": str(LONG_HISTORY_SHARED_ROOT),
+        "canonical_gdpc_config": str(GDPC_CANONICAL_CONFIG),
+        "canonical_gdpc_pca_alias_source": str(canonical_pca_source),
         "parameters": str(out["parameters"]),
         "covariates": {k: str(v) for k, v in out.items() if k != "parameters"},
     }

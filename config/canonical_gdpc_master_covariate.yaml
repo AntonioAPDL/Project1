@@ -1,0 +1,90 @@
+version: v20260509
+description: Canonical climate-index source and post-processing contract for the future GDPC1 master covariate.
+artifact_root: data/canonical_gdpc_master/v20260509
+canonical_window:
+  start_date: '1987-05-29'
+  end_date: '2023-01-22'
+monthly_source_window:
+  start_month: '1987-01-01'
+  end_month: '2023-01-01'
+download:
+  timeout_seconds: 30
+  retries: 3
+  user_agent: canonical-gdpc-climate-pipeline/20260509
+postprocess:
+  interpolation:
+    method: cubic_spline_with_linear_tail
+    linear_tail_days: 30
+    require_monthly_coverage_through_end_month: true
+  standardization:
+    method: zscore
+    ddof: 1
+gdpc:
+  method: gdpc
+  component_name: GDPC1
+  k: 1
+  tol: 1.0e-3
+  niter_max: 200
+  crit: BIC
+  require_convergence: true
+  blas_threads: 8
+  sign_rule:
+    method: positive_correlation
+    anchor_index_id: oni
+compatibility_aliases:
+  - alias_filename: cov_03_PCA.csv
+    value_column: Static_PCA
+  - alias_filename: cov_05_PCA.csv
+    value_column: Static_PCA
+indices:
+  - index_id: nino3
+    display_name: Nino 3
+    url: https://psl.noaa.gov/data/correlation/nina3.anom.data
+  - index_id: nao
+    display_name: NAO
+    url: https://psl.noaa.gov/data/correlation/nao.data
+  - index_id: nino12
+    display_name: Nino 1+2
+    url: https://psl.noaa.gov/data/correlation/nina1.anom.data
+  - index_id: whwp
+    display_name: WHWP
+    url: https://psl.noaa.gov/data/correlation/whwp.data
+  - index_id: gmt
+    display_name: GMT
+    url: https://psl.noaa.gov/data/correlation/gmsst.data
+  - index_id: oni
+    display_name: ONI
+    url: https://psl.noaa.gov/data/correlation/oni.data
+  - index_id: pna
+    display_name: PNA
+    url: https://psl.noaa.gov/data/correlation/pna.data
+  - index_id: noi
+    display_name: NOI
+    url: https://psl.noaa.gov/data/correlation/noi.data
+  - index_id: wp
+    display_name: WP
+    url: https://psl.noaa.gov/data/correlation/wp.data
+  - index_id: nino34
+    display_name: Nino 3.4
+    url: https://psl.noaa.gov/data/correlation/nina34.anom.data
+  - index_id: solar_flux
+    display_name: Solar Flux
+    url: https://psl.noaa.gov/data/correlation/solar.data
+  - index_id: amo
+    display_name: AMO
+    url: https://psl.noaa.gov/data/correlation/amon.us.data
+  - index_id: espi
+    display_name: ESPI
+    url: https://psl.noaa.gov/data/correlation/espi.data
+  - index_id: tsa
+    display_name: TSA
+    url: https://psl.noaa.gov/data/correlation/tsa.data
+  - index_id: nino4
+    display_name: Nino 4
+    url: https://psl.noaa.gov/data/correlation/nina4.anom.data
+  - index_id: tna
+    display_name: TNA
+    url: https://psl.noaa.gov/data/correlation/tna.data
+  - index_id: soi
+    display_name: SOI
+    url: https://psl.noaa.gov/data/correlation/soi.data
