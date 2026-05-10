@@ -241,33 +241,42 @@ Why use `gdpc()` rather than `auto.gdpc()`:
 ### 7.3 Recommended fixed lag choice
 
 Canonical implementation now frozen at:
-- `k = 1`
+- `k = 2`
 - `tol = 1e-3`
 - `niter_max = 200`
 - `crit = 'BIC'`
 
 Reasoning:
-- it is the lightest fixed-lag GDPC specification that still preserves a genuinely dynamic factor construction
-- it converged cleanly on the full `13023 x 17` standardized daily matrix
-- it keeps the implementation easy to rerun and explain
-- it avoids turning the canonical master build into a multi-hour batch dependency for routine workflow maintenance
+- we ran a bounded simple lag screen over `k in {1, 2, 3}` on the full standardized matrix
+- `k = 2` achieved the best converged `BIC` value among the screened candidates
+- `k = 2` improved on `k = 1` materially while keeping runtime in the same practical range
+- `k = 3` did not finish within the screening runtime cap, so it was excluded from the final selection set as not practical for the canonical contract
 
 Important note:
 - the `crit` argument in `gdpc()` is only used to evaluate the fitted reconstruction; it does not choose `k` when `k` is fixed by the user
 - so the canonical build should not pretend that the criterion selected the lag count
 - `BIC` is the pragmatic default for the canonical build because it is simple, deterministic, and lighter than leave-one-out evaluation for this full-window batch artifact
 
-Optional sanity-check policy:
-- if desired, run a small non-selection comparison over `k in {1, 3, 7}` for inspection only
-- do not treat that as formal automatic model selection
-- still freeze one chosen `k` in the final artifact metadata
+Simple screening policy now used:
+- compare `k in {1, 2, 3}`
+- keep only converged fits
+- minimize `BIC`
+- break ties by lower runtime, then smaller `k`
+- enforce a practical runtime cap of `900` seconds per candidate
+
+If future reconfirmation is needed, reuse that same bounded screening rule rather than broadening the lag search silently.
 
 Canonical build result:
 - converged: `TRUE`
-- iterations used: `12`
-- explained variance (`expart`): `0.4204`
-- reconstruction MSE: `0.5796`
-- runtime: about `262` seconds
+- iterations used: `13`
+- explained variance (`expart`): `0.4407`
+- reconstruction MSE: `0.5593`
+- runtime: about `301` seconds
+
+Simple screening result:
+- `k = 1`: converged, `BIC = 30277.8839`, runtime about `272` seconds
+- `k = 2`: converged, `BIC = 29973.3221`, runtime about `316` seconds
+- `k = 3`: timed out at `900` seconds under the bounded screening rule
 
 ### 7.4 Standardization contract
 

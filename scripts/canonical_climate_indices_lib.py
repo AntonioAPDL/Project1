@@ -129,6 +129,47 @@ def gdpc_stationarity_review_path(cfg: dict[str, Any], paths: CanonicalPaths | N
     return paths.review_root / "stationarity" / "CANONICAL_GDPC_STATIONARITY_AUDIT.md"
 
 
+def gdpc_screening_root(cfg: dict[str, Any], paths: CanonicalPaths | None = None) -> Path:
+    paths = paths or canonical_paths(cfg)
+    return ensure_dir(paths.review_root / "lag_screening")
+
+
+def gdpc_screening_run_root(cfg: dict[str, Any], k: int, paths: CanonicalPaths | None = None) -> Path:
+    return ensure_dir(gdpc_screening_root(cfg, paths) / f"k_{int(k)}")
+
+
+def gdpc_screening_factor_output_path(cfg: dict[str, Any], k: int, paths: CanonicalPaths | None = None) -> Path:
+    return gdpc_screening_run_root(cfg, k, paths) / f"gdpc_master_component_01_k{int(k)}_{canonical_window_token(cfg)}.csv"
+
+
+def gdpc_screening_alpha_output_path(cfg: dict[str, Any], k: int, paths: CanonicalPaths | None = None) -> Path:
+    return gdpc_screening_run_root(cfg, k, paths) / f"gdpc_master_component_01_alpha_k{int(k)}_{canonical_window_token(cfg)}.csv"
+
+
+def gdpc_screening_beta_output_path(cfg: dict[str, Any], k: int, paths: CanonicalPaths | None = None) -> Path:
+    return gdpc_screening_run_root(cfg, k, paths) / f"gdpc_master_component_01_beta_k{int(k)}_{canonical_window_token(cfg)}.csv"
+
+
+def gdpc_screening_initial_factor_output_path(cfg: dict[str, Any], k: int, paths: CanonicalPaths | None = None) -> Path:
+    return gdpc_screening_run_root(cfg, k, paths) / f"gdpc_master_component_01_initial_f_k{int(k)}_{canonical_window_token(cfg)}.csv"
+
+
+def gdpc_screening_metadata_output_path(cfg: dict[str, Any], k: int, paths: CanonicalPaths | None = None) -> Path:
+    return gdpc_screening_run_root(cfg, k, paths) / "gdpc_screening_metadata.json"
+
+
+def gdpc_screening_summary_csv_path(cfg: dict[str, Any], paths: CanonicalPaths | None = None) -> Path:
+    return gdpc_screening_root(cfg, paths) / "gdpc_k_screening_summary.csv"
+
+
+def gdpc_screening_summary_json_path(cfg: dict[str, Any], paths: CanonicalPaths | None = None) -> Path:
+    return gdpc_screening_root(cfg, paths) / "gdpc_k_screening_summary.json"
+
+
+def gdpc_screening_review_path(cfg: dict[str, Any], paths: CanonicalPaths | None = None) -> Path:
+    return gdpc_screening_root(cfg, paths) / "CANONICAL_GDPC_K_SCREENING_REVIEW.md"
+
+
 def gdpc_compat_root(cfg: dict[str, Any], paths: CanonicalPaths | None = None) -> Path:
     paths = paths or canonical_paths(cfg)
     return ensure_dir(paths.outputs_root / "compat")

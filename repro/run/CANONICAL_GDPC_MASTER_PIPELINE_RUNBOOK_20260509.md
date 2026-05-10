@@ -14,9 +14,10 @@ The full pipeline now has a clean, reproducible shape:
 4. standardize the daily matrix,
 5. render per-index diagnostic plots,
 6. audit stationarity/trend compatibility,
-7. fit canonical `GDPC1` with fixed lag `k = 1`,
-8. orient the sign deterministically,
-9. emit workflow-facing compatibility aliases that preserve the legacy `PCA` slot contract.
+7. optionally run the bounded simple lag screen over `{1, 2, 3}`,
+8. fit canonical `GDPC1` with screened fixed lag `k = 2`,
+9. orient the sign deterministically,
+10. emit workflow-facing compatibility aliases that preserve the legacy `PCA` slot contract.
 
 ## Canonical config
 
@@ -41,6 +42,7 @@ Component steps:
 - `scripts/build_canonical_climate_daily_matrices.py`
 - `scripts/render_canonical_climate_index_diagnostics.py`
 - `scripts/build_canonical_climate_stationarity_audit.R`
+- `scripts/screen_canonical_gdpc_lags.py`
 - `scripts/build_canonical_gdpc_master_covariate.py`
 - `scripts/build_canonical_gdpc_factor.R`
 
@@ -59,6 +61,23 @@ python3 scripts/run_canonical_gdpc_master_pipeline.py \
   --force-download
 ```
 
+To rerun the bounded simple lag screening as part of the full pipeline:
+
+```bash
+python3 scripts/run_canonical_gdpc_master_pipeline.py \
+  --config config/canonical_gdpc_master_covariate.yaml \
+  --run-screening
+```
+
+To force recomputation of the screening candidates as well:
+
+```bash
+python3 scripts/run_canonical_gdpc_master_pipeline.py \
+  --config config/canonical_gdpc_master_covariate.yaml \
+  --run-screening \
+  --force-screening
+```
+
 ## Canonical output root
 
 - `data/canonical_gdpc_master/v20260509/`
@@ -74,6 +93,7 @@ Key review outputs:
 - `review/CANONICAL_CLIMATE_INDEX_POSTPROCESS_REVIEW.md`
 - `review/CANONICAL_CLIMATE_INDEX_DIAGNOSTIC_PLOTS.md`
 - `review/stationarity/CANONICAL_GDPC_STATIONARITY_AUDIT.md`
+- `review/lag_screening/CANONICAL_GDPC_K_SCREENING_REVIEW.md`
 - `review/CANONICAL_GDPC_BUILD_REVIEW.md`
 
 Key canonical GDPC outputs:
@@ -96,17 +116,23 @@ Key metadata:
 - standardize each index over `1987-05-29 -> 2023-01-22`
 - fit GDPC on the standardized series in levels
 - do not difference or detrend before GDPC
-- use fixed lag `k = 1`
+- use the bounded simple screen over `k in {1, 2, 3}` when reconfirmation is needed
+- freeze the canonical lag at `k = 2`
 - use tolerance `1e-3` and `niter_max = 200`
 - use `BIC` as the recorded reconstruction criterion
 - orient the final component so it has positive correlation with `oni`
 
 Canonical build snapshot currently frozen in this lineage:
 - converged: `TRUE`
-- iterations used: `12`
-- explained variance: `0.4204`
-- reconstruction MSE: `0.5796`
-- runtime: about `262` seconds
+- iterations used: `13`
+- explained variance: `0.4407`
+- reconstruction MSE: `0.5593`
+- runtime: about `301` seconds
+
+Screening snapshot currently frozen in this lineage:
+- `k = 1`: converged, `BIC = 30277.8839`, runtime about `272` seconds
+- `k = 2`: converged, `BIC = 29973.3221`, runtime about `316` seconds
+- `k = 3`: timed out at the `900` second screening cap
 
 ## Validation expectation
 

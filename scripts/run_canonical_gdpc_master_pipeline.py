@@ -24,6 +24,8 @@ def parse_args() -> argparse.Namespace:
         help="Canonical GDPC config.",
     )
     parser.add_argument("--force-download", action="store_true", help="Redownload monthly raw climate-index files.")
+    parser.add_argument("--run-screening", action="store_true", help="Run the small fixed-lag GDPC screening before the canonical build.")
+    parser.add_argument("--force-screening", action="store_true", help="Recompute lag-screening runs even if screening metadata already exists.")
     return parser.parse_args()
 
 
@@ -53,6 +55,11 @@ def main() -> int:
 
     if args.force_download:
         steps[0].append("--force")
+    if args.run_screening:
+        screening_cmd = [sys.executable, str(ROOT / "scripts" / "screen_canonical_gdpc_lags.py"), "--config", str(args.config.resolve())]
+        if args.force_screening:
+            screening_cmd.append("--force")
+        steps.insert(4, screening_cmd)
 
     for cmd in steps:
         proc = subprocess.run(cmd, cwd=ROOT, check=False)

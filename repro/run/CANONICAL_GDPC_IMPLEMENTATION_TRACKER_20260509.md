@@ -91,8 +91,9 @@ These decisions are locked for the GDPC implementation phase unless Antonio expl
 - This cross-cutoff leakage is accepted by design and will be documented explicitly.
 
 6. **Default lag choice**
-- Canonical lag frozen in the implemented build: `k = 1`.
-- A tiny implementation-time sanity comparison over `{1, 3, 7}` remains allowed for inspection, but not as a formal selection procedure.
+- Canonical lag frozen in the implemented build: `k = 2`.
+- The bounded simple screening now uses `{1, 2, 3}` with a `900` second per-candidate cap.
+- Screening result frozen in the lineage: `k = 2` beat `k = 1` on converged `BIC`, while `k = 3` timed out under the cap.
 - The final chosen lag must be written into metadata and frozen.
 
 7. **Workflow-compatibility policy**
@@ -372,13 +373,14 @@ This phase should be rigid by default but not brittle. These items may change la
 ### Knob 1. Lag choice `k`
 
 Canonical implemented value:
-- `k = 1`
+- `k = 2`
 - `tol = 1e-3`
 - `niter_max = 200`
 - `crit = 'BIC'`
 
 Allowed future changes:
 - `k = 1`
+- `k = 3`
 - `k = 7`
 - another explicit fixed lag if justified
 
@@ -499,7 +501,7 @@ Purpose:
 
 Tasks:
 - [x] require the `gdpc` package explicitly in the build script
-- [x] fit `gdpc()` with fixed lag `k = 1` by default
+- [x] fit `gdpc()` with fixed lag `k = 2` by default
 - [x] retain only the first component
 - [x] compute and record explained-variance / reconstruction diagnostics exposed by the package
 - [x] apply the deterministic sign rule
@@ -695,7 +697,7 @@ Current state:
 - user explicitly does not want long lag-selection runs.
 
 Mitigation:
-- keep fixed lag `k = 1` as the canonical default;
+- keep fixed lag `k = 2` as the canonical default;
 - allow only a tiny non-binding sanity comparison if helpful.
 
 ### Risk 5. Premature model reruns before canonical factor is stable
@@ -745,7 +747,7 @@ If Antonio approves this tracker, the next pass should implement **only** the GD
 
 1. canonical source acquisition + source manifest
 2. daily interpolation + standardization build
-3. canonical `gdpc()` fit with fixed `k = 1`
+3. canonical `gdpc()` fit with fixed `k = 2`
 4. compatibility aliases
 5. validation and review outputs
 6. workflow rewiring to the canonical alias outputs

@@ -165,7 +165,8 @@ Canonical design note:
 - the agreed future direction is one master `GDPC1` built over `1987-05-29 -> 2023-01-22` using the 17-index daily climate matrix, with shared-master leakage across cutoffs accepted by design
 - no expensive automatic lag cross-validation will be used in the canonical implementation; the lag count will be frozen explicitly in metadata
 - the stationarity decision is also frozen now: keep the full 17 standardized daily series in levels and do not difference or detrend them before fitting `GDPC1`
-- the implemented canonical fit currently uses `k = 1`, `tol = 1e-3`, `niter_max = 200`, and criterion label `BIC`, with sign orientation anchored to positive correlation with `oni`
+- the bounded simple lag screen over `k in {1, 2, 3}` selected `k = 2`, with `k = 3` timing out under the `900` second per-candidate cap
+- the implemented canonical fit now uses `k = 2`, `tol = 1e-3`, `niter_max = 200`, and criterion label `BIC`, with sign orientation anchored to positive correlation with `oni`
 
 Minimum deliverables for this workstream:
 - one GDPC provenance note/runbook,

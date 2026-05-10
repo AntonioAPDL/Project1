@@ -12,10 +12,10 @@ parse_args <- function(args) {
     output_initial_f_csv = NULL,
     output_metadata_json = NULL,
     component_name = "GDPC1",
-    k = 3L,
-    tol = 1e-4,
-    niter_max = 500L,
-    crit = "LOO",
+    k = 2L,
+    tol = 1e-3,
+    niter_max = 200L,
+    crit = "BIC",
     anchor_index = NULL,
     require_convergence = TRUE
   )

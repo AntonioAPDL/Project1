@@ -22,7 +22,7 @@ postprocess:
 gdpc:
   method: gdpc
   component_name: GDPC1
-  k: 1
+  k: 2
   tol: 1.0e-3
   niter_max: 200
   crit: BIC
@@ -31,6 +31,24 @@ gdpc:
   sign_rule:
     method: positive_correlation
     anchor_index_id: oni
+screening:
+  enabled: true
+  candidate_k_values:
+    - 1
+    - 2
+    - 3
+  criterion: BIC
+  tol: 1.0e-3
+  niter_max: 200
+  max_runtime_seconds_per_k: 900
+  require_convergence: false
+  selection_rule:
+    primary_metric: criterion_value
+    objective: minimize
+    require_converged_fit: true
+    tie_breakers:
+      - lower_runtime_seconds
+      - smaller_k
 compatibility_aliases:
   - alias_filename: cov_03_PCA.csv
     value_column: Static_PCA
