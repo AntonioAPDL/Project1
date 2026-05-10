@@ -152,7 +152,6 @@ DISC_GAMSIG_INIT_MODE <- disc_env_choice(
 DISC_GAMSIG_INIT_GAMMA <- disc_env_num("DISC_GAMSIG_INIT_GAMMA", 0.0)
 DISC_GAMSIG_INIT_SIGMA_FLOOR <- disc_env_pos_num("DISC_GAMSIG_INIT_SIGMA_FLOOR", 1e-3)
 DISC_GAMSIG_INIT_SIGMA_SCALE <- disc_env_pos_num("DISC_GAMSIG_INIT_SIGMA_SCALE", 1.0)
-
 DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED <- disc_env_flag(
   "DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED",
   default = TRUE
@@ -820,7 +819,7 @@ ELI_lon <- covariates$ELI_lon
 merged_sst_data <- covariates$merged_sst_data
 ELI_lon$time <- as.Date(ELI_lon$time)
 adjustment_years <- 170
-ELI_lon$time <- ELI_lon$time - years(adjustment_years)
+ELI_lon$time <- ELI_lon$time - lubridate::years(adjustment_years)
 #
 CFSToCMS_CONVERSION_FACTOR = 0.0283168466
 # Read and process USGS data (non-fatal if the external service is unavailable)
@@ -1361,12 +1360,16 @@ update_sts<-function(y, exps,inv.uts,c2.invb.absgam2.sigma,c.invb.absgam,c.a.inv
                 E.sts=z,E.sts2=z,
                 tot.entrop = 0))
   }
-  s.sig2<-1/(1+c2.invb.absgam2.sigma*inv.uts); s.sig = sqrt(s.sig2)
+  inv.uts <- pmax(as.numeric(inv.uts), 1e-10)
+  denom <- pmax(1 + c2.invb.absgam2.sigma * inv.uts, 1e-10)
+  s.sig2<-1/denom; s.sig = sqrt(pmax(s.sig2, 1e-10))
   s.mu<-s.sig2*(c.invb.absgam*(y-exps)*inv.uts-c.a.invb.absgam)
   #
   E.sts = truncnorm::etruncnorm(a=rep(0,TTT),b=rep(Inf,TTT),mean=s.mu,sd=s.sig)
   V.sts = truncnorm::vtruncnorm(a=rep(0,TTT),b=rep(Inf,TTT),mean=s.mu,sd=s.sig)
   E.sts2 = s.mu^2 + s.sig2 + s.mu*s.sig*exp(stats::dnorm(-s.mu/s.sig,log = TRUE)-stats::pnorm(s.mu/s.sig,log.p = TRUE))
+  E.sts[!is.finite(E.sts)] <- pmax(s.mu[!is.finite(E.sts)], 0)
+  E.sts2[!is.finite(E.sts2)] <- pmax(E.sts[!is.finite(E.sts2)]^2 + s.sig2[!is.finite(E.sts2)], 1e-10)
   return(list(sts.sig2=s.sig2,sts.mu=s.mu,
               E.sts=E.sts,E.sts2=E.sts2,
               tot.entrop = sum(0.5*log2(2*pi*exp(1)*s.sig2) - 1 )))
@@ -1413,8 +1416,10 @@ update_uts<-function(y, exps,exps2,sts,sts2,inv.sigma,a2.invb.inv.sigma,invb.inv
 
   E.uts = sqrt(u.chi/u.psi) * ratio
   E.inv.uts = sqrt(u.psi/u.chi) * ratio - 2*u.lambda/u.chi
-  E.uts[!is.finite(E.uts)] <- 0
-  E.inv.uts[!is.finite(E.inv.uts)] <- 0
+  E.uts[!is.finite(E.uts)] <- 1e-10
+  E.inv.uts[!is.finite(E.inv.uts)] <- 1e-10
+  E.uts <- pmax(E.uts, 1e-10)
+  E.inv.uts <- pmax(E.inv.uts, 1e-10)
 
   nu <- 0.5
   K1 <- besselK(s.ab, nu)
@@ -1667,9 +1672,6 @@ if(!Climate_Center){
       }
       log_guard_failure(msg)
       mark_guard_trigger(msg)
-      if (identical(guard_mode, "adaptive_freeze")) {
-        return(0)
-      }
       return(DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY)
     }
     neg <- -yy
@@ -1683,9 +1685,6 @@ if(!Climate_Center){
       }
       log_guard_failure(msg)
       mark_guard_trigger(msg)
-      if (identical(guard_mode, "adaptive_freeze")) {
-        return(0)
-      }
       return(DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY)
     }
     neg
@@ -1696,7 +1695,7 @@ if(!Climate_Center){
       par = initial_values,
       fn = objective_neg, # Maximizing by minimizing the negative
       method = "L-BFGS-B", # This method allows box constraints
-      lower = c(-Inf, -Inf), # Transform bounds for gam to theta_g space if needed
+      lower = c(-Inf, -Inf),
       upper = c(Inf, Inf),
       hessian = TRUE
     ),
@@ -1717,8 +1716,17 @@ if(!Climate_Center){
   if (is.null(optim_results)) {
     return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = guard_message))
   }
-  if (isTRUE(guard_triggered) && identical(guard_mode, "adaptive_freeze")) {
-    return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = guard_message))
+  opt_obj <- tryCatch(dq_transf(optim_results$par[[1L]], optim_results$par[[2L]]), error = function(e) NA_real_)
+  if (!is.finite(opt_obj)) {
+    msg <- sprintf(
+      "non-finite optimum after guarded multivar optimization at p0=%s context=%s",
+      as.character(p0), context_label
+    )
+    if (nzchar(guard_message)) {
+      msg <- sprintf("%s | last_guard=%s", msg, guard_message)
+    }
+    log_guard_failure(msg)
+    return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = msg))
   }
 
   # Evaluate the Hessian at the optimal value

@@ -1095,6 +1095,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       UNIV_RUN_ROOT = run_root_abs,
       UNIV_OUT_DIR = q_outputs,
       UNIV_SHARED_INPUT_ROOT = shared_paths$root,
+      UNIV_USGS_DAILY_CSV = file.path(shared_paths$root, "usgs", "usgs_daily.csv"),
       UNIV_PARAMETERS_TXT = source_parameters,
       UNIV_RETROS_CSV = source_retros,
       UNIV_NWS_FORECAST_CSV = source_nws,

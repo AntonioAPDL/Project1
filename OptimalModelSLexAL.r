@@ -29,6 +29,18 @@ invisible(lapply(c(
 invisible(lapply(c("dataRetrieval", "tseries", "tidyverse", "rvest"), load_optional_pkg))
 # library(prism)
 
+if (!exists("combineMods", mode = "function")) {
+  combineMods <- function(mod1, mod2) {
+    if (inherits(mod1, "exdqlm") && inherits(mod2, "exdqlm")) {
+      return(mod1 + mod2)
+    }
+    if (inherits(mod1, "dlm") && inherits(mod2, "dlm")) {
+      return(get("%+%", envir = asNamespace("dlm"))(mod1, mod2))
+    }
+    stop("combineMods requires matching 'exdqlm' or 'dlm' objects.", call. = FALSE)
+  }
+}
+
 shared_helpers_path <- file.path(getwd(), "R", "unified", "families", "shared_input_helpers.R")
 if (file.exists(shared_helpers_path)) {
   source(shared_helpers_path)
@@ -84,6 +96,13 @@ write_summary_log <- function(path, lines) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   writeLines(as.character(lines), con = path, useBytes = TRUE)
   invisible(TRUE)
+}
+
+read_csv_compat <- function(path) {
+  if (requireNamespace("readr", quietly = TRUE)) {
+    return(readr::read_csv(path, show_col_types = FALSE))
+  }
+  utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE)
 }
 
 require_readable_path <- function(path, label) {
@@ -785,16 +804,76 @@ merged_sst_data <- read.csv(resolve_covariate_path(
 ))
 ELI_lon$time <- as.Date(ELI_lon$time)
 adjustment_years <- 170
-ELI_lon$time <- ELI_lon$time - years(adjustment_years)
+ELI_lon$time <- ELI_lon$time - lubridate::years(adjustment_years)
 
 CFSToCMS_CONVERSION_FACTOR = 0.0283168466
-# Read and process USGS data
-data_usgs_r <- readNWISdv(siteNumbers = site_code[1], parameterCd = "00060", statCd = "00003")
-San_Lorenzo_Daily_USGS_R <- data_usgs_r %>%
-  mutate(timestamp = as.Date(Date),
-         data0 = log(X_00060_00003*CFSToCMS_CONVERSION_FACTOR + 1)) %>%
-  filter(timestamp > as.Date("1979-01-01"))
-San_Lorenzo_Daily_USGS_R$time <- San_Lorenzo_Daily_USGS_R$timestamp
+load_univ_usgs_daily <- function() {
+  local_candidates <- c(
+    trimws(Sys.getenv("UNIV_USGS_DAILY_CSV", "")),
+    if (nzchar(UNIV_SHARED_INPUT_ROOT)) file.path(UNIV_SHARED_INPUT_ROOT, "usgs", "usgs_daily.csv") else ""
+  )
+  local_candidates <- unique(local_candidates[nzchar(local_candidates)])
+
+  for (candidate in local_candidates) {
+    if (!file.exists(candidate)) {
+      next
+    }
+    if (exists("family_shared_read_usgs_daily", inherits = TRUE)) {
+      return(family_shared_read_usgs_daily(candidate, min_date = as.Date("1979-01-01")))
+    }
+    usgs_df <- read.csv(candidate, stringsAsFactors = FALSE, check.names = FALSE)
+    date_col <- if ("Date" %in% names(usgs_df)) "Date" else if ("date" %in% names(usgs_df)) "date" else NA_character_
+    timestamp_col <- if ("timestamp" %in% names(usgs_df)) "timestamp" else date_col
+    if (is.na(date_col) || is.na(timestamp_col)) {
+      next
+    }
+    usgs_df$Date <- as.Date(usgs_df[[date_col]])
+    usgs_df$timestamp <- as.Date(usgs_df[[timestamp_col]])
+    discharge_cms <- suppressWarnings(as.numeric(usgs_df$discharge_cms))
+    if (!any(is.finite(discharge_cms))) {
+      discharge_cms <- suppressWarnings(as.numeric(usgs_df$X_00060_00003)) * CFSToCMS_CONVERSION_FACTOR
+    }
+    out <- data.frame(
+      Date = as.Date(usgs_df$Date),
+      timestamp = as.Date(usgs_df$timestamp),
+      time = as.Date(usgs_df$timestamp),
+      discharge_cms = discharge_cms,
+      X_00060_00003 = discharge_cms / CFSToCMS_CONVERSION_FACTOR,
+      data0 = log(discharge_cms + 1),
+      stringsAsFactors = FALSE
+    )
+    out <- out[is.finite(out$discharge_cms) & !is.na(out$timestamp), , drop = FALSE]
+    out <- out[out$timestamp > as.Date("1979-01-01"), , drop = FALSE]
+    rownames(out) <- NULL
+    if (nrow(out) > 0L) {
+      return(out)
+    }
+  }
+
+  read_nwis <- get0("readNWISdv", mode = "function", inherits = TRUE)
+  if (!is.null(read_nwis)) {
+    data_usgs_r <- read_nwis(siteNumbers = site_code[1], parameterCd = "00060", statCd = "00003")
+    out <- data_usgs_r %>%
+      mutate(
+        timestamp = as.Date(Date),
+        discharge_cms = X_00060_00003 * CFSToCMS_CONVERSION_FACTOR,
+        data0 = log(discharge_cms + 1)
+      ) %>%
+      filter(timestamp > as.Date("1979-01-01"))
+    out$time <- out$timestamp
+    return(out)
+  }
+
+  stop(
+    paste(
+      "UNIV USGS daily history is not available locally and readNWISdv() is unavailable.",
+      "Provide UNIV_USGS_DAILY_CSV or UNIV_SHARED_INPUT_ROOT with usgs/usgs_daily.csv."
+    ),
+    call. = FALSE
+  )
+}
+
+San_Lorenzo_Daily_USGS_R <- load_univ_usgs_daily()
 
 resolve_run_dates <- function(prefix, forecast_dates) {
   read_env_date <- function(key) {
@@ -953,7 +1032,7 @@ file_path <- resolve_covariate_path(
   default_path = "/data/muscat_data/jaguir26/project1_ucsc_phd/prism_precipitation_santa_cruz_1987_2023.csv",
   label = "UNIV precipitation covariate"
 )
-ppt_data <- read_csv(file_path, show_col_types = FALSE)
+ppt_data <- read_csv_compat(file_path)
 ppt_data$Date <- as.Date(ppt_data$Date)
 colnames(ppt_data) <- c('time','ppt')
 X_ppt <- ppt_data[ppt_data$time <= run_dates$cutoff_date, ]
@@ -999,7 +1078,7 @@ components_file_path <- resolve_covariate_path(
   default_path = "/data/muscat_data/jaguir26/project1_ucsc_phd/pca.csv",
   label = "UNIV PCA covariate"
 )
-principal_components_df <- read_csv(components_file_path, show_col_types = FALSE)
+principal_components_df <- read_csv_compat(components_file_path)
 principal_components_df$time <- as.Date(principal_components_df$time)
 colnames(principal_components_df) <- c('time','Static_PCA')
 X_pca <- principal_components_df[principal_components_df$time <= run_dates$cutoff_date, ]
@@ -1031,7 +1110,7 @@ data_path <- resolve_shared_input_path(
   label = "UNIV retros CSV",
   shared_root = UNIV_SHARED_INPUT_ROOT
 )
-streamflow_data <- read_csv(data_path, show_col_types = FALSE)
+streamflow_data <- read_csv_compat(data_path)
 time_series_matrix <- as.matrix(streamflow_data[, c('USGS', 'GloFAS', 'NWS3.0')])
 timestamps <- as.Date(streamflow_data$Date)
 Y_usgs <- data.frame(time = timestamps, time_series_matrix)
@@ -1076,7 +1155,13 @@ kk <- 0.5 * s_yy
 trend.comp <- polytrendMod(1, m0 = m_yy, C0 = kk)
 harm <- harmonics
 seas.comp <- seasMod(p = 363.5854, h = harm, C0 = 0.5 * kk * diag(2 * length(harm)))
-model <- combineMods(trend.comp, seas.comp)
+model <- if (inherits(trend.comp, "exdqlm") && inherits(seas.comp, "exdqlm")) {
+  trend.comp + seas.comp
+} else if (inherits(trend.comp, "dlm") && inherits(seas.comp, "dlm")) {
+  get("%+%", envir = asNamespace("dlm"))(trend.comp, seas.comp)
+} else {
+  stop("trend and seasonal components are not combinable exdqlm/dlm objects.", call. = FALSE)
+}
 p <- length(model$m0)
 
 idx <- 1:TT
@@ -1369,16 +1454,53 @@ return(y)
 ###########################################################################################
 update_uts<-function(y, exps,exps2,sts,sts2,inv.sigma,a2.invb.inv.sigma,invb.inv.sigma,c.invb.absgam,c2.invb.absgam2.sigma){
   u.lambda = 0.5
-  u.psi = (a2.invb.inv.sigma + 2*inv.sigma)
-  u.chi = invb.inv.sigma*(y^2-2*y*exps+exps2) - 2*c.invb.absgam*sts*(y-exps) + c2.invb.absgam2.sigma*sts2
-  u.chi[u.chi<=0] = 1e-6
-  #
-  E.uts = sapply(u.chi,function(x){sqrt(x/u.psi)*HyperbolicDist::besselRatio(sqrt(x*u.psi),u.lambda,1,Inf)})
-  E.inv.uts = sapply(u.chi,function(x){sqrt(u.psi/x)*HyperbolicDist::besselRatio(sqrt(x*u.psi),u.lambda,1,Inf)-2*u.lambda/x})
+  u.psi = as.numeric(a2.invb.inv.sigma + 2*inv.sigma)
+  u.chi = as.numeric(invb.inv.sigma*(y^2-2*y*exps+exps2) - 2*c.invb.absgam*sts*(y-exps) + c2.invb.absgam2.sigma*sts2)
+  u.psi[!is.finite(u.psi) | u.psi <= 0] <- 1e-6
+  u.chi[!is.finite(u.chi) | u.chi <= 0] <- 1e-6
+
+  bessel_ratio_safe <- function(z, nu) {
+    zz <- as.numeric(z)
+    zz[!is.finite(zz) | zz <= 0] <- 1e-8
+    if (requireNamespace("HyperbolicDist", quietly = TRUE)) {
+      out <- vapply(
+        zz,
+        function(val) {
+          res <- tryCatch(
+            HyperbolicDist::besselRatio(val, nu, 1, Inf),
+            error = function(e) NA_real_
+          )
+          if (!is.finite(res)) NA_real_ else res
+        },
+        FUN.VALUE = numeric(1)
+      )
+    } else {
+      out <- rep(NA_real_, length(zz))
+    }
+    bad <- !is.finite(out)
+    if (any(bad)) {
+      kval_num <- besselK(zz[bad], nu + 1)
+      kval_den <- besselK(zz[bad], nu)
+      approx <- kval_num / kval_den
+      approx[!is.finite(approx) | approx <= 0] <- 1
+      out[bad] <- approx
+    }
+    out[!is.finite(out) | out <= 0] <- 1
+    out
+  }
+
+  s.ab <- sqrt(pmax(u.psi*u.chi, 1e-12))
+  ratio <- bessel_ratio_safe(s.ab, u.lambda)
+  E.uts = sqrt(u.chi/u.psi) * ratio
+  E.inv.uts = sqrt(u.psi/u.chi) * ratio - 2*u.lambda/u.chi
+  E.uts[!is.finite(E.uts)] <- 1e-10
+  E.inv.uts[!is.finite(E.inv.uts)] <- 1e-10
+  E.uts <- pmax(E.uts, 1e-10)
+  E.inv.uts <- pmax(E.inv.uts, 1e-10)
 
 nu <- 0.5
-s.ab <- sqrt(u.psi*u.chi)
 K1 <- besselK(s.ab, nu)
+K1[!is.finite(K1) | K1 <= 0] <- 1e-12
 
   return(list(uts.lambda=u.lambda,
               uts.psi=u.psi,uts.chi=u.chi,

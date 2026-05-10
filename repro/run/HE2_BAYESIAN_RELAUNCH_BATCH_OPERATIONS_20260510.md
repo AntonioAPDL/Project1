@@ -49,6 +49,30 @@ The replaced shared-input contract includes:
 - deterministic future precip/soil handoff bundle
 - canonical `GDPC1` supplied through the existing `PCA` compatibility alias
 
+## Validator smoke budget
+
+The prelaunch validator uses the **same model code paths and same shared-input contract** as the real relaunch, but it is allowed to apply a lighter smoke budget so the gate finishes on a practical timescale.
+
+Those smoke-only fit overrides live in the template under:
+
+- `validation.smoke_fit_overrides`
+
+Current smoke budget:
+
+- quantile multivariate: `min_update_iters = 3`, `min_total_iters = 10`, `max_iter = 10`, `n_samp = 512`
+- quantile univariate: `min_update_iters = 3`, `min_total_iters = 10`, `max_iter = 10`, `n_samp = 512`
+
+Validation routing:
+
+- the heavy multivariate quantile path is required at the **fit smoke** level
+- the quantile **full-pipeline** smoke is routed through the univariate families so we still validate `fit -> post -> validate -> report` without paying the multivariate fit cost twice
+
+These overrides apply only to validator-generated temporary smoke configs. They do **not** change:
+
+- the frozen production spec recorded in `frozen_spec_manifest.csv`
+- the generated relaunch configs under `control/generated_configs`
+- the real queue launch settings
+
 ## Selection controls
 
 The builder, validator, and launcher all accept the same selection surface.

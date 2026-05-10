@@ -167,6 +167,9 @@ The relaunch tooling now exposes the following operator-facing controls:
   - `scripts/reset_he2_bayesian_publication_relaunch_state.py`
 - documented batch recipes
   - `repro/run/HE2_BAYESIAN_RELAUNCH_BATCH_OPERATIONS_20260510.md`
+- validator smoke-budget contract
+  - quantile smoke configs preserve the repaired code path but use bounded smoke-only fit overrides from `validation.smoke_fit_overrides`
+  - multivariate quantile validation is enforced at fit-smoke level; full-pipeline quantile validation is routed through univariate families for practical prelaunch runtimes
 
 These controls are meant to support both the final 45-row campaign and targeted tuning/debug subsets without changing code.
 
@@ -215,4 +218,3 @@ Interpretation:
 
 - CSV: `/data/muscat_data/jaguir26/project1_ucsc_phd/reports/publication_replay/he2_bayesian_full_relaunch_matrix_20260510.csv`
 - JSON: `/data/muscat_data/jaguir26/project1_ucsc_phd/reports/publication_replay/he2_bayesian_full_relaunch_matrix_20260510.json`
-

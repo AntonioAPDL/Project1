@@ -73,6 +73,21 @@ profiles:
         fit_parallel_workers: 1
         mc_cores: 1
 validation:
+  smoke_fit_overrides:
+    exdqlm_multivar:
+      gamma_sigma:
+        min_update_iters: 3
+        min_total_iters: 10
+        max_iter: 10
+      legacy:
+        n_samp: 512
+    exdqlm_univar:
+      gamma_sigma:
+        min_update_iters: 3
+        min_total_iters: 10
+        max_iter: 10
+      legacy:
+        n_samp: 512
   family_smoke_cutoff: '20210123'
   cutoff_smoke_family: exdqlm_multivar_keep
   fit_smoke_family: ndlm_univar_keep
@@ -81,9 +96,17 @@ validation:
   quantile_fit_smoke_cutoff: '20210123'
   quantile_fit_smoke_quantiles:
     - 0.05
+  univar_quantile_fit_smoke_family: exdqlm_univar
+  univar_quantile_fit_smoke_cutoff: '20210123'
+  univar_quantile_fit_smoke_quantiles:
+    - 0.05
   full_pipeline_ndlm_family: ndlm_univar_keep
   full_pipeline_ndlm_cutoff: '20210123'
-  full_pipeline_quantile_family: exdqlm_multivar_keep
+  full_pipeline_quantile_family: exdqlm_univar
   full_pipeline_quantile_cutoff: '20210123'
   full_pipeline_quantiles:
+    - 0.05
+  full_pipeline_univar_quantile_family: dqlm_univar_al
+  full_pipeline_univar_quantile_cutoff: '20210123'
+  full_pipeline_univar_quantiles:
     - 0.05

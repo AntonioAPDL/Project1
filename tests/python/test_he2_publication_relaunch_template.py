@@ -44,10 +44,13 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
     def test_template_validation_includes_quantile_and_full_pipeline_smokes(self) -> None:
         payload = yaml.safe_load(TEMPLATE.read_text(encoding='utf-8')) or {}
         validation = payload['validation']
+        self.assertIn('smoke_fit_overrides', validation)
+        self.assertEqual(validation['smoke_fit_overrides']['exdqlm_multivar']['gamma_sigma']['max_iter'], 10)
+        self.assertEqual(validation['smoke_fit_overrides']['exdqlm_univar']['gamma_sigma']['min_total_iters'], 10)
         self.assertEqual(validation['quantile_fit_smoke_family'], 'exdqlm_multivar_keep')
         self.assertEqual(validation['quantile_fit_smoke_quantiles'], [0.05])
         self.assertEqual(validation['full_pipeline_ndlm_family'], 'ndlm_univar_keep')
-        self.assertEqual(validation['full_pipeline_quantile_family'], 'exdqlm_multivar_keep')
+        self.assertEqual(validation['full_pipeline_quantile_family'], 'exdqlm_univar')
         self.assertEqual(validation['full_pipeline_quantiles'], [0.05])
 
 
