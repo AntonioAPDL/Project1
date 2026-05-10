@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +18,7 @@ from he2_publication_relaunch_lib import (
     canonical_shared_paths,
     ensure_dir,
     family_rank,
+    initialize_matrix_status,
     load_publication_manifest_rows,
     load_yaml,
     row_kind,
@@ -282,12 +282,7 @@ def main() -> int:
 
     status_path = matrix_dir / 'matrix_status.csv'
     if not status_path.exists():
-        with status_path.open('w', newline='', encoding='utf-8') as handle:
-            writer = csv.writer(handle)
-            writer.writerow([
-                'cutoff', 'epsilon', 'lane', 'run_id', 'phase', 'status', 'started_at', 'finished_at',
-                'manifest_path', 'latest_log_mtime', 'disk_free_gb', 'note',
-            ])
+        initialize_matrix_status(status_path)
 
     metadata = {
         'campaign_id': str(campaign_cfg.get('campaign_id', 'he2_bayesian_publication_relaunch')),

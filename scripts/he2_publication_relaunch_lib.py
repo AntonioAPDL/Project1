@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import csv
+import json
+import shutil
 from collections import OrderedDict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +79,24 @@ def write_yaml(path: Path, data: dict[str, Any]) -> None:
 def read_csv_rows(path: Path) -> list[dict[str, str]]:
     with path.open('r', encoding='utf-8', newline='') as handle:
         return list(csv.DictReader(handle))
+
+
+def utc_stamp() -> str:
+    return datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+
+
+def matrix_status_header() -> list[str]:
+    return [
+        'cutoff', 'epsilon', 'lane', 'run_id', 'phase', 'status', 'started_at', 'finished_at',
+        'manifest_path', 'latest_log_mtime', 'disk_free_gb', 'note',
+    ]
+
+
+def initialize_matrix_status(status_path: Path) -> None:
+    ensure_dir(status_path.parent)
+    with status_path.open('w', newline='', encoding='utf-8') as handle:
+        writer = csv.writer(handle)
+        writer.writerow(matrix_status_header())
 
 
 def family_rank(family: str) -> int:
@@ -183,3 +204,97 @@ def spec_token(row: dict[str, str]) -> str:
     if campaign.startswith('ndlm_featurecov_rerun_postfix_20260421'):
         return 'ndlm_featurecov_v1_postfix'
     return campaign
+
+
+def reset_campaign_state(matrix_dir: Path, artifact_root: Path, reset_tag: str | None = None) -> dict[str, Any]:
+    matrix_dir = matrix_dir.resolve()
+    artifact_root = artifact_root.resolve()
+    plan_path = matrix_dir / 'matrix_plan.csv'
+    if not plan_path.exists():
+        raise FileNotFoundError(f'matrix_plan.csv not found: {plan_path}')
+
+    plan_rows = read_csv_rows(plan_path)
+    reset_tag = reset_tag or utc_stamp()
+    archive_root = ensure_dir(matrix_dir.parent / 'restart_resets' / reset_tag)
+    archived_runs_root = ensure_dir(archive_root / 'runs')
+    archived_compares_root = ensure_dir(archive_root / 'compare_outputs')
+
+    summary: dict[str, Any] = {
+        'reset_tag': reset_tag,
+        'matrix_dir': str(matrix_dir),
+        'artifact_root': str(artifact_root),
+        'archive_root': str(archive_root),
+        'archived_runs': [],
+        'archived_compare_outputs': [],
+        'archived_files': [],
+    }
+
+    def archive_path(src: Path, dest: Path) -> None:
+        ensure_dir(dest.parent)
+        shutil.move(str(src), str(dest))
+
+    status_path = matrix_dir / 'matrix_status.csv'
+    if status_path.exists():
+        dest = archive_root / 'matrix_status.csv'
+        archive_path(status_path, dest)
+        summary['archived_files'].append(str(dest))
+    initialize_matrix_status(status_path)
+
+    queue_log_path = matrix_dir / 'queue.log'
+    if queue_log_path.exists():
+        dest = archive_root / 'queue.log'
+        archive_path(queue_log_path, dest)
+        summary['archived_files'].append(str(dest))
+    queue_log_path.touch()
+
+    controller_state = matrix_dir / 'controller_state'
+    if controller_state.exists():
+        dest = archive_root / 'controller_state'
+        archive_path(controller_state, dest)
+        summary['archived_files'].append(str(dest))
+
+    seen_compares: set[str] = set()
+    for row in plan_rows:
+        run_id = row['run_id']
+        run_dir = artifact_root / 'runs' / run_id
+        if run_dir.exists():
+            dest = archived_runs_root / run_id
+            archive_path(run_dir, dest)
+            summary['archived_runs'].append({'run_id': run_id, 'archived_to': str(dest)})
+
+        compare_outdir = str(row.get('compare_outdir', '')).strip()
+        if compare_outdir and compare_outdir not in seen_compares:
+            seen_compares.add(compare_outdir)
+            compare_dir = Path(compare_outdir)
+            if compare_dir.exists():
+                dest = archived_compares_root / compare_dir.name
+                archive_path(compare_dir, dest)
+                summary['archived_compare_outputs'].append({'compare_outdir': compare_outdir, 'archived_to': str(dest)})
+
+    summary_path = archive_root / 'reset_summary.json'
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    md_lines = [
+        '# HE2 Publication Relaunch State Reset',
+        '',
+        f'- reset_tag: `{reset_tag}`',
+        f'- matrix_dir: `{matrix_dir}`',
+        f'- artifact_root: `{artifact_root}`',
+        f'- archived_runs: `{len(summary["archived_runs"])}`',
+        f'- archived_compare_outputs: `{len(summary["archived_compare_outputs"])}`',
+        '',
+        '## Archived Runs',
+        '',
+    ]
+    if summary['archived_runs']:
+        for item in summary['archived_runs']:
+            md_lines.append(f"- `{item['run_id']}` -> `{item['archived_to']}`")
+    else:
+        md_lines.append('- none')
+    md_lines.extend(['', '## Archived Compare Outputs', ''])
+    if summary['archived_compare_outputs']:
+        for item in summary['archived_compare_outputs']:
+            md_lines.append(f"- `{item['compare_outdir']}` -> `{item['archived_to']}`")
+    else:
+        md_lines.append('- none')
+    (archive_root / 'RESET_SUMMARY.md').write_text('\n'.join(md_lines) + '\n', encoding='utf-8')
+    return summary

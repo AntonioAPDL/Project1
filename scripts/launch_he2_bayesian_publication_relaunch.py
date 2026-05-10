@@ -33,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description='Build, validate, and detached-launch the HE2 Bayesian publication relaunch controller.')
     ap.add_argument('--template', default=str(DEFAULT_TEMPLATE))
     ap.add_argument('--skip-validate', action='store_true')
+    ap.add_argument('--reset-state', action='store_true')
     ap.add_argument('--dry-run', action='store_true')
     return ap.parse_args()
 
@@ -54,6 +55,13 @@ def main() -> int:
     if not args.skip_validate:
         subprocess.run(
             ['python3', 'scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py', '--config', str(template_path)],
+            cwd=ROOT,
+            check=True,
+        )
+
+    if args.reset_state and not args.dry_run:
+        subprocess.run(
+            ['python3', 'scripts/reset_he2_bayesian_publication_relaunch_state.py', '--template', str(template_path)],
             cwd=ROOT,
             check=True,
         )
