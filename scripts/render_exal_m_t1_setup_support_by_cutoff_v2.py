@@ -78,9 +78,9 @@ def axis_label_for_scale(plot_scale: str) -> str:
     if plot_scale == 'raw_cms':
         return 'River flow [m^3 s^-1]'
     if plot_scale == 'log1p_cms':
-        return 'River flow [log(1 + m^3 s^-1)]'
+        return 'River flow [log(1 + x); x in m^3 s^-1]'
     if plot_scale == 'log_log1p_cms':
-        return 'River flow [log(log(1 + m^3 s^-1))]'
+        return 'River flow [log(log(1 + x)); x in m^3 s^-1]'
     return f'River flow [{plot_scale}]'
 
 

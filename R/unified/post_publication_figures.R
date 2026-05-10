@@ -14,8 +14,8 @@ post_publication_default_style <- function() {
     png = list(width_in = 11, height_in = 5.8, dpi = 320),
     pdf = list(width_in = 11, height_in = 5.8),
     labels = list(
-      y = "River flow [log(1 + m^3 s^-1)]",
-      subtitle_scale = "log(1 + m^3 s^-1)"
+      y = "River flow [log(1 + x); x in m^3 s^-1]",
+      y_scale_id = "log1p_cms"
     ),
     theme = list(
       base_family = "sans",
@@ -59,6 +59,20 @@ post_publication_default_style <- function() {
       `20221225` = c(0, 10)
     )
   )
+}
+
+post_publication_flow_axis_label <- function(scale_id = "log1p_cms") {
+  switch(
+    as.character(scale_id %||% "log1p_cms"),
+    raw_cms = bquote(River~flow~"["*m^3~s^-1*"]"),
+    log1p_cms = bquote(River~flow~"["*log(1 + x)*";"~~x~"in"~~m^3~s^-1*"]"),
+    log_log1p_cms = bquote(River~flow~"["*log(log(1 + x))*";"~~x~"in"~~m^3~s^-1*"]"),
+    as.character(scale_id)
+  )
+}
+
+post_publication_subtitle <- function(cutoff_date, subtitle_role) {
+  bquote("Cutoff"~.(as.character(cutoff_date))~"|"~.(subtitle_role))
 }
 
 post_publication_product_palette <- function() {
@@ -216,7 +230,7 @@ post_publication_common_data <- function(quant_df) {
   out
 }
 
-post_publication_caption <- function(cutoff_date, source_run, scale_label, has_draws) {
+post_publication_caption <- function(cutoff_date, source_run, has_draws) {
   parts <- c(
     sprintf("Vertical dashed line marks the cutoff date (%s).", as.character(cutoff_date)),
     "Shaded region denotes the forecast window.",
@@ -241,6 +255,11 @@ post_publication_base_theme <- function(style) {
       legend.box = "vertical",
       plot.margin = ggplot2::margin(10, 16, 10, 10)
     )
+}
+
+post_publication_y_label <- function(style) {
+  scale_id <- style$labels$y_scale_id %||% "log1p_cms"
+  post_publication_flow_axis_label(scale_id)
 }
 
 post_publication_save_plot <- function(plot_obj, png_path, pdf_path, style) {
@@ -362,10 +381,10 @@ post_publication_render_posterior_plot <- function(model_id, quant_df, sample_df
     ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
     ggplot2::labs(
       title = post_publication_pretty_model_id(model_id),
-      subtitle = sprintf("Cutoff %s | posterior samples | %s", as.character(cutoff_date), style$labels$subtitle_scale),
+      subtitle = post_publication_subtitle(cutoff_date, "posterior samples"),
       x = NULL,
-      y = style$labels$y,
-      caption = post_publication_caption(cutoff_date, source_run, style$labels$subtitle_scale, has_draws = nrow(sample_df) > 0L)
+      y = post_publication_y_label(style),
+      caption = post_publication_caption(cutoff_date, source_run, has_draws = nrow(sample_df) > 0L)
     ) +
     post_publication_base_theme(style)
 
@@ -450,10 +469,10 @@ post_publication_render_predictive_plot <- function(model_id, quant_df, png_path
     ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
     ggplot2::labs(
       title = post_publication_pretty_model_id(model_id),
-      subtitle = sprintf("Cutoff %s | predictive bands | %s", as.character(cutoff_date), style$labels$subtitle_scale),
+      subtitle = post_publication_subtitle(cutoff_date, "predictive bands"),
       x = NULL,
-      y = style$labels$y,
-      caption = post_publication_caption(cutoff_date, source_run, style$labels$subtitle_scale, has_draws = FALSE)
+      y = post_publication_y_label(style),
+      caption = post_publication_caption(cutoff_date, source_run, has_draws = FALSE)
     ) +
     post_publication_base_theme(style)
 
@@ -1151,7 +1170,7 @@ post_publication_render_focus_predictive_plot <- function(
       title = post_publication_model_title(model_id),
       subtitle = sprintf("Forecast origin: %s", as.character(cutoff_date)),
       x = "Date",
-      y = style$labels$y
+      y = post_publication_y_label(style)
     ) +
     ggplot2::guides(
       color = ggplot2::guide_legend(order = 1, nrow = 2, byrow = TRUE),
@@ -1441,7 +1460,7 @@ post_publication_render_focus_posterior_plot <- function(
       title = post_publication_model_title(model_id),
       subtitle = sprintf("Forecast origin: %s", as.character(cutoff_date)),
       x = "Date",
-      y = style$labels$y
+      y = post_publication_y_label(style)
     ) +
     ggplot2::guides(
       color = ggplot2::guide_legend(

@@ -49,8 +49,8 @@ if (!exists("figure_flow_axis_label", mode = "function")) {
     switch(
       as.character(plot_scale %||% "log_log1p_cms"),
       raw_cms = bquote(River~flow~"["*m^3~s^-1*"]"),
-      log1p_cms = bquote(River~flow~"["*log(1 + m^3~s^-1)*"]"),
-      log_log1p_cms = bquote(River~flow~"["*log(log(1 + m^3~s^-1))*"]"),
+      log1p_cms = bquote(River~flow~"["*log(1 + x)*";"~~x~"in"~~m^3~s^-1*"]"),
+      log_log1p_cms = bquote(River~flow~"["*log(log(1 + x))*";"~~x~"in"~~m^3~s^-1*"]"),
       as.character(plot_scale)
     )
   }

@@ -7,8 +7,8 @@ pdf:
   width_in: 11
   height_in: 5.8
 labels:
-  y: "River flow [log(1 + m^3 s^-1)]"
-  subtitle_scale: "log(1 + m^3 s^-1)"
+  y: "River flow [log(1 + x); x in m^3 s^-1]"
+  y_scale_id: "log1p_cms"
 theme:
   base_family: "sans"
   base_size: 12.5

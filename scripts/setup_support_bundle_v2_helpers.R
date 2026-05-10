@@ -377,9 +377,16 @@ plot_covariates_png <- function(out_path, covariate_df, cutoff_date, support_sta
     Climate_PC1 = "#e6550d"
   )
   x_label <- figure_date_label_format(covariate_df$Date)
+  covariate_df <- covariate_df %>%
+    mutate(
+      VariableFacet = dplyr::recode(
+        Variable,
+        !!!facet_labels
+      )
+    )
   p <- ggplot(covariate_df, aes(x = Date, y = Value, color = Variable)) +
     geom_line(linewidth = 0.7, alpha = 0.92, na.rm = TRUE) +
-    facet_wrap(~Variable, ncol = 1, scales = "free_y", strip.position = "left", labeller = as_labeller(facet_labels)) +
+    facet_wrap(~VariableFacet, ncol = 1, scales = "free_y", strip.position = "left", labeller = label_parsed) +
     scale_color_manual(values = series_colors) +
     labs(
       title = "Historical Covariate Inputs",
