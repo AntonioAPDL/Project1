@@ -143,6 +143,65 @@ Every one of the 9 rows within a cutoff must point to the same versions of:
 | `12/25/2022` | `exAL-M-T1` | `exdqlm_multivar_keep` | `exalm_t1_discount_grid_exact_20260424:set09_override` | `0.4375` | `2020-01-10` | `False` | `set09` | `7` |
 | `12/25/2022` | `exAL-U-T1` | `exdqlm_univar` | `univar_featurecov_he2_rerun_20260422` | `1.1189` | `2020-01-10` | `False` | `univar_featurecov_he2_v1` | `7` |
 
+## Implemented control layer
+
+The relaunch tooling now exposes the following operator-facing controls:
+
+- shared selection filters on builder, validator, and launcher
+  - `--cutoffs`
+  - `--families`
+  - `--manuscript-labels`
+  - `--run-ids`
+  - `--model-classes`
+  - `--quantiles`
+  - `--batch-file`
+  - `--profile`
+- resource overrides
+  - `--fit-parallel-workers`
+  - `--mc-cores`
+- frozen row-level spec audit
+  - `frozen_spec_manifest.csv`
+- frozen cutoff shared-bundle audit
+  - `cutoff_bundle_audit.csv`
+- reset/archive path for stale queue state
+  - `scripts/reset_he2_bayesian_publication_relaunch_state.py`
+- documented batch recipes
+  - `repro/run/HE2_BAYESIAN_RELAUNCH_BATCH_OPERATIONS_20260510.md`
+
+These controls are meant to support both the final 45-row campaign and targeted tuning/debug subsets without changing code.
+
+## Current validation blocker
+
+As of `2026-05-10`, the expanded prelaunch validator is correctly **blocking real launch** on the quantile fit path under the new shared-input contract.
+
+Observed failures:
+
+- scoped validator outdir:
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_20260510/control/prelaunch_validation_20260510T210212Z`
+- failing smoke row:
+  - family: `exdqlm_multivar_keep`
+  - cutoff: `20210123`
+  - quantile subset: `q=05`
+- terminating fit error:
+  - `FFF_list iter=8[[1]] contains non-finite values`
+
+Additional direct probe:
+
+- candidate univariate smoke:
+  - run root: `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_20260510/control/candidate_quantile_smokes/20210123_exdqlm_univar_q05`
+- failing row:
+  - family: `exdqlm_univar`
+  - cutoff: `20210123`
+  - quantile subset: `q=05`
+- terminating fit error:
+  - `univariate fit failed for quantile 0.05 (implementation_mode=legacy_bridge)`
+
+Interpretation:
+
+- the batch-selection / frozen-spec / bundle-audit tooling is working
+- NDLM smoke passes under the new bundle contract
+- the relaunch campaign should remain blocked until the `20210123` quantile-path instability is understood or the launch policy is updated deliberately
+
 ## Recommended next implementation order
 
 1. Build five canonical shared bundles, one per cutoff.

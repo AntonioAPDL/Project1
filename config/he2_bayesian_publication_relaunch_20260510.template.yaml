@@ -40,8 +40,50 @@ queue:
   heavy_cutoff_max_concurrent: 1
   heavy_cutoff_blocks_ordinary: true
   poll_seconds: 60
+selection:
+  cutoffs: []
+  families: []
+  manuscript_labels: []
+  run_ids: []
+  model_classes: []
+  quantiles: []
+  batch_file: ''
+resources:
+  fit_parallel_workers:
+  mc_cores:
+profiles:
+  active: default
+  definitions:
+    default: {}
+    serial_debug:
+      queue:
+        ordinary_max_concurrent: 1
+        heavy_cutoff_max_concurrent: 1
+      resources:
+        fit_parallel_workers: 1
+        mc_cores: 1
+      selection:
+        quantiles:
+          - 0.05
+    single_core_full:
+      queue:
+        ordinary_max_concurrent: 1
+        heavy_cutoff_max_concurrent: 1
+      resources:
+        fit_parallel_workers: 1
+        mc_cores: 1
 validation:
   family_smoke_cutoff: '20210123'
   cutoff_smoke_family: exdqlm_multivar_keep
   fit_smoke_family: ndlm_univar_keep
   fit_smoke_cutoff: '20210123'
+  quantile_fit_smoke_family: exdqlm_multivar_keep
+  quantile_fit_smoke_cutoff: '20210123'
+  quantile_fit_smoke_quantiles:
+    - 0.05
+  full_pipeline_ndlm_family: ndlm_univar_keep
+  full_pipeline_ndlm_cutoff: '20210123'
+  full_pipeline_quantile_family: exdqlm_multivar_keep
+  full_pipeline_quantile_cutoff: '20210123'
+  full_pipeline_quantiles:
+    - 0.05

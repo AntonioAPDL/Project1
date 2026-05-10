@@ -35,7 +35,39 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument('--skip-validate', action='store_true')
     ap.add_argument('--reset-state', action='store_true')
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--cutoffs', nargs='*')
+    ap.add_argument('--families', nargs='*')
+    ap.add_argument('--manuscript-labels', nargs='*')
+    ap.add_argument('--run-ids', nargs='*')
+    ap.add_argument('--model-classes', nargs='*')
+    ap.add_argument('--quantiles', nargs='*')
+    ap.add_argument('--batch-file')
+    ap.add_argument('--profile')
+    ap.add_argument('--fit-parallel-workers', type=int)
+    ap.add_argument('--mc-cores', type=int)
     return ap.parse_args()
+
+
+def extend_with_selection_args(cmd: list[str], args: argparse.Namespace) -> list[str]:
+    for flag, values in [
+        ('--cutoffs', args.cutoffs),
+        ('--families', args.families),
+        ('--manuscript-labels', args.manuscript_labels),
+        ('--run-ids', args.run_ids),
+        ('--model-classes', args.model_classes),
+        ('--quantiles', args.quantiles),
+    ]:
+        if values:
+            cmd.extend([flag, *values])
+    if args.batch_file:
+        cmd.extend(['--batch-file', args.batch_file])
+    if args.profile:
+        cmd.extend(['--profile', args.profile])
+    if args.fit_parallel_workers is not None:
+        cmd.extend(['--fit-parallel-workers', str(args.fit_parallel_workers)])
+    if args.mc_cores is not None:
+        cmd.extend(['--mc-cores', str(args.mc_cores)])
+    return cmd
 
 
 def main() -> int:
@@ -46,18 +78,12 @@ def main() -> int:
     matrix_dir = Path(campaign['matrix_dir']).resolve()
     artifact_root = Path(campaign['artifact_root']).resolve()
 
-    subprocess.run(
-        ['python3', 'scripts/build_he2_bayesian_publication_relaunch_configs.py', '--config', str(template_path)],
-        cwd=ROOT,
-        check=True,
-    )
+    build_cmd = ['python3', 'scripts/build_he2_bayesian_publication_relaunch_configs.py', '--config', str(template_path)]
+    subprocess.run(extend_with_selection_args(build_cmd, args), cwd=ROOT, check=True)
 
     if not args.skip_validate:
-        subprocess.run(
-            ['python3', 'scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py', '--config', str(template_path)],
-            cwd=ROOT,
-            check=True,
-        )
+        validate_cmd = ['python3', 'scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py', '--config', str(template_path)]
+        subprocess.run(extend_with_selection_args(validate_cmd, args), cwd=ROOT, check=True)
 
     if args.reset_state and not args.dry_run:
         subprocess.run(

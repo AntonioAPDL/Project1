@@ -48,6 +48,18 @@ EXPECTED_MANUSCRIPT_LABEL_ORDER = [
     'exAL-M-T0',
     'exAL-M-T1',
 ]
+MODEL_CLASS_BY_FAMILY = {
+    'ndlm_univar_keep': 'ndlm',
+    'ndlm_main_drop': 'ndlm',
+    'ndlm_main_keep': 'ndlm',
+    'dqlm_univar_al': 'quantile_univariate',
+    'dqlm_multivar_al_drop': 'quantile_multivariate',
+    'dqlm_multivar_al_keep': 'quantile_multivariate',
+    'exdqlm_univar': 'quantile_univariate',
+    'exdqlm_multivar_drop': 'quantile_multivariate',
+    'exdqlm_multivar_keep': 'quantile_multivariate',
+}
+DEFAULT_QUANTILES = [0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95]
 AUTHORITATIVE_COMPARE_BY_CUTOFF = {
     '20210123': Path('/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20210123_v8_epsTT_compare'),
     '20211112': Path('/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/reports/multimodel_20211112_v8_epsTT_compare'),
@@ -119,6 +131,10 @@ def row_kind(family: str) -> str:
     if 'univar' in family:
         return 'quantile_univariate'
     return 'quantile_multivariate'
+
+
+def model_class(family: str) -> str:
+    return MODEL_CLASS_BY_FAMILY.get(family, 'unknown')
 
 
 def submodel_count(family: str) -> int:
@@ -204,6 +220,60 @@ def spec_token(row: dict[str, str]) -> str:
     if campaign.startswith('ndlm_featurecov_rerun_postfix_20260421'):
         return 'ndlm_featurecov_v1_postfix'
     return campaign
+
+
+def load_structured_file(path: Path) -> dict[str, Any]:
+    text = path.read_text(encoding='utf-8')
+    if path.suffix.lower() == '.json':
+        payload = json.loads(text)
+    else:
+        payload = yaml.safe_load(text) or {}
+    if not isinstance(payload, dict):
+        raise ValueError(f'structured file root must be a mapping: {path}')
+    return payload
+
+
+def normalize_code_list(values: Any) -> list[str]:
+    if values in (None, '', []):
+        return []
+    if isinstance(values, str):
+        values = [values]
+    out: list[str] = []
+    for value in values:
+        item = str(value).strip()
+        if item:
+            out.append(item)
+    return out
+
+
+def parse_quantile_list(values: Any) -> list[float]:
+    if values in (None, '', []):
+        return []
+    if isinstance(values, str):
+        values = [values]
+    out: list[float] = []
+    for value in values:
+        if isinstance(value, (int, float)):
+            q = float(value)
+        else:
+            token = str(value).strip().lower()
+            if not token:
+                continue
+            if token.startswith('q='):
+                token = token.split('=', 1)[1]
+            if token.startswith('q'):
+                token = token[1:]
+            q = float(token)
+        if q > 1.0:
+            q = q / 100.0
+        if not (0.0 < q < 1.0):
+            raise ValueError(f'quantile must be in (0,1): {value!r}')
+        out.append(round(q, 10))
+    return sorted(dict.fromkeys(out))
+
+
+def render_quantile_label(q: float) -> str:
+    return f'{int(round(float(q) * 100)):02d}'
 
 
 def reset_campaign_state(matrix_dir: Path, artifact_root: Path, reset_tag: str | None = None) -> dict[str, Any]:
