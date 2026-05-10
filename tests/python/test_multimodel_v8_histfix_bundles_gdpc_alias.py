@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pandas as pd
 import yaml
 
 
@@ -89,6 +90,19 @@ class HistfixBundlesGDPCRewireTest(unittest.TestCase):
             histfix.GDPC_CANONICAL_CONFIG = old_config
             histfix.COVARIATE_SOURCE_FILES = old_covariates
             histfix.PARAMETERS_SOURCE = old_params
+
+    def test_stabilize_positive_history_replaces_nonpositive_with_min_positive(self):
+        raws = pd.DataFrame(
+            {
+                "date": ["1987-05-29", "1987-05-30", "1987-05-31", "1987-06-01"],
+                "glofas_cms": [0.0, 0.25, 0.125, 0.0],
+            }
+        )
+        summary = histfix._stabilize_positive_history(raws, column="glofas_cms")
+        self.assertEqual(summary["column"], "glofas_cms")
+        self.assertEqual(summary["replaced_nonpositive_count"], 2)
+        self.assertAlmostEqual(summary["floor_value_cms"], 0.125)
+        self.assertListEqual(raws["glofas_cms"].tolist(), [0.125, 0.25, 0.125, 0.125])
 
 
 if __name__ == "__main__":

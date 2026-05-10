@@ -14,6 +14,7 @@ import pandas as pd
 import yaml
 
 from canonical_climate_indices_lib import canonical_paths, gdpc_compat_alias_paths, load_config
+from he2_publication_relaunch_lib import selected_window_retros_by_cutoff
 from multimodel_v8_lib import ensure_dir
 
 SITE_ID = "11160500"
@@ -38,6 +39,10 @@ USGS_DAILY_SOURCE = RECOVERY_ROOT / (
     "family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/"
     "outputs/usgs_daily_flow_11160500.csv"
 )
+GLOFAS_V21_ZIP_ROOT = RECOVERY_ROOT / (
+    "family=glofas_historical/full_runs/source_native_tranche1_20260406T194500Z/"
+    "outputs/historical_zips/hist_v21_htessel_cons"
+)
 GLOFAS_V31_ZIP_ROOT = RECOVERY_ROOT / (
     "family=glofas_historical/full_runs/source_native_tranche1_20260406T194500Z/"
     "outputs/historical_zips/hist_v31_lisflood_cons"
@@ -51,47 +56,36 @@ NWS_RETRO_V30_HOURLY = Path(
     "11160500_nws_retro.csv"
 )
 LONG_HISTORY_SHARED_ROOT = CURRENT_V8_RUNTIME_ROOT / "runs" / "multimodel_20210123_v8_epsTT_l1" / "inputs" / "shared"
-REPRESENTATIVE_RUNTIME_ROOT = Path(
-    "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506"
-)
-
 CUTOFF_TO_DATE = {
+    "20210123": "2021-01-23",
+    "20211112": "2021-11-12",
     "20211221": "2021-12-21",
     "20220511": "2022-05-11",
     "20221225": "2022-12-25",
 }
-GLOFAS_SOURCE_ID = "glofas_hist_v31_lisflood_cons"
+GLOFAS_PRODUCT_BY_CUTOFF = {
+    "20210123": "v21",
+    "20211112": "v31",
+    "20211221": "v31",
+    "20220511": "v31",
+    "20221225": "v31",
+}
+GLOFAS_PRODUCTS = {
+    "v21": {
+        "product_id": "hist_v21_htessel_cons",
+        "source_id": "glofas_hist_v21_htessel_cons",
+        "zip_root": GLOFAS_V21_ZIP_ROOT,
+    },
+    "v31": {
+        "product_id": "hist_v31_lisflood_cons",
+        "source_id": "glofas_hist_v31_lisflood_cons",
+        "zip_root": GLOFAS_V31_ZIP_ROOT,
+    },
+}
 NWS_PRIMARY_SOURCE_ID = "nws_retro_v21"
 NWS_TAIL_FILL_SOURCE_ID = "nws_retro_v30"
 NWS_TAIL_FILL_START = "2021-01-01"
 NWS_SELECTED_WINDOW_SOURCE_ID = "nws_selected_window_retro"
-
-SELECTED_WINDOW_RETROS_BY_CUTOFF = {
-    "20211221": REPRESENTATIVE_RUNTIME_ROOT
-    / "20211221_exal_m_t1"
-    / "runs"
-    / "multimodel_20211221_v8_eps1cf1_exdqlm_multivar_keep_featurecov_cf1"
-    / "inputs"
-    / "shared"
-    / "retros"
-    / "retros.csv",
-    "20220511": REPRESENTATIVE_RUNTIME_ROOT
-    / "20220511_exal_m_t1"
-    / "runs"
-    / "multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1"
-    / "inputs"
-    / "shared"
-    / "retros"
-    / "retros.csv",
-    "20221225": REPRESENTATIVE_RUNTIME_ROOT
-    / "20221225_exal_m_t1"
-    / "runs"
-    / "multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep"
-    / "inputs"
-    / "shared"
-    / "retros"
-    / "retros.csv",
-}
 
 COVARIATE_SOURCE_FILES = {
     "ELI": LONG_HISTORY_SHARED_ROOT / "covariates" / "cov_01_ELI.csv",
@@ -169,19 +163,38 @@ def _build_nws_daily(hourly_path: Path, out_csv: Path, source_id: str) -> Path:
     return out_csv
 
 
-def _ensure_glofas_v31_point_series(artifact_root: Path, required_end: str, force: bool = False) -> tuple[Path, Path]:
-    out_csv = artifact_root / "source_series" / "glofas_hist_v31_lisflood_cons_point.csv"
-    out_meta = artifact_root / "source_series" / "glofas_hist_v31_lisflood_cons_point.meta.json"
+def _glofas_product_info(cutoff: str) -> dict[str, Any]:
+    product_key = GLOFAS_PRODUCT_BY_CUTOFF.get(cutoff)
+    if product_key is None:
+        raise KeyError(f"No GloFAS product mapping defined for cutoff {cutoff}")
+    info = GLOFAS_PRODUCTS.get(product_key)
+    if info is None:
+        raise KeyError(f"Unknown GloFAS product key {product_key!r} for cutoff {cutoff}")
+    return info
+
+
+def _ensure_glofas_point_series(
+    artifact_root: Path,
+    *,
+    cutoff: str,
+    required_end: str,
+    force: bool = False,
+) -> tuple[Path, Path, dict[str, Any]]:
+    info = _glofas_product_info(cutoff)
+    product_id = str(info["product_id"])
+    zip_root = Path(info["zip_root"])
+    out_csv = artifact_root / "source_series" / f"{product_id}_point.csv"
+    out_meta = artifact_root / "source_series" / f"{product_id}_point.meta.json"
     if out_csv.exists() and out_meta.exists() and not force:
         meta = json.loads(out_meta.read_text(encoding="utf-8"))
         if str(meta.get("end_date", "")).strip() >= required_end:
-            return out_csv, out_meta
+            return out_csv, out_meta, info
     ensure_dir(out_csv.parent)
     cmd = [
         "python3",
         "scripts/forecats_extract_glofas_historical_point.py",
         "--campaign-root",
-        str(GLOFAS_V31_ZIP_ROOT),
+        str(zip_root),
         "--out-csv",
         str(out_csv),
         "--out-meta",
@@ -199,10 +212,10 @@ def _ensure_glofas_v31_point_series(artifact_root: Path, required_end: str, forc
     meta = json.loads(out_meta.read_text(encoding="utf-8"))
     if str(meta.get("end_date", "")).strip() < required_end:
         raise RuntimeError(
-            f"GloFAS v3.1 point series is incomplete. Required end_date>={required_end}, "
+            f"GloFAS point series {product_id} is incomplete. Required end_date>={required_end}, "
             f"observed {meta.get('end_date', '')}"
         )
-    return out_csv, out_meta
+    return out_csv, out_meta, info
 
 
 def _prepare_supporting_inputs(artifact_root: Path) -> dict[str, Path]:
@@ -243,12 +256,12 @@ def _load_usgs_daily() -> pd.DataFrame:
     return out
 
 
-def _load_glofas_v31_daily(glofas_csv: Path) -> pd.DataFrame:
+def _load_glofas_daily(glofas_csv: Path, source_id: str) -> pd.DataFrame:
     df = pd.read_csv(glofas_csv)
     out = df.loc[:, ["date", "discharge_cms"]].copy()
     out["date"] = pd.to_datetime(out["date"]).dt.strftime("%Y-%m-%d")
     out["discharge_cms"] = pd.to_numeric(out["discharge_cms"], errors="coerce")
-    out["source_id"] = GLOFAS_SOURCE_ID
+    out["source_id"] = source_id
     return out
 
 
@@ -300,6 +313,36 @@ def _require_daily_complete(df: pd.DataFrame, start_date: str, end_date: str, la
     return merged
 
 
+def _stabilize_positive_history(
+    raws: pd.DataFrame,
+    *,
+    column: str,
+    selected_column: str | None = None,
+) -> dict[str, Any]:
+    series = pd.to_numeric(raws[column], errors="coerce")
+    if series.isna().any():
+        bad = raws.loc[series.isna(), "date"].astype(str).tolist()
+        raise RuntimeError(f"{column} contains NA values before positivity stabilization. First problematic dates: {bad[:10]}")
+    positive = series[series > 0]
+    if positive.empty:
+        raise RuntimeError(f"{column} has no strictly positive values; cannot derive deterministic floor.")
+    floor_value = float(positive.min())
+    zero_mask = series <= 0
+    zero_count = int(zero_mask.sum())
+    selected_zero_count = 0
+    if selected_column and selected_column in raws.columns:
+        selected_series = pd.to_numeric(raws[selected_column], errors="coerce")
+        selected_zero_count = int(((selected_series <= 0) & selected_series.notna()).sum())
+    if zero_count > 0:
+        raws.loc[zero_mask, column] = floor_value
+    return {
+        "column": column,
+        "floor_value_cms": floor_value,
+        "replaced_nonpositive_count": zero_count,
+        "selected_window_nonpositive_count": selected_zero_count,
+    }
+
+
 def _fit_forecast_bundle_root(cutoff: str) -> Path:
     return (
         CURRENT_V8_RUNTIME_ROOT
@@ -318,20 +361,37 @@ def _load_plot_window(cutoff: str) -> tuple[str, str]:
     return str(dates.get("plot_start")), str(dates.get("plot_end"))
 
 
-def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run_id: str, data_start: str, support_inputs: dict[str, Path], glofas_v31_csv: Path, glofas_v31_meta: Path, v21_daily_csv: Path, v30_daily_csv: Path) -> dict[str, str]:
+def _write_bundle(
+    cutoff: str,
+    cutoff_date: str,
+    artifact_root: Path,
+    bundle_run_id: str,
+    data_start: str,
+    support_inputs: dict[str, Path],
+    glofas_point_csv: Path,
+    glofas_point_meta: Path,
+    glofas_product: dict[str, Any],
+    v21_daily_csv: Path,
+    v30_daily_csv: Path,
+) -> dict[str, str]:
     bundle_root = artifact_root / "stable_inputs" / f"site={SITE_ID}" / f"cutoff_date={cutoff_date}" / f"run_id={bundle_run_id}"
     inputs_root = ensure_dir(bundle_root / "inputs")
     ensure_dir(bundle_root / "manifests")
 
     usgs = _require_daily_complete(_load_usgs_daily(), data_start, cutoff_date, "USGS daily flow")
-    glofas = _require_daily_complete(_load_glofas_v31_daily(glofas_v31_csv), data_start, cutoff_date, "GloFAS v3.1 daily flow")
+    glofas = _require_daily_complete(
+        _load_glofas_daily(glofas_point_csv, source_id=str(glofas_product["source_id"])),
+        data_start,
+        cutoff_date,
+        f"GloFAS daily flow ({glofas_product['product_id']})",
+    )
     nws = _require_daily_complete(_load_nws_hybrid(v21_daily_csv, v30_daily_csv, cutoff_date), data_start, cutoff_date, "NWS hybrid retrospective")
 
     raws = usgs.merge(glofas[["date", "discharge_cms", "source_id"]].rename(columns={"discharge_cms": "glofas_cms", "source_id": "glofas_source_id"}), on="date", how="left")
     raws = raws.merge(nws[["date", "discharge_cms", "source_id"]].rename(columns={"discharge_cms": "nws_cms", "source_id": "nws_source_id"}), on="date", how="left")
     raws = raws.rename(columns={"discharge_cms": "usgs_cms", "source_id": "usgs_source_id"})
 
-    selected_window_retros_path = SELECTED_WINDOW_RETROS_BY_CUTOFF.get(cutoff)
+    selected_window_retros_path = selected_window_retros_by_cutoff().get(cutoff)
     selected_window_overlap_start = ""
     selected_window_overlap_end = ""
     selected_window_rows = 0
@@ -358,6 +418,12 @@ def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run
     if raws[["usgs_cms", "glofas_cms", "nws_cms"]].isna().any().any():
         bad = raws.loc[raws[["usgs_cms", "glofas_cms", "nws_cms"]].isna().any(axis=1), "date"].tolist()
         raise RuntimeError(f"Merged hist-fix retros contains NA values. First problematic dates: {bad[:10]}")
+
+    positivity_repairs = [
+        _stabilize_positive_history(raws, column="usgs_cms"),
+        _stabilize_positive_history(raws, column="glofas_cms"),
+        _stabilize_positive_history(raws, column="nws_cms"),
+    ]
 
     retros = pd.DataFrame(
         {
@@ -418,9 +484,10 @@ def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run
         },
         "histfix": {
             "purpose": "restore long-history retrospective support for the v8 corrected support-bundle campaign",
-            "glofas_source_id": GLOFAS_SOURCE_ID,
-            "glofas_point_series_path": str(glofas_v31_csv),
-            "glofas_point_series_meta": str(glofas_v31_meta),
+            "glofas_source_id": str(glofas_product["source_id"]),
+            "glofas_product_id": str(glofas_product["product_id"]),
+            "glofas_point_series_path": str(glofas_point_csv),
+            "glofas_point_series_meta": str(glofas_point_meta),
             "nws_source_policy": {
                 "primary_source_id": NWS_PRIMARY_SOURCE_ID,
                 "primary_daily_path": str(v21_daily_csv),
@@ -431,6 +498,7 @@ def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run
             },
             "usgs_daily_source_path": str(USGS_DAILY_SOURCE),
             "support_manifest": str(support_inputs["manifest"]),
+            "legacy_log_ready_repairs": positivity_repairs,
             "forecast_member_sources": {
                 "nws": str(nws_forecast_src),
                 "glofas": str(glofas_forecast_src),
@@ -453,7 +521,7 @@ def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run
                             {
                                 "start": "2021-05-26",
                                 "end": "2023-07-25",
-                                "source_id": GLOFAS_SOURCE_ID,
+                                "source_id": str(glofas_product["source_id"]),
                             }
                         ],
                         "nws_by_cutoff_windows": [
@@ -508,6 +576,7 @@ def _write_bundle(cutoff: str, cutoff_date: str, artifact_root: Path, bundle_run
             "nws_min": float(raws["nws_cms"].min()),
             "nws_max": float(raws["nws_cms"].max()),
         },
+        "legacy_log_ready_repairs": positivity_repairs,
     }
     (bundle_root / "bundle_health.json").write_text(json.dumps(health, indent=2, sort_keys=True), encoding="utf-8")
 
@@ -542,16 +611,17 @@ def main() -> int:
         raise SystemExit(f"Unsupported hist-fix cutoffs: {unsupported}")
 
     support_inputs = _prepare_supporting_inputs(artifact_root)
-    glofas_v31_csv, glofas_v31_meta = _ensure_glofas_v31_point_series(
-        artifact_root,
-        required_end=args.glofas_ready_end,
-        force=args.force_glofas_extract,
-    )
     v21_daily_csv = _build_nws_daily(NWS_RETRO_V21_HOURLY, artifact_root / "source_series" / "nws_retro_v21_daily.csv", NWS_PRIMARY_SOURCE_ID)
     v30_daily_csv = _build_nws_daily(NWS_RETRO_V30_HOURLY, artifact_root / "source_series" / "nws_retro_v30_daily.csv", NWS_TAIL_FILL_SOURCE_ID)
 
     bundle_rows = []
     for cutoff in cutoffs:
+        glofas_point_csv, glofas_point_meta, glofas_product = _ensure_glofas_point_series(
+            artifact_root,
+            cutoff=cutoff,
+            required_end=CUTOFF_TO_DATE[cutoff],
+            force=args.force_glofas_extract,
+        )
         bundle_rows.append(
             _write_bundle(
                 cutoff=cutoff,
@@ -560,8 +630,9 @@ def main() -> int:
                 bundle_run_id=args.bundle_run_id,
                 data_start=args.data_start,
                 support_inputs=support_inputs,
-                glofas_v31_csv=glofas_v31_csv,
-                glofas_v31_meta=glofas_v31_meta,
+                glofas_point_csv=glofas_point_csv,
+                glofas_point_meta=glofas_point_meta,
+                glofas_product=glofas_product,
                 v21_daily_csv=v21_daily_csv,
                 v30_daily_csv=v30_daily_csv,
             )
@@ -571,7 +642,6 @@ def main() -> int:
     pd.DataFrame(bundle_rows).to_csv(summary_path, index=False)
     print(f"artifact_root={artifact_root}")
     print(f"support_manifest={support_inputs['manifest']}")
-    print(f"glofas_v31_csv={glofas_v31_csv}")
     print(f"nws_v21_daily_csv={v21_daily_csv}")
     print(f"nws_v30_daily_csv={v30_daily_csv}")
     print(f"bundle_summary={summary_path}")
