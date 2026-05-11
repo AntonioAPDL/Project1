@@ -119,6 +119,11 @@ The template defines queue/resource presets.
 - uses template queue settings
 - uses full quantile grid unless overridden
 - no forced single-core limits
+- for quantile families with multiple active quantiles, defaults to:
+  - `fit_parallel_workers = number of active quantiles`
+  - `mc_cores = fit_parallel_workers`
+
+This is the canonical production behavior for multi-quantile relaunches unless an explicit profile or CLI override asks for fewer workers.
 
 ### `serial_debug`
 

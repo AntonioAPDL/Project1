@@ -274,11 +274,15 @@ def _build_run_config(
         active_quantiles = [float(q) for q in selected_quantiles]
         _set_nested(cfg, ['fit', 'quantiles'], active_quantiles)
 
-    workers = (((cfg.get('fit') or {}).get('parallel') or {}).get('workers'))
+    source_workers = (((cfg.get('fit') or {}).get('parallel') or {}).get('workers'))
+    workers = source_workers
     if resources.get('fit_parallel_workers') is not None:
         workers = int(resources['fit_parallel_workers'])
     elif active_quantiles and class_name.startswith('quantile'):
-        workers = min(int(workers or len(active_quantiles)), len(active_quantiles))
+        # Default quantile relaunch behavior is one worker per active quantile.
+        # This intentionally overrides lower source-run worker counts unless an
+        # explicit relaunch resource override/profile asks for something else.
+        workers = len(active_quantiles)
     if workers is not None:
         _set_nested(cfg, ['fit', 'parallel', 'workers'], int(workers))
 

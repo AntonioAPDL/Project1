@@ -88,6 +88,29 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(metadata['request']['resources']['fit_parallel_workers'], 1)
         self.assertEqual(metadata['request']['resources']['mc_cores'], 1)
 
+    def test_quantile_family_defaults_to_one_worker_per_active_quantile(self) -> None:
+        proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(
+            '--cutoffs', '20210123',
+            '--families', 'exdqlm_multivar_keep',
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+        with (matrix_dir / 'frozen_spec_manifest.csv').open('r', encoding='utf-8') as handle:
+            frozen_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(frozen_rows), 1)
+        self.assertEqual(frozen_rows[0]['family'], 'exdqlm_multivar_keep')
+        self.assertEqual(frozen_rows[0]['active_quantile_count'], '7')
+        self.assertEqual(frozen_rows[0]['fit_parallel_workers'], '7')
+        self.assertEqual(frozen_rows[0]['run_mc_cores'], '7')
+
+        config_paths = list(config_output_dir.glob('*.yaml'))
+        self.assertEqual(len(config_paths), 1)
+        payload = yaml.safe_load(config_paths[0].read_text(encoding='utf-8')) or {}
+        self.assertEqual(payload['fit']['parallel']['workers'], 7)
+        self.assertEqual(payload['run']['threads']['mc_cores'], 7)
+        self.assertEqual(payload['debug_he2_publication_relaunch']['fit_parallel_workers_effective'], 7)
+        self.assertEqual(payload['debug_he2_publication_relaunch']['mc_cores_effective'], 7)
+
 
 if __name__ == '__main__':
     unittest.main()
