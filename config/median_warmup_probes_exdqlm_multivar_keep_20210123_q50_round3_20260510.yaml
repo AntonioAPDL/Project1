@@ -1,0 +1,126 @@
+probe:
+  id: exdqlm_multivar_keep_20210123_q50_warmup_round3_20260510
+  description: >-
+    Third-round median-only warmup screen for the 2021-01-23 exdqlm_multivar_keep relaunch row.
+    Rounds one and two ruled out pure freeze-length tuning and ruled out freezing the latent states.
+    This round returns to the least-bad gamma/sigma-freeze path from round one and tests whether
+    asymmetric gamma seeds can break the median symmetry without triggering the first guarded update.
+base_generated_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_20260510/control/generated_configs/multimodel_20210123_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml
+artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_median_warmup_probes_round3_20260510
+screening:
+  quantile: 0.50
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  gamma_sigma:
+    min_update_iters: 10
+    min_total_iters: 20
+    max_iter: 30
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 100.0
+    max_state_norm_sq: 100000000.0
+    min_gamsig_update_iters: 8
+    require_finite_conv_check: true
+probes:
+  - id: gs15_refreeze20_sigma05_gamma_pos01
+    description: Gamma/sigma freeze with small positive gamma seed around the best round-one sigma seed.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            warmup_freeze_iters: 15
+            guard_refreeze_iters: 20
+            init:
+              sigma_floor: 0.01
+              sigma_scale: 0.5
+              gamma: 0.1
+  - id: gs15_refreeze20_sigma05_gamma_neg01
+    description: Gamma/sigma freeze with small negative gamma seed around the best round-one sigma seed.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            warmup_freeze_iters: 15
+            guard_refreeze_iters: 20
+            init:
+              sigma_floor: 0.01
+              sigma_scale: 0.5
+              gamma: -0.1
+  - id: gs15_refreeze20_sigma05_gamma_pos025
+    description: Gamma/sigma freeze with moderate positive gamma seed.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            warmup_freeze_iters: 15
+            guard_refreeze_iters: 20
+            init:
+              sigma_floor: 0.01
+              sigma_scale: 0.5
+              gamma: 0.25
+  - id: gs15_refreeze20_sigma05_gamma_neg025
+    description: Gamma/sigma freeze with moderate negative gamma seed.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            warmup_freeze_iters: 15
+            guard_refreeze_iters: 20
+            init:
+              sigma_floor: 0.01
+              sigma_scale: 0.5
+              gamma: -0.25
+  - id: gs15_refreeze20_sigma10_gamma_pos01
+    description: Larger sigma seed with small positive gamma.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            warmup_freeze_iters: 15
+            guard_refreeze_iters: 20
+            init:
+              sigma_floor: 0.01
+              sigma_scale: 1.0
+              gamma: 0.1
+  - id: gs15_refreeze20_sigma10_gamma_neg01
+    description: Larger sigma seed with small negative gamma.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            warmup_freeze_iters: 15
+            guard_refreeze_iters: 20
+            init:
+              sigma_floor: 0.01
+              sigma_scale: 1.0
+              gamma: -0.1
+confirmation:
+  enabled: true
+  gamma_sigma:
+    min_update_iters: 50
+    min_total_iters: 50
+    max_iter: 100
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 100.0
+    max_state_norm_sq: 100000000.0
+    min_gamsig_update_iters: 50
+    require_finite_conv_check: true

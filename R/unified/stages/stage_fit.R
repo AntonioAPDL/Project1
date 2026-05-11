@@ -257,6 +257,58 @@ unified_assert_ndlm_retros_history <- function(retros_path, min_required = 30L, 
   inspection
 }
 
+
+
+unified_deep_merge_list <- function(base, patch) {
+  if (!is.list(base)) base <- list()
+  if (!is.list(patch)) return(patch)
+  out <- base
+  for (nm in names(patch)) {
+    lhs <- out[[nm]]
+    rhs <- patch[[nm]]
+    if (is.list(lhs) && is.list(rhs)) {
+      out[[nm]] <- unified_deep_merge_list(lhs, rhs)
+    } else {
+      out[[nm]] <- rhs
+    }
+  }
+  out
+}
+
+unified_quantile_override_keys <- function(q) {
+  q_num <- suppressWarnings(as.numeric(q))
+  if (!is.finite(q_num)) return(character(0))
+  pct <- as.integer(round(q_num * 100))
+  fmt2 <- sprintf('%.2f', q_num)
+  fmt_trim <- sub("\\.?0+$", "", fmt2)
+  unique(c(
+    sprintf('q=%02d', pct),
+    sprintf('q%d', pct),
+    fmt2,
+    fmt_trim,
+    as.character(q_num),
+    as.character(pct)
+  ))
+}
+
+unified_resolve_gamma_sigma_policy <- function(cfg, family_key, q = NULL) {
+  policy <- unified_get(cfg, c('fit', family_key, 'gamma_sigma'), default = list())
+  if (!is.list(policy)) policy <- list()
+  overrides <- policy[['quantile_overrides']]
+  if (is.list(overrides) && length(overrides) > 0L && !is.null(q)) {
+    keys <- unified_quantile_override_keys(q)
+    for (key in keys) {
+      patch <- overrides[[key]]
+      if (is.list(patch)) {
+        policy <- unified_deep_merge_list(policy, patch)
+        break
+      }
+    }
+  }
+  policy[['quantile_overrides']] <- NULL
+  policy
+}
+
 unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   oldwd <- getwd()
   on.exit(setwd(oldwd), add = TRUE)
@@ -759,36 +811,38 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     ))
     exdqlm_structure_harmonics <- paste(exdqlm_structure_harmonics, collapse = ",")
 
+    gamsig_policy <- unified_resolve_gamma_sigma_policy(cfg, "exdqlm_multivar", q = q)
+
     gamsig_freeze_iters <- as.character(unified_get(
-      cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "warmup_freeze_iters"), default = 5L
+      gamsig_policy, c("warmup_freeze_iters"), default = 5L
     ))
     gamsig_min_update_iters <- as.character(unified_get(
-      cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_update_iters"), default = 50L
+      gamsig_policy, c("min_update_iters"), default = 50L
     ))
     gamsig_min_total_iters <- as.character(unified_get(
-      cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "min_total_iters"), default = 50L
+      gamsig_policy, c("min_total_iters"), default = 50L
     ))
     gamsig_max_iter <- as.character(unified_get(
-      cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "max_iter"), default = 100L
+      gamsig_policy, c("max_iter"), default = 100L
     ))
 
     transfer_compare_fast_enabled <- isTRUE(unified_get(
-      cfg,
-      c("fit", "exdqlm_multivar", "gamma_sigma", "transfer_compare_fast", "enabled"),
+      gamsig_policy,
+      c("transfer_compare_fast", "enabled"),
       default = FALSE
     ))
     if (transfer_compare_fast_enabled) {
       gamsig_freeze_iters <- as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "transfer_compare_fast", "warmup_freeze_iters"), default = 5L
+        gamsig_policy, c("transfer_compare_fast", "warmup_freeze_iters"), default = 5L
       ))
       gamsig_min_update_iters <- as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "transfer_compare_fast", "min_update_iters"), default = 15L
+        gamsig_policy, c("transfer_compare_fast", "min_update_iters"), default = 15L
       ))
       gamsig_min_total_iters <- as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "transfer_compare_fast", "min_total_iters"), default = 20L
+        gamsig_policy, c("transfer_compare_fast", "min_total_iters"), default = 20L
       ))
       gamsig_max_iter <- as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "transfer_compare_fast", "max_iter"), default = 20L
+        gamsig_policy, c("transfer_compare_fast", "max_iter"), default = 20L
       ))
       message(
         sprintf(
@@ -866,52 +920,52 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_GAMSIG_MIN_TOTAL_ITERS = gamsig_min_total_iters,
       DISC_GAMSIG_MAX_ITER = gamsig_max_iter,
       DISC_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence_tol"), default = 1e-6
+        gamsig_policy, c("convergence_tol"), default = 1e-6
       )),
       DISC_GAMSIG_ELBO_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "elbo_tol"), default = 1e-6
+        gamsig_policy, c("convergence", "elbo_tol"), default = 1e-6
       )),
       DISC_GAMSIG_STATE_NORM_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "state_norm_sq_tol"), default = 1e-6
+        gamsig_policy, c("convergence", "state_norm_sq_tol"), default = 1e-6
       )),
       DISC_GAMSIG_SIGMA_EXP_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "sigma_exp_tol"), default = 1e-6
+        gamsig_policy, c("convergence", "sigma_exp_tol"), default = 1e-6
       )),
       DISC_GAMSIG_GAMMA_EXP_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "convergence", "gamma_exp_tol"), default = 1e-6
+        gamsig_policy, c("convergence", "gamma_exp_tol"), default = 1e-6
       )),
       DISC_GAMSIG_FREEZE_TARGET = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
+        gamsig_policy, c("freeze_target"), default = "gamma_sigma"
       )),
       DISC_GAMSIG_GUARD_REFREEZE_ITERS = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "guard_refreeze_iters"), default = 10L
+        gamsig_policy, c("guard_refreeze_iters"), default = 10L
       )),
       DISC_GAMSIG_INIT_MODE = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "mode"), default = "robust"
+        gamsig_policy, c("init", "mode"), default = "robust"
       )),
       DISC_GAMSIG_INIT_GAMMA = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "gamma"), default = 0.0
+        gamsig_policy, c("init", "gamma"), default = 0.0
       )),
       DISC_GAMSIG_INIT_SIGMA_FLOOR = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "sigma_floor"), default = 1e-3
+        gamsig_policy, c("init", "sigma_floor"), default = 1e-3
       )),
       DISC_GAMSIG_INIT_SIGMA_SCALE = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "init", "sigma_scale"), default = 1.0
+        gamsig_policy, c("init", "sigma_scale"), default = 1.0
       )),
       DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED = if (isTRUE(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "enabled"), default = TRUE
+        gamsig_policy, c("objective_guard", "enabled"), default = TRUE
       ))) "TRUE" else "FALSE",
       DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST = if (isTRUE(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "fail_fast"), default = FALSE
+        gamsig_policy, c("objective_guard", "fail_fast"), default = FALSE
       ))) "TRUE" else "FALSE",
       DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES = if (isTRUE(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "log_failures"), default = TRUE
+        gamsig_policy, c("objective_guard", "log_failures"), default = TRUE
       ))) "TRUE" else "FALSE",
       DISC_GAMSIG_OBJECTIVE_GUARD_MODE = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "mode"), default = "adaptive_freeze"
+        gamsig_policy, c("objective_guard", "mode"), default = "adaptive_freeze"
       )),
       DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
-        cfg, c("fit", "exdqlm_multivar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
+        gamsig_policy, c("objective_guard", "penalty"), default = 1e12
       ))
     )
     cov_env_overrides <- c(
@@ -1080,6 +1134,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     q_logs <- file.path(q_root, "logs")
     dir.create(q_outputs, recursive = TRUE, showWarnings = FALSE)
     dir.create(q_logs, recursive = TRUE, showWarnings = FALSE)
+    univar_gamsig_policy <- unified_resolve_gamma_sigma_policy(cfg, "exdqlm_univar", q = q)
 
     output_path <- file.path(q_outputs, sprintf("variables_%s_exAL_synth_DISC_uni.RData", q_lab))
     log_name <- if (identical(univar_impl_mode, "theory_aligned")) {
@@ -1111,76 +1166,76 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       UNIV_PREV_RDATA = output_path,
       UNIV_LIKELIHOOD_MODE = as.character(univar_likelihood_mode),
       UNIV_GAMSIG_FREEZE_ITERS = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "warmup_freeze_iters"), default = 5L
+        univar_gamsig_policy, c("warmup_freeze_iters"), default = 5L
       )),
       UNIV_GAMSIG_MIN_UPDATE_ITERS = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_update_iters"), default = 50L
+        univar_gamsig_policy, c("min_update_iters"), default = 50L
       )),
       UNIV_GAMSIG_MIN_TOTAL_ITERS = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "min_total_iters"), default = 50L
+        univar_gamsig_policy, c("min_total_iters"), default = 50L
       )),
       UNIV_GAMSIG_MAX_ITER = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "max_iter"), default = 100L
+        univar_gamsig_policy, c("max_iter"), default = 100L
       )),
       UNIV_GAMSIG_CONVERGENCE_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence_tol"), default = 1e-6
+        univar_gamsig_policy, c("convergence_tol"), default = 1e-6
       )),
       UNIV_GAMSIG_ELBO_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "elbo_tol"), default = 1e-6
+        univar_gamsig_policy, c("convergence", "elbo_tol"), default = 1e-6
       )),
       UNIV_GAMSIG_ELBO_REL_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "elbo_rel_tol"), default = 2.5e-4
+        univar_gamsig_policy, c("convergence", "elbo_rel_tol"), default = 2.5e-4
       )),
       UNIV_GAMSIG_STATE_NORM_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "state_norm_sq_tol"), default = 1e-6
+        univar_gamsig_policy, c("convergence", "state_norm_sq_tol"), default = 1e-6
       )),
       UNIV_GAMSIG_STATE_NORM_REL_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "state_norm_sq_rel_tol"), default = 2.5e-4
+        univar_gamsig_policy, c("convergence", "state_norm_sq_rel_tol"), default = 2.5e-4
       )),
       UNIV_GAMSIG_SIGMA_EXP_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "sigma_exp_tol"), default = 1e-6
+        univar_gamsig_policy, c("convergence", "sigma_exp_tol"), default = 1e-6
       )),
       UNIV_GAMSIG_SIGMA_EXP_REL_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "sigma_exp_rel_tol"), default = 5e-5
+        univar_gamsig_policy, c("convergence", "sigma_exp_rel_tol"), default = 5e-5
       )),
       UNIV_GAMSIG_GAMMA_EXP_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "gamma_exp_tol"), default = 1e-6
+        univar_gamsig_policy, c("convergence", "gamma_exp_tol"), default = 1e-6
       )),
       UNIV_GAMSIG_GAMMA_EXP_REL_TOL = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "convergence", "gamma_exp_rel_tol"), default = 5e-5
+        univar_gamsig_policy, c("convergence", "gamma_exp_rel_tol"), default = 5e-5
       )),
       UNIV_GAMSIG_FREEZE_TARGET = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "freeze_target"), default = "gamma_sigma"
+        univar_gamsig_policy, c("freeze_target"), default = "gamma_sigma"
       )),
       UNIV_GAMSIG_GUARD_REFREEZE_ITERS = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "guard_refreeze_iters"), default = 10L
+        univar_gamsig_policy, c("guard_refreeze_iters"), default = 10L
       )),
       UNIV_GAMSIG_INIT_MODE = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "mode"), default = "robust"
+        univar_gamsig_policy, c("init", "mode"), default = "robust"
       )),
       UNIV_GAMSIG_INIT_GAMMA = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "gamma"), default = 0.0
+        univar_gamsig_policy, c("init", "gamma"), default = 0.0
       )),
       UNIV_GAMSIG_INIT_SIGMA_FLOOR = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "sigma_floor"), default = 1e-3
+        univar_gamsig_policy, c("init", "sigma_floor"), default = 1e-3
       )),
       UNIV_GAMSIG_INIT_SIGMA_SCALE = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "init", "sigma_scale"), default = 1.0
+        univar_gamsig_policy, c("init", "sigma_scale"), default = 1.0
       )),
       UNIV_GAMSIG_OBJECTIVE_GUARD_ENABLED = if (isTRUE(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "enabled"), default = TRUE
+        univar_gamsig_policy, c("objective_guard", "enabled"), default = TRUE
       ))) "TRUE" else "FALSE",
       UNIV_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST = if (isTRUE(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "fail_fast"), default = FALSE
+        univar_gamsig_policy, c("objective_guard", "fail_fast"), default = FALSE
       ))) "TRUE" else "FALSE",
       UNIV_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES = if (isTRUE(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "log_failures"), default = TRUE
+        univar_gamsig_policy, c("objective_guard", "log_failures"), default = TRUE
       ))) "TRUE" else "FALSE",
       UNIV_GAMSIG_OBJECTIVE_GUARD_MODE = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "mode"), default = "adaptive_freeze"
+        univar_gamsig_policy, c("objective_guard", "mode"), default = "adaptive_freeze"
       )),
       UNIV_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
-        cfg, c("fit", "exdqlm_univar", "gamma_sigma", "objective_guard", "penalty"), default = 1e12
+        univar_gamsig_policy, c("objective_guard", "penalty"), default = 1e12
       )),
       UNIV_DF_T = as.character(unified_get(
         cfg, c("models", "exdqlm_univar", "state_evolution", "df_t"), default = 0.9999995
