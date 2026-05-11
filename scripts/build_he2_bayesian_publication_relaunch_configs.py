@@ -141,6 +141,44 @@ def _merge_queue(default_queue: dict[str, Any], *overrides: dict[str, Any]) -> d
     return merged
 
 
+def _deep_merge_dict(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
+    merged = copy.deepcopy(base)
+    for key, value in patch.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge_dict(merged[key], value)
+        else:
+            merged[key] = copy.deepcopy(value)
+    return merged
+
+
+def _resolve_row_config_patch(batch_payload: dict[str, Any], source_row: dict[str, str]) -> dict[str, Any]:
+    overrides = batch_payload.get('overrides', {}) if isinstance(batch_payload.get('overrides'), dict) else {}
+    resolved: dict[str, Any] = {}
+    common_patch = overrides.get('common_config_patch', {})
+    if isinstance(common_patch, dict) and common_patch:
+        resolved = _deep_merge_dict(resolved, common_patch)
+
+    for item in overrides.get('row_config_patches', []) or []:
+        if not isinstance(item, dict):
+            continue
+        cutoff = str(item.get('cutoff', '')).strip()
+        family = str(item.get('family', '')).strip()
+        manuscript_label = str(item.get('manuscript_label', '')).strip()
+        source_run_id = str(item.get('source_run_id', '')).strip()
+        if cutoff and cutoff != source_row['cutoff']:
+            continue
+        if family and family != source_row['family']:
+            continue
+        if manuscript_label and manuscript_label != source_row['manuscript_label']:
+            continue
+        if source_run_id and source_run_id != source_row['run_id']:
+            continue
+        patch = item.get('config_patch', {})
+        if isinstance(patch, dict) and patch:
+            resolved = _deep_merge_dict(resolved, patch)
+    return resolved
+
+
 def _selection_spec(args: argparse.Namespace, campaign: dict[str, Any], campaign_path: Path) -> dict[str, Any]:
     selection_cfg = campaign.get('selection', {}) if isinstance(campaign.get('selection'), dict) else {}
     resources_cfg = campaign.get('resources', {}) if isinstance(campaign.get('resources'), dict) else {}
@@ -226,6 +264,8 @@ def _build_run_config(
     resources: dict[str, Any],
     selected_quantiles: list[float],
     profile_name: str,
+    row_config_patch: dict[str, Any] | None = None,
+    row_config_patch_source: str = '',
 ) -> dict[str, Any]:
     cfg = copy.deepcopy(template_cfg)
     shared = canonical_shared_paths(bundle_artifact_root, cutoff, bundle_run_id)
@@ -290,6 +330,9 @@ def _build_run_config(
     if mc_cores is not None:
         _set_nested(cfg, ['run', 'threads', 'mc_cores'], int(mc_cores))
 
+    if row_config_patch:
+        cfg = _deep_merge_dict(cfg, row_config_patch)
+
     cfg['debug_he2_publication_relaunch'] = {
         'campaign_spec_id': DEFAULT_CAMPAIGN_SPEC_ID,
         'source_publication_run_id': source_row['run_id'],
@@ -314,6 +357,9 @@ def _build_run_config(
         'fit_parallel_workers_effective': int(workers or 0),
         'mc_cores_effective': int(mc_cores or 0),
         'model_config_key': family_model_key,
+        'config_patch_applied': bool(row_config_patch),
+        'config_patch_source': row_config_patch_source,
+        'config_patch_json': row_config_patch or {},
     }
     return cfg
 
@@ -371,6 +417,9 @@ def _extract_spec_row(plan_row: dict[str, Any], source_row: dict[str, str], cfg:
         'forecast_cov_epsilon_fit': legacy_forecast_cov.get('epsilon'),
         'forecast_cov_c_factor_model_prior': model_prior_fc.get('c_factor'),
         'forecast_cov_epsilon_model_prior': model_prior_fc.get('epsilon'),
+        'config_patch_applied': bool(debug.get('config_patch_applied', False)),
+        'config_patch_source': debug.get('config_patch_source', ''),
+        'config_patch_json': json.dumps(debug.get('config_patch_json', {}), sort_keys=True),
         'publication_crps_display4': source_row.get('crps_display4', ''),
         'selected_mean_crps': source_row.get('crps_exact', ''),
         'canonical_bundle_meta': debug.get('canonical_bundle_meta', ''),
@@ -506,6 +555,8 @@ def main() -> int:
         if missing:
             raise FileNotFoundError(f'Canonical shared bundle is incomplete for cutoff {cutoff}: {missing[:5]}')
 
+        row_config_patch = _resolve_row_config_patch(request.get('batch_payload', {}), row)
+
         run_id = _run_id(cutoff, campaign_spec_id, family)
         config_path = config_output_dir / f'{run_id}.yaml'
         cfg = load_yaml(source_cfg_path)
@@ -520,6 +571,8 @@ def main() -> int:
             resources=request['resources'],
             selected_quantiles=request['selection']['quantiles'],
             profile_name=request['profile'],
+            row_config_patch=row_config_patch,
+            row_config_patch_source=request['selection'].get('batch_file', ''),
         )
         write_yaml(config_path, cfg)
         generated_configs.append(config_path)

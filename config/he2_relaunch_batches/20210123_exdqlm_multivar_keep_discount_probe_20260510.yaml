@@ -1,0 +1,20 @@
+selection:
+  cutoffs:
+    - '20210123'
+  families:
+    - exdqlm_multivar_keep
+
+overrides:
+  row_config_patches:
+    - cutoff: '20210123'
+      family: exdqlm_multivar_keep
+      manuscript_label: exAL-M-T1
+      config_patch:
+        models:
+          exdqlm_multivar:
+            state_evolution:
+              df_s1: 0.99999
+              df_s2: 0.99999
+              df_s67: 0.99999
+              df_discrep: 0.9999
+              df_covs: 0.999999

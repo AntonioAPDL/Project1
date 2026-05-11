@@ -111,6 +111,74 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(payload['debug_he2_publication_relaunch']['fit_parallel_workers_effective'], 7)
         self.assertEqual(payload['debug_he2_publication_relaunch']['mc_cores_effective'], 7)
 
+    def test_batch_row_config_patch_overrides_discount_block_and_is_audited(self) -> None:
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_path = Path(tmpdir.name)
+        batch_path = tmp_path / 'discount_probe.yaml'
+        batch_path.write_text(
+            yaml.safe_dump(
+                {
+                    'selection': {
+                        'cutoffs': ['20210123'],
+                        'families': ['exdqlm_multivar_keep'],
+                    },
+                    'overrides': {
+                        'row_config_patches': [
+                            {
+                                'cutoff': '20210123',
+                                'family': 'exdqlm_multivar_keep',
+                                'config_patch': {
+                                    'models': {
+                                        'exdqlm_multivar': {
+                                            'state_evolution': {
+                                                'df_s1': 0.99999,
+                                                'df_s2': 0.99999,
+                                                'df_s67': 0.99999,
+                                                'df_discrep': 0.9999,
+                                                'df_covs': 0.999999,
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding='utf-8',
+        )
+
+        proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(
+            '--batch-file', str(batch_path),
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+        with (matrix_dir / 'frozen_spec_manifest.csv').open('r', encoding='utf-8') as handle:
+            frozen_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(frozen_rows), 1)
+        self.assertEqual(frozen_rows[0]['df_s1'], '0.99999')
+        self.assertEqual(frozen_rows[0]['df_s2'], '0.99999')
+        self.assertEqual(frozen_rows[0]['df_s67'], '0.99999')
+        self.assertEqual(frozen_rows[0]['df_discrep'], '0.9999')
+        self.assertEqual(frozen_rows[0]['df_covs'], '0.999999')
+        self.assertEqual(frozen_rows[0]['config_patch_applied'], 'True')
+        self.assertTrue(frozen_rows[0]['config_patch_source'].endswith('discount_probe.yaml'))
+        self.assertIn('"df_covs": 0.999999', frozen_rows[0]['config_patch_json'])
+
+        config_paths = list(config_output_dir.glob('*.yaml'))
+        self.assertEqual(len(config_paths), 1)
+        payload = yaml.safe_load(config_paths[0].read_text(encoding='utf-8')) or {}
+        state = payload['models']['exdqlm_multivar']['state_evolution']
+        self.assertEqual(state['df_s1'], 0.99999)
+        self.assertEqual(state['df_s2'], 0.99999)
+        self.assertEqual(state['df_s67'], 0.99999)
+        self.assertEqual(state['df_discrep'], 0.9999)
+        self.assertEqual(state['df_covs'], 0.999999)
+        self.assertTrue(payload['debug_he2_publication_relaunch']['config_patch_applied'])
+        self.assertTrue(str(payload['debug_he2_publication_relaunch']['config_patch_source']).endswith('discount_probe.yaml'))
+
 
 if __name__ == '__main__':
     unittest.main()

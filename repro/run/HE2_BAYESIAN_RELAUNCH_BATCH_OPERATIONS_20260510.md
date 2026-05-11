@@ -93,6 +93,36 @@ The builder, validator, and launcher all accept the same selection surface.
 - `--fit-parallel-workers`
 - `--mc-cores`
 
+### Batch-file config patch overrides
+
+Batch files can also carry explicit config overrides so we can run a controlled probe without editing the campaign template or hand-editing a generated config.
+
+Supported batch-file override blocks:
+
+- `overrides.common_config_patch`
+- `overrides.row_config_patches`
+
+`common_config_patch` applies to every selected row in that batch.
+
+`row_config_patches` applies only to rows that match the optional selectors:
+
+- `cutoff`
+- `family`
+- `manuscript_label`
+- `source_run_id`
+
+Each matching row receives the nested `config_patch` via recursive merge before the frozen manifest is written.
+
+This means the relaunch remains auditable:
+
+- the generated run config records the applied patch in `debug_he2_publication_relaunch`
+- `frozen_spec_manifest.csv` records:
+  - `config_patch_applied`
+  - `config_patch_source`
+  - `config_patch_json`
+
+Use this for targeted discount / epsilon probes and other narrowly scoped production experiments.
+
 ### Supported model classes
 
 - `ndlm`
@@ -267,6 +297,22 @@ python3 scripts/build_he2_bayesian_publication_relaunch_configs.py \
   --fit-parallel-workers 1 \
   --mc-cores 1
 ```
+
+### 7. Build a row-specific discount probe from a batch file
+
+```bash
+python3 scripts/build_he2_bayesian_publication_relaunch_configs.py \
+  --config config/he2_bayesian_publication_relaunch_20260510.template.yaml \
+  --batch-file config/he2_relaunch_batches/20210123_exdqlm_multivar_keep_discount_probe_20260510.yaml
+```
+
+That batch file can target a single row and patch only the desired nested fields, for example:
+
+- `df_s1`
+- `df_s2`
+- `df_s67`
+- `df_discrep`
+- `df_covs`
 
 ## Validation command patterns
 
