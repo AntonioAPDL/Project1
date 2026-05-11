@@ -249,10 +249,65 @@ DISC_GAMSIG_MEDIAN_STATE_GUARD_REFREEZE_ITERS <- disc_env_nonneg_int(
   "DISC_GAMSIG_MEDIAN_STATE_GUARD_REFREEZE_ITERS",
   default = DISC_GAMSIG_GUARD_REFREEZE_ITERS
 )
+DISC_GAMSIG_MEDIAN_STATE_HOLD_AFTER_GUARD_ITERS <- disc_env_nonneg_int(
+  "DISC_GAMSIG_MEDIAN_STATE_HOLD_AFTER_GUARD_ITERS",
+  default = 0L
+)
+DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA <- disc_env_prob(
+  "DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA",
+  default = 1.0
+)
+DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA <- disc_env_prob(
+  "DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA",
+  default = 1.0
+)
 DISC_STRICT_CONTRACTS <- disc_env_flag(
   "DISC_STRICT_CONTRACTS",
   default = TRUE
 )
+
+disc_blend_numeric_like <- function(current, candidate, alpha, label = "value") {
+  if (!is.finite(alpha) || alpha >= 1) {
+    return(candidate)
+  }
+  if (alpha <= 0) {
+    return(current)
+  }
+  current_arr <- as.array(current)
+  candidate_arr <- as.array(candidate)
+  if (!identical(dim(current_arr), dim(candidate_arr))) {
+    stop(sprintf("blend dim mismatch for %s", label), call. = FALSE)
+  }
+  blended <- alpha * candidate_arr + (1 - alpha) * current_arr
+  if (is.null(dim(candidate))) {
+    return(as.numeric(blended))
+  }
+  dim(blended) <- dim(candidate)
+  dimnames(blended) <- dimnames(candidate)
+  blended
+}
+
+disc_blend_numeric_list <- function(current_list, candidate_list, alpha, label_prefix = "list") {
+  if (!is.list(current_list) || !is.list(candidate_list)) {
+    stop(sprintf("blend list mismatch for %s", label_prefix), call. = FALSE)
+  }
+  if (length(current_list) != length(candidate_list)) {
+    stop(sprintf("blend list length mismatch for %s", label_prefix), call. = FALSE)
+  }
+  Map(
+    function(cur_item, cand_item, idx) {
+      disc_blend_numeric_like(
+        cur_item,
+        cand_item,
+        alpha,
+        sprintf("%s[[%d]]", label_prefix, as.integer(idx))
+      )
+    },
+    current_list,
+    candidate_list,
+    seq_along(candidate_list)
+  )
+}
 
 DISC_W_N_SAMP <- disc_env_nonneg_int(
   "DISC_W_N_SAMP",
@@ -2428,9 +2483,13 @@ gamsig_dynamic_freeze_until_iter <- as.integer(DISC_GAMSIG_FREEZE_ITERS)
 if (!is.finite(gamsig_dynamic_freeze_until_iter) || gamsig_dynamic_freeze_until_iter < 0L) {
   gamsig_dynamic_freeze_until_iter <- 0L
 }
+median_quantile_active <- (!isTRUE(DISC_W_AL_MODE) &&
+  is.finite(p0) &&
+  abs(as.numeric(p0) - 0.5) < 1e-8)
+median_state_hold_until_iter <- 0L
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   cat(sprintf(
-    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g median_state_guard=%s median_state_norm_max_ratio=%g median_state_norm_abs_cap=%g median_state_guard_refreeze_iters=%d\n",
+    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g median_state_guard=%s median_state_norm_max_ratio=%g median_state_norm_abs_cap=%g median_state_guard_refreeze_iters=%d median_state_hold_after_guard_iters=%d median_state_blend_alpha=%g median_cov_blend_alpha=%g\n",
     as.character(p0),
     DISC_GAMSIG_FREEZE_TARGET,
     as.integer(DISC_GAMSIG_FREEZE_ITERS),
@@ -2458,7 +2517,10 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     ifelse(isTRUE(DISC_GAMSIG_MEDIAN_STATE_GUARD_ENABLED), "true", "false"),
     as.numeric(DISC_GAMSIG_MEDIAN_STATE_NORM_MAX_RATIO),
     as.numeric(DISC_GAMSIG_MEDIAN_STATE_NORM_ABS_CAP),
-    as.integer(DISC_GAMSIG_MEDIAN_STATE_GUARD_REFREEZE_ITERS)
+    as.integer(DISC_GAMSIG_MEDIAN_STATE_GUARD_REFREEZE_ITERS),
+    as.integer(DISC_GAMSIG_MEDIAN_STATE_HOLD_AFTER_GUARD_ITERS),
+    as.numeric(DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA),
+    as.numeric(DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA)
   ))
   flush.console()
 }
@@ -2530,19 +2592,30 @@ while (isTRUE(FLAG) && iter < max_iter) {
       QQQ_forecast[[j]] <- A
     }
   iter_candidate <- as.integer(iter + 1L)
-  state_freeze_now <- identical(DISC_GAMSIG_FREEZE_TARGET, "states") &&
+  median_state_hold_now <- median_quantile_active &&
+    (median_state_hold_until_iter > 0L) &&
+    (iter_candidate <= median_state_hold_until_iter)
+  state_freeze_now <- (identical(DISC_GAMSIG_FREEZE_TARGET, "states") &&
     (gamsig_dynamic_freeze_until_iter > 0L) &&
-    (iter_candidate <= gamsig_dynamic_freeze_until_iter)
+    (iter_candidate <= gamsig_dynamic_freeze_until_iter)) ||
+    median_state_hold_now
 
   if (state_freeze_now) {
     theta_update <- FALSE
     iter <- iter_candidate
     fast <- fast + 1
     if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
-      cat(sprintf(
-        "[state_freeze] p0=%s iter=%d freeze_until_iter=%d\n",
-        as.character(p0), as.integer(iter), as.integer(gamsig_dynamic_freeze_until_iter)
-      ))
+      if (median_state_hold_now) {
+        cat(sprintf(
+          "[median_state_hold] p0=%s iter=%d hold_until_iter=%d\n",
+          as.character(p0), as.integer(iter), as.integer(median_state_hold_until_iter)
+        ))
+      } else {
+        cat(sprintf(
+          "[state_freeze] p0=%s iter=%d freeze_until_iter=%d\n",
+          as.character(p0), as.integer(iter), as.integer(gamsig_dynamic_freeze_until_iter)
+        ))
+      }
       flush.console()
     }
   } else if (iter < max_iter) {
@@ -2581,6 +2654,26 @@ while (isTRUE(FLAG) && iter < max_iter) {
                                             ensembles_forecast, ranges, Ones_ens,
                                             sum(num_mem), num_mem, cur.covs_list,
                                             epsilon)
+    if (median_quantile_active &&
+        is.finite(DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA) &&
+        DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA < 1) {
+      blend_alpha <- as.numeric(DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA)
+      update.theta$sm <- disc_blend_numeric_like(cur.theta.out$sm, update.theta$sm, blend_alpha, "theta$sm")
+      update.theta$sC <- disc_blend_numeric_like(cur.theta.out$sC, update.theta$sC, blend_alpha, "theta$sC")
+      update.theta$fm <- disc_blend_numeric_like(cur.theta.out$fm, update.theta$fm, blend_alpha, "theta$fm")
+      update.theta$fC <- disc_blend_numeric_like(cur.theta.out$fC, update.theta$fC, blend_alpha, "theta$fC")
+      update.theta$sm_ens <- disc_blend_numeric_list(cur.theta.out$sm_ens, update.theta$sm_ens, blend_alpha, "theta$sm_ens")
+      update.theta$sC_ens <- disc_blend_numeric_list(cur.theta.out$sC_ens, update.theta$sC_ens, blend_alpha, "theta$sC_ens")
+      update.theta$fm_ens <- disc_blend_numeric_list(cur.theta.out$fm_ens, update.theta$fm_ens, blend_alpha, "theta$fm_ens")
+      update.theta$fC_ens <- disc_blend_numeric_list(cur.theta.out$fC_ens, update.theta$fC_ens, blend_alpha, "theta$fC_ens")
+      if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+        cat(sprintf(
+          "[median_state_blend] p0=%s iter=%d alpha=%g\n",
+          as.character(p0), as.integer(iter_candidate), blend_alpha
+        ))
+        flush.console()
+      }
+    }
 
     FF_t <- aperm(FF, c(2, 1, 3))
     multiply_matrices <- function(slice_index) {
@@ -2736,6 +2829,21 @@ while (isTRUE(FLAG) && iter < max_iter) {
               label = sprintf("new.covs_list[[%d]][,,%d]", as.integer(j), as.integer(t))
             )
         }
+    }
+  }
+  if (median_quantile_active &&
+      theta_update &&
+      !state_freeze_now &&
+      is.finite(DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA) &&
+      DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA < 1) {
+    cov_blend_alpha <- as.numeric(DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA)
+    new.covs_list <- disc_blend_numeric_list(cur.covs_list, new.covs_list, cov_blend_alpha, "covs_list")
+    if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+      cat(sprintf(
+        "[median_cov_blend] p0=%s iter=%d alpha=%g\n",
+        as.character(p0), as.integer(iter), cov_blend_alpha
+      ))
+      flush.console()
     }
   }
 
@@ -3037,10 +3145,8 @@ while (isTRUE(FLAG) && iter < max_iter) {
   if (!is.finite(sigma_exp)) sigma_exp <- NA_real_
   if (!is.finite(gamma_exp)) gamma_exp <- NA_real_
   if (!is.finite(state_norm_sq)) state_norm_sq <- NA_real_
-  median_state_guard_active <- (!isTRUE(DISC_W_AL_MODE) &&
-    isTRUE(DISC_GAMSIG_MEDIAN_STATE_GUARD_ENABLED) &&
-    is.finite(p0) &&
-    abs(as.numeric(p0) - 0.5) < 1e-8)
+  median_state_guard_active <- (median_quantile_active &&
+    isTRUE(DISC_GAMSIG_MEDIAN_STATE_GUARD_ENABLED))
   state_growth_ratio <- NA_real_
   if (median_state_guard_active &&
       theta_update &&
@@ -3071,10 +3177,17 @@ while (isTRUE(FLAG) && iter < max_iter) {
   }
   if (!is.null(median_state_guard_reason)) {
     old_freeze_until <- gamsig_dynamic_freeze_until_iter
+    old_hold_until <- median_state_hold_until_iter
     gamsig_dynamic_freeze_until_iter <- max(
       as.integer(gamsig_dynamic_freeze_until_iter),
       as.integer(iter + DISC_GAMSIG_MEDIAN_STATE_GUARD_REFREEZE_ITERS)
     )
+    if (DISC_GAMSIG_MEDIAN_STATE_HOLD_AFTER_GUARD_ITERS > 0L) {
+      median_state_hold_until_iter <- max(
+        as.integer(median_state_hold_until_iter),
+        as.integer(iter + DISC_GAMSIG_MEDIAN_STATE_HOLD_AFTER_GUARD_ITERS)
+      )
+    }
     gamsig_frozen_now <- TRUE
     if (gamsig_update_iters > 0L) {
       gamsig_update_iters <- as.integer(gamsig_update_iters - 1L)
@@ -3110,11 +3223,13 @@ while (isTRUE(FLAG) && iter < max_iter) {
     conv.check <- Inf
     if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
       cat(sprintf(
-        "[gamsig_state_guard] p0=%s iter=%d old_until=%d new_until=%d reason=%s\n",
+        "[gamsig_state_guard] p0=%s iter=%d old_until=%d new_until=%d old_hold_until=%d new_hold_until=%d reason=%s\n",
         as.character(p0),
         as.integer(iter),
         as.integer(old_freeze_until),
         as.integer(gamsig_dynamic_freeze_until_iter),
+        as.integer(old_hold_until),
+        as.integer(median_state_hold_until_iter),
         median_state_guard_reason
       ))
       flush.console()

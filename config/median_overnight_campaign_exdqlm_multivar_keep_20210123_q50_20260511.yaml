@@ -1,0 +1,395 @@
+campaign:
+  id: exdqlm_multivar_keep_20210123_q50_overnight_20260511
+  description: >-
+    Sidecar-only overnight stabilization campaign for the sensitive 2021-01-23
+    exdqlm_multivar_keep median quantile. This campaign keeps inputs, discounts,
+    epsilon, covariates, and bundle lineage fixed while screening diverse median
+    warmup and stabilization ideas under bounded one-core probe runs.
+base_generated_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_20260510/control/generated_configs/multimodel_20210123_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml
+artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_median_overnight_campaign_20260511
+execution:
+  concurrency: 24
+screening:
+  quantile: 0.50
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  gamma_sigma:
+    min_update_iters: 10
+    min_total_iters: 20
+    max_iter: 30
+    stabilization:
+      median_sigma_only_fallback_enabled: true
+      median_sigma_only_fallback_tol: 1.0e-08
+      median_step_damping_enabled: true
+      median_state_guard_enabled: true
+      median_state_norm_max_ratio: 25
+      median_state_norm_abs_cap: 100000000.0
+      median_state_guard_refreeze_iters: 10
+      median_state_hold_after_guard_iters: 0
+      median_state_blend_alpha: 1.0
+      median_cov_blend_alpha: 1.0
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 100.0
+    max_state_norm_sq: 100000000.0
+    min_gamsig_update_iters: 8
+    require_finite_conv_check: true
+waves:
+  - id: wave1_fast_signal
+    description: Best current anchors, tighter caps, guard sweeps, and first state-hold/blend variants.
+    probes:
+      - id: default_stabilized
+        batch: anchors
+        description: Current stabilized median path with no extra sidecar hold/blend.
+        config_patch: {}
+      - id: gamma015_sigma035
+        batch: anchors
+        description: Mild exact-step damping anchor.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.15
+                  median_max_abs_log_sigma_step: 0.35
+      - id: gamma01_sigma025
+        batch: anchors
+        description: Stronger exact-step damping anchor.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.25
+      - id: gamma0075_sigma02
+        batch: anchors
+        description: Conservative exact-step damping anchor.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.075
+                  median_max_abs_log_sigma_step: 0.20
+      - id: ratio10_cap1e7_refreeze20
+        batch: state_guard
+        description: Strict state guard with tighter ratio and absolute cap.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_state_norm_max_ratio: 10
+                  median_state_norm_abs_cap: 10000000.0
+                  median_state_guard_refreeze_iters: 20
+      - id: ratio15_cap5e7_refreeze20
+        batch: state_guard
+        description: Moderate state guard tightening.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_state_norm_max_ratio: 15
+                  median_state_norm_abs_cap: 50000000.0
+                  median_state_guard_refreeze_iters: 20
+      - id: caps010_025_plus_bounds_plus_ridge1e4
+        batch: gamsig_stabilization
+        description: Stronger damping with tighter transformed bounds and heavier Hessian ridge.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.25
+                  theta_sigma_upper: 4.605170186
+                  theta_gamma_lower: -8
+                  theta_gamma_upper: 8
+                  hessian_ridge_init: 0.0001
+                  hessian_ridge_multiplier: 10
+                  hessian_ridge_max_tries: 10
+      - id: hold5_blend050
+        batch: state_hold_blend
+        description: Hold states for 5 iterations after guard and blend accepted states/covs at alpha 0.50.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.25
+                  median_state_hold_after_guard_iters: 5
+                  median_state_blend_alpha: 0.50
+                  median_cov_blend_alpha: 0.50
+      - id: hold10_blend050
+        batch: state_hold_blend
+        description: Hold states for 10 iterations after guard and blend accepted states/covs at alpha 0.50.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.25
+                  median_state_hold_after_guard_iters: 10
+                  median_state_blend_alpha: 0.50
+                  median_cov_blend_alpha: 0.50
+      - id: hold5_blend025
+        batch: state_hold_blend
+        description: Hold states for 5 iterations after guard and blend more conservatively at alpha 0.25.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.25
+                  median_state_hold_after_guard_iters: 5
+                  median_state_blend_alpha: 0.25
+                  median_cov_blend_alpha: 0.25
+  - id: wave2_geometry_and_init
+    description: Warmup geometry and initialization diversity around the current stabilized code path.
+    probes:
+      - id: freeze10_refreeze10
+        batch: warmup
+        description: Longer initial freeze with moderate refreeze window.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                warmup_freeze_iters: 10
+                guard_refreeze_iters: 10
+      - id: freeze10_refreeze20
+        batch: warmup
+        description: Longer initial freeze with longer refreeze window.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                warmup_freeze_iters: 10
+                guard_refreeze_iters: 20
+      - id: freeze15_refreeze20
+        batch: warmup
+        description: Long freeze and moderate refreeze.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                warmup_freeze_iters: 15
+                guard_refreeze_iters: 20
+      - id: freeze15_refreeze30
+        batch: warmup
+        description: Long freeze and long refreeze.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                warmup_freeze_iters: 15
+                guard_refreeze_iters: 30
+      - id: freeze10_states_refreeze20
+        batch: warmup
+        description: State-targeted freeze schedule control.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                freeze_target: states
+                warmup_freeze_iters: 10
+                guard_refreeze_iters: 20
+      - id: floor1e-2_scale1_gamma0
+        batch: initialization
+        description: Less aggressive sigma floor with neutral gamma.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  sigma_floor: 0.01
+                  sigma_scale: 1.0
+                  gamma: 0.0
+      - id: floor1e-2_scale0p5_gamma0
+        batch: initialization
+        description: Smaller sigma scale with neutral gamma.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  sigma_floor: 0.01
+                  sigma_scale: 0.5
+                  gamma: 0.0
+      - id: floor1e-1_scale0p5_gamma0
+        batch: initialization
+        description: Strong sigma floor and smaller scale.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  sigma_floor: 0.1
+                  sigma_scale: 0.5
+                  gamma: 0.0
+      - id: floor1e-2_scale0p5_gammaNeg005
+        batch: initialization
+        description: Smaller sigma scale with slightly negative gamma seed.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  sigma_floor: 0.01
+                  sigma_scale: 0.5
+                  gamma: -0.05
+      - id: floor1e-2_scale0p5_gammaPos005
+        batch: initialization
+        description: Smaller sigma scale with slightly positive gamma seed.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  sigma_floor: 0.01
+                  sigma_scale: 0.5
+                  gamma: 0.05
+  - id: wave3_extended_stabilization
+    description: Remaining optimizer and state-side diversity, including stronger hold/blend variants.
+    probes:
+      - id: caps010_025_plus_bounds
+        batch: gamsig_stabilization
+        description: Strong damping with tighter transformed bounds.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.25
+                  theta_sigma_upper: 4.605170186
+                  theta_gamma_lower: -8
+                  theta_gamma_upper: 8
+      - id: caps0075_020_plus_bounds
+        batch: gamsig_stabilization
+        description: Conservative damping with tighter transformed bounds.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.075
+                  median_max_abs_log_sigma_step: 0.20
+                  theta_sigma_upper: 4.605170186
+                  theta_gamma_lower: -8
+                  theta_gamma_upper: 8
+      - id: caps010_025_plus_ridge1e4
+        batch: gamsig_stabilization
+        description: Strong damping with stronger Hessian ridge only.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.25
+                  hessian_ridge_init: 0.0001
+                  hessian_ridge_multiplier: 10
+                  hessian_ridge_max_tries: 10
+      - id: caps0075_020_plus_bounds_plus_ridge1e4
+        batch: gamsig_stabilization
+        description: Conservative damping plus tighter bounds and heavier ridge.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.075
+                  median_max_abs_log_sigma_step: 0.20
+                  theta_sigma_upper: 4.605170186
+                  theta_gamma_lower: -8
+                  theta_gamma_upper: 8
+                  hessian_ridge_init: 0.0001
+                  hessian_ridge_multiplier: 10
+                  hessian_ridge_max_tries: 10
+      - id: ratio10_cap1e7_refreeze30
+        batch: state_guard
+        description: Strict guard with longer refreeze window.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_state_norm_max_ratio: 10
+                  median_state_norm_abs_cap: 10000000.0
+                  median_state_guard_refreeze_iters: 30
+      - id: ratio15_cap5e7_refreeze30
+        batch: state_guard
+        description: Moderate guard with longer refreeze window.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_state_norm_max_ratio: 15
+                  median_state_norm_abs_cap: 50000000.0
+                  median_state_guard_refreeze_iters: 30
+      - id: hold10_noBlend
+        batch: state_hold_blend
+        description: Hold states after guard without blending accepted candidate states.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.25
+                  median_state_hold_after_guard_iters: 10
+                  median_state_blend_alpha: 1.0
+                  median_cov_blend_alpha: 1.0
+      - id: hold5_blend075
+        batch: state_hold_blend
+        description: Short hold with gentler blending at alpha 0.75.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.25
+                  median_state_hold_after_guard_iters: 5
+                  median_state_blend_alpha: 0.75
+                  median_cov_blend_alpha: 0.75
+      - id: hold10_blend025
+        batch: state_hold_blend
+        description: Longer hold with very conservative blending at alpha 0.25.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.25
+                  median_state_hold_after_guard_iters: 10
+                  median_state_blend_alpha: 0.25
+                  median_cov_blend_alpha: 0.25
+      - id: hold10_blend075
+        batch: state_hold_blend
+        description: Longer hold with gentler blending at alpha 0.75.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                stabilization:
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.25
+                  median_state_hold_after_guard_iters: 10
+                  median_state_blend_alpha: 0.75
+                  median_cov_blend_alpha: 0.75

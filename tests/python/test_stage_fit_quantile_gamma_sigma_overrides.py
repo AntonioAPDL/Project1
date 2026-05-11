@@ -26,13 +26,22 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
                       theta_sigma_lower = -5,
                       theta_sigma_upper = 6,
                       median_sigma_only_fallback_enabled = TRUE,
-                      median_state_norm_max_ratio = 25
+                      median_state_norm_max_ratio = 25,
+                      median_state_hold_after_guard_iters = 0L,
+                      median_state_blend_alpha = 1.0,
+                      median_cov_blend_alpha = 1.0
                     ),
                     quantile_overrides = list(
                       q50 = list(
                         init = list(gamma = -0.25),
                         guard_refreeze_iters = 30L,
-                        stabilization = list(theta_sigma_upper = 4, median_state_norm_abs_cap = 5e7)
+                        stabilization = list(
+                          theta_sigma_upper = 4,
+                          median_state_norm_abs_cap = 5e7,
+                          median_state_hold_after_guard_iters = 12L,
+                          median_state_blend_alpha = 0.5,
+                          median_cov_blend_alpha = 0.25
+                        )
                       ),
                       `0.05` = list(init = list(gamma = 0.1))
                     )
@@ -50,9 +59,14 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
             cat(sprintf('p80_refreeze=%s\n', p80$guard_refreeze_iters))
             cat(sprintf('p50_theta_sigma_upper=%s\n', p50$stabilization$theta_sigma_upper))
             cat(sprintf('p50_state_abs_cap=%s\n', p50$stabilization$median_state_norm_abs_cap))
+            cat(sprintf('p50_state_hold=%s\n', p50$stabilization$median_state_hold_after_guard_iters))
+            cat(sprintf('p50_state_blend=%s\n', p50$stabilization$median_state_blend_alpha))
+            cat(sprintf('p50_cov_blend=%s\n', p50$stabilization$median_cov_blend_alpha))
             cat(sprintf('p80_theta_sigma_upper=%s\n', p80$stabilization$theta_sigma_upper))
             cat(sprintf('p80_state_ratio=%s\n', p80$stabilization$median_state_norm_max_ratio))
             cat(sprintf('p80_median_sigma_only=%s\n', p80$stabilization$median_sigma_only_fallback_enabled))
+            cat(sprintf('p80_state_hold=%s\n', p80$stabilization$median_state_hold_after_guard_iters))
+            cat(sprintf('p80_state_blend=%s\n', p80$stabilization$median_state_blend_alpha))
             '''
         )
         proc = subprocess.run(
@@ -75,9 +89,14 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
         self.assertEqual(out['p80_refreeze'], '20')
         self.assertEqual(out['p50_theta_sigma_upper'], '4')
         self.assertEqual(out['p50_state_abs_cap'], '5e+07')
+        self.assertEqual(out['p50_state_hold'], '12')
+        self.assertEqual(out['p50_state_blend'], '0.5')
+        self.assertEqual(out['p50_cov_blend'], '0.25')
         self.assertEqual(out['p80_theta_sigma_upper'], '6')
         self.assertEqual(out['p80_state_ratio'], '25')
         self.assertEqual(out['p80_median_sigma_only'], 'TRUE')
+        self.assertEqual(out['p80_state_hold'], '0')
+        self.assertEqual(out['p80_state_blend'], '1')
 
 
 if __name__ == '__main__':

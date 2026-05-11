@@ -1016,6 +1016,15 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         gamsig_policy, c("stabilization", "median_state_guard_refreeze_iters"), default = unified_get(
           gamsig_policy, c("guard_refreeze_iters"), default = 10L
         )
+      )),
+      DISC_GAMSIG_MEDIAN_STATE_HOLD_AFTER_GUARD_ITERS = as.character(unified_get(
+        gamsig_policy, c("stabilization", "median_state_hold_after_guard_iters"), default = 0L
+      )),
+      DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA = as.character(unified_get(
+        gamsig_policy, c("stabilization", "median_state_blend_alpha"), default = 1.0
+      )),
+      DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA = as.character(unified_get(
+        gamsig_policy, c("stabilization", "median_cov_blend_alpha"), default = 1.0
       ))
     )
     cov_env_overrides <- c(
