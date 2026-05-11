@@ -9,6 +9,7 @@ import math
 import os
 import re
 import signal
+import shutil
 import subprocess
 import sys
 import time
@@ -322,9 +323,15 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             writer.writerow(row)
 
 
+def _remove_tree_if_exists(path: Path) -> None:
+    if path.exists():
+        shutil.rmtree(path)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description='Run standalone exdqlm median warmup probes.')
     parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
+    parser.add_argument('--probe-id', action='append', default=[])
     parser.add_argument('--skip-existing', action='store_true')
     args = parser.parse_args()
 
@@ -348,7 +355,14 @@ def main() -> int:
     scored: list[tuple[tuple[Any, ...], ProbeResult, dict[str, Any], int]] = []
     run_id_base = base_cfg['run']['run_id']
 
-    for order, probe in enumerate(probe_cfg['probes']):
+    selected_probe_ids = [str(x) for x in args.probe_id]
+    probes = probe_cfg['probes']
+    if selected_probe_ids:
+      probes = [probe for probe in probe_cfg['probes'] if str(probe['id']) in selected_probe_ids]
+      if not probes:
+        raise SystemExit(f'No probes matched --probe-id values: {selected_probe_ids}')
+
+    for order, probe in enumerate(probes):
         probe_id = str(probe['id'])
         run_id = f"{run_id_base}__medianprobe__{probe_id}"
         cfg = _prepare_config(
@@ -370,6 +384,7 @@ def main() -> int:
         if args.skip_existing and q_log.exists():
             exit_code = 0
         else:
+            _remove_tree_if_exists(run_root)
             exit_code = _run_single(config_path, launch_log, q_log, screening_rules)
         result = _analyze_log(q_log, screening_rules, probe_id, 'screening', run_id, exit_code, run_root)
         results.append(result)
@@ -403,6 +418,7 @@ def main() -> int:
         launch_log = launch_logs_root / f'{run_id}.log'
         run_root = Path(confirm_cfg['run']['run_root']) / run_id
         q_log = run_root / 'fit' / 'exdqlm_multivar' / 'keep' / _q_label(quantile) / 'logs' / 'fit.log'
+        _remove_tree_if_exists(run_root)
         exit_code = _run_single(config_path, launch_log, q_log, confirm['health_rules'])
         confirmation_result = _analyze_log(q_log, confirm['health_rules'], selected_result.probe_id, 'confirmation', run_id, exit_code, run_root)
         results.append(confirmation_result)

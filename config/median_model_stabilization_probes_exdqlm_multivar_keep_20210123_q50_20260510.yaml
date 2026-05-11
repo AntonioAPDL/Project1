@@ -1,0 +1,99 @@
+probe:
+  id: exdqlm_multivar_keep_20210123_q50_model_stabilization_20260510
+  description: >-
+    Median-only model-side stabilization screen for the 2021-01-23 exdqlm_multivar_keep
+    relaunch row. Inputs, discounts, epsilon, covariates, and bundle lineage stay fixed.
+    This screen targets the gamma/sigma update itself via bounded optimization, Hessian
+    regularization, and median-specific sigma-only fallback.
+base_generated_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_20260510/control/generated_configs/multimodel_20210123_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml
+artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_median_model_stabilization_probes_20260510
+screening:
+  quantile: 0.50
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  gamma_sigma:
+    min_update_iters: 10
+    min_total_iters: 20
+    max_iter: 30
+    stabilization:
+      median_state_guard_enabled: true
+      median_state_norm_max_ratio: 25
+      median_state_norm_abs_cap: 100000000.0
+      median_state_guard_refreeze_iters: 10
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 100.0
+    max_state_norm_sq: 100000000.0
+    min_gamsig_update_iters: 8
+    require_finite_conv_check: true
+probes:
+  - id: default_stabilized
+    description: Default model-side stabilization patch with bounded 2D optimization and median sigma fallback.
+    config_patch: {}
+  - id: tighter_gamma_bounds
+    description: Same patch with tighter gamma bounds.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            stabilization:
+              theta_gamma_lower: -8
+              theta_gamma_upper: 8
+  - id: stronger_hessian_ridge
+    description: Same patch with stronger Hessian regularization.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            stabilization:
+              hessian_ridge_init: 0.0001
+              hessian_ridge_multiplier: 10
+              hessian_ridge_max_tries: 10
+  - id: tighter_bounds_plus_ridge
+    description: Combined tighter transformed bounds and stronger Hessian ridge.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            stabilization:
+              theta_sigma_upper: 4.605170186
+              theta_gamma_lower: -8
+              theta_gamma_upper: 8
+              hessian_ridge_init: 0.0001
+              hessian_ridge_multiplier: 10
+              hessian_ridge_max_tries: 10
+confirmation:
+  enabled: true
+  gamma_sigma:
+    min_update_iters: 50
+    min_total_iters: 50
+    max_iter: 100
+    stabilization:
+      median_state_guard_enabled: true
+      median_state_norm_max_ratio: 25
+      median_state_norm_abs_cap: 100000000.0
+      median_state_guard_refreeze_iters: 10
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 100.0
+    max_state_norm_sq: 100000000.0
+    min_gamsig_update_iters: 50
+    require_finite_conv_check: true

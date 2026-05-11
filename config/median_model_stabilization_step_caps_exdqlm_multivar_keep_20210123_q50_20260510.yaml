@@ -1,0 +1,99 @@
+probe:
+  id: exdqlm_multivar_keep_20210123_q50_step_caps_20260510
+  description: >-
+    Median-only stabilization screen for the 2021-01-23 exdqlm_multivar_keep row,
+    holding the bounded optimization and Hessian regularization patch fixed while
+    tightening the median-specific gamma/log-sigma damping caps.
+base_generated_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_20260510/control/generated_configs/multimodel_20210123_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml
+artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_median_step_caps_probes_20260510
+screening:
+  quantile: 0.50
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  gamma_sigma:
+    min_update_iters: 10
+    min_total_iters: 20
+    max_iter: 30
+    stabilization:
+      median_state_guard_enabled: true
+      median_state_norm_max_ratio: 25
+      median_state_norm_abs_cap: 100000000.0
+      median_state_guard_refreeze_iters: 10
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 100.0
+    max_state_norm_sq: 100000000.0
+    min_gamsig_update_iters: 8
+    require_finite_conv_check: true
+probes:
+  - id: gamma015_sigma035
+    description: Moderate cap tightening.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            stabilization:
+              median_max_abs_gamma_step: 0.15
+              median_max_abs_log_sigma_step: 0.35
+  - id: gamma01_sigma025
+    description: Stronger cap tightening.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            stabilization:
+              median_max_abs_gamma_step: 0.10
+              median_max_abs_log_sigma_step: 0.25
+  - id: gamma0075_sigma02
+    description: Conservative median damping.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            stabilization:
+              median_max_abs_gamma_step: 0.075
+              median_max_abs_log_sigma_step: 0.20
+  - id: gamma005_sigma015
+    description: Very conservative median damping.
+    config_patch:
+      fit:
+        exdqlm_multivar:
+          gamma_sigma:
+            stabilization:
+              median_max_abs_gamma_step: 0.05
+              median_max_abs_log_sigma_step: 0.15
+confirmation:
+  enabled: true
+  gamma_sigma:
+    min_update_iters: 50
+    min_total_iters: 50
+    max_iter: 100
+    stabilization:
+      median_state_guard_enabled: true
+      median_state_norm_max_ratio: 25
+      median_state_norm_abs_cap: 100000000.0
+      median_state_guard_refreeze_iters: 10
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 100.0
+    max_state_norm_sq: 100000000.0
+    min_gamsig_update_iters: 50
+    require_finite_conv_check: true

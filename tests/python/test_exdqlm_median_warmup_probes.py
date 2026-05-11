@@ -1,5 +1,7 @@
 import importlib.util
+import tempfile
 import sys
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -14,6 +16,15 @@ spec.loader.exec_module(mod)
 
 
 class MedianWarmupProbeTests(unittest.TestCase):
+    def test_remove_tree_if_exists_removes_run_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'run_root'
+            (root / 'fit' / 'logs').mkdir(parents=True)
+            (root / 'fit' / 'logs' / 'fit.log').write_text('x', encoding='utf-8')
+            self.assertTrue(root.exists())
+            mod._remove_tree_if_exists(root)
+            self.assertFalse(root.exists())
+
     def test_prepare_config_single_quantile_and_fit_only(self):
         base_cfg = {
             'run': {'run_id': 'base', 'run_root': '/tmp/base', 'overwrite': False, 'auto_suffix_on_collision': False, 'threads': {'mc_cores': 7}},
@@ -77,6 +88,48 @@ class MedianWarmupProbeTests(unittest.TestCase):
             self.assertEqual(result.hessian_failures, 1)
             self.assertEqual(result.refreezes, 1)
             self.assertEqual(result.last_updates, 1)
+
+    def test_probe_id_filter_errors_when_missing(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            base_cfg = tmp_path / 'base.yaml'
+            base_cfg.write_text(
+                '\n'.join([
+                    'run: {run_id: base, run_root: /tmp/base_runs, overwrite: false, auto_suffix_on_collision: false, threads: {mc_cores: 1}}',
+                    'fit: {quantiles: [0.5], parallel: {mode: global_models, workers: 1}, exdqlm_multivar: {gamma_sigma: {}}}',
+                    'models: {run_exdqlm_multivar: true, run_exdqlm_univar: false, run_ndlm_main: false, run_ndlm_univar: false}',
+                    'stages: {data_prep_shared: true, fit: true, post: false, validate: false, report: false}',
+                ]),
+                encoding='utf-8',
+            )
+            cfg = tmp_path / 'probes.yaml'
+            cfg.write_text(
+                '\n'.join([
+                    'probe: {id: test, description: test}',
+                    f'base_generated_config: {base_cfg.as_posix()}',
+                    'artifact_root: /tmp/artifacts',
+                    'screening:',
+                    '  quantile: 0.5',
+                    '  stages: {data_prep_shared: true, fit: true}',
+                    '  fit_parallel_workers: 1',
+                    '  mc_cores: 1',
+                    '  gamma_sigma: {}',
+                    '  health_rules: {max_guard_events: 0, max_hessian_failures: 0, max_sigma_exp: 100.0, max_state_norm_sq: 100000000.0, min_gamsig_update_iters: 1, require_finite_conv_check: true}',
+                    'probes:',
+                    '  - {id: baseline, config_patch: {}}',
+                ]),
+                encoding='utf-8',
+            )
+            proc = subprocess.run(
+                ['python3', str(MODULE_PATH), '--config', str(cfg), '--probe-id', 'missing'],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn('No probes matched --probe-id values', proc.stderr + proc.stdout)
 
 
 if __name__ == '__main__':

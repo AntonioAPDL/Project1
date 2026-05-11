@@ -966,6 +966,56 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       )),
       DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
         gamsig_policy, c("objective_guard", "penalty"), default = 1e12
+      )),
+      DISC_GAMSIG_THETA_SIGMA_LOWER = as.character(unified_get(
+        gamsig_policy, c("stabilization", "theta_sigma_lower"), default = log(1e-4)
+      )),
+      DISC_GAMSIG_THETA_SIGMA_UPPER = as.character(unified_get(
+        gamsig_policy, c("stabilization", "theta_sigma_upper"), default = log(1e3)
+      )),
+      DISC_GAMSIG_THETA_GAMMA_LOWER = as.character(unified_get(
+        gamsig_policy, c("stabilization", "theta_gamma_lower"), default = qlogis(1e-6)
+      )),
+      DISC_GAMSIG_THETA_GAMMA_UPPER = as.character(unified_get(
+        gamsig_policy, c("stabilization", "theta_gamma_upper"), default = qlogis(1 - 1e-6)
+      )),
+      DISC_GAMSIG_HESSIAN_RIDGE_INIT = as.character(unified_get(
+        gamsig_policy, c("stabilization", "hessian_ridge_init"), default = 1e-6
+      )),
+      DISC_GAMSIG_HESSIAN_RIDGE_MULTIPLIER = as.character(unified_get(
+        gamsig_policy, c("stabilization", "hessian_ridge_multiplier"), default = 10
+      )),
+      DISC_GAMSIG_HESSIAN_RIDGE_MAX_TRIES = as.character(unified_get(
+        gamsig_policy, c("stabilization", "hessian_ridge_max_tries"), default = 8L
+      )),
+      DISC_GAMSIG_MEDIAN_SIGMA_ONLY_FALLBACK_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("stabilization", "median_sigma_only_fallback_enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_MEDIAN_SIGMA_ONLY_FALLBACK_TOL = as.character(unified_get(
+        gamsig_policy, c("stabilization", "median_sigma_only_fallback_tol"), default = 1e-8
+      )),
+      DISC_GAMSIG_MEDIAN_STEP_DAMPING_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("stabilization", "median_step_damping_enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_MEDIAN_MAX_ABS_GAMMA_STEP = as.character(unified_get(
+        gamsig_policy, c("stabilization", "median_max_abs_gamma_step"), default = 0.25
+      )),
+      DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP = as.character(unified_get(
+        gamsig_policy, c("stabilization", "median_max_abs_log_sigma_step"), default = 0.5
+      )),
+      DISC_GAMSIG_MEDIAN_STATE_GUARD_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("stabilization", "median_state_guard_enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_MEDIAN_STATE_NORM_MAX_RATIO = as.character(unified_get(
+        gamsig_policy, c("stabilization", "median_state_norm_max_ratio"), default = 25
+      )),
+      DISC_GAMSIG_MEDIAN_STATE_NORM_ABS_CAP = as.character(unified_get(
+        gamsig_policy, c("stabilization", "median_state_norm_abs_cap"), default = 1e8
+      )),
+      DISC_GAMSIG_MEDIAN_STATE_GUARD_REFREEZE_ITERS = as.character(unified_get(
+        gamsig_policy, c("stabilization", "median_state_guard_refreeze_iters"), default = unified_get(
+          gamsig_policy, c("guard_refreeze_iters"), default = 10L
+        )
       ))
     )
     cov_env_overrides <- c(
