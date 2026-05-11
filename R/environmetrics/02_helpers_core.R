@@ -115,6 +115,42 @@ daily_dates_for_matrix_cols <- function(mat, start_date, context = "dates.cols")
   daily_dates_for_n(start_date = start_date, n_days = ncol(mat), context = context)
 }
 
+post_default_quantile_labels <- function() {
+  c("05", "20", "35", "50", "65", "80", "95")
+}
+
+post_requested_quantile_labels <- function(
+  default = post_default_quantile_labels(),
+  env_key = "UNIFIED_FIT_QUANTILE_LABELS"
+) {
+  raw <- trimws(unlist(strsplit(Sys.getenv(env_key, ""), ",", fixed = TRUE), use.names = FALSE))
+  raw <- raw[nzchar(raw)]
+  if (length(raw) == 0L) {
+    return(as.character(default))
+  }
+
+  numeric_labels <- suppressWarnings(as.integer(round(as.numeric(raw))))
+  numeric_labels <- numeric_labels[is.finite(numeric_labels)]
+  if (length(numeric_labels) == 0L) {
+    return(as.character(default))
+  }
+
+  sprintf("%02d", sort(unique(as.integer(numeric_labels))))
+}
+
+post_requested_quantile_spec <- function(
+  default = post_default_quantile_labels(),
+  env_key = "UNIFIED_FIT_QUANTILE_LABELS"
+) {
+  labels <- post_requested_quantile_labels(default = default, env_key = env_key)
+  ints <- as.integer(labels)
+  list(
+    labels = labels,
+    tags = as.character(ints),
+    probs = as.numeric(ints) / 100
+  )
+}
+
 safe_exp_limit <- function(margin = 5) {
   margin <- suppressWarnings(as.numeric(margin[[1L]]))
   if (!is.finite(margin) || margin < 0) margin <- 5

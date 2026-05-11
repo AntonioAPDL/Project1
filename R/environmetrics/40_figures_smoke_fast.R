@@ -510,6 +510,19 @@ smoke_usgs_log1p_by_dates <- function(dates) {
   out
 }
 
+smoke_multivar_quantile_spec <- function() {
+  post_requested_quantile_spec()
+}
+
+smoke_multivar_required_object_names <- function(spec) {
+  c(
+    unlist(lapply(spec$tags, function(tag) sprintf("new.theta.out_%s_exAL_synth_DISC", tag)), use.names = FALSE),
+    unlist(lapply(spec$tags, function(tag) sprintf("samp.gamma_%s_exAL_synth_DISC", tag)), use.names = FALSE),
+    unlist(lapply(spec$tags, function(tag) sprintf("samp.sigma_%s_exAL_synth_DISC", tag)), use.names = FALSE),
+    c("ranges", "J", "FF_list", "p")
+  )
+}
+
 smoke_build_multivar_synth_f <- function() {
   multivar_meta <- smoke_multivar_meta()
   cache_path <- post_cache_path(post_cache_file_name(
@@ -535,33 +548,8 @@ smoke_build_multivar_synth_f <- function() {
     return(synth_cached)
   }
 
-  required_objs <- c(
-    "new.theta.out_5_exAL_synth_DISC",
-    "new.theta.out_20_exAL_synth_DISC",
-    "new.theta.out_35_exAL_synth_DISC",
-    "new.theta.out_50_exAL_synth_DISC",
-    "new.theta.out_65_exAL_synth_DISC",
-    "new.theta.out_80_exAL_synth_DISC",
-    "new.theta.out_95_exAL_synth_DISC",
-    "samp.gamma_5_exAL_synth_DISC",
-    "samp.gamma_20_exAL_synth_DISC",
-    "samp.gamma_35_exAL_synth_DISC",
-    "samp.gamma_50_exAL_synth_DISC",
-    "samp.gamma_65_exAL_synth_DISC",
-    "samp.gamma_80_exAL_synth_DISC",
-    "samp.gamma_95_exAL_synth_DISC",
-    "samp.sigma_5_exAL_synth_DISC",
-    "samp.sigma_20_exAL_synth_DISC",
-    "samp.sigma_35_exAL_synth_DISC",
-    "samp.sigma_50_exAL_synth_DISC",
-    "samp.sigma_65_exAL_synth_DISC",
-    "samp.sigma_80_exAL_synth_DISC",
-    "samp.sigma_95_exAL_synth_DISC",
-    "ranges",
-    "J",
-    "FF_list",
-    "p"
-  )
+  spec <- smoke_multivar_quantile_spec()
+  required_objs <- smoke_multivar_required_object_names(spec)
   missing_objs <- required_objs[!vapply(required_objs, exists, logical(1), inherits = TRUE)]
   if (length(missing_objs) > 0L) {
     warning(
@@ -574,34 +562,10 @@ smoke_build_multivar_synth_f <- function() {
     return(NULL)
   }
 
-  q_probs <- c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95)
-  theta_objs <- list(
-    get("new.theta.out_5_exAL_synth_DISC", inherits = TRUE),
-    get("new.theta.out_20_exAL_synth_DISC", inherits = TRUE),
-    get("new.theta.out_35_exAL_synth_DISC", inherits = TRUE),
-    get("new.theta.out_50_exAL_synth_DISC", inherits = TRUE),
-    get("new.theta.out_65_exAL_synth_DISC", inherits = TRUE),
-    get("new.theta.out_80_exAL_synth_DISC", inherits = TRUE),
-    get("new.theta.out_95_exAL_synth_DISC", inherits = TRUE)
-  )
-  gamma_mats <- list(
-    get("samp.gamma_5_exAL_synth_DISC", inherits = TRUE),
-    get("samp.gamma_20_exAL_synth_DISC", inherits = TRUE),
-    get("samp.gamma_35_exAL_synth_DISC", inherits = TRUE),
-    get("samp.gamma_50_exAL_synth_DISC", inherits = TRUE),
-    get("samp.gamma_65_exAL_synth_DISC", inherits = TRUE),
-    get("samp.gamma_80_exAL_synth_DISC", inherits = TRUE),
-    get("samp.gamma_95_exAL_synth_DISC", inherits = TRUE)
-  )
-  sigma_mats <- list(
-    get("samp.sigma_5_exAL_synth_DISC", inherits = TRUE),
-    get("samp.sigma_20_exAL_synth_DISC", inherits = TRUE),
-    get("samp.sigma_35_exAL_synth_DISC", inherits = TRUE),
-    get("samp.sigma_50_exAL_synth_DISC", inherits = TRUE),
-    get("samp.sigma_65_exAL_synth_DISC", inherits = TRUE),
-    get("samp.sigma_80_exAL_synth_DISC", inherits = TRUE),
-    get("samp.sigma_95_exAL_synth_DISC", inherits = TRUE)
-  )
+  q_probs <- spec$probs
+  theta_objs <- lapply(spec$tags, function(tag) get(sprintf("new.theta.out_%s_exAL_synth_DISC", tag), inherits = TRUE))
+  gamma_mats <- lapply(spec$tags, function(tag) get(sprintf("samp.gamma_%s_exAL_synth_DISC", tag), inherits = TRUE))
+  sigma_mats <- lapply(spec$tags, function(tag) get(sprintf("samp.sigma_%s_exAL_synth_DISC", tag), inherits = TRUE))
 
   n_samp <- min(vapply(gamma_mats, function(x) if (is.null(dim(x))) length(x) else dim(x)[2], integer(1)))
   if (!is.finite(n_samp) || n_samp <= 1L) {
@@ -614,7 +578,7 @@ smoke_build_multivar_synth_f <- function() {
     return(NULL)
   }
 
-  xbs <- array(NA_real_, c(7L, horizon, n_samp))
+  xbs <- array(NA_real_, c(length(q_probs), horizon, n_samp))
   ks <- -diff(c(as.integer(get("ranges", inherits = TRUE)), 0L))
   J_use <- min(
     suppressWarnings(as.integer(get("J", inherits = TRUE))),
@@ -667,7 +631,7 @@ smoke_build_multivar_synth_f <- function() {
     }
   }
 
-  y_reps_f_new <- array(NA_real_, c(7L, n_samp, horizon))
+  y_reps_f_new <- array(NA_real_, c(length(q_probs), n_samp, horizon))
   gamma_vecs <- lapply(gamma_mats, function(mat) as.numeric(mat[1L, seq_len(n_samp)]))
   sigma_vecs <- lapply(sigma_mats, function(mat) as.numeric(mat[1L, seq_len(n_samp)]))
 
@@ -951,9 +915,17 @@ smoke_build_multivar_hist_synth <- function() {
     ))
   }
 
-  q_tags <- c("5", "20", "35", "50", "65", "80", "95")
-  q_probs <- c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95)
-  required_objs <- c("FF")
+  spec <- smoke_multivar_quantile_spec()
+  q_tags <- spec$tags
+  q_probs <- spec$probs
+  required_objs <- c("FF", unlist(lapply(q_tags, function(tag) {
+    c(
+      sprintf("samp.theta_%s_exAL_synth_DISC", tag),
+      sprintf("samp.sts_%s_exAL_synth_DISC", tag),
+      sprintf("samp.gamma_%s_exAL_synth_DISC", tag),
+      sprintf("samp.sigma_%s_exAL_synth_DISC", tag)
+    )
+  }), use.names = FALSE))
   if (any(!vapply(required_objs, exists, logical(1), inherits = TRUE))) {
     return(NULL)
   }
@@ -1009,8 +981,9 @@ smoke_build_multivar_hist_synth <- function() {
 }
 
 smoke_build_multivar_gamma_sigma_quantiles <- function() {
-  q_tags <- c("5", "20", "35", "50", "65", "80", "95")
-  q_labels <- c("5th", "20th", "35th", "50th", "65th", "80th", "95th")
+  spec <- smoke_multivar_quantile_spec()
+  q_tags <- spec$tags
+  q_labels <- paste0(as.integer(spec$labels), "th")
   sources <- c("USGS", "GLOFAS", "NWS")
   rows <- list()
 
@@ -2215,7 +2188,7 @@ if (crps_exports_enabled && posterior_table_exports_enabled) {
 }
 
 profile_section("figures_smoke_fast.comparison_figures", {
-  q_probs_synth <- c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95)
+  q_probs_synth <- smoke_multivar_quantile_spec()$probs
   q_probs_ndlm <- c(0.05, 0.50, 0.95)
   secondary_multivar_keep_pass <- nzchar(crps_output_suffix)
 
