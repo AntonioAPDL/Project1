@@ -1,0 +1,28 @@
+selection:
+  cutoffs:
+    - '20210123'
+  families:
+    - exdqlm_multivar_keep
+  quantiles:
+    - 0.50
+
+resources:
+  fit_parallel_workers: 1
+  mc_cores: 1
+
+overrides:
+  row_config_patches:
+    - cutoff: '20210123'
+      family: exdqlm_multivar_keep
+      manuscript_label: exAL-M-T1
+      config_patch:
+        fit:
+          exdqlm_multivar:
+            gamma_sigma:
+              quantile_overrides:
+                q50:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5

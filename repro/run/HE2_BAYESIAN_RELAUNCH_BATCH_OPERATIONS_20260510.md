@@ -73,6 +73,18 @@ These overrides apply only to validator-generated temporary smoke configs. They 
 - the generated relaunch configs under `control/generated_configs`
 - the real queue launch settings
 
+For intentionally scoped batches, the validator now records smoke scopes as either:
+
+- `passed`
+- `skipped`
+
+A smoke scope is skipped only when the required model class is intentionally absent from the selected batch, for example:
+
+- NDLM smokes during a quantile-only sidecar probe
+- univariate quantile smokes during a multivariate-only sidecar probe
+
+Those skips are reported explicitly in the validation summary instead of being treated as launch blockers.
+
 ## Selection controls
 
 The builder, validator, and launcher all accept the same selection surface.

@@ -10,10 +10,26 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 
-from validate_he2_bayesian_publication_relaunch_prelaunch import _pick_row, write_temp_smoke_config
+from validate_he2_bayesian_publication_relaunch_prelaunch import _choose_smoke_row, _pick_row, write_temp_smoke_config
 
 
 class HE2PublicationRelaunchValidatorTests(unittest.TestCase):
+    def test_choose_smoke_row_returns_none_when_class_missing(self) -> None:
+        rows = [
+            {'family_id': 'exdqlm_multivar_keep', 'cutoff': '20210123', 'model_class': 'quantile_multivariate'},
+        ]
+        row = _choose_smoke_row(rows, preferred_family='ndlm_univar_keep', preferred_cutoff='20210123', class_name='ndlm')
+        self.assertIsNone(row)
+
+    def test_choose_smoke_row_falls_back_within_available_class_scope(self) -> None:
+        rows = [
+            {'family_id': 'ndlm_main_keep', 'cutoff': '20211112', 'model_class': 'ndlm'},
+            {'family_id': 'ndlm_univar_keep', 'cutoff': '20210123', 'model_class': 'ndlm'},
+        ]
+        row = _choose_smoke_row(rows, preferred_family='missing_ndlm', preferred_cutoff='20210123', class_name='ndlm')
+        self.assertEqual(row['family_id'], 'ndlm_univar_keep')
+        self.assertEqual(row['cutoff'], '20210123')
+
     def test_pick_row_supports_univariate_quantile_full_pipeline_selection(self) -> None:
         rows = [
             {'family_id': 'exdqlm_univar', 'cutoff': '20210123', 'model_class': 'quantile_univariate'},

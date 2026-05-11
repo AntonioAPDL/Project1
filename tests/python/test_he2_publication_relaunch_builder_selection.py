@@ -179,6 +179,82 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertTrue(payload['debug_he2_publication_relaunch']['config_patch_applied'])
         self.assertTrue(str(payload['debug_he2_publication_relaunch']['config_patch_source']).endswith('discount_probe.yaml'))
 
+    def test_batch_row_config_patch_can_apply_q50_gamma_sigma_override(self) -> None:
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_path = Path(tmpdir.name)
+        batch_path = tmp_path / 'median_q50_probe.yaml'
+        batch_path.write_text(
+            yaml.safe_dump(
+                {
+                    'selection': {
+                        'cutoffs': ['20210123'],
+                        'families': ['exdqlm_multivar_keep'],
+                        'quantiles': [0.50],
+                    },
+                    'resources': {
+                        'fit_parallel_workers': 1,
+                        'mc_cores': 1,
+                    },
+                    'overrides': {
+                        'row_config_patches': [
+                            {
+                                'cutoff': '20210123',
+                                'family': 'exdqlm_multivar_keep',
+                                'manuscript_label': 'exAL-M-T1',
+                                'config_patch': {
+                                    'fit': {
+                                        'exdqlm_multivar': {
+                                            'gamma_sigma': {
+                                                'quantile_overrides': {
+                                                    'q50': {
+                                                        'init': {
+                                                            'mode': 'robust',
+                                                            'gamma': 0.0,
+                                                            'sigma_floor': 0.01,
+                                                            'sigma_scale': 0.5,
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        ],
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding='utf-8',
+        )
+
+        proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(
+            '--batch-file', str(batch_path),
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+        with (matrix_dir / 'frozen_spec_manifest.csv').open('r', encoding='utf-8') as handle:
+            frozen_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(frozen_rows), 1)
+        self.assertEqual(frozen_rows[0]['active_quantiles'], '50')
+        self.assertEqual(frozen_rows[0]['fit_parallel_workers'], '1')
+        self.assertEqual(frozen_rows[0]['run_mc_cores'], '1')
+        self.assertEqual(frozen_rows[0]['config_patch_applied'], 'True')
+        self.assertTrue(frozen_rows[0]['config_patch_source'].endswith('median_q50_probe.yaml'))
+        self.assertIn('"sigma_scale": 0.5', frozen_rows[0]['config_patch_json'])
+
+        config_paths = list(config_output_dir.glob('*.yaml'))
+        self.assertEqual(len(config_paths), 1)
+        payload = yaml.safe_load(config_paths[0].read_text(encoding='utf-8')) or {}
+        override = payload['fit']['exdqlm_multivar']['gamma_sigma']['quantile_overrides']['q50']['init']
+        self.assertEqual(override['mode'], 'robust')
+        self.assertEqual(override['gamma'], 0.0)
+        self.assertEqual(override['sigma_floor'], 0.01)
+        self.assertEqual(override['sigma_scale'], 0.5)
+        self.assertEqual(payload['fit']['parallel']['workers'], 1)
+        self.assertEqual(payload['run']['threads']['mc_cores'], 1)
+
 
 if __name__ == '__main__':
     unittest.main()
