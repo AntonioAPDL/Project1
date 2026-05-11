@@ -109,3 +109,15 @@ Promote to the next step only if the production-path probe shows:
 ## Next step after success
 
 If this row completes cleanly, rerun the full `20210123 exdqlm_multivar_keep` family with all 7 quantiles, keeping the median override only on `q50`.
+
+
+## Follow-up probe: init + state hold
+
+After the first production-path `q50` probe, the median still triggered the state guard and then failed the forecast-health gate. The next scoped follow-up uses the same winning initialization plus state hold without blend:
+
+- batch recipe:
+  - `config/he2_relaunch_batches/20210123_exdqlm_multivar_keep_q50_median_init_hold_probe_20260511.yaml`
+- added `q50` stabilization override:
+  - `median_state_hold_after_guard_iters = 10`
+  - `median_state_blend_alpha = 1.0`
+  - `median_cov_blend_alpha = 1.0`
