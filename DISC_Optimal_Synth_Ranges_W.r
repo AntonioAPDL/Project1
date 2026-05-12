@@ -2644,6 +2644,174 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   flush.console()
 }
 
+disc_w_theta_payload_present <- function(theta_out) {
+  is.list(theta_out) &&
+    !is.null(theta_out$sm) &&
+    length(theta_out$sm) > 0L &&
+    !is.null(dim(theta_out$sm)) &&
+    !is.null(theta_out$sC) &&
+    length(theta_out$sC) > 0L &&
+    !is.null(dim(theta_out$sC)) &&
+    !is.null(theta_out$sm_ens) &&
+    is.list(theta_out$sm_ens) &&
+    length(theta_out$sm_ens) == J &&
+    all(vapply(theta_out$sm_ens, function(x) !is.null(x) && length(x) > 0L, logical(1)))
+}
+
+disc_w_materialize_theta_payload <- function(theta_out, context_label = "theta_seed") {
+  FFF_seed <- (new.gamsig.out$E.c.invb.absgam[,] * new.sts.out$E.sts + new.gamsig.out$E.a.invb.inv.sigma[,]/new.uts.out$E.inv.uts) / new.gamsig.out$E.invb.inv.sigma[,]
+  QQQ_seed <- 1/(new.gamsig.out$E.invb.inv.sigma[,] * new.uts.out$E.inv.uts)
+  if (J > 0) {
+    QQQ_seed <- array(apply(QQQ_seed, 2, function(col) diag(col)), dim = c(J + 1, J + 1, TT_sub))
+  } else {
+    QQQ_seed <- array(QQQ_seed, dim = c(J + 1, J + 1, TT_sub))
+  }
+
+  FFF_list_seed <- vector("list", J)
+  QQQ_list_seed <- vector("list", J)
+  for (j in seq_len(J)) {
+    FFF_list_seed[[j]] <- (new.gamsig.out$E.c.invb.absgam[j,] * new.sts.out_f$E.sts[[j]] +
+      new.gamsig.out$E.a.invb.inv.sigma[j,] / new.uts.out_f$E.inv.uts[[j]]) /
+      new.gamsig.out$E.invb.inv.sigma[j,]
+    QQQ_list_seed[[j]] <- 1/(new.gamsig.out$E.invb.inv.sigma[j,] * new.uts.out_f$E.inv.uts[[j]])
+  }
+
+  result_F_seed <- disc_w_concat_horizon_segments(FFF_list_seed, sprintf("FFF_seed %s", context_label))
+  FFF_forecast_seed <- lapply(result_F_seed, t)
+  result_Q_seed <- disc_w_concat_horizon_segments(QQQ_list_seed, sprintf("QQQ_seed %s", context_label))
+  QQQ_forecast_seed_vec <- lapply(result_Q_seed, t)
+  QQQ_forecast_seed <- vector("list", J)
+  for (j in seq_len(J)) {
+    n_q <- dim(QQQ_forecast_seed_vec[[j]])[1]
+    m_q <- dim(QQQ_forecast_seed_vec[[j]])[2]
+    arr_q <- array(0, dim = c(n_q, n_q, m_q))
+    for (k_q in seq_len(m_q)) {
+      arr_q[, , k_q] <- diag(QQQ_forecast_seed_vec[[j]][, k_q])
+    }
+    QQQ_forecast_seed[[j]] <- arr_q
+  }
+
+  if (isTRUE(DISC_STRICT_CONTRACTS)) {
+    disc_w_validate_cpp_contract(
+      GG = GG,
+      m0 = m0,
+      C0 = C0,
+      FF = FF,
+      y = y,
+      ex.df.mat = ex.df.mat,
+      ex.df.mat.k = ex.df.mat.k,
+      GG_list = GG_list,
+      FF_list = FF_list,
+      FFF_forecast = FFF_forecast_seed,
+      QQQ_forecast = QQQ_forecast_seed,
+      ensembles_forecast = ensembles_forecast,
+      cur.covs_list = new.covs_list,
+      num_mem = num_mem,
+      ranges = ranges,
+      p = p,
+      J = J,
+      ppx = ppx,
+      TT_sub = TT_sub,
+      context_label = sprintf("theta_seed %s", context_label)
+    )
+  }
+
+  update.theta.seed <- DISC_update_theta_synth_cpp_W(
+    GG, m0, C0,
+    FFF_seed, QQQ_seed,
+    FF, y, ex.df.mat, ex.df.mat.k, Ones,
+    p, J, ppx, TT, k, dM,
+    GG_list, FF_list,
+    FFF_forecast_seed, QQQ_forecast_seed,
+    DF.MAT, DF.MAT_k,
+    ensembles_forecast, ranges, Ones_ens,
+    sum(num_mem), num_mem, new.covs_list,
+    epsilon
+  )
+
+  FF_t_seed <- aperm(FF, c(2, 1, 3))
+  result_list_seed <- lapply(seq_len(ncol(update.theta.seed$sm)), function(slice_index) {
+    FF_t_seed[, , slice_index] %*% update.theta.seed$sm[, slice_index]
+  })
+  result_array_seed <- array(unlist(result_list_seed), dim = c(J + 1, 1, ncol(update.theta.seed$sm)))
+  result_array_seed <- aperm(result_array_seed, c(1, 3, 2))[, , 1]
+  exps_seed <- result_array_seed
+
+  result_list_var_seed <- lapply(seq_len(dim(FF)[3]), function(t_idx) {
+    FF_slice <- FF[, , t_idx]
+    t(FF_slice) %*% update.theta.seed$sC[, , t_idx] %*% FF_slice
+  })
+  vars_1_seed <- simplify2array(result_list_var_seed)
+  vars_seed <- apply(vars_1_seed, 3, function(x) diag(x))
+  exps2_seed <- exps_seed^2 + vars_seed
+
+  rs_seed <- 0
+  for (j in seq_len(J)) {
+    dims_seed <- p * (J + 1)
+    r_j_seed <- length(update.theta.seed$sm_ens[[j]])/(dims_seed - p * (j - 1))
+    rs_seed <- r_j_seed + rs_seed
+    fm_j_seed <- matrix(update.theta.seed$fm_ens[[j]], nrow = (dims_seed - p * (j - 1)))
+    sm_j_seed <- matrix(update.theta.seed$sm_ens[[j]], nrow = (dims_seed - p * (j - 1)))
+    fC_j_seed <- array(update.theta.seed$fC_ens[[j]], c((dims_seed - p * (j - 1)), (dims_seed - p * (j - 1)), r_j_seed))
+    sC_j_seed <- array(update.theta.seed$sC_ens[[j]], c((dims_seed - p * (j - 1)), (dims_seed - p * (j - 1)), r_j_seed))
+
+    FF_synth_seed <- FF_list[[j]]
+    exps_ens_seed <- t(FF_synth_seed) %*% sm_j_seed
+    vars_ens_seed_arr <- simplify2array(lapply(seq_len(r_j_seed), function(t_idx) {
+      t(FF_synth_seed) %*% sC_j_seed[, , t_idx] %*% FF_synth_seed
+    }))
+    if (j == J) {
+      vars_ens_seed <- vars_ens_seed_arr
+    } else {
+      vars_ens_seed <- apply(vars_ens_seed_arr, 3, function(x) diag(x))
+    }
+    exps2_ens_seed <- exps_ens_seed^2 + vars_ens_seed
+
+    theta_out$exps[2:(J - j + 2), (TT + 1 + rs_seed - r_j_seed):(TT + rs_seed)] <- exps_ens_seed
+    theta_out$exps2[2:(J - j + 2), (TT + 1 + rs_seed - r_j_seed):(TT + rs_seed)] <- exps2_ens_seed
+    theta_out$sm_ens[[j]] <- sm_j_seed
+    theta_out$sC_ens[[j]] <- sC_j_seed
+    theta_out$fm_ens[[j]] <- fm_j_seed
+    theta_out$fC_ens[[j]] <- fC_j_seed
+    theta_out$standard_forecast_errors_ens[[j]] <- matrix(
+      update.theta.seed$standard_forecast_errors_ens[[j]],
+      nrow = cumsum(num_mem)[J - j + 1]
+    )
+  }
+
+  theta_out$exps[, 1:TT] <- exps_seed
+  theta_out$exps2[, 1:TT] <- exps2_seed
+  theta_out$standard_forecast_errors <- update.theta.seed$standard_forecast_errors
+  theta_out$sm <- update.theta.seed$sm
+  theta_out$sC <- update.theta.seed$sC
+  theta_out$fm <- update.theta.seed$fm
+  theta_out$fC <- update.theta.seed$fC
+  theta_out$elbo.part <- update.theta.seed$elbo.part
+  theta_out$elbo.part_ens <- update.theta.seed$elbo.part_ens
+  theta_out$W_T <- update.theta.seed$W_T
+
+  if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+    cat(sprintf(
+      "[theta_seed] p0=%s context=%s sm_dim=%s sC_dim=%s\n",
+      as.character(p0),
+      context_label,
+      paste(dim(theta_out$sm), collapse = "x"),
+      paste(dim(theta_out$sC), collapse = "x")
+    ))
+    flush.console()
+  }
+
+  theta_out
+}
+
+if (identical(DISC_GAMSIG_FREEZE_TARGET, "states") &&
+    !disc_w_theta_payload_present(new.theta.out)) {
+  new.theta.out <- disc_w_materialize_theta_payload(
+    new.theta.out,
+    context_label = "initial_state_freeze_seed"
+  )
+}
+
   
 while (isTRUE(FLAG) && iter < max_iter) {
 
