@@ -2804,12 +2804,38 @@ disc_w_materialize_theta_payload <- function(theta_out, context_label = "theta_s
   theta_out
 }
 
-if (identical(DISC_GAMSIG_FREEZE_TARGET, "states") &&
-    !disc_w_theta_payload_present(new.theta.out)) {
-  new.theta.out <- disc_w_materialize_theta_payload(
-    new.theta.out,
-    context_label = "initial_state_freeze_seed"
-  )
+if (identical(DISC_GAMSIG_FREEZE_TARGET, "states")) {
+  theta_seed_needed <- !disc_w_theta_payload_present(new.theta.out)
+  if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+    cat(sprintf(
+      "[theta_seed_check] p0=%s needed=%s before_sm=%s before_sC=%s\n",
+      as.character(p0),
+      ifelse(theta_seed_needed, "true", "false"),
+      ifelse(is.null(new.theta.out$sm), "NULL", paste(dim(new.theta.out$sm), collapse = "x")),
+      ifelse(is.null(new.theta.out$sC), "NULL", paste(dim(new.theta.out$sC), collapse = "x"))
+    ))
+    flush.console()
+  }
+  if (theta_seed_needed) {
+    new.theta.out <- disc_w_materialize_theta_payload(
+      new.theta.out,
+      context_label = "initial_state_freeze_seed"
+    )
+  }
+  theta_seed_ready <- disc_w_theta_payload_present(new.theta.out)
+  if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+    cat(sprintf(
+      "[theta_seed_check] p0=%s ready=%s after_sm=%s after_sC=%s\n",
+      as.character(p0),
+      ifelse(theta_seed_ready, "true", "false"),
+      ifelse(is.null(new.theta.out$sm), "NULL", paste(dim(new.theta.out$sm), collapse = "x")),
+      ifelse(is.null(new.theta.out$sC), "NULL", paste(dim(new.theta.out$sC), collapse = "x"))
+    ))
+    flush.console()
+  }
+  if (!theta_seed_ready) {
+    stop(sprintf("state-freeze theta seed failed for p0=%s", as.character(p0)), call. = FALSE)
+  }
 }
 
   
