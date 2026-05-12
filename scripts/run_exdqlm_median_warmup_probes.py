@@ -329,7 +329,7 @@ def _remove_tree_if_exists(path: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='Run standalone exdqlm median warmup probes.')
+    parser = argparse.ArgumentParser(description='Run standalone exdqlm quantile stabilization probes.')
     parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
     parser.add_argument('--probe-id', action='append', default=[])
     parser.add_argument('--skip-existing', action='store_true')

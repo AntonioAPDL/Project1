@@ -1,0 +1,275 @@
+campaign:
+  id: exdqlm_multivar_keep_20210123_q35_parallel_20260512
+  description: >-
+    Sidecar-only parallel stabilization campaign for the unresolved
+    `exdqlm_multivar_keep` quantile `q=0.35` at cutoff `2021-01-23`. This
+    campaign keeps the shared bundle, discounts, epsilon, covariates, and
+    canonical GDPC lineage fixed while screening q35-specific initialization,
+    damping, bound, and hold policies under bounded one-core probe runs.
+base_generated_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20210123_tail_probe_20260511/control/generated_configs/multimodel_20210123_v8_he2pubgdpc1r1tail_exdqlm_multivar_keep.yaml
+artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_q35_parallel_campaign_20260512
+execution:
+  concurrency: 4
+screening:
+  quantile: 0.35
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  gamma_sigma:
+    min_update_iters: 5
+    min_total_iters: 10
+    max_iter: 10
+    stabilization:
+      median_sigma_only_fallback_enabled: true
+      median_sigma_only_fallback_tol: 1.0e-08
+      median_step_damping_enabled: true
+      median_state_guard_enabled: true
+      median_state_norm_max_ratio: 25
+      median_state_norm_abs_cap: 100000000.0
+      median_state_guard_refreeze_iters: 10
+      median_state_hold_after_guard_iters: 0
+      median_state_blend_alpha: 1.0
+      median_cov_blend_alpha: 1.0
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 100.0
+    max_state_norm_sq: 100000000.0
+    min_gamsig_update_iters: 5
+    require_finite_conv_check: true
+waves:
+  - id: wave1_anchors_and_scales
+    description: Anchor current failures and screen the most plausible q35 sigma-scale / floor combinations.
+    probes:
+      - id: current_midscale_anchor
+        batch: anchors
+        description: Current q35 midscale fallback anchor for direct comparison.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.001
+                  sigma_scale: 0.75
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+                  median_state_blend_alpha: 1.0
+                  median_cov_blend_alpha: 1.0
+      - id: copied_q50_anchor
+        batch: anchors
+        description: Copied q50 rescue policy anchor known to fail for q35.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.5
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+                  median_state_blend_alpha: 1.0
+                  median_cov_blend_alpha: 1.0
+      - id: scale060_floor1e3_hold10
+        batch: scale_floor
+        description: Smaller sigma scale with the established 1e-3 floor.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.001
+                  sigma_scale: 0.60
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+      - id: scale060_floor5e4_hold10
+        batch: scale_floor
+        description: Smaller sigma scale with a lower 5e-4 floor.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+      - id: scale070_floor5e4_hold10
+        batch: scale_floor
+        description: Moderate sigma scale with a lower 5e-4 floor.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.70
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+      - id: scale085_floor1e3_hold10
+        batch: scale_floor
+        description: Slightly relaxed sigma scale above the failed midscale anchor.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.001
+                  sigma_scale: 0.85
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+  - id: wave2_damping
+    description: Tighten the q35 sigma/gamma step geometry without changing the overall bundle contract.
+    probes:
+      - id: scale060_floor1e3_step025
+        batch: damping
+        description: Moderate sigma scale with tighter exact-step damping.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.001
+                  sigma_scale: 0.60
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+                  median_max_abs_gamma_step: 0.15
+                  median_max_abs_log_sigma_step: 0.25
+      - id: scale070_floor1e3_step025
+        batch: damping
+        description: Mid sigma scale with tighter exact-step damping.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.001
+                  sigma_scale: 0.70
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+                  median_max_abs_gamma_step: 0.15
+                  median_max_abs_log_sigma_step: 0.25
+      - id: scale060_floor5e4_step020
+        batch: damping
+        description: Smaller scale, lower floor, and stronger sigma-step damping.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+                  median_max_abs_gamma_step: 0.15
+                  median_max_abs_log_sigma_step: 0.20
+      - id: scale070_floor5e4_step020
+        batch: damping
+        description: Moderate scale, lower floor, and stronger sigma-step damping.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.70
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+                  median_max_abs_gamma_step: 0.15
+                  median_max_abs_log_sigma_step: 0.20
+  - id: wave3_bounds_and_holds
+    description: Add tighter transformed bounds and longer state holds after the first q35-specific failure modes.
+    probes:
+      - id: scale060_floor1e3_step025_hold20
+        batch: hold
+        description: Moderate scale with tighter damping and a longer 20-iteration hold.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.001
+                  sigma_scale: 0.60
+                stabilization:
+                  median_state_hold_after_guard_iters: 20
+                  median_max_abs_gamma_step: 0.15
+                  median_max_abs_log_sigma_step: 0.25
+      - id: scale070_floor1e3_step025_hold20
+        batch: hold
+        description: Mid scale with tighter damping and a longer 20-iteration hold.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.001
+                  sigma_scale: 0.70
+                stabilization:
+                  median_state_hold_after_guard_iters: 20
+                  median_max_abs_gamma_step: 0.15
+                  median_max_abs_log_sigma_step: 0.25
+      - id: scale060_floor5e4_step025_thetaUpper55
+        batch: bounds
+        description: Lower floor with tighter sigma upper bound to limit explosive variance proposals.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+                  median_max_abs_gamma_step: 0.15
+                  median_max_abs_log_sigma_step: 0.25
+                  theta_sigma_upper: 5.5
+      - id: scale060_floor5e4_step015_thetaUpper45
+        batch: bounds
+        description: Strongest q35 rescue candidate with lower floor, tighter damping, and a much tighter sigma upper bound.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  median_state_hold_after_guard_iters: 10
+                  median_max_abs_gamma_step: 0.10
+                  median_max_abs_log_sigma_step: 0.15
+                  theta_sigma_upper: 4.5
+      - id: freeze8_scale060_floor5e4_step020_hold20
+        batch: geometry
+        description: Longer warmup freeze layered on the strongest moderate-damping candidate.
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                warmup_freeze_iters: 8
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  median_state_hold_after_guard_iters: 20
+                  median_max_abs_gamma_step: 0.15
+                  median_max_abs_log_sigma_step: 0.20

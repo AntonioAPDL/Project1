@@ -307,7 +307,7 @@ def _run_probe_task(task: ProbeTask, config_path: Path, artifact_root: Path, wor
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='Run sidecar overnight median exAL stabilization campaign.')
+    parser = argparse.ArgumentParser(description='Run sidecar exdqlm quantile stabilization campaign.')
     parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--skip-existing', action='store_true')
