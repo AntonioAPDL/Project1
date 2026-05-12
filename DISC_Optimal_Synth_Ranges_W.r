@@ -2315,10 +2315,15 @@ crit_state_norm_sq <- Inf
 crit_sigma_exp <- Inf
 crit_gamma_exp <- Inf
 fmt_iter_num <- function(x, digits = 8L) {
-  if (!is.finite(x)) {
+  xx <- suppressWarnings(as.numeric(x))
+  if (length(xx) < 1L) {
     return("NA")
   }
-  format(signif(as.numeric(x), digits = as.integer(digits)), trim = TRUE, scientific = FALSE)
+  x_val <- xx[[1L]]
+  if (!is.finite(x_val)) {
+    return("NA")
+  }
+  format(signif(x_val, digits = as.integer(digits)), trim = TRUE, scientific = FALSE)
 }
 fmt_iter_vec <- function(x, digits = 8L) {
   xx <- as.numeric(x)

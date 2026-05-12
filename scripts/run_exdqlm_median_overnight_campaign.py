@@ -18,6 +18,20 @@ from he2_publication_relaunch_lib import ensure_dir, load_yaml, write_yaml
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / 'config' / 'median_overnight_campaign_exdqlm_multivar_keep_20210123_q50_20260511.yaml'
 PROBE_RUNNER = ROOT / 'scripts' / 'run_exdqlm_median_warmup_probes.py'
+MEDIAN_ONLY_STABILIZATION_KEYS = {
+    'median_sigma_only_fallback_enabled',
+    'median_sigma_only_fallback_tol',
+    'median_step_damping_enabled',
+    'median_max_abs_gamma_step',
+    'median_max_abs_log_sigma_step',
+    'median_state_guard_enabled',
+    'median_state_norm_max_ratio',
+    'median_state_norm_abs_cap',
+    'median_state_guard_refreeze_iters',
+    'median_state_hold_after_guard_iters',
+    'median_state_blend_alpha',
+    'median_cov_blend_alpha',
+}
 
 
 @dataclass(frozen=True)
@@ -30,6 +44,58 @@ class ProbeTask:
     config_patch: dict[str, Any]
     screening_patch: dict[str, Any]
     tags: list[str]
+
+
+def _collect_key_paths(value: Any, target_keys: set[str], prefix: tuple[str, ...] = ()) -> list[tuple[str, ...]]:
+    matches: list[tuple[str, ...]] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            key_str = str(key)
+            child_prefix = prefix + (key_str,)
+            if key_str in target_keys:
+                matches.append(child_prefix)
+            matches.extend(_collect_key_paths(child, target_keys, child_prefix))
+    elif isinstance(value, list):
+        for idx, child in enumerate(value):
+            matches.extend(_collect_key_paths(child, target_keys, prefix + (str(idx),)))
+    return matches
+
+
+def _is_median_quantile(quantile: Any) -> bool:
+    try:
+        q = float(quantile)
+    except (TypeError, ValueError):
+        return False
+    return abs(q - 0.5) <= 1e-8
+
+
+def _collect_noop_warnings(campaign_cfg: dict[str, Any], tasks: list[ProbeTask]) -> list[dict[str, Any]]:
+    screening_quantile = campaign_cfg.get('screening', {}).get('quantile')
+    if _is_median_quantile(screening_quantile):
+        return []
+    warnings: list[dict[str, Any]] = []
+    for task in tasks:
+        matched_paths: list[str] = []
+        for patch_name, patch in (
+            ('config_patch', task.config_patch),
+            ('screening_patch', task.screening_patch),
+        ):
+            for path in _collect_key_paths(patch, MEDIAN_ONLY_STABILIZATION_KEYS):
+                matched_paths.append(f"{patch_name}:{'.'.join(path)}")
+        if matched_paths:
+            warnings.append(
+                {
+                    'wave_id': task.wave_id,
+                    'probe_id': task.probe_id,
+                    'quantile': screening_quantile,
+                    'message': (
+                        'Non-median screening quantile uses median-only stabilization keys; '
+                        'those knobs are no-ops outside q=0.50.'
+                    ),
+                    'paths': matched_paths,
+                }
+            )
+    return warnings
 
 
 def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
@@ -280,6 +346,30 @@ def _write_reports(campaign_cfg: dict[str, Any], tasks: list[ProbeTask], results
     (reports_root / 'MORNING_SUMMARY.md').write_text('\n'.join(md_lines) + '\n', encoding='utf-8')
 
 
+def _write_warnings(reports_root: Path, warnings: list[dict[str, Any]]) -> None:
+    ensure_dir(reports_root)
+    (reports_root / 'campaign_warnings.json').write_text(json.dumps(warnings, indent=2), encoding='utf-8')
+    md_lines = [
+        '# Campaign Warnings',
+        '',
+    ]
+    if not warnings:
+        md_lines.append('No campaign-level warnings detected.')
+    else:
+        md_lines += [
+            'The following probes patch keys that the current screening quantile will ignore.',
+            '',
+            '| Wave | Probe | Quantile | Paths | Message |',
+            '|---|---|---:|---|---|',
+        ]
+        for item in warnings:
+            md_lines.append(
+                f"| `{item['wave_id']}` | `{item['probe_id']}` | `{item['quantile']}` | "
+                f"`{', '.join(item['paths'])}` | {item['message']} |"
+            )
+    (reports_root / 'campaign_warnings.md').write_text('\n'.join(md_lines) + '\n', encoding='utf-8')
+
+
 def _run_probe_task(task: ProbeTask, config_path: Path, artifact_root: Path, worker_log_path: Path, skip_existing: bool) -> dict[str, Any]:
     ensure_dir(worker_log_path.parent)
     cmd = ['python3', str(PROBE_RUNNER), '--config', str(config_path)]
@@ -339,6 +429,15 @@ def main() -> int:
     concurrency = int(args.concurrency or execution_cfg.get('concurrency', 24))
     if concurrency < 1:
         raise SystemExit('Concurrency must be >= 1')
+    warnings = _collect_noop_warnings(campaign_cfg, tasks)
+    if warnings:
+        for item in warnings:
+            sys.stderr.write(
+                '[campaign_warning] '
+                f"wave={item['wave_id']} probe={item['probe_id']} quantile={item['quantile']} "
+                f"paths={','.join(item['paths'])} message={item['message']}\n"
+            )
+        sys.stderr.flush()
 
     generated_entries: list[dict[str, Any]] = []
     plan_rows: list[dict[str, Any]] = []
@@ -367,6 +466,7 @@ def main() -> int:
     _write_csv(reports_root / 'campaign_plan.csv', plan_rows)
     (reports_root / 'campaign_plan.json').write_text(json.dumps(plan_rows, indent=2), encoding='utf-8')
     (control_root / 'generated_single_probe_configs.json').write_text(json.dumps(generated_entries, indent=2), encoding='utf-8')
+    _write_warnings(reports_root, warnings)
 
     progress_state = {
         'campaign_id': str(campaign_cfg['campaign']['id']),

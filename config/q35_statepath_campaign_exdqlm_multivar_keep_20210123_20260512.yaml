@@ -1,0 +1,429 @@
+campaign:
+  id: exdqlm_multivar_keep_20210123_q35_statepath_20260512
+  description: >-
+    Sidecar-only state-path stabilization campaign for the unresolved
+    `exdqlm_multivar_keep` quantile `q=0.35` at cutoff `2021-01-23`.
+    This campaign keeps the shared bundle, discounts, epsilon, covariates,
+    and canonical GDPC lineage fixed while screening only q35-applicable
+    early-path controls: freeze target, freeze duration, initialization scale,
+    tighter transformed sigma bounds, and stronger Hessian ridge settings.
+base_generated_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20210123_tail_probe_20260511/control/generated_configs/multimodel_20210123_v8_he2pubgdpc1r1tail_exdqlm_multivar_keep.yaml
+artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_q35_statepath_campaign_20260512
+execution:
+  concurrency: 6
+screening:
+  quantile: 0.35
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  gamma_sigma:
+    freeze_target: gamma_sigma
+    warmup_freeze_iters: 5
+    min_update_iters: 5
+    min_total_iters: 10
+    max_iter: 14
+    objective_guard:
+      enabled: true
+      fail_fast: false
+      log_failures: true
+      mode: adaptive_freeze
+      penalty: 1.0e12
+    stabilization:
+      theta_sigma_lower: -9.210340371976182
+      theta_sigma_upper: 6.907755278982137
+      theta_gamma_lower: -13.815509557963773
+      theta_gamma_upper: 13.815509557935018
+      hessian_ridge_init: 1.0e-06
+      hessian_ridge_multiplier: 10.0
+      hessian_ridge_max_tries: 8
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 100.0
+    max_state_norm_sq: 100000000.0
+    min_gamsig_update_iters: 5
+    require_finite_conv_check: true
+confirmation:
+  enabled: true
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  gamma_sigma:
+    min_update_iters: 10
+    min_total_iters: 15
+    max_iter: 25
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 100.0
+    max_state_norm_sq: 100000000.0
+    min_gamsig_update_iters: 10
+    require_finite_conv_check: true
+waves:
+  - id: wave1_state_freeze
+    description: >-
+      Freeze latent states early so gamma/sigma can adapt before the q35 state
+      path has a chance to explode.
+    probes:
+      - id: sfreeze2_scale050_floor1e2
+        batch: state_freeze
+        description: State freeze for 2 iterations with the q20/q50 winning init scale.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 2
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: sfreeze3_scale050_floor1e2
+        batch: state_freeze
+        description: State freeze for 3 iterations with the q20/q50 winning init scale.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 3
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: sfreeze5_scale050_floor1e2
+        batch: state_freeze
+        description: State freeze for 5 iterations with the q20/q50 winning init scale.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 5
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: sfreeze5_scale060_floor1e3
+        batch: state_freeze
+        description: State freeze for 5 iterations with a slightly looser q35 init.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 5
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.001
+                  sigma_scale: 0.60
+      - id: sfreeze8_scale050_floor1e2
+        batch: state_freeze
+        description: Longer state freeze to let gamma/sigma settle before state updates resume.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: sfreeze8_scale060_floor5e4
+        batch: state_freeze
+        description: Longer state freeze with a lower sigma floor and moderate scale.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+
+  - id: wave2_short_gamma_freeze
+    description: >-
+      Shorten or remove the default gamma/sigma freeze so q35 can update before
+      the latent state path diverges.
+    probes:
+      - id: gfreeze0_scale050_floor1e2
+        batch: short_gamma_freeze
+        description: No gamma/sigma warmup freeze with the q20/q50 winning init scale.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: gamma_sigma
+            warmup_freeze_iters: 0
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: gfreeze1_scale050_floor1e2
+        batch: short_gamma_freeze
+        description: One-iteration gamma/sigma freeze with the q20/q50 winning init scale.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: gamma_sigma
+            warmup_freeze_iters: 1
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: gfreeze2_scale050_floor1e2
+        batch: short_gamma_freeze
+        description: Two-iteration gamma/sigma freeze with the q20/q50 winning init scale.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: gamma_sigma
+            warmup_freeze_iters: 2
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: gfreeze0_scale060_floor1e3
+        batch: short_gamma_freeze
+        description: No gamma/sigma freeze with a looser q35-oriented init.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: gamma_sigma
+            warmup_freeze_iters: 0
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.001
+                  sigma_scale: 0.60
+      - id: gfreeze1_scale060_floor1e3
+        batch: short_gamma_freeze
+        description: One-iteration gamma/sigma freeze with a looser q35-oriented init.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: gamma_sigma
+            warmup_freeze_iters: 1
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.001
+                  sigma_scale: 0.60
+      - id: gfreeze2_scale060_floor5e4
+        batch: short_gamma_freeze
+        description: Two-iteration gamma/sigma freeze with lower sigma floor and moderate scale.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: gamma_sigma
+            warmup_freeze_iters: 2
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+
+  - id: wave3_state_freeze_bounds
+    description: >-
+      Combine state-freeze warmup with tighter global sigma bounds and stronger
+      Hessian ridge to make the first q35 updates much harder to destabilize.
+    probes:
+      - id: sfreeze3_scale050_floor1e2_thetaUpper35_ridge1e4
+        batch: state_freeze_bounds
+        description: State freeze for 3 iterations with sigma upper bound exp(3.5) and stronger ridge.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 3
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  theta_sigma_upper: 3.5
+                  hessian_ridge_init: 0.0001
+                  hessian_ridge_max_tries: 10
+      - id: sfreeze5_scale050_floor1e2_thetaUpper30_ridge1e3
+        batch: state_freeze_bounds
+        description: State freeze for 5 iterations with tighter sigma upper bound exp(3.0).
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 5
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  theta_sigma_upper: 3.0
+                  hessian_ridge_init: 0.001
+                  hessian_ridge_max_tries: 10
+      - id: sfreeze3_scale060_floor5e4_thetaUpper35_ridge1e3
+        batch: state_freeze_bounds
+        description: State freeze for 3 iterations with lower floor, moderate scale, and tighter sigma upper bound.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 3
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  theta_sigma_upper: 3.5
+                  hessian_ridge_init: 0.001
+                  hessian_ridge_max_tries: 10
+      - id: sfreeze5_scale060_floor5e4_thetaUpper30_ridge1e3
+        batch: state_freeze_bounds
+        description: State freeze for 5 iterations with the strongest state-freeze sigma cap.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 5
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  theta_sigma_upper: 3.0
+                  hessian_ridge_init: 0.001
+                  hessian_ridge_max_tries: 10
+
+  - id: wave4_short_gamma_bounds
+    description: >-
+      Pair very short gamma/sigma freezes with tighter sigma caps so q35 can
+      update immediately without letting variance proposals explode.
+    probes:
+      - id: gfreeze0_scale050_floor1e2_thetaUpper35_ridge1e4
+        batch: short_gamma_bounds
+        description: No gamma/sigma freeze, q20/q50 init, sigma upper bound exp(3.5), stronger ridge.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: gamma_sigma
+            warmup_freeze_iters: 0
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  theta_sigma_upper: 3.5
+                  hessian_ridge_init: 0.0001
+                  hessian_ridge_max_tries: 10
+      - id: gfreeze1_scale050_floor1e2_thetaUpper30_ridge1e3
+        batch: short_gamma_bounds
+        description: One-iteration gamma/sigma freeze with the tighter exp(3.0) sigma cap.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: gamma_sigma
+            warmup_freeze_iters: 1
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  theta_sigma_upper: 3.0
+                  hessian_ridge_init: 0.001
+                  hessian_ridge_max_tries: 10
+      - id: gfreeze0_scale060_floor5e4_thetaUpper35_ridge1e3
+        batch: short_gamma_bounds
+        description: No gamma/sigma freeze, lower floor, moderate scale, sigma upper bound exp(3.5).
+        screening_patch:
+          gamma_sigma:
+            freeze_target: gamma_sigma
+            warmup_freeze_iters: 0
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  theta_sigma_upper: 3.5
+                  hessian_ridge_init: 0.001
+                  hessian_ridge_max_tries: 10
+      - id: gfreeze1_scale060_floor5e4_thetaUpper30_ridge1e3
+        batch: short_gamma_bounds
+        description: One-iteration gamma/sigma freeze with lower floor, moderate scale, and strong sigma cap.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: gamma_sigma
+            warmup_freeze_iters: 1
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  theta_sigma_upper: 3.0
+                  hessian_ridge_init: 0.001
+                  hessian_ridge_max_tries: 10
