@@ -16,6 +16,26 @@ spec.loader.exec_module(mod)
 
 
 class MedianWarmupProbeTests(unittest.TestCase):
+    def test_parse_health_file_extracts_numeric_metrics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'multivar_forecast_health.txt'
+            path.write_text(
+                '\n'.join([
+                    'max_abs_sm_ens=3.5',
+                    'nonfinite_sm_ens=0',
+                    'max_abs_forecast_exps=9.1',
+                    'finite_forecast_exps=36',
+                    'nonfinite_forecast_exps=48',
+                    'max_E_sigma=0.37',
+                ]),
+                encoding='utf-8',
+            )
+            metrics = mod._parse_health_file(path)
+        self.assertEqual(metrics['nonfinite_sm_ens'], 0)
+        self.assertEqual(metrics['finite_forecast_exps'], 36)
+        self.assertEqual(metrics['nonfinite_forecast_exps'], 48)
+        self.assertAlmostEqual(metrics['max_E_sigma'], 0.37)
+
     def test_remove_tree_if_exists_removes_run_root(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / 'run_root'
@@ -82,12 +102,63 @@ class MedianWarmupProbeTests(unittest.TestCase):
                 'run1',
                 0,
                 tmp_path,
+                0.5,
             )
             self.assertFalse(result.healthy)
             self.assertEqual(result.guard_events, 1)
             self.assertEqual(result.hessian_failures, 1)
             self.assertEqual(result.refreezes, 1)
             self.assertEqual(result.last_updates, 1)
+
+    def test_analyze_log_uses_forecast_health_rules(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            run_root = tmp_path / 'runs' / 'demo'
+            q_dir = run_root / 'fit' / 'exdqlm_multivar' / 'keep' / 'q=35'
+            (q_dir / 'logs').mkdir(parents=True)
+            (q_dir / 'outputs').mkdir(parents=True)
+            log = q_dir / 'logs' / 'fit.log'
+            log.write_text(
+                '[gamsig_progress] family=exdqlm_multivar p0=0.35 iter=18 elbo=-1 crit_elbo=0.1 sigma_exp=3.08 crit_sigma_exp=0.001 gamma_exp=-0.53 crit_gamma_exp=0.001 sigma_exp_vec=[1,2,3] gamma_exp_vec=[0,0,0] sigma_delta_vec=[0,0,0] gamma_delta_vec=[0,0,0] state_norm_sq=294797.2 crit_state_norm_sq=0 conv_check=0.00002 gamsig_update_iters=17 min_update_iters=6 min_total_iters=12 frozen=false\n',
+                encoding='utf-8',
+            )
+            (q_dir / 'outputs' / 'multivar_forecast_health.txt').write_text(
+                '\n'.join([
+                    'max_abs_sm_ens=3.879350942',
+                    'nonfinite_sm_ens=0',
+                    'max_abs_forecast_exps=3.070998062',
+                    'finite_forecast_exps=36',
+                    'nonfinite_forecast_exps=48',
+                    'max_E_sigma=9.034567899',
+                ]),
+                encoding='utf-8',
+            )
+            result = mod._analyze_log(
+                log,
+                {
+                    'max_guard_events': 0,
+                    'max_hessian_failures': 0,
+                    'max_sigma_exp': 20.0,
+                    'max_state_norm_sq': 5e14,
+                    'min_gamsig_update_iters': 6,
+                    'require_finite_conv_check': True,
+                    'max_abs_sm_ens': 1000.0,
+                    'max_abs_forecast_exps': 650.0,
+                    'max_E_sigma': 100.0,
+                    'max_nonfinite_sm_ens': 0,
+                    'max_nonfinite_forecast_exps': 48,
+                },
+                'q35',
+                'screening',
+                'run_q35',
+                0,
+                run_root,
+                0.35,
+            )
+            self.assertTrue(result.healthy)
+            self.assertAlmostEqual(result.max_abs_sm_ens or 0.0, 3.879350942)
+            self.assertEqual(result.nonfinite_forecast_exps, 48)
 
     def test_probe_id_filter_errors_when_missing(self):
         from tempfile import TemporaryDirectory

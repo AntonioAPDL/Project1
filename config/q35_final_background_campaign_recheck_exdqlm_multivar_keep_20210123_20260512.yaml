@@ -46,6 +46,11 @@ screening:
     max_state_norm_sq: 5.0e14
     min_gamsig_update_iters: 6
     require_finite_conv_check: true
+    max_abs_sm_ens: 1000.0
+    max_abs_forecast_exps: 650.0
+    max_E_sigma: 100.0
+    max_nonfinite_sm_ens: 0
+    max_nonfinite_forecast_exps: 48
 confirmation:
   enabled: false
   top_n: 0

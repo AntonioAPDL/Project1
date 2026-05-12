@@ -85,6 +85,13 @@ class ProbeResult:
     last_state_norm_sq: float | None
     max_state_norm_sq: float | None
     last_conv_check: float | None
+    health_path: Path | None
+    max_abs_sm_ens: float | None
+    nonfinite_sm_ens: int | None
+    max_abs_forecast_exps: float | None
+    finite_forecast_exps: int | None
+    nonfinite_forecast_exps: int | None
+    max_E_sigma: float | None
     healthy: bool
     note: str
 
@@ -104,6 +111,13 @@ class ProbeResult:
             'last_state_norm_sq': self.last_state_norm_sq,
             'max_state_norm_sq': self.max_state_norm_sq,
             'last_conv_check': self.last_conv_check,
+            'health_path': str(self.health_path) if self.health_path else '',
+            'max_abs_sm_ens': self.max_abs_sm_ens,
+            'nonfinite_sm_ens': self.nonfinite_sm_ens,
+            'max_abs_forecast_exps': self.max_abs_forecast_exps,
+            'finite_forecast_exps': self.finite_forecast_exps,
+            'nonfinite_forecast_exps': self.nonfinite_forecast_exps,
+            'max_E_sigma': self.max_E_sigma,
             'healthy': self.healthy,
             'note': self.note,
             'log_path': str(self.log_path),
@@ -128,6 +142,32 @@ def _stage_map(enabled: dict[str, Any]) -> dict[str, bool]:
         if key in enabled:
             base[key] = bool(enabled[key])
     return base
+
+
+def _health_path_for_run(run_root: Path, quantile: float) -> Path:
+    return run_root / 'fit' / 'exdqlm_multivar' / 'keep' / _q_label(quantile) / 'outputs' / 'multivar_forecast_health.txt'
+
+
+def _parse_health_file(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    metrics: dict[str, Any] = {}
+    for raw_line in path.read_text(encoding='utf-8', errors='ignore').splitlines():
+        line = raw_line.strip()
+        if not line or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        key = key.strip()
+        value = value.strip()
+        num_value = _parse_num(value)
+        if num_value is None:
+            metrics[key] = value
+            continue
+        if abs(num_value - round(num_value)) < 1e-12:
+            metrics[key] = int(round(num_value))
+        else:
+            metrics[key] = num_value
+    return metrics
 
 
 def _prepare_config(
@@ -166,7 +206,7 @@ def _prepare_config(
     return cfg
 
 
-def _analyze_log(log_path: Path, rules: dict[str, Any], probe_id: str, phase: str, run_id: str, exit_code: int, run_root: Path) -> ProbeResult:
+def _analyze_log(log_path: Path, rules: dict[str, Any], probe_id: str, phase: str, run_id: str, exit_code: int, run_root: Path, quantile: float) -> ProbeResult:
     text = log_path.read_text(encoding='utf-8', errors='ignore') if log_path.exists() else ''
     guard_events = len(re.findall(r'non-finite dq_transf', text))
     hessian_failures = len(re.findall(r'non-invertible Hessian', text))
@@ -195,6 +235,15 @@ def _analyze_log(log_path: Path, rules: dict[str, Any], probe_id: str, phase: st
             if state is not None:
                 max_state = state if max_state is None else max(max_state, state)
 
+    health_path = _health_path_for_run(run_root, quantile)
+    health_metrics = _parse_health_file(health_path)
+    max_abs_sm_ens = _parse_num(str(health_metrics.get('max_abs_sm_ens', ''))) if health_metrics else None
+    nonfinite_sm_ens = int(health_metrics['nonfinite_sm_ens']) if 'nonfinite_sm_ens' in health_metrics else None
+    max_abs_forecast_exps = _parse_num(str(health_metrics.get('max_abs_forecast_exps', ''))) if health_metrics else None
+    finite_forecast_exps = int(health_metrics['finite_forecast_exps']) if 'finite_forecast_exps' in health_metrics else None
+    nonfinite_forecast_exps = int(health_metrics['nonfinite_forecast_exps']) if 'nonfinite_forecast_exps' in health_metrics else None
+    max_E_sigma = _parse_num(str(health_metrics.get('max_E_sigma', ''))) if health_metrics else None
+
     note_parts: list[str] = []
     healthy = True
     if exit_code != 0:
@@ -221,6 +270,31 @@ def _analyze_log(log_path: Path, rules: dict[str, Any], probe_id: str, phase: st
     if last_iter < 0:
         healthy = False
         note_parts.append('no_progress_lines')
+    max_abs_sm_limit = rules.get('max_abs_sm_ens')
+    if max_abs_sm_limit is not None:
+        if (max_abs_sm_ens is None) or (max_abs_sm_ens > float(max_abs_sm_limit)):
+            healthy = False
+            note_parts.append(f'max_abs_sm_ens={max_abs_sm_ens}')
+    max_abs_forecast_limit = rules.get('max_abs_forecast_exps')
+    if max_abs_forecast_limit is not None:
+        if (max_abs_forecast_exps is None) or (max_abs_forecast_exps > float(max_abs_forecast_limit)):
+            healthy = False
+            note_parts.append(f'max_abs_forecast_exps={max_abs_forecast_exps}')
+    max_E_sigma_limit = rules.get('max_E_sigma')
+    if max_E_sigma_limit is not None:
+        if (max_E_sigma is None) or (max_E_sigma > float(max_E_sigma_limit)):
+            healthy = False
+            note_parts.append(f'max_E_sigma={max_E_sigma}')
+    max_nonfinite_sm = rules.get('max_nonfinite_sm_ens')
+    if max_nonfinite_sm is not None:
+        if (nonfinite_sm_ens is None) or (nonfinite_sm_ens > int(max_nonfinite_sm)):
+            healthy = False
+            note_parts.append(f'nonfinite_sm_ens={nonfinite_sm_ens}')
+    max_nonfinite_forecast = rules.get('max_nonfinite_forecast_exps')
+    if max_nonfinite_forecast is not None:
+        if (nonfinite_forecast_exps is None) or (nonfinite_forecast_exps > int(max_nonfinite_forecast)):
+            healthy = False
+            note_parts.append(f'nonfinite_forecast_exps={nonfinite_forecast_exps}')
 
     return ProbeResult(
         probe_id=probe_id,
@@ -239,6 +313,13 @@ def _analyze_log(log_path: Path, rules: dict[str, Any], probe_id: str, phase: st
         last_state_norm_sq=last_state,
         max_state_norm_sq=max_state,
         last_conv_check=last_conv,
+        health_path=health_path if health_path.exists() else None,
+        max_abs_sm_ens=max_abs_sm_ens,
+        nonfinite_sm_ens=nonfinite_sm_ens,
+        max_abs_forecast_exps=max_abs_forecast_exps,
+        finite_forecast_exps=finite_forecast_exps,
+        nonfinite_forecast_exps=nonfinite_forecast_exps,
+        max_E_sigma=max_E_sigma,
         healthy=healthy,
         note='; '.join(note_parts) if note_parts else 'healthy',
     )
@@ -340,6 +421,8 @@ def main() -> int:
     parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
     parser.add_argument('--probe-id', action='append', default=[])
     parser.add_argument('--skip-existing', action='store_true')
+    parser.add_argument('--harvest-existing', action='store_true')
+    parser.add_argument('--assume-exit-code', type=int, default=0)
     args = parser.parse_args()
 
     probe_cfg = load_yaml(args.config)
@@ -388,12 +471,16 @@ def main() -> int:
         launch_log = launch_logs_root / f'{run_id}.log'
         run_root = Path(cfg['run']['run_root']) / run_id
         q_log = run_root / 'fit' / 'exdqlm_multivar' / 'keep' / _q_label(quantile) / 'logs' / 'fit.log'
-        if args.skip_existing and q_log.exists():
+        if args.harvest_existing:
+            if not q_log.exists():
+                raise SystemExit(f'Cannot harvest probe `{probe_id}` because fit log is missing: {q_log}')
+            exit_code = int(args.assume_exit_code)
+        elif args.skip_existing and q_log.exists():
             exit_code = 0
         else:
             _remove_tree_if_exists(run_root)
             exit_code = _run_single(config_path, launch_log, q_log, screening_rules)
-        result = _analyze_log(q_log, screening_rules, probe_id, 'screening', run_id, exit_code, run_root)
+        result = _analyze_log(q_log, screening_rules, probe_id, 'screening', run_id, exit_code, run_root, quantile)
         results.append(result)
         scored.append((_score(result, _leaf_count(probe.get('config_patch', {})), order), result, probe, order))
 
@@ -425,9 +512,14 @@ def main() -> int:
         launch_log = launch_logs_root / f'{run_id}.log'
         run_root = Path(confirm_cfg['run']['run_root']) / run_id
         q_log = run_root / 'fit' / 'exdqlm_multivar' / 'keep' / _q_label(quantile) / 'logs' / 'fit.log'
-        _remove_tree_if_exists(run_root)
-        exit_code = _run_single(config_path, launch_log, q_log, confirm['health_rules'])
-        confirmation_result = _analyze_log(q_log, confirm['health_rules'], selected_result.probe_id, 'confirmation', run_id, exit_code, run_root)
+        if args.harvest_existing:
+            if not q_log.exists():
+                raise SystemExit(f'Cannot harvest confirmation for probe `{selected_result.probe_id}` because fit log is missing: {q_log}')
+            exit_code = int(args.assume_exit_code)
+        else:
+            _remove_tree_if_exists(run_root)
+            exit_code = _run_single(config_path, launch_log, q_log, confirm['health_rules'])
+        confirmation_result = _analyze_log(q_log, confirm['health_rules'], selected_result.probe_id, 'confirmation', run_id, exit_code, run_root, quantile)
         results.append(confirmation_result)
 
     rows = [res.row() for res in results]
@@ -464,12 +556,12 @@ def main() -> int:
         '',
         '## Results',
         '',
-        '| Probe | Phase | Healthy | Guards | Hessian | Last updates | Max sigma | Max state | Last conv | Note |',
-        '|---|---|---:|---:|---:|---:|---:|---:|---:|---|',
+        '| Probe | Phase | Healthy | Guards | Hessian | Last updates | Max sigma | Max state | Max sm_ens | Max forecast | Max E sigma | Nonfinite forecast | Last conv | Note |',
+        '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|',
     ]
     for res in results:
         md_lines.append(
-            f"| `{res.probe_id}` | `{res.phase}` | `{str(res.healthy)}` | `{res.guard_events}` | `{res.hessian_failures}` | `{res.last_updates}` | `{res.max_sigma_exp}` | `{res.max_state_norm_sq}` | `{res.last_conv_check}` | {res.note} |"
+            f"| `{res.probe_id}` | `{res.phase}` | `{str(res.healthy)}` | `{res.guard_events}` | `{res.hessian_failures}` | `{res.last_updates}` | `{res.max_sigma_exp}` | `{res.max_state_norm_sq}` | `{res.max_abs_sm_ens}` | `{res.max_abs_forecast_exps}` | `{res.max_E_sigma}` | `{res.nonfinite_forecast_exps}` | `{res.last_conv_check}` | {res.note} |"
         )
     md_lines += [
         '',

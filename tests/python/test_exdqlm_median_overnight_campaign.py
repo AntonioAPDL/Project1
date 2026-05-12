@@ -92,14 +92,43 @@ class MedianOvernightCampaignTests(unittest.TestCase):
                 encoding='utf-8',
             )
             (reports / 'probe_results.csv').write_text(
-                'probe_id,phase,guard_events,hessian_failures,refreezes,last_iter,last_updates,max_sigma_exp,max_state_norm_sq,last_conv_check\n'
-                'demo,screening,0,0,0,12,9,2.5,1000,0.01\n',
+                'probe_id,phase,guard_events,hessian_failures,refreezes,last_iter,last_updates,max_sigma_exp,max_state_norm_sq,last_conv_check,max_abs_sm_ens,nonfinite_sm_ens,max_abs_forecast_exps,finite_forecast_exps,nonfinite_forecast_exps,max_E_sigma,health_path\n'
+                'demo,screening,0,0,0,12,9,2.5,1000,0.01,4.2,0,9.1,36,48,0.37,/tmp/health.txt\n',
                 encoding='utf-8',
             )
             summary, screening = mod._read_single_probe_outputs(root)
         self.assertTrue(summary['selected_healthy'])
         self.assertEqual(screening['phase'], 'screening')
         self.assertEqual(screening['last_updates'], '9')
+
+    def test_build_result_row_carries_forecast_health_metrics(self):
+        cfg = self._campaign_cfg()
+        task = mod._flatten_tasks(cfg)[0]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            reports = root / 'reports'
+            reports.mkdir(parents=True)
+            (reports / 'winner_summary.json').write_text(
+                json.dumps({'selected_healthy': True, 'selected_note': 'healthy', 'best_healthy': True, 'best_note': 'healthy'}),
+                encoding='utf-8',
+            )
+            (reports / 'probe_results.csv').write_text(
+                'probe_id,phase,guard_events,hessian_failures,refreezes,last_iter,last_updates,max_sigma_exp,max_state_norm_sq,last_conv_check,max_abs_sm_ens,nonfinite_sm_ens,max_abs_forecast_exps,finite_forecast_exps,nonfinite_forecast_exps,max_E_sigma,health_path\n'
+                'demo,screening,0,0,0,18,17,3.08,294797.2,0.00002,3.879,0,3.071,36,48,9.03,/tmp/health.txt\n',
+                encoding='utf-8',
+            )
+            row = mod._build_result_row(
+                task,
+                phase='screening',
+                config_path=root / 'cfg.yaml',
+                artifact_root=root,
+                worker_log_path=root / 'worker.log',
+                process_exit_code=0,
+                elapsed_seconds=1.0,
+            )
+        self.assertEqual(row['max_abs_sm_ens'], 3.879)
+        self.assertEqual(row['nonfinite_forecast_exps'], 48)
+        self.assertEqual(row['max_E_sigma'], 9.03)
 
     def test_build_confirmation_probe_config_uses_confirmation_contract(self):
         cfg = self._campaign_cfg()

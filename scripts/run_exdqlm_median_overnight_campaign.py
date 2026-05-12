@@ -285,6 +285,13 @@ def _build_result_row(
             'max_sigma_exp': None,
             'max_state_norm_sq': None,
             'last_conv_check': None,
+            'max_abs_sm_ens': None,
+            'nonfinite_sm_ens': None,
+            'max_abs_forecast_exps': None,
+            'finite_forecast_exps': None,
+            'nonfinite_forecast_exps': None,
+            'max_E_sigma': None,
+            'health_path': '',
             'process_exit_code': process_exit_code,
             'elapsed_seconds': round(elapsed_seconds, 3),
             'artifact_root': str(artifact_root),
@@ -313,6 +320,13 @@ def _build_result_row(
         'max_sigma_exp': _parse_optional_float(screening_row.get('max_sigma_exp')),
         'max_state_norm_sq': _parse_optional_float(screening_row.get('max_state_norm_sq')),
         'last_conv_check': _parse_optional_float(screening_row.get('last_conv_check')),
+        'max_abs_sm_ens': _parse_optional_float(screening_row.get('max_abs_sm_ens')),
+        'nonfinite_sm_ens': _parse_optional_int(screening_row.get('nonfinite_sm_ens')),
+        'max_abs_forecast_exps': _parse_optional_float(screening_row.get('max_abs_forecast_exps')),
+        'finite_forecast_exps': _parse_optional_int(screening_row.get('finite_forecast_exps')),
+        'nonfinite_forecast_exps': _parse_optional_int(screening_row.get('nonfinite_forecast_exps')),
+        'max_E_sigma': _parse_optional_float(screening_row.get('max_E_sigma')),
+        'health_path': str(screening_row.get('health_path', '')),
         'process_exit_code': process_exit_code,
         'elapsed_seconds': round(elapsed_seconds, 3),
         'artifact_root': str(artifact_root),
@@ -385,24 +399,24 @@ def _write_reports(campaign_cfg: dict[str, Any], tasks: list[ProbeTask], results
         '',
         '## Top Current Screening Candidates',
         '',
-        '| Probe | Wave | Healthy | Updates | Max sigma | Max state | Last conv | Note |',
-        '|---|---|---:|---:|---:|---:|---:|---|',
+        '| Probe | Wave | Healthy | Updates | Max sigma | Max state | Max sm_ens | Max forecast | Max E sigma | Nonfinite forecast | Last conv | Note |',
+        '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|',
     ]
     for row in screening_results[: min(5, len(screening_results))]:
         md_lines.append(
-            f"| `{row['probe_id']}` | `{row['wave_id']}` | `{row['selected_healthy']}` | `{row['last_updates']}` | `{row['max_sigma_exp']}` | `{row['max_state_norm_sq']}` | `{row['last_conv_check']}` | {row['selected_note']} |"
+            f"| `{row['probe_id']}` | `{row['wave_id']}` | `{row['selected_healthy']}` | `{row['last_updates']}` | `{row['max_sigma_exp']}` | `{row['max_state_norm_sq']}` | `{row['max_abs_sm_ens']}` | `{row['max_abs_forecast_exps']}` | `{row['max_E_sigma']}` | `{row['nonfinite_forecast_exps']}` | `{row['last_conv_check']}` | {row['selected_note']} |"
         )
 
     md_lines += [
         '',
         '## Ranked Results',
         '',
-        '| Phase | Wave | Batch | Probe | Healthy | Guards | Hessian | Updates | Max sigma | Max state | Last conv | Note |',
-        '|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|',
+        '| Phase | Wave | Batch | Probe | Healthy | Guards | Hessian | Updates | Max sigma | Max state | Max sm_ens | Max forecast | Max E sigma | Nonfinite forecast | Last conv | Note |',
+        '|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|',
     ]
     for row in ordered_results:
         md_lines.append(
-            f"| `{row['phase']}` | `{row['wave_id']}` | `{row['batch']}` | `{row['probe_id']}` | `{row['selected_healthy']}` | `{row['guard_events']}` | `{row['hessian_failures']}` | `{row['last_updates']}` | `{row['max_sigma_exp']}` | `{row['max_state_norm_sq']}` | `{row['last_conv_check']}` | {row['selected_note']} |"
+            f"| `{row['phase']}` | `{row['wave_id']}` | `{row['batch']}` | `{row['probe_id']}` | `{row['selected_healthy']}` | `{row['guard_events']}` | `{row['hessian_failures']}` | `{row['last_updates']}` | `{row['max_sigma_exp']}` | `{row['max_state_norm_sq']}` | `{row['max_abs_sm_ens']}` | `{row['max_abs_forecast_exps']}` | `{row['max_E_sigma']}` | `{row['nonfinite_forecast_exps']}` | `{row['last_conv_check']}` | {row['selected_note']} |"
         )
     (reports_root / 'MORNING_SUMMARY.md').write_text('\n'.join(md_lines) + '\n', encoding='utf-8')
 
@@ -431,11 +445,14 @@ def _write_warnings(reports_root: Path, warnings: list[dict[str, Any]]) -> None:
     (reports_root / 'campaign_warnings.md').write_text('\n'.join(md_lines) + '\n', encoding='utf-8')
 
 
-def _run_probe_task(task: ProbeTask, config_path: Path, artifact_root: Path, worker_log_path: Path, skip_existing: bool, phase: str = 'screening') -> dict[str, Any]:
+def _run_probe_task(task: ProbeTask, config_path: Path, artifact_root: Path, worker_log_path: Path, skip_existing: bool, phase: str = 'screening', harvest_existing: bool = False, assume_exit_code: int = 0) -> dict[str, Any]:
     ensure_dir(worker_log_path.parent)
     cmd = ['python3', str(PROBE_RUNNER), '--config', str(config_path)]
     if skip_existing:
         cmd.append('--skip-existing')
+    if harvest_existing:
+        cmd.append('--harvest-existing')
+        cmd.extend(['--assume-exit-code', str(int(assume_exit_code))])
     started = time.time()
     with worker_log_path.open('w', encoding='utf-8') as log_handle:
         proc = subprocess.run(
@@ -474,6 +491,8 @@ def main() -> int:
     parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--skip-existing', action='store_true')
+    parser.add_argument('--harvest-existing', action='store_true')
+    parser.add_argument('--assume-exit-code', type=int, default=0)
     parser.add_argument('--skip-confirmation', action='store_true')
     parser.add_argument('--concurrency', type=int, default=None)
     parser.add_argument('--wave', action='append', default=[])
@@ -570,7 +589,7 @@ def main() -> int:
                 continue
             with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
                 future_map = {
-                    executor.submit(_run_probe_task, task, config_path, artifact_probe_root, worker_log_path, args.skip_existing, 'screening'): (task, config_path)
+                    executor.submit(_run_probe_task, task, config_path, artifact_probe_root, worker_log_path, args.skip_existing, 'screening', args.harvest_existing, args.assume_exit_code): (task, config_path)
                     for task, config_path, artifact_probe_root, worker_log_path in wave_tasks
                 }
                 for future in concurrent.futures.as_completed(future_map):
@@ -603,7 +622,7 @@ def main() -> int:
                 (control_root / 'generated_confirmation_probe_configs.json').write_text(json.dumps(confirm_entries, indent=2), encoding='utf-8')
                 with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
                     future_map = {
-                        executor.submit(_run_probe_task, task, config_path, artifact_probe_root, worker_log_path, args.skip_existing, 'confirmation'): (task, config_path)
+                        executor.submit(_run_probe_task, task, config_path, artifact_probe_root, worker_log_path, args.skip_existing, 'confirmation', args.harvest_existing, args.assume_exit_code): (task, config_path)
                         for task, config_path, artifact_probe_root, worker_log_path in confirm_bundle
                     }
                     for future in concurrent.futures.as_completed(future_map):
