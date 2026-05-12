@@ -23,7 +23,7 @@ dates:
   plot_end: "2021-01-04"
 
 transforms:
-  plot_scale: "log_log1p_cms"   # options: raw_cms | log1p_cms | log_log1p_cms
+  plot_scale: "log1p_cms"   # options: raw_cms | log1p_cms
 
 inputs:
   retros:
@@ -66,4 +66,3 @@ plot:
     - date: "2020-12-20"
       label: "Cutoff"
       color: "gray40"
-

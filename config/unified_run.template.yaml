@@ -340,8 +340,8 @@ scale_contract:
   canonical_storage_scale: "raw_cms"
   legacy_fit_input_scale: "log1p_cms"
   legacy_post_input_scale: "log1p_cms"
-  analysis_scale_fit_internal: "log_log1p_cms"
-  analysis_scale_post_internal: "log_log1p_cms"
+  analysis_scale_fit_internal: "log1p_cms"
+  analysis_scale_post_internal: "log1p_cms"
 
 write_audit:
   enabled: true

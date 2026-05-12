@@ -184,7 +184,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     output_path = adapted_retros,
     from_scale = source_retros_scale,
     to_scale = legacy_scale,
-    positive_required = TRUE
+    positive_required = FALSE
   )
   manifest <- unified_manifest_add_scale_history(
     manifest,
@@ -199,7 +199,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     output_path = adapted_nws,
     from_scale = source_nws_scale,
     to_scale = legacy_scale,
-    positive_required = TRUE
+    positive_required = FALSE
   )
   manifest <- unified_manifest_add_scale_history(
     manifest,
@@ -214,7 +214,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     output_path = adapted_glofas,
     from_scale = source_glofas_scale,
     to_scale = legacy_scale,
-    positive_required = TRUE
+    positive_required = FALSE
   )
   manifest <- unified_manifest_add_scale_history(
     manifest,

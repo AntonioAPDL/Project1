@@ -340,7 +340,7 @@ def run_mode(args: argparse.Namespace, recovery_run_root: Path, plan_root: Path)
                 str(PROJECT_ROOT / "scripts" / "run_nwm_v12_full_point_extraction.sh"),
                 v12_run_id,
                 str(workers),
-                "log_log1p_cms",
+                "log1p_cms",
                 str(nwm_full_root),
             ],
             log_path=plan_root / "logs" / "phase_30_nwm_v12_launch.log",

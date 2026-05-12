@@ -404,12 +404,9 @@ unified_ndlm_diag_write_sigma_traces <- function(sigma_long, output_dir, primary
 
 unified_ndlm_diag_loglog1p_from_log1p <- function(x) {
   vals <- suppressWarnings(as.numeric(x))
-  out <- rep(NA_real_, length(vals))
-  ok <- is.finite(vals) & vals > 0
-  if (any(ok)) {
-    out[ok] <- log(vals[ok])
-  }
-  out
+  # Current workflow policy: diagnostics stay on the same log1p scale as
+  # retros, observations, and forecast ensembles.
+  vals
 }
 
 unified_ndlm_diag_pick_usgs_flow_col <- function(df) {

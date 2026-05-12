@@ -11,7 +11,7 @@ from typing import Iterable
 import numpy as np
 
 
-TRANSFORM_SCALES = ("raw_cms", "log1p_cms", "log_log1p_cms")
+TRANSFORM_SCALES = ("raw_cms", "log1p_cms")
 
 
 def _as_float_array(values: Iterable[float]) -> np.ndarray:
@@ -26,8 +26,7 @@ def forward_transform_cms(
 ) -> np.ndarray:
     """Map raw cms values to the requested working scale.
 
-    For ``log_log1p_cms``, non-positive values are floored to ``loglog_floor_cms``
-    so the transform stays finite.
+    The current workflow only allows ``raw_cms`` and ``log1p_cms``.
     """
     x = _as_float_array(values_cms)
     if scale == "raw_cms":
@@ -38,12 +37,7 @@ def forward_transform_cms(
         out[ok] = np.log1p(x[ok])
         return out
     if scale == "log_log1p_cms":
-        out = np.full_like(x, np.nan, dtype="float64")
-        ok = np.isfinite(x) & (x > -1.0)
-        x_safe = x.copy()
-        x_safe[ok & (x_safe <= 0.0)] = float(loglog_floor_cms)
-        out[ok] = np.log(np.log1p(x_safe[ok]))
-        return out
+        raise ValueError("log_log1p_cms is not allowed in the current workflow; use log1p_cms.")
     raise ValueError(f"Unknown transform scale: {scale}")
 
 
@@ -55,5 +49,5 @@ def inverse_transform_to_cms(values: Iterable[float], scale: str) -> np.ndarray:
     if scale == "log1p_cms":
         return np.expm1(y)
     if scale == "log_log1p_cms":
-        return np.expm1(np.exp(y))
+        raise ValueError("log_log1p_cms is not allowed in the current workflow; use log1p_cms.")
     raise ValueError(f"Unknown transform scale: {scale}")

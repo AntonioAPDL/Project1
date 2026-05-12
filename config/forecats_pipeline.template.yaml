@@ -37,8 +37,8 @@ dates:
   plot_end: "2023-01-22"
 
 transforms:
-  # Plot scale: the current paper figure uses log(log1p(cms)).
-  plot_scale: "log_log1p_cms"   # options: raw_cms | log1p_cms | log_log1p_cms
+  # Plot scale: current workflow uses log1p(cms) end to end.
+  plot_scale: "log1p_cms"   # options: raw_cms | log1p_cms
 
 inputs:
   retros:

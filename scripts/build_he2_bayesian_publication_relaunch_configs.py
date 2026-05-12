@@ -298,6 +298,10 @@ def _build_run_config(
     _set_nested(cfg, ['inputs', 'fit', 'nws_storage_scale'], 'raw_cms')
     _set_nested(cfg, ['inputs', 'fit', 'glofas_forecast_path'], str(shared['glofas_forecast']))
     _set_nested(cfg, ['inputs', 'fit', 'glofas_storage_scale'], 'raw_cms')
+    _set_nested(cfg, ['scale_contract', 'legacy_fit_input_scale'], 'log1p_cms')
+    _set_nested(cfg, ['scale_contract', 'legacy_post_input_scale'], 'log1p_cms')
+    _set_nested(cfg, ['scale_contract', 'analysis_scale_fit_internal'], 'log1p_cms')
+    _set_nested(cfg, ['scale_contract', 'analysis_scale_post_internal'], 'log1p_cms')
     _set_nested(
         cfg,
         ['inputs', 'fit', 'covariates'],
@@ -333,6 +337,13 @@ def _build_run_config(
     if row_config_patch:
         cfg = _deep_merge_dict(cfg, row_config_patch)
 
+    # Enforce the current transform policy after any source-config or batch patch
+    # merges so old log-log settings cannot leak back into active relaunch runs.
+    _set_nested(cfg, ['scale_contract', 'legacy_fit_input_scale'], 'log1p_cms')
+    _set_nested(cfg, ['scale_contract', 'legacy_post_input_scale'], 'log1p_cms')
+    _set_nested(cfg, ['scale_contract', 'analysis_scale_fit_internal'], 'log1p_cms')
+    _set_nested(cfg, ['scale_contract', 'analysis_scale_post_internal'], 'log1p_cms')
+
     cfg['debug_he2_publication_relaunch'] = {
         'campaign_spec_id': DEFAULT_CAMPAIGN_SPEC_ID,
         'source_publication_run_id': source_row['run_id'],
@@ -352,6 +363,7 @@ def _build_run_config(
         'support_manifest': str(shared['support_manifest']),
         'canonical_fit_covariate_contract': 'PPT|SOIL|PCA(alias=GDPC1)',
         'profile_name': profile_name,
+        'transform_policy': 'log1p_only',
         'full_quantiles': full_quantiles,
         'active_quantiles': active_quantiles,
         'fit_parallel_workers_effective': int(workers or 0),
@@ -377,6 +389,7 @@ def _extract_spec_row(plan_row: dict[str, Any], source_row: dict[str, str], cfg:
     debug = cfg.get('debug_he2_publication_relaunch', {}) if isinstance(cfg.get('debug_he2_publication_relaunch'), dict) else {}
     fit_parallel = (((cfg.get('fit') or {}).get('parallel')) or {})
     run_threads = (((cfg.get('run') or {}).get('threads')) or {})
+    scale_contract = ((cfg.get('scale_contract') or {}) if isinstance(cfg.get('scale_contract'), dict) else {})
     row = {
         'run_id': plan_row['run_id'],
         'cutoff': plan_row['cutoff'],
@@ -408,6 +421,10 @@ def _extract_spec_row(plan_row: dict[str, Any], source_row: dict[str, str], cfg:
         'use_covariates': legacy.get('use_covariates'),
         'fit_parallel_workers': fit_parallel.get('workers'),
         'run_mc_cores': run_threads.get('mc_cores'),
+        'legacy_fit_input_scale': scale_contract.get('legacy_fit_input_scale', ''),
+        'legacy_post_input_scale': scale_contract.get('legacy_post_input_scale', ''),
+        'analysis_scale_fit_internal': scale_contract.get('analysis_scale_fit_internal', ''),
+        'analysis_scale_post_internal': scale_contract.get('analysis_scale_post_internal', ''),
         'active_quantiles': '|'.join(render_quantile_label(q) for q in active_quantiles),
         'active_quantile_count': len(active_quantiles),
         'full_quantiles': '|'.join(render_quantile_label(q) for q in debug.get('full_quantiles', active_quantiles)),

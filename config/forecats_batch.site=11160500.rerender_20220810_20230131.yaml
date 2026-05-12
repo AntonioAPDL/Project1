@@ -30,7 +30,7 @@ dates:
   plot_post_days: 28
 
 transforms:
-  plot_scale: "log_log1p_cms"
+  plot_scale: "log1p_cms"
 
 inputs:
   retros:

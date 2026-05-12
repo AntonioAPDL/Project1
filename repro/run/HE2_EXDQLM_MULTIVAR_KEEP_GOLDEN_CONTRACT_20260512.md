@@ -30,6 +30,7 @@ This row proves all of the following together:
 3. the repaired q35 path holds in a real row, not just in sidecar probes
 4. the quantile-specific policy map is stable enough for full-row execution
 5. the main workflow can keep the useful post/report outputs without retaining expensive fit `.RData` payloads
+6. the relaunch contract must stay on `log1p_cms` end to end; the older internal `log_log1p_cms` path is no longer acceptable for current workflow runs
 
 ## Retained outputs
 
@@ -68,6 +69,16 @@ This matches the current cleanup-enabled runner behavior:
 - `q65`: reduced-sigma init rescue
 - `q80`: reduced-sigma init rescue
 - `q95`: base spec
+
+## Transform policy frozen by this row
+
+- retrospective storage scale: `log1p_cms`
+- exdqlm multivar fit internal scale: `log1p_cms`
+- exdqlm multivar post internal scale: `log1p_cms`
+- forecast ensemble adapters into fit/post: `log1p_cms`
+- post/publication figure display scale: `log1p_cms`
+
+Do not reintroduce `log_log1p_cms` into the current relaunch workflow.
 
 ## Next workflow use
 

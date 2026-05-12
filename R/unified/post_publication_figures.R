@@ -66,7 +66,7 @@ post_publication_flow_axis_label <- function(scale_id = "log1p_cms") {
     as.character(scale_id %||% "log1p_cms"),
     raw_cms = bquote(River~flow~"["*m^3~s^-1*"]"),
     log1p_cms = bquote(River~flow~"["*log(1 + x)*";"~~x~"in"~~m^3~s^-1*"]"),
-    log_log1p_cms = bquote(River~flow~"["*log(log(1 + x))*";"~~x~"in"~~m^3~s^-1*"]"),
+    log_log1p_cms = stop("post publication figures must stay on log1p_cms in the current workflow.", call. = FALSE),
     as.character(scale_id)
   )
 }

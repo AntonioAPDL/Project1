@@ -453,7 +453,9 @@ build_retros_cache <- function(cfg, retros_cache_path, plot_end) {
   convert_scale_to_cms <- function(x, scale) {
     if (scale == "raw_cms") return(x)
     if (scale == "log1p_cms") return(exp(x) - 1)
-    if (scale == "log_log1p_cms") return(exp(exp(x)) - 1)
+    if (scale == "log_log1p_cms") {
+      stop("log_log1p_cms is not allowed in the current workflow; use log1p_cms.", call. = FALSE)
+    }
     stop(paste("Unknown scale:", scale))
   }
 

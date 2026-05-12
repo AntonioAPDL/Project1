@@ -47,10 +47,10 @@ if (!exists("figure_flow_axis_label", mode = "function") ||
 if (!exists("figure_flow_axis_label", mode = "function")) {
   figure_flow_axis_label <- function(plot_scale) {
     switch(
-      as.character(plot_scale %||% "log_log1p_cms"),
+      as.character(plot_scale %||% "log1p_cms"),
       raw_cms = bquote(River~flow~"["*m^3~s^-1*"]"),
       log1p_cms = bquote(River~flow~"["*log(1 + x)*";"~~x~"in"~~m^3~s^-1*"]"),
-      log_log1p_cms = bquote(River~flow~"["*log(log(1 + x))*";"~~x~"in"~~m^3~s^-1*"]"),
+      log_log1p_cms = stop("log_log1p_cms is not allowed for current forecats plots; use log1p_cms.", call. = FALSE),
       as.character(plot_scale)
     )
   }
@@ -158,18 +158,7 @@ transform_flow <- function(x_cms, scale) {
     return(out)
   }
   if (scale == "log_log1p_cms") {
-    # Keep zero-flow days finite for plotting continuity on log(log1p(.)) scale.
-    # Without this floor, x==0 maps to -Inf and appears as broken segments.
-    out <- rep(NA_real_, length(x_cms))
-    x <- suppressWarnings(as.numeric(x_cms))
-    pos <- x[!is.na(x) & (x > 0)]
-    if (length(pos) == 0) return(out)
-    floor_pos <- min(pos, na.rm = TRUE)
-    x_safe <- x
-    x_safe[!is.na(x_safe) & (x_safe <= 0)] <- floor_pos
-    ok <- !is.na(x_safe) & (x_safe > -1)
-    out[ok] <- log(log(x_safe[ok] + 1))
-    return(out)
+    stop("log_log1p_cms is not allowed for current forecats plots; use log1p_cms.", call. = FALSE)
   }
   stop(paste("Unknown plot_scale:", scale))
 }
@@ -184,7 +173,7 @@ inverse_transform_flow <- function(x_value, scale) {
     return(expm1(x_value))
   }
   if (scale == "log_log1p_cms") {
-    return(expm1(exp(x_value)))
+    stop("log_log1p_cms is not allowed for current forecats bundles; use log1p_cms.", call. = FALSE)
   }
   stop(paste("Unknown storage scale:", scale))
 }

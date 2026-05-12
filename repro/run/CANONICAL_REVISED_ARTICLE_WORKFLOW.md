@@ -73,7 +73,7 @@ The current canonical `v2` contract is:
 - `retrospective_log_discharge_plot_faceted.png` uses the retrospective support actually available for the cutoff-specific bundle, with that availability surfaced explicitly in the review metadata
 - `forecats.png` uses a strict `cutoff - 28 days` to `cutoff + 28 days` display window
 - the support-flow figures are displayed on `log1p_cms`
-- the deeper `log_log1p_cms` scale remains model-internal unless and until the fitting workflow itself is reworked
+- the current workflow now fixes retros, observations, forecast ensembles, fit internals, and post internals to `log1p_cms`
 
 ### 5. Article-side provenance freezing
 

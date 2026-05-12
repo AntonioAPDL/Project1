@@ -26,9 +26,9 @@ dates:
   plot_pre_days: 1080
   plot_post_days: 28
 transforms:
-  plot_scale: log_log1p_cms
+  plot_scale: log1p_cms
 processing:
-  aggregation_scale_internal: log_log1p_cms
+  aggregation_scale_internal: log1p_cms
 inputs:
   retros:
     path: retros_2023-06-01.glofas_only.csv

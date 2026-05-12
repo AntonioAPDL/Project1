@@ -425,7 +425,7 @@ This YAML explicitly defines:
   - NWS: from results.pkl (raw) **or** from existing CSV (fast/debug)
 - weighting parameters (power / per-member exponents)
 - plot markers (vertical lines + labels)
-- plot scale (including the crucial `log_log1p_cms`)
+- plot scale (current workflow: `log1p_cms`)
 
 ### Runner scripts
 
@@ -475,7 +475,7 @@ To keep the bundle easy to reason about:
 
 - All bundle CSVs store **raw cms**.
 - Forecast weighting is performed on **log1p(cms)** (as in notebooks), then inverted back to cms.
-- Plot scale is controlled by YAML (`transforms.plot_scale`), including `log_log1p_cms`.
+- Plot scale is controlled by YAML (`transforms.plot_scale`) and current workflow fixes it to `log1p_cms`.
 
 ### Plot contract (legend, flood thresholds, and unit consistency)
 
@@ -669,7 +669,7 @@ The template is the best source of truth; this section documents the intent.
 - `transforms.plot_scale`:
   - `raw_cms` (linear)
   - `log1p_cms`
-  - `log_log1p_cms` (matches the current paper-style figure)
+  - `log1p_cms` (current workflow standard)
 
 - `inputs.retros.path`: combined retros CSV to truncate (covers 1979..2022 in current file)
 - `inputs.retros.scale`: scale of that file (`log1p_cms` for legacy)

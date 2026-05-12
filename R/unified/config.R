@@ -402,8 +402,8 @@ unified_config_defaults <- function() {
       canonical_storage_scale = "raw_cms",
       legacy_fit_input_scale = "log1p_cms",
       legacy_post_input_scale = "log1p_cms",
-      analysis_scale_fit_internal = "log_log1p_cms",
-      analysis_scale_post_internal = "log_log1p_cms"
+      analysis_scale_fit_internal = "log1p_cms",
+      analysis_scale_post_internal = "log1p_cms"
     ),
     write_audit = list(
       enabled = TRUE,
@@ -1435,6 +1435,23 @@ unified_validate_config <- function(cfg) {
     key <- paste(k, collapse = ".")
     if (!(val %in% unified_scale_enum)) {
       add_err(sprintf("%s must be one of [%s]", key, paste(unified_scale_enum, collapse = ", ")))
+    }
+  }
+
+  internal_scale_keys <- list(
+    c("scale_contract", "legacy_fit_input_scale"),
+    c("scale_contract", "legacy_post_input_scale"),
+    c("scale_contract", "analysis_scale_fit_internal"),
+    c("scale_contract", "analysis_scale_post_internal")
+  )
+  for (k in internal_scale_keys) {
+    val <- as.character(unified_get(cfg, k, ""))
+    key <- paste(k, collapse = ".")
+    if (grepl("^log_log", val)) {
+      add_err(sprintf(
+        "%s must not use log-log transforms in the current workflow; use log1p_cms instead",
+        key
+      ))
     }
   }
 

@@ -2,13 +2,13 @@
 
 figure_flow_axis_label <- function(plot_scale) {
   if (is.null(plot_scale) || !nzchar(as.character(plot_scale))) {
-    plot_scale <- "log_log1p_cms"
+    plot_scale <- "log1p_cms"
   }
   switch(
     as.character(plot_scale),
     raw_cms = bquote(River~flow~"["*m^3~s^-1*"]"),
     log1p_cms = bquote(River~flow~"["*log(1 + x)*";"~~x~"in"~~m^3~s^-1*"]"),
-    log_log1p_cms = bquote(River~flow~"["*log(log(1 + x))*";"~~x~"in"~~m^3~s^-1*"]"),
+    log_log1p_cms = stop("log_log1p_cms is not allowed in the current workflow; use log1p_cms.", call. = FALSE),
     as.character(plot_scale)
   )
 }
@@ -52,10 +52,7 @@ figure_transform_flow <- function(x_cms, plot_scale) {
     return(out)
   }
   if (identical(plot_scale, "log_log1p_cms")) {
-    ok <- !is.na(vals) & vals >= 0
-    out[ok] <- log(log(vals[ok] + 1))
-    out[!is.finite(out)] <- NA_real_
-    return(out)
+    stop("log_log1p_cms is not allowed in the current workflow; use log1p_cms.", call. = FALSE)
   }
   stop(sprintf("Unknown plot scale: %s", plot_scale), call. = FALSE)
 }

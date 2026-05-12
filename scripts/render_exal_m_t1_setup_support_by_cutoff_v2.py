@@ -80,7 +80,7 @@ def axis_label_for_scale(plot_scale: str) -> str:
     if plot_scale == 'log1p_cms':
         return 'River flow [log(1 + x); x in m^3 s^-1]'
     if plot_scale == 'log_log1p_cms':
-        return 'River flow [log(log(1 + x)); x in m^3 s^-1]'
+        raise ValueError('log_log1p_cms is not allowed in the current workflow; use log1p_cms.')
     return f'River flow [{plot_scale}]'
 
 

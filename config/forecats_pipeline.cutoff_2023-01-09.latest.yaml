@@ -27,7 +27,7 @@ dates:
   plot_end: "2023-02-06"
 
 transforms:
-  plot_scale: "log_log1p_cms"
+  plot_scale: "log1p_cms"
 
 inputs:
   retros:

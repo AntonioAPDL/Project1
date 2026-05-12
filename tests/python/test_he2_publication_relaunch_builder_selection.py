@@ -71,6 +71,9 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(payload['fit']['parallel']['workers'], 1)
         self.assertEqual(payload['run']['threads']['mc_cores'], 1)
         self.assertEqual(payload['debug_he2_publication_relaunch']['model_class'], 'quantile_multivariate')
+        self.assertEqual(payload['scale_contract']['legacy_fit_input_scale'], 'log1p_cms')
+        self.assertEqual(payload['scale_contract']['analysis_scale_fit_internal'], 'log1p_cms')
+        self.assertEqual(payload['scale_contract']['analysis_scale_post_internal'], 'log1p_cms')
 
     def test_model_class_filter_returns_three_ndlm_rows_for_one_cutoff(self) -> None:
         proc, matrix_dir, _config_output_dir, _artifact_root = self._run_builder(
@@ -111,6 +114,9 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(payload['run']['threads']['mc_cores'], 7)
         self.assertEqual(payload['debug_he2_publication_relaunch']['fit_parallel_workers_effective'], 7)
         self.assertEqual(payload['debug_he2_publication_relaunch']['mc_cores_effective'], 7)
+        self.assertEqual(payload['scale_contract']['legacy_fit_input_scale'], 'log1p_cms')
+        self.assertEqual(payload['scale_contract']['analysis_scale_fit_internal'], 'log1p_cms')
+        self.assertEqual(payload['debug_he2_publication_relaunch']['transform_policy'], 'log1p_only')
 
     def test_batch_row_config_patch_overrides_discount_block_and_is_audited(self) -> None:
         tmpdir = tempfile.TemporaryDirectory()
@@ -613,6 +619,56 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
             self.assertEqual(override['warmup_freeze_iters'], 8)
             self.assertTrue(override['stabilization']['state_guard_enabled'])
             self.assertEqual(override['stabilization']['state_hold_after_guard_iters'], 10)
+
+    def test_builder_enforces_log1p_internal_scales_even_if_patch_requests_loglog(self) -> None:
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_path = Path(tmpdir.name)
+        batch_path = tmp_path / 'bad_scale_patch.yaml'
+        batch_path.write_text(
+            yaml.safe_dump(
+                {
+                    'selection': {
+                        'cutoffs': ['20210123'],
+                        'families': ['exdqlm_multivar_keep'],
+                    },
+                    'overrides': {
+                        'row_config_patches': [
+                            {
+                                'cutoff': '20210123',
+                                'family': 'exdqlm_multivar_keep',
+                                'config_patch': {
+                                    'scale_contract': {
+                                        'analysis_scale_fit_internal': 'log_log1p_cms',
+                                        'analysis_scale_post_internal': 'log_log1p_cms',
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding='utf-8',
+        )
+
+        proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(
+            '--batch-file', str(batch_path),
+            template=ALL_CUTOFFS_TEMPLATE,
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+        with (matrix_dir / 'frozen_spec_manifest.csv').open('r', encoding='utf-8') as handle:
+            frozen_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(frozen_rows), 1)
+        self.assertEqual(frozen_rows[0]['analysis_scale_fit_internal'], 'log1p_cms')
+        self.assertEqual(frozen_rows[0]['analysis_scale_post_internal'], 'log1p_cms')
+
+        config_paths = list(config_output_dir.glob('*.yaml'))
+        self.assertEqual(len(config_paths), 1)
+        payload = yaml.safe_load(config_paths[0].read_text(encoding='utf-8')) or {}
+        self.assertEqual(payload['scale_contract']['analysis_scale_fit_internal'], 'log1p_cms')
+        self.assertEqual(payload['scale_contract']['analysis_scale_post_internal'], 'log1p_cms')
 
 
 if __name__ == '__main__':

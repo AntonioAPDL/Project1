@@ -59,8 +59,21 @@ as_abs_path <- function(p) {
 convert_scale_to_cms <- function(x, scale) {
   if (scale == "raw_cms") return(x)
   if (scale == "log1p_cms") return(exp(x) - 1)
-  if (scale == "log_log1p_cms") return(exp(exp(x)) - 1)
+  if (scale == "log_log1p_cms") {
+    stop("log_log1p_cms is not allowed in the current workflow; use log1p_cms instead.", call. = FALSE)
+  }
   stop(paste("Unknown scale:", scale))
+}
+
+assert_log1p_only_plot_scale <- function(scale, context = "forecats pipeline") {
+  scale_use <- as.character(scale %||% "log1p_cms")
+  if (identical(scale_use, "log_log1p_cms")) {
+    stop(
+      sprintf("%s does not allow log_log1p_cms; use log1p_cms so observations, retros, and ensembles stay on the same scale.", context),
+      call. = FALSE
+    )
+  }
+  invisible(scale_use)
 }
 
 ensure_dir <- function(p) dir.create(p, showWarnings = FALSE, recursive = TRUE)
@@ -80,7 +93,6 @@ short_scale_for_id <- function(scale) {
     scale,
     raw_cms = "raw",
     log1p_cms = "log1p",
-    log_log1p_cms = "loglog",
     as.character(scale)
   )
 }
@@ -92,7 +104,8 @@ slugify_id <- function(x) {
 
 auto_run_id <- function(cfg, cutoff_date) {
   ts <- format(Sys.time(), "%Y%m%d_%H%M%S")
-  scale <- short_scale_for_id(cfg$transforms$plot_scale %||% "log_log1p_cms")
+  scale_use <- assert_log1p_only_plot_scale(cfg$transforms$plot_scale %||% "log1p_cms")
+  scale <- short_scale_for_id(scale_use)
 
   g_scheme <- cfg$inputs$glofas$weighting$scheme %||% "latest"
   g_alpha <- cfg$inputs$glofas$weighting$alpha %||% 1.0
@@ -135,6 +148,7 @@ run_cmd <- function(cmd) {
 
 main <- function(config_path) {
   cfg <- yaml::read_yaml(config_path)
+  assert_log1p_only_plot_scale(cfg$transforms$plot_scale %||% "log1p_cms")
 
   stop_if_missing(cfg$run$out_root, "Missing run.out_root in config")
   stop_if_missing(cfg$site$usgs_site, "Missing site.usgs_site in config")

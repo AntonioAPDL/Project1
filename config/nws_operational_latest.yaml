@@ -26,7 +26,7 @@ processing:
   post_days: 28
   weighting_scheme: "latest"
   alpha: 1.0
-  aggregation_scale: "log_log1p_cms"
+  aggregation_scale: "log1p_cms"
   parse_issue_hour: true
   issue_lookback_days: 2
   exponents: {}

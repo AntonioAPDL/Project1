@@ -6,6 +6,11 @@ Date: 2026-05-12
 
 Scale the repaired `exdqlm_multivar_keep` family from the successful `20210123` proof row to all 5 HE2 publication cutoffs under the canonical shared-input / GDPC relaunch workflow.
 
+This rollout now follows a strict transform rule:
+
+- retros, forecast ensembles, observations, fit internals, and post internals stay on `log1p_cms`
+- `log_log1p_cms` is not allowed in the current relaunch workflow
+
 ## Inputs
 
 - template:
@@ -16,6 +21,8 @@ Scale the repaired `exdqlm_multivar_keep` family from the successful `20210123` 
   - `config/he2_recent_runtime_cleanup_20260512.yaml`
 - golden contract:
   - `repro/run/HE2_EXDQLM_MULTIVAR_KEEP_GOLDEN_CONTRACT_20260512.md`
+- transform policy:
+  - `repro/run/LOG1P_ONLY_TRANSFORM_POLICY_20260512.md`
 
 ## Workflow classes covered
 

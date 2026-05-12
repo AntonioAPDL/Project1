@@ -54,10 +54,7 @@ transform_flow <- function(x_cms, scale) {
     return(out)
   }
   if (identical(scale, "log_log1p_cms")) {
-    ok <- !is.na(x) & x >= 0
-    out[ok] <- log(log(x[ok] + 1))
-    out[!is.finite(out)] <- NA_real_
-    return(out)
+    stop("log_log1p_cms is not allowed in current support bundles; use log1p_cms.", call. = FALSE)
   }
   stop(sprintf("Unknown plot scale: %s", scale), call. = FALSE)
 }

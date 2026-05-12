@@ -1036,7 +1036,7 @@ San_Lorenzo_Daily_USGS_R <- tryCatch({
 ###########################################################################################
 forecasts <- disc_w_read_forecasts(disc_w_paths$nws_forecast_path, disc_w_paths$glofas_forecast_path)
 nws_forecast <- forecasts$nws_forecast
-nws_forecast[,-1] <- log(nws_forecast[,-1])
+# Forecast adapters now provide log1p(cms); keep that scale unchanged.
 num_ens_nws <- dim(nws_forecast)[2]-1
 
 glofas_forecast <- forecasts$glofas_forecast
@@ -1048,7 +1048,7 @@ specific_date <- suppressWarnings(
 )
 if (is.na(specific_date)) specific_date <- cutoff_date_local + 1L
 glofas_forecast <- glofas_forecast[glofas_forecast$target_date >= specific_date, ]
-glofas_forecast[,-1] <- log(glofas_forecast[,-1])
+# Forecast adapters now provide log1p(cms); keep that scale unchanged.
 
 num_ens_glofas <- dim(glofas_forecast)[2]-1
 

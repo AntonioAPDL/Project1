@@ -142,7 +142,8 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
   Y_usgs <- data.frame(time = timestamps, time_series_matrix)
   all_data <- merge(X, Y_usgs, by = "time")
   Y <- t(as.matrix(all_data[, c("USGS", "GloFAS", "NWS3.0")]))
-  Y <- log(Y) # log-log, since already logged
+  # The shared retrospective contract is already log1p(cms); keep it on that
+  # scale and do not apply a second log transform.
   TT <- dim(Y)[2]
   J <- dim(Y)[1] - 1
   timestamps <- all_data[, "time"]

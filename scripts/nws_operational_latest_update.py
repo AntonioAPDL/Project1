@@ -97,7 +97,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "post_days": 28,
         "weighting_scheme": "latest",
         "alpha": 1.0,
-        "aggregation_scale": "log_log1p_cms",
+        "aggregation_scale": "log1p_cms",
         "parse_issue_hour": True,
         "issue_lookback_days": 2,
         "exponents": {},

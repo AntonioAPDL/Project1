@@ -32,23 +32,23 @@ ndlm_theory_align_series <- function(x, target_len, fill = 0) {
   family_shared_tail_align_series(x, target_len = target_len, fill = fill)
 }
 
-ndlm_theory_loglog1p_from_log1p <- function(x, label) {
+ndlm_theory_internal_from_log1p <- function(x, label) {
   vals <- as.numeric(x)
   ok <- is.finite(vals)
   out <- rep(NA_real_, length(vals))
   if (!any(ok)) {
     return(out)
   }
-  if (any(vals[ok] <= 0)) {
+  if (any(vals[ok] < 0)) {
     stop(
       sprintf(
-        "%s contains non-positive log1p values; cannot map to log(log1p(.)) safely",
+        "%s contains negative log1p values; cannot keep log1p internal scale safely",
         label
       ),
       call. = FALSE
     )
   }
-  out[ok] <- log(vals[ok])
+  out[ok] <- vals[ok]
   out
 }
 
@@ -81,7 +81,7 @@ ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
     stop(sprintf("ndlm theory retros has no numeric target column: %s", retros_path), call. = FALSE)
   }
   y_log1p <- as.numeric(y_log1p)
-  y_internal_all <- ndlm_theory_loglog1p_from_log1p(y_log1p, label = "ndlm theory retros target")
+  y_internal_all <- ndlm_theory_internal_from_log1p(y_log1p, label = "ndlm theory retros target")
   retros_dates_all <- family_shared_pick_date_column(retros_df, cov_name = "RETROS")
   valid_idx <- which(is.finite(y_internal_all))
   y <- y_internal_all[valid_idx]
@@ -118,8 +118,8 @@ ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
   }
   retros_hist <- list(
     usgs = y,
-    nws = ndlm_theory_loglog1p_from_log1p(retros_nws_log1p[valid_idx], label = "ndlm theory retros nws"),
-    glofas = ndlm_theory_loglog1p_from_log1p(retros_glofas_log1p[valid_idx], label = "ndlm theory retros glofas")
+    nws = ndlm_theory_internal_from_log1p(retros_nws_log1p[valid_idx], label = "ndlm theory retros nws"),
+    glofas = ndlm_theory_internal_from_log1p(retros_glofas_log1p[valid_idx], label = "ndlm theory retros glofas")
   )
 
   horizon_cap <- suppressWarnings(as.integer(horizon_cap[[1L]]))
@@ -136,13 +136,13 @@ ndlm_theory_load_inputs <- function(horizon_cap = 14L) {
   nws_forecast <- family_shared_extract_forecast_ensemble(
     nws_df,
     label = "ndlm_theory_nws_forecast",
-    transform = "log",
+    transform = "log1p",
     target_dates = forecast_dates_cap
   )
   glofas_forecast <- family_shared_extract_forecast_ensemble(
     glofas_df,
     label = "ndlm_theory_glofas_forecast",
-    transform = "log",
+    transform = "log1p",
     target_dates = forecast_dates_cap
   )
 
