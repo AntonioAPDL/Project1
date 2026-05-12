@@ -62,3 +62,19 @@ Promote this `q35` candidate only if it:
 - clears fit smoke
 - clears full-pipeline quantile smoke
 - avoids the explosive sigma/state path seen under the copied `q50` policy
+
+## Prepared fallback
+
+If the lighter candidate still shows the same early explosive pattern, the next prepared sidecar recipe is:
+
+- `config/he2_relaunch_batches/20210123_exdqlm_multivar_keep_q35_midscale_probe_20260511.yaml`
+
+That fallback keeps:
+
+- `gamma = 0.0`
+- `sigma_floor = 0.001`
+- `state_hold_after_guard_iters = 10`
+
+and uses a middle-ground:
+
+- `sigma_scale = 0.75`
