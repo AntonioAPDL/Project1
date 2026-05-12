@@ -1,0 +1,95 @@
+campaign:
+  id: exdqlm_multivar_keep_20210123_q35_final_background_recheck_20260512
+  description: >
+    Focused recheck of the best q35 stabilization probes after the sampling-state
+    contract fix. This stays sidecar-only, single-core per case, and reuses the
+    final q35 background search surface while writing to a fresh artifact root.
+base_generated_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20210123_tail_probe_20260511/control/generated_configs/multimodel_20210123_v8_he2pubgdpc1r1tail_exdqlm_multivar_keep.yaml
+artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_q35_final_background_recheck_20260512
+execution:
+  concurrency: 1
+screening:
+  quantile: 0.35
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  gamma_sigma:
+    freeze_target: gamma_sigma
+    warmup_freeze_iters: 5
+    min_update_iters: 6
+    min_total_iters: 12
+    max_iter: 18
+    objective_guard:
+      enabled: true
+      fail_fast: false
+      log_failures: true
+      mode: adaptive_freeze
+      penalty: 1.0e12
+    stabilization:
+      theta_sigma_lower: -9.210340371976182
+      theta_sigma_upper: 6.907755278982137
+      theta_gamma_lower: -13.815509557963773
+      theta_gamma_upper: 13.815509557935018
+      hessian_ridge_init: 1.0e-06
+      hessian_ridge_multiplier: 10.0
+      hessian_ridge_max_tries: 8
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 20.0
+    max_state_norm_sq: 5.0e14
+    min_gamsig_update_iters: 6
+    require_finite_conv_check: true
+confirmation:
+  enabled: false
+  top_n: 0
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  gamma_sigma:
+    min_update_iters: 12
+    min_total_iters: 20
+    max_iter: 40
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 10.0
+    max_state_norm_sq: 2.5e14
+    min_gamsig_update_iters: 12
+    require_finite_conv_check: true
+waves:
+  - id: wave2_post_thaw_state_control
+    description: Targeted rerun of the best q35 post-thaw state-control probe after the sampling contract fix.
+    probes:
+      - id: w2_a_hold10_blend100
+        description: Best q35 screening candidate before the sampling contract fix.
+        batch: post_thaw_state_control
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+            state_guard_enabled: true
+            state_norm_max_ratio: 25
+            state_norm_abs_cap: 1.0e12
+            state_guard_refreeze_iters: 10
+            state_hold_after_guard_iters: 10
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.5

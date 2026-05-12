@@ -3688,14 +3688,39 @@ for (j in 1:(J+1)) {
 }
 
 ########################
-result_retro <- DISC_generate_synth_samples_retro_part(n.samp, TT, length(m0), new.theta.out$sC, new.theta.out$sm) 
+retro_state <- disc_w_prepare_sampling_state(
+  sm = new.theta.out$sm,
+  sC = new.theta.out$sC,
+  TT_expected = TT,
+  n_expected = length(m0),
+  label = sprintf("retro[p0=%s]", as.character(p0))
+)
+result_retro <- DISC_generate_synth_samples_retro_part(
+  n.samp,
+  retro_state$TT,
+  retro_state$n,
+  retro_state$sC,
+  retro_state$sm
+) 
 ########################
 result_forecast <- vector("list", length(num_mem))
 ks <- 0
 
 for (j in 1:(J-1)) {
     ks <- ranges[J-j+1]-ks
-    result_forecast[[j]] <- DISC_generate_synth_samples_retro_part(n.samp, ks, length(new.theta.out$sm_ens[[j]][,1]), new.theta.out$sC_ens[[j]], new.theta.out$sm_ens[[j]]) 
+    forecast_state <- disc_w_prepare_sampling_state(
+      sm = new.theta.out$sm_ens[[j]],
+      sC = new.theta.out$sC_ens[[j]],
+      TT_expected = ks,
+      label = sprintf("forecast[%d][p0=%s]", as.integer(j), as.character(p0))
+    )
+    result_forecast[[j]] <- DISC_generate_synth_samples_retro_part(
+      n.samp,
+      forecast_state$TT,
+      forecast_state$n,
+      forecast_state$sC,
+      forecast_state$sm
+    ) 
 }
 
 mvnorm_sampler_vectorized <- function(mu, S, n.sample) {
@@ -3709,8 +3734,13 @@ mvnorm_sampler_vectorized <- function(mu, S, n.sample) {
 }
 j <- J
 
-S <- new.theta.out$sC_ens[[j]]
-mu <- new.theta.out$sm_ens[[j]]
+forecast_state <- disc_w_prepare_sampling_state(
+  sm = new.theta.out$sm_ens[[j]],
+  sC = new.theta.out$sC_ens[[j]],
+  label = sprintf("forecast[%d][p0=%s]", as.integer(j), as.character(p0))
+)
+S <- forecast_state$sC
+mu <- forecast_state$sm
 result_forecast[[j]]  <- list("samp_theta"=mvnorm_sampler_vectorized(mu, S, n.samp))
 
 print(c(n.samp))
