@@ -10,11 +10,12 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_20260510.template.yaml'
+ALL_CUTOFFS_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_20260512.template.yaml'
 BUILDER = ROOT / 'scripts' / 'build_he2_bayesian_publication_relaunch_configs.py'
 
 
 class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
-    def _run_builder(self, *extra_args: str) -> tuple[subprocess.CompletedProcess[str], Path, Path, Path]:
+    def _run_builder(self, *extra_args: str, template: Path | None = None) -> tuple[subprocess.CompletedProcess[str], Path, Path, Path]:
         tmpdir = tempfile.TemporaryDirectory()
         self.addCleanup(tmpdir.cleanup)
         tmp_path = Path(tmpdir.name)
@@ -23,7 +24,7 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         config_output_dir = tmp_path / 'configs'
         cmd = [
             'python3', str(BUILDER),
-            '--config', str(TEMPLATE),
+            '--config', str(template or TEMPLATE),
             '--artifact-root', str(artifact_root),
             '--matrix-dir', str(matrix_dir),
             '--config-output-dir', str(config_output_dir),
@@ -543,6 +544,75 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertTrue(overrides['q35']['stabilization']['state_guard_enabled'])
         self.assertEqual(overrides['q35']['stabilization']['state_hold_after_guard_iters'], 10)
         self.assertEqual(overrides['q50']['stabilization']['median_state_hold_after_guard_iters'], 10)
+
+    def test_family_level_quantile_policy_patch_applies_to_all_selected_cutoffs(self) -> None:
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_path = Path(tmpdir.name)
+        batch_path = tmp_path / 'family_all_cutoffs.yaml'
+        batch_path.write_text(
+            yaml.safe_dump(
+                {
+                    'selection': {
+                        'cutoffs': ['20210123', '20211112', '20211221', '20220511', '20221225'],
+                        'families': ['exdqlm_multivar_keep'],
+                    },
+                    'resources': {
+                        'fit_parallel_workers': 7,
+                        'mc_cores': 7,
+                    },
+                    'overrides': {
+                        'row_config_patches': [
+                            {
+                                'family': 'exdqlm_multivar_keep',
+                                'manuscript_label': 'exAL-M-T1',
+                                'config_patch': {
+                                    'fit': {
+                                        'exdqlm_multivar': {
+                                            'gamma_sigma': {
+                                                'quantile_overrides': {
+                                                    'q35': {
+                                                        'freeze_target': 'states',
+                                                        'warmup_freeze_iters': 8,
+                                                        'stabilization': {
+                                                            'state_guard_enabled': True,
+                                                            'state_hold_after_guard_iters': 10,
+                                                        },
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                            }
+                        ]
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding='utf-8',
+        )
+
+        proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(
+            '--batch-file', str(batch_path),
+            template=ALL_CUTOFFS_TEMPLATE,
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+        with (matrix_dir / 'matrix_plan.csv').open('r', encoding='utf-8') as handle:
+            plan_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(plan_rows), 5)
+        self.assertEqual(sorted({row['cutoff'] for row in plan_rows}), ['20210123', '20211112', '20211221', '20220511', '20221225'])
+
+        config_paths = sorted(config_output_dir.glob('*.yaml'))
+        self.assertEqual(len(config_paths), 5)
+        for path in config_paths:
+            payload = yaml.safe_load(path.read_text(encoding='utf-8')) or {}
+            override = payload['fit']['exdqlm_multivar']['gamma_sigma']['quantile_overrides']['q35']
+            self.assertEqual(override['freeze_target'], 'states')
+            self.assertEqual(override['warmup_freeze_iters'], 8)
+            self.assertTrue(override['stabilization']['state_guard_enabled'])
+            self.assertEqual(override['stabilization']['state_hold_after_guard_iters'], 10)
 
 
 if __name__ == '__main__':

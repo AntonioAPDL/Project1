@@ -1,0 +1,52 @@
+cleanup:
+  cleanup_id: he2_recent_runtime_20260512
+  runtime_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime
+  report_root: repro/reports/cleanup_runs
+  quarantine_root: repro/quarantine/cleanup_runs
+  min_size_mb: 250
+  prune_extensions:
+    - .RData
+    - .rda
+    - .rds
+    - .RDS
+  protected_roots:
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20210123_row_final_20260512
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510
+  evidence_patterns:
+    - "**/prelaunch_validation_summary.json"
+    - "**/prelaunch_validation_summary.md"
+    - "**/campaign_progress.json"
+    - "**/campaign_results.csv"
+    - "**/campaign_warnings.md"
+    - "**/MORNING_SUMMARY.md"
+    - "**/report/summary.json"
+    - "**/report/summary.md"
+    - "**/validate/compare_report.json"
+    - "**/validate/env_drift_report.json"
+    - "**/outputs/multivar_forecast_health.txt"
+    - "**/logs/fit.log"
+    - "**/logs/fit_stage.log"
+    - "**/run_manifest.yaml"
+    - "**/queue.log"
+    - "**/matrix_status.csv"
+  candidate_roots:
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_median_overnight_campaign_20260511
+      reason: superseded_q50_campaign
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20210123_row_20260511
+      reason: failed_old_real_row
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_20260510
+      reason: superseded_relaunch_tree
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_q35_parallel_campaign_20260512
+      reason: superseded_q35_parallel_search
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_median_q50_probe_20260511
+      reason: superseded_q50_probe
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20210123_tail_probe_20260511
+      reason: superseded_tail_probe
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_median_warmup_probes_round3_20260510
+      reason: superseded_median_warmup_round
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_q35_final_background_recheck_20260512
+      reason: superseded_q35_recheck
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20210123_row_spillover_20260511
+      reason: superseded_spillover_probe
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20210123_q35_probe_20260511
+      reason: superseded_q35_probe

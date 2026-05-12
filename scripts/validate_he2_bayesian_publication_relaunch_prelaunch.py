@@ -5,6 +5,7 @@ import argparse
 import copy
 import csv
 import json
+import os
 import shutil
 import subprocess
 from collections import Counter, defaultdict
@@ -17,10 +18,24 @@ import yaml
 from he2_publication_relaunch_lib import canonical_shared_paths, model_class, parse_quantile_list
 
 ROOT = Path(__file__).resolve().parents[1]
+RDATA_SUFFIXES = {'.rdata', '.rda', '.rds'}
 
 
 def run(cmd: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, cwd=cwd, text=True, capture_output=True, check=False)
+
+
+def run_unified(config_path: Path, *, cwd: Path) -> subprocess.CompletedProcess[str]:
+    env = dict(os.environ)
+    env['CLEANUP_RDATA_AFTER_POST'] = '1'
+    return subprocess.run(
+        ['Rscript', 'scripts/unified_run.R', '--config', str(config_path)],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        check=False,
+        env=env,
+    )
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -216,6 +231,8 @@ def _append_smoke_result(
     run_root: str | None = None,
     shared_root: str | None = None,
     quantiles: list[float] | None = None,
+    cleanup_removed_files: int | None = None,
+    cleanup_removed_bytes: int | None = None,
 ) -> None:
     row: dict[str, Any] = {'scope': scope, 'status': status}
     if family:
@@ -230,7 +247,59 @@ def _append_smoke_result(
         row['shared_root'] = shared_root
     if quantiles:
         row['quantiles'] = quantiles
+    if cleanup_removed_files is not None:
+        row['cleanup_removed_files'] = int(cleanup_removed_files)
+    if cleanup_removed_bytes is not None:
+        row['cleanup_removed_bytes'] = int(cleanup_removed_bytes)
     summary['smoke_runs'].append(row)
+
+
+def _prune_r_artifacts(root: Path) -> dict[str, int]:
+    removed_files = 0
+    removed_bytes = 0
+    if not root.exists():
+        return {'removed_files': 0, 'removed_bytes': 0}
+    for path in root.rglob('*'):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() not in RDATA_SUFFIXES:
+            continue
+        size = path.stat().st_size
+        path.unlink()
+        removed_files += 1
+        removed_bytes += size
+    return {'removed_files': removed_files, 'removed_bytes': removed_bytes}
+
+
+def _normalize_quantile_smoke_cases(
+    validation_cfg: dict[str, Any],
+    *,
+    cases_key: str,
+    family_key: str,
+    cutoff_key: str,
+    quantiles_key: str,
+    default_family: str,
+    default_cutoff: str,
+    default_quantiles: list[float],
+) -> list[dict[str, Any]]:
+    raw_cases = validation_cfg.get(cases_key)
+    if raw_cases:
+        normalized: list[dict[str, Any]] = []
+        for idx, item in enumerate(raw_cases, start=1):
+            if not isinstance(item, dict):
+                raise TypeError(f'{cases_key}[{idx - 1}] must be a mapping')
+            family = str(item.get('family') or default_family)
+            cutoff = str(item.get('cutoff') or default_cutoff)
+            quantiles = parse_quantile_list(item.get('quantiles') or default_quantiles)
+            label = str(item.get('label') or cutoff)
+            normalized.append({'family': family, 'cutoff': cutoff, 'quantiles': quantiles, 'label': label})
+        return normalized
+    return [{
+        'family': str(validation_cfg.get(family_key, default_family)),
+        'cutoff': str(validation_cfg.get(cutoff_key, default_cutoff)),
+        'quantiles': parse_quantile_list(validation_cfg.get(quantiles_key) or default_quantiles),
+        'label': str(validation_cfg.get(cutoff_key, default_cutoff)),
+    }]
 
 
 def main() -> int:
@@ -392,7 +461,7 @@ def main() -> int:
         run_root = smoke_root / 'family' / family
         shutil.rmtree(run_root, ignore_errors=True)
         smoke_cfg = write_temp_smoke_config(src_cfg, run_id=run_id, run_root=run_root)
-        proc = run(['Rscript', 'scripts/unified_run.R', '--config', str(smoke_cfg)], cwd=ROOT)
+        proc = run_unified(smoke_cfg, cwd=ROOT)
         (outdir / f'{family}.stdout.log').write_text(proc.stdout, encoding='utf-8')
         (outdir / f'{family}.stderr.log').write_text(proc.stderr, encoding='utf-8')
         assert_true(proc.returncode == 0, f'family smoke failed for {family}\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}')
@@ -412,7 +481,7 @@ def main() -> int:
         run_root = smoke_root / 'cutoff' / cutoff
         shutil.rmtree(run_root, ignore_errors=True)
         smoke_cfg = write_temp_smoke_config(src_cfg, run_id=run_id, run_root=run_root)
-        proc = run(['Rscript', 'scripts/unified_run.R', '--config', str(smoke_cfg)], cwd=ROOT)
+        proc = run_unified(smoke_cfg, cwd=ROOT)
         (outdir / f'{cutoff}.stdout.log').write_text(proc.stdout, encoding='utf-8')
         (outdir / f'{cutoff}.stderr.log').write_text(proc.stderr, encoding='utf-8')
         assert_true(proc.returncode == 0, f'cutoff smoke failed for {cutoff}\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}')
@@ -440,19 +509,37 @@ def main() -> int:
             mc_cores=1,
             fit_overrides=smoke_fit_overrides,
         )
-        fit_proc = run(['Rscript', 'scripts/unified_run.R', '--config', str(fit_smoke_cfg)], cwd=ROOT)
+        fit_proc = run_unified(fit_smoke_cfg, cwd=ROOT)
         (outdir / f'{fit_run_id}.stdout.log').write_text(fit_proc.stdout, encoding='utf-8')
         (outdir / f'{fit_run_id}.stderr.log').write_text(fit_proc.stderr, encoding='utf-8')
         assert_true(fit_proc.returncode == 0, f'fit smoke failed for family={fit_smoke_row["family_id"]} cutoff={fit_smoke_row["cutoff"]}\nSTDOUT:\n{fit_proc.stdout}\nSTDERR:\n{fit_proc.stderr}')
-        _append_smoke_result(summary, scope='fit_ndlm', status='passed', family=fit_smoke_row['family_id'], cutoff=fit_smoke_row['cutoff'], run_root=str(fit_run_root / fit_run_id))
+        fit_cleanup = _prune_r_artifacts(fit_run_root / fit_run_id)
+        _append_smoke_result(
+            summary,
+            scope='fit_ndlm',
+            status='passed',
+            family=fit_smoke_row['family_id'],
+            cutoff=fit_smoke_row['cutoff'],
+            run_root=str(fit_run_root / fit_run_id),
+            cleanup_removed_files=fit_cleanup['removed_files'],
+            cleanup_removed_bytes=fit_cleanup['removed_bytes'],
+        )
 
-    quantile_pref = str(validation_cfg.get('quantile_fit_smoke_family', 'exdqlm_multivar_keep'))
-    quantile_cutoff_pref = str(validation_cfg.get('quantile_fit_smoke_cutoff', selected_cutoffs[0]))
-    quantile_fit_subset = parse_quantile_list(validation_cfg.get('quantile_fit_smoke_quantiles') or [0.05])
-    quantile_fit_row = _choose_smoke_row(plan_rows, preferred_family=quantile_pref, preferred_cutoff=quantile_cutoff_pref, class_name='quantile_multivariate')
-    if quantile_fit_row is None:
-        _append_smoke_result(summary, scope='fit_quantile', status='skipped', family=quantile_pref, cutoff=quantile_cutoff_pref, quantiles=quantile_fit_subset, reason='no multivariate quantile row available in selected scope')
-    else:
+    quantile_fit_cases = _normalize_quantile_smoke_cases(
+        validation_cfg,
+        cases_key='quantile_fit_smoke_cases',
+        family_key='quantile_fit_smoke_family',
+        cutoff_key='quantile_fit_smoke_cutoff',
+        quantiles_key='quantile_fit_smoke_quantiles',
+        default_family='exdqlm_multivar_keep',
+        default_cutoff=selected_cutoffs[0],
+        default_quantiles=[0.05],
+    )
+    for case in quantile_fit_cases:
+        quantile_fit_row = _choose_smoke_row(plan_rows, preferred_family=case['family'], preferred_cutoff=case['cutoff'], class_name='quantile_multivariate')
+        if quantile_fit_row is None:
+            _append_smoke_result(summary, scope='fit_quantile', status='skipped', family=case['family'], cutoff=case['cutoff'], quantiles=case['quantiles'], reason='no multivariate quantile row available in selected scope')
+            continue
         qfit_cfg_src = Path(quantile_fit_row['config_path'])
         qfit_run_id = f'fit_smoke_{quantile_fit_row["family_id"]}_{quantile_fit_row["cutoff"]}_qsubset'
         qfit_run_root = smoke_root / 'fit_quantile' / quantile_fit_row['family_id'] / quantile_fit_row['cutoff']
@@ -462,16 +549,27 @@ def main() -> int:
             run_id=qfit_run_id,
             run_root=qfit_run_root,
             stage_mode='fit',
-            quantile_subset=quantile_fit_subset,
+            quantile_subset=case['quantiles'],
             fit_parallel_workers=1,
             mc_cores=1,
             fit_overrides=smoke_fit_overrides,
         )
-        qfit_proc = run(['Rscript', 'scripts/unified_run.R', '--config', str(qfit_smoke_cfg)], cwd=ROOT)
+        qfit_proc = run_unified(qfit_smoke_cfg, cwd=ROOT)
         (outdir / f'{qfit_run_id}.stdout.log').write_text(qfit_proc.stdout, encoding='utf-8')
         (outdir / f'{qfit_run_id}.stderr.log').write_text(qfit_proc.stderr, encoding='utf-8')
         assert_true(qfit_proc.returncode == 0, f'quantile fit smoke failed for family={quantile_fit_row["family_id"]} cutoff={quantile_fit_row["cutoff"]}\nSTDOUT:\n{qfit_proc.stdout}\nSTDERR:\n{qfit_proc.stderr}')
-        _append_smoke_result(summary, scope='fit_quantile', status='passed', family=quantile_fit_row['family_id'], cutoff=quantile_fit_row['cutoff'], quantiles=quantile_fit_subset, run_root=str(qfit_run_root / qfit_run_id))
+        qfit_cleanup = _prune_r_artifacts(qfit_run_root / qfit_run_id)
+        _append_smoke_result(
+            summary,
+            scope='fit_quantile',
+            status='passed',
+            family=quantile_fit_row['family_id'],
+            cutoff=quantile_fit_row['cutoff'],
+            quantiles=case['quantiles'],
+            run_root=str(qfit_run_root / qfit_run_id),
+            cleanup_removed_files=qfit_cleanup['removed_files'],
+            cleanup_removed_bytes=qfit_cleanup['removed_bytes'],
+        )
 
     univar_quantile_pref = str(validation_cfg.get('univar_quantile_fit_smoke_family', 'exdqlm_univar'))
     univar_quantile_cutoff_pref = str(validation_cfg.get('univar_quantile_fit_smoke_cutoff', selected_cutoffs[0]))
@@ -494,14 +592,25 @@ def main() -> int:
             mc_cores=1,
             fit_overrides=smoke_fit_overrides,
         )
-        uqfit_proc = run(['Rscript', 'scripts/unified_run.R', '--config', str(uqfit_smoke_cfg)], cwd=ROOT)
+        uqfit_proc = run_unified(uqfit_smoke_cfg, cwd=ROOT)
         (outdir / f'{uqfit_run_id}.stdout.log').write_text(uqfit_proc.stdout, encoding='utf-8')
         (outdir / f'{uqfit_run_id}.stderr.log').write_text(uqfit_proc.stderr, encoding='utf-8')
         assert_true(
             uqfit_proc.returncode == 0,
             f'univariate quantile fit smoke failed for family={univar_quantile_fit_row["family_id"]} cutoff={univar_quantile_fit_row["cutoff"]}\nSTDOUT:\n{uqfit_proc.stdout}\nSTDERR:\n{uqfit_proc.stderr}',
         )
-        _append_smoke_result(summary, scope='fit_quantile_univar', status='passed', family=univar_quantile_fit_row['family_id'], cutoff=univar_quantile_fit_row['cutoff'], quantiles=univar_quantile_fit_subset, run_root=str(uqfit_run_root / uqfit_run_id))
+        uqfit_cleanup = _prune_r_artifacts(uqfit_run_root / uqfit_run_id)
+        _append_smoke_result(
+            summary,
+            scope='fit_quantile_univar',
+            status='passed',
+            family=univar_quantile_fit_row['family_id'],
+            cutoff=univar_quantile_fit_row['cutoff'],
+            quantiles=univar_quantile_fit_subset,
+            run_root=str(uqfit_run_root / uqfit_run_id),
+            cleanup_removed_files=uqfit_cleanup['removed_files'],
+            cleanup_removed_bytes=uqfit_cleanup['removed_bytes'],
+        )
 
     full_ndlm_family = str(validation_cfg.get('full_pipeline_ndlm_family', fit_smoke_family_pref))
     full_ndlm_cutoff = str(validation_cfg.get('full_pipeline_ndlm_cutoff', fit_smoke_cutoff_pref))
@@ -522,23 +631,42 @@ def main() -> int:
             mc_cores=1,
             fit_overrides=smoke_fit_overrides,
         )
-        ndlm_full_proc = run(['Rscript', 'scripts/unified_run.R', '--config', str(ndlm_full_cfg)], cwd=ROOT)
+        ndlm_full_proc = run_unified(ndlm_full_cfg, cwd=ROOT)
         (outdir / f'{ndlm_full_run_id}.stdout.log').write_text(ndlm_full_proc.stdout, encoding='utf-8')
         (outdir / f'{ndlm_full_run_id}.stderr.log').write_text(ndlm_full_proc.stderr, encoding='utf-8')
         assert_true(ndlm_full_proc.returncode == 0, f'NDLM full pipeline smoke failed\nSTDOUT:\n{ndlm_full_proc.stdout}\nSTDERR:\n{ndlm_full_proc.stderr}')
         _validate_full_pipeline_run(ndlm_full_run_root / ndlm_full_run_id, ndlm_full_run_id)
-        _append_smoke_result(summary, scope='full_pipeline_ndlm', status='passed', family=ndlm_full_row['family_id'], cutoff=ndlm_full_row['cutoff'], run_root=str(ndlm_full_run_root / ndlm_full_run_id))
+        ndlm_full_cleanup = _prune_r_artifacts(ndlm_full_run_root / ndlm_full_run_id)
+        _append_smoke_result(
+            summary,
+            scope='full_pipeline_ndlm',
+            status='passed',
+            family=ndlm_full_row['family_id'],
+            cutoff=ndlm_full_row['cutoff'],
+            run_root=str(ndlm_full_run_root / ndlm_full_run_id),
+            cleanup_removed_files=ndlm_full_cleanup['removed_files'],
+            cleanup_removed_bytes=ndlm_full_cleanup['removed_bytes'],
+        )
 
-    full_quantile_family = str(validation_cfg.get('full_pipeline_quantile_family', quantile_pref))
-    full_quantile_cutoff = str(validation_cfg.get('full_pipeline_quantile_cutoff', quantile_cutoff_pref))
-    full_quantile_class = model_class(full_quantile_family)
-    if full_quantile_class not in {'quantile_multivariate', 'quantile_univariate'}:
-        full_quantile_class = 'quantile_multivariate'
-    full_quantile_subset = parse_quantile_list(validation_cfg.get('full_pipeline_quantiles') or quantile_fit_subset or [0.05])
-    full_quantile_row = _choose_smoke_row(plan_rows, preferred_family=full_quantile_family, preferred_cutoff=full_quantile_cutoff, class_name=full_quantile_class)
-    if full_quantile_row is None:
-        _append_smoke_result(summary, scope='full_pipeline_quantile', status='skipped', family=full_quantile_family, cutoff=full_quantile_cutoff, quantiles=full_quantile_subset, reason=f'no {full_quantile_class} row available in selected scope')
-    else:
+    default_quantile_case = quantile_fit_cases[0] if quantile_fit_cases else {'family': 'exdqlm_multivar_keep', 'cutoff': selected_cutoffs[0], 'quantiles': [0.05]}
+    full_quantile_cases = _normalize_quantile_smoke_cases(
+        validation_cfg,
+        cases_key='full_pipeline_quantile_smoke_cases',
+        family_key='full_pipeline_quantile_family',
+        cutoff_key='full_pipeline_quantile_cutoff',
+        quantiles_key='full_pipeline_quantiles',
+        default_family=default_quantile_case['family'],
+        default_cutoff=default_quantile_case['cutoff'],
+        default_quantiles=default_quantile_case['quantiles'],
+    )
+    for case in full_quantile_cases:
+        full_quantile_class = model_class(case['family'])
+        if full_quantile_class not in {'quantile_multivariate', 'quantile_univariate'}:
+            full_quantile_class = 'quantile_multivariate'
+        full_quantile_row = _choose_smoke_row(plan_rows, preferred_family=case['family'], preferred_cutoff=case['cutoff'], class_name=full_quantile_class)
+        if full_quantile_row is None:
+            _append_smoke_result(summary, scope='full_pipeline_quantile', status='skipped', family=case['family'], cutoff=case['cutoff'], quantiles=case['quantiles'], reason=f'no {full_quantile_class} row available in selected scope')
+            continue
         full_quantile_cfg_src = Path(full_quantile_row['config_path'])
         full_quantile_run_id = f'full_pipeline_{full_quantile_row["family_id"]}_{full_quantile_row["cutoff"]}_qsubset'
         full_quantile_run_root = smoke_root / 'full_pipeline' / 'quantile' / full_quantile_row['family_id'] / full_quantile_row['cutoff']
@@ -548,17 +676,28 @@ def main() -> int:
             run_id=full_quantile_run_id,
             run_root=full_quantile_run_root,
             stage_mode='full_pipeline',
-            quantile_subset=full_quantile_subset,
+            quantile_subset=case['quantiles'],
             fit_parallel_workers=1,
             mc_cores=1,
             fit_overrides=smoke_fit_overrides,
         )
-        full_quantile_proc = run(['Rscript', 'scripts/unified_run.R', '--config', str(full_quantile_cfg)], cwd=ROOT)
+        full_quantile_proc = run_unified(full_quantile_cfg, cwd=ROOT)
         (outdir / f'{full_quantile_run_id}.stdout.log').write_text(full_quantile_proc.stdout, encoding='utf-8')
         (outdir / f'{full_quantile_run_id}.stderr.log').write_text(full_quantile_proc.stderr, encoding='utf-8')
         assert_true(full_quantile_proc.returncode == 0, f'quantile full pipeline smoke failed\nSTDOUT:\n{full_quantile_proc.stdout}\nSTDERR:\n{full_quantile_proc.stderr}')
         _validate_full_pipeline_run(full_quantile_run_root / full_quantile_run_id, full_quantile_run_id)
-        _append_smoke_result(summary, scope='full_pipeline_quantile', status='passed', family=full_quantile_row['family_id'], cutoff=full_quantile_row['cutoff'], quantiles=full_quantile_subset, run_root=str(full_quantile_run_root / full_quantile_run_id))
+        full_quantile_cleanup = _prune_r_artifacts(full_quantile_run_root / full_quantile_run_id)
+        _append_smoke_result(
+            summary,
+            scope='full_pipeline_quantile',
+            status='passed',
+            family=full_quantile_row['family_id'],
+            cutoff=full_quantile_row['cutoff'],
+            quantiles=case['quantiles'],
+            run_root=str(full_quantile_run_root / full_quantile_run_id),
+            cleanup_removed_files=full_quantile_cleanup['removed_files'],
+            cleanup_removed_bytes=full_quantile_cleanup['removed_bytes'],
+        )
 
     full_univar_quantile_family = str(validation_cfg.get('full_pipeline_univar_quantile_family', univar_quantile_pref))
     full_univar_quantile_cutoff = str(validation_cfg.get('full_pipeline_univar_quantile_cutoff', univar_quantile_cutoff_pref))
@@ -581,7 +720,7 @@ def main() -> int:
             mc_cores=1,
             fit_overrides=smoke_fit_overrides,
         )
-        full_univar_quantile_proc = run(['Rscript', 'scripts/unified_run.R', '--config', str(full_univar_quantile_cfg)], cwd=ROOT)
+        full_univar_quantile_proc = run_unified(full_univar_quantile_cfg, cwd=ROOT)
         (outdir / f'{full_univar_quantile_run_id}.stdout.log').write_text(full_univar_quantile_proc.stdout, encoding='utf-8')
         (outdir / f'{full_univar_quantile_run_id}.stderr.log').write_text(full_univar_quantile_proc.stderr, encoding='utf-8')
         assert_true(
@@ -589,13 +728,28 @@ def main() -> int:
             f'univariate quantile full pipeline smoke failed\nSTDOUT:\n{full_univar_quantile_proc.stdout}\nSTDERR:\n{full_univar_quantile_proc.stderr}',
         )
         _validate_full_pipeline_run(full_univar_quantile_run_root / full_univar_quantile_run_id, full_univar_quantile_run_id)
-        _append_smoke_result(summary, scope='full_pipeline_quantile_univar', status='passed', family=full_univar_quantile_row['family_id'], cutoff=full_univar_quantile_row['cutoff'], quantiles=full_univar_quantile_subset, run_root=str(full_univar_quantile_run_root / full_univar_quantile_run_id))
+        full_univar_cleanup = _prune_r_artifacts(full_univar_quantile_run_root / full_univar_quantile_run_id)
+        _append_smoke_result(
+            summary,
+            scope='full_pipeline_quantile_univar',
+            status='passed',
+            family=full_univar_quantile_row['family_id'],
+            cutoff=full_univar_quantile_row['cutoff'],
+            quantiles=full_univar_quantile_subset,
+            run_root=str(full_univar_quantile_run_root / full_univar_quantile_run_id),
+            cleanup_removed_files=full_univar_cleanup['removed_files'],
+            cleanup_removed_bytes=full_univar_cleanup['removed_bytes'],
+        )
 
     smoke_status_counts = Counter(row.get('status', 'passed') for row in summary['smoke_runs'])
+    cleanup_removed_files = sum(int(row.get('cleanup_removed_files', 0)) for row in summary['smoke_runs'])
+    cleanup_removed_bytes = sum(int(row.get('cleanup_removed_bytes', 0)) for row in summary['smoke_runs'])
     summary['checks']['smoke_runs'] = {
         'count': len(summary['smoke_runs']),
         'passed': int(smoke_status_counts.get('passed', 0)),
         'skipped': int(smoke_status_counts.get('skipped', 0)),
+        'cleanup_removed_files': cleanup_removed_files,
+        'cleanup_removed_bytes': cleanup_removed_bytes,
     }
 
     summary_path = outdir / 'prelaunch_validation_summary.json'
@@ -620,6 +774,8 @@ def main() -> int:
         f'- smoke runs: `{summary["checks"]["smoke_runs"]["count"]}`',
         f'- smoke passed: `{summary["checks"]["smoke_runs"]["passed"]}`',
         f'- smoke skipped: `{summary["checks"]["smoke_runs"]["skipped"]}`',
+        f'- smoke cleanup removed files: `{summary["checks"]["smoke_runs"]["cleanup_removed_files"]}`',
+        f'- smoke cleanup removed bytes: `{summary["checks"]["smoke_runs"]["cleanup_removed_bytes"]}`',
         '',
         '## Smoke coverage',
         '',

@@ -11,9 +11,51 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 
 from validate_he2_bayesian_publication_relaunch_prelaunch import _choose_smoke_row, _pick_row, write_temp_smoke_config
+from validate_he2_bayesian_publication_relaunch_prelaunch import _normalize_quantile_smoke_cases, _prune_r_artifacts
 
 
 class HE2PublicationRelaunchValidatorTests(unittest.TestCase):
+    def test_normalize_quantile_smoke_cases_supports_explicit_case_list(self) -> None:
+        validation_cfg = {
+            'quantile_fit_smoke_cases': [
+                {'family': 'exdqlm_multivar_keep', 'cutoff': '20210123', 'quantiles': [0.2, 0.35]},
+                {'family': 'exdqlm_multivar_keep', 'cutoff': '20211221', 'quantiles': [0.5, 0.65, 0.8], 'label': 'full_history'},
+            ]
+        }
+        cases = _normalize_quantile_smoke_cases(
+            validation_cfg,
+            cases_key='quantile_fit_smoke_cases',
+            family_key='quantile_fit_smoke_family',
+            cutoff_key='quantile_fit_smoke_cutoff',
+            quantiles_key='quantile_fit_smoke_quantiles',
+            default_family='exdqlm_multivar_keep',
+            default_cutoff='20210123',
+            default_quantiles=[0.05],
+        )
+        self.assertEqual(len(cases), 2)
+        self.assertEqual(cases[0]['cutoff'], '20210123')
+        self.assertEqual(cases[0]['quantiles'], [0.2, 0.35])
+        self.assertEqual(cases[1]['cutoff'], '20211221')
+        self.assertEqual(cases[1]['label'], 'full_history')
+
+    def test_prune_r_artifacts_removes_only_r_binary_payloads(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            keep = root / 'keep.txt'
+            keep.write_text('ok', encoding='utf-8')
+            rdata = root / 'fit' / 'outputs' / 'big.RData'
+            rdata.parent.mkdir(parents=True, exist_ok=True)
+            rdata.write_bytes(b'a' * 16)
+            rds = root / 'fit' / 'outputs' / 'cache.rds'
+            rds.write_bytes(b'b' * 8)
+
+            result = _prune_r_artifacts(root)
+            self.assertEqual(result['removed_files'], 2)
+            self.assertEqual(result['removed_bytes'], 24)
+            self.assertTrue(keep.exists())
+            self.assertFalse(rdata.exists())
+            self.assertFalse(rds.exists())
+
     def test_choose_smoke_row_returns_none_when_class_missing(self) -> None:
         rows = [
             {'family_id': 'exdqlm_multivar_keep', 'cutoff': '20210123', 'model_class': 'quantile_multivariate'},

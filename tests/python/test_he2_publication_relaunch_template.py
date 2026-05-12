@@ -7,6 +7,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_20260510.template.yaml'
+ALL_CUTOFFS_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_20260512.template.yaml'
 
 
 class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
@@ -52,6 +53,18 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         self.assertEqual(validation['full_pipeline_ndlm_family'], 'ndlm_univar_keep')
         self.assertEqual(validation['full_pipeline_quantile_family'], 'exdqlm_univar')
         self.assertEqual(validation['full_pipeline_quantiles'], [0.05])
+
+    def test_all_cutoffs_template_hardens_queue_and_covers_both_cutoff_classes(self) -> None:
+        payload = yaml.safe_load(ALL_CUTOFFS_TEMPLATE.read_text(encoding='utf-8')) or {}
+        self.assertEqual(payload['queue']['pause_free_gb'], 25)
+        self.assertEqual(payload['queue']['launch_free_gb'], 35)
+        self.assertEqual(payload['queue']['heavy_free_gb'], 35)
+        self.assertEqual(payload['profiles']['definitions']['disk_guarded_serial']['resources']['fit_parallel_workers'], 7)
+
+        validation = payload['validation']
+        self.assertEqual([case['cutoff'] for case in validation['quantile_fit_smoke_cases']], ['20210123', '20211221'])
+        self.assertEqual([case['cutoff'] for case in validation['full_pipeline_quantile_smoke_cases']], ['20210123', '20211221'])
+        self.assertEqual(validation['quantile_fit_smoke_cases'][0]['quantiles'], [0.2, 0.35, 0.5, 0.65, 0.8])
 
 
 if __name__ == '__main__':
