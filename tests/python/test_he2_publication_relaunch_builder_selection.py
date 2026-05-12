@@ -345,6 +345,82 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
             self.assertEqual(override['sigma_floor'], 0.01)
             self.assertEqual(override['sigma_scale'], 0.5)
 
+    def test_batch_row_config_patch_can_apply_q35_lighter_override(self) -> None:
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_path = Path(tmpdir.name)
+        batch_path = tmp_path / 'q35_lighter_probe.yaml'
+        batch_path.write_text(
+            yaml.safe_dump(
+                {
+                    'selection': {
+                        'cutoffs': ['20210123'],
+                        'families': ['exdqlm_multivar_keep'],
+                        'quantiles': [0.35],
+                    },
+                    'resources': {
+                        'fit_parallel_workers': 1,
+                        'mc_cores': 1,
+                    },
+                    'overrides': {
+                        'row_config_patches': [
+                            {
+                                'cutoff': '20210123',
+                                'family': 'exdqlm_multivar_keep',
+                                'manuscript_label': 'exAL-M-T1',
+                                'config_patch': {
+                                    'fit': {
+                                        'exdqlm_multivar': {
+                                            'gamma_sigma': {
+                                                'quantile_overrides': {
+                                                    'q35': {
+                                                        'init': {
+                                                            'mode': 'robust',
+                                                            'gamma': 0.0,
+                                                            'sigma_floor': 0.001,
+                                                            'sigma_scale': 1.0,
+                                                        },
+                                                        'stabilization': {
+                                                            'median_state_hold_after_guard_iters': 10,
+                                                            'median_state_blend_alpha': 1.0,
+                                                            'median_cov_blend_alpha': 1.0,
+                                                        },
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        ],
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding='utf-8',
+        )
+
+        proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(
+            '--batch-file', str(batch_path),
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+        with (matrix_dir / 'frozen_spec_manifest.csv').open('r', encoding='utf-8') as handle:
+            frozen_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(frozen_rows), 1)
+        self.assertEqual(frozen_rows[0]['active_quantiles'], '35')
+        self.assertEqual(frozen_rows[0]['config_patch_applied'], 'True')
+
+        config_paths = list(config_output_dir.glob('*.yaml'))
+        self.assertEqual(len(config_paths), 1)
+        payload = yaml.safe_load(config_paths[0].read_text(encoding='utf-8')) or {}
+        override = payload['fit']['exdqlm_multivar']['gamma_sigma']['quantile_overrides']['q35']
+        self.assertEqual(override['init']['mode'], 'robust')
+        self.assertEqual(override['init']['gamma'], 0.0)
+        self.assertEqual(override['init']['sigma_floor'], 0.001)
+        self.assertEqual(override['init']['sigma_scale'], 1.0)
+        self.assertEqual(override['stabilization']['median_state_hold_after_guard_iters'], 10)
+
 
 if __name__ == '__main__':
     unittest.main()
