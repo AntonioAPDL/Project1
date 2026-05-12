@@ -172,6 +172,38 @@ def _build_single_probe_config(campaign_cfg: dict[str, Any], task: ProbeTask) ->
     }
 
 
+def _build_confirmation_probe_config(campaign_cfg: dict[str, Any], task: ProbeTask) -> dict[str, Any]:
+    campaign_id = str(campaign_cfg['campaign']['id'])
+    artifact_root = Path(str(campaign_cfg['artifact_root'])).resolve() / 'confirmations' / task.wave_id / task.probe_id
+    screening_cfg = _deep_merge(copy.deepcopy(campaign_cfg['screening']), task.screening_patch)
+    confirm_cfg = copy.deepcopy(campaign_cfg.get('confirmation', {}))
+    screening_cfg['stages'] = copy.deepcopy(confirm_cfg.get('stages', screening_cfg.get('stages', {})))
+    screening_cfg['fit_parallel_workers'] = int(confirm_cfg.get('fit_parallel_workers', screening_cfg.get('fit_parallel_workers', 1)))
+    screening_cfg['mc_cores'] = int(confirm_cfg.get('mc_cores', screening_cfg.get('mc_cores', 1)))
+    screening_cfg['gamma_sigma'] = _deep_merge(
+        copy.deepcopy(screening_cfg.get('gamma_sigma', {})),
+        copy.deepcopy(confirm_cfg.get('gamma_sigma', {})),
+    )
+    screening_cfg['health_rules'] = copy.deepcopy(confirm_cfg.get('health_rules', screening_cfg.get('health_rules', {})))
+    return {
+        'probe': {
+            'id': f'{campaign_id}__confirm__{task.wave_id}__{task.probe_id}',
+            'description': f"Confirmation run for {task.probe_id}",
+        },
+        'base_generated_config': str(Path(str(campaign_cfg['base_generated_config'])).resolve()),
+        'artifact_root': str(artifact_root),
+        'screening': screening_cfg,
+        'probes': [
+            {
+                'id': task.probe_id,
+                'description': task.description,
+                'config_patch': task.config_patch,
+            }
+        ],
+        'confirmation': {'enabled': False},
+    }
+
+
 def _score_row(row: dict[str, Any]) -> tuple[Any, ...]:
     inf = float('inf')
     return (
@@ -225,6 +257,7 @@ def _parse_optional_int(value: Any) -> int | None:
 def _build_result_row(
     task: ProbeTask,
     *,
+    phase: str,
     config_path: Path,
     artifact_root: Path,
     worker_log_path: Path,
@@ -234,6 +267,7 @@ def _build_result_row(
     summary, screening_row = _read_single_probe_outputs(artifact_root)
     if summary is None or screening_row is None:
         return {
+            'phase': phase,
             'wave_id': task.wave_id,
             'wave_order': task.wave_order,
             'batch': task.batch,
@@ -261,6 +295,7 @@ def _build_result_row(
             'tags': ','.join(task.tags),
         }
     return {
+        'phase': phase,
         'wave_id': task.wave_id,
         'wave_order': task.wave_order,
         'batch': task.batch,
@@ -299,9 +334,21 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             writer.writerow(row)
 
 
+def _write_stop_reason(reports_root: Path, payload: dict[str, Any] | None) -> None:
+    ensure_dir(reports_root)
+    path = reports_root / 'campaign_stop_reason.json'
+    if payload is None:
+        if path.exists():
+            path.unlink()
+        return
+    path.write_text(json.dumps(payload, indent=2), encoding='utf-8')
+
+
 def _write_reports(campaign_cfg: dict[str, Any], tasks: list[ProbeTask], results: list[dict[str, Any]], reports_root: Path, progress_state: dict[str, Any]) -> None:
     ensure_dir(reports_root)
     ordered_results = sorted(results, key=_score_row)
+    screening_results = [row for row in ordered_results if row.get('phase') == 'screening']
+    confirmation_results = [row for row in ordered_results if row.get('phase') == 'confirmation']
     _write_csv(reports_root / 'campaign_results.csv', ordered_results)
     (reports_root / 'campaign_results.json').write_text(json.dumps(ordered_results, indent=2), encoding='utf-8')
     (reports_root / 'campaign_progress.json').write_text(json.dumps(progress_state, indent=2), encoding='utf-8')
@@ -319,8 +366,10 @@ def _write_reports(campaign_cfg: dict[str, Any], tasks: list[ProbeTask], results
         str(campaign_cfg['campaign'].get('description', '')).strip(),
         '',
         f"- Total probes planned: `{len(tasks)}`",
-        f"- Completed probes: `{progress_state.get('completed', 0)}`",
-        f"- Healthy probes: `{sum(1 for row in ordered_results if row['selected_healthy'])}`",
+        f"- Completed screening probes: `{progress_state.get('screening_completed', 0)}`",
+        f"- Healthy screening probes: `{sum(1 for row in screening_results if row['selected_healthy'])}`",
+        f"- Completed confirmation probes: `{progress_state.get('confirmation_completed', 0)}`",
+        f"- Healthy confirmations: `{sum(1 for row in confirmation_results if row['selected_healthy'])}`",
         f"- Concurrency: `{progress_state.get('concurrency')}`",
         '',
         '## Wave Summary',
@@ -334,14 +383,26 @@ def _write_reports(campaign_cfg: dict[str, Any], tasks: list[ProbeTask], results
 
     md_lines += [
         '',
+        '## Top Current Screening Candidates',
+        '',
+        '| Probe | Wave | Healthy | Updates | Max sigma | Max state | Last conv | Note |',
+        '|---|---|---:|---:|---:|---:|---:|---|',
+    ]
+    for row in screening_results[: min(5, len(screening_results))]:
+        md_lines.append(
+            f"| `{row['probe_id']}` | `{row['wave_id']}` | `{row['selected_healthy']}` | `{row['last_updates']}` | `{row['max_sigma_exp']}` | `{row['max_state_norm_sq']}` | `{row['last_conv_check']}` | {row['selected_note']} |"
+        )
+
+    md_lines += [
+        '',
         '## Ranked Results',
         '',
-        '| Wave | Batch | Probe | Healthy | Guards | Hessian | Updates | Max sigma | Max state | Last conv | Note |',
+        '| Phase | Wave | Batch | Probe | Healthy | Guards | Hessian | Updates | Max sigma | Max state | Last conv | Note |',
         '|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|',
     ]
     for row in ordered_results:
         md_lines.append(
-            f"| `{row['wave_id']}` | `{row['batch']}` | `{row['probe_id']}` | `{row['selected_healthy']}` | `{row['guard_events']}` | `{row['hessian_failures']}` | `{row['last_updates']}` | `{row['max_sigma_exp']}` | `{row['max_state_norm_sq']}` | `{row['last_conv_check']}` | {row['selected_note']} |"
+            f"| `{row['phase']}` | `{row['wave_id']}` | `{row['batch']}` | `{row['probe_id']}` | `{row['selected_healthy']}` | `{row['guard_events']}` | `{row['hessian_failures']}` | `{row['last_updates']}` | `{row['max_sigma_exp']}` | `{row['max_state_norm_sq']}` | `{row['last_conv_check']}` | {row['selected_note']} |"
         )
     (reports_root / 'MORNING_SUMMARY.md').write_text('\n'.join(md_lines) + '\n', encoding='utf-8')
 
@@ -370,7 +431,7 @@ def _write_warnings(reports_root: Path, warnings: list[dict[str, Any]]) -> None:
     (reports_root / 'campaign_warnings.md').write_text('\n'.join(md_lines) + '\n', encoding='utf-8')
 
 
-def _run_probe_task(task: ProbeTask, config_path: Path, artifact_root: Path, worker_log_path: Path, skip_existing: bool) -> dict[str, Any]:
+def _run_probe_task(task: ProbeTask, config_path: Path, artifact_root: Path, worker_log_path: Path, skip_existing: bool, phase: str = 'screening') -> dict[str, Any]:
     ensure_dir(worker_log_path.parent)
     cmd = ['python3', str(PROBE_RUNNER), '--config', str(config_path)]
     if skip_existing:
@@ -388,6 +449,7 @@ def _run_probe_task(task: ProbeTask, config_path: Path, artifact_root: Path, wor
     elapsed = time.time() - started
     return _build_result_row(
         task,
+        phase=phase,
         config_path=config_path,
         artifact_root=artifact_root,
         worker_log_path=worker_log_path,
@@ -396,11 +458,23 @@ def _run_probe_task(task: ProbeTask, config_path: Path, artifact_root: Path, wor
     )
 
 
+def _select_confirmation_tasks(results: list[dict[str, Any]], task_map: dict[str, ProbeTask], top_n: int) -> list[ProbeTask]:
+    screening_rows = [row for row in results if row.get('phase') == 'screening' and row.get('selected_healthy')]
+    screening_rows.sort(key=_score_row)
+    selected: list[ProbeTask] = []
+    for row in screening_rows[: max(0, int(top_n))]:
+        probe_id = str(row['probe_id'])
+        if probe_id in task_map:
+            selected.append(task_map[probe_id])
+    return selected
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description='Run sidecar exdqlm quantile stabilization campaign.')
     parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--skip-existing', action='store_true')
+    parser.add_argument('--skip-confirmation', action='store_true')
     parser.add_argument('--concurrency', type=int, default=None)
     parser.add_argument('--wave', action='append', default=[])
     parser.add_argument('--probe-id', action='append', default=[])
@@ -471,38 +545,104 @@ def main() -> int:
     progress_state = {
         'campaign_id': str(campaign_cfg['campaign']['id']),
         'completed': 0,
+        'screening_completed': 0,
+        'confirmation_completed': 0,
         'total': len(task_bundle),
+        'screening_total': len(task_bundle),
         'healthy': 0,
         'concurrency': concurrency,
         'dry_run': bool(args.dry_run),
         'started_at_epoch': time.time(),
     }
+    _write_stop_reason(reports_root, None)
     _write_reports(campaign_cfg, tasks, [], reports_root, progress_state)
 
     if args.dry_run:
         return 0
 
     results: list[dict[str, Any]] = []
-    for wave in campaign_cfg.get('waves', []):
-        wave_id = str(wave['id'])
-        wave_tasks = [bundle for bundle in task_bundle if bundle[0].wave_id == wave_id]
-        if not wave_tasks:
-            continue
-        with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
-            future_map = {
-                executor.submit(_run_probe_task, task, config_path, artifact_probe_root, worker_log_path, args.skip_existing): (task, config_path)
-                for task, config_path, artifact_probe_root, worker_log_path in wave_tasks
+    stop_reason_payload: dict[str, Any] | None = None
+    try:
+        for wave in campaign_cfg.get('waves', []):
+            wave_id = str(wave['id'])
+            wave_tasks = [bundle for bundle in task_bundle if bundle[0].wave_id == wave_id]
+            if not wave_tasks:
+                continue
+            with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
+                future_map = {
+                    executor.submit(_run_probe_task, task, config_path, artifact_probe_root, worker_log_path, args.skip_existing, 'screening'): (task, config_path)
+                    for task, config_path, artifact_probe_root, worker_log_path in wave_tasks
+                }
+                for future in concurrent.futures.as_completed(future_map):
+                    row = future.result()
+                    results.append(row)
+                    progress_state['screening_completed'] = len([item for item in results if item.get('phase') == 'screening'])
+                    progress_state['completed'] = progress_state['screening_completed'] + progress_state.get('confirmation_completed', 0)
+                    progress_state['healthy'] = sum(1 for item in results if item.get('selected_healthy'))
+                    _write_reports(campaign_cfg, tasks, results, reports_root, progress_state)
+
+        confirmation_cfg = campaign_cfg.get('confirmation', {})
+        task_map = {task.probe_id: task for task in tasks}
+        if bool(confirmation_cfg.get('enabled', False)) and not args.skip_confirmation:
+            top_n = int(confirmation_cfg.get('top_n', 4))
+            confirmation_tasks = _select_confirmation_tasks(results, task_map, top_n)
+            progress_state['confirmation_total'] = len(confirmation_tasks)
+            if confirmation_tasks:
+                generated_confirm_root = ensure_dir(control_root / 'generated_confirmation_probe_configs')
+                confirm_worker_logs_root = ensure_dir(control_root / 'confirmation_worker_logs')
+                confirm_bundle: list[tuple[ProbeTask, Path, Path, Path]] = []
+                confirm_entries: list[dict[str, Any]] = []
+                for task in confirmation_tasks:
+                    single_cfg = _build_confirmation_probe_config(campaign_cfg, task)
+                    config_path = generated_confirm_root / f'{task.wave_id}__{task.probe_id}.yaml'
+                    write_yaml(config_path, single_cfg)
+                    artifact_probe_root = Path(str(single_cfg['artifact_root']))
+                    worker_log_path = confirm_worker_logs_root / f'{task.wave_id}__{task.probe_id}.log'
+                    confirm_bundle.append((task, config_path, artifact_probe_root, worker_log_path))
+                    confirm_entries.append({'probe_id': task.probe_id, 'config_path': str(config_path), 'artifact_root': str(artifact_probe_root)})
+                (control_root / 'generated_confirmation_probe_configs.json').write_text(json.dumps(confirm_entries, indent=2), encoding='utf-8')
+                with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
+                    future_map = {
+                        executor.submit(_run_probe_task, task, config_path, artifact_probe_root, worker_log_path, args.skip_existing, 'confirmation'): (task, config_path)
+                        for task, config_path, artifact_probe_root, worker_log_path in confirm_bundle
+                    }
+                    for future in concurrent.futures.as_completed(future_map):
+                        row = future.result()
+                        results.append(row)
+                        progress_state['confirmation_completed'] = len([item for item in results if item.get('phase') == 'confirmation'])
+                        progress_state['completed'] = progress_state.get('screening_completed', 0) + progress_state['confirmation_completed']
+                        progress_state['healthy'] = sum(1 for item in results if item.get('selected_healthy'))
+                        _write_reports(campaign_cfg, tasks, results, reports_root, progress_state)
+                if not any(row.get('phase') == 'confirmation' and row.get('selected_healthy') for row in results):
+                    stop_reason_payload = {
+                        'reason': 'no_confirmed_winner',
+                        'campaign_id': str(campaign_cfg['campaign']['id']),
+                        'top_n': top_n,
+                    }
+            else:
+                stop_reason_payload = {
+                    'reason': 'no_screening_winners_for_confirmation',
+                    'campaign_id': str(campaign_cfg['campaign']['id']),
+                    'top_n': top_n,
+                }
+        elif bool(confirmation_cfg.get('enabled', False)) and args.skip_confirmation:
+            stop_reason_payload = {
+                'reason': 'confirmation_skipped_by_cli',
+                'campaign_id': str(campaign_cfg['campaign']['id']),
             }
-            for future in concurrent.futures.as_completed(future_map):
-                row = future.result()
-                results.append(row)
-                progress_state['completed'] = len(results)
-                progress_state['healthy'] = sum(1 for item in results if item.get('selected_healthy'))
-                _write_reports(campaign_cfg, tasks, results, reports_root, progress_state)
+    except Exception as exc:
+        stop_reason_payload = {
+            'reason': 'controller_exception',
+            'campaign_id': str(campaign_cfg['campaign']['id']),
+            'message': f'{type(exc).__name__}: {exc}',
+        }
+        _write_stop_reason(reports_root, stop_reason_payload)
+        raise
 
     progress_state['finished_at_epoch'] = time.time()
     progress_state['healthy'] = sum(1 for item in results if item.get('selected_healthy'))
     _write_reports(campaign_cfg, tasks, results, reports_root, progress_state)
+    _write_stop_reason(reports_root, stop_reason_payload)
     return 0
 
 

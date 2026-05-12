@@ -21,6 +21,13 @@ from he2_publication_relaunch_lib import ensure_dir, load_yaml, write_yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / 'config' / 'median_warmup_probes_exdqlm_multivar_keep_20210123_q50_20260510.yaml'
+THREAD_CAP_ENV = {
+    'OMP_NUM_THREADS': '1',
+    'OPENBLAS_NUM_THREADS': '1',
+    'MKL_NUM_THREADS': '1',
+    'VECLIB_MAXIMUM_THREADS': '1',
+    'NUMEXPR_NUM_THREADS': '1',
+}
 
 PROGRESS_RE = re.compile(
     r"\[gamsig_progress\].*?iter=(?P<iter>\d+).*?sigma_exp=(?P<sigma>[^ ]+).*?gamma_exp=(?P<gamma>[^ ]+)"
@@ -286,7 +293,7 @@ def _run_single(config_path: Path, launch_log_path: Path, q_log_path: Path, rule
             cwd=str(ROOT),
             stdout=log_handle,
             stderr=subprocess.STDOUT,
-            env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'},
+            env={**os.environ, **THREAD_CAP_ENV, 'PYTHONDONTWRITEBYTECODE': '1'},
             preexec_fn=os.setsid,
         )
         while True:

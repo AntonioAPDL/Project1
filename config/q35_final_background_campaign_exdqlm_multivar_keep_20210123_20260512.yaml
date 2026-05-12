@@ -1,0 +1,718 @@
+campaign:
+  id: exdqlm_multivar_keep_20210123_q35_final_background_20260512
+  description: >-
+    Final sidecar-only q35 stabilization program for the unresolved
+    `exdqlm_multivar_keep` quantile `q=0.35` at cutoff `2021-01-23`.
+    This campaign keeps the shared bundle, discount lineage, epsilon,
+    covariates, and canonical GDPC bundle fixed while screening only the
+    q35 directions that still make sense: state-freeze backbones,
+    post-thaw state stabilization, tighter sigma bounds, stronger Hessian
+    ridge, and confirmation on the strongest candidates. The campaign is
+    fully single-core per case and safe to leave unattended in the background.
+base_generated_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20210123_tail_probe_20260511/control/generated_configs/multimodel_20210123_v8_he2pubgdpc1r1tail_exdqlm_multivar_keep.yaml
+artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_q35_final_background_campaign_20260512
+execution:
+  concurrency: 12
+screening:
+  quantile: 0.35
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  gamma_sigma:
+    freeze_target: gamma_sigma
+    warmup_freeze_iters: 5
+    min_update_iters: 6
+    min_total_iters: 12
+    max_iter: 18
+    objective_guard:
+      enabled: true
+      fail_fast: false
+      log_failures: true
+      mode: adaptive_freeze
+      penalty: 1.0e12
+    stabilization:
+      theta_sigma_lower: -9.210340371976182
+      theta_sigma_upper: 6.907755278982137
+      theta_gamma_lower: -13.815509557963773
+      theta_gamma_upper: 13.815509557935018
+      hessian_ridge_init: 1.0e-06
+      hessian_ridge_multiplier: 10.0
+      hessian_ridge_max_tries: 8
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 20.0
+    max_state_norm_sq: 5.0e14
+    min_gamsig_update_iters: 6
+    require_finite_conv_check: true
+confirmation:
+  enabled: true
+  top_n: 4
+  stages:
+    forecats: false
+    data_prep_shared: true
+    fit: true
+    post: false
+    validate: false
+    report: false
+  fit_parallel_workers: 1
+  mc_cores: 1
+  gamma_sigma:
+    min_update_iters: 12
+    min_total_iters: 20
+    max_iter: 40
+  health_rules:
+    max_guard_events: 0
+    max_hessian_failures: 0
+    max_sigma_exp: 10.0
+    max_state_norm_sq: 2.5e14
+    min_gamsig_update_iters: 12
+    require_finite_conv_check: true
+waves:
+  - id: wave0_anchors
+    description: >-
+      Fixed reference points carried into the final campaign so we can compare
+      new results inside one runtime root.
+    probes:
+      - id: anchor_sfreeze8_scale060_floor5e4
+        batch: anchors
+        description: Current best q35 backbone by updates from the prior state-freeze campaign.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+      - id: anchor_sfreeze8_scale050_floor1e2
+        batch: anchors
+        description: Best low-sigma state-freeze anchor from the prior q35 campaign.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: anchor_sfreeze3_scale060_floor5e4_thetaUpper35_ridge1e3
+        batch: anchors
+        description: Best bounded q35 candidate from the prior state-freeze campaign.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 3
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  theta_sigma_upper: 3.5
+                  hessian_ridge_init: 1.0e-03
+      - id: anchor_gfreeze0_scale050_floor1e2_bad
+        batch: anchors
+        description: Known-bad short gamma-freeze anchor to preserve an explicit failure comparator.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: gamma_sigma
+            warmup_freeze_iters: 0
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+
+  - id: wave1_state_freeze_backbone
+    description: >-
+      Final backbone sweep around the q35 state-freeze direction that clearly
+      outperformed short gamma-freeze variants.
+    probes:
+      - id: w1_sfreeze06_scale050_floor1e2
+        batch: state_freeze_backbone
+        description: State freeze 6 with the stable low-sigma q35 family.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 6
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: w1_sfreeze08_scale050_floor1e2
+        batch: state_freeze_backbone
+        description: State freeze 8 with the stable low-sigma q35 family.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: w1_sfreeze10_scale050_floor1e2
+        batch: state_freeze_backbone
+        description: State freeze 10 with the stable low-sigma q35 family.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 10
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: w1_sfreeze12_scale050_floor1e2
+        batch: state_freeze_backbone
+        description: State freeze 12 with the stable low-sigma q35 family.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 12
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+      - id: w1_sfreeze06_scale060_floor5e4
+        batch: state_freeze_backbone
+        description: State freeze 6 with the moderate-scale low-floor q35 family.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 6
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+      - id: w1_sfreeze08_scale060_floor5e4
+        batch: state_freeze_backbone
+        description: State freeze 8 with the moderate-scale low-floor q35 family.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+      - id: w1_sfreeze10_scale060_floor5e4
+        batch: state_freeze_backbone
+        description: State freeze 10 with the moderate-scale low-floor q35 family.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 10
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+      - id: w1_sfreeze12_scale060_floor5e4
+        batch: state_freeze_backbone
+        description: State freeze 12 with the moderate-scale low-floor q35 family.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 12
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+
+  - id: wave2_post_thaw_state_control
+    description: >-
+      Post-thaw state control centered on the two strongest q35 backbones from
+      the prior campaign, using generic non-median state guard and hold/blend
+      controls.
+    probes:
+      - id: w2_a_hold5_blend100
+        batch: post_thaw_state_control
+        description: Backbone A with state hold 5 and no blending.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 5
+                  state_blend_alpha: 1.0
+                  cov_blend_alpha: 1.0
+      - id: w2_a_hold5_blend085
+        batch: post_thaw_state_control
+        description: Backbone A with state hold 5 and moderate state blending.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 5
+                  state_blend_alpha: 0.85
+                  cov_blend_alpha: 1.0
+      - id: w2_a_hold10_blend100
+        batch: post_thaw_state_control
+        description: Backbone A with state hold 10 and no blending.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 10
+                  state_blend_alpha: 1.0
+                  cov_blend_alpha: 1.0
+      - id: w2_a_hold10_blend085
+        batch: post_thaw_state_control
+        description: Backbone A with state hold 10 and moderate state blending.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 10
+                  state_blend_alpha: 0.85
+                  cov_blend_alpha: 1.0
+      - id: w2_b_hold5_blend100
+        batch: post_thaw_state_control
+        description: Backbone B with state hold 5 and no blending.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 5
+                  state_blend_alpha: 1.0
+                  cov_blend_alpha: 1.0
+      - id: w2_b_hold5_blend085
+        batch: post_thaw_state_control
+        description: Backbone B with state hold 5 and moderate state blending.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 5
+                  state_blend_alpha: 0.85
+                  cov_blend_alpha: 1.0
+      - id: w2_b_hold10_blend100
+        batch: post_thaw_state_control
+        description: Backbone B with state hold 10 and no blending.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 10
+                  state_blend_alpha: 1.0
+                  cov_blend_alpha: 1.0
+      - id: w2_b_hold10_blend085
+        batch: post_thaw_state_control
+        description: Backbone B with state hold 10 and moderate state blending.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 10
+                  state_blend_alpha: 0.85
+                  cov_blend_alpha: 1.0
+
+  - id: wave3_bounds_and_ridge
+    description: >-
+      Tighter transformed sigma bounds and stronger Hessian ridge around the
+      two strongest q35 backbones from the prior campaign.
+    probes:
+      - id: w3_a_upper35_ridge1e4
+        batch: bounds_and_ridge
+        description: Backbone A with theta_sigma_upper 3.5 and ridge 1e-4.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  theta_sigma_upper: 3.5
+                  hessian_ridge_init: 1.0e-04
+      - id: w3_a_upper35_ridge1e3
+        batch: bounds_and_ridge
+        description: Backbone A with theta_sigma_upper 3.5 and ridge 1e-3.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  theta_sigma_upper: 3.5
+                  hessian_ridge_init: 1.0e-03
+      - id: w3_a_upper30_ridge1e4
+        batch: bounds_and_ridge
+        description: Backbone A with theta_sigma_upper 3.0 and ridge 1e-4.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  theta_sigma_upper: 3.0
+                  hessian_ridge_init: 1.0e-04
+      - id: w3_a_upper30_ridge1e3
+        batch: bounds_and_ridge
+        description: Backbone A with theta_sigma_upper 3.0 and ridge 1e-3.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  theta_sigma_upper: 3.0
+                  hessian_ridge_init: 1.0e-03
+      - id: w3_b_upper35_ridge1e4
+        batch: bounds_and_ridge
+        description: Backbone B with theta_sigma_upper 3.5 and ridge 1e-4.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  theta_sigma_upper: 3.5
+                  hessian_ridge_init: 1.0e-04
+      - id: w3_b_upper35_ridge1e3
+        batch: bounds_and_ridge
+        description: Backbone B with theta_sigma_upper 3.5 and ridge 1e-3.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  theta_sigma_upper: 3.5
+                  hessian_ridge_init: 1.0e-03
+      - id: w3_b_upper30_ridge1e4
+        batch: bounds_and_ridge
+        description: Backbone B with theta_sigma_upper 3.0 and ridge 1e-4.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  theta_sigma_upper: 3.0
+                  hessian_ridge_init: 1.0e-04
+      - id: w3_b_upper30_ridge1e3
+        batch: bounds_and_ridge
+        description: Backbone B with theta_sigma_upper 3.0 and ridge 1e-3.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  theta_sigma_upper: 3.0
+                  hessian_ridge_init: 1.0e-03
+
+  - id: wave4_combined_rescue
+    description: >-
+      Combined rescue probes built around the two strongest q35 backbones,
+      using the strongest post-thaw and bounds/ridge rescue profiles together.
+    probes:
+      - id: w4_a_hold5_blend100_upper35_ridge1e4
+        batch: combined_rescue
+        description: Backbone A with the gentlest combined hold and bound profile.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 5
+                  state_blend_alpha: 1.0
+                  cov_blend_alpha: 1.0
+                  theta_sigma_upper: 3.5
+                  hessian_ridge_init: 1.0e-04
+      - id: w4_a_hold10_blend085_upper30_ridge1e3
+        batch: combined_rescue
+        description: Backbone A with the stronger combined hold/blend and tighter bound profile.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.50
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 10
+                  state_blend_alpha: 0.85
+                  cov_blend_alpha: 1.0
+                  theta_sigma_upper: 3.0
+                  hessian_ridge_init: 1.0e-03
+      - id: w4_b_hold5_blend100_upper35_ridge1e4
+        batch: combined_rescue
+        description: Backbone B with the gentlest combined hold and bound profile.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 5
+                  state_blend_alpha: 1.0
+                  cov_blend_alpha: 1.0
+                  theta_sigma_upper: 3.5
+                  hessian_ridge_init: 1.0e-04
+      - id: w4_b_hold10_blend085_upper30_ridge1e3
+        batch: combined_rescue
+        description: Backbone B with the stronger combined hold/blend and tighter bound profile.
+        screening_patch:
+          gamma_sigma:
+            freeze_target: states
+            warmup_freeze_iters: 8
+        config_patch:
+          fit:
+            exdqlm_multivar:
+              gamma_sigma:
+                init:
+                  gamma: 0.0
+                  sigma_floor: 0.0005
+                  sigma_scale: 0.60
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 10
+                  state_blend_alpha: 0.85
+                  cov_blend_alpha: 1.0
+                  theta_sigma_upper: 3.0
+                  hessian_ridge_init: 1.0e-03

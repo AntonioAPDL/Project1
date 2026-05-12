@@ -98,6 +98,75 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
         self.assertEqual(out['p80_state_hold'], '0')
         self.assertEqual(out['p80_state_blend'], '1')
 
+    def test_nonmedian_generic_state_controls_survive_quantile_override_resolution(self) -> None:
+        script = textwrap.dedent(
+            f'''
+            source("{(REPO_ROOT / 'R' / 'unified' / 'config.R').as_posix()}")
+            source("{(REPO_ROOT / 'R' / 'unified' / 'stages' / 'stage_fit.R').as_posix()}")
+            cfg <- list(
+              fit = list(
+                exdqlm_multivar = list(
+                  gamma_sigma = list(
+                    stabilization = list(
+                      state_guard_enabled = FALSE,
+                      state_norm_max_ratio = 10,
+                      state_norm_abs_cap = 1e11,
+                      state_guard_refreeze_iters = 7L,
+                      state_hold_after_guard_iters = 0L,
+                      state_blend_alpha = 1.0,
+                      cov_blend_alpha = 1.0
+                    ),
+                    quantile_overrides = list(
+                      q35 = list(
+                        stabilization = list(
+                          state_guard_enabled = TRUE,
+                          state_norm_max_ratio = 25,
+                          state_norm_abs_cap = 1e12,
+                          state_guard_refreeze_iters = 10L,
+                          state_hold_after_guard_iters = 10L,
+                          state_blend_alpha = 0.85,
+                          cov_blend_alpha = 1.0
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+            p35 <- unified_resolve_gamma_sigma_policy(cfg, 'exdqlm_multivar', q = 0.35)
+            p80 <- unified_resolve_gamma_sigma_policy(cfg, 'exdqlm_multivar', q = 0.80)
+            cat(sprintf('p35_state_guard=%s\\n', p35$stabilization$state_guard_enabled))
+            cat(sprintf('p35_state_ratio=%s\\n', p35$stabilization$state_norm_max_ratio))
+            cat(sprintf('p35_state_abs_cap=%s\\n', p35$stabilization$state_norm_abs_cap))
+            cat(sprintf('p35_state_refreeze=%s\\n', p35$stabilization$state_guard_refreeze_iters))
+            cat(sprintf('p35_state_hold=%s\\n', p35$stabilization$state_hold_after_guard_iters))
+            cat(sprintf('p35_state_blend=%s\\n', p35$stabilization$state_blend_alpha))
+            cat(sprintf('p80_state_guard=%s\\n', p80$stabilization$state_guard_enabled))
+            cat(sprintf('p80_state_ratio=%s\\n', p80$stabilization$state_norm_max_ratio))
+            '''
+        )
+        proc = subprocess.run(
+            ['Rscript', '--vanilla', '-e', script],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stdout + '\n' + proc.stderr)
+        out = {}
+        for line in proc.stdout.splitlines():
+            if '=' in line:
+                k, v = line.split('=', 1)
+                out[k.strip()] = v.strip()
+        self.assertEqual(out['p35_state_guard'], 'TRUE')
+        self.assertEqual(out['p35_state_ratio'], '25')
+        self.assertEqual(out['p35_state_abs_cap'], '1e+12')
+        self.assertEqual(out['p35_state_refreeze'], '10')
+        self.assertEqual(out['p35_state_hold'], '10')
+        self.assertEqual(out['p35_state_blend'], '0.85')
+        self.assertEqual(out['p80_state_guard'], 'FALSE')
+        self.assertEqual(out['p80_state_ratio'], '10')
+
 
 if __name__ == '__main__':
     unittest.main()

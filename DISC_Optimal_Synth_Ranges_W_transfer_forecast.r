@@ -61,6 +61,12 @@ disc_env_flag <- function(name, default = FALSE) {
   tolower(trimws(raw)) %in% c("1", "true", "yes", "y", "on")
 }
 
+disc_env_opt_flag <- function(name) {
+  raw <- Sys.getenv(name, "")
+  if (!nzchar(raw)) return(NA)
+  tolower(trimws(raw)) %in% c("1", "true", "yes", "y", "on")
+}
+
 disc_env_choice <- function(name, choices, default) {
   raw <- tolower(trimws(Sys.getenv(name, "")))
   if (!nzchar(raw)) return(default)
@@ -74,9 +80,25 @@ disc_env_nonneg_int <- function(name, default = 0L) {
   as.integer(out)
 }
 
+disc_env_opt_nonneg_int <- function(name) {
+  raw <- Sys.getenv(name, "")
+  if (!nzchar(raw)) return(NA_integer_)
+  out <- suppressWarnings(as.integer(raw))
+  if (!is.finite(out) || out < 0L) return(NA_integer_)
+  as.integer(out)
+}
+
 disc_env_pos_num <- function(name, default) {
   out <- suppressWarnings(as.numeric(Sys.getenv(name, as.character(default))))
   if (!is.finite(out) || out <= 0) return(as.numeric(default))
+  as.numeric(out)
+}
+
+disc_env_opt_pos_num <- function(name) {
+  raw <- Sys.getenv(name, "")
+  if (!nzchar(raw)) return(NA_real_)
+  out <- suppressWarnings(as.numeric(raw))
+  if (!is.finite(out) || out <= 0) return(NA_real_)
   as.numeric(out)
 }
 
@@ -89,6 +111,12 @@ disc_env_num <- function(name, default) {
 disc_env_prob <- function(name, default) {
   out <- disc_env_num(name, default)
   if (!is.finite(out) || out <= 0 || out >= 1) return(as.numeric(default))
+  as.numeric(out)
+}
+
+disc_env_opt_prob <- function(name) {
+  out <- disc_env_opt_pos_num(name)
+  if (!is.finite(out) || out >= 1) return(NA_real_)
   as.numeric(out)
 }
 
@@ -260,6 +288,27 @@ DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA <- disc_env_prob(
 DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA <- disc_env_prob(
   "DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA",
   default = 1.0
+)
+DISC_GAMSIG_STATE_GUARD_ENABLED_OPT <- disc_env_opt_flag(
+  "DISC_GAMSIG_STATE_GUARD_ENABLED"
+)
+DISC_GAMSIG_STATE_NORM_MAX_RATIO_OPT <- disc_env_opt_pos_num(
+  "DISC_GAMSIG_STATE_NORM_MAX_RATIO"
+)
+DISC_GAMSIG_STATE_NORM_ABS_CAP_OPT <- disc_env_opt_pos_num(
+  "DISC_GAMSIG_STATE_NORM_ABS_CAP"
+)
+DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS_OPT <- disc_env_opt_nonneg_int(
+  "DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS"
+)
+DISC_GAMSIG_STATE_HOLD_AFTER_GUARD_ITERS_OPT <- disc_env_opt_nonneg_int(
+  "DISC_GAMSIG_STATE_HOLD_AFTER_GUARD_ITERS"
+)
+DISC_GAMSIG_STATE_BLEND_ALPHA_OPT <- disc_env_opt_prob(
+  "DISC_GAMSIG_STATE_BLEND_ALPHA"
+)
+DISC_GAMSIG_COV_BLEND_ALPHA_OPT <- disc_env_opt_prob(
+  "DISC_GAMSIG_COV_BLEND_ALPHA"
 )
 DISC_STRICT_CONTRACTS <- disc_env_flag(
   "DISC_STRICT_CONTRACTS",
@@ -2589,10 +2638,74 @@ if (!is.finite(gamsig_dynamic_freeze_until_iter) || gamsig_dynamic_freeze_until_
 median_quantile_active <- (!isTRUE(DISC_W_AL_MODE) &&
   is.finite(p0) &&
   abs(as.numeric(p0) - 0.5) < 1e-8)
-median_state_hold_until_iter <- 0L
+generic_state_controls_present <- (
+  !is.na(DISC_GAMSIG_STATE_GUARD_ENABLED_OPT) ||
+  is.finite(DISC_GAMSIG_STATE_NORM_MAX_RATIO_OPT) ||
+  is.finite(DISC_GAMSIG_STATE_NORM_ABS_CAP_OPT) ||
+  !is.na(DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS_OPT) ||
+  !is.na(DISC_GAMSIG_STATE_HOLD_AFTER_GUARD_ITERS_OPT) ||
+  is.finite(DISC_GAMSIG_STATE_BLEND_ALPHA_OPT) ||
+  is.finite(DISC_GAMSIG_COV_BLEND_ALPHA_OPT)
+)
+state_guard_enabled <- if (!is.na(DISC_GAMSIG_STATE_GUARD_ENABLED_OPT)) {
+  isTRUE(DISC_GAMSIG_STATE_GUARD_ENABLED_OPT)
+} else {
+  median_quantile_active && isTRUE(DISC_GAMSIG_MEDIAN_STATE_GUARD_ENABLED)
+}
+state_norm_max_ratio <- if (is.finite(DISC_GAMSIG_STATE_NORM_MAX_RATIO_OPT)) {
+  as.numeric(DISC_GAMSIG_STATE_NORM_MAX_RATIO_OPT)
+} else if (median_quantile_active) {
+  as.numeric(DISC_GAMSIG_MEDIAN_STATE_NORM_MAX_RATIO)
+} else {
+  NA_real_
+}
+state_norm_abs_cap <- if (is.finite(DISC_GAMSIG_STATE_NORM_ABS_CAP_OPT)) {
+  as.numeric(DISC_GAMSIG_STATE_NORM_ABS_CAP_OPT)
+} else if (median_quantile_active) {
+  as.numeric(DISC_GAMSIG_MEDIAN_STATE_NORM_ABS_CAP)
+} else {
+  NA_real_
+}
+state_guard_refreeze_iters <- if (!is.na(DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS_OPT)) {
+  as.integer(DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS_OPT)
+} else if (median_quantile_active) {
+  as.integer(DISC_GAMSIG_MEDIAN_STATE_GUARD_REFREEZE_ITERS)
+} else {
+  as.integer(DISC_GAMSIG_GUARD_REFREEZE_ITERS)
+}
+state_hold_after_guard_iters <- if (!is.na(DISC_GAMSIG_STATE_HOLD_AFTER_GUARD_ITERS_OPT)) {
+  as.integer(DISC_GAMSIG_STATE_HOLD_AFTER_GUARD_ITERS_OPT)
+} else if (median_quantile_active) {
+  as.integer(DISC_GAMSIG_MEDIAN_STATE_HOLD_AFTER_GUARD_ITERS)
+} else {
+  0L
+}
+state_blend_alpha <- if (is.finite(DISC_GAMSIG_STATE_BLEND_ALPHA_OPT)) {
+  as.numeric(DISC_GAMSIG_STATE_BLEND_ALPHA_OPT)
+} else if (median_quantile_active) {
+  as.numeric(DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA)
+} else {
+  NA_real_
+}
+cov_blend_alpha <- if (is.finite(DISC_GAMSIG_COV_BLEND_ALPHA_OPT)) {
+  as.numeric(DISC_GAMSIG_COV_BLEND_ALPHA_OPT)
+} else if (median_quantile_active) {
+  as.numeric(DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA)
+} else {
+  NA_real_
+}
+state_control_scope <- if (generic_state_controls_present) {
+  "generic"
+} else if (median_quantile_active) {
+  "median_alias"
+} else {
+  "inactive"
+}
+state_log_prefix <- if (generic_state_controls_present || !median_quantile_active) "state" else "median_state"
+state_hold_until_iter <- 0L
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   cat(sprintf(
-    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g median_state_guard=%s median_state_norm_max_ratio=%g median_state_norm_abs_cap=%g median_state_guard_refreeze_iters=%d median_state_hold_after_guard_iters=%d median_state_blend_alpha=%g median_cov_blend_alpha=%g\n",
+    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g\n",
     as.character(p0),
     DISC_GAMSIG_FREEZE_TARGET,
     as.integer(DISC_GAMSIG_FREEZE_ITERS),
@@ -2612,18 +2725,19 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     as.numeric(DISC_GAMSIG_HESSIAN_RIDGE_INIT),
     as.numeric(DISC_GAMSIG_HESSIAN_RIDGE_MULTIPLIER),
     as.integer(DISC_GAMSIG_HESSIAN_RIDGE_MAX_TRIES),
+    state_control_scope,
+    ifelse(isTRUE(state_guard_enabled), "true", "false"),
+    state_norm_max_ratio,
+    state_norm_abs_cap,
+    as.integer(state_guard_refreeze_iters),
+    as.integer(state_hold_after_guard_iters),
+    state_blend_alpha,
+    cov_blend_alpha,
     ifelse(isTRUE(DISC_GAMSIG_MEDIAN_SIGMA_ONLY_FALLBACK_ENABLED), "true", "false"),
     as.numeric(DISC_GAMSIG_MEDIAN_SIGMA_ONLY_FALLBACK_TOL),
     ifelse(isTRUE(DISC_GAMSIG_MEDIAN_STEP_DAMPING_ENABLED), "true", "false"),
     as.numeric(DISC_GAMSIG_MEDIAN_MAX_ABS_GAMMA_STEP),
-    as.numeric(DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP),
-    ifelse(isTRUE(DISC_GAMSIG_MEDIAN_STATE_GUARD_ENABLED), "true", "false"),
-    as.numeric(DISC_GAMSIG_MEDIAN_STATE_NORM_MAX_RATIO),
-    as.numeric(DISC_GAMSIG_MEDIAN_STATE_NORM_ABS_CAP),
-    as.integer(DISC_GAMSIG_MEDIAN_STATE_GUARD_REFREEZE_ITERS),
-    as.integer(DISC_GAMSIG_MEDIAN_STATE_HOLD_AFTER_GUARD_ITERS),
-    as.numeric(DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA),
-    as.numeric(DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA)
+    as.numeric(DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP)
   ))
   flush.console()
 }
@@ -2695,23 +2809,22 @@ while (isTRUE(FLAG) && iter < max_iter) {
       QQQ_forecast[[j]] <- A
     }
   iter_candidate <- as.integer(iter + 1L)
-  median_state_hold_now <- median_quantile_active &&
-    (median_state_hold_until_iter > 0L) &&
-    (iter_candidate <= median_state_hold_until_iter)
+  state_hold_now <- (state_hold_until_iter > 0L) &&
+    (iter_candidate <= state_hold_until_iter)
   state_freeze_now <- (identical(DISC_GAMSIG_FREEZE_TARGET, "states") &&
     (gamsig_dynamic_freeze_until_iter > 0L) &&
     (iter_candidate <= gamsig_dynamic_freeze_until_iter)) ||
-    median_state_hold_now
+    state_hold_now
 
   if (state_freeze_now) {
     theta_update <- FALSE
     iter <- iter_candidate
     fast <- fast + 1
     if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
-      if (median_state_hold_now) {
+      if (state_hold_now) {
         cat(sprintf(
-          "[median_state_hold] p0=%s iter=%d hold_until_iter=%d\n",
-          as.character(p0), as.integer(iter), as.integer(median_state_hold_until_iter)
+          "[%s_hold] p0=%s iter=%d hold_until_iter=%d\n",
+          state_log_prefix, as.character(p0), as.integer(iter), as.integer(state_hold_until_iter)
         ))
       } else {
         cat(sprintf(
@@ -2757,10 +2870,10 @@ while (isTRUE(FLAG) && iter < max_iter) {
                                             ensembles_forecast, ranges, Ones_ens,
                                             sum(num_mem), num_mem, cur.covs_list,
                                             epsilon)
-    if (median_quantile_active &&
-        is.finite(DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA) &&
-        DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA < 1) {
-      blend_alpha <- as.numeric(DISC_GAMSIG_MEDIAN_STATE_BLEND_ALPHA)
+    if (!state_freeze_now &&
+        is.finite(state_blend_alpha) &&
+        state_blend_alpha < 1) {
+      blend_alpha <- as.numeric(state_blend_alpha)
       update.theta$sm <- disc_blend_numeric_like(cur.theta.out$sm, update.theta$sm, blend_alpha, "theta$sm")
       update.theta$sC <- disc_blend_numeric_like(cur.theta.out$sC, update.theta$sC, blend_alpha, "theta$sC")
       update.theta$fm <- disc_blend_numeric_like(cur.theta.out$fm, update.theta$fm, blend_alpha, "theta$fm")
@@ -2771,8 +2884,8 @@ while (isTRUE(FLAG) && iter < max_iter) {
       update.theta$fC_ens <- disc_blend_numeric_list(cur.theta.out$fC_ens, update.theta$fC_ens, blend_alpha, "theta$fC_ens")
       if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
         cat(sprintf(
-          "[median_state_blend] p0=%s iter=%d alpha=%g\n",
-          as.character(p0), as.integer(iter_candidate), blend_alpha
+          "[%s_blend] p0=%s iter=%d alpha=%g\n",
+          state_log_prefix, as.character(p0), as.integer(iter_candidate), blend_alpha
         ))
         flush.console()
       }
@@ -2944,17 +3057,16 @@ while (isTRUE(FLAG) && iter < max_iter) {
         }
     }
   }
-  if (median_quantile_active &&
-      theta_update &&
+  if (theta_update &&
       !state_freeze_now &&
-      is.finite(DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA) &&
-      DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA < 1) {
-    cov_blend_alpha <- as.numeric(DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA)
+      is.finite(cov_blend_alpha) &&
+      cov_blend_alpha < 1) {
+    cov_blend_alpha <- as.numeric(cov_blend_alpha)
     new.covs_list <- disc_blend_numeric_list(cur.covs_list, new.covs_list, cov_blend_alpha, "covs_list")
     if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
       cat(sprintf(
-        "[median_cov_blend] p0=%s iter=%d alpha=%g\n",
-        as.character(p0), as.integer(iter), cov_blend_alpha
+        "[%s_cov_blend] p0=%s iter=%d alpha=%g\n",
+        state_log_prefix, as.character(p0), as.integer(iter), cov_blend_alpha
       ))
       flush.console()
     }
@@ -3258,10 +3370,10 @@ while (isTRUE(FLAG) && iter < max_iter) {
   if (!is.finite(sigma_exp)) sigma_exp <- NA_real_
   if (!is.finite(gamma_exp)) gamma_exp <- NA_real_
   if (!is.finite(state_norm_sq)) state_norm_sq <- NA_real_
-  median_state_guard_active <- (median_quantile_active &&
-    isTRUE(DISC_GAMSIG_MEDIAN_STATE_GUARD_ENABLED))
+  state_guard_active <- (!isTRUE(DISC_W_AL_MODE) &&
+    isTRUE(state_guard_enabled))
   state_growth_ratio <- NA_real_
-  if (median_state_guard_active &&
+  if (state_guard_active &&
       theta_update &&
       !isTRUE(gamsig_frozen_now) &&
       is.finite(prev_state_norm_sq) &&
@@ -3269,36 +3381,37 @@ while (isTRUE(FLAG) && iter < max_iter) {
       is.finite(state_norm_sq)) {
     state_growth_ratio <- state_norm_sq / prev_state_norm_sq
   }
-  median_state_guard_reason <- NULL
-  if (median_state_guard_active && theta_update && !isTRUE(gamsig_frozen_now)) {
+  state_guard_reason <- NULL
+  if (state_guard_active && theta_update && !isTRUE(gamsig_frozen_now)) {
     if (!is.finite(state_norm_sq)) {
-      median_state_guard_reason <- "non-finite state_norm_sq"
-    } else if (state_norm_sq > DISC_GAMSIG_MEDIAN_STATE_NORM_ABS_CAP) {
-      median_state_guard_reason <- sprintf(
+      state_guard_reason <- "non-finite state_norm_sq"
+    } else if (is.finite(state_norm_abs_cap) && state_norm_sq > state_norm_abs_cap) {
+      state_guard_reason <- sprintf(
         "state_norm_sq=%s exceeds abs_cap=%s",
         fmt_iter_num(state_norm_sq),
-        fmt_iter_num(DISC_GAMSIG_MEDIAN_STATE_NORM_ABS_CAP)
+        fmt_iter_num(state_norm_abs_cap)
       )
     } else if (is.finite(state_growth_ratio) &&
-               state_growth_ratio > DISC_GAMSIG_MEDIAN_STATE_NORM_MAX_RATIO) {
-      median_state_guard_reason <- sprintf(
+               is.finite(state_norm_max_ratio) &&
+               state_growth_ratio > state_norm_max_ratio) {
+      state_guard_reason <- sprintf(
         "state_growth_ratio=%s exceeds max_ratio=%s",
         fmt_iter_num(state_growth_ratio),
-        fmt_iter_num(DISC_GAMSIG_MEDIAN_STATE_NORM_MAX_RATIO)
+        fmt_iter_num(state_norm_max_ratio)
       )
     }
   }
-  if (!is.null(median_state_guard_reason)) {
+  if (!is.null(state_guard_reason)) {
     old_freeze_until <- gamsig_dynamic_freeze_until_iter
-    old_hold_until <- median_state_hold_until_iter
+    old_hold_until <- state_hold_until_iter
     gamsig_dynamic_freeze_until_iter <- max(
       as.integer(gamsig_dynamic_freeze_until_iter),
-      as.integer(iter + DISC_GAMSIG_MEDIAN_STATE_GUARD_REFREEZE_ITERS)
+      as.integer(iter + state_guard_refreeze_iters)
     )
-    if (DISC_GAMSIG_MEDIAN_STATE_HOLD_AFTER_GUARD_ITERS > 0L) {
-      median_state_hold_until_iter <- max(
-        as.integer(median_state_hold_until_iter),
-        as.integer(iter + DISC_GAMSIG_MEDIAN_STATE_HOLD_AFTER_GUARD_ITERS)
+    if (state_hold_after_guard_iters > 0L) {
+      state_hold_until_iter <- max(
+        as.integer(state_hold_until_iter),
+        as.integer(iter + state_hold_after_guard_iters)
       )
     }
     gamsig_frozen_now <- TRUE
@@ -3342,8 +3455,8 @@ while (isTRUE(FLAG) && iter < max_iter) {
         as.integer(old_freeze_until),
         as.integer(gamsig_dynamic_freeze_until_iter),
         as.integer(old_hold_until),
-        as.integer(median_state_hold_until_iter),
-        median_state_guard_reason
+        as.integer(state_hold_until_iter),
+        state_guard_reason
       ))
       flush.console()
     }

@@ -1025,7 +1025,42 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       )),
       DISC_GAMSIG_MEDIAN_COV_BLEND_ALPHA = as.character(unified_get(
         gamsig_policy, c("stabilization", "median_cov_blend_alpha"), default = 1.0
-      ))
+      )),
+      if (!is.null(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_enabled"), default = NULL
+      ))) c(DISC_GAMSIG_STATE_GUARD_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_enabled"), default = NULL
+      ))) "TRUE" else "FALSE") else character(0),
+      if (!is.null(unified_get(
+        gamsig_policy, c("stabilization", "state_norm_max_ratio"), default = NULL
+      ))) c(DISC_GAMSIG_STATE_NORM_MAX_RATIO = as.character(unified_get(
+        gamsig_policy, c("stabilization", "state_norm_max_ratio"), default = NULL
+      ))) else character(0),
+      if (!is.null(unified_get(
+        gamsig_policy, c("stabilization", "state_norm_abs_cap"), default = NULL
+      ))) c(DISC_GAMSIG_STATE_NORM_ABS_CAP = as.character(unified_get(
+        gamsig_policy, c("stabilization", "state_norm_abs_cap"), default = NULL
+      ))) else character(0),
+      if (!is.null(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_refreeze_iters"), default = NULL
+      ))) c(DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS = as.character(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_refreeze_iters"), default = NULL
+      ))) else character(0),
+      if (!is.null(unified_get(
+        gamsig_policy, c("stabilization", "state_hold_after_guard_iters"), default = NULL
+      ))) c(DISC_GAMSIG_STATE_HOLD_AFTER_GUARD_ITERS = as.character(unified_get(
+        gamsig_policy, c("stabilization", "state_hold_after_guard_iters"), default = NULL
+      ))) else character(0),
+      if (!is.null(unified_get(
+        gamsig_policy, c("stabilization", "state_blend_alpha"), default = NULL
+      ))) c(DISC_GAMSIG_STATE_BLEND_ALPHA = as.character(unified_get(
+        gamsig_policy, c("stabilization", "state_blend_alpha"), default = NULL
+      ))) else character(0),
+      if (!is.null(unified_get(
+        gamsig_policy, c("stabilization", "cov_blend_alpha"), default = NULL
+      ))) c(DISC_GAMSIG_COV_BLEND_ALPHA = as.character(unified_get(
+        gamsig_policy, c("stabilization", "cov_blend_alpha"), default = NULL
+      ))) else character(0)
     )
     cov_env_overrides <- c(
       if (using_engineered_covariates) c(UNIFIED_COVARIATE_FEATURES_CSV = shared_feature_csv) else character(0),
