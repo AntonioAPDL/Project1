@@ -60,6 +60,8 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         self.assertEqual(payload['queue']['launch_free_gb'], 35)
         self.assertEqual(payload['queue']['heavy_free_gb'], 35)
         self.assertEqual(payload['profiles']['definitions']['disk_guarded_serial']['resources']['fit_parallel_workers'], 7)
+        self.assertEqual(payload['profiles']['definitions']['disk_guarded_dual']['queue']['ordinary_max_concurrent'], 2)
+        self.assertEqual(payload['profiles']['definitions']['disk_guarded_dual']['resources']['mc_cores'], 7)
 
         validation = payload['validation']
         self.assertEqual([case['cutoff'] for case in validation['quantile_fit_smoke_cases']], ['20210123', '20211221'])

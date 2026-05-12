@@ -38,6 +38,16 @@ This rollout uses a disk-guarded serial queue contract:
 
 The intent is to avoid the earlier launch stall caused by unrealistic free-space thresholds.
 
+For higher throughput after validation passes, the template also exposes a dual-row profile:
+
+- profile: `disk_guarded_dual`
+- ordinary rows in parallel: `2`
+- per row fit workers: `7`
+- per row `mc_cores`: `7`
+- effective quantile-model concurrency: `14`
+
+This is the efficient launch mode for the all-cutoff family rollout. A literal batch size of `15` is not natural for this family because each row contains `7` quantile submodels, so the clean parallelism units are `7` or `14`.
+
 ## Cleanup policy
 
 Before rollout, prune large superseded HE2 runtime artifacts while preserving compact evidence:
@@ -74,7 +84,8 @@ After validation passes, launch via the relaunch controller:
 ```bash
 python3 scripts/launch_he2_bayesian_publication_relaunch.py \
   --config config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_20260512.template.yaml \
-  --batch-file config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_quantile_map_20260512.yaml
+  --batch-file config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_quantile_map_20260512.yaml \
+  --profile disk_guarded_dual
 ```
 
 ## Retention expectation

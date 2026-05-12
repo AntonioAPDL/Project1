@@ -58,6 +58,17 @@ profiles:
       resources:
         fit_parallel_workers: 7
         mc_cores: 7
+    disk_guarded_dual:
+      queue:
+        ordinary_max_concurrent: 2
+        pause_free_gb: 25
+        launch_free_gb: 35
+        heavy_free_gb: 35
+        heavy_cutoff_max_concurrent: 1
+        heavy_cutoff_blocks_ordinary: true
+      resources:
+        fit_parallel_workers: 7
+        mc_cores: 7
     single_core_validation:
       queue:
         ordinary_max_concurrent: 1
