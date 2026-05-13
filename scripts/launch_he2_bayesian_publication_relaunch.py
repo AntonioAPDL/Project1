@@ -29,9 +29,9 @@ def read_launch_settings(path: Path) -> dict[str, str]:
     return settings
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description='Build, validate, and detached-launch the HE2 Bayesian publication relaunch controller.')
-    ap.add_argument('--template', default=str(DEFAULT_TEMPLATE))
+    ap.add_argument('--template', '--config', dest='template', default=str(DEFAULT_TEMPLATE))
     ap.add_argument('--skip-validate', action='store_true')
     ap.add_argument('--reset-state', action='store_true')
     ap.add_argument('--dry-run', action='store_true')
@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument('--profile')
     ap.add_argument('--fit-parallel-workers', type=int)
     ap.add_argument('--mc-cores', type=int)
-    return ap.parse_args()
+    return ap.parse_args(argv)
 
 
 def extend_with_selection_args(cmd: list[str], args: argparse.Namespace) -> list[str]:

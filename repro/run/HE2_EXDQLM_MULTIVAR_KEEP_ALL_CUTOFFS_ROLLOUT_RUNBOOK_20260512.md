@@ -90,7 +90,7 @@ After validation passes, launch via the relaunch controller:
 
 ```bash
 python3 scripts/launch_he2_bayesian_publication_relaunch.py \
-  --config config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_20260512.template.yaml \
+  --template config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_20260512.template.yaml \
   --batch-file config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_quantile_map_20260512.yaml \
   --profile disk_guarded_dual
 ```
