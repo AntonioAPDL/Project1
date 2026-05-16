@@ -19,6 +19,8 @@ Q50_20221225_PROOF_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 
 Q50_20221225_STATEFREEZE_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_20221225_q50_statefreeze_diagnostic_20260515.template.yaml'
 WAVE_A_NDLM_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_wave_a_ndlm_20260516.template.yaml'
 WAVE_A_NDLM_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'he2_wave_a_ndlm_remaining_families_20260516.yaml'
+EXDQLM_RERUN_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_rerun_20260516.template.yaml'
+EXDQLM_RERUN_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_rerun_20260516.yaml'
 BUILDER = ROOT / 'scripts' / 'build_he2_bayesian_publication_relaunch_configs.py'
 
 
@@ -1009,6 +1011,61 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
             ['PPT', 'SOIL', 'PCA'],
         )
         self.assertEqual(sample_cfg['run']['threads']['mc_cores'], 1)
+
+    def test_exdqlm_rerun_batch_builds_all_cutoffs_and_freezes_publication_winning_specs(self) -> None:
+        proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(
+            '--batch-file', str(EXDQLM_RERUN_BATCH),
+            template=EXDQLM_RERUN_TEMPLATE,
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+        with (matrix_dir / 'matrix_plan.csv').open('r', encoding='utf-8') as handle:
+            plan_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(plan_rows), 5)
+        self.assertEqual({row['family_id'] for row in plan_rows}, {'exdqlm_multivar_keep'})
+        self.assertEqual({row['model_class'] for row in plan_rows}, {'quantile_multivariate'})
+
+        with (matrix_dir / 'frozen_spec_manifest.csv').open('r', encoding='utf-8') as handle:
+            frozen_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(frozen_rows), 5)
+        by_cutoff = {row['cutoff']: row for row in frozen_rows}
+        self.assertEqual(by_cutoff['20210123']['forecast_cov_epsilon_fit'], '360.0')
+        self.assertEqual(by_cutoff['20211112']['forecast_cov_epsilon_fit'], '180.0')
+        self.assertEqual(by_cutoff['20211221']['forecast_cov_epsilon_fit'], '1.0')
+        self.assertEqual(by_cutoff['20220511']['forecast_cov_epsilon_fit'], '180.0')
+        self.assertEqual(by_cutoff['20221225']['forecast_cov_epsilon_fit'], '360.0')
+        self.assertEqual(by_cutoff['20221225']['forecast_cov_c_factor_fit'], '1.0')
+        self.assertEqual(by_cutoff['20221225']['df_s1'], '0.9998')
+        self.assertEqual(by_cutoff['20221225']['df_s2'], '0.9998')
+        self.assertEqual(by_cutoff['20221225']['df_discrep'], '0.998')
+        self.assertEqual(by_cutoff['20221225']['df_covs'], '0.9999999')
+        self.assertEqual(by_cutoff['20221225']['selected_spec_token'], 'set09')
+        self.assertEqual(by_cutoff['20221225']['fit_parallel_workers'], '7')
+        self.assertEqual(by_cutoff['20221225']['run_mc_cores'], '7')
+        self.assertTrue(all(row['config_patch_applied'] == 'True' for row in frozen_rows))
+
+        cfg_20211221 = yaml.safe_load(
+            (config_output_dir / 'multimodel_20211221_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml').read_text(encoding='utf-8')
+        ) or {}
+        self.assertEqual(cfg_20211221['run']['seed'], 20211221)
+        self.assertEqual(cfg_20211221['fit']['exdqlm_multivar']['legacy']['forecast_cov']['epsilon'], 1.0)
+        self.assertEqual(cfg_20211221['fit']['exdqlm_multivar']['legacy']['forecast_cov']['c_factor'], 1.0)
+        self.assertEqual(cfg_20211221['inputs']['fit']['retros_path'].split('/')[-1], 'retros.csv')
+        self.assertEqual([entry['name'] for entry in cfg_20211221['inputs']['fit']['covariates']], ['PPT', 'SOIL', 'PCA'])
+
+        cfg_20221225 = yaml.safe_load(
+            (config_output_dir / 'multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml').read_text(encoding='utf-8')
+        ) or {}
+        self.assertEqual(cfg_20221225['run']['seed'], 20221225)
+        self.assertEqual(cfg_20221225['fit']['exdqlm_multivar']['legacy']['forecast_cov']['epsilon'], 360.0)
+        self.assertEqual(cfg_20221225['fit']['exdqlm_multivar']['legacy']['forecast_cov']['c_factor'], 1.0)
+        self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['df_s1'], 0.9998)
+        self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['df_discrep'], 0.998)
+        self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['df_covs'], 0.9999999)
+        self.assertEqual(cfg_20221225['debug_he2_publication_relaunch']['source_publication_run_id'], 'multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep')
+        self.assertEqual(cfg_20221225['debug_he2_publication_relaunch']['selected_spec_token'], 'set09')
+        self.assertEqual(cfg_20221225['fit']['parallel']['workers'], 7)
+        self.assertEqual(cfg_20221225['run']['threads']['mc_cores'], 7)
 
 
 if __name__ == '__main__':

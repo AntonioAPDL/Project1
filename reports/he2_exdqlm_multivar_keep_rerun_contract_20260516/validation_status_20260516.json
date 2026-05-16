@@ -1,0 +1,44 @@
+{
+  "status": "blocked",
+  "family": "exdqlm_multivar_keep",
+  "decision": "do_not_launch",
+  "prepared_rerun_template": "config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_rerun_20260516.template.yaml",
+  "prepared_rerun_batch": "config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_rerun_20260516.yaml",
+  "builder_dry_run": {
+    "status": "passed",
+    "artifact_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_rerun_20260516",
+    "generated_configs": 5,
+    "plan_rows": 5,
+    "selection_rows": 5
+  },
+  "unit_tests": {
+    "status": "passed",
+    "count": 41,
+    "suites": [
+      "tests.python.test_he2_exdqlm_multivar_keep_rerun_contract",
+      "tests.python.test_he2_publication_relaunch_template",
+      "tests.python.test_he2_publication_relaunch_builder_selection",
+      "tests.python.test_he2_full_crps_stage1_contract",
+      "tests.python.test_he2_bayesian_publication_manifest"
+    ]
+  },
+  "prelaunch_validator": {
+    "status": "blocked_in_execution_smoke",
+    "validation_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_rerun_20260516/control/prelaunch_validation_20260516T214307Z",
+    "blocked_case": {
+      "cutoff": "20210123",
+      "quantile": "q50",
+      "iter": 15,
+      "gamsig_update_iters": 2,
+      "min_update_iters": 6,
+      "freeze_until_iter": 18,
+      "state_guard_iter": 8,
+      "evidence_log": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_rerun_20260516/control/prelaunch_validation_20260516T214307Z/smoke_runs/fit_quantile/exdqlm_multivar_keep/20210123/fit_smoke_exdqlm_multivar_keep_20210123_qsubset/fit/exdqlm_multivar/keep/q=50/logs/fit.log"
+    }
+  },
+  "interpretation": [
+    "The all-cutoff rerun package is wired to the corrected shared bundles and exact publication-winning exdqlm specs.",
+    "That publication-spec-only contract is not launch-ready under the current runtime because the representative 20210123 q50 smoke replayed a median state-guard freeze pattern.",
+    "We should not relaunch all exdqlm_multivar_keep rows until we decide how the q50 stabilization layer should be carried into the rerun spec."
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "family": "exdqlm_multivar_keep",
+  "campaign_spec_id": "he2pubgdpc1r1",
+  "approved_launcher": {
+    "selection_source": "reports/he2_publication_manifest/he2_bayesian_publication_manifest.csv",
+    "builder": "scripts/build_he2_bayesian_publication_relaunch_configs.py",
+    "validator": "scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py",
+    "template": "config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_rerun_20260516.template.yaml",
+    "batch": "config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_rerun_20260516.yaml"
+  },
+  "quarantined_builders": [
+    "scripts/build_multimodel_v8_featurecov_cf1_eps_matrix_configs.py",
+    "scripts/build_multimodel_v8_all9_feature_matrix_configs.py",
+    "scripts/build_multimodel_v8_ndlm_featurecov_rerun_matrix_configs.py"
+  ],
+  "counts": {
+    "rows": 5,
+    "cutoffs": [
+      "20210123",
+      "20211112",
+      "20211221",
+      "20220511",
+      "20221225"
+    ]
+  },
+  "bundle_contract": {
+    "bundle_artifact_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510",
+    "bundle_run_id": "20260510_publication_shared_r01",
+    "data_start": "1987-05-29"
+  },
+  "paths": {
+    "template": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_rerun_20260516.template.yaml",
+    "batch": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_rerun_20260516.yaml",
+    "runbook": "/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/HE2_EXDQLM_MULTIVAR_KEEP_ALL_CUTOFFS_RERUN_RUNBOOK_20260516.md"
+  }
+}
