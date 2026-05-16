@@ -1,0 +1,334 @@
+{
+  "status": "go",
+  "wave": "wave_a_ndlm",
+  "approved_launcher": {
+    "selection_source": "reports/he2_publication_manifest/he2_bayesian_publication_manifest.csv",
+    "builder": "scripts/build_he2_bayesian_publication_relaunch_configs.py",
+    "validator": "scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py",
+    "template": "config/he2_bayesian_publication_relaunch_20260510.template.yaml"
+  },
+  "quarantined_builders": [
+    "scripts/build_multimodel_v8_featurecov_cf1_eps_matrix_configs.py",
+    "scripts/build_multimodel_v8_all9_feature_matrix_configs.py",
+    "scripts/build_multimodel_v8_ndlm_featurecov_rerun_matrix_configs.py"
+  ],
+  "remaining_scope_counts": {
+    "remaining_rows": 40,
+    "remaining_families": 8,
+    "rows_by_cutoff": {
+      "20210123": 8,
+      "20211112": 8,
+      "20211221": 8,
+      "20220511": 8,
+      "20221225": 8
+    },
+    "rows_by_wave": {
+      "wave_c_multivariate_bridge": 15,
+      "wave_b_univariate_bridge": 10,
+      "wave_a_ndlm": 15
+    },
+    "rows_by_selected_spec_class": {
+      "epsilon_winner": 15,
+      "univar_winner": 10,
+      "ndlm_postfix_winner": 15
+    }
+  },
+  "wave_a_selected_scope": {
+    "rows": 15,
+    "families": [
+      "ndlm_main_drop",
+      "ndlm_main_keep",
+      "ndlm_univar_keep"
+    ],
+    "cutoffs": [
+      "20210123",
+      "20211112",
+      "20211221",
+      "20220511",
+      "20221225"
+    ],
+    "family_counts": {
+      "ndlm_univar_keep": 5,
+      "ndlm_main_drop": 5,
+      "ndlm_main_keep": 5
+    },
+    "cutoff_counts": {
+      "20210123": 3,
+      "20211112": 3,
+      "20211221": 3,
+      "20220511": 3,
+      "20221225": 3
+    }
+  },
+  "input_bundle_contract": [
+    {
+      "cutoff": "20210123",
+      "bundle_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2021-01-23/run_id=20260510_publication_shared_r01",
+      "retros_start": "1987-05-29",
+      "retros_end": "2021-01-23",
+      "usgs_daily_source_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv",
+      "deterministic_handoff_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z",
+      "deterministic_precip_source": "gefs_apcp",
+      "deterministic_soil_source": "gefs_soilw_0_0.1m",
+      "gdpc_alias_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/supporting_inputs/covariates/cov_05_PCA.csv",
+      "gdpc_alias_start": "1987-05-29",
+      "gdpc_alias_end": "2023-01-22"
+    },
+    {
+      "cutoff": "20211112",
+      "bundle_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2021-11-12/run_id=20260510_publication_shared_r01",
+      "retros_start": "1987-05-29",
+      "retros_end": "2021-11-12",
+      "usgs_daily_source_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv",
+      "deterministic_handoff_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z",
+      "deterministic_precip_source": "gefs_apcp",
+      "deterministic_soil_source": "gefs_soilw_0_0.1m",
+      "gdpc_alias_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/supporting_inputs/covariates/cov_05_PCA.csv",
+      "gdpc_alias_start": "1987-05-29",
+      "gdpc_alias_end": "2023-01-22"
+    },
+    {
+      "cutoff": "20211221",
+      "bundle_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2021-12-21/run_id=20260510_publication_shared_r01",
+      "retros_start": "1987-05-29",
+      "retros_end": "2021-12-21",
+      "usgs_daily_source_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv",
+      "deterministic_handoff_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z",
+      "deterministic_precip_source": "gefs_apcp",
+      "deterministic_soil_source": "gefs_soilw_0_0.1m",
+      "gdpc_alias_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/supporting_inputs/covariates/cov_05_PCA.csv",
+      "gdpc_alias_start": "1987-05-29",
+      "gdpc_alias_end": "2023-01-22"
+    },
+    {
+      "cutoff": "20220511",
+      "bundle_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2022-05-11/run_id=20260510_publication_shared_r01",
+      "retros_start": "1987-05-29",
+      "retros_end": "2022-05-11",
+      "usgs_daily_source_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv",
+      "deterministic_handoff_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z",
+      "deterministic_precip_source": "gefs_apcp",
+      "deterministic_soil_source": "gefs_soilw_0_0.1m",
+      "gdpc_alias_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/supporting_inputs/covariates/cov_05_PCA.csv",
+      "gdpc_alias_start": "1987-05-29",
+      "gdpc_alias_end": "2023-01-22"
+    },
+    {
+      "cutoff": "20221225",
+      "bundle_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2022-12-25/run_id=20260510_publication_shared_r01",
+      "retros_start": "1987-05-29",
+      "retros_end": "2022-12-25",
+      "usgs_daily_source_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv",
+      "deterministic_handoff_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z",
+      "deterministic_precip_source": "gefs_apcp",
+      "deterministic_soil_source": "gefs_soilw_0_0.1m",
+      "gdpc_alias_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/supporting_inputs/covariates/cov_05_PCA.csv",
+      "gdpc_alias_start": "1987-05-29",
+      "gdpc_alias_end": "2023-01-22"
+    }
+  ],
+  "validation_status": {
+    "config": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_bayesian_publication_relaunch_wave_a_ndlm_20260516.template.yaml",
+    "timestamp_utc": "2026-05-16T20:33:33.151779+00:00",
+    "checks": {
+      "bundle_build": "passed",
+      "bundles_present": {
+        "cutoffs": [
+          "20210123",
+          "20211112",
+          "20211221",
+          "20220511",
+          "20221225"
+        ]
+      },
+      "builder": {
+        "artifact_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516",
+        "matrix_dir": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/publication_relaunch_matrix",
+        "config_output_dir": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/generated_configs",
+        "generated_configs": "15",
+        "plan_rows": "15",
+        "selection_rows": "15"
+      },
+      "selected_scope": {
+        "rows": 15,
+        "families": [
+          "ndlm_main_drop",
+          "ndlm_main_keep",
+          "ndlm_univar_keep"
+        ],
+        "cutoffs": [
+          "20210123",
+          "20211112",
+          "20211221",
+          "20220511",
+          "20221225"
+        ],
+        "family_counts": {
+          "ndlm_univar_keep": 5,
+          "ndlm_main_drop": 5,
+          "ndlm_main_keep": 5
+        },
+        "cutoff_counts": {
+          "20210123": 3,
+          "20211112": 3,
+          "20211221": 3,
+          "20220511": 3,
+          "20221225": 3
+        }
+      },
+      "within_cutoff_bundle_alignment": "passed",
+      "builder_audits": "passed",
+      "tests": [
+        {
+          "cmd": [
+            "python3",
+            "-m",
+            "py_compile",
+            "scripts/he2_publication_relaunch_lib.py",
+            "scripts/build_he2_bayesian_publication_relaunch_configs.py",
+            "scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py",
+            "scripts/launch_he2_bayesian_publication_relaunch.py",
+            "scripts/reset_he2_bayesian_publication_relaunch_state.py",
+            "scripts/build_he2_bayesian_full_relaunch_tracker.py"
+          ],
+          "returncode": 0
+        },
+        {
+          "cmd": [
+            "python3",
+            "-m",
+            "unittest",
+            "tests.python.test_canonical_gdpc_master_builder",
+            "tests.python.test_multimodel_v8_histfix_bundles_gdpc_alias",
+            "tests.python.test_he2_publication_relaunch_lib",
+            "tests.python.test_he2_publication_relaunch_template"
+          ],
+          "returncode": 0
+        }
+      ],
+      "smoke_runs": {
+        "count": 14,
+        "passed": 10,
+        "skipped": 4,
+        "cleanup_removed_files": 6,
+        "cleanup_removed_bytes": 296154410
+      }
+    },
+    "smoke_runs": [
+      {
+        "scope": "family",
+        "status": "passed",
+        "family": "ndlm_main_drop",
+        "cutoff": "20210123",
+        "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/prelaunch_validation_20260516T203333Z/smoke_runs/family/ndlm_main_drop/smoke_family_ndlm_main_drop/inputs/shared"
+      },
+      {
+        "scope": "family",
+        "status": "passed",
+        "family": "ndlm_main_keep",
+        "cutoff": "20210123",
+        "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/prelaunch_validation_20260516T203333Z/smoke_runs/family/ndlm_main_keep/smoke_family_ndlm_main_keep/inputs/shared"
+      },
+      {
+        "scope": "family",
+        "status": "passed",
+        "family": "ndlm_univar_keep",
+        "cutoff": "20210123",
+        "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/prelaunch_validation_20260516T203333Z/smoke_runs/family/ndlm_univar_keep/smoke_family_ndlm_univar_keep/inputs/shared"
+      },
+      {
+        "scope": "cutoff",
+        "status": "passed",
+        "family": "ndlm_univar_keep",
+        "cutoff": "20210123",
+        "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/prelaunch_validation_20260516T203333Z/smoke_runs/cutoff/20210123/smoke_cutoff_20210123/inputs/shared"
+      },
+      {
+        "scope": "cutoff",
+        "status": "passed",
+        "family": "ndlm_univar_keep",
+        "cutoff": "20211112",
+        "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/prelaunch_validation_20260516T203333Z/smoke_runs/cutoff/20211112/smoke_cutoff_20211112/inputs/shared"
+      },
+      {
+        "scope": "cutoff",
+        "status": "passed",
+        "family": "ndlm_univar_keep",
+        "cutoff": "20211221",
+        "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/prelaunch_validation_20260516T203333Z/smoke_runs/cutoff/20211221/smoke_cutoff_20211221/inputs/shared"
+      },
+      {
+        "scope": "cutoff",
+        "status": "passed",
+        "family": "ndlm_univar_keep",
+        "cutoff": "20220511",
+        "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/prelaunch_validation_20260516T203333Z/smoke_runs/cutoff/20220511/smoke_cutoff_20220511/inputs/shared"
+      },
+      {
+        "scope": "cutoff",
+        "status": "passed",
+        "family": "ndlm_univar_keep",
+        "cutoff": "20221225",
+        "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/prelaunch_validation_20260516T203333Z/smoke_runs/cutoff/20221225/smoke_cutoff_20221225/inputs/shared"
+      },
+      {
+        "scope": "fit_ndlm",
+        "status": "passed",
+        "family": "ndlm_univar_keep",
+        "cutoff": "20210123",
+        "run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/prelaunch_validation_20260516T203333Z/smoke_runs/fit/ndlm_univar_keep/20210123/fit_smoke_ndlm_univar_keep_20210123",
+        "cleanup_removed_files": 1,
+        "cleanup_removed_bytes": 295290506
+      },
+      {
+        "scope": "fit_quantile",
+        "status": "skipped",
+        "family": "exdqlm_multivar_keep",
+        "cutoff": "20210123",
+        "reason": "no multivariate quantile row available in selected scope",
+        "quantiles": [
+          0.05
+        ]
+      },
+      {
+        "scope": "fit_quantile_univar",
+        "status": "skipped",
+        "family": "exdqlm_univar",
+        "cutoff": "20210123",
+        "reason": "no univariate quantile row available in selected scope",
+        "quantiles": [
+          0.05
+        ]
+      },
+      {
+        "scope": "full_pipeline_ndlm",
+        "status": "passed",
+        "family": "ndlm_univar_keep",
+        "cutoff": "20210123",
+        "run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_20260516/control/prelaunch_validation_20260516T203333Z/smoke_runs/full_pipeline/ndlm/ndlm_univar_keep/20210123/full_pipeline_ndlm_univar_keep_20210123",
+        "cleanup_removed_files": 5,
+        "cleanup_removed_bytes": 863904
+      },
+      {
+        "scope": "full_pipeline_quantile",
+        "status": "skipped",
+        "family": "exdqlm_univar",
+        "cutoff": "20210123",
+        "reason": "no quantile_univariate row available in selected scope",
+        "quantiles": [
+          0.05
+        ]
+      },
+      {
+        "scope": "full_pipeline_quantile_univar",
+        "status": "skipped",
+        "family": "exdqlm_univar",
+        "cutoff": "20210123",
+        "reason": "no quantile_univariate row available in selected scope",
+        "quantiles": [
+          0.05
+        ]
+      }
+    ]
+  }
+}

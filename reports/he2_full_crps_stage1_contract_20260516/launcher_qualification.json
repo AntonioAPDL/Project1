@@ -1,0 +1,81 @@
+{
+  "generated_from": {
+    "manifest_csv": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_publication_manifest/he2_bayesian_publication_manifest.csv",
+    "historical_audit_csv": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_publication_manifest/historical_support_audit_20260507/historical_support_audit.csv",
+    "alignment_audit_csv": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_publication_manifest/he2_bayesian_publication_alignment.csv",
+    "input_audit_summary_csv": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_bayesian_input_sanity_audit/he2_bayesian_input_sanity_summary.csv",
+    "reference_completed_family": "exdqlm_multivar_keep",
+    "reference_completed_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_20260512"
+  },
+  "approved_launcher": {
+    "selection_source": "reports/he2_publication_manifest/he2_bayesian_publication_manifest.csv",
+    "builder": "scripts/build_he2_bayesian_publication_relaunch_configs.py",
+    "validator": "scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py",
+    "template": "config/he2_bayesian_publication_relaunch_20260510.template.yaml"
+  },
+  "quarantined_builders": [
+    "scripts/build_multimodel_v8_featurecov_cf1_eps_matrix_configs.py",
+    "scripts/build_multimodel_v8_all9_feature_matrix_configs.py",
+    "scripts/build_multimodel_v8_ndlm_featurecov_rerun_matrix_configs.py"
+  ],
+  "counts": {
+    "remaining_rows": 40,
+    "remaining_families": 8,
+    "rows_by_cutoff": {
+      "20210123": 8,
+      "20211112": 8,
+      "20211221": 8,
+      "20220511": 8,
+      "20221225": 8
+    },
+    "rows_by_wave": {
+      "wave_c_multivariate_bridge": 15,
+      "wave_b_univariate_bridge": 10,
+      "wave_a_ndlm": 15
+    },
+    "rows_by_selected_spec_class": {
+      "epsilon_winner": 15,
+      "univar_winner": 10,
+      "ndlm_postfix_winner": 15
+    }
+  },
+  "cutoffs_requiring_corrected_full_history_attention": [
+    "20210123",
+    "20211112",
+    "20221225"
+  ],
+  "input_audit": {
+    "summary_csv": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_bayesian_input_sanity_audit/he2_bayesian_input_sanity_summary.csv",
+    "artifact_checks_passed": 50,
+    "artifact_checks_total": 50,
+    "cutoffs": [
+      "20210123",
+      "20211112",
+      "20211221",
+      "20220511",
+      "20221225"
+    ]
+  },
+  "alignment_status": {
+    "20210123": {
+      "artifacts": 11,
+      "all_equal_count": 10
+    },
+    "20211112": {
+      "artifacts": 11,
+      "all_equal_count": 10
+    },
+    "20211221": {
+      "artifacts": 11,
+      "all_equal_count": 10
+    },
+    "20220511": {
+      "artifacts": 11,
+      "all_equal_count": 11
+    },
+    "20221225": {
+      "artifacts": 11,
+      "all_equal_count": 11
+    }
+  }
+}
