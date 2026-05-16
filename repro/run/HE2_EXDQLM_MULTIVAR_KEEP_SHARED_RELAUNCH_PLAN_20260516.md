@@ -46,6 +46,12 @@ This stage does **not** launch the queue.
   - `median_cov_blend_alpha=0.5`
   - `median_max_abs_gamma_step=0.15`
   - `median_max_abs_log_sigma_step=0.25`
+- runtime / scheduler contract:
+  - row scheduling: `ordinary_max_concurrent=1`
+  - quantile-worker fanout: `fit_parallel_workers=7`
+  - row process budget: `mc_cores=7`
+  - thread caps per quantile worker: `OMP=OPENBLAS=MKL=VECLIB=NUMEXPR=1`
+  - interpretation: one core per quantile model, seven quantile jobs in parallel within each row
 
 ## Why this spec
 
@@ -108,6 +114,28 @@ The point is to prove that the shared spec is structurally valid **before** we s
 3. Full 5-cutoff relaunch under the same shared spec
 4. Article refresh from the new relaunch outputs
 5. Commit and push updated article artifacts to `Evironmetrics---REVISED-DOC-2`
+
+## Full-launch execution contract
+
+When we move from validation to the real rerun, use:
+
+```bash
+python3 scripts/launch_he2_bayesian_publication_relaunch.py \
+  --config config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.template.yaml \
+  --batch-file config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.yaml \
+  --reset-state
+```
+
+Expected production behavior:
+
+- the launch script rebuilds configs from the approved manifest-driven builder
+- the launch script reruns the prelaunch validator before starting the queue
+- only after validation passes does it reset stale matrix state and detach the queue controller
+- `fit`, `post`, `validate`, and `report` all remain enabled, so the relaunch produces:
+  - fit outputs
+  - post outputs and post-side figures
+  - validate compare metrics
+  - report summaries and CRPS table source artifacts
 
 ## Do not do here
 

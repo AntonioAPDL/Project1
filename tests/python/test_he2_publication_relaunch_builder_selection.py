@@ -1091,6 +1091,13 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(cfg_20210123['models']['exdqlm_multivar']['state_evolution']['df_s1'], 0.99999)
         self.assertEqual(cfg_20210123['models']['exdqlm_multivar']['state_evolution']['df_discrep'], 0.99999)
         self.assertEqual(cfg_20210123['models']['exdqlm_multivar']['state_evolution']['df_covs'], 0.9999999)
+        self.assertEqual(cfg_20210123['fit']['parallel']['workers'], 7)
+        self.assertEqual(cfg_20210123['run']['threads']['mc_cores'], 7)
+        self.assertEqual(cfg_20210123['run']['threads']['omp'], 1)
+        self.assertEqual(cfg_20210123['run']['threads']['openblas'], 1)
+        self.assertEqual(cfg_20210123['run']['threads']['mkl'], 1)
+        self.assertEqual(cfg_20210123['run']['threads']['veclib'], 1)
+        self.assertEqual(cfg_20210123['run']['threads']['numexpr'], 1)
         q50 = cfg_20210123['fit']['exdqlm_multivar']['gamma_sigma']['quantile_overrides']['q50']
         self.assertEqual(q50['freeze_target'], 'states')
         self.assertEqual(q50['terminal_sampling_guard']['mode'], 'fail_fast')

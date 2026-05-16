@@ -20,6 +20,13 @@ overrides:
     - family: exdqlm_multivar_keep
       manuscript_label: exAL-M-T1
       config_patch:
+        run:
+          threads:
+            omp: 1
+            openblas: 1
+            mkl: 1
+            veclib: 1
+            numexpr: 1
         fit:
           exdqlm_multivar:
             legacy:

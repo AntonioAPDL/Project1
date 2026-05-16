@@ -503,7 +503,13 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         batch_payload = yaml.safe_load(EXDQLM_SHARED_BATCH.read_text(encoding='utf-8')) or {}
         self.assertEqual(batch_payload['selection']['families'], ['exdqlm_multivar_keep'])
         self.assertEqual(batch_payload['resources']['fit_parallel_workers'], 7)
+        self.assertEqual(batch_payload['resources']['mc_cores'], 7)
         common_patch = batch_payload['overrides']['row_config_patches'][0]['config_patch']
+        self.assertEqual(common_patch['run']['threads']['omp'], 1)
+        self.assertEqual(common_patch['run']['threads']['openblas'], 1)
+        self.assertEqual(common_patch['run']['threads']['mkl'], 1)
+        self.assertEqual(common_patch['run']['threads']['veclib'], 1)
+        self.assertEqual(common_patch['run']['threads']['numexpr'], 1)
         self.assertEqual(common_patch['fit']['exdqlm_multivar']['legacy']['forecast_cov']['c_factor'], 1.0)
         self.assertEqual(common_patch['fit']['exdqlm_multivar']['legacy']['forecast_cov']['epsilon'], 30.0)
         self.assertEqual(common_patch['models']['exdqlm_multivar']['state_evolution']['lambda'], 0.97)
