@@ -1,0 +1,37 @@
+[
+  {
+    "family": "five_cutoff_crps_validation_sources",
+    "role": "Table 1 CRPS source freeze",
+    "refresh_after_stage": "Stage 2"
+  },
+  {
+    "family": "representative_selected_model_2022_12_25",
+    "role": "Section 5 representative outputs and posterior tables",
+    "refresh_after_stage": "Stage 2"
+  },
+  {
+    "family": "five_cutoff_setup_support",
+    "role": "input/setup/support bundle by cutoff",
+    "refresh_after_stage": "Stage 3"
+  },
+  {
+    "family": "forecast_context_by_cutoff",
+    "role": "forecast window context figures for all cutoffs",
+    "refresh_after_stage": "Stage 3"
+  },
+  {
+    "family": "multivariate_synthesis_by_cutoff",
+    "role": "main-model synthesis family for all cutoffs",
+    "refresh_after_stage": "Stage 3"
+  },
+  {
+    "family": "reference_synthesis_by_cutoff",
+    "role": "reference synthesis family for all cutoffs",
+    "refresh_after_stage": "Stage 3"
+  },
+  {
+    "family": "historical_support_from_current_models",
+    "role": "historical support figures; refresh only if corrected retained-artifact contract is satisfied",
+    "refresh_after_stage": "Stage 3 (gated)"
+  }
+]

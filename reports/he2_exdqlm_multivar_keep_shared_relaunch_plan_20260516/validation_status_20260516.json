@@ -1,0 +1,65 @@
+{
+  "status": "validated_no_launch",
+  "family": "exdqlm_multivar_keep",
+  "decision": "ready_to_schedule_rerun",
+  "launched": false,
+  "prepared_rerun_template": "config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.template.yaml",
+  "prepared_rerun_batch": "config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.yaml",
+  "shared_spec": {
+    "epsilon": 360.0,
+    "c_factor": 1.0,
+    "discount_set": "set08",
+    "q50_stabilization": {
+      "freeze_target": "states",
+      "hold_after_guard_iters": 0,
+      "state_blend_alpha": 0.5,
+      "cov_blend_alpha": 0.5,
+      "max_abs_gamma_step": 0.15,
+      "max_abs_log_sigma_step": 0.25,
+      "terminal_guard_mode": "fail_fast"
+    }
+  },
+  "builder_dry_run": {
+    "status": "passed",
+    "artifact_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516",
+    "generated_configs": 5,
+    "plan_rows": 5,
+    "selection_rows": 5
+  },
+  "unit_tests": {
+    "status": "passed",
+    "count": 45,
+    "suites": [
+      "tests.python.test_he2_exdqlm_multivar_keep_shared_relaunch_plan",
+      "tests.python.test_he2_exdqlm_multivar_keep_rerun_contract",
+      "tests.python.test_he2_publication_relaunch_template",
+      "tests.python.test_he2_publication_relaunch_builder_selection",
+      "tests.python.test_he2_full_crps_stage1_contract",
+      "tests.python.test_he2_bayesian_publication_manifest"
+    ]
+  },
+  "prelaunch_validator": {
+    "status": "substantive_checks_passed_wrapper_summary_missing",
+    "validation_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T220923Z",
+    "shared_input_smokes": "passed",
+    "family_smoke": "passed",
+    "representative_fit_smoke": {
+      "cutoff": "20210123",
+      "quantile": "q50",
+      "gamsig_update_iters": 18,
+      "min_update_iters": 6,
+      "guard_count": 0,
+      "frozen": false,
+      "sampling_finished_seconds": 34.689,
+      "fit_wrapper_stdout": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T220923Z/fit_smoke_exdqlm_multivar_keep_20210123_qsubset.stdout.log",
+      "evidence_log": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T220923Z/smoke_runs/fit_quantile/exdqlm_multivar_keep/20210123/fit_smoke_exdqlm_multivar_keep_20210123_qsubset/fit/exdqlm_multivar/keep/q=50/logs/fit.log",
+      "sampling_diagnostics": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T220923Z/smoke_runs/fit_quantile/exdqlm_multivar_keep/20210123/fit_smoke_exdqlm_multivar_keep_20210123_qsubset/fit/exdqlm_multivar/keep/q=50/logs/sampling_diagnostics.log"
+    },
+    "note": "The validator wrapper did not flush prelaunch_validation_summary.json during this session, but the direct smoke evidence completed successfully."
+  },
+  "interpretation": [
+    "The all-cutoff shared rerun package is wired to the corrected shared bundles and the agreed shared relaunch spec.",
+    "The representative 20210123 q50 smoke no longer reproduces the earlier median freeze failure; it reaches terminal preflight and finishes sampling.",
+    "The package is ready to schedule for the next exdqlm_multivar_keep rerun, while remaining intentionally not launched in this step."
+  ]
+}

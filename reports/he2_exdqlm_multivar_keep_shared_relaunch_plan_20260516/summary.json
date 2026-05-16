@@ -1,0 +1,89 @@
+{
+  "family": "exdqlm_multivar_keep",
+  "shared_discount_set": "set08",
+  "shared_epsilon_label": "eps360cf1",
+  "shared_epsilon": 360.0,
+  "shared_c_factor": 1.0,
+  "shared_state_evolution": {
+    "df_t": 0.99999999,
+    "df_s1": 0.9999,
+    "df_s2": 0.9999,
+    "df_s67": 0.9999,
+    "df_discrep": 0.999,
+    "lambda": 0.975,
+    "df_trans": 0.9999999,
+    "df_covs": 0.99999
+  },
+  "q50_stabilization": {
+    "freeze_target": "states",
+    "terminal_sampling_guard.mode": "fail_fast",
+    "terminal_sampling_guard.min_guard_count": 1,
+    "terminal_sampling_guard.max_guard_lag_iters": 0,
+    "terminal_sampling_guard.require_frozen": true,
+    "median_state_hold_after_guard_iters": 0,
+    "median_state_blend_alpha": 0.5,
+    "median_cov_blend_alpha": 0.5,
+    "median_max_abs_gamma_step": 0.15,
+    "median_max_abs_log_sigma_step": 0.25
+  },
+  "paths": {
+    "template": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.template.yaml",
+    "batch": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.yaml",
+    "runbook": "/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/HE2_EXDQLM_MULTIVAR_KEEP_SHARED_RELAUNCH_PLAN_20260516.md"
+  },
+  "blocked_publication_spec_validation": {
+    "status": "blocked",
+    "family": "exdqlm_multivar_keep",
+    "decision": "do_not_launch",
+    "prepared_rerun_template": "config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_rerun_20260516.template.yaml",
+    "prepared_rerun_batch": "config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_rerun_20260516.yaml",
+    "builder_dry_run": {
+      "status": "passed",
+      "artifact_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_rerun_20260516",
+      "generated_configs": 5,
+      "plan_rows": 5,
+      "selection_rows": 5
+    },
+    "unit_tests": {
+      "status": "passed",
+      "count": 41,
+      "suites": [
+        "tests.python.test_he2_exdqlm_multivar_keep_rerun_contract",
+        "tests.python.test_he2_publication_relaunch_template",
+        "tests.python.test_he2_publication_relaunch_builder_selection",
+        "tests.python.test_he2_full_crps_stage1_contract",
+        "tests.python.test_he2_bayesian_publication_manifest"
+      ]
+    },
+    "prelaunch_validator": {
+      "status": "blocked_in_execution_smoke",
+      "validation_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_rerun_20260516/control/prelaunch_validation_20260516T214307Z",
+      "blocked_case": {
+        "cutoff": "20210123",
+        "quantile": "q50",
+        "iter": 15,
+        "gamsig_update_iters": 2,
+        "min_update_iters": 6,
+        "freeze_until_iter": 18,
+        "state_guard_iter": 8,
+        "evidence_log": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_rerun_20260516/control/prelaunch_validation_20260516T214307Z/smoke_runs/fit_quantile/exdqlm_multivar_keep/20210123/fit_smoke_exdqlm_multivar_keep_20210123_qsubset/fit/exdqlm_multivar/keep/q=50/logs/fit.log"
+      }
+    },
+    "interpretation": [
+      "The all-cutoff rerun package is wired to the corrected shared bundles and exact publication-winning exdqlm specs.",
+      "That publication-spec-only contract is not launch-ready under the current runtime because the representative 20210123 q50 smoke replayed a median state-guard freeze pattern.",
+      "We should not relaunch all exdqlm_multivar_keep rows until we decide how the q50 stabilization layer should be carried into the rerun spec."
+    ]
+  },
+  "cf1_overall_family_best": {
+    "model_variant": "exdqlm_multivar_keep",
+    "epsilon_label": "eps360cf1",
+    "epsilon_value": 360.0,
+    "mean_crps_across_cutoffs": 0.2526671427677701,
+    "median_crps_across_cutoffs": 0.1568597301426389,
+    "min_crps_across_cutoffs": 0.0217994630242468,
+    "max_crps_across_cutoffs": 0.6143974397227375,
+    "best_c_factor": 1.0,
+    "cutoffs_won": 2
+  }
+}

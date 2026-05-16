@@ -1,0 +1,6 @@
+cutoff,shared_discount_set,shared_epsilon_label,shared_epsilon,shared_c_factor,df_t,df_s1,df_s2,df_s67,df_discrep,lambda,df_trans,df_covs,q50_freeze_target,q50_guard_mode,q50_hold_after_guard,q50_state_blend_alpha,q50_cov_blend_alpha,q50_gamma_step_cap,q50_log_sigma_step_cap
+20210123,set08,eps360cf1,360.0,1.0,0.99999999,0.9999,0.9999,0.9999,0.999,0.975,0.9999999,0.99999,states,fail_fast,0,0.5,0.5,0.15,0.25
+20211112,set08,eps360cf1,360.0,1.0,0.99999999,0.9999,0.9999,0.9999,0.999,0.975,0.9999999,0.99999,states,fail_fast,0,0.5,0.5,0.15,0.25
+20211221,set08,eps360cf1,360.0,1.0,0.99999999,0.9999,0.9999,0.9999,0.999,0.975,0.9999999,0.99999,states,fail_fast,0,0.5,0.5,0.15,0.25
+20220511,set08,eps360cf1,360.0,1.0,0.99999999,0.9999,0.9999,0.9999,0.999,0.975,0.9999999,0.99999,states,fail_fast,0,0.5,0.5,0.15,0.25
+20221225,set08,eps360cf1,360.0,1.0,0.99999999,0.9999,0.9999,0.9999,0.999,0.975,0.9999999,0.99999,states,fail_fast,0,0.5,0.5,0.15,0.25
