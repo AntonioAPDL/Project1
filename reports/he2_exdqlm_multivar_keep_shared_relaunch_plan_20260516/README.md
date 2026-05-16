@@ -6,30 +6,32 @@ Date: 2026-05-16
 
 - family: `exdqlm_multivar_keep`
 - launch posture: `PREPARE_ONLY`
-- shared forecast-covariance spec: `epsilon=360.0`, `c_factor=1.0`
-- shared discount set: `set08`
+- shared forecast-covariance spec: `epsilon=30.0`, `c_factor=1.0`
+- shared discount set: `set10_manual_20260516`
+- selection basis: `manual_override_20260516`
 - shared q50 stabilization layer: enabled from the successful 2026-05-15 recovery path
 
 ## Why this shared spec
 
-- family-wide cf1 epsilon sweep winner for `exdqlm_multivar_keep`: `eps360cf1` with mean CRPS `0.252667` across 5 cutoffs
-- family-wide exact-input discount-grid winner by mean delta: `set08`
+- selected shared relaunch spec is a manual override recorded on `2026-05-16`; it is not required to equal the historical cf1 or discount-grid winner
+- historical cf1 family-wide best reference remains `eps360cf1` with mean CRPS `0.252667` across 5 cutoffs
+- historical exact-input discount-grid best-by-mean reference remains `set08`
 - the earlier publication-spec-only rerun contract is blocked by q50 validation at `20210123`, so the shared rerun must carry an explicit median stabilization layer
 
 ## Shared science spec
 
 | Parameter | Value | Evidence |
 |---|---|---|
-| `epsilon` | `360.0` | cf1 family-wide best epsilon summary |
-| `c_factor` | `1.0` | cf1 sweep held at `1.0` for the tuned current multivariate families |
-| `df_t` | `0.99999999` | exact-input discount-grid `set08` |
-| `df_s1` | `0.9999` | exact-input discount-grid `set08` |
-| `df_s2` | `0.9999` | exact-input discount-grid `set08` |
-| `df_s67` | `0.9999` | exact-input discount-grid `set08` |
-| `df_discrep` | `0.999` | exact-input discount-grid `set08` |
-| `lambda` | `0.975` | exact-input discount-grid `set08` |
-| `df_trans` | `0.9999999` | exact-input discount-grid `set08` |
-| `df_covs` | `0.99999` | exact-input discount-grid `set08` |
+| `epsilon` | `30.0` | manual shared override (`2026-05-16`) |
+| `c_factor` | `1.0` | manual shared override (`2026-05-16`) |
+| `df_t` | `0.99999999` | manual shared override (`2026-05-16`) |
+| `df_s1` | `0.99999` | manual shared override (`2026-05-16`) |
+| `df_s2` | `0.99999` | manual shared override (`2026-05-16`) |
+| `df_s67` | `0.99999` | manual shared override (`2026-05-16`) |
+| `df_discrep` | `0.99999` | manual shared override (`2026-05-16`) |
+| `lambda` | `0.97` | manual shared override (`2026-05-16`) |
+| `df_trans` | `0.9999999` | manual shared override (`2026-05-16`) |
+| `df_covs` | `0.9999999` | manual shared override (`2026-05-16`) |
 
 ## Shared execution stabilization layer
 
@@ -44,7 +46,9 @@ Date: 2026-05-16
 - `median_max_abs_gamma_step`: `0.15`
 - `median_max_abs_log_sigma_step`: `0.25`
 
-## Discount-set ranking across all 5 cutoffs
+## Historical discount-set ranking across all 5 cutoffs
+
+This table is retained as historical reference only. The selected shared relaunch set above is a manual override and does not need to match the historical ranking winner.
 
 | Set | Mean Probe CRPS | Mean Delta vs HE | Median Delta | Wins | df_s1 | df_discrep | lambda | df_covs |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|

@@ -6,9 +6,19 @@
   "prepared_rerun_template": "config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.template.yaml",
   "prepared_rerun_batch": "config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.yaml",
   "shared_spec": {
-    "epsilon": 360.0,
+    "epsilon": 30.0,
     "c_factor": 1.0,
-    "discount_set": "set08",
+    "discount_set": "set10_manual_20260516",
+    "state_evolution": {
+      "df_t": 0.99999999,
+      "df_s1": 0.99999,
+      "df_s2": 0.99999,
+      "df_s67": 0.99999,
+      "df_discrep": 0.99999,
+      "lambda": 0.97,
+      "df_trans": 0.9999999,
+      "df_covs": 0.9999999
+    },
     "q50_stabilization": {
       "freeze_target": "states",
       "hold_after_guard_iters": 0,
@@ -40,26 +50,27 @@
   },
   "prelaunch_validator": {
     "status": "substantive_checks_passed_wrapper_summary_missing",
-    "validation_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T220923Z",
+    "validation_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T224635Z",
     "shared_input_smokes": "passed",
     "family_smoke": "passed",
     "representative_fit_smoke": {
       "cutoff": "20210123",
       "quantile": "q50",
+      "vb_iter": 18,
       "gamsig_update_iters": 18,
       "min_update_iters": 6,
       "guard_count": 0,
       "frozen": false,
-      "sampling_finished_seconds": 34.689,
-      "fit_wrapper_stdout": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T220923Z/fit_smoke_exdqlm_multivar_keep_20210123_qsubset.stdout.log",
-      "evidence_log": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T220923Z/smoke_runs/fit_quantile/exdqlm_multivar_keep/20210123/fit_smoke_exdqlm_multivar_keep_20210123_qsubset/fit/exdqlm_multivar/keep/q=50/logs/fit.log",
-      "sampling_diagnostics": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T220923Z/smoke_runs/fit_quantile/exdqlm_multivar_keep/20210123/fit_smoke_exdqlm_multivar_keep_20210123_qsubset/fit/exdqlm_multivar/keep/q=50/logs/sampling_diagnostics.log"
+      "sampling_finished_seconds": 34.558,
+      "fit_wrapper_stdout": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T224635Z/fit_smoke_exdqlm_multivar_keep_20210123_qsubset.stdout.log",
+      "evidence_log": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T224635Z/smoke_runs/fit_quantile/exdqlm_multivar_keep/20210123/fit_smoke_exdqlm_multivar_keep_20210123_qsubset/fit/exdqlm_multivar/keep/q=50/logs/fit.log",
+      "sampling_diagnostics": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260516T224635Z/smoke_runs/fit_quantile/exdqlm_multivar_keep/20210123/fit_smoke_exdqlm_multivar_keep_20210123_qsubset/fit/exdqlm_multivar/keep/q=50/logs/sampling_diagnostics.log"
     },
-    "note": "The validator wrapper did not flush prelaunch_validation_summary.json during this session, but the direct smoke evidence completed successfully."
+    "note": "The validator wrapper did not flush prelaunch_validation_summary.json during this session, but the direct smoke evidence completed successfully under the new manual shared set."
   },
   "interpretation": [
-    "The all-cutoff shared rerun package is wired to the corrected shared bundles and the agreed shared relaunch spec.",
-    "The representative 20210123 q50 smoke no longer reproduces the earlier median freeze failure; it reaches terminal preflight and finishes sampling.",
+    "The all-cutoff shared rerun package is wired to the corrected shared bundles and the agreed manual shared relaunch spec.",
+    "The representative 20210123 q50 smoke no longer reproduces the earlier median freeze failure; it reaches terminal preflight with guard_count=0 and finishes sampling.",
     "The package is ready to schedule for the next exdqlm_multivar_keep rerun, while remaining intentionally not launched in this step."
   ]
 }

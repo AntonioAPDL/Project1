@@ -35,6 +35,8 @@ WAVE_A_NDLM_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_wave
 WAVE_A_NDLM_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'he2_wave_a_ndlm_remaining_families_20260516.yaml'
 EXDQLM_RERUN_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_rerun_20260516.template.yaml'
 EXDQLM_RERUN_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_rerun_20260516.yaml'
+EXDQLM_SHARED_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.template.yaml'
+EXDQLM_SHARED_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.yaml'
 
 
 class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
@@ -483,6 +485,39 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         self.assertEqual(patches['20221225']['models']['exdqlm_multivar']['state_evolution']['df_s1'], 0.9998)
         self.assertEqual(patches['20221225']['models']['exdqlm_multivar']['state_evolution']['df_discrep'], 0.998)
         self.assertEqual(patches['20221225']['models']['exdqlm_multivar']['state_evolution']['df_covs'], 0.9999999)
+
+    def test_exdqlm_sharedspec_template_and_batch_freeze_manual_shared_set_and_q50_stabilization(self) -> None:
+        self.assertTrue(EXDQLM_SHARED_TEMPLATE.exists())
+        self.assertTrue(EXDQLM_SHARED_BATCH.exists())
+
+        template_payload = yaml.safe_load(EXDQLM_SHARED_TEMPLATE.read_text(encoding='utf-8')) or {}
+        self.assertEqual(template_payload['campaign']['families'], ['exdqlm_multivar_keep'])
+        self.assertEqual(template_payload['campaign']['cutoffs'], ['20210123', '20211112', '20211221', '20220511', '20221225'])
+        self.assertIn('all_cutoffs_sharedspec_20260516', template_payload['campaign']['artifact_root'])
+        self.assertEqual(
+            [case['cutoff'] for case in template_payload['validation']['quantile_fit_smoke_cases']],
+            ['20210123', '20211221', '20221225'],
+        )
+        self.assertEqual(template_payload['validation']['full_pipeline_quantile_smoke_cases'][-1]['quantiles'], [0.50, 0.65])
+
+        batch_payload = yaml.safe_load(EXDQLM_SHARED_BATCH.read_text(encoding='utf-8')) or {}
+        self.assertEqual(batch_payload['selection']['families'], ['exdqlm_multivar_keep'])
+        self.assertEqual(batch_payload['resources']['fit_parallel_workers'], 7)
+        common_patch = batch_payload['overrides']['row_config_patches'][0]['config_patch']
+        self.assertEqual(common_patch['fit']['exdqlm_multivar']['legacy']['forecast_cov']['c_factor'], 1.0)
+        self.assertEqual(common_patch['fit']['exdqlm_multivar']['legacy']['forecast_cov']['epsilon'], 30.0)
+        self.assertEqual(common_patch['models']['exdqlm_multivar']['state_evolution']['lambda'], 0.97)
+        self.assertEqual(common_patch['models']['exdqlm_multivar']['state_evolution']['df_s1'], 0.99999)
+        self.assertEqual(common_patch['models']['exdqlm_multivar']['state_evolution']['df_discrep'], 0.99999)
+        self.assertEqual(common_patch['models']['exdqlm_multivar']['state_evolution']['df_covs'], 0.9999999)
+        q50 = common_patch['fit']['exdqlm_multivar']['gamma_sigma']['quantile_overrides']['q50']
+        self.assertEqual(q50['freeze_target'], 'states')
+        self.assertEqual(q50['terminal_sampling_guard']['mode'], 'fail_fast')
+        self.assertEqual(q50['stabilization']['median_state_hold_after_guard_iters'], 0)
+        self.assertEqual(q50['stabilization']['median_state_blend_alpha'], 0.5)
+        self.assertEqual(q50['stabilization']['median_cov_blend_alpha'], 0.5)
+        self.assertEqual(q50['stabilization']['median_max_abs_gamma_step'], 0.15)
+        self.assertEqual(q50['stabilization']['median_max_abs_log_sigma_step'], 0.25)
 
 
 if __name__ == '__main__':

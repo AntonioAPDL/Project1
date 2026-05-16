@@ -26,10 +26,18 @@ This stage does **not** launch the queue.
 - climate factor alias:
   - `PCA` backed by canonical `GDPC1`
 - shared forecast covariance prior:
-  - `epsilon=360.0`
+  - `epsilon=30.0`
   - `c_factor=1.0`
 - shared discount set:
-  - `set08`
+  - `set10_manual_20260516`
+  - `df_t=0.99999999`
+  - `df_s1=0.99999`
+  - `df_s2=0.99999`
+  - `df_s67=0.99999`
+  - `df_discrep=0.99999`
+  - `lambda=0.97`
+  - `df_trans=0.9999999`
+  - `df_covs=0.9999999`
 - shared q50 stabilization:
   - `freeze_target=states`
   - `terminal_sampling_guard.mode=fail_fast`
@@ -41,9 +49,9 @@ This stage does **not** launch the queue.
 
 ## Why this spec
 
-- `epsilon=360.0`, `c_factor=1.0` is the family-wide cf1 winner for `exdqlm_multivar_keep`.
-- `set08` is the exact-input discount-grid winner by mean delta across the 5 cutoffs.
-- the publication-spec-only rerun package is blocked by `20210123 q50`, so the shared rerun must include the proven median stabilization layer rather than pretending the old median path is safe.
+- this shared relaunch spec is a deliberate manual override recorded on `2026-05-16`
+- it replaces the earlier family-wide `epsilon` / discount winner logic for the next `exdqlm_multivar_keep` rerun
+- the publication-spec-only rerun package is blocked by `20210123 q50`, so the shared rerun must include the proven median stabilization layer rather than pretending the old median path is safe
 
 ## Approved tooling
 

@@ -29,10 +29,21 @@ CF1_BY_CUTOFF_CSV = Path('/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/m
 DISCOUNT_TEMPLATE = ROOT / 'config' / 'multimodel_v8_exalm_t1_discount_grid_exact_20260424.template.yaml'
 BLOCKED_VALIDATION_JSON = ROOT / 'reports' / 'he2_exdqlm_multivar_keep_rerun_contract_20260516' / 'validation_status_20260516.json'
 FAMILY = 'exdqlm_multivar_keep'
-SHARED_DISCOUNT_SET = 'set08'
-SHARED_EPSILON_LABEL = 'eps360cf1'
-SHARED_EPSILON = 360.0
+SHARED_DISCOUNT_SET = 'set10_manual_20260516'
+SHARED_EPSILON_LABEL = 'eps30cf1_manual'
+SHARED_EPSILON = 30.0
 SHARED_C_FACTOR = 1.0
+SHARED_SELECTION_BASIS = 'manual_override_20260516'
+SHARED_STATE = {
+    'df_t': 0.99999999,
+    'df_s1': 0.99999,
+    'df_s2': 0.99999,
+    'df_s67': 0.99999,
+    'df_discrep': 0.99999,
+    'lambda': 0.97,
+    'df_trans': 0.9999999,
+    'df_covs': 0.9999999,
+}
 
 Q50_STABILIZATION = {
     'freeze_target': 'states',
@@ -58,7 +69,7 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         writer.writerows(rows)
 
 
-def _load_discount_profiles() -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def _load_discount_profiles() -> list[dict[str, Any]]:
     payload = yaml.safe_load(DISCOUNT_TEMPLATE.read_text(encoding='utf-8')) or {}
     profiles = payload.get('discount_profiles') or []
     by_name = {item['name']: item for item in profiles}
@@ -85,7 +96,7 @@ def _load_discount_profiles() -> tuple[dict[str, Any], list[dict[str, Any]]]:
             'wins': int(row['wins']),
             **state,
         })
-    return by_name[SHARED_DISCOUNT_SET], ranking_rows
+    return ranking_rows
 
 
 def _load_cf1_summary() -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -118,8 +129,8 @@ def _bundle_rows() -> list[dict[str, Any]]:
 
 
 def build_payload() -> dict[str, Any]:
-    shared_discount_profile, discount_ranking_rows = _load_discount_profiles()
-    shared_state = (shared_discount_profile['state_evolution']).copy()
+    discount_ranking_rows = _load_discount_profiles()
+    shared_state = SHARED_STATE.copy()
     cf1_overall, cf1_cutoff_rows = _load_cf1_summary()
     blocked_validation = json.loads(BLOCKED_VALIDATION_JSON.read_text(encoding='utf-8'))
     bundle_rows = _bundle_rows()
@@ -185,6 +196,7 @@ def build_payload() -> dict[str, Any]:
         'shared_epsilon_label': SHARED_EPSILON_LABEL,
         'shared_epsilon': SHARED_EPSILON,
         'shared_c_factor': SHARED_C_FACTOR,
+        'shared_selection_basis': SHARED_SELECTION_BASIS,
         'shared_state_evolution': shared_state,
         'q50_stabilization': Q50_STABILIZATION,
         'paths': {
@@ -194,6 +206,7 @@ def build_payload() -> dict[str, Any]:
         },
         'blocked_publication_spec_validation': blocked_validation,
         'cf1_overall_family_best': cf1_overall,
+        'historical_best_discount_reference': discount_ranking_rows[0],
     }
     return {
         'summary': summary,
@@ -219,29 +232,33 @@ def _render_md(payload: dict[str, Any]) -> str:
     lines.append('- launch posture: `PREPARE_ONLY`')
     lines.append(f"- shared forecast-covariance spec: `epsilon={s['shared_epsilon']}`, `c_factor={s['shared_c_factor']}`")
     lines.append(f"- shared discount set: `{s['shared_discount_set']}`")
+    lines.append(f"- selection basis: `{s['shared_selection_basis']}`")
     lines.append('- shared q50 stabilization layer: enabled from the successful 2026-05-15 recovery path')
     lines.append('')
     lines.append('## Why this shared spec')
     lines.append('')
-    lines.append(f"- family-wide cf1 epsilon sweep winner for `exdqlm_multivar_keep`: `{s['cf1_overall_family_best']['epsilon_label']}` with mean CRPS `{s['cf1_overall_family_best']['mean_crps_across_cutoffs']:.6f}` across 5 cutoffs")
-    lines.append(f"- family-wide exact-input discount-grid winner by mean delta: `{s['shared_discount_set']}`")
+    lines.append(f"- selected shared relaunch spec is a manual override recorded on `2026-05-16`; it is not required to equal the historical cf1 or discount-grid winner")
+    lines.append(f"- historical cf1 family-wide best reference remains `{s['cf1_overall_family_best']['epsilon_label']}` with mean CRPS `{s['cf1_overall_family_best']['mean_crps_across_cutoffs']:.6f}` across 5 cutoffs")
+    lines.append(f"- historical exact-input discount-grid best-by-mean reference remains `{s['historical_best_discount_reference']['discount_set']}`")
     lines.append(f"- the earlier publication-spec-only rerun contract is blocked by q50 validation at `20210123`, so the shared rerun must carry an explicit median stabilization layer")
     lines.append('')
     lines.append('## Shared science spec')
     lines.append('')
     lines.append('| Parameter | Value | Evidence |')
     lines.append('|---|---|---|')
-    lines.append(f"| `epsilon` | `{s['shared_epsilon']}` | cf1 family-wide best epsilon summary |")
-    lines.append(f"| `c_factor` | `{s['shared_c_factor']}` | cf1 sweep held at `1.0` for the tuned current multivariate families |")
+    lines.append(f"| `epsilon` | `{s['shared_epsilon']}` | manual shared override (`2026-05-16`) |")
+    lines.append(f"| `c_factor` | `{s['shared_c_factor']}` | manual shared override (`2026-05-16`) |")
     for key, value in s['shared_state_evolution'].items():
-        lines.append(f"| `{key}` | `{value}` | exact-input discount-grid `{s['shared_discount_set']}` |")
+        lines.append(f"| `{key}` | `{value}` | manual shared override (`2026-05-16`) |")
     lines.append('')
     lines.append('## Shared execution stabilization layer')
     lines.append('')
     for key, value in s['q50_stabilization'].items():
         lines.append(f'- `{key}`: `{value}`')
     lines.append('')
-    lines.append('## Discount-set ranking across all 5 cutoffs')
+    lines.append('## Historical discount-set ranking across all 5 cutoffs')
+    lines.append('')
+    lines.append('This table is retained as historical reference only. The selected shared relaunch set above is a manual override and does not need to match the historical ranking winner.')
     lines.append('')
     lines.append('| Set | Mean Probe CRPS | Mean Delta vs HE | Median Delta | Wins | df_s1 | df_discrep | lambda | df_covs |')
     lines.append('|---|---:|---:|---:|---:|---:|---:|---:|---:|')

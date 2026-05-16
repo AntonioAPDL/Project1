@@ -21,6 +21,8 @@ WAVE_A_NDLM_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_wave
 WAVE_A_NDLM_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'he2_wave_a_ndlm_remaining_families_20260516.yaml'
 EXDQLM_RERUN_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_rerun_20260516.template.yaml'
 EXDQLM_RERUN_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_rerun_20260516.yaml'
+EXDQLM_SHARED_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.template.yaml'
+EXDQLM_SHARED_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.yaml'
 BUILDER = ROOT / 'scripts' / 'build_he2_bayesian_publication_relaunch_configs.py'
 
 
@@ -1066,6 +1068,46 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(cfg_20221225['debug_he2_publication_relaunch']['selected_spec_token'], 'set09')
         self.assertEqual(cfg_20221225['fit']['parallel']['workers'], 7)
         self.assertEqual(cfg_20221225['run']['threads']['mc_cores'], 7)
+
+    def test_exdqlm_sharedspec_batch_builds_all_cutoffs_with_manual_shared_set_and_q50_stabilization(self) -> None:
+        proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(
+            '--batch-file', str(EXDQLM_SHARED_BATCH),
+            template=EXDQLM_SHARED_TEMPLATE,
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+        with (matrix_dir / 'matrix_plan.csv').open('r', encoding='utf-8') as handle:
+            plan_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(plan_rows), 5)
+        self.assertEqual({row['family_id'] for row in plan_rows}, {'exdqlm_multivar_keep'})
+
+        cfg_20210123 = yaml.safe_load(
+            (config_output_dir / 'multimodel_20210123_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml').read_text(encoding='utf-8')
+        ) or {}
+        self.assertEqual(cfg_20210123['run']['seed'], 20210123)
+        self.assertEqual(cfg_20210123['fit']['exdqlm_multivar']['legacy']['forecast_cov']['epsilon'], 30.0)
+        self.assertEqual(cfg_20210123['fit']['exdqlm_multivar']['legacy']['forecast_cov']['c_factor'], 1.0)
+        self.assertEqual(cfg_20210123['models']['exdqlm_multivar']['state_evolution']['lambda'], 0.97)
+        self.assertEqual(cfg_20210123['models']['exdqlm_multivar']['state_evolution']['df_s1'], 0.99999)
+        self.assertEqual(cfg_20210123['models']['exdqlm_multivar']['state_evolution']['df_discrep'], 0.99999)
+        self.assertEqual(cfg_20210123['models']['exdqlm_multivar']['state_evolution']['df_covs'], 0.9999999)
+        q50 = cfg_20210123['fit']['exdqlm_multivar']['gamma_sigma']['quantile_overrides']['q50']
+        self.assertEqual(q50['freeze_target'], 'states')
+        self.assertEqual(q50['terminal_sampling_guard']['mode'], 'fail_fast')
+        self.assertEqual(q50['stabilization']['median_state_hold_after_guard_iters'], 0)
+        self.assertEqual(q50['stabilization']['median_state_blend_alpha'], 0.5)
+        self.assertEqual(q50['stabilization']['median_cov_blend_alpha'], 0.5)
+        self.assertEqual(q50['stabilization']['median_max_abs_gamma_step'], 0.15)
+        self.assertEqual(q50['stabilization']['median_max_abs_log_sigma_step'], 0.25)
+
+        cfg_20221225 = yaml.safe_load(
+            (config_output_dir / 'multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml').read_text(encoding='utf-8')
+        ) or {}
+        self.assertEqual(cfg_20221225['run']['seed'], 20221225)
+        self.assertEqual(cfg_20221225['fit']['exdqlm_multivar']['legacy']['forecast_cov']['epsilon'], 30.0)
+        self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['lambda'], 0.97)
+        self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['df_discrep'], 0.99999)
+        self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['df_covs'], 0.9999999)
 
 
 if __name__ == '__main__':

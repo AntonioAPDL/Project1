@@ -25,7 +25,7 @@ overrides:
             legacy:
               forecast_cov:
                 c_factor: 1.0
-                epsilon: 360.0
+                epsilon: 30.0
               sampling_diagnostics:
                 heartbeat_enabled: true
                 heartbeat_seconds: 30
@@ -90,13 +90,13 @@ overrides:
           exdqlm_multivar:
             state_evolution:
               df_t: 0.99999999
-              df_s1: 0.9999
-              df_s2: 0.9999
-              df_s67: 0.9999
-              df_discrep: 0.999
-              lambda: 0.975
+              df_s1: 0.99999
+              df_s2: 0.99999
+              df_s67: 0.99999
+              df_discrep: 0.99999
+              lambda: 0.97
               df_trans: 0.9999999
-              df_covs: 0.99999
+              df_covs: 0.9999999
     - cutoff: '20210123'
       family: exdqlm_multivar_keep
       manuscript_label: exAL-M-T1

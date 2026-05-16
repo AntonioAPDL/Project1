@@ -1,18 +1,19 @@
 {
   "family": "exdqlm_multivar_keep",
-  "shared_discount_set": "set08",
-  "shared_epsilon_label": "eps360cf1",
-  "shared_epsilon": 360.0,
+  "shared_discount_set": "set10_manual_20260516",
+  "shared_epsilon_label": "eps30cf1_manual",
+  "shared_epsilon": 30.0,
   "shared_c_factor": 1.0,
+  "shared_selection_basis": "manual_override_20260516",
   "shared_state_evolution": {
     "df_t": 0.99999999,
-    "df_s1": 0.9999,
-    "df_s2": 0.9999,
-    "df_s67": 0.9999,
-    "df_discrep": 0.999,
-    "lambda": 0.975,
+    "df_s1": 0.99999,
+    "df_s2": 0.99999,
+    "df_s67": 0.99999,
+    "df_discrep": 0.99999,
+    "lambda": 0.97,
     "df_trans": 0.9999999,
-    "df_covs": 0.99999
+    "df_covs": 0.9999999
   },
   "q50_stabilization": {
     "freeze_target": "states",
@@ -85,5 +86,20 @@
     "max_crps_across_cutoffs": 0.6143974397227375,
     "best_c_factor": 1.0,
     "cutoffs_won": 2
+  },
+  "historical_best_discount_reference": {
+    "discount_set": "set08",
+    "mean_probe_crps": 0.21054459999999997,
+    "mean_delta": -0.0009644000000000001,
+    "median_delta": 0.000752,
+    "wins": 2,
+    "df_t": 0.99999999,
+    "df_s1": 0.9999,
+    "df_s2": 0.9999,
+    "df_s67": 0.9999,
+    "df_discrep": 0.999,
+    "lambda": 0.975,
+    "df_trans": 0.9999999,
+    "df_covs": 0.99999
   }
 }
