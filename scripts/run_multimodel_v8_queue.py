@@ -89,9 +89,10 @@ def disk_free_gb(artifact_root: str | Path | None = None) -> float:
     return artifact_disk_free_gb(artifact_root)
 
 
-def pgrep_active_v8() -> list[dict[str, str]]:
+def pgrep_active_v8(artifact_root: str | Path | None = None) -> list[dict[str, str]]:
     proc = subprocess.run(["ps", "-eo", "pid=,command="], capture_output=True, text=True, check=True)
     rows_by_config: dict[str, dict[str, str]] = {}
+    artifact_root_str = str(Path(artifact_root).resolve()) if artifact_root is not None else None
     for line in proc.stdout.splitlines():
         line = line.strip()
         if not line:
@@ -106,6 +107,13 @@ def pgrep_active_v8() -> list[dict[str, str]]:
         command = m.group(2)
         cfg_match = re.search(r"--config\s+(\S+multimodel_[^\s]+_v8_[^\s]+\.ya?ml)", command)
         config_key = cfg_match.group(1) if cfg_match else command
+        if artifact_root_str is not None:
+            try:
+                resolved_cfg = str(Path(config_key).resolve())
+            except Exception:
+                resolved_cfg = config_key
+            if not resolved_cfg.startswith(artifact_root_str + os.sep):
+                continue
         rows_by_config.setdefault(config_key, {"pid": m.group(1), "command": command})
     return list(rows_by_config.values())
 
@@ -407,7 +415,7 @@ def main() -> int:
                     exit_code = 0
                     return exit_code
 
-                active = pgrep_active_v8()
+                active = pgrep_active_v8(artifact_root if args.artifact_root else None)
                 free_gb = disk_free_gb(artifact_root if args.artifact_root else None)
                 launched = False
                 for _, row in plan.iterrows():

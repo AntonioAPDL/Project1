@@ -298,6 +298,29 @@ class MultimodelV8ToolingTests(unittest.TestCase):
         self.assertEqual(rows[0]["pid"], "123")
         self.assertIn("multimodel_20211112_v8_epsTT_l1", rows[0]["command"])
 
+    def test_pgrep_active_v8_can_scope_to_artifact_root(self) -> None:
+        import subprocess
+        from unittest import mock
+
+        fake_ps = (
+            "123 /usr/lib64/R/bin/exec/R --no-echo --no-restore --vanilla "
+            "--file=scripts/unified_run.R --args --config "
+            "/tmp/keep/control/generated_configs/multimodel_20211112_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml\n"
+            "124 /usr/lib64/R/bin/exec/R --no-echo --no-restore --vanilla "
+            "--file=scripts/unified_run.R --args --config "
+            "/tmp/drop/control/generated_configs/multimodel_20211112_v8_he2pubgdpc1r1_exdqlm_multivar_drop.yaml\n"
+        )
+        completed = subprocess.CompletedProcess(args=["ps"], returncode=0, stdout=fake_ps, stderr="")
+        with mock.patch("run_multimodel_v8_queue.subprocess.run", return_value=completed):
+            keep_rows = pgrep_active_v8("/tmp/keep")
+            drop_rows = pgrep_active_v8("/tmp/drop")
+            all_rows = pgrep_active_v8()
+        self.assertEqual(len(keep_rows), 1)
+        self.assertIn("multimodel_20211112_v8_he2pubgdpc1r1_exdqlm_multivar_keep", keep_rows[0]["command"])
+        self.assertEqual(len(drop_rows), 1)
+        self.assertIn("multimodel_20211112_v8_he2pubgdpc1r1_exdqlm_multivar_drop", drop_rows[0]["command"])
+        self.assertEqual(len(all_rows), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
