@@ -663,7 +663,20 @@ post_exdqlm_synthesize_from_sample_cube <- function(
     t(mat)
   })
 
-  out <- exdqlm::exdqlm_synthesize_from_draws(
+  synth_fun <- NULL
+  exdqlm_exports <- getNamespaceExports("exdqlm")
+  if ("exdqlm_synthesize_from_draws" %in% exdqlm_exports) {
+    synth_fun <- getExportedValue("exdqlm", "exdqlm_synthesize_from_draws")
+  } else if ("quantileSynthesis" %in% exdqlm_exports) {
+    synth_fun <- getExportedValue("exdqlm", "quantileSynthesis")
+  } else {
+    stop(
+      sprintf("[%s_PACKAGE_API] package 'exdqlm' does not export a quantile synthesis entrypoint.", context),
+      call. = FALSE
+    )
+  }
+
+  out <- synth_fun(
     draws_list = draws_list,
     p = q_probs,
     enforce_isotonic = isTRUE(enforce_isotonic),

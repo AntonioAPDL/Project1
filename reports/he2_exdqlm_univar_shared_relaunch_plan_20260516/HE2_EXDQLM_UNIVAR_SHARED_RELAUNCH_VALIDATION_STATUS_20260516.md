@@ -14,9 +14,10 @@ Date: 2026-05-16
 - cutoff_smokes_passed=5/5
 - family_smoke_passed=true
 - validator_internal_tests_passed=true
-- fit_q50_smoke_passed=false
+- fit_q50_smoke_passed=true
 - full_pipeline_cases_started=0/1
 - full_pipeline_cases_passed=0/1
+- hard-case 20210123 q50 fit smoke reached terminal VB, finished sampling, and wrote variables_50_exAL_synth_DISC_uni.RData
 - exact-final-batch validator is still running; treat this as an in-progress no-launch validation state
 
 ## Partial Evidence
@@ -26,7 +27,7 @@ Date: 2026-05-16
 | cutoff_smokes | `5/5` |
 | family_smoke | `true` |
 | validator_internal_tests | `true` |
-| fit_q50_smoke | `false` |
+| fit_q50_smoke | `true` |
 | full_pipeline_cases_started | `0/1` |
 | full_pipeline_cases_passed | `0/1` |
 

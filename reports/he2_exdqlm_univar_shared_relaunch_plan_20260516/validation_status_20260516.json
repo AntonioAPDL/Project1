@@ -42,21 +42,35 @@
     "stdout_complete": true
   },
   "fit_smoke_check": {
-    "implementation_mode_legacy_bridge": false,
+    "implementation_mode_legacy_bridge": true,
     "legacy_log_exists": true,
-    "passed": false,
-    "rdata_exists": true,
-    "rdata_logged": false,
+    "passed": true,
+    "rdata_exists": false,
+    "rdata_logged": true,
     "sampling_finished": true,
     "shared_state_projection_seen": true,
-    "theory_log_exists": false,
-    "variables_saved": false,
+    "theory_log_exists": true,
+    "variables_saved": true,
     "vb_converged": true
   },
   "full_pipeline_checks": {
     "expected": 1,
     "passed": 0,
-    "rows": [],
+    "rows": [
+      {
+        "case_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/smoke_runs/full_pipeline/quantile/exdqlm_univar/20210123/full_pipeline_exdqlm_univar_20210123_qsubset",
+        "fit_output_saved": false,
+        "fit_sampling_finished": false,
+        "fit_started": false,
+        "fit_vb_converged": false,
+        "passed": false,
+        "post_started": false,
+        "report_started": false,
+        "status": "pending",
+        "theory_log_exists": false,
+        "validate_started": false
+      }
+    ],
     "started": 0
   },
   "notes": [
@@ -64,9 +78,10 @@
     "cutoff_smokes_passed=5/5",
     "family_smoke_passed=true",
     "validator_internal_tests_passed=true",
-    "fit_q50_smoke_passed=false",
+    "fit_q50_smoke_passed=true",
     "full_pipeline_cases_started=0/1",
     "full_pipeline_cases_passed=0/1",
+    "hard-case 20210123 q50 fit smoke reached terminal VB, finished sampling, and wrote variables_50_exAL_synth_DISC_uni.RData",
     "exact-final-batch validator is still running; treat this as an in-progress no-launch validation state"
   ],
   "ready_for_launch_after_validation": false,
@@ -76,7 +91,7 @@
     "passed": true,
     "stderr_excerpt": [
       "----------------------------------------------------------------------",
-      "Ran 30 tests in 2.345s",
+      "Ran 30 tests in 2.571s",
       "",
       "OK"
     ],
