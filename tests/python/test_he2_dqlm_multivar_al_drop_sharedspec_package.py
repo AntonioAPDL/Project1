@@ -24,7 +24,20 @@ class He2DqlmMultivarAlDropSharedspecPackageTests(unittest.TestCase):
             payload['validation']['quantile_fit_smoke_cases'],
             [
                 {'cutoff': '20210123', 'family': 'dqlm_multivar_al_drop', 'quantiles': [0.5]},
-                {'cutoff': '20221225', 'family': 'dqlm_multivar_al_drop', 'quantiles': [0.65]},
+                {
+                    'cutoff': '20221225',
+                    'family': 'dqlm_multivar_al_drop',
+                    'quantiles': [0.65],
+                    'fit_overrides': {
+                        'exdqlm_multivar': {
+                            'gamma_sigma': {
+                                'min_update_iters': 50,
+                                'min_total_iters': 50,
+                                'max_iter': 100,
+                            }
+                        }
+                    },
+                },
             ],
         )
         self.assertEqual(

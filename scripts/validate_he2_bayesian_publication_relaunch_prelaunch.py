@@ -296,7 +296,8 @@ def _normalize_quantile_smoke_cases(
             cutoff = str(item.get('cutoff') or default_cutoff)
             quantiles = parse_quantile_list(item.get('quantiles') or default_quantiles)
             label = str(item.get('label') or cutoff)
-            normalized.append({'family': family, 'cutoff': cutoff, 'quantiles': quantiles, 'label': label})
+            fit_overrides = copy.deepcopy(item.get('fit_overrides') or {})
+            normalized.append({'family': family, 'cutoff': cutoff, 'quantiles': quantiles, 'label': label, 'fit_overrides': fit_overrides})
         return normalized
     family = str(validation_cfg.get(family_key, default_family))
     if _is_disabled_family(family):
@@ -306,6 +307,7 @@ def _normalize_quantile_smoke_cases(
         'cutoff': str(validation_cfg.get(cutoff_key, default_cutoff)),
         'quantiles': parse_quantile_list(validation_cfg.get(quantiles_key) or default_quantiles),
         'label': str(validation_cfg.get(cutoff_key, default_cutoff)),
+        'fit_overrides': {},
     }]
 
 
@@ -559,7 +561,7 @@ def main() -> int:
             quantile_subset=case['quantiles'],
             fit_parallel_workers=1,
             mc_cores=1,
-            fit_overrides=smoke_fit_overrides,
+            fit_overrides=deep_merge_dict(smoke_fit_overrides, case.get('fit_overrides') or {}),
         )
         qfit_proc = run_unified(qfit_smoke_cfg, cwd=ROOT)
         (outdir / f'{qfit_run_id}.stdout.log').write_text(qfit_proc.stdout, encoding='utf-8')

@@ -90,6 +90,12 @@ validation:
     - 0.5
   - cutoff: '20221225'
     family: dqlm_multivar_al_keep
+    fit_overrides:
+      exdqlm_multivar:
+        gamma_sigma:
+          min_update_iters: 50
+          min_total_iters: 50
+          max_iter: 100
     quantiles:
     - 0.65
   univar_quantile_fit_smoke_family: dqlm_univar_al
