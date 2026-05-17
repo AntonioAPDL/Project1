@@ -1,0 +1,33 @@
+{
+  "families": {
+    "dqlm_multivar_al_drop": {
+      "batch_exists": true,
+      "manuscript_label": "AL-M-T0",
+      "ready_for_launch_after_validation": false,
+      "template_exists": true,
+      "validator_summary_exists": false,
+      "validator_summary_json": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_all_cutoffs_sharedspec_20260517/control/prelaunch_validation_exact_final_batch_20260517/prelaunch_validation_summary.json"
+    },
+    "dqlm_multivar_al_keep": {
+      "batch_exists": true,
+      "manuscript_label": "AL-M-T1",
+      "ready_for_launch_after_validation": false,
+      "template_exists": true,
+      "validator_summary_exists": false,
+      "validator_summary_json": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_all_cutoffs_sharedspec_20260517/control/prelaunch_validation_exact_final_batch_20260517/prelaunch_validation_summary.json"
+    },
+    "dqlm_univar_al": {
+      "batch_exists": true,
+      "manuscript_label": "AL-U-T1",
+      "ready_for_launch_after_validation": false,
+      "template_exists": true,
+      "validator_summary_exists": false,
+      "validator_summary_json": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_univar_al_all_cutoffs_sharedspec_20260517/control/prelaunch_validation_exact_final_batch_20260517/prelaunch_validation_summary.json"
+    }
+  },
+  "runbook": "/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/HE2_AL_SHARED_RELAUNCH_PLAN_20260517.md",
+  "shared_bundle_artifact_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510",
+  "shared_bundle_run_id": "20260510_publication_shared_r01",
+  "shared_data_start": "1987-05-29",
+  "status": "packaged_not_validated"
+}
