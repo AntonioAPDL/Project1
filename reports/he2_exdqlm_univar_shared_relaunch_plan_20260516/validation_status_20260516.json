@@ -1,102 +1,188 @@
 {
-  "cutoff_smoke_checks": {
-    "expected": 5,
-    "passed": 5,
-    "rows": [
+  "builder": {},
+  "checks": {
+    "builder": {
+      "artifact_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516",
+      "config_output_dir": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/generated_configs",
+      "generated_configs": "5",
+      "matrix_dir": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/publication_relaunch_matrix",
+      "plan_rows": "5",
+      "selection_rows": "5"
+    },
+    "builder_audits": "passed",
+    "bundle_build": "passed",
+    "bundles_present": {
+      "cutoffs": [
+        "20210123",
+        "20211112",
+        "20211221",
+        "20220511",
+        "20221225"
+      ]
+    },
+    "selected_scope": {
+      "cutoff_counts": {
+        "20210123": 1,
+        "20211112": 1,
+        "20211221": 1,
+        "20220511": 1,
+        "20221225": 1
+      },
+      "cutoffs": [
+        "20210123",
+        "20211112",
+        "20211221",
+        "20220511",
+        "20221225"
+      ],
+      "families": [
+        "exdqlm_univar"
+      ],
+      "family_counts": {
+        "exdqlm_univar": 5
+      },
+      "rows": 5
+    },
+    "smoke_runs": {
+      "cleanup_removed_bytes": 1215081561,
+      "cleanup_removed_files": 13,
+      "count": 11,
+      "passed": 8,
+      "skipped": 3
+    },
+    "tests": [
       {
-        "cutoff": "20210123",
-        "passed": true,
-        "stderr_shared_input_valid": true,
-        "stdout_complete": true
+        "cmd": [
+          "python3",
+          "-m",
+          "py_compile",
+          "scripts/he2_publication_relaunch_lib.py",
+          "scripts/build_he2_bayesian_publication_relaunch_configs.py",
+          "scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py",
+          "scripts/launch_he2_bayesian_publication_relaunch.py",
+          "scripts/reset_he2_bayesian_publication_relaunch_state.py",
+          "scripts/build_he2_bayesian_full_relaunch_tracker.py"
+        ],
+        "returncode": 0
       },
       {
-        "cutoff": "20211112",
-        "passed": true,
-        "stderr_shared_input_valid": true,
-        "stdout_complete": true
-      },
-      {
-        "cutoff": "20211221",
-        "passed": true,
-        "stderr_shared_input_valid": true,
-        "stdout_complete": true
-      },
-      {
-        "cutoff": "20220511",
-        "passed": true,
-        "stderr_shared_input_valid": true,
-        "stdout_complete": true
-      },
-      {
-        "cutoff": "20221225",
-        "passed": true,
-        "stderr_shared_input_valid": true,
-        "stdout_complete": true
+        "cmd": [
+          "python3",
+          "-m",
+          "unittest",
+          "tests.python.test_canonical_gdpc_master_builder",
+          "tests.python.test_multimodel_v8_histfix_bundles_gdpc_alias",
+          "tests.python.test_he2_publication_relaunch_lib",
+          "tests.python.test_he2_publication_relaunch_template"
+        ],
+        "returncode": 0
       }
-    ]
+    ],
+    "within_cutoff_bundle_alignment": "passed"
   },
   "family": "exdqlm_univar",
-  "family_smoke_check": {
-    "passed": true,
-    "stderr_shared_input_valid": true,
-    "stdout_complete": true
-  },
-  "fit_smoke_check": {
-    "implementation_mode_legacy_bridge": true,
-    "legacy_log_exists": true,
-    "passed": true,
-    "rdata_exists": false,
-    "rdata_logged": true,
-    "sampling_finished": true,
-    "shared_state_projection_seen": true,
-    "theory_log_exists": true,
-    "variables_saved": true,
-    "vb_converged": true
-  },
-  "full_pipeline_checks": {
-    "expected": 1,
-    "passed": 0,
-    "rows": [
-      {
-        "case_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/smoke_runs/full_pipeline/quantile/exdqlm_univar/20210123/full_pipeline_exdqlm_univar_20210123_qsubset",
-        "fit_output_saved": false,
-        "fit_sampling_finished": false,
-        "fit_started": false,
-        "fit_vb_converged": false,
-        "passed": false,
-        "post_started": false,
-        "report_started": false,
-        "status": "pending",
-        "theory_log_exists": false,
-        "validate_started": false
-      }
-    ],
-    "started": 0
-  },
   "notes": [
-    "prelaunch validation summary does not exist yet",
-    "cutoff_smokes_passed=5/5",
-    "family_smoke_passed=true",
-    "validator_internal_tests_passed=true",
-    "fit_q50_smoke_passed=true",
-    "full_pipeline_cases_started=0/1",
-    "full_pipeline_cases_passed=0/1",
-    "hard-case 20210123 q50 fit smoke reached terminal VB, finished sampling, and wrote variables_50_exAL_synth_DISC_uni.RData",
-    "exact-final-batch validator is still running; treat this as an in-progress no-launch validation state"
+    "no-launch validation completed on the exact final batch",
+    "smoke_runs_passed=8",
+    "smoke_runs_skipped=3"
   ],
-  "ready_for_launch_after_validation": false,
-  "status": "validation_in_progress",
+  "ready_for_launch_after_validation": true,
+  "selected_rows": [],
+  "smoke_runs": [
+    {
+      "cutoff": "20210123",
+      "family": "exdqlm_univar",
+      "scope": "family",
+      "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/smoke_runs/family/exdqlm_univar/smoke_family_exdqlm_univar/inputs/shared",
+      "status": "passed"
+    },
+    {
+      "cutoff": "20210123",
+      "family": "exdqlm_univar",
+      "scope": "cutoff",
+      "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/smoke_runs/cutoff/20210123/smoke_cutoff_20210123/inputs/shared",
+      "status": "passed"
+    },
+    {
+      "cutoff": "20211112",
+      "family": "exdqlm_univar",
+      "scope": "cutoff",
+      "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/smoke_runs/cutoff/20211112/smoke_cutoff_20211112/inputs/shared",
+      "status": "passed"
+    },
+    {
+      "cutoff": "20211221",
+      "family": "exdqlm_univar",
+      "scope": "cutoff",
+      "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/smoke_runs/cutoff/20211221/smoke_cutoff_20211221/inputs/shared",
+      "status": "passed"
+    },
+    {
+      "cutoff": "20220511",
+      "family": "exdqlm_univar",
+      "scope": "cutoff",
+      "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/smoke_runs/cutoff/20220511/smoke_cutoff_20220511/inputs/shared",
+      "status": "passed"
+    },
+    {
+      "cutoff": "20221225",
+      "family": "exdqlm_univar",
+      "scope": "cutoff",
+      "shared_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/smoke_runs/cutoff/20221225/smoke_cutoff_20221225/inputs/shared",
+      "status": "passed"
+    },
+    {
+      "cutoff": "20210123",
+      "family": "ndlm_univar_keep",
+      "reason": "no ndlm row available in selected scope",
+      "scope": "fit_ndlm",
+      "status": "skipped"
+    },
+    {
+      "cutoff": "20210123",
+      "family": "exdqlm_multivar_keep",
+      "quantiles": [
+        0.5
+      ],
+      "reason": "no multivariate quantile row available in selected scope",
+      "scope": "fit_quantile",
+      "status": "skipped"
+    },
+    {
+      "cleanup_removed_bytes": 1213544113,
+      "cleanup_removed_files": 1,
+      "cutoff": "20210123",
+      "family": "exdqlm_univar",
+      "quantiles": [
+        0.5
+      ],
+      "run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/smoke_runs/fit_quantile_univar/exdqlm_univar/20210123/fit_smoke_exdqlm_univar_20210123_qsubset",
+      "scope": "fit_quantile_univar",
+      "status": "passed"
+    },
+    {
+      "cutoff": "20210123",
+      "family": "ndlm_univar_keep",
+      "reason": "no NDLM row available in selected scope",
+      "scope": "full_pipeline_ndlm",
+      "status": "skipped"
+    },
+    {
+      "cleanup_removed_bytes": 1537448,
+      "cleanup_removed_files": 12,
+      "cutoff": "20210123",
+      "family": "exdqlm_univar",
+      "quantiles": [
+        0.35,
+        0.5,
+        0.65
+      ],
+      "run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/smoke_runs/full_pipeline/quantile_univar/exdqlm_univar/20210123/full_pipeline_exdqlm_univar_20210123_qsubset",
+      "scope": "full_pipeline_quantile_univar",
+      "status": "passed"
+    }
+  ],
+  "status": "validated",
   "summary_json": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/prelaunch_validation_summary.json",
-  "test_block_check": {
-    "passed": true,
-    "stderr_excerpt": [
-      "----------------------------------------------------------------------",
-      "Ran 30 tests in 2.571s",
-      "",
-      "OK"
-    ],
-    "suite": "validator_internal_tests"
-  },
-  "validation_outdir": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516",
-  "validator_running": true
+  "validation_outdir": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516"
 }

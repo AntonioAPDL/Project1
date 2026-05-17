@@ -69,6 +69,83 @@ col_quantiles <- function(mat, probs = c(0.025, 0.5, 0.975)) {
   matrix(out, nrow = length(probs), byrow = FALSE)
 }
 
+legacy_univar_q_probs <- c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95)
+
+quantile_prob_label <- function(prob) {
+  if (!is.finite(prob)) {
+    return("NA")
+  }
+  sprintf("%02d", as.integer(round(prob * 100)))
+}
+
+fetch_univar_active_q_probs_smoke <- function(expected_n = NA_integer_) {
+  candidates <- list(
+    get0("q_s_active", ifnotfound = NULL, inherits = TRUE),
+    get0("univar_active_q_probs", ifnotfound = NULL, inherits = TRUE)
+  )
+
+  cache_path <- get0("POST_CACHE_DIR", ifnotfound = "", inherits = TRUE)
+  if (nzchar(cache_path)) {
+    cache_file <- file.path(cache_path, "univar_active_q_probs.rds")
+    if (file.exists(cache_file)) {
+      candidates[[length(candidates) + 1L]] <- tryCatch(readRDS(cache_file), error = function(...) NULL)
+    }
+  }
+
+  expected_n_int <- suppressWarnings(as.integer(expected_n[[1L]]))
+  for (cand in candidates) {
+    vals <- suppressWarnings(as.numeric(cand))
+    vals <- vals[is.finite(vals)]
+    if (length(vals) == 0L) {
+      next
+    }
+    if (!is.finite(expected_n_int) || length(vals) == expected_n_int) {
+      return(vals)
+    }
+  }
+
+  if (is.finite(expected_n_int) && expected_n_int == length(legacy_univar_q_probs)) {
+    return(legacy_univar_q_probs)
+  }
+
+  numeric(0)
+}
+
+select_univar_quantile_samples <- function(arr, target_prob, q_probs = numeric(0)) {
+  if (!(is.array(arr) || is.matrix(arr))) {
+    return(NULL)
+  }
+  dims <- dim(arr)
+  if (is.null(dims) || length(dims) < 2L || dims[[1L]] <= 0L) {
+    return(NULL)
+  }
+
+  if (length(q_probs) == 0L) {
+    q_probs <- fetch_univar_active_q_probs_smoke(expected_n = dims[[1L]])
+  }
+  if (length(q_probs) != dims[[1L]]) {
+    if (dims[[1L]] == length(legacy_univar_q_probs)) {
+      q_probs <- legacy_univar_q_probs
+    } else {
+      return(NULL)
+    }
+  }
+
+  idx <- which.min(abs(q_probs - as.numeric(target_prob)))
+  actual_prob <- as.numeric(q_probs[[idx]])
+  samples <- if (length(dims) == 3L) {
+    arr[idx, , , drop = TRUE]
+  } else {
+    arr[idx, , drop = TRUE]
+  }
+  list(
+    samples = samples,
+    index = idx,
+    actual_prob = actual_prob,
+    label = quantile_prob_label(actual_prob)
+  )
+}
+
 pad_to_horizon <- function(x, horizon) {
   out <- rep(NA_real_, horizon)
   vals <- as.numeric(x)
@@ -286,13 +363,31 @@ build_univar_location_forecast_summary <- function() {
     forecast_mu_path(obj$sm[seq_len(state_dim), tt])
   }
 
-  mu_50 <- deterministic_mu("50")
+  active_q_probs <- fetch_univar_active_q_probs_smoke()
+  resolve_available_tag <- function(target_prob, fallback_tag) {
+    candidate_probs <- active_q_probs
+    if (length(candidate_probs) > 0L) {
+      idx <- which.min(abs(candidate_probs - as.numeric(target_prob)))
+      cand_tag <- quantile_prob_label(candidate_probs[[idx]])
+      obj <- safe_obj_list(sprintf("new.theta.out_%s_exAL_synth_DISC_uni", cand_tag))
+      if (!is.null(obj)) {
+        return(list(tag = cand_tag, prob = as.numeric(candidate_probs[[idx]])))
+      }
+    }
+    list(tag = fallback_tag, prob = as.numeric(target_prob))
+  }
+
+  low_sel <- resolve_available_tag(0.05, "5")
+  mid_sel <- resolve_available_tag(0.50, "50")
+  high_sel <- resolve_available_tag(0.95, "95")
+
+  mu_50 <- deterministic_mu(mid_sel$tag)
   if (length(mu_50) == 0L) {
     return(NULL)
   }
-  mu_05 <- deterministic_mu("5")
+  mu_05 <- deterministic_mu(low_sel$tag)
   if (length(mu_05) == 0L) mu_05 <- mu_50
-  mu_95 <- deterministic_mu("95")
+  mu_95 <- deterministic_mu(high_sel$tag)
   if (length(mu_95) == 0L) mu_95 <- mu_50
 
   q50_samples <- NULL
@@ -318,7 +413,10 @@ build_univar_location_forecast_summary <- function() {
     loc_q05 = loc_q05,
     loc_q50 = loc_q50,
     loc_q95 = loc_q95,
-    q50_samples = q50_samples
+    q50_samples = q50_samples,
+    low_prob = if (length(mu_05) > 0L) low_sel$prob else mid_sel$prob,
+    mid_prob = mid_sel$prob,
+    high_prob = if (length(mu_95) > 0L) high_sel$prob else mid_sel$prob
   )
 }
 
@@ -1482,15 +1580,32 @@ profile_section("figures_smoke_fast.univar_forecast_window", {
   loc_q95 <- NULL
   pred_q50 <- NULL
   horizon <- NA_integer_
+  label_q05 <- "05"
+  label_q50 <- "50"
+  label_q95 <- "95"
+  active_q_probs <- numeric(0)
 
   if (exists("xb_forecast", inherits = TRUE) && !is.null(dim(xb_forecast)) && length(dim(xb_forecast)) == 3L) {
     horizon <- dim(xb_forecast)[3]
-    loc_q05 <- col_quantiles(xb_forecast[1, , ], probs = c(0.025, 0.5, 0.975))
-    loc_q50 <- col_quantiles(xb_forecast[4, , ], probs = c(0.025, 0.5, 0.975))
-    loc_q95 <- col_quantiles(xb_forecast[7, , ], probs = c(0.025, 0.5, 0.975))
+    active_q_probs <- fetch_univar_active_q_probs_smoke(expected_n = dim(xb_forecast)[1])
+    loc_low_sel <- select_univar_quantile_samples(xb_forecast, 0.05, active_q_probs)
+    loc_mid_sel <- select_univar_quantile_samples(xb_forecast, 0.50, active_q_probs)
+    loc_high_sel <- select_univar_quantile_samples(xb_forecast, 0.95, active_q_probs)
 
-    if (exists("y_forecast", inherits = TRUE) && is.array(y_forecast) && length(dim(y_forecast)) == 3L && dim(y_forecast)[1] >= 4L) {
-      pred_q50 <- col_quantiles(y_forecast[4, , ], probs = c(0.025, 0.5, 0.975))
+    if (!is.null(loc_low_sel) && !is.null(loc_mid_sel) && !is.null(loc_high_sel)) {
+      loc_q05 <- col_quantiles(loc_low_sel$samples, probs = c(0.025, 0.5, 0.975))
+      loc_q50 <- col_quantiles(loc_mid_sel$samples, probs = c(0.025, 0.5, 0.975))
+      loc_q95 <- col_quantiles(loc_high_sel$samples, probs = c(0.025, 0.5, 0.975))
+      label_q05 <- loc_low_sel$label
+      label_q50 <- loc_mid_sel$label
+      label_q95 <- loc_high_sel$label
+    }
+
+    if (exists("y_forecast", inherits = TRUE) && is.array(y_forecast) && length(dim(y_forecast)) == 3L) {
+      pred_sel <- select_univar_quantile_samples(y_forecast, 0.50, active_q_probs)
+      if (!is.null(pred_sel)) {
+        pred_q50 <- col_quantiles(pred_sel$samples, probs = c(0.025, 0.5, 0.975))
+      }
     }
   } else {
     fallback_fc <- build_univar_location_forecast_summary()
@@ -1499,6 +1614,9 @@ profile_section("figures_smoke_fast.univar_forecast_window", {
       loc_q05 <- fallback_fc$loc_q05
       loc_q50 <- fallback_fc$loc_q50
       loc_q95 <- fallback_fc$loc_q95
+      label_q05 <- quantile_prob_label(fallback_fc$low_prob)
+      label_q50 <- quantile_prob_label(fallback_fc$mid_prob)
+      label_q95 <- quantile_prob_label(fallback_fc$high_prob)
       if (!is.null(fallback_fc$q50_samples)) {
         pred_q50 <- col_quantiles(fallback_fc$q50_samples, probs = c(0.025, 0.5, 0.975))
       }
@@ -1528,7 +1646,13 @@ profile_section("figures_smoke_fast.univar_forecast_window", {
   points(x_idx, truth, pch = 16, cex = 0.8, col = "black")
   lines(x_idx, truth, lwd = 1.1, col = "black")
   legend("topleft",
-         legend = c("mu_t q=50 (median)", "mu_t q=50 95% interval", "mu_t q=05", "mu_t q=95", "Future USGS (withheld)"),
+         legend = c(
+           sprintf("mu_t q=%s (median)", label_q50),
+           sprintf("mu_t q=%s 95%% interval", label_q50),
+           sprintf("mu_t q=%s", label_q05),
+           sprintf("mu_t q=%s", label_q95),
+           "Future USGS (withheld)"
+         ),
          col = c("#1b7837", "#1b7837", "#b2182b", "#2166ac", "black"),
          lty = c(1, 2, 1, 1, 1),
          lwd = c(2.2, 1.2, 1.5, 1.5, 1.1),
@@ -1550,7 +1674,11 @@ profile_section("figures_smoke_fast.univar_forecast_window", {
     points(x_idx, truth, pch = 16, cex = 0.8, col = "black")
     lines(x_idx, truth, lwd = 1.1, col = "black")
     legend("topleft",
-           legend = c("Predictive q=50 median", "Predictive q=50 95% interval", "Future USGS (withheld)"),
+           legend = c(
+             sprintf("Predictive q=%s median", label_q50),
+             sprintf("Predictive q=%s 95%% interval", label_q50),
+             "Future USGS (withheld)"
+           ),
            col = c("#1b7837", "#1b7837", "black"),
            lty = c(1, 2, 1),
            lwd = c(2.1, 1.2, 1.1),
@@ -1580,7 +1708,13 @@ profile_section("figures_smoke_fast.univar_forecast_window", {
     points(x_idx, truth, pch = 16, cex = 0.8, col = "black")
     lines(x_idx, truth, lwd = 1.1, col = "black")
     legend("topleft",
-           legend = c("Univar mu_t q=50 median", "Univar mu_t q=50 95% interval", "GLOFAS ensemble mean", "NWS ensemble mean", "Future USGS (withheld)"),
+           legend = c(
+             sprintf("Univar mu_t q=%s median", label_q50),
+             sprintf("Univar mu_t q=%s 95%% interval", label_q50),
+             "GLOFAS ensemble mean",
+             "NWS ensemble mean",
+             "Future USGS (withheld)"
+           ),
            col = c("#1b7837", "#1b7837", "#2166ac", "#762a83", "black"),
            lty = c(1, 2, 1, 1, 1),
            lwd = c(2.4, 1.1, 1.7, 1.7, 1.1),
@@ -1606,7 +1740,12 @@ profile_section("figures_smoke_fast.univar_forecast_window", {
     points(x_idx, truth, pch = 16, cex = 0.85, col = "black")
     lines(x_idx, truth, lwd = 1.1, col = "black")
     legend("topleft",
-           legend = c("Univar mu_t q=50 median", "GLOFAS members", "NWS members", "Future USGS (withheld)"),
+           legend = c(
+             sprintf("Univar mu_t q=%s median", label_q50),
+             "GLOFAS members",
+             "NWS members",
+             "Future USGS (withheld)"
+           ),
            col = c("#1b7837", "#2166ac", "#762a83", "black"),
            lty = c(1, 1, 1, 1),
            lwd = c(2.6, 1.0, 1.0, 1.1),

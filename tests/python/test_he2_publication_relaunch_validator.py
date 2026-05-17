@@ -38,6 +38,25 @@ class HE2PublicationRelaunchValidatorTests(unittest.TestCase):
         self.assertEqual(cases[1]['cutoff'], '20211221')
         self.assertEqual(cases[1]['label'], 'full_history')
 
+    def test_normalize_quantile_smoke_cases_honors_disabled_family_sentinel(self) -> None:
+        validation_cfg = {
+            'full_pipeline_quantile_family': '__disabled__',
+            'full_pipeline_quantile_cutoff': '20210123',
+            'full_pipeline_quantiles': [0.35, 0.50, 0.65],
+            'full_pipeline_quantile_smoke_cases': [],
+        }
+        cases = _normalize_quantile_smoke_cases(
+            validation_cfg,
+            cases_key='full_pipeline_quantile_smoke_cases',
+            family_key='full_pipeline_quantile_family',
+            cutoff_key='full_pipeline_quantile_cutoff',
+            quantiles_key='full_pipeline_quantiles',
+            default_family='exdqlm_multivar_keep',
+            default_cutoff='20210123',
+            default_quantiles=[0.05],
+        )
+        self.assertEqual(cases, [])
+
     def test_prune_r_artifacts_removes_only_r_binary_payloads(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

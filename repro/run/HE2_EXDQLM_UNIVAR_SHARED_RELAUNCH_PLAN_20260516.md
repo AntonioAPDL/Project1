@@ -14,6 +14,10 @@ This stage does **not** launch anything.
 - full history: `1987-05-29 -> cutoff`
 - deterministic climate: blended `PPT` and `SOIL`
 - climate factor alias: `PCA(alias=GDPC1)`
+- covariate feature contract matches the multivariate EXDQLM shared-bundle workflow:
+  - lag orders: `1, 2, 3`
+  - `include_squares: true`
+  - `include_interaction: true`
 - shared projected state-evolution discount set: `set10_manual_20260516`
 - non-applicable knobs remain absent:
   - `epsilon`
@@ -79,11 +83,15 @@ python3 scripts/build_he2_exdqlm_univar_shared_relaunch_validation_status.py
    - canonical shared inputs
    - full-history retrospective window
    - shared univariate state-evolution discount block
-9. the real operative validation gates are the exact-final-batch q50 smoke runs
-10. no queue launch occurs during validation
+9. the univariate package uses the same covariate-feature bundle contract as multivariate EXDQLM:
+   - `lag_orders = [1, 2, 3]`
+   - `include_squares = true`
+   - `include_interaction = true`
+10. the real operative validation gates are the exact-final-batch q50 smoke runs plus the representative reduced-quantile full-pipeline case
+11. no queue launch occurs during validation
 
 ## Current launch boundary
 
-- ready to package and validate in no-launch mode
-- not ready to launch until the exact-final-batch validator and targeted q50 smokes pass
-- do not disturb the live multivariate `keep` or `drop` relaunches
+- exact-final-batch no-launch validation is complete
+- ready to launch under the shared-spec package
+- keep the live multivariate `keep` and `drop` relaunches undisturbed when the univariate launch is scheduled

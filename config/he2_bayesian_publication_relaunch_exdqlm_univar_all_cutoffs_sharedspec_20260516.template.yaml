@@ -93,13 +93,10 @@ validation:
   univar_quantile_fit_smoke_quantiles: [0.50]
   full_pipeline_ndlm_family: ndlm_univar_keep
   full_pipeline_ndlm_cutoff: '20210123'
-  full_pipeline_quantile_family: exdqlm_univar
+  full_pipeline_quantile_family: __disabled__
   full_pipeline_quantile_cutoff: '20210123'
   full_pipeline_quantiles: [0.35, 0.50, 0.65]
-  full_pipeline_quantile_smoke_cases:
-    - cutoff: '20210123'
-      family: exdqlm_univar
-      quantiles: [0.35, 0.50, 0.65]
-  full_pipeline_univar_quantile_family: dqlm_univar_al
+  full_pipeline_quantile_smoke_cases: []
+  full_pipeline_univar_quantile_family: exdqlm_univar
   full_pipeline_univar_quantile_cutoff: '20210123'
-  full_pipeline_univar_quantiles: [0.05]
+  full_pipeline_univar_quantiles: [0.35, 0.50, 0.65]

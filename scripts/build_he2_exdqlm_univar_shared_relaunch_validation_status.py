@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any
 import yaml
 
+from he2_publication_relaunch_lib import parse_quantile_list
+
 ROOT = Path(__file__).resolve().parents[1]
 REPORT_ROOT = ROOT / 'reports' / 'he2_exdqlm_univar_shared_relaunch_plan_20260516'
 VALIDATION_OUTDIR = Path('/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516')
@@ -14,7 +16,7 @@ SUMMARY_JSON = VALIDATION_OUTDIR / 'prelaunch_validation_summary.json'
 OUT_JSON = REPORT_ROOT / 'validation_status_20260516.json'
 OUT_MD = REPORT_ROOT / 'HE2_EXDQLM_UNIVAR_SHARED_RELAUNCH_VALIDATION_STATUS_20260516.md'
 FIT_SMOKE_ROOT = VALIDATION_OUTDIR / 'smoke_runs' / 'fit_quantile_univar' / 'exdqlm_univar' / '20210123' / 'fit_smoke_exdqlm_univar_20210123_qsubset'
-FULL_PIPELINE_ROOT = VALIDATION_OUTDIR / 'smoke_runs' / 'full_pipeline' / 'quantile' / 'exdqlm_univar'
+FULL_PIPELINE_ROOT = VALIDATION_OUTDIR / 'smoke_runs' / 'full_pipeline' / 'quantile_univar' / 'exdqlm_univar'
 TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_univar_all_cutoffs_sharedspec_20260516.template.yaml'
 
 
@@ -77,12 +79,15 @@ def _test_block_check() -> dict[str, Any]:
 
 
 def _fit_smoke_check() -> dict[str, Any]:
+    fit_stage_log = FIT_SMOKE_ROOT / 'fit' / 'logs' / 'fit_stage.log'
     legacy_log = FIT_SMOKE_ROOT / 'fit' / 'exdqlm_univar' / 'q=50' / 'logs' / 'univar_legacy.log'
     theory_log = FIT_SMOKE_ROOT / 'fit' / 'exdqlm_univar' / 'q=50' / 'logs' / 'univar_theory_summary.log'
     rdata = FIT_SMOKE_ROOT / 'fit' / 'exdqlm_univar' / 'q=50' / 'outputs' / 'variables_50_exAL_synth_DISC_uni.RData'
+    fit_stage_text = _read_text(fit_stage_log)
     legacy_text = _read_text(legacy_log)
     theory_text = _read_text(theory_log)
-    return {
+    row = {
+        'fit_stage_log_exists': fit_stage_log.exists(),
         'legacy_log_exists': legacy_log.exists(),
         'theory_log_exists': theory_log.exists(),
         'rdata_exists': rdata.exists(),
@@ -100,29 +105,52 @@ def _fit_smoke_check() -> dict[str, Any]:
             and 'Variables saved to:' in legacy_text
         ),
     }
+    row['started'] = row['fit_stage_log_exists'] or row['legacy_log_exists']
+    if row['passed']:
+        row['status'] = 'passed'
+    elif row['started']:
+        row['status'] = 'fit_active'
+    else:
+        row['status'] = 'pending'
+    row['fit_stage_started'] = 'stage_fit start' in fit_stage_text
+    return row
 
 
 def _full_pipeline_case_status(case_root: Path) -> dict[str, Any]:
-    fit_log = case_root / 'fit' / 'exdqlm_univar' / 'q=50' / 'logs' / 'univar_legacy.log'
-    theory_log = case_root / 'fit' / 'exdqlm_univar' / 'q=50' / 'logs' / 'univar_theory_summary.log'
-    post_log = case_root / 'post' / 'logs' / 'post_stage.log'
+    fit_stage_log = case_root / 'fit' / 'logs' / 'fit_stage.log'
+    fit_logs = sorted((case_root / 'fit' / 'exdqlm_univar').glob('q=*/logs/univar_legacy.log'))
+    theory_logs = sorted((case_root / 'fit' / 'exdqlm_univar').glob('q=*/logs/univar_theory_summary.log'))
+    fit_log = fit_logs[0] if fit_logs else Path()
+    theory_log = theory_logs[0] if theory_logs else Path()
+    post_stage_log = case_root / 'post' / 'logs' / 'post_stage.log'
+    post_runner_log = case_root / 'post' / 'logs' / 'post_runner.log'
     validate_log = case_root / 'validate' / 'logs' / 'validate_stage.log'
     report_log = case_root / 'report' / 'logs' / 'report_stage.log'
+    fit_stage_text = _read_text(fit_stage_log)
     fit_text = _read_text(fit_log)
+    post_text = _read_text(post_stage_log) + '\n' + _read_text(post_runner_log)
     row = {
         'case_root': str(case_root),
-        'fit_started': fit_log.exists(),
+        'fit_started': fit_stage_log.exists() or bool(fit_logs),
+        'fit_stage_log_exists': fit_stage_log.exists(),
+        'fit_stage_started': 'stage_fit start' in fit_stage_text,
+        'fit_quantile_logs_found': len(fit_logs),
         'fit_vb_converged': 'VB converged:' in fit_text,
         'fit_sampling_finished': 'Sampling finished:' in fit_text,
         'fit_output_saved': 'Variables saved to:' in fit_text,
-        'theory_log_exists': theory_log.exists(),
-        'post_started': post_log.exists(),
+        'theory_log_exists': bool(theory_logs),
+        'post_started': post_stage_log.exists() or post_runner_log.exists(),
+        'post_failed': 'Execution halted' in post_text or 'Error in ' in post_text,
         'validate_started': validate_log.exists(),
         'report_started': report_log.exists(),
     }
     row['passed'] = row['report_started']
     if row['passed']:
         row['status'] = 'pipeline_passed'
+    elif row['post_failed']:
+        row['status'] = 'post_failed'
+    elif row['post_started']:
+        row['status'] = 'post_active'
     elif row['fit_output_saved']:
         row['status'] = 'fit_passed_post_pending'
     elif row['fit_started']:
@@ -137,7 +165,11 @@ def _full_pipeline_checks() -> dict[str, Any]:
     expected = 0
     if TEMPLATE.exists():
         template = yaml.safe_load(TEMPLATE.read_text(encoding='utf-8')) or {}
-        expected = len(((template.get('validation') or {}).get('full_pipeline_quantile_smoke_cases') or []))
+        validation_cfg = template.get('validation') or {}
+        family = str(validation_cfg.get('full_pipeline_univar_quantile_family', '')).strip()
+        cutoff = str(validation_cfg.get('full_pipeline_univar_quantile_cutoff', '')).strip()
+        quantiles = parse_quantile_list(validation_cfg.get('full_pipeline_univar_quantiles') or [])
+        expected = 1 if family and cutoff and quantiles else 0
     if FULL_PIPELINE_ROOT.exists():
         for case_root in sorted(FULL_PIPELINE_ROOT.glob('*/full_pipeline_exdqlm_univar_*_qsubset')):
             rows.append(_full_pipeline_case_status(case_root))
@@ -198,6 +230,7 @@ def build_payload() -> dict[str, Any]:
         f"cutoff_smokes_passed={cutoff_checks['passed']}/{cutoff_checks['expected']}",
         f"family_smoke_passed={str(family_check['passed']).lower()}",
         f"validator_internal_tests_passed={str(test_block['passed']).lower()}",
+        f"fit_q50_smoke_status={fit_smoke['status']}",
         f"fit_q50_smoke_passed={str(fit_smoke['passed']).lower()}",
         f"full_pipeline_cases_started={full_pipeline['started']}/{full_pipeline['expected']}",
         f"full_pipeline_cases_passed={full_pipeline['passed']}/{full_pipeline['expected']}",
@@ -244,6 +277,7 @@ def render_md(payload: dict[str, Any]) -> str:
                 f"| cutoff_smokes | `{cutoff_checks.get('passed', 0)}/{cutoff_checks.get('expected', 0)}` |",
                 f"| family_smoke | `{str(family_check.get('passed', False)).lower()}` |",
                 f"| validator_internal_tests | `{str(test_block.get('passed', False)).lower()}` |",
+                f"| fit_q50_smoke_status | `{fit_smoke.get('status', 'pending')}` |",
                 f"| fit_q50_smoke | `{str(fit_smoke.get('passed', False)).lower()}` |",
                 f"| full_pipeline_cases_started | `{full_pipeline.get('started', 0)}/{full_pipeline.get('expected', 0)}` |",
                 f"| full_pipeline_cases_passed | `{full_pipeline.get('passed', 0)}/{full_pipeline.get('expected', 0)}` |",

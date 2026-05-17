@@ -282,6 +282,10 @@ def _normalize_quantile_smoke_cases(
     default_cutoff: str,
     default_quantiles: list[float],
 ) -> list[dict[str, Any]]:
+    def _is_disabled_family(value: Any) -> bool:
+        token = str(value or '').strip().lower()
+        return token in {'', '__disabled__', 'disabled', 'none', 'null', 'false'}
+
     raw_cases = validation_cfg.get(cases_key)
     if raw_cases:
         normalized: list[dict[str, Any]] = []
@@ -294,8 +298,11 @@ def _normalize_quantile_smoke_cases(
             label = str(item.get('label') or cutoff)
             normalized.append({'family': family, 'cutoff': cutoff, 'quantiles': quantiles, 'label': label})
         return normalized
+    family = str(validation_cfg.get(family_key, default_family))
+    if _is_disabled_family(family):
+        return []
     return [{
-        'family': str(validation_cfg.get(family_key, default_family)),
+        'family': family,
         'cutoff': str(validation_cfg.get(cutoff_key, default_cutoff)),
         'quantiles': parse_quantile_list(validation_cfg.get(quantiles_key) or default_quantiles),
         'label': str(validation_cfg.get(cutoff_key, default_cutoff)),

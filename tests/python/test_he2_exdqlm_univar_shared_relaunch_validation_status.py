@@ -21,14 +21,22 @@ class He2ExdqlmUnivarSharedRelaunchValidationStatusTests(unittest.TestCase):
             report_root = root / 'report'
             template_path = root / 'template.yaml'
             fit_root = validation_outdir / 'smoke_runs' / 'fit_quantile_univar' / 'exdqlm_univar' / '20210123' / 'fit_smoke_exdqlm_univar_20210123_qsubset'
-            full_pipeline_root = validation_outdir / 'smoke_runs' / 'full_pipeline' / 'quantile' / 'exdqlm_univar' / '20210123' / 'full_pipeline_exdqlm_univar_20210123_qsubset'
+            full_pipeline_root = validation_outdir / 'smoke_runs' / 'full_pipeline' / 'quantile_univar' / 'exdqlm_univar' / '20210123' / 'full_pipeline_exdqlm_univar_20210123_qsubset'
+            fit_stage_log = fit_root / 'fit' / 'logs'
             fit_log = fit_root / 'fit' / 'exdqlm_univar' / 'q=50' / 'logs'
             fit_out = fit_root / 'fit' / 'exdqlm_univar' / 'q=50' / 'outputs'
+            fit_stage_log.mkdir(parents=True, exist_ok=True)
             fit_log.mkdir(parents=True, exist_ok=True)
             fit_out.mkdir(parents=True, exist_ok=True)
             full_fit_log = full_pipeline_root / 'fit' / 'exdqlm_univar' / 'q=50' / 'logs'
             full_fit_log.mkdir(parents=True, exist_ok=True)
-            template_path.write_text('validation:\n  full_pipeline_quantile_smoke_cases:\n    - cutoff: \"20210123\"\n', encoding='utf-8')
+            template_path.write_text(
+                'validation:\n'
+                '  full_pipeline_univar_quantile_family: exdqlm_univar\n'
+                '  full_pipeline_univar_quantile_cutoff: "20210123"\n'
+                '  full_pipeline_univar_quantiles: [0.35, 0.50, 0.65]\n',
+                encoding='utf-8',
+            )
 
             for cutoff in ['20210123', '20211112', '20211221', '20220511', '20221225']:
                 (validation_outdir / f'{cutoff}.stdout.log').write_text('Unified run complete.\n', encoding='utf-8')
@@ -36,6 +44,7 @@ class He2ExdqlmUnivarSharedRelaunchValidationStatusTests(unittest.TestCase):
             (validation_outdir / 'exdqlm_univar.stdout.log').write_text('Unified run complete.\n', encoding='utf-8')
             (validation_outdir / 'exdqlm_univar.stderr.log').write_text('data_prep_shared: shared input validation passed under /tmp/x\n', encoding='utf-8')
             (validation_outdir / 'test_2.stderr.log').write_text('..............................\n----------------------------------------------------------------------\nRan 30 tests in 1.234s\n\nOK\n', encoding='utf-8')
+            (fit_stage_log / 'fit_stage.log').write_text('[2026-05-16T22:57:55-0700] stage_fit start run_root=/tmp/run\n', encoding='utf-8')
             (fit_log / 'univar_legacy.log').write_text(
                 '[univ_legacy_env_delta] df_t=0.99999999 df_s1=0.99999000 df_s2=0.99999000 df_s67=0.99999000 lambda=0.97000000\n'
                 'VB converged: 18 iterations, 146.004 seconds \n'
@@ -54,7 +63,7 @@ class He2ExdqlmUnivarSharedRelaunchValidationStatusTests(unittest.TestCase):
                     mock.patch.object(status_builder, 'OUT_MD', report_root / 'validation.md'), \
                     mock.patch.object(status_builder, 'FIT_SMOKE_ROOT', fit_root), \
                     mock.patch.object(status_builder, 'TEMPLATE', template_path), \
-                    mock.patch.object(status_builder, 'FULL_PIPELINE_ROOT', validation_outdir / 'smoke_runs' / 'full_pipeline' / 'quantile' / 'exdqlm_univar'), \
+                    mock.patch.object(status_builder, 'FULL_PIPELINE_ROOT', validation_outdir / 'smoke_runs' / 'full_pipeline' / 'quantile_univar' / 'exdqlm_univar'), \
                     mock.patch.object(status_builder, '_validator_is_running', return_value=True):
                 payload = status_builder.build_payload()
 
@@ -64,10 +73,76 @@ class He2ExdqlmUnivarSharedRelaunchValidationStatusTests(unittest.TestCase):
             self.assertTrue(payload['family_smoke_check']['passed'])
             self.assertTrue(payload['test_block_check']['passed'])
             self.assertTrue(payload['fit_smoke_check']['passed'])
+            self.assertEqual(payload['fit_smoke_check']['status'], 'passed')
             self.assertEqual(payload['full_pipeline_checks']['started'], 1)
             self.assertEqual(payload['full_pipeline_checks']['passed'], 0)
             self.assertEqual(payload['full_pipeline_checks']['expected'], 1)
             self.assertFalse(payload['ready_for_launch_after_validation'])
+
+    def test_fit_smoke_check_reports_fit_active_when_started_but_not_finished(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fit_root = Path(tmpdir) / 'smoke_runs' / 'fit_quantile_univar' / 'exdqlm_univar' / '20210123' / 'fit_smoke_exdqlm_univar_20210123_qsubset'
+            fit_stage_log = fit_root / 'fit' / 'logs' / 'fit_stage.log'
+            fit_legacy_log = fit_root / 'fit' / 'exdqlm_univar' / 'q=50' / 'logs' / 'univar_legacy.log'
+            fit_stage_log.parent.mkdir(parents=True, exist_ok=True)
+            fit_legacy_log.parent.mkdir(parents=True, exist_ok=True)
+            fit_stage_log.write_text('[2026-05-16T22:57:55-0700] stage_fit start run_root=/tmp/run\n', encoding='utf-8')
+            fit_legacy_log.write_text(
+                '[univ_legacy_env_delta] df_t=0.99999999 df_s1=0.99999000 df_s2=0.99999000 df_s67=0.99999000 lambda=0.97000000\n'
+                '[1]     0.000 -6628.032  6628.032\n',
+                encoding='utf-8',
+            )
+
+            with mock.patch.object(status_builder, 'FIT_SMOKE_ROOT', fit_root):
+                row = status_builder._fit_smoke_check()
+
+            self.assertTrue(row['started'])
+            self.assertTrue(row['fit_stage_started'])
+            self.assertFalse(row['passed'])
+            self.assertEqual(row['status'], 'fit_active')
+
+    def test_full_pipeline_case_reports_post_failure_from_post_runner_log(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            case_root = Path(tmpdir) / 'case'
+            fit_log = case_root / 'fit' / 'exdqlm_univar' / 'q=50' / 'logs' / 'univar_legacy.log'
+            theory_log = case_root / 'fit' / 'exdqlm_univar' / 'q=50' / 'logs' / 'univar_theory_summary.log'
+            post_log = case_root / 'post' / 'logs' / 'post_runner.log'
+            fit_log.parent.mkdir(parents=True, exist_ok=True)
+            post_log.parent.mkdir(parents=True, exist_ok=True)
+            fit_log.write_text(
+                'VB converged: 18 iterations\n'
+                'Sampling finished: 10 seconds\n'
+                'Variables saved to: /tmp/x.RData\n',
+                encoding='utf-8',
+            )
+            theory_log.write_text('implementation_mode=legacy_bridge\n', encoding='utf-8')
+            post_log.write_text('START 40_figures_smoke_fast.R\nError in x : boom\nExecution halted\n', encoding='utf-8')
+
+            row = status_builder._full_pipeline_case_status(case_root)
+
+            self.assertTrue(row['fit_started'])
+            self.assertTrue(row['post_started'])
+            self.assertTrue(row['post_failed'])
+            self.assertEqual(row['status'], 'post_failed')
+            self.assertFalse(row['passed'])
+
+    def test_full_pipeline_case_reports_fit_active_from_any_quantile_log(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            case_root = Path(tmpdir) / 'case'
+            fit_stage_log = case_root / 'fit' / 'logs' / 'fit_stage.log'
+            fit_log = case_root / 'fit' / 'exdqlm_univar' / 'q=35' / 'logs' / 'univar_legacy.log'
+            fit_stage_log.parent.mkdir(parents=True, exist_ok=True)
+            fit_log.parent.mkdir(parents=True, exist_ok=True)
+            fit_stage_log.write_text('[2026-05-16T23:03:22-0700] stage_fit start run_root=/tmp/run\n', encoding='utf-8')
+            fit_log.write_text('[1] 0\n', encoding='utf-8')
+
+            row = status_builder._full_pipeline_case_status(case_root)
+
+            self.assertTrue(row['fit_started'])
+            self.assertTrue(row['fit_stage_started'])
+            self.assertEqual(row['fit_quantile_logs_found'], 1)
+            self.assertEqual(row['status'], 'fit_active')
+            self.assertFalse(row['passed'])
 
     def test_build_payload_prefers_summary_when_present(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
