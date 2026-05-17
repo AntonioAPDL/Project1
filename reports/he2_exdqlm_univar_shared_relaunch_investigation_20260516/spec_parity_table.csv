@@ -1,0 +1,17 @@
+category,item,config_path,current_value,target_multivar_shared_value,mapping_status,notes
+state_evolution,df_t,models.exdqlm_univar.state_evolution.df_t,0.99999999,0.99999999,direct_reuse,same numeric value already present in published univariate rows
+state_evolution,df_s1,models.exdqlm_univar.state_evolution.df_s1,0.9999,0.99999,requires_adaptation,published univariate winner uses 0.9999; shared multivariate contract uses 0.99999
+state_evolution,df_s2,models.exdqlm_univar.state_evolution.df_s2,0.9999,0.99999,requires_adaptation,published univariate winner uses 0.9999; shared multivariate contract uses 0.99999
+state_evolution,df_s67,models.exdqlm_univar.state_evolution.df_s67,0.9999,0.99999,requires_adaptation,published univariate winner uses 0.9999; shared multivariate contract uses 0.99999
+state_evolution,df_discrep,models.exdqlm_univar.state_evolution.df_discrep,<absent>,0.99999,not_applicable,repo validation explicitly asserts univariate EXDQLM should not gain df_discrep and stage_fit does not read it
+state_evolution,lambda,models.exdqlm_univar.state_evolution.lambda,0.97,0.97,direct_reuse,same numeric value already present in published univariate rows
+state_evolution,df_trans,models.exdqlm_univar.state_evolution.df_trans,0.9999999,0.9999999,direct_reuse,same numeric value already present in published univariate rows
+state_evolution,df_covs,models.exdqlm_univar.state_evolution.df_covs,0.99999,0.9999999,requires_adaptation,published univariate winner uses 0.99999; shared multivariate contract uses 0.9999999
+forecast_cov_prior,c_factor,models.exdqlm_univar.prior.forecast_cov.c_factor,,1.0,requires_code_or_policy_decision,current univariate source config has no forecast_cov prior block and the fit-stage path does not consume c_factor for exdqlm_univar
+forecast_cov_prior,epsilon,models.exdqlm_univar.prior.forecast_cov.epsilon,,30.0,requires_code_or_policy_decision,current univariate source config has no forecast_cov prior block and the fit-stage path does not consume epsilon for exdqlm_univar
+gamma_sigma_policy,freeze_target,fit.exdqlm_univar.gamma_sigma.freeze_target,gamma_sigma,states,partial_equivalent,univariate runner supports freeze_target and can map states/gamma_sigma directly
+gamma_sigma_policy,objective_guard.fail_fast,fit.exdqlm_univar.gamma_sigma.objective_guard.fail_fast,false,true,partial_equivalent,univariate runner supports objective_guard.fail_fast but does not expose multivariate terminal_sampling_guard
+gamma_sigma_policy,median_state_blend_alpha,fit.exdqlm_univar.gamma_sigma.stabilization.median_state_blend_alpha,<unsupported>,0.5,not_applicable,no equivalent knob exists in run_exdqlm_univar.R or exdqlm_univar gamma-sigma resolver
+gamma_sigma_policy,median_cov_blend_alpha,fit.exdqlm_univar.gamma_sigma.stabilization.median_cov_blend_alpha,<unsupported>,0.5,not_applicable,no equivalent knob exists in run_exdqlm_univar.R or exdqlm_univar gamma-sigma resolver
+gamma_sigma_policy,median_max_abs_gamma_step,fit.exdqlm_univar.gamma_sigma.stabilization.median_max_abs_gamma_step,<unsupported>,0.15,not_applicable,no equivalent step-cap knob exists for univariate EXDQLM today
+gamma_sigma_policy,median_max_abs_log_sigma_step,fit.exdqlm_univar.gamma_sigma.stabilization.median_max_abs_log_sigma_step,<unsupported>,0.25,not_applicable,no equivalent step-cap knob exists for univariate EXDQLM today
