@@ -1,0 +1,38 @@
+{
+  "scope": [
+    "exAL-M-T1",
+    "exAL-M-T0",
+    "exAL-U-T1"
+  ],
+  "article_figure_status_counts": {
+    "unchanged_intentionally": 8,
+    "updated_now": 39
+  },
+  "representative_table_sources_current": true,
+  "historical_support_repaired": true,
+  "benchmark_table_source": "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv",
+  "benchmark_table_note": "Generated from the frozen HE2 publication manifest plus the raw-baseline rows in the five exAL-M-T1 CRPS summaries. This remains the manuscript benchmark source pending reconciliation with the completed shared-spec exAL rerun-local synthesis CRPS outputs.",
+  "benchmark_row_count": 15,
+  "benchmark_mismatch_count": 15,
+  "benchmark_mismatch_labels": [
+    "exAL-M-T0",
+    "exAL-M-T1",
+    "exAL-U-T1"
+  ],
+  "family_status_counts": {
+    "figures_closed_benchmark_blocked": 1,
+    "run_complete_benchmark_blocked": 1,
+    "run_complete_reference_figure_benchmark_blocked": 1
+  },
+  "rerun_local_score_median_by_label": {
+    "exAL-M-T1": 114729517528.2864,
+    "exAL-M-T0": 287742.7067656857,
+    "exAL-U-T1": 0.2379174106643723
+  },
+  "frozen_score_median_by_label": {
+    "exAL-M-T1": 0.15685973014263893,
+    "exAL-M-T0": 0.47196305101412395,
+    "exAL-U-T1": 0.2229046420122957
+  },
+  "final_certification": "blocked_on_benchmark_table_reconciliation"
+}
