@@ -1,0 +1,288 @@
+{
+  "ultimate_goal": "Rebuild authoritative manuscript tables and figures from corrected run roots under one documented, reproducible workflow.",
+  "canonical_contract": {
+    "scale": "log1p",
+    "retrospective_start": "1987-05-29",
+    "forecast_alignment": "within-cutoff NWS and GloFAS versions must match the authoritative bundle audit",
+    "covariates": [
+      "PPT",
+      "SOIL",
+      "PCA(alias=GDPC1)"
+    ],
+    "covariate_features": {
+      "lags": [
+        1,
+        2,
+        3
+      ],
+      "include_squares": true,
+      "include_interaction": true
+    },
+    "deterministic_climate": "blended PPT/SOIL forecast contract where applicable",
+    "debugging_policy": "warm-up and stabilization first; epsilon and c_factor only as last resort with explicit approval"
+  },
+  "publication_manifest_state": "legacy_publication_manifest_still_points_to_pre-relaunch_sources",
+  "al_q65_diag_processes_active": false,
+  "ndlm_current_bundle_alignment": {
+    "aligned_to_20260510_canonical_shared_bundle": false,
+    "unique_source_roots": [
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/runs"
+    ]
+  },
+  "article_state": {
+    "lineage_status_counts": {
+      "unchanged_intentionally": 8,
+      "updated_now": 39
+    },
+    "historical_support_background": {
+      "state": "completed",
+      "message": "Historical-support replay artifacts were rendered successfully and the revised-doc article assets were refreshed."
+    },
+    "historical_support_contract_status": "repaired_via_retained_support_contract",
+    "exal_revised_doc_audit": {
+      "scope": [
+        "exAL-M-T1",
+        "exAL-M-T0",
+        "exAL-U-T1"
+      ],
+      "article_figure_status_counts": {
+        "unchanged_intentionally": 8,
+        "updated_now": 39
+      },
+      "representative_table_sources_current": true,
+      "historical_support_repaired": true,
+      "benchmark_table_source": "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv",
+      "benchmark_table_note": "Generated from the frozen HE2 publication manifest plus the raw-baseline rows in the five exAL-M-T1 CRPS summaries. This remains the manuscript benchmark source pending reconciliation with the completed shared-spec exAL rerun-local synthesis CRPS outputs.",
+      "benchmark_row_count": 15,
+      "benchmark_mismatch_count": 15,
+      "benchmark_mismatch_labels": [
+        "exAL-M-T0",
+        "exAL-M-T1",
+        "exAL-U-T1"
+      ],
+      "family_status_counts": {
+        "figures_closed_benchmark_blocked": 1,
+        "run_complete_benchmark_blocked": 1,
+        "run_complete_reference_figure_benchmark_blocked": 1
+      },
+      "rerun_local_score_median_by_label": {
+        "exAL-M-T1": 114729517528.2864,
+        "exAL-M-T0": 287742.7067656857,
+        "exAL-U-T1": 0.2379174106643723
+      },
+      "frozen_score_median_by_label": {
+        "exAL-M-T1": 0.15685973014263893,
+        "exAL-M-T0": 0.47196305101412395,
+        "exAL-U-T1": 0.2229046420122957
+      },
+      "final_certification": "blocked_on_benchmark_table_reconciliation"
+    },
+    "crps_table_readiness": {
+      "crps_table_should_be_updated_now": false,
+      "decision": "keep_frozen_current_benchmark_table",
+      "why": [
+        "ndlm_families_are_not_current_canonical_bundle_aligned",
+        "al_multivar_keep_drop_are_not_launched_and_failed_q65_diagnostics",
+        "exal_completed_sharedspec_rerun_local_scores_do_not_match_frozen_benchmark_rows"
+      ],
+      "benchmark_table_source": "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv",
+      "benchmark_table_note": "Generated from the frozen HE2 publication manifest plus the raw-baseline rows in the five exAL-M-T1 CRPS summaries. This remains the manuscript benchmark source pending reconciliation with the completed shared-spec exAL rerun-local synthesis CRPS outputs.",
+      "exal_benchmark_mismatch_count": 15,
+      "ndlm_bundle_alignment": {
+        "aligned_to_20260510_canonical_shared_bundle": false,
+        "unique_source_roots": [
+          "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs",
+          "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs",
+          "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/runs"
+        ]
+      },
+      "family_gates": [
+        {
+          "label": "exAL-M-T1",
+          "family": "exdqlm_multivar_keep",
+          "current_status": "authoritative_complete",
+          "authoritative_state": "production_complete",
+          "crps_table_gate": "blocked",
+          "blocking_reason": "exal_benchmark_rows_not_reconciled_to_completed_sharedspec_reruns"
+        },
+        {
+          "label": "exAL-M-T0",
+          "family": "exdqlm_multivar_drop",
+          "current_status": "authoritative_complete",
+          "authoritative_state": "production_complete",
+          "crps_table_gate": "blocked",
+          "blocking_reason": "exal_benchmark_rows_not_reconciled_to_completed_sharedspec_reruns"
+        },
+        {
+          "label": "exAL-U-T1",
+          "family": "exdqlm_univar",
+          "current_status": "authoritative_complete",
+          "authoritative_state": "production_complete",
+          "crps_table_gate": "blocked",
+          "blocking_reason": "exal_benchmark_rows_not_reconciled_to_completed_sharedspec_reruns"
+        },
+        {
+          "label": "AL-M-T1",
+          "family": "dqlm_multivar_al_keep",
+          "current_status": "diagnostic_failed",
+          "authoritative_state": "not_launched",
+          "crps_table_gate": "blocked",
+          "blocking_reason": "al_multivar_not_launched_and_q65_diagnostics_failed"
+        },
+        {
+          "label": "AL-M-T0",
+          "family": "dqlm_multivar_al_drop",
+          "current_status": "diagnostic_failed",
+          "authoritative_state": "not_launched",
+          "crps_table_gate": "blocked",
+          "blocking_reason": "al_multivar_not_launched_and_q65_diagnostics_failed"
+        },
+        {
+          "label": "AL-U-T1",
+          "family": "dqlm_univar_al",
+          "current_status": "authoritative_complete",
+          "authoritative_state": "production_complete",
+          "crps_table_gate": "pending_family_set",
+          "blocking_reason": "al_univar_complete_but_al_multivar_family_set_not_ready"
+        },
+        {
+          "label": "N-M-T1",
+          "family": "ndlm_main_keep",
+          "current_status": "completed_but_not_current_bundle_aligned",
+          "authoritative_state": "older_corrected_rerun_complete",
+          "crps_table_gate": "blocked",
+          "blocking_reason": "ndlm_not_current_canonical_bundle_aligned"
+        },
+        {
+          "label": "N-M-T0",
+          "family": "ndlm_main_drop",
+          "current_status": "completed_but_not_current_bundle_aligned",
+          "authoritative_state": "older_corrected_rerun_complete",
+          "crps_table_gate": "blocked",
+          "blocking_reason": "ndlm_not_current_canonical_bundle_aligned"
+        },
+        {
+          "label": "N-U-T1",
+          "family": "ndlm_univar_keep",
+          "current_status": "completed_but_not_current_bundle_aligned",
+          "authoritative_state": "older_corrected_rerun_complete",
+          "crps_table_gate": "blocked",
+          "blocking_reason": "ndlm_not_current_canonical_bundle_aligned"
+        }
+      ],
+      "all_ready": false
+    }
+  },
+  "families": [
+    {
+      "label": "exAL-M-T1",
+      "family": "exdqlm_multivar_keep",
+      "mode": "exAL",
+      "shape": "multivar_keep",
+      "authoritative_state": "production_complete",
+      "cutoffs_passed": "5/5",
+      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
+      "current_status": "authoritative_complete",
+      "blocker": "",
+      "notes": "Corrected shared-spec rerun complete."
+    },
+    {
+      "label": "exAL-M-T0",
+      "family": "exdqlm_multivar_drop",
+      "mode": "exAL",
+      "shape": "multivar_drop",
+      "authoritative_state": "production_complete",
+      "cutoffs_passed": "5/5",
+      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
+      "current_status": "authoritative_complete",
+      "blocker": "",
+      "notes": "Corrected shared-spec rerun complete."
+    },
+    {
+      "label": "exAL-U-T1",
+      "family": "exdqlm_univar",
+      "mode": "exAL",
+      "shape": "univar",
+      "authoritative_state": "production_complete",
+      "cutoffs_passed": "5/5",
+      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
+      "current_status": "authoritative_complete",
+      "blocker": "",
+      "notes": "Corrected shared-spec rerun complete."
+    },
+    {
+      "label": "AL-M-T1",
+      "family": "dqlm_multivar_al_keep",
+      "mode": "AL",
+      "shape": "multivar_keep",
+      "authoritative_state": "not_launched",
+      "cutoffs_passed": "0/5",
+      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
+      "current_status": "diagnostic_failed",
+      "blocker": "20221225 q65 prodclone failed forecast-health validation.",
+      "notes": "- global_models exdqlm_multivar_keep q=65: [FIT_FORECAST_HEALTH_FAIL] multivar keep q=65 violated forecast-health limits: max_abs_sm_ens=10017306363.541973 > 1000.000000 | max_abs_forecast_exps=16557925554.469927 > 650.000000 | max_E_sigma=596.181551 > 100.000000. See /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_20221225_q65_prodclone_diagnostic_20260517/control/prelaunch_validation_prodclone_20221225_q65_20260517/smoke_runs/fit_quantile/dqlm_multivar_al_keep/20221225/fit_smoke_dqlm_multivar_al_keep_20221225_qsubset/fit/exdqlm_multivar/keep/q=65/outputs/multivar_forecast_health.txt"
+    },
+    {
+      "label": "AL-M-T0",
+      "family": "dqlm_multivar_al_drop",
+      "mode": "AL",
+      "shape": "multivar_drop",
+      "authoritative_state": "not_launched",
+      "cutoffs_passed": "0/5",
+      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
+      "current_status": "diagnostic_failed",
+      "blocker": "20221225 q65 prodclone failed forecast-health validation.",
+      "notes": "- global_models exdqlm_multivar_drop q=65: [FIT_FORECAST_HEALTH_FAIL] multivar drop q=65 violated forecast-health limits: max_E_sigma=131.529506 > 100.000000. See /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_20221225_q65_prodclone_diagnostic_20260517/control/prelaunch_validation_prodclone_20221225_q65_20260517/smoke_runs/fit_quantile/dqlm_multivar_al_drop/20221225/fit_smoke_dqlm_multivar_al_drop_20221225_qsubset/fit/q=65/outputs/multivar_forecast_health.txt"
+    },
+    {
+      "label": "AL-U-T1",
+      "family": "dqlm_univar_al",
+      "mode": "AL",
+      "shape": "univar",
+      "authoritative_state": "production_complete",
+      "cutoffs_passed": "5/5",
+      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
+      "current_status": "authoritative_complete",
+      "blocker": "",
+      "notes": "Canonical AL univar shared-spec rerun complete across all five cutoffs."
+    },
+    {
+      "label": "N-M-T1",
+      "family": "ndlm_main_keep",
+      "mode": "normal",
+      "shape": "ndlm_multivar_keep",
+      "authoritative_state": "older_corrected_rerun_complete",
+      "cutoffs_passed": "5/5",
+      "quantile_contract": "single_model",
+      "current_status": "completed_but_not_current_bundle_aligned",
+      "blocker": "NDLM rerun does not yet use the current 20260510 canonical shared bundle lineage.",
+      "notes": "Corrected NDLM featurecov rerun complete, but source_map still points to older input lineages."
+    },
+    {
+      "label": "N-M-T0",
+      "family": "ndlm_main_drop",
+      "mode": "normal",
+      "shape": "ndlm_multivar_drop",
+      "authoritative_state": "older_corrected_rerun_complete",
+      "cutoffs_passed": "5/5",
+      "quantile_contract": "single_model",
+      "current_status": "completed_but_not_current_bundle_aligned",
+      "blocker": "NDLM rerun does not yet use the current 20260510 canonical shared bundle lineage.",
+      "notes": "Corrected NDLM featurecov rerun complete, but source_map still points to older input lineages."
+    },
+    {
+      "label": "N-U-T1",
+      "family": "ndlm_univar_keep",
+      "mode": "normal",
+      "shape": "ndlm_univar",
+      "authoritative_state": "older_corrected_rerun_complete",
+      "cutoffs_passed": "5/5",
+      "quantile_contract": "single_model",
+      "current_status": "completed_but_not_current_bundle_aligned",
+      "blocker": "NDLM rerun does not yet use the current 20260510 canonical shared bundle lineage.",
+      "notes": "Corrected NDLM featurecov rerun complete, but source_map still points to older input lineages."
+    }
+  ]
+}

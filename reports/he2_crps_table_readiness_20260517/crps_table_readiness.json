@@ -1,0 +1,95 @@
+{
+  "crps_table_should_be_updated_now": false,
+  "decision": "keep_frozen_current_benchmark_table",
+  "why": [
+    "ndlm_families_are_not_current_canonical_bundle_aligned",
+    "al_multivar_keep_drop_are_not_launched_and_failed_q65_diagnostics",
+    "exal_completed_sharedspec_rerun_local_scores_do_not_match_frozen_benchmark_rows"
+  ],
+  "benchmark_table_source": "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv",
+  "benchmark_table_note": "Generated from the frozen HE2 publication manifest plus the raw-baseline rows in the five exAL-M-T1 CRPS summaries. This remains the manuscript benchmark source pending reconciliation with the completed shared-spec exAL rerun-local synthesis CRPS outputs.",
+  "exal_benchmark_mismatch_count": 15,
+  "ndlm_bundle_alignment": {
+    "aligned_to_20260510_canonical_shared_bundle": false,
+    "unique_source_roots": [
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/runs"
+    ]
+  },
+  "family_gates": [
+    {
+      "label": "exAL-M-T1",
+      "family": "exdqlm_multivar_keep",
+      "current_status": "authoritative_complete",
+      "authoritative_state": "production_complete",
+      "crps_table_gate": "blocked",
+      "blocking_reason": "exal_benchmark_rows_not_reconciled_to_completed_sharedspec_reruns"
+    },
+    {
+      "label": "exAL-M-T0",
+      "family": "exdqlm_multivar_drop",
+      "current_status": "authoritative_complete",
+      "authoritative_state": "production_complete",
+      "crps_table_gate": "blocked",
+      "blocking_reason": "exal_benchmark_rows_not_reconciled_to_completed_sharedspec_reruns"
+    },
+    {
+      "label": "exAL-U-T1",
+      "family": "exdqlm_univar",
+      "current_status": "authoritative_complete",
+      "authoritative_state": "production_complete",
+      "crps_table_gate": "blocked",
+      "blocking_reason": "exal_benchmark_rows_not_reconciled_to_completed_sharedspec_reruns"
+    },
+    {
+      "label": "AL-M-T1",
+      "family": "dqlm_multivar_al_keep",
+      "current_status": "diagnostic_failed",
+      "authoritative_state": "not_launched",
+      "crps_table_gate": "blocked",
+      "blocking_reason": "al_multivar_not_launched_and_q65_diagnostics_failed"
+    },
+    {
+      "label": "AL-M-T0",
+      "family": "dqlm_multivar_al_drop",
+      "current_status": "diagnostic_failed",
+      "authoritative_state": "not_launched",
+      "crps_table_gate": "blocked",
+      "blocking_reason": "al_multivar_not_launched_and_q65_diagnostics_failed"
+    },
+    {
+      "label": "AL-U-T1",
+      "family": "dqlm_univar_al",
+      "current_status": "authoritative_complete",
+      "authoritative_state": "production_complete",
+      "crps_table_gate": "pending_family_set",
+      "blocking_reason": "al_univar_complete_but_al_multivar_family_set_not_ready"
+    },
+    {
+      "label": "N-M-T1",
+      "family": "ndlm_main_keep",
+      "current_status": "completed_but_not_current_bundle_aligned",
+      "authoritative_state": "older_corrected_rerun_complete",
+      "crps_table_gate": "blocked",
+      "blocking_reason": "ndlm_not_current_canonical_bundle_aligned"
+    },
+    {
+      "label": "N-M-T0",
+      "family": "ndlm_main_drop",
+      "current_status": "completed_but_not_current_bundle_aligned",
+      "authoritative_state": "older_corrected_rerun_complete",
+      "crps_table_gate": "blocked",
+      "blocking_reason": "ndlm_not_current_canonical_bundle_aligned"
+    },
+    {
+      "label": "N-U-T1",
+      "family": "ndlm_univar_keep",
+      "current_status": "completed_but_not_current_bundle_aligned",
+      "authoritative_state": "older_corrected_rerun_complete",
+      "crps_table_gate": "blocked",
+      "blocking_reason": "ndlm_not_current_canonical_bundle_aligned"
+    }
+  ],
+  "all_ready": false
+}
