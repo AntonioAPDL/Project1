@@ -9,16 +9,16 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-2'
 DEFAULT_MULTIVAR_RUN_ROOT = Path(
     '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/'
-    'multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_20260512/'
+    'multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/'
     'runs/multimodel_20220511_v8_he2pubgdpc1r1_exdqlm_multivar_keep'
 )
 DEFAULT_UNIVAR_OUTPUT_ROOT = Path(
     '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/'
-    'multimodel_v8_univar_featurecov_he2_rerun_20260422/'
-    'runs/multimodel_20221225_v8_univar_featurecov_he2_v1_exdqlm_univar/'
-    'post/outputs/multimodel_20221225_v8_univar_featurecov_he2_v1_exdqlm_univar'
+    'multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/'
+    'runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_univar/'
+    'post/outputs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_univar'
 )
-DEFAULT_OUT_ROOT = ROOT / 'reports' / 'current_model_output_support_contract_audit_20260516'
+DEFAULT_OUT_ROOT = ROOT / 'reports' / 'current_model_output_support_contract_audit_20260517'
 
 FIT_Q_FILES = [
     'fit/exdqlm_multivar/keep/q=05/outputs/DISC_variables_5_exAL_synth_DISC.RData',
@@ -58,7 +58,7 @@ def main() -> int:
             'treat the historical-support rebuild as a separate corrected-lineage repair lane until retained artifacts exist',
         ],
     }
-    (out_root / 'current_model_output_support_contract_audit_20260516.json').write_text(
+    (out_root / 'current_model_output_support_contract_audit_20260517.json').write_text(
         json.dumps(payload, indent=2) + '\n',
         encoding='utf-8',
     )
@@ -66,7 +66,7 @@ def main() -> int:
     lines: list[str] = []
     lines.append('# Current-Model Output Support Contract Audit')
     lines.append('')
-    lines.append('Date: 2026-05-16')
+    lines.append('Date: 2026-05-17')
     lines.append('')
     lines.append('## Summary')
     lines.append('')
@@ -99,11 +99,11 @@ def main() -> int:
     lines.append('- choose between a dedicated retained support-cache artifact or a post-exported historical-support bundle for the corrected 2022-05-11 multivariate run')
     lines.append('')
 
-    (out_root / 'CURRENT_MODEL_OUTPUT_SUPPORT_CONTRACT_AUDIT_20260516.md').write_text(
+    (out_root / 'CURRENT_MODEL_OUTPUT_SUPPORT_CONTRACT_AUDIT_20260517.md').write_text(
         '\n'.join(lines),
         encoding='utf-8',
     )
-    print(out_root / 'CURRENT_MODEL_OUTPUT_SUPPORT_CONTRACT_AUDIT_20260516.md')
+    print(out_root / 'CURRENT_MODEL_OUTPUT_SUPPORT_CONTRACT_AUDIT_20260517.md')
     return 0
 
 

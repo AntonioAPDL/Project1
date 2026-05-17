@@ -1,0 +1,109 @@
+selection:
+  cutoffs:
+    - '20221225'
+  families:
+    - dqlm_multivar_al_keep
+  model_classes:
+    - quantile_multivariate
+resources:
+  fit_parallel_workers: 7
+  mc_cores: 7
+queue:
+  ordinary_max_concurrent: 1
+  heavy_cutoff_max_concurrent: 1
+overrides:
+  row_config_patches:
+    - family: dqlm_multivar_al_keep
+      manuscript_label: AL-M-T1
+      config_patch:
+        run:
+          threads:
+            omp: 1
+            openblas: 1
+            mkl: 1
+            veclib: 1
+            numexpr: 1
+        fit:
+          exdqlm_multivar:
+            legacy:
+              forecast_cov:
+                c_factor: 1.0
+                epsilon: 30.0
+              sampling_diagnostics:
+                heartbeat_enabled: true
+                heartbeat_seconds: 30
+                phase_markers_enabled: true
+                walltime_seconds: 900
+                member_walltime_seconds: 20
+            gamma_sigma:
+              quantile_overrides:
+                q20:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+                q35:
+                  freeze_target: states
+                  warmup_freeze_iters: 8
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+                  stabilization:
+                    state_guard_enabled: true
+                    state_norm_max_ratio: 25
+                    state_norm_abs_cap: 1.0e12
+                    state_guard_refreeze_iters: 10
+                    state_hold_after_guard_iters: 10
+                    state_blend_alpha: 1.0
+                    cov_blend_alpha: 1.0
+                q50:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+                  freeze_target: states
+                  terminal_sampling_guard:
+                    mode: fail_fast
+                    min_guard_count: 1
+                    max_guard_lag_iters: 0
+                    require_frozen: true
+                  stabilization:
+                    median_state_hold_after_guard_iters: 0
+                    median_state_blend_alpha: 0.5
+                    median_cov_blend_alpha: 0.5
+                    median_max_abs_gamma_step: 0.15
+                    median_max_abs_log_sigma_step: 0.25
+                q65:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+                q80:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+        models:
+          exdqlm_multivar:
+            state_evolution:
+              df_t: 0.99999999
+              df_s1: 0.99999
+              df_s2: 0.99999
+              df_s67: 0.99999
+              df_discrep: 0.99999
+              lambda: 0.97
+              df_trans: 0.9999999
+              df_covs: 0.9999999
+            likelihood_mode: al
+    - cutoff: '20221225'
+      family: dqlm_multivar_al_keep
+      manuscript_label: AL-M-T1
+      config_patch:
+        run:
+          seed: 20221225

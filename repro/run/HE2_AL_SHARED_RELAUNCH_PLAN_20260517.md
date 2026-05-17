@@ -128,6 +128,36 @@ python3 scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py \
 python3 scripts/build_he2_al_shared_relaunch_validation_status.py
 ```
 
+## Late-cutoff AL multivariate follow-up
+
+The original exact-final-batch AL multivariate validators failed on the late
+`20221225 q65` hard-case smoke under the lighter validator slice.
+
+To isolate whether that was a true AL instability or a validator-slice artifact,
+the current workflow now runs two no-launch production-clone diagnostics:
+
+```bash
+python3 scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py \
+  --config config/he2_bayesian_publication_relaunch_dqlm_multivar_al_keep_20221225_q65_prodclone_diagnostic_20260517.template.yaml \
+  --batch-file config/he2_relaunch_batches/dqlm_multivar_al_keep_20221225_q65_prodclone_diagnostic_20260517.yaml \
+  --outdir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_20221225_q65_prodclone_diagnostic_20260517/control/prelaunch_validation_prodclone_20221225_q65_20260517
+
+python3 scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py \
+  --config config/he2_bayesian_publication_relaunch_dqlm_multivar_al_drop_20221225_q65_prodclone_diagnostic_20260517.template.yaml \
+  --batch-file config/he2_relaunch_batches/dqlm_multivar_al_drop_20221225_q65_prodclone_diagnostic_20260517.yaml \
+  --outdir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_20221225_q65_prodclone_diagnostic_20260517/control/prelaunch_validation_prodclone_20221225_q65_20260517
+```
+
+Those diagnostics intentionally restore the production-like q65 fit contract:
+
+- `n_samp = 2000`
+- `min_update_iters = 50`
+- `min_total_iters = 50`
+- `max_iter = 100`
+
+They preserve the same corrected shared bundles, full-history contract, GDPC/PPT/SOIL
+covariates, and AL likelihood mode as the main AL packages.
+
 ## Validation goals
 
 1. the builder selects exactly 5 rows for each AL family package
@@ -136,10 +166,13 @@ python3 scripts/build_he2_al_shared_relaunch_validation_status.py
 4. AL likelihood mode remains operative in generated configs
 5. multivariate AL rows reuse the shared exAL relaunch epsilon / c_factor / discount block intentionally
 6. univariate AL keeps `forecast_cov` absent and `df_discrep` absent intentionally
-7. no-launch validation proves the AL packages work through the approved manifest-driven path
-8. the live exAL keep/drop/univar campaigns remain undisturbed
+7. univariate AL exact-final-batch validation clears through the approved manifest-driven path
+8. late-cutoff AL multivariate q65 prodclone diagnostics determine whether keep/drop can be promoted cleanly
+9. the live exAL keep/drop/univar campaigns remain undisturbed
 
 ## Launch boundary
 
 - do not launch the AL packages in this stage
-- only launch after the exact-final-batch validator summaries are present and green
+- only launch after:
+  - univariate AL exact-final-batch validation is green
+  - multivariate AL keep/drop late-cutoff q65 prodclone diagnostics are green

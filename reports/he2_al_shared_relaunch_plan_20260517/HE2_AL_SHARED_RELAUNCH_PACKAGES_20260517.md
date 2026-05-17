@@ -65,13 +65,22 @@ Date: 2026-05-17
 
 ## Readiness
 
-- status: `packaged_not_validated`
+- status: `partially_validated_followup_active`
 - shared bundle artifact root: `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510`
 - shared bundle run id: `20260510_publication_shared_r01`
 - shared data start: `1987-05-29`
 - runbook: `/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/HE2_AL_SHARED_RELAUNCH_PLAN_20260517.md`
 
+Current operational read:
+
+- `dqlm_univar_al`: exact-final-batch validator passed
+- `dqlm_multivar_al_keep`: original light validator was inconclusive for late `20221225 q65`; production-clone no-launch diagnostic is now running
+- `dqlm_multivar_al_drop`: original light validator was inconclusive for late `20221225 q65`; production-clone no-launch diagnostic is now running
+
 Launch boundary for this report:
 - package creation and no-launch validation only
 - do not disturb the currently running exAL keep/drop/univar relaunches
-- do not launch the AL packages until the final validator summaries are present and green
+- do not launch the AL packages until:
+  - `dqlm_univar_al` remains green
+  - `dqlm_multivar_al_keep` late-cutoff q65 prodclone validation is green
+  - `dqlm_multivar_al_drop` late-cutoff q65 prodclone validation is green
