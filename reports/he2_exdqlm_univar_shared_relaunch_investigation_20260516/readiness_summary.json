@@ -1,0 +1,57 @@
+{
+  "cutoffs": [
+    "20210123",
+    "20211112",
+    "20211221",
+    "20220511",
+    "20221225"
+  ],
+  "cutoffs_missing_full_history_today": [
+    "20210123",
+    "20211112",
+    "20221225"
+  ],
+  "cutoffs_needing_bundle_swap": [
+    "20210123",
+    "20211112",
+    "20211221",
+    "20220511",
+    "20221225"
+  ],
+  "family": "exdqlm_univar",
+  "manuscript_label": "exAL-U-T1",
+  "next_gate": "codify_univariate sharedspec projection and no-launch package before any validator or queue action",
+  "open_questions": [
+    "artifact_root_naming",
+    "template_and_batch",
+    "shared_discount_bundle",
+    "shared_epsilon_c_factor",
+    "q50_stabilization",
+    "legacy_univar_launcher"
+  ],
+  "ready_for_launch_after_validation": false,
+  "ready_for_no_launch_packaging": false,
+  "scope_rows": 5,
+  "spec_items_requiring_action": [
+    "df_s1",
+    "df_s2",
+    "df_s67",
+    "df_discrep",
+    "df_covs",
+    "c_factor",
+    "epsilon",
+    "freeze_target",
+    "objective_guard.fail_fast",
+    "median_state_blend_alpha",
+    "median_cov_blend_alpha",
+    "median_max_abs_gamma_step",
+    "median_max_abs_log_sigma_step"
+  ],
+  "status": "INVESTIGATED_ONLY",
+  "why_not_ready": [
+    "no univariate sharedspec template/batch exists yet under the approved publication relaunch path",
+    "shared discount-spec bundle must be projected because df_discrep is not applicable to exdqlm_univar",
+    "epsilon/c_factor are not currently consumed by the exdqlm_univar fit-stage path and the published univariate source config does not define a forecast_cov prior block",
+    "multivariate q50 stabilization has only a partial equivalent in the univariate runner and needs targeted smoke validation"
+  ]
+}

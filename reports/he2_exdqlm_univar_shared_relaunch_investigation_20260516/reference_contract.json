@@ -1,0 +1,82 @@
+{
+  "approved_paths": {
+    "base_template": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_bayesian_publication_relaunch_20260510.template.yaml",
+    "builder": "scripts/build_he2_bayesian_publication_relaunch_configs.py",
+    "launcher": "scripts/launch_he2_bayesian_publication_relaunch.py",
+    "manifest_csv": "reports/he2_publication_manifest/he2_bayesian_publication_manifest.csv",
+    "queue": "scripts/run_multimodel_v8_queue.py",
+    "validator": "scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py"
+  },
+  "bundle_contract": {
+    "artifact_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510",
+    "bundle_run_id": "20260510_publication_shared_r01",
+    "climate_factor_alias": "PCA(alias=GDPC1)",
+    "covariates": [
+      "PPT",
+      "SOIL",
+      "PCA"
+    ],
+    "data_start": "1987-05-29",
+    "deterministic_climate_enabled": true
+  },
+  "legacy_univar_path": {
+    "launcher": "/data/muscat_data/jaguir26/project1_ucsc_phd/scripts/launch_multimodel_v8_univar_featurecov_he2_rerun.py",
+    "queue_ordinary_max_concurrent": 4,
+    "runbook": "/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/UNIVAR_FEATURECOV_HE2_RERUN_RUNBOOK.md",
+    "template": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/multimodel_v8_univar_featurecov_he2_rerun_20260422.template.yaml"
+  },
+  "live_reference_roots": {
+    "drop": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516",
+    "keep": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516"
+  },
+  "runtime_contract": {
+    "fit_parallel_workers": 7,
+    "legacy_univar_queue_ordinary_max_concurrent": 4,
+    "mc_cores": 7,
+    "queue_heavy_cutoff_blocks_ordinary": true,
+    "queue_heavy_cutoff_max_concurrent": 1,
+    "queue_heavy_free_gb": 35.0,
+    "queue_launch_free_gb": 35.0,
+    "queue_ordinary_max_concurrent": 1,
+    "queue_pause_free_gb": 25.0,
+    "queue_poll_seconds": 30,
+    "thread_caps": {
+      "mkl": 1,
+      "numexpr": 1,
+      "omp": 1,
+      "openblas": 1,
+      "veclib": 1
+    }
+  },
+  "shared_spec": {
+    "c_factor": 1.0,
+    "epsilon": 30.0,
+    "id": "set10_manual_20260516",
+    "q50_stabilization": {
+      "freeze_target": "states",
+      "median_cov_blend_alpha": 0.5,
+      "median_max_abs_gamma_step": 0.15,
+      "median_max_abs_log_sigma_step": 0.25,
+      "median_state_blend_alpha": 0.5,
+      "median_state_hold_after_guard_iters": 0,
+      "terminal_sampling_guard_mode": "fail_fast"
+    },
+    "state_evolution": {
+      "df_covs": 0.9999999,
+      "df_discrep": 0.99999,
+      "df_s1": 0.99999,
+      "df_s2": 0.99999,
+      "df_s67": 0.99999,
+      "df_t": 0.99999999,
+      "df_trans": 0.9999999,
+      "lambda": 0.97
+    }
+  },
+  "template_contracts": {
+    "drop_batch": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_relaunch_batches/exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516.yaml",
+    "drop_matches_keep_state_spec": true,
+    "drop_template": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_bayesian_publication_relaunch_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516.template.yaml",
+    "keep_batch": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.yaml",
+    "keep_template": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.template.yaml"
+  }
+}
