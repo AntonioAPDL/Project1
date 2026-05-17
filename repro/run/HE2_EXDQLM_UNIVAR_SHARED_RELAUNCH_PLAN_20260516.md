@@ -2,65 +2,88 @@
 
 ## Purpose
 
-Prepare a clean, reproducible, no-launch implementation plan for `exdqlm_univar` under the same corrected HE2 publication relaunch workflow used by the live shared-spec multivariate campaigns.
+Prepare the full no-launch `exdqlm_univar` shared-spec relaunch package under the approved HE2 Bayesian publication relaunch workflow.
 
 This stage does **not** launch anything.
 
-## Scope
+## Contract
 
 - family: `exdqlm_univar`
 - manuscript label: `exAL-U-T1`
-- cutoffs:
-  - `20210123`
-  - `20211112`
-  - `20211221`
-  - `20220511`
-  - `20221225`
-- reference live campaigns:
-  - `exdqlm_multivar_keep`
-  - `exdqlm_multivar_drop`
+- corrected shared input lineage: `multimodel_v8_he2_publication_shared_inputs_20260510`
+- full history: `1987-05-29 -> cutoff`
+- deterministic climate: blended `PPT` and `SOIL`
+- climate factor alias: `PCA(alias=GDPC1)`
+- shared projected state-evolution discount set: `set10_manual_20260516`
+- non-applicable knobs remain absent:
+  - `epsilon`
+  - `c_factor`
+  - `df_discrep`
+- published univariate implementation mode remains `legacy_bridge`
+- multivariate-style q50 gamma/sigma stabilization knobs are not operative under `legacy_bridge`
 
-## Investigation builder
+## Package files
 
-Rebuild the no-launch investigation bundle with:
+- template: `config/he2_bayesian_publication_relaunch_exdqlm_univar_all_cutoffs_sharedspec_20260516.template.yaml`
+- batch: `config/he2_relaunch_batches/exdqlm_univar_all_cutoffs_sharedspec_20260516.yaml`
+- report builder: `scripts/build_he2_exdqlm_univar_shared_relaunch_plan.py`
+- validation status builder: `scripts/build_he2_exdqlm_univar_shared_relaunch_validation_status.py`
+- report root: `reports/he2_exdqlm_univar_shared_relaunch_plan_20260516/`
+
+## Rebuild the report bundle
 
 ```bash
-python3 scripts/build_he2_exdqlm_univar_shared_relaunch_investigation.py
+python3 scripts/build_he2_exdqlm_univar_shared_relaunch_plan.py
 ```
 
-Outputs land here:
+## Builder dry-run
 
-- `reports/he2_exdqlm_univar_shared_relaunch_investigation_20260516/`
+```bash
+python3 scripts/build_he2_bayesian_publication_relaunch_configs.py \
+  --config config/he2_bayesian_publication_relaunch_exdqlm_univar_all_cutoffs_sharedspec_20260516.template.yaml \
+  --batch-file config/he2_relaunch_batches/exdqlm_univar_all_cutoffs_sharedspec_20260516.yaml
+```
 
-Key artifacts:
+## Exact-final-batch no-launch validation
 
-- `HE2_EXDQLM_UNIVAR_SHARED_RELAUNCH_INVESTIGATION_20260516.md`
-- `exdqlm_univar_scope_matrix.csv`
-- `bundle_parity_table.csv`
-- `spec_parity_table.csv`
-- `reuse_adaptation_mapping_table.csv`
-- `readiness_summary.json`
+```bash
+python3 scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py \
+  --config config/he2_bayesian_publication_relaunch_exdqlm_univar_all_cutoffs_sharedspec_20260516.template.yaml \
+  --batch-file config/he2_relaunch_batches/exdqlm_univar_all_cutoffs_sharedspec_20260516.yaml \
+  --outdir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516
+```
 
-## Current boundary
+## Rebuild validation status artifacts
 
-- use the approved manifest-driven publication relaunch builder / validator path
-- do not reuse the older univariate featurecov launcher directly
-- do not launch the univariate campaign from this stage
-- do not disturb the live multivariate `keep` or `drop` runs
+```bash
+python3 scripts/build_he2_exdqlm_univar_shared_relaunch_validation_status.py
+```
 
-## What the investigation must settle before packaging
+## Validation goals
 
-1. exact shared-bundle parity to the canonical `20260510` publication shared-input lineage
-2. exact univariate projection of the multivariate shared discount bundle
-3. explicit policy for `epsilon` and `c_factor`, because the current univariate fit path does not appear to consume them
-4. partial q50 stabilization mapping for univariate EXDQLM under the approved validator path
+1. builder generates exactly 5 `exdqlm_univar` rows
+2. all generated configs point to the canonical `20260510` shared-input bundle lineage
+3. full-history support starts at `1987-05-29`
+4. shared projected state evolution is applied exactly:
+   - `df_t=0.99999999`
+   - `df_s1=0.99999`
+   - `df_s2=0.99999`
+   - `df_s67=0.99999`
+   - `lambda=0.97`
+   - `df_trans=0.9999999`
+   - `df_covs=0.9999999`
+5. `df_discrep` remains absent
+6. `epsilon` and `c_factor` remain absent by design
+7. no launch claim depends on multivariate-style q50 gamma/sigma overrides
+8. the real operative scientific projection is:
+   - canonical shared inputs
+   - full-history retrospective window
+   - shared univariate state-evolution discount block
+9. the real operative validation gates are the exact-final-batch q50 smoke runs
+10. no queue launch occurs during validation
 
-## Next implementation boundary after this stage
+## Current launch boundary
 
-Only after the investigation outputs are reviewed should we create:
-
-- `config/he2_bayesian_publication_relaunch_exdqlm_univar_all_cutoffs_sharedspec_20260516.template.yaml`
-- `config/he2_relaunch_batches/exdqlm_univar_all_cutoffs_sharedspec_20260516.yaml`
-- no-launch validation artifacts for the final exact univariate batch
-
-Until then, this remains a planning-and-audit stage only.
+- ready to package and validate in no-launch mode
+- not ready to launch until the exact-final-batch validator and targeted q50 smokes pass
+- do not disturb the live multivariate `keep` or `drop` relaunches

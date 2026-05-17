@@ -1,0 +1,87 @@
+{
+  "cutoff_smoke_checks": {
+    "expected": 5,
+    "passed": 5,
+    "rows": [
+      {
+        "cutoff": "20210123",
+        "passed": true,
+        "stderr_shared_input_valid": true,
+        "stdout_complete": true
+      },
+      {
+        "cutoff": "20211112",
+        "passed": true,
+        "stderr_shared_input_valid": true,
+        "stdout_complete": true
+      },
+      {
+        "cutoff": "20211221",
+        "passed": true,
+        "stderr_shared_input_valid": true,
+        "stdout_complete": true
+      },
+      {
+        "cutoff": "20220511",
+        "passed": true,
+        "stderr_shared_input_valid": true,
+        "stdout_complete": true
+      },
+      {
+        "cutoff": "20221225",
+        "passed": true,
+        "stderr_shared_input_valid": true,
+        "stdout_complete": true
+      }
+    ]
+  },
+  "family": "exdqlm_univar",
+  "family_smoke_check": {
+    "passed": true,
+    "stderr_shared_input_valid": true,
+    "stdout_complete": true
+  },
+  "fit_smoke_check": {
+    "implementation_mode_legacy_bridge": false,
+    "legacy_log_exists": true,
+    "passed": false,
+    "rdata_exists": true,
+    "rdata_logged": false,
+    "sampling_finished": true,
+    "shared_state_projection_seen": true,
+    "theory_log_exists": false,
+    "variables_saved": false,
+    "vb_converged": true
+  },
+  "full_pipeline_checks": {
+    "expected": 1,
+    "passed": 0,
+    "rows": [],
+    "started": 0
+  },
+  "notes": [
+    "prelaunch validation summary does not exist yet",
+    "cutoff_smokes_passed=5/5",
+    "family_smoke_passed=true",
+    "validator_internal_tests_passed=true",
+    "fit_q50_smoke_passed=false",
+    "full_pipeline_cases_started=0/1",
+    "full_pipeline_cases_passed=0/1",
+    "exact-final-batch validator is still running; treat this as an in-progress no-launch validation state"
+  ],
+  "ready_for_launch_after_validation": false,
+  "status": "validation_in_progress",
+  "summary_json": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516/prelaunch_validation_summary.json",
+  "test_block_check": {
+    "passed": true,
+    "stderr_excerpt": [
+      "----------------------------------------------------------------------",
+      "Ran 30 tests in 2.345s",
+      "",
+      "OK"
+    ],
+    "suite": "validator_internal_tests"
+  },
+  "validation_outdir": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516",
+  "validator_running": true
+}

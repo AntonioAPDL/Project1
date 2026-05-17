@@ -1,0 +1,26 @@
+[
+  {
+    "deliverables": "template, batch, runbook, report bundle, source-config freeze",
+    "gate": "package files exist and focused unit tests pass",
+    "goal": "Freeze the no-launch univariate shared-spec package under the approved publication relaunch workflow.",
+    "stage": "Stage 0"
+  },
+  {
+    "deliverables": "generated configs, matrix plan, config inspection notes",
+    "gate": "5 exdqlm_univar rows generated with canonical 20260510 shared bundles and shared state projection",
+    "goal": "Run builder dry-run and inspect the generated univariate configs for exact bundle/spec projection.",
+    "stage": "Stage 1"
+  },
+  {
+    "deliverables": "prelaunch_validation_summary.json, smoke logs, validation status report",
+    "gate": "20210123 q50 fit smoke passes and representative 20210123 q35/q50/q65 full-pipeline smoke clears post/validate/report without queue launch",
+    "goal": "Run the no-launch validator on the final exact batch with targeted q50 fit and full-pipeline smokes.",
+    "stage": "Stage 2"
+  },
+  {
+    "deliverables": "explicit ready/not-ready conclusion and future launch schedule",
+    "gate": "all no-launch validation gates are green",
+    "goal": "Review launch readiness for later parallel execution alongside the live multivariate keep/drop campaigns.",
+    "stage": "Stage 3"
+  }
+]

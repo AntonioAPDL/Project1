@@ -1,0 +1,17 @@
+[
+  {
+    "artifact_family": "five_cutoff_crps_validation_sources",
+    "refresh_after_stage": "Stage 3 (after real relaunch completes)",
+    "role": "refresh the exdqlm_univar row lineage in the five-cutoff CRPS validation source freeze"
+  },
+  {
+    "artifact_family": "he2_publication_compare_bundle_refresh",
+    "refresh_after_stage": "Stage 3 (after real relaunch completes)",
+    "role": "refresh compare bundles so the exdqlm_univar rows move from legacy lineage to the corrected shared-spec lineage"
+  },
+  {
+    "artifact_family": "article_crps_table_provenance",
+    "refresh_after_stage": "Stage 3 (only if article outputs consume the refreshed univariate rows)",
+    "role": "document the updated exdqlm_univar provenance if revised-article tables or supplements surface those rows"
+  }
+]

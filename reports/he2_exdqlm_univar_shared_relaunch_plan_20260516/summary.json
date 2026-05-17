@@ -1,0 +1,53 @@
+{
+  "df_discrep_contract": "absent_by_design",
+  "family": "exdqlm_univar",
+  "forecast_cov_contract": "not_applied_by_design",
+  "manuscript_label": "exAL-U-T1",
+  "paths": {
+    "batch": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_relaunch_batches/exdqlm_univar_all_cutoffs_sharedspec_20260516.yaml",
+    "runbook": "/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/HE2_EXDQLM_UNIVAR_SHARED_RELAUNCH_PLAN_20260516.md",
+    "template": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_bayesian_publication_relaunch_exdqlm_univar_all_cutoffs_sharedspec_20260516.template.yaml"
+  },
+  "q50_stabilization_contract": {
+    "freeze_target": "not_operative_under_legacy_bridge",
+    "init_controls": "not_operative_under_legacy_bridge",
+    "median_blend_and_step_caps": "not_applicable_to_univar_runner",
+    "objective_guard.fail_fast": "not_operative_under_legacy_bridge",
+    "operative_controls": "shared_state_projection_and_validator_smoke_iter_caps_only",
+    "terminal_sampling_guard": "not_supported_by_univar_runner"
+  },
+  "readiness": {
+    "ready_for_launch_after_validation": false,
+    "ready_for_no_launch_packaging": true,
+    "status": "READY_FOR_NO_LAUNCH_VALIDATION",
+    "why_not_launch_yet": [
+      "exact-final-batch builder and validator have not been run yet",
+      "hard-case univariate q50 smokes must pass on the final shared-spec package before any queue action"
+    ]
+  },
+  "runtime_contract": {
+    "fit_parallel_workers": 7,
+    "mc_cores": 7,
+    "queue_heavy_cutoff_max_concurrent": 1,
+    "queue_ordinary_max_concurrent": 1,
+    "thread_caps": {
+      "mkl": 1,
+      "numexpr": 1,
+      "omp": 1,
+      "openblas": 1,
+      "veclib": 1
+    }
+  },
+  "shared_discount_set": "set10_manual_20260516",
+  "shared_selection_basis": "manual_projection_from_multivar_sharedspec_20260516",
+  "shared_state_evolution": {
+    "df_covs": 0.9999999,
+    "df_s1": 0.99999,
+    "df_s2": 0.99999,
+    "df_s67": 0.99999,
+    "df_t": 0.99999999,
+    "df_trans": 0.9999999,
+    "lambda": 0.97
+  },
+  "validation_outdir": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516"
+}

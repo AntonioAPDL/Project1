@@ -1,0 +1,34 @@
+{
+  "builder": {
+    "batch_file": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_relaunch_batches/exdqlm_univar_all_cutoffs_sharedspec_20260516.yaml",
+    "config": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_bayesian_publication_relaunch_exdqlm_univar_all_cutoffs_sharedspec_20260516.template.yaml",
+    "profile": "disk_guarded_serial"
+  },
+  "hard_case_fit_smokes": [
+    {
+      "cutoff": "20210123",
+      "family": "exdqlm_univar",
+      "quantiles": [
+        0.5
+      ]
+    }
+  ],
+  "hard_case_full_pipeline_smokes": [
+    {
+      "cutoff": "20210123",
+      "family": "exdqlm_univar",
+      "quantiles": [
+        0.35,
+        0.5,
+        0.65
+      ]
+    }
+  ],
+  "validator": {
+    "batch_file": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_relaunch_batches/exdqlm_univar_all_cutoffs_sharedspec_20260516.yaml",
+    "config": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_bayesian_publication_relaunch_exdqlm_univar_all_cutoffs_sharedspec_20260516.template.yaml",
+    "fit_parallel_workers": 7,
+    "mc_cores": 7,
+    "outdir": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_exact_final_batch_20260516"
+  }
+}
