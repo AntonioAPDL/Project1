@@ -1,0 +1,231 @@
+{
+  "cutoffs": [
+    {
+      "cutoff": "20210123",
+      "same_bundle_fields": {
+        "canonical_bundle_root": true,
+        "canonical_bundle_meta": true,
+        "support_manifest": true,
+        "fit_covariate_contract": true,
+        "fit_covariate_paths": true,
+        "deterministic_climate": true
+      },
+      "same_spec_fields": {
+        "forecast_cov": true,
+        "state_evolution": true,
+        "q50_override": true,
+        "q35_override": true,
+        "q65_override": true,
+        "q80_override": true,
+        "threads": true,
+        "parallel_workers": true
+      },
+      "expected_differences": {
+        "manuscript_label": {
+          "keep": "exAL-M-T1",
+          "drop": "exAL-M-T0"
+        },
+        "family": {
+          "keep": "exdqlm_multivar_keep",
+          "drop": "exdqlm_multivar_drop"
+        },
+        "forecast_transfer_mode": {
+          "keep": "keep",
+          "drop": "drop"
+        },
+        "run_id": {
+          "keep": "multimodel_20210123_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+          "drop": "multimodel_20210123_v8_he2pubgdpc1r1_exdqlm_multivar_drop"
+        },
+        "run_root": {
+          "keep": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/runs",
+          "drop": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516/runs"
+        }
+      },
+      "bundle_alignment_passed": true,
+      "spec_alignment_passed": true
+    },
+    {
+      "cutoff": "20211112",
+      "same_bundle_fields": {
+        "canonical_bundle_root": true,
+        "canonical_bundle_meta": true,
+        "support_manifest": true,
+        "fit_covariate_contract": true,
+        "fit_covariate_paths": true,
+        "deterministic_climate": true
+      },
+      "same_spec_fields": {
+        "forecast_cov": true,
+        "state_evolution": true,
+        "q50_override": true,
+        "q35_override": true,
+        "q65_override": true,
+        "q80_override": true,
+        "threads": true,
+        "parallel_workers": true
+      },
+      "expected_differences": {
+        "manuscript_label": {
+          "keep": "exAL-M-T1",
+          "drop": "exAL-M-T0"
+        },
+        "family": {
+          "keep": "exdqlm_multivar_keep",
+          "drop": "exdqlm_multivar_drop"
+        },
+        "forecast_transfer_mode": {
+          "keep": "keep",
+          "drop": "drop"
+        },
+        "run_id": {
+          "keep": "multimodel_20211112_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+          "drop": "multimodel_20211112_v8_he2pubgdpc1r1_exdqlm_multivar_drop"
+        },
+        "run_root": {
+          "keep": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/runs",
+          "drop": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516/runs"
+        }
+      },
+      "bundle_alignment_passed": true,
+      "spec_alignment_passed": true
+    },
+    {
+      "cutoff": "20211221",
+      "same_bundle_fields": {
+        "canonical_bundle_root": true,
+        "canonical_bundle_meta": true,
+        "support_manifest": true,
+        "fit_covariate_contract": true,
+        "fit_covariate_paths": true,
+        "deterministic_climate": true
+      },
+      "same_spec_fields": {
+        "forecast_cov": true,
+        "state_evolution": true,
+        "q50_override": true,
+        "q35_override": true,
+        "q65_override": true,
+        "q80_override": true,
+        "threads": true,
+        "parallel_workers": true
+      },
+      "expected_differences": {
+        "manuscript_label": {
+          "keep": "exAL-M-T1",
+          "drop": "exAL-M-T0"
+        },
+        "family": {
+          "keep": "exdqlm_multivar_keep",
+          "drop": "exdqlm_multivar_drop"
+        },
+        "forecast_transfer_mode": {
+          "keep": "keep",
+          "drop": "drop"
+        },
+        "run_id": {
+          "keep": "multimodel_20211221_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+          "drop": "multimodel_20211221_v8_he2pubgdpc1r1_exdqlm_multivar_drop"
+        },
+        "run_root": {
+          "keep": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/runs",
+          "drop": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516/runs"
+        }
+      },
+      "bundle_alignment_passed": true,
+      "spec_alignment_passed": true
+    },
+    {
+      "cutoff": "20220511",
+      "same_bundle_fields": {
+        "canonical_bundle_root": true,
+        "canonical_bundle_meta": true,
+        "support_manifest": true,
+        "fit_covariate_contract": true,
+        "fit_covariate_paths": true,
+        "deterministic_climate": true
+      },
+      "same_spec_fields": {
+        "forecast_cov": true,
+        "state_evolution": true,
+        "q50_override": true,
+        "q35_override": true,
+        "q65_override": true,
+        "q80_override": true,
+        "threads": true,
+        "parallel_workers": true
+      },
+      "expected_differences": {
+        "manuscript_label": {
+          "keep": "exAL-M-T1",
+          "drop": "exAL-M-T0"
+        },
+        "family": {
+          "keep": "exdqlm_multivar_keep",
+          "drop": "exdqlm_multivar_drop"
+        },
+        "forecast_transfer_mode": {
+          "keep": "keep",
+          "drop": "drop"
+        },
+        "run_id": {
+          "keep": "multimodel_20220511_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+          "drop": "multimodel_20220511_v8_he2pubgdpc1r1_exdqlm_multivar_drop"
+        },
+        "run_root": {
+          "keep": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/runs",
+          "drop": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516/runs"
+        }
+      },
+      "bundle_alignment_passed": true,
+      "spec_alignment_passed": true
+    },
+    {
+      "cutoff": "20221225",
+      "same_bundle_fields": {
+        "canonical_bundle_root": true,
+        "canonical_bundle_meta": true,
+        "support_manifest": true,
+        "fit_covariate_contract": true,
+        "fit_covariate_paths": true,
+        "deterministic_climate": true
+      },
+      "same_spec_fields": {
+        "forecast_cov": true,
+        "state_evolution": true,
+        "q50_override": true,
+        "q35_override": true,
+        "q65_override": true,
+        "q80_override": true,
+        "threads": true,
+        "parallel_workers": true
+      },
+      "expected_differences": {
+        "manuscript_label": {
+          "keep": "exAL-M-T1",
+          "drop": "exAL-M-T0"
+        },
+        "family": {
+          "keep": "exdqlm_multivar_keep",
+          "drop": "exdqlm_multivar_drop"
+        },
+        "forecast_transfer_mode": {
+          "keep": "keep",
+          "drop": "drop"
+        },
+        "run_id": {
+          "keep": "multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+          "drop": "multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_drop"
+        },
+        "run_root": {
+          "keep": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/runs",
+          "drop": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516/runs"
+        }
+      },
+      "bundle_alignment_passed": true,
+      "spec_alignment_passed": true
+    }
+  ],
+  "all_bundle_fields_aligned": true,
+  "all_spec_fields_aligned": true
+}

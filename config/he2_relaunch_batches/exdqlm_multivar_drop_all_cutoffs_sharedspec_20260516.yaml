@@ -1,0 +1,393 @@
+selection:
+  cutoffs:
+  - '20210123'
+  - '20211112'
+  - '20211221'
+  - '20220511'
+  - '20221225'
+  families:
+  - exdqlm_multivar_drop
+  model_classes:
+  - quantile_multivariate
+resources:
+  fit_parallel_workers: 7
+  mc_cores: 7
+queue:
+  ordinary_max_concurrent: 1
+  heavy_cutoff_max_concurrent: 1
+overrides:
+  row_config_patches:
+  - family: exdqlm_multivar_drop
+    manuscript_label: exAL-M-T0
+    config_patch:
+      run:
+        threads:
+          omp: 1
+          openblas: 1
+          mkl: 1
+          veclib: 1
+          numexpr: 1
+      fit:
+        exdqlm_multivar:
+          legacy:
+            forecast_cov:
+              c_factor: 1.0
+              epsilon: 30.0
+            sampling_diagnostics:
+              heartbeat_enabled: true
+              heartbeat_seconds: 30
+              phase_markers_enabled: true
+              walltime_seconds: 900
+              member_walltime_seconds: 20
+          gamma_sigma:
+            quantile_overrides:
+              q20:
+                init:
+                  mode: robust
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.5
+              q35:
+                freeze_target: states
+                warmup_freeze_iters: 8
+                init:
+                  mode: robust
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.5
+                stabilization:
+                  state_guard_enabled: true
+                  state_norm_max_ratio: 25
+                  state_norm_abs_cap: 1.0e12
+                  state_guard_refreeze_iters: 10
+                  state_hold_after_guard_iters: 10
+                  state_blend_alpha: 1.0
+                  cov_blend_alpha: 1.0
+              q50:
+                init:
+                  mode: robust
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.5
+                freeze_target: states
+                terminal_sampling_guard:
+                  mode: fail_fast
+                  min_guard_count: 1
+                  max_guard_lag_iters: 0
+                  require_frozen: true
+                stabilization:
+                  median_state_hold_after_guard_iters: 0
+                  median_state_blend_alpha: 0.5
+                  median_cov_blend_alpha: 0.5
+                  median_max_abs_gamma_step: 0.15
+                  median_max_abs_log_sigma_step: 0.25
+              q65:
+                init:
+                  mode: robust
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.5
+              q80:
+                init:
+                  mode: robust
+                  gamma: 0.0
+                  sigma_floor: 0.01
+                  sigma_scale: 0.5
+      models:
+        exdqlm_multivar:
+          state_evolution:
+            df_t: 0.99999999
+            df_s1: 0.99999
+            df_s2: 0.99999
+            df_s67: 0.99999
+            df_discrep: 0.99999
+            lambda: 0.97
+            df_trans: 0.9999999
+            df_covs: 0.9999999
+  - cutoff: '20210123'
+    family: exdqlm_multivar_drop
+    manuscript_label: exAL-M-T0
+    config_patch:
+      run:
+        seed: 20210123
+      inputs:
+        deterministic_climate:
+          enabled: true
+          handoff_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
+          require_full_horizon: true
+          precip:
+            enabled: true
+            source: gefs_apcp
+            reduction: q85
+            dry_day_threshold_mm: 0.0
+            noisy_blend:
+              enabled: true
+              noise_sd: 30.0
+              noise_seed: 20260415
+              noise_distribution: normal
+              floor_at_zero: true
+              lambda_mode: constant
+              lambda: 0.5
+              lambda_start: 0.8
+              lambda_end: 0.2
+              noise_sd_multiplier: 0.5
+              zero_zero_force_prob: 0.0
+            observed_blend:
+              enabled: true
+              observed_weight: 0.5
+              observed_zero_stay_prob: 0.9
+              observed_zero_stay_seed: 20260415
+            tail_blend:
+              enabled: false
+              target: climatology_median
+              start_day: 7
+              end_day: 14
+          soil:
+            enabled: true
+            source: gefs_soilw_0_0.1m
+            reduction: q85
+            noisy_blend:
+              enabled: true
+              noise_sd: 0.05
+              noise_seed: 20260415
+              noise_distribution: abs_normal
+              floor_at_zero: false
+              lambda_mode: constant
+              lambda: 0.5
+              lambda_start: 0.8
+              lambda_end: 0.2
+              noise_sd_multiplier: 0.5
+            observed_blend:
+              enabled: true
+              observed_weight: 0.5
+              observed_zero_stay_seed: 20260415
+  - cutoff: '20211112'
+    family: exdqlm_multivar_drop
+    manuscript_label: exAL-M-T0
+    config_patch:
+      run:
+        seed: 20211112
+      inputs:
+        deterministic_climate:
+          enabled: true
+          handoff_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
+          require_full_horizon: true
+          precip:
+            enabled: true
+            source: gefs_apcp
+            reduction: q85
+            dry_day_threshold_mm: 0.0
+            noisy_blend:
+              enabled: true
+              noise_sd: 30.0
+              noise_seed: 20260415
+              noise_distribution: normal
+              floor_at_zero: true
+              lambda_mode: constant
+              lambda: 0.5
+              lambda_start: 0.8
+              lambda_end: 0.2
+              noise_sd_multiplier: 0.5
+              zero_zero_force_prob: 0.0
+            observed_blend:
+              enabled: true
+              observed_weight: 0.5
+              observed_zero_stay_prob: 0.9
+              observed_zero_stay_seed: 20260415
+            tail_blend:
+              enabled: false
+              target: climatology_median
+              start_day: 7
+              end_day: 14
+          soil:
+            enabled: true
+            source: gefs_soilw_0_0.1m
+            reduction: q85
+            noisy_blend:
+              enabled: true
+              noise_sd: 0.05
+              noise_seed: 20260415
+              noise_distribution: abs_normal
+              floor_at_zero: false
+              lambda_mode: constant
+              lambda: 0.5
+              lambda_start: 0.8
+              lambda_end: 0.2
+              noise_sd_multiplier: 0.5
+            observed_blend:
+              enabled: true
+              observed_weight: 0.5
+              observed_zero_stay_seed: 20260415
+  - cutoff: '20211221'
+    family: exdqlm_multivar_drop
+    manuscript_label: exAL-M-T0
+    config_patch:
+      run:
+        seed: 20211221
+      inputs:
+        deterministic_climate:
+          enabled: true
+          handoff_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
+          require_full_horizon: true
+          precip:
+            enabled: true
+            source: gefs_apcp
+            reduction: q85
+            dry_day_threshold_mm: 0.0
+            noisy_blend:
+              enabled: true
+              noise_sd: 30.0
+              noise_seed: 20260415
+              noise_distribution: normal
+              floor_at_zero: true
+              lambda_mode: constant
+              lambda: 0.5
+              lambda_start: 0.8
+              lambda_end: 0.2
+              noise_sd_multiplier: 0.5
+              zero_zero_force_prob: 0.0
+            observed_blend:
+              enabled: true
+              observed_weight: 0.5
+              observed_zero_stay_prob: 0.9
+              observed_zero_stay_seed: 20260415
+            tail_blend:
+              enabled: false
+              target: climatology_median
+              start_day: 7
+              end_day: 14
+          soil:
+            enabled: true
+            source: gefs_soilw_0_0.1m
+            reduction: q85
+            noisy_blend:
+              enabled: true
+              noise_sd: 0.05
+              noise_seed: 20260415
+              noise_distribution: abs_normal
+              floor_at_zero: false
+              lambda_mode: constant
+              lambda: 0.5
+              lambda_start: 0.8
+              lambda_end: 0.2
+              noise_sd_multiplier: 0.5
+            observed_blend:
+              enabled: true
+              observed_weight: 0.5
+              observed_zero_stay_seed: 20260415
+  - cutoff: '20220511'
+    family: exdqlm_multivar_drop
+    manuscript_label: exAL-M-T0
+    config_patch:
+      run:
+        seed: 20220511
+      inputs:
+        deterministic_climate:
+          enabled: true
+          handoff_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
+          require_full_horizon: true
+          precip:
+            enabled: true
+            source: gefs_apcp
+            reduction: q85
+            dry_day_threshold_mm: 0.0
+            noisy_blend:
+              enabled: true
+              noise_sd: 30.0
+              noise_seed: 20260415
+              noise_distribution: normal
+              floor_at_zero: true
+              lambda_mode: constant
+              lambda: 0.5
+              lambda_start: 0.8
+              lambda_end: 0.2
+              noise_sd_multiplier: 0.5
+              zero_zero_force_prob: 0.0
+            observed_blend:
+              enabled: true
+              observed_weight: 0.5
+              observed_zero_stay_prob: 0.9
+              observed_zero_stay_seed: 20260415
+            tail_blend:
+              enabled: false
+              target: climatology_median
+              start_day: 7
+              end_day: 14
+          soil:
+            enabled: true
+            source: gefs_soilw_0_0.1m
+            reduction: q85
+            noisy_blend:
+              enabled: true
+              noise_sd: 0.05
+              noise_seed: 20260415
+              noise_distribution: abs_normal
+              floor_at_zero: false
+              lambda_mode: constant
+              lambda: 0.5
+              lambda_start: 0.8
+              lambda_end: 0.2
+              noise_sd_multiplier: 0.5
+            observed_blend:
+              enabled: true
+              observed_weight: 0.5
+              observed_zero_stay_seed: 20260415
+  - cutoff: '20221225'
+    family: exdqlm_multivar_drop
+    manuscript_label: exAL-M-T0
+    config_patch:
+      run:
+        seed: 20221225
+      inputs:
+        deterministic_climate:
+          enabled: true
+          handoff_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
+          horizon_days: null
+          require_full_horizon: true
+          precip:
+            enabled: true
+            source: gefs_apcp
+            reduction: q85
+            dry_day_threshold_mm: 0.0
+            noisy_blend:
+              enabled: true
+              noise_sd: 30.0
+              noise_seed: 20260415
+              noise_distribution: normal
+              floor_at_zero: true
+              lambda_mode: constant
+              lambda: 0.5
+              lambda_start: 0.8
+              lambda_end: 0.2
+              noise_sd_multiplier: 0.5
+              zero_zero_force_prob: 0.0
+            observed_blend:
+              enabled: true
+              observed_weight: 0.5
+              observed_zero_stay_prob: 0.9
+              observed_zero_stay_seed: 20260415
+            tail_blend:
+              enabled: false
+              target: climatology_median
+              start_day: 7
+              end_day: 14
+          soil:
+            enabled: true
+            source: gefs_soilw_0_0.1m
+            reduction: q85
+            noisy_blend:
+              enabled: true
+              noise_sd: 0.05
+              noise_seed: 20260415
+              noise_distribution: abs_normal
+              floor_at_zero: false
+              lambda_mode: constant
+              lambda: 0.5
+              lambda_start: 0.8
+              lambda_end: 0.2
+              noise_sd_multiplier: 0.5
+            observed_blend:
+              enabled: true
+              observed_weight: 0.5
+              observed_zero_stay_prob: null
+              observed_zero_stay_seed: 20260415

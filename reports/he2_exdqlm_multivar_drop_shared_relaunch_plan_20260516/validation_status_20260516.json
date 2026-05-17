@@ -1,0 +1,74 @@
+{
+  "status": "validated_no_launch",
+  "family": "exdqlm_multivar_drop",
+  "decision": "ready_to_launch_when_scheduled",
+  "launched": false,
+  "prepared_rerun_template": "config/he2_bayesian_publication_relaunch_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516.template.yaml",
+  "prepared_rerun_batch": "config/he2_relaunch_batches/exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516.yaml",
+  "shared_spec": {
+    "epsilon": 30.0,
+    "c_factor": 1.0,
+    "discount_set": "set10_manual_20260516",
+    "state_evolution": {
+      "df_t": 0.99999999,
+      "df_s1": 0.99999,
+      "df_s2": 0.99999,
+      "df_s67": 0.99999,
+      "df_discrep": 0.99999,
+      "lambda": 0.97,
+      "df_trans": 0.9999999,
+      "df_covs": 0.9999999
+    },
+    "q50_stabilization": {
+      "freeze_target": "states",
+      "hold_after_guard_iters": 0,
+      "state_blend_alpha": 0.5,
+      "cov_blend_alpha": 0.5,
+      "max_abs_gamma_step": 0.15,
+      "max_abs_log_sigma_step": 0.25,
+      "terminal_guard_mode": "fail_fast"
+    }
+  },
+  "builder_dry_run": {
+    "status": "passed",
+    "artifact_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516",
+    "generated_configs": 5,
+    "plan_rows": 5,
+    "selection_rows": 5
+  },
+  "unit_tests": {
+    "status": "passed",
+    "count": 6,
+    "suites": [
+      "tests.python.test_audit_exdqlm_keep_drop_sharedspec_alignment",
+      "tests.python.test_he2_exdqlm_multivar_drop_shared_relaunch_plan",
+      "tests.python.test_he2_exdqlm_multivar_drop_sharedspec_package"
+    ]
+  },
+  "alignment_audit": {
+    "status": "passed",
+    "report": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exdqlm_multivar_drop_shared_relaunch_plan_20260516/keep_drop_sharedspec_alignment.json",
+    "all_bundle_fields_aligned": true,
+    "all_spec_fields_aligned": true
+  },
+  "final_prelaunch_replay": {
+    "status": "substantive_pass_exact_final_batch",
+    "validation_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260517T013216Z",
+    "cutoff_smokes_completed": 5,
+    "family_smoke_completed": true,
+    "q50_hard_case": {
+      "cutoff": "20210123",
+      "vb_iter": 18,
+      "gamsig_update_iters": 18,
+      "guard_count": 0,
+      "frozen": false,
+      "terminal_preflight": "passed",
+      "sampling_finished_seconds": 33.828,
+      "fit_log": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260517T013216Z/smoke_runs/fit_quantile/exdqlm_multivar_drop/20210123/fit_smoke_exdqlm_multivar_drop_20210123_qsubset/fit/q=50/logs/fit.log",
+      "sampling_diagnostics": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516/control/prelaunch_validation_20260517T013216Z/smoke_runs/fit_quantile/exdqlm_multivar_drop/20210123/fit_smoke_exdqlm_multivar_drop_20210123_qsubset/fit/q=50/logs/sampling_diagnostics.log"
+    },
+    "wrapper_summary_present": false,
+    "note": "The validator wrapper did not write prelaunch_validation_summary.json before it was stopped, but the substantive exact-final-batch evidence is complete and healthy."
+  },
+  "launch_gate": "No scientific or bundle blocker remains. Launch was intentionally not started in this step."
+}

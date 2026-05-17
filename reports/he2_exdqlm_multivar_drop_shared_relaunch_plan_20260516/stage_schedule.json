@@ -1,0 +1,26 @@
+[
+  {
+    "stage": "Stage 0",
+    "goal": "Freeze the shared relaunch contract before any queue launch.",
+    "deliverables": "shared spec report, no-launch template/batch, validator runbook",
+    "gate": "builder and focused unit tests pass; bundle contract unchanged"
+  },
+  {
+    "stage": "Stage 1",
+    "goal": "Run no-launch prelaunch validation on representative q50/q65 smokes under the shared spec.",
+    "deliverables": "prelaunch_validation_summary.json and smoke-run evidence logs",
+    "gate": "20210123 q50, 20211221 q50, and 20221225 q50/q65 all clear the validator contract"
+  },
+  {
+    "stage": "Stage 2",
+    "goal": "Run a staged relaunch: first canary rows, then all five cutoffs.",
+    "deliverables": "five row manifests, fit/post/validate/report status, CRPS compare bundle refresh",
+    "gate": "all five rows pass report and compare status under the shared spec"
+  },
+  {
+    "stage": "Stage 3",
+    "goal": "Refresh the revised article figures/tables from the new relaunch outputs.",
+    "deliverables": "five-cutoff validation bundle, representative selected-model bundle, cutoff setup/support, forecast-context and synthesis families",
+    "gate": "article review manifests refreshed and committed in the revised-doc repo"
+  }
+]

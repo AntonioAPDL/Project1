@@ -1,0 +1,65 @@
+{
+  "family": "exdqlm_multivar_drop",
+  "shared_discount_set": "set10_manual_20260516",
+  "shared_epsilon_label": "eps30cf1_manual",
+  "shared_epsilon": 30.0,
+  "shared_c_factor": 1.0,
+  "shared_selection_basis": "manual_override_20260516",
+  "shared_state_evolution": {
+    "df_t": 0.99999999,
+    "df_s1": 0.99999,
+    "df_s2": 0.99999,
+    "df_s67": 0.99999,
+    "df_discrep": 0.99999,
+    "lambda": 0.97,
+    "df_trans": 0.9999999,
+    "df_covs": 0.9999999
+  },
+  "q50_stabilization": {
+    "freeze_target": "states",
+    "terminal_sampling_guard.mode": "fail_fast",
+    "terminal_sampling_guard.min_guard_count": 1,
+    "terminal_sampling_guard.max_guard_lag_iters": 0,
+    "terminal_sampling_guard.require_frozen": true,
+    "median_state_hold_after_guard_iters": 0,
+    "median_state_blend_alpha": 0.5,
+    "median_cov_blend_alpha": 0.5,
+    "median_max_abs_gamma_step": 0.15,
+    "median_max_abs_log_sigma_step": 0.25
+  },
+  "paths": {
+    "template": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_bayesian_publication_relaunch_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516.template.yaml",
+    "batch": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_relaunch_batches/exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516.yaml",
+    "runbook": "/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/HE2_EXDQLM_MULTIVAR_DROP_SHARED_RELAUNCH_PLAN_20260516.md"
+  },
+  "blocked_publication_spec_validation": {
+    "status": "not_staged_for_drop",
+    "note": "The drop-family twin package was prepared directly from the approved shared relaunch contract rather than via a separate publication-spec-only rerun contract."
+  },
+  "cf1_overall_family_best": {
+    "model_variant": "exdqlm_multivar_drop",
+    "epsilon_label": "eps30cf1",
+    "epsilon_value": 30.0,
+    "mean_crps_across_cutoffs": 0.9868701714758956,
+    "median_crps_across_cutoffs": 0.5782188503174198,
+    "min_crps_across_cutoffs": 0.0694038772305907,
+    "max_crps_across_cutoffs": 2.683188099812872,
+    "best_c_factor": 1.0,
+    "cutoffs_won": 3
+  },
+  "historical_best_discount_reference": {
+    "discount_set": "set08",
+    "mean_probe_crps": 0.21054459999999997,
+    "mean_delta": -0.0009644000000000001,
+    "median_delta": 0.000752,
+    "wins": 2,
+    "df_t": 0.99999999,
+    "df_s1": 0.9999,
+    "df_s2": 0.9999,
+    "df_s67": 0.9999,
+    "df_discrep": 0.999,
+    "lambda": 0.975,
+    "df_trans": 0.9999999,
+    "df_covs": 0.99999
+  }
+}
