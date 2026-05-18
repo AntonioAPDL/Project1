@@ -1,0 +1,9 @@
+{
+  "representative_article_is_synced_to_runtime": true,
+  "representative_keep_quality_class": "extreme_run_side_issue",
+  "representative_keep_mean_crps": 162225957192096.5,
+  "representative_keep_q95_to_observed_max_ratio": 1.7684086583553072e+16,
+  "all_five_cutoffs_show_severe_or_worse_issue": true,
+  "article_staleness_is_primary_explanation": false,
+  "likely_primary_explanation": "run_side_output_quality_issue"
+}

@@ -1,0 +1,16 @@
+{
+  "manuscript_figure_count": 9,
+  "manuscript_table_count": 4,
+  "figures_currently_wired_to_current_outputs": 9,
+  "representative_keep_bundle_source": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+  "representative_keep_replay_mean_crps": "162225957192096.50",
+  "historical_support_render_run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_historical_support_replay_20260517/runs/multimodel_20220511_v8_he2pubgdpc1r1_exdqlm_multivar_keep_historical_support_replay",
+  "historical_support_display_flow_scale": "log1p_cms",
+  "historical_support_internal_flow_scale": "log1p_cms",
+  "historical_support_scale_contract_suspect": false,
+  "benchmark_table_should_be_refreshed_now": false,
+  "benchmark_table_blocker": "keep_frozen_current_benchmark_table",
+  "ndlm_canonical_bundle_aligned": false,
+  "al_multivar_ready": false,
+  "recommended_next_phase": "model_family_quality_audit_and_rerun_gate_review"
+}

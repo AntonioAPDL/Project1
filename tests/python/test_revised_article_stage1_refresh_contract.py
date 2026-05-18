@@ -23,11 +23,19 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
 
     def test_refresh_entrypoint_wires_cutoff_synthesis_refresh_and_corrected_runtime_roots(self) -> None:
         text = (ARTICLE_ROOT / 'scripts' / 'refresh_all_generated_assets.py').read_text(encoding='utf-8')
+        bindings = json.loads((ARTICLE_ROOT / 'config' / 'runtime_bindings.json').read_text(encoding='utf-8'))
         self.assertIn('refresh_cutoff_synthesis_families.py', text)
-        self.assertIn('multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516', text)
+        self.assertIn('load_runtime_bindings', text)
+        self.assertEqual(
+            bindings['exal_m_t1']['keep_runtime_root'],
+            '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516',
+        )
         self.assertIn('--univar-runtime-root', text)
         self.assertIn('--multivar-support-run-root', text)
-        self.assertIn('historical_support_replay_20260517', text)
+        self.assertEqual(
+            bindings['exal_m_t1']['historical_support_replay_run_root'],
+            '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_historical_support_replay_20260517/runs/multimodel_20220511_v8_he2pubgdpc1r1_exdqlm_multivar_keep_historical_support_replay',
+        )
         self.assertIn('--strict-current-model-support', text)
         self.assertIn('historical_support_from_current_models', text)
 
