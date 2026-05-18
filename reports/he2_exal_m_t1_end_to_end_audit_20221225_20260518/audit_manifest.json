@@ -1,0 +1,37 @@
+{
+  "audit_id": "he2_exal_m_t1_end_to_end_audit_20221225_20260518",
+  "family": "exAL-M-T1",
+  "model_id": "exdqlm_multivar_keep",
+  "cutoff": "2022-12-25",
+  "run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reference_relaunch_20260518/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+  "status": {
+    "representative_cutoff_selected": "done",
+    "post_scale_bug_identified": "done",
+    "post_scale_bug_fixed_for_representative_cutoff": "done",
+    "historical_slice_review_infrastructure": "done",
+    "history_only_renderer_bug_fixed": "done",
+    "issue_confirmed_in_history_slices": "done",
+    "scale_contract_audit": "done",
+    "pre_fit_lineage_audit": "done",
+    "object_semantics_decomposition": "done",
+    "historical_window_comparison_audit": "done",
+    "post_stage_contract_audit": "done",
+    "final_diagnosis_memo": "done"
+  },
+  "hypotheses": [
+    "wrong_object_being_plotted",
+    "pre_fit_transform_mismatch",
+    "stage_scale_contract_mismatch",
+    "response_object_noncomparability",
+    "input_bundle_lineage_mismatch"
+  ],
+  "required_workstreams": [
+    "canonical_scale_contract_map",
+    "input_and_pre_fit_lineage_audit",
+    "object_semantics_decomposition",
+    "historical_window_sanity_panels",
+    "post_stage_contract_audit",
+    "decision_and_relaunch_gate"
+  ],
+  "local_workspace": "/data/muscat_data/jaguir26/project1_ucsc_phd/repro/audit_local/exal_m_t1_end_to_end_audit_20221225_20260518"
+}

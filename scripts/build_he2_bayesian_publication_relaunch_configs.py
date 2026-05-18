@@ -72,6 +72,15 @@ def _set_nested(cfg: dict[str, Any], path: list[str], value: Any) -> None:
     cur[path[-1]] = value
 
 
+def _get_nested(cfg: dict[str, Any] | None, path: list[str], default: Any = None) -> Any:
+    cur: Any = cfg
+    for key in path:
+        if not isinstance(cur, dict) or key not in cur:
+            return default
+        cur = cur[key]
+    return cur
+
+
 def _dependency_rows(config_path: Path, cfg: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     dep_specs = [
@@ -336,6 +345,25 @@ def _build_run_config(
 
     if row_config_patch:
         cfg = _deep_merge_dict(cfg, row_config_patch)
+
+    row_patch_workers = _get_nested(row_config_patch, ['fit', 'parallel', 'workers'])
+    row_patch_mc_cores = _get_nested(row_config_patch, ['run', 'threads', 'mc_cores'])
+    active_quantiles = [float(q) for q in (((cfg.get('fit') or {}).get('quantiles')) or full_quantiles)]
+    if class_name.startswith('quantile'):
+        if resources.get('fit_parallel_workers') is None and row_patch_workers in (None, ''):
+            workers = len(active_quantiles)
+            _set_nested(cfg, ['fit', 'parallel', 'workers'], int(workers))
+        else:
+            workers = (((cfg.get('fit') or {}).get('parallel')) or {}).get('workers')
+        if resources.get('mc_cores') is None and row_patch_mc_cores in (None, ''):
+            mc_cores = int(workers) if workers is not None else None
+            if mc_cores is not None:
+                _set_nested(cfg, ['run', 'threads', 'mc_cores'], int(mc_cores))
+        else:
+            mc_cores = (((cfg.get('run') or {}).get('threads')) or {}).get('mc_cores')
+    else:
+        workers = (((cfg.get('fit') or {}).get('parallel')) or {}).get('workers')
+        mc_cores = (((cfg.get('run') or {}).get('threads')) or {}).get('mc_cores')
 
     # Enforce the current transform policy after any source-config or batch patch
     # merges so old log-log settings cannot leak back into active relaunch runs.

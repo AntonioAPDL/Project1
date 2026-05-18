@@ -7,6 +7,7 @@
 #include <limits>
 #include <omp.h>
 #include <cstdint>
+#include <algorithm>
 
 // Standard normal CDF
 double normal_cdf(double x) {
@@ -18,15 +19,54 @@ double normal_cdf_inv(double p) {
     return sqrt(2) * boost::math::erf_inv(2 * p - 1);
 }
 
+double rtruncnorm_lower_tail_robert(boost::random::mt19937& gen, double alpha) {
+    const double proposal_rate = 0.5 * (alpha + std::sqrt(alpha * alpha + 4.0));
+    boost::random::uniform_real_distribution<> uniform01(0.0, 1.0);
+
+    while (true) {
+        const double u1 = std::max(uniform01(gen), std::numeric_limits<double>::min());
+        const double z = alpha - std::log(u1) / proposal_rate;
+        const double u2 = uniform01(gen);
+        const double accept_prob = std::exp(-0.5 * std::pow(z - proposal_rate, 2.0));
+        if (u2 <= accept_prob) {
+            return z;
+        }
+    }
+}
+
 // Function to sample from a lower truncated normal distribution (truncated at 0)
 double rtruncnorm(boost::random::mt19937& gen, double mean, double sd) {
+    if (!std::isfinite(mean) || !std::isfinite(sd) || sd <= 0.0) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+
     double a = 0.0; // Lower bound for truncation
     double alpha = (a - mean) / sd;
-    double alpha_cdf = normal_cdf(alpha);
-    
-    boost::random::uniform_real_distribution<> uniform_dist(alpha_cdf, 1.0);
-    double U = uniform_dist(gen);
+
+    if (std::isfinite(alpha) && alpha > 5.0) {
+        const double z = rtruncnorm_lower_tail_robert(gen, alpha);
+        return mean + sd * z;
+    }
+
+    const double alpha_cdf = normal_cdf(alpha);
+    const double upper = std::nextafter(1.0, 0.0);
+    if (!std::isfinite(alpha_cdf) || alpha_cdf >= upper) {
+        const double z = rtruncnorm_lower_tail_robert(gen, std::max(alpha, 0.0));
+        return mean + sd * z;
+    }
+
+    boost::random::uniform_real_distribution<> uniform_dist(alpha_cdf, upper);
+    double U = std::min(uniform_dist(gen), upper);
     double sample = mean + sd * normal_cdf_inv(U);
+
+    if (!std::isfinite(sample)) {
+        const double z = rtruncnorm_lower_tail_robert(gen, std::max(alpha, 0.0));
+        sample = mean + sd * z;
+    }
+
+    if (sample < 0.0 && sample > -1e-12) {
+        sample = 0.0;
+    }
 
     return sample;
 }
@@ -63,6 +103,14 @@ Rcpp::NumericMatrix sample_truncnorm_icdf(int n_samp, int TT, Rcpp::NumericVecto
     if (sts_mu.size() != TT || sts_sig2.size() != TT) {
         Rcpp::stop("Length of sts_mu and sts_sig2 must be equal to TT");
     }
+    for (int t = 0; t < TT; ++t) {
+        if (!R_finite(sts_mu[t])) {
+            Rcpp::stop("sample_truncnorm_icdf: sts_mu contains non-finite values");
+        }
+        if (!R_finite(sts_sig2[t]) || sts_sig2[t] <= 0.0) {
+            Rcpp::stop("sample_truncnorm_icdf: sts_sig2 must be finite and strictly positive");
+        }
+    }
     Rcpp::NumericMatrix samples(n_samp, TT);
 
     #pragma omp parallel
@@ -81,7 +129,20 @@ Rcpp::NumericMatrix sample_truncnorm_icdf(int n_samp, int TT, Rcpp::NumericVecto
             for (int i = 0; i < n_samp; ++i) {
                 double mean = sts_mu[t];
                 double sd = std_devs[t];
-                samples(i, t) = rtruncnorm(gen, mean, sd);
+                const double sample = rtruncnorm(gen, mean, sd);
+                if (!std::isfinite(sample) || sample < 0.0) {
+                    samples(i, t) = std::numeric_limits<double>::quiet_NaN();
+                } else {
+                    samples(i, t) = sample;
+                }
+            }
+        }
+    }
+
+    for (int t = 0; t < TT; ++t) {
+        for (int i = 0; i < n_samp; ++i) {
+            if (!R_finite(samples(i, t)) || samples(i, t) < 0.0) {
+                Rcpp::stop("sample_truncnorm_icdf: produced invalid truncated-normal draws");
             }
         }
     }

@@ -1,0 +1,12 @@
+{
+  "forecast_days": 28,
+  "q50_min": 1.1638,
+  "q50_max": 2.085,
+  "q95_min": 19.7245,
+  "q95_max": 29.1511,
+  "q05_min": -26.6057,
+  "q05_max": -16.8289,
+  "q05_negative_days": 28,
+  "q20_negative_days": 28,
+  "q35_negative_days": 24
+}

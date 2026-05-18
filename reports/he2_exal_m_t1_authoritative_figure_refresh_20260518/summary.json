@@ -1,0 +1,21 @@
+{
+  "authoritative_run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reference_relaunch_20260518/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep_postbridgefix_20260518",
+  "forecast_review_dir": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_forecast_window_review_20221225_authoritative_postbridgefix_20260518",
+  "location_review_dir": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_usgs_location_dynamics_review_20221225_authoritative_postbridgefix_20260518",
+  "data_cbind_matches_post_adapters": true,
+  "historical_rows_checked": 12995,
+  "max_abs_diff": {
+    "USGS": 0.0,
+    "GloFAS": 0.0,
+    "NWS3.0": 0.0
+  },
+  "tests": {
+    "pytest": "6 passed"
+  },
+  "run_manifest_stage_status": {
+    "post": "pass",
+    "validate": "pass",
+    "report": "pass"
+  },
+  "authoritative_wrapper": "/data/muscat_data/jaguir26/project1_ucsc_phd/scripts/render_exal_m_t1_authoritative_review_bundle.sh"
+}

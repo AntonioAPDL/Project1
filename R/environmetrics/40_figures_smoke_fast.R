@@ -753,17 +753,17 @@ smoke_build_multivar_synth_f <- function() {
     }
   }
 
-  forecast_exp_guard <- post_transform_loglog1p_array(
+  forecast_log1p_guard <- post_transform_internal_array_to_log1p(
     y_reps_f_new,
-    context = sprintf("%s.multivar.forecast_loglog1p", multivar_meta$model_id),
-    overflow_policy = "cap",
+    from_scale = post_resolve_analysis_scale_post_internal(),
+    context = sprintf("%s.multivar.forecast_internal", multivar_meta$model_id),
     report_path = post_cache_path(post_cache_file_name(
       "synth_multivar_forecast_exp_guard.txt",
       model_id = multivar_meta$model_id,
       transfer_mode = multivar_meta$transfer_mode
     ))
   )
-  synth_f <- synthesize_samples(forecast_exp_guard$values, q_probs)
+  synth_f <- synthesize_samples(forecast_log1p_guard$values, q_probs)
   for (t_idx in seq_len(ncol(synth_f))) {
     synth_f[, t_idx] <- sort_keep_na(synth_f[, t_idx])
   }
@@ -771,6 +771,115 @@ smoke_build_multivar_synth_f <- function() {
   saveRDS(y_reps_f_new, file = cache_draws_path)
   saveRDS(synth_f, file = cache_path)
   synth_f
+}
+
+smoke_build_multivar_forecast_location_summary <- function() {
+  meta <- smoke_multivar_meta()
+  cache_path <- post_cache_path(post_cache_file_name(
+    "multivar_forecast_usgs_location_summary_log1p.rds",
+    model_id = meta$model_id,
+    transfer_mode = meta$transfer_mode
+  ))
+  if (file.exists(cache_path)) {
+    cached <- tryCatch(readRDS(cache_path), error = function(e) NULL)
+    if (is.list(cached) && is.matrix(cached$mean_mat)) {
+      return(cached)
+    }
+  }
+
+  spec <- smoke_multivar_quantile_spec()
+  required_objs <- smoke_multivar_required_object_names(spec)
+  missing_objs <- required_objs[!vapply(required_objs, exists, logical(1), inherits = TRUE)]
+  if (length(missing_objs) > 0L) {
+    return(NULL)
+  }
+
+  q_probs <- spec$probs
+  q_labels <- sprintf("q%02d", as.integer(round(100 * q_probs)))
+  theta_objs <- lapply(spec$tags, function(tag) get(sprintf("new.theta.out_%s_exAL_synth_DISC", tag), inherits = TRUE))
+  horizon <- suppressWarnings(as.integer(get("ranges", inherits = TRUE)[[1L]]))
+  if (!is.finite(horizon) || horizon <= 0L) {
+    return(NULL)
+  }
+  mean_internal <- matrix(NA_real_, nrow = length(q_probs), ncol = horizon)
+  sd_internal <- matrix(NA_real_, nrow = length(q_probs), ncol = horizon)
+  ks <- -diff(c(as.integer(get("ranges", inherits = TRUE)), 0L))
+  J_use <- min(
+    suppressWarnings(as.integer(get("J", inherits = TRUE))),
+    length(get("FF_list", inherits = TRUE)),
+    min(vapply(theta_objs, function(obj) min(length(obj$sm_ens), length(obj$sC_ens)), integer(1)))
+  )
+  idx <- c(0L)
+
+  for (j in seq_len(J_use)) {
+    idx <- smoke_next_idx_block(idx, ks[J_use - j + 1L])
+    if (length(idx) == 0L) next
+    seg_cap <- min(vapply(theta_objs, function(obj) {
+      sm_j <- obj$sm_ens[[j]]
+      sC_j <- obj$sC_ens[[j]]
+      if (!is.numeric(sm_j) || is.null(dim(sm_j)) || length(dim(sm_j)) != 2L ||
+          !is.numeric(sC_j) || is.null(dim(sC_j)) || length(dim(sC_j)) != 3L) {
+        return(0L)
+      }
+      as.integer(min(ncol(sm_j), dim(sC_j)[3]))
+    }, integer(1)))
+    if (!is.finite(seg_cap) || seg_cap <= 0L) next
+
+    tt <- 1L
+    for (t_idx in idx[seq_len(min(length(idx), seg_cap))]) {
+      for (row_idx in seq_along(theta_objs)) {
+        Mu <- theta_objs[[row_idx]]$sm_ens[[j]][, tt]
+        Sigma <- theta_objs[[row_idx]]$sC_ens[[j]][, , tt]
+        proj <- smoke_project_state_gaussian(
+          Mu = Mu,
+          Sigma = Sigma,
+          ff_seg = get("FF_list", inherits = TRUE)[[j]],
+          seg_id = j,
+          eps_reg = 0,
+          context = sprintf("smoke_loc_qrow%d_seg%d_t%d", as.integer(row_idx), as.integer(j), as.integer(tt))
+        )
+        mean_internal[row_idx, t_idx] <- as.numeric(proj[["mean"]])
+        sd_internal[row_idx, t_idx] <- as.numeric(proj[["sd"]])
+      }
+      tt <- tt + 1L
+    }
+  }
+
+  mean_mat <- matrix(NA_real_, nrow = nrow(mean_internal), ncol = ncol(mean_internal))
+  q025_mat <- matrix(NA_real_, nrow = nrow(mean_internal), ncol = ncol(mean_internal))
+  q500_mat <- matrix(NA_real_, nrow = nrow(mean_internal), ncol = ncol(mean_internal))
+  q975_mat <- matrix(NA_real_, nrow = nrow(mean_internal), ncol = ncol(mean_internal))
+  for (row_idx in seq_len(nrow(mean_internal))) {
+    mean_mat[row_idx, ] <- as.numeric(post_transform_internal_to_log1p_mat(
+      matrix(mean_internal[row_idx, ], nrow = 1L),
+      from_scale = post_resolve_analysis_scale_post_internal(),
+      context = sprintf("%s.loc_forecast_mean.%s", meta$model_id, q_labels[[row_idx]])
+    ))
+    loc_band <- smoke_quantile_band_from_moments(
+      mean_vec = mean_internal[row_idx, ],
+      var_vec = sd_internal[row_idx, ]^2,
+      probs = c(0.025, 0.5, 0.975),
+      transform = "internal_to_log1p",
+      context = sprintf("%s.loc_forecast_band.%s", meta$model_id, q_labels[[row_idx]])
+    )
+    q025_mat[row_idx, ] <- loc_band[1L, ]
+    q500_mat[row_idx, ] <- loc_band[2L, ]
+    q975_mat[row_idx, ] <- loc_band[3L, ]
+  }
+
+  summary <- list(
+    model_id = meta$model_id,
+    transfer_mode = meta$transfer_mode,
+    dates = as.character(smoke_forecast_dates(horizon)),
+    q_labels = q_labels,
+    q_probs = as.numeric(q_probs),
+    mean_mat = mean_mat,
+    q025_mat = q025_mat,
+    q500_mat = q500_mat,
+    q975_mat = q975_mat
+  )
+  saveRDS(summary, cache_path)
+  summary
 }
 
 smoke_build_ndlm_main_raw_draws <- function() {
@@ -1065,9 +1174,10 @@ smoke_build_multivar_hist_synth <- function() {
     for (k in seq_len(ncol(y_hist))) {
       y_hist[, k] <- sort_keep_na(y_hist[, k])
     }
-    y_hist_cube[i, , ] <- post_transform_loglog1p_to_log1p_mat(
+    y_hist_cube[i, , ] <- post_transform_internal_to_log1p_mat(
       y_hist,
-      context = sprintf("%s.multivar.hist_loglog1p.q%s", meta$model_id, q_tag)
+      from_scale = post_resolve_analysis_scale_post_internal(),
+      context = sprintf("%s.multivar.hist_internal.q%s", meta$model_id, q_tag)
     )
   }
 
@@ -1076,6 +1186,102 @@ smoke_build_multivar_hist_synth <- function() {
   saveRDS(synth_hist, hist_cache)
   saveRDS(hist_q, hist_q_cache)
   list(sample_mat = synth_hist, quantiles = hist_q, dates = hist_dates_all[hist_idx])
+}
+
+smoke_build_multivar_hist_location_summary <- function() {
+  meta <- smoke_multivar_meta()
+  cache_path <- post_cache_path(post_cache_file_name(
+    "multivar_hist_usgs_location_summary_log1p.rds",
+    model_id = meta$model_id,
+    transfer_mode = meta$transfer_mode
+  ))
+  if (file.exists(cache_path)) {
+    cached <- tryCatch(readRDS(cache_path), error = function(e) NULL)
+    if (is.list(cached) && is.matrix(cached$mean_mat)) {
+      return(cached)
+    }
+  }
+
+  hist_dates_all <- smoke_resolve_hist_dates()
+  hist_idx <- which(hist_dates_all >= as.Date(PLOT_START_DATE) & hist_dates_all <= as.Date(CUTOFF_DATE))
+  if (length(hist_idx) <= 0L) {
+    return(NULL)
+  }
+
+  spec <- smoke_multivar_quantile_spec()
+  q_tags <- spec$tags
+  q_probs <- spec$probs
+  q_labels <- sprintf("q%02d", as.integer(round(100 * q_probs)))
+  required_objs <- c("FF", unlist(lapply(q_tags, function(tag) {
+    c(
+      sprintf("samp.theta_%s_exAL_synth_DISC", tag),
+      sprintf("samp.sts_%s_exAL_synth_DISC", tag),
+      sprintf("samp.gamma_%s_exAL_synth_DISC", tag),
+      sprintf("samp.sigma_%s_exAL_synth_DISC", tag)
+    )
+  }), use.names = FALSE))
+  if (any(!vapply(required_objs, exists, logical(1), inherits = TRUE))) {
+    return(NULL)
+  }
+
+  n_samp <- min(vapply(q_tags, function(q) {
+    theta_obj <- get(sprintf("samp.theta_%s_exAL_synth_DISC", q), inherits = TRUE)
+    dim(theta_obj$samp_theta)[3]
+  }, integer(1)))
+  if (!is.finite(n_samp) || n_samp <= 1L) {
+    return(NULL)
+  }
+
+  FF_use <- get("FF", inherits = TRUE)
+  mean_mat <- matrix(NA_real_, nrow = length(q_tags), ncol = length(hist_idx))
+  q025_mat <- matrix(NA_real_, nrow = length(q_tags), ncol = length(hist_idx))
+  q500_mat <- matrix(NA_real_, nrow = length(q_tags), ncol = length(hist_idx))
+  q975_mat <- matrix(NA_real_, nrow = length(q_tags), ncol = length(hist_idx))
+
+  for (i in seq_along(q_tags)) {
+    q_tag <- q_tags[[i]]
+    p0 <- q_probs[[i]]
+    theta_obj <- get(sprintf("samp.theta_%s_exAL_synth_DISC", q_tag), inherits = TRUE)
+    th <- theta_obj$samp_theta[, , seq_len(n_samp), drop = FALSE]
+    sts_arr <- get(sprintf("samp.sts_%s_exAL_synth_DISC", q_tag), inherits = TRUE)[1L, hist_idx, seq_len(n_samp), drop = FALSE]
+    stj <- matrix(sts_arr, nrow = length(hist_idx), ncol = n_samp)
+    gamj <- as.numeric(get(sprintf("samp.gamma_%s_exAL_synth_DISC", q_tag), inherits = TRUE)[1L, seq_len(n_samp)])
+    sigj <- as.numeric(get(sprintf("samp.sigma_%s_exAL_synth_DISC", q_tag), inherits = TRUE)[1L, seq_len(n_samp)])
+
+    xb <- matrix(NA_real_, nrow = length(hist_idx), ncol = n_samp)
+    for (k in seq_along(hist_idx)) {
+      t_idx <- hist_idx[[k]]
+      th_t <- matrix(th[, t_idx, ], nrow = dim(th)[1], ncol = n_samp)
+      p_use <- min(nrow(FF_use), nrow(th_t))
+      xb[k, ] <- as.vector(t(FF_use[seq_len(p_use), 1L, t_idx, drop = FALSE][, 1L, 1L]) %*% th_t[seq_len(p_use), , drop = FALSE])
+    }
+
+    mu <- xb + sweep(stj, 2L, sigj * abs(gamj) * C_fn(p0, gamj), `*`)
+    mu_log1p <- post_transform_internal_to_log1p_mat(
+      t(mu),
+      from_scale = post_resolve_analysis_scale_post_internal(),
+      context = sprintf("%s.loc_hist.%s", meta$model_id, q_labels[[i]])
+    )
+    mean_mat[i, ] <- colMeans(mu_log1p, na.rm = TRUE)
+    q_loc <- smoke_matrix_quantiles(mu_log1p, probs = c(0.025, 0.5, 0.975))
+    q025_mat[i, ] <- q_loc[1L, ]
+    q500_mat[i, ] <- q_loc[2L, ]
+    q975_mat[i, ] <- q_loc[3L, ]
+  }
+
+  summary <- list(
+    model_id = meta$model_id,
+    transfer_mode = meta$transfer_mode,
+    dates = as.character(hist_dates_all[hist_idx]),
+    q_labels = q_labels,
+    q_probs = as.numeric(q_probs),
+    mean_mat = mean_mat,
+    q025_mat = q025_mat,
+    q500_mat = q500_mat,
+    q975_mat = q975_mat
+  )
+  saveRDS(summary, cache_path)
+  summary
 }
 
 smoke_build_multivar_gamma_sigma_quantiles <- function() {
@@ -1247,7 +1453,7 @@ smoke_quantile_band_from_moments <- function(
   mean_vec,
   var_vec,
   probs = c(0.05, 0.50, 0.95),
-  transform = c("identity", "loglog1p_to_log1p"),
+  transform = c("identity", "internal_to_log1p", "loglog1p_to_log1p"),
   context = "smoke.quantile_band"
 ) {
   transform <- match.arg(transform)
@@ -1257,8 +1463,12 @@ smoke_quantile_band_from_moments <- function(
   z <- stats::qnorm(probs)
   latent <- matrix(mean_vec, nrow = length(probs), ncol = length(mean_vec), byrow = TRUE) +
     outer(z, sd_vec)
-  if (identical(transform, "loglog1p_to_log1p")) {
-    return(post_transform_loglog1p_to_log1p_mat(latent, context = context))
+  if (!identical(transform, "identity")) {
+    return(post_transform_internal_to_log1p_mat(
+      latent,
+      from_scale = post_resolve_analysis_scale_post_internal(),
+      context = context
+    ))
   }
   latent
 }
@@ -2368,6 +2578,8 @@ profile_section("figures_smoke_fast.comparison_figures", {
       likelihood_mode = crps_multivar_likelihood_mode,
       transfer_mode = crps_transfer_mode
     )
+    invisible(smoke_build_multivar_hist_location_summary())
+    invisible(smoke_build_multivar_forecast_location_summary())
     hist_bundle <- smoke_build_multivar_hist_synth()
     fc_samples <- smoke_build_multivar_synth_f()
     if (!is.null(hist_bundle) && !is.null(fc_samples)) {
@@ -2447,7 +2659,7 @@ profile_section("figures_smoke_fast.comparison_figures", {
           fc_dates = fc_dates,
           fc_obs = smoke_usgs_log1p_by_dates(fc_dates),
           fc_q = fc_q,
-          note = "plot_scale=log1p_cms; historical_band_from_exps_vars_loglog1p"
+          note = "plot_scale=log1p_cms; historical_band_from_exps_vars_internal_scale_aware"
         )
       }
     }

@@ -118,10 +118,10 @@ post_transform_latent_log1p_cap <- function(arr, context, report_name = NULL) {
   if (!is.null(report_name) && nzchar(report_name)) {
     report_path <- file.path(OUT_DIR, report_name)
   }
-  post_transform_loglog1p_array(
+  post_transform_internal_array_to_log1p(
     arr,
-    context = paste0(context, ".loglog1p"),
-    overflow_policy = "cap",
+    from_scale = post_resolve_analysis_scale_post_internal(),
+    context = paste0(context, ".internal"),
     report_path = report_path
   )$values
 }

@@ -1,0 +1,65 @@
+selection:
+  cutoffs:
+    - '20211221'
+  families:
+    - exdqlm_multivar_keep
+
+resources:
+  fit_parallel_workers: 2
+  mc_cores: 2
+
+overrides:
+  row_config_patches:
+    - family: exdqlm_multivar_keep
+      manuscript_label: exAL-M-T1
+      config_patch:
+        fit:
+          exdqlm_multivar:
+            gamma_sigma:
+              quantile_overrides:
+                q50:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+                q65:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+    - cutoff: '20211221'
+      family: exdqlm_multivar_keep
+      manuscript_label: exAL-M-T1
+      config_patch:
+        run:
+          seed: 20211221
+        fit:
+          quantiles:
+            - 0.50
+            - 0.65
+          exdqlm_multivar:
+            legacy:
+              n_samp: 8
+              sampling_diagnostics:
+                heartbeat_enabled: true
+                heartbeat_seconds: 5
+                phase_markers_enabled: true
+                walltime_seconds: 300
+                member_walltime_seconds: 20
+            gamma_sigma:
+              quantile_overrides:
+                q50:
+                  freeze_target: states
+                  terminal_sampling_guard:
+                    mode: fail_fast
+                    min_guard_count: 1
+                    max_guard_lag_iters: 0
+                    require_frozen: true
+                  stabilization:
+                    median_state_hold_after_guard_iters: 0
+                    median_state_blend_alpha: 0.5
+                    median_cov_blend_alpha: 0.5
+                    median_max_abs_gamma_step: 0.075
+                    median_max_abs_log_sigma_step: 0.15

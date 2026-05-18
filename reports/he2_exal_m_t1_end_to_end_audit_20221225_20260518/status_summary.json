@@ -1,0 +1,16 @@
+{
+  "status": {
+    "representative_cutoff_selected": "done",
+    "post_scale_bug_identified": "done",
+    "post_scale_bug_fixed_for_representative_cutoff": "done",
+    "historical_slice_review_infrastructure": "done",
+    "history_only_renderer_bug_fixed": "done",
+    "issue_confirmed_in_history_slices": "done",
+    "scale_contract_audit": "done",
+    "pre_fit_lineage_audit": "done",
+    "object_semantics_decomposition": "done",
+    "historical_window_comparison_audit": "done",
+    "post_stage_contract_audit": "done",
+    "final_diagnosis_memo": "done"
+  }
+}

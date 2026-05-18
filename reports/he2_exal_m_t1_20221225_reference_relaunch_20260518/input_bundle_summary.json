@@ -1,0 +1,17 @@
+{
+  "bundle_run_id": "20260510_publication_shared_r01",
+  "bundle_kind": "multimodel_v8_histfix_long_history",
+  "cutoff_date": "2022-12-25",
+  "data_start": "1987-05-29",
+  "glofas_source_id": "glofas_hist_v31_lisflood_cons",
+  "glofas_product_id": "hist_v31_lisflood_cons",
+  "nws_primary_source_id": "nws_retro_v21",
+  "nws_tail_fill_source_id": "nws_retro_v30",
+  "nws_tail_fill_start": "2021-01-01",
+  "nws_selection_rule": "use v2.1 through its natural coverage end; fill subsequent cutoff-era dates from v3.0 daily retrospective",
+  "usgs_daily_source_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=usgs_daily_flow/full_runs/source_native_tranche1_20260406T194500Z/outputs/usgs_daily_flow_11160500.csv",
+  "forecast_member_nws": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20221225_v8_epsTT_l1/inputs/shared/forecats_bundle/nws_forecast.csv",
+  "forecast_member_glofas": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs/multimodel_20221225_v8_epsTT_l1/inputs/shared/forecats_bundle/glofas_forecast.csv",
+  "plot_scale": "log1p_cms",
+  "display_scale": "log1p_cms"
+}

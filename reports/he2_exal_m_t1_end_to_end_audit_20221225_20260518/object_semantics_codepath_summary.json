@@ -1,0 +1,9 @@
+{
+  "audit_id": "he2_exal_m_t1_object_semantics_codepath_audit_20221225_20260518",
+  "row_count": 8,
+  "main_interpretation": [
+    "location-summary caches are not the same object as predictive quantile exports",
+    "history and forecast predictive synthesis both pass through predictive draw objects before quantile export",
+    "the representative scale bug was in the forecast transform guard path, not in the conceptual distinction between location summaries and predictive samples"
+  ]
+}

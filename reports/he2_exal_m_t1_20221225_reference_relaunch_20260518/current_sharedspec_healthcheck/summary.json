@@ -1,0 +1,18 @@
+{
+  "label": "exAL-M-T1",
+  "family": "exdqlm_multivar_keep",
+  "cutoff_date": "2022-12-25",
+  "run_id": "multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+  "run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+  "healthcheck_bundle": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_20221225_reference_relaunch_20260518/current_sharedspec_healthcheck",
+  "run_validation_status": "pass",
+  "report_validation_status": "pass",
+  "post_contract_status": true,
+  "representative_mean_crps": "162225957192096.50",
+  "representative_input_health_status": "pass",
+  "figure_file_count": 6,
+  "tabular_file_count": 12,
+  "per_quantile_count": 7,
+  "trace_note": "No dedicated per-quantile trace PNGs are emitted; use All_ELBOS_DISC plus per-quantile fit/sampling logs.",
+  "fit_state_rdata_present_any": false
+}

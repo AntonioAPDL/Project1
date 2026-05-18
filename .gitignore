@@ -140,6 +140,7 @@ repro/quarantine/cleanup_runs/
 repro/quarantine/failed_runs/
 repro/glofas_probe_runs/
 repro/glofas_coverage_scan_runs/
+repro/audit_local/
 
 # Uppercase spreadsheet exports
 *.CSV

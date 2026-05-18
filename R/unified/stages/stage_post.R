@@ -541,6 +541,15 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_RUN_ID = run_id,
     UNIFIED_FIT_OUTPUTS_SOURCE_ROOT = fit_outputs_root_abs,
     UNIFIED_POST_CACHE_DIR = normalizePath(post_cache_dir, mustWork = FALSE),
+    UNIFIED_LEGACY_FIT_INPUT_SCALE = as.character(cfg$scale_contract$legacy_fit_input_scale),
+    UNIFIED_ANALYSIS_SCALE_FIT_INTERNAL = as.character(cfg$scale_contract$analysis_scale_fit_internal),
+    UNIFIED_LEGACY_POST_INPUT_SCALE = as.character(cfg$scale_contract$legacy_post_input_scale),
+    UNIFIED_ANALYSIS_SCALE_POST_INTERNAL = as.character(cfg$scale_contract$analysis_scale_post_internal),
+    UNIFIED_TRANSFORM_POLICY = as.character(unified_get(
+      cfg,
+      c("scale_contract", "transform_policy"),
+      default = ""
+    )),
     UNIFIED_REPRO_MODE = repro_mode,
     UNIFIED_REQUIRE_RUNSCOPED_POST = if (strict_repro) "TRUE" else "FALSE",
     UNIFIED_ALLOW_LEGACY_POST_FALLBACK = if (allow_legacy_root_fallback) "TRUE" else "FALSE",

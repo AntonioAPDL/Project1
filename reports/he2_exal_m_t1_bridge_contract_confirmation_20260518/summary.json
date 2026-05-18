@@ -1,0 +1,19 @@
+{
+  "audit_focus": "bridge_contract_confirmation",
+  "representative_family": "exAL-M-T1",
+  "cutoff_date": "2022-12-25",
+  "fit_path_status": "confirmed_log1p_identity_for_adapted_retros",
+  "post_path_status": "patched_to_convert_from_legacy_input_scale_to_analysis_internal_scale",
+  "synthetic_regression_tests": "passed_2_of_2",
+  "representative_post_replay_check": {
+    "USGS_max_abs_diff_vs_post_adapter": 0.0,
+    "GloFAS_max_abs_diff_vs_post_adapter": 0.0,
+    "NWS3.0_max_abs_diff_vs_post_adapter": 0.0
+  },
+  "rerun_launch": {
+    "status": "started",
+    "config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reference_relaunch_20260518/control/generated_configs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep_bridgefix_20260518.yaml",
+    "run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reference_relaunch_20260518/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep_bridgefix_20260518",
+    "current_known_stage": "data_prep_shared"
+  }
+}

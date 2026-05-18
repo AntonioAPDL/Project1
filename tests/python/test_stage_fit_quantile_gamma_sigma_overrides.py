@@ -167,6 +167,96 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
         self.assertEqual(out['p80_state_guard'], 'FALSE')
         self.assertEqual(out['p80_state_ratio'], '10')
 
+    def test_sampling_diagnostics_and_terminal_guard_validate_and_resolve(self) -> None:
+        script = textwrap.dedent(
+            f'''
+            source("{(REPO_ROOT / 'R' / 'unified' / 'config.R').as_posix()}")
+            source("{(REPO_ROOT / 'R' / 'unified' / 'stages' / 'stage_fit.R').as_posix()}")
+            tmp_root <- file.path(tempdir(), "sampling_diag_cfg")
+            dir.create(tmp_root, recursive = TRUE, showWarnings = FALSE)
+            parameters_path <- file.path(tmp_root, "dummy_parameters.csv")
+            retros_path <- file.path(tmp_root, "dummy_retros.csv")
+            nws_path <- file.path(tmp_root, "dummy_nws.csv")
+            glofas_path <- file.path(tmp_root, "dummy_glofas.csv")
+            bundle_path <- file.path(tmp_root, "dummy_bundle")
+            file.create(parameters_path, retros_path, nws_path, glofas_path)
+            dir.create(bundle_path, recursive = TRUE, showWarnings = FALSE)
+            cfg <- unified_deep_merge(
+              unified_config_defaults(),
+              list(
+                inputs = list(
+                  fit = list(
+                    parameters_path = parameters_path,
+                    retros_path = retros_path,
+                    nws_forecast_path = nws_path,
+                    glofas_forecast_path = glofas_path
+                  ),
+                  forecats = list(
+                    existing_bundle_path = bundle_path
+                  )
+                ),
+                fit = list(
+                  exdqlm_multivar = list(
+                    legacy = list(
+                      sampling_diagnostics = list(
+                        heartbeat_enabled = TRUE,
+                        heartbeat_seconds = 30L,
+                        phase_markers_enabled = TRUE,
+                        walltime_seconds = 900L
+                      )
+                    ),
+                    gamma_sigma = list(
+                      terminal_sampling_guard = list(
+                        mode = "fail_fast",
+                        min_guard_count = 2L,
+                        max_guard_lag_iters = 1L,
+                        require_frozen = TRUE
+                      ),
+                      quantile_overrides = list(
+                        q50 = list(
+                          terminal_sampling_guard = list(
+                            min_guard_count = 3L
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+            errs <- unified_validate_config(cfg)
+            p50 <- unified_resolve_gamma_sigma_policy(cfg, 'exdqlm_multivar', q = 0.50)
+            p80 <- unified_resolve_gamma_sigma_policy(cfg, 'exdqlm_multivar', q = 0.80)
+            cat(sprintf('err_count=%s\\n', length(errs)))
+            cat(sprintf('diag_heartbeat=%s\\n', cfg$fit$exdqlm_multivar$legacy$sampling_diagnostics$heartbeat_enabled))
+            cat(sprintf('diag_walltime=%s\\n', cfg$fit$exdqlm_multivar$legacy$sampling_diagnostics$walltime_seconds))
+            cat(sprintf('p50_guard_mode=%s\\n', p50$terminal_sampling_guard$mode))
+            cat(sprintf('p50_guard_min=%s\\n', p50$terminal_sampling_guard$min_guard_count))
+            cat(sprintf('p80_guard_min=%s\\n', p80$terminal_sampling_guard$min_guard_count))
+            cat(sprintf('p80_guard_require_frozen=%s\\n', p80$terminal_sampling_guard$require_frozen))
+            '''
+        )
+        proc = subprocess.run(
+            ['Rscript', '--vanilla', '-e', script],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stdout + '\n' + proc.stderr)
+        out = {}
+        for line in proc.stdout.splitlines():
+            if '=' in line:
+                k, v = line.split('=', 1)
+                out[k.strip()] = v.strip()
+        self.assertEqual(out['err_count'], '0')
+        self.assertEqual(out['diag_heartbeat'], 'TRUE')
+        self.assertEqual(out['diag_walltime'], '900')
+        self.assertEqual(out['p50_guard_mode'], 'fail_fast')
+        self.assertEqual(out['p50_guard_min'], '3')
+        self.assertEqual(out['p80_guard_min'], '2')
+        self.assertEqual(out['p80_guard_require_frozen'], 'TRUE')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -7,7 +7,7 @@ import shutil
 from collections import OrderedDict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import yaml
 
@@ -276,7 +276,49 @@ def render_quantile_label(q: float) -> str:
     return f'{int(round(float(q) * 100)):02d}'
 
 
-def reset_campaign_state(matrix_dir: Path, artifact_root: Path, reset_tag: str | None = None) -> dict[str, Any]:
+def _normalize_selector(values: Iterable[str] | None) -> set[str]:
+    if not values:
+        return set()
+    out: set[str] = set()
+    for value in values:
+        token = str(value).strip()
+        if token:
+            out.add(token)
+    return out
+
+
+def _selected_plan_rows(
+    plan_rows: list[dict[str, str]],
+    *,
+    cutoffs: Iterable[str] | None = None,
+    run_ids: Iterable[str] | None = None,
+) -> list[dict[str, str]]:
+    selected_cutoffs = {token.zfill(8) for token in _normalize_selector(cutoffs)}
+    selected_run_ids = _normalize_selector(run_ids)
+    if not selected_cutoffs and not selected_run_ids:
+        return list(plan_rows)
+    selected: list[dict[str, str]] = []
+    for row in plan_rows:
+        cutoff = str(row.get('cutoff', '')).strip().zfill(8)
+        run_id = str(row.get('run_id', '')).strip()
+        if selected_cutoffs and cutoff in selected_cutoffs:
+            selected.append(row)
+            continue
+        if selected_run_ids and run_id in selected_run_ids:
+            selected.append(row)
+    if not selected:
+        raise ValueError('no matrix_plan rows matched the requested cutoffs/run_ids')
+    return selected
+
+
+def reset_campaign_state(
+    matrix_dir: Path,
+    artifact_root: Path,
+    reset_tag: str | None = None,
+    *,
+    cutoffs: Iterable[str] | None = None,
+    run_ids: Iterable[str] | None = None,
+) -> dict[str, Any]:
     matrix_dir = matrix_dir.resolve()
     artifact_root = artifact_root.resolve()
     plan_path = matrix_dir / 'matrix_plan.csv'
@@ -284,17 +326,27 @@ def reset_campaign_state(matrix_dir: Path, artifact_root: Path, reset_tag: str |
         raise FileNotFoundError(f'matrix_plan.csv not found: {plan_path}')
 
     plan_rows = read_csv_rows(plan_path)
+    selected_rows = _selected_plan_rows(plan_rows, cutoffs=cutoffs, run_ids=run_ids)
     reset_tag = reset_tag or utc_stamp()
     archive_root = ensure_dir(matrix_dir.parent / 'restart_resets' / reset_tag)
     archived_runs_root = ensure_dir(archive_root / 'runs')
     archived_compares_root = ensure_dir(archive_root / 'compare_outputs')
+    archived_run_logs_root = ensure_dir(archive_root / 'run_logs')
 
     summary: dict[str, Any] = {
         'reset_tag': reset_tag,
         'matrix_dir': str(matrix_dir),
         'artifact_root': str(artifact_root),
         'archive_root': str(archive_root),
+        'selected_cutoffs': sorted({str(row.get('cutoff', '')).zfill(8) for row in selected_rows}),
+        'selected_run_ids': sorted({str(row.get('run_id', '')).strip() for row in selected_rows}),
+        'preserved_run_ids': sorted({
+            str(row.get('run_id', '')).strip()
+            for row in plan_rows
+            if row not in selected_rows
+        }),
         'archived_runs': [],
+        'archived_run_logs': [],
         'archived_compare_outputs': [],
         'archived_files': [],
     }
@@ -324,13 +376,19 @@ def reset_campaign_state(matrix_dir: Path, artifact_root: Path, reset_tag: str |
         summary['archived_files'].append(str(dest))
 
     seen_compares: set[str] = set()
-    for row in plan_rows:
+    run_logs_dir = matrix_dir / 'run_logs'
+    for row in selected_rows:
         run_id = row['run_id']
         run_dir = artifact_root / 'runs' / run_id
         if run_dir.exists():
             dest = archived_runs_root / run_id
             archive_path(run_dir, dest)
             summary['archived_runs'].append({'run_id': run_id, 'archived_to': str(dest)})
+        run_log = run_logs_dir / f'{run_id}.log'
+        if run_log.exists():
+            dest = archived_run_logs_root / run_log.name
+            archive_path(run_log, dest)
+            summary['archived_run_logs'].append({'run_id': run_id, 'archived_to': str(dest)})
 
         compare_outdir = str(row.get('compare_outdir', '')).strip()
         if compare_outdir and compare_outdir not in seen_compares:
@@ -341,6 +399,14 @@ def reset_campaign_state(matrix_dir: Path, artifact_root: Path, reset_tag: str |
                 archive_path(compare_dir, dest)
                 summary['archived_compare_outputs'].append({'compare_outdir': compare_outdir, 'archived_to': str(dest)})
 
+    try:
+        from check_multimodel_v8_matrix_health import build_status
+
+        df = build_status(matrix_dir, artifact_root=artifact_root)
+        df.to_csv(status_path, index=False)
+    except Exception:
+        initialize_matrix_status(status_path)
+
     summary_path = archive_root / 'reset_summary.json'
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     md_lines = [
@@ -349,7 +415,10 @@ def reset_campaign_state(matrix_dir: Path, artifact_root: Path, reset_tag: str |
         f'- reset_tag: `{reset_tag}`',
         f'- matrix_dir: `{matrix_dir}`',
         f'- artifact_root: `{artifact_root}`',
+        f'- selected_cutoffs: `{", ".join(summary["selected_cutoffs"]) if summary["selected_cutoffs"] else "all"}`',
+        f'- selected_run_ids: `{", ".join(summary["selected_run_ids"]) if summary["selected_run_ids"] else "all"}`',
         f'- archived_runs: `{len(summary["archived_runs"])}`',
+        f'- archived_run_logs: `{len(summary["archived_run_logs"])}`',
         f'- archived_compare_outputs: `{len(summary["archived_compare_outputs"])}`',
         '',
         '## Archived Runs',
@@ -357,6 +426,12 @@ def reset_campaign_state(matrix_dir: Path, artifact_root: Path, reset_tag: str |
     ]
     if summary['archived_runs']:
         for item in summary['archived_runs']:
+            md_lines.append(f"- `{item['run_id']}` -> `{item['archived_to']}`")
+    else:
+        md_lines.append('- none')
+    md_lines.extend(['', '## Archived Run Logs', ''])
+    if summary['archived_run_logs']:
+        for item in summary['archived_run_logs']:
             md_lines.append(f"- `{item['run_id']}` -> `{item['archived_to']}`")
     else:
         md_lines.append('- none')

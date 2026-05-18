@@ -296,6 +296,164 @@ post_transform_loglog1p_to_log1p_mat <- function(sample_mat, context = "sample_m
   )$values
 }
 
+post_resolve_analysis_scale_post_internal <- local({
+  cached <- NULL
+
+  function(default = "log1p_cms") {
+    if (!is.null(cached)) {
+      return(cached)
+    }
+
+    env_scale <- Sys.getenv("UNIFIED_ANALYSIS_SCALE_POST_INTERNAL", "")
+    if (nzchar(env_scale)) {
+      cached <<- env_scale
+      return(cached)
+    }
+
+    opt_scale <- getOption("unified.analysis_scale_post_internal", NULL)
+    if (!is.null(opt_scale) && nzchar(as.character(opt_scale))) {
+      cached <<- as.character(opt_scale)
+      return(cached)
+    }
+
+    run_root <- Sys.getenv("UNIFIED_RUN_ROOT", "")
+    resolved_config_path <- if (nzchar(run_root)) file.path(run_root, "resolved_config.yaml") else ""
+    if (nzchar(resolved_config_path) && file.exists(resolved_config_path) && requireNamespace("yaml", quietly = TRUE)) {
+      cfg <- tryCatch(yaml::read_yaml(resolved_config_path), error = function(e) NULL)
+      if (is.list(cfg) && is.list(cfg$scale_contract)) {
+        cfg_scale <- as.character(cfg$scale_contract$analysis_scale_post_internal %||% "")
+        if (nzchar(cfg_scale)) {
+          cached <<- cfg_scale
+          return(cached)
+        }
+      }
+    }
+
+    cached <<- as.character(default)
+    cached
+  }
+})
+
+post_write_scale_transform_report <- function(summary, report_path = NULL) {
+  if (is.null(report_path) || !nzchar(report_path)) {
+    return(invisible(FALSE))
+  }
+  dir.create(dirname(report_path), recursive = TRUE, showWarnings = FALSE)
+  lines <- c(
+    sprintf("context=%s", as.character(summary$context %||% "")),
+    sprintf("from_scale=%s", as.character(summary$from_scale %||% "")),
+    sprintf("to_scale=%s", as.character(summary$to_scale %||% "")),
+    sprintf("transform=%s", as.character(summary$transform %||% "")),
+    sprintf("n_input_nonfinite=%d", as.integer(summary$n_input_nonfinite %||% 0L)),
+    sprintf("n_output_nonfinite=%d", as.integer(summary$n_output_nonfinite %||% 0L)),
+    sprintf("min_input=%s", format(as.numeric(summary$min_input %||% NA_real_), digits = 15)),
+    sprintf("max_input=%s", format(as.numeric(summary$max_input %||% NA_real_), digits = 15)),
+    sprintf("min_output=%s", format(as.numeric(summary$min_output %||% NA_real_), digits = 15)),
+    sprintf("max_output=%s", format(as.numeric(summary$max_output %||% NA_real_), digits = 15))
+  )
+  writeLines(lines, con = report_path, useBytes = TRUE)
+  invisible(TRUE)
+}
+
+post_transform_internal_array_to_log1p <- function(
+  arr,
+  from_scale = NULL,
+  context = "internal_array",
+  report_path = NULL
+) {
+  if (!is.numeric(arr) || is.null(dim(arr)) || length(dim(arr)) < 2L) {
+    stop(sprintf("[%s_SHAPE] expected a numeric array with at least 2 dimensions.", context), call. = FALSE)
+  }
+
+  from_scale <- as.character(from_scale %||% post_resolve_analysis_scale_post_internal())
+  if (exists("unified_assert_known_scale", inherits = TRUE)) {
+    unified_assert_known_scale(from_scale, "from_scale")
+  }
+
+  finite_mask <- is.finite(arr)
+  n_input_nonfinite <- sum(!finite_mask)
+  if (n_input_nonfinite > 0L) {
+    stop(sprintf("[%s_NONFINITE] input contains %d non-finite values.", context, as.integer(n_input_nonfinite)), call. = FALSE)
+  }
+
+  min_input <- min(arr[finite_mask], na.rm = TRUE)
+  max_input <- max(arr[finite_mask], na.rm = TRUE)
+
+  if (identical(from_scale, "log1p_cms")) {
+    out <- arr
+    summary <- list(
+      context = as.character(context),
+      from_scale = from_scale,
+      to_scale = "log1p_cms",
+      transform = "identity",
+      n_input_nonfinite = as.integer(n_input_nonfinite),
+      n_output_nonfinite = 0L,
+      min_input = as.numeric(min_input),
+      max_input = as.numeric(max_input),
+      min_output = as.numeric(min_input),
+      max_output = as.numeric(max_input)
+    )
+    post_write_scale_transform_report(summary, report_path)
+    return(list(values = out, summary = summary))
+  }
+
+  if (identical(from_scale, "log_log1p_cms")) {
+    out <- post_transform_loglog1p_array(
+      arr,
+      context = paste0(context, ".loglog1p"),
+      overflow_policy = "cap",
+      report_path = report_path
+    )
+    out$summary$from_scale <- from_scale
+    out$summary$to_scale <- "log1p_cms"
+    out$summary$transform <- "exp"
+    return(out)
+  }
+
+  if (!exists("unified_convert_scale", inherits = TRUE)) {
+    stop(sprintf("[%s_SCALE_HELPER] unified_convert_scale is required for from_scale=%s.", context, from_scale), call. = FALSE)
+  }
+
+  out <- array(
+    unified_convert_scale(as.numeric(arr), from_scale = from_scale, to_scale = "log1p_cms"),
+    dim = dim(arr),
+    dimnames = dimnames(arr)
+  )
+  n_output_nonfinite <- sum(!is.finite(out))
+  if (n_output_nonfinite > 0L) {
+    stop(sprintf("[%s_OUTPUT_NONFINITE] converted output contains %d non-finite values.", context, as.integer(n_output_nonfinite)), call. = FALSE)
+  }
+  summary <- list(
+    context = as.character(context),
+    from_scale = from_scale,
+    to_scale = "log1p_cms",
+    transform = sprintf("unified_convert_scale(%s->log1p_cms)", from_scale),
+    n_input_nonfinite = as.integer(n_input_nonfinite),
+    n_output_nonfinite = as.integer(n_output_nonfinite),
+    min_input = as.numeric(min_input),
+    max_input = as.numeric(max_input),
+    min_output = as.numeric(min(out[is.finite(out)], na.rm = TRUE)),
+    max_output = as.numeric(max(out[is.finite(out)], na.rm = TRUE))
+  )
+  post_write_scale_transform_report(summary, report_path)
+  list(values = out, summary = summary)
+}
+
+post_transform_internal_to_log1p_mat <- function(sample_mat, from_scale = NULL, context = "sample_mat", report_path = NULL) {
+  if (!is.matrix(sample_mat)) {
+    sample_mat <- as.matrix(sample_mat)
+  }
+  if (!is.numeric(sample_mat) || length(dim(sample_mat)) != 2L) {
+    stop(sprintf("[%s_SHAPE] sample_mat must be a numeric 2D matrix.", context), call. = FALSE)
+  }
+  post_transform_internal_array_to_log1p(
+    sample_mat,
+    from_scale = from_scale,
+    context = context,
+    report_path = report_path
+  )$values
+}
+
 post_extract_ndlm_mean_sample_mat <- function(ndlm_raw, context = "ndlm.mean_sample_mat") {
   sample_mat <- NULL
   if (is.numeric(ndlm_raw) && !is.null(dim(ndlm_raw)) && length(dim(ndlm_raw)) == 3L &&

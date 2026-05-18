@@ -316,6 +316,13 @@ DISC_STRICT_CONTRACTS <- disc_env_flag(
 )
 
 disc_blend_numeric_like <- function(current, candidate, alpha, label = "value") {
+  disc_dim_string <- function(x) {
+    dims <- dim(x)
+    if (is.null(dims)) {
+      return(sprintf("len=%d", length(x)))
+    }
+    paste(dims, collapse = "x")
+  }
   if (!is.finite(alpha) || alpha >= 1) {
     return(candidate)
   }
@@ -325,7 +332,15 @@ disc_blend_numeric_like <- function(current, candidate, alpha, label = "value") 
   current_arr <- as.array(current)
   candidate_arr <- as.array(candidate)
   if (!identical(dim(current_arr), dim(candidate_arr))) {
-    stop(sprintf("blend dim mismatch for %s", label), call. = FALSE)
+    stop(
+      sprintf(
+        "blend dim mismatch for %s current=%s candidate=%s",
+        label,
+        disc_dim_string(current),
+        disc_dim_string(candidate)
+      ),
+      call. = FALSE
+    )
   }
   blended <- alpha * candidate_arr + (1 - alpha) * current_arr
   if (is.null(dim(candidate))) {
@@ -358,6 +373,67 @@ disc_blend_numeric_list <- function(current_list, candidate_list, alpha, label_p
   )
 }
 
+disc_theta_cpp_horizon_count <- function(total_len, state_rows, label) {
+  horizon_count <- total_len / state_rows
+  if (!is.finite(horizon_count) || abs(horizon_count - round(horizon_count)) > 1e-8) {
+    stop(
+      sprintf(
+        "theta payload horizon mismatch for %s total_len=%d state_rows=%d ratio=%0.6f",
+        label,
+        as.integer(total_len),
+        as.integer(state_rows),
+        as.numeric(horizon_count)
+      ),
+      call. = FALSE
+    )
+  }
+  as.integer(round(horizon_count))
+}
+
+disc_materialize_theta_cpp_payload <- function(
+  theta_cpp,
+  J,
+  p,
+  ppx,
+  num_mem,
+  context_label = "theta_cpp"
+) {
+  materialized <- list(
+    sm = theta_cpp$sm,
+    sC = theta_cpp$sC,
+    fm = theta_cpp$fm,
+    fC = theta_cpp$fC,
+    sm_ens = vector("list", J),
+    sC_ens = vector("list", J),
+    fm_ens = vector("list", J),
+    fC_ens = vector("list", J),
+    standard_forecast_errors = theta_cpp$standard_forecast_errors,
+    standard_forecast_errors_ens = vector("list", J),
+    elbo.part = theta_cpp$elbo.part,
+    elbo.part_ens = theta_cpp$elbo.part_ens,
+    W_T = theta_cpp$W_T
+  )
+
+  for (j in seq_len(J)) {
+    state_rows <- p * (J + 1) + ppx - p * (j - 1)
+    r_j <- disc_theta_cpp_horizon_count(
+      length(theta_cpp$sm_ens[[j]]),
+      state_rows,
+      sprintf("%s sm_ens[[%d]]", context_label, as.integer(j))
+    )
+    materialized$fm_ens[[j]] <- matrix(theta_cpp$fm_ens[[j]], nrow = state_rows)
+    materialized$sm_ens[[j]] <- matrix(theta_cpp$sm_ens[[j]], nrow = state_rows)
+    materialized$fC_ens[[j]] <- array(theta_cpp$fC_ens[[j]], c(state_rows, state_rows, r_j))
+    materialized$sC_ens[[j]] <- array(theta_cpp$sC_ens[[j]], c(state_rows, state_rows, r_j))
+    materialized$standard_forecast_errors_ens[[j]] <- matrix(
+      theta_cpp$standard_forecast_errors_ens[[j]],
+      nrow = cumsum(num_mem)[J - j + 1]
+    )
+  }
+
+  materialized
+}
+
 DISC_W_N_SAMP <- disc_env_nonneg_int(
   "DISC_W_N_SAMP",
   default = 2000L
@@ -366,6 +442,213 @@ if (!is.finite(DISC_W_N_SAMP) || DISC_W_N_SAMP < 1L) {
   DISC_W_N_SAMP <- 2000L
 }
 n.samp <- as.integer(DISC_W_N_SAMP)
+DISC_W_SAMPLING_HEARTBEAT_ENABLED <- disc_env_flag(
+  "DISC_W_SAMPLING_HEARTBEAT_ENABLED",
+  default = FALSE
+)
+DISC_W_SAMPLING_HEARTBEAT_SECONDS <- disc_env_nonneg_int(
+  "DISC_W_SAMPLING_HEARTBEAT_SECONDS",
+  default = 60L
+)
+if (!is.finite(DISC_W_SAMPLING_HEARTBEAT_SECONDS) || DISC_W_SAMPLING_HEARTBEAT_SECONDS < 1L) {
+  DISC_W_SAMPLING_HEARTBEAT_SECONDS <- 60L
+}
+DISC_W_SAMPLING_PHASE_MARKERS_ENABLED <- disc_env_flag(
+  "DISC_W_SAMPLING_PHASE_MARKERS_ENABLED",
+  default = FALSE
+)
+DISC_W_SAMPLING_WALLTIME_SECONDS <- disc_env_nonneg_int(
+  "DISC_W_SAMPLING_WALLTIME_SECONDS",
+  default = 0L
+)
+DISC_W_SAMPLING_MEMBER_WALLTIME_SECONDS <- disc_env_nonneg_int(
+  "DISC_W_SAMPLING_MEMBER_WALLTIME_SECONDS",
+  default = 0L
+)
+DISC_W_SAMPLING_DIAG_PATH <- trimws(Sys.getenv("DISC_W_SAMPLING_DIAG_PATH", ""))
+DISC_W_SAMPLING_DIAG_STDERR_ENABLED <- disc_env_flag(
+  "DISC_W_SAMPLING_DIAG_STDERR_ENABLED",
+  default = FALSE
+)
+
+DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE <- disc_env_choice(
+  "DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE",
+  choices = c("off", "fail_fast"),
+  default = "off"
+)
+DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MIN_GUARD_COUNT <- disc_env_nonneg_int(
+  "DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MIN_GUARD_COUNT",
+  default = 1L
+)
+if (!is.finite(DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MIN_GUARD_COUNT) ||
+    DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MIN_GUARD_COUNT < 1L) {
+  DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MIN_GUARD_COUNT <- 1L
+}
+DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MAX_GUARD_LAG_ITERS <- disc_env_nonneg_int(
+  "DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MAX_GUARD_LAG_ITERS",
+  default = 0L
+)
+DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_REQUIRE_FROZEN <- disc_env_flag(
+  "DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_REQUIRE_FROZEN",
+  default = TRUE
+)
+
+disc_sampling_diag_started_at <- NULL
+disc_sampling_diag_last_heartbeat <- 0
+disc_sampling_diag_phase <- "idle"
+
+disc_sampling_diag_elapsed_seconds <- function() {
+  if (is.null(disc_sampling_diag_started_at)) {
+    return(0)
+  }
+  as.numeric(difftime(Sys.time(), disc_sampling_diag_started_at, units = "secs"))
+}
+
+disc_sampling_diag_emit <- function(kind, phase, detail = "") {
+  detail_text <- if (!nzchar(detail)) "-" else detail
+  line <- sprintf(
+    "[%s] p0=%s phase=%s elapsed=%0.3fs detail=%s\n",
+    kind,
+    as.character(p0),
+    as.character(phase),
+    disc_sampling_diag_elapsed_seconds(),
+    detail_text
+  )
+  delivered <- FALSE
+  if (nzchar(DISC_W_SAMPLING_DIAG_PATH)) {
+    cat(line, file = DISC_W_SAMPLING_DIAG_PATH, append = TRUE)
+    delivered <- TRUE
+  }
+  if (isTRUE(DISC_W_SAMPLING_DIAG_STDERR_ENABLED)) {
+    cat(line, file = stderr())
+    try(flush(stderr()), silent = TRUE)
+    delivered <- TRUE
+  }
+  if (!delivered) {
+    cat(line)
+    flush.console()
+  }
+}
+
+disc_sampling_diag_check <- function(phase = NULL, detail = "", force_heartbeat = FALSE) {
+  if (is.null(disc_sampling_diag_started_at)) {
+    return(invisible(NULL))
+  }
+  if (!is.null(phase) && nzchar(as.character(phase))) {
+    disc_sampling_diag_phase <<- as.character(phase)
+  }
+  elapsed <- disc_sampling_diag_elapsed_seconds()
+  if (is.finite(DISC_W_SAMPLING_WALLTIME_SECONDS) &&
+      DISC_W_SAMPLING_WALLTIME_SECONDS > 0L &&
+      elapsed > as.numeric(DISC_W_SAMPLING_WALLTIME_SECONDS)) {
+    msg <- sprintf(
+      "sampling walltime exceeded for p0=%s phase=%s elapsed=%0.3fs limit=%ds detail=%s",
+      as.character(p0),
+      as.character(disc_sampling_diag_phase),
+      elapsed,
+      as.integer(DISC_W_SAMPLING_WALLTIME_SECONDS),
+      if (!nzchar(detail)) "-" else detail
+    )
+    disc_sampling_diag_emit("sampling_walltime", disc_sampling_diag_phase, detail)
+    stop(msg, call. = FALSE)
+  }
+  if (isTRUE(DISC_W_SAMPLING_HEARTBEAT_ENABLED)) {
+    should_emit <- isTRUE(force_heartbeat) ||
+      (elapsed - disc_sampling_diag_last_heartbeat) >= as.numeric(DISC_W_SAMPLING_HEARTBEAT_SECONDS)
+    if (should_emit) {
+      disc_sampling_diag_emit("sampling_heartbeat", disc_sampling_diag_phase, detail)
+      disc_sampling_diag_last_heartbeat <<- elapsed
+    }
+  }
+  invisible(NULL)
+}
+
+disc_sampling_diag_mark <- function(phase, detail = "") {
+  disc_sampling_diag_phase <<- as.character(phase)
+  if (isTRUE(DISC_W_SAMPLING_PHASE_MARKERS_ENABLED)) {
+    disc_sampling_diag_emit("sampling_phase", disc_sampling_diag_phase, detail)
+  }
+  disc_sampling_diag_check(phase = disc_sampling_diag_phase, detail = detail, force_heartbeat = TRUE)
+}
+
+disc_sampling_diag_start <- function(phase = "sampling_start", detail = "") {
+  disc_sampling_diag_started_at <<- Sys.time()
+  disc_sampling_diag_last_heartbeat <<- 0
+  disc_sampling_diag_phase <<- as.character(phase)
+  disc_sampling_diag_mark(phase, detail)
+}
+
+disc_sampling_diag_dim_summary <- function(x) {
+  dims <- dim(x)
+  if (is.null(dims)) {
+    return(sprintf("len=%d", length(x)))
+  }
+  sprintf("dim=%s", paste(as.integer(dims), collapse = "x"))
+}
+
+disc_sampling_diag_numeric_summary <- function(name, x) {
+  vec <- suppressWarnings(as.numeric(x))
+  finite <- is.finite(vec)
+  finite_n <- sum(finite)
+  min_text <- if (finite_n > 0L) format(signif(min(vec[finite]), 6), scientific = TRUE, trim = TRUE) else "NA"
+  max_text <- if (finite_n > 0L) format(signif(max(vec[finite]), 6), scientific = TRUE, trim = TRUE) else "NA"
+  sprintf(
+    "%s[%s finite=%d/%d min=%s max=%s]",
+    name,
+    disc_sampling_diag_dim_summary(x),
+    as.integer(finite_n),
+    as.integer(length(vec)),
+    min_text,
+    max_text
+  )
+}
+
+disc_sampling_diag_require_numeric <- function(name, x, phase, detail = "", require_positive = FALSE, require_nonnegative = FALSE) {
+  vec <- suppressWarnings(as.numeric(x))
+  summary_text <- disc_sampling_diag_numeric_summary(name, x)
+  if (!length(vec)) {
+    msg <- sprintf("invalid sampler input for p0=%s phase=%s %s reason=empty %s", as.character(p0), as.character(phase), summary_text, detail)
+    disc_sampling_diag_emit("sampling_invalid_input", phase, msg)
+    stop(msg, call. = FALSE)
+  }
+  if (any(!is.finite(vec))) {
+    msg <- sprintf("invalid sampler input for p0=%s phase=%s %s reason=non_finite %s", as.character(p0), as.character(phase), summary_text, detail)
+    disc_sampling_diag_emit("sampling_invalid_input", phase, msg)
+    stop(msg, call. = FALSE)
+  }
+  if (isTRUE(require_positive) && any(vec <= 0)) {
+    msg <- sprintf("invalid sampler input for p0=%s phase=%s %s reason=non_positive %s", as.character(p0), as.character(phase), summary_text, detail)
+    disc_sampling_diag_emit("sampling_invalid_input", phase, msg)
+    stop(msg, call. = FALSE)
+  }
+  if (!isTRUE(require_positive) && isTRUE(require_nonnegative) && any(vec < 0)) {
+    msg <- sprintf("invalid sampler input for p0=%s phase=%s %s reason=negative %s", as.character(p0), as.character(phase), summary_text, detail)
+    disc_sampling_diag_emit("sampling_invalid_input", phase, msg)
+    stop(msg, call. = FALSE)
+  }
+  invisible(summary_text)
+}
+
+disc_sampling_diag_guarded_eval <- function(phase, detail = "", timeout_seconds = 0L, code) {
+  if (is.finite(timeout_seconds) && timeout_seconds > 0L) {
+    setTimeLimit(cpu = Inf, elapsed = as.numeric(timeout_seconds), transient = TRUE)
+    on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = TRUE), add = TRUE)
+  }
+  tryCatch(
+    force(code),
+    error = function(e) {
+      msg <- sprintf(
+        "sampling failure for p0=%s phase=%s detail=%s error=%s",
+        as.character(p0),
+        as.character(phase),
+        if (!nzchar(detail)) "-" else detail,
+        conditionMessage(e)
+      )
+      disc_sampling_diag_emit("sampling_error", phase, msg)
+      stop(msg, call. = FALSE)
+    }
+  )
+}
 
 DISC_W_DF_T <- disc_env_prob("DISC_W_DF_T", 0.9999995)
 DISC_W_DF_S1 <- disc_env_prob("DISC_W_DF_S1", 0.9997)
@@ -2703,6 +2986,9 @@ state_control_scope <- if (generic_state_controls_present) {
 }
 state_log_prefix <- if (generic_state_controls_present || !median_quantile_active) "state" else "median_state"
 state_hold_until_iter <- 0L
+state_guard_count <- 0L
+last_state_guard_iter <- NA_integer_
+last_state_guard_reason <- ""
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   cat(sprintf(
     "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g\n",
@@ -2843,20 +3129,22 @@ disc_w_materialize_theta_payload <- function(theta_out, context_label = "theta_s
   vars_seed <- apply(vars_1_seed, 3, function(x) diag(x))
   exps2_seed <- exps_seed^2 + vars_seed
 
+  materialized_seed <- disc_materialize_theta_cpp_payload(
+    update.theta.seed,
+    J = J,
+    p = p,
+    ppx = ppx,
+    num_mem = num_mem,
+    context_label = sprintf("%s materialized", context_label)
+  )
   rs_seed <- 0
   for (j in seq_len(J)) {
-    dims_seed <- p * (J + 1) + ppx
-    r_j_seed <- length(update.theta.seed$sm_ens[[j]])/(dims_seed - p * (j - 1))
+    r_j_seed <- ncol(materialized_seed$sm_ens[[j]])
     rs_seed <- r_j_seed + rs_seed
-    fm_j_seed <- matrix(update.theta.seed$fm_ens[[j]], nrow = (dims_seed - p * (j - 1)))
-    sm_j_seed <- matrix(update.theta.seed$sm_ens[[j]], nrow = (dims_seed - p * (j - 1)))
-    fC_j_seed <- array(update.theta.seed$fC_ens[[j]], c((dims_seed - p * (j - 1)), (dims_seed - p * (j - 1)), r_j_seed))
-    sC_j_seed <- array(update.theta.seed$sC_ens[[j]], c((dims_seed - p * (j - 1)), (dims_seed - p * (j - 1)), r_j_seed))
-
     FF_synth_seed <- FF_list[[j]]
-    exps_ens_seed <- t(FF_synth_seed) %*% sm_j_seed
+    exps_ens_seed <- t(FF_synth_seed) %*% materialized_seed$sm_ens[[j]]
     vars_ens_seed_arr <- simplify2array(lapply(seq_len(r_j_seed), function(t_idx) {
-      t(FF_synth_seed) %*% sC_j_seed[, , t_idx] %*% FF_synth_seed
+      t(FF_synth_seed) %*% materialized_seed$sC_ens[[j]][, , t_idx] %*% FF_synth_seed
     }))
     if (j == J) {
       vars_ens_seed <- vars_ens_seed_arr
@@ -2867,14 +3155,11 @@ disc_w_materialize_theta_payload <- function(theta_out, context_label = "theta_s
 
     theta_out$exps[2:(J - j + 2), (TT + 1 + rs_seed - r_j_seed):(TT + rs_seed)] <- exps_ens_seed
     theta_out$exps2[2:(J - j + 2), (TT + 1 + rs_seed - r_j_seed):(TT + rs_seed)] <- exps2_ens_seed
-    theta_out$sm_ens[[j]] <- sm_j_seed
-    theta_out$sC_ens[[j]] <- sC_j_seed
-    theta_out$fm_ens[[j]] <- fm_j_seed
-    theta_out$fC_ens[[j]] <- fC_j_seed
-    theta_out$standard_forecast_errors_ens[[j]] <- matrix(
-      update.theta.seed$standard_forecast_errors_ens[[j]],
-      nrow = cumsum(num_mem)[J - j + 1]
-    )
+    theta_out$sm_ens[[j]] <- materialized_seed$sm_ens[[j]]
+    theta_out$sC_ens[[j]] <- materialized_seed$sC_ens[[j]]
+    theta_out$fm_ens[[j]] <- materialized_seed$fm_ens[[j]]
+    theta_out$fC_ens[[j]] <- materialized_seed$fC_ens[[j]]
+    theta_out$standard_forecast_errors_ens[[j]] <- materialized_seed$standard_forecast_errors_ens[[j]]
   }
 
   theta_out$exps[, 1:TT] <- exps_seed
@@ -3054,7 +3339,7 @@ while (isTRUE(FLAG) && iter < max_iter) {
         context_label = sprintf("p0=%s iter=%d", as.character(p0), as.integer(iter))
       )
     }
-    update.theta <- DISC_update_theta_synth_cpp_W( GG, m0, C0,
+    update.theta.raw <- DISC_update_theta_synth_cpp_W( GG, m0, C0,
                                             FFF, QQQ,
                                             FF, y, ex.df.mat, ex.df.mat.k, Ones,
                                             p, J, ppx, TT, k, dM,
@@ -3064,6 +3349,14 @@ while (isTRUE(FLAG) && iter < max_iter) {
                                             ensembles_forecast, ranges, Ones_ens,
                                             sum(num_mem), num_mem, cur.covs_list,
                                             epsilon)
+    update.theta <- disc_materialize_theta_cpp_payload(
+      update.theta.raw,
+      J = J,
+      p = p,
+      ppx = ppx,
+      num_mem = num_mem,
+      context_label = sprintf("p0=%s iter=%d materialized", as.character(p0), as.integer(iter_candidate))
+    )
     if (!state_freeze_now &&
         is.finite(state_blend_alpha) &&
         state_blend_alpha < 1) {
@@ -3111,13 +3404,12 @@ while (isTRUE(FLAG) && iter < max_iter) {
     rs <- 0
     for (j in 1:J) {
 
-    dims <- p*(J+1) + ppx
-    r_j <- length(update.theta$sm_ens[[j]])/(dims-p*(j-1))
+    r_j <- ncol(update.theta$sm_ens[[j]])
     rs <- r_j + rs
-    fm_j <- matrix(update.theta$fm_ens[[j]], nrow = (dims-p*(j-1)))
-    sm_j <- matrix(update.theta$sm_ens[[j]], nrow = (dims-p*(j-1)))
-    fC_j <- array(update.theta$fC_ens[[j]], c((dims-p*(j-1)),(dims-p*(j-1)),r_j))
-    sC_j <- array(update.theta$sC_ens[[j]], c((dims-p*(j-1)),(dims-p*(j-1)),r_j))
+    fm_j <- update.theta$fm_ens[[j]]
+    sm_j <- update.theta$sm_ens[[j]]
+    fC_j <- update.theta$fC_ens[[j]]
+    sC_j <- update.theta$sC_ens[[j]]
 
     FF_synth <- FF_list[[j]]
 
@@ -3149,8 +3441,7 @@ while (isTRUE(FLAG) && iter < max_iter) {
     new.theta.out$fm_ens[[j]] <- fm_j
     new.theta.out$fC_ens[[j]] <- fC_j
 
-    error_j <- matrix(update.theta$standard_forecast_errors_ens[[j]], nrow = cumsum(num_mem)[J-j+1])
-    new.theta.out$standard_forecast_errors_ens[[j]] <- error_j
+    new.theta.out$standard_forecast_errors_ens[[j]] <- update.theta$standard_forecast_errors_ens[[j]]
     }
 
     new.theta.out$exps[,1:TT] <- exps
@@ -3596,6 +3887,9 @@ while (isTRUE(FLAG) && iter < max_iter) {
     }
   }
   if (!is.null(state_guard_reason)) {
+    state_guard_count <- as.integer(state_guard_count + 1L)
+    last_state_guard_iter <- as.integer(iter)
+    last_state_guard_reason <- state_guard_reason
     old_freeze_until <- gamsig_dynamic_freeze_until_iter
     old_hold_until <- state_hold_until_iter
     gamsig_dynamic_freeze_until_iter <- max(
@@ -3733,17 +4027,23 @@ while (isTRUE(FLAG) && iter < max_iter) {
 ########################
 
 if (gamsig_update_iters < DISC_GAMSIG_MIN_UPDATE_ITERS) {
+  disc_sampling_diag_emit(
+    "sampling_preflight",
+    "vb_terminal",
+    sprintf(
+      "update_iters=%d min_update_iters=%d guard_count=%d last_guard_iter=%s",
+      as.integer(gamsig_update_iters),
+      as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
+      as.integer(state_guard_count),
+      if (is.finite(last_state_guard_iter)) as.character(as.integer(last_state_guard_iter)) else "NA"
+    )
+  )
   msg <- sprintf(
     "stopped before required gamma/sigma updates: got=%d required=%d",
     as.integer(gamsig_update_iters),
     as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS)
   )
-  if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED) &&
-      identical(DISC_GAMSIG_OBJECTIVE_GUARD_MODE, "adaptive_freeze")) {
-    warning(msg, call. = FALSE)
-  } else {
-    stop(msg, call. = FALSE)
-  }
+  stop(msg, call. = FALSE)
 }
 
 ########################
@@ -3757,6 +4057,67 @@ if (verbose) {
 print(c(n.samp))
 flush.console()
 
+terminal_sampling_guard_is_active <- identical(
+  DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE,
+  "fail_fast"
+) && isTRUE(median_quantile_active)
+terminal_guard_lag_iters <- if (is.finite(last_state_guard_iter)) {
+  as.integer(iter - last_state_guard_iter)
+} else {
+  NA_integer_
+}
+terminal_sampling_guard_frozen <- (
+  (gamsig_dynamic_freeze_until_iter > 0L && iter <= gamsig_dynamic_freeze_until_iter) ||
+  (state_hold_until_iter > 0L && iter <= state_hold_until_iter) ||
+  isTRUE(gamsig_frozen_now)
+)
+terminal_sampling_guard_recent <- is.finite(last_state_guard_iter) &&
+  as.integer(last_state_guard_iter) >= as.integer(iter)
+disc_sampling_diag_emit(
+  "sampling_preflight",
+  "vb_terminal_guard",
+  sprintf(
+    paste0(
+      "mode=%s median=%s guard_count=%d last_guard_iter=%s lag_iters=%s ",
+      "frozen=%s recent=%s update_iters=%d min_update_iters=%d reason=%s"
+    ),
+    as.character(DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE),
+    ifelse(isTRUE(median_quantile_active), "true", "false"),
+    as.integer(state_guard_count),
+    if (is.finite(last_state_guard_iter)) as.character(as.integer(last_state_guard_iter)) else "NA",
+    if (is.finite(terminal_guard_lag_iters)) as.character(as.integer(terminal_guard_lag_iters)) else "NA",
+    ifelse(isTRUE(terminal_sampling_guard_frozen), "true", "false"),
+    ifelse(isTRUE(terminal_sampling_guard_recent), "true", "false"),
+    as.integer(gamsig_update_iters),
+    as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
+    if (!nzchar(last_state_guard_reason)) "-" else last_state_guard_reason
+  )
+)
+if (terminal_sampling_guard_is_active &&
+    state_guard_count >= DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MIN_GUARD_COUNT &&
+    is.finite(last_state_guard_iter) &&
+    is.finite(terminal_guard_lag_iters) &&
+    terminal_guard_lag_iters <= DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MAX_GUARD_LAG_ITERS &&
+    (!isTRUE(DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_REQUIRE_FROZEN) ||
+      isTRUE(terminal_sampling_guard_frozen) ||
+      isTRUE(terminal_sampling_guard_recent))) {
+  guard_msg <- sprintf(
+    paste0(
+      "terminal sampling guard tripped for p0=%s: guard_count=%d last_guard_iter=%d ",
+      "lag_iters=%d frozen=%s recent=%s reason=%s"
+    ),
+    as.character(p0),
+    as.integer(state_guard_count),
+    as.integer(last_state_guard_iter),
+    as.integer(terminal_guard_lag_iters),
+    ifelse(isTRUE(terminal_sampling_guard_frozen), "true", "false"),
+    ifelse(isTRUE(terminal_sampling_guard_recent), "true", "false"),
+    if (!nzchar(last_state_guard_reason)) "-" else last_state_guard_reason
+  )
+  cat(sprintf("[terminal_sampling_guard] %s\n", guard_msg))
+  flush.console()
+  stop(guard_msg, call. = FALSE)
+}
 
 
 n.samp <- as.integer(DISC_W_N_SAMP)
@@ -3768,10 +4129,19 @@ if(SIMS){
 
 tictoc::tic("run time")
 ########################
+disc_sampling_diag_start(
+  phase = "sampling_start",
+  detail = sprintf("n_samp=%d vb_iter=%d", as.integer(n.samp), as.integer(iter))
+)
 if (verbose) {
-  cat(sprintf("Sampling Started", 
-              iter, round(run.time$toc - run.time$tic, 3)), "\n")
+  cat(sprintf(
+    "Sampling Started: vb_iter=%d vb_seconds=%s n_samp=%d",
+    as.integer(iter),
+    round(run.time$toc - run.time$tic, 3),
+    as.integer(n.samp)
+  ), "\n")
 }
+disc_sampling_diag_mark("sampling_allocate", sprintf("forecast_blocks=%d", length(num_mem)))
 samp.uts_ens <- vector("list", length(num_mem))
 for (i in seq_along(num_mem)) {
 num_cols <- num_mem[i]
@@ -3790,8 +4160,14 @@ samp.uts = array(NA_real_, c(J+1, TT_sub, n.samp))
 samp.sts = array(NA_real_, c(J+1, TT_sub, n.samp))
 print(c(n.samp))
 flush.console()
+disc_sampling_diag_mark(
+  "sampling_allocate_done",
+  sprintf("J=%d TT_sub=%d n_samp=%d", as.integer(J + 1L), as.integer(TT_sub), as.integer(n.samp))
+)
 
+disc_sampling_diag_mark("sampling_latent_states", sprintf("j_total=%d", as.integer(J + 1L)))
 for (j in 1:(J+1)) {   
+    disc_sampling_diag_check("sampling_latent_states", sprintf("j=%d/%d", as.integer(j), as.integer(J + 1L)))
     sts.dummy <- update_sts(y[j,],
                             new.theta.out$exps[j,1:TT_sub], 
                             cur.uts.out$E.inv.uts[j,], 
@@ -3820,10 +4196,75 @@ for (j in 1:(J+1)) {
     ########################
     ########################
     ########################
-    # Generalized Inverse Gausian Sampling
-    samp.uts[j,,] = t(sample_gig_devroye_vector(n.samp, uts.dummy$uts.lambda, uts.dummy$uts.psi, uts.dummy$uts.chi))
-    # Truncated normal
-    samp.sts[j,,] = t(sample_truncnorm_icdf(n.samp, TT_sub, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
+    historical_member_detail <- sprintf("j=%d/%d horizon=history TT_sub=%d", as.integer(j), as.integer(J + 1L), as.integer(TT_sub))
+    uts_summary <- disc_sampling_diag_require_numeric(
+      "uts.lambda",
+      uts.dummy$uts.lambda,
+      phase = "sampling_history_gig",
+      detail = historical_member_detail
+    )
+    psi_summary <- disc_sampling_diag_require_numeric(
+      "uts.psi",
+      uts.dummy$uts.psi,
+      phase = "sampling_history_gig",
+      detail = historical_member_detail,
+      require_positive = TRUE
+    )
+    chi_summary <- disc_sampling_diag_require_numeric(
+      "uts.chi",
+      uts.dummy$uts.chi,
+      phase = "sampling_history_gig",
+      detail = historical_member_detail,
+      require_positive = TRUE
+    )
+    disc_sampling_diag_mark(
+      "sampling_history_gig",
+      paste(historical_member_detail, uts_summary, psi_summary, chi_summary, sep = " | ")
+    )
+    samp.uts[j,,] = t(disc_sampling_diag_guarded_eval(
+      "sampling_history_gig",
+      detail = paste(historical_member_detail, uts_summary, psi_summary, chi_summary, sep = " | "),
+      timeout_seconds = DISC_W_SAMPLING_MEMBER_WALLTIME_SECONDS,
+      code = sample_gig_devroye_vector(n.samp, uts.dummy$uts.lambda, uts.dummy$uts.psi, uts.dummy$uts.chi)
+    ))
+    disc_sampling_diag_mark("sampling_history_gig_done", historical_member_detail)
+    mu_summary <- disc_sampling_diag_require_numeric(
+      "sts.mu",
+      sts.dummy$sts.mu,
+      phase = "sampling_history_truncnorm",
+      detail = historical_member_detail
+    )
+    sig2_summary <- disc_sampling_diag_require_numeric(
+      "sts.sig2",
+      sts.dummy$sts.sig2,
+      phase = "sampling_history_truncnorm",
+      detail = historical_member_detail,
+      require_positive = TRUE
+    )
+    alpha_summary <- disc_sampling_diag_numeric_summary(
+      "sts.alpha",
+      (0 - as.numeric(sts.dummy$sts.mu)) / sqrt(as.numeric(sts.dummy$sts.sig2))
+    )
+    disc_sampling_diag_mark(
+      "sampling_history_truncnorm",
+      paste(historical_member_detail, mu_summary, sig2_summary, alpha_summary, sep = " | ")
+    )
+    samp.sts[j,,] = t(disc_sampling_diag_guarded_eval(
+      "sampling_history_truncnorm",
+      detail = paste(historical_member_detail, mu_summary, sig2_summary, alpha_summary, sep = " | "),
+      timeout_seconds = DISC_W_SAMPLING_MEMBER_WALLTIME_SECONDS,
+      code = sample_truncnorm_icdf(n.samp, TT_sub, sts.dummy$sts.mu, sts.dummy$sts.sig2)
+    ))
+    sts_draw_summary <- disc_sampling_diag_require_numeric(
+      "samp.sts",
+      samp.sts[j,,],
+      phase = "sampling_history_truncnorm_done",
+      detail = historical_member_detail
+    )
+    disc_sampling_diag_mark(
+      "sampling_history_truncnorm_done",
+      paste(historical_member_detail, sts_draw_summary, sep = " | ")
+    )
     ########################
     ########################
     ########################
@@ -3880,43 +4321,146 @@ for (j in 1:(J+1)) {
         k_forecast <- ranges[j-1]
         for (i in 1:num_mem[j-1]) {
             
-        sts.dummy <- update_sts(
-                        y = matrix(ensembles[[j-1]][,i], ncol=1), 
-                        exps = matrix(new.theta.out$exps[j,(TT_sub+1):(TT_sub+k_forecast)], ncol=1), 
-                        inv.uts = matrix(cur.uts.out_f$E.inv.uts[[j-1]][,i], ncol=1), 
-                        c2.invb.absgam2.sigma = cur.gamsig.out$E.c2.invb.absgam2.sigma[j,], 
-                        c.invb.absgam = cur.gamsig.out$E.c.invb.absgam[j,], 
-                        c.a.invb.absgam = cur.gamsig.out$E.c.a.invb.absgam[j,], 
-                        k_forecast)
+        member_detail <- sprintf(
+          "j=%d/%d member=%d/%d",
+          as.integer(j),
+          as.integer(J + 1L),
+          as.integer(i),
+          as.integer(num_mem[j-1])
+        )
+        disc_sampling_diag_mark("sampling_forecast_member_update_sts", member_detail)
+        sts.dummy <- disc_sampling_diag_guarded_eval(
+          "sampling_forecast_member_update_sts",
+          detail = member_detail,
+          code = update_sts(
+            y = matrix(ensembles[[j-1]][,i], ncol=1),
+            exps = matrix(new.theta.out$exps[j,(TT_sub+1):(TT_sub+k_forecast)], ncol=1),
+            inv.uts = matrix(cur.uts.out_f$E.inv.uts[[j-1]][,i], ncol=1),
+            c2.invb.absgam2.sigma = cur.gamsig.out$E.c2.invb.absgam2.sigma[j,],
+            c.invb.absgam = cur.gamsig.out$E.c.invb.absgam[j,],
+            c.a.invb.absgam = cur.gamsig.out$E.c.a.invb.absgam[j,],
+            k_forecast
+          )
+        )
 
         new.sts.out_f$E.sts[[j-1]][,i] <- sts.dummy$E.sts
         new.sts.out_f$E.sts2[[j-1]][,i] <- sts.dummy$E.sts2
         new.sts.out_f$tot.entrop[[j-1]][i] <-  sts.dummy$tot.entrop
+        disc_sampling_diag_mark(
+          "sampling_forecast_member_update_sts_done",
+          paste(
+            member_detail,
+            disc_sampling_diag_numeric_summary("sts.mu", sts.dummy$sts.mu),
+            disc_sampling_diag_numeric_summary("sts.sig2", sts.dummy$sts.sig2),
+            sep = " | "
+          )
+        )
 
-        uts.dummy <- update_uts(
-                        y = matrix(ensembles[[j-1]][,i], ncol=1),
-                        exps = matrix(new.theta.out$exps[j,(T+1):(T+k_forecast)], ncol=1), 
-                        exps2 = matrix(new.theta.out$exps2[j,(T+1):(T+k_forecast)], ncol=1), 
-                        new.sts.out_f$E.sts[[j-1]][,i], 
-                        new.sts.out_f$E.sts2[[j-1]][,i], 
-                        cur.gamsig.out$E.inv.sigma[j,], 
-                        cur.gamsig.out$E.a2.invb.inv.sigma[j,], 
-                        cur.gamsig.out$E.invb.inv.sigma[j,], 
-                        cur.gamsig.out$E.c.invb.absgam[j,], 
-                        cur.gamsig.out$E.c2.invb.absgam2.sigma[j,]) 
-                        
+        disc_sampling_diag_mark("sampling_forecast_member_update_uts", member_detail)
+        uts.dummy <- disc_sampling_diag_guarded_eval(
+          "sampling_forecast_member_update_uts",
+          detail = member_detail,
+          code = update_uts(
+            y = matrix(ensembles[[j-1]][,i], ncol=1),
+            exps = matrix(new.theta.out$exps[j,(T+1):(T+k_forecast)], ncol=1),
+            exps2 = matrix(new.theta.out$exps2[j,(T+1):(T+k_forecast)], ncol=1),
+            new.sts.out_f$E.sts[[j-1]][,i],
+            new.sts.out_f$E.sts2[[j-1]][,i],
+            cur.gamsig.out$E.inv.sigma[j,],
+            cur.gamsig.out$E.a2.invb.inv.sigma[j,],
+            cur.gamsig.out$E.invb.inv.sigma[j,],
+            cur.gamsig.out$E.c.invb.absgam[j,],
+            cur.gamsig.out$E.c2.invb.absgam2.sigma[j,]
+          )
+        )
+
         new.uts.out_f$E.uts[[j-1]][,i] <- uts.dummy$E.uts
         new.uts.out_f$E.inv.uts[[j-1]][,i] <- uts.dummy$E.inv.uts
         new.uts.out_f$E.log.uts[[j-1]][i] <- uts.dummy$E.log.uts
         new.uts.out_f$tot.entrop[[j-1]][i] <- uts.dummy$tot.entrop
+        disc_sampling_diag_mark(
+          "sampling_forecast_member_update_uts_done",
+          paste(
+            member_detail,
+            disc_sampling_diag_numeric_summary("uts.lambda", uts.dummy$uts.lambda),
+            disc_sampling_diag_numeric_summary("uts.psi", uts.dummy$uts.psi),
+            disc_sampling_diag_numeric_summary("uts.chi", uts.dummy$uts.chi),
+            sep = " | "
+          )
+        )
         ########################
         ########################
         ########################
         ########################
-        # Generalized Inverse Gausian Sampling
-        samp.uts_ens[[j-1]][,i,]  = t(sample_gig_devroye_vector(n.samp, uts.dummy$uts.lambda, uts.dummy$uts.psi, uts.dummy$uts.chi))
-        # Truncated normal
-        samp.sts_ens[[j-1]][,i,]  = t(sample_truncnorm_icdf(n.samp, k_forecast, sts.dummy$sts.mu, sts.dummy$sts.sig2) )
+        disc_sampling_diag_check("sampling_forecast_latent_states", member_detail)
+        uts_summary <- disc_sampling_diag_require_numeric(
+          "uts.lambda",
+          uts.dummy$uts.lambda,
+          phase = "sampling_forecast_member_gig",
+          detail = member_detail
+        )
+        psi_summary <- disc_sampling_diag_require_numeric(
+          "uts.psi",
+          uts.dummy$uts.psi,
+          phase = "sampling_forecast_member_gig",
+          detail = member_detail,
+          require_positive = TRUE
+        )
+        chi_summary <- disc_sampling_diag_require_numeric(
+          "uts.chi",
+          uts.dummy$uts.chi,
+          phase = "sampling_forecast_member_gig",
+          detail = member_detail,
+          require_positive = TRUE
+        )
+        disc_sampling_diag_mark(
+          "sampling_forecast_member_gig",
+          paste(member_detail, uts_summary, psi_summary, chi_summary, sep = " | ")
+        )
+        samp.uts_ens[[j-1]][,i,]  = t(disc_sampling_diag_guarded_eval(
+          "sampling_forecast_member_gig",
+          detail = paste(member_detail, uts_summary, psi_summary, chi_summary, sep = " | "),
+          timeout_seconds = DISC_W_SAMPLING_MEMBER_WALLTIME_SECONDS,
+          code = sample_gig_devroye_vector(n.samp, uts.dummy$uts.lambda, uts.dummy$uts.psi, uts.dummy$uts.chi)
+        ))
+        disc_sampling_diag_mark("sampling_forecast_member_gig_done", member_detail)
+        mu_summary <- disc_sampling_diag_require_numeric(
+          "sts.mu",
+          sts.dummy$sts.mu,
+          phase = "sampling_forecast_member_truncnorm",
+          detail = member_detail
+        )
+        sig2_summary <- disc_sampling_diag_require_numeric(
+          "sts.sig2",
+          sts.dummy$sts.sig2,
+          phase = "sampling_forecast_member_truncnorm",
+          detail = member_detail,
+          require_positive = TRUE
+        )
+        alpha_summary <- disc_sampling_diag_numeric_summary(
+          "sts.alpha",
+          (0 - as.numeric(sts.dummy$sts.mu)) / sqrt(as.numeric(sts.dummy$sts.sig2))
+        )
+        disc_sampling_diag_mark(
+          "sampling_forecast_member_truncnorm",
+          paste(member_detail, mu_summary, sig2_summary, alpha_summary, sep = " | ")
+        )
+        samp.sts_ens[[j-1]][,i,]  = t(disc_sampling_diag_guarded_eval(
+          "sampling_forecast_member_truncnorm",
+          detail = paste(member_detail, mu_summary, sig2_summary, alpha_summary, sep = " | "),
+          timeout_seconds = DISC_W_SAMPLING_MEMBER_WALLTIME_SECONDS,
+          code = sample_truncnorm_icdf(n.samp, k_forecast, sts.dummy$sts.mu, sts.dummy$sts.sig2)
+        ))
+        sts_member_summary <- disc_sampling_diag_require_numeric(
+          "samp.sts_member",
+          samp.sts_ens[[j-1]][,i,],
+          phase = "sampling_forecast_member_truncnorm_done",
+          detail = member_detail
+        )
+        disc_sampling_diag_mark(
+          "sampling_forecast_member_truncnorm_done",
+          paste(member_detail, sts_member_summary, sep = " | ")
+        )
         ########################
         ########################
         ########################
@@ -3925,8 +4469,11 @@ for (j in 1:(J+1)) {
 
     }
 }
+disc_sampling_diag_mark("sampling_latent_states_done", sprintf("j_total=%d", as.integer(J + 1L)))
 
+disc_sampling_diag_mark("sampling_gamma_sigma", sprintf("forecast_blocks=%d", as.integer(J)))
     for (j in 2:(J+1)) {  
+        disc_sampling_diag_check("sampling_gamma_sigma", sprintf("j=%d/%d", as.integer(j), as.integer(J + 1L)))
         k_forecast <- ranges[j-1]
         gamsig.dummy <- update_gamma_sigma(Y[j,], TT_sub,
                                             PriorGamma[j,],
@@ -3988,6 +4535,7 @@ for (j in 1:(J+1)) {
         ########################
         ########################
 }
+disc_sampling_diag_mark("sampling_gamma_sigma_done", sprintf("forecast_blocks=%d", as.integer(J)))
 
 ########################
 retro_state <- disc_w_prepare_sampling_state(
@@ -3997,6 +4545,10 @@ retro_state <- disc_w_prepare_sampling_state(
   n_expected = length(m0),
   label = sprintf("retro[p0=%s]", as.character(p0))
 )
+disc_sampling_diag_mark(
+  "sampling_retro_synth",
+  sprintf("TT=%d n=%d", as.integer(retro_state$TT), as.integer(retro_state$n))
+)
 result_retro <- DISC_generate_synth_samples_retro_part(
   n.samp,
   retro_state$TT,
@@ -4004,11 +4556,14 @@ result_retro <- DISC_generate_synth_samples_retro_part(
   retro_state$sC,
   retro_state$sm
 ) 
+disc_sampling_diag_mark("sampling_retro_synth_done", sprintf("TT=%d n=%d", as.integer(retro_state$TT), as.integer(retro_state$n)))
 ########################
 result_forecast <- vector("list", length(num_mem))
 ks <- 0
 
+disc_sampling_diag_mark("sampling_forecast_synth", sprintf("forecast_blocks=%d", as.integer(J - 1L)))
 for (j in 1:(J-1)) {
+    disc_sampling_diag_check("sampling_forecast_synth", sprintf("j=%d/%d", as.integer(j), as.integer(J - 1L)))
     ks <- ranges[J-j+1]-ks
     forecast_state <- disc_w_prepare_sampling_state(
       sm = new.theta.out$sm_ens[[j]],
@@ -4024,12 +4579,16 @@ for (j in 1:(J-1)) {
       forecast_state$sm
     ) 
 }
+disc_sampling_diag_mark("sampling_forecast_synth_done", sprintf("forecast_blocks=%d", as.integer(J - 1L)))
 
-mvnorm_sampler_vectorized <- function(mu, S, n.sample) {
+mvnorm_sampler_vectorized <- function(mu, S, n.sample, progress_callback = NULL) {
   p <- nrow(mu)
   T <- ncol(mu)
   samples <- array(0, dim = c(p, T, n.sample))
   for (t in 1:T) {
+    if (!is.null(progress_callback)) {
+      progress_callback(t, T)
+    }
     samples[,t,] <- mvrnorm(n = n.sample, mu = mu[,t], Sigma = S[,,t])
   }  
   return(samples)
@@ -4043,18 +4602,25 @@ forecast_state <- disc_w_prepare_sampling_state(
 )
 S <- forecast_state$sC
 mu <- forecast_state$sm
-result_forecast[[j]]  <- list("samp_theta"=mvnorm_sampler_vectorized(mu, S, n.samp))
+disc_sampling_diag_mark("sampling_forecast_mvnorm", sprintf("j=%d T=%d", as.integer(j), as.integer(ncol(mu))))
+result_forecast[[j]]  <- list("samp_theta"=mvnorm_sampler_vectorized(
+  mu,
+  S,
+  n.samp,
+  progress_callback = function(t, total_t) {
+    disc_sampling_diag_check(
+      "sampling_forecast_mvnorm",
+      sprintf("j=%d t=%d/%d", as.integer(j), as.integer(t), as.integer(total_t))
+    )
+  }
+))
+disc_sampling_diag_mark("sampling_forecast_mvnorm_done", sprintf("j=%d T=%d", as.integer(j), as.integer(ncol(mu))))
 
 print(c(n.samp))
 flush.console()
+disc_sampling_diag_mark("sampling_finalize", sprintf("n_samp=%d", as.integer(n.samp)))
 run.time = tictoc::toc(quiet = TRUE)
 ########################
-if (verbose) {
-  cat(sprintf("Sampling finished:  %s seconds", round(run.time$toc - run.time$tic, 3)), "\n")
-}
-
-########################
-
 if (verbose) {
   cat(sprintf("Sampling finished:  %s seconds", round(run.time$toc - run.time$tic, 3)), "\n")
 }

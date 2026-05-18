@@ -1,0 +1,30 @@
+{
+  "audit_id": "he2_exal_m_t1_scale_contract_audit_20221225_20260518",
+  "run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reference_relaunch_20260518/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+  "object_count": 21,
+  "exists_count": 19,
+  "verification_status_counts": {
+    "verified_by_values": 3,
+    "verified_by_values_and_config": 3,
+    "verified_by_value_comparison": 4,
+    "verified_by_config_and_codepath": 1,
+    "verified_by_guard_report": 1,
+    "verified_by_codepath_and_filename": 7,
+    "verified_by_codepath_and_plot_contract": 1,
+    "verified_by_config": 1
+  },
+  "resolved_scales": {
+    "retros_storage_scale": "log1p_cms",
+    "legacy_fit_input_scale": "log1p_cms",
+    "legacy_post_input_scale": "log1p_cms",
+    "analysis_scale_fit_internal": "log1p_cms",
+    "analysis_scale_post_internal": "log1p_cms",
+    "transform_policy": "log1p_only"
+  },
+  "source_map_excerpt": {
+    "source.usgs": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_featurecov_cf1_eps_sweep_20260416/runs/multimodel_20221225_v8_eps360cf1_exdqlm_multivar_keep_featurecov_cf1/inputs/shared/usgs/usgs_daily.csv",
+    "source.retros": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2022-12-25/run_id=20260510_publication_shared_r01/retros.csv",
+    "source.glofas": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2022-12-25/run_id=20260510_publication_shared_r01/glofas_forecast.csv",
+    "source.nws": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2022-12-25/run_id=20260510_publication_shared_r01/nws_forecast.csv"
+  }
+}

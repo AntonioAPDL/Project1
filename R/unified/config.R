@@ -278,6 +278,12 @@ unified_config_defaults <- function() {
             mode = "adaptive_freeze",
             penalty = 1e12
           ),
+          terminal_sampling_guard = list(
+            mode = "off",
+            min_guard_count = 1L,
+            max_guard_lag_iters = 0L,
+            require_frozen = TRUE
+          ),
           transfer_compare_fast = list(
             enabled = FALSE,
             warmup_freeze_iters = 5L,
@@ -299,7 +305,14 @@ unified_config_defaults <- function() {
           lam2 = 1 - 1e-6,
           n_samp = 2000L,
           sims_enabled = TRUE,
-          use_covariates = TRUE
+          use_covariates = TRUE,
+          sampling_diagnostics = list(
+            heartbeat_enabled = FALSE,
+            heartbeat_seconds = 60L,
+            phase_markers_enabled = FALSE,
+            walltime_seconds = 0L,
+            member_walltime_seconds = 0L
+          )
         )
       ),
       exdqlm_univar = list(
@@ -1093,6 +1106,29 @@ unified_validate_config <- function(cfg) {
   validate_int_min(c("fit", "exdqlm_multivar", "legacy", "n_samp"), "fit.exdqlm_multivar.legacy.n_samp", min_value = 1L)
   validate_bool(c("fit", "exdqlm_multivar", "legacy", "sims_enabled"), "fit.exdqlm_multivar.legacy.sims_enabled")
   validate_bool(c("fit", "exdqlm_multivar", "legacy", "use_covariates"), "fit.exdqlm_multivar.legacy.use_covariates")
+  validate_bool(
+    c("fit", "exdqlm_multivar", "legacy", "sampling_diagnostics", "heartbeat_enabled"),
+    "fit.exdqlm_multivar.legacy.sampling_diagnostics.heartbeat_enabled"
+  )
+  validate_int_min(
+    c("fit", "exdqlm_multivar", "legacy", "sampling_diagnostics", "heartbeat_seconds"),
+    "fit.exdqlm_multivar.legacy.sampling_diagnostics.heartbeat_seconds",
+    min_value = 1L
+  )
+  validate_bool(
+    c("fit", "exdqlm_multivar", "legacy", "sampling_diagnostics", "phase_markers_enabled"),
+    "fit.exdqlm_multivar.legacy.sampling_diagnostics.phase_markers_enabled"
+  )
+  validate_int_min(
+    c("fit", "exdqlm_multivar", "legacy", "sampling_diagnostics", "walltime_seconds"),
+    "fit.exdqlm_multivar.legacy.sampling_diagnostics.walltime_seconds",
+    min_value = 0L
+  )
+  validate_int_min(
+    c("fit", "exdqlm_multivar", "legacy", "sampling_diagnostics", "member_walltime_seconds"),
+    "fit.exdqlm_multivar.legacy.sampling_diagnostics.member_walltime_seconds",
+    min_value = 0L
+  )
   validate_bool(c("fit", "exdqlm_multivar", "forecast_health", "enabled"), "fit.exdqlm_multivar.forecast_health.enabled")
   validate_bool(c("fit", "exdqlm_multivar", "forecast_health", "fail_fast"), "fit.exdqlm_multivar.forecast_health.fail_fast")
   validate_bool(c("fit", "exdqlm_multivar", "forecast_health", "write_reports"), "fit.exdqlm_multivar.forecast_health.write_reports")
@@ -1644,6 +1680,42 @@ unified_validate_config <- function(cfg) {
     if (!is.finite(guard_penalty) || guard_penalty <= 0) {
       add_err(sprintf("%s.objective_guard.penalty must be numeric and > 0", key_prefix))
     }
+
+    terminal_sampling_guard_mode <- cfg_get(
+      c("terminal_sampling_guard", "mode"),
+      defaults$terminal_sampling_guard_mode
+    )
+    if (!(terminal_sampling_guard_mode %in% c("off", "fail_fast"))) {
+      add_err(sprintf("%s.terminal_sampling_guard.mode must be one of: off, fail_fast", key_prefix))
+    }
+
+    terminal_sampling_guard_min_guard_count <- suppressWarnings(as.integer(
+      cfg_get(
+        c("terminal_sampling_guard", "min_guard_count"),
+        defaults$terminal_sampling_guard_min_guard_count
+      )
+    ))
+    if (!is.finite(terminal_sampling_guard_min_guard_count) || terminal_sampling_guard_min_guard_count < 1L) {
+      add_err(sprintf("%s.terminal_sampling_guard.min_guard_count must be an integer >= 1", key_prefix))
+    }
+
+    terminal_sampling_guard_max_guard_lag_iters <- suppressWarnings(as.integer(
+      cfg_get(
+        c("terminal_sampling_guard", "max_guard_lag_iters"),
+        defaults$terminal_sampling_guard_max_guard_lag_iters
+      )
+    ))
+    if (!is.finite(terminal_sampling_guard_max_guard_lag_iters) || terminal_sampling_guard_max_guard_lag_iters < 0L) {
+      add_err(sprintf("%s.terminal_sampling_guard.max_guard_lag_iters must be an integer >= 0", key_prefix))
+    }
+
+    terminal_sampling_guard_require_frozen <- cfg_get(
+      c("terminal_sampling_guard", "require_frozen"),
+      defaults$terminal_sampling_guard_require_frozen
+    )
+    if (!isTRUE(terminal_sampling_guard_require_frozen) && !identical(terminal_sampling_guard_require_frozen, FALSE)) {
+      add_err(sprintf("%s.terminal_sampling_guard.require_frozen must be boolean (true/false)", key_prefix))
+    }
   }
 
   exdqlm_gamma_sigma_defaults <- list(
@@ -1668,7 +1740,11 @@ unified_validate_config <- function(cfg) {
     guard_fail_fast = FALSE,
     guard_log_failures = TRUE,
     guard_mode = "adaptive_freeze",
-    guard_penalty = 1e12
+    guard_penalty = 1e12,
+    terminal_sampling_guard_mode = "off",
+    terminal_sampling_guard_min_guard_count = 1L,
+    terminal_sampling_guard_max_guard_lag_iters = 0L,
+    terminal_sampling_guard_require_frozen = TRUE
   )
   exdqlm_multivar_gamma_sigma_defaults <- exdqlm_gamma_sigma_defaults
   exdqlm_univar_gamma_sigma_defaults <- exdqlm_gamma_sigma_defaults

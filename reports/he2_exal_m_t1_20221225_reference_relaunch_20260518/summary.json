@@ -1,0 +1,22 @@
+{
+  "campaign_id": "he2_bayesian_publication_exdqlm_multivar_keep_20221225_reference_relaunch",
+  "family": "exAL-M-T1",
+  "cutoff": "2022-12-25",
+  "status": "prepared_not_launched",
+  "generated_config": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reference_relaunch_20260518/control/generated_configs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml",
+  "direct_launch_script": "/data/muscat_data/jaguir26/project1_ucsc_phd/scripts/launch_he2_exal_m_t1_20221225_reference_no_cleanup.sh",
+  "cleanup_rdata_after_post": false,
+  "candidate_max_iter": 200,
+  "current_max_iter": 100,
+  "candidate_epsilon": 30.0,
+  "current_epsilon": 30.0,
+  "publication_source_epsilon": 360.0,
+  "candidate_internal_scale": "log1p_cms",
+  "current_internal_scale": "log1p_cms",
+  "publication_source_internal_scale": "log_log1p_cms",
+  "candidate_common_warmup_freeze_iters": 10,
+  "recommended_common_warmup_freeze_iters": 10,
+  "recommended_max_iter": 200,
+  "warmup_policy_decision": "keep existing freeze_target map, unify warmup_freeze_iters at 10, keep q35/q50 stabilization blocks unchanged",
+  "launch_readiness_status": "ready_pending_user_launch_approval"
+}

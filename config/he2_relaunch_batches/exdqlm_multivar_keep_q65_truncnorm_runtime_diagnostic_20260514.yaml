@@ -1,0 +1,50 @@
+selection:
+  cutoffs:
+    - '20221225'
+  families:
+    - exdqlm_multivar_keep
+
+resources:
+  fit_parallel_workers: 2
+  mc_cores: 2
+
+overrides:
+  row_config_patches:
+    - family: exdqlm_multivar_keep
+      manuscript_label: exAL-M-T1
+      config_patch:
+        fit:
+          exdqlm_multivar:
+            gamma_sigma:
+              quantile_overrides:
+                q65:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+                q80:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+    - cutoff: '20221225'
+      family: exdqlm_multivar_keep
+      manuscript_label: exAL-M-T1
+      config_patch:
+        run:
+          seed: 20221225
+        fit:
+          quantiles:
+            - 0.65
+            - 0.80
+          exdqlm_multivar:
+            legacy:
+              n_samp: 8
+              sampling_diagnostics:
+                heartbeat_enabled: true
+                heartbeat_seconds: 5
+                phase_markers_enabled: true
+                walltime_seconds: 300
+                member_walltime_seconds: 20

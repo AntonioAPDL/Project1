@@ -93,9 +93,82 @@ class HE2PublicationRelaunchLibTests(unittest.TestCase):
             self.assertFalse((runs_root / run_id).exists())
             self.assertFalse(compare_outdir.exists())
             status_lines = (matrix_dir / 'matrix_status.csv').read_text(encoding='utf-8').splitlines()
-            self.assertEqual(len(status_lines), 1)
+            self.assertGreaterEqual(len(status_lines), 1)
             self.assertIn('cutoff,epsilon,lane,run_id,phase,status', status_lines[0])
+            if len(status_lines) > 1:
+                self.assertIn('not_started,not_started', status_lines[1])
             self.assertEqual((matrix_dir / 'queue.log').read_text(encoding='utf-8'), '')
+
+    def test_reset_campaign_state_can_archive_only_selected_cutoffs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            artifact_root = tmp_path / 'artifact_root'
+            matrix_dir = artifact_root / 'control' / 'publication_relaunch_matrix'
+            matrix_dir.mkdir(parents=True, exist_ok=True)
+            runs_root = artifact_root / 'runs'
+            reports_root = artifact_root / 'reports'
+            run_a = 'multimodel_20210123_v8_he2pubgdpc1r1_exdqlm_multivar_keep'
+            run_b = 'multimodel_20211221_v8_he2pubgdpc1r1_exdqlm_multivar_keep'
+            compare_a = reports_root / 'multimodel_20210123_v8_he2pubgdpc1r1_compare'
+            compare_b = reports_root / 'multimodel_20211221_v8_he2pubgdpc1r1_compare'
+            for run_id in (run_a, run_b):
+                run_dir = runs_root / run_id
+                run_dir.mkdir(parents=True, exist_ok=True)
+                (run_dir / 'run_manifest.yaml').write_text(
+                    'stages:\n  report:\n    status: pass\n',
+                    encoding='utf-8',
+                )
+            for outdir in (compare_a, compare_b):
+                outdir.mkdir(parents=True, exist_ok=True)
+                (outdir / 'dummy.txt').write_text('ok\n', encoding='utf-8')
+
+            with (matrix_dir / 'matrix_plan.csv').open('w', newline='', encoding='utf-8') as handle:
+                writer = csv.DictWriter(handle, fieldnames=['cutoff', 'run_id', 'compare_outdir'])
+                writer.writeheader()
+                writer.writerow({'cutoff': '20210123', 'run_id': run_a, 'compare_outdir': str(compare_a)})
+                writer.writerow({'cutoff': '20211221', 'run_id': run_b, 'compare_outdir': str(compare_b)})
+
+            initialize_matrix_status(matrix_dir / 'matrix_status.csv')
+            (matrix_dir / 'queue.log').write_text('old queue log\n', encoding='utf-8')
+            run_logs = matrix_dir / 'run_logs'
+            run_logs.mkdir(parents=True, exist_ok=True)
+            (run_logs / f'{run_a}.log').write_text('a\n', encoding='utf-8')
+            (run_logs / f'{run_b}.log').write_text('b\n', encoding='utf-8')
+
+            summary = reset_campaign_state(
+                matrix_dir,
+                artifact_root,
+                reset_tag='selective_reset',
+                cutoffs=['20211221'],
+            )
+
+            archive_root = matrix_dir.parent / 'restart_resets' / 'selective_reset'
+            self.assertEqual(summary['selected_cutoffs'], ['20211221'])
+            self.assertEqual(summary['selected_run_ids'], [run_b])
+            self.assertIn(run_a, summary['preserved_run_ids'])
+            self.assertTrue((archive_root / 'runs' / run_b).exists())
+            self.assertTrue((archive_root / 'run_logs' / f'{run_b}.log').exists())
+            self.assertTrue((archive_root / 'compare_outputs' / compare_b.name / 'dummy.txt').exists())
+            self.assertTrue((runs_root / run_a).exists())
+            self.assertFalse((runs_root / run_b).exists())
+            self.assertTrue(compare_a.exists())
+            self.assertFalse(compare_b.exists())
+            self.assertTrue((run_logs / f'{run_a}.log').exists())
+            self.assertFalse((run_logs / f'{run_b}.log').exists())
+
+    def test_reset_campaign_state_raises_when_no_rows_match_selector(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            artifact_root = tmp_path / 'artifact_root'
+            matrix_dir = artifact_root / 'control' / 'publication_relaunch_matrix'
+            matrix_dir.mkdir(parents=True, exist_ok=True)
+            with (matrix_dir / 'matrix_plan.csv').open('w', newline='', encoding='utf-8') as handle:
+                writer = csv.DictWriter(handle, fieldnames=['cutoff', 'run_id', 'compare_outdir'])
+                writer.writeheader()
+                writer.writerow({'cutoff': '20210123', 'run_id': 'run_a', 'compare_outdir': ''})
+
+            with self.assertRaisesRegex(ValueError, 'no matrix_plan rows matched'):
+                reset_campaign_state(matrix_dir, artifact_root, cutoffs=['20211221'])
 
 
 if __name__ == '__main__':

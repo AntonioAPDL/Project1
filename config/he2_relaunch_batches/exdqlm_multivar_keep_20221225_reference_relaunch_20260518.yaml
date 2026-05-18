@@ -1,0 +1,148 @@
+selection:
+  cutoffs:
+    - '20221225'
+  families:
+    - exdqlm_multivar_keep
+
+resources:
+  fit_parallel_workers: 7
+  mc_cores: 7
+
+overrides:
+  row_config_patches:
+    - cutoff: '20221225'
+      family: exdqlm_multivar_keep
+      manuscript_label: exAL-M-T1
+      config_patch:
+        run:
+          seed: 20221225
+        models:
+          exdqlm_multivar:
+            state_evolution:
+              df_t: 0.99999999
+              df_s1: 0.99999
+              df_s2: 0.99999
+              df_s67: 0.99999
+              df_discrep: 0.99999
+              lambda: 0.97
+              df_trans: 0.9999999
+              df_covs: 0.9999999
+        fit:
+          exdqlm_multivar:
+            gamma_sigma:
+              warmup_freeze_iters: 10
+              min_update_iters: 50
+              min_total_iters: 50
+              max_iter: 200
+              convergence_tol: 1.0e-06
+              convergence:
+                elbo_tol: 1.0e-06
+                state_norm_sq_tol: 1.0e-06
+                sigma_exp_tol: 1.0e-06
+                gamma_exp_tol: 1.0e-06
+              freeze_target: gamma_sigma
+              guard_refreeze_iters: 10
+              init:
+                mode: robust
+                gamma: 0.0
+                sigma_floor: 0.001
+                sigma_scale: 1.0
+              objective_guard:
+                enabled: true
+                fail_fast: false
+                log_failures: true
+                mode: adaptive_freeze
+                penalty: 1.0e12
+              transfer_compare_fast:
+                enabled: false
+                warmup_freeze_iters: 5
+                min_update_iters: 15
+                min_total_iters: 20
+                max_iter: 20
+              quantile_overrides:
+                q20:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+                q35:
+                  freeze_target: states
+                  warmup_freeze_iters: 10
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+                  stabilization:
+                    state_guard_enabled: true
+                    state_norm_max_ratio: 25
+                    state_norm_abs_cap: 1.0e12
+                    state_guard_refreeze_iters: 10
+                    state_hold_after_guard_iters: 10
+                    state_blend_alpha: 1.0
+                    cov_blend_alpha: 1.0
+                q50:
+                  warmup_freeze_iters: 10
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+                  freeze_target: states
+                  terminal_sampling_guard:
+                    mode: fail_fast
+                    min_guard_count: 1
+                    max_guard_lag_iters: 0
+                    require_frozen: true
+                  stabilization:
+                    median_state_hold_after_guard_iters: 0
+                    median_state_blend_alpha: 0.5
+                    median_cov_blend_alpha: 0.5
+                    median_max_abs_gamma_step: 0.15
+                    median_max_abs_log_sigma_step: 0.25
+                q65:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+                q80:
+                  init:
+                    mode: robust
+                    gamma: 0.0
+                    sigma_floor: 0.01
+                    sigma_scale: 0.5
+            forecast_health:
+              enabled: true
+              fail_fast: true
+              write_reports: true
+              latent_limit: 650
+              sigma_limit: 100
+              state_limit: 1000
+            legacy:
+              lam1: 1.0
+              lam2: 1.0
+              n_samp: 2000
+              sims_enabled: true
+              use_covariates: true
+              forecast_cov:
+                c_factor: 1.0
+                epsilon: 30.0
+              sampling_diagnostics:
+                heartbeat_enabled: true
+                heartbeat_seconds: 30
+                phase_markers_enabled: true
+                walltime_seconds: 1800
+                member_walltime_seconds: 30
+        post:
+          figures: true
+          export_tables: true
+          smoke_fast: true
+          force_isolation_smoke_fast: true
+        scale_contract:
+          canonical_storage_scale: raw_cms
+          legacy_fit_input_scale: log1p_cms
+          legacy_post_input_scale: log1p_cms
+          analysis_scale_fit_internal: log1p_cms
+          analysis_scale_post_internal: log1p_cms

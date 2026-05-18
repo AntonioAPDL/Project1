@@ -1,0 +1,22 @@
+{
+  "run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reference_relaunch_20260518/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+  "analysis_scale_post_internal": "log1p_cms",
+  "guard_from_scale": "log1p_cms",
+  "guard_to_scale": "log1p_cms",
+  "guard_transform": "identity",
+  "forecast_days": 28,
+  "final_synth_frac_negative": 0.3709,
+  "final_q05_negative_days": 28,
+  "final_q20_negative_days": 28,
+  "final_q35_negative_days": 24,
+  "row_q05_frac_negative": 0.8293,
+  "row_q05_median": -14.1083,
+  "row_q05_own_quantile": -24.7576,
+  "row_q95_frac_negative": 0.1433,
+  "row_q95_own_quantile": 27.261,
+  "final_vs_row_q05_corr": 0.9884,
+  "final_vs_row_q05_mae": 0.3194,
+  "final_vs_row_q95_corr": 0.9958,
+  "final_vs_row_q95_mae": 0.209,
+  "issue_confirmed": true
+}

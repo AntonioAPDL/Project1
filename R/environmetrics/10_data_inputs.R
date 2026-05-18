@@ -17,6 +17,51 @@ adjustment_years <- 170
 ELI_lon$time <- ELI_lon$time - years(adjustment_years)
 #
 CFSToCMS_CONVERSION_FACTOR = 0.0283168466
+
+legacy_flow_input_scale <- env_or_default(
+  "UNIFIED_LEGACY_POST_INPUT_SCALE",
+  env_or_default("UNIFIED_LEGACY_FIT_INPUT_SCALE", "log1p_cms")
+)
+analysis_flow_input_scale <- env_or_default(
+  "UNIFIED_ANALYSIS_SCALE_POST_INTERNAL",
+  env_or_default("UNIFIED_ANALYSIS_SCALE_FIT_INTERNAL", legacy_flow_input_scale)
+)
+
+if (!exists("unified_convert_scale", mode = "function")) {
+  utils_scale_path <- file.path(PROJECT_ROOT, "R", "unified", "utils_scale.R")
+  if (file.exists(utils_scale_path)) {
+    source(utils_scale_path)
+  }
+}
+if (!exists("unified_convert_scale", mode = "function")) {
+  stop("10_data_inputs.R requires unified_convert_scale from R/unified/utils_scale.R", call. = FALSE)
+}
+if (exists("unified_assert_known_scale", mode = "function")) {
+  unified_assert_known_scale(legacy_flow_input_scale, "legacy_flow_input_scale")
+  unified_assert_known_scale(analysis_flow_input_scale, "analysis_flow_input_scale")
+}
+
+transform_flow_values_to_analysis_scale <- function(x, context_label) {
+  out <- unified_convert_scale(
+    as.numeric(x),
+    from_scale = legacy_flow_input_scale,
+    to_scale = analysis_flow_input_scale
+  )
+  if (length(out) != length(x)) {
+    stop(sprintf("%s scale transform changed vector length unexpectedly", context_label), call. = FALSE)
+  }
+  out
+}
+
+transform_flow_frame_cols_to_analysis_scale <- function(df, cols, context_label) {
+  if (length(cols) < 1L) {
+    return(df)
+  }
+  for (nm in cols) {
+    df[[nm]] <- transform_flow_values_to_analysis_scale(df[[nm]], sprintf("%s[%s]", context_label, nm))
+  }
+  df
+}
 # Read and process USGS data
 if (nzchar(USGS_DAILY_PATH) && file.exists(USGS_DAILY_PATH)) {
   message(sprintf("Using local USGS daily truth CSV: %s", USGS_DAILY_PATH))
@@ -91,7 +136,11 @@ nws_value_cols <- setdiff(colnames(nws_forecast), c("target_date", "Date"))
 if (length(nws_value_cols) == 0L) {
   stop(sprintf("NWS forecast file has no numeric ensemble columns: %s", NWS_FORECAST_PATH), call. = FALSE)
 }
-nws_forecast[, nws_value_cols] <- log(nws_forecast[, nws_value_cols, drop = FALSE])
+nws_forecast <- transform_flow_frame_cols_to_analysis_scale(
+  nws_forecast,
+  nws_value_cols,
+  context_label = "nws_forecast"
+)
 num_ens_nws <- length(nws_value_cols)
 
 glofas_forecast <- read.csv(GLOFAS_FORECAST_PATH)
@@ -113,7 +162,11 @@ glofas_value_cols <- setdiff(colnames(glofas_forecast), c("target_date", "Date")
 if (length(glofas_value_cols) == 0L) {
   stop(sprintf("GLOFAS forecast file has no numeric ensemble columns: %s", GLOFAS_FORECAST_PATH), call. = FALSE)
 }
-glofas_forecast[, glofas_value_cols] <- log(glofas_forecast[, glofas_value_cols, drop = FALSE])
+glofas_forecast <- transform_flow_frame_cols_to_analysis_scale(
+  glofas_forecast,
+  glofas_value_cols,
+  context_label = "glofas_forecast"
+)
 
 num_ens_glofas <- length(glofas_value_cols)
 
@@ -206,7 +259,7 @@ timestamps <- as.Date(streamflow_data$Date)
 Y_usgs <- data.frame(time = timestamps, time_series_matrix)
 all_data <- merge(X, Y_usgs, by = "time")
 Y <- t(as.matrix(all_data[, c('USGS', 'GloFAS', 'NWS3.0')]))
-Y <- log(Y) #log-log, since already logged
+Y[] <- transform_flow_values_to_analysis_scale(Y, "retros_response")
 TT <- dim(Y)[2]
 J <- dim(Y)[1] - 1
 timestamps <- all_data[, 'time']

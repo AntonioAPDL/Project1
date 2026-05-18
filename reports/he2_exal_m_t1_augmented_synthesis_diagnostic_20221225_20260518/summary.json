@@ -1,0 +1,15 @@
+{
+  "run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reference_relaunch_20260518/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+  "outputs_dir": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reference_relaunch_20260518/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep/post/outputs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep",
+  "report_dir": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_augmented_synthesis_diagnostic_20221225_20260518",
+  "analysis_scale_post_internal": "log1p_cms",
+  "diagnostic_sample_cap": 256,
+  "skip_history_model": true,
+  "corrected_quantiles_csv": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_augmented_synthesis_diagnostic_20221225_20260518/corrected_cutoff_window_quantiles_log1p.csv",
+  "corrected_sample_subset_csv": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_augmented_synthesis_diagnostic_20221225_20260518/corrected_cutoff_window_sample_subset_log1p.csv",
+  "corrected_history_samples_rds": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_augmented_synthesis_diagnostic_20221225_20260518/corrected_history_samples_log1p.rds",
+  "corrected_forecast_samples_rds": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_augmented_synthesis_diagnostic_20221225_20260518/corrected_forecast_samples_log1p.rds",
+  "current_vs_corrected_forecast_quantiles_csv": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_augmented_synthesis_diagnostic_20221225_20260518/current_vs_corrected_forecast_quantiles.csv",
+  "augmented_png": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_augmented_synthesis_diagnostic_20221225_20260518/exdqlm_multivar_synth_keep_cutoff_window_augmented_quantiles_log1p.png",
+  "augmented_pdf": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_augmented_synthesis_diagnostic_20221225_20260518/exdqlm_multivar_synth_keep_cutoff_window_augmented_quantiles_log1p.pdf"
+}

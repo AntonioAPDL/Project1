@@ -1,0 +1,13 @@
+{
+  "fit_run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reference_relaunch_20260518/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep_bridgefix_20260518",
+  "post_run_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reference_relaunch_20260518/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep_postbridgefix_20260518",
+  "forecast_review_dir": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_forecast_window_review_20221225_authoritative_postbridgefix_20260518",
+  "location_review_dir": "/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_exal_m_t1_usgs_location_dynamics_review_20221225_authoritative_postbridgefix_20260518",
+  "checks_total": 55,
+  "checks_failed": 0,
+  "exp_guard_identity": true,
+  "data_cbind_matches_post_adapters": true,
+  "quantile_exports_match_caches": true,
+  "sample_subset_matches_caches": true,
+  "review_exports_match_canonical_objects": true
+}

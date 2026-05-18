@@ -6,13 +6,6 @@ Date: 2026-05-17
 
 | Family | Label | Status | Selected rows | Smoke passed | Smoke skipped | Ready for launch |
 |---|---|---|---:|---:|---:|---|
-| `dqlm_multivar_al_keep` | `AL-M-T1` | `prodclone_running` | `0` | `0` | `0` | `false` |
-| `dqlm_multivar_al_drop` | `AL-M-T0` | `prodclone_running` | `0` | `0` | `0` | `false` |
+| `dqlm_multivar_al_keep` | `AL-M-T1` | `not_validated` | `0` | `0` | `0` | `false` |
+| `dqlm_multivar_al_drop` | `AL-M-T0` | `not_validated` | `0` | `0` | `0` | `false` |
 | `dqlm_univar_al` | `AL-U-T1` | `validated` | `5` | `8` | `3` | `true` |
-
-## Prodclone Diagnostics
-
-| Family | Diagnostic | Status | Latest fit iter | Fit artifact present |
-|---|---|---|---:|---|
-| `dqlm_multivar_al_keep` | `AL-M-T1 q65 prodclone` | `running` | `38` | `true` |
-| `dqlm_multivar_al_drop` | `AL-M-T0 q65 prodclone` | `running` | `38` | `true` |

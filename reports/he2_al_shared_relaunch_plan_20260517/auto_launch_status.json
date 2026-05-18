@@ -1,0 +1,18 @@
+{
+  "campaigns": {
+    "drop": {
+      "state": "pending",
+      "summary": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_all_cutoffs_sharedspec_20260517/control/prelaunch_validation_exact_final_batch_20260517/prelaunch_validation_summary.json"
+    },
+    "keep": {
+      "state": "pending",
+      "summary": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_all_cutoffs_sharedspec_20260517/control/prelaunch_validation_exact_final_batch_20260517/prelaunch_validation_summary.json"
+    },
+    "univar": {
+      "detail": "passed",
+      "state": "passed",
+      "summary": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_univar_al_all_cutoffs_sharedspec_20260517/control/prelaunch_validation_exact_final_batch_20260517/prelaunch_validation_summary.json"
+    }
+  },
+  "state": "timeout"
+}

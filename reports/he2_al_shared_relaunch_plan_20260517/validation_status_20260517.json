@@ -2,34 +2,16 @@
   "families": {
     "dqlm_multivar_al_drop": {
       "manuscript_label": "AL-M-T0",
-      "prodclone": {
-        "fit_artifact_present": true,
-        "label": "AL-M-T0 q65 prodclone",
-        "latest_fit_iter": 38,
-        "root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_20221225_q65_prodclone_diagnostic_20260517/control/prelaunch_validation_prodclone_20221225_q65_20260517",
-        "status": "running",
-        "template": "config/he2_bayesian_publication_relaunch_dqlm_multivar_al_drop_20221225_q65_prodclone_diagnostic_20260517.template.yaml",
-        "validator_running": true
-      },
       "ready_for_launch_after_validation": false,
-      "status": "prodclone_running",
+      "status": "not_validated",
       "summary_json": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_all_cutoffs_sharedspec_20260517/control/prelaunch_validation_exact_final_batch_20260517/prelaunch_validation_summary.json",
       "template": "config/he2_bayesian_publication_relaunch_dqlm_multivar_al_drop_all_cutoffs_sharedspec_20260517.template.yaml",
       "validator_running": false
     },
     "dqlm_multivar_al_keep": {
       "manuscript_label": "AL-M-T1",
-      "prodclone": {
-        "fit_artifact_present": true,
-        "label": "AL-M-T1 q65 prodclone",
-        "latest_fit_iter": 38,
-        "root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_20221225_q65_prodclone_diagnostic_20260517/control/prelaunch_validation_prodclone_20221225_q65_20260517",
-        "status": "running",
-        "template": "config/he2_bayesian_publication_relaunch_dqlm_multivar_al_keep_20221225_q65_prodclone_diagnostic_20260517.template.yaml",
-        "validator_running": true
-      },
       "ready_for_launch_after_validation": false,
-      "status": "prodclone_running",
+      "status": "not_validated",
       "summary_json": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_all_cutoffs_sharedspec_20260517/control/prelaunch_validation_exact_final_batch_20260517/prelaunch_validation_summary.json",
       "template": "config/he2_bayesian_publication_relaunch_dqlm_multivar_al_keep_all_cutoffs_sharedspec_20260517.template.yaml",
       "validator_running": false

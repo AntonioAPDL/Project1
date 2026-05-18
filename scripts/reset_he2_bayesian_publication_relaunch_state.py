@@ -22,6 +22,8 @@ def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description='Archive stale HE2 Bayesian publication relaunch runtime state and reset matrix status for a clean restart.')
     ap.add_argument('--template', default=str(DEFAULT_TEMPLATE))
     ap.add_argument('--reset-tag', default='')
+    ap.add_argument('--cutoffs', nargs='*')
+    ap.add_argument('--run-ids', nargs='*')
     return ap.parse_args()
 
 
@@ -32,7 +34,13 @@ def main() -> int:
     campaign = template.get('campaign', {})
     matrix_dir = Path(campaign['matrix_dir']).resolve()
     artifact_root = Path(campaign['artifact_root']).resolve()
-    summary = reset_campaign_state(matrix_dir, artifact_root, reset_tag=args.reset_tag or None)
+    summary = reset_campaign_state(
+        matrix_dir,
+        artifact_root,
+        reset_tag=args.reset_tag or None,
+        cutoffs=args.cutoffs,
+        run_ids=args.run_ids,
+    )
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
 

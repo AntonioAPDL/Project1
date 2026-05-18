@@ -1,0 +1,21 @@
+{
+  "audit_id": "he2_exal_m_t1_prefit_lineage_audit_20221225_20260518",
+  "history_reference_dates": [
+    "1987-05-29",
+    "2012-01-01",
+    "2017-01-01",
+    "2022-06-09",
+    "2022-12-25"
+  ],
+  "forecast_reference_dates": [
+    "2022-12-26",
+    "2022-12-27",
+    "2022-12-28"
+  ],
+  "history_transform_exact_match": false,
+  "forecast_member_transform_exact_match": false,
+  "fit_ingress_matches_log_of_log1p_history_response": true,
+  "all_response_series_match_log_of_shared_retros_exactly": true,
+  "fit_forecast_codepath_uses_log_raw_members": true,
+  "last200_start_date": "2022-06-09"
+}

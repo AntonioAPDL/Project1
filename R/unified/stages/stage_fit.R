@@ -858,6 +858,13 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
 
     env_overrides <- c(
       DISC_BASE_SEED = as.character(cfg$run$seed),
+      UNIFIED_LEGACY_FIT_INPUT_SCALE = as.character(cfg$scale_contract$legacy_fit_input_scale),
+      UNIFIED_ANALYSIS_SCALE_FIT_INTERNAL = as.character(cfg$scale_contract$analysis_scale_fit_internal),
+      UNIFIED_TRANSFORM_POLICY = as.character(unified_get(
+        cfg,
+        c("scale_contract", "transform_policy"),
+        default = ""
+      )),
       DISC_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
       DISC_W_LIKELIHOOD_MODE = as.character(multivar_likelihood_mode),
       DISC_W_FORECAST_TRANSFER_MODE = forecast_transfer_mode,
@@ -903,6 +910,23 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_W_N_SAMP = as.character(unified_get(
         cfg, c("fit", "exdqlm_multivar", "legacy", "n_samp"), default = 2000L
       )),
+      DISC_W_SAMPLING_HEARTBEAT_ENABLED = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "sampling_diagnostics", "heartbeat_enabled"), default = FALSE
+      ))) "TRUE" else "FALSE",
+      DISC_W_SAMPLING_HEARTBEAT_SECONDS = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "sampling_diagnostics", "heartbeat_seconds"), default = 60L
+      )),
+      DISC_W_SAMPLING_PHASE_MARKERS_ENABLED = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "sampling_diagnostics", "phase_markers_enabled"), default = FALSE
+      ))) "TRUE" else "FALSE",
+      DISC_W_SAMPLING_WALLTIME_SECONDS = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "sampling_diagnostics", "walltime_seconds"), default = 0L
+      )),
+      DISC_W_SAMPLING_MEMBER_WALLTIME_SECONDS = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "sampling_diagnostics", "member_walltime_seconds"), default = 0L
+      )),
+      DISC_W_SAMPLING_DIAG_PATH = file.path(q_logs, "sampling_diagnostics.log"),
+      DISC_W_SAMPLING_DIAG_STDERR_ENABLED = "TRUE",
       DISC_W_SIMS_ENABLED = if (isTRUE(unified_get(
         cfg, c("fit", "exdqlm_multivar", "legacy", "sims_enabled"), default = TRUE
       ))) "TRUE" else "FALSE",
@@ -967,6 +991,18 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
         gamsig_policy, c("objective_guard", "penalty"), default = 1e12
       )),
+      DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE = as.character(unified_get(
+        gamsig_policy, c("terminal_sampling_guard", "mode"), default = "off"
+      )),
+      DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MIN_GUARD_COUNT = as.character(unified_get(
+        gamsig_policy, c("terminal_sampling_guard", "min_guard_count"), default = 1L
+      )),
+      DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MAX_GUARD_LAG_ITERS = as.character(unified_get(
+        gamsig_policy, c("terminal_sampling_guard", "max_guard_lag_iters"), default = 0L
+      )),
+      DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_REQUIRE_FROZEN = if (isTRUE(unified_get(
+        gamsig_policy, c("terminal_sampling_guard", "require_frozen"), default = TRUE
+      ))) "TRUE" else "FALSE",
       DISC_GAMSIG_THETA_SIGMA_LOWER = as.character(unified_get(
         gamsig_policy, c("stabilization", "theta_sigma_lower"), default = log(1e-4)
       )),
