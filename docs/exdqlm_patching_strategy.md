@@ -481,23 +481,66 @@ At the end of the series, produce a short implementation note with:
 - what is still approximate,
 - what remains to be investigated.
 
-## Recommended immediate next step
+## Execution status: 2026-05-20
 
-The next step is **not** to patch blindly.
+The patch series described above has now been executed from the baseline
+checkpoint `91d690e`.
 
-The next step is:
-1. review and approve this plan,
-2. define the exact baseline fixture set for Group A and Group B,
-3. then begin with Group A only.
+### Baseline anchors
+
+- baseline tag: `exdqlm-prepatch-20260520`
+- baseline commit: `91d690e`
+
+### Executed patch bundle commits
+
+1. `f3f76f9`
+   - `docs: lock exdqlm pre-patch verification plan`
+2. `01a69cd`
+   - `patch(A): split gamma mode search near zero`
+3. `f2c8c41`
+   - `patch(B): use exact u-only sigma moments`
+4. `5f1ed2a`
+   - `patch(C): clarify Laplace covariance semantics`
+5. `d9f4b21`
+   - `patch(DE): quarantine stale path and document runtime semantics`
+
+### Verification result
+
+The post-patch verification pass completed cleanly.
+
+Focused and broader checks passed:
+
+- `tests/testthat/test_disc_w_gamsig_laplace.R`
+- `tests/testthat/test_disc_w_sampling_contracts.R`
+- `tests/testthat/test_disc_w_state_blend.R`
+- `tests/testthat/test_disc_w_state_refresh_schedule.R`
+- `tests/testthat/test_disc_w_warm_start_io.R`
+- `tests/testthat/test_stage_fit_preflight.R`
+- `tests/testthat/test_unified_gamma_sigma_state_refresh_schedule_config.R`
+- `tests/python/test_prepare_reduced_defaultvb_temporal_bundle.py`
+- `tests/python/test_data_start_usgs_filter_contract.py`
+- `tests/python/test_stage_fit_quantile_gamma_sigma_overrides.py`
+- `tests/python/test_he2_exal_m_t1_discount_refresh_scaffold.py`
+
+### Final state of the plan
+
+- Group A: completed
+- Group B: completed
+- Group C: completed
+- Group D: completed
+- Group E: completed
+- Group F: completed
 
 ## Final recommendation
 
-The optimal forward path is:
+The patch series is now in a good state for empirical comparison runs.
 
-1. preserve `91d690e` as the pre-patch baseline,
-2. treat the current theory docs as the locked reference set,
-3. patch the active path in the order A -> B -> C -> D,
-4. validate after each group,
-5. only then trust longer empirical runs as evidence about improvement.
+The next high-value step is not more theory patching.
+The next high-value step is controlled empirical validation on representative
+problem cases, using the new diagnostics to inspect:
 
-This is the highest-quality and lowest-regret way to move forward.
+1. near-zero gamma branch selection,
+2. fallback frequency,
+3. ridge-regularization frequency,
+4. sigma spikes and tail instability,
+5. downstream state-path behavior.
