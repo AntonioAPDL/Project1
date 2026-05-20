@@ -4,7 +4,11 @@ Date: 2026-05-20
 
 ## Purpose
 
-This document is the implementation plan for the next round of theory-aligned exDQLM patching.
+This document serves two purposes:
+
+1. it records the completed `2026-05-20` theory-aligned patch series, and
+2. it defines the protocol for any future exDQLM patching cycle.
+
 It is intentionally broader and more operational than the earlier strategy note.
 
 The goals are:
@@ -15,7 +19,24 @@ The goals are:
 4. verify behavior before patching, during patching, and after patching,
 5. make it easy to determine whether a change improved or harmed the algorithm.
 
-This document is a **plan only**. It does not authorize patch implementation by itself.
+Interpretation:
+
+- sections written in future tense describe the patch protocol we should reuse,
+- sections written in past tense record what was actually executed in the completed patch cycle.
+
+This document should be treated as the operating playbook for future patch work.
+
+## Current status
+
+The first theory-aligned patch series described here has already been implemented,
+verified, committed in bundles, and pushed.
+
+Current branch state:
+- branch: `feature/export_posterior_tables`
+- head: `6406727` `docs(F): record completed exdqlm patch series verification`
+
+For the concise operator summary of the implemented changes, see:
+- `docs/exdqlm_patch_series_summary.md`
 
 ## Current baseline
 
@@ -36,6 +57,21 @@ Current untracked state:
 - generated report directories under `reports/`
 
 These report directories are audit/runtime artifacts and should remain outside the core patch commit series.
+
+## How to use this document now
+
+If we need a **new** patch cycle after the completed one, use this document in the following order:
+
+1. start from the latest pushed branch head,
+2. decide whether the next cycle is theory-sensitive or purely operational,
+3. if theory-sensitive, create a fresh checkpoint commit and tag before changes,
+4. reuse the verification gates below before modifying production code,
+5. patch in small bundles with tests and pushes after each bundle,
+6. update this document again at the end of the cycle.
+
+In other words:
+- the original cycle is complete,
+- this document now defines the standard for the next cycle too.
 
 ### Theory baseline already completed
 
@@ -297,6 +333,8 @@ Acceptance criteria:
 
 Before the first code patch, complete the following checklist.
 
+For any future patch cycle, treat this checklist as mandatory unless the change is documentation-only.
+
 ### V0.1 Baseline reference
 
 - baseline commit is `91d690e`
@@ -425,6 +463,54 @@ Signals against the patch series:
 - widespread divergence from stable non-near-zero fixtures,
 - broken downstream consumers,
 - unstable mode selection far from zero.
+
+## Future patch-cycle template
+
+If a second patch cycle becomes necessary, this is the required sequence.
+
+### Phase P1: checkpoint and scope lock
+
+1. identify the exact source files to change,
+2. identify the exact theory or implementation claim being changed,
+3. create a checkpoint commit,
+4. create an annotated tag for that checkpoint,
+5. record the baseline test subset to be rerun.
+
+Required outputs:
+- checkpoint commit hash
+- checkpoint tag
+- patch-scope note
+
+### Phase P2: implement in bundles
+
+Rules:
+- one logical behavior change per bundle,
+- tests added or updated in the same bundle,
+- no mixing generated reports into the bundle commits.
+
+Bundle closeout requirement:
+- tests pass,
+- commit is created,
+- branch is pushed.
+
+### Phase P3: integrated verification
+
+Before declaring the cycle complete:
+
+1. rerun the broader R verification subset,
+2. rerun the relevant Python contract tests,
+3. perform at least one targeted empirical behavior check if the patch changes runtime behavior,
+4. record the results in this strategy doc and any operator-facing summary note.
+
+### Phase P4: disposition
+
+At the end of the cycle, classify the change set as:
+
+- `accepted`
+- `accepted with caveats`
+- `needs rollback`
+
+This prevents “tests passed” from being treated as the only decision criterion.
 
 ## Commit structure and sequencing
 
