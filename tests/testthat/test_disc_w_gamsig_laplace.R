@@ -104,3 +104,37 @@ test_that("disc_w_exact_sigma_moments rejects invalid theta_s covariance inputs"
     "theta_mean must contain a finite theta_s entry"
   )
 })
+
+test_that("disc_w_build_laplace_covariance returns the exact inverse when possible", {
+  log_hessian <- -diag(c(4, 9), nrow = 2)
+
+  out <- disc_w_build_laplace_covariance(
+    log_hessian = log_hessian,
+    ridge_init = 1e-6,
+    ridge_multiplier = 10,
+    max_tries = 3
+  )
+
+  expect_true(out$ok)
+  expect_identical(out$covariance_type, "laplace_precision_inverse")
+  expect_false(out$ridge_regularized)
+  expect_equal(out$ridge_used, 0)
+  expect_equal(out$covariance, diag(c(1 / 4, 1 / 9), nrow = 2))
+})
+
+test_that("disc_w_build_laplace_covariance falls back to ridge regularization when needed", {
+  log_hessian <- matrix(0, nrow = 2, ncol = 2)
+
+  out <- disc_w_build_laplace_covariance(
+    log_hessian = log_hessian,
+    ridge_init = 1e-3,
+    ridge_multiplier = 10,
+    max_tries = 2
+  )
+
+  expect_true(out$ok)
+  expect_identical(out$covariance_type, "ridge_regularized_precision_inverse")
+  expect_true(out$ridge_regularized)
+  expect_equal(out$ridge_used, 1e-3)
+  expect_equal(out$covariance, diag(1000, nrow = 2))
+})

@@ -236,3 +236,96 @@ disc_w_exact_sigma_moments <- function(theta_mean, theta_cov) {
     E_log_sigma = mu_u
   )
 }
+
+disc_w_build_laplace_covariance <- function(
+  log_hessian,
+  ridge_init = 1e-6,
+  ridge_multiplier = 10,
+  max_tries = 8L
+) {
+  if (is.null(log_hessian)) {
+    return(list(
+      ok = FALSE,
+      covariance = NULL,
+      covariance_type = "invalid_log_hessian",
+      ridge_used = NA_real_,
+      ridge_regularized = NA,
+      attempts = 0L
+    ))
+  }
+
+  log_hessian <- as.matrix(log_hessian)
+  if (nrow(log_hessian) != ncol(log_hessian) || any(!is.finite(log_hessian))) {
+    return(list(
+      ok = FALSE,
+      covariance = NULL,
+      covariance_type = "invalid_log_hessian",
+      ridge_used = NA_real_,
+      ridge_regularized = NA,
+      attempts = 0L
+    ))
+  }
+
+  ridge_init <- suppressWarnings(as.numeric(ridge_init)[1L])
+  ridge_multiplier <- suppressWarnings(as.numeric(ridge_multiplier)[1L])
+  max_tries <- suppressWarnings(as.integer(max_tries)[1L])
+  if (!is.finite(ridge_init) || ridge_init <= 0) {
+    ridge_init <- 1e-6
+  }
+  if (!is.finite(ridge_multiplier) || ridge_multiplier <= 1) {
+    ridge_multiplier <- 10
+  }
+  if (!is.finite(max_tries) || max_tries < 0L) {
+    max_tries <- 8L
+  }
+
+  precision <- -(0.5 * (log_hessian + t(log_hessian)))
+  if (any(!is.finite(precision))) {
+    return(list(
+      ok = FALSE,
+      covariance = NULL,
+      covariance_type = "invalid_precision",
+      ridge_used = NA_real_,
+      ridge_regularized = NA,
+      attempts = 0L
+    ))
+  }
+
+  exact_covariance <- tryCatch(solve(precision), error = function(e) NULL)
+  if (!is.null(exact_covariance) && all(is.finite(exact_covariance))) {
+    return(list(
+      ok = TRUE,
+      covariance = exact_covariance,
+      covariance_type = "laplace_precision_inverse",
+      ridge_used = 0,
+      ridge_regularized = FALSE,
+      attempts = 1L
+    ))
+  }
+
+  ridge <- ridge_init
+  for (attempt in seq_len(max_tries + 1L)) {
+    precision_reg <- precision + diag(ridge, nrow = nrow(precision))
+    cov_candidate <- tryCatch(solve(precision_reg), error = function(e) NULL)
+    if (!is.null(cov_candidate) && all(is.finite(cov_candidate))) {
+      return(list(
+        ok = TRUE,
+        covariance = cov_candidate,
+        covariance_type = "ridge_regularized_precision_inverse",
+        ridge_used = ridge,
+        ridge_regularized = TRUE,
+        attempts = attempt + 1L
+      ))
+    }
+    ridge <- ridge * ridge_multiplier
+  }
+
+  list(
+    ok = FALSE,
+    covariance = NULL,
+    covariance_type = "covariance_build_failed",
+    ridge_used = ridge / ridge_multiplier,
+    ridge_regularized = TRUE,
+    attempts = max_tries + 2L
+  )
+}

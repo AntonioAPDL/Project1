@@ -1930,7 +1930,19 @@ if (isTRUE(DISC_W_AL_MODE)) {
 }
 g_seed <- pmin(pmax(g_seed, L + 1e-12), U - 1e-12)
 
-build_mode_result <- function(theta_s_val, theta_g_val, guard = FALSE, guard_msg = "") {
+build_mode_result <- function(
+  theta_s_val,
+  theta_g_val,
+  guard = FALSE,
+  guard_msg = "",
+  laplace_status = if (isTRUE(guard)) "guard_fallback" else "seed_fallback",
+  laplace_covariance_type = "seed_diagonal",
+  laplace_covariance = NULL,
+  laplace_ridge = NA_real_,
+  laplace_ridge_regularized = FALSE,
+  laplace_mode_search = "seed",
+  laplace_hessian_source = "seed_diagonal"
+) {
   pi <- plogis(theta_g_val)
   pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
   sig <- exp(theta_s_val)
@@ -1942,7 +1954,10 @@ build_mode_result <- function(theta_s_val, theta_g_val, guard = FALSE, guard_msg
   var_gam_seed <- suppressWarnings(as.numeric(var.gam)[1])
   if (!is.finite(var_sig_seed) || var_sig_seed <= 0) var_sig_seed <- 1e-3
   if (!is.finite(var_gam_seed) || var_gam_seed <= 0) var_gam_seed <- 1e-3
-  hess_seed <- diag(c(var_sig_seed, var_gam_seed), nrow = 2L)
+  sigma_ld <- laplace_covariance
+  if (is.null(sigma_ld)) {
+    sigma_ld <- diag(c(var_sig_seed, var_gam_seed), nrow = 2L)
+  }
   prior_gamma_log <- suppressWarnings(crch::dtt(
     gam, location = prior_g[1], scale = prior_g[2], df = prior_g[3], left = L, right = U, log = TRUE
   ))
@@ -1959,19 +1974,35 @@ build_mode_result <- function(theta_s_val, theta_g_val, guard = FALSE, guard_msg
     E.a2.invb.inv.sigma = a^2 / (sig * b),
     E.invb.inv.sigma = 1 / (sig * b),
     E.a.invb.inv.sigma = a / (sig * b),
-    Hess.LD = hess_seed,
+    Sigma.LD = sigma_ld,
+    Hess.LD = sigma_ld,
     E.log.sig.b = log(sig * b),
     E.log.sig = log(sig),
     E.prior.sig.gam = prior_gamma_log + prior_sigma_log,
     E.theta = c(theta_s_val, theta_g_val),
     entrop = 0,
     guard_triggered = isTRUE(guard),
-    guard_message = guard_msg
+    guard_message = guard_msg,
+    laplace_status = laplace_status,
+    laplace_status_message = guard_msg,
+    laplace_covariance_type = laplace_covariance_type,
+    laplace_ridge = laplace_ridge,
+    laplace_ridge_regularized = isTRUE(laplace_ridge_regularized),
+    laplace_mode_search = laplace_mode_search,
+    laplace_hessian_source = laplace_hessian_source,
+    laplace_is_fallback = grepl("fallback", laplace_status, fixed = TRUE)
   )
 }
 
 build_guard_fallback <- function(theta_s_val, theta_g_val, guard_msg = "") {
-  build_mode_result(theta_s_val, theta_g_val, guard = TRUE, guard_msg = guard_msg)
+  build_mode_result(
+    theta_s_val,
+    theta_g_val,
+    guard = TRUE,
+    guard_msg = guard_msg,
+    laplace_status = "guard_fallback",
+    laplace_mode_search = "guard_fallback"
+  )
 }
 
 theta_sigma_lower <- as.numeric(DISC_GAMSIG_THETA_SIGMA_LOWER)
@@ -2190,39 +2221,14 @@ if(!Climate_Center){
       format(sigma_opt$minimum, digits = 16),
       format(theta_g_fixed, digits = 16)
     ))
-    build_mode_result(sigma_opt$minimum, theta_g_fixed, guard = FALSE, guard_msg = reason_label)
-  }
-
-  build_ld_covariance <- function(log_hessian, label) {
-    if (is.null(log_hessian) || any(!is.finite(log_hessian))) {
-      return(NULL)
-    }
-    precision <- -(0.5 * (log_hessian + t(log_hessian)))
-    if (any(!is.finite(precision))) {
-      return(NULL)
-    }
-    ridge <- as.numeric(DISC_GAMSIG_HESSIAN_RIDGE_INIT)
-    max_tries <- as.integer(DISC_GAMSIG_HESSIAN_RIDGE_MAX_TRIES)
-    mult <- as.numeric(DISC_GAMSIG_HESSIAN_RIDGE_MULTIPLIER)
-    if (!is.finite(mult) || mult <= 1) mult <- 10
-    for (attempt in seq_len(max_tries + 1L)) {
-      precision_reg <- precision + diag(ridge, nrow = nrow(precision))
-      cov_candidate <- tryCatch(solve(precision_reg), error = function(e) NULL)
-      if (!is.null(cov_candidate) && all(is.finite(cov_candidate))) {
-        if (ridge > as.numeric(DISC_GAMSIG_HESSIAN_RIDGE_INIT)) {
-          log_stabilization_event(sprintf(
-            "regularized Hessian accepted at p0=%s context=%s label=%s ridge=%s",
-            as.character(p0),
-            context_label,
-            label,
-            format(ridge, scientific = TRUE, digits = 6)
-          ))
-        }
-        return(cov_candidate)
-      }
-      ridge <- ridge * mult
-    }
-    NULL
+    build_mode_result(
+      sigma_opt$minimum,
+      theta_g_fixed,
+      guard = FALSE,
+      guard_msg = reason_label,
+      laplace_status = "sigma_only_fallback",
+      laplace_mode_search = sprintf("sigma_only:%s", reason_label)
+    )
   }
 
   if (isTRUE(DISC_W_AL_MODE)) {
@@ -2245,7 +2251,14 @@ if(!Climate_Center){
       msg <- if (inherits(sigma_opt, "error")) conditionMessage(sigma_opt) else "invalid sigma optimum"
       return(build_guard_fallback(theta_s_init, theta_g_fixed, guard_msg = msg))
     }
-    return(build_mode_result(sigma_opt$minimum, theta_g_fixed, guard = FALSE, guard_msg = ""))
+    return(build_mode_result(
+      sigma_opt$minimum,
+      theta_g_fixed,
+      guard = FALSE,
+      guard_msg = "",
+      laplace_status = "al_sigma_only",
+      laplace_mode_search = "al_sigma_only"
+    ))
   }
 
   # Optimization step
@@ -2431,11 +2444,18 @@ if(!Climate_Center){
     ),
     error = function(e) NULL
   )
+  laplace_hessian_source <- "numDeriv"
   if (is.null(log_hessian_at_optimal) || any(!is.finite(log_hessian_at_optimal))) {
     log_hessian_at_optimal <- -optim_results$hessian
+    laplace_hessian_source <- "optim_negated"
   }
-  LD_S <- build_ld_covariance(log_hessian_at_optimal, label = "log_hessian")
-  if (is.null(LD_S)) {
+  covariance_build <- disc_w_build_laplace_covariance(
+    log_hessian = log_hessian_at_optimal,
+    ridge_init = DISC_GAMSIG_HESSIAN_RIDGE_INIT,
+    ridge_multiplier = DISC_GAMSIG_HESSIAN_RIDGE_MULTIPLIER,
+    max_tries = DISC_GAMSIG_HESSIAN_RIDGE_MAX_TRIES
+  )
+  if (!isTRUE(covariance_build$ok)) {
     msg <- sprintf(
       "non-invertible Hessian at p0=%s context=%s",
       as.character(p0), context_label
@@ -2450,11 +2470,23 @@ if(!Climate_Center){
     }
     return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = msg))
   }
+  if (isTRUE(covariance_build$ridge_regularized)) {
+    log_stabilization_event(sprintf(
+      "regularized Hessian accepted at p0=%s context=%s label=%s ridge=%s attempts=%d",
+      as.character(p0),
+      context_label,
+      selected_candidate$label,
+      format(covariance_build$ridge_used, scientific = TRUE, digits = 6),
+      as.integer(covariance_build$attempts)
+    ))
+  }
+
+  LD_S <- covariance_build$covariance
 
   LD_mu <- optim_results$par
 
   Expected_f <- function(f, theta_s, theta_g){
-      x <- hessian(func = f, x = LD_mu)%*%LD_S
+      x <- numDeriv::hessian(func = f, x = LD_mu)%*%LD_S
       e <- f(LD_mu) + 0.5*sum(diag(x))
     return(e)
   }
@@ -2583,6 +2615,7 @@ if(!Climate_Center){
               E.c2.invb.absgam2.sigma = E.c2.invb.absgam2.sigma, E.c.invb.absgam = E.c.invb.absgam,
               E.c.a.invb.absgam = E.c.a.invb.absgam, E.a2.invb.inv.sigma = E.a2.invb.inv.sigma,
               E.invb.inv.sigma = E.invb.inv.sigma, E.a.invb.inv.sigma = E.a.invb.inv.sigma,
+              Sigma.LD = LD_S,
               Hess.LD = LD_S,
               E.log.sig.b=E.log.sig.b, 
               E.log.sig = E.log.sig, 
@@ -2590,7 +2623,15 @@ if(!Climate_Center){
               E.theta = LD_mu,
               entrop = entrop,
               guard_triggered = FALSE,
-              guard_message = ""))
+              guard_message = "",
+              laplace_status = "ok",
+              laplace_status_message = "",
+              laplace_covariance_type = covariance_build$covariance_type,
+              laplace_ridge = covariance_build$ridge_used,
+              laplace_ridge_regularized = isTRUE(covariance_build$ridge_regularized),
+              laplace_mode_search = selected_candidate$label,
+              laplace_hessian_source = laplace_hessian_source,
+              laplace_is_fallback = FALSE))
 }
 
 ########################
@@ -4409,7 +4450,8 @@ for (j in 1:(J+1)) {
         theta_s <- gamsig.dummy$E.theta[1]
         theta_g <- gamsig.dummy$E.theta[2]
         # Normal Aproximation
-        samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = gamsig.dummy$Hess.LD)
+        sigma_ld_cov <- if (!is.null(gamsig.dummy$Sigma.LD)) gamsig.dummy$Sigma.LD else gamsig.dummy$Hess.LD
+        samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = sigma_ld_cov)
         if (isTRUE(DISC_W_AL_MODE)) {
           samp.gamma[j,] = rep(0, n.samp)
         } else {
@@ -4624,7 +4666,8 @@ disc_sampling_diag_mark("sampling_gamma_sigma", sprintf("forecast_blocks=%d", as
         ########################
         ########################
         # Normal Aproximation
-        samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = gamsig.dummy$Hess.LD)
+        sigma_ld_cov <- if (!is.null(gamsig.dummy$Sigma.LD)) gamsig.dummy$Sigma.LD else gamsig.dummy$Hess.LD
+        samp.LD <- rmvnorm(n = n.samp, mean = c(theta_s, theta_g), sigma = sigma_ld_cov)
         if (isTRUE(DISC_W_AL_MODE)) {
           samp.gamma[j,] = rep(0, n.samp)
         } else {
