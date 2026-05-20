@@ -20,6 +20,7 @@ invisible(lapply(c(
 
 DISC_DEBUG <- FALSE
 source("R/disc_w/_init.R")
+source("R/disc_w/09_state_blend.R")
 source("R/unified/families/exdqlm_multivar_structure.R")
 
 n.samp <- 2000
@@ -30,6 +31,7 @@ disc_use_prev_env <- Sys.getenv("DISC_USE_PREV", "")
 if (nzchar(disc_use_prev_env)) {
   USE_PREV <- tolower(disc_use_prev_env) %in% c("1", "true", "yes", "y")
 }
+disc_prev_rdata_env <- Sys.getenv("DISC_PREV_RDATA", "")
 
 args <- commandArgs(trailingOnly = TRUE)
 p0 <- as.numeric(args[1])
@@ -168,6 +170,13 @@ DISC_GAMSIG_FREEZE_TARGET <- disc_env_choice(
   choices = c("gamma_sigma", "states"),
   default = "gamma_sigma"
 )
+DISC_GAMSIG_STATE_REFRESH_SCHEDULE <- disc_w_normalize_state_refresh_schedule(
+  enabled = disc_env_flag("DISC_GAMSIG_STATE_REFRESH_SCHEDULE_ENABLED", default = FALSE),
+  start_iter = disc_env_nonneg_int("DISC_GAMSIG_STATE_REFRESH_SCHEDULE_START_ITER", default = 11L),
+  end_iter = disc_env_nonneg_int("DISC_GAMSIG_STATE_REFRESH_SCHEDULE_END_ITER", default = 200L),
+  hold_iters = disc_env_nonneg_int("DISC_GAMSIG_STATE_REFRESH_SCHEDULE_HOLD_ITERS", default = 10L),
+  refresh_iters = disc_env_nonneg_int("DISC_GAMSIG_STATE_REFRESH_SCHEDULE_REFRESH_ITERS", default = 1L)
+)
 DISC_GAMSIG_GUARD_REFREEZE_ITERS <- disc_env_nonneg_int(
   "DISC_GAMSIG_GUARD_REFREEZE_ITERS",
   default = 10L
@@ -180,6 +189,11 @@ DISC_GAMSIG_INIT_MODE <- disc_env_choice(
 DISC_GAMSIG_INIT_GAMMA <- disc_env_num("DISC_GAMSIG_INIT_GAMMA", 0.0)
 DISC_GAMSIG_INIT_SIGMA_FLOOR <- disc_env_pos_num("DISC_GAMSIG_INIT_SIGMA_FLOOR", 1e-3)
 DISC_GAMSIG_INIT_SIGMA_SCALE <- disc_env_pos_num("DISC_GAMSIG_INIT_SIGMA_SCALE", 1.0)
+DISC_GAMSIG_PRIOR_SIGMA_MEAN <- disc_env_pos_num("DISC_GAMSIG_PRIOR_SIGMA_MEAN", 1.0)
+DISC_GAMSIG_PRIOR_SIGMA_VARIANCE <- disc_env_pos_num("DISC_GAMSIG_PRIOR_SIGMA_VARIANCE", 1e+10)
+DISC_GAMSIG_PRIOR_GAMMA_LOCATION <- disc_env_num("DISC_GAMSIG_PRIOR_GAMMA_LOCATION", 0.0)
+DISC_GAMSIG_PRIOR_GAMMA_SCALE <- disc_env_pos_num("DISC_GAMSIG_PRIOR_GAMMA_SCALE", 1e+10)
+DISC_GAMSIG_PRIOR_GAMMA_DF <- disc_env_pos_num("DISC_GAMSIG_PRIOR_GAMMA_DF", 1.0)
 DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED <- disc_env_flag(
   "DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED",
   default = TRUE
@@ -314,64 +328,6 @@ DISC_STRICT_CONTRACTS <- disc_env_flag(
   "DISC_STRICT_CONTRACTS",
   default = TRUE
 )
-
-disc_blend_numeric_like <- function(current, candidate, alpha, label = "value") {
-  disc_dim_string <- function(x) {
-    dims <- dim(x)
-    if (is.null(dims)) {
-      return(sprintf("len=%d", length(x)))
-    }
-    paste(dims, collapse = "x")
-  }
-  if (!is.finite(alpha) || alpha >= 1) {
-    return(candidate)
-  }
-  if (alpha <= 0) {
-    return(current)
-  }
-  current_arr <- as.array(current)
-  candidate_arr <- as.array(candidate)
-  if (!identical(dim(current_arr), dim(candidate_arr))) {
-    stop(
-      sprintf(
-        "blend dim mismatch for %s current=%s candidate=%s",
-        label,
-        disc_dim_string(current),
-        disc_dim_string(candidate)
-      ),
-      call. = FALSE
-    )
-  }
-  blended <- alpha * candidate_arr + (1 - alpha) * current_arr
-  if (is.null(dim(candidate))) {
-    return(as.numeric(blended))
-  }
-  dim(blended) <- dim(candidate)
-  dimnames(blended) <- dimnames(candidate)
-  blended
-}
-
-disc_blend_numeric_list <- function(current_list, candidate_list, alpha, label_prefix = "list") {
-  if (!is.list(current_list) || !is.list(candidate_list)) {
-    stop(sprintf("blend list mismatch for %s", label_prefix), call. = FALSE)
-  }
-  if (length(current_list) != length(candidate_list)) {
-    stop(sprintf("blend list length mismatch for %s", label_prefix), call. = FALSE)
-  }
-  Map(
-    function(cur_item, cand_item, idx) {
-      disc_blend_numeric_like(
-        cur_item,
-        cand_item,
-        alpha,
-        sprintf("%s[[%d]]", label_prefix, as.integer(idx))
-      )
-    },
-    current_list,
-    candidate_list,
-    seq_along(candidate_list)
-  )
-}
 
 disc_theta_cpp_horizon_count <- function(total_len, state_rows, label) {
   horizon_count <- total_len / state_rows
@@ -1654,8 +1610,8 @@ for (j in 1:(J+1)) {
 ########### For every j
 for (j in 1:(J+1)) {
   if (is.na(PriorSigma[j,1]) || is.na(PriorSigma[j,2])) {
-    m_sigma = 1
-    v_sigma = 1e+10
+    m_sigma = DISC_GAMSIG_PRIOR_SIGMA_MEAN
+    v_sigma = DISC_GAMSIG_PRIOR_SIGMA_VARIANCE
     PriorSigma[j,1] = (m_sigma^2)/(v_sigma) + 2 
     PriorSigma[j,2] = (m_sigma^3)/(v_sigma) + m_sigma 
   }
@@ -1664,9 +1620,9 @@ for (j in 1:(J+1)) {
 ########### For every j
 for (j in 1:(J+1)) {
   if (is.na(PriorGamma[j,1]) || is.na(PriorGamma[j,2]) || is.na(PriorGamma[j,3])) {
-    PriorGamma[j,1]  = 0
-    PriorGamma[j,2]  = 1e+10
-    PriorGamma[j,3] = 1
+    PriorGamma[j,1]  = DISC_GAMSIG_PRIOR_GAMMA_LOCATION
+    PriorGamma[j,2]  = DISC_GAMSIG_PRIOR_GAMMA_SCALE
+    PriorGamma[j,3] = DISC_GAMSIG_PRIOR_GAMMA_DF
   }
 }
 ###########################################################################################
@@ -2819,70 +2775,63 @@ disc_w_spd_inverse <- function(M, label = "matrix") {
   print(c(n.samp, 111))
   flush.console()
 if(USE_PREV){
-  if(p0==0.05){
+  result_suffix_prev <- sprintf("%.0f", p0 * 100)
+  if (nzchar(disc_prev_rdata_env)) {
+    file_path <- disc_prev_rdata_env
+  } else if(p0==0.05){
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_5_exAL_synth_DISC.RData"
-    disc_w_load_rdata(file_path)
-    new.uts.out = new.uts.out_5_exAL_synth_DISC
-    new.sts.out = new.sts.out_5_exAL_synth_DISC
-    new.uts.out_f = new.uts_ens.out_5_exAL_synth_DISC
-    new.sts.out_f = new.sts_ens.out_5_exAL_synth_DISC
-    new.gamsig.out = new.gamsig.out_5_exAL_synth_DISC
-    new.theta.out = new.theta.out_5_exAL_synth_DISC
   }else if (p0==0.2) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_20_exAL_synth_DISC.RData"
-    disc_w_load_rdata(file_path)
-    new.uts.out = new.uts.out_20_exAL_synth_DISC
-    new.sts.out = new.sts.out_20_exAL_synth_DISC
-    new.uts.out_f = new.uts_ens.out_20_exAL_synth_DISC
-    new.sts.out_f = new.sts_ens.out_20_exAL_synth_DISC
-    new.gamsig.out = new.gamsig.out_20_exAL_synth_DISC
-    new.theta.out = new.theta.out_20_exAL_synth_DISC
   }else if (p0==0.35) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_35_exAL_synth_DISC.RData"
-    disc_w_load_rdata(file_path)
-    new.uts.out = new.uts.out_35_exAL_synth_DISC
-    new.sts.out = new.sts.out_35_exAL_synth_DISC
-    new.uts.out_f = new.uts_ens.out_35_exAL_synth_DISC
-    new.sts.out_f = new.sts_ens.out_35_exAL_synth_DISC
-    new.gamsig.out = new.gamsig.out_35_exAL_synth_DISC
-    new.theta.out = new.theta.out_35_exAL_synth_DISC
   }else if (p0==0.5) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_50_exAL_synth_DISC.RData"
-    disc_w_load_rdata(file_path)
-    new.uts.out = new.uts.out_50_exAL_synth_DISC
-    new.sts.out = new.sts.out_50_exAL_synth_DISC
-    new.uts.out_f = new.uts_ens.out_50_exAL_synth_DISC
-    new.sts.out_f = new.sts_ens.out_50_exAL_synth_DISC
-    new.gamsig.out = new.gamsig.out_50_exAL_synth_DISC
-    new.theta.out = new.theta.out_50_exAL_synth_DISC
   }else if (p0==0.65) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_65_exAL_synth_DISC.RData"
-    disc_w_load_rdata(file_path)
-    new.uts.out = new.uts.out_65_exAL_synth_DISC
-    new.sts.out = new.sts.out_65_exAL_synth_DISC
-    new.uts.out_f = new.uts_ens.out_65_exAL_synth_DISC
-    new.sts.out_f = new.sts_ens.out_65_exAL_synth_DISC
-    new.gamsig.out = new.gamsig.out_65_exAL_synth_DISC
-    new.theta.out = new.theta.out_65_exAL_synth_DISC
   }else if (p0==0.8) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_80_exAL_synth_DISC.RData"
-    disc_w_load_rdata(file_path)
-    new.uts.out = new.uts.out_80_exAL_synth_DISC
-    new.sts.out = new.sts.out_80_exAL_synth_DISC
-    new.uts.out_f = new.uts_ens.out_80_exAL_synth_DISC
-    new.sts.out_f = new.sts_ens.out_80_exAL_synth_DISC
-    new.gamsig.out = new.gamsig.out_80_exAL_synth_DISC
-    new.theta.out = new.theta.out_80_exAL_synth_DISC
   }else if (p0==0.95) {
     file_path <- "/data/muscat_data/jaguir26/project1_ucsc_phd/DISC_variables_95_exAL_synth_DISC.RData"
-    disc_w_load_rdata(file_path)
-    new.uts.out = new.uts.out_95_exAL_synth_DISC
-    new.sts.out = new.sts.out_95_exAL_synth_DISC
-    new.uts.out_f = new.uts_ens.out_95_exAL_synth_DISC
-    new.sts.out_f = new.sts_ens.out_95_exAL_synth_DISC
-    new.gamsig.out = new.gamsig.out_95_exAL_synth_DISC
-    new.theta.out = new.theta.out_95_exAL_synth_DISC
+  } else {
+    file_path <- ""
   }
+  if (!nzchar(file_path) || !file.exists(file_path)) {
+    stop(sprintf("Warm-start RData missing for p0=%s: %s", as.character(p0), file_path), call. = FALSE)
+  }
+  disc_w_load_rdata(file_path)
+  new_uts_name_prev <- paste0("new.uts.out_", result_suffix_prev, ending)
+  new_sts_name_prev <- paste0("new.sts.out_", result_suffix_prev, ending)
+  new_uts_ens_name_prev <- paste0("new.uts_ens.out_", result_suffix_prev, ending)
+  new_sts_ens_name_prev <- paste0("new.sts_ens.out_", result_suffix_prev, ending)
+  new_gamsig_name_prev <- paste0("new.gamsig.out_", result_suffix_prev, ending)
+  new_theta_name_prev <- paste0("new.theta.out_", result_suffix_prev, ending)
+  required_prev_names <- c(
+    new_uts_name_prev,
+    new_sts_name_prev,
+    new_uts_ens_name_prev,
+    new_sts_ens_name_prev,
+    new_gamsig_name_prev,
+    new_theta_name_prev
+  )
+  warm_start_objects <- tryCatch(
+    disc_w_require_rdata_objects(file_path, required_prev_names),
+    error = function(err) {
+      stop(sprintf(
+        "Warm-start RData %s is missing required objects for p0=%s: %s",
+        file_path,
+        as.character(p0),
+        conditionMessage(err)
+      ), call. = FALSE)
+    }
+  )
+  new.uts.out = warm_start_objects[[new_uts_name_prev]]
+  new.sts.out = warm_start_objects[[new_sts_name_prev]]
+  new.uts.out_f = warm_start_objects[[new_uts_ens_name_prev]]
+  new.sts.out_f = warm_start_objects[[new_sts_ens_name_prev]]
+  new.gamsig.out = warm_start_objects[[new_gamsig_name_prev]]
+  new.theta.out = warm_start_objects[[new_theta_name_prev]]
+  cat(sprintf("[warm_start] p0=%s source=%s\n", as.character(p0), file_path))
+  flush.console()
   m0 <- new.theta.out$sm[,1]
   # C0 <- new.theta.out$sC[,,1]
 }
@@ -2991,7 +2940,7 @@ last_state_guard_iter <- NA_integer_
 last_state_guard_reason <- ""
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   cat(sprintf(
-    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g\n",
+    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d\n",
     as.character(p0),
     DISC_GAMSIG_FREEZE_TARGET,
     as.integer(DISC_GAMSIG_FREEZE_ITERS),
@@ -3023,7 +2972,12 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     as.numeric(DISC_GAMSIG_MEDIAN_SIGMA_ONLY_FALLBACK_TOL),
     ifelse(isTRUE(DISC_GAMSIG_MEDIAN_STEP_DAMPING_ENABLED), "true", "false"),
     as.numeric(DISC_GAMSIG_MEDIAN_MAX_ABS_GAMMA_STEP),
-    as.numeric(DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP)
+    as.numeric(DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP),
+    ifelse(isTRUE(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$enabled), "true", "false"),
+    as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$start_iter),
+    as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$end_iter),
+    as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$hold_iters),
+    as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$refresh_iters)
   ))
   flush.console()
 }
@@ -3288,12 +3242,18 @@ while (isTRUE(FLAG) && iter < max_iter) {
       QQQ_forecast[[j]] <- A
     }
   iter_candidate <- as.integer(iter + 1L)
+  schedule_phase <- disc_w_state_refresh_phase(
+    iter_candidate = iter_candidate,
+    schedule = DISC_GAMSIG_STATE_REFRESH_SCHEDULE
+  )
+  scheduled_state_hold_now <- isTRUE(schedule_phase$hold)
   state_hold_now <- (state_hold_until_iter > 0L) &&
     (iter_candidate <= state_hold_until_iter)
   state_freeze_now <- (identical(DISC_GAMSIG_FREEZE_TARGET, "states") &&
     (gamsig_dynamic_freeze_until_iter > 0L) &&
     (iter_candidate <= gamsig_dynamic_freeze_until_iter)) ||
-    state_hold_now
+    state_hold_now ||
+    scheduled_state_hold_now
 
   if (state_freeze_now) {
     theta_update <- FALSE
@@ -3305,6 +3265,17 @@ while (isTRUE(FLAG) && iter < max_iter) {
           "[%s_hold] p0=%s iter=%d hold_until_iter=%d\n",
           state_log_prefix, as.character(p0), as.integer(iter), as.integer(state_hold_until_iter)
         ))
+      } else if (scheduled_state_hold_now) {
+        cat(sprintf(
+          "[state_refresh_schedule_hold] p0=%s iter=%d start_iter=%d end_iter=%d hold_iters=%d refresh_iters=%d cycle_position=%d\n",
+          as.character(p0),
+          as.integer(iter),
+          as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$start_iter),
+          as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$end_iter),
+          as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$hold_iters),
+          as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$refresh_iters),
+          as.integer(schedule_phase$position)
+        ))
       } else {
         cat(sprintf(
           "[state_freeze] p0=%s iter=%d freeze_until_iter=%d\n",
@@ -3314,6 +3285,19 @@ while (isTRUE(FLAG) && iter < max_iter) {
       flush.console()
     }
   } else if (iter < max_iter) {
+    if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES) && isTRUE(schedule_phase$refresh)) {
+      cat(sprintf(
+        "[state_refresh_schedule_refresh] p0=%s iter=%d start_iter=%d end_iter=%d hold_iters=%d refresh_iters=%d cycle_position=%d\n",
+        as.character(p0),
+        as.integer(iter_candidate),
+        as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$start_iter),
+        as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$end_iter),
+        as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$hold_iters),
+        as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$refresh_iters),
+        as.integer(schedule_phase$position)
+      ))
+      flush.console()
+    }
     # if ((crit_ELBO+conv.check) < tol1 || iter < 100 || fast > 0 ) {
     if (isTRUE(DISC_STRICT_CONTRACTS)) {
       disc_w_validate_cpp_contract(

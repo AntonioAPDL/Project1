@@ -534,6 +534,10 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     cfg, c("models", "exdqlm_multivar", "structure", "enabled_harmonic_indices"), default = c(1L, 2L, 3L)
   ))
   exdqlm_structure_harmonics <- paste(exdqlm_structure_harmonics, collapse = ",")
+  exdqlm_transfer_feature_columns <- paste(
+    unified_resolve_transfer_feature_columns(cfg),
+    collapse = ","
+  )
   out_dir <- file.path(run_root, "post", "outputs", run_id)
 
   base_env_overrides <- c(
@@ -561,6 +565,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_EXDQLM_MULTIVAR_OUTPUT_SUFFIX = as.character(multivar_output_suffix),
     UNIFIED_EXDQLM_MULTIVAR_INCLUDE_TREND = exdqlm_structure_include_trend,
     UNIFIED_EXDQLM_MULTIVAR_ENABLED_HARMONIC_INDICES = exdqlm_structure_harmonics,
+    UNIFIED_TRANSFER_FEATURE_COLUMNS = exdqlm_transfer_feature_columns,
     UNIFIED_EXDQLM_UNIVAR_LIKELIHOOD_MODE = as.character(univar_likelihood_mode),
     UNIFIED_EXDQLM_UNIVAR_IMPLEMENTATION_MODE = as.character(exdqlm_univar_impl_mode),
     UNIFIED_NDLM_FORECAST_TRANSFER_MODE = as.character(ndlm_forecast_transfer_mode),

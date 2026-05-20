@@ -2,6 +2,48 @@
 
 unified_scale_enum <- c("raw_cms", "log_cms", "log1p_cms", "log_log_cms", "log_log1p_cms")
 
+unified_normalize_string_list <- function(x) {
+  if (is.null(x) || length(x) == 0L) {
+    return(character(0))
+  }
+  vals <- trimws(as.character(unlist(x, use.names = FALSE)))
+  vals <- vals[nzchar(vals)]
+  unique(vals)
+}
+
+unified_default_transfer_function_covariates <- function() {
+  list(
+    base_covariates = c("PPT", "SOIL", "PCA"),
+    engineered_terms = c(
+      "PPT_sq",
+      "SOIL_sq",
+      "PPT_x_SOIL",
+      "PPT_lag1",
+      "PPT_lag2",
+      "PPT_lag3",
+      "SOIL_lag1",
+      "SOIL_lag2",
+      "SOIL_lag3"
+    )
+  )
+}
+
+unified_resolve_transfer_feature_columns <- function(cfg) {
+  block <- unified_get(
+    cfg,
+    c("inputs", "transfer_function_covariates"),
+    default = unified_default_transfer_function_covariates()
+  )
+  if (!is.list(block)) {
+    block <- unified_default_transfer_function_covariates()
+  }
+  cols <- c(
+    unified_normalize_string_list(block$base_covariates),
+    unified_normalize_string_list(block$engineered_terms)
+  )
+  unique(cols[nzchar(cols)])
+}
+
 unified_resolve_source_run_dir <- function(source_run_root, source_run_id, fallback_run_root = NULL) {
   source_run_id <- if (is.null(source_run_id)) "" else as.character(source_run_id[[1L]])
   if (!nzchar(source_run_id)) {
@@ -70,6 +112,10 @@ unified_config_defaults <- function() {
         likelihood_mode = "exal",
         forecast_transfer_mode = "drop",
         forecast_transfer_modes = NULL,
+        structure = list(
+          include_trend = TRUE,
+          enabled_harmonic_indices = c(1L, 2L, 3L)
+        ),
         state_evolution = list(
           df_t = 0.99999999,
           df_s1 = 0.9999,
@@ -237,6 +283,7 @@ unified_config_defaults <- function() {
         include_squares = TRUE,
         include_interaction = TRUE
       ),
+      transfer_function_covariates = unified_default_transfer_function_covariates(),
       shared_covariates = list() # legacy compatibility
     ),
     fit = list(
@@ -248,6 +295,7 @@ unified_config_defaults <- function() {
       warm_start = list(
         enabled = FALSE,
         source_run_id = NULL,
+        source_run_root = NULL,
         mode = "resume"
       ),
       exdqlm_multivar = list(
@@ -264,6 +312,13 @@ unified_config_defaults <- function() {
             gamma_exp_tol = 1e-6
           ),
           freeze_target = "gamma_sigma",
+          state_refresh_schedule = list(
+            enabled = FALSE,
+            start_iter = 11L,
+            end_iter = 200L,
+            hold_iters = 10L,
+            refresh_iters = 1L
+          ),
           guard_refreeze_iters = 10L,
           init = list(
             mode = "robust",
@@ -329,6 +384,13 @@ unified_config_defaults <- function() {
             gamma_exp_tol = 1e-6
           ),
           freeze_target = "gamma_sigma",
+          state_refresh_schedule = list(
+            enabled = FALSE,
+            start_iter = 11L,
+            end_iter = 200L,
+            hold_iters = 10L,
+            refresh_iters = 1L
+          ),
           guard_refreeze_iters = 10L,
           init = list(
             mode = "robust",
@@ -642,6 +704,7 @@ unified_resolve_paths <- function(cfg, repo_root) {
     c("inputs", "fit", "glofas_forecast_path"),
     c("inputs", "fit", "usgs_cache_path"),
     c("inputs", "post", "source_run_root"),
+    c("fit", "warm_start", "source_run_root"),
     c("inputs", "forecats", "pipeline_config_path"),
     c("inputs", "forecats", "existing_bundle_path"),
     c("inputs", "deterministic_climate", "handoff_root")
@@ -1381,6 +1444,45 @@ unified_validate_config <- function(cfg) {
     }
   }
 
+  transfer_cov <- unified_get(
+    cfg,
+    c("inputs", "transfer_function_covariates"),
+    default = unified_default_transfer_function_covariates()
+  )
+  if (!is.list(transfer_cov)) {
+    add_err("inputs.transfer_function_covariates must be a map with base_covariates/engineered_terms")
+  } else {
+    base_covs <- unified_normalize_string_list(transfer_cov$base_covariates)
+    eng_terms <- unified_normalize_string_list(transfer_cov$engineered_terms)
+    if (length(base_covs) + length(eng_terms) < 1L) {
+      add_err("inputs.transfer_function_covariates must select at least one transfer feature")
+    }
+  }
+
+  exdqlm_mv_structure <- unified_get(
+    cfg,
+    c("models", "exdqlm_multivar", "structure"),
+    default = list(include_trend = TRUE, enabled_harmonic_indices = c(1L, 2L, 3L))
+  )
+  if (!is.list(exdqlm_mv_structure)) {
+    add_err("models.exdqlm_multivar.structure must be a map")
+  } else {
+    include_trend <- exdqlm_mv_structure$include_trend
+    if (!isTRUE(include_trend) && !identical(include_trend, FALSE)) {
+      add_err("models.exdqlm_multivar.structure.include_trend must be boolean (true/false)")
+    }
+    harmonic_idx <- unified_normalize_string_list(exdqlm_mv_structure$enabled_harmonic_indices)
+    if (length(harmonic_idx) > 0L) {
+      harmonic_idx <- suppressWarnings(as.integer(harmonic_idx))
+      if (any(!is.finite(harmonic_idx)) || any(harmonic_idx < 1L) || any(harmonic_idx > 3L)) {
+        add_err("models.exdqlm_multivar.structure.enabled_harmonic_indices must be integers in 1:3")
+      }
+    }
+    if (!isTRUE(include_trend) && length(harmonic_idx) < 1L) {
+      add_err("models.exdqlm_multivar.structure cannot disable both trend and all harmonics")
+    }
+  }
+
   shared_covariates <- unified_get(cfg, c("inputs", "shared_covariates"), default = list())
   if (is.null(shared_covariates)) {
     shared_covariates <- list()
@@ -1504,6 +1606,55 @@ unified_validate_config <- function(cfg) {
     add_err("fit.contract_checks.write_reports must be boolean (true/false)")
   }
 
+  warm_start_enabled <- unified_get(cfg, c("fit", "warm_start", "enabled"), FALSE)
+  if (!isTRUE(warm_start_enabled) && !identical(warm_start_enabled, FALSE)) {
+    add_err("fit.warm_start.enabled must be boolean (true/false)")
+  }
+  warm_start_mode <- as.character(unified_get(cfg, c("fit", "warm_start", "mode"), "resume"))
+  if (!length(warm_start_mode) || is.na(warm_start_mode[[1L]]) || !nzchar(warm_start_mode[[1L]])) {
+    warm_start_mode <- "resume"
+  } else {
+    warm_start_mode <- warm_start_mode[[1L]]
+  }
+  if (!(warm_start_mode %in% c("resume"))) {
+    add_err("fit.warm_start.mode must be 'resume'")
+  }
+  warm_start_source_run_id <- unified_get(cfg, c("fit", "warm_start", "source_run_id"), NULL)
+  if (!is.null(warm_start_source_run_id)) {
+    warm_start_source_run_id <- as.character(warm_start_source_run_id[[1L]])
+    if (!nzchar(warm_start_source_run_id)) {
+      warm_start_source_run_id <- NULL
+    }
+  }
+  warm_start_source_run_root <- unified_get(cfg, c("fit", "warm_start", "source_run_root"), NULL)
+  if (!is.null(warm_start_source_run_root)) {
+    warm_start_source_run_root <- as.character(warm_start_source_run_root[[1L]])
+    if (!nzchar(warm_start_source_run_root)) {
+      warm_start_source_run_root <- NULL
+    }
+  }
+  if (isTRUE(warm_start_enabled)) {
+    if (is.null(warm_start_source_run_root)) {
+      add_err("fit.warm_start.enabled requires fit.warm_start.source_run_root")
+    } else {
+      warm_start_dir <- if (!is.null(warm_start_source_run_id)) {
+        unified_resolve_source_run_dir(
+          source_run_root = warm_start_source_run_root,
+          source_run_id = warm_start_source_run_id,
+          fallback_run_root = warm_start_source_run_root
+        )
+      } else {
+        normalizePath(path.expand(warm_start_source_run_root), mustWork = FALSE)
+      }
+      if (is.null(warm_start_dir) || !dir.exists(warm_start_dir)) {
+        add_err(sprintf(
+          "fit.warm_start source run directory does not exist: %s",
+          if (is.null(warm_start_dir)) "<null>" else warm_start_dir
+        ))
+      }
+    }
+  }
+
   diagnostics_enabled <- unified_get(cfg, c("fit", "diagnostics", "enabled"), FALSE)
   if (!isTRUE(diagnostics_enabled) && !identical(diagnostics_enabled, FALSE)) {
     add_err("fit.diagnostics.enabled must be boolean (true/false)")
@@ -1621,6 +1772,72 @@ unified_validate_config <- function(cfg) {
       add_err(sprintf("%s.freeze_target must be one of: gamma_sigma, states", key_prefix))
     }
 
+    state_refresh_schedule_enabled <- cfg_get(
+      c("state_refresh_schedule", "enabled"),
+      defaults$state_refresh_schedule$enabled
+    )
+    if (!isTRUE(state_refresh_schedule_enabled) && !identical(state_refresh_schedule_enabled, FALSE)) {
+      add_err(sprintf("%s.state_refresh_schedule.enabled must be boolean (true/false)", key_prefix))
+    }
+
+    state_refresh_schedule_start_iter <- suppressWarnings(as.integer(
+      cfg_get(
+        c("state_refresh_schedule", "start_iter"),
+        defaults$state_refresh_schedule$start_iter
+      )
+    ))
+    if (isTRUE(state_refresh_schedule_enabled) &&
+        (!is.finite(state_refresh_schedule_start_iter) || state_refresh_schedule_start_iter < 1L)) {
+      add_err(sprintf("%s.state_refresh_schedule.start_iter must be an integer >= 1 when enabled", key_prefix))
+    }
+
+    state_refresh_schedule_end_iter <- suppressWarnings(as.integer(
+      cfg_get(
+        c("state_refresh_schedule", "end_iter"),
+        defaults$state_refresh_schedule$end_iter
+      )
+    ))
+    if (isTRUE(state_refresh_schedule_enabled) &&
+        (!is.finite(state_refresh_schedule_end_iter) ||
+         state_refresh_schedule_end_iter < state_refresh_schedule_start_iter)) {
+      add_err(sprintf(
+        "%s.state_refresh_schedule.end_iter must be an integer >= start_iter when enabled",
+        key_prefix
+      ))
+    }
+
+    state_refresh_schedule_hold_iters <- suppressWarnings(as.integer(
+      cfg_get(
+        c("state_refresh_schedule", "hold_iters"),
+        defaults$state_refresh_schedule$hold_iters
+      )
+    ))
+    if (isTRUE(state_refresh_schedule_enabled) &&
+        (!is.finite(state_refresh_schedule_hold_iters) || state_refresh_schedule_hold_iters < 1L)) {
+      add_err(sprintf("%s.state_refresh_schedule.hold_iters must be an integer >= 1 when enabled", key_prefix))
+    }
+
+    state_refresh_schedule_refresh_iters <- suppressWarnings(as.integer(
+      cfg_get(
+        c("state_refresh_schedule", "refresh_iters"),
+        defaults$state_refresh_schedule$refresh_iters
+      )
+    ))
+    if (isTRUE(state_refresh_schedule_enabled) &&
+        (!is.finite(state_refresh_schedule_refresh_iters) || state_refresh_schedule_refresh_iters < 1L)) {
+      add_err(sprintf("%s.state_refresh_schedule.refresh_iters must be an integer >= 1 when enabled", key_prefix))
+    }
+
+    if (isTRUE(state_refresh_schedule_enabled) &&
+        is.finite(warmup_freeze_iters) &&
+        is.finite(state_refresh_schedule_start_iter) &&
+        state_refresh_schedule_start_iter <= warmup_freeze_iters) {
+      add_err(sprintf(
+        "%s.state_refresh_schedule.start_iter must be > warmup_freeze_iters when enabled",
+        key_prefix
+      ))
+    }
+
     guard_refreeze_iters <- suppressWarnings(as.integer(
       cfg_get("guard_refreeze_iters", defaults$guard_refreeze_iters)
     ))
@@ -1652,6 +1869,41 @@ unified_validate_config <- function(cfg) {
     ))
     if (!is.finite(init_sigma_scale) || init_sigma_scale <= 0) {
       add_err(sprintf("%s.init.sigma_scale must be numeric and > 0", key_prefix))
+    }
+
+    prior_sigma_mean <- suppressWarnings(as.numeric(
+      cfg_get(c("priors", "sigma", "mean"), defaults$prior_sigma_mean)
+    ))
+    if (!is.finite(prior_sigma_mean) || prior_sigma_mean <= 0) {
+      add_err(sprintf("%s.priors.sigma.mean must be numeric and > 0", key_prefix))
+    }
+
+    prior_sigma_variance <- suppressWarnings(as.numeric(
+      cfg_get(c("priors", "sigma", "variance"), defaults$prior_sigma_variance)
+    ))
+    if (!is.finite(prior_sigma_variance) || prior_sigma_variance <= 0) {
+      add_err(sprintf("%s.priors.sigma.variance must be numeric and > 0", key_prefix))
+    }
+
+    prior_gamma_location <- suppressWarnings(as.numeric(
+      cfg_get(c("priors", "gamma", "location"), defaults$prior_gamma_location)
+    ))
+    if (!is.finite(prior_gamma_location)) {
+      add_err(sprintf("%s.priors.gamma.location must be numeric and finite", key_prefix))
+    }
+
+    prior_gamma_scale <- suppressWarnings(as.numeric(
+      cfg_get(c("priors", "gamma", "scale"), defaults$prior_gamma_scale)
+    ))
+    if (!is.finite(prior_gamma_scale) || prior_gamma_scale <= 0) {
+      add_err(sprintf("%s.priors.gamma.scale must be numeric and > 0", key_prefix))
+    }
+
+    prior_gamma_df <- suppressWarnings(as.numeric(
+      cfg_get(c("priors", "gamma", "df"), defaults$prior_gamma_df)
+    ))
+    if (!is.finite(prior_gamma_df) || prior_gamma_df <= 0) {
+      add_err(sprintf("%s.priors.gamma.df must be numeric and > 0", key_prefix))
     }
 
     guard_enabled <- cfg_get(c("objective_guard", "enabled"), defaults$guard_enabled)
@@ -1736,6 +1988,11 @@ unified_validate_config <- function(cfg) {
     init_gamma = 0.0,
     init_sigma_floor = 1e-3,
     init_sigma_scale = 1.0,
+    prior_sigma_mean = 1.0,
+    prior_sigma_variance = 1e10,
+    prior_gamma_location = 0.0,
+    prior_gamma_scale = 1e10,
+    prior_gamma_df = 1.0,
     guard_enabled = TRUE,
     guard_fail_fast = FALSE,
     guard_log_failures = TRUE,
@@ -1744,7 +2001,14 @@ unified_validate_config <- function(cfg) {
     terminal_sampling_guard_mode = "off",
     terminal_sampling_guard_min_guard_count = 1L,
     terminal_sampling_guard_max_guard_lag_iters = 0L,
-    terminal_sampling_guard_require_frozen = TRUE
+    terminal_sampling_guard_require_frozen = TRUE,
+    state_refresh_schedule = list(
+      enabled = FALSE,
+      start_iter = 11L,
+      end_iter = 200L,
+      hold_iters = 10L,
+      refresh_iters = 1L
+    )
   )
   exdqlm_multivar_gamma_sigma_defaults <- exdqlm_gamma_sigma_defaults
   exdqlm_univar_gamma_sigma_defaults <- exdqlm_gamma_sigma_defaults

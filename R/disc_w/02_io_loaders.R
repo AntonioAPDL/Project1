@@ -85,3 +85,30 @@ disc_w_load_rdata <- function(file_path, env = parent.frame()) {
   load(file_path, envir = env)
   invisible(NULL)
 }
+
+# disc_w_load_rdata_env(file_path, parent)
+# Loads a `.RData` file into a dedicated environment and returns that
+# environment so callers can validate object presence deterministically.
+disc_w_load_rdata_env <- function(file_path, parent = emptyenv()) {
+  env <- new.env(parent = parent)
+  load(file_path, envir = env)
+  env
+}
+
+# disc_w_require_rdata_objects(file_path, required_names)
+# Loads a `.RData` file into a dedicated environment, verifies a required set of
+# object names, and returns those objects as a named list.
+disc_w_require_rdata_objects <- function(file_path, required_names) {
+  env <- disc_w_load_rdata_env(file_path)
+  loaded_names <- ls(env, all.names = TRUE)
+  missing_names <- setdiff(required_names, loaded_names)
+  if (length(missing_names) > 0L) {
+    stop(sprintf(
+      "missing required objects: %s",
+      paste(missing_names, collapse = ", ")
+    ), call. = FALSE)
+  }
+  out <- lapply(required_names, function(name) get(name, envir = env, inherits = FALSE))
+  names(out) <- required_names
+  out
+}

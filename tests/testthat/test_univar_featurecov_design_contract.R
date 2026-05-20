@@ -1,6 +1,6 @@
 source(testthat::test_path("..", "..", "R", "unified", "families", "shared_input_helpers.R"))
 
-test_that("engineered featurecov design matrices keep engineered columns and intercept", {
+test_that("engineered featurecov design matrices keep engineered columns without intercept", {
   dates <- seq(as.Date("2021-01-01"), by = "1 day", length.out = 6L)
   feature_df <- data.frame(
     date = dates,
@@ -35,20 +35,58 @@ test_that("engineered featurecov design matrices keep engineered columns and int
   )
 
   expect_identical(out$mode, "engineered_feature_table")
-  expect_equal(dim(out$X), c(4L, 13L))
-  expect_equal(dim(out$X_f), c(2L, 13L))
+  expect_equal(dim(out$X), c(4L, 12L))
+  expect_equal(dim(out$X_f), c(2L, 12L))
   expect_identical(
     colnames(out$X),
     c(
       "PPT", "SOIL", "PCA", "PPT_sq", "SOIL_sq", "PPT_x_SOIL",
       "PPT_lag1", "PPT_lag2", "PPT_lag3",
-      "SOIL_lag1", "SOIL_lag2", "SOIL_lag3",
-      "intercept"
+      "SOIL_lag1", "SOIL_lag2", "SOIL_lag3"
     )
   )
+  expect_false("intercept" %in% colnames(out$X))
+  expect_equal(out$X[, "PPT"], (1:4) / stats::sd(1:4))
+  expect_equal(out$X[, "SOIL"], (11:14) / stats::sd(11:14))
 })
 
-test_that("legacy fallback design matrices preserve old nine-column univar layout", {
+test_that("engineered featurecov design matrices can select a reduced transfer subset", {
+  dates <- seq(as.Date("2021-01-01"), by = "1 day", length.out = 6L)
+  feature_df <- data.frame(
+    date = dates,
+    PPT = 1:6,
+    SOIL = 11:16,
+    PCA = 21:26,
+    PPT_sq = (1:6)^2,
+    stringsAsFactors = FALSE
+  )
+  feature_path <- tempfile(fileext = ".csv")
+  on.exit(unlink(feature_path), add = TRUE)
+  write.csv(feature_df, feature_path, row.names = FALSE)
+
+  history_df <- data.frame(ppt = 1:4, soil = 11:14, Static_PCA = 21:24)
+  forecast_df <- data.frame(ppt = 5:6, soil = 15:16, Static_PCA = 25:26)
+
+  out <- family_shared_build_featurecov_design_matrices(
+    history_df = history_df,
+    forecast_df = forecast_df,
+    history_dates = dates[1:4],
+    forecast_dates = dates[5:6],
+    feature_path = feature_path,
+    fill_value = 0,
+    selected_feature_names = "PPT"
+  )
+
+  expect_identical(out$mode, "engineered_feature_table")
+  expect_equal(dim(out$X), c(4L, 1L))
+  expect_equal(dim(out$X_f), c(2L, 1L))
+  expect_identical(colnames(out$X), "PPT")
+  expect_identical(out$feature_names, "PPT")
+  expect_false("intercept" %in% colnames(out$X))
+  expect_equal(out$X[, "PPT"], (1:4) / stats::sd(1:4))
+})
+
+test_that("legacy fallback design matrices preserve the eight-column no-intercept layout", {
   dates <- seq(as.Date("2021-01-01"), by = "1 day", length.out = 6L)
   history_df <- data.frame(
     ppt = c(10, 12, 14, 16),
@@ -71,13 +109,14 @@ test_that("legacy fallback design matrices preserve old nine-column univar layou
   )
 
   expect_identical(out$mode, "legacy_precip_extension")
-  expect_equal(dim(out$X), c(4L, 9L))
-  expect_equal(dim(out$X_f), c(2L, 9L))
+  expect_equal(dim(out$X), c(4L, 8L))
+  expect_equal(dim(out$X_f), c(2L, 8L))
   expect_identical(
     colnames(out$X),
     c(
-      "PPT", "SOIL", "PCA", "intercept",
+      "PPT", "SOIL", "PCA",
       "PPT_lag1", "PPT_lag2", "PPT_sq", "PPT_lag1_sq", "PPT_lag2_sq"
     )
   )
+  expect_false("intercept" %in% colnames(out$X))
 })

@@ -178,6 +178,42 @@ family_shared_feature_columns <- function(df) {
   nm[num_idx]
 }
 
+family_shared_normalize_selected_feature_names <- function(selected_feature_names) {
+  if (is.null(selected_feature_names) || length(selected_feature_names) == 0L) {
+    return(character(0))
+  }
+  vals <- trimws(as.character(unlist(selected_feature_names, use.names = FALSE)))
+  vals <- vals[nzchar(vals)]
+  unique(vals)
+}
+
+family_shared_apply_feature_selection <- function(X, X_f, selected_feature_names, context_label = "feature design") {
+  selected <- family_shared_normalize_selected_feature_names(selected_feature_names)
+  if (length(selected) < 1L) {
+    return(list(X = X, X_f = X_f, feature_names = colnames(X)))
+  }
+  available <- colnames(X)
+  if (is.null(available) || length(available) < 1L) {
+    stop(sprintf("%s has no available feature columns to select from", context_label), call. = FALSE)
+  }
+  missing <- setdiff(selected, available)
+  if (length(missing) > 0L) {
+    stop(
+      sprintf(
+        "%s is missing selected feature columns: %s",
+        context_label,
+        paste(missing, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+  list(
+    X = X[, selected, drop = FALSE],
+    X_f = X_f[, selected, drop = FALSE],
+    feature_names = selected
+  )
+}
+
 family_shared_build_feature_matrices <- function(path, history_dates, forecast_dates = NULL, fill_value = 0, scale_with_history = TRUE) {
   history_dates <- as.Date(history_dates)
   forecast_dates <- as.Date(forecast_dates)
@@ -268,7 +304,8 @@ family_shared_build_featurecov_design_matrices <- function(
   history_dates,
   forecast_dates,
   feature_path = "",
-  fill_value = 0
+  fill_value = 0,
+  selected_feature_names = NULL
 ) {
   history_dates <- as.Date(history_dates)
   forecast_dates <- as.Date(forecast_dates)
@@ -286,17 +323,26 @@ family_shared_build_featurecov_design_matrices <- function(
       fill_value = fill_value,
       scale_with_history = TRUE
     )
-    X <- cbind(data.matrix(feature_bundle$history), rep(1, history_n))
-    X_f <- cbind(data.matrix(feature_bundle$forecast), rep(1, forecast_n))
+    # Keep SD-only scaling from the engineered feature table, but do not
+    # append an explicit intercept feature. The transfer block already has its
+    # own zeta_t state, so a second constant regressor is redundant.
+    X <- data.matrix(feature_bundle$history)
+    X_f <- data.matrix(feature_bundle$forecast)
     if (!is.matrix(X)) X <- matrix(X, nrow = history_n)
     if (!is.matrix(X_f)) X_f <- matrix(X_f, nrow = forecast_n)
-    colnames(X) <- c(feature_bundle$feature_names, "intercept")
-    colnames(X_f) <- c(feature_bundle$feature_names, "intercept")
-    return(list(
+    colnames(X) <- feature_bundle$feature_names
+    colnames(X_f) <- feature_bundle$feature_names
+    selected <- family_shared_apply_feature_selection(
       X = X,
       X_f = X_f,
+      selected_feature_names = selected_feature_names,
+      context_label = "engineered feature table"
+    )
+    return(list(
+      X = selected$X,
+      X_f = selected$X_f,
       mode = "engineered_feature_table",
-      feature_names = feature_bundle$feature_names
+      feature_names = selected$feature_names
     ))
   }
 
@@ -322,8 +368,10 @@ family_shared_build_featurecov_design_matrices <- function(
     PCA = fore_pca
   )
 
-  X <- cbind(base_hist, intercept = rep(1, history_n))
-  X_f <- cbind(base_fore, intercept = rep(1, forecast_n))
+  # Legacy fallback mirrors the no-centering, SD-only scaling contract, but
+  # likewise omits an explicit intercept feature from the transfer design.
+  X <- base_hist
+  X_f <- base_fore
 
   x_ext <- matrix(NA_real_, ncol = 5L, nrow = history_n)
   x_ext[, 1L] <- c(0, X[seq_len(history_n - 1L), 1L])
@@ -350,16 +398,22 @@ family_shared_build_featurecov_design_matrices <- function(
   X <- cbind(X, x_ext)
   X_f <- cbind(X_f, x_ext_f)
   colnames(X) <- c(
-    "PPT", "SOIL", "PCA", "intercept",
+    "PPT", "SOIL", "PCA",
     "PPT_lag1", "PPT_lag2", "PPT_sq", "PPT_lag1_sq", "PPT_lag2_sq"
   )
   colnames(X_f) <- colnames(X)
-
-  list(
+  selected <- family_shared_apply_feature_selection(
     X = X,
     X_f = X_f,
+    selected_feature_names = selected_feature_names,
+    context_label = "legacy featurecov fallback"
+  )
+
+  list(
+    X = selected$X,
+    X_f = selected$X_f,
     mode = "legacy_precip_extension",
-    feature_names = colnames(X)
+    feature_names = selected$feature_names
   )
 }
 

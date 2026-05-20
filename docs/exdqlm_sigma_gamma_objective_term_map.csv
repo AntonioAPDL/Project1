@@ -1,0 +1,12 @@
+component,manuscript_anchor,implementation_anchor,status,notes
+gamma_prior,"main.tex:752-754","DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:2044-2050",confirmed,"Truncated-t prior on gamma enters through PriorGammaDens"
+sigma_prior,"main.tex:753","DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:2050",confirmed,"Inverse-gamma prior contributes -(a+1)log(sig)-b/sig"
+latent_v_sigma_power,"main.tex:756","DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:2053",confirmed,"Combines with Gaussian normalization to produce -1.5*N*log(sig)"
+gaussian_normalization,"main.tex:758","DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:2053",confirmed,"-0.5*N*log(B(gamma)) appears explicitly"
+latent_v_rate_term,"main.tex:756","DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:2053",confirmed,"-sum(E[v])/sigma implemented as -sum(uts)/sig"
+quadratic_y_eta_term,"main.tex:770-773","DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:2054",confirmed,"exps2 stores E[eta^2]"
+quadratic_A_term,"main.tex:772-773","DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:2055,2058",confirmed,"Code uses -(y-exps)*2*(a/sig) and +(uts*a^2)/sig"
+quadratic_C_term,"main.tex:774-777","DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:2055-2057",confirmed,"Matches cross and sigma*C^2*gamma^2 terms"
+jacobian_transform,"main.tex:1125-1148","DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:2033-2061",confirmed,"Current code uses logistic transform plus exact manuscript Jacobian"
+historical_double_exponential_map,"not canonical","Optimal_DQLM.r:1014-1026; opt_delta.r:1163-1175; opt_delta_3.r:1163-1175; docs/DERIVATION_AUDIT.md:112-127",stale,"Historical path still uses gamma=LL+(UU-LL)exp(-exp(theta_g))"
+forecast_augmented_objective,"main.tex:735-762 interpreted over enlarged I_s","DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:2096-2109",confirmed,"Current Climate_Center branch extends same source-specific kernel to forecast members"

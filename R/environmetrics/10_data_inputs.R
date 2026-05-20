@@ -269,13 +269,23 @@ timestamps <- all_data[, 'time']
 #############################
 ## Add Constant at the end ##
 #############################
+transfer_feature_columns_raw <- Sys.getenv(
+  "DISC_W_TRANSFER_FEATURE_COLUMNS",
+  Sys.getenv("UNIFIED_TRANSFER_FEATURE_COLUMNS", "")
+)
+transfer_feature_columns <- character(0)
+if (nzchar(transfer_feature_columns_raw)) {
+  transfer_feature_columns <- trimws(unlist(strsplit(transfer_feature_columns_raw, ",", fixed = TRUE), use.names = FALSE))
+  transfer_feature_columns <- unique(transfer_feature_columns[nzchar(transfer_feature_columns)])
+}
 design <- family_shared_build_featurecov_design_matrices(
   history_df = all_data[, c("ppt", "soil", "Static_PCA"), drop = FALSE],
   forecast_df = X_f[, c("ppt", "soil", "Static_PCA"), drop = FALSE],
   history_dates = all_data[, "time"],
   forecast_dates = X_f[, "time"],
   feature_path = COVARIATE_FEATURES_PATH,
-  fill_value = 0
+  fill_value = 0,
+  selected_feature_names = transfer_feature_columns
 )
 X <- design$X
 X_f <- design$X_f

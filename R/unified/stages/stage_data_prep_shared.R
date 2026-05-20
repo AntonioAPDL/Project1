@@ -732,7 +732,8 @@ unified_stage_data_prep_shared <- function(cfg, run_root, repo_root, manifest) {
     }
 
     core_paths <- c(
-      retros = normalizePath(shared_paths$retros, mustWork = FALSE)
+      retros = normalizePath(shared_paths$retros, mustWork = FALSE),
+      usgs = normalizePath(shared_paths$usgs, mustWork = FALSE)
     )
     forecast_paths <- c(
       nws = normalizePath(shared_paths$nws, mustWork = FALSE),

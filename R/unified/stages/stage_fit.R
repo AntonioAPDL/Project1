@@ -809,7 +809,87 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     exdqlm_structure_harmonics <- as.character(unified_get(
       cfg, c("models", "exdqlm_multivar", "structure", "enabled_harmonic_indices"), default = c(1L, 2L, 3L)
     ))
-    exdqlm_structure_harmonics <- paste(exdqlm_structure_harmonics, collapse = ",")
+  exdqlm_structure_harmonics <- paste(exdqlm_structure_harmonics, collapse = ",")
+  exdqlm_transfer_feature_columns <- paste(
+      unified_resolve_transfer_feature_columns(cfg),
+      collapse = ","
+    )
+    output_suffix <- unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC")
+
+    warm_start_enabled <- isTRUE(unified_get(cfg, c("fit", "warm_start", "enabled"), default = FALSE))
+    warm_start_source_run_root <- unified_get(cfg, c("fit", "warm_start", "source_run_root"), default = NULL)
+    warm_start_source_run_id <- unified_get(cfg, c("fit", "warm_start", "source_run_id"), default = NULL)
+    if (!is.null(warm_start_source_run_root)) {
+      warm_start_source_run_root <- as.character(warm_start_source_run_root[[1L]])
+      if (!nzchar(warm_start_source_run_root)) warm_start_source_run_root <- NULL
+    }
+    if (!is.null(warm_start_source_run_id)) {
+      warm_start_source_run_id <- as.character(warm_start_source_run_id[[1L]])
+      if (!nzchar(warm_start_source_run_id)) warm_start_source_run_id <- NULL
+    }
+    warm_start_rdata_path <- ""
+    if (warm_start_enabled) {
+      warm_start_source_dir <- if (!is.null(warm_start_source_run_id)) {
+        unified_resolve_source_run_dir(
+          source_run_root = warm_start_source_run_root,
+          source_run_id = warm_start_source_run_id,
+          fallback_run_root = warm_start_source_run_root
+        )
+      } else if (!is.null(warm_start_source_run_root)) {
+        normalizePath(path.expand(warm_start_source_run_root), mustWork = FALSE)
+      } else {
+        NULL
+      }
+      if (is.null(warm_start_source_dir) || !dir.exists(warm_start_source_dir)) {
+        stop(sprintf(
+          "Warm start enabled for q=%s but source run directory is missing: %s",
+          q_label,
+          if (is.null(warm_start_source_dir)) "<null>" else warm_start_source_dir
+        ), call. = FALSE)
+      }
+      warm_start_file_name <- sprintf("DISC_variables_%d_exAL_synth_%s.RData", q_num, output_suffix)
+      warm_start_candidates <- c(
+        file.path(
+          warm_start_source_dir,
+          "fit", "exdqlm_multivar", forecast_transfer_mode,
+          sprintf("q=%s", q_label),
+          "outputs",
+          warm_start_file_name
+        ),
+        file.path(
+          warm_start_source_dir,
+          "fit",
+          sprintf("q=%s", q_label),
+          "outputs",
+          warm_start_file_name
+        )
+      )
+      warm_start_hits <- warm_start_candidates[file.exists(warm_start_candidates)]
+      if (length(warm_start_hits) < 1L) {
+        recursive_hits <- list.files(
+          warm_start_source_dir,
+          pattern = sprintf("^%s$", warm_start_file_name),
+          recursive = TRUE,
+          full.names = TRUE
+        )
+        if (length(recursive_hits) > 0L) {
+          q_fragment <- sprintf("q=%s", q_label)
+          recursive_hits <- recursive_hits[grepl(q_fragment, recursive_hits, fixed = TRUE)]
+        }
+        warm_start_hits <- unique(c(warm_start_hits, recursive_hits[file.exists(recursive_hits)]))
+      }
+      warm_start_hits <- unique(normalizePath(warm_start_hits, mustWork = FALSE))
+      if (length(warm_start_hits) != 1L) {
+        stop(sprintf(
+          "Warm start enabled for q=%s but expected exactly one seed RData; found %d under %s",
+          q_label,
+          length(warm_start_hits),
+          warm_start_source_dir
+        ), call. = FALSE)
+      }
+      warm_start_rdata_path <- warm_start_hits[[1L]]
+      message(sprintf("exdqlm_multivar warm start q=%s <- %s", q_label, warm_start_rdata_path))
+    }
 
     gamsig_policy <- unified_resolve_gamma_sigma_policy(cfg, "exdqlm_multivar", q = q)
 
@@ -866,10 +946,13 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         default = ""
       )),
       DISC_USE_PREV = if (isTRUE(cfg$fit$warm_start$enabled)) "TRUE" else "FALSE",
+      DISC_PREV_RDATA = warm_start_rdata_path,
       DISC_W_LIKELIHOOD_MODE = as.character(multivar_likelihood_mode),
       DISC_W_FORECAST_TRANSFER_MODE = forecast_transfer_mode,
       DISC_W_INCLUDE_TREND = exdqlm_structure_include_trend,
       DISC_W_ENABLED_HARMONIC_INDICES = exdqlm_structure_harmonics,
+      DISC_W_TRANSFER_FEATURE_COLUMNS = exdqlm_transfer_feature_columns,
+      UNIFIED_TRANSFER_FEATURE_COLUMNS = exdqlm_transfer_feature_columns,
       DISC_W_CUTOFF_DATE = as.character(cutoff_date),
       DISC_W_FORECAST_START_DATE = as.character(forecast_start_date),
       DISC_W_OUTPUT_DIR = q_outputs,
@@ -961,6 +1044,21 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_GAMSIG_FREEZE_TARGET = as.character(unified_get(
         gamsig_policy, c("freeze_target"), default = "gamma_sigma"
       )),
+      DISC_GAMSIG_STATE_REFRESH_SCHEDULE_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("state_refresh_schedule", "enabled"), default = FALSE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_STATE_REFRESH_SCHEDULE_START_ITER = as.character(unified_get(
+        gamsig_policy, c("state_refresh_schedule", "start_iter"), default = 11L
+      )),
+      DISC_GAMSIG_STATE_REFRESH_SCHEDULE_END_ITER = as.character(unified_get(
+        gamsig_policy, c("state_refresh_schedule", "end_iter"), default = 200L
+      )),
+      DISC_GAMSIG_STATE_REFRESH_SCHEDULE_HOLD_ITERS = as.character(unified_get(
+        gamsig_policy, c("state_refresh_schedule", "hold_iters"), default = 10L
+      )),
+      DISC_GAMSIG_STATE_REFRESH_SCHEDULE_REFRESH_ITERS = as.character(unified_get(
+        gamsig_policy, c("state_refresh_schedule", "refresh_iters"), default = 1L
+      )),
       DISC_GAMSIG_GUARD_REFREEZE_ITERS = as.character(unified_get(
         gamsig_policy, c("guard_refreeze_iters"), default = 10L
       )),
@@ -975,6 +1073,21 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       )),
       DISC_GAMSIG_INIT_SIGMA_SCALE = as.character(unified_get(
         gamsig_policy, c("init", "sigma_scale"), default = 1.0
+      )),
+      DISC_GAMSIG_PRIOR_SIGMA_MEAN = as.character(unified_get(
+        gamsig_policy, c("priors", "sigma", "mean"), default = 1.0
+      )),
+      DISC_GAMSIG_PRIOR_SIGMA_VARIANCE = as.character(unified_get(
+        gamsig_policy, c("priors", "sigma", "variance"), default = 1e10
+      )),
+      DISC_GAMSIG_PRIOR_GAMMA_LOCATION = as.character(unified_get(
+        gamsig_policy, c("priors", "gamma", "location"), default = 0.0
+      )),
+      DISC_GAMSIG_PRIOR_GAMMA_SCALE = as.character(unified_get(
+        gamsig_policy, c("priors", "gamma", "scale"), default = 1e10
+      )),
+      DISC_GAMSIG_PRIOR_GAMMA_DF = as.character(unified_get(
+        gamsig_policy, c("priors", "gamma", "df"), default = 1.0
       )),
       DISC_GAMSIG_OBJECTIVE_GUARD_ENABLED = if (isTRUE(unified_get(
         gamsig_policy, c("objective_guard", "enabled"), default = TRUE
@@ -1121,7 +1234,6 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     ))
     if (!is.finite(cmd_status)) cmd_status <- 0L
 
-    output_suffix <- unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC")
     output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_%s.RData", q_num, output_suffix))
     forecast_health_path <- file.path(q_outputs, "multivar_forecast_health.txt")
     forecast_health <- NULL

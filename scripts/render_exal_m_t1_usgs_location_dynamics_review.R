@@ -58,6 +58,28 @@ read_history_observed_from_retros <- function(run_root, hist_dates) {
   as.numeric(retros_df$USGS[idx])
 }
 
+read_history_predictor_retros_from_fit <- function(run_root, hist_dates) {
+  fit_path <- file.path(run_root, "fit", "inputs", "retros_fit_adapter.csv")
+  if (!file.exists(fit_path)) {
+    return(NULL)
+  }
+  fit_df <- utils::read.csv(fit_path, stringsAsFactors = FALSE, check.names = FALSE)
+  if (!all(c("Date", "GloFAS", "NWS3.0") %in% names(fit_df))) {
+    return(NULL)
+  }
+  fit_df$Date <- as.Date(fit_df$Date)
+  idx <- match(as.Date(hist_dates), fit_df$Date)
+  if (any(is.na(idx))) {
+    return(NULL)
+  }
+  data.frame(
+    date = as.Date(hist_dates),
+    retro_glofas_input = as.numeric(fit_df$GloFAS[idx]),
+    retro_nws_input = as.numeric(fit_df[["NWS3.0"]][idx]),
+    stringsAsFactors = FALSE
+  )
+}
+
 quantile_prob_label_local <- function(p) sprintf("q%02d", as.integer(round(100 * p)))
 
 smoke_next_idx_block_local <- function(prev_idx, block_len) {
@@ -314,6 +336,13 @@ render_location_plot <- function(main_df, ensemble_df, style, png_path, pdf_path
 
   hist_obs <- plot_df[plot_df$segment == "history", c("date", "observed"), drop = FALSE]
   fc_obs <- plot_df[plot_df$segment == "forecast", c("date", "observed"), drop = FALSE]
+  hist_retros <- plot_df[
+    plot_df$segment == "history" &
+      is.finite(plot_df$retro_glofas_input) &
+      is.finite(plot_df$retro_nws_input),
+    c("date", "retro_glofas_input", "retro_nws_input"),
+    drop = FALSE
+  ]
   if (!is.null(ensemble_df) && nrow(ensemble_df) > 0L) {
     ensemble_df <- ensemble_df[ensemble_df$date %in% plot_df$date, , drop = FALSE]
     ensemble_df$legend_label <- ifelse(ensemble_df$provider == "GloFAS", "GloFAS ensembles", "NWS ensembles")
@@ -412,6 +441,26 @@ render_location_plot <- function(main_df, ensemble_df, style, png_path, pdf_path
       )
   }
 
+  if (nrow(hist_retros) > 0L) {
+    p <- p +
+      ggplot2::geom_line(
+        data = hist_retros,
+        mapping = ggplot2::aes(y = retro_glofas_input, color = "GloFAS retros input"),
+        linewidth = 0.90,
+        alpha = 0.92,
+        linetype = "longdash",
+        lineend = "round"
+      ) +
+      ggplot2::geom_line(
+        data = hist_retros,
+        mapping = ggplot2::aes(y = retro_nws_input, color = "NWS retros input"),
+        linewidth = 0.90,
+        alpha = 0.92,
+        linetype = "dotdash",
+        lineend = "round"
+      )
+  }
+
   if (nrow(fc_obs) > 0L) {
     p <- p +
       ggplot2::geom_line(
@@ -446,6 +495,8 @@ render_location_plot <- function(main_df, ensemble_df, style, png_path, pdf_path
   color_values <- c(
     "USGS observations" = "#238B45",
     "Held-out USGS" = "#B22222",
+    "GloFAS retros input" = "#C95F02",
+    "NWS retros input" = "#5E3C99",
     "GloFAS ensembles" = "#E67E22",
     "NWS ensembles" = "#756BB1",
     palette
@@ -453,6 +504,8 @@ render_location_plot <- function(main_df, ensemble_df, style, png_path, pdf_path
 
   color_breaks <- c(
     if (nrow(hist_obs) > 0L) "USGS observations",
+    if (nrow(hist_retros) > 0L) "GloFAS retros input",
+    if (nrow(hist_retros) > 0L) "NWS retros input",
     if (nrow(fc_obs) > 0L) "Held-out USGS",
     if (!is.null(ensemble_df) && any(ensemble_df$provider == "GloFAS")) "GloFAS ensembles",
     if (!is.null(ensemble_df) && any(ensemble_df$provider == "NWS")) "NWS ensembles",
@@ -573,6 +626,14 @@ main <- function() {
     observed = hist_obs,
     stringsAsFactors = FALSE
   )
+  hist_retros_inputs <- read_history_predictor_retros_from_fit(run_root, hist_dates)
+  if (!is.null(hist_retros_inputs)) {
+    hist_df$retro_glofas_input <- hist_retros_inputs$retro_glofas_input
+    hist_df$retro_nws_input <- hist_retros_inputs$retro_nws_input
+  } else {
+    hist_df$retro_glofas_input <- NA_real_
+    hist_df$retro_nws_input <- NA_real_
+  }
   for (nm in labels) {
     row_idx_hist <- match(nm, hist_summary$q_labels)
     hist_df[[sprintf("loc_%s_mean", nm)]] <- hist_summary$mean_mat[row_idx_hist, ]
@@ -590,6 +651,8 @@ main <- function() {
       observed = fc_obs,
       stringsAsFactors = FALSE
     )
+    fc_df$retro_glofas_input <- NA_real_
+    fc_df$retro_nws_input <- NA_real_
     for (nm in labels) {
       row_idx_fc <- match(nm, fc_summary$q_labels)
       fc_df[[sprintf("loc_%s_mean", nm)]] <- fc_summary$mean_mat[row_idx_fc, ]
