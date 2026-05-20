@@ -512,6 +512,23 @@ PriorGammaDens <- function(gamma, prior) {
 LL <- L+0.001
 UU <- U-0.001
 
+# -----------------------------------------------------------------------------
+# STALE DUPLICATE LAPALCE-DELTA PATH
+#
+# This block is retained as historical reference material for older workflows.
+# It is not the authoritative sigma/gamma implementation for current unified
+# launches. The active path lives in:
+#   DISC_Optimal_Synth_Ranges_W_transfer_forecast.r
+#
+# Important differences:
+# - this duplicate path still uses the historical interior gamma map
+#   gamma = LL + (UU - LL) * exp(-exp(theta_g))
+# - current production launches use the logistic transform audited in the
+#   exdqlm theory docs and implemented in the active script above
+#
+# Keep this block semantically readable, but do not treat it as current theory
+# or current production behavior.
+# -----------------------------------------------------------------------------
 update_gamma_sigma<-function( y, nn, prior_g, prior_s, 
                               gamma,var.gam,sigma,var.sig,
                               exps,exps2,
@@ -600,7 +617,7 @@ if(!Climate_Center){
   LD_S <- -inverse_hessian 
 
   Expected_f <- function(f, theta_s, theta_g){
-      x <- hessian(func = f, x = LD_mu)%*%LD_S
+      x <- numDeriv::hessian(func = f, x = LD_mu)%*%LD_S
       e <- f(LD_mu) + 0.5*sum(diag(x))
     return(e)
   }
@@ -720,6 +737,7 @@ if(!Climate_Center){
               E.c2.invb.absgam2.sigma = E.c2.invb.absgam2.sigma, E.c.invb.absgam = E.c.invb.absgam,
               E.c.a.invb.absgam = E.c.a.invb.absgam, E.a2.invb.inv.sigma = E.a2.invb.inv.sigma,
               E.invb.inv.sigma = E.invb.inv.sigma, E.a.invb.inv.sigma = E.a.invb.inv.sigma,
+              Sigma.LD = LD_S,
               Hess.LD = LD_S,
               E.log.sig.b=E.log.sig.b, 
               E.log.sig = E.log.sig, 

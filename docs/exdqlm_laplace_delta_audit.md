@@ -539,3 +539,31 @@ The next optimal step is:
 1. audit the exact returned expectation list one by one for avoidable approximation,
 2. decide whether to implement manuscript-consistent split optimization near `gamma = 0`,
 3. then compare those conclusions against run behavior.
+
+## 9. Post-patch status note
+
+After the patch series started on `2026-05-20`, the active path in
+`DISC_Optimal_Synth_Ranges_W_transfer_forecast.r` was updated as follows:
+
+- near-zero `gamma` mode search now supports explicit negative/positive branch
+  comparison,
+- exact pure-`u` moments are used for `E[sigma]`, `E[1/sigma]`, and
+  `E[\log \sigma]`,
+- active-path `Expected_f` now uses `numDeriv::hessian(...)` explicitly,
+- the returned covariance is now exposed canonically as `Sigma.LD`, with
+  `Hess.LD` retained as a compatibility alias,
+- fallback and ridge-regularized outputs now carry explicit diagnostics.
+
+That changes the caveat table for the active path:
+
+- `C1`: addressed in the active path,
+- `C2`: addressed for the exact pure-`u` moments used in the current workflow,
+- `C3`: still a real caveat, but now surfaced explicitly through covariance
+  metadata,
+- `C4`: resolved semantically through the `Sigma.LD` alias while preserving
+  compatibility,
+- `C5`: addressed through explicit fallback typing,
+- `C6`: addressed in the active path.
+
+The stale duplicate path in `R/environmetrics/20_model_setup.R` remains
+historical material only and is now explicitly annotated as such.
