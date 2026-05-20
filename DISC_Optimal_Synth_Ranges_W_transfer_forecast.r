@@ -2555,11 +2555,12 @@ if(!Climate_Center){
   #############################################################################################################################################
   #############################################################################################################################################
 
-  E.sig = Expected_f(f.sig, LD_mu[1], LD_mu[2]);
+  exact_sigma_moments <- disc_w_exact_sigma_moments(LD_mu, LD_S)
+  E.sig = exact_sigma_moments$E_sigma
   E.gam = Expected_f(f.gam, LD_mu[1], LD_mu[2]);
 
 
-  E.inv.sigma = Expected_f(f.inv.sig, LD_mu[1], LD_mu[2])
+  E.inv.sigma = exact_sigma_moments$E_inv_sigma
   E.c2.invb.absgam2.sigma = Expected_f(f.c2.s.abs.g2.inv.b, LD_mu[1], LD_mu[2])
   E.c.invb.absgam = Expected_f(f.c.abs.g.inv.b, LD_mu[1], LD_mu[2])
   E.c.a.invb.absgam = Expected_f(f.c.abs.g.a.inv.b, LD_mu[1], LD_mu[2])
@@ -2567,7 +2568,7 @@ if(!Climate_Center){
   E.invb.inv.sigma = Expected_f(f.inv.s.inv.b, LD_mu[1], LD_mu[2])
   E.a.invb.inv.sigma = Expected_f(f.a.inv.s.inv.b, LD_mu[1], LD_mu[2])
   E.log.sig.b = Expected_f(f.log.sig.b, LD_mu[1], LD_mu[2])
-  E.log.sig = Expected_f(f.log.sig, LD_mu[1], LD_mu[2])
+  E.log.sig = exact_sigma_moments$E_log_sigma
   E.prior.sig.gam = Expected_f(f.prior.sig.gam, LD_mu[1], LD_mu[2])
   f.log_jac <- function(theta){
     pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)

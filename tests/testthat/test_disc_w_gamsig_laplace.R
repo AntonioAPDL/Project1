@@ -82,3 +82,25 @@ test_that("disc_w_optimize_theta_candidate and picker prefer the higher-objectiv
   expect_identical(best$label, "negative")
   expect_gt(best$obj_value, positive$obj_value)
 })
+
+test_that("disc_w_exact_sigma_moments returns closed-form lognormal moments", {
+  theta_mean <- c(1.2, -0.4)
+  theta_cov <- matrix(c(0.3, 0.05, 0.05, 0.8), nrow = 2)
+
+  out <- disc_w_exact_sigma_moments(theta_mean, theta_cov)
+
+  expect_equal(out$E_sigma, exp(1.2 + 0.5 * 0.3))
+  expect_equal(out$E_inv_sigma, exp(-1.2 + 0.5 * 0.3))
+  expect_equal(out$E_log_sigma, 1.2)
+})
+
+test_that("disc_w_exact_sigma_moments rejects invalid theta_s covariance inputs", {
+  expect_error(
+    disc_w_exact_sigma_moments(c(1, 2), matrix(c(-0.1, 0, 0, 1), nrow = 2)),
+    "Var\\(theta_s\\) must be finite and >= 0"
+  )
+  expect_error(
+    disc_w_exact_sigma_moments(c(NA_real_, 2), diag(2)),
+    "theta_mean must contain a finite theta_s entry"
+  )
+})

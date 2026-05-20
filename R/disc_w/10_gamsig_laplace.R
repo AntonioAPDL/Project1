@@ -215,3 +215,24 @@ disc_w_pick_best_theta_candidate <- function(candidates) {
   scores <- vapply(keep, function(x) x$obj_value, numeric(1))
   keep[[which.max(scores)]]
 }
+
+disc_w_exact_sigma_moments <- function(theta_mean, theta_cov) {
+  theta_mean <- suppressWarnings(as.numeric(theta_mean))
+  theta_cov <- as.matrix(theta_cov)
+  if (length(theta_mean) < 1L || !is.finite(theta_mean[[1L]])) {
+    stop("theta_mean must contain a finite theta_s entry", call. = FALSE)
+  }
+  if (nrow(theta_cov) < 1L || ncol(theta_cov) < 1L || !is.finite(theta_cov[[1L, 1L]])) {
+    stop("theta_cov must contain a finite Var(theta_s) entry", call. = FALSE)
+  }
+  var_u <- suppressWarnings(as.numeric(theta_cov[[1L, 1L]]))
+  if (!is.finite(var_u) || var_u < 0) {
+    stop("Var(theta_s) must be finite and >= 0", call. = FALSE)
+  }
+  mu_u <- suppressWarnings(as.numeric(theta_mean[[1L]]))
+  list(
+    E_sigma = exp(mu_u + 0.5 * var_u),
+    E_inv_sigma = exp(-mu_u + 0.5 * var_u),
+    E_log_sigma = mu_u
+  )
+}
