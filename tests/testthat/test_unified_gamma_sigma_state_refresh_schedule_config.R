@@ -31,3 +31,35 @@ test_that("unified_validate_config rejects invalid state refresh schedule", {
   expect_true(any(grepl("state_refresh_schedule.hold_iters", errs, fixed = TRUE)))
   expect_true(any(grepl("state_refresh_schedule.refresh_iters", errs, fixed = TRUE)))
 })
+
+test_that("unified_validate_config accepts valid laplace split controls", {
+  cfg <- unified_config_defaults()
+  cfg$fit$exdqlm_multivar$gamma_sigma$laplace_split_near_zero <- list(
+    enabled = TRUE,
+    abs_gamma_threshold = 0.05,
+    rel_support_threshold = 0.02,
+    zero_margin_abs_gamma = 1e-6,
+    split_on_guard = TRUE
+  )
+
+  errs <- unified_validate_config(cfg)
+  split_errs <- errs[grepl("laplace_split_near_zero", errs, fixed = TRUE)]
+  expect_length(split_errs, 0L)
+})
+
+test_that("unified_validate_config rejects invalid laplace split controls", {
+  cfg <- unified_config_defaults()
+  cfg$fit$exdqlm_multivar$gamma_sigma$laplace_split_near_zero <- list(
+    enabled = TRUE,
+    abs_gamma_threshold = 0,
+    rel_support_threshold = -1,
+    zero_margin_abs_gamma = 0,
+    split_on_guard = NA
+  )
+
+  errs <- unified_validate_config(cfg)
+  expect_true(any(grepl("laplace_split_near_zero.abs_gamma_threshold", errs, fixed = TRUE)))
+  expect_true(any(grepl("laplace_split_near_zero.rel_support_threshold", errs, fixed = TRUE)))
+  expect_true(any(grepl("laplace_split_near_zero.zero_margin_abs_gamma", errs, fixed = TRUE)))
+  expect_true(any(grepl("laplace_split_near_zero.split_on_guard", errs, fixed = TRUE)))
+})

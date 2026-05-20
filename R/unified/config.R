@@ -333,6 +333,13 @@ unified_config_defaults <- function() {
             mode = "adaptive_freeze",
             penalty = 1e12
           ),
+          laplace_split_near_zero = list(
+            enabled = TRUE,
+            abs_gamma_threshold = 0.05,
+            rel_support_threshold = 0.02,
+            zero_margin_abs_gamma = 1e-6,
+            split_on_guard = TRUE
+          ),
           terminal_sampling_guard = list(
             mode = "off",
             min_guard_count = 1L,
@@ -404,6 +411,13 @@ unified_config_defaults <- function() {
             log_failures = TRUE,
             mode = "adaptive_freeze",
             penalty = 1e12
+          ),
+          laplace_split_near_zero = list(
+            enabled = TRUE,
+            abs_gamma_threshold = 0.05,
+            rel_support_threshold = 0.02,
+            zero_margin_abs_gamma = 1e-6,
+            split_on_guard = TRUE
           )
         ),
         legacy = list(
@@ -1933,6 +1947,64 @@ unified_validate_config <- function(cfg) {
       add_err(sprintf("%s.objective_guard.penalty must be numeric and > 0", key_prefix))
     }
 
+    laplace_split_enabled <- cfg_get(
+      c("laplace_split_near_zero", "enabled"),
+      defaults$laplace_split_near_zero$enabled
+    )
+    if (!isTRUE(laplace_split_enabled) && !identical(laplace_split_enabled, FALSE)) {
+      add_err(sprintf("%s.laplace_split_near_zero.enabled must be boolean (true/false)", key_prefix))
+    }
+
+    laplace_split_abs_gamma_threshold <- suppressWarnings(as.numeric(
+      cfg_get(
+        c("laplace_split_near_zero", "abs_gamma_threshold"),
+        defaults$laplace_split_near_zero$abs_gamma_threshold
+      )
+    ))
+    if (!is.finite(laplace_split_abs_gamma_threshold) || laplace_split_abs_gamma_threshold <= 0) {
+      add_err(sprintf(
+        "%s.laplace_split_near_zero.abs_gamma_threshold must be numeric and > 0",
+        key_prefix
+      ))
+    }
+
+    laplace_split_rel_support_threshold <- suppressWarnings(as.numeric(
+      cfg_get(
+        c("laplace_split_near_zero", "rel_support_threshold"),
+        defaults$laplace_split_near_zero$rel_support_threshold
+      )
+    ))
+    if (!is.finite(laplace_split_rel_support_threshold) || laplace_split_rel_support_threshold <= 0) {
+      add_err(sprintf(
+        "%s.laplace_split_near_zero.rel_support_threshold must be numeric and > 0",
+        key_prefix
+      ))
+    }
+
+    laplace_split_zero_margin_abs_gamma <- suppressWarnings(as.numeric(
+      cfg_get(
+        c("laplace_split_near_zero", "zero_margin_abs_gamma"),
+        defaults$laplace_split_near_zero$zero_margin_abs_gamma
+      )
+    ))
+    if (!is.finite(laplace_split_zero_margin_abs_gamma) || laplace_split_zero_margin_abs_gamma <= 0) {
+      add_err(sprintf(
+        "%s.laplace_split_near_zero.zero_margin_abs_gamma must be numeric and > 0",
+        key_prefix
+      ))
+    }
+
+    laplace_split_on_guard <- cfg_get(
+      c("laplace_split_near_zero", "split_on_guard"),
+      defaults$laplace_split_near_zero$split_on_guard
+    )
+    if (!isTRUE(laplace_split_on_guard) && !identical(laplace_split_on_guard, FALSE)) {
+      add_err(sprintf(
+        "%s.laplace_split_near_zero.split_on_guard must be boolean (true/false)",
+        key_prefix
+      ))
+    }
+
     terminal_sampling_guard_mode <- cfg_get(
       c("terminal_sampling_guard", "mode"),
       defaults$terminal_sampling_guard_mode
@@ -1998,6 +2070,13 @@ unified_validate_config <- function(cfg) {
     guard_log_failures = TRUE,
     guard_mode = "adaptive_freeze",
     guard_penalty = 1e12,
+    laplace_split_near_zero = list(
+      enabled = TRUE,
+      abs_gamma_threshold = 0.05,
+      rel_support_threshold = 0.02,
+      zero_margin_abs_gamma = 1e-6,
+      split_on_guard = TRUE
+    ),
     terminal_sampling_guard_mode = "off",
     terminal_sampling_guard_min_guard_count = 1L,
     terminal_sampling_guard_max_guard_lag_iters = 0L,

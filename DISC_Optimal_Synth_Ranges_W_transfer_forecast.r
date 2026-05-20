@@ -215,6 +215,26 @@ DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY <- disc_env_pos_num(
   "DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY",
   default = 1e12
 )
+DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_ENABLED <- disc_env_flag(
+  "DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_ENABLED",
+  default = TRUE
+)
+DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_ABS_GAMMA <- disc_env_pos_num(
+  "DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_ABS_GAMMA",
+  default = 0.05
+)
+DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_REL_SUPPORT <- disc_env_pos_num(
+  "DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_REL_SUPPORT",
+  default = 0.02
+)
+DISC_GAMSIG_LAPLACE_SPLIT_ZERO_MARGIN_ABS_GAMMA <- disc_env_pos_num(
+  "DISC_GAMSIG_LAPLACE_SPLIT_ZERO_MARGIN_ABS_GAMMA",
+  default = 1e-6
+)
+DISC_GAMSIG_LAPLACE_SPLIT_ON_GUARD <- disc_env_flag(
+  "DISC_GAMSIG_LAPLACE_SPLIT_ON_GUARD",
+  default = TRUE
+)
 DISC_GAMSIG_THETA_SIGMA_LOWER <- disc_env_num(
   "DISC_GAMSIG_THETA_SIGMA_LOWER",
   default = log(1e-4)
@@ -1959,10 +1979,15 @@ theta_sigma_upper <- as.numeric(DISC_GAMSIG_THETA_SIGMA_UPPER)
 theta_gamma_lower <- as.numeric(DISC_GAMSIG_THETA_GAMMA_LOWER)
 theta_gamma_upper <- as.numeric(DISC_GAMSIG_THETA_GAMMA_UPPER)
 
-clip_theta_pair <- function(theta_s_val, theta_g_val) {
+clip_theta_pair <- function(
+  theta_s_val,
+  theta_g_val,
+  theta_sigma_bounds = c(theta_sigma_lower, theta_sigma_upper),
+  theta_gamma_bounds = c(theta_gamma_lower, theta_gamma_upper)
+) {
   c(
-    pmin(pmax(theta_s_val, theta_sigma_lower), theta_sigma_upper),
-    pmin(pmax(theta_g_val, theta_gamma_lower), theta_gamma_upper)
+    pmin(pmax(theta_s_val, theta_sigma_bounds[[1L]]), theta_sigma_bounds[[2L]]),
+    pmin(pmax(theta_g_val, theta_gamma_bounds[[1L]]), theta_gamma_bounds[[2L]])
   )
 }
 
@@ -1975,15 +2000,21 @@ use_median_step_damping <- (!isTRUE(DISC_W_AL_MODE) &&
   is.finite(p0) &&
   abs(as.numeric(p0) - 0.5) <= as.numeric(DISC_GAMSIG_MEDIAN_SIGMA_ONLY_FALLBACK_TOL))
 
-apply_median_step_damping <- function(theta_pair, reason_label) {
+apply_median_step_damping <- function(
+  theta_pair,
+  reason_label,
+  theta_gamma_bounds = c(theta_gamma_lower, theta_gamma_upper)
+) {
   if (!use_median_step_damping) {
     return(theta_pair)
   }
-  theta_pair <- clip_theta_pair(theta_pair[[1L]], theta_pair[[2L]])
+  theta_pair <- clip_theta_pair(
+    theta_pair[[1L]],
+    theta_pair[[2L]],
+    theta_gamma_bounds = theta_gamma_bounds
+  )
   cand_sigma <- exp(theta_pair[[1L]])
-  cand_pi <- plogis(theta_pair[[2L]])
-  cand_pi <- pmin(pmax(cand_pi, 1e-12), 1 - 1e-12)
-  cand_gamma <- L + (U - L) * cand_pi
+  cand_gamma <- disc_w_theta_to_gamma(theta_pair[[2L]], L = L, U = U)
   gamma_step <- abs(cand_gamma - g_seed)
   sigma_step <- abs(log(cand_sigma) - log(s_seed))
   gamma_cap <- as.numeric(DISC_GAMSIG_MEDIAN_MAX_ABS_GAMMA_STEP)
@@ -2001,14 +2032,14 @@ apply_median_step_damping <- function(theta_pair, reason_label) {
     damped_gamma <- 0
   }
   damped_theta_s <- damped_log_sigma
-  damped_pi <- (damped_gamma - L) / (U - L)
-  damped_pi <- pmin(pmax(damped_pi, 1e-12), 1 - 1e-12)
-  damped_theta_g <- qlogis(damped_pi)
-  damped_theta <- clip_theta_pair(damped_theta_s, damped_theta_g)
+  damped_theta_g <- disc_w_gamma_to_theta(damped_gamma, L = L, U = U)
+  damped_theta <- clip_theta_pair(
+    damped_theta_s,
+    damped_theta_g,
+    theta_gamma_bounds = theta_gamma_bounds
+  )
   damped_sigma <- exp(damped_theta[[1L]])
-  damped_pi <- plogis(damped_theta[[2L]])
-  damped_pi <- pmin(pmax(damped_pi, 1e-12), 1 - 1e-12)
-  damped_gamma <- L + (U - L) * damped_pi
+  damped_gamma <- disc_w_theta_to_gamma(damped_theta[[2L]], L = L, U = U)
   gamma_step_new <- abs(damped_gamma - g_seed)
   sigma_step_new <- abs(log(damped_sigma) - log(s_seed))
   if (abs(gamma_step_new - gamma_step) < 1e-12 && abs(sigma_step_new - sigma_step) < 1e-12) {
@@ -2262,42 +2293,121 @@ if(!Climate_Center){
     neg
   }
 
-  optim_results <- tryCatch(
-    optim(
-      par = initial_values,
-      fn = objective_neg, # Maximizing by minimizing the negative
-      method = "L-BFGS-B", # This method allows box constraints
-      lower = c(theta_sigma_lower, theta_gamma_lower),
-      upper = c(theta_sigma_upper, theta_gamma_upper),
-      hessian = TRUE
-    ),
-    error = function(e) {
+  run_multivar_candidate <- function(initial_theta, lower, upper, label) {
+    candidate <- disc_w_optimize_theta_candidate(
+      initial_values = initial_theta,
+      objective_neg = objective_neg,
+      lower = lower,
+      upper = upper,
+      label = label
+    )
+    if (!isTRUE(candidate$ok)) {
       msg <- sprintf(
-        "optim failure at p0=%s context=%s: %s",
-        as.character(p0), context_label, conditionMessage(e)
+        "multivar optimization candidate failed at p0=%s context=%s label=%s: %s",
+        as.character(p0), context_label, label, candidate$message
       )
-      if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST)) {
-        stop(msg, call. = FALSE)
-      }
       log_guard_failure(msg)
       mark_guard_trigger(msg)
-      NULL
+      return(candidate)
     }
+    candidate$par <- apply_median_step_damping(
+      candidate$par,
+      reason_label = sprintf("post-optim-%s", label),
+      theta_gamma_bounds = c(lower[[2L]], upper[[2L]])
+    )
+    candidate$obj_value <- tryCatch(
+      dq_transf(candidate$par[[1L]], candidate$par[[2L]]),
+      error = function(e) NA_real_
+    )
+    candidate$ok <- is.finite(candidate$obj_value)
+    if (!isTRUE(candidate$ok)) {
+      candidate$message <- "non-finite optimum"
+      msg <- sprintf(
+        "non-finite optimum after multivar optimization at p0=%s context=%s label=%s",
+        as.character(p0), context_label, label
+      )
+      log_guard_failure(msg)
+      mark_guard_trigger(msg)
+    }
+    candidate
+  }
+
+  run_split_candidates <- function(reference_theta) {
+    branch_bounds <- disc_w_gamma_branch_bounds(
+      L = L,
+      U = U,
+      theta_gamma_lower = theta_gamma_lower,
+      theta_gamma_upper = theta_gamma_upper,
+      zero_margin_abs_gamma = DISC_GAMSIG_LAPLACE_SPLIT_ZERO_MARGIN_ABS_GAMMA
+    )
+    candidates <- list()
+    if (isTRUE(branch_bounds$negative_valid)) {
+      candidates[[length(candidates) + 1L]] <- run_multivar_candidate(
+        initial_theta = reference_theta,
+        lower = c(theta_sigma_lower, branch_bounds$negative[[1L]]),
+        upper = c(theta_sigma_upper, branch_bounds$negative[[2L]]),
+        label = "split_negative"
+      )
+    }
+    if (isTRUE(branch_bounds$positive_valid)) {
+      candidates[[length(candidates) + 1L]] <- run_multivar_candidate(
+        initial_theta = reference_theta,
+        lower = c(theta_sigma_lower, branch_bounds$positive[[1L]]),
+        upper = c(theta_sigma_upper, branch_bounds$positive[[2L]]),
+        label = "split_positive"
+      )
+    }
+    list(
+      bounds = branch_bounds,
+      candidates = candidates,
+      best = disc_w_pick_best_theta_candidate(candidates)
+    )
+  }
+
+  full_candidate <- run_multivar_candidate(
+    initial_theta = initial_values,
+    lower = c(theta_sigma_lower, theta_gamma_lower),
+    upper = c(theta_sigma_upper, theta_gamma_upper),
+    label = "full"
+  )
+  full_gamma_hat <- if (isTRUE(full_candidate$ok)) {
+    disc_w_theta_to_gamma(full_candidate$par[[2L]], L = L, U = U)
+  } else {
+    g_seed
+  }
+  split_decision <- disc_w_should_split_gamma_mode(
+    gamma_hat = full_gamma_hat,
+    L = L,
+    U = U,
+    enabled = DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_ENABLED,
+    abs_gamma_threshold = DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_ABS_GAMMA,
+    rel_support_threshold = DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_REL_SUPPORT,
+    guard_triggered = guard_triggered,
+    split_on_guard = DISC_GAMSIG_LAPLACE_SPLIT_ON_GUARD
   )
 
-  if (is.null(optim_results)) {
-    sigma_only_result <- run_sigma_only_fallback("optim failure")
-    if (!is.null(sigma_only_result)) {
-      return(sigma_only_result)
+  selected_candidate <- full_candidate
+  if (isTRUE(split_decision$should_split)) {
+    split_result <- run_split_candidates(
+      reference_theta = if (isTRUE(full_candidate$ok)) full_candidate$par else initial_values
+    )
+    if (!is.null(split_result$best)) {
+      selected_candidate <- split_result$best
+      log_stabilization_event(sprintf(
+        "split gamma search selected label=%s at p0=%s context=%s reason=%s threshold=%s gamma_hat=%s",
+        selected_candidate$label,
+        as.character(p0),
+        context_label,
+        split_decision$reason,
+        format(split_decision$threshold, digits = 6),
+        format(split_decision$gamma_hat, digits = 6)
+      ))
     }
-    return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = guard_message))
   }
-  optim_results$par <- clip_theta_pair(optim_results$par[[1L]], optim_results$par[[2L]])
-  optim_results$par <- apply_median_step_damping(optim_results$par, reason_label = "post-optim")
-  opt_obj <- tryCatch(dq_transf(optim_results$par[[1L]], optim_results$par[[2L]]), error = function(e) NA_real_)
-  if (!is.finite(opt_obj)) {
+
+  if (!isTRUE(selected_candidate$ok)) {
     msg <- sprintf(
-      "non-finite optimum after guarded multivar optimization at p0=%s context=%s",
+      "no valid multivar optimum at p0=%s context=%s",
       as.character(p0), context_label
     )
     if (nzchar(guard_message)) {
@@ -2310,6 +2420,9 @@ if(!Climate_Center){
     }
     return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = msg))
   }
+
+  optim_results <- selected_candidate$optim
+  optim_results$par <- selected_candidate$par
 
   log_hessian_at_optimal <- tryCatch(
     numDeriv::hessian(
@@ -2940,7 +3053,7 @@ last_state_guard_iter <- NA_integer_
 last_state_guard_reason <- ""
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   cat(sprintf(
-    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d\n",
+    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d\n",
     as.character(p0),
     DISC_GAMSIG_FREEZE_TARGET,
     as.integer(DISC_GAMSIG_FREEZE_ITERS),
@@ -2960,6 +3073,11 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     as.numeric(DISC_GAMSIG_HESSIAN_RIDGE_INIT),
     as.numeric(DISC_GAMSIG_HESSIAN_RIDGE_MULTIPLIER),
     as.integer(DISC_GAMSIG_HESSIAN_RIDGE_MAX_TRIES),
+    ifelse(isTRUE(DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_ENABLED), "true", "false"),
+    as.numeric(DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_ABS_GAMMA),
+    as.numeric(DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_REL_SUPPORT),
+    as.numeric(DISC_GAMSIG_LAPLACE_SPLIT_ZERO_MARGIN_ABS_GAMMA),
+    ifelse(isTRUE(DISC_GAMSIG_LAPLACE_SPLIT_ON_GUARD), "true", "false"),
     state_control_scope,
     ifelse(isTRUE(state_guard_enabled), "true", "false"),
     state_norm_max_ratio,

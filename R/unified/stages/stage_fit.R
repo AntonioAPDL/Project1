@@ -1104,6 +1104,21 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_GAMSIG_OBJECTIVE_GUARD_PENALTY = as.character(unified_get(
         gamsig_policy, c("objective_guard", "penalty"), default = 1e12
       )),
+      DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("laplace_split_near_zero", "enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_ABS_GAMMA = as.character(unified_get(
+        gamsig_policy, c("laplace_split_near_zero", "abs_gamma_threshold"), default = 0.05
+      )),
+      DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_REL_SUPPORT = as.character(unified_get(
+        gamsig_policy, c("laplace_split_near_zero", "rel_support_threshold"), default = 0.02
+      )),
+      DISC_GAMSIG_LAPLACE_SPLIT_ZERO_MARGIN_ABS_GAMMA = as.character(unified_get(
+        gamsig_policy, c("laplace_split_near_zero", "zero_margin_abs_gamma"), default = 1e-6
+      )),
+      DISC_GAMSIG_LAPLACE_SPLIT_ON_GUARD = if (isTRUE(unified_get(
+        gamsig_policy, c("laplace_split_near_zero", "split_on_guard"), default = TRUE
+      ))) "TRUE" else "FALSE",
       DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE = as.character(unified_get(
         gamsig_policy, c("terminal_sampling_guard", "mode"), default = "off"
       )),
