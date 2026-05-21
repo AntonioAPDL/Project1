@@ -74,8 +74,10 @@ For `fixed-gamsig` and `fixed-gamsig-latent-cap`, the preparer also writes:
 | `fit.exdqlm_multivar.gamma_sigma.freeze_target` | `gamma_sigma` |
 | `fit.exdqlm_multivar.gamma_sigma.warmup_freeze_iters` | `max_iter + 5` |
 | `fit.exdqlm_multivar.gamma_sigma.min_update_iters` | `0` |
+| `fit.exdqlm_multivar.gamma_sigma.state_refresh_schedule.enabled` | `false` |
 | each existing `quantile_overrides.*.warmup_freeze_iters` | `max_iter + 5` |
 | each existing `quantile_overrides.*.min_update_iters` | `0` |
+| each existing `quantile_overrides.*.state_refresh_schedule.enabled` | `false` |
 
 Interpretation:
 

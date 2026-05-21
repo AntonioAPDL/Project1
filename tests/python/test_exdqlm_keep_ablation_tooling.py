@@ -28,11 +28,13 @@ def write_source_config(path: Path) -> None:
                     "warmup_freeze_iters": 3,
                     "min_update_iters": 7,
                     "min_total_iters": 8,
+                    "state_refresh_schedule": {"enabled": True, "start_iter": 11},
                     "quantile_overrides": {
                         "q50": {
                             "warmup_freeze_iters": 2,
                             "min_update_iters": 6,
                             "min_total_iters": 9,
+                            "state_refresh_schedule": {"enabled": True, "start_iter": 11},
                         }
                     },
                 }
@@ -85,9 +87,11 @@ class TestExdqlmKeepAblationTooling(unittest.TestCase):
             self.assertEqual(policy["warmup_freeze_iters"], 17)
             self.assertEqual(policy["min_update_iters"], 0)
             self.assertEqual(policy["min_total_iters"], 12)
+            self.assertFalse(policy["state_refresh_schedule"]["enabled"])
             self.assertEqual(policy["quantile_overrides"]["q50"]["warmup_freeze_iters"], 17)
             self.assertEqual(policy["quantile_overrides"]["q50"]["min_update_iters"], 0)
             self.assertEqual(policy["quantile_overrides"]["q50"]["min_total_iters"], 12)
+            self.assertFalse(policy["quantile_overrides"]["q50"]["state_refresh_schedule"]["enabled"])
             self.assertEqual(manifest["ablation_mode"], "fixed-gamsig")
 
     def test_latent_cap_ablation_exports_latent_controls(self) -> None:

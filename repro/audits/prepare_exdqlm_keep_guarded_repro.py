@@ -55,6 +55,11 @@ def set_fixed_gamsig_policy(policy: dict, max_iter: int) -> None:
     policy["warmup_freeze_iters"] = int(max_iter) + 5
     policy["min_update_iters"] = 0
     policy["min_total_iters"] = min(50, int(max_iter))
+    schedule = policy.get("state_refresh_schedule")
+    if not isinstance(schedule, dict):
+        schedule = {}
+        policy["state_refresh_schedule"] = schedule
+    schedule["enabled"] = False
 
 
 def apply_fixed_gamsig_ablation_config(cfg: dict, max_iter: int) -> None:
