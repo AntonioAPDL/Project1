@@ -158,6 +158,101 @@ disc_w_audit_pseudodata <- function(
   list(offset = offset, variance = variance, weight = weight)
 }
 
+disc_w_audit_transform_raw_cms <- function(x, scale) {
+  x <- as.numeric(x)
+  if (identical(scale, "raw_cms")) return(x)
+  if (identical(scale, "log1p_cms")) return(log1p(x))
+  if (identical(scale, "log_log1p_cms")) return(log(log1p(x)))
+  stop(sprintf("Unsupported audit scale: %s", scale), call. = FALSE)
+}
+
+disc_w_audit_scale_sensitivity_fixture <- function(
+  raw_y = c(0, 1e-6, 0.001, 0.1, 1, 10, 100, 1000),
+  raw_exps = NULL,
+  scales = c("log1p_cms", "log_log1p_cms"),
+  exps2_variance = 0.05
+) {
+  raw_y <- as.numeric(raw_y)
+  if (is.null(raw_exps)) {
+    raw_exps <- pmax(raw_y * 0.92 + 0.02, 0)
+  }
+  raw_exps <- as.numeric(raw_exps)
+  if (length(raw_exps) != length(raw_y)) {
+    stop("raw_exps must have the same length as raw_y", call. = FALSE)
+  }
+
+  rows <- list()
+  for (scale in scales) {
+    y_scaled <- suppressWarnings(disc_w_audit_transform_raw_cms(raw_y, scale))
+    exps_scaled <- suppressWarnings(disc_w_audit_transform_raw_cms(raw_exps, scale))
+    finite_pair <- is.finite(y_scaled) & is.finite(exps_scaled)
+
+    base <- data.frame(
+      scale = scale,
+      raw_y = raw_y,
+      raw_exps = raw_exps,
+      y_scaled = y_scaled,
+      exps_scaled = exps_scaled,
+      residual = y_scaled - exps_scaled,
+      residual2 = (y_scaled - exps_scaled)^2,
+      valid_scaled = finite_pair
+    )
+
+    base$sts_mu <- NA_real_
+    base$E_sts <- NA_real_
+    base$E_sts2 <- NA_real_
+    base$u_chi <- NA_real_
+    base$E_uts <- NA_real_
+    base$E_inv_uts <- NA_real_
+    base$pseudo_offset <- NA_real_
+    base$pseudo_variance <- NA_real_
+
+    if (any(finite_pair)) {
+      idx <- which(finite_pair)
+      n <- length(idx)
+      sts <- disc_w_audit_update_sts(
+        y = y_scaled[idx],
+        exps = exps_scaled[idx],
+        inv_uts = rep(1, n),
+        c2_invb_absgam2_sigma = rep(0.55, n),
+        c_invb_absgam = rep(0.25, n),
+        c_a_invb_absgam = rep(0.05, n)
+      )
+      uts <- disc_w_audit_update_uts(
+        y = y_scaled[idx],
+        exps = exps_scaled[idx],
+        exps2 = exps_scaled[idx]^2 + exps2_variance,
+        sts = sts$E.sts,
+        sts2 = sts$E.sts2,
+        inv_sigma = rep(1, n),
+        a2_invb_inv_sigma = rep(0.35, n),
+        invb_inv_sigma = rep(1, n),
+        c_invb_absgam = rep(0.25, n),
+        c2_invb_absgam2_sigma = rep(0.55, n)
+      )
+      pseudo <- disc_w_audit_pseudodata(
+        E_c_invb_absgam = rep(0.25, n),
+        E_a_invb_inv_sigma = rep(0.35, n),
+        E_invb_inv_sigma = rep(1, n),
+        E_sts = sts$E.sts,
+        E_inv_uts = uts$E.inv.uts
+      )
+
+      base$sts_mu[idx] <- sts$sts.mu
+      base$E_sts[idx] <- sts$E.sts
+      base$E_sts2[idx] <- sts$E.sts2
+      base$u_chi[idx] <- uts$uts.chi
+      base$E_uts[idx] <- uts$E.uts
+      base$E_inv_uts[idx] <- uts$E.inv.uts
+      base$pseudo_offset[idx] <- pseudo$offset
+      base$pseudo_variance[idx] <- pseudo$variance
+    }
+    rows[[length(rows) + 1L]] <- base
+  }
+
+  do.call(rbind, rows)
+}
+
 disc_w_audit_keep_dimension_table <- function(p, J, ppx, ranges, num_mem = NULL) {
   if (is.null(num_mem)) {
     num_mem <- rep(NA_integer_, J)

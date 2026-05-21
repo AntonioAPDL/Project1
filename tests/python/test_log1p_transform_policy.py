@@ -41,6 +41,26 @@ class TestLog1pTransformPolicy(unittest.TestCase):
         self.assertEqual(scale_contract["analysis_scale_fit_internal"], "log1p_cms")
         self.assertEqual(scale_contract["analysis_scale_post_internal"], "log1p_cms")
 
+    def test_active_keep_runner_does_not_apply_second_log(self) -> None:
+        runner = (PROJECT_ROOT / "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r").read_text(encoding="utf-8")
+        self.assertNotIn("nws_forecast[,-1] <- log(nws_forecast[,-1])", runner)
+        self.assertNotIn("glofas_forecast[,-1] <- log(glofas_forecast[,-1])", runner)
+        self.assertIn("Forecast adapters now provide log1p(cms)", runner)
+
+    def test_retrospective_builder_does_not_apply_second_log(self) -> None:
+        retro_builder = (PROJECT_ROOT / "R" / "disc_w" / "03_covariates_standardize.R").read_text(encoding="utf-8")
+        self.assertNotIn("Y <- log(Y)", retro_builder)
+        self.assertIn("shared retrospective contract is already log1p(cms)", retro_builder)
+
+    def test_loglog1p_is_diagnostic_only_near_zero(self) -> None:
+        # Exact-zero retrospectives are valid under log1p_cms but invalid under
+        # log(log1p(cms)); this is why the repair target remains log1p_cms.
+        import math
+
+        self.assertEqual(math.log1p(0.0), 0.0)
+        with self.assertRaises(ValueError):
+            math.log(math.log1p(0.0))
+
 
 if __name__ == "__main__":
     unittest.main()
