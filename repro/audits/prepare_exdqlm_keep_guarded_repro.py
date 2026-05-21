@@ -53,6 +53,18 @@ def main() -> int:
     parser.add_argument("--qqq-diag-abs-cap", type=float, default=10000.0)
     parser.add_argument("--e-inv-u-abs-cap", type=float, default=5000.0)
     parser.add_argument(
+        "--ablation-mode",
+        choices=["control", "fixed-gamsig", "latent-freeze", "latent-cap-e-inv-u", "fixed-gamsig-latent-cap"],
+        default="control",
+        help="Diagnostic ablation condition. All modes remain isolated from production roots.",
+    )
+    parser.add_argument(
+        "--latent-e-inv-u-cap",
+        type=float,
+        default=5000.0,
+        help="Cap used when --ablation-mode applies latent E[1/u] capping.",
+    )
+    parser.add_argument(
         "--post-save-objective",
         choices=["on", "off"],
         default="off",
@@ -87,7 +99,7 @@ def main() -> int:
 
     config_path = generated_root / f"{run_id}.yaml"
     with config_path.open("w", encoding="utf-8") as handle:
-      yaml.safe_dump(cfg, handle, sort_keys=False)
+        yaml.safe_dump(cfg, handle, sort_keys=False)
 
     launch_path = control_root / f"launch_{run_id}.sh"
     launch_lines = [
@@ -100,9 +112,32 @@ def main() -> int:
         f'export DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP="{args.qqq_diag_abs_cap}"',
         f'export DISC_PSEUDODATA_E_INV_U_ABS_CAP="{args.e_inv_u_abs_cap}"',
         f'export DISC_W_POST_SAVE_OBJECTIVE_ENABLED="{1 if args.post_save_objective == "on" else 0}"',
-        f'cd "{PROJECT_ROOT}"',
-        f'exec "{PROJECT_ROOT / "scripts" / "run_unified_without_cleanup.sh"}" --config "{config_path}"',
     ]
+    if args.ablation_mode in {"fixed-gamsig", "fixed-gamsig-latent-cap"}:
+        launch_lines.extend(
+            [
+                'export DISC_GAMSIG_FREEZE_TARGET="gamma_sigma"',
+                f'export DISC_GAMSIG_FREEZE_ITERS="{int(args.max_iter) + 5}"',
+                'export DISC_GAMSIG_MIN_UPDATE_ITERS="0"',
+            ]
+        )
+    if args.ablation_mode == "latent-freeze":
+        launch_lines.append('export DISC_LATENT_ABLATION_MODE="freeze"')
+    elif args.ablation_mode in {"latent-cap-e-inv-u", "fixed-gamsig-latent-cap"}:
+        launch_lines.extend(
+            [
+                'export DISC_LATENT_ABLATION_MODE="cap_e_inv_u"',
+                f'export DISC_LATENT_E_INV_U_CAP="{args.latent_e_inv_u_cap}"',
+            ]
+        )
+    else:
+        launch_lines.append('export DISC_LATENT_ABLATION_MODE="free"')
+    launch_lines.extend(
+        [
+            f'cd "{PROJECT_ROOT}"',
+            f'exec "{PROJECT_ROOT / "scripts" / "run_unified_without_cleanup.sh"}" --config "{config_path}"',
+        ]
+    )
     launch_path.write_text("\n".join(launch_lines) + "\n", encoding="utf-8")
     launch_path.chmod(launch_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP)
 
@@ -119,6 +154,8 @@ def main() -> int:
         "workers": int(args.workers),
         "guard_report_dir": str(guard_report_dir),
         "guard_mode": args.guard_mode,
+        "ablation_mode": args.ablation_mode,
+        "latent_e_inv_u_cap": args.latent_e_inv_u_cap,
         "post_save_objective": args.post_save_objective,
         "caps": {
             "fff_abs_cap": args.fff_abs_cap,
@@ -141,6 +178,8 @@ def main() -> int:
                 f"- quantiles: `{', '.join(q_tag(q) for q in quantiles)}`",
                 f"- max_iter: `{args.max_iter}`",
                 f"- guard mode: `{args.guard_mode}`",
+                f"- ablation mode: `{args.ablation_mode}`",
+                f"- latent E[1/u] cap: `{args.latent_e_inv_u_cap}`",
                 f"- post-save objective: `{args.post_save_objective}`",
                 f"- guard report dir: `{guard_report_dir}`",
                 "",

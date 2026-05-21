@@ -112,6 +112,19 @@ testthat::test_that("active runner uses stable latent formulas", {
   testthat::expect_true(grepl("\\[post_save_objective\\] disabled", text))
 })
 
+testthat::test_that("active runner exposes diagnostic latent ablation controls", {
+  runner <- testthat::test_path("..", "..", "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r")
+  text <- paste(readLines(runner, warn = FALSE), collapse = "\n")
+
+  testthat::expect_true(grepl("DISC_LATENT_ABLATION_MODE", text, fixed = TRUE))
+  testthat::expect_true(grepl("choices = c(\"free\", \"freeze\", \"cap_e_inv_u\")", text, fixed = TRUE))
+  testthat::expect_true(grepl("DISC_LATENT_E_INV_U_CAP", text, fixed = TRUE))
+  testthat::expect_true(grepl("disc_w_apply_latent_ablation", text, fixed = TRUE))
+  testthat::expect_true(grepl("mode=cap_e_inv_u", text, fixed = TRUE))
+  testthat::expect_true(grepl("context_label = \"fit_pre_gamsig\"", text, fixed = TRUE))
+  testthat::expect_true(grepl("context_label = \"sampling_pre_gamsig\"", text, fixed = TRUE))
+})
+
 testthat::test_that("pseudo-data offset and variance reproduce information-form algebra", {
   y <- c(3, 4)
   pseudo <- disc_w_audit_pseudodata(

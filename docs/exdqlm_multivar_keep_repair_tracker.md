@@ -74,7 +74,7 @@ Residual concern:
 
 ### T0. Curated Evidence Bundle From Existing Guarded Outputs
 
-Status: pending
+Status: done
 
 Purpose: create a compact review bundle, not a plot dump. This should help us inspect and communicate the repaired
 run before spending time on causal ablations.
@@ -101,9 +101,21 @@ Acceptance criteria:
 3. The q05 `E[1/u_t]` transient is visible or explicitly linked to the guard CSV.
 4. The bundle supports, but does not replace, the ablation plan.
 
+Evidence:
+
+- script:
+  `repro/audits/exdqlm_keep_curated_evidence_bundle.R`
+- test:
+  `tests/testthat/test_exdqlm_curated_evidence_bundle.R`
+- report:
+  `reports/exdqlm_keep_guarded_repro_guarded_log1p_q05_q35_q50_q95_20260521/curated_evidence/`
+- validation:
+  `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_curated_evidence_bundle.R')"` passed
+  with 6 expectations.
+
 ### T1. Ablation Harness Design
 
-Status: pending
+Status: done
 
 Purpose: design the smallest safe harness for causal isolation.
 
@@ -122,9 +134,27 @@ Acceptance criteria:
 3. It records all freeze/replay values in manifests.
 4. It has at least smoke-level parse/test coverage before runtime use.
 
+Evidence:
+
+- design:
+  [exdqlm_multivar_keep_ablation_harness_design.md](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_ablation_harness_design.md)
+- single-run preparer:
+  `repro/audits/prepare_exdqlm_keep_guarded_repro.py`
+- matrix preparer:
+  `repro/audits/prepare_exdqlm_keep_ablation_matrix.py`
+- tests:
+  `tests/python/test_exdqlm_keep_ablation_tooling.py`
+  and `tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R`
+- prepared matrix:
+  `reports/exdqlm_keep_ablation_matrix_ablation_log1p_q05_q35_q50_q95_20260521/`
+- validation:
+  `python3 -m unittest tests.python.test_exdqlm_keep_ablation_tooling -v` passed with 3 tests;
+  `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R')"`
+  passed with 52 expectations.
+
 ### T2. Fixed/Free `sigma/gamma` Ablations
 
-Status: pending
+Status: prepared
 
 Purpose: determine whether the `sigma/gamma` approximation or calibration is the decisive instability source under
 the current `log1p_cms` scale.
@@ -153,9 +183,15 @@ Acceptance criteria:
    identifiability/decomposition.
 3. Do not infer from terminal state norm alone; inspect latent and pseudo-data trajectories.
 
+Prepared condition:
+
+- `fixed-gamsig`
+- launch:
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_ablation_log1p_q05_q35_q50_q95_20260521_fixed_gamsig/control/launch_multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dfall999999_datastart2017_ready_exdqlm_multivar_keep__ablation_log1p_q05_q35_q50_q95_20260521_fixed_gamsig.sh`
+
 ### T3. Fixed/Free Latent Moment Ablations
 
-Status: pending
+Status: prepared
 
 Purpose: determine whether the `s_t/u_t` updates remain the dominant source of instability after numerical
 hardening.
@@ -173,6 +209,13 @@ Acceptance criteria:
 1. If replayed/capped latent moments stabilize q05 without harming q50/q95, define a production policy.
 2. If latent replay does not change behavior, shift emphasis to `sigma/gamma` and decomposition.
 3. All latent interventions must be documented as diagnostics unless explicitly promoted later.
+
+Prepared conditions:
+
+- `latent-freeze`
+- `latent-cap-e-inv-u`
+- matrix launch:
+  `reports/exdqlm_keep_ablation_matrix_ablation_log1p_q05_q35_q50_q95_20260521/launch_ablation_matrix_ablation_log1p_q05_q35_q50_q95_20260521.sh`
 
 ### T4. q05 Guard-Response Policy
 
@@ -287,9 +330,13 @@ Decision outcomes:
 | 2026-05-21 | `python3 -m unittest tests.python.test_log1p_transform_policy -v` | pass, 6 tests |
 | 2026-05-21 | guarded q05/q35/q50/q95 reproduction | fit outputs written; post-stage no-truth failure after fit |
 | 2026-05-21 | guarded runtime stability audit | pass; report written under `reports/exdqlm_keep_guarded_repro_guarded_log1p_q05_q35_q50_q95_20260521/runtime_stability/` |
+| 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_curated_evidence_bundle.R')"` | pass, 6 expectations |
+| 2026-05-21 | `python3 -m unittest tests.python.test_exdqlm_keep_ablation_tooling -v` | pass, 3 tests |
+| 2026-05-21 | `python3 repro/audits/prepare_exdqlm_keep_ablation_matrix.py --tag ablation_log1p_q05_q35_q50_q95_20260521 --conditions fixed-gamsig,latent-freeze,latent-cap-e-inv-u --quantiles 0.05,0.35,0.5,0.95 --max-iter 3000 --workers 4 --guard-mode warn --post-save-objective off` | matrix prepared |
 
 ## Change Log
 
 | date | change | status |
 | --- | --- | --- |
 | 2026-05-21 | Created living repair tracker with curated evidence, ablation, guard-policy, decomposition, Kalman, post-stage, and promotion gates | done |
+| 2026-05-21 | Completed `T0` curated evidence bundle and `T1` ablation harness design; prepared `T2/T3` ablation matrix | done |

@@ -344,6 +344,15 @@ DISC_GAMSIG_STATE_BLEND_ALPHA_OPT <- disc_env_opt_prob(
 DISC_GAMSIG_COV_BLEND_ALPHA_OPT <- disc_env_opt_prob(
   "DISC_GAMSIG_COV_BLEND_ALPHA"
 )
+DISC_LATENT_ABLATION_MODE <- disc_env_choice(
+  "DISC_LATENT_ABLATION_MODE",
+  choices = c("free", "freeze", "cap_e_inv_u"),
+  default = "free"
+)
+DISC_LATENT_E_INV_U_CAP <- disc_env_pos_num(
+  "DISC_LATENT_E_INV_U_CAP",
+  default = 5000
+)
 DISC_STRICT_CONTRACTS <- disc_env_flag(
   "DISC_STRICT_CONTRACTS",
   default = TRUE
@@ -1916,6 +1925,92 @@ update_uts<-function(y, exps,exps2,sts,sts2,inv.sigma,a2.invb.inv.sigma,invb.inv
               tot.entrop=tot.ent))
 }
 
+disc_w_cap_e_inv_uts_matrix <- function(x, cap) {
+  cap <- suppressWarnings(as.numeric(cap)[1L])
+  if (!is.finite(cap) || cap <= 0) return(x)
+  raw <- suppressWarnings(as.numeric(x))
+  capped_n <- sum(is.finite(raw) & raw > cap)
+  x[is.finite(x) & x > cap] <- cap
+  list(value = x, capped_n = as.integer(capped_n))
+}
+
+disc_w_cap_e_inv_uts_list <- function(xs, cap) {
+  total <- 0L
+  if (!is.list(xs)) return(list(value = xs, capped_n = total))
+  out <- xs
+  for (i in seq_along(out)) {
+    capped <- disc_w_cap_e_inv_uts_matrix(out[[i]], cap)
+    out[[i]] <- capped$value
+    total <- total + capped$capped_n
+  }
+  list(value = out, capped_n = as.integer(total))
+}
+
+disc_w_apply_latent_ablation <- function(
+  sts_out,
+  uts_out,
+  sts_out_f,
+  uts_out_f,
+  cur_sts_out,
+  cur_uts_out,
+  cur_sts_out_f,
+  cur_uts_out_f,
+  iter,
+  context_label
+) {
+  mode <- DISC_LATENT_ABLATION_MODE
+  if (identical(mode, "free")) {
+    return(list(
+      sts_out = sts_out,
+      uts_out = uts_out,
+      sts_out_f = sts_out_f,
+      uts_out_f = uts_out_f
+    ))
+  }
+  if (identical(mode, "freeze")) {
+    if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+      cat(sprintf(
+        "[latent_ablation] mode=freeze p0=%s iter=%d context=%s action=reuse_previous_latents\n",
+        as.character(p0),
+        as.integer(iter),
+        as.character(context_label)
+      ))
+      flush.console()
+    }
+    return(list(
+      sts_out = cur_sts_out,
+      uts_out = cur_uts_out,
+      sts_out_f = cur_sts_out_f,
+      uts_out_f = cur_uts_out_f
+    ))
+  }
+  if (identical(mode, "cap_e_inv_u")) {
+    capped_history <- disc_w_cap_e_inv_uts_matrix(uts_out$E.inv.uts, DISC_LATENT_E_INV_U_CAP)
+    capped_forecast <- disc_w_cap_e_inv_uts_list(uts_out_f$E.inv.uts, DISC_LATENT_E_INV_U_CAP)
+    uts_out$E.inv.uts <- capped_history$value
+    uts_out_f$E.inv.uts <- capped_forecast$value
+    if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+      cat(sprintf(
+        "[latent_ablation] mode=cap_e_inv_u p0=%s iter=%d context=%s cap=%g capped_history=%d capped_forecast=%d\n",
+        as.character(p0),
+        as.integer(iter),
+        as.character(context_label),
+        as.numeric(DISC_LATENT_E_INV_U_CAP),
+        as.integer(capped_history$capped_n),
+        as.integer(capped_forecast$capped_n)
+      ))
+      flush.console()
+    }
+    return(list(
+      sts_out = sts_out,
+      uts_out = uts_out,
+      sts_out_f = sts_out_f,
+      uts_out_f = uts_out_f
+    ))
+  }
+  stop(sprintf("Unknown DISC_LATENT_ABLATION_MODE: %s", as.character(mode)), call. = FALSE)
+}
+
 ###########################################################################################
 ########################
 PriorGammaDens <- function(gamma, prior) {
@@ -3482,6 +3577,12 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     ifelse(nzchar(DISC_PSEUDODATA_GUARD_REPORT_DIR), DISC_PSEUDODATA_GUARD_REPORT_DIR, "-")
   ))
   cat(sprintf(
+    "[latent_ablation_policy] p0=%s mode=%s e_inv_u_cap=%g\n",
+    as.character(p0),
+    DISC_LATENT_ABLATION_MODE,
+    as.numeric(DISC_LATENT_E_INV_U_CAP)
+  ))
+  cat(sprintf(
     "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d\n",
     as.character(p0),
     DISC_GAMSIG_FREEZE_TARGET,
@@ -4244,8 +4345,24 @@ while (isTRUE(FLAG) && iter < max_iter) {
 
       }
   }
-    ## UPDATE sigma and gamma
-  for (j in 2:(J+1)) {  
+  latent_ablation_result <- disc_w_apply_latent_ablation(
+    sts_out = new.sts.out,
+    uts_out = new.uts.out,
+    sts_out_f = new.sts.out_f,
+    uts_out_f = new.uts.out_f,
+    cur_sts_out = cur.sts.out,
+    cur_uts_out = cur.uts.out,
+    cur_sts_out_f = cur.sts.out_f,
+    cur_uts_out_f = cur.uts.out_f,
+    iter = iter,
+    context_label = "fit_pre_gamsig"
+  )
+  new.sts.out <- latent_ablation_result$sts_out
+  new.uts.out <- latent_ablation_result$uts_out
+  new.sts.out_f <- latent_ablation_result$sts_out_f
+  new.uts.out_f <- latent_ablation_result$uts_out_f
+  ## UPDATE sigma and gamma
+  for (j in 2:(J+1)) {
           if (gamsig_frozen_now) {
             next
           }
@@ -5027,6 +5144,22 @@ for (j in 1:(J+1)) {
     }
 }
 disc_sampling_diag_mark("sampling_latent_states_done", sprintf("j_total=%d", as.integer(J + 1L)))
+latent_ablation_result <- disc_w_apply_latent_ablation(
+  sts_out = new.sts.out,
+  uts_out = new.uts.out,
+  sts_out_f = new.sts.out_f,
+  uts_out_f = new.uts.out_f,
+  cur_sts_out = cur.sts.out,
+  cur_uts_out = cur.uts.out,
+  cur_sts_out_f = cur.sts.out_f,
+  cur_uts_out_f = cur.uts.out_f,
+  iter = iter,
+  context_label = "sampling_pre_gamsig"
+)
+new.sts.out <- latent_ablation_result$sts_out
+new.uts.out <- latent_ablation_result$uts_out
+new.sts.out_f <- latent_ablation_result$sts_out_f
+new.uts.out_f <- latent_ablation_result$uts_out_f
 
 disc_sampling_diag_mark("sampling_gamma_sigma", sprintf("forecast_blocks=%d", as.integer(J)))
     for (j in 2:(J+1)) {  
