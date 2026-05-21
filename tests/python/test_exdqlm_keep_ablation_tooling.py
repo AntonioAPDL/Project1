@@ -132,6 +132,56 @@ class TestExdqlmKeepAblationTooling(unittest.TestCase):
             self.assertNotIn("DISC_GAMSIG_FREEZE_TARGET", launch_text)
             self.assertEqual(manifest["ablation_mode"], "latent-cap-e-inv-u")
 
+    def test_promotion_profile_exports_failfast_state_guards(self) -> None:
+        script = PROJECT_ROOT / "repro" / "audits" / "prepare_exdqlm_keep_guarded_repro.py"
+        with tempfile.TemporaryDirectory() as tmp_raw:
+            tmp = Path(tmp_raw)
+            source_config = tmp / "source.yaml"
+            write_source_config(source_config)
+            result = subprocess.run(
+                [
+                    "python3",
+                    str(script),
+                    "--source-config",
+                    str(source_config),
+                    "--tag",
+                    "fixture_promotion_guard",
+                    "--runtime-root",
+                    str(tmp / "runtime"),
+                    "--report-root",
+                    str(tmp / "reports"),
+                    "--max-iter",
+                    "12",
+                    "--workers",
+                    "1",
+                    "--guard-profile",
+                    "promotion",
+                    "--state-norm-abs-cap",
+                    "100000",
+                    "--state-guard-refreeze-iters",
+                    "11",
+                    "--state-hold-after-guard-iters",
+                    "13",
+                    "--terminal-guard-max-lag-iters",
+                    "17",
+                ],
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            )
+            manifest = json.loads(result.stdout)
+            launch_text = Path(manifest["launch_path"]).read_text(encoding="utf-8")
+            self.assertIn('export DISC_PSEUDODATA_GUARD_MODE="fail"', launch_text)
+            self.assertIn('export DISC_GAMSIG_STATE_GUARD_ENABLED="1"', launch_text)
+            self.assertIn('export DISC_GAMSIG_STATE_NORM_ABS_CAP="100000.0"', launch_text)
+            self.assertIn('export DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS="11"', launch_text)
+            self.assertIn('export DISC_GAMSIG_STATE_HOLD_AFTER_GUARD_ITERS="13"', launch_text)
+            self.assertIn('export DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE="fail_fast"', launch_text)
+            self.assertIn('export DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MAX_GUARD_LAG_ITERS="17"', launch_text)
+            self.assertEqual(manifest["guard_profile"], "promotion")
+            self.assertEqual(manifest["guard_mode"], "fail")
+            self.assertTrue(manifest["state_guard"]["enabled"])
+
     def test_ablation_matrix_preparer_writes_master_launcher(self) -> None:
         script = PROJECT_ROOT / "repro" / "audits" / "prepare_exdqlm_keep_ablation_matrix.py"
         with tempfile.TemporaryDirectory() as tmp_raw:

@@ -82,9 +82,23 @@ def main() -> int:
     parser.add_argument("--runtime-root", type=Path, default=DEFAULT_RUNTIME_ROOT)
     parser.add_argument("--report-root", type=Path, default=PROJECT_ROOT / "reports")
     parser.add_argument("--guard-mode", choices=["warn", "fail"], default="warn")
+    parser.add_argument(
+        "--guard-profile",
+        choices=["diagnostic", "promotion"],
+        default="diagnostic",
+        help=(
+            "diagnostic keeps warning-mode audit behavior unless --guard-mode overrides it; "
+            "promotion prepares a fail-fast candidate with state/refreeze/terminal guards enabled."
+        ),
+    )
     parser.add_argument("--fff-abs-cap", type=float, default=1000.0)
     parser.add_argument("--qqq-diag-abs-cap", type=float, default=10000.0)
     parser.add_argument("--e-inv-u-abs-cap", type=float, default=5000.0)
+    parser.add_argument("--state-norm-abs-cap", type=float, default=1e6)
+    parser.add_argument("--state-norm-max-ratio", type=float, default=25.0)
+    parser.add_argument("--state-guard-refreeze-iters", type=int, default=20)
+    parser.add_argument("--state-hold-after-guard-iters", type=int, default=20)
+    parser.add_argument("--terminal-guard-max-lag-iters", type=int, default=20)
     parser.add_argument(
         "--ablation-mode",
         choices=["control", "fixed-gamsig", "latent-freeze", "latent-cap-e-inv-u", "fixed-gamsig-latent-cap"],
@@ -116,6 +130,7 @@ def main() -> int:
     generated_root = control_root / "generated_configs"
     report_root = args.report_root / f"exdqlm_keep_guarded_repro_{args.tag}"
     guard_report_dir = report_root / "pseudodata_guard_events"
+    effective_guard_mode = "fail" if args.guard_profile == "promotion" else args.guard_mode
 
     generated_root.mkdir(parents=True, exist_ok=True)
     report_root.mkdir(parents=True, exist_ok=True)
@@ -141,13 +156,26 @@ def main() -> int:
         "#!/usr/bin/env bash",
         "set -euo pipefail",
         f'export DISC_PSEUDODATA_GUARD_ENABLED="1"',
-        f'export DISC_PSEUDODATA_GUARD_MODE="{args.guard_mode}"',
+        f'export DISC_PSEUDODATA_GUARD_MODE="{effective_guard_mode}"',
         f'export DISC_PSEUDODATA_GUARD_REPORT_DIR="{guard_report_dir}"',
         f'export DISC_PSEUDODATA_FFF_ABS_CAP="{args.fff_abs_cap}"',
         f'export DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP="{args.qqq_diag_abs_cap}"',
         f'export DISC_PSEUDODATA_E_INV_U_ABS_CAP="{args.e_inv_u_abs_cap}"',
         f'export DISC_W_POST_SAVE_OBJECTIVE_ENABLED="{1 if args.post_save_objective == "on" else 0}"',
     ]
+    if args.guard_profile == "promotion":
+        launch_lines.extend(
+            [
+                'export DISC_GAMSIG_STATE_GUARD_ENABLED="1"',
+                f'export DISC_GAMSIG_STATE_NORM_ABS_CAP="{args.state_norm_abs_cap}"',
+                f'export DISC_GAMSIG_STATE_NORM_MAX_RATIO="{args.state_norm_max_ratio}"',
+                f'export DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS="{int(args.state_guard_refreeze_iters)}"',
+                f'export DISC_GAMSIG_STATE_HOLD_AFTER_GUARD_ITERS="{int(args.state_hold_after_guard_iters)}"',
+                'export DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE="fail_fast"',
+                f'export DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MAX_GUARD_LAG_ITERS="{int(args.terminal_guard_max_lag_iters)}"',
+                'export DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_REQUIRE_FROZEN="1"',
+            ]
+        )
     if args.ablation_mode in {"fixed-gamsig", "fixed-gamsig-latent-cap"}:
         launch_lines.extend(
             [
@@ -188,7 +216,9 @@ def main() -> int:
         "max_iter": int(args.max_iter),
         "workers": int(args.workers),
         "guard_report_dir": str(guard_report_dir),
-        "guard_mode": args.guard_mode,
+        "guard_mode": effective_guard_mode,
+        "requested_guard_mode": args.guard_mode,
+        "guard_profile": args.guard_profile,
         "ablation_mode": args.ablation_mode,
         "latent_e_inv_u_cap": args.latent_e_inv_u_cap,
         "post_save_objective": args.post_save_objective,
@@ -196,6 +226,15 @@ def main() -> int:
             "fff_abs_cap": args.fff_abs_cap,
             "qqq_diag_abs_cap": args.qqq_diag_abs_cap,
             "e_inv_u_abs_cap": args.e_inv_u_abs_cap,
+            "state_norm_abs_cap": args.state_norm_abs_cap,
+            "state_norm_max_ratio": args.state_norm_max_ratio,
+        },
+        "state_guard": {
+            "enabled": args.guard_profile == "promotion",
+            "refreeze_iters": int(args.state_guard_refreeze_iters),
+            "hold_after_guard_iters": int(args.state_hold_after_guard_iters),
+            "terminal_guard_mode": "fail_fast" if args.guard_profile == "promotion" else "off",
+            "terminal_guard_max_lag_iters": int(args.terminal_guard_max_lag_iters),
         },
     }
     (report_root / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -212,7 +251,8 @@ def main() -> int:
                 f"- run id: `{run_id}`",
                 f"- quantiles: `{', '.join(q_tag(q) for q in quantiles)}`",
                 f"- max_iter: `{args.max_iter}`",
-                f"- guard mode: `{args.guard_mode}`",
+                f"- guard profile: `{args.guard_profile}`",
+                f"- guard mode: `{effective_guard_mode}`",
                 f"- ablation mode: `{args.ablation_mode}`",
                 f"- latent E[1/u] cap: `{args.latent_e_inv_u_cap}`",
                 f"- post-save objective: `{args.post_save_objective}`",

@@ -60,12 +60,24 @@ def run_prepare(args: argparse.Namespace, condition: str) -> dict[str, object]:
         str(args.report_root),
         "--guard-mode",
         args.guard_mode,
+        "--guard-profile",
+        args.guard_profile,
         "--fff-abs-cap",
         str(args.fff_abs_cap),
         "--qqq-diag-abs-cap",
         str(args.qqq_diag_abs_cap),
         "--e-inv-u-abs-cap",
         str(args.e_inv_u_abs_cap),
+        "--state-norm-abs-cap",
+        str(args.state_norm_abs_cap),
+        "--state-norm-max-ratio",
+        str(args.state_norm_max_ratio),
+        "--state-guard-refreeze-iters",
+        str(args.state_guard_refreeze_iters),
+        "--state-hold-after-guard-iters",
+        str(args.state_hold_after_guard_iters),
+        "--terminal-guard-max-lag-iters",
+        str(args.terminal_guard_max_lag_iters),
         "--ablation-mode",
         condition,
         "--latent-e-inv-u-cap",
@@ -91,9 +103,15 @@ def main() -> int:
     parser.add_argument("--runtime-root", type=Path, default=DEFAULT_RUNTIME_ROOT)
     parser.add_argument("--report-root", type=Path, default=PROJECT_ROOT / "reports")
     parser.add_argument("--guard-mode", choices=["warn", "fail"], default="warn")
+    parser.add_argument("--guard-profile", choices=["diagnostic", "promotion"], default="diagnostic")
     parser.add_argument("--fff-abs-cap", type=float, default=1000.0)
     parser.add_argument("--qqq-diag-abs-cap", type=float, default=10000.0)
     parser.add_argument("--e-inv-u-abs-cap", type=float, default=5000.0)
+    parser.add_argument("--state-norm-abs-cap", type=float, default=1e6)
+    parser.add_argument("--state-norm-max-ratio", type=float, default=25.0)
+    parser.add_argument("--state-guard-refreeze-iters", type=int, default=20)
+    parser.add_argument("--state-hold-after-guard-iters", type=int, default=20)
+    parser.add_argument("--terminal-guard-max-lag-iters", type=int, default=20)
     parser.add_argument("--latent-e-inv-u-cap", type=float, default=5000.0)
     parser.add_argument("--post-save-objective", choices=["on", "off"], default="off")
     args = parser.parse_args()
@@ -111,6 +129,7 @@ def main() -> int:
         "max_iter": int(args.max_iter),
         "workers": int(args.workers),
         "guard_mode": args.guard_mode,
+        "guard_profile": args.guard_profile,
         "post_save_objective": args.post_save_objective,
         "matrix_report_dir": str(matrix_report_dir),
         "runs": manifests,
@@ -145,6 +164,7 @@ def main() -> int:
         f"- quantiles: `{args.quantiles}`",
         f"- max_iter: `{args.max_iter}`",
         f"- workers: `{args.workers}`",
+        f"- guard profile: `{args.guard_profile}`",
         f"- guard mode: `{args.guard_mode}`",
         f"- post-save objective: `{args.post_save_objective}`",
         f"- master launch script: `{launch_path}`",
