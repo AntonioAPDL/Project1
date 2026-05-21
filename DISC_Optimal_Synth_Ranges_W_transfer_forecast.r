@@ -3998,8 +3998,8 @@ while (isTRUE(FLAG) && iter < max_iter) {
 
           uts.dummy <- update_uts(
                           y = matrix(ensembles[[j-1]][,i], ncol=1),
-                          exps = matrix(new.theta.out$exps[j,(T+1):(T+k_forecast)], ncol=1), 
-                          exps2 = matrix(new.theta.out$exps2[j,(T+1):(T+k_forecast)], ncol=1), 
+                          exps = matrix(new.theta.out$exps[j,(TT_sub+1):(TT_sub+k_forecast)], ncol=1), 
+                          exps2 = matrix(new.theta.out$exps2[j,(TT_sub+1):(TT_sub+k_forecast)], ncol=1), 
                           new.sts.out_f$E.sts[[j-1]][,i], 
                           new.sts.out_f$E.sts2[[j-1]][,i], 
                           cur.gamsig.out$E.inv.sigma[j,], 
@@ -4691,8 +4691,8 @@ for (j in 1:(J+1)) {
           detail = member_detail,
           code = update_uts(
             y = matrix(ensembles[[j-1]][,i], ncol=1),
-            exps = matrix(new.theta.out$exps[j,(T+1):(T+k_forecast)], ncol=1),
-            exps2 = matrix(new.theta.out$exps2[j,(T+1):(T+k_forecast)], ncol=1),
+            exps = matrix(new.theta.out$exps[j,(TT_sub+1):(TT_sub+k_forecast)], ncol=1),
+            exps2 = matrix(new.theta.out$exps2[j,(TT_sub+1):(TT_sub+k_forecast)], ncol=1),
             new.sts.out_f$E.sts[[j-1]][,i],
             new.sts.out_f$E.sts2[[j-1]][,i],
             cur.gamsig.out$E.inv.sigma[j,],

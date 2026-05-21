@@ -1,0 +1,124 @@
+source(testthat::test_path("..", "..", "R", "disc_w", "11_latent_pseudodata_audit_helpers.R"))
+
+testthat::test_that("s_t audit helper matches positive-truncated normal moments", {
+  y <- c(1.2, -0.4, 2.1)
+  exps <- c(0.3, -0.7, 1.5)
+  inv_uts <- c(0.8, 1.4, 0.5)
+  out <- disc_w_audit_update_sts(
+    y = y,
+    exps = exps,
+    inv_uts = inv_uts,
+    c2_invb_absgam2_sigma = c(0.7, 0.2, 1.1),
+    c_invb_absgam = c(0.6, -0.1, 0.9),
+    c_a_invb_absgam = c(0.05, -0.02, 0.1)
+  )
+
+  for (i in seq_along(y)) {
+    dens <- function(x) stats::dnorm(x, mean = out$sts.mu[i], sd = sqrt(out$sts.sig2[i]))
+    z <- stats::pnorm(out$sts.mu[i] / sqrt(out$sts.sig2[i]))
+    ref_mean <- stats::integrate(function(x) x * dens(x), 0, Inf, rel.tol = 1e-10)$value / z
+    ref_second <- stats::integrate(function(x) x^2 * dens(x), 0, Inf, rel.tol = 1e-10)$value / z
+    testthat::expect_equal(out$E.sts[i], ref_mean, tolerance = 1e-9)
+    testthat::expect_equal(out$E.sts2[i], ref_second, tolerance = 1e-8)
+  }
+
+  testthat::expect_true(all(out$E.sts >= 0))
+  testthat::expect_true(all(out$E.sts2 >= out$E.sts^2))
+})
+
+testthat::test_that("s_t active entropy formula is not the canonical truncated-normal entropy", {
+  out <- disc_w_audit_update_sts(
+    y = c(1.2, -0.4, 2.1),
+    exps = c(0.3, -0.7, 1.5),
+    inv_uts = c(0.8, 1.4, 0.5),
+    c2_invb_absgam2_sigma = c(0.7, 0.2, 1.1),
+    c_invb_absgam = c(0.6, -0.1, 0.9),
+    c_a_invb_absgam = c(0.05, -0.02, 0.1)
+  )
+
+  testthat::expect_true(is.finite(out$active_tot.entrop))
+  testthat::expect_true(is.finite(out$canonical_tot.entrop))
+  testthat::expect_gt(abs(out$active_tot.entrop - out$canonical_tot.entrop), 0.25)
+})
+
+testthat::test_that("u_t audit helper matches GIG moment identities", {
+  out <- disc_w_audit_update_uts(
+    y = c(1.4, -0.2),
+    exps = c(0.4, -0.5),
+    exps2 = c(0.5, 0.4),
+    sts = c(0.8, 0.2),
+    sts2 = c(0.9, 0.3),
+    inv_sigma = c(0.7, 1.3),
+    a2_invb_inv_sigma = c(0.4, 0.9),
+    invb_inv_sigma = c(0.8, 1.1),
+    c_invb_absgam = c(0.25, -0.15),
+    c2_invb_absgam2_sigma = c(0.55, 0.35)
+  )
+
+  ref_E <- disc_w_audit_gig_moment(out$uts.lambda, out$uts.chi, out$uts.psi, 1)
+  ref_E_inv <- disc_w_audit_gig_moment(out$uts.lambda, out$uts.chi, out$uts.psi, -1)
+  testthat::expect_equal(out$E.uts, ref_E, tolerance = 1e-10)
+  testthat::expect_equal(out$E.inv.uts, ref_E_inv, tolerance = 1e-10)
+
+  ref_log <- vapply(seq_along(out$uts.chi), function(i) {
+    lambda <- out$uts.lambda
+    chi <- out$uts.chi[i]
+    psi <- out$uts.psi[i]
+    norm_const <- 2 * (chi / psi)^(lambda / 2) * besselK(sqrt(chi * psi), lambda)
+    stats::integrate(
+      function(x) log(x) * x^(lambda - 1) * exp(-0.5 * (chi / x + psi * x)) / norm_const,
+      0,
+      Inf,
+      rel.tol = 1e-8
+    )$value
+  }, numeric(1))
+  testthat::expect_equal(out$E.log.uts, sum(ref_log), tolerance = 1e-6)
+})
+
+testthat::test_that("pseudo-data offset and variance reproduce information-form algebra", {
+  y <- c(3, 4)
+  pseudo <- disc_w_audit_pseudodata(
+    E_c_invb_absgam = c(0.2, -0.1),
+    E_a_invb_inv_sigma = c(0.7, -0.4),
+    E_invb_inv_sigma = c(1.4, 0.8),
+    E_sts = c(0.5, 1.1),
+    E_inv_uts = c(2.0, 0.5)
+  )
+  w <- c(1.4, 0.8) * c(2.0, 0.5)
+  b <- y * w - c(0.2, -0.1) * c(0.5, 1.1) * c(2.0, 0.5) - c(0.7, -0.4)
+
+  testthat::expect_equal(pseudo$variance, 1 / w)
+  testthat::expect_equal(y - pseudo$offset, b / w)
+  testthat::expect_true(all(is.finite(pseudo$offset)))
+  testthat::expect_true(all(pseudo$variance > 0))
+})
+
+testthat::test_that("keep forecast dimension table follows active segment algebra", {
+  dims <- disc_w_audit_keep_dimension_table(
+    p = 4,
+    J = 2,
+    ppx = 3,
+    ranges = c(10, 4),
+    num_mem = c(51, 31)
+  )
+
+  testthat::expect_equal(dims$active_sources, c(2, 1))
+  testthat::expect_equal(dims$core_state_dim, c(12, 8))
+  testthat::expect_equal(dims$keep_state_dim, c(15, 11))
+  testthat::expect_equal(dims$forecast_series, c(2, 1))
+  testthat::expect_equal(dims$forecast_member_obs_dim, c(82, 51))
+  testthat::expect_equal(dims$segment_horizon, c(4, 6))
+})
+
+testthat::test_that("active forecast u_t updates index forecast columns with TT_sub", {
+  runner <- testthat::test_path("..", "..", "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r")
+  src <- readLines(runner, warn = FALSE)
+  text <- paste(src, collapse = "\n")
+
+  testthat::expect_false(grepl("new\\.theta\\.out\\$exps\\[j,\\(T\\+1\\):\\(T\\+k_forecast\\)\\]", text))
+  testthat::expect_false(grepl("new\\.theta\\.out\\$exps2\\[j,\\(T\\+1\\):\\(T\\+k_forecast\\)\\]", text))
+  testthat::expect_gte(
+    length(grep("new\\.theta\\.out\\$exps2?\\[j,\\(TT_sub\\+1\\):\\(TT_sub\\+k_forecast\\)\\]", src)),
+    4L
+  )
+})
