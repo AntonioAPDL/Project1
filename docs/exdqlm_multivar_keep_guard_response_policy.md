@@ -60,9 +60,37 @@ Fixed-gamsig v3:
 - saved-output historical `E[1/u]` maxima remained below the current `5000` cap, although q95/source1 and
   q05/source1 were close enough to require monitoring (`4818.429` and `4401.679` respectively).
 
-Latent-freeze v3 is still running at this tracker point. Mid-fit logs show q05/q95 state norm squared near `8e6`
-with very large gamma magnitudes and no pseudo-data guard CSV yet. That is not a final result, but it is already
-inconsistent with a simple "latent formulas alone explain everything" story.
+Latent-freeze v3:
+
+- evidence roots:
+  `reports/exdqlm_keep_guarded_repro_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze/`,
+  `reports/exdqlm_keep_runtime_stability_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze/`,
+  `reports/exdqlm_keep_decomposition_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze/`;
+- all four lanes wrote `.RData` and post/validate/report completed under the missing-truth gate;
+- no pseudo-data guard rows were written;
+- q05 and q95 remained scientifically unstable-looking despite fixed latent moments:
+  terminal state norm squared was `8011171` for q05 and `8190166` for q95;
+- q05/q95 gamma/sigma drifted to large asymmetric values:
+  q05 `sigma_exp=3.065681`, `gamma_exp=6.756436`; q95 `sigma_exp=3.075551`, `gamma_exp=-6.76794`.
+
+This is inconsistent with a simple "latent formulas alone explain everything" story. It supports treating
+`sigma/gamma` dynamics and `sigma/gamma`-state interaction as a decisive remaining risk.
+
+Latent-cap v3:
+
+- evidence roots:
+  `reports/exdqlm_keep_guarded_repro_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_cap_e_inv_u/`,
+  `reports/exdqlm_keep_runtime_stability_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_cap_e_inv_u/`,
+  `reports/exdqlm_keep_decomposition_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_cap_e_inv_u/`;
+- all four lanes wrote `.RData` and the wrapper completed post/validate/report;
+- no pseudo-data guard rows were written;
+- terminal state norm squared was `1521.127` for q05, `2233.589` for q35, `2547.352` for q50, and `5082.421`
+  for q95;
+- saved-output historical pseudo-data were finite and small relative to current caps; q05 target `E[1/u]` max was
+  `764.468` and q95 target `E[1/u]` max was `110.045`.
+
+This is enough evidence to test a capped candidate explicitly. It is not enough evidence to make silent latent
+clipping the default, because the cap changes pseudo-observation precision and therefore the fitted state update.
 
 ## Policy Decision
 
@@ -78,16 +106,18 @@ For promotion candidates and broad production relaunches:
 - switch pseudo-data guard mode to `fail`;
 - retain the current caps as initial promotion thresholds:
   `FFF=1000`, `QQQ_diag=10000`, `E[s]=1000`, `E[s^2]=1e6`, `E[u]=1e6`, `E[1/u]=5000`;
-- enable state-norm guard/refreeze controls and terminal sampling guard for any lane whose state norm has shown
-  growth bursts in diagnostics;
+- enable state-norm guard/refreeze controls and terminal sampling guard for all q05/q35/q50/q95 promotion lanes;
 - treat any q05-like `E[1/u]` cap breach as a failed promotion run until the latent-cap ablation proves that
   capping is scientifically harmless.
+- use `repro/audits/prepare_exdqlm_keep_guarded_repro.py --guard-profile promotion` for isolated candidates. That
+  profile exports fail-fast pseudo-data guards, `DISC_GAMSIG_STATE_GUARD_ENABLED=1`, state norm cap/ratio controls,
+  refreeze/hold windows, and `DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE=fail_fast`.
 
 ## What Not To Do Yet
 
-Do not promote latent `E[1/u]` capping as the default production fix yet. It is useful as a diagnostic ablation,
-but capping changes the pseudo-observation precision directly. Until the latent-cap run and decomposition checks
-show no material distortion, fail-fast is the defensible production behavior.
+Do not promote latent `E[1/u]` capping as the default production fix yet. It is useful as a diagnostic ablation and
+now a reasonable explicit candidate, but capping changes the pseudo-observation precision directly. Fail-fast plus
+state/refreeze guards remain the defensible default production behavior.
 
 Do not infer stability from terminal state norm alone. The fixed-gamsig v3 outputs are finite, but saved-output
 latent tails can still be close to the cap and q95 component magnitudes remain large.
@@ -105,8 +135,8 @@ Current focused tests:
 
 Recommended next runtime check:
 
-1. Finish latent-freeze and latent-cap v3 ablations.
-2. Run runtime stability and decomposition audits on both.
-3. If latent-cap suppresses q05/q95 state and `E[1/u]` excursions without changing reconstruction/component
-   behavior materially, promote a separate capped candidate. Otherwise keep fail-fast and prioritize gamma/sigma
-   damping/refreeze.
+1. Prepare a single isolated promotion candidate with `--guard-profile promotion`.
+2. Run it with pseudo-data guard mode `fail`, state/refreeze guards, terminal sampling guard, and full evidence
+   bundle generation.
+3. Promote only if the candidate completes without guard failures and its decomposition remains close to the
+   latent-cap/fixed-gamsig evidence scale.

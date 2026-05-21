@@ -234,7 +234,7 @@ Interpretation so far:
 
 ### T3. Fixed/Free Latent Moment Ablations
 
-Status: latent-freeze v3 running; latent-cap pending
+Status: complete for v3 matrix
 
 Purpose: determine whether the `s_t/u_t` updates remain the dominant source of instability after numerical
 hardening.
@@ -264,17 +264,74 @@ Prepared conditions:
 - v3 matrix launch:
   `reports/exdqlm_keep_ablation_matrix_ablation_log1p_q05_q35_q50_q95_v3_20260521/launch_ablation_matrix_ablation_log1p_q05_q35_q50_q95_v3_20260521.sh`
 
-Current latent-freeze v3 evidence:
+Valid latent-freeze v3 evidence:
 
 - run root:
   `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze/runs/multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dfall999999_datastart2017_ready_exdqlm_multivar_keep__ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze`
-- logs confirm `latent_ablation_policy mode=freeze` and repeated `action=reuse_previous_latents`.
-- early/mid fit signal: q05 and q95 state norms remain near `8e6` while q35/q50 are much lower and variable.
-- no `.RData` outputs or pseudo-data guard CSVs were present at the last tracker update.
+- fit status:
+  `reports/exdqlm_keep_guarded_repro_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze/live_monitor_final/LIVE_STATUS.md`
+- runtime stability:
+  `reports/exdqlm_keep_runtime_stability_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze/`
+- curated evidence:
+  `reports/exdqlm_keep_curated_evidence_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze/`
+- decomposition evidence:
+  `reports/exdqlm_keep_decomposition_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze/`
+
+Observed latent-freeze result:
+
+- all four lanes wrote `.RData` and the full wrapper completed post/validate/report under the T7 truth-window gate;
+- no pseudo-data guard rows were written;
+- terminal history state norm squared was `8011171` for q05, `13652.71` for q35, `4803.106` for q50, and
+  `8190166` for q95;
+- q05/q95 sigma/gamma drifted into large asymmetric tail values even though the latent moments were fixed:
+  q05 `sigma_exp=3.065681`, `gamma_exp=6.756436`; q95 `sigma_exp=3.075551`, `gamma_exp=-6.76794`;
+- runtime audit shows frozen latent values, with historical `E[1/u]` constant at approximately `0.345762`
+  for the target, `0.156208` for source 1, and `0.601143` for source 2;
+- decomposition reconstructs fitted means to numerical tolerance, but q05/q95 component magnitudes are large:
+  historical median absolute `mu_without_transfer` is about `55.16` for q05 and `55.84` for q95, and source-1
+  discrepancy is about `23.19` for q05 and `23.07` for q95.
+
+Valid latent-cap v3 evidence:
+
+- run root:
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_cap_e_inv_u/runs/multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dfall999999_datastart2017_ready_exdqlm_multivar_keep__ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_cap_e_inv_u`
+- fit status:
+  `reports/exdqlm_keep_guarded_repro_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_cap_e_inv_u/live_monitor_final/LIVE_STATUS.md`
+- runtime stability:
+  `reports/exdqlm_keep_runtime_stability_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_cap_e_inv_u/`
+- curated evidence:
+  `reports/exdqlm_keep_curated_evidence_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_cap_e_inv_u/`
+- decomposition evidence:
+  `reports/exdqlm_keep_decomposition_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_cap_e_inv_u/`
+
+Observed latent-cap result:
+
+- all four lanes wrote `.RData`, and the full wrapper completed post/validate/report under the T7 truth-window gate;
+- no pseudo-data guard rows were written;
+- terminal history state norm squared was `1521.127` for q05, `2233.589` for q35, `2547.352` for q50, and
+  `5082.421` for q95;
+- saved-output historical `E[1/u]` maxima were below the `5000` cap in all lanes: q05 `764.468`,
+  q35 `923.203`, q50 `172.962`, and q95 `110.045` for the target-source row summarized in the runtime report;
+- historical `FFF` and `QQQ_diag` stayed small compared with the guard caps: q05 `FFF` max `3.97928`,
+  q95 `FFF` max `-0.0462886`, q05 `QQQ_diag` max `0.325061`, and q95 `QQQ_diag` max `0.463255`;
+- decomposition reconstructs fitted means to numerical tolerance, with q05/q95 component magnitudes far closer to
+  the fixed-gamsig/control scale than to the latent-freeze failure scale.
+
+Interpretation so far:
+
+- Freezing latent moments is not sufficient to stabilize q05/q95 when `sigma/gamma` remains free. That makes a
+  latent-formula-only explanation unlikely.
+- Capping `E[1/u]` during the update loop produces finite q05/q95 outputs in this isolated diagnostic, but it
+  does not by itself prove a scientifically safe production fix because it directly changes pseudo-observation
+  precision.
+- The current leading explanation is interactional: latent-tail precision, `sigma/gamma` dynamics, and retained
+  state identifiability reinforce each other. The strongest causal evidence is that free `sigma/gamma` can still
+  drive large q05/q95 states under fixed latent moments, while fixed `sigma/gamma` and capped latent precision both
+  keep pseudo-data and state norms finite.
 
 ### T4. q05 Guard-Response Policy
 
-Status: policy drafted; runtime promotion pending latent-cap evidence
+Status: policy and isolated promotion tooling implemented; broad promotion runtime pending
 
 Purpose: turn the warning-mode q05 `E[1/u_t]` evidence into a production decision.
 
@@ -300,12 +357,15 @@ Current decision:
 
 - diagnostic ablations remain `warn` mode with guard CSVs;
 - promotion candidates should use `DISC_PSEUDODATA_GUARD_MODE=fail`;
-- latent `E[1/u]` capping remains diagnostic only until the `latent-cap-e-inv-u` runtime evidence and
-  decomposition audit show that it does not materially distort fitted/forecast components.
+- latent `E[1/u]` capping remains diagnostic by default. The latent-cap run is clean enough to justify a separate
+  capped promotion candidate, but not clean enough to silently make capping the default without a fail-fast
+  production run and scientific review;
+- `repro/audits/prepare_exdqlm_keep_guarded_repro.py --guard-profile promotion` now prepares isolated candidates
+  with fail-fast pseudo-data guards, explicit state norm/refreeze controls, and terminal sampling guard exports.
 
 ### T5. Trend/Transfer/Discrepancy Decomposition
 
-Status: implemented; fixed-gamsig runtime validation complete
+Status: implemented; fixed-gamsig, latent-freeze, and latent-cap runtime validation complete
 
 Purpose: verify the stable outputs are scientifically interpretable, not merely finite.
 
@@ -332,6 +392,10 @@ Implementation and evidence:
   `tests/testthat/test_exdqlm_keep_decomposition_audit.R`
 - fixed-gamsig evidence:
   `reports/exdqlm_keep_decomposition_ablation_log1p_q05_q35_q50_q95_v3_20260521_fixed_gamsig/`
+- latent-freeze evidence:
+  `reports/exdqlm_keep_decomposition_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze/`
+- latent-cap evidence:
+  `reports/exdqlm_keep_decomposition_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_cap_e_inv_u/`
 
 Current result:
 
@@ -340,6 +404,10 @@ Current result:
 - retained transfer `zeta` is finite in history and both forecast segments;
 - q95 has the largest median component magnitudes among fixed-gamsig lanes, especially forecast `zeta` and
   source-1 discrepancy, so identifiability remains a scientific monitoring concern even when pseudo-data are finite.
+- latent-freeze q05/q95 is the strongest identifiability warning: source-1 historical median absolute
+  `mu_without_transfer` is about `55` and discrepancy about `23`;
+- latent-cap q05/q95 returns to a small-component scale, with source-1 historical median absolute
+  `mu_without_transfer` q05 `0.192401` and q95 `0.651413`.
 
 ### T6. Ragged Forecast Kalman Fixture
 
@@ -379,7 +447,7 @@ Result:
 
 ### T7. Post-Stage Truth-Window Gate
 
-Status: implemented, runtime validation pending on remaining ablations
+Status: done
 
 Purpose: prevent successful isolated fits from being reported as failed whole-workflow runs when post-stage figures
 need truth rows that are unavailable after the cutoff.
@@ -406,10 +474,12 @@ Implementation:
 - Fixed-gamsig v3 fit wrote all four `.RData` files, then post failed before this patch with
   `[crps.glofas.truth_TRUTH_MISSING] no USGS truth rows available at/after 2022-12-26`; this is the target runtime
   case for the patch.
+- Latent-freeze v3 and latent-cap v3 both completed the full post/validate/report wrapper after this patch, while
+  exporting truth availability instead of stopping on the missing future USGS truth window.
 
 ### T8. Promotion Decision
 
-Status: blocked on T1-T7
+Status: hold broad production; prepare one guarded promotion candidate next
 
 Promotion requires:
 
@@ -425,9 +495,9 @@ Decision outcomes:
 
 | outcome | meaning |
 | --- | --- |
-| promote repaired `log1p_cms` path | ready for broader but still monitored production |
-| targeted additional ablations | one layer remains ambiguous |
-| hold production | instability or scientific interpretability remains unresolved |
+| promote repaired `log1p_cms` path | not yet; requires one fail-fast promotion candidate first |
+| targeted additional ablations | likely if the promotion candidate trips state/pseudo-data guards |
+| hold production | current decision for broad production until the promotion candidate passes |
 
 ## Validation Log
 
@@ -456,6 +526,11 @@ Decision outcomes:
 | 2026-05-21 | fixed-gamsig v3 runtime stability and curated evidence bundle | pass; report paths recorded in T2 |
 | 2026-05-21 | fixed-gamsig v3 decomposition audit | pass; history/forecast reconstructions match `new.theta.out$exps` to numerical tolerance |
 | 2026-05-21 | `docs/exdqlm_multivar_keep_guard_response_policy.md` | drafted T4 guard-response policy; production promotion should fail-fast on pseudo-data guard breaches until latent-cap evidence is clean |
+| 2026-05-21 | latent-freeze v3 runtime, runtime stability, curated evidence, and decomposition audit | pass mechanically, but diagnostic result is bad for q05/q95; fixed latents did not prevent large tail-lane states |
+| 2026-05-21 | latent-cap v3 runtime, runtime stability, curated evidence, and decomposition audit | pass; all lanes wrote outputs, no pseudo-data guard rows, and q05/q95 state norms stayed finite |
+| 2026-05-21 | `python3 -m unittest tests.python.test_exdqlm_keep_ablation_tooling -v` after promotion-profile tooling | pass, 4 tests |
+| 2026-05-21 | focused closeout tests: runtime stability audit, decomposition audit, Kalman fixture, latent/pseudo-data audit, post-CRPS tables | pass: 9, 6, 7, 52, and 64 expectations respectively |
+| 2026-05-21 | `git diff --check` | pass |
 
 ## Change Log
 
@@ -468,3 +543,4 @@ Decision outcomes:
 | 2026-05-21 | Extended the keep Kalman fixture to retained-transfer ragged forecast smoothing and added a deterministic test | done |
 | 2026-05-21 | Added a reusable decomposition audit for trend, transfer, discrepancy, and reconstruction checks | done |
 | 2026-05-21 | Drafted guard-response policy for q05-like latent-tail events | done |
+| 2026-05-21 | Completed latent-freeze and latent-cap v3 ablations, regenerated normalized runtime/curated evidence bundles, and added isolated promotion guard-profile tooling | done |
