@@ -18,6 +18,12 @@ The new hypothesis added on 2026-05-21 is important:
 This is not yet a proven root cause. The plan below is designed to prove or falsify it with small, reproducible
 checks before any broad production relaunch.
 
+Important clarification added on 2026-05-21: the repair target is the current `log1p_cms` contract. The old
+`log_log1p_cms` behavior is useful only as a diagnostic comparator, not as the preferred fix. One reason is practical
+and legitimate: retrospective series can contain raw zeros or values whose `log1p(cms)` values are zero or very close
+to zero, and `log(log1p(cms))` is then undefined or very large negative. A future `log1p(log1p(cms))` transform could
+be evaluated as a separate modeling choice, but this plan is scoped to making `log1p_cms` robust.
+
 ## Current Diagnosis
 
 The completed audit found an interactional failure, not a single isolated layer that explains everything.
@@ -125,6 +131,18 @@ The scale change is mathematically large. For raw flow `x`, the old internal ana
 | 1000 | 6.909 | 1.933 | 3.57 |
 | 10000 | 9.210 | 2.220 | 4.15 |
 
+The old scale is also fragile near zero:
+
+| raw cms x | log1p(x) | log(log1p(x)) | interpretation |
+| ---: | ---: | ---: | --- |
+| 0 | 0 | `-Inf` | impossible without flooring or special handling |
+| 1e-6 | 1.000e-6 | -13.816 | finite but extremely negative |
+| 0.001 | 9.995e-4 | -6.908 | finite but highly compressed and negative |
+| 0.1 | 0.0953 | -2.350 | finite but still negative |
+
+This near-zero behavior is why the plan should not quietly revert to `log_log1p_cms`. The current target is to make
+`log1p_cms` stable by repairing numerical conditioning, guards, and calibration.
+
 This can turn a stable old-scale residual into a much larger current-scale residual. Because the exAL latent updates
 depend on residuals and residual squares, the effect can be amplified:
 
@@ -147,6 +165,55 @@ The competing explanation is also plausible:
 The log1p scale may be statistically correct and the old log-log scale may simply have hidden a latent numerical
 fragility by over-compressing the data. In that case the fix is not to revert the transform, but to make the latent
 moments, pseudo-data guardrails, priors, and `sigma/gamma` approximation robust on the intended `log1p` scale.
+
+## Target Scale Decision
+
+The implementation target is:
+
+1. historical `USGS`, retrospective GloFAS, and retrospective NWS on `log1p_cms`,
+2. NWS and GloFAS forecast members on `log1p_cms`,
+3. model fit internals on `log1p_cms`,
+4. post and plotting outputs explicitly labeled as `log1p_cms` unless converted for display.
+
+Non-goals for this repair cycle:
+
+1. do not restore `log_log1p_cms` as the active internal scale,
+2. do not introduce `log1p(log1p(cms))` until the `log1p_cms` path has been tested and repaired,
+3. do not use flooring around `log(log1p(cms))` as a hidden production workaround,
+4. do not tune plots or posterior display code as a substitute for fixing fit-stage instability.
+
+The old log-log path remains useful only for controlled comparison:
+
+1. to quantify how much compression changed the latent moments,
+2. to test whether previous stability came from scale compression,
+3. to identify which layer first becomes unstable when moving back to `log1p_cms`.
+
+## Implementation Readiness
+
+We are ready to begin implementation, but not as one monolithic patch and not with a broad production relaunch.
+
+Ready now:
+
+1. Phase A transform forensics and static scale-contract tests.
+2. Phase B deterministic scale-sensitivity fixtures, including near-zero retrospective cases.
+3. Phase C latent moment robustification for `s_t` entropy and `u_t` numerical stability.
+4. Phase D pre-Kalman `FFF`/`QQQ` guards in warning mode first.
+
+Not ready yet:
+
+1. broad production relaunches,
+2. final `sigma/gamma` retuning,
+3. switching to a new transform such as `log1p(log1p(cms))`,
+4. claiming the root cause is solved before q-lane reproductions are run.
+
+The safest execution order is:
+
+1. add no-behavior-change forensics and tests,
+2. add deterministic scale fixtures,
+3. patch latent numerical stability with unit tests,
+4. add pseudo-data guards with tests,
+5. run narrow q05/q35/q50/q95 reproductions,
+6. only then decide whether `sigma/gamma` priors, damping, or refresh schedules need recalibration.
 
 ## Repair Principles
 
@@ -183,11 +250,13 @@ Implementation tasks:
    - NWS forecasts,
    - GloFAS forecasts,
    - post-stage outputs and plotted outputs.
-3. Compare active code to pre-`44e2d60` behavior without running old production.
+3. Compare active code to pre-`44e2d60` behavior without running old production, while marking old log-log behavior
+   as diagnostic-only.
 4. Add static tests that fail if the active runner silently reintroduces:
    - `Y <- log(Y)` in `R/disc_w/03_covariates_standardize.R`,
    - `log(nws_forecast[,-1])` or `log(glofas_forecast[,-1])` in the active runner,
    - inconsistent `analysis_scale_*` and `legacy_*_input_scale` defaults.
+5. Add explicit near-zero retrospective checks so the report records why `log_log1p_cms` is not a safe active target.
 
 Tests to add or extend:
 
@@ -199,6 +268,8 @@ Tests to add or extend:
    - `log_log1p_cms -> log1p_cms`.
 3. Add a manifest test that ensures fit/post adapters record `from_scale`, `to_scale`, and artifact name for retros,
    NWS, and GloFAS.
+4. Add a near-zero test showing that `raw_cms = 0` is valid on `log1p_cms` but invalid on `log_log1p_cms` without
+   artificial flooring.
 
 Acceptance criteria:
 
@@ -213,6 +284,7 @@ Goal: quantify how much the transform change alone moves `s_t`, `u_t`, `FFF`, an
 Implementation tasks:
 
 1. Build a deterministic fixture with raw flow values spanning low, medium, high, and tail ranges.
+   - Include exact zero and near-zero retrospective-like values.
 2. Evaluate the same synthetic residual structure under:
    - old `log_log1p_cms` scale,
    - current `log1p_cms` scale.
@@ -241,6 +313,8 @@ Acceptance criteria:
 1. We can reproduce, in a small fixture, whether the larger log1p residuals are sufficient to push latent moments or
    pseudo-data toward the bad runtime range.
 2. The fixture is deterministic and runs without external campaign outputs.
+3. The fixture demonstrates that old log-log compression is not a valid active workaround for zero or near-zero
+   retrospectives.
 
 ## Phase C: Latent Moment Robustification
 
@@ -423,10 +497,12 @@ Run matrix:
 | current `log1p` plus pseudo-data guard fail-fast mode | protects Kalman from invalid inputs | production can fail safely | need root-cause upstream fix |
 | current `log1p` plus fixed `sigma/gamma` | isolates `sigma/gamma` approximation | `sigma/gamma` is primary | continue |
 | current `log1p` plus fixed latent moments | isolates latent updates | latent updates are primary | continue |
-| old-scale compatibility probe | tests transform-regression hypothesis | scale change is a major trigger | instability is not only scale |
+| old-scale compatibility probe | tests transform-regression hypothesis only | scale change is a major trigger, but not a revert target | instability is not only scale |
 
 The old-scale compatibility probe must not become a silent production revert. It is a controlled diagnostic to
-answer: "Does old log-log compression stabilize the same lane under otherwise comparable code?"
+answer: "Does old log-log compression stabilize the same lane under otherwise comparable code?" Because zero and
+near-zero retrospectives are unsafe under `log(log1p(cms))`, this probe must be isolated and clearly labeled as
+diagnostic-only.
 
 Required runtime outputs:
 
@@ -443,8 +519,8 @@ Acceptance criteria:
 1. A q50 run that stays below `state_norm_sq=1e8` is materially improved relative to saved evidence.
 2. A q50 run that still reaches `state_norm_sq=1e10` after latent and pseudo-data guards means the state-space or
    identifiability layer must be investigated next.
-3. A run that becomes stable only on old log-log scale means the current log1p workflow needs recalibration, not
-   necessarily a transform revert.
+3. A run that becomes stable only on old log-log scale means the current log1p workflow needs recalibration, not a
+   transform revert.
 
 ## Phase H: Documentation, Reproducibility, And Promotion
 
@@ -494,11 +570,14 @@ P0. Validate the already-applied `TT_sub` forecast `update_uts` fix with narrow 
 
 Why: saved runtime evidence is pre-fix, and this bug directly affected forecast-member `u_t` updates.
 
-P0. Build the transform-regression forensic report for `44e2d60^..44e2d60`.
+P0. Build the transform-regression forensic report for `44e2d60^..44e2d60`, explicitly documenting zero and near-zero
+retrospective behavior.
 
-Why: the user-observed "worked before log-log to log1p" clue is strong and must be turned into concrete evidence.
+Why: the user-observed "worked before log-log to log1p" clue is strong and must be turned into concrete evidence, but
+the old log-log scale is not a valid active target when `log1p(cms)` can be zero or near zero.
 
-P0. Add deterministic scale-sensitivity fixtures comparing `log_log1p_cms` and `log1p_cms`.
+P0. Add deterministic scale-sensitivity fixtures comparing `log_log1p_cms` and `log1p_cms`, including zero and
+near-zero retrospective values.
 
 Why: this tells us whether the transform change alone can plausibly move latent moments into the pathological range.
 
@@ -531,7 +610,7 @@ Why: current Kalman evidence is encouraging but incomplete for the full active k
 ## Decision Tree
 
 1. If old-scale compatibility is stable and current `log1p` is unstable with the same code, the transform change is a
-   major trigger.
+   major trigger, but the fix remains `log1p` stabilization.
 2. If current `log1p` becomes stable after latent robustification, the primary repair is `s_t/u_t` numerical
    stability.
 3. If current `log1p` becomes stable after fixed `sigma/gamma`, the primary repair is `sigma/gamma` objective,
@@ -546,13 +625,14 @@ Why: current Kalman evidence is encouraging but incomplete for the full active k
 ## Current Bottom Line
 
 It is still not proven that the transform change is the sole reason the algorithm fails. But it is now the highest
-value regression hypothesis because:
+value regression hypothesis to test while keeping `log1p_cms` as the implementation target because:
 
 1. the reported behavior changed after the transform rewrite,
 2. git history shows a precise policy flip in `44e2d60`,
 3. `log1p` materially expands residual magnitude relative to `log(log1p)`,
 4. the active latent and pseudo-data formulas are directly residual-sensitive,
 5. saved runtime evidence shows the bad lanes failing through exactly those residual-sensitive objects.
+6. the old log-log path has a real near-zero defect for retrospectives, so it should not be restored as the fix.
 
 The repair strategy should therefore not start with broad production reruns or a blind transform revert. It should
 start with deterministic scale-sensitivity fixtures, latent moment hardening, pre-Kalman pseudo-data guards, and
