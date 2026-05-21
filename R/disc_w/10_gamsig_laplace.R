@@ -216,6 +216,90 @@ disc_w_pick_best_theta_candidate <- function(candidates) {
   keep[[which.max(scores)]]
 }
 
+disc_w_theta_margin_to_bounds <- function(theta_pair, lower, upper) {
+  theta_pair <- suppressWarnings(as.numeric(theta_pair))
+  lower <- suppressWarnings(as.numeric(lower))
+  upper <- suppressWarnings(as.numeric(upper))
+  if (length(theta_pair) != 2L || length(lower) != 2L || length(upper) != 2L) {
+    stop("theta_pair, lower, and upper must all have length 2", call. = FALSE)
+  }
+  lower_margin <- theta_pair - lower
+  upper_margin <- upper - theta_pair
+  pmin(lower_margin, upper_margin)
+}
+
+disc_w_candidate_is_interior <- function(
+  theta_pair,
+  lower,
+  upper,
+  abs_margin = c(1e-4, 1e-3),
+  rel_margin = c(1e-6, 1e-4)
+) {
+  theta_pair <- suppressWarnings(as.numeric(theta_pair))
+  lower <- suppressWarnings(as.numeric(lower))
+  upper <- suppressWarnings(as.numeric(upper))
+  abs_margin <- suppressWarnings(as.numeric(abs_margin))
+  rel_margin <- suppressWarnings(as.numeric(rel_margin))
+  if (length(theta_pair) != 2L || length(lower) != 2L || length(upper) != 2L) {
+    stop("theta_pair, lower, and upper must all have length 2", call. = FALSE)
+  }
+  if (length(abs_margin) != 2L || any(!is.finite(abs_margin)) || any(abs_margin < 0)) {
+    abs_margin <- c(1e-4, 1e-3)
+  }
+  if (length(rel_margin) != 2L || any(!is.finite(rel_margin)) || any(rel_margin < 0)) {
+    rel_margin <- c(1e-6, 1e-4)
+  }
+  span <- pmax(upper - lower, 0)
+  threshold <- pmax(abs_margin, rel_margin * span)
+  margin <- disc_w_theta_margin_to_bounds(theta_pair, lower, upper)
+  list(
+    all_interior = all(is.finite(margin)) && all(is.finite(threshold)) && all(margin > threshold),
+    margin = margin,
+    threshold = threshold
+  )
+}
+
+disc_w_gamma_margin_to_support <- function(gamma_hat, L, U) {
+  gamma_hat <- suppressWarnings(as.numeric(gamma_hat)[1L])
+  L <- suppressWarnings(as.numeric(L)[1L])
+  U <- suppressWarnings(as.numeric(U)[1L])
+  if (!is.finite(gamma_hat) || !is.finite(L) || !is.finite(U) || L >= U) {
+    return(NA_real_)
+  }
+  min(gamma_hat - L, U - gamma_hat)
+}
+
+disc_w_candidate_has_gamma_margin <- function(
+  theta_pair,
+  L,
+  U,
+  abs_margin = 1e-4,
+  rel_margin = 1e-4
+) {
+  theta_pair <- suppressWarnings(as.numeric(theta_pair))
+  abs_margin <- suppressWarnings(as.numeric(abs_margin)[1L])
+  rel_margin <- suppressWarnings(as.numeric(rel_margin)[1L])
+  if (length(theta_pair) != 2L) {
+    stop("theta_pair must have length 2", call. = FALSE)
+  }
+  if (!is.finite(abs_margin) || abs_margin < 0) {
+    abs_margin <- 1e-4
+  }
+  if (!is.finite(rel_margin) || rel_margin < 0) {
+    rel_margin <- 1e-4
+  }
+  gamma_hat <- disc_w_theta_to_gamma(theta_pair[[2L]], L = L, U = U)
+  support_span <- pmax(U - L, 0)
+  threshold <- max(abs_margin, rel_margin * support_span)
+  margin <- disc_w_gamma_margin_to_support(gamma_hat, L = L, U = U)
+  list(
+    all_interior = is.finite(margin) && is.finite(threshold) && margin > threshold,
+    gamma_hat = gamma_hat,
+    margin = margin,
+    threshold = threshold
+  )
+}
+
 disc_w_exact_sigma_moments <- function(theta_mean, theta_cov) {
   theta_mean <- suppressWarnings(as.numeric(theta_mean))
   theta_cov <- as.matrix(theta_cov)
@@ -234,6 +318,130 @@ disc_w_exact_sigma_moments <- function(theta_mean, theta_cov) {
     E_sigma = exp(mu_u + 0.5 * var_u),
     E_inv_sigma = exp(-mu_u + 0.5 * var_u),
     E_log_sigma = mu_u
+  )
+}
+
+disc_w_try_exact_sigma_moments <- function(theta_mean, theta_cov) {
+  tryCatch(
+    list(
+      ok = TRUE,
+      moments = disc_w_exact_sigma_moments(theta_mean, theta_cov),
+      error_message = ""
+    ),
+    error = function(e) {
+      list(
+        ok = FALSE,
+        moments = NULL,
+        error_message = conditionMessage(e)
+      )
+    }
+  )
+}
+
+disc_w_try_expected_value <- function(f, theta_mean, theta_cov) {
+  tryCatch(
+    {
+      hess <- numDeriv::hessian(func = f, x = theta_mean)
+      if (any(!is.finite(hess))) {
+        stop("non-finite Hessian", call. = FALSE)
+      }
+      prod <- hess %*% theta_cov
+      value <- f(theta_mean) + 0.5 * sum(diag(prod))
+      if (!is.finite(value)) {
+        stop("non-finite expected value", call. = FALSE)
+      }
+      list(ok = TRUE, value = value, error_message = "")
+    },
+    error = function(e) {
+      list(ok = FALSE, value = NA_real_, error_message = conditionMessage(e))
+    }
+  )
+}
+
+disc_w_validate_covariance_matrix <- function(
+  covariance,
+  symmetry_tol = 1e-8,
+  eigen_tol = 1e-10
+) {
+  cov <- as.matrix(covariance)
+  if (nrow(cov) != ncol(cov) || any(!is.finite(cov))) {
+    return(list(
+      ok = FALSE,
+      covariance = NULL,
+      reason = "invalid_entries",
+      min_diag = NA_real_,
+      min_eigen = NA_real_,
+      symmetry_error = NA_real_
+    ))
+  }
+  cov <- 0.5 * (cov + t(cov))
+  scale_ref <- max(1, max(abs(cov)))
+  symmetry_error <- max(abs(cov - t(cov)))
+  if (!is.finite(symmetry_error) || symmetry_error > symmetry_tol * scale_ref) {
+    return(list(
+      ok = FALSE,
+      covariance = cov,
+      reason = "non_symmetric",
+      min_diag = NA_real_,
+      min_eigen = NA_real_,
+      symmetry_error = symmetry_error
+    ))
+  }
+  diag_vals <- diag(cov)
+  min_diag <- suppressWarnings(min(diag_vals))
+  if (any(!is.finite(diag_vals)) || !is.finite(min_diag)) {
+    return(list(
+      ok = FALSE,
+      covariance = cov,
+      reason = "invalid_diagonal",
+      min_diag = min_diag,
+      min_eigen = NA_real_,
+      symmetry_error = symmetry_error
+    ))
+  }
+  eig_vals <- tryCatch(
+    eigen(cov, symmetric = TRUE, only.values = TRUE)$values,
+    error = function(e) NULL
+  )
+  if (is.null(eig_vals) || any(!is.finite(eig_vals))) {
+    return(list(
+      ok = FALSE,
+      covariance = cov,
+      reason = "eigen_failure",
+      min_diag = min_diag,
+      min_eigen = NA_real_,
+      symmetry_error = symmetry_error
+    ))
+  }
+  min_eigen <- suppressWarnings(min(eig_vals))
+  eig_floor <- -eigen_tol * max(1, max(abs(eig_vals)))
+  if (min_diag < eig_floor) {
+    return(list(
+      ok = FALSE,
+      covariance = cov,
+      reason = "negative_diagonal",
+      min_diag = min_diag,
+      min_eigen = min_eigen,
+      symmetry_error = symmetry_error
+    ))
+  }
+  if (min_eigen < eig_floor) {
+    return(list(
+      ok = FALSE,
+      covariance = cov,
+      reason = "not_psd",
+      min_diag = min_diag,
+      min_eigen = min_eigen,
+      symmetry_error = symmetry_error
+    ))
+  }
+  list(
+    ok = TRUE,
+    covariance = cov,
+    reason = "ok",
+    min_diag = min_diag,
+    min_eigen = min_eigen,
+    symmetry_error = symmetry_error
   )
 }
 
@@ -291,15 +499,31 @@ disc_w_build_laplace_covariance <- function(
     ))
   }
 
+  last_validation <- list(
+    reason = "not_attempted",
+    min_diag = NA_real_,
+    min_eigen = NA_real_,
+    symmetry_error = NA_real_
+  )
   exact_covariance <- tryCatch(solve(precision), error = function(e) NULL)
   if (!is.null(exact_covariance) && all(is.finite(exact_covariance))) {
+    validation <- disc_w_validate_covariance_matrix(exact_covariance)
+    last_validation <- validation
+  } else {
+    validation <- list(ok = FALSE)
+  }
+  if (isTRUE(validation$ok)) {
     return(list(
       ok = TRUE,
-      covariance = exact_covariance,
+      covariance = validation$covariance,
       covariance_type = "laplace_precision_inverse",
       ridge_used = 0,
       ridge_regularized = FALSE,
-      attempts = 1L
+      attempts = 1L,
+      covariance_reason = validation$reason,
+      min_diag = validation$min_diag,
+      min_eigen = validation$min_eigen,
+      symmetry_error = validation$symmetry_error
     ))
   }
 
@@ -308,13 +532,23 @@ disc_w_build_laplace_covariance <- function(
     precision_reg <- precision + diag(ridge, nrow = nrow(precision))
     cov_candidate <- tryCatch(solve(precision_reg), error = function(e) NULL)
     if (!is.null(cov_candidate) && all(is.finite(cov_candidate))) {
+      validation <- disc_w_validate_covariance_matrix(cov_candidate)
+      last_validation <- validation
+    } else {
+      validation <- list(ok = FALSE)
+    }
+    if (isTRUE(validation$ok)) {
       return(list(
         ok = TRUE,
-        covariance = cov_candidate,
+        covariance = validation$covariance,
         covariance_type = "ridge_regularized_precision_inverse",
         ridge_used = ridge,
         ridge_regularized = TRUE,
-        attempts = attempt + 1L
+        attempts = attempt + 1L,
+        covariance_reason = validation$reason,
+        min_diag = validation$min_diag,
+        min_eigen = validation$min_eigen,
+        symmetry_error = validation$symmetry_error
       ))
     }
     ridge <- ridge * ridge_multiplier
@@ -326,6 +560,10 @@ disc_w_build_laplace_covariance <- function(
     covariance_type = "covariance_build_failed",
     ridge_used = ridge / ridge_multiplier,
     ridge_regularized = TRUE,
-    attempts = max_tries + 2L
+    attempts = max_tries + 2L,
+    covariance_reason = last_validation$reason,
+    min_diag = last_validation$min_diag,
+    min_eigen = last_validation$min_eigen,
+    symmetry_error = last_validation$symmetry_error
   )
 }

@@ -105,6 +105,14 @@ test_that("disc_w_exact_sigma_moments rejects invalid theta_s covariance inputs"
   )
 })
 
+test_that("disc_w_try_exact_sigma_moments reports invalid covariance without stopping", {
+  out <- disc_w_try_exact_sigma_moments(c(1, 2), matrix(c(-0.1, 0, 0, 1), nrow = 2))
+
+  expect_false(out$ok)
+  expect_null(out$moments)
+  expect_match(out$error_message, "Var\\(theta_s\\) must be finite and >= 0")
+})
+
 test_that("disc_w_build_laplace_covariance returns the exact inverse when possible", {
   log_hessian <- -diag(c(4, 9), nrow = 2)
 
@@ -122,6 +130,26 @@ test_that("disc_w_build_laplace_covariance returns the exact inverse when possib
   expect_equal(out$covariance, diag(c(1 / 4, 1 / 9), nrow = 2))
 })
 
+test_that("disc_w_build_laplace_covariance rejects indefinite exact inverses and repairs with ridge", {
+  log_hessian <- -matrix(c(1, 2, 2, 1), nrow = 2)
+
+  out <- disc_w_build_laplace_covariance(
+    log_hessian = log_hessian,
+    ridge_init = 1e-6,
+    ridge_multiplier = 10,
+    max_tries = 8
+  )
+
+  expect_true(out$ok)
+  expect_true(out$ridge_regularized)
+  expect_identical(out$covariance_type, "ridge_regularized_precision_inverse")
+  expect_true(all(diag(out$covariance) >= 0))
+  eig <- eigen(out$covariance, symmetric = TRUE, only.values = TRUE)$values
+  expect_true(min(eig) >= -1e-10)
+  expect_true(is.finite(out$min_diag))
+  expect_true(is.finite(out$min_eigen))
+})
+
 test_that("disc_w_build_laplace_covariance falls back to ridge regularization when needed", {
   log_hessian <- matrix(0, nrow = 2, ncol = 2)
 
@@ -137,4 +165,49 @@ test_that("disc_w_build_laplace_covariance falls back to ridge regularization wh
   expect_true(out$ridge_regularized)
   expect_equal(out$ridge_used, 1e-3)
   expect_equal(out$covariance, diag(1000, nrow = 2))
+})
+
+test_that("disc_w_candidate_is_interior detects near-boundary branch candidates", {
+  interior <- disc_w_candidate_is_interior(
+    theta_pair = c(0, 0),
+    lower = c(-1, -10),
+    upper = c(1, 10)
+  )
+  expect_true(interior$all_interior)
+
+  boundary <- disc_w_candidate_is_interior(
+    theta_pair = c(0, 9.9999),
+    lower = c(-1, -10),
+    upper = c(1, 10)
+  )
+  expect_false(boundary$all_interior)
+})
+
+test_that("disc_w_candidate_has_gamma_margin rejects support-boundary gamma candidates", {
+  interior <- disc_w_candidate_has_gamma_margin(
+    theta_pair = c(0, 0),
+    L = -1,
+    U = 1
+  )
+  expect_true(interior$all_interior)
+
+  near_upper <- disc_w_candidate_has_gamma_margin(
+    theta_pair = c(0, qlogis(1 - 1e-12)),
+    L = -1,
+    U = 1
+  )
+  expect_false(near_upper$all_interior)
+  expect_true(near_upper$margin <= near_upper$threshold)
+})
+
+test_that("disc_w_try_expected_value reports non-finite expectations without stopping", {
+  out <- disc_w_try_expected_value(
+    f = function(theta) if (theta[[2]] > 0) NA_real_ else 0,
+    theta_mean = c(0, 1),
+    theta_cov = diag(2)
+  )
+
+  expect_false(out$ok)
+  expect_true(is.na(out$value))
+  expect_match(out$error_message, "non-finite")
 })

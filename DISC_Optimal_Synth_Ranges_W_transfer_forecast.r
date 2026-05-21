@@ -2314,6 +2314,8 @@ if(!Climate_Center){
       upper = upper,
       label = label
     )
+    candidate$lower <- lower
+    candidate$upper <- upper
     if (!isTRUE(candidate$ok)) {
       msg <- sprintf(
         "multivar optimization candidate failed at p0=%s context=%s label=%s: %s",
@@ -2404,6 +2406,61 @@ if(!Climate_Center){
     split_result <- run_split_candidates(
       reference_theta = if (isTRUE(full_candidate$ok)) full_candidate$par else initial_values
     )
+    if (length(split_result$candidates) > 0L) {
+      accepted_candidates <- Filter(function(candidate) {
+        if (!is.list(candidate) || !isTRUE(candidate$ok)) {
+          return(FALSE)
+        }
+        if (!(split_decision$reason %in% c("guard_triggered", "near_zero"))) {
+          return(TRUE)
+        }
+        boundary_check <- disc_w_candidate_is_interior(
+          theta_pair = candidate$par,
+          lower = candidate$lower,
+          upper = candidate$upper
+        )
+        if (!isTRUE(boundary_check$all_interior)) {
+          log_stabilization_event(sprintf(
+            paste0(
+              "split gamma candidate rejected at p0=%s context=%s label=%s ",
+              "reason=%s margin=[%s,%s] threshold=[%s,%s]"
+            ),
+            as.character(p0),
+            context_label,
+            candidate$label,
+            split_decision$reason,
+            format(boundary_check$margin[[1L]], digits = 6),
+            format(boundary_check$margin[[2L]], digits = 6),
+            format(boundary_check$threshold[[1L]], digits = 6),
+            format(boundary_check$threshold[[2L]], digits = 6)
+          ))
+          return(FALSE)
+        }
+        gamma_support_check <- disc_w_candidate_has_gamma_margin(
+          theta_pair = candidate$par,
+          L = L,
+          U = U
+        )
+        if (!isTRUE(gamma_support_check$all_interior)) {
+          log_stabilization_event(sprintf(
+            paste0(
+              "split gamma candidate rejected at p0=%s context=%s label=%s ",
+              "reason=%s gamma_hat=%s gamma_margin=%s gamma_threshold=%s"
+            ),
+            as.character(p0),
+            context_label,
+            candidate$label,
+            split_decision$reason,
+            format(gamma_support_check$gamma_hat, digits = 6),
+            format(gamma_support_check$margin, digits = 6),
+            format(gamma_support_check$threshold, digits = 6)
+          ))
+          return(FALSE)
+        }
+        TRUE
+      }, split_result$candidates)
+      split_result$best <- disc_w_pick_best_theta_candidate(accepted_candidates)
+    }
     if (!is.null(split_result$best)) {
       selected_candidate <- split_result$best
       log_stabilization_event(sprintf(
@@ -2415,6 +2472,17 @@ if(!Climate_Center){
         format(split_decision$threshold, digits = 6),
         format(split_decision$gamma_hat, digits = 6)
       ))
+    } else if (split_decision$reason %in% c("guard_triggered", "near_zero")) {
+      msg <- sprintf(
+        "no acceptable split gamma candidate at p0=%s context=%s reason=%s",
+        as.character(p0), context_label, split_decision$reason
+      )
+      log_guard_failure(msg)
+      sigma_only_result <- run_sigma_only_fallback(msg)
+      if (!is.null(sigma_only_result)) {
+        return(sigma_only_result)
+      }
+      return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = msg))
     }
   }
 
@@ -2457,8 +2525,16 @@ if(!Climate_Center){
   )
   if (!isTRUE(covariance_build$ok)) {
     msg <- sprintf(
-      "non-invertible Hessian at p0=%s context=%s",
-      as.character(p0), context_label
+      paste0(
+        "invalid Laplace covariance at p0=%s context=%s ",
+        "type=%s reason=%s min_diag=%s min_eigen=%s"
+      ),
+      as.character(p0),
+      context_label,
+      covariance_build$covariance_type,
+      covariance_build$covariance_reason,
+      format(covariance_build$min_diag, digits = 6),
+      format(covariance_build$min_eigen, digits = 6)
     )
     if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_FAIL_FAST)) {
       stop(msg, call. = FALSE)
@@ -2485,10 +2561,25 @@ if(!Climate_Center){
 
   LD_mu <- optim_results$par
 
-  Expected_f <- function(f, theta_s, theta_g){
-      x <- numDeriv::hessian(func = f, x = LD_mu)%*%LD_S
-      e <- f(LD_mu) + 0.5*sum(diag(x))
-    return(e)
+  Expected_f <- function(f, theta_s, theta_g, label) {
+      expected_value_try <- disc_w_try_expected_value(
+        f = f,
+        theta_mean = LD_mu,
+        theta_cov = LD_S
+      )
+      if (!isTRUE(expected_value_try$ok)) {
+        msg <- sprintf(
+          "invalid expected value at p0=%s context=%s label=%s expectation=%s: %s",
+          as.character(p0),
+          context_label,
+          selected_candidate$label,
+          label,
+          expected_value_try$error_message
+        )
+        log_guard_failure(msg)
+        stop(msg, call. = FALSE)
+      }
+      expected_value_try$value
   }
 
   f.log.sig.b <- function(theta){
@@ -2587,29 +2678,119 @@ if(!Climate_Center){
   #############################################################################################################################################
   #############################################################################################################################################
 
-  exact_sigma_moments <- disc_w_exact_sigma_moments(LD_mu, LD_S)
-  E.sig = exact_sigma_moments$E_sigma
-  E.gam = Expected_f(f.gam, LD_mu[1], LD_mu[2]);
-
-
-  E.inv.sigma = exact_sigma_moments$E_inv_sigma
-  E.c2.invb.absgam2.sigma = Expected_f(f.c2.s.abs.g2.inv.b, LD_mu[1], LD_mu[2])
-  E.c.invb.absgam = Expected_f(f.c.abs.g.inv.b, LD_mu[1], LD_mu[2])
-  E.c.a.invb.absgam = Expected_f(f.c.abs.g.a.inv.b, LD_mu[1], LD_mu[2])
-  E.a2.invb.inv.sigma = Expected_f(f.a2.inv.s.inv.b, LD_mu[1], LD_mu[2])
-  E.invb.inv.sigma = Expected_f(f.inv.s.inv.b, LD_mu[1], LD_mu[2])
-  E.a.invb.inv.sigma = Expected_f(f.a.inv.s.inv.b, LD_mu[1], LD_mu[2])
-  E.log.sig.b = Expected_f(f.log.sig.b, LD_mu[1], LD_mu[2])
-  E.log.sig = exact_sigma_moments$E_log_sigma
-  E.prior.sig.gam = Expected_f(f.prior.sig.gam, LD_mu[1], LD_mu[2])
+  exact_sigma_moments_try <- disc_w_try_exact_sigma_moments(LD_mu, LD_S)
+  if (!isTRUE(exact_sigma_moments_try$ok)) {
+    msg <- sprintf(
+      "invalid sigma moments at p0=%s context=%s label=%s: %s",
+      as.character(p0),
+      context_label,
+      selected_candidate$label,
+      exact_sigma_moments_try$error_message
+    )
+    log_guard_failure(msg)
+    sigma_only_result <- run_sigma_only_fallback(
+      "invalid sigma moments",
+      theta_g_anchor = LD_mu[[2L]]
+    )
+    if (!is.null(sigma_only_result)) {
+      return(sigma_only_result)
+    }
+    return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = msg))
+  }
+  exact_sigma_moments <- exact_sigma_moments_try$moments
+  expectation_block <- tryCatch(
+    {
+      list(
+        E.sig = exact_sigma_moments$E_sigma,
+        E.gam = Expected_f(f.gam, LD_mu[1], LD_mu[2], "E.gam"),
+        E.inv.sigma = exact_sigma_moments$E_inv_sigma,
+        E.c2.invb.absgam2.sigma = Expected_f(f.c2.s.abs.g2.inv.b, LD_mu[1], LD_mu[2], "E.c2.invb.absgam2.sigma"),
+        E.c.invb.absgam = Expected_f(f.c.abs.g.inv.b, LD_mu[1], LD_mu[2], "E.c.invb.absgam"),
+        E.c.a.invb.absgam = Expected_f(f.c.abs.g.a.inv.b, LD_mu[1], LD_mu[2], "E.c.a.invb.absgam"),
+        E.a2.invb.inv.sigma = Expected_f(f.a2.inv.s.inv.b, LD_mu[1], LD_mu[2], "E.a2.invb.inv.sigma"),
+        E.invb.inv.sigma = Expected_f(f.inv.s.inv.b, LD_mu[1], LD_mu[2], "E.invb.inv.sigma"),
+        E.a.invb.inv.sigma = Expected_f(f.a.inv.s.inv.b, LD_mu[1], LD_mu[2], "E.a.invb.inv.sigma"),
+        E.log.sig.b = Expected_f(f.log.sig.b, LD_mu[1], LD_mu[2], "E.log.sig.b"),
+        E.log.sig = exact_sigma_moments$E_log_sigma,
+        E.prior.sig.gam = Expected_f(f.prior.sig.gam, LD_mu[1], LD_mu[2], "E.prior.sig.gam")
+      )
+    },
+    error = function(e) e
+  )
+  if (inherits(expectation_block, "error")) {
+    sigma_only_result <- run_sigma_only_fallback(
+      "invalid Laplace expectations",
+      theta_g_anchor = LD_mu[[2L]]
+    )
+    if (!is.null(sigma_only_result)) {
+      return(sigma_only_result)
+    }
+    return(build_guard_fallback(
+      theta_s_init,
+      theta_g_init,
+      guard_msg = conditionMessage(expectation_block)
+    ))
+  }
+  E.sig = expectation_block$E.sig
+  E.gam = expectation_block$E.gam
+  E.inv.sigma = expectation_block$E.inv.sigma
+  E.c2.invb.absgam2.sigma = expectation_block$E.c2.invb.absgam2.sigma
+  E.c.invb.absgam = expectation_block$E.c.invb.absgam
+  E.c.a.invb.absgam = expectation_block$E.c.a.invb.absgam
+  E.a2.invb.inv.sigma = expectation_block$E.a2.invb.inv.sigma
+  E.invb.inv.sigma = expectation_block$E.invb.inv.sigma
+  E.a.invb.inv.sigma = expectation_block$E.a.invb.inv.sigma
+  E.log.sig.b = expectation_block$E.log.sig.b
+  E.log.sig = expectation_block$E.log.sig
+  E.prior.sig.gam = expectation_block$E.prior.sig.gam
   f.log_jac <- function(theta){
     pi <- plogis(theta[2]); pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
     yy <- theta[1] + log(U - L) + log(pi) + log1p(-pi)
     return(yy)
   }
-  E.log.jac = Expected_f(f.log_jac, LD_mu[1], LD_mu[2])
+  E.log.jac_try <- disc_w_try_expected_value(
+    f = f.log_jac,
+    theta_mean = LD_mu,
+    theta_cov = LD_S
+  )
+  if (!isTRUE(E.log.jac_try$ok)) {
+    msg <- sprintf(
+      "invalid log Jacobian expectation at p0=%s context=%s label=%s: %s",
+      as.character(p0),
+      context_label,
+      selected_candidate$label,
+      E.log.jac_try$error_message
+    )
+    log_guard_failure(msg)
+    sigma_only_result <- run_sigma_only_fallback(
+      "invalid log Jacobian expectation",
+      theta_g_anchor = LD_mu[[2L]]
+    )
+    if (!is.null(sigma_only_result)) {
+      return(sigma_only_result)
+    }
+    return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = msg))
+  }
+  E.log.jac = E.log.jac_try$value
 
   entrop <- log(2*pi*exp(1)) + 0.5*determinant(as.matrix(LD_S), logarithm = TRUE)$modulus[1] + E.log.jac
+  if (!is.finite(entrop)) {
+    msg <- sprintf(
+      "invalid entropy at p0=%s context=%s label=%s",
+      as.character(p0),
+      context_label,
+      selected_candidate$label
+    )
+    log_guard_failure(msg)
+    sigma_only_result <- run_sigma_only_fallback(
+      "invalid entropy",
+      theta_g_anchor = LD_mu[[2L]]
+    )
+    if (!is.null(sigma_only_result)) {
+      return(sigma_only_result)
+    }
+    return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = msg))
+  }
 
   return(list(E.sigma=E.sig,E.inv.sigma=E.inv.sigma,E.gam=E.gam,
               E.c2.invb.absgam2.sigma = E.c2.invb.absgam2.sigma, E.c.invb.absgam = E.c.invb.absgam,
@@ -2627,6 +2808,9 @@ if(!Climate_Center){
               laplace_status = "ok",
               laplace_status_message = "",
               laplace_covariance_type = covariance_build$covariance_type,
+              laplace_covariance_reason = covariance_build$covariance_reason,
+              laplace_covariance_min_diag = covariance_build$min_diag,
+              laplace_covariance_min_eigen = covariance_build$min_eigen,
               laplace_ridge = covariance_build$ridge_used,
               laplace_ridge_regularized = isTRUE(covariance_build$ridge_regularized),
               laplace_mode_search = selected_candidate$label,
