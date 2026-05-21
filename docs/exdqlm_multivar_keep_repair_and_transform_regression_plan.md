@@ -8,6 +8,13 @@ This document is the repair plan that follows the full multivariate `exdqlm keep
 implementation-focused: every proposed fix or test below is tied to the canonical theory, the active code path, or
 runtime evidence produced by the audit.
 
+The live step-by-step execution tracker for this plan is:
+
+[exdqlm_multivar_keep_repair_tracker.md](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_repair_tracker.md)
+
+The tracker is the place to update phase status, evidence paths, validation commands, and promotion readiness after
+each work item.
+
 The new hypothesis added on 2026-05-21 is important:
 
 > The model reportedly behaved acceptably before the output/input analysis transform was changed from
@@ -297,6 +304,10 @@ The old log-log path remains useful only for controlled comparison:
 The first implementation sequence is complete. We are ready for targeted ablations and promotion-hardening work, but
 not for a broad production relaunch.
 
+The recommended next step is a small curated evidence bundle from the already-written guarded `.RData` outputs,
+followed immediately by causal ablations. We should not generate every possible summary PNG unless a specific report
+or presentation needs it.
+
 Completed:
 
 1. Phase A transform forensics and static scale-contract tests.
@@ -315,12 +326,15 @@ Not ready yet:
 
 The safest remaining execution order is:
 
-1. run fixed/free `sigma/gamma` ablations,
-2. run fixed/free latent moment ablations,
-3. tune or harden the `E[1/u]` guard response,
-4. add component decomposition traces,
-5. extend the Kalman fixture to ragged forecast `keep`,
-6. only then decide whether `sigma/gamma` priors, damping, or refresh schedules need recalibration for production.
+1. create the curated evidence bundle from existing guarded outputs,
+2. design the ablation harness,
+3. run fixed/free `sigma/gamma` ablations,
+4. run fixed/free latent moment ablations,
+5. tune or harden the `E[1/u]` guard response,
+6. add component decomposition traces,
+7. extend the Kalman fixture to ragged forecast `keep`,
+8. gate the post-stage truth-window failure,
+9. only then decide whether `sigma/gamma` priors, damping, or refresh schedules need recalibration for production.
 
 ## Repair Principles
 

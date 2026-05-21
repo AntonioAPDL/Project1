@@ -183,6 +183,10 @@ hypothesis: the workflow reportedly behaved better before commit `44e2d60` chang
 from `log_log1p_cms` to `log1p_cms`, so the next repair cycle must explicitly test scale sensitivity rather than
 assuming the current instability is unrelated to the transform rewrite.
 
+The living step-by-step tracker is
+`docs/exdqlm_multivar_keep_repair_tracker.md`. Update that tracker after each remaining phase with evidence paths,
+commands, pass/fail status, and promotion readiness.
+
 P0 done. Validate the forecast `update_uts` indexing fix and latent/pseudo-data hardening with a narrow
 q05/q35/q50/q95 guarded reproduction. Evidence: `docs/exdqlm_multivar_keep_guarded_repro_20260521.md`.
 
