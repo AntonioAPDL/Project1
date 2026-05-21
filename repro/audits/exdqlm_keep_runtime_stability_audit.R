@@ -165,7 +165,20 @@ for (path in args) {
       rownames(M) <- vapply(seq_len(nrow(M)), as_source_name, character(1), baseline = TRUE)
       plot_matrix_rows(M, file.path(out_dir, sprintf("%s_%s_history.png", lane, field)), sprintf("%s %s history", lane, field), field)
     }
-    if ("E.log.uts" %in% names(uts)) add_summary(uts$E.log.uts, uts_name, "E.log.uts", block = "history")
+    if ("E.log.uts" %in% names(uts)) {
+      add_summary(uts$E.log.uts, uts_name, "E.log.uts_total", block = "history_total")
+      if ("E.uts" %in% names(uts)) {
+        history_horizon <- ncol(as.matrix(uts$E.uts))
+        if (is.finite(history_horizon) && history_horizon > 0L) {
+          add_summary(
+            as.numeric(uts$E.log.uts) / history_horizon,
+            uts_name,
+            "E.log.uts_per_time",
+            block = "history"
+          )
+        }
+      }
+    }
     if ("tot.entrop" %in% names(uts)) add_summary(uts$tot.entrop, uts_name, "tot.entrop", block = "history")
   }
 
@@ -181,8 +194,25 @@ for (path in args) {
 
   if (!is.na(uts_f_name)) {
     uts_f <- get(uts_f_name, envir = env)
-    for (field in intersect(c("E.uts", "E.inv.uts", "E.log.uts"), names(uts_f))) {
+    for (field in intersect(c("E.uts", "E.inv.uts"), names(uts_f))) {
       for (i in seq_along(uts_f[[field]])) add_summary(uts_f[[field]][[i]], uts_f_name, field, as_source_name(i), "forecast")
+    }
+    if ("E.log.uts" %in% names(uts_f)) {
+      for (i in seq_along(uts_f$E.log.uts)) {
+        add_summary(uts_f$E.log.uts[[i]], uts_f_name, "E.log.uts_total", as_source_name(i), "forecast_total")
+        if ("E.uts" %in% names(uts_f) && length(uts_f$E.uts) >= i) {
+          forecast_horizon <- nrow(as.matrix(uts_f$E.uts[[i]]))
+          if (is.finite(forecast_horizon) && forecast_horizon > 0L) {
+            add_summary(
+              as.numeric(uts_f$E.log.uts[[i]]) / forecast_horizon,
+              uts_f_name,
+              "E.log.uts_per_time",
+              as_source_name(i),
+              "forecast"
+            )
+          }
+        }
+      }
     }
     if ("tot.entrop" %in% names(uts_f)) {
       for (i in seq_along(uts_f$tot.entrop)) add_summary(uts_f$tot.entrop[[i]], uts_f_name, "tot.entrop", as_source_name(i), "forecast")
@@ -311,7 +341,7 @@ if (length(all_summaries) || length(state_norm_totals)) {
   if (length(all_summaries)) {
     summary_table <- do.call(rbind, all_summaries)
     keep_quantities <- c(
-      "E.sts", "E.sts2", "E.uts", "E.inv.uts", "E.log.uts",
+      "E.sts", "E.sts2", "E.uts", "E.inv.uts", "E.log.uts_per_time",
       "FFF", "QQQ_diag", "FFF_forecast", "QQQ_forecast_diag",
       "E.gam", "E.sigma", "E.inv.sigma"
     )
@@ -361,6 +391,7 @@ readme <- c(
   "Outputs:",
   "- `manifest.csv`: loaded `.RData` paths and object inventories.",
   "- `object_summaries.csv`: finite/positive fractions and quantiles for latent, sigma/gamma, pseudo-data, and trace objects.",
+  "- `E.log.uts_total` is the stored ELBO contribution summed over a source horizon; `E.log.uts_per_time` divides it by the matching history or forecast horizon for lane-to-lane interpretation.",
   "- `state_norms.csv`: state norm squared by lane/block/time.",
   "- `state_norm_totals.csv`: total squared state norms by lane/block, matching the full-matrix norm scale printed by fit logs.",
   "- `selected_state_coordinates.csv`: first selected state coordinates by lane/block/time.",

@@ -108,6 +108,8 @@ testthat::test_that("active runner uses stable latent formulas", {
   testthat::expect_true(grepl("E.inv.uts = sqrt\\(u.psi/u.chi\\)", text))
   testthat::expect_true(grepl("disc_w_check_pseudodata_guard", text, fixed = TRUE))
   testthat::expect_true(grepl("DISC_PSEUDODATA_GUARD_MODE", text, fixed = TRUE))
+  testthat::expect_true(grepl("DISC_W_POST_SAVE_OBJECTIVE_ENABLED", text, fixed = TRUE))
+  testthat::expect_true(grepl("\\[post_save_objective\\] disabled", text))
 })
 
 testthat::test_that("pseudo-data offset and variance reproduce information-form algebra", {

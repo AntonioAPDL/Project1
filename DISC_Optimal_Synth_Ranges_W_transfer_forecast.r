@@ -646,6 +646,21 @@ DISC_W_LAM1 <- disc_env_prob("DISC_W_LAM1", 1 - 1e-6)
 DISC_W_LAM2 <- disc_env_prob("DISC_W_LAM2", 1 - 1e-6)
 DISC_W_SIMS_ENABLED <- disc_env_flag("DISC_W_SIMS_ENABLED", default = TRUE)
 DISC_W_USE_COVARIATES <- disc_env_flag("DISC_W_USE_COVARIATES", default = TRUE)
+DISC_W_POST_SAVE_OBJECTIVE_ENABLED <- disc_env_flag(
+  "DISC_W_POST_SAVE_OBJECTIVE_ENABLED",
+  default = TRUE
+)
+DISC_W_POST_SAVE_JSD_ENABLED <- disc_env_flag(
+  "DISC_W_POST_SAVE_JSD_ENABLED",
+  default = TRUE
+)
+DISC_W_POST_SAVE_JSD_GRIDSIZE <- disc_env_nonneg_int(
+  "DISC_W_POST_SAVE_JSD_GRIDSIZE",
+  default = 100L
+)
+if (!is.finite(DISC_W_POST_SAVE_JSD_GRIDSIZE) || DISC_W_POST_SAVE_JSD_GRIDSIZE < 5L) {
+  DISC_W_POST_SAVE_JSD_GRIDSIZE <- 100L
+}
 DISC_W_LIKELIHOOD_MODE <- disc_env_choice("DISC_W_LIKELIHOOD_MODE", choices = c("exal", "al"), default = "exal")
 DISC_W_AL_MODE <- identical(DISC_W_LIKELIHOOD_MODE, "al")
 DISC_W_C_FACTOR <- disc_env_pos_num("DISC_W_C_FACTOR", 1e2)
@@ -5171,6 +5186,15 @@ if (verbose) {
 disc_w_save_state(p0 = p0, ending = ending, disc_w_paths = disc_w_paths)
 }
 
+if (!isTRUE(DISC_W_POST_SAVE_OBJECTIVE_ENABLED)) {
+  cat(sprintf(
+    "[post_save_objective] disabled p0=%s env=DISC_W_POST_SAVE_OBJECTIVE_ENABLED\n",
+    as.character(p0)
+  ))
+  flush.console()
+  return(0)
+}
+
 errors <- new.theta.out$standard_forecast_errors
 s <- 0.5*(compute_kl_divergence(t(errors))+estimate_kl_divergence(t(errors)))
 ######################
@@ -5224,7 +5248,17 @@ compute_jsd <- function(p_sample, gridsize = c(100, 100, 100)) {
   return(js_divergence)
 }
 
-js_divergence <- compute_jsd(t(errors), gridsize = c(100, 100, 100))
+if (isTRUE(DISC_W_POST_SAVE_JSD_ENABLED)) {
+  jsd_grid <- rep(as.integer(DISC_W_POST_SAVE_JSD_GRIDSIZE), 3L)
+  js_divergence <- compute_jsd(t(errors), gridsize = jsd_grid)
+} else {
+  cat(sprintf(
+    "[post_save_jsd] disabled p0=%s env=DISC_W_POST_SAVE_JSD_ENABLED\n",
+    as.character(p0)
+  ))
+  flush.console()
+  js_divergence <- NA_real_
+}
 
 ######################
 ######################
@@ -5244,7 +5278,10 @@ if (is.nan(js_divergence)) {
   js_divergence <- Inf
 }
 
-return(js_divergence)
+if (is.finite(js_divergence)) {
+  return(js_divergence)
+}
+return(s)
 ######################
 ######################
 ######################
