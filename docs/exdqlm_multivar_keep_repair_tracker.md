@@ -274,7 +274,7 @@ Current latent-freeze v3 evidence:
 
 ### T4. q05 Guard-Response Policy
 
-Status: pending
+Status: policy drafted; runtime promotion pending latent-cap evidence
 
 Purpose: turn the warning-mode q05 `E[1/u_t]` evidence into a production decision.
 
@@ -291,6 +291,17 @@ Acceptance criteria:
 1. The chosen policy prevents silent destructive pseudo-data.
 2. The policy does not mask scientifically important tail behavior without reporting it.
 3. The policy is tested with deterministic fixtures and at least one targeted q05 runtime check.
+
+Policy document:
+
+- `docs/exdqlm_multivar_keep_guard_response_policy.md`
+
+Current decision:
+
+- diagnostic ablations remain `warn` mode with guard CSVs;
+- promotion candidates should use `DISC_PSEUDODATA_GUARD_MODE=fail`;
+- latent `E[1/u]` capping remains diagnostic only until the `latent-cap-e-inv-u` runtime evidence and
+  decomposition audit show that it does not materially distort fitted/forecast components.
 
 ### T5. Trend/Transfer/Discrepancy Decomposition
 
@@ -444,6 +455,7 @@ Decision outcomes:
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_keep_decomposition_audit.R')"` | pass, 6 expectations |
 | 2026-05-21 | fixed-gamsig v3 runtime stability and curated evidence bundle | pass; report paths recorded in T2 |
 | 2026-05-21 | fixed-gamsig v3 decomposition audit | pass; history/forecast reconstructions match `new.theta.out$exps` to numerical tolerance |
+| 2026-05-21 | `docs/exdqlm_multivar_keep_guard_response_policy.md` | drafted T4 guard-response policy; production promotion should fail-fast on pseudo-data guard breaches until latent-cap evidence is clean |
 
 ## Change Log
 
@@ -455,3 +467,4 @@ Decision outcomes:
 | 2026-05-21 | Implemented post-stage missing-truth gate for CRPS exports | done |
 | 2026-05-21 | Extended the keep Kalman fixture to retained-transfer ragged forecast smoothing and added a deterministic test | done |
 | 2026-05-21 | Added a reusable decomposition audit for trend, transfer, discrepancy, and reconstruction checks | done |
+| 2026-05-21 | Drafted guard-response policy for q05-like latent-tail events | done |
