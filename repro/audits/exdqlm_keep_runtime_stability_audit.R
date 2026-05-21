@@ -84,7 +84,10 @@ find_first <- function(nms, pattern) {
 lane_from_path <- function(path) {
   base <- basename(path)
   m <- regexpr("DISC_variables_[0-9]+", base)
-  if (m > 0) return(sub("DISC_variables_", "q", regmatches(base, m)))
+  if (m > 0) {
+    pct <- suppressWarnings(as.integer(sub("DISC_variables_", "", regmatches(base, m))))
+    if (is.finite(pct)) return(sprintf("q%02d", pct))
+  }
   tools::file_path_sans_ext(base)
 }
 

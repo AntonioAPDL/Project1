@@ -47,6 +47,7 @@ testthat::test_that("runtime stability audit reports E log u totals and per-time
   testthat::expect_true(any(per_time$block == "forecast" & per_time$min == 2 & per_time$max == 3))
 
   key_findings <- read.csv(file.path(out_dir, "runtime_key_findings.csv"))
+  testthat::expect_equal(unique(key_findings$lane), "q50")
   testthat::expect_true("E.log.uts_per_time" %in% key_findings$quantity)
   testthat::expect_false("E.log.uts_total" %in% key_findings$quantity)
 })
