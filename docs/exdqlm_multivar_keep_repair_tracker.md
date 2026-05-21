@@ -154,7 +154,7 @@ Evidence:
 
 ### T2. Fixed/Free `sigma/gamma` Ablations
 
-Status: prepared
+Status: prepared, v2 pending launch
 
 Purpose: determine whether the `sigma/gamma` approximation or calibration is the decisive instability source under
 the current `log1p_cms` scale.
@@ -186,12 +186,20 @@ Acceptance criteria:
 Prepared condition:
 
 - `fixed-gamsig`
-- launch:
+- invalid first launch:
+  `reports/exdqlm_keep_ablation_matrix_ablation_log1p_q05_q35_q50_q95_20260521/launch_ablation_matrix_ablation_log1p_q05_q35_q50_q95_20260521.sh`
+  was stopped during early fixed-gamsig fit initialization after logs showed `warmup_freeze_iters=10` instead of the
+  intended `max_iter + 5`. Root cause: `R/unified/stages/stage_fit.R` rebuilds worker `DISC_GAMSIG_*` values from the
+  generated YAML policy, overriding wrapper-level exports.
+- fix:
+  `repro/audits/prepare_exdqlm_keep_guarded_repro.py` now writes fixed-gamsig policy values into
+  `fit.exdqlm_multivar.gamma_sigma` and existing quantile overrides.
+- original launch, retained only as invalid/stopped evidence:
   `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_ablation_log1p_q05_q35_q50_q95_20260521_fixed_gamsig/control/launch_multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dfall999999_datastart2017_ready_exdqlm_multivar_keep__ablation_log1p_q05_q35_q50_q95_20260521_fixed_gamsig.sh`
 
 ### T3. Fixed/Free Latent Moment Ablations
 
-Status: prepared
+Status: prepared, v2 pending launch
 
 Purpose: determine whether the `s_t/u_t` updates remain the dominant source of instability after numerical
 hardening.
@@ -214,7 +222,7 @@ Prepared conditions:
 
 - `latent-freeze`
 - `latent-cap-e-inv-u`
-- matrix launch:
+- original matrix launch, stopped before latent conditions because fixed-gamsig v1 was invalid:
   `reports/exdqlm_keep_ablation_matrix_ablation_log1p_q05_q35_q50_q95_20260521/launch_ablation_matrix_ablation_log1p_q05_q35_q50_q95_20260521.sh`
 
 ### T4. q05 Guard-Response Policy
@@ -333,6 +341,8 @@ Decision outcomes:
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_curated_evidence_bundle.R')"` | pass, 6 expectations |
 | 2026-05-21 | `python3 -m unittest tests.python.test_exdqlm_keep_ablation_tooling -v` | pass, 3 tests |
 | 2026-05-21 | `python3 repro/audits/prepare_exdqlm_keep_ablation_matrix.py --tag ablation_log1p_q05_q35_q50_q95_20260521 --conditions fixed-gamsig,latent-freeze,latent-cap-e-inv-u --quantiles 0.05,0.35,0.5,0.95 --max-iter 3000 --workers 4 --guard-mode warn --post-save-objective off` | matrix prepared |
+| 2026-05-21 | fixed-gamsig matrix launch v1 | stopped during early fixed-gamsig initialization; generated YAML still had `warmup_freeze_iters=10`, so the run was not a valid fixed-gamsig ablation |
+| 2026-05-21 | `python3 -m unittest tests.python.test_exdqlm_keep_ablation_tooling -v` after YAML-policy fix | pass, 3 tests; fixed-gamsig test now checks generated YAML and quantile overrides |
 
 ## Change Log
 
@@ -340,3 +350,4 @@ Decision outcomes:
 | --- | --- | --- |
 | 2026-05-21 | Created living repair tracker with curated evidence, ablation, guard-policy, decomposition, Kalman, post-stage, and promotion gates | done |
 | 2026-05-21 | Completed `T0` curated evidence bundle and `T1` ablation harness design; prepared `T2/T3` ablation matrix | done |
+| 2026-05-21 | Found and fixed fixed-gamsig ablation wiring so freeze policy is written into generated YAML, not only wrapper env | done |

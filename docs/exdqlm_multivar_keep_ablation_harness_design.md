@@ -57,13 +57,25 @@ keeps the ablation plan reproducible without hand-built run roots.
 
 ### Fixed `sigma/gamma`
 
-This uses existing active-runner controls:
+This uses the active runner's existing gamma/sigma freeze controls, but the source of truth must be the generated
+YAML policy consumed by `R/unified/stages/stage_fit.R`. Wrapper-level `DISC_GAMSIG_*` exports are retained as
+manifest breadcrumbs, but fit workers rebuild those values from `fit.exdqlm_multivar.gamma_sigma`.
 
 | environment variable | value |
 | --- | --- |
 | `DISC_GAMSIG_FREEZE_TARGET` | `gamma_sigma` |
 | `DISC_GAMSIG_FREEZE_ITERS` | `max_iter + 5` |
 | `DISC_GAMSIG_MIN_UPDATE_ITERS` | `0` |
+
+For `fixed-gamsig` and `fixed-gamsig-latent-cap`, the preparer also writes:
+
+| generated YAML key | value |
+| --- | --- |
+| `fit.exdqlm_multivar.gamma_sigma.freeze_target` | `gamma_sigma` |
+| `fit.exdqlm_multivar.gamma_sigma.warmup_freeze_iters` | `max_iter + 5` |
+| `fit.exdqlm_multivar.gamma_sigma.min_update_iters` | `0` |
+| each existing `quantile_overrides.*.warmup_freeze_iters` | `max_iter + 5` |
+| each existing `quantile_overrides.*.min_update_iters` | `0` |
 
 Interpretation:
 

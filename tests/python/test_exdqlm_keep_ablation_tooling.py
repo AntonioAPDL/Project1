@@ -22,7 +22,21 @@ def write_source_config(path: Path) -> None:
         "fit": {
             "quantiles": [0.5],
             "parallel": {"workers": 1},
-            "exdqlm_multivar": {"gamma_sigma": {"max_iter": 10}},
+            "exdqlm_multivar": {
+                "gamma_sigma": {
+                    "max_iter": 10,
+                    "warmup_freeze_iters": 3,
+                    "min_update_iters": 7,
+                    "min_total_iters": 8,
+                    "quantile_overrides": {
+                        "q50": {
+                            "warmup_freeze_iters": 2,
+                            "min_update_iters": 6,
+                            "min_total_iters": 9,
+                        }
+                    },
+                }
+            },
         },
     }
     path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
@@ -62,10 +76,18 @@ class TestExdqlmKeepAblationTooling(unittest.TestCase):
             )
             manifest = json.loads(result.stdout)
             launch_text = Path(manifest["launch_path"]).read_text(encoding="utf-8")
+            generated_cfg = yaml.safe_load(Path(manifest["config_path"]).read_text(encoding="utf-8"))
+            policy = generated_cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]
             self.assertIn('export DISC_GAMSIG_FREEZE_TARGET="gamma_sigma"', launch_text)
             self.assertIn('export DISC_GAMSIG_FREEZE_ITERS="17"', launch_text)
             self.assertIn('export DISC_GAMSIG_MIN_UPDATE_ITERS="0"', launch_text)
             self.assertIn('export DISC_LATENT_ABLATION_MODE="free"', launch_text)
+            self.assertEqual(policy["warmup_freeze_iters"], 17)
+            self.assertEqual(policy["min_update_iters"], 0)
+            self.assertEqual(policy["min_total_iters"], 12)
+            self.assertEqual(policy["quantile_overrides"]["q50"]["warmup_freeze_iters"], 17)
+            self.assertEqual(policy["quantile_overrides"]["q50"]["min_update_iters"], 0)
+            self.assertEqual(policy["quantile_overrides"]["q50"]["min_total_iters"], 12)
             self.assertEqual(manifest["ablation_mode"], "fixed-gamsig")
 
     def test_latent_cap_ablation_exports_latent_controls(self) -> None:

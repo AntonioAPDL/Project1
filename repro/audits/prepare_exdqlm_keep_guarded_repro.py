@@ -39,6 +39,34 @@ def q_tag(q: float) -> str:
     return f"q{int(round(q * 100)):02d}"
 
 
+def ensure_mapping(root: dict, path: list[str]) -> dict:
+    cursor = root
+    for key in path:
+        node = cursor.get(key)
+        if not isinstance(node, dict):
+            node = {}
+            cursor[key] = node
+        cursor = node
+    return cursor
+
+
+def set_fixed_gamsig_policy(policy: dict, max_iter: int) -> None:
+    policy["freeze_target"] = "gamma_sigma"
+    policy["warmup_freeze_iters"] = int(max_iter) + 5
+    policy["min_update_iters"] = 0
+    policy["min_total_iters"] = min(50, int(max_iter))
+
+
+def apply_fixed_gamsig_ablation_config(cfg: dict, max_iter: int) -> None:
+    policy = ensure_mapping(cfg, ["fit", "exdqlm_multivar", "gamma_sigma"])
+    set_fixed_gamsig_policy(policy, max_iter)
+    overrides = policy.get("quantile_overrides")
+    if isinstance(overrides, dict):
+        for override in overrides.values():
+            if isinstance(override, dict):
+                set_fixed_gamsig_policy(override, max_iter)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Prepare isolated guarded exDQLM keep reproductions.")
     parser.add_argument("--source-config", type=Path, default=DEFAULT_SOURCE_CONFIG)
@@ -96,6 +124,8 @@ def main() -> int:
     cfg["fit"]["quantiles"] = quantiles
     cfg["fit"]["parallel"]["workers"] = int(args.workers)
     cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]["max_iter"] = int(args.max_iter)
+    if args.ablation_mode in {"fixed-gamsig", "fixed-gamsig-latent-cap"}:
+        apply_fixed_gamsig_ablation_config(cfg, int(args.max_iter))
 
     config_path = generated_root / f"{run_id}.yaml"
     with config_path.open("w", encoding="utf-8") as handle:
