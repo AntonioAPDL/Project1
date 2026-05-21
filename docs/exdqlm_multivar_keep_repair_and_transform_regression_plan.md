@@ -36,8 +36,10 @@ Confirmed from [exdqlm_multivar_keep_final_findings.md](/data/muscat_data/jaguir
    expectation columns using `TT_sub` instead of bare `T` at
    `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:4001-4002` and
    `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:4694-4695`.
-3. The active `s_t` entropy calculation is wrong for a positive-truncated normal and uses base-2 logs:
-   `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:1812-1814`.
+3. The `s_t` entropy calculation was wrong for a positive-truncated normal and used base-2 logs. It is now fixed
+   in commit `4bbb643`: active `disc_w_pos_truncnorm_moments` uses the natural-log positive-truncated-normal
+   entropy at `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:1821-1839`, and `update_sts` sums that entropy at
+   `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:1853-1860`.
 4. Runtime failures show extreme latent moments and pseudo-data before the Kalman layer can be blamed alone.
 
 Key runtime evidence from
@@ -54,6 +56,77 @@ The q50 lane is the most diagnostic: the pseudo-data offset reaches `-3245.82`, 
 the state norm reaches `1.125e10`. These values are from the untracked report directory:
 
 `reports/exdqlm_multivar_keep_runtime_stability_2017_ready_q05_q35_q50_q95_20260520/`
+
+## Implementation Checkpoint 2026-05-21
+
+This section records what has now moved from plan to implementation. It is intentionally separate from the final
+runtime verdict because the long q-lane reproduction is still running.
+
+Implemented and committed:
+
+1. `eb22e6e`: forecast-member `update_uts` indexing fix (`TT_sub` instead of bare `T`).
+2. `be5cf55`: transform-regression forensics and `log1p_cms` scale-contract tests.
+3. `4bbb643`: stable `s_t` moments/entropy, closed-form half-order `u_t` moments, and pre-Kalman pseudo-data guards.
+4. `5a83162`: guarded repro launcher, corrected runtime `E[log u]` summaries, and an env switch for the expensive
+   post-save objective diagnostic.
+
+Active code anchors after implementation:
+
+1. Positive-truncated-normal `s_t` moments and entropy:
+   `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:1821-1860`.
+2. Half-order GIG `u_t` moments:
+   `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:1863-1911`.
+3. Pseudo-data guard policy:
+   `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:3456-3484`.
+4. Post-save objective switch:
+   `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:649-663` and
+   `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:5189-5196`.
+5. Isolated guarded reproduction generator:
+   `repro/audits/prepare_exdqlm_keep_guarded_repro.py:42-155`.
+6. Runtime audit normalization for stored summed `E[log u]` terms:
+   `repro/audits/exdqlm_keep_runtime_stability_audit.R:168-216` and `:343-394`.
+
+Tests run after implementation:
+
+1. `Rscript --vanilla -e "invisible(parse('DISC_Optimal_Synth_Ranges_W_transfer_forecast.r')); cat('parse ok\n')"`
+   passed.
+2. `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R')"`
+   passed with 45 expectations.
+3. `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_transform_scale_sensitivity.R')"` passed
+   with 10 expectations.
+4. `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_scale_contract_adapters.R')"` passed with
+   13 expectations.
+5. `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_runtime_stability_audit.R')"` passed
+   with 8 expectations.
+6. `python3 -m unittest tests.python.test_log1p_transform_policy -v` passed with 6 tests.
+7. `python3 -m py_compile repro/audits/prepare_exdqlm_keep_guarded_repro.py` passed.
+
+Smoke evidence:
+
+1. Isolated smoke root:
+   `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_smoke_guarded_log1p_phase_cd_20260521/`.
+2. Smoke report:
+   `reports/exdqlm_keep_guarded_repro_smoke_guarded_log1p_phase_cd_20260521/`.
+3. q05 and q50 both wrote `.RData` outputs and the read-only runtime report was generated at
+   `reports/exdqlm_keep_guarded_repro_smoke_guarded_log1p_phase_cd_20260521/runtime_stability/`.
+4. No pseudo-data guard event CSV was written in the smoke report directory, which means the configured guard
+   thresholds were not crossed in that short run.
+5. The q05 smoke process was manually terminated after the `.RData` output and runtime report were written because
+   it was spending CPU in the old post-save 3D KDE/JSD diagnostic. Commit `5a83162` adds
+   `DISC_W_POST_SAVE_OBJECTIVE_ENABLED=0` for isolated repros so this does not block the overnight q-lane run.
+
+Live guarded q-lane reproduction:
+
+1. Prepared by:
+   `python3 repro/audits/prepare_exdqlm_keep_guarded_repro.py --tag guarded_log1p_q05_q35_q50_q95_20260521 --max-iter 3000 --workers 4 --quantiles 0.05,0.35,0.5,0.95 --guard-mode warn`.
+2. Runtime root:
+   `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_guarded_log1p_q05_q35_q50_q95_20260521/`.
+3. Report root:
+   `reports/exdqlm_keep_guarded_repro_guarded_log1p_q05_q35_q50_q95_20260521/`.
+4. Launch policy: pseudo-data guards are enabled in warn mode, and post-save objective diagnostics are disabled.
+5. Initial live monitor snapshot at `2026-05-21T01:20:39-0700`: q35/q50 were stable near state-norm squared
+   `2.1e3`/`2.4e3`; q05/q95 had decreased from early `~0.8e6-1.1e6` plateaus to about `3.5e5`/`4.1e5`;
+   no pseudo-data guard events had been written. This is encouraging but not yet final evidence.
 
 ## Active Theory And Code Anchors
 

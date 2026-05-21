@@ -41,7 +41,7 @@ The tracked mismatch matrix is:
 - Historical Kalman filter fixture: `reports/exdqlm_multivar_keep_kalman_fixture_20260520/kalman_fixture_checks.csv`
   shows filtered mean/covariance max absolute differences of `6.26e-11` and `7.37e-11` against an R reference.
 
-## Found Wrong
+## Found Wrong And Patched
 
 1. Forecast-member `update_uts` used bare `T` for forecast column indexing at audit time.
 
@@ -54,11 +54,22 @@ The tracked mismatch matrix is:
    Regression coverage: `tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R` asserts there are
    no remaining `new.theta.out$exps[j,(T+1):(T+k_forecast)]` or `exps2` forecast-member references.
 
-2. Active `s_t` entropy is not the canonical positive-truncated normal entropy.
+2. Active `s_t` entropy was not the canonical positive-truncated normal entropy.
 
-   The moment formulas are correct, but `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:1812-1814` uses
-   `0.5*log2(2*pi*exp(1)*s.sig2) - 1`, which is not the canonical truncated-normal entropy and uses base-2 logs.
-   This is probably an ELBO/convergence accounting defect rather than the direct source of state explosion.
+   This was patched in commit `4bbb643`. The active runner now computes positive-truncated-normal moments and
+   natural-log entropy in `disc_w_pos_truncnorm_moments` at
+   `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:1821-1839`, and `update_sts` uses those moments at
+   `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:1853-1860`. Regression coverage is in
+   `tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R`.
+
+3. The post-save objective diagnostic can dominate runtime after outputs are already saved.
+
+   The active runner historically computed a 3D KDE/JSD diagnostic after writing `.RData`. In the guarded smoke
+   run, q05 had already saved its output and generated audit evidence, then continued spending CPU in this
+   post-save block. Commit `5a83162` keeps default behavior unchanged but adds
+   `DISC_W_POST_SAVE_OBJECTIVE_ENABLED` at `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:649-663` and the early
+   return at `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:5189-5196`. The isolated guarded repro launcher now
+   exports this switch off by default for targeted audit runs.
 
 ## Questionable
 
@@ -95,6 +106,35 @@ The q50 log records a terminal guard condition:
 - `q50/logs/fit.log:15423`: `state_norm_sq=11252388000` exceeds `abs_cap=100000000`.
 - `q50/logs/fit.log:15476`: terminal preflight reports `mode=fail_fast`, `guard_count=179`.
 
+## Implementation Status 2026-05-21
+
+The first repair sequence is now implemented in local commits:
+
+- `eb22e6e`: forecast `update_uts` indexing fix.
+- `be5cf55`: log1p transform forensics and scale-contract tests.
+- `4bbb643`: stable latent moments and pseudo-data guards.
+- `5a83162`: guarded reproduction launcher, runtime audit normalization for summed `E[log u]`, and post-save
+  objective control.
+
+Smoke evidence is under
+`reports/exdqlm_keep_guarded_repro_smoke_guarded_log1p_phase_cd_20260521/`. q05 and q50 wrote `.RData` outputs,
+the runtime stability report was generated, and no pseudo-data guard event CSV was written under the smoke guard
+report directory. The q05 smoke wrapper was terminated only after output save because it was in the old post-save
+JSD diagnostic; the full guarded run uses the new objective-disable switch.
+
+A full isolated guarded q05/q35/q50/q95 reproduction is currently running under:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_guarded_log1p_q05_q35_q50_q95_20260521/`
+
+and writes audit artifacts under:
+
+`reports/exdqlm_keep_guarded_repro_guarded_log1p_q05_q35_q50_q95_20260521/`
+
+Initial live monitor snapshot at `2026-05-21T01:20:39-0700`: q35/q50 remained near state-norm squared
+`2.1e3`/`2.4e3`, q05/q95 had decreased from early `~0.8e6-1.1e6` plateaus to about `3.5e5`/`4.1e5`, and no
+pseudo-data guard events had been written. This is not a final root-cause verdict; it is the first live evidence
+that the hardened path is no longer immediately reproducing the previous `1e10` state-norm failure.
+
 ## Prioritized Fix List
 
 The implementation and testing roadmap for these fixes is now tracked in
@@ -109,8 +149,11 @@ production. Save iteration snapshots for forecast `E[u]`, `E[1/u]`, `FFF_forecas
 P0. Add a pre-Kalman pseudo-data guard for nonfinite or extreme `FFF` and `QQQ_diag`, with clear logs and optional
 fail-fast behavior before the state update consumes them.
 
-P1. Replace `s_t` entropy with the canonical natural-log positive-truncated normal entropy, then confirm whether
-ELBO convergence behavior changes.
+P1. Continue the guarded q05/q35/q50/q95 reproduction to completion, then regenerate the runtime stability report
+from the resulting `.RData` outputs and compare against the pre-repair `1e10` q50 failure.
+
+P1. Confirm whether the patched `s_t` entropy and `u_t` numerical changes alter ELBO convergence behavior across
+the full refresh schedule, not only in short smoke runs.
 
 P1. Add eigenvalue/SPD diagnostics for `W_list_ens`, `QQQ`, `QQQ_forecast`, and Kalman `q` matrices in suspect
 lanes.
