@@ -59,8 +59,7 @@ the state norm reaches `1.125e10`. These values are from the untracked report di
 
 ## Implementation Checkpoint 2026-05-21
 
-This section records what has now moved from plan to implementation. It is intentionally separate from the final
-runtime verdict because the long q-lane reproduction is still running.
+This section records what has now moved from plan to implementation and the first guarded runtime result.
 
 Implemented and committed:
 
@@ -69,6 +68,9 @@ Implemented and committed:
 3. `4bbb643`: stable `s_t` moments/entropy, closed-form half-order `u_t` moments, and pre-Kalman pseudo-data guards.
 4. `5a83162`: guarded repro launcher, corrected runtime `E[log u]` summaries, and an env switch for the expensive
    post-save objective diagnostic.
+5. `869c9c2`: guarded keep run monitor.
+6. `docs/exdqlm_multivar_keep_guarded_repro_20260521.md`: tracked evidence summary for the isolated guarded
+   q05/q35/q50/q95 reproduction.
 
 Active code anchors after implementation:
 
@@ -85,6 +87,8 @@ Active code anchors after implementation:
    `repro/audits/prepare_exdqlm_keep_guarded_repro.py:42-155`.
 6. Runtime audit normalization for stored summed `E[log u]` terms:
    `repro/audits/exdqlm_keep_runtime_stability_audit.R:168-216` and `:343-394`.
+7. Guarded run monitor:
+   `repro/audits/summarize_exdqlm_keep_guarded_run.py:55-116` and `:140-198`.
 
 Tests run after implementation:
 
@@ -100,6 +104,7 @@ Tests run after implementation:
    with 8 expectations.
 6. `python3 -m unittest tests.python.test_log1p_transform_policy -v` passed with 6 tests.
 7. `python3 -m py_compile repro/audits/prepare_exdqlm_keep_guarded_repro.py` passed.
+8. `python3 -m py_compile repro/audits/summarize_exdqlm_keep_guarded_run.py` passed.
 
 Smoke evidence:
 
@@ -115,7 +120,7 @@ Smoke evidence:
    it was spending CPU in the old post-save 3D KDE/JSD diagnostic. Commit `5a83162` adds
    `DISC_W_POST_SAVE_OBJECTIVE_ENABLED=0` for isolated repros so this does not block the overnight q-lane run.
 
-Live guarded q-lane reproduction:
+Completed guarded q-lane reproduction:
 
 1. Prepared by:
    `python3 repro/audits/prepare_exdqlm_keep_guarded_repro.py --tag guarded_log1p_q05_q35_q50_q95_20260521 --max-iter 3000 --workers 4 --quantiles 0.05,0.35,0.5,0.95 --guard-mode warn`.
@@ -124,9 +129,35 @@ Live guarded q-lane reproduction:
 3. Report root:
    `reports/exdqlm_keep_guarded_repro_guarded_log1p_q05_q35_q50_q95_20260521/`.
 4. Launch policy: pseudo-data guards are enabled in warn mode, and post-save objective diagnostics are disabled.
-5. Initial live monitor snapshot at `2026-05-21T01:20:39-0700`: q35/q50 were stable near state-norm squared
-   `2.1e3`/`2.4e3`; q05/q95 had decreased from early `~0.8e6-1.1e6` plateaus to about `3.5e5`/`4.1e5`;
-   no pseudo-data guard events had been written. This is encouraging but not yet final evidence.
+5. Final live monitor evidence:
+   `reports/exdqlm_keep_guarded_repro_guarded_log1p_q05_q35_q50_q95_20260521/live_monitor/LIVE_STATUS.md`.
+6. Runtime stability report:
+   `reports/exdqlm_keep_guarded_repro_guarded_log1p_q05_q35_q50_q95_20260521/runtime_stability/`.
+7. Tracked summary:
+   [exdqlm_multivar_keep_guarded_repro_20260521.md](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_guarded_repro_20260521.md).
+
+Fit outcome:
+
+| lane | iter | terminal state norm sq | sigma exp | gamma exp | output bytes |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| q05 | 3000 | 1521.116 | 0.04159479 | 0.8357179 | 614403137 |
+| q35 | 3000 | 2233.589 | 0.1136433 | 0.1103588 | 615356651 |
+| q50 | 1079 | 2547.352 | 0.1227996 | -0.01111135 | 614988494 |
+| q95 | 3000 | 5082.421 | 0.07100852 | -1.762717 | 615690228 |
+
+The prior q50 failure had state norm squared `1.125e10`; this guarded q50 run ended at `2547.352`. That is a
+material stabilization, but not a single-cause proof because multiple fixes were active together.
+
+Guard outcome:
+
+1. 18 guard rows were written.
+2. All rows were q05 historical `E_inv_uts`, iterations 1001-1018.
+3. The peak was `14397.595` at iteration 1005 with cap `5000`.
+4. No rows were written for `FFF`, `QQQ_diag`, forecast pseudo-data, `E[s]`, `E[s^2]`, or `E[u]`.
+
+The wrapper exited nonzero after fit outputs were written because the isolated post-stage figure path had no USGS
+truth rows available at/after `2022-12-26`. This is a post-stage gating problem to fix separately, not evidence that
+the exDQLM fit failed.
 
 ## Active Theory And Code Anchors
 
@@ -263,30 +294,33 @@ The old log-log path remains useful only for controlled comparison:
 
 ## Implementation Readiness
 
-We are ready to begin implementation, but not as one monolithic patch and not with a broad production relaunch.
+The first implementation sequence is complete. We are ready for targeted ablations and promotion-hardening work, but
+not for a broad production relaunch.
 
-Ready now:
+Completed:
 
 1. Phase A transform forensics and static scale-contract tests.
 2. Phase B deterministic scale-sensitivity fixtures, including near-zero retrospective cases.
 3. Phase C latent moment robustification for `s_t` entropy and `u_t` numerical stability.
 4. Phase D pre-Kalman `FFF`/`QQQ` guards in warning mode first.
+5. A guarded q05/q35/q50/q95 `log1p` reproduction with all four fit outputs written.
 
 Not ready yet:
 
 1. broad production relaunches,
 2. final `sigma/gamma` retuning,
 3. switching to a new transform such as `log1p(log1p(cms))`,
-4. claiming the root cause is solved before q-lane reproductions are run.
+4. claiming a single root cause before fixed/free `sigma/gamma` and latent ablations are run,
+5. promoting warning-mode guard thresholds to production without a decision on q05-like `E[1/u]` bursts.
 
-The safest execution order is:
+The safest remaining execution order is:
 
-1. add no-behavior-change forensics and tests,
-2. add deterministic scale fixtures,
-3. patch latent numerical stability with unit tests,
-4. add pseudo-data guards with tests,
-5. run narrow q05/q35/q50/q95 reproductions,
-6. only then decide whether `sigma/gamma` priors, damping, or refresh schedules need recalibration.
+1. run fixed/free `sigma/gamma` ablations,
+2. run fixed/free latent moment ablations,
+3. tune or harden the `E[1/u]` guard response,
+4. add component decomposition traces,
+5. extend the Kalman fixture to ragged forecast `keep`,
+6. only then decide whether `sigma/gamma` priors, damping, or refresh schedules need recalibration for production.
 
 ## Repair Principles
 
@@ -471,6 +505,10 @@ Acceptance criteria:
 
 Goal: determine whether the `sigma/gamma` approximation was tuned for the old compressed scale.
 
+Status: not completed. This is now the most important causal-isolation phase because the guarded reproduction proves
+the repaired stack is much more stable, but it does not say whether `sigma/gamma`, `s_t/u_t`, pseudo-data guards, or
+their interaction was the decisive change.
+
 Implementation tasks:
 
 1. Audit initialization and priors used by `new.gamsig.out` and the Laplace/Delta helpers in
@@ -506,6 +544,10 @@ Acceptance criteria:
 ## Phase F: Kalman And Identifiability Stress Checks
 
 Goal: separate a faithful Kalman propagation of bad pseudo-data from a Kalman or state-identifiability defect.
+
+Status: not completed beyond the earlier historical fixture. The guarded reproduction did not produce pseudo-data
+guard failures, so the next value is decomposition and ragged-forecast fixture coverage rather than blaming Kalman
+without controlled evidence.
 
 Implementation tasks:
 
@@ -545,6 +587,9 @@ Acceptance criteria:
 ## Phase G: Targeted Runtime Reproductions
 
 Goal: run the smallest possible reproductions needed to identify the actual failing layer.
+
+Status: the first guarded q05/q35/q50/q95 reproduction is complete and documented. The remaining Phase G work is the
+ablation matrix, not another identical guarded run.
 
 Operational constraints:
 
@@ -639,46 +684,56 @@ Promotion criteria before any broad production run:
 
 ## Prioritized Fix List
 
-P0. Validate the already-applied `TT_sub` forecast `update_uts` fix with narrow q05/q35/q50/q95 reproductions.
+P0 done. Validate the already-applied `TT_sub` forecast `update_uts` fix and first latent/pseudo-data hardening with
+narrow q05/q35/q50/q95 reproductions.
 
-Why: saved runtime evidence is pre-fix, and this bug directly affected forecast-member `u_t` updates.
+Evidence: `docs/exdqlm_multivar_keep_guarded_repro_20260521.md`. All four lanes wrote fit outputs; q50 ended with
+state norm squared `2547.352` instead of reproducing the prior `1.125e10` failure.
 
-P0. Build the transform-regression forensic report for `44e2d60^..44e2d60`, explicitly documenting zero and near-zero
+P0 done. Build the transform-regression forensic report for `44e2d60^..44e2d60`, explicitly documenting zero and near-zero
 retrospective behavior.
 
 Why: the user-observed "worked before log-log to log1p" clue is strong and must be turned into concrete evidence, but
 the old log-log scale is not a valid active target when `log1p(cms)` can be zero or near zero.
 
-P0. Add deterministic scale-sensitivity fixtures comparing `log_log1p_cms` and `log1p_cms`, including zero and
+P0 done. Add deterministic scale-sensitivity fixtures comparing `log_log1p_cms` and `log1p_cms`, including zero and
 near-zero retrospective values.
 
 Why: this tells us whether the transform change alone can plausibly move latent moments into the pathological range.
 
-P0. Add pre-Kalman `FFF`/`QQQ` guards in warning mode first, then fail-fast mode.
+P0 partly done. Add pre-Kalman `FFF`/`QQQ` guards in warning mode first, then fail-fast mode.
 
-Why: regardless of root cause, the Kalman layer should not consume destructive pseudo-data silently.
+Why: regardless of root cause, the Kalman layer should not consume destructive pseudo-data silently. Warning-mode
+instrumentation exists and produced the q05 `E[1/u]` guard evidence; production fail-fast/damping policy remains to
+be chosen.
 
-P0. Harden `u_t` moment calculations under extreme `psi/chi`.
+P0 done for the half-order formula; P1 remains for runtime policy. Harden `u_t` moment calculations under extreme
+`psi/chi`.
 
-Why: runtime evidence shows very large `E[1/u_t]`; this is a direct pseudo-data driver and a plausible scale-sensitive
-failure point.
+Why: runtime evidence still shows a transient q05 `E[1/u_t]` burst, so the numerical formula is improved but guard
+response/tuning remains important.
 
-P1. Replace `s_t` entropy with the canonical positive-truncated normal entropy.
+P1 done. Replace `s_t` entropy with the canonical positive-truncated normal entropy.
 
 Why: likely not the direct state-explosion cause, but it contaminates ELBO/convergence diagnostics.
 
-P1. Recalibrate or damp `sigma/gamma` updates for the `log1p` scale if ablations show that fixed `sigma/gamma`
+P0 next. Recalibrate or damp `sigma/gamma` updates for the `log1p` scale if ablations show that fixed `sigma/gamma`
 stabilizes suspect lanes.
 
 Why: the old compressed scale may have tuned priors and optimizers implicitly.
 
-P1. Add trend/transfer/discrepancy decomposition traces.
+P1 next. Add trend/transfer/discrepancy decomposition traces.
 
 Why: identifiability may amplify instability even if it does not originate it.
 
 P2. Extend the compiled Kalman fixture to ragged forecast keep with `J=2` and `ppx>0`.
 
 Why: current Kalman evidence is encouraging but incomplete for the full active keep workflow.
+
+P2. Fix or gate the post-stage truth-window figure path.
+
+Why: the guarded fit outputs completed, but the wrapper exited nonzero because post-stage CRPS/figure code had no
+USGS truth rows available at/after `2022-12-26`.
 
 ## Decision Tree
 
@@ -697,8 +752,11 @@ Why: current Kalman evidence is encouraging but incomplete for the full active k
 
 ## Current Bottom Line
 
-It is still not proven that the transform change is the sole reason the algorithm fails. But it is now the highest
-value regression hypothesis to test while keeping `log1p_cms` as the implementation target because:
+It is still not proven that the transform change was the sole reason the algorithm failed. The first guarded
+post-repair reproduction shows that the current `log1p_cms` path can be made dramatically more stable, but it does
+not isolate which repair was decisive because several changes were active together.
+
+The transform-regression hypothesis remains important because:
 
 1. the reported behavior changed after the transform rewrite,
 2. git history shows a precise policy flip in `44e2d60`,
@@ -706,8 +764,10 @@ value regression hypothesis to test while keeping `log1p_cms` as the implementat
 4. the active latent and pseudo-data formulas are directly residual-sensitive,
 5. saved runtime evidence shows the bad lanes failing through exactly those residual-sensitive objects.
 6. the old log-log path has a real near-zero defect for retrospectives, so it should not be restored as the fix.
+7. the guarded run still had a q05 latent-tail warning burst, which is exactly the kind of scale-sensitive issue that
+   could be hidden by the old compressed transform.
 
 The repair strategy should therefore not start with broad production reruns or a blind transform revert. It should
-start with deterministic scale-sensitivity fixtures, latent moment hardening, pre-Kalman pseudo-data guards, and
-small q-lane ablations that identify whether `sigma/gamma`, `s_t/u_t`, pseudo-data, Kalman, or identifiability is the
-first layer to break under the intended `log1p` contract.
+continue with fixed/free `sigma/gamma` and latent ablations, q05 guard-response tuning, component decomposition, and
+ragged-forecast Kalman fixture coverage. Only after those pass should the repaired `log1p` workflow be promoted to
+broader production campaigns.
