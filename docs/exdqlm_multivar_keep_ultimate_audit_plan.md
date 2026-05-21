@@ -57,6 +57,8 @@ Audit execution artifacts produced from this plan:
 8. final findings:
    - [exdqlm_multivar_keep_final_findings.md](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_final_findings.md)
    - [exdqlm_multivar_keep_final_mismatch_matrix.csv](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_final_mismatch_matrix.csv)
+9. repair and transform-regression plan:
+   - [exdqlm_multivar_keep_repair_and_transform_regression_plan.md](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_repair_and_transform_regression_plan.md)
 
 One production-code defect was found and fixed locally during execution: forecast-member `update_uts`
 now indexes forecast columns with `TT_sub` instead of bare `T` in

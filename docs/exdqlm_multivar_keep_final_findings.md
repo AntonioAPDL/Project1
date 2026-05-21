@@ -97,6 +97,12 @@ The q50 log records a terminal guard condition:
 
 ## Prioritized Fix List
 
+The implementation and testing roadmap for these fixes is now tracked in
+`docs/exdqlm_multivar_keep_repair_and_transform_regression_plan.md`. That plan also adds the transform-regression
+hypothesis: the workflow reportedly behaved better before commit `44e2d60` changed the internal analysis contract
+from `log_log1p_cms` to `log1p_cms`, so the next repair cycle must explicitly test scale sensitivity rather than
+assuming the current instability is unrelated to the transform rewrite.
+
 P0. Validate the forecast `update_uts` indexing fix with narrow q05/q35/q50/q95 reproductions. Do not launch broad
 production. Save iteration snapshots for forecast `E[u]`, `E[1/u]`, `FFF_forecast`, `QQQ_forecast`, and state norm.
 
