@@ -154,7 +154,7 @@ Evidence:
 
 ### T2. Fixed/Free `sigma/gamma` Ablations
 
-Status: prepared, v3 pending launch
+Status: fixed-gamsig v3 complete; causal comparison still pending latent ablations
 
 Purpose: determine whether the `sigma/gamma` approximation or calibration is the decisive instability source under
 the current `log1p_cms` scale.
@@ -204,9 +204,37 @@ Prepared condition:
 - original launch, retained only as invalid/stopped evidence:
   `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_ablation_log1p_q05_q35_q50_q95_20260521_fixed_gamsig/control/launch_multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dfall999999_datastart2017_ready_exdqlm_multivar_keep__ablation_log1p_q05_q35_q50_q95_20260521_fixed_gamsig.sh`
 
+Valid fixed-gamsig v3 evidence:
+
+- run root:
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_ablation_log1p_q05_q35_q50_q95_v3_20260521_fixed_gamsig/runs/multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dfall999999_datastart2017_ready_exdqlm_multivar_keep__ablation_log1p_q05_q35_q50_q95_v3_20260521_fixed_gamsig`
+- fit status:
+  `reports/exdqlm_keep_guarded_repro_ablation_log1p_q05_q35_q50_q95_v3_20260521_fixed_gamsig/live_monitor_final/LIVE_STATUS.md`
+- runtime stability:
+  `reports/exdqlm_keep_runtime_stability_ablation_log1p_q05_q35_q50_q95_v3_20260521_fixed_gamsig/`
+- curated evidence:
+  `reports/exdqlm_keep_curated_evidence_ablation_log1p_q05_q35_q50_q95_v3_20260521_fixed_gamsig/`
+- decomposition evidence:
+  `reports/exdqlm_keep_decomposition_ablation_log1p_q05_q35_q50_q95_v3_20260521_fixed_gamsig/`
+
+Observed result:
+
+- all four lanes wrote `.RData` with `gamsig_update_iters=0` and `frozen=true`;
+- no pseudo-data guard rows were written;
+- terminal history state norm squared was `962.241` for q05, `1956.977` for q35, `2320.214` for q50, and
+  `8875.863` for q95;
+- saved-output `E[1/u]` stayed under the current `5000` guard cap, with largest historical maxima around
+  q95/source1 `4818.429` and q05/source1 `4401.679`.
+
+Interpretation so far:
+
+- Freezing `sigma/gamma` prevents the q05 live guard burst seen in the guarded control from appearing as a
+  pseudo-data guard event, but saved-output latent tails are not uniformly smaller than the control. Treat this as
+  evidence for `sigma/gamma`/latent interaction, not proof that the latent formulas are irrelevant.
+
 ### T3. Fixed/Free Latent Moment Ablations
 
-Status: prepared, v3 pending launch
+Status: latent-freeze v3 running; latent-cap pending
 
 Purpose: determine whether the `s_t/u_t` updates remain the dominant source of instability after numerical
 hardening.
@@ -236,6 +264,14 @@ Prepared conditions:
 - v3 matrix launch:
   `reports/exdqlm_keep_ablation_matrix_ablation_log1p_q05_q35_q50_q95_v3_20260521/launch_ablation_matrix_ablation_log1p_q05_q35_q50_q95_v3_20260521.sh`
 
+Current latent-freeze v3 evidence:
+
+- run root:
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze/runs/multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dfall999999_datastart2017_ready_exdqlm_multivar_keep__ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze`
+- logs confirm `latent_ablation_policy mode=freeze` and repeated `action=reuse_previous_latents`.
+- early/mid fit signal: q05 and q95 state norms remain near `8e6` while q35/q50 are much lower and variable.
+- no `.RData` outputs or pseudo-data guard CSVs were present at the last tracker update.
+
 ### T4. q05 Guard-Response Policy
 
 Status: pending
@@ -258,7 +294,7 @@ Acceptance criteria:
 
 ### T5. Trend/Transfer/Discrepancy Decomposition
 
-Status: pending
+Status: implemented; fixed-gamsig runtime validation complete
 
 Purpose: verify the stable outputs are scientifically interpretable, not merely finite.
 
@@ -277,9 +313,26 @@ Acceptance criteria:
 3. If identifiability is questionable, document whether it appears only under unstable inputs or also under healthy
    pseudo-data.
 
+Implementation and evidence:
+
+- script:
+  `repro/audits/exdqlm_keep_decomposition_audit.R`
+- deterministic test:
+  `tests/testthat/test_exdqlm_keep_decomposition_audit.R`
+- fixed-gamsig evidence:
+  `reports/exdqlm_keep_decomposition_ablation_log1p_q05_q35_q50_q95_v3_20260521_fixed_gamsig/`
+
+Current result:
+
+- history and forecast reconstructions match populated `new.theta.out$exps` rows to numerical tolerance
+  (`<= 8.9e-16` in the fixed-gamsig report);
+- retained transfer `zeta` is finite in history and both forecast segments;
+- q95 has the largest median component magnitudes among fixed-gamsig lanes, especially forecast `zeta` and
+  source-1 discrepancy, so identifiability remains a scientific monitoring concern even when pseudo-data are finite.
+
 ### T6. Ragged Forecast Kalman Fixture
 
-Status: pending
+Status: done
 
 Purpose: close the remaining compiled Kalman/RTS contract gap for the active `keep` structure.
 
@@ -296,6 +349,22 @@ Acceptance criteria:
 1. Compiled and reference outputs agree within defined tolerance.
 2. Forecast segment transition logic is explicitly exercised.
 3. Failures are localized to a minimal fixture before any production run.
+
+Evidence:
+
+- script:
+  `repro/audits/run_exdqlm_keep_kalman_fixture.R`
+- deterministic test:
+  `tests/testthat/test_exdqlm_keep_kalman_fixture.R`
+- report:
+  `reports/exdqlm_multivar_keep_kalman_fixture_20260521_ragged/`
+
+Result:
+
+- fixture uses `J=2`, retained `ppx=1`, and ragged horizons `k_ens=c(5,2)`;
+- compiled-vs-reference max absolute differences are below `1e-8` for historical and forecast filtered and
+  smoothed means/covariances;
+- covariance symmetry checks are exact at reported precision and minimum eigenvalues are positive in the fixture.
 
 ### T7. Post-Stage Truth-Window Gate
 
@@ -370,6 +439,11 @@ Decision outcomes:
 | 2026-05-21 | `python3 repro/audits/prepare_exdqlm_keep_ablation_matrix.py --tag ablation_log1p_q05_q35_q50_q95_v3_20260521 --conditions fixed-gamsig,latent-freeze,latent-cap-e-inv-u --quantiles 0.05,0.35,0.5,0.95 --max-iter 3000 --workers 4 --guard-mode warn --post-save-objective off` | v3 matrix prepared; fixed-gamsig generated YAML verified with refresh schedule disabled |
 | 2026-05-21 | fixed-gamsig v3 runtime | fit wrote q05/q35/q50/q95 `.RData`; no pseudo-data guard rows; post failed on known no-truth CRPS path before T7 patch |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_crps_tables.R')"` after T7 patch | pass, 64 expectations |
+| 2026-05-21 | `Rscript --vanilla repro/audits/run_exdqlm_keep_kalman_fixture.R reports/exdqlm_multivar_keep_kalman_fixture_20260521_ragged` | pass; ragged keep fixture with `J=2`, `ppx=1`, and compiled-vs-reference smoother checks |
+| 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_keep_kalman_fixture.R')"` | pass, 7 expectations |
+| 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_keep_decomposition_audit.R')"` | pass, 6 expectations |
+| 2026-05-21 | fixed-gamsig v3 runtime stability and curated evidence bundle | pass; report paths recorded in T2 |
+| 2026-05-21 | fixed-gamsig v3 decomposition audit | pass; history/forecast reconstructions match `new.theta.out$exps` to numerical tolerance |
 
 ## Change Log
 
@@ -379,3 +453,5 @@ Decision outcomes:
 | 2026-05-21 | Completed `T0` curated evidence bundle and `T1` ablation harness design; prepared `T2/T3` ablation matrix | done |
 | 2026-05-21 | Found and fixed fixed-gamsig ablation wiring so freeze policy is written into generated YAML, not only wrapper env | done |
 | 2026-05-21 | Implemented post-stage missing-truth gate for CRPS exports | done |
+| 2026-05-21 | Extended the keep Kalman fixture to retained-transfer ragged forecast smoothing and added a deterministic test | done |
+| 2026-05-21 | Added a reusable decomposition audit for trend, transfer, discrepancy, and reconstruction checks | done |
