@@ -299,7 +299,7 @@ Acceptance criteria:
 
 ### T7. Post-Stage Truth-Window Gate
 
-Status: pending
+Status: implemented, runtime validation pending on remaining ablations
 
 Purpose: prevent successful isolated fits from being reported as failed whole-workflow runs when post-stage figures
 need truth rows that are unavailable after the cutoff.
@@ -315,6 +315,17 @@ Acceptance criteria:
 
 1. Post-stage no-truth cases exit cleanly or with an explicitly classified partial status.
 2. Existing successful post workflows are not regressed.
+
+Implementation:
+
+- `R/environmetrics/02_helpers_core.R` now provides `post_truth_from_start_or_na(...)`, which returns an all-`NA`
+  truth vector and an explicit availability row instead of stopping when USGS truth is missing after the forecast
+  start.
+- `R/environmetrics/40_figures_smoke_fast.R` and `R/environmetrics/40_figures.R` export
+  `crps_truth_availability` alongside CRPS tables.
+- Fixed-gamsig v3 fit wrote all four `.RData` files, then post failed before this patch with
+  `[crps.glofas.truth_TRUTH_MISSING] no USGS truth rows available at/after 2022-12-26`; this is the target runtime
+  case for the patch.
 
 ### T8. Promotion Decision
 
@@ -357,6 +368,8 @@ Decision outcomes:
 | 2026-05-21 | `python3 repro/audits/prepare_exdqlm_keep_ablation_matrix.py --tag ablation_log1p_q05_q35_q50_q95_v2_20260521 --conditions fixed-gamsig,latent-freeze,latent-cap-e-inv-u --quantiles 0.05,0.35,0.5,0.95 --max-iter 3000 --workers 4 --guard-mode warn --post-save-objective off` | v2 matrix prepared; fixed-gamsig generated YAML verified with `warmup_freeze_iters=3005` and `min_update_iters=0` |
 | 2026-05-21 | fixed-gamsig matrix launch v2 | failed before fit; validator rejected enabled `state_refresh_schedule` with `warmup_freeze_iters=3005` |
 | 2026-05-21 | `python3 repro/audits/prepare_exdqlm_keep_ablation_matrix.py --tag ablation_log1p_q05_q35_q50_q95_v3_20260521 --conditions fixed-gamsig,latent-freeze,latent-cap-e-inv-u --quantiles 0.05,0.35,0.5,0.95 --max-iter 3000 --workers 4 --guard-mode warn --post-save-objective off` | v3 matrix prepared; fixed-gamsig generated YAML verified with refresh schedule disabled |
+| 2026-05-21 | fixed-gamsig v3 runtime | fit wrote q05/q35/q50/q95 `.RData`; no pseudo-data guard rows; post failed on known no-truth CRPS path before T7 patch |
+| 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_crps_tables.R')"` after T7 patch | pass, 64 expectations |
 
 ## Change Log
 
@@ -365,3 +378,4 @@ Decision outcomes:
 | 2026-05-21 | Created living repair tracker with curated evidence, ablation, guard-policy, decomposition, Kalman, post-stage, and promotion gates | done |
 | 2026-05-21 | Completed `T0` curated evidence bundle and `T1` ablation harness design; prepared `T2/T3` ablation matrix | done |
 | 2026-05-21 | Found and fixed fixed-gamsig ablation wiring so freeze policy is written into generated YAML, not only wrapper env | done |
+| 2026-05-21 | Implemented post-stage missing-truth gate for CRPS exports | done |

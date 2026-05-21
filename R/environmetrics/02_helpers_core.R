@@ -1636,6 +1636,58 @@ post_crps_quantile_approx <- function(obs, sample_mat, context = "crps.quantile"
   )
 }
 
+post_truth_from_start_or_na <- function(
+  usgs_dates,
+  usgs_truth,
+  forecast_start_date,
+  horizon,
+  context = "truth"
+) {
+  hz <- as.integer(horizon[[1L]])
+  if (!is.finite(hz) || hz < 1L) {
+    stop(sprintf("[%s_HORIZON] horizon must be a positive integer.", context), call. = FALSE)
+  }
+
+  start_date <- as.Date(forecast_start_date)
+  dates <- as.Date(usgs_dates)
+  truth_all <- as.numeric(usgs_truth)
+  idx <- which(!is.na(dates) & dates >= start_date)
+
+  status <- "available"
+  message <- ""
+  truth <- numeric(0)
+
+  if (length(idx) == 0L) {
+    status <- "missing"
+    message <- sprintf("no USGS truth rows available at/after %s; CRPS obs padded with NA", as.character(start_date))
+    warning(sprintf("[%s_TRUTH_MISSING] %s.", context, message), call. = FALSE)
+    truth <- rep(NA_real_, hz)
+  } else {
+    truth <- truth_all[idx]
+    if (length(truth) < hz) {
+      status <- "short"
+      message <- sprintf("truth length (%d) shorter than horizon (%d); padded with NA", length(truth), hz)
+      warning(sprintf("[%s_TRUTH_SHORT] %s.", context, message), call. = FALSE)
+      truth <- c(truth, rep(NA_real_, hz - length(truth)))
+    } else {
+      truth <- truth[seq_len(hz)]
+    }
+  }
+
+  availability <- data.frame(
+    context = as.character(context),
+    forecast_start_date = as.character(start_date),
+    horizon_days = as.integer(hz),
+    truth_rows_available = as.integer(length(idx)),
+    truth_rows_used = as.integer(sum(is.finite(as.numeric(truth)))),
+    status = as.character(status),
+    message = as.character(message),
+    stringsAsFactors = FALSE
+  )
+
+  list(truth = as.numeric(truth), availability = availability)
+}
+
 post_crps_synth_model_meta <- function(
   family = c("univar", "multivar", "ndlm", "ndlm_main", "ndlm_univar"),
   likelihood_mode = "exal",

@@ -26,6 +26,38 @@ test_that("post_crps_quantile_approx returns zero for perfect forecast samples",
   expect_equal(out$tau_rule, "k_over_m_plus_1")
 })
 
+test_that("post_truth_from_start_or_na records missing and short truth without stopping", {
+  missing <- expect_warning(
+    post_truth_from_start_or_na(
+      usgs_dates = as.Date("2022-12-20") + 0:2,
+      usgs_truth = c(1, 2, 3),
+      forecast_start_date = as.Date("2022-12-26"),
+      horizon = 4,
+      context = "ut.truth.missing"
+    ),
+    "TRUTH_MISSING"
+  )
+  expect_equal(missing$truth, rep(NA_real_, 4))
+  expect_equal(missing$availability$status, "missing")
+  expect_equal(missing$availability$truth_rows_available, 0L)
+  expect_equal(missing$availability$horizon_days, 4L)
+
+  short <- expect_warning(
+    post_truth_from_start_or_na(
+      usgs_dates = as.Date("2022-12-26") + 0:1,
+      usgs_truth = c(10, 11),
+      forecast_start_date = as.Date("2022-12-26"),
+      horizon = 4,
+      context = "ut.truth.short"
+    ),
+    "TRUTH_SHORT"
+  )
+  expect_equal(short$truth, c(10, 11, NA, NA))
+  expect_equal(short$availability$status, "short")
+  expect_equal(short$availability$truth_rows_available, 2L)
+  expect_equal(short$availability$truth_rows_used, 2L)
+})
+
 test_that("post_crps_model_tables returns expected schemas and horizon-aligned rows", {
   set.seed(101)
   sample_mat <- matrix(rnorm(6 * 4, mean = 1.5, sd = 0.2), nrow = 6, ncol = 4)

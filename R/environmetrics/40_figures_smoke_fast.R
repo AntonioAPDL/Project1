@@ -2011,27 +2011,18 @@ if (crps_exports_enabled && posterior_table_exports_enabled) {
       as.Date(San_Lorenzo_Daily_USGS_R$time)
     }
     usgs_truth_all <- as.numeric(San_Lorenzo_Daily_USGS_R$data0)
+    crps_truth_availability_rows <- list()
 
     truth_from_start <- function(horizon, context) {
-      hz <- as.integer(horizon[[1L]])
-      if (!is.finite(hz) || hz < 1L) {
-        stop(sprintf("[%s_HORIZON] horizon must be a positive integer.", context), call. = FALSE)
-      }
-      idx <- which(!is.na(usgs_date_col) & usgs_date_col >= crps_forecast_start)
-      if (length(idx) == 0L) {
-        stop(sprintf("[%s_TRUTH_MISSING] no USGS truth rows available at/after %s.", context, as.character(crps_forecast_start)), call. = FALSE)
-      }
-      truth <- usgs_truth_all[idx]
-      if (length(truth) < hz) {
-        warning(
-          sprintf("[%s_TRUTH_SHORT] truth length (%d) shorter than horizon (%d); padding with NA.", context, length(truth), hz),
-          call. = FALSE
-        )
-        truth <- c(truth, rep(NA_real_, hz - length(truth)))
-      } else {
-        truth <- truth[seq_len(hz)]
-      }
-      truth
+      resolved <- post_truth_from_start_or_na(
+        usgs_dates = usgs_date_col,
+        usgs_truth = usgs_truth_all,
+        forecast_start_date = crps_forecast_start,
+        horizon = horizon,
+        context = context
+      )
+      crps_truth_availability_rows[[length(crps_truth_availability_rows) + 1L]] <<- resolved$availability
+      resolved$truth
     }
 
     crps_per_time_rows <- list()
@@ -2456,6 +2447,19 @@ if (crps_exports_enabled && posterior_table_exports_enabled) {
       posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, crps_export$manifest)
     } else {
       warning("[CRPS_EXPORT_SKIP] No CRPS rows were produced for export.", call. = FALSE)
+    }
+
+    if (length(crps_truth_availability_rows) > 0L) {
+      crps_truth_availability_df <- do.call(rbind, crps_truth_availability_rows)
+      rownames(crps_truth_availability_df) <- NULL
+      truth_export <- post_export_tables(
+        tables = list(crps_truth_availability = crps_truth_availability_df),
+        output_dir = posterior_table_output_dir,
+        formats = posterior_table_formats,
+        keep_na = posterior_table_keep_na,
+        numeric_digits = 17L
+      )
+      posterior_table_export_manifest <<- rbind(posterior_table_export_manifest, truth_export)
     }
 
     multivar_gamma_sigma <- smoke_build_multivar_gamma_sigma_quantiles()
