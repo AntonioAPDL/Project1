@@ -1792,6 +1792,38 @@ new.max = Inf
 seq.gamma = new.gamsig.out$E.gam
 seq.sigma = new.gamsig.out$E.sigma
 ###########################################################################################
+disc_w_safe_mills_pos <- function(z) {
+  z <- as.numeric(z)
+  mills <- exp(stats::dnorm(z, log = TRUE) - stats::pnorm(z, log.p = TRUE))
+  left_tail <- is.finite(z) & z < -37
+  mills[left_tail] <- -z[left_tail] + 1 / pmax(-z[left_tail], 1e-12)
+  right_tail <- is.finite(z) & z > 37
+  mills[right_tail] <- 0
+  mills[!is.finite(mills)] <- 0
+  mills
+}
+
+disc_w_pos_truncnorm_moments <- function(mu, sig2) {
+  mu <- as.numeric(mu)
+  sig2 <- pmax(as.numeric(sig2), 1e-300)
+  sig <- sqrt(sig2)
+  z <- mu / sig
+  mills <- disc_w_safe_mills_pos(z)
+  mean <- mu + sig * mills
+  mean[!is.finite(mean)] <- 0
+  mean <- pmax(mean, 0)
+  variance <- sig2 * (1 - z * mills - mills^2)
+  variance[!is.finite(variance) | variance < 0] <- 0
+  second <- variance + mean^2
+  entropy <- 0.5 * log(2 * pi * exp(1) * sig2) +
+    stats::pnorm(z, log.p = TRUE) -
+    0.5 * z * mills
+  bad_entropy <- !is.finite(entropy)
+  entropy[bad_entropy] <- 0.5 * log(2 * pi * exp(1) * sig2[bad_entropy])
+  second[!is.finite(second) | second < 0] <- pmax(mean[!is.finite(second) | second < 0]^2, 0)
+  list(mean = mean, variance = variance, second = second, entropy = entropy)
+}
+
 update_sts<-function(y, exps,inv.uts,c2.invb.absgam2.sigma,c.invb.absgam,c.a.invb.absgam, TTT){
   if (isTRUE(DISC_W_AL_MODE)) {
     z <- rep(0, TTT)
@@ -1803,29 +1835,39 @@ update_sts<-function(y, exps,inv.uts,c2.invb.absgam2.sigma,c.invb.absgam,c.a.inv
   denom <- pmax(1 + c2.invb.absgam2.sigma * inv.uts, 1e-10)
   s.sig2<-1/denom; s.sig = sqrt(pmax(s.sig2, 1e-10))
   s.mu<-s.sig2*(c.invb.absgam*(y-exps)*inv.uts-c.a.invb.absgam)
-  #
-  E.sts = truncnorm::etruncnorm(a=rep(0,TTT),b=rep(Inf,TTT),mean=s.mu,sd=s.sig)
-  V.sts = truncnorm::vtruncnorm(a=rep(0,TTT),b=rep(Inf,TTT),mean=s.mu,sd=s.sig)
-  E.sts2 = s.mu^2 + s.sig2 + s.mu*s.sig*exp(stats::dnorm(-s.mu/s.sig,log = TRUE)-stats::pnorm(s.mu/s.sig,log.p = TRUE))
+  moments <- disc_w_pos_truncnorm_moments(s.mu, s.sig2)
+  E.sts <- moments$mean
+  E.sts2 <- moments$second
   E.sts[!is.finite(E.sts)] <- pmax(s.mu[!is.finite(E.sts)], 0)
   E.sts2[!is.finite(E.sts2)] <- pmax(E.sts[!is.finite(E.sts2)]^2 + s.sig2[!is.finite(E.sts2)], 1e-10)
   return(list(sts.sig2=s.sig2,sts.mu=s.mu,
               E.sts=E.sts,E.sts2=E.sts2,
-              tot.entrop = sum(0.5*log2(2*pi*exp(1)*s.sig2) - 1 )))
+              tot.entrop = sum(moments$entropy)))
 }
 
-Kprime <- function(x){
-sqrt(pi/2/x) * expint_E1(2*x) * exp(x)
+Kprime_over_K_half <- function(x) {
+  x <- as.numeric(x)
+  x[!is.finite(x) | x <= 0] <- 1e-12
+  out <- rep(NA_real_, length(x))
+  large <- x > 50
+  out[large] <- 1 / (2 * x[large])
+  if (any(!large)) {
+    z <- x[!large]
+    out[!large] <- expint_E1(2 * z) * exp(2 * z)
+  }
+  out[!is.finite(out)] <- 0
+  out
 }
 
 gig_entrop <- function(a,b){
-nu <- 0.5
-s.ab <- sqrt(a*b)
-K1 <- besselK(s.ab, nu)
-K2 <- besselK(s.ab, nu+1)
-K3 <- besselK(s.ab, nu-1)
-y <- 0.5*log(b/a) + log(2*K1) - (nu-1)*Kprime(s.ab)/K1 + s.ab/2/K1*(K2 + K3)
-return(y)
+  a <- pmax(as.numeric(a), 1e-300)
+  b <- pmax(as.numeric(b), 1e-300)
+  s.ab <- sqrt(a*b)
+  log_k_half <- 0.5 * (log(pi) - log(2 * s.ab)) - s.ab
+  y <- 0.5*log(b/a) + log(2) + log_k_half +
+    0.5*Kprime_over_K_half(s.ab) + s.ab + 0.5
+  y[!is.finite(y)] <- 0
+  return(y)
 }
 
 ###########################################################################################
@@ -1838,35 +1880,16 @@ update_uts<-function(y, exps,exps2,sts,sts2,inv.sigma,a2.invb.inv.sigma,invb.inv
   u.psi[!is.finite(u.psi) | u.psi <= 0] <- 1e-6
   u.chi[!is.finite(u.chi) | u.chi <= 0] <- 1e-6
 
-  bessel_ratio_safe <- function(z, nu) {
-    zz <- as.numeric(z)
-    zz[!is.finite(zz) | zz <= 0] <- 1e-8
-    vapply(zz, function(val) {
-      out <- tryCatch(
-        HyperbolicDist::besselRatio(val, nu, 1, Inf),
-        error = function(e) NA_real_
-      )
-      if (!is.finite(out)) 1 else out
-    }, FUN.VALUE = numeric(1))
-  }
-
   s.ab <- sqrt(pmax(u.psi * u.chi, 1e-12))
-  ratio <- bessel_ratio_safe(s.ab, u.lambda)
 
-  E.uts = sqrt(u.chi/u.psi) * ratio
-  E.inv.uts = sqrt(u.psi/u.chi) * ratio - 2*u.lambda/u.chi
+  E.uts = sqrt(u.chi/u.psi) + 1/u.psi
+  E.inv.uts = sqrt(u.psi/u.chi)
   E.uts[!is.finite(E.uts)] <- 1e-10
   E.inv.uts[!is.finite(E.inv.uts)] <- 1e-10
   E.uts <- pmax(E.uts, 1e-10)
   E.inv.uts <- pmax(E.inv.uts, 1e-10)
 
-  nu <- 0.5
-  K1 <- besselK(s.ab, nu)
-  K1[!is.finite(K1) | K1 <= 0] <- 1e-12
-  kp <- Kprime(s.ab)
-  kp[!is.finite(kp)] <- 0
-
-  E.log.uts <- sum(kp/K1 - 0.5*log(u.psi/u.chi))
+  E.log.uts <- sum(Kprime_over_K_half(s.ab) - 0.5*log(u.psi/u.chi))
   if (!is.finite(E.log.uts)) E.log.uts <- 0
   tot.ent <- sum(gig_entrop(u.psi,u.chi))
   if (!is.finite(tot.ent)) tot.ent <- 0
@@ -2990,6 +3013,143 @@ disc_w_validate_cpp_contract <- function(
   invisible(TRUE)
 }
 
+disc_w_extract_diag_values <- function(x) {
+  if (is.list(x) && !is.data.frame(x)) {
+    return(unlist(lapply(x, disc_w_extract_diag_values), use.names = FALSE))
+  }
+  d <- dim(x)
+  if (!is.null(d) && length(d) == 3L && d[[1L]] == d[[2L]]) {
+    return(unlist(lapply(seq_len(d[[3L]]), function(i) diag(x[, , i, drop = TRUE])), use.names = FALSE))
+  }
+  as.numeric(x)
+}
+
+disc_w_guard_summary <- function(values, quantity, block, iter, context_label, abs_cap = Inf, positive_required = FALSE) {
+  raw <- as.numeric(values)
+  finite <- raw[is.finite(raw)]
+  cap_exceed <- if (is.finite(abs_cap)) sum(abs(finite) > abs_cap) else 0L
+  nonpositive <- if (isTRUE(positive_required)) sum(finite <= 0) else 0L
+  status <- "ok"
+  if (length(finite) < length(raw)) {
+    status <- "nonfinite"
+  } else if (nonpositive > 0L) {
+    status <- "nonpositive"
+  } else if (cap_exceed > 0L) {
+    status <- "cap_exceeded"
+  }
+  data.frame(
+    p0 = as.character(p0),
+    iter = as.integer(iter),
+    context = as.character(context_label),
+    quantity = quantity,
+    block = block,
+    n = length(raw),
+    finite_n = length(finite),
+    nonfinite_n = length(raw) - length(finite),
+    positive_required = isTRUE(positive_required),
+    nonpositive_n = as.integer(nonpositive),
+    min = if (length(finite)) min(finite) else NA_real_,
+    max = if (length(finite)) max(finite) else NA_real_,
+    max_abs = if (length(finite)) max(abs(finite)) else NA_real_,
+    abs_cap = as.numeric(abs_cap),
+    cap_exceed_n = as.integer(cap_exceed),
+    status = status,
+    stringsAsFactors = FALSE
+  )
+}
+
+disc_w_append_guard_report <- function(rows, report_dir) {
+  if (!nzchar(report_dir) || is.null(rows) || !nrow(rows)) return(invisible(FALSE))
+  dir.create(report_dir, recursive = TRUE, showWarnings = FALSE)
+  path <- file.path(report_dir, "pseudodata_guard_events.csv")
+  utils::write.table(
+    rows,
+    file = path,
+    sep = ",",
+    row.names = FALSE,
+    col.names = !file.exists(path),
+    append = file.exists(path)
+  )
+  invisible(TRUE)
+}
+
+disc_w_check_pseudodata_guard <- function(
+  iter,
+  context_label,
+  FFF,
+  QQQ,
+  FFF_forecast,
+  QQQ_forecast,
+  sts_out,
+  uts_out,
+  sts_out_f,
+  uts_out_f
+) {
+  if (!isTRUE(DISC_PSEUDODATA_GUARD_ENABLED)) return(invisible(NULL))
+  rows <- list()
+  add <- function(values, quantity, block, cap, positive = FALSE, diag_values = FALSE) {
+    if (is.null(values)) return(invisible(NULL))
+    vals <- if (isTRUE(diag_values)) disc_w_extract_diag_values(values) else as.numeric(unlist(values, use.names = FALSE))
+    rows[[length(rows) + 1L]] <<- disc_w_guard_summary(
+      vals,
+      quantity = quantity,
+      block = block,
+      iter = iter,
+      context_label = context_label,
+      abs_cap = cap,
+      positive_required = positive
+    )
+    invisible(NULL)
+  }
+
+  add(FFF, "FFF", "history", DISC_PSEUDODATA_FFF_ABS_CAP)
+  add(QQQ, "QQQ_diag", "history", DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP, positive = TRUE, diag_values = TRUE)
+  add(FFF_forecast, "FFF_forecast", "forecast", DISC_PSEUDODATA_FFF_ABS_CAP)
+  add(QQQ_forecast, "QQQ_forecast_diag", "forecast", DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP, positive = TRUE, diag_values = TRUE)
+  add(sts_out$E.sts, "E_sts", "history", DISC_PSEUDODATA_E_S_ABS_CAP, positive = TRUE)
+  add(sts_out$E.sts2, "E_sts2", "history", DISC_PSEUDODATA_E_S2_ABS_CAP, positive = TRUE)
+  add(uts_out$E.uts, "E_uts", "history", DISC_PSEUDODATA_E_U_ABS_CAP, positive = TRUE)
+  add(uts_out$E.inv.uts, "E_inv_uts", "history", DISC_PSEUDODATA_E_INV_U_ABS_CAP, positive = TRUE)
+  add(sts_out_f$E.sts, "E_sts", "forecast", DISC_PSEUDODATA_E_S_ABS_CAP, positive = TRUE)
+  add(sts_out_f$E.sts2, "E_sts2", "forecast", DISC_PSEUDODATA_E_S2_ABS_CAP, positive = TRUE)
+  add(uts_out_f$E.uts, "E_uts", "forecast", DISC_PSEUDODATA_E_U_ABS_CAP, positive = TRUE)
+  add(uts_out_f$E.inv.uts, "E_inv_uts", "forecast", DISC_PSEUDODATA_E_INV_U_ABS_CAP, positive = TRUE)
+
+  out <- do.call(rbind, rows)
+  bad <- out[out$status != "ok", , drop = FALSE]
+  if (nrow(bad)) {
+    disc_w_append_guard_report(bad, DISC_PSEUDODATA_GUARD_REPORT_DIR)
+    for (i in seq_len(nrow(bad))) {
+      cat(sprintf(
+        "[pseudodata_guard] mode=%s p0=%s iter=%d context=%s quantity=%s block=%s status=%s max_abs=%g cap=%g nonfinite=%d nonpositive=%d cap_exceed=%d\n",
+        DISC_PSEUDODATA_GUARD_MODE,
+        as.character(p0),
+        as.integer(iter),
+        as.character(context_label),
+        bad$quantity[[i]],
+        bad$block[[i]],
+        bad$status[[i]],
+        as.numeric(bad$max_abs[[i]]),
+        as.numeric(bad$abs_cap[[i]]),
+        as.integer(bad$nonfinite_n[[i]]),
+        as.integer(bad$nonpositive_n[[i]]),
+        as.integer(bad$cap_exceed_n[[i]])
+      ))
+    }
+    flush.console()
+    if (identical(DISC_PSEUDODATA_GUARD_MODE, "fail")) {
+      stop(sprintf(
+        "pseudodata guard failed for p0=%s iter=%d context=%s: %s",
+        as.character(p0),
+        as.integer(iter),
+        as.character(context_label),
+        paste(sprintf("%s/%s=%s", bad$quantity, bad$block, bad$status), collapse = "; ")
+      ), call. = FALSE)
+    }
+  }
+  invisible(out)
+}
+
 ensembles_forecast <- disc_w_concat_horizon_segments(ensembles, "ensembles")
 ensembles_forecast <- lapply(ensembles_forecast, t)
 #############################################################################################################################################
@@ -3277,7 +3437,35 @@ state_hold_until_iter <- 0L
 state_guard_count <- 0L
 last_state_guard_iter <- NA_integer_
 last_state_guard_reason <- ""
+
+DISC_PSEUDODATA_GUARD_ENABLED <- disc_env_flag("DISC_PSEUDODATA_GUARD_ENABLED", default = TRUE)
+DISC_PSEUDODATA_GUARD_MODE <- disc_env_choice(
+  "DISC_PSEUDODATA_GUARD_MODE",
+  choices = c("warn", "fail"),
+  default = "warn"
+)
+DISC_PSEUDODATA_GUARD_REPORT_DIR <- Sys.getenv("DISC_PSEUDODATA_GUARD_REPORT_DIR", "")
+DISC_PSEUDODATA_FFF_ABS_CAP <- disc_env_pos_num("DISC_PSEUDODATA_FFF_ABS_CAP", default = 1000)
+DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP <- disc_env_pos_num("DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP", default = 10000)
+DISC_PSEUDODATA_E_S_ABS_CAP <- disc_env_pos_num("DISC_PSEUDODATA_E_S_ABS_CAP", default = 1000)
+DISC_PSEUDODATA_E_S2_ABS_CAP <- disc_env_pos_num("DISC_PSEUDODATA_E_S2_ABS_CAP", default = 1e6)
+DISC_PSEUDODATA_E_U_ABS_CAP <- disc_env_pos_num("DISC_PSEUDODATA_E_U_ABS_CAP", default = 1e6)
+DISC_PSEUDODATA_E_INV_U_ABS_CAP <- disc_env_pos_num("DISC_PSEUDODATA_E_INV_U_ABS_CAP", default = 5000)
+
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+  cat(sprintf(
+    "[pseudodata_guard_policy] p0=%s enabled=%s mode=%s fff_abs_cap=%g qqq_diag_abs_cap=%g e_s_abs_cap=%g e_s2_abs_cap=%g e_u_abs_cap=%g e_inv_u_abs_cap=%g report_dir=%s\n",
+    as.character(p0),
+    ifelse(isTRUE(DISC_PSEUDODATA_GUARD_ENABLED), "true", "false"),
+    DISC_PSEUDODATA_GUARD_MODE,
+    as.numeric(DISC_PSEUDODATA_FFF_ABS_CAP),
+    as.numeric(DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP),
+    as.numeric(DISC_PSEUDODATA_E_S_ABS_CAP),
+    as.numeric(DISC_PSEUDODATA_E_S2_ABS_CAP),
+    as.numeric(DISC_PSEUDODATA_E_U_ABS_CAP),
+    as.numeric(DISC_PSEUDODATA_E_INV_U_ABS_CAP),
+    ifelse(nzchar(DISC_PSEUDODATA_GUARD_REPORT_DIR), DISC_PSEUDODATA_GUARD_REPORT_DIR, "-")
+  ))
   cat(sprintf(
     "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d\n",
     as.character(p0),
@@ -3363,18 +3551,31 @@ disc_w_materialize_theta_payload <- function(theta_out, context_label = "theta_s
   result_Q_seed <- disc_w_concat_horizon_segments(QQQ_list_seed, sprintf("QQQ_seed %s", context_label))
   QQQ_forecast_seed_vec <- lapply(result_Q_seed, t)
   QQQ_forecast_seed <- vector("list", J)
-  for (j in seq_len(J)) {
-    n_q <- dim(QQQ_forecast_seed_vec[[j]])[1]
-    m_q <- dim(QQQ_forecast_seed_vec[[j]])[2]
-    arr_q <- array(0, dim = c(n_q, n_q, m_q))
+	  for (j in seq_len(J)) {
+	    n_q <- dim(QQQ_forecast_seed_vec[[j]])[1]
+	    m_q <- dim(QQQ_forecast_seed_vec[[j]])[2]
+	    arr_q <- array(0, dim = c(n_q, n_q, m_q))
     for (k_q in seq_len(m_q)) {
       arr_q[, , k_q] <- diag(QQQ_forecast_seed_vec[[j]][, k_q])
     }
-    QQQ_forecast_seed[[j]] <- arr_q
-  }
+	    QQQ_forecast_seed[[j]] <- arr_q
+	  }
 
-  if (isTRUE(DISC_STRICT_CONTRACTS)) {
-    disc_w_validate_cpp_contract(
+	  disc_w_check_pseudodata_guard(
+	    iter = iter,
+	    context_label = sprintf("seed:%s", context_label),
+	    FFF = FFF_seed,
+	    QQQ = QQQ_seed,
+	    FFF_forecast = FFF_forecast_seed,
+	    QQQ_forecast = QQQ_forecast_seed,
+	    sts_out = new.sts.out,
+	    uts_out = new.uts.out,
+	    sts_out_f = new.sts.out_f,
+	    uts_out_f = new.uts.out_f
+	  )
+
+	  if (isTRUE(DISC_STRICT_CONTRACTS)) {
+	    disc_w_validate_cpp_contract(
       GG = GG,
       m0 = m0,
       C0 = C0,
@@ -3582,10 +3783,22 @@ while (isTRUE(FLAG) && iter < max_iter) {
         A[,,k] <- diag(QQQ_forecast_VEC[[j]][,k])
       }
       
-      # Store the array in the list
-      QQQ_forecast[[j]] <- A
-    }
-  iter_candidate <- as.integer(iter + 1L)
+	      # Store the array in the list
+	      QQQ_forecast[[j]] <- A
+	    }
+	    disc_w_check_pseudodata_guard(
+	      iter = iter,
+	      context_label = "live",
+	      FFF = FFF,
+	      QQQ = QQQ,
+	      FFF_forecast = FFF_forecast,
+	      QQQ_forecast = QQQ_forecast,
+	      sts_out = new.sts.out,
+	      uts_out = new.uts.out,
+	      sts_out_f = new.sts.out_f,
+	      uts_out_f = new.uts.out_f
+	    )
+	  iter_candidate <- as.integer(iter + 1L)
   schedule_phase <- disc_w_state_refresh_phase(
     iter_candidate = iter_candidate,
     schedule = DISC_GAMSIG_STATE_REFRESH_SCHEDULE

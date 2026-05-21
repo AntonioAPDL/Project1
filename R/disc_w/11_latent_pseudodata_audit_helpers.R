@@ -11,12 +11,22 @@ disc_w_audit_truncnorm_pos_moments <- function(mu, sig2) {
   sig <- sqrt(pmax(sig2, 1e-300))
   z <- mu / sig
   mills <- exp(stats::dnorm(z, log = TRUE) - stats::pnorm(z, log.p = TRUE))
+  left_tail <- is.finite(z) & z < -37
+  mills[left_tail] <- -z[left_tail] + 1 / pmax(-z[left_tail], 1e-12)
+  right_tail <- is.finite(z) & z > 37
+  mills[right_tail] <- 0
+  mills[!is.finite(mills)] <- 0
   mean <- mu + sig * mills
+  mean[!is.finite(mean)] <- 0
+  mean <- pmax(mean, 0)
   variance <- sig2 * (1 - z * mills - mills^2)
+  variance[!is.finite(variance) | variance < 0] <- 0
   second <- variance + mean^2
   entropy <- 0.5 * log(2 * pi * exp(1) * sig2) +
     stats::pnorm(z, log.p = TRUE) -
     0.5 * z * mills
+  bad_entropy <- !is.finite(entropy)
+  entropy[bad_entropy] <- 0.5 * log(2 * pi * exp(1) * sig2[bad_entropy])
   list(mean = mean, variance = variance, second = second, entropy = entropy)
 }
 
@@ -49,7 +59,7 @@ disc_w_audit_update_sts <- function(
   s.mu <- s.sig2 * (c_invb_absgam * (y - exps) * inv_uts - c_a_invb_absgam)
 
   moments <- disc_w_audit_truncnorm_pos_moments(s.mu, s.sig2)
-  active_entropy <- 0.5 * log2(2 * pi * exp(1) * s.sig2) - 1
+  active_entropy <- moments$entropy
 
   list(
     sts.sig2 = s.sig2,
@@ -63,19 +73,29 @@ disc_w_audit_update_sts <- function(
   )
 }
 
-disc_w_audit_Kprime_half <- function(x) {
-  sqrt(pi / (2 * x)) * expint::expint_E1(2 * x) * exp(x)
+disc_w_audit_Kprime_over_K_half <- function(x) {
+  x <- as.numeric(x)
+  x[!is.finite(x) | x <= 0] <- 1e-12
+  out <- rep(NA_real_, length(x))
+  large <- x > 50
+  out[large] <- 1 / (2 * x[large])
+  if (any(!large)) {
+    z <- x[!large]
+    out[!large] <- expint::expint_E1(2 * z) * exp(2 * z)
+  }
+  out[!is.finite(out)] <- 0
+  out
 }
 
 disc_w_audit_gig_entropy_active <- function(psi, chi) {
-  nu <- 0.5
+  psi <- pmax(as.numeric(psi), 1e-300)
+  chi <- pmax(as.numeric(chi), 1e-300)
   s.ab <- sqrt(psi * chi)
-  K1 <- besselK(s.ab, nu)
-  K2 <- besselK(s.ab, nu + 1)
-  K3 <- besselK(s.ab, nu - 1)
-  0.5 * log(chi / psi) + log(2 * K1) -
-    (nu - 1) * disc_w_audit_Kprime_half(s.ab) / K1 +
-    s.ab / (2 * K1) * (K2 + K3)
+  log_k_half <- 0.5 * (log(pi) - log(2 * s.ab)) - s.ab
+  out <- 0.5 * log(chi / psi) + log(2) + log_k_half +
+    0.5 * disc_w_audit_Kprime_over_K_half(s.ab) + s.ab + 0.5
+  out[!is.finite(out)] <- 0
+  out
 }
 
 disc_w_audit_update_uts <- function(
@@ -102,24 +122,15 @@ disc_w_audit_update_uts <- function(
   u.chi[!is.finite(u.chi) | u.chi <= 0] <- 1e-6
 
   s.ab <- sqrt(pmax(u.psi * u.chi, 1e-12))
-  K0 <- besselK(s.ab, u.lambda)
-  K1 <- besselK(s.ab, u.lambda + 1)
-  ratio <- K1 / K0
-  ratio[!is.finite(ratio)] <- 1
 
-  E.uts <- sqrt(u.chi / u.psi) * ratio
-  E.inv.uts <- sqrt(u.psi / u.chi) * ratio - 2 * u.lambda / u.chi
+  E.uts <- sqrt(u.chi / u.psi) + 1 / u.psi
+  E.inv.uts <- sqrt(u.psi / u.chi)
   E.uts[!is.finite(E.uts)] <- 1e-10
   E.inv.uts[!is.finite(E.inv.uts)] <- 1e-10
   E.uts <- pmax(E.uts, 1e-10)
   E.inv.uts <- pmax(E.inv.uts, 1e-10)
 
-  K_lambda <- besselK(s.ab, u.lambda)
-  K_lambda[!is.finite(K_lambda) | K_lambda <= 0] <- 1e-12
-  kp <- disc_w_audit_Kprime_half(s.ab)
-  kp[!is.finite(kp)] <- 0
-
-  E.log.uts <- sum(kp / K_lambda - 0.5 * log(u.psi / u.chi))
+  E.log.uts <- sum(disc_w_audit_Kprime_over_K_half(s.ab) - 0.5 * log(u.psi / u.chi))
   if (!is.finite(E.log.uts)) E.log.uts <- 0
   tot.ent <- sum(disc_w_audit_gig_entropy_active(u.psi, u.chi))
   if (!is.finite(tot.ent)) tot.ent <- 0
@@ -249,6 +260,100 @@ disc_w_audit_scale_sensitivity_fixture <- function(
     }
     rows[[length(rows) + 1L]] <- base
   }
+
+  do.call(rbind, rows)
+}
+
+disc_w_audit_extract_diag_values <- function(x) {
+  if (is.list(x) && !is.data.frame(x)) {
+    return(unlist(lapply(x, disc_w_audit_extract_diag_values), use.names = FALSE))
+  }
+  d <- dim(x)
+  if (!is.null(d) && length(d) == 3L && d[[1L]] == d[[2L]]) {
+    return(unlist(lapply(seq_len(d[[3L]]), function(i) diag(x[, , i, drop = TRUE])), use.names = FALSE))
+  }
+  as.numeric(x)
+}
+
+disc_w_audit_guard_summary <- function(values, quantity, block, iter = NA_integer_, abs_cap = Inf, positive_required = FALSE) {
+  raw <- as.numeric(values)
+  finite <- raw[is.finite(raw)]
+  cap_exceed <- if (is.finite(abs_cap)) sum(abs(finite) > abs_cap) else 0L
+  nonpositive <- if (isTRUE(positive_required)) sum(finite <= 0) else 0L
+  status <- "ok"
+  if (length(finite) < length(raw)) {
+    status <- "nonfinite"
+  } else if (nonpositive > 0L) {
+    status <- "nonpositive"
+  } else if (cap_exceed > 0L) {
+    status <- "cap_exceeded"
+  }
+  data.frame(
+    iter = as.integer(iter),
+    quantity = quantity,
+    block = block,
+    n = length(raw),
+    finite_n = length(finite),
+    nonfinite_n = length(raw) - length(finite),
+    positive_required = isTRUE(positive_required),
+    nonpositive_n = as.integer(nonpositive),
+    min = if (length(finite)) min(finite) else NA_real_,
+    max = if (length(finite)) max(finite) else NA_real_,
+    max_abs = if (length(finite)) max(abs(finite)) else NA_real_,
+    abs_cap = as.numeric(abs_cap),
+    cap_exceed_n = as.integer(cap_exceed),
+    status = status
+  )
+}
+
+disc_w_audit_pseudodata_guard <- function(
+  iter = NA_integer_,
+  FFF,
+  QQQ,
+  FFF_forecast = NULL,
+  QQQ_forecast = NULL,
+  E_sts = NULL,
+  E_sts2 = NULL,
+  E_uts = NULL,
+  E_inv_uts = NULL,
+  E_sts_forecast = NULL,
+  E_sts2_forecast = NULL,
+  E_uts_forecast = NULL,
+  E_inv_uts_forecast = NULL,
+  fff_abs_cap = 1000,
+  qqq_diag_abs_cap = 10000,
+  e_s_abs_cap = 1000,
+  e_s2_abs_cap = 1e6,
+  e_u_abs_cap = 1e6,
+  e_inv_u_abs_cap = 5000
+) {
+  rows <- list()
+  add <- function(values, quantity, block, cap, positive = FALSE, diag_values = FALSE) {
+    if (is.null(values)) return(invisible(NULL))
+    vals <- if (isTRUE(diag_values)) disc_w_audit_extract_diag_values(values) else as.numeric(unlist(values, use.names = FALSE))
+    rows[[length(rows) + 1L]] <<- disc_w_audit_guard_summary(
+      vals,
+      quantity = quantity,
+      block = block,
+      iter = iter,
+      abs_cap = cap,
+      positive_required = positive
+    )
+    invisible(NULL)
+  }
+
+  add(FFF, "FFF", "history", fff_abs_cap)
+  add(QQQ, "QQQ_diag", "history", qqq_diag_abs_cap, positive = TRUE, diag_values = TRUE)
+  add(FFF_forecast, "FFF_forecast", "forecast", fff_abs_cap)
+  add(QQQ_forecast, "QQQ_forecast_diag", "forecast", qqq_diag_abs_cap, positive = TRUE, diag_values = TRUE)
+  add(E_sts, "E_sts", "history", e_s_abs_cap, positive = TRUE)
+  add(E_sts2, "E_sts2", "history", e_s2_abs_cap, positive = TRUE)
+  add(E_uts, "E_uts", "history", e_u_abs_cap, positive = TRUE)
+  add(E_inv_uts, "E_inv_uts", "history", e_inv_u_abs_cap, positive = TRUE)
+  add(E_sts_forecast, "E_sts", "forecast", e_s_abs_cap, positive = TRUE)
+  add(E_sts2_forecast, "E_sts2", "forecast", e_s2_abs_cap, positive = TRUE)
+  add(E_uts_forecast, "E_uts", "forecast", e_u_abs_cap, positive = TRUE)
+  add(E_inv_uts_forecast, "E_inv_uts", "forecast", e_inv_u_abs_cap, positive = TRUE)
 
   do.call(rbind, rows)
 }

@@ -26,7 +26,7 @@ testthat::test_that("s_t audit helper matches positive-truncated normal moments"
   testthat::expect_true(all(out$E.sts2 >= out$E.sts^2))
 })
 
-testthat::test_that("s_t active entropy formula is not the canonical truncated-normal entropy", {
+testthat::test_that("s_t entropy uses the canonical truncated-normal entropy", {
   out <- disc_w_audit_update_sts(
     y = c(1.2, -0.4, 2.1),
     exps = c(0.3, -0.7, 1.5),
@@ -38,7 +38,7 @@ testthat::test_that("s_t active entropy formula is not the canonical truncated-n
 
   testthat::expect_true(is.finite(out$active_tot.entrop))
   testthat::expect_true(is.finite(out$canonical_tot.entrop))
-  testthat::expect_gt(abs(out$active_tot.entrop - out$canonical_tot.entrop), 0.25)
+  testthat::expect_equal(out$active_tot.entrop, out$canonical_tot.entrop, tolerance = 1e-12)
 })
 
 testthat::test_that("u_t audit helper matches GIG moment identities", {
@@ -75,6 +75,41 @@ testthat::test_that("u_t audit helper matches GIG moment identities", {
   testthat::expect_equal(out$E.log.uts, sum(ref_log), tolerance = 1e-6)
 })
 
+testthat::test_that("u_t half-order GIG moments stay finite at extreme chi values", {
+  out_small <- disc_w_audit_update_uts(
+    y = c(0, 1000),
+    exps = c(0, 0),
+    exps2 = c(0, 1),
+    sts = c(0, 0.1),
+    sts2 = c(0, 0.2),
+    inv_sigma = c(1, 1),
+    a2_invb_inv_sigma = c(0.35, 0.35),
+    invb_inv_sigma = c(1, 1),
+    c_invb_absgam = c(0.25, 0.25),
+    c2_invb_absgam2_sigma = c(0.55, 0.55)
+  )
+
+  testthat::expect_true(all(is.finite(out_small$E.uts)))
+  testthat::expect_true(all(is.finite(out_small$E.inv.uts)))
+  testthat::expect_true(all(out_small$E.uts > 0))
+  testthat::expect_true(all(out_small$E.inv.uts > 0))
+  testthat::expect_equal(out_small$E.uts, sqrt(out_small$uts.chi / out_small$uts.psi) + 1 / out_small$uts.psi)
+  testthat::expect_equal(out_small$E.inv.uts, sqrt(out_small$uts.psi / out_small$uts.chi))
+})
+
+testthat::test_that("active runner uses stable latent formulas", {
+  runner <- testthat::test_path("..", "..", "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r")
+  src <- readLines(runner, warn = FALSE)
+  text <- paste(src, collapse = "\n")
+
+  testthat::expect_false(grepl("log2\\(2\\*pi\\*exp\\(1\\)\\*s\\.sig2\\)", text))
+  testthat::expect_false(grepl("HyperbolicDist::besselRatio", text, fixed = TRUE))
+  testthat::expect_true(grepl("disc_w_pos_truncnorm_moments", text, fixed = TRUE))
+  testthat::expect_true(grepl("E.inv.uts = sqrt\\(u.psi/u.chi\\)", text))
+  testthat::expect_true(grepl("disc_w_check_pseudodata_guard", text, fixed = TRUE))
+  testthat::expect_true(grepl("DISC_PSEUDODATA_GUARD_MODE", text, fixed = TRUE))
+})
+
 testthat::test_that("pseudo-data offset and variance reproduce information-form algebra", {
   y <- c(3, 4)
   pseudo <- disc_w_audit_pseudodata(
@@ -91,6 +126,49 @@ testthat::test_that("pseudo-data offset and variance reproduce information-form 
   testthat::expect_equal(y - pseudo$offset, b / w)
   testthat::expect_true(all(is.finite(pseudo$offset)))
   testthat::expect_true(all(pseudo$variance > 0))
+})
+
+testthat::test_that("pseudo-data guard flags destructive offsets and invalid variances", {
+  qqq <- array(0, dim = c(2, 2, 2))
+  qqq[, , 1] <- diag(c(0.1, 2))
+  qqq[, , 2] <- diag(c(-0.1, 3))
+
+  guard <- disc_w_audit_pseudodata_guard(
+    iter = 7,
+    FFF = matrix(c(1, -5000), nrow = 2),
+    QQQ = qqq,
+    FFF_forecast = list(matrix(c(2, 3), nrow = 1)),
+    QQQ_forecast = list(array(diag(c(1, 2)), dim = c(2, 2, 1))),
+    E_sts = matrix(c(0.1, 0.2), nrow = 1),
+    E_sts2 = matrix(c(0.2, 0.4), nrow = 1),
+    E_uts = matrix(c(1, 2), nrow = 1),
+    E_inv_uts = matrix(c(10, 6000), nrow = 1),
+    fff_abs_cap = 1000,
+    qqq_diag_abs_cap = 10000,
+    e_inv_u_abs_cap = 5000
+  )
+
+  testthat::expect_true(any(guard$quantity == "FFF" & guard$status == "cap_exceeded"))
+  testthat::expect_true(any(guard$quantity == "QQQ_diag" & guard$status == "nonpositive"))
+  testthat::expect_true(any(guard$quantity == "E_inv_uts" & guard$status == "cap_exceeded"))
+})
+
+testthat::test_that("pseudo-data guard passes healthy finite positive inputs", {
+  qqq <- array(0, dim = c(2, 2, 2))
+  qqq[, , 1] <- diag(c(0.1, 2))
+  qqq[, , 2] <- diag(c(0.2, 3))
+
+  guard <- disc_w_audit_pseudodata_guard(
+    iter = 8,
+    FFF = matrix(c(1, -2), nrow = 2),
+    QQQ = qqq,
+    E_sts = matrix(c(0.1, 0.2), nrow = 1),
+    E_sts2 = matrix(c(0.2, 0.4), nrow = 1),
+    E_uts = matrix(c(1, 2), nrow = 1),
+    E_inv_uts = matrix(c(10, 20), nrow = 1)
+  )
+
+  testthat::expect_true(all(guard$status == "ok"))
 })
 
 testthat::test_that("keep forecast dimension table follows active segment algebra", {
