@@ -199,6 +199,8 @@ Prepared condition:
 - v2 launch result:
   failed before fitting because config validation requires `state_refresh_schedule.start_iter > warmup_freeze_iters`
   when the refresh schedule is enabled. Fixed-gamsig config generation now disables `state_refresh_schedule`.
+- v3 prepared launch:
+  `reports/exdqlm_keep_ablation_matrix_ablation_log1p_q05_q35_q50_q95_v3_20260521/launch_ablation_matrix_ablation_log1p_q05_q35_q50_q95_v3_20260521.sh`
 - original launch, retained only as invalid/stopped evidence:
   `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_ablation_log1p_q05_q35_q50_q95_20260521_fixed_gamsig/control/launch_multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dfall999999_datastart2017_ready_exdqlm_multivar_keep__ablation_log1p_q05_q35_q50_q95_20260521_fixed_gamsig.sh`
 
@@ -231,6 +233,8 @@ Prepared conditions:
   `reports/exdqlm_keep_ablation_matrix_ablation_log1p_q05_q35_q50_q95_20260521/launch_ablation_matrix_ablation_log1p_q05_q35_q50_q95_20260521.sh`
 - v2 matrix launch:
   `reports/exdqlm_keep_ablation_matrix_ablation_log1p_q05_q35_q50_q95_v2_20260521/launch_ablation_matrix_ablation_log1p_q05_q35_q50_q95_v2_20260521.sh`
+- v3 matrix launch:
+  `reports/exdqlm_keep_ablation_matrix_ablation_log1p_q05_q35_q50_q95_v3_20260521/launch_ablation_matrix_ablation_log1p_q05_q35_q50_q95_v3_20260521.sh`
 
 ### T4. q05 Guard-Response Policy
 
@@ -352,6 +356,7 @@ Decision outcomes:
 | 2026-05-21 | `python3 -m unittest tests.python.test_exdqlm_keep_ablation_tooling -v` after YAML-policy fix | pass, 3 tests; fixed-gamsig test now checks generated YAML and quantile overrides |
 | 2026-05-21 | `python3 repro/audits/prepare_exdqlm_keep_ablation_matrix.py --tag ablation_log1p_q05_q35_q50_q95_v2_20260521 --conditions fixed-gamsig,latent-freeze,latent-cap-e-inv-u --quantiles 0.05,0.35,0.5,0.95 --max-iter 3000 --workers 4 --guard-mode warn --post-save-objective off` | v2 matrix prepared; fixed-gamsig generated YAML verified with `warmup_freeze_iters=3005` and `min_update_iters=0` |
 | 2026-05-21 | fixed-gamsig matrix launch v2 | failed before fit; validator rejected enabled `state_refresh_schedule` with `warmup_freeze_iters=3005` |
+| 2026-05-21 | `python3 repro/audits/prepare_exdqlm_keep_ablation_matrix.py --tag ablation_log1p_q05_q35_q50_q95_v3_20260521 --conditions fixed-gamsig,latent-freeze,latent-cap-e-inv-u --quantiles 0.05,0.35,0.5,0.95 --max-iter 3000 --workers 4 --guard-mode warn --post-save-objective off` | v3 matrix prepared; fixed-gamsig generated YAML verified with refresh schedule disabled |
 
 ## Change Log
 
