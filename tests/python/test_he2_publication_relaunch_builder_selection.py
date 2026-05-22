@@ -1159,11 +1159,12 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
             ['PPT_sq', 'SOIL_sq', 'PPT_x_SOIL', 'PPT_lag1', 'PPT_lag2', 'PPT_lag3', 'SOIL_lag1', 'SOIL_lag2', 'SOIL_lag3'],
         )
         self.assertEqual(cfg['models']['exdqlm_multivar']['forecast_transfer_mode'], 'keep')
+        # Indices into exdqlm_multivar_default_harmonics(), not literal harmonic values.
         self.assertEqual(cfg['models']['exdqlm_multivar']['structure']['enabled_harmonic_indices'], [1, 2, 3])
         self.assertEqual(cfg['models']['exdqlm_multivar']['state_evolution']['df_s1'], 0.9998)
         self.assertEqual(cfg['models']['exdqlm_multivar']['state_evolution']['df_discrep'], 0.998)
         self.assertEqual(cfg['models']['exdqlm_multivar']['state_evolution']['df_covs'], 0.9999999)
-        self.assertEqual(cfg['fit']['exdqlm_multivar']['gamma_sigma']['max_iter'], 3000)
+        self.assertEqual(cfg['fit']['exdqlm_multivar']['gamma_sigma']['max_iter'], 200)
         self.assertEqual(cfg['fit']['exdqlm_multivar']['gamma_sigma']['stabilization']['state_guard_start_iter'], 1000)
         self.assertEqual(cfg['fit']['exdqlm_multivar']['gamma_sigma']['terminal_sampling_guard']['mode'], 'fail_fast')
         self.assertEqual(cfg['fit']['exdqlm_multivar']['latent_ablation']['mode'], 'cap_e_inv_u')

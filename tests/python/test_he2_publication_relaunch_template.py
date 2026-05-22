@@ -551,6 +551,7 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         )
         model = patch['models']['exdqlm_multivar']
         self.assertEqual(model['forecast_transfer_mode'], 'keep')
+        # Indices into exdqlm_multivar_default_harmonics(), not literal harmonic values.
         self.assertEqual(model['structure']['enabled_harmonic_indices'], [1, 2, 3])
         self.assertEqual(model['state_evolution']['df_t'], 0.99999999)
         self.assertEqual(model['state_evolution']['df_s1'], 0.9998)
@@ -560,7 +561,7 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         self.assertEqual(model['state_evolution']['df_covs'], 0.9999999)
 
         fit = patch['fit']['exdqlm_multivar']
-        self.assertEqual(fit['gamma_sigma']['max_iter'], 3000)
+        self.assertEqual(fit['gamma_sigma']['max_iter'], 200)
         self.assertTrue(fit['gamma_sigma']['stabilization']['state_guard_enabled'])
         self.assertEqual(fit['gamma_sigma']['stabilization']['state_guard_start_iter'], 1000)
         self.assertEqual(fit['gamma_sigma']['terminal_sampling_guard']['mode'], 'fail_fast')

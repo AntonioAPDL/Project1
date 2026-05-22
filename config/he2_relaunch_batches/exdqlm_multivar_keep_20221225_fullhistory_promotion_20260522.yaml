@@ -60,7 +60,7 @@ overrides:
               warmup_freeze_iters: 10
               min_update_iters: 50
               min_total_iters: 50
-              max_iter: 3000
+              max_iter: 200
               convergence_tol: 1.0e-06
               convergence:
                 elbo_tol: 1.0e-06

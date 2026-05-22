@@ -1,6 +1,6 @@
 # exDQLM Multivariate Keep Repair Tracker
 
-Last updated: 2026-05-21
+Last updated: 2026-05-22
 
 ## Scope
 
@@ -593,12 +593,22 @@ Frozen target contract:
 - canonical 20260510 shared input bundle;
 - `log1p_cms` fit/post scale and `transform_policy: log1p_only`;
 - full transfer covariates `PPT`, `SOIL`, `PCA` plus square, interaction, and lag terms;
-- full harmonics `[1, 2, 3]`;
+- full harmonic indices `[1, 2, 3]`, which map to legacy harmonic values `c(1, 2, 1/6.8068493)`;
 - representative set09 discounts;
 - representative Wishart prior `epsilon=360.0`, `c_factor=1.0`;
-- `max_iter=3000`;
+- `max_iter=200` for the requested prelaunch/dry-test package;
 - promotion-v2 guards: latent `E[1/u]` cap `5000`, pseudo-data guard mode `fail`, state guard delayed to iter
   `1000`, and terminal sampling guard `fail_fast`.
+
+Historical source-lock note:
+
+- the older full-history `2022-12-25` source config before set09/debug-patching used
+  `df_t=0.99999999`, `df_s1=df_s2=df_s67=0.9999`, `df_discrep=0.999`, `lambda=0.97`,
+  `df_trans=0.9999999`, and `df_covs=0.99999`;
+- the currently packaged no-launch representative still uses selected set09 values
+  `df_s1=df_s2=0.9998`, `df_discrep=0.998`, and `df_covs=0.9999999` until the desired prelaunch discount factors
+  are supplied;
+- the old and current configs both represent the full seasonal basis through indices, not literal values.
 
 Implementation:
 
@@ -638,6 +648,13 @@ Launch boundary:
 | 2026-05-21 | fixed-gamsig v3 runtime | fit wrote q05/q35/q50/q95 `.RData`; no pseudo-data guard rows; post failed on known no-truth CRPS path before T7 patch |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_crps_tables.R')"` after T7 patch | pass, 64 expectations |
 | 2026-05-21 | `Rscript --vanilla repro/audits/run_exdqlm_keep_kalman_fixture.R reports/exdqlm_multivar_keep_kalman_fixture_20260521_ragged` | pass; ragged keep fixture with `J=2`, `ppx=1`, and compiled-vs-reference smoother checks |
+| 2026-05-22 | q80 diagnostic stop | stopped by explicit user instruction; no matching `run_DISC_Optimal`/`DISC_Optimal` q80 process remained in the subsequent process scan |
+| 2026-05-22 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_structure_contract.R')"` | pass, 6 expectations; verifies harmonic indices `[1, 2, 3]` map to values `c(1, 2, 1/6.8068493)` |
+| 2026-05-22 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_config_mode_resolution.R')"` | pass, 49 expectations |
+| 2026-05-22 | `python3 -m unittest tests.python.test_he2_publication_relaunch_template -v` | pass, 19 tests after retargeting the no-launch package to `max_iter=200` |
+| 2026-05-22 | `python3 -m unittest tests.python.test_he2_publication_relaunch_builder_selection.HE2PublicationRelaunchBuilderSelectionTests.test_exdqlm_fullhistory_promotion_batch_builds_guarded_20221225_config -v` | pass, 1 test; temporary generated config carries full-history inputs, guarded controls, and `max_iter=200` |
+| 2026-05-22 | `Rscript --vanilla -e "invisible(parse('R/unified/config.R')); invisible(parse('R/unified/stages/stage_fit.R'))"` | pass |
+| 2026-05-22 | `git diff --check` | pass |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_keep_kalman_fixture.R')"` | pass, 7 expectations |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_keep_decomposition_audit.R')"` | pass, 6 expectations |
 | 2026-05-21 | fixed-gamsig v3 runtime stability and curated evidence bundle | pass; report paths recorded in T2 |

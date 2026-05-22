@@ -3,8 +3,8 @@
 Date: 2026-05-22
 
 Scope: prepare, but do not launch, the next representative HE2 `exdqlm_multivar_keep` run for cutoff
-`2022-12-25` using full history, all seven quantiles, full transfer covariates, full harmonics, and the guarded
-`log1p_cms` promotion profile established by the audit.
+`2022-12-25` using full history, all seven quantiles, full transfer covariates, the full legacy seasonal basis, and
+the guarded `log1p_cms` promotion profile established by the audit.
 
 ## Status
 
@@ -43,10 +43,10 @@ The intended generated run contract is:
 | input bundle | `multimodel_v8_he2_publication_shared_inputs_20260510`, run id `20260510_publication_shared_r01` | canonical shared parameters, retros, NWS, GLOFAS, and covariates |
 | covariates | `PPT`, `SOIL`, `PCA` where `PCA` is the canonical GDPC1 alias | builder debug contract is `PPT|SOIL|PCA(alias=GDPC1)` |
 | engineered transfer terms | `PPT_sq`, `SOIL_sq`, `PPT_x_SOIL`, `PPT_lag1:3`, `SOIL_lag1:3` | full transfer function used by the representative source config |
-| harmonics | `enabled_harmonic_indices: [1, 2, 3]` | full harmonic state, not reduced h1-only diagnostic |
+| harmonic slots | `enabled_harmonic_indices: [1, 2, 3]`, mapping to legacy values `c(1, 2, 1/6.8068493)` | `[1, 2, 3]` are indices into `exdqlm_multivar_default_harmonics()`, not literal harmonic values; this is the full legacy seasonal basis, not the reduced h1-only diagnostic |
 | discount spec | set09: `df_t=0.99999999`, `df_s1=df_s2=0.9998`, `df_s67=0.9999`, `df_discrep=0.998`, `lambda=0.97`, `df_trans=df_covs=0.9999999` | matches the selected representative source metadata |
 | Wishart forecast prior | `epsilon=360.0`, `c_factor=1.0` | selected source metadata records `eps360cf1` for the 2022-12-25 representative |
-| VB max iterations | `3000` | matches the successful guarded promotion reproduction, replacing older `100`/`200` relaunch specs |
+| VB max iterations | `200` | prelaunch/dry-test setting requested before any full production relaunch; the earlier guarded runtime evidence used `3000` |
 | latent guard | `latent_ablation.mode: cap_e_inv_u`, `e_inv_u_cap: 5000` | explicit audited cap on `E[1/u_t]`, not a silent default |
 | pseudo-data guard | enabled, mode `fail`, caps `FFF=1000`, `QQQ_diag=10000`, `E[1/u]=5000` | fail-fast protection against the audited pseudo-data feedback loop |
 | state guard | enabled, start iter `1000`, cap `1e6`, refreeze/hold `20` | delayed guard profile that passed promotion v2 |
@@ -61,7 +61,49 @@ full-history publication contract.
 The publication representative config for `2022-12-25` points to `set09` and `eps360cf1` metadata in
 `config/unified_runs_publication_replay_representatives_20260506/20221225_exal_m_t1/multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep.yaml`.
 The new batch intentionally keeps that representative scientific spec while adding only the audited numerical
-guardrails and raising VB iterations to the tested `3000`.
+guardrails and setting VB iterations to the requested prelaunch value `200`.
+
+## Discount Baselines
+
+There are two discount baselines that must not be conflated.
+
+The older full-history `2022-12-25` source config, before the later set09/debug-patching checks, used:
+
+| parameter | older source default |
+| --- | ---: |
+| `df_t` | `0.99999999` |
+| `df_s1` | `0.9999` |
+| `df_s2` | `0.9999` |
+| `df_s67` | `0.9999` |
+| `df_discrep` | `0.999` |
+| `lambda` | `0.97` |
+| `df_trans` | `0.9999999` |
+| `df_covs` | `0.99999` |
+
+Source:
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_featurecov_cf1_eps_sweep_20260416/runs/multimodel_20221225_v8_eps360cf1_exdqlm_multivar_keep_featurecov_cf1/resolved_config.yaml`.
+
+The currently packaged no-launch representative still uses the selected set09 discount metadata until the desired
+prelaunch discount factors are supplied:
+
+| parameter | current set09 package |
+| --- | ---: |
+| `df_t` | `0.99999999` |
+| `df_s1` | `0.9998` |
+| `df_s2` | `0.9998` |
+| `df_s67` | `0.9999` |
+| `df_discrep` | `0.998` |
+| `lambda` | `0.97` |
+| `df_trans` | `0.9999999` |
+| `df_covs` | `0.9999999` |
+
+Source:
+`config/unified_runs_publication_replay_representatives_20260506/20221225_exal_m_t1/multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep.yaml`.
+
+The harmonics check follows the same source-lock rule: active code defines
+`exdqlm_multivar_default_harmonics()` as `c(1, 2, 1/6.8068493)` in
+`R/unified/families/exdqlm_multivar_structure.R`, and the active legacy runner still carries the same values in
+`DISC_Optimal_Synth_Ranges_W_transfer_forecast.r`.
 
 ## Promotion Gap Closed
 
@@ -104,7 +146,7 @@ under the new isolated artifact root, then a prelaunch audit of:
 - generated `dates.data_start == 1987-05-29`;
 - generated input paths under the canonical 20260510 shared bundle;
 - covariate names exactly `PPT`, `SOIL`, `PCA`;
-- full transfer-feature list and full harmonic list;
+- full transfer-feature list and harmonic indices `[1, 2, 3]` mapping to values `c(1, 2, 1/6.8068493)`;
 - set09 discounts and `epsilon=360.0`, `c_factor=1.0`;
 - guard controls in generated YAML;
 - old live roots absent from the generated run root.
@@ -113,16 +155,20 @@ Only after that review should the launcher be considered.
 
 ## Validation Completed
 
-The following no-launch checks were run while preparing this package:
+The following no-launch checks were run while preparing this package, then rerun after the requested
+`max_iter=200` prelaunch retarget and harmonic-source clarification:
 
 - `Rscript --vanilla -e "invisible(parse('R/unified/config.R')); invisible(parse('R/unified/stages/stage_fit.R'))"`
   passed.
 - `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_config_mode_resolution.R')"` passed with
   49 expectations.
+- `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_structure_contract.R')"` passed
+  with 6 expectations, checking that harmonic indices `[1, 2, 3]` map to legacy values `c(1, 2, 1/6.8068493)`.
 - `python3 -m unittest tests.python.test_disc_sampling_diagnostics_source_contract -v` passed with 6 tests.
 - `python3 -m unittest tests.python.test_he2_publication_relaunch_template -v` passed with 19 tests.
 - `python3 -m unittest tests.python.test_he2_publication_relaunch_builder_selection.HE2PublicationRelaunchBuilderSelectionTests.test_exdqlm_fullhistory_promotion_batch_builds_guarded_20221225_config -v`
   passed.
+- `git diff --check` passed.
 
 These checks built only temporary test artifacts and did not launch a model fit.
 
@@ -134,7 +180,7 @@ full seven-lane full-history/full-spec package has not yet been run end to end. 
 - q95 still showed a large negative terminal gamma in promotion v2, so `sigma/gamma` damping/refreeze remains the
   most important next numerical improvement;
 - q20/q65/q80 were not part of the final promotion-v2 runtime evidence set;
-- full transfer and full harmonics increase identifiability pressure compared with reduced h1/PPT diagnostics;
+- full transfer and the full seasonal basis increase identifiability pressure compared with reduced h1/PPT diagnostics;
 - the `E[1/u_t]` cap is a deliberate numerical intervention and must remain named, monitored, and documented.
 
 Therefore the package is ready for no-launch prelaunch validation. It is not evidence that all calibration or tail-lane

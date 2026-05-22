@@ -233,7 +233,9 @@ not silently become the default because it changes pseudo-observation precision.
 P0. Use the tracked full-history promotion package for the next no-launch prelaunch step:
 `config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.template.yaml`
 plus `config/he2_relaunch_batches/exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.yaml`. Do not reuse
-older reduced-spec roots for the representative full-history attempt.
+older reduced-spec roots for the representative full-history attempt. The package is currently set to the requested
+prelaunch `max_iter=200`, and its `enabled_harmonic_indices: [1, 2, 3]` means the full legacy seasonal basis
+`c(1, 2, 1/6.8068493)`, not literal harmonic values `[1, 2, 3]`.
 
 P1. Add a damped/refrozen `sigma/gamma` candidate before broadening beyond q05/q35/q50/q95. Promotion v2 passed,
 but q05/q95 still have asymmetric terminal gamma values, and latent-freeze shows free `sigma/gamma` can still drive
@@ -272,3 +274,6 @@ making `log1p` work with guardrails before considering `log1plog1p` or reverting
 - Full-history promotion packaging checks passed on 2026-05-22: config/stage parse, config guard validation,
   source-contract mapping, template static contract, and builder-generated temporary config checks for the guarded
   2022-12-25 package.
+- After retargeting the package to the requested prelaunch `max_iter=200`, the harmonic-structure contract test
+  passed with 6 expectations, the template test passed with 19 tests, the builder-generated temporary config test
+  passed, and `git diff --check` passed.
