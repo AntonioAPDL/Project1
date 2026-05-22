@@ -189,8 +189,8 @@ Acceptance criterion: every cutoff post bundle has an all-seven `All_ELBOS_DISC.
 
 ### P1. Add Multi-Cutoff Monitor And Report Driver
 
-The 2022-12-25 live monitor was an untracked report helper. For five concurrent cutoffs, make the monitor contract
-explicit:
+The 2022-12-25 live monitor began as an untracked report helper. For five concurrent cutoffs, the monitor contract is
+now promoted to tracked code at `scripts/monitor_he2_exdqlm_multivar_keep_allcutoffs.py`:
 
 - one compact status CSV per snapshot;
 - one `live_status_latest.md`;
@@ -198,7 +198,8 @@ explicit:
   guard count, pseudo-data fail count, fatal error count, output state;
 - stop condition: all five rows pass/fail, or bounded max snapshots.
 
-This can remain an untracked `reports/` helper unless it becomes broadly reusable enough to track.
+The monitor is read-only. It parses `matrix_plan.csv`, `matrix_status.csv`, and per-quantile fit logs, then writes
+untracked report artifacts under `reports/`. The launcher can start it automatically with `--start-monitor`.
 
 ## Cleanup Policy
 
@@ -285,7 +286,8 @@ Required tests:
    `global_models`, and 7 workers.
 3. Queue test that confirms the current cleanup wrapper is selected by default.
 4. Stage-post truth-source test or preflight assertion for each cutoff.
-5. Existing tests from the 2022-12-25 source-lock pass.
+5. Live-monitor unit test that verifies log parsing and `state_norm_sq / history_length`.
+6. Existing tests from the 2022-12-25 source-lock pass.
 
 Minimum validation command set:
 
@@ -296,6 +298,7 @@ Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_s
 Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_crps_tables.R')"
 python3 -m unittest tests.python.test_he2_publication_relaunch_template -v
 python3 -m unittest tests.python.test_he2_publication_relaunch_builder_selection -v
+python3 -m unittest tests.python.test_he2_exdqlm_keep_allcutoff_monitor -v
 python3 -m unittest tests.python.test_disc_sampling_diagnostics_source_contract -v
 python3 -m unittest tests.python.test_cleanup_he2_runtime_artifacts -v
 git diff --check
@@ -336,7 +339,9 @@ Launch command shape to verify before use:
 python3 scripts/launch_he2_bayesian_publication_relaunch.py \
   --template <new-all-cutoff-template> \
   --batch-file <new-all-cutoff-batch> \
-  --skip-validate
+  --skip-validate \
+  --start-monitor \
+  --monitor-out-dir reports/he2_exdqlm_multivar_keep_allcutoffs_fullhistory_promotion_live_20260522
 ```
 
 The exact final command belongs in the prelaunch report, not only in chat.
@@ -373,8 +378,8 @@ Acceptance criteria:
 | latent `E[1/u]` cap changes pseudo-observation precision | it is a real numerical intervention | keep it explicit, named, and reported |
 | q95 terminal gamma remains sensitive | prior evidence shows tail gamma asymmetry | monitor gamma by cutoff/lane; consider damped/refrozen candidate later |
 | q20/q80 guard activity appeared in 2022-12-25 run | those lanes were less tested in the earliest q05/q35/q50/q95 reproductions | five-cutoff monitor must include guard counts by lane |
-| `.RData` retention is heavy | 35 outputs may be hundreds of GiB | dry-run disk check, no-cleanup only for this run, cleanup old artifacts only after review |
-| queue cleanup is currently hardcoded on | would delete the main diagnostic artifacts | patch queue cleanup mode before launch |
+| `.RData` retention is heavy | 35 outputs may be hundreds of GiB while fit/post is active | dry-run disk check; keep `.RData` through post only; rely on durable post outputs after cleanup |
+| queue cleanup is currently hardcoded on | raw `.RData` fit-state objects will not be durable artifacts | integrate needed diagnostics into post/report outputs and monitor logs before cleanup |
 | held-out truth source can be cutoff-truncated | post figures/CRPS can silently miss truth | include commit `26d6f4e` and truth-source preflight |
 | five concurrent cutoff runs may stress I/O/R memory | 35 processes are feasible only if each stays single-threaded | enforce thread caps and monitor RSS/free space |
 
@@ -387,11 +392,11 @@ The multi-cutoff launch is not ready until every gate below is green:
 | branch contains all post/plot patches | partial | push or intentionally preserve `9d30640` and `26d6f4e` |
 | final discounts/Wishart supplied | open | user provides final values or confirms previous `df99999`/`eps365` |
 | `max_iter=100` package exists | open | create new all-cutoff package and tests |
-| no-cleanup queue path exists | open | implement/test cleanup-mode selection |
+| `.RData` through-post cleanup policy | locked | default cleanup wrapper keeps `.RData` through post, then removes it |
 | all-cutoff generated configs validated | open | builder tests and direct generated-config assertions |
 | old `.RData` cleanup plan reviewed | open | dry-run cleanup report, protected roots checked |
 | disk and process preflight passed | open | `df -h`, process scan, expected RData size estimate |
-| live monitor ready for five cutoffs | open | status CSV/Markdown report helper prepared |
+| live monitor ready for five cutoffs | closed | tracked monitor and unit tests added |
 | explicit user launch approval | open | launch only after approval |
 
 ## Bottom Line
@@ -401,6 +406,6 @@ profile controlled the observed blow-up in targeted lanes and in the 2022-12-25 
 root cause remains interactional: latent-tail precision, `sigma/gamma`, pseudo-data, and retained state
 identifiability reinforce each other.
 
-The right next move is not another broad, cleanup-enabled queue launch. The right next move is to implement the
-multi-cutoff promotion package with `max_iter=100`, no-cleanup RData retention, full truth-source post behavior,
-35 single-threaded quantile fits, and a strict prelaunch/reporting gate.
+The right next move is the explicit, monitored multi-cutoff promotion launch with `max_iter=100`, `.RData` retained
+through post and then cleaned, full truth-source post behavior, 35 single-threaded quantile fits, and a strict
+post-launch reporting gate.

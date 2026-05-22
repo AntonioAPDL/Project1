@@ -21,6 +21,7 @@ objects after post must either be integrated into post or run before cleanup.
 | --- | --- |
 | all-cutoff template | `config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.template.yaml` |
 | all-cutoff batch | `config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml` |
+| all-cutoff live monitor | `scripts/monitor_he2_exdqlm_multivar_keep_allcutoffs.py` |
 | implementation plan | `docs/exdqlm_multivar_keep_multicutoff_promotion_plan_20260522.md` |
 | generated preflight root | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522` |
 | generated config dir | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522/control/generated_configs` |
@@ -111,10 +112,12 @@ Commands run:
 ```bash
 python3 -m unittest tests.python.test_he2_publication_relaunch_template -v
 python3 -m unittest tests.python.test_multimodel_v8_queue_contract -v
+python3 -m unittest tests.python.test_he2_exdqlm_keep_allcutoff_monitor -v
 python3 -m unittest tests.python.test_he2_publication_relaunch_builder_selection.HE2PublicationRelaunchBuilderSelectionTests.test_exdqlm_allcutoffs_fullhistory_promotion_batch_builds_guarded_configs -v
 Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_structure_contract.R')"
 python3 scripts/build_he2_bayesian_publication_relaunch_configs.py --config config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.template.yaml --batch-file config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml
-python3 scripts/launch_he2_bayesian_publication_relaunch.py --template config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.template.yaml --batch-file config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml --skip-validate --dry-run
+python3 scripts/launch_he2_bayesian_publication_relaunch.py --template config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.template.yaml --batch-file config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml --skip-validate --dry-run --start-monitor --monitor-out-dir reports/he2_exdqlm_multivar_keep_allcutoffs_fullhistory_promotion_live_20260522
+python3 scripts/monitor_he2_exdqlm_multivar_keep_allcutoffs.py --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522 --matrix-dir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522/control/publication_relaunch_matrix --out-dir reports/he2_exdqlm_multivar_keep_allcutoffs_fullhistory_promotion_live_20260522_prelaunch_once --once --refresh-matrix
 ```
 
 Results:
@@ -123,10 +126,12 @@ Results:
 | --- | --- |
 | template contract tests | pass, 20 tests |
 | queue cleanup contract tests | pass, 3 tests |
+| all-cutoff live-monitor tests | pass |
 | all-cutoff generated-config test | pass |
 | harmonic source contract | pass, 6 expectations |
 | actual builder preflight | pass, 5 configs and 5 plan rows generated |
-| launch dry-run | pass, printed queue command only |
+| launch dry-run | pass, printed queue and monitor commands |
+| all-cutoff monitor prelaunch snapshot | pass, emitted 35 not-started quantile rows |
 
 ## Prelaunch Synthesis Repair
 
@@ -178,7 +183,10 @@ Ready for a full launch after explicit user approval. The launch command should 
 ```bash
 python3 scripts/launch_he2_bayesian_publication_relaunch.py \
   --template config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.template.yaml \
-  --batch-file config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml
+  --batch-file config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml \
+  --start-monitor \
+  --monitor-out-dir reports/he2_exdqlm_multivar_keep_allcutoffs_fullhistory_promotion_live_20260522 \
+  --monitor-interval 300
 ```
 
 Expected launch settings from the preflight:
@@ -207,6 +215,18 @@ python3 scripts/run_multimodel_v8_queue.py \
 
 This will run the queue through `scripts/run_unified_with_cleanup.sh`. `.RData` files should be considered temporary
 until post completes; post outputs are the retained artifacts.
+
+The `--start-monitor` flag launches the tracked read-only monitor in a separate process. It writes:
+
+```text
+reports/he2_exdqlm_multivar_keep_allcutoffs_fullhistory_promotion_live_20260522/LIVE_STATUS.md
+reports/he2_exdqlm_multivar_keep_allcutoffs_fullhistory_promotion_live_20260522/live_status_latest.csv
+reports/he2_exdqlm_multivar_keep_allcutoffs_fullhistory_promotion_live_20260522/live_status_history.csv
+```
+
+The monitor table includes cutoff, quantile, stage/status, iteration, update count, ELBO, ELBO step, `sigma_exp`,
+`gamma_exp`, guard counts, pseudo-data failures, fatal errors, and `state_norm_sq` divided by the full history length
+from `1987-05-29` through the cutoff.
 
 ## Remaining Work After Launch
 

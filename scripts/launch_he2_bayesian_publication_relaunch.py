@@ -45,6 +45,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument('--profile')
     ap.add_argument('--fit-parallel-workers', type=int)
     ap.add_argument('--mc-cores', type=int)
+    ap.add_argument('--start-monitor', action='store_true')
+    ap.add_argument('--monitor-out-dir')
+    ap.add_argument('--monitor-interval', type=float, default=300.0)
+    ap.add_argument('--monitor-max-snapshots', type=int, default=288)
     return ap.parse_args(argv)
 
 
@@ -106,9 +110,23 @@ def main() -> int:
     ]
     if launch_settings.get('HEAVY_CUTOFF_BLOCKS_ORDINARY', '1') in {'0', 'false', 'False', 'no'}:
         queue_cmd.append('--no-heavy-cutoff-blocks-ordinary')
+    monitor_out_dir = Path(args.monitor_out_dir).resolve() if args.monitor_out_dir else (
+        ROOT / 'reports' / f"{campaign.get('campaign_id', 'he2_relaunch')}_live"
+    )
+    monitor_cmd = [
+        'python3', 'scripts/monitor_he2_exdqlm_multivar_keep_allcutoffs.py',
+        '--artifact-root', str(artifact_root),
+        '--matrix-dir', str(matrix_dir),
+        '--out-dir', str(monitor_out_dir),
+        '--interval', str(args.monitor_interval),
+        '--max-snapshots', str(args.monitor_max_snapshots),
+        '--refresh-matrix',
+    ]
 
     if args.dry_run:
         print(' '.join(queue_cmd))
+        if args.start_monitor:
+            print(' '.join(monitor_cmd))
         return 0
 
     log_path = matrix_dir / 'queue.log'
@@ -118,18 +136,33 @@ def main() -> int:
     state_dir = matrix_dir / 'controller_state'
     state_dir.mkdir(parents=True, exist_ok=True)
     (state_dir / 'controller.pid').write_text(f'{proc.pid}\n', encoding='utf-8')
+    launch_payload = {
+        'pid': proc.pid,
+        'queue_cmd': queue_cmd,
+        'matrix_dir': str(matrix_dir),
+        'artifact_root': str(artifact_root),
+        'template': str(template_path),
+    }
+    if args.start_monitor:
+        monitor_out_dir.mkdir(parents=True, exist_ok=True)
+        monitor_log = monitor_out_dir / 'monitor.log'
+        monitor_handle = monitor_log.open('a', encoding='utf-8')
+        monitor_proc = subprocess.Popen(
+            monitor_cmd,
+            cwd=ROOT,
+            stdout=monitor_handle,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+        (state_dir / 'monitor.pid').write_text(f'{monitor_proc.pid}\n', encoding='utf-8')
+        launch_payload.update({
+            'monitor_pid': monitor_proc.pid,
+            'monitor_cmd': monitor_cmd,
+            'monitor_out_dir': str(monitor_out_dir),
+            'monitor_log': str(monitor_log),
+        })
     (state_dir / 'last_launch.json').write_text(
-        json.dumps(
-            {
-                'pid': proc.pid,
-                'queue_cmd': queue_cmd,
-                'matrix_dir': str(matrix_dir),
-                'artifact_root': str(artifact_root),
-                'template': str(template_path),
-            },
-            indent=2,
-            sort_keys=True,
-        ) + '\n',
+        json.dumps(launch_payload, indent=2, sort_keys=True) + '\n',
         encoding='utf-8',
     )
     print(proc.pid)
