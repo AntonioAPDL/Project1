@@ -101,7 +101,55 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     source_nws_scale <- cfg$inputs$fit$nws_storage_scale
     source_glofas_scale <- cfg$inputs$fit$glofas_storage_scale
   }
-  if (strict_repro && (!nzchar(source_usgs) || !file.exists(source_usgs))) {
+  post_usgs_max_date <- function(path) {
+    path <- as.character(path %||% "")
+    if (!nzchar(path) || !file.exists(path)) {
+      return(as.Date(NA))
+    }
+    df <- tryCatch(
+      utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE),
+      error = function(e) NULL
+    )
+    if (!is.data.frame(df) || nrow(df) < 1L) {
+      return(as.Date(NA))
+    }
+    date_name <- intersect(c("date", "Date", "timestamp", "time", "target_date"), names(df))
+    if (length(date_name) < 1L) {
+      return(as.Date(NA))
+    }
+    dates <- suppressWarnings(as.Date(df[[date_name[[1L]]]]))
+    if (!any(!is.na(dates))) {
+      return(as.Date(NA))
+    }
+    max(dates, na.rm = TRUE)
+  }
+
+  post_truth_usgs <- source_usgs
+  post_truth_snapshot_dest_rel <- unified_get(
+    cfg,
+    c("inputs", "forecats", "snapshot", "dest_rel"),
+    default = "inputs/shared/forecats_bundle"
+  )
+  if (is.null(post_truth_snapshot_dest_rel) || !nzchar(as.character(post_truth_snapshot_dest_rel))) {
+    post_truth_snapshot_dest_rel <- "inputs/shared/forecats_bundle"
+  }
+  post_truth_resolution <- tryCatch(
+    unified_resolve_usgs_daily_path(
+      cfg,
+      snapshot_root = file.path(shared_input_run_root, as.character(post_truth_snapshot_dest_rel))
+    ),
+    error = function(e) NULL
+  )
+  post_truth_candidate <- if (is.list(post_truth_resolution)) as.character(post_truth_resolution$path %||% "") else ""
+  if (nzchar(post_truth_candidate) && file.exists(post_truth_candidate)) {
+    source_usgs_max <- post_usgs_max_date(source_usgs)
+    candidate_usgs_max <- post_usgs_max_date(post_truth_candidate)
+    if (!is.na(candidate_usgs_max) && (is.na(source_usgs_max) || candidate_usgs_max > source_usgs_max)) {
+      post_truth_usgs <- post_truth_candidate
+    }
+  }
+
+  if (strict_repro && (!nzchar(post_truth_usgs) || !file.exists(post_truth_usgs))) {
     stop(
       paste(
         "post stage requires a run-scoped or cached USGS daily truth CSV in strict mode.",
@@ -628,7 +676,7 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     ENV_RETROS_PATH = normalizePath(adapted_retros, mustWork = FALSE),
     ENV_NWS_FORECAST_PATH = normalizePath(adapted_nws, mustWork = FALSE),
     ENV_GLOFAS_FORECAST_PATH = normalizePath(adapted_glofas, mustWork = FALSE),
-    if (nzchar(source_usgs) && file.exists(source_usgs)) c(ENV_USGS_DAILY_PATH = normalizePath(source_usgs, mustWork = FALSE)) else character(0),
+    if (nzchar(post_truth_usgs) && file.exists(post_truth_usgs)) c(ENV_USGS_DAILY_PATH = normalizePath(post_truth_usgs, mustWork = FALSE)) else character(0),
     if (nzchar(shared_feature_csv)) c(UNIFIED_COVARIATE_FEATURES_CSV = shared_feature_csv) else character(0),
     if (nzchar(shared_feature_csv)) c(ENV_COVARIATE_FEATURES_PATH = shared_feature_csv) else character(0),
     if (nzchar(shared_cov_paths$eli)) c(ENV_COV_ELI_PATH = normalizePath(shared_cov_paths$eli, mustWork = FALSE)) else character(0),
