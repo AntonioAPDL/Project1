@@ -154,7 +154,7 @@ Evidence:
 
 ### T2. Fixed/Free `sigma/gamma` Ablations
 
-Status: fixed-gamsig v3 complete; causal comparison still pending latent ablations
+Status: fixed-gamsig v3 complete; compared against latent-freeze, latent-cap, and promotion-v2 evidence
 
 Purpose: determine whether the `sigma/gamma` approximation or calibration is the decisive instability source under
 the current `log1p_cms` scale.
@@ -331,7 +331,7 @@ Interpretation so far:
 
 ### T4. q05 Guard-Response Policy
 
-Status: policy and isolated promotion tooling implemented; broad promotion runtime pending
+Status: policy, isolated promotion tooling, and first capped promotion runtime complete
 
 Purpose: turn the warning-mode q05 `E[1/u_t]` evidence into a production decision.
 
@@ -361,7 +361,37 @@ Current decision:
   capped promotion candidate, but not clean enough to silently make capping the default without a fail-fast
   production run and scientific review;
 - `repro/audits/prepare_exdqlm_keep_guarded_repro.py --guard-profile promotion` now prepares isolated candidates
-  with fail-fast pseudo-data guards, explicit state norm/refreeze controls, and terminal sampling guard exports.
+  with fail-fast pseudo-data guards, explicit state norm/refreeze controls, delayed state-guard start, and terminal
+  sampling guard exports.
+
+Promotion v1 evidence:
+
+- run/report root:
+  `reports/exdqlm_keep_guarded_repro_promotion_log1p_q05_q35_q50_q95_v1_20260521_latent_cap_e_inv_u/`
+- all pseudo-data guard rows: `0`;
+- q05 and q95 failed at iter `3000` with repeated state-guard events and terminal state norm squared around
+  `1.50e6` and `1.56e6`;
+- q35 was interrupted after the overall promotion decision was already failed;
+- interpretation: state guarding was active too early and trapped q05/q95 before the latent-cap path could recover
+  to the stable state scale seen in the diagnostic latent-cap v3 run.
+
+Promotion v2 evidence:
+
+- run root:
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/runs/multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dfall999999_datastart2017_ready_exdqlm_multivar_keep__promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u`
+- final live status:
+  `reports/exdqlm_keep_guarded_repro_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/live_monitor_final/LIVE_STATUS.md`
+- runtime stability:
+  `reports/exdqlm_keep_runtime_stability_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`
+- curated evidence:
+  `reports/exdqlm_keep_curated_evidence_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`
+- decomposition evidence:
+  `reports/exdqlm_keep_decomposition_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`
+- all q05/q35/q50/q95 lanes wrote `.RData`, and the full wrapper completed post/validate/report;
+- no pseudo-data guard rows were written;
+- terminal state norm squared was q05 `1521.127`, q35 `2233.589`, q50 `2547.352`, q95 `5082.421`;
+- post-stage truth-window handling exported missing future USGS truth rows as `NA`-padded CRPS inputs rather than
+  failing the workflow.
 
 ### T5. Trend/Transfer/Discrepancy Decomposition
 
@@ -479,7 +509,7 @@ Implementation:
 
 ### T8. Promotion Decision
 
-Status: hold broad production; prepare one guarded promotion candidate next
+Status: isolated capped/guarded promotion candidate passed; broad production still requires explicit review/launch decision
 
 Promotion requires:
 
@@ -495,9 +525,9 @@ Decision outcomes:
 
 | outcome | meaning |
 | --- | --- |
-| promote repaired `log1p_cms` path | not yet; requires one fail-fast promotion candidate first |
-| targeted additional ablations | likely if the promotion candidate trips state/pseudo-data guards |
-| hold production | current decision for broad production until the promotion candidate passes |
+| promote repaired `log1p_cms` path | technically supportable only as the explicit promotion-v2 profile: latent `E[1/u]` cap `5000`, fail-fast pseudo-data guard, delayed state guard at iter `1000`, and terminal sampling guard |
+| targeted additional ablations | still recommended for damped/refrozen `sigma/gamma`, because q05/q95 terminal gamma values remain asymmetric |
+| hold production | default operational decision unless the user explicitly chooses to relaunch production with the named promotion-v2 profile |
 
 ## Validation Log
 
@@ -531,6 +561,11 @@ Decision outcomes:
 | 2026-05-21 | `python3 -m unittest tests.python.test_exdqlm_keep_ablation_tooling -v` after promotion-profile tooling | pass, 4 tests |
 | 2026-05-21 | focused closeout tests: runtime stability audit, decomposition audit, Kalman fixture, latent/pseudo-data audit, post-CRPS tables | pass: 9, 6, 7, 52, and 64 expectations respectively |
 | 2026-05-21 | `git diff --check` | pass |
+| 2026-05-21 | promotion v1 capped/guarded candidate | failed q05/q95 with early state-guard/refreeze trap; no pseudo-data guard rows |
+| 2026-05-21 | added `DISC_GAMSIG_STATE_GUARD_START_ITER` and promotion tooling export/manifest support | validated by Python tooling test and latent/pseudo-data audit test |
+| 2026-05-21 | promotion v2 capped/guarded candidate with state guard delayed to iter `1000` | pass; q05/q35/q50/q95 outputs written; fit/post/validate/report complete; zero pseudo-data guard rows |
+| 2026-05-21 | v2 runtime stability, curated evidence, and decomposition audits | pass; report paths recorded in T4/T8 |
+| 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_curated_evidence_bundle.R')"` after no-guard README fix | pass, 9 expectations |
 
 ## Change Log
 
@@ -544,3 +579,4 @@ Decision outcomes:
 | 2026-05-21 | Added a reusable decomposition audit for trend, transfer, discrepancy, and reconstruction checks | done |
 | 2026-05-21 | Drafted guard-response policy for q05-like latent-tail events | done |
 | 2026-05-21 | Completed latent-freeze and latent-cap v3 ablations, regenerated normalized runtime/curated evidence bundles, and added isolated promotion guard-profile tooling | done |
+| 2026-05-21 | Added delayed promotion state-guard start, completed promotion v2, and recorded v1/v2 evidence | done |

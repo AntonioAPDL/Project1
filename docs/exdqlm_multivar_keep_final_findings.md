@@ -17,8 +17,11 @@ writes all four `.RData` outputs in isolated reproductions. The decisive causal 
 4. Therefore the failure is not "the `s_t/u_t` formulas alone". It is the feedback loop between latent precision,
    `sigma/gamma`, pseudo-data, and the retained state decomposition.
 
-This is enough to prepare one fail-fast, guarded promotion candidate. It is not enough to launch broad production
-without that gate.
+The first fail-fast promotion attempt showed that a state guard active from the first refresh can trap q05/q95 in
+repeated refreeze. After adding an explicit delayed state-guard start, the second isolated promotion candidate
+completed fit, post, validate, and report for q05/q35/q50/q95 with no pseudo-data guard rows. This is the strongest
+runtime evidence so far for an explicitly capped/guarded `log1p_cms` candidate, but it still should be reviewed as a
+named production profile rather than silently becoming the default algorithm.
 
 ## Source Lock
 
@@ -93,6 +96,13 @@ Active implementation path:
    `repro/audits/exdqlm_keep_runtime_stability_audit.R` now normalizes quantile lanes with two digits, with test
    coverage in `tests/testthat/test_exdqlm_runtime_stability_audit.R`.
 
+6. Promotion state guarding was too aggressive when enabled from iteration 0.
+
+   `DISC_GAMSIG_STATE_GUARD_START_ITER` now allows promotion candidates to delay the state-norm guard until after
+   warmup/recovery. The promotion tooling records and exports the value, with regression coverage in
+   `tests/python/test_exdqlm_keep_ablation_tooling.py` and
+   `tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R`.
+
 ## Runtime Evidence
 
 Baseline guarded repaired control:
@@ -140,6 +150,37 @@ Latent-cap v3:
 - q05/q95 decomposition returned to the small-component scale: source-1 historical median absolute
   `mu_without_transfer` q05 `0.192401`, q95 `0.651413`; discrepancy q05 `0.398565`, q95 `0.595735`.
 
+Promotion v1:
+
+- evidence root:
+  `reports/exdqlm_keep_guarded_repro_promotion_log1p_q05_q35_q50_q95_v1_20260521_latent_cap_e_inv_u/`;
+- fail-fast pseudo-data guard rows: `0`;
+- q05 and q95 failed at iter `3000` with state norm squared around `1.50e6` and `1.56e6`;
+- both lanes had repeated `[gamsig_state_guard]` events and stopped before the required gamma/sigma update count;
+- interpretation: the guard profile was catching an unsafe state, but with `state_norm_abs_cap=1e6` active from
+  the first refresh it also prevented the latent-cap path from reaching the stable state scale already observed in
+  the v3 diagnostic.
+
+Promotion v2:
+
+- evidence roots:
+  `reports/exdqlm_keep_guarded_repro_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`,
+  `reports/exdqlm_keep_runtime_stability_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`,
+  `reports/exdqlm_keep_curated_evidence_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`,
+  `reports/exdqlm_keep_decomposition_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`;
+- full unified wrapper completed fit, post, validate, and report;
+- all four lanes wrote `.RData` with zero pseudo-data guard rows;
+- terminal state norm squared: q05 `1521.127`, q35 `2233.589`, q50 `2547.352`, q95 `5082.421`;
+- terminal `sigma_exp/gamma_exp`: q05 `0.04159492/0.8357256`, q35 `0.1136433/0.1103588`,
+  q50 `0.1227996/-0.01111135`, q95 `0.07100852/-1.762717`;
+- saved-output historical pseudo-data stayed far below promotion caps: q05 `FFF` max `3.979276`,
+  q95 `FFF` min `-2.161739`, q05 `QQQ_diag` max `0.325061`, q95 `QQQ_diag` max `0.463255`;
+- decomposition reconstructs populated fitted means to numerical tolerance and stays on the small-component scale:
+  q05/q95 source-1 historical median absolute `mu_without_transfer` `0.192401`/`0.651413` and discrepancy
+  `0.398565`/`0.595735`;
+- post-stage truth availability correctly reports missing future USGS truth at/after `2022-12-26` and pads CRPS
+  truth with `NA` instead of failing.
+
 ## Interpretation
 
 The strongest negative result is latent-freeze: fixed latent moments did not stabilize q05/q95. That rules out a
@@ -162,17 +203,20 @@ tail lanes are more exposed to near-zero/low-flow precision effects.
 
 ## Prioritized Fix List
 
-P0. Do not broad-launch production yet.
+P0. Do not broad-launch a new production campaign automatically from this audit. The explicit capped/guarded
+promotion-v2 candidate passed, but production should use that named profile only after review of the promotion
+evidence bundle.
 
-P0. Prepare one isolated promotion candidate using `--guard-profile promotion`, pseudo-data guard mode `fail`,
-state/refreeze guards, terminal sampling guard, and the current `log1p_cms` transform. Generate the same runtime,
-curated, and decomposition evidence bundle.
+P0. If promoting `log1p_cms`, use the explicit profile tested in promotion v2: pseudo-data guard mode `fail`,
+latent `E[1/u]` cap `5000`, state guard enabled with delayed start at iter `1000`, terminal sampling guard, and
+post-save objective disabled unless that expensive diagnostic is specifically needed.
 
 P0. Keep latent `E[1/u]` capping diagnostic/explicit. It may be tested as a named capped candidate, but it should
 not silently become the default because it changes pseudo-observation precision.
 
-P1. Add a damped/refrozen `sigma/gamma` candidate if the promotion run trips state or pseudo-data guards. The
-latent-freeze result makes this the most important remaining algorithmic control.
+P1. Add a damped/refrozen `sigma/gamma` candidate before broadening beyond q05/q35/q50/q95. Promotion v2 passed,
+but q05/q95 still have asymmetric terminal gamma values, and latent-freeze shows free `sigma/gamma` can still drive
+large tail-lane states.
 
 P1. Keep decomposition monitoring in every candidate. q95 can be finite while still showing larger retained
 transfer/discrepancy magnitudes.
@@ -194,9 +238,11 @@ making `log1p` work with guardrails before considering `log1plog1p` or reverting
   with 6 expectations.
 - `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_runtime_stability_audit.R')"` passed
   with 9 expectations after lane-label normalization.
+- `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_curated_evidence_bundle.R')"` passed
+  with 9 expectations after the no-guard README interpretation fix.
 - `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_crps_tables.R')"` passed with
   64 expectations.
 - `python3 -m unittest tests.python.test_exdqlm_keep_ablation_tooling -v` passed with 4 tests after promotion
   profile tooling.
-- Fixed-gamsig, latent-freeze, and latent-cap v3 runtime, runtime-stability, curated-evidence, and decomposition
-  reports were generated under `reports/` and left untracked by default.
+- Promotion v2 completed the full unified wrapper and generated live-monitor, runtime-stability, curated-evidence,
+  and decomposition reports under `reports/`; generated reports remain untracked by default.

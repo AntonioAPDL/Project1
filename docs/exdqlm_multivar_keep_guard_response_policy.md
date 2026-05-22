@@ -28,7 +28,9 @@ The active runner has three relevant guard surfaces.
 
    When enabled, it detects nonfinite state norms, absolute state-norm cap breaches, or sudden state-norm growth.
    On trigger, it reverts the proposed state/latent/gamma-sigma/covariance update to the previous iterate and
-   extends the gamma/sigma refreeze/hold window.
+   extends the gamma/sigma refreeze/hold window. Promotion candidates can delay activation with
+   `DISC_GAMSIG_STATE_GUARD_START_ITER`; this prevents the guard from trapping q05/q95 during the early recovery
+   phase before the latent-cap path settles.
 
 3. Terminal sampling guard.
 
@@ -92,6 +94,28 @@ Latent-cap v3:
 This is enough evidence to test a capped candidate explicitly. It is not enough evidence to make silent latent
 clipping the default, because the cap changes pseudo-observation precision and therefore the fitted state update.
 
+Promotion v1:
+
+- evidence root:
+  `reports/exdqlm_keep_guarded_repro_promotion_log1p_q05_q35_q50_q95_v1_20260521_latent_cap_e_inv_u/`;
+- guard profile used fail-fast pseudo-data guards plus state guard active from the beginning;
+- no pseudo-data guard rows were written;
+- q05 and q95 failed at iter `3000` after repeated state-guard/refreeze events, with terminal state norm squared
+  around `1.50e6` and `1.56e6`;
+- interpretation: this was a guard-policy failure, not evidence that latent capping cannot stabilize the lane.
+
+Promotion v2:
+
+- evidence roots:
+  `reports/exdqlm_keep_guarded_repro_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`,
+  `reports/exdqlm_keep_runtime_stability_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`,
+  `reports/exdqlm_keep_curated_evidence_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`,
+  `reports/exdqlm_keep_decomposition_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`;
+- state guard delayed to iter `1000`;
+- all q05/q35/q50/q95 lanes wrote `.RData`, and fit/post/validate/report completed;
+- no pseudo-data guard rows were written;
+- terminal state norm squared was q05 `1521.127`, q35 `2233.589`, q50 `2547.352`, q95 `5082.421`.
+
 ## Policy Decision
 
 For diagnostic ablations:
@@ -107,17 +131,19 @@ For promotion candidates and broad production relaunches:
 - retain the current caps as initial promotion thresholds:
   `FFF=1000`, `QQQ_diag=10000`, `E[s]=1000`, `E[s^2]=1e6`, `E[u]=1e6`, `E[1/u]=5000`;
 - enable state-norm guard/refreeze controls and terminal sampling guard for all q05/q35/q50/q95 promotion lanes;
+- delay state-norm guard activation until iter `1000` for this reduced-spec `log1p_cms` profile unless a new
+  warmup-specific diagnostic shows an earlier threshold is safe;
 - treat any q05-like `E[1/u]` cap breach as a failed promotion run until the latent-cap ablation proves that
   capping is scientifically harmless.
 - use `repro/audits/prepare_exdqlm_keep_guarded_repro.py --guard-profile promotion` for isolated candidates. That
   profile exports fail-fast pseudo-data guards, `DISC_GAMSIG_STATE_GUARD_ENABLED=1`, state norm cap/ratio controls,
-  refreeze/hold windows, and `DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE=fail_fast`.
+  delayed guard start, refreeze/hold windows, and `DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE=fail_fast`.
 
 ## What Not To Do Yet
 
-Do not promote latent `E[1/u]` capping as the default production fix yet. It is useful as a diagnostic ablation and
-now a reasonable explicit candidate, but capping changes the pseudo-observation precision directly. Fail-fast plus
-state/refreeze guards remain the defensible default production behavior.
+Do not promote latent `E[1/u]` capping as an unlabeled default production fix. It is now a runtime-clean explicit
+candidate, but capping changes the pseudo-observation precision directly. Any production relaunch using it should be
+named as the capped/guarded promotion-v2 profile and retain the fail-fast monitoring.
 
 Do not infer stability from terminal state norm alone. The fixed-gamsig v3 outputs are finite, but saved-output
 latent tails can still be close to the cap and q95 component magnitudes remain large.
@@ -135,8 +161,7 @@ Current focused tests:
 
 Recommended next runtime check:
 
-1. Prepare a single isolated promotion candidate with `--guard-profile promotion`.
-2. Run it with pseudo-data guard mode `fail`, state/refreeze guards, terminal sampling guard, and full evidence
-   bundle generation.
-3. Promote only if the candidate completes without guard failures and its decomposition remains close to the
-   latent-cap/fixed-gamsig evidence scale.
+1. Review the promotion-v2 evidence bundle and decide whether to relaunch production with that named profile.
+2. Add a damped/refrozen `sigma/gamma` candidate before broadening beyond q05/q35/q50/q95, because q05/q95 terminal
+   gamma values remain asymmetric even though the state and pseudo-data paths are stable.
+3. Keep runtime stability, guard CSV, and decomposition bundles mandatory for any production-scale relaunch.
