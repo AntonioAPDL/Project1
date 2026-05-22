@@ -25,6 +25,8 @@ EXDQLM_SHARED_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_ex
 EXDQLM_SHARED_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.yaml'
 EXDQLM_FULLHISTORY_PROMOTION_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.template.yaml'
 EXDQLM_FULLHISTORY_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.yaml'
+EXDQLM_ALLCUTOFFS_FULLHISTORY_PROMOTION_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.template.yaml'
+EXDQLM_ALLCUTOFFS_FULLHISTORY_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml'
 BUILDER = ROOT / 'scripts' / 'build_he2_bayesian_publication_relaunch_configs.py'
 
 
@@ -1185,6 +1187,142 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(cfg['fit']['exdqlm_multivar']['legacy']['forecast_cov']['c_factor'], 1.0)
         self.assertEqual(cfg['scale_contract']['legacy_fit_input_scale'], 'log1p_cms')
         self.assertEqual(cfg['scale_contract']['transform_policy'], 'log1p_only')
+
+    def test_exdqlm_allcutoffs_fullhistory_promotion_batch_builds_guarded_configs(self) -> None:
+        proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(
+            '--batch-file', str(EXDQLM_ALLCUTOFFS_FULLHISTORY_PROMOTION_BATCH),
+            template=EXDQLM_ALLCUTOFFS_FULLHISTORY_PROMOTION_TEMPLATE,
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+        cutoffs = ['20210123', '20211112', '20211221', '20220511', '20221225']
+        cutoff_dates = {
+            '20210123': '2021-01-23',
+            '20211112': '2021-11-12',
+            '20211221': '2021-12-21',
+            '20220511': '2022-05-11',
+            '20221225': '2022-12-25',
+        }
+        engineered = ['PPT_sq', 'SOIL_sq', 'PPT_x_SOIL', 'PPT_lag1', 'PPT_lag2', 'PPT_lag3', 'SOIL_lag1', 'SOIL_lag2', 'SOIL_lag3']
+
+        launch_settings = (matrix_dir / 'launch_settings.env').read_text(encoding='utf-8')
+        self.assertIn('ORDINARY_MAX_CONCURRENT=5', launch_settings)
+        self.assertIn('HEAVY_CUTOFF_MAX_CONCURRENT=1', launch_settings)
+        self.assertIn('HEAVY_CUTOFF_BLOCKS_ORDINARY=0', launch_settings)
+        self.assertIn('POLL_SECONDS=30', launch_settings)
+
+        with (matrix_dir / 'matrix_plan.csv').open('r', encoding='utf-8') as handle:
+            plan_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(plan_rows), 5)
+        self.assertEqual([row['cutoff'] for row in plan_rows], cutoffs)
+        self.assertEqual({row['family_id'] for row in plan_rows}, {'exdqlm_multivar_keep'})
+        self.assertEqual({row['model_class'] for row in plan_rows}, {'quantile_multivariate'})
+        self.assertEqual({row['active_quantiles'] for row in plan_rows}, {'05|20|35|50|65|80|95'})
+
+        with (matrix_dir / 'cutoff_bundle_audit.csv').open('r', encoding='utf-8') as handle:
+            audit_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(audit_rows), 5)
+        by_cutoff = {row['cutoff']: row for row in audit_rows}
+        for cutoff in cutoffs:
+            audit = by_cutoff[cutoff]
+            self.assertEqual(audit['retros_start'], '1987-05-29')
+            self.assertEqual(audit['retros_end'], cutoff_dates[cutoff])
+            self.assertEqual(audit['retros_duplicate_dates'], '0')
+            self.assertEqual(audit['retros_missing_days'], '0')
+            self.assertEqual(audit['gdpc_alias_start'], '1987-05-29')
+            self.assertEqual(audit['gdpc_alias_end'], '2023-01-22')
+            self.assertIn('multimodel_v8_he2_publication_shared_inputs_20260510', audit['bundle_root'])
+            self.assertIn('support_manifest.json', audit['support_manifest'])
+            self.assertIn('forecats_bundle/nws_forecast.csv', audit['forecast_nws_source'])
+            self.assertIn('forecats_bundle/glofas_forecast.csv', audit['forecast_glofas_source'])
+            self.assertEqual(audit['deterministic_precip_source'], 'gefs_apcp')
+            self.assertEqual(audit['deterministic_precip_reduction'], 'q85')
+            self.assertEqual(audit['deterministic_soil_source'], 'gefs_soilw_0_0.1m')
+            self.assertEqual(audit['deterministic_soil_reduction'], 'q85')
+
+        with (matrix_dir / 'frozen_spec_manifest.csv').open('r', encoding='utf-8') as handle:
+            frozen_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(frozen_rows), 5)
+        for row in frozen_rows:
+            self.assertEqual(row['active_quantile_count'], '7')
+            self.assertEqual(row['fit_parallel_workers'], '7')
+            self.assertEqual(row['run_mc_cores'], '7')
+            self.assertEqual(row['forecast_cov_epsilon_fit'], '365.0')
+            self.assertEqual(row['forecast_cov_c_factor_fit'], '1.0')
+            self.assertEqual(row['df_t'], '0.99999')
+            self.assertEqual(row['df_s1'], '0.9999')
+            self.assertEqual(row['df_s2'], '0.9999')
+            self.assertEqual(row['df_s67'], '0.9999')
+            self.assertEqual(row['df_discrep'], '0.9999')
+            self.assertEqual(row['lambda'], '0.97')
+            self.assertEqual(row['df_trans'], '0.9999999')
+            self.assertEqual(row['df_covs'], '0.9999999')
+            self.assertEqual(row['legacy_fit_input_scale'], 'log1p_cms')
+            self.assertEqual(row['analysis_scale_fit_internal'], 'log1p_cms')
+            self.assertEqual(row['analysis_scale_post_internal'], 'log1p_cms')
+            self.assertEqual(row['config_patch_applied'], 'True')
+            self.assertIn('"max_iter": 100', row['config_patch_json'])
+            self.assertIn('"epsilon": 365.0', row['config_patch_json'])
+            self.assertIn('"PPT_x_SOIL"', row['config_patch_json'])
+
+        for cutoff in cutoffs:
+            cfg = yaml.safe_load(
+                (config_output_dir / f'multimodel_{cutoff}_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml').read_text(encoding='utf-8')
+            ) or {}
+            self.assertEqual(cfg['dates']['data_start'], '1987-05-29')
+            self.assertEqual(cfg['run']['seed'], int(cutoff))
+            self.assertEqual(cfg['run']['threads']['omp'], 1)
+            self.assertEqual(cfg['run']['threads']['openblas'], 1)
+            self.assertEqual(cfg['run']['threads']['mkl'], 1)
+            self.assertEqual(cfg['run']['threads']['veclib'], 1)
+            self.assertEqual(cfg['run']['threads']['numexpr'], 1)
+            self.assertEqual(cfg['run']['threads']['mc_cores'], 7)
+            self.assertEqual(cfg['fit']['parallel']['workers'], 7)
+            self.assertEqual(cfg['fit']['quantiles'], [0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95])
+            self.assertEqual([entry['name'] for entry in cfg['inputs']['fit']['covariates']], ['PPT', 'SOIL', 'PCA'])
+            self.assertTrue(cfg['inputs']['deterministic_climate']['enabled'])
+            self.assertIn('gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z', cfg['inputs']['deterministic_climate']['handoff_root'])
+            self.assertEqual(cfg['inputs']['deterministic_climate']['precip']['source'], 'gefs_apcp')
+            self.assertEqual(cfg['inputs']['deterministic_climate']['precip']['reduction'], 'q85')
+            self.assertTrue(cfg['inputs']['deterministic_climate']['precip']['noisy_blend']['enabled'])
+            self.assertTrue(cfg['inputs']['deterministic_climate']['precip']['observed_blend']['enabled'])
+            self.assertEqual(cfg['inputs']['deterministic_climate']['soil']['source'], 'gefs_soilw_0_0.1m')
+            self.assertEqual(cfg['inputs']['deterministic_climate']['soil']['reduction'], 'q85')
+            self.assertTrue(cfg['inputs']['deterministic_climate']['soil']['noisy_blend']['enabled'])
+            self.assertTrue(cfg['inputs']['deterministic_climate']['soil']['observed_blend']['enabled'])
+            self.assertEqual(cfg['inputs']['transfer_function_covariates']['base_covariates'], ['PPT', 'SOIL', 'PCA'])
+            self.assertEqual(cfg['inputs']['transfer_function_covariates']['engineered_terms'], engineered)
+            self.assertEqual(cfg['debug_he2_publication_relaunch']['canonical_fit_covariate_contract'], 'PPT|SOIL|PCA(alias=GDPC1)')
+            self.assertIn('support_manifest.json', cfg['debug_he2_publication_relaunch']['support_manifest'])
+            self.assertEqual(cfg['models']['exdqlm_multivar']['forecast_transfer_mode'], 'keep')
+            # Indices into exdqlm_multivar_default_harmonics(), not literal harmonic values.
+            self.assertEqual(cfg['models']['exdqlm_multivar']['structure']['enabled_harmonic_indices'], [1, 2, 3])
+            state = cfg['models']['exdqlm_multivar']['state_evolution']
+            self.assertEqual(state['df_t'], 0.99999)
+            self.assertEqual(state['df_s1'], 0.9999)
+            self.assertEqual(state['df_s2'], 0.9999)
+            self.assertEqual(state['df_s67'], 0.9999)
+            self.assertEqual(state['df_discrep'], 0.9999)
+            self.assertEqual(state['lambda'], 0.97)
+            self.assertEqual(state['df_trans'], 0.9999999)
+            self.assertEqual(state['df_covs'], 0.9999999)
+            fit = cfg['fit']['exdqlm_multivar']
+            self.assertEqual(fit['gamma_sigma']['max_iter'], 100)
+            self.assertEqual(fit['gamma_sigma']['terminal_sampling_guard']['mode'], 'fail_fast')
+            self.assertEqual(fit['latent_ablation']['mode'], 'cap_e_inv_u')
+            self.assertEqual(fit['latent_ablation']['e_inv_u_cap'], 5000)
+            self.assertEqual(fit['pseudodata_guard']['mode'], 'fail')
+            self.assertEqual(fit['pseudodata_guard']['caps']['e_inv_u_abs_cap'], 5000)
+            self.assertEqual(fit['forecast_health']['fail_fast'], True)
+            self.assertEqual(fit['legacy']['forecast_cov']['epsilon'], 365.0)
+            self.assertEqual(fit['legacy']['forecast_cov']['c_factor'], 1.0)
+            self.assertEqual(cfg['post']['figures'], True)
+            self.assertEqual(cfg['post']['export_tables'], True)
+            self.assertEqual(cfg['post']['smoke_fast'], True)
+            self.assertEqual(cfg['scale_contract']['legacy_fit_input_scale'], 'log1p_cms')
+            self.assertEqual(cfg['scale_contract']['analysis_scale_fit_internal'], 'log1p_cms')
+            self.assertEqual(cfg['scale_contract']['analysis_scale_post_internal'], 'log1p_cms')
+            self.assertEqual(cfg['scale_contract']['transform_policy'], 'log1p_only')
 
 
 if __name__ == '__main__':

@@ -41,6 +41,21 @@ Tracked summary docs:
 - [repair and transform regression plan](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_repair_and_transform_regression_plan.md)
 - [guarded reproduction evidence](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_guarded_repro_20260521.md)
 - [multi-cutoff promotion plan](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_multicutoff_promotion_plan_20260522.md)
+- [all-cutoff full-history promotion readiness](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_allcutoffs_fullhistory_promotion_readiness_20260522.md)
+
+Current promotion package:
+
+| item | status | evidence |
+| --- | --- | --- |
+| All five HE2 cutoffs package | ready, not launched | `config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.template.yaml` |
+| All-cutoff guarded batch | ready, not launched | `config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml` |
+| `max_iter=100` retarget | locked | template/batch tests and generated-config test |
+| Full-history 1987 input bundle | locked | generated `cutoff_bundle_audit.csv` under the all-cutoff preflight root |
+| GDPC/PPT/SOIL covariates | locked | support manifest and generated-config tests |
+| Blended PPT/SOIL deterministic forecasts | locked | generated-config test asserts GEFS q85 sources plus noisy/observed blends |
+| Full transfer features | locked | generated-config test asserts PPT/SOIL/PCA plus squares, interaction, lags |
+| Full harmonic basis | locked | `tests/testthat/test_exdqlm_multivar_structure_contract.R` |
+| `.RData` policy | locked | current cleanup wrapper keeps `.RData` through post and removes it after post; no-cleanup queue patch intentionally skipped |
 
 Completed first repair sequence:
 

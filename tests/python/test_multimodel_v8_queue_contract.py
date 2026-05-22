@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import pandas as pd
@@ -11,6 +13,7 @@ SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
+import run_multimodel_v8_queue
 from run_multimodel_v8_queue import launch_allowed
 
 
@@ -61,6 +64,24 @@ class MultimodelV8QueueContractTest(unittest.TestCase):
             heavy_cutoff_blocks_ordinary=False,
         )
         self.assertTrue(allowed_ordinary)
+
+    def test_default_queue_runner_keeps_rdata_through_post_then_cleanup(self) -> None:
+        class DummyProc:
+            pid = 12345
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "unit_test_queue_launch.log"
+            with mock.patch.object(run_multimodel_v8_queue.subprocess, "Popen", return_value=DummyProc()) as popen:
+                pid = run_multimodel_v8_queue.launch_run(
+                    ROOT / "config" / "example.yaml",
+                    log_path,
+                )
+
+        self.assertEqual(pid, 12345)
+        cmd = popen.call_args.args[0]
+        self.assertEqual(cmd[:2], ["bash", "scripts/run_unified_with_cleanup.sh"])
+        self.assertEqual(cmd[-2:], ["--config", str(ROOT / "config" / "example.yaml")])
+        self.assertIn("CLEANUP_RDATA_AFTER_POST=1", (ROOT / "scripts" / "run_unified_with_cleanup.sh").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

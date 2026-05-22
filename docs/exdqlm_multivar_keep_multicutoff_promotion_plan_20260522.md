@@ -3,25 +3,27 @@
 Date: 2026-05-22
 
 Scope: plan the next guarded `log1p_cms` `exdqlm_multivar_keep` launch across all five HE2 publication cutoffs,
-using the repaired workflow, retained fit-state `.RData`, immediate post/CRPS/plots, and 35 single-threaded quantile
-fits in parallel. This document is a plan and source lock. It does not launch or clean anything by itself.
+using the repaired workflow, `.RData` through post followed by cleanup, immediate post/CRPS/plots, and 35
+single-threaded quantile fits in parallel. This document is a plan and source lock. It does not launch or clean
+anything by itself.
 
 ## Current Decision
 
-We are ready to prepare the multi-cutoff launch package, but not to launch it blindly.
+We prepared the multi-cutoff launch package, but this document still does not launch anything by itself.
 
 The 2022-12-25 full-history guarded prelaunch proved the promoted path can run all seven quantiles at `max_iter=200`
-without pseudo-data failures or fatal fit errors. It also exposed two operational gaps that must be closed before the
-five-cutoff run:
+without pseudo-data failures or fatal fit errors. The multi-cutoff package now retargets that repaired path to
+`max_iter=100`, all five HE2 cutoffs, and the canonical full-history shared bundle.
 
-1. The queue path currently launches `scripts/run_unified_with_cleanup.sh`, which sets `CLEANUP_RDATA_AFTER_POST=1`;
-   the 2022-12-25 post stage therefore removed all seven large `.RData` files after post. That blocks the
-   `theta.out`, decomposition, and retained-exps reviews that require saved fit state.
-2. The run-scoped USGS input copied into the cutoff bundle stops at the cutoff. Future post figures and CRPS need
-   the fuller configured/cached USGS truth source when held-out rows exist.
+The `.RData` decision changed after the first plan draft. We intentionally did **not** implement the no-cleanup queue
+patch. The active queue still launches `scripts/run_unified_with_cleanup.sh`, which sets `CLEANUP_RDATA_AFTER_POST=1`.
+That is now accepted for this launch: the fit-state `.RData` files are kept through the full post stage, then removed
+after post finishes. Any diagnostic that needs `.RData` must therefore run inside the post/report stage or before
+cleanup. The retained post outputs, CRPS tables, exported tables, ELBO plots, fit figures, and held-out USGS figures are
+the durable artifacts for this campaign.
 
-The second gap is now patched locally by commit `26d6f4e`. The first gap needs a small queue/launch promotion patch
-or an equivalent no-cleanup launch path before the multi-cutoff run.
+The held-out USGS truth-source issue is patched by commit `26d6f4e`, and the all-seven ELBO plotting issue is patched
+by commit `9d30640`. Both are already on `origin/feature/export_posterior_tables`.
 
 ## Evidence Reconstructed
 
@@ -66,19 +68,14 @@ Current report evidence from the 2022-12-25 full-history prelaunch:
 
 ## Current Branch State
 
-At plan creation:
+At the all-cutoff package update:
 
 - branch: `feature/export_posterior_tables`;
-- pushed baseline: `origin/feature/export_posterior_tables` at `737cb3c`;
-- local commits ahead of origin:
+- pushed baseline: `origin/feature/export_posterior_tables` at `b9b3ccf`;
+- required post-stage patches already pushed:
   - `9d30640 Plot all multivar ELBO traces in smoke output`;
   - `26d6f4e Use full USGS truth source for post figures`;
-- tracked tree: clean apart from this plan once staged;
-- untracked `reports/` directories: expected runtime/audit artifacts, not to be committed by default.
-
-Before the multi-cutoff launch, the two local commits must either be pushed or intentionally included in the launch
-branch state. They are not optional for this plan: one fixes all-seven ELBO output, and the other fixes post-stage
-held-out USGS truth selection.
+- tracked runtime/audit outputs under `reports/` remain excluded locally and should not be committed by default.
 
 ## Launch Contract
 
@@ -117,10 +114,9 @@ Common contract for every cutoff:
 | simultaneous cutoffs | `5` |
 | target concurrent quantile fits | `5 * 7 = 35` |
 | post behavior | run post immediately after fit for each cutoff |
-| RData behavior | retain all new multi-cutoff `.RData` files through diagnostics |
+| RData behavior | keep `.RData` through the full post stage, then allow cleanup after post |
 
-The final discount factors and Wishart prior values must be supplied or re-confirmed immediately before package
-generation. The last source-locked 2022-12-25 prelaunch used:
+The final discount factors and Wishart prior values for the all-cutoff package are:
 
 ```text
 df_t        0.99999
@@ -135,8 +131,9 @@ epsilon     365.0
 c_factor    1.0
 ```
 
-If the final multi-cutoff values differ, the new batch, generated configs, tests, source-lock doc, and run README must
-record the new values explicitly.
+These values are locked in
+`config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml`, generated
+configs, and tests.
 
 ## Required Promotion Patches
 
@@ -149,7 +146,7 @@ Implementation target:
 - create a new all-cutoff template/batch rather than mutating the completed 2022-12-25 evidence package;
 - assert the generated configs and frozen manifest `config_patch_json` contain `max_iter=100` for all five cutoffs.
 
-### P0. Retain `.RData` For New Multi-Cutoff Run
+### P0. Keep `.RData` Through Post, Then Cleanup
 
 Observed code contract:
 
@@ -159,17 +156,17 @@ Observed code contract:
 - `scripts/run_unified_without_cleanup.sh:27` sets cleanup off;
 - `scripts/run_multimodel_v8_queue.py:324-329` currently hardcodes `scripts/run_unified_with_cleanup.sh`.
 
-Required implementation:
+Implementation decision:
 
-1. Add a queue/launch setting for cleanup mode, for example `--cleanup-mode with_cleanup|without_cleanup`.
-2. Make `scripts/run_multimodel_v8_queue.py` call `run_unified_without_cleanup.sh` for this launch.
-3. Thread the setting through `scripts/launch_he2_bayesian_publication_relaunch.py`,
-   `scripts/build_he2_bayesian_publication_relaunch_configs.py`, and `launch_settings.env`.
-4. Add tests proving the generated queue command and launch settings select the no-cleanup runner.
-5. Keep the default behavior unchanged unless explicitly configured.
+1. Do not add the no-cleanup queue setting in this launch package.
+2. Keep the default queue runner as `scripts/run_unified_with_cleanup.sh`.
+3. Treat `.RData` files as transient fit-state artifacts that must exist through post and may be deleted immediately
+   after post completes.
+4. Put durable evidence in post outputs, exported tables, smoke-fast figures, held-out USGS figures, and reports.
 
-Acceptance criterion: after each cutoff completes post, `find <run_root> -name '*.RData'` still finds the seven
-quantile fit-state outputs.
+Acceptance criterion: post must finish before cleanup; after post, missing `.RData` is acceptable for this package.
+If a later diagnostic requires `theta.out` or raw fit-state objects after post, that diagnostic must either be moved
+into the post/report stage or the skipped no-cleanup queue patch must be implemented in a separate, explicit change.
 
 ### P0. Preserve Held-Out USGS Truth For Post/CRPS
 
@@ -206,15 +203,15 @@ This can remain an untracked `reports/` helper unless it becomes broadly reusabl
 ## Cleanup Policy
 
 Current runtime inventory found 64 `.RData`/`.rdata` files under
-`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime`, totaling about 46.82 GiB. The new five-cutoff retained run
-may produce roughly 35 large `.RData` files. The 2022-12-25 full-history prelaunch files were about 8.15 GiB each
-before cleanup, so the retained multi-cutoff upper estimate is about 285 GiB.
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime`, totaling about 46.82 GiB. The new five-cutoff run may create
+roughly 35 large `.RData` files transiently during fit/post. Because the accepted queue path cleans them after post,
+they are not intended to be durable campaign artifacts.
 
 Available space at plan time: about 471 GiB free on `/data`.
 
 Cleanup must be explicit and reviewable:
 
-1. Do not delete anything before the final multi-cutoff launch package and retention path are ready.
+1. Do not delete anything before the final multi-cutoff launch package and post-output path are ready.
 2. Do not touch the older protected live roots named in the original audit request.
 3. Use `scripts/cleanup_he2_runtime_artifacts.py` in dry-run mode first.
 4. Protect all old live roots plus any report/evidence roots we choose to keep.
@@ -267,7 +264,7 @@ Actions:
 6. Set `max_iter: 100`.
 7. Apply final discount/Wishart spec.
 8. Preserve all promotion-v2 guards.
-9. Set cleanup mode to retain `.RData`.
+9. Keep the current cleanup-wrapper behavior: `.RData` exists through post and is removed after post.
 
 Acceptance criteria:
 
@@ -285,8 +282,8 @@ Required tests:
 1. Template test for the new all-cutoff promotion package.
 2. Builder-selection test that materializes the five generated configs in a temporary root and asserts:
    cutoffs, quantiles, `max_iter=100`, discounts/Wishart, input bundle, harmonics, transfer covariates, guards,
-   `global_models`, 7 workers, and cleanup retention.
-3. Queue test that confirms no-cleanup runner selection when cleanup mode is disabled.
+   `global_models`, and 7 workers.
+3. Queue test that confirms the current cleanup wrapper is selected by default.
 4. Stage-post truth-source test or preflight assertion for each cutoff.
 5. Existing tests from the 2022-12-25 source-lock pass.
 
@@ -312,7 +309,7 @@ Actions:
 2. Run launch dry-run and capture the queue command.
 3. Run cleanup dry-run only, not apply.
 4. Write a prelaunch report under `reports/` and a tracked source-lock summary under `docs/` if specs changed.
-5. Confirm disk/free-space gate can tolerate retained `.RData`.
+5. Confirm disk/free-space gate can tolerate transient `.RData` while each post stage runs.
 
 Required report tables:
 
@@ -322,13 +319,13 @@ Required report tables:
 - quantile/worker/thread contract;
 - truth source and truth max date per cutoff;
 - cleanup dry-run planned deletions and protected roots;
-- expected `.RData` retention paths.
+- expected transient `.RData` behavior and durable post-output paths.
 
 ### Step 5. Launch Only After Explicit Approval
 
 Actions after approval:
 
-1. Start queue with the no-cleanup mode and five-row concurrency.
+1. Start queue with the current cleanup wrapper and five-row concurrency.
 2. Start live monitor immediately.
 3. Do not stop old live roots or unrelated diagnostics.
 4. If any cutoff fails, do not relaunch automatically; classify the failure first.
@@ -342,21 +339,20 @@ python3 scripts/launch_he2_bayesian_publication_relaunch.py \
   --skip-validate
 ```
 
-The actual command should include or inherit the no-cleanup queue setting. The exact final command belongs in the
-prelaunch report, not only in chat.
+The exact final command belongs in the prelaunch report, not only in chat.
 
 ### Step 6. Post-Run Evidence Bundle
 
 For every cutoff:
 
-1. Verify seven `.RData` outputs are retained.
-2. Verify post, validate, and report stages completed.
+1. Verify post, validate, and report stages completed.
+2. Verify `.RData` cleanup happened only after post completion.
 3. Export all-seven ELBO plots.
 4. Export fit-log traces: ELBO, ELBO step, `sigma_exp`, `gamma_exp`, state norm sq divided by history length, guard
    counts.
-5. Run runtime stability audit from `.RData`.
-6. Run decomposition audit from `.RData`.
-7. Run visual review from `.RData`: `theta.out$sm`, selected states, retained exps, USGS target exps.
+5. Run any `.RData`-dependent runtime stability audit before cleanup or from post-integrated outputs.
+6. Run decomposition audit from post-integrated outputs.
+7. Run visual review from post-integrated outputs: selected states, retained exps, USGS target exps.
 8. Build cutoff and forecast-window synthesis plots with held-out USGS truth when available.
 9. Export CRPS tables and truth-availability tables.
 10. Write one cutoff README plus one campaign README.
