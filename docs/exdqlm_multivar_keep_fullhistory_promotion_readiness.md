@@ -44,8 +44,8 @@ The intended generated run contract is:
 | covariates | `PPT`, `SOIL`, `PCA` where `PCA` is the canonical GDPC1 alias | builder debug contract is `PPT|SOIL|PCA(alias=GDPC1)` |
 | engineered transfer terms | `PPT_sq`, `SOIL_sq`, `PPT_x_SOIL`, `PPT_lag1:3`, `SOIL_lag1:3` | full transfer function used by the representative source config |
 | harmonic slots | `enabled_harmonic_indices: [1, 2, 3]`, mapping to legacy values `c(1, 2, 1/6.8068493)` | `[1, 2, 3]` are indices into `exdqlm_multivar_default_harmonics()`, not literal harmonic values; this is the full legacy seasonal basis, not the reduced h1-only diagnostic |
-| discount spec | set09: `df_t=0.99999999`, `df_s1=df_s2=0.9998`, `df_s67=0.9999`, `df_discrep=0.998`, `lambda=0.97`, `df_trans=df_covs=0.9999999` | matches the selected representative source metadata |
-| Wishart forecast prior | `epsilon=360.0`, `c_factor=1.0` | selected source metadata records `eps360cf1` for the 2022-12-25 representative |
+| discount spec | `df_t=0.99999`, `df_s1=df_s2=df_s67=df_discrep=0.9999`, `lambda=0.97`, `df_trans=df_covs=0.9999999` | requested prelaunch spec, aligned with the May 18 discount-refresh profile except for the explicit `df_covs=0.9999999` override |
+| Wishart forecast prior | `epsilon=365.0`, `c_factor=1.0` | requested prelaunch prior; matches the May 18 discount-refresh retained `eps365` scaffold |
 | VB max iterations | `200` | prelaunch/dry-test setting requested before any full production relaunch; the earlier guarded runtime evidence used `3000` |
 | latent guard | `latent_ablation.mode: cap_e_inv_u`, `e_inv_u_cap: 5000` | explicit audited cap on `E[1/u_t]`, not a silent default |
 | pseudo-data guard | enabled, mode `fail`, caps `FFF=1000`, `QQQ_diag=10000`, `E[1/u]=5000` | fail-fast protection against the audited pseudo-data feedback loop |
@@ -60,12 +60,31 @@ full-history publication contract.
 
 The publication representative config for `2022-12-25` points to `set09` and `eps360cf1` metadata in
 `config/unified_runs_publication_replay_representatives_20260506/20221225_exal_m_t1/multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep.yaml`.
-The new batch intentionally keeps that representative scientific spec while adding only the audited numerical
-guardrails and setting VB iterations to the requested prelaunch value `200`.
+The current prelaunch batch intentionally keeps the full-history input/covariate/seasonal contract from that
+publication path, but retargets the discount/Wishart profile to the requested May 18-style prelaunch values and keeps
+the audited numerical guardrails.
 
 ## Discount Baselines
 
-There are two discount baselines that must not be conflated.
+There are three discount baselines that must not be conflated.
+
+The active requested prelaunch package now uses:
+
+| parameter | active prelaunch package |
+| --- | ---: |
+| `df_t` | `0.99999` |
+| `df_s1` | `0.9999` |
+| `df_s2` | `0.9999` |
+| `df_s67` | `0.9999` |
+| `df_discrep` | `0.9999` |
+| `lambda` | `0.97` |
+| `df_trans` | `0.9999999` |
+| `df_covs` | `0.9999999` |
+| forecast `epsilon` | `365.0` |
+| forecast `c_factor` | `1.0` |
+
+This matches the explicit user-requested values. It is not identical to the May 18 legacy discount-refresh resolved
+config, which used `df_covs=0.99999`.
 
 The older full-history `2022-12-25` source config, before the later set09/debug-patching checks, used:
 
@@ -83,10 +102,9 @@ The older full-history `2022-12-25` source config, before the later set09/debug-
 Source:
 `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_featurecov_cf1_eps_sweep_20260416/runs/multimodel_20221225_v8_eps360cf1_exdqlm_multivar_keep_featurecov_cf1/resolved_config.yaml`.
 
-The currently packaged no-launch representative still uses the selected set09 discount metadata until the desired
-prelaunch discount factors are supplied:
+The previous no-launch representative package used selected set09 discount metadata before this prelaunch retarget:
 
-| parameter | current set09 package |
+| parameter | previous set09 package |
 | --- | ---: |
 | `df_t` | `0.99999999` |
 | `df_s1` | `0.9998` |
@@ -99,6 +117,15 @@ prelaunch discount factors are supplied:
 
 Source:
 `config/unified_runs_publication_replay_representatives_20260506/20221225_exal_m_t1/multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep.yaml`.
+
+The May 18 discount-refresh retained run used the same 20260510 shared input bundle, all seven quantiles, the same
+full transfer covariate list, `max_iter=200`, and forecast `epsilon=365.0`, but its state block recorded
+`df_covs=0.99999`. Source:
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_discount_refresh_retained_20260518/runs/multimodel_20221225_v8_he2pubgdpc1r1_df99999_eps365_sigp001v1e3_retainrdata_exdqlm_multivar_keep/resolved_config.yaml`.
+
+Builder metadata still records `selected_spec_token: set09` because that token describes the publication manifest
+lineage row. The active prelaunch values are the generated config values and the `config_patch_json` recorded in
+`frozen_spec_manifest.csv`, not the inherited source token alone.
 
 The harmonics check follows the same source-lock rule: active code defines
 `exdqlm_multivar_default_harmonics()` as `c(1, 2, 1/6.8068493)` in
@@ -147,7 +174,7 @@ under the new isolated artifact root, then a prelaunch audit of:
 - generated input paths under the canonical 20260510 shared bundle;
 - covariate names exactly `PPT`, `SOIL`, `PCA`;
 - full transfer-feature list and harmonic indices `[1, 2, 3]` mapping to values `c(1, 2, 1/6.8068493)`;
-- set09 discounts and `epsilon=360.0`, `c_factor=1.0`;
+- requested prelaunch discounts and `epsilon=365.0`, `c_factor=1.0`;
 - guard controls in generated YAML;
 - old live roots absent from the generated run root.
 
@@ -169,6 +196,9 @@ The following no-launch checks were run while preparing this package, then rerun
 - `python3 -m unittest tests.python.test_he2_publication_relaunch_builder_selection.HE2PublicationRelaunchBuilderSelectionTests.test_exdqlm_fullhistory_promotion_batch_builds_guarded_20221225_config -v`
   passed.
 - `git diff --check` passed.
+- After the requested `df99999`/`eps365` retarget, the same template and builder checks passed with the generated
+  config asserting `df_t=0.99999`, `df_s1=df_s2=df_s67=df_discrep=0.9999`, `df_trans=df_covs=0.9999999`,
+  `epsilon=365.0`, and `max_iter=200`.
 
 These checks built only temporary test artifacts and did not launch a model fit.
 
@@ -181,6 +211,8 @@ full seven-lane full-history/full-spec package has not yet been run end to end. 
   most important next numerical improvement;
 - q20/q65/q80 were not part of the final promotion-v2 runtime evidence set;
 - full transfer and the full seasonal basis increase identifiability pressure compared with reduced h1/PPT diagnostics;
+- with `max_iter=200` and `state_guard_start_iter=1000`, a short smoke validates wiring and early fit behavior but
+  does not exercise the delayed state-norm guard;
 - the `E[1/u_t]` cap is a deliberate numerical intervention and must remain named, monitored, and documented.
 
 Therefore the package is ready for no-launch prelaunch validation. It is not evidence that all calibration or tail-lane

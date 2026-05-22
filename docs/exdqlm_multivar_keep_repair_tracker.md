@@ -594,8 +594,9 @@ Frozen target contract:
 - `log1p_cms` fit/post scale and `transform_policy: log1p_only`;
 - full transfer covariates `PPT`, `SOIL`, `PCA` plus square, interaction, and lag terms;
 - full harmonic indices `[1, 2, 3]`, which map to legacy harmonic values `c(1, 2, 1/6.8068493)`;
-- representative set09 discounts;
-- representative Wishart prior `epsilon=360.0`, `c_factor=1.0`;
+- requested prelaunch discounts: `df_t=0.99999`, `df_s1=df_s2=df_s67=df_discrep=0.9999`, `lambda=0.97`,
+  `df_trans=df_covs=0.9999999`;
+- requested Wishart prior `epsilon=365.0`, `c_factor=1.0`;
 - `max_iter=200` for the requested prelaunch/dry-test package;
 - promotion-v2 guards: latent `E[1/u]` cap `5000`, pseudo-data guard mode `fail`, state guard delayed to iter
   `1000`, and terminal sampling guard `fail_fast`.
@@ -606,8 +607,10 @@ Historical source-lock note:
   `df_t=0.99999999`, `df_s1=df_s2=df_s67=0.9999`, `df_discrep=0.999`, `lambda=0.97`,
   `df_trans=0.9999999`, and `df_covs=0.99999`;
 - the currently packaged no-launch representative still uses selected set09 values
-  `df_s1=df_s2=0.9998`, `df_discrep=0.998`, and `df_covs=0.9999999` until the desired prelaunch discount factors
-  are supplied;
+  `df_s1=df_s2=0.9998`, `df_discrep=0.998`, and `df_covs=0.9999999` in commit `4bc0f52`;
+- the 2026-05-18 discount-refresh retained legacy run used `df_t=0.99999`, `df_s1=df_s2=df_s67=df_discrep=0.9999`,
+  `df_trans=0.9999999`, forecast `epsilon=365.0`, and `df_covs=0.99999`;
+- the active package intentionally follows the user-requested `df_covs=0.9999999`, not the May 18 `df_covs=0.99999`;
 - the old and current configs both represent the full seasonal basis through indices, not literal values.
 
 Implementation:
@@ -655,6 +658,12 @@ Launch boundary:
 | 2026-05-22 | `python3 -m unittest tests.python.test_he2_publication_relaunch_builder_selection.HE2PublicationRelaunchBuilderSelectionTests.test_exdqlm_fullhistory_promotion_batch_builds_guarded_20221225_config -v` | pass, 1 test; temporary generated config carries full-history inputs, guarded controls, and `max_iter=200` |
 | 2026-05-22 | `Rscript --vanilla -e "invisible(parse('R/unified/config.R')); invisible(parse('R/unified/stages/stage_fit.R'))"` | pass |
 | 2026-05-22 | `git diff --check` | pass |
+| 2026-05-22 | prelaunch source-lock retarget to requested `df99999`/`eps365` profile | package now uses `df_t=0.99999`, `df_s1=df_s2=df_s67=df_discrep=0.9999`, `df_trans=df_covs=0.9999999`, `epsilon=365.0`, `max_iter=200`; May 18 legacy run used the same profile except `df_covs=0.99999` |
+| 2026-05-22 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_config_mode_resolution.R')"` after `df99999`/`eps365` retarget | pass, 49 expectations |
+| 2026-05-22 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_structure_contract.R')"` after `df99999`/`eps365` retarget | pass, 6 expectations |
+| 2026-05-22 | `python3 -m unittest tests.python.test_he2_publication_relaunch_template -v` after `df99999`/`eps365` retarget | pass, 19 tests |
+| 2026-05-22 | `python3 -m unittest tests.python.test_he2_publication_relaunch_builder_selection.HE2PublicationRelaunchBuilderSelectionTests.test_exdqlm_fullhistory_promotion_batch_builds_guarded_20221225_config -v` after `df99999`/`eps365` retarget | pass, 1 test; generated config and manifest `config_patch_json` carry requested active values |
+| 2026-05-22 | `python3 -m unittest tests.python.test_disc_sampling_diagnostics_source_contract -v` after `df99999`/`eps365` retarget | pass, 6 tests |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_keep_kalman_fixture.R')"` | pass, 7 expectations |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_keep_decomposition_audit.R')"` | pass, 6 expectations |
 | 2026-05-21 | fixed-gamsig v3 runtime stability and curated evidence bundle | pass; report paths recorded in T2 |

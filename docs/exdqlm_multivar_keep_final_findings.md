@@ -234,8 +234,10 @@ P0. Use the tracked full-history promotion package for the next no-launch prelau
 `config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.template.yaml`
 plus `config/he2_relaunch_batches/exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.yaml`. Do not reuse
 older reduced-spec roots for the representative full-history attempt. The package is currently set to the requested
-prelaunch `max_iter=200`, and its `enabled_harmonic_indices: [1, 2, 3]` means the full legacy seasonal basis
-`c(1, 2, 1/6.8068493)`, not literal harmonic values `[1, 2, 3]`.
+prelaunch `max_iter=200`, `epsilon=365.0`, `df_t=0.99999`, `df_s1=df_s2=df_s67=df_discrep=0.9999`,
+`df_trans=df_covs=0.9999999`, and its `enabled_harmonic_indices: [1, 2, 3]` means the full legacy seasonal basis
+`c(1, 2, 1/6.8068493)`, not literal harmonic values `[1, 2, 3]`. The `df_covs=0.9999999` value is an explicit
+prelaunch override relative to the May 18 legacy discount-refresh run, which used `df_covs=0.99999`.
 
 P1. Add a damped/refrozen `sigma/gamma` candidate before broadening beyond q05/q35/q50/q95. Promotion v2 passed,
 but q05/q95 still have asymmetric terminal gamma values, and latent-freeze shows free `sigma/gamma` can still drive
@@ -277,3 +279,6 @@ making `log1p` work with guardrails before considering `log1plog1p` or reverting
 - After retargeting the package to the requested prelaunch `max_iter=200`, the harmonic-structure contract test
   passed with 6 expectations, the template test passed with 19 tests, the builder-generated temporary config test
   passed, and `git diff --check` passed.
+- After retargeting discounts/Wishart to the requested `df99999`/`eps365` profile, the config/stage parse,
+  config-mode test, harmonic-structure test, template test, builder-generated temporary config test,
+  source-contract test, direct batch-value assertion, and `git diff --check` all passed.

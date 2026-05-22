@@ -553,11 +553,12 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         self.assertEqual(model['forecast_transfer_mode'], 'keep')
         # Indices into exdqlm_multivar_default_harmonics(), not literal harmonic values.
         self.assertEqual(model['structure']['enabled_harmonic_indices'], [1, 2, 3])
-        self.assertEqual(model['state_evolution']['df_t'], 0.99999999)
-        self.assertEqual(model['state_evolution']['df_s1'], 0.9998)
-        self.assertEqual(model['state_evolution']['df_s2'], 0.9998)
+        self.assertEqual(model['state_evolution']['df_t'], 0.99999)
+        self.assertEqual(model['state_evolution']['df_s1'], 0.9999)
+        self.assertEqual(model['state_evolution']['df_s2'], 0.9999)
         self.assertEqual(model['state_evolution']['df_s67'], 0.9999)
-        self.assertEqual(model['state_evolution']['df_discrep'], 0.998)
+        self.assertEqual(model['state_evolution']['df_discrep'], 0.9999)
+        self.assertEqual(model['state_evolution']['df_trans'], 0.9999999)
         self.assertEqual(model['state_evolution']['df_covs'], 0.9999999)
 
         fit = patch['fit']['exdqlm_multivar']
@@ -569,7 +570,7 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         self.assertEqual(fit['latent_ablation']['e_inv_u_cap'], 5000)
         self.assertEqual(fit['pseudodata_guard']['mode'], 'fail')
         self.assertEqual(fit['pseudodata_guard']['caps']['e_inv_u_abs_cap'], 5000)
-        self.assertEqual(fit['legacy']['forecast_cov']['epsilon'], 360.0)
+        self.assertEqual(fit['legacy']['forecast_cov']['epsilon'], 365.0)
         self.assertEqual(fit['legacy']['forecast_cov']['c_factor'], 1.0)
         self.assertTrue(fit['legacy']['sampling_diagnostics']['heartbeat_enabled'])
         self.assertEqual(patch['scale_contract']['transform_policy'], 'log1p_only')
