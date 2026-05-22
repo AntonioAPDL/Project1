@@ -112,6 +112,13 @@ testthat::test_that("active runner uses stable latent formulas", {
   testthat::expect_true(grepl("\\[post_save_objective\\] disabled", text))
   testthat::expect_true(grepl("DISC_GAMSIG_STATE_GUARD_START_ITER", text, fixed = TRUE))
   testthat::expect_true(grepl("state_guard_start_iter", text, fixed = TRUE))
+
+  stage_fit <- testthat::test_path("..", "..", "R", "unified", "stages", "stage_fit.R")
+  stage_text <- paste(readLines(stage_fit, warn = FALSE), collapse = "\n")
+  testthat::expect_true(grepl("DISC_W_POST_SAVE_OBJECTIVE_ENABLED", stage_text, fixed = TRUE))
+  testthat::expect_true(grepl("post_save_objective_enabled", stage_text, fixed = TRUE))
+  testthat::expect_true(grepl("DISC_W_POST_SAVE_JSD_ENABLED", stage_text, fixed = TRUE))
+  testthat::expect_true(grepl("post_save_jsd_enabled", stage_text, fixed = TRUE))
 })
 
 testthat::test_that("active runner exposes diagnostic latent ablation controls", {

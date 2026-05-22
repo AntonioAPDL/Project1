@@ -142,6 +142,9 @@ overrides:
               n_samp: 2000
               sims_enabled: true
               use_covariates: true
+              post_save_objective_enabled: false
+              post_save_jsd_enabled: false
+              post_save_jsd_gridsize: 100
               forecast_cov:
                 c_factor: 1.0
                 epsilon: 365.0

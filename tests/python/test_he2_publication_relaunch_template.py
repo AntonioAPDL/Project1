@@ -638,6 +638,8 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         self.assertEqual(fit['pseudodata_guard']['caps']['e_inv_u_abs_cap'], 5000)
         self.assertEqual(fit['legacy']['forecast_cov']['epsilon'], 365.0)
         self.assertEqual(fit['legacy']['forecast_cov']['c_factor'], 1.0)
+        self.assertFalse(fit['legacy']['post_save_objective_enabled'])
+        self.assertFalse(fit['legacy']['post_save_jsd_enabled'])
         self.assertTrue(fit['legacy']['sampling_diagnostics']['heartbeat_enabled'])
         self.assertTrue(common_patch['post']['figures'])
         self.assertTrue(common_patch['post']['export_tables'])

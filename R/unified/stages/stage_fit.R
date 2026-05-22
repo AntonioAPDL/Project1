@@ -1036,6 +1036,15 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_W_USE_COVARIATES = if (isTRUE(unified_get(
         cfg, c("fit", "exdqlm_multivar", "legacy", "use_covariates"), default = TRUE
       ))) "TRUE" else "FALSE",
+      DISC_W_POST_SAVE_OBJECTIVE_ENABLED = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "post_save_objective_enabled"), default = FALSE
+      ))) "TRUE" else "FALSE",
+      DISC_W_POST_SAVE_JSD_ENABLED = if (isTRUE(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "post_save_jsd_enabled"), default = FALSE
+      ))) "TRUE" else "FALSE",
+      DISC_W_POST_SAVE_JSD_GRIDSIZE = as.character(unified_get(
+        cfg, c("fit", "exdqlm_multivar", "legacy", "post_save_jsd_gridsize"), default = 100L
+      )),
       DISC_W_C_FACTOR = as.character(unified_get(
         cfg, c("fit", "exdqlm_multivar", "legacy", "forecast_cov", "c_factor"), default = 1e2
       )),

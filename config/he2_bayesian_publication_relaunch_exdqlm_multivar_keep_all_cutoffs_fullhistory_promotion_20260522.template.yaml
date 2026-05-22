@@ -82,6 +82,9 @@ validation:
         max_iter: 18
       legacy:
         n_samp: 512
+        post_save_objective_enabled: false
+        post_save_jsd_enabled: false
+        post_save_jsd_gridsize: 100
   family_smoke_cutoff: '20210123'
   cutoff_smoke_family: exdqlm_multivar_keep
   fit_smoke_family: exdqlm_multivar_keep

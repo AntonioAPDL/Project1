@@ -25,6 +25,9 @@ test_that("unified config defaults include new likelihood and ndlm transfer mode
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$enabled, TRUE)
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$mode, "warn")
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$caps$e_inv_u_abs_cap, 5000)
+  expect_equal(cfg$fit$exdqlm_multivar$legacy$post_save_objective_enabled, FALSE)
+  expect_equal(cfg$fit$exdqlm_multivar$legacy$post_save_jsd_enabled, FALSE)
+  expect_equal(cfg$fit$exdqlm_multivar$legacy$post_save_jsd_gridsize, 100L)
 })
 
 test_that("mode resolvers normalize invalid values safely", {
@@ -123,6 +126,9 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   cfg_bad$fit$exdqlm_multivar$pseudodata_guard$mode <- "panic"
   cfg_bad$fit$exdqlm_multivar$pseudodata_guard$caps$fff_abs_cap <- -1
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_start_iter <- -1L
+  cfg_bad$fit$exdqlm_multivar$legacy$post_save_objective_enabled <- "yes"
+  cfg_bad$fit$exdqlm_multivar$legacy$post_save_jsd_enabled <- "no"
+  cfg_bad$fit$exdqlm_multivar$legacy$post_save_jsd_gridsize <- 4L
 
   errs <- unified_validate_config(cfg_bad)
   expect_true(any(grepl("latent_ablation\\.mode", errs)))
@@ -131,4 +137,7 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   expect_true(any(grepl("pseudodata_guard\\.mode", errs)))
   expect_true(any(grepl("pseudodata_guard\\.caps\\.fff_abs_cap", errs)))
   expect_true(any(grepl("stabilization\\.state_guard_start_iter", errs)))
+  expect_true(any(grepl("post_save_objective_enabled", errs)))
+  expect_true(any(grepl("post_save_jsd_enabled", errs)))
+  expect_true(any(grepl("post_save_jsd_gridsize", errs)))
 })

@@ -385,6 +385,9 @@ unified_config_defaults <- function() {
           n_samp = 2000L,
           sims_enabled = TRUE,
           use_covariates = TRUE,
+          post_save_objective_enabled = FALSE,
+          post_save_jsd_enabled = FALSE,
+          post_save_jsd_gridsize = 100L,
           sampling_diagnostics = list(
             heartbeat_enabled = FALSE,
             heartbeat_seconds = 60L,
@@ -1200,6 +1203,19 @@ unified_validate_config <- function(cfg) {
   validate_int_min(c("fit", "exdqlm_multivar", "legacy", "n_samp"), "fit.exdqlm_multivar.legacy.n_samp", min_value = 1L)
   validate_bool(c("fit", "exdqlm_multivar", "legacy", "sims_enabled"), "fit.exdqlm_multivar.legacy.sims_enabled")
   validate_bool(c("fit", "exdqlm_multivar", "legacy", "use_covariates"), "fit.exdqlm_multivar.legacy.use_covariates")
+  validate_bool(
+    c("fit", "exdqlm_multivar", "legacy", "post_save_objective_enabled"),
+    "fit.exdqlm_multivar.legacy.post_save_objective_enabled"
+  )
+  validate_bool(
+    c("fit", "exdqlm_multivar", "legacy", "post_save_jsd_enabled"),
+    "fit.exdqlm_multivar.legacy.post_save_jsd_enabled"
+  )
+  validate_int_min(
+    c("fit", "exdqlm_multivar", "legacy", "post_save_jsd_gridsize"),
+    "fit.exdqlm_multivar.legacy.post_save_jsd_gridsize",
+    min_value = 5L
+  )
   validate_bool(
     c("fit", "exdqlm_multivar", "legacy", "sampling_diagnostics", "heartbeat_enabled"),
     "fit.exdqlm_multivar.legacy.sampling_diagnostics.heartbeat_enabled"

@@ -100,10 +100,18 @@ The all-cutoff batch keeps the promoted repair guards:
 - latent cap `mode: cap_e_inv_u`, `e_inv_u_cap=5000`;
 - pseudo-data guard in `fail` mode with caps on `FFF`, `QQQ`, `E[s]`, `E[s^2]`, `E[u]`, and `E[1/u]`;
 - forecast-health guard in `fail_fast` mode;
+- legacy post-save KL/JSD objective diagnostics disabled unless explicitly requested by
+  `fit.exdqlm_multivar.legacy.post_save_objective_enabled=true`;
 - heartbeat and phase-marker sampling diagnostics.
 
 This is not meant to hide instability. It is meant to fail early if the repaired log1p path produces numerically
 unsafe pseudo-data or forecast-state quantities.
+
+The post-save KL/JSD objective is not part of the production fit/post contract for this launch. A live smoke on
+2026-05-22 confirmed that q05 and q50 could save valid `.RData` outputs, but q50 then spent CPU in the legacy
+post-save objective block. The unified bridge now passes `DISC_W_POST_SAVE_OBJECTIVE_ENABLED=FALSE` and
+`DISC_W_POST_SAVE_JSD_ENABLED=FALSE` from config so production workers finish immediately after saving the fit
+artifact and hand off to the tracked post stage.
 
 ## Validation Completed
 
