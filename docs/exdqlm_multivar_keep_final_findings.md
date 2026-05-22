@@ -167,7 +167,8 @@ Promotion v2:
   `reports/exdqlm_keep_guarded_repro_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`,
   `reports/exdqlm_keep_runtime_stability_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`,
   `reports/exdqlm_keep_curated_evidence_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`,
-  `reports/exdqlm_keep_decomposition_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`;
+  `reports/exdqlm_keep_decomposition_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`,
+  `reports/exdqlm_keep_visual_review_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`;
 - full unified wrapper completed fit, post, validate, and report;
 - all four lanes wrote `.RData` with zero pseudo-data guard rows;
 - terminal state norm squared: q05 `1521.127`, q35 `2233.589`, q50 `2547.352`, q95 `5082.421`;
@@ -180,6 +181,10 @@ Promotion v2:
   `0.398565`/`0.595735`;
 - post-stage truth availability correctly reports missing future USGS truth at/after `2022-12-26` and pads CRPS
   truth with `NA` instead of failing.
+- visual review of `seq.elbo`, `new.theta.out$sm`, and `new.theta.out$exps` shows no late ELBO divergence, bounded
+  saved state paths, coherent q05/q50/q95 USGS ordering, and a remaining calibration concern that q50 is smooth and
+  misses some sharp observed peaks/recessions. See
+  [patch takeaways and visual review](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_patch_takeaways_visual_review.md).
 
 ## Interpretation
 
@@ -238,6 +243,8 @@ making `log1p` work with guardrails before considering `log1plog1p` or reverting
   with 6 expectations.
 - `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_runtime_stability_audit.R')"` passed
   with 9 expectations after lane-label normalization.
+- `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_keep_visual_review.R')"` passed with
+  7 expectations.
 - `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_curated_evidence_bundle.R')"` passed
   with 9 expectations after the no-guard README interpretation fix.
 - `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_crps_tables.R')"` passed with

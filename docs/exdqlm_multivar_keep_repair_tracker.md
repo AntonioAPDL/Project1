@@ -37,6 +37,7 @@ high-quality sequence:
 Tracked summary docs:
 
 - [final findings](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_final_findings.md)
+- [patch takeaways and visual review](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_patch_takeaways_visual_review.md)
 - [repair and transform regression plan](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_repair_and_transform_regression_plan.md)
 - [guarded reproduction evidence](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_guarded_repro_20260521.md)
 
@@ -112,6 +113,45 @@ Evidence:
 - validation:
   `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_curated_evidence_bundle.R')"` passed
   with 6 expectations.
+
+### T0b. Promotion-v2 ELBO, `theta.out`, And USGS Visual Review
+
+Status: done
+
+Purpose: make the requested ELBO convergence, saved state, and USGS `new.theta.out$exps` review reproducible from
+the promotion-v2 `.RData` outputs and decomposition CSVs.
+
+Required outputs:
+
+1. ELBO convergence by q-lane.
+2. Tail ELBO step size by q-lane.
+3. `sum(new.theta.out$sm^2)` by history time and q-lane.
+4. Selected `new.theta.out$sm` coordinates labelled by the state-coordinate map.
+5. observed USGS against q05/q35/q50/q95 target `exps` for the final 730 history days.
+6. q05/q50/q95 target-exps band against observed USGS.
+7. retained-source forecast `exps` by lead.
+
+Evidence:
+
+- script:
+  `repro/audits/exdqlm_keep_visual_review.R`
+- test:
+  `tests/testthat/test_exdqlm_keep_visual_review.R`
+- report:
+  `reports/exdqlm_keep_visual_review_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u/`
+- summary:
+  [patch takeaways and visual review](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_patch_takeaways_visual_review.md)
+- validation:
+  `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_keep_visual_review.R')"` passed with
+  7 expectations.
+
+Observed result:
+
+- no late ELBO divergence; q05/q35/q95 tail steps were below `6e-7`, and q50 was below `8.5e-5`;
+- saved `theta.out$sm` state norms were bounded, with max `sum(sm^2)` from `7.148848` in q05 to `23.869177` in q95;
+- q05/q50/q95 USGS target-exps ordering is coherent;
+- q50 is smooth and misses some sharp observed peaks/recessions, which remains a scientific calibration review item
+  rather than evidence of numerical blow-up.
 
 ### T1. Ablation Harness Design
 
