@@ -1605,14 +1605,15 @@ profile_section("figures_smoke_fast.univar_load_inputs", {
 
 profile_section("figures_smoke_fast.elbo_traces", {
   out_file <- file.path(OUT_DIR, "All_ELBOS_DISC.png")
-  png(out_file, width = 2400, height = 1200, res = 300)
-  on.exit(dev.off(), add = TRUE)
-
-  traces <- list(
-    NDLM = fetch_numeric_object("seq.elbo_50_NDLM_synth_DISC"),
-    exAL_multiv_50 = fetch_numeric_object("seq.elbo_50_exAL_synth_DISC"),
-    exAL_multiv_95 = fetch_numeric_object("seq.elbo_95_exAL_synth_DISC"),
-    exAL_univar_50 = fetch_numeric_object("seq.elbo_50_exAL_synth_DISC_uni")
+  multiv_q_suffixes <- c("5", "20", "35", "50", "65", "80", "95")
+  multiv_traces <- stats::setNames(
+    lapply(multiv_q_suffixes, function(q) fetch_numeric_object(sprintf("seq.elbo_%s_exAL_synth_DISC", q))),
+    sprintf("exAL_multiv_%s", multiv_q_suffixes)
+  )
+  traces <- c(
+    list(NDLM = fetch_numeric_object("seq.elbo_50_NDLM_synth_DISC")),
+    multiv_traces,
+    list(exAL_univar_50 = fetch_numeric_object("seq.elbo_50_exAL_synth_DISC_uni"))
   )
   show_names <- names(traces)[vapply(traces, function(x) length(x) > 0L, logical(1))]
   if (length(show_names) == 0L) {
@@ -1621,6 +1622,9 @@ profile_section("figures_smoke_fast.elbo_traces", {
   n <- length(show_names)
   ncol <- min(2L, n)
   nrow <- ceiling(n / ncol)
+
+  png(out_file, width = 2400, height = max(1200, 600 * nrow), res = 300)
+  on.exit(dev.off(), add = TRUE)
   par(mfrow = c(nrow, ncol), mar = c(3, 3, 2, 1))
 
   for (nm in show_names) {
