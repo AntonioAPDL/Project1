@@ -560,6 +560,36 @@ smoke_read_numeric_matrix_rds <- function(path) {
   mat
 }
 
+smoke_multivar_synthesis_grid_M <- function(default = 1001L) {
+  grid_M <- suppressWarnings(as.integer(Sys.getenv("POST_QUANTILE_SYNTHESIS_GRID_M", as.character(default))))
+  if (!is.finite(grid_M) || grid_M < 11L) {
+    grid_M <- as.integer(default)
+  }
+  grid_M
+}
+
+smoke_multivar_synthesis_sort_draws <- function(default = TRUE) {
+  isTRUE(as.logical(Sys.getenv("POST_QUANTILE_SYNTHESIS_SORT_DRAWS_BY_TIME", if (isTRUE(default)) "TRUE" else "FALSE")))
+}
+
+smoke_multivar_synthesis_method_tag <- function() {
+  post_quantile_synthesis_method_tag(
+    enforce_isotonic = TRUE,
+    rearrange = TRUE,
+    grid_M = smoke_multivar_synthesis_grid_M(),
+    method = "exdqlm"
+  )
+}
+
+smoke_multivar_synthesis_cache_path <- function(base_name, model_id, transfer_mode, method_tag = smoke_multivar_synthesis_method_tag()) {
+  post_cache_path(post_quantile_synthesis_cache_file_name(
+    base_name = base_name,
+    method_tag = method_tag,
+    model_id = model_id,
+    transfer_mode = transfer_mode
+  ))
+}
+
 smoke_matrix_quantiles <- function(sample_mat, probs = c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95)) {
   if (!is.matrix(sample_mat) || ncol(sample_mat) <= 0L) {
     return(matrix(NA_real_, nrow = length(probs), ncol = 0L))
@@ -623,11 +653,35 @@ smoke_multivar_required_object_names <- function(spec) {
 
 smoke_build_multivar_synth_f <- function() {
   multivar_meta <- smoke_multivar_meta()
+  method_tag <- smoke_multivar_synthesis_method_tag()
   cache_path <- post_cache_path(post_cache_file_name(
     "synth_multivar_forecast_log1p.rds",
     model_id = multivar_meta$model_id,
     transfer_mode = multivar_meta$transfer_mode
   ))
+  method_cache_path <- smoke_multivar_synthesis_cache_path(
+    "synth_multivar_forecast_log1p.rds",
+    model_id = multivar_meta$model_id,
+    transfer_mode = multivar_meta$transfer_mode,
+    method_tag = method_tag
+  )
+  quantile_cache_path <- post_cache_path(post_cache_file_name(
+    "synth_multivar_forecast_quantiles_log1p.rds",
+    model_id = multivar_meta$model_id,
+    transfer_mode = multivar_meta$transfer_mode
+  ))
+  method_quantile_cache_path <- smoke_multivar_synthesis_cache_path(
+    "synth_multivar_forecast_quantiles_log1p.rds",
+    model_id = multivar_meta$model_id,
+    transfer_mode = multivar_meta$transfer_mode,
+    method_tag = method_tag
+  )
+  diagnostics_cache_path <- smoke_multivar_synthesis_cache_path(
+    "synth_multivar_forecast_diagnostics.rds",
+    model_id = multivar_meta$model_id,
+    transfer_mode = multivar_meta$transfer_mode,
+    method_tag = method_tag
+  )
   cache_draws_path <- post_cache_path(post_cache_file_name(
     "y_reps_f_new_smoke.rds",
     model_id = multivar_meta$model_id,
@@ -635,14 +689,26 @@ smoke_build_multivar_synth_f <- function() {
   ))
 
   if (exists("synth_f", inherits = TRUE)) {
-    synth_existing <- as.matrix(get("synth_f", inherits = TRUE))
-    if (is.numeric(synth_existing) && nrow(synth_existing) > 0L && ncol(synth_existing) > 0L) {
+    synth_obj <- get("synth_f", inherits = TRUE)
+    synth_existing <- as.matrix(synth_obj)
+    if (identical(attr(synth_obj, "post_quantile_synthesis_method_tag"), method_tag) &&
+        is.numeric(synth_existing) && nrow(synth_existing) > 0L && ncol(synth_existing) > 0L) {
       return(synth_existing)
     }
   }
 
-  synth_cached <- smoke_read_numeric_matrix_rds(cache_path)
+  synth_cached <- smoke_read_numeric_matrix_rds(method_cache_path)
   if (!is.null(synth_cached)) {
+    attr(synth_cached, "post_quantile_synthesis_method_tag") <- method_tag
+    saveRDS(synth_cached, file = cache_path)
+    diagnostics_cached <- tryCatch(readRDS(diagnostics_cache_path), error = function(e) NULL)
+    if (is.list(diagnostics_cached)) {
+      smoke_write_quantile_synthesis_diagnostics(
+        result = structure(list(diagnostics = diagnostics_cached), class = "post_quantile_synthesis"),
+        model_id = multivar_meta$model_id,
+        segment = "forecast"
+      )
+    }
     return(synth_cached)
   }
 
@@ -763,12 +829,30 @@ smoke_build_multivar_synth_f <- function() {
       transfer_mode = multivar_meta$transfer_mode
     ))
   )
-  synth_f <- synthesize_samples(forecast_log1p_guard$values, q_probs)
-  for (t_idx in seq_len(ncol(synth_f))) {
-    synth_f[, t_idx] <- sort_keep_na(synth_f[, t_idx])
-  }
+  synth_result <- post_synthesize_rearranged_sample_cube(
+    sample_cube = forecast_log1p_guard$values,
+    q_probs = q_probs,
+    n_samp = n_samp,
+    seed = suppressWarnings(as.integer(Sys.getenv("DISC_BASE_SEED", "777"))) + 612L,
+    enforce_isotonic = TRUE,
+    rearrange = TRUE,
+    grid_M = smoke_multivar_synthesis_grid_M(),
+    sort_draws_by_time = smoke_multivar_synthesis_sort_draws(),
+    context = sprintf("%s.multivar.forecast_synthesis", multivar_meta$model_id)
+  )
+  synth_f <- synth_result$sample_mat
+  attr(synth_f, "post_quantile_synthesis_method_tag") <- synth_result$method_tag
 
   saveRDS(y_reps_f_new, file = cache_draws_path)
+  saveRDS(synth_result$quantiles, file = method_quantile_cache_path)
+  saveRDS(synth_result$quantiles, file = quantile_cache_path)
+  saveRDS(synth_result$diagnostics, file = diagnostics_cache_path)
+  smoke_write_quantile_synthesis_diagnostics(
+    result = synth_result,
+    model_id = multivar_meta$model_id,
+    segment = "forecast"
+  )
+  saveRDS(synth_f, file = method_cache_path)
   saveRDS(synth_f, file = cache_path)
   synth_f
 }
@@ -952,6 +1036,47 @@ smoke_write_csv <- function(df, path) {
   invisible(path)
 }
 
+smoke_write_quantile_synthesis_diagnostics <- function(result, model_id, segment) {
+  if (!inherits(result, "post_quantile_synthesis")) {
+    return(invisible(NULL))
+  }
+  diagnostics <- result$diagnostics
+  if (!is.list(diagnostics)) {
+    return(invisible(NULL))
+  }
+
+  prefix <- sprintf("%s_%s_quantile_synthesis", as.character(model_id), as.character(segment))
+  add_meta <- function(df, table_name) {
+    if (!is.data.frame(df)) return(NULL)
+    cbind(
+      data.frame(
+        model_id = as.character(model_id),
+        segment = as.character(segment),
+        table_name = as.character(table_name),
+        stringsAsFactors = FALSE
+      ),
+      df
+    )
+  }
+
+  tables <- list(
+    summary = diagnostics$summary,
+    raw_sample_crossing_per_time = diagnostics$raw_sample_crossing$per_time,
+    raw_curve_crossing_per_time = diagnostics$raw_curve_crossing$per_time,
+    anchor_curve_crossing_per_time = diagnostics$anchor_curve_crossing$per_time,
+    empirical_curve_crossing_per_time = diagnostics$empirical_curve_crossing$per_time
+  )
+
+  for (nm in names(tables)) {
+    df <- add_meta(tables[[nm]], nm)
+    if (!is.null(df)) {
+      smoke_write_csv(df, file.path(OUT_DIR, sprintf("%s_%s.csv", prefix, nm)))
+    }
+  }
+
+  invisible(NULL)
+}
+
 smoke_quantile_df <- function(model_id, dates, observed, quantile_mat, probs, segment, center_name = "q50") {
   out <- data.frame(
     model_id = as.character(model_id),
@@ -1094,16 +1219,35 @@ smoke_plot_ndlm_window <- function(
 
 smoke_build_multivar_hist_synth <- function() {
   meta <- smoke_multivar_meta()
+  method_tag <- smoke_multivar_synthesis_method_tag()
   hist_cache <- post_cache_path(post_cache_file_name(
     "synth_multivar_hist_log1p.rds",
     model_id = meta$model_id,
     transfer_mode = meta$transfer_mode
   ))
+  hist_method_cache <- smoke_multivar_synthesis_cache_path(
+    "synth_multivar_hist_log1p.rds",
+    model_id = meta$model_id,
+    transfer_mode = meta$transfer_mode,
+    method_tag = method_tag
+  )
   hist_q_cache <- post_cache_path(post_cache_file_name(
     "synth_multivar_hist_quantiles_log1p.rds",
     model_id = meta$model_id,
     transfer_mode = meta$transfer_mode
   ))
+  hist_q_method_cache <- smoke_multivar_synthesis_cache_path(
+    "synth_multivar_hist_quantiles_log1p.rds",
+    model_id = meta$model_id,
+    transfer_mode = meta$transfer_mode,
+    method_tag = method_tag
+  )
+  diagnostics_cache_path <- smoke_multivar_synthesis_cache_path(
+    "synth_multivar_hist_diagnostics.rds",
+    model_id = meta$model_id,
+    transfer_mode = meta$transfer_mode,
+    method_tag = method_tag
+  )
 
   hist_dates_all <- smoke_resolve_hist_dates()
   hist_idx <- which(hist_dates_all >= as.Date(PLOT_START_DATE) & hist_dates_all <= as.Date(CUTOFF_DATE))
@@ -1111,10 +1255,21 @@ smoke_build_multivar_hist_synth <- function() {
     return(NULL)
   }
 
-  hist_cached <- smoke_read_numeric_matrix_rds(hist_cache)
-  hist_q_cached <- smoke_read_numeric_matrix_rds(hist_q_cache)
+  hist_cached <- smoke_read_numeric_matrix_rds(hist_method_cache)
+  hist_q_cached <- smoke_read_numeric_matrix_rds(hist_q_method_cache)
   if (!is.null(hist_cached) && !is.null(hist_q_cached) &&
       ncol(hist_cached) == length(hist_idx) && ncol(hist_q_cached) == length(hist_idx)) {
+    attr(hist_cached, "post_quantile_synthesis_method_tag") <- method_tag
+    saveRDS(hist_cached, hist_cache)
+    saveRDS(hist_q_cached, hist_q_cache)
+    diagnostics_cached <- tryCatch(readRDS(diagnostics_cache_path), error = function(e) NULL)
+    if (is.list(diagnostics_cached)) {
+      smoke_write_quantile_synthesis_diagnostics(
+        result = structure(list(diagnostics = diagnostics_cached), class = "post_quantile_synthesis"),
+        model_id = meta$model_id,
+        segment = "history"
+      )
+    }
     return(list(
       sample_mat = hist_cached,
       quantiles = hist_q_cached,
@@ -1181,8 +1336,28 @@ smoke_build_multivar_hist_synth <- function() {
     )
   }
 
-  synth_hist <- synthesize_samples(y_hist_cube, q_probs)
-  hist_q <- smoke_matrix_quantiles(synth_hist, probs = q_probs)
+  synth_result <- post_synthesize_rearranged_sample_cube(
+    sample_cube = y_hist_cube,
+    q_probs = q_probs,
+    n_samp = n_samp,
+    seed = suppressWarnings(as.integer(Sys.getenv("DISC_BASE_SEED", "777"))) + 611L,
+    enforce_isotonic = TRUE,
+    rearrange = TRUE,
+    grid_M = smoke_multivar_synthesis_grid_M(),
+    sort_draws_by_time = smoke_multivar_synthesis_sort_draws(),
+    context = sprintf("%s.multivar.hist_synthesis", meta$model_id)
+  )
+  synth_hist <- synth_result$sample_mat
+  attr(synth_hist, "post_quantile_synthesis_method_tag") <- synth_result$method_tag
+  hist_q <- synth_result$quantiles
+  saveRDS(synth_hist, hist_method_cache)
+  saveRDS(hist_q, hist_q_method_cache)
+  saveRDS(synth_result$diagnostics, diagnostics_cache_path)
+  smoke_write_quantile_synthesis_diagnostics(
+    result = synth_result,
+    model_id = meta$model_id,
+    segment = "history"
+  )
   saveRDS(synth_hist, hist_cache)
   saveRDS(hist_q, hist_q_cache)
   list(sample_mat = synth_hist, quantiles = hist_q, dates = hist_dates_all[hist_idx])
@@ -2596,11 +2771,8 @@ profile_section("figures_smoke_fast.comparison_figures", {
         model_id = multivar_meta$model_id,
         transfer_mode = crps_transfer_mode
       ))
-      fc_q <- smoke_read_numeric_matrix_rds(fc_quant_cache)
-      if (is.null(fc_q)) {
-        fc_q <- smoke_matrix_quantiles(fc_samples, probs = q_probs_synth)
-        saveRDS(fc_q, fc_quant_cache)
-      }
+      fc_q <- smoke_matrix_quantiles(fc_samples, probs = q_probs_synth)
+      saveRDS(fc_q, fc_quant_cache)
       fc_dates <- smoke_forecast_dates(ncol(fc_samples))
       smoke_emit_synthesis_bundle(
         model_id = multivar_meta$model_id,

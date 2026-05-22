@@ -8,6 +8,12 @@
 #   - Base R + Matrix + dlm-related functions
 ###############################################################################
 
+if (!exists("%||%", mode = "function", inherits = TRUE)) {
+  `%||%` <- function(x, y) {
+    if (is.null(x)) y else x
+  }
+}
+
 # Function to check if a matrix is positive definite
 is_positive_definite <- function(x) {
   eigenvalues <- eigen(x)$values
@@ -856,6 +862,221 @@ post_exdqlm_synthesize_from_sample_cube <- function(
     empirical_quantiles = empirical_q,
     summary = out$summary,
     method = out$method
+  )
+}
+
+post_quantile_synthesis_method_tag <- function(
+  enforce_isotonic = TRUE,
+  rearrange = TRUE,
+  grid_M = 1001L,
+  method = "exdqlm"
+) {
+  method <- gsub("[^A-Za-z0-9._-]+", "_", as.character(method %||% "exdqlm"))
+  method <- gsub("^_+|_+$", "", method)
+  if (!nzchar(method)) method <- "exdqlm"
+  sprintf(
+    "%s_iso%s_rearr%s_grid%d_v1",
+    method,
+    if (isTRUE(enforce_isotonic)) "1" else "0",
+    if (isTRUE(rearrange)) "1" else "0",
+    as.integer(grid_M[[1L]])
+  )
+}
+
+post_quantile_synthesis_cache_file_name <- function(
+  base_name,
+  method_tag,
+  model_id = "",
+  transfer_mode = NA_character_
+) {
+  base_name <- as.character(base_name %||% "")
+  method_tag <- gsub("[^A-Za-z0-9._-]+", "_", as.character(method_tag %||% ""))
+  method_tag <- gsub("^_+|_+$", "", method_tag)
+  if (!nzchar(base_name)) {
+    stop("post_quantile_synthesis_cache_file_name requires a non-empty base_name.", call. = FALSE)
+  }
+  if (!nzchar(method_tag)) {
+    stop("post_quantile_synthesis_cache_file_name requires a non-empty method_tag.", call. = FALSE)
+  }
+
+  ext <- if (grepl("\\.[^.]+$", base_name)) sub("^.*(\\.[^.]+)$", "\\1", base_name) else ""
+  stem <- if (nzchar(ext)) substr(base_name, 1L, nchar(base_name) - nchar(ext)) else base_name
+  post_cache_file_name(
+    paste0(stem, "__", method_tag, ext),
+    model_id = model_id,
+    transfer_mode = transfer_mode
+  )
+}
+
+post_synthesize_rearranged_sample_cube <- function(
+  sample_cube,
+  q_probs,
+  n_samp = dim(sample_cube)[2],
+  seed = NULL,
+  enforce_isotonic = TRUE,
+  rearrange = TRUE,
+  grid_M = 1001L,
+  sort_draws_by_time = TRUE,
+  context = "quantile.synthesis"
+) {
+  if (!is.numeric(sample_cube) || is.null(dim(sample_cube)) || length(dim(sample_cube)) != 3L) {
+    stop(sprintf("[%s_SHAPE] sample_cube must be numeric 3D [quantile x sample x horizon].", context), call. = FALSE)
+  }
+  q_probs <- as.numeric(q_probs)
+  if (length(q_probs) != dim(sample_cube)[1]) {
+    stop(sprintf("[%s_Q_LEN] q_probs length must match sample_cube quantile dimension.", context), call. = FALSE)
+  }
+  if (length(q_probs) < 2L || is.unsorted(q_probs) || any(!is.finite(q_probs)) ||
+      any(q_probs <= 0 | q_probs >= 1)) {
+    stop(sprintf("[%s_Q_PROBS] q_probs must be sorted finite probabilities in (0, 1).", context), call. = FALSE)
+  }
+  n_samp <- suppressWarnings(as.integer(n_samp[[1L]]))
+  if (!is.finite(n_samp) || n_samp <= 1L) {
+    stop(sprintf("[%s_N_SAMP] n_samp must exceed 1.", context), call. = FALSE)
+  }
+  grid_M <- suppressWarnings(as.integer(grid_M[[1L]]))
+  if (!is.finite(grid_M) || grid_M < 11L) {
+    stop(sprintf("[%s_GRID_M] grid_M must be an integer >= 11.", context), call. = FALSE)
+  }
+
+  finite_slices <- vapply(
+    seq_len(dim(sample_cube)[3]),
+    function(t_idx) all(is.finite(sample_cube[, , t_idx])),
+    logical(1)
+  )
+  if (!all(finite_slices)) {
+    bad_t <- which(!finite_slices)
+    stop(
+      sprintf(
+        "[%s_NONFINITE] sample_cube contains non-finite values at t=%s.",
+        context,
+        paste(utils::head(bad_t, 10L), collapse = ",")
+      ),
+      call. = FALSE
+    )
+  }
+
+  raw_sample_crossing <- post_quantile_crossing_summary(
+    sample_cube = sample_cube,
+    q_probs = q_probs,
+    context = paste0(context, ".raw_sample")
+  )
+  raw_quantile_curve <- post_quantile_curve_from_sample_cube(
+    sample_cube = sample_cube,
+    q_probs = q_probs,
+    context = paste0(context, ".raw_curve")
+  )
+  raw_curve_crossing <- post_quantile_curve_crossing_summary(
+    q_curve = raw_quantile_curve,
+    q_probs = q_probs,
+    context = paste0(context, ".raw_curve")
+  )
+
+  synth <- post_exdqlm_synthesize_from_sample_cube(
+    sample_cube = sample_cube,
+    q_probs = q_probs,
+    n_samp = n_samp,
+    seed = seed,
+    enforce_isotonic = enforce_isotonic,
+    rearrange = rearrange,
+    grid_M = grid_M,
+    context = context
+  )
+
+  sample_mat <- as.matrix(synth$draws)
+  if (!is.numeric(sample_mat) || nrow(sample_mat) != n_samp || ncol(sample_mat) != dim(sample_cube)[3]) {
+    stop(
+      sprintf(
+        "[%s_OUTPUT_SHAPE] synthesized draws must have shape [n_samp x horizon]=[%d x %d].",
+        context,
+        as.integer(n_samp),
+        as.integer(dim(sample_cube)[3])
+      ),
+      call. = FALSE
+    )
+  }
+
+  if (isTRUE(sort_draws_by_time)) {
+    for (t_idx in seq_len(ncol(sample_mat))) {
+      sample_mat[, t_idx] <- sort_keep_na(sample_mat[, t_idx])
+    }
+  }
+
+  levels <- as.numeric(synth$levels %||% q_probs)
+  empirical_quantiles <- fast_col_quantiles_t(sample_mat, probs = levels, na.rm = TRUE)
+  anchor_quantiles <- as.matrix(synth$anchor_quantiles)
+  if (!is.numeric(anchor_quantiles) || nrow(anchor_quantiles) != length(levels) ||
+      ncol(anchor_quantiles) != ncol(sample_mat)) {
+    anchor_quantiles <- empirical_quantiles
+  }
+
+  anchor_curve_crossing <- post_quantile_curve_crossing_summary(
+    q_curve = anchor_quantiles,
+    q_probs = levels,
+    context = paste0(context, ".anchor_curve")
+  )
+  empirical_curve_crossing <- post_quantile_curve_crossing_summary(
+    q_curve = empirical_quantiles,
+    q_probs = levels,
+    context = paste0(context, ".empirical_curve")
+  )
+
+  scalar <- function(df, name, default = NA_real_) {
+    if (!is.data.frame(df) || !(name %in% names(df)) || nrow(df) < 1L) return(default)
+    val <- suppressWarnings(as.numeric(df[[name]][[1L]]))
+    if (is.finite(val)) val else default
+  }
+
+  method_tag <- post_quantile_synthesis_method_tag(
+    enforce_isotonic = enforce_isotonic,
+    rearrange = rearrange,
+    grid_M = grid_M,
+    method = "exdqlm"
+  )
+  method_name <- as.character((synth$method %||% list())$name %||% "exdqlm_quantile_synthesis")
+
+  summary <- data.frame(
+    context = as.character(context),
+    method_tag = method_tag,
+    method_name = method_name,
+    n_quantiles = as.integer(dim(sample_cube)[1]),
+    n_samples_input = as.integer(dim(sample_cube)[2]),
+    n_samples_output = as.integer(nrow(sample_mat)),
+    horizon = as.integer(ncol(sample_mat)),
+    enforce_isotonic = isTRUE(enforce_isotonic),
+    rearrange = isTRUE(rearrange),
+    grid_M = as.integer(grid_M),
+    sort_draws_by_time = isTRUE(sort_draws_by_time),
+    raw_sample_mean_crossing_rate = scalar(raw_sample_crossing$summary, "mean_crossing_rate"),
+    raw_sample_max_crossing_rate = scalar(raw_sample_crossing$summary, "max_crossing_rate"),
+    raw_curve_crossing_share = scalar(raw_curve_crossing$summary, "crossing_share"),
+    raw_curve_max_negative_gap = scalar(raw_curve_crossing$summary, "max_negative_gap"),
+    anchor_curve_crossing_share = scalar(anchor_curve_crossing$summary, "crossing_share"),
+    anchor_curve_max_negative_gap = scalar(anchor_curve_crossing$summary, "max_negative_gap"),
+    empirical_curve_crossing_share = scalar(empirical_curve_crossing$summary, "crossing_share"),
+    empirical_curve_max_negative_gap = scalar(empirical_curve_crossing$summary, "max_negative_gap"),
+    stringsAsFactors = FALSE
+  )
+
+  structure(
+    list(
+      sample_mat = sample_mat,
+      quantiles = empirical_quantiles,
+      anchor_quantiles = anchor_quantiles,
+      raw_quantile_curve = raw_quantile_curve,
+      levels = levels,
+      method_tag = method_tag,
+      diagnostics = list(
+        summary = summary,
+        raw_sample_crossing = raw_sample_crossing,
+        raw_curve_crossing = raw_curve_crossing,
+        anchor_curve_crossing = anchor_curve_crossing,
+        empirical_curve_crossing = empirical_curve_crossing,
+        exdqlm_summary = synth$summary,
+        method = synth$method
+      )
+    ),
+    class = "post_quantile_synthesis"
   )
 }
 

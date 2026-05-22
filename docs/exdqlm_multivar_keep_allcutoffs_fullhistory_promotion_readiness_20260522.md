@@ -128,6 +128,49 @@ Results:
 | actual builder preflight | pass, 5 configs and 5 plan rows generated |
 | launch dry-run | pass, printed queue command only |
 
+## Prelaunch Synthesis Repair
+
+One additional post-stage repair was promoted before launch: multivariate keep posterior predictive synthesis now
+uses the formal exDQLM isotonic/rearranged synthesis contract instead of the legacy uncorrected interpolation
+path. The repair is documented in:
+
+- `docs/exdqlm_multivar_keep_synthesis_rearrangement_plan_20260522.md`
+
+Tracked changes:
+
+- `R/environmetrics/02_helpers_core.R`
+  - added `post_synthesize_rearranged_sample_cube()`;
+  - added method-tagged cache-name helpers;
+  - retains compatibility with installed `exdqlm::quantileSynthesis()`.
+- `R/environmetrics/40_figures_smoke_fast.R`
+  - historical and forecast multivariate synthesis now call the repaired helper;
+  - canonical cache files are still written for downstream compatibility;
+  - method-tagged caches are read first so stale legacy synthesis caches do not silently bypass the repair;
+  - history/forecast crossing diagnostics are emitted as CSV and RDS artifacts.
+- `tests/testthat/test_post_quantile_synthesis_rearrangement.R`
+  - covers crossing repair, deterministic seeds, method-tagged cache names, and active smoke-fast wiring.
+
+Validation added after the initial preflight:
+
+| validation | result |
+| --- | --- |
+| repaired synthesis helper tests | pass, 21 expectations |
+| exdqlm synthesis fallback static test | pass |
+| touched R file parse check | pass |
+| adjacent CRPS table tests | pass, 64 expectations |
+| publication figure helper tests | pass, 27 expectations |
+| isolated four-quantile keep post replay | pass |
+
+The isolated replay output root was:
+
+```text
+reports/exdqlm_multivar_keep_synthesis_rearrangement_replay_20260522/run_root/post/outputs/synthesis_rearrangement_replay_20260522d
+```
+
+Key replay result: raw forecast quantile anchors had crossing on `2/28` forecast days, while the repaired
+isotonic/rearranged anchor and empirical crossing shares were both `0`. The emitted cutoff-window quantile CSV
+had `0` crossing rows.
+
 ## Launch Boundary
 
 Ready for a full launch after explicit user approval. The launch command should be:
