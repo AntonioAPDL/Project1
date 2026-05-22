@@ -354,6 +354,23 @@ unified_config_defaults <- function() {
             max_iter = 20L
           )
         ),
+        latent_ablation = list(
+          mode = "free",
+          e_inv_u_cap = 5000
+        ),
+        pseudodata_guard = list(
+          enabled = TRUE,
+          mode = "warn",
+          report_dir = "",
+          caps = list(
+            fff_abs_cap = 1000,
+            qqq_diag_abs_cap = 10000,
+            e_s_abs_cap = 1000,
+            e_s2_abs_cap = 1e6,
+            e_u_abs_cap = 1e6,
+            e_inv_u_abs_cap = 5000
+          )
+        ),
         forecast_health = list(
           enabled = TRUE,
           fail_fast = TRUE,
@@ -2040,6 +2057,71 @@ unified_validate_config <- function(cfg) {
     if (!isTRUE(terminal_sampling_guard_require_frozen) && !identical(terminal_sampling_guard_require_frozen, FALSE)) {
       add_err(sprintf("%s.terminal_sampling_guard.require_frozen must be boolean (true/false)", key_prefix))
     }
+
+    state_guard_start_iter <- cfg_get(c("stabilization", "state_guard_start_iter"), NULL)
+    if (!is.null(state_guard_start_iter)) {
+      state_guard_start_iter <- suppressWarnings(as.integer(state_guard_start_iter))
+      if (!is.finite(state_guard_start_iter) || state_guard_start_iter < 0L) {
+        add_err(sprintf("%s.stabilization.state_guard_start_iter must be an integer >= 0", key_prefix))
+      }
+    }
+  }
+
+  validate_exdqlm_multivar_runtime_guards <- function() {
+    bool_ok <- function(x) isTRUE(x) || identical(x, FALSE)
+    pos_num <- function(path, key_label) {
+      value <- suppressWarnings(as.numeric(unified_get(cfg, path, default = NA_real_)))
+      if (!is.finite(value) || value <= 0) {
+        add_err(sprintf("%s must be numeric and > 0", key_label))
+      }
+    }
+
+    latent_mode <- as.character(unified_get(
+      cfg, c("fit", "exdqlm_multivar", "latent_ablation", "mode"), default = "free"
+    ))
+    latent_mode <- if (length(latent_mode) > 0L) latent_mode[[1L]] else ""
+    if (!(latent_mode %in% c("free", "freeze", "cap_e_inv_u"))) {
+      add_err("fit.exdqlm_multivar.latent_ablation.mode must be one of: free, freeze, cap_e_inv_u")
+    }
+    pos_num(
+      c("fit", "exdqlm_multivar", "latent_ablation", "e_inv_u_cap"),
+      "fit.exdqlm_multivar.latent_ablation.e_inv_u_cap"
+    )
+
+    guard_enabled <- unified_get(
+      cfg, c("fit", "exdqlm_multivar", "pseudodata_guard", "enabled"), default = TRUE
+    )
+    if (!bool_ok(guard_enabled)) {
+      add_err("fit.exdqlm_multivar.pseudodata_guard.enabled must be boolean (true/false)")
+    }
+    guard_mode <- as.character(unified_get(
+      cfg, c("fit", "exdqlm_multivar", "pseudodata_guard", "mode"), default = "warn"
+    ))
+    guard_mode <- if (length(guard_mode) > 0L) guard_mode[[1L]] else ""
+    if (!(guard_mode %in% c("warn", "fail"))) {
+      add_err("fit.exdqlm_multivar.pseudodata_guard.mode must be one of: warn, fail")
+    }
+    report_dir <- unified_get(
+      cfg, c("fit", "exdqlm_multivar", "pseudodata_guard", "report_dir"), default = ""
+    )
+    if (length(report_dir) > 1L || anyNA(report_dir)) {
+      add_err("fit.exdqlm_multivar.pseudodata_guard.report_dir must be a single string")
+    }
+
+    cap_names <- c(
+      "fff_abs_cap",
+      "qqq_diag_abs_cap",
+      "e_s_abs_cap",
+      "e_s2_abs_cap",
+      "e_u_abs_cap",
+      "e_inv_u_abs_cap"
+    )
+    for (cap_name in cap_names) {
+      pos_num(
+        c("fit", "exdqlm_multivar", "pseudodata_guard", "caps", cap_name),
+        sprintf("fit.exdqlm_multivar.pseudodata_guard.caps.%s", cap_name)
+      )
+    }
   }
 
   exdqlm_gamma_sigma_defaults <- list(
@@ -2093,6 +2175,7 @@ unified_validate_config <- function(cfg) {
   exdqlm_univar_gamma_sigma_defaults <- exdqlm_gamma_sigma_defaults
   validate_exdqlm_gamma_sigma_block("exdqlm_multivar", exdqlm_multivar_gamma_sigma_defaults)
   validate_exdqlm_gamma_sigma_block("exdqlm_univar", exdqlm_univar_gamma_sigma_defaults)
+  validate_exdqlm_multivar_runtime_guards()
 
   validate_multivar_transfer_compare_fast <- function() {
     key_prefix <- "fit.exdqlm_multivar.gamma_sigma.transfer_compare_fast"

@@ -569,6 +569,53 @@ Decision outcomes:
 | targeted additional ablations | still recommended for damped/refrozen `sigma/gamma`, because q05/q95 terminal gamma values remain asymmetric |
 | hold production | default operational decision unless the user explicitly chooses to relaunch production with the named promotion-v2 profile |
 
+### T9. Full-History Promotion Packaging
+
+Status: implemented for no-launch validation; launch not executed
+
+Purpose: move the audited promotion-v2 controls out of ad hoc wrapper environment exports and into the main HE2
+publication relaunch config path, then freeze a reviewable 2022-12-25 full-history/full-spec package.
+
+Target package:
+
+- readiness doc:
+  `docs/exdqlm_multivar_keep_fullhistory_promotion_readiness.md`
+- template:
+  `config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.template.yaml`
+- batch:
+  `config/he2_relaunch_batches/exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.yaml`
+
+Frozen target contract:
+
+- cutoff `2022-12-25`;
+- data start `1987-05-29`;
+- all seven quantiles: q05/q20/q35/q50/q65/q80/q95;
+- canonical 20260510 shared input bundle;
+- `log1p_cms` fit/post scale and `transform_policy: log1p_only`;
+- full transfer covariates `PPT`, `SOIL`, `PCA` plus square, interaction, and lag terms;
+- full harmonics `[1, 2, 3]`;
+- representative set09 discounts;
+- representative Wishart prior `epsilon=360.0`, `c_factor=1.0`;
+- `max_iter=3000`;
+- promotion-v2 guards: latent `E[1/u]` cap `5000`, pseudo-data guard mode `fail`, state guard delayed to iter
+  `1000`, and terminal sampling guard `fail_fast`.
+
+Implementation:
+
+- `R/unified/stages/stage_fit.R` maps YAML config to the guarded runner environment variables:
+  `DISC_LATENT_ABLATION_MODE`, `DISC_LATENT_E_INV_U_CAP`, `DISC_PSEUDODATA_GUARD_*`, and
+  `DISC_GAMSIG_STATE_GUARD_START_ITER`.
+- `R/unified/config.R` adds defaults and validation for `fit.exdqlm_multivar.latent_ablation`,
+  `fit.exdqlm_multivar.pseudodata_guard`, and delayed state-guard start.
+- Python and testthat coverage now checks the source mapping, config validation, static batch contract, and builder
+  output for the new no-launch package.
+
+Launch boundary:
+
+- no relaunch has been run from this package;
+- next allowed step is no-launch builder/prelaunch validation in the new artifact root only;
+- old live roots and the background verifier remain untouched.
+
 ## Validation Log
 
 | date | command/evidence | outcome |
@@ -606,6 +653,11 @@ Decision outcomes:
 | 2026-05-21 | promotion v2 capped/guarded candidate with state guard delayed to iter `1000` | pass; q05/q35/q50/q95 outputs written; fit/post/validate/report complete; zero pseudo-data guard rows |
 | 2026-05-21 | v2 runtime stability, curated evidence, and decomposition audits | pass; report paths recorded in T4/T8 |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_curated_evidence_bundle.R')"` after no-guard README fix | pass, 9 expectations |
+| 2026-05-22 | `Rscript --vanilla -e "invisible(parse('R/unified/config.R')); invisible(parse('R/unified/stages/stage_fit.R'))"` | pass |
+| 2026-05-22 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_config_mode_resolution.R')"` | pass, 49 expectations |
+| 2026-05-22 | `python3 -m unittest tests.python.test_disc_sampling_diagnostics_source_contract -v` | pass, 6 tests |
+| 2026-05-22 | `python3 -m unittest tests.python.test_he2_publication_relaunch_template -v` | pass, 19 tests |
+| 2026-05-22 | `python3 -m unittest tests.python.test_he2_publication_relaunch_builder_selection.HE2PublicationRelaunchBuilderSelectionTests.test_exdqlm_fullhistory_promotion_batch_builds_guarded_20221225_config -v` | pass |
 
 ## Change Log
 

@@ -906,6 +906,26 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       gamsig_policy, c("max_iter"), default = 100L
     ))
 
+    latent_ablation_policy <- unified_get(
+      cfg, c("fit", "exdqlm_multivar", "latent_ablation"), default = list()
+    )
+    if (!is.list(latent_ablation_policy)) latent_ablation_policy <- list()
+    pseudodata_guard_policy <- unified_get(
+      cfg, c("fit", "exdqlm_multivar", "pseudodata_guard"), default = list()
+    )
+    if (!is.list(pseudodata_guard_policy)) pseudodata_guard_policy <- list()
+    pseudodata_guard_report_dir <- as.character(unified_get(
+      pseudodata_guard_policy, c("report_dir"), default = ""
+    ))
+    if (!length(pseudodata_guard_report_dir) || is.na(pseudodata_guard_report_dir[[1L]])) {
+      pseudodata_guard_report_dir <- ""
+    } else {
+      pseudodata_guard_report_dir <- pseudodata_guard_report_dir[[1L]]
+    }
+    if (!nzchar(pseudodata_guard_report_dir)) {
+      pseudodata_guard_report_dir <- file.path(q_logs, "pseudodata_guard")
+    }
+
     transfer_compare_fast_enabled <- isTRUE(unified_get(
       gamsig_policy,
       c("transfer_compare_fast", "enabled"),
@@ -1021,6 +1041,37 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       )),
       DISC_W_FORECAST_COV_EPSILON = as.character(unified_get(
         cfg, c("fit", "exdqlm_multivar", "legacy", "forecast_cov", "epsilon"), default = NA_real_
+      )),
+      DISC_LATENT_ABLATION_MODE = as.character(unified_get(
+        latent_ablation_policy, c("mode"), default = "free"
+      )),
+      DISC_LATENT_E_INV_U_CAP = as.character(unified_get(
+        latent_ablation_policy, c("e_inv_u_cap"), default = 5000
+      )),
+      DISC_PSEUDODATA_GUARD_ENABLED = if (isTRUE(unified_get(
+        pseudodata_guard_policy, c("enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_PSEUDODATA_GUARD_MODE = as.character(unified_get(
+        pseudodata_guard_policy, c("mode"), default = "warn"
+      )),
+      DISC_PSEUDODATA_GUARD_REPORT_DIR = pseudodata_guard_report_dir,
+      DISC_PSEUDODATA_FFF_ABS_CAP = as.character(unified_get(
+        pseudodata_guard_policy, c("caps", "fff_abs_cap"), default = 1000
+      )),
+      DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP = as.character(unified_get(
+        pseudodata_guard_policy, c("caps", "qqq_diag_abs_cap"), default = 10000
+      )),
+      DISC_PSEUDODATA_E_S_ABS_CAP = as.character(unified_get(
+        pseudodata_guard_policy, c("caps", "e_s_abs_cap"), default = 1000
+      )),
+      DISC_PSEUDODATA_E_S2_ABS_CAP = as.character(unified_get(
+        pseudodata_guard_policy, c("caps", "e_s2_abs_cap"), default = 1e6
+      )),
+      DISC_PSEUDODATA_E_U_ABS_CAP = as.character(unified_get(
+        pseudodata_guard_policy, c("caps", "e_u_abs_cap"), default = 1e6
+      )),
+      DISC_PSEUDODATA_E_INV_U_ABS_CAP = as.character(unified_get(
+        pseudodata_guard_policy, c("caps", "e_inv_u_abs_cap"), default = 5000
       )),
       DISC_GAMSIG_FREEZE_ITERS = gamsig_freeze_iters,
       DISC_GAMSIG_MIN_UPDATE_ITERS = gamsig_min_update_iters,
@@ -1209,6 +1260,11 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         gamsig_policy, c("stabilization", "state_guard_refreeze_iters"), default = NULL
       ))) c(DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS = as.character(unified_get(
         gamsig_policy, c("stabilization", "state_guard_refreeze_iters"), default = NULL
+      ))) else character(0),
+      if (!is.null(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_start_iter"), default = NULL
+      ))) c(DISC_GAMSIG_STATE_GUARD_START_ITER = as.character(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_start_iter"), default = NULL
       ))) else character(0),
       if (!is.null(unified_get(
         gamsig_policy, c("stabilization", "state_hold_after_guard_iters"), default = NULL

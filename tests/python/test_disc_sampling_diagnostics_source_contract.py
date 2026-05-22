@@ -9,6 +9,7 @@ DISC_SOURCE = ROOT / 'DISC_Optimal_Synth_Ranges_W.r'
 DISC_TRANSFER_SOURCE = ROOT / 'DISC_Optimal_Synth_Ranges_W_transfer_forecast.r'
 STAGE_FIT_SOURCE = ROOT / 'R' / 'unified' / 'stages' / 'stage_fit.R'
 RUN_DISC_SOURCE = ROOT / 'scripts' / 'run_DISC_Optimal_Synth_Ranges_W.R'
+STATE_BLEND_SOURCE = ROOT / 'R' / 'disc_w' / '09_state_blend.R'
 
 
 class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
@@ -36,6 +37,7 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
             self.assertIn('terminal_sampling_guard_recent', text, source.name)
 
     def test_disc_sources_materialize_cpp_theta_payload_before_state_blending(self) -> None:
+        state_blend_text = STATE_BLEND_SOURCE.read_text(encoding='utf-8')
         for source in (DISC_SOURCE, DISC_TRANSFER_SOURCE):
             text = source.read_text(encoding='utf-8')
             self.assertIn('disc_materialize_theta_cpp_payload <- function', text, source.name)
@@ -50,7 +52,10 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
             self.assertIn('p = p,', text, source.name)
             self.assertIn('ppx = ppx,', text, source.name)
             self.assertIn('num_mem = num_mem,', text, source.name)
-            self.assertIn('blend dim mismatch for %s current=%s candidate=%s', text, source.name)
+            blend_contract_text = text
+            if 'source("R/disc_w/09_state_blend.R")' in text:
+                blend_contract_text += state_blend_text
+            self.assertIn('blend dim mismatch for %s current=%s candidate=%s', blend_contract_text, source.name)
             self.assertIn('theta payload horizon mismatch for %s', text, source.name)
 
     def test_stage_fit_exports_quantile_sampling_diagnostic_path(self) -> None:
@@ -58,6 +63,24 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
         self.assertIn('DISC_W_SAMPLING_DIAG_PATH = file.path(q_logs, "sampling_diagnostics.log")', text)
         self.assertIn('DISC_W_SAMPLING_DIAG_STDERR_ENABLED = "TRUE"', text)
         self.assertIn('DISC_W_SAMPLING_MEMBER_WALLTIME_SECONDS', text)
+
+    def test_stage_fit_exports_guarded_keep_promotion_controls(self) -> None:
+        text = STAGE_FIT_SOURCE.read_text(encoding='utf-8')
+        for token in (
+            'DISC_LATENT_ABLATION_MODE',
+            'DISC_LATENT_E_INV_U_CAP',
+            'DISC_PSEUDODATA_GUARD_ENABLED',
+            'DISC_PSEUDODATA_GUARD_MODE',
+            'DISC_PSEUDODATA_GUARD_REPORT_DIR',
+            'DISC_PSEUDODATA_FFF_ABS_CAP',
+            'DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP',
+            'DISC_PSEUDODATA_E_S_ABS_CAP',
+            'DISC_PSEUDODATA_E_S2_ABS_CAP',
+            'DISC_PSEUDODATA_E_U_ABS_CAP',
+            'DISC_PSEUDODATA_E_INV_U_ABS_CAP',
+            'DISC_GAMSIG_STATE_GUARD_START_ITER',
+        ):
+            self.assertIn(token, text)
 
     def test_run_disc_entrypoint_routes_keep_to_transfer_source(self) -> None:
         text = RUN_DISC_SOURCE.read_text(encoding='utf-8')

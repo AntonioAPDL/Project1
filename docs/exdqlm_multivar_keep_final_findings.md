@@ -53,6 +53,10 @@ Active implementation path:
 - isolated promotion tooling:
   `repro/audits/prepare_exdqlm_keep_guarded_repro.py:86-91`,
   `repro/audits/prepare_exdqlm_keep_guarded_repro.py:133-177`.
+- main HE2 relaunch promotion path:
+  `R/unified/stages/stage_fit.R`,
+  `R/unified/config.R`,
+  `config/he2_relaunch_batches/exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.yaml`.
 
 ## Confirmed Correct
 
@@ -102,6 +106,13 @@ Active implementation path:
    warmup/recovery. The promotion tooling records and exports the value, with regression coverage in
    `tests/python/test_exdqlm_keep_ablation_tooling.py` and
    `tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R`.
+
+7. The successful promotion-v2 guard profile was not first-class in the main HE2 relaunch config path.
+
+   `R/unified/stages/stage_fit.R` now maps `fit.exdqlm_multivar.latent_ablation`,
+   `fit.exdqlm_multivar.pseudodata_guard`, and delayed state-guard config into the runner environment variables.
+   `R/unified/config.R` validates those controls. The full-history no-launch package is documented in
+   `docs/exdqlm_multivar_keep_fullhistory_promotion_readiness.md`.
 
 ## Runtime Evidence
 
@@ -219,6 +230,11 @@ post-save objective disabled unless that expensive diagnostic is specifically ne
 P0. Keep latent `E[1/u]` capping diagnostic/explicit. It may be tested as a named capped candidate, but it should
 not silently become the default because it changes pseudo-observation precision.
 
+P0. Use the tracked full-history promotion package for the next no-launch prelaunch step:
+`config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.template.yaml`
+plus `config/he2_relaunch_batches/exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.yaml`. Do not reuse
+older reduced-spec roots for the representative full-history attempt.
+
 P1. Add a damped/refrozen `sigma/gamma` candidate before broadening beyond q05/q35/q50/q95. Promotion v2 passed,
 but q05/q95 still have asymmetric terminal gamma values, and latent-freeze shows free `sigma/gamma` can still drive
 large tail-lane states.
@@ -253,3 +269,6 @@ making `log1p` work with guardrails before considering `log1plog1p` or reverting
   profile tooling.
 - Promotion v2 completed the full unified wrapper and generated live-monitor, runtime-stability, curated-evidence,
   and decomposition reports under `reports/`; generated reports remain untracked by default.
+- Full-history promotion packaging checks passed on 2026-05-22: config/stage parse, config guard validation,
+  source-contract mapping, template static contract, and builder-generated temporary config checks for the guarded
+  2022-12-25 package.

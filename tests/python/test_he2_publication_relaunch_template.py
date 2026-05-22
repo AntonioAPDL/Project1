@@ -37,6 +37,8 @@ EXDQLM_RERUN_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exd
 EXDQLM_RERUN_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_rerun_20260516.yaml'
 EXDQLM_SHARED_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.template.yaml'
 EXDQLM_SHARED_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.yaml'
+EXDQLM_FULLHISTORY_PROMOTION_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.template.yaml'
+EXDQLM_FULLHISTORY_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.yaml'
 
 
 class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
@@ -524,6 +526,52 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         self.assertEqual(q50['stabilization']['median_cov_blend_alpha'], 0.5)
         self.assertEqual(q50['stabilization']['median_max_abs_gamma_step'], 0.15)
         self.assertEqual(q50['stabilization']['median_max_abs_log_sigma_step'], 0.25)
+
+    def test_exdqlm_fullhistory_promotion_batch_freezes_audited_no_launch_contract(self) -> None:
+        self.assertTrue(EXDQLM_FULLHISTORY_PROMOTION_TEMPLATE.exists())
+        self.assertTrue(EXDQLM_FULLHISTORY_PROMOTION_BATCH.exists())
+
+        template_payload = yaml.safe_load(EXDQLM_FULLHISTORY_PROMOTION_TEMPLATE.read_text(encoding='utf-8')) or {}
+        self.assertEqual(template_payload['campaign']['families'], ['exdqlm_multivar_keep'])
+        self.assertEqual(template_payload['campaign']['cutoffs'], ['20221225'])
+        self.assertEqual(template_payload['bundles']['data_start'], '1987-05-29')
+        self.assertIn('fullhistory_promotion_20260522', template_payload['campaign']['artifact_root'])
+
+        batch_payload = yaml.safe_load(EXDQLM_FULLHISTORY_PROMOTION_BATCH.read_text(encoding='utf-8')) or {}
+        self.assertEqual(batch_payload['selection']['cutoffs'], ['20221225'])
+        self.assertEqual(batch_payload['selection']['families'], ['exdqlm_multivar_keep'])
+        self.assertEqual(batch_payload['resources']['fit_parallel_workers'], 7)
+        self.assertEqual(batch_payload['resources']['mc_cores'], 7)
+        patch = batch_payload['overrides']['row_config_patches'][0]['config_patch']
+        self.assertEqual(patch['fit']['quantiles'], [0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95])
+        self.assertEqual(patch['inputs']['transfer_function_covariates']['base_covariates'], ['PPT', 'SOIL', 'PCA'])
+        self.assertEqual(
+            patch['inputs']['transfer_function_covariates']['engineered_terms'],
+            ['PPT_sq', 'SOIL_sq', 'PPT_x_SOIL', 'PPT_lag1', 'PPT_lag2', 'PPT_lag3', 'SOIL_lag1', 'SOIL_lag2', 'SOIL_lag3'],
+        )
+        model = patch['models']['exdqlm_multivar']
+        self.assertEqual(model['forecast_transfer_mode'], 'keep')
+        self.assertEqual(model['structure']['enabled_harmonic_indices'], [1, 2, 3])
+        self.assertEqual(model['state_evolution']['df_t'], 0.99999999)
+        self.assertEqual(model['state_evolution']['df_s1'], 0.9998)
+        self.assertEqual(model['state_evolution']['df_s2'], 0.9998)
+        self.assertEqual(model['state_evolution']['df_s67'], 0.9999)
+        self.assertEqual(model['state_evolution']['df_discrep'], 0.998)
+        self.assertEqual(model['state_evolution']['df_covs'], 0.9999999)
+
+        fit = patch['fit']['exdqlm_multivar']
+        self.assertEqual(fit['gamma_sigma']['max_iter'], 3000)
+        self.assertTrue(fit['gamma_sigma']['stabilization']['state_guard_enabled'])
+        self.assertEqual(fit['gamma_sigma']['stabilization']['state_guard_start_iter'], 1000)
+        self.assertEqual(fit['gamma_sigma']['terminal_sampling_guard']['mode'], 'fail_fast')
+        self.assertEqual(fit['latent_ablation']['mode'], 'cap_e_inv_u')
+        self.assertEqual(fit['latent_ablation']['e_inv_u_cap'], 5000)
+        self.assertEqual(fit['pseudodata_guard']['mode'], 'fail')
+        self.assertEqual(fit['pseudodata_guard']['caps']['e_inv_u_abs_cap'], 5000)
+        self.assertEqual(fit['legacy']['forecast_cov']['epsilon'], 360.0)
+        self.assertEqual(fit['legacy']['forecast_cov']['c_factor'], 1.0)
+        self.assertTrue(fit['legacy']['sampling_diagnostics']['heartbeat_enabled'])
+        self.assertEqual(patch['scale_contract']['transform_policy'], 'log1p_only')
 
 
 if __name__ == '__main__':

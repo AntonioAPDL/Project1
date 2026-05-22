@@ -23,6 +23,8 @@ EXDQLM_RERUN_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exd
 EXDQLM_RERUN_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_rerun_20260516.yaml'
 EXDQLM_SHARED_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.template.yaml'
 EXDQLM_SHARED_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.yaml'
+EXDQLM_FULLHISTORY_PROMOTION_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.template.yaml'
+EXDQLM_FULLHISTORY_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.yaml'
 BUILDER = ROOT / 'scripts' / 'build_he2_bayesian_publication_relaunch_configs.py'
 
 
@@ -1115,6 +1117,63 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['lambda'], 0.97)
         self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['df_discrep'], 0.99999)
         self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['df_covs'], 0.9999999)
+
+    def test_exdqlm_fullhistory_promotion_batch_builds_guarded_20221225_config(self) -> None:
+        proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(
+            '--batch-file', str(EXDQLM_FULLHISTORY_PROMOTION_BATCH),
+            template=EXDQLM_FULLHISTORY_PROMOTION_TEMPLATE,
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+        with (matrix_dir / 'matrix_plan.csv').open('r', encoding='utf-8') as handle:
+            plan_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(plan_rows), 1)
+        self.assertEqual(plan_rows[0]['cutoff'], '20221225')
+        self.assertEqual(plan_rows[0]['family_id'], 'exdqlm_multivar_keep')
+
+        with (matrix_dir / 'frozen_spec_manifest.csv').open('r', encoding='utf-8') as handle:
+            frozen_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(frozen_rows), 1)
+        frozen = frozen_rows[0]
+        self.assertEqual(frozen['selected_spec_token'], 'set09')
+        self.assertEqual(frozen['forecast_cov_epsilon_fit'], '360.0')
+        self.assertEqual(frozen['forecast_cov_c_factor_fit'], '1.0')
+        self.assertEqual(frozen['df_s1'], '0.9998')
+        self.assertEqual(frozen['df_s2'], '0.9998')
+        self.assertEqual(frozen['df_discrep'], '0.998')
+        self.assertEqual(frozen['active_quantile_count'], '7')
+        self.assertEqual(frozen['fit_parallel_workers'], '7')
+        self.assertEqual(frozen['run_mc_cores'], '7')
+
+        cfg = yaml.safe_load(
+            (config_output_dir / 'multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_keep.yaml').read_text(encoding='utf-8')
+        ) or {}
+        self.assertEqual(cfg['dates']['data_start'], '1987-05-29')
+        self.assertEqual(cfg['fit']['quantiles'], [0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95])
+        self.assertEqual(cfg['debug_he2_publication_relaunch']['active_quantiles'], [0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95])
+        self.assertEqual([entry['name'] for entry in cfg['inputs']['fit']['covariates']], ['PPT', 'SOIL', 'PCA'])
+        self.assertEqual(cfg['debug_he2_publication_relaunch']['canonical_fit_covariate_contract'], 'PPT|SOIL|PCA(alias=GDPC1)')
+        self.assertEqual(cfg['inputs']['transfer_function_covariates']['base_covariates'], ['PPT', 'SOIL', 'PCA'])
+        self.assertEqual(
+            cfg['inputs']['transfer_function_covariates']['engineered_terms'],
+            ['PPT_sq', 'SOIL_sq', 'PPT_x_SOIL', 'PPT_lag1', 'PPT_lag2', 'PPT_lag3', 'SOIL_lag1', 'SOIL_lag2', 'SOIL_lag3'],
+        )
+        self.assertEqual(cfg['models']['exdqlm_multivar']['forecast_transfer_mode'], 'keep')
+        self.assertEqual(cfg['models']['exdqlm_multivar']['structure']['enabled_harmonic_indices'], [1, 2, 3])
+        self.assertEqual(cfg['models']['exdqlm_multivar']['state_evolution']['df_s1'], 0.9998)
+        self.assertEqual(cfg['models']['exdqlm_multivar']['state_evolution']['df_discrep'], 0.998)
+        self.assertEqual(cfg['models']['exdqlm_multivar']['state_evolution']['df_covs'], 0.9999999)
+        self.assertEqual(cfg['fit']['exdqlm_multivar']['gamma_sigma']['max_iter'], 3000)
+        self.assertEqual(cfg['fit']['exdqlm_multivar']['gamma_sigma']['stabilization']['state_guard_start_iter'], 1000)
+        self.assertEqual(cfg['fit']['exdqlm_multivar']['gamma_sigma']['terminal_sampling_guard']['mode'], 'fail_fast')
+        self.assertEqual(cfg['fit']['exdqlm_multivar']['latent_ablation']['mode'], 'cap_e_inv_u')
+        self.assertEqual(cfg['fit']['exdqlm_multivar']['latent_ablation']['e_inv_u_cap'], 5000)
+        self.assertEqual(cfg['fit']['exdqlm_multivar']['pseudodata_guard']['mode'], 'fail')
+        self.assertEqual(cfg['fit']['exdqlm_multivar']['pseudodata_guard']['caps']['e_inv_u_abs_cap'], 5000)
+        self.assertEqual(cfg['fit']['exdqlm_multivar']['legacy']['forecast_cov']['epsilon'], 360.0)
+        self.assertEqual(cfg['fit']['exdqlm_multivar']['legacy']['forecast_cov']['c_factor'], 1.0)
+        self.assertEqual(cfg['scale_contract']['legacy_fit_input_scale'], 'log1p_cms')
+        self.assertEqual(cfg['scale_contract']['transform_policy'], 'log1p_only')
 
 
 if __name__ == '__main__':
