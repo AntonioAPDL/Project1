@@ -40,6 +40,7 @@ Tracked summary docs:
 - [patch takeaways and visual review](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_patch_takeaways_visual_review.md)
 - [repair and transform regression plan](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_repair_and_transform_regression_plan.md)
 - [guarded reproduction evidence](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_guarded_repro_20260521.md)
+- [multi-cutoff promotion plan](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_multicutoff_promotion_plan_20260522.md)
 
 Completed first repair sequence:
 
@@ -659,6 +660,7 @@ Launch boundary:
 | 2026-05-22 | `Rscript --vanilla -e "invisible(parse('R/unified/config.R')); invisible(parse('R/unified/stages/stage_fit.R'))"` | pass |
 | 2026-05-22 | `git diff --check` | pass |
 | 2026-05-22 | prelaunch source-lock retarget to requested `df99999`/`eps365` profile | package now uses `df_t=0.99999`, `df_s1=df_s2=df_s67=df_discrep=0.9999`, `df_trans=df_covs=0.9999999`, `epsilon=365.0`, `max_iter=200`; May 18 legacy run used the same profile except `df_covs=0.99999` |
+| 2026-05-22 | reconstructed prior Codex conversation and multi-cutoff promotion plan | pass; plan added at `docs/exdqlm_multivar_keep_multicutoff_promotion_plan_20260522.md`, identifying `max_iter=100`, 35 single-threaded quantile fits, no-cleanup `.RData` retention, full USGS truth-source post behavior, and cleanup dry-run gates |
 | 2026-05-22 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_config_mode_resolution.R')"` after `df99999`/`eps365` retarget | pass, 49 expectations |
 | 2026-05-22 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_structure_contract.R')"` after `df99999`/`eps365` retarget | pass, 6 expectations |
 | 2026-05-22 | `python3 -m unittest tests.python.test_he2_publication_relaunch_template -v` after `df99999`/`eps365` retarget | pass, 19 tests |
