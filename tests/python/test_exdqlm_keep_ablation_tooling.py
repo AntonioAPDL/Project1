@@ -158,6 +158,8 @@ class TestExdqlmKeepAblationTooling(unittest.TestCase):
                     "promotion",
                     "--state-norm-abs-cap",
                     "100000",
+                    "--state-guard-start-iter",
+                    "321",
                     "--state-guard-refreeze-iters",
                     "11",
                     "--state-hold-after-guard-iters",
@@ -174,6 +176,7 @@ class TestExdqlmKeepAblationTooling(unittest.TestCase):
             self.assertIn('export DISC_PSEUDODATA_GUARD_MODE="fail"', launch_text)
             self.assertIn('export DISC_GAMSIG_STATE_GUARD_ENABLED="1"', launch_text)
             self.assertIn('export DISC_GAMSIG_STATE_NORM_ABS_CAP="100000.0"', launch_text)
+            self.assertIn('export DISC_GAMSIG_STATE_GUARD_START_ITER="321"', launch_text)
             self.assertIn('export DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS="11"', launch_text)
             self.assertIn('export DISC_GAMSIG_STATE_HOLD_AFTER_GUARD_ITERS="13"', launch_text)
             self.assertIn('export DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE="fail_fast"', launch_text)
@@ -181,6 +184,7 @@ class TestExdqlmKeepAblationTooling(unittest.TestCase):
             self.assertEqual(manifest["guard_profile"], "promotion")
             self.assertEqual(manifest["guard_mode"], "fail")
             self.assertTrue(manifest["state_guard"]["enabled"])
+            self.assertEqual(manifest["state_guard"]["start_iter"], 321)
 
     def test_ablation_matrix_preparer_writes_master_launcher(self) -> None:
         script = PROJECT_ROOT / "repro" / "audits" / "prepare_exdqlm_keep_ablation_matrix.py"

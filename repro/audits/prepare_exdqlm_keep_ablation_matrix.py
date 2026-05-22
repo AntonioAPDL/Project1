@@ -72,6 +72,8 @@ def run_prepare(args: argparse.Namespace, condition: str) -> dict[str, object]:
         str(args.state_norm_abs_cap),
         "--state-norm-max-ratio",
         str(args.state_norm_max_ratio),
+        "--state-guard-start-iter",
+        str(args.state_guard_start_iter),
         "--state-guard-refreeze-iters",
         str(args.state_guard_refreeze_iters),
         "--state-hold-after-guard-iters",
@@ -109,6 +111,7 @@ def main() -> int:
     parser.add_argument("--e-inv-u-abs-cap", type=float, default=5000.0)
     parser.add_argument("--state-norm-abs-cap", type=float, default=1e6)
     parser.add_argument("--state-norm-max-ratio", type=float, default=25.0)
+    parser.add_argument("--state-guard-start-iter", type=int, default=1000)
     parser.add_argument("--state-guard-refreeze-iters", type=int, default=20)
     parser.add_argument("--state-hold-after-guard-iters", type=int, default=20)
     parser.add_argument("--terminal-guard-max-lag-iters", type=int, default=20)

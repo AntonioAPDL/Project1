@@ -126,4 +126,21 @@ testthat::test_that("curated evidence bundle builds compact report from runtime 
   testthat::expect_true(file.exists(file.path(out_dir, "q05_e_inv_u_guard_burst.png")))
   readme <- readLines(file.path(out_dir, "README.md"))
   testthat::expect_true(any(grepl("Peak `E_inv_uts`/`history`", readme, fixed = TRUE)))
+
+  out_no_guard <- file.path(tmp, "curated_no_guard")
+  result_no_guard <- system2(
+    "Rscript",
+    c(
+      "--vanilla", script,
+      "--runtime-dir", runtime_dir,
+      "--out", out_no_guard,
+      "--live-status", live_csv
+    ),
+    stdout = TRUE,
+    stderr = TRUE
+  )
+  testthat::expect_equal(attr(result_no_guard, "status") %||% 0L, 0L)
+  readme_no_guard <- readLines(file.path(out_no_guard, "README.md"))
+  testthat::expect_true(any(grepl("No live guard rows were supplied or observed", readme_no_guard, fixed = TRUE)))
+  testthat::expect_false(any(grepl("q05 still had a transient live", readme_no_guard, fixed = TRUE)))
 })

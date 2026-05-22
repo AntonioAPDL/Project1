@@ -96,6 +96,7 @@ def main() -> int:
     parser.add_argument("--e-inv-u-abs-cap", type=float, default=5000.0)
     parser.add_argument("--state-norm-abs-cap", type=float, default=1e6)
     parser.add_argument("--state-norm-max-ratio", type=float, default=25.0)
+    parser.add_argument("--state-guard-start-iter", type=int, default=1000)
     parser.add_argument("--state-guard-refreeze-iters", type=int, default=20)
     parser.add_argument("--state-hold-after-guard-iters", type=int, default=20)
     parser.add_argument("--terminal-guard-max-lag-iters", type=int, default=20)
@@ -169,6 +170,7 @@ def main() -> int:
                 'export DISC_GAMSIG_STATE_GUARD_ENABLED="1"',
                 f'export DISC_GAMSIG_STATE_NORM_ABS_CAP="{args.state_norm_abs_cap}"',
                 f'export DISC_GAMSIG_STATE_NORM_MAX_RATIO="{args.state_norm_max_ratio}"',
+                f'export DISC_GAMSIG_STATE_GUARD_START_ITER="{int(args.state_guard_start_iter)}"',
                 f'export DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS="{int(args.state_guard_refreeze_iters)}"',
                 f'export DISC_GAMSIG_STATE_HOLD_AFTER_GUARD_ITERS="{int(args.state_hold_after_guard_iters)}"',
                 'export DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE="fail_fast"',
@@ -231,6 +233,7 @@ def main() -> int:
         },
         "state_guard": {
             "enabled": args.guard_profile == "promotion",
+            "start_iter": int(args.state_guard_start_iter),
             "refreeze_iters": int(args.state_guard_refreeze_iters),
             "hold_after_guard_iters": int(args.state_hold_after_guard_iters),
             "terminal_guard_mode": "fail_fast" if args.guard_profile == "promotion" else "off",

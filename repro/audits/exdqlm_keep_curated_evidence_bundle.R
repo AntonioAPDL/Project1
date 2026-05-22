@@ -218,6 +218,10 @@ if (!is.null(guard)) utils::write.csv(guard, file.path(out_dir, "pseudodata_guar
 if (!is.null(live_status)) utils::write.csv(live_status, file.path(out_dir, "live_status.csv"), row.names = FALSE)
 
 guard_summary <- "No guard CSV was supplied or no guard rows were present."
+guard_interpretation <- c(
+  "The supplied saved outputs are visually summarized for review. No live guard rows were supplied or observed,",
+  "so this bundle does not show a live pseudo-data/latent guard burst."
+)
 if (!is.null(guard) && nrow(guard)) {
   peak_i <- which.max(as_num(guard$max))
   guard_summary <- sprintf(
@@ -228,6 +232,10 @@ if (!is.null(guard) && nrow(guard)) {
     guard$iter[[peak_i]],
     guard$max[[peak_i]],
     guard$abs_cap[[peak_i]]
+  )
+  guard_interpretation <- c(
+    "The saved outputs are visually stable in terminal summaries, but the supplied live guard CSV contains",
+    "guard rows. Treat this as evidence requiring causal ablation or guard-policy review before promotion."
   )
 }
 
@@ -261,8 +269,7 @@ readme <- c(
   "",
   "## Interpretation",
   "",
-  "The repaired guarded run is visually stable in terminal saved outputs, but q05 still had a transient live",
-  "`E[1/u]` burst. The next required work is causal ablation, not broader production relaunch."
+  guard_interpretation
 )
 writeLines(readme, file.path(out_dir, "README.md"))
 
