@@ -2,8 +2,8 @@
 
 Date: 2026-05-23
 
-Status: implementation and deterministic validation complete; targeted runtime fit smokes remain the next promotion
-gate.
+Status: implementation, deterministic validation, isolated fit smokes, and targeted end-to-end runtime repair are
+complete. The near-zero gamma/sigma repair is ready to promote into the next clean all-cutoff launch plan.
 
 ## Scope
 
@@ -148,55 +148,82 @@ Confirmed:
 - The unified config and stage-fit bridge can carry the new fallback policy.
 - The monitor can expose near-zero fallback usage.
 
+## Runtime Gates Completed
+
+The required runtime gates have now completed in isolated roots:
+
+- smoke root:
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_multivar_keep_near_zero_gamsig_smoke_20260523`
+- repair root:
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_multivar_keep_near_zero_gamsig_repair_20260523`
+- repair report:
+  `/data/muscat_data/jaguir26/project1_ucsc_phd/reports/exdqlm_multivar_keep_near_zero_gamsig_repair_runtime_20260523/README.md`
+- tracked runtime summary:
+  [exdqlm_multivar_keep_near_zero_gamsig_runtime_repair_report_20260523.md](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_near_zero_gamsig_runtime_repair_report_20260523.md)
+
+Completed evidence:
+
+| gate | result | evidence |
+| --- | --- | --- |
+| isolated fit smokes | `5/5` passed | `reports/exdqlm_multivar_keep_near_zero_gamsig_smoke_20260523/README.md` |
+| repaired failed cutoff rows, all seven quantiles each | `21/21` passed | `reports/exdqlm_multivar_keep_near_zero_gamsig_repair_runtime_20260523/README.md` |
+| post/validate/report stage | `3/3` cutoff rows passed | per-run `post/outputs/<run_id>/post_artifacts_manifest.csv` |
+| `.RData` cleanup | verified | each row logged `before=7 removed=7 remaining=0`; no `.RData` files remain under the repair root |
+
+The repaired rows used the same scientific launch specification documented in the runtime summary: full history from
+`1987-05-29`, harmonics `1,2,3`, full transfer covariates with squares/interactions/lags, `max_iter=100`,
+`DISC_GAMSIG_MIN_UPDATE_ITERS=50`, and the near-zero fallback policy `sigma_only/full_candidate`.
+
+## What Is Now Confirmed
+
+Confirmed by deterministic tests and targeted runtime evidence:
+
+- The five isolated smoke lanes pass.
+- The three failed cutoff rows pass all seven quantiles each.
+- The originally failed lanes now satisfy the gamma/sigma update gate:
+  - `20210123 q35`: from `16/50` before repair to `90/50` after repair.
+  - `20211221 q20`: from `21/50` before repair to `79/50` after repair.
+  - `20220511 q20`: from `17/50` before repair to `90/50` after repair.
+- The repaired rows have zero pseudo-data guard failures, zero state guard events, and zero fatal log errors.
+- Post-stage artifacts, CRPS tables, ELBO plots, cutoff-window synthesis plots, and posterior table exports were
+  generated for all three repaired cutoff rows.
+- Post-stage `.RData` cleanup is compatible with the new cleanup-aware runtime gate.
+
 ## What Is Not Yet Confirmed
 
-Not yet confirmed:
+Not yet confirmed at campaign level:
 
-- The three failed lanes have not yet been rerun with the patch in isolated fit-only smokes.
-- The repaired three cutoff rows have not yet been rerun through full fit/post/validate/report.
-- Full campaign-level CRPS and plot quality after repair remain unverified.
+- A fresh homogeneous five-cutoff campaign has not yet been rerun from scratch with the promoted patch.
+- The already successful rows from the previous all-cutoff campaign have not been rerun together with the repaired
+  failed rows in one single runtime root.
+- Final publication CRPS/plot selection still needs the campaign-level decision: combine repaired evidence with the
+  previous successful rows, or run one clean all-five-cutoff campaign.
 
-This is important: the root defect is now implemented and deterministic tests pass, but runtime promotion still
-requires the targeted smoke gates from the repair plan.
+## Runtime Gate Results
 
-## Required Next Gates
+| cutoff | result | notes |
+| --- | --- | --- |
+| `20210123` | `7/7` lanes passed | `q35` repaired with `near_zero_sigma_only_fallback` count `3`; pseudo/state/fatal counts all `0` |
+| `20211221` | `7/7` lanes passed | `q20` repaired with `near_zero_sigma_only_fallback` count `3`; pseudo/state/fatal counts all `0` |
+| `20220511` | `7/7` lanes passed | `q20` repaired with `near_zero_sigma_only_fallback` count `1`; pseudo/state/fatal counts all `0` |
 
-Run these isolated fit-only smokes before any broad relaunch:
+The main residual watch items are successful but sensitive lanes:
 
-| smoke | role |
-| --- | --- |
-| `20210123 q35` | primary q35 failure reproduction |
-| `20211221 q20` | first q20 failure reproduction |
-| `20220511 q20` | second q20 failure reproduction |
-| `20221225 q20` | healthy q20 control |
-| `20211112 q35` | healthy q35 control |
-
-Pass criteria:
-
-1. fit reaches posterior sampling and writes `.RData`;
-2. `near_zero_sigma_only_fallback` appears only where expected;
-3. `gamsig_update_iters >= 50`;
-4. no pseudo-data guard failures;
-5. no terminal state guard;
-6. ELBO, state norm, sigma, and gamma traces remain finite and comparable to neighboring successful lanes.
-
-Only after those smokes pass should we rerun the three failed cutoff rows with all seven quantiles each:
-
-- `20210123`
-- `20211221`
-- `20220511`
+- `q80` still has elevated gamma/sigma guard counts (`155` to `220`) in the repaired rows.
+- `q95` has the largest normalized state norms among the repaired rows, but remained finite and passed all gates.
 
 ## Prioritized Remaining Work
 
 | priority | work | status |
 | ---: | --- | --- |
-| 1 | Run the five isolated lane smokes in a new repair root | pending |
-| 2 | Generate smoke report with near-zero fallback counts and ELBO/gamma/sigma/state traces | pending |
-| 3 | Rerun the three failed cutoff rows with all seven quantiles each | pending |
-| 4 | Run post/validate/report and regenerate CRPS/plots for repaired cutoffs | pending |
-| 5 | Decide whether to publish mixed repaired evidence or run one clean homogeneous all-five-cutoff relaunch | pending |
+| 1 | Run the five isolated lane smokes in a new repair root | complete |
+| 2 | Generate smoke report with near-zero fallback counts and ELBO/gamma/sigma/state traces | complete |
+| 3 | Rerun the three failed cutoff rows with all seven quantiles each | complete |
+| 4 | Run post/validate/report and regenerate CRPS/plots for repaired cutoffs | complete |
+| 5 | Decide whether to publish mixed repaired evidence or run one clean homogeneous all-five-cutoff relaunch | open |
 
 ## Recommendation
 
-Proceed to isolated targeted smokes next. Do not lower `DISC_GAMSIG_MIN_UPDATE_ITERS`, do not disable pseudo-data or
-state guards, and do not relaunch all 35 lanes until the three failed lanes pass with the new near-zero fallback.
+Promote the near-zero fallback and runtime harness. Do not lower `DISC_GAMSIG_MIN_UPDATE_ITERS`, and do not disable
+pseudo-data or state guards. For publication-grade reproducibility, prefer one clean homogeneous all-five-cutoff
+campaign using the promoted patch and the same runtime gates.
