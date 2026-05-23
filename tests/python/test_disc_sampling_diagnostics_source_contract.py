@@ -79,6 +79,9 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
             'DISC_PSEUDODATA_E_U_ABS_CAP',
             'DISC_PSEUDODATA_E_INV_U_ABS_CAP',
             'DISC_GAMSIG_STATE_GUARD_START_ITER',
+            'DISC_GAMSIG_NEAR_ZERO_FALLBACK_ENABLED',
+            'DISC_GAMSIG_NEAR_ZERO_FALLBACK_MODE',
+            'DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR',
         ):
             self.assertIn(token, text)
 

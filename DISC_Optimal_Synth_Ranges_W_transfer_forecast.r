@@ -235,6 +235,20 @@ DISC_GAMSIG_LAPLACE_SPLIT_ON_GUARD <- disc_env_flag(
   "DISC_GAMSIG_LAPLACE_SPLIT_ON_GUARD",
   default = TRUE
 )
+DISC_GAMSIG_NEAR_ZERO_FALLBACK_ENABLED <- disc_env_flag(
+  "DISC_GAMSIG_NEAR_ZERO_FALLBACK_ENABLED",
+  default = TRUE
+)
+DISC_GAMSIG_NEAR_ZERO_FALLBACK_MODE <- disc_env_choice(
+  "DISC_GAMSIG_NEAR_ZERO_FALLBACK_MODE",
+  choices = c("sigma_only", "off"),
+  default = "sigma_only"
+)
+DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR <- disc_env_choice(
+  "DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR",
+  choices = c("full_candidate", "zero", "previous"),
+  default = "full_candidate"
+)
 DISC_GAMSIG_THETA_SIGMA_LOWER <- disc_env_num(
   "DISC_GAMSIG_THETA_SIGMA_LOWER",
   default = log(1e-4)
@@ -2078,7 +2092,10 @@ build_mode_result <- function(
   laplace_ridge = NA_real_,
   laplace_ridge_regularized = FALSE,
   laplace_mode_search = "seed",
-  laplace_hessian_source = "seed_diagonal"
+  laplace_hessian_source = "seed_diagonal",
+  near_zero_fallback = FALSE,
+  near_zero_fallback_reason = "",
+  near_zero_fallback_anchor = ""
 ) {
   pi <- plogis(theta_g_val)
   pi <- pmin(pmax(pi, 1e-12), 1 - 1e-12)
@@ -2127,7 +2144,10 @@ build_mode_result <- function(
     laplace_ridge_regularized = isTRUE(laplace_ridge_regularized),
     laplace_mode_search = laplace_mode_search,
     laplace_hessian_source = laplace_hessian_source,
-    laplace_is_fallback = grepl("fallback", laplace_status, fixed = TRUE)
+    laplace_is_fallback = grepl("fallback", laplace_status, fixed = TRUE),
+    near_zero_fallback = isTRUE(near_zero_fallback),
+    near_zero_fallback_reason = as.character(near_zero_fallback_reason),
+    near_zero_fallback_anchor = as.character(near_zero_fallback_anchor)
   )
 }
 
@@ -2321,8 +2341,45 @@ if(!Climate_Center){
   theta_g_init <- qlogis(pi_init)
   initial_values <- clip_theta_pair(theta_s_init, theta_g_init)
 
-  run_sigma_only_fallback <- function(reason_label, theta_g_anchor = theta_g_init) {
-    if (!use_median_sigma_only_fallback) {
+  gamsig_point_moments_are_finite <- function(result) {
+    if (!is.list(result)) {
+      return(FALSE)
+    }
+    required <- c(
+      "E.sigma",
+      "E.inv.sigma",
+      "E.gam",
+      "E.c2.invb.absgam2.sigma",
+      "E.c.invb.absgam",
+      "E.c.a.invb.absgam",
+      "E.a2.invb.inv.sigma",
+      "E.invb.inv.sigma",
+      "E.a.invb.inv.sigma",
+      "E.log.sig.b",
+      "E.log.sig",
+      "E.prior.sig.gam",
+      "E.theta"
+    )
+    if (!all(required %in% names(result))) {
+      return(FALSE)
+    }
+    vals <- unlist(result[required], use.names = FALSE)
+    all(is.finite(vals)) &&
+      is.finite(result$E.sigma) && result$E.sigma > 0 &&
+      is.finite(result$E.inv.sigma) && result$E.inv.sigma > 0 &&
+      is.finite(result$E.invb.inv.sigma) && result$E.invb.inv.sigma > 0
+  }
+
+  run_sigma_only_fallback <- function(
+    reason_label,
+    theta_g_anchor = theta_g_init,
+    enabled = use_median_sigma_only_fallback,
+    laplace_status = "sigma_only_fallback",
+    mode_search_prefix = "sigma_only",
+    near_zero_fallback = FALSE,
+    near_zero_fallback_anchor = ""
+  ) {
+    if (!isTRUE(enabled)) {
       return(NULL)
     }
     theta_pair <- clip_theta_pair(theta_s_init, theta_g_anchor)
@@ -2350,22 +2407,53 @@ if(!Climate_Center){
       log_stabilization_event(msg)
       return(NULL)
     }
+    sigma_opt_value <- tryCatch(
+      dq_transf(sigma_opt$minimum, theta_g_fixed),
+      error = function(e) NA_real_
+    )
+    if (!is.finite(sigma_opt_value)) {
+      log_stabilization_event(sprintf(
+        "%s rejected at p0=%s context=%s after %s because fallback objective was non-finite",
+        laplace_status,
+        as.character(p0),
+        context_label,
+        reason_label
+      ))
+      return(NULL)
+    }
     log_stabilization_event(sprintf(
-      "sigma-only fallback accepted at p0=%s context=%s after %s with theta_s=%s theta_g=%s",
+      "%s accepted at p0=%s context=%s after %s with theta_s=%s theta_g=%s",
+      laplace_status,
       as.character(p0),
       context_label,
       reason_label,
       format(sigma_opt$minimum, digits = 16),
       format(theta_g_fixed, digits = 16)
     ))
-    build_mode_result(
+    out <- build_mode_result(
       sigma_opt$minimum,
       theta_g_fixed,
       guard = FALSE,
       guard_msg = reason_label,
-      laplace_status = "sigma_only_fallback",
-      laplace_mode_search = sprintf("sigma_only:%s", reason_label)
+      laplace_status = laplace_status,
+      laplace_covariance_type = "sigma_only_diagonal",
+      laplace_mode_search = sprintf("%s:%s", mode_search_prefix, reason_label),
+      laplace_hessian_source = "sigma_only_optimize",
+      near_zero_fallback = near_zero_fallback,
+      near_zero_fallback_reason = if (isTRUE(near_zero_fallback)) reason_label else "",
+      near_zero_fallback_anchor = near_zero_fallback_anchor
     )
+    if (!isTRUE(gamsig_point_moments_are_finite(out))) {
+      log_stabilization_event(sprintf(
+        "%s rejected at p0=%s context=%s after %s because point moments were not finite",
+        laplace_status,
+        as.character(p0),
+        context_label,
+        reason_label
+      ))
+      return(NULL)
+    }
+    out
   }
 
   if (isTRUE(DISC_W_AL_MODE)) {
@@ -2538,6 +2626,85 @@ if(!Climate_Center){
     split_on_guard = DISC_GAMSIG_LAPLACE_SPLIT_ON_GUARD
   )
 
+  near_zero_fallback_policy <- disc_w_normalize_near_zero_fallback_policy(
+    enabled = DISC_GAMSIG_NEAR_ZERO_FALLBACK_ENABLED,
+    mode = DISC_GAMSIG_NEAR_ZERO_FALLBACK_MODE,
+    gamma_anchor = DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR
+  )
+  near_zero_anchor_theta <- function(full_candidate) {
+    anchor <- near_zero_fallback_policy$gamma_anchor
+    if (identical(anchor, "zero")) {
+      return(disc_w_gamma_to_theta(0, L = L, U = U))
+    }
+    if (identical(anchor, "previous")) {
+      return(theta_g_init)
+    }
+    if (is.list(full_candidate) &&
+        isTRUE(full_candidate$ok) &&
+        length(full_candidate$par) == 2L &&
+        is.finite(full_candidate$par[[2L]])) {
+      return(full_candidate$par[[2L]])
+    }
+    theta_g_init
+  }
+  run_near_zero_fallback <- function(reason_label, full_candidate) {
+    eligibility <- disc_w_near_zero_fallback_eligible(
+      split_decision = split_decision,
+      full_candidate = full_candidate,
+      L = L,
+      U = U,
+      enabled = near_zero_fallback_policy$enabled,
+      mode = near_zero_fallback_policy$mode,
+      abs_gamma_threshold = DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_ABS_GAMMA,
+      rel_support_threshold = DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_REL_SUPPORT
+    )
+    if (!isTRUE(eligibility$eligible)) {
+      log_stabilization_event(sprintf(
+        paste0(
+          "near-zero fallback skipped at p0=%s context=%s reason=%s ",
+          "policy_enabled=%s mode=%s gamma_hat=%s threshold=%s"
+        ),
+        as.character(p0),
+        context_label,
+        eligibility$reason,
+        ifelse(isTRUE(near_zero_fallback_policy$enabled), "true", "false"),
+        near_zero_fallback_policy$mode,
+        format(eligibility$gamma_hat, digits = 6),
+        format(eligibility$threshold, digits = 6)
+      ))
+      return(NULL)
+    }
+    theta_g_anchor <- near_zero_anchor_theta(full_candidate)
+    out <- run_sigma_only_fallback(
+      reason_label = reason_label,
+      theta_g_anchor = theta_g_anchor,
+      enabled = TRUE,
+      laplace_status = "near_zero_sigma_only_fallback",
+      mode_search_prefix = sprintf("near_zero_sigma_only:%s", near_zero_fallback_policy$gamma_anchor),
+      near_zero_fallback = TRUE,
+      near_zero_fallback_anchor = near_zero_fallback_policy$gamma_anchor
+    )
+    if (!is.null(out)) {
+      cat(sprintf(
+        paste0(
+          "[gamsig_near_zero_fallback] p0=%s context=%s status=%s ",
+          "anchor=%s gamma_hat=%s threshold=%s objective=%s theta_s=%s theta_g=%s\n"
+        ),
+        as.character(p0),
+        context_label,
+        out$laplace_status,
+        near_zero_fallback_policy$gamma_anchor,
+        format(eligibility$gamma_hat, digits = 6),
+        format(eligibility$threshold, digits = 6),
+        format(eligibility$objective, digits = 6),
+        format(out$E.theta[[1L]], digits = 16),
+        format(out$E.theta[[2L]], digits = 16)
+      ))
+      flush.console()
+    }
+    out
+  }
+
   selected_candidate <- full_candidate
   if (isTRUE(split_decision$should_split)) {
     split_result <- run_split_candidates(
@@ -2609,14 +2776,20 @@ if(!Climate_Center){
         format(split_decision$threshold, digits = 6),
         format(split_decision$gamma_hat, digits = 6)
       ))
-    } else if (split_decision$reason %in% c("guard_triggered", "near_zero")) {
-      msg <- sprintf(
-        "no acceptable split gamma candidate at p0=%s context=%s reason=%s",
-        as.character(p0), context_label, split_decision$reason
-      )
-      log_guard_failure(msg)
-      sigma_only_result <- run_sigma_only_fallback(msg)
-      if (!is.null(sigma_only_result)) {
+	    } else if (split_decision$reason %in% c("guard_triggered", "near_zero")) {
+	      msg <- sprintf(
+	        "no acceptable split gamma candidate at p0=%s context=%s reason=%s",
+	        as.character(p0), context_label, split_decision$reason
+	      )
+	      if (identical(split_decision$reason, "near_zero")) {
+	        near_zero_result <- run_near_zero_fallback(msg, full_candidate)
+	        if (!is.null(near_zero_result)) {
+	          return(near_zero_result)
+	        }
+	      }
+	      log_guard_failure(msg)
+	      sigma_only_result <- run_sigma_only_fallback(msg)
+	      if (!is.null(sigma_only_result)) {
         return(sigma_only_result)
       }
       return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = msg))
@@ -3307,6 +3480,10 @@ if (!is.finite(max_iter) || max_iter < 1L) {
 }
 fast <- 0
 gamsig_update_iters <- 0L
+near_zero_fallback_count <- 0L
+near_zero_fallback_iters <- integer(0)
+last_near_zero_fallback_reason <- ""
+last_near_zero_fallback_iter <- NA_integer_
 prev_state_norm_sq <- NA_real_
 prev_sigma_exp <- NA_real_
 prev_gamma_exp <- NA_real_
@@ -3336,6 +3513,25 @@ fmt_iter_vec <- function(x, digits = 8L) {
     format(signif(as.numeric(v), digits = as.integer(digits)), trim = TRUE, scientific = FALSE)
   }, FUN.VALUE = character(1))
   paste0("[", paste(vals, collapse = ","), "]")
+}
+
+record_near_zero_fallback <- function(gamsig_result, iter, j) {
+  if (!is.list(gamsig_result) || !isTRUE(gamsig_result$near_zero_fallback)) {
+    return(invisible(FALSE))
+  }
+  near_zero_fallback_count <<- as.integer(near_zero_fallback_count + 1L)
+  near_zero_fallback_iters <<- unique(c(near_zero_fallback_iters, as.integer(iter)))
+  last_near_zero_fallback_iter <<- as.integer(iter)
+  last_near_zero_fallback_reason <<- paste(
+    c(
+      sprintf("j=%d", as.integer(j)),
+      sprintf("status=%s", as.character(gamsig_result$laplace_status)),
+      sprintf("anchor=%s", as.character(gamsig_result$near_zero_fallback_anchor)),
+      as.character(gamsig_result$near_zero_fallback_reason)
+    ),
+    collapse = " "
+  )
+  invisible(TRUE)
 }
 
 disc_w_symmetrize <- function(M) {
@@ -3587,7 +3783,7 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     as.numeric(DISC_LATENT_E_INV_U_CAP)
   ))
   cat(sprintf(
-    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d state_guard_start_iter=%d\n",
+    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s near_zero_fallback_enabled=%s near_zero_fallback_mode=%s near_zero_gamma_anchor=%s state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d state_guard_start_iter=%d\n",
     as.character(p0),
     DISC_GAMSIG_FREEZE_TARGET,
     as.integer(DISC_GAMSIG_FREEZE_ITERS),
@@ -3612,6 +3808,9 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     as.numeric(DISC_GAMSIG_LAPLACE_SPLIT_NEAR_ZERO_REL_SUPPORT),
     as.numeric(DISC_GAMSIG_LAPLACE_SPLIT_ZERO_MARGIN_ABS_GAMMA),
     ifelse(isTRUE(DISC_GAMSIG_LAPLACE_SPLIT_ON_GUARD), "true", "false"),
+    ifelse(isTRUE(DISC_GAMSIG_NEAR_ZERO_FALLBACK_ENABLED), "true", "false"),
+    DISC_GAMSIG_NEAR_ZERO_FALLBACK_MODE,
+    DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR,
     state_control_scope,
     ifelse(isTRUE(state_guard_enabled), "true", "false"),
     state_norm_max_ratio,
@@ -4273,13 +4472,14 @@ while (isTRUE(FLAG) && iter < max_iter) {
                                               new.sts.out$E.sts2[j,], 
                                               new.uts.out$E.uts[j,], 
                                               new.uts.out$E.inv.uts[j,],
-                                              cur.gamsig.out$E.sigma[j,], 
-                                              cur.gamsig.out$E.gam[j,],
-                                              FALSE,
-                                              context_label = sprintf("vb_main iter=%d j=%d climate_center=FALSE", iter, j))    
-          if (isTRUE(gamsig.dummy$guard_triggered) &&
-              DISC_GAMSIG_GUARD_REFREEZE_ITERS > 0L &&
-              identical(DISC_GAMSIG_FREEZE_TARGET, "gamma_sigma")) {
+	                                              cur.gamsig.out$E.sigma[j,],
+	                                              cur.gamsig.out$E.gam[j,],
+	                                              FALSE,
+	                                              context_label = sprintf("vb_main iter=%d j=%d climate_center=FALSE", iter, j))
+	          record_near_zero_fallback(gamsig.dummy, iter, j)
+	          if (isTRUE(gamsig.dummy$guard_triggered) &&
+	              DISC_GAMSIG_GUARD_REFREEZE_ITERS > 0L &&
+	              identical(DISC_GAMSIG_FREEZE_TARGET, "gamma_sigma")) {
             old_freeze_until <- gamsig_dynamic_freeze_until_iter
             gamsig_dynamic_freeze_until_iter <- max(
               as.integer(gamsig_dynamic_freeze_until_iter),
@@ -4393,12 +4593,13 @@ while (isTRUE(FLAG) && iter < max_iter) {
                                               k_forecast,
                                               new.sts.out_f$E.sts[[j-1]],
                                               new.sts.out_f$E.sts2[[j-1]],
-                                              new.uts.out_f$E.uts[[j-1]],
-                                              new.uts.out_f$E.inv.uts[[j-1]],
-                                              context_label = sprintf("vb_main iter=%d j=%d climate_center=TRUE", iter, j))
-          if (isTRUE(gamsig.dummy$guard_triggered) &&
-              DISC_GAMSIG_GUARD_REFREEZE_ITERS > 0L &&
-              identical(DISC_GAMSIG_FREEZE_TARGET, "gamma_sigma")) {
+	                                              new.uts.out_f$E.uts[[j-1]],
+	                                              new.uts.out_f$E.inv.uts[[j-1]],
+	                                              context_label = sprintf("vb_main iter=%d j=%d climate_center=TRUE", iter, j))
+	          record_near_zero_fallback(gamsig.dummy, iter, j)
+	          if (isTRUE(gamsig.dummy$guard_triggered) &&
+	              DISC_GAMSIG_GUARD_REFREEZE_ITERS > 0L &&
+	              identical(DISC_GAMSIG_FREEZE_TARGET, "gamma_sigma")) {
             old_freeze_until <- gamsig_dynamic_freeze_until_iter
             gamsig_dynamic_freeze_until_iter <- max(
               as.integer(gamsig_dynamic_freeze_until_iter),
@@ -4649,7 +4850,7 @@ while (isTRUE(FLAG) && iter < max_iter) {
 
   if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     cat(sprintf(
-      "[gamsig_progress] family=exdqlm_multivar p0=%s iter=%d elbo=%s crit_elbo=%s sigma_exp=%s crit_sigma_exp=%s gamma_exp=%s crit_gamma_exp=%s sigma_exp_vec=%s gamma_exp_vec=%s sigma_delta_vec=%s gamma_delta_vec=%s state_norm_sq=%s crit_state_norm_sq=%s conv_check=%s gamsig_update_iters=%d min_update_iters=%d min_total_iters=%d frozen=%s\n",
+      "[gamsig_progress] family=exdqlm_multivar p0=%s iter=%d elbo=%s crit_elbo=%s sigma_exp=%s crit_sigma_exp=%s gamma_exp=%s crit_gamma_exp=%s sigma_exp_vec=%s gamma_exp_vec=%s sigma_delta_vec=%s gamma_delta_vec=%s state_norm_sq=%s crit_state_norm_sq=%s conv_check=%s gamsig_update_iters=%d min_update_iters=%d min_total_iters=%d near_zero_fallback_count=%d frozen=%s\n",
       as.character(p0),
       as.integer(iter),
       fmt_iter_num(elbo),
@@ -4668,6 +4869,7 @@ while (isTRUE(FLAG) && iter < max_iter) {
       as.integer(gamsig_update_iters),
       as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
       as.integer(DISC_GAMSIG_MIN_TOTAL_ITERS),
+      as.integer(near_zero_fallback_count),
       ifelse(isTRUE(gamsig_frozen_now), "true", "false")
     ))
   }
@@ -4705,17 +4907,27 @@ while (isTRUE(FLAG) && iter < max_iter) {
 }
 ########################
 
+new.gamsig.out$near_zero_fallback_count <- as.integer(near_zero_fallback_count)
+new.gamsig.out$near_zero_fallback_iters <- as.integer(near_zero_fallback_iters)
+new.gamsig.out$last_near_zero_fallback_reason <- as.character(last_near_zero_fallback_reason)
+new.gamsig.out$last_near_zero_fallback_iter <- as.integer(last_near_zero_fallback_iter)
+
 if (gamsig_update_iters < DISC_GAMSIG_MIN_UPDATE_ITERS) {
   disc_sampling_diag_emit(
-    "sampling_preflight",
-    "vb_terminal",
-    sprintf(
-      "update_iters=%d min_update_iters=%d guard_count=%d last_guard_iter=%s",
-      as.integer(gamsig_update_iters),
-      as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
-      as.integer(state_guard_count),
-      if (is.finite(last_state_guard_iter)) as.character(as.integer(last_state_guard_iter)) else "NA"
-    )
+	    "sampling_preflight",
+	    "vb_terminal",
+	    sprintf(
+	      paste0(
+	        "update_iters=%d min_update_iters=%d near_zero_fallback_count=%d ",
+	        "last_near_zero_fallback_iter=%s guard_count=%d last_guard_iter=%s"
+	      ),
+	      as.integer(gamsig_update_iters),
+	      as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
+	      as.integer(near_zero_fallback_count),
+	      if (is.finite(last_near_zero_fallback_iter)) as.character(as.integer(last_near_zero_fallback_iter)) else "NA",
+	      as.integer(state_guard_count),
+	      if (is.finite(last_state_guard_iter)) as.character(as.integer(last_state_guard_iter)) else "NA"
+	    )
   )
   msg <- sprintf(
     "stopped before required gamma/sigma updates: got=%d required=%d",
@@ -4756,22 +4968,25 @@ disc_sampling_diag_emit(
   "sampling_preflight",
   "vb_terminal_guard",
   sprintf(
-    paste0(
-      "mode=%s median=%s guard_count=%d last_guard_iter=%s lag_iters=%s ",
-      "frozen=%s recent=%s update_iters=%d min_update_iters=%d reason=%s"
-    ),
+	    paste0(
+	      "mode=%s median=%s guard_count=%d last_guard_iter=%s lag_iters=%s ",
+	      "frozen=%s recent=%s update_iters=%d min_update_iters=%d ",
+	      "near_zero_fallback_count=%d last_near_zero_fallback_iter=%s reason=%s"
+	    ),
     as.character(DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE),
     ifelse(isTRUE(median_quantile_active), "true", "false"),
     as.integer(state_guard_count),
     if (is.finite(last_state_guard_iter)) as.character(as.integer(last_state_guard_iter)) else "NA",
     if (is.finite(terminal_guard_lag_iters)) as.character(as.integer(terminal_guard_lag_iters)) else "NA",
     ifelse(isTRUE(terminal_sampling_guard_frozen), "true", "false"),
-    ifelse(isTRUE(terminal_sampling_guard_recent), "true", "false"),
-    as.integer(gamsig_update_iters),
-    as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
-    if (!nzchar(last_state_guard_reason)) "-" else last_state_guard_reason
-  )
-)
+	    ifelse(isTRUE(terminal_sampling_guard_recent), "true", "false"),
+	    as.integer(gamsig_update_iters),
+	    as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
+	    as.integer(near_zero_fallback_count),
+	    if (is.finite(last_near_zero_fallback_iter)) as.character(as.integer(last_near_zero_fallback_iter)) else "NA",
+	    if (!nzchar(last_state_guard_reason)) "-" else last_state_guard_reason
+	  )
+	)
 if (terminal_sampling_guard_is_active &&
     state_guard_count >= DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MIN_GUARD_COUNT &&
     is.finite(last_state_guard_iter) &&

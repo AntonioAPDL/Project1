@@ -63,3 +63,30 @@ test_that("unified_validate_config rejects invalid laplace split controls", {
   expect_true(any(grepl("laplace_split_near_zero.zero_margin_abs_gamma", errs, fixed = TRUE)))
   expect_true(any(grepl("laplace_split_near_zero.split_on_guard", errs, fixed = TRUE)))
 })
+
+test_that("unified_validate_config accepts valid near-zero fallback controls", {
+  cfg <- unified_config_defaults()
+  cfg$fit$exdqlm_multivar$gamma_sigma$near_zero_fallback <- list(
+    enabled = TRUE,
+    mode = "sigma_only",
+    gamma_anchor = "full_candidate"
+  )
+
+  errs <- unified_validate_config(cfg)
+  fallback_errs <- errs[grepl("near_zero_fallback", errs, fixed = TRUE)]
+  expect_length(fallback_errs, 0L)
+})
+
+test_that("unified_validate_config rejects invalid near-zero fallback controls", {
+  cfg <- unified_config_defaults()
+  cfg$fit$exdqlm_multivar$gamma_sigma$near_zero_fallback <- list(
+    enabled = NA,
+    mode = "bad",
+    gamma_anchor = "bad"
+  )
+
+  errs <- unified_validate_config(cfg)
+  expect_true(any(grepl("near_zero_fallback.enabled", errs, fixed = TRUE)))
+  expect_true(any(grepl("near_zero_fallback.mode", errs, fixed = TRUE)))
+  expect_true(any(grepl("near_zero_fallback.gamma_anchor", errs, fixed = TRUE)))
+})

@@ -128,6 +128,7 @@ def scan_log(path: Path) -> dict[str, Any]:
     gamsig_guard_count = 0
     state_guard_count = 0
     pseudodata_guard_fail_count = 0
+    near_zero_fallback_log_count = 0
     fatal_error_count = 0
     tail: list[str] = []
 
@@ -139,6 +140,7 @@ def scan_log(path: Path) -> dict[str, Any]:
             "gamsig_guard_count": 0,
             "state_guard_count": 0,
             "pseudodata_guard_fail_count": 0,
+            "near_zero_fallback_log_count": 0,
             "fatal_error_count": 0,
             "tail": [],
         }
@@ -156,6 +158,8 @@ def scan_log(path: Path) -> dict[str, Any]:
                 state_guard_count += 1
             if ("[pseudodata_guard_fail]" in line) or ("[pseudodata_guard_violation]" in line):
                 pseudodata_guard_fail_count += 1
+            if "[gamsig_near_zero_fallback]" in line:
+                near_zero_fallback_log_count += 1
             if FATAL_RE.search(line):
                 fatal_error_count += 1
             tail.append(line)
@@ -169,6 +173,7 @@ def scan_log(path: Path) -> dict[str, Any]:
         "gamsig_guard_count": gamsig_guard_count,
         "state_guard_count": state_guard_count,
         "pseudodata_guard_fail_count": pseudodata_guard_fail_count,
+        "near_zero_fallback_log_count": near_zero_fallback_log_count,
         "fatal_error_count": fatal_error_count,
         "tail": tail,
     }
@@ -196,6 +201,11 @@ def lane_snapshot(
     hist_len = history_length(cutoff, data_start=data_start)
     state_norm_sq = parse_number(latest.get("state_norm_sq"))
     state_norm_sq_per_history_day = state_norm_sq / hist_len if state_norm_sq is not None and hist_len > 0 else None
+    progress_near_zero_count = parse_number(latest.get("near_zero_fallback_count"))
+    near_zero_fallback_count = max(
+        int(scan["near_zero_fallback_log_count"]),
+        int(progress_near_zero_count) if progress_near_zero_count is not None else 0,
+    )
     stage = matrix_status.get("phase", "not_started")
     status = matrix_status.get("status", "not_started")
     if rdata_path.exists():
@@ -229,6 +239,8 @@ def lane_snapshot(
         "gamsig_guard_count": int(scan["gamsig_guard_count"]),
         "state_guard_count": int(scan["state_guard_count"]),
         "pseudodata_guard_fail_count": int(scan["pseudodata_guard_fail_count"]),
+        "near_zero_fallback_count": near_zero_fallback_count,
+        "near_zero_fallback_log_count": int(scan["near_zero_fallback_log_count"]),
         "fatal_error_count": int(scan["fatal_error_count"]),
         "rdata_exists": rdata_path.exists(),
         "forecast_health_exists": health_path.exists(),
@@ -281,13 +293,14 @@ def write_markdown(path: Path, rows: list[dict[str, Any]], audited_at: str, arti
         f"- matrix_dir: `{matrix_dir}`",
         f"- lane_status_counts: `{counts}`",
         "",
-        "| cutoff | q | stage/status | iter | upd | ELBO | dELBO | sigma | gamma | state/T | guards | pseudo | fatal | output |",
-        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "| cutoff | q | stage/status | iter | upd | ELBO | dELBO | sigma | gamma | state/T | guards | near0 | pseudo | fatal | output |",
+        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for row in rows:
         lines.append(
             "| {cutoff} | {q} | {stage}/{status} | {iter} | {updates} | {elbo} | {d_elbo} | "
             "{sigma_exp} | {gamma_exp} | {state_norm_sq_per_history_day} | {guard_count} | "
+            "{near_zero_fallback_count} | "
             "{pseudodata_guard_fail_count} | {fatal_error_count} | {output_state} |".format(**row)
         )
     lines.append("")

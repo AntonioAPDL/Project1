@@ -1179,6 +1179,15 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_GAMSIG_LAPLACE_SPLIT_ON_GUARD = if (isTRUE(unified_get(
         gamsig_policy, c("laplace_split_near_zero", "split_on_guard"), default = TRUE
       ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_NEAR_ZERO_FALLBACK_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("near_zero_fallback", "enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_NEAR_ZERO_FALLBACK_MODE = as.character(unified_get(
+        gamsig_policy, c("near_zero_fallback", "mode"), default = "sigma_only"
+      )),
+      DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR = as.character(unified_get(
+        gamsig_policy, c("near_zero_fallback", "gamma_anchor"), default = "full_candidate"
+      )),
       DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE = as.character(unified_get(
         gamsig_policy, c("terminal_sampling_guard", "mode"), default = "off"
       )),

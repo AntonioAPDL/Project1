@@ -47,6 +47,14 @@ completed:
 Authoritative repair plan:
 
 - [near-zero gamma/sigma repair plan](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_near_zero_gamsig_repair_plan_20260523.md)
+- [near-zero gamma/sigma repair report](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_near_zero_gamsig_repair_report_20260523.md)
+
+Implementation status:
+
+- Near-zero `sigma_only` fallback for non-median lanes is implemented in the active multivariate `keep` runner.
+- Unified config/stage-fit propagation and monitor counters are implemented.
+- Deterministic unit/source/config/monitor tests pass.
+- Runtime promotion is still gated on isolated targeted fit smokes for the three failed lanes plus healthy controls.
 
 Do not relaunch the broad all-cutoff campaign until the targeted near-zero repair gates in that plan pass.
 
@@ -63,8 +71,8 @@ Current promotion package:
 
 | item | status | evidence |
 | --- | --- | --- |
-| All five HE2 cutoffs package | ready, not launched | `config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.template.yaml` |
-| All-cutoff guarded batch | ready, not launched | `config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml` |
+| All five HE2 cutoffs package | partially launched; repair-gated | `config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.template.yaml` |
+| All-cutoff guarded batch | partially launched; repair-gated | `config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml` |
 | `max_iter=100` retarget | locked | template/batch tests and generated-config test |
 | Full-history 1987 input bundle | locked | generated `cutoff_bundle_audit.csv` under the all-cutoff preflight root |
 | GDPC/PPT/SOIL covariates | locked | support manifest and generated-config tests |

@@ -93,6 +93,95 @@ disc_w_should_split_gamma_mode <- function(
   )
 }
 
+disc_w_normalize_near_zero_fallback_policy <- function(
+  enabled = TRUE,
+  mode = "sigma_only",
+  gamma_anchor = "full_candidate"
+) {
+  mode <- as.character(mode)[1L]
+  if (!nzchar(mode) || is.na(mode)) {
+    mode <- "sigma_only"
+  }
+  mode <- tolower(mode)
+  if (!(mode %in% c("sigma_only", "off"))) {
+    mode <- "sigma_only"
+  }
+
+  gamma_anchor <- as.character(gamma_anchor)[1L]
+  if (!nzchar(gamma_anchor) || is.na(gamma_anchor)) {
+    gamma_anchor <- "full_candidate"
+  }
+  gamma_anchor <- tolower(gamma_anchor)
+  if (!(gamma_anchor %in% c("full_candidate", "zero", "previous"))) {
+    gamma_anchor <- "full_candidate"
+  }
+
+  list(
+    enabled = isTRUE(enabled) && !identical(mode, "off"),
+    mode = mode,
+    gamma_anchor = gamma_anchor
+  )
+}
+
+disc_w_near_zero_fallback_eligible <- function(
+  split_decision,
+  full_candidate,
+  L,
+  U,
+  enabled = TRUE,
+  mode = "sigma_only",
+  abs_gamma_threshold = 0.05,
+  rel_support_threshold = 0.02
+) {
+  policy <- disc_w_normalize_near_zero_fallback_policy(
+    enabled = enabled,
+    mode = mode,
+    gamma_anchor = "full_candidate"
+  )
+  if (!isTRUE(policy$enabled)) {
+    return(list(eligible = FALSE, reason = "disabled", threshold = NA_real_, gamma_hat = NA_real_))
+  }
+  if (!is.list(split_decision) || !identical(split_decision$reason, "near_zero")) {
+    return(list(eligible = FALSE, reason = "not_near_zero", threshold = NA_real_, gamma_hat = NA_real_))
+  }
+  if (!is.list(full_candidate) || !isTRUE(full_candidate$ok)) {
+    return(list(eligible = FALSE, reason = "full_candidate_not_ok", threshold = NA_real_, gamma_hat = NA_real_))
+  }
+  par <- suppressWarnings(as.numeric(full_candidate$par))
+  if (length(par) != 2L || any(!is.finite(par))) {
+    return(list(eligible = FALSE, reason = "full_candidate_invalid_par", threshold = NA_real_, gamma_hat = NA_real_))
+  }
+  obj_value <- suppressWarnings(as.numeric(full_candidate$obj_value)[1L])
+  if (!is.finite(obj_value)) {
+    return(list(eligible = FALSE, reason = "full_candidate_invalid_objective", threshold = NA_real_, gamma_hat = NA_real_))
+  }
+  gamma_hat <- disc_w_theta_to_gamma(par[[2L]], L = L, U = U)
+  threshold <- suppressWarnings(as.numeric(split_decision$threshold)[1L])
+  if (!is.finite(threshold) || threshold <= 0) {
+    threshold <- disc_w_gamma_split_threshold(
+      L = L,
+      U = U,
+      abs_gamma_threshold = abs_gamma_threshold,
+      rel_support_threshold = rel_support_threshold
+    )
+  }
+  if (!is.finite(gamma_hat) || abs(gamma_hat) > threshold) {
+    return(list(
+      eligible = FALSE,
+      reason = "full_candidate_not_near_zero",
+      threshold = threshold,
+      gamma_hat = gamma_hat
+    ))
+  }
+  list(
+    eligible = TRUE,
+    reason = "near_zero_full_candidate_finite",
+    threshold = threshold,
+    gamma_hat = gamma_hat,
+    objective = obj_value
+  )
+}
+
 disc_w_gamma_branch_bounds <- function(
   L,
   U,

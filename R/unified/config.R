@@ -340,6 +340,11 @@ unified_config_defaults <- function() {
             zero_margin_abs_gamma = 1e-6,
             split_on_guard = TRUE
           ),
+          near_zero_fallback = list(
+            enabled = TRUE,
+            mode = "sigma_only",
+            gamma_anchor = "full_candidate"
+          ),
           terminal_sampling_guard = list(
             mode = "off",
             min_guard_count = 1L,
@@ -438,6 +443,11 @@ unified_config_defaults <- function() {
             rel_support_threshold = 0.02,
             zero_margin_abs_gamma = 1e-6,
             split_on_guard = TRUE
+          ),
+          near_zero_fallback = list(
+            enabled = TRUE,
+            mode = "sigma_only",
+            gamma_anchor = "full_candidate"
           )
         ),
         legacy = list(
@@ -2038,6 +2048,33 @@ unified_validate_config <- function(cfg) {
       ))
     }
 
+    near_zero_fallback_enabled <- cfg_get(
+      c("near_zero_fallback", "enabled"),
+      defaults$near_zero_fallback$enabled
+    )
+    if (!isTRUE(near_zero_fallback_enabled) && !identical(near_zero_fallback_enabled, FALSE)) {
+      add_err(sprintf("%s.near_zero_fallback.enabled must be boolean (true/false)", key_prefix))
+    }
+
+    near_zero_fallback_mode <- cfg_get(
+      c("near_zero_fallback", "mode"),
+      defaults$near_zero_fallback$mode
+    )
+    if (!(near_zero_fallback_mode %in% c("sigma_only", "off"))) {
+      add_err(sprintf("%s.near_zero_fallback.mode must be one of: sigma_only, off", key_prefix))
+    }
+
+    near_zero_gamma_anchor <- cfg_get(
+      c("near_zero_fallback", "gamma_anchor"),
+      defaults$near_zero_fallback$gamma_anchor
+    )
+    if (!(near_zero_gamma_anchor %in% c("full_candidate", "zero", "previous"))) {
+      add_err(sprintf(
+        "%s.near_zero_fallback.gamma_anchor must be one of: full_candidate, zero, previous",
+        key_prefix
+      ))
+    }
+
     terminal_sampling_guard_mode <- cfg_get(
       c("terminal_sampling_guard", "mode"),
       defaults$terminal_sampling_guard_mode
@@ -2174,6 +2211,11 @@ unified_validate_config <- function(cfg) {
       rel_support_threshold = 0.02,
       zero_margin_abs_gamma = 1e-6,
       split_on_guard = TRUE
+    ),
+    near_zero_fallback = list(
+      enabled = TRUE,
+      mode = "sigma_only",
+      gamma_anchor = "full_candidate"
     ),
     terminal_sampling_guard_mode = "off",
     terminal_sampling_guard_min_guard_count = 1L,

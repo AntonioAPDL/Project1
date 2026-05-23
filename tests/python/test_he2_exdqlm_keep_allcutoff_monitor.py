@@ -57,7 +57,8 @@ class HE2ExDQLMKeepAllCutoffMonitorTests(unittest.TestCase):
                     "[gamsig_guard] p0=0.05 iter=3",
                     "[state_guard] p0=0.05 iter=4",
                     "[pseudodata_guard_fail] p0=0.05 iter=5",
-                    "[gamsig_progress] p0=0.05 iter=7 elbo=-12.3 crit_elbo=0.01 sigma_exp=0.4 gamma_exp=-0.2 state_norm_sq=100 gamsig_update_iters=3 frozen=false",
+                    "[gamsig_near_zero_fallback] p0=0.05 context=vb_main iter=6 j=3 status=near_zero_sigma_only_fallback anchor=full_candidate gamma_hat=0.01 threshold=0.05",
+                    "[gamsig_progress] p0=0.05 iter=7 elbo=-12.3 crit_elbo=0.01 sigma_exp=0.4 gamma_exp=-0.2 state_norm_sq=100 gamsig_update_iters=3 near_zero_fallback_count=1 frozen=false",
                 ]) + "\n",
                 encoding="utf-8",
             )
@@ -68,6 +69,8 @@ class HE2ExDQLMKeepAllCutoffMonitorTests(unittest.TestCase):
             self.assertEqual(q05["elbo"], "-12.3")
             self.assertEqual(q05["guard_count"], 2)
             self.assertEqual(q05["pseudodata_guard_fail_count"], 1)
+            self.assertEqual(q05["near_zero_fallback_count"], 1)
+            self.assertEqual(q05["near_zero_fallback_log_count"], 1)
             expected_scaled = 100.0 / monitor.history_length("20210123")
             self.assertAlmostEqual(float(q05["state_norm_sq_per_history_day"]), expected_scaled)
 
@@ -83,6 +86,7 @@ class HE2ExDQLMKeepAllCutoffMonitorTests(unittest.TestCase):
             self.assertTrue((out_dir / "live_status_latest.csv").exists())
             latest_text = (out_dir / "LIVE_STATUS.md").read_text(encoding="utf-8")
             self.assertIn("state/T", latest_text)
+            self.assertIn("near0", latest_text)
             self.assertIn("q05", latest_text)
 
 

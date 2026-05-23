@@ -211,3 +211,87 @@ test_that("disc_w_try_expected_value reports non-finite expectations without sto
   expect_true(is.na(out$value))
   expect_match(out$error_message, "non-finite")
 })
+
+test_that("near-zero fallback policy normalizes invalid options conservatively", {
+  policy <- disc_w_normalize_near_zero_fallback_policy(
+    enabled = TRUE,
+    mode = "bad",
+    gamma_anchor = "bad"
+  )
+
+  expect_true(policy$enabled)
+  expect_identical(policy$mode, "sigma_only")
+  expect_identical(policy$gamma_anchor, "full_candidate")
+
+  off_policy <- disc_w_normalize_near_zero_fallback_policy(
+    enabled = TRUE,
+    mode = "off",
+    gamma_anchor = "zero"
+  )
+  expect_false(off_policy$enabled)
+  expect_identical(off_policy$gamma_anchor, "zero")
+})
+
+test_that("near-zero fallback eligibility is limited to finite near-zero full candidates", {
+  split_decision <- disc_w_should_split_gamma_mode(
+    gamma_hat = 0.01,
+    L = -1,
+    U = 1,
+    enabled = TRUE,
+    abs_gamma_threshold = 0.05,
+    rel_support_threshold = 0.02
+  )
+  full_candidate <- list(
+    ok = TRUE,
+    par = c(log(0.7), disc_w_gamma_to_theta(0.01, L = -1, U = 1)),
+    obj_value = 12.5
+  )
+
+  eligible <- disc_w_near_zero_fallback_eligible(
+    split_decision = split_decision,
+    full_candidate = full_candidate,
+    L = -1,
+    U = 1,
+    enabled = TRUE,
+    mode = "sigma_only"
+  )
+  expect_true(eligible$eligible)
+  expect_identical(eligible$reason, "near_zero_full_candidate_finite")
+  expect_equal(eligible$gamma_hat, 0.01, tolerance = 1e-8)
+
+  disabled <- disc_w_near_zero_fallback_eligible(
+    split_decision = split_decision,
+    full_candidate = full_candidate,
+    L = -1,
+    U = 1,
+    enabled = FALSE,
+    mode = "sigma_only"
+  )
+  expect_false(disabled$eligible)
+  expect_identical(disabled$reason, "disabled")
+
+  bad_objective <- full_candidate
+  bad_objective$obj_value <- Inf
+  rejected <- disc_w_near_zero_fallback_eligible(
+    split_decision = split_decision,
+    full_candidate = bad_objective,
+    L = -1,
+    U = 1,
+    enabled = TRUE,
+    mode = "sigma_only"
+  )
+  expect_false(rejected$eligible)
+  expect_identical(rejected$reason, "full_candidate_invalid_objective")
+})
+
+test_that("active multivariate runner exposes near-zero fallback policy and diagnostics", {
+  runner <- testthat::test_path("..", "..", "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r")
+  text <- paste(readLines(runner, warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("DISC_GAMSIG_NEAR_ZERO_FALLBACK_ENABLED", text, fixed = TRUE))
+  expect_true(grepl("DISC_GAMSIG_NEAR_ZERO_FALLBACK_MODE", text, fixed = TRUE))
+  expect_true(grepl("DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR", text, fixed = TRUE))
+  expect_true(grepl("near_zero_sigma_only_fallback", text, fixed = TRUE))
+  expect_true(grepl("[gamsig_near_zero_fallback]", text, fixed = TRUE))
+  expect_true(grepl("near_zero_fallback_count", text, fixed = TRUE))
+})
