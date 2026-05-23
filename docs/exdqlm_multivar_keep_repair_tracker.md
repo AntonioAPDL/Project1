@@ -1,6 +1,6 @@
 # exDQLM Multivariate Keep Repair Tracker
 
-Last updated: 2026-05-22
+Last updated: 2026-05-23
 
 ## Scope
 
@@ -33,6 +33,22 @@ high-quality sequence:
    satisfied.
 
 ## Current Baseline
+
+### Post-Launch Repair Status
+
+The 2026-05-22 all-cutoff full-history promotion launch is no longer in a "ready, not launched" state. It partially
+completed:
+
+- `20211112` and `20221225` reached post/report pass.
+- `20210123`, `20211221`, and `20220511` failed at fit because one quantile lane in each row stopped before the
+  required gamma/sigma update count.
+- The failure is now tracked as a near-zero gamma/sigma split/fallback defect, not as a pseudo-data or Kalman blow-up.
+
+Authoritative repair plan:
+
+- [near-zero gamma/sigma repair plan](/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_near_zero_gamsig_repair_plan_20260523.md)
+
+Do not relaunch the broad all-cutoff campaign until the targeted near-zero repair gates in that plan pass.
 
 Tracked summary docs:
 
