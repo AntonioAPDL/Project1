@@ -63,3 +63,37 @@ The launch should be considered healthy only if every lane reaches post/report c
 - fatal log errors `0`
 - finite ELBO, sigma, gamma, and normalized state norm
 - verified post-stage `.RData` cleanup
+
+## Final Outcome
+
+Completed on 2026-05-24.
+
+All five cutoff runs reached fit/post/validate/report completion under the clean near-zero `log1p_only` workflow:
+
+- `20210123`
+- `20211112`
+- `20211221`
+- `20220511`
+- `20221225`
+
+The post stage produced, for each cutoff:
+
+- `All_ELBOS_DISC.png`
+- `SMOKE_OBSERVED_SERIES_DISC.png`
+- cutoff-window synthesis posterior sample/quantile figures with future USGS overlays
+- `tables/crps_forecast_summary.csv`
+- `tables/crps_forecast_per_time.csv`
+- `tables/crps_input_health.csv`
+- `tables/crps_input_health_per_time.csv`
+- `tables/gamma_summary.csv`
+- `tables/sigma_summary.csv`
+- `tables/covariate_effects_summary.csv`
+- post artifact manifests and summaries with empty `missing_paths`
+
+The campaign root contains no remaining `.RData` / `.rda` files after successful post-stage cleanup.
+
+Important limitation: this campaign used `post.smoke_fast=true` and `post.force_isolation_smoke_fast=true`, so it did not run the retained-state q50 component diagnostics in `40_figures_multivar_only.R`. The current root therefore cannot be used to reconstruct the full trend/season/transfer state paths after cleanup. Future epsilon/discount-factor campaigns must run a repaired log1p-safe component-diagnostic gate before `.RData` cleanup.
+
+Follow-up plan:
+
+- `docs/exdqlm_multivar_keep_freeze_and_epsilon_discount_grid_plan_20260524.md`

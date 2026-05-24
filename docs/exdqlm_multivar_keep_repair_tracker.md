@@ -673,6 +673,10 @@ Launch boundary:
 
 | date | command/evidence | outcome |
 | --- | --- | --- |
+| 2026-05-24 | all-cutoff near-zero campaign root `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_fullhistory_nearzero_20260523` | pass; five cutoffs completed fit/post/validate/report with no retained `.RData` / `.rda` files remaining |
+| 2026-05-24 | post artifact scan of the near-zero campaign | pass for smoke-fast contract: 5 `post_artifacts_summary.json`, 5 `crps_forecast_summary.csv`, 5 `crps_forecast_per_time.csv`, 5 `covariate_effects_summary.csv`; 0 retained-state `multivar_transfer_coefficients_window_q50.csv` because full component diagnostics were not run |
+| 2026-05-24 | post-module wiring audit | current all-cutoff run used `POST_SMOKE_FAST=TRUE`; future epsilon/discount grids need a repaired log1p-safe component-diagnostic gate before `.RData` cleanup |
+| 2026-05-24 | `docs/exdqlm_multivar_keep_freeze_and_epsilon_discount_grid_plan_20260524.md` | added freeze assessment, diagnostic gap, CRPS selection contract, cleanup contract, and implementation plan for epsilon/discount-factor exploration |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R')"` | pass, 45 expectations |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_transform_scale_sensitivity.R')"` | pass, 10 expectations |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_scale_contract_adapters.R')"` | pass, 13 expectations |
