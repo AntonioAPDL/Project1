@@ -500,6 +500,12 @@ unified_config_defaults <- function() {
       sort_keep_na = TRUE,
       export_tables = TRUE,
       allow_legacy_root_fallback = FALSE,
+      multivar_component_diagnostics = list(
+        enabled = FALSE,
+        quantile = 0.50,
+        pre_days = 30L,
+        fail_fast = TRUE
+      ),
       crps_input_health = list(
         enabled = TRUE,
         fail_fast = FALSE,
@@ -892,6 +898,39 @@ unified_validate_config <- function(cfg) {
   post_allow_legacy_root_fallback <- unified_get(cfg, c("post", "allow_legacy_root_fallback"), default = FALSE)
   if (!isTRUE(post_allow_legacy_root_fallback) && !identical(post_allow_legacy_root_fallback, FALSE)) {
     add_err("post.allow_legacy_root_fallback must be boolean (true/false)")
+  }
+  post_multivar_component_enabled <- unified_get(
+    cfg,
+    c("post", "multivar_component_diagnostics", "enabled"),
+    default = FALSE
+  )
+  if (!isTRUE(post_multivar_component_enabled) && !identical(post_multivar_component_enabled, FALSE)) {
+    add_err("post.multivar_component_diagnostics.enabled must be boolean (true/false)")
+  }
+  post_multivar_component_fail_fast <- unified_get(
+    cfg,
+    c("post", "multivar_component_diagnostics", "fail_fast"),
+    default = TRUE
+  )
+  if (!isTRUE(post_multivar_component_fail_fast) && !identical(post_multivar_component_fail_fast, FALSE)) {
+    add_err("post.multivar_component_diagnostics.fail_fast must be boolean (true/false)")
+  }
+  post_multivar_component_quantile <- suppressWarnings(as.numeric(unified_get(
+    cfg, c("post", "multivar_component_diagnostics", "quantile"), default = 0.50
+  )))
+  if (!is.finite(post_multivar_component_quantile) ||
+      post_multivar_component_quantile <= 0 ||
+      post_multivar_component_quantile >= 1) {
+    add_err("post.multivar_component_diagnostics.quantile must be numeric in (0, 1)")
+  } else if (isTRUE(post_multivar_component_enabled) &&
+             abs(post_multivar_component_quantile - 0.50) > 1e-12) {
+    add_err("post.multivar_component_diagnostics currently supports quantile=0.50 only")
+  }
+  post_multivar_component_pre_days <- suppressWarnings(as.integer(unified_get(
+    cfg, c("post", "multivar_component_diagnostics", "pre_days"), default = 30L
+  )))
+  if (!is.finite(post_multivar_component_pre_days) || post_multivar_component_pre_days < 0L) {
+    add_err("post.multivar_component_diagnostics.pre_days must be an integer >= 0")
   }
   post_crps_health_enabled <- unified_get(cfg, c("post", "crps_input_health", "enabled"), default = TRUE)
   if (!isTRUE(post_crps_health_enabled) && !identical(post_crps_health_enabled, FALSE)) {

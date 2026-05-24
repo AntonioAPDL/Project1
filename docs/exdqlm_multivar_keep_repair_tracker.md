@@ -669,6 +669,36 @@ Launch boundary:
 - next allowed step is no-launch builder/prelaunch validation in the new artifact root only;
 - old live roots and the background verifier remain untouched.
 
+### T10. Pre-Grid Component-Diagnostic Gate
+
+Status: implemented and validated; no grid launch executed
+
+Purpose: make the future epsilon/discount-factor grid produce the retained-state q50 diagnostics before `.RData`
+cleanup while preserving the smoke-fast post route that produced the successful all-cutoff 2026-05-23 baseline.
+
+Implementation:
+
+- `R/environmetrics/02_helpers_core.R` adds `post_transform_usgs_log1p_truth_to_analysis_scale()` and
+  `post_flow_scale_label()` so shared USGS `data0` truth stays on `log1p_cms` under `log1p_only` and converts to
+  loglog only when that scale is explicitly requested.
+- `R/environmetrics/40_figures_multivar_only.R` now uses the scale-aware truth helper, dynamic y-axis labels, and the
+  configured component pre-window for q50 retained-state plots and summaries.
+- `R/unified/config.R`, `R/unified/stages/stage_post.R`, `R/unified/post_module_plan.R`, and
+  `scripts/run_environmetrics_figures.R` add the `post.multivar_component_diagnostics` gate. When enabled for an
+  exDQLM multivar run, smoke-fast post remains active and `40_figures_multivar_only.R` is appended for q50 components.
+- `R/unified/post_artifact_contract.R` now requires q50 component CSV/PNG outputs and verifies the retained-transfer
+  `keep` contract from `multivar_transfer_contract_q50.csv`.
+- The `fail_fast` switch is wired through for explicit debug runs, but production grid configs should keep the default
+  `post.multivar_component_diagnostics.fail_fast=true` so `.RData` cleanup waits for component diagnostics to pass.
+
+Operational contract:
+
+- future grid configs should set `post.multivar_component_diagnostics.enabled=true`;
+- component diagnostics must run while `.RData` is still present;
+- `.RData` cleanup should occur only after post and the component artifact contract pass;
+- the already-cleaned 2026-05-23 root remains a valid public-figure/CRPS freeze point, but cannot be retroactively
+  upgraded into a component-diagnostics freeze point without rerunning fit output.
+
 ## Validation Log
 
 | date | command/evidence | outcome |
@@ -677,6 +707,11 @@ Launch boundary:
 | 2026-05-24 | post artifact scan of the near-zero campaign | pass for smoke-fast contract: 5 `post_artifacts_summary.json`, 5 `crps_forecast_summary.csv`, 5 `crps_forecast_per_time.csv`, 5 `covariate_effects_summary.csv`; 0 retained-state `multivar_transfer_coefficients_window_q50.csv` because full component diagnostics were not run |
 | 2026-05-24 | post-module wiring audit | current all-cutoff run used `POST_SMOKE_FAST=TRUE`; future epsilon/discount grids need a repaired log1p-safe component-diagnostic gate before `.RData` cleanup |
 | 2026-05-24 | `docs/exdqlm_multivar_keep_freeze_and_epsilon_discount_grid_plan_20260524.md` | added freeze assessment, diagnostic gap, CRPS selection contract, cleanup contract, and implementation plan for epsilon/discount-factor exploration |
+| 2026-05-24 | parse check for component-gate files: `R/environmetrics/02_helpers_core.R`, `R/environmetrics/40_figures_multivar_only.R`, `R/unified/config.R`, `R/unified/stages/stage_post.R`, `R/unified/post_artifact_contract.R`, `R/unified/post_module_plan.R`, `scripts/run_environmetrics_figures.R` | pass |
+| 2026-05-24 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_module_plan.R')"` | pass, 22 expectations; verifies smoke-fast multivar lanes append q50 components only when the gate is enabled |
+| 2026-05-24 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_artifact_contract.R')"` | pass, 46 expectations; verifies q50 component output requirements, fail-closed retained-transfer `keep` contract, and non-fatal debug behavior |
+| 2026-05-24 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_config_mode_resolution.R')"` | pass, 64 expectations; verifies component-diagnostic defaults and validation |
+| 2026-05-24 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_scale_contract_adapters.R')"` | pass, 18 expectations; verifies shared USGS truth remains log1p under `log1p_only` |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R')"` | pass, 45 expectations |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_transform_scale_sensitivity.R')"` | pass, 10 expectations |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_scale_contract_adapters.R')"` | pass, 13 expectations |
@@ -743,3 +778,4 @@ Launch boundary:
 | 2026-05-21 | Drafted guard-response policy for q05-like latent-tail events | done |
 | 2026-05-21 | Completed latent-freeze and latent-cap v3 ablations, regenerated normalized runtime/curated evidence bundles, and added isolated promotion guard-profile tooling | done |
 | 2026-05-21 | Added delayed promotion state-guard start, completed promotion v2, and recorded v1/v2 evidence | done |
+| 2026-05-24 | Added log1p-safe q50 component diagnostics, smoke-fast append wiring, and fail-closed post artifact contract for retained-transfer `keep` semantics | done |

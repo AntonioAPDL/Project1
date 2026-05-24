@@ -96,6 +96,26 @@ testthat::test_that("post module plan uses smoke-fast exporter for multivar-only
   testthat::expect_false("40_figures_multivar_only.R" %in% mods)
 })
 
+testthat::test_that("post module plan can append q50 multivar components to smoke-fast lanes", {
+  source(post_module_plan_path, local = TRUE)
+
+  core <- c("00_paths.R", "00_setup.R")
+  mods <- unified_post_select_modules(
+    post_figures = TRUE,
+    post_smoke_fast = TRUE,
+    model_run_exdqlm_multivar = TRUE,
+    model_run_exdqlm_univar = FALSE,
+    model_run_ndlm_main = FALSE,
+    model_run_ndlm_univar = FALSE,
+    core_modules = core,
+    multivar_component_diagnostics = TRUE
+  )
+
+  testthat::expect_true("40_figures_smoke_fast.R" %in% mods)
+  testthat::expect_true("40_figures_multivar_only.R" %in% mods)
+  testthat::expect_equal(sum(mods == "40_figures_multivar_only.R"), 1L)
+})
+
 testthat::test_that("post module plan treats ndlm_univar-only as ndlm isolation lane", {
   source(post_module_plan_path, local = TRUE)
 

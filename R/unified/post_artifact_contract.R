@@ -138,6 +138,9 @@ unified_post_contract_check <- function(
   post_figures = TRUE,
   export_tables = TRUE,
   post_smoke_fast = FALSE,
+  multivar_component_diagnostics = FALSE,
+  multivar_component_fail_fast = TRUE,
+  multivar_component_transfer_mode = NA_character_,
   model_run_exdqlm_multivar = TRUE,
   model_run_exdqlm_univar = TRUE,
   model_run_ndlm_main = TRUE,
@@ -160,6 +163,117 @@ unified_post_contract_check <- function(
   has_any_output_file <- function(names_vec) {
     if (length(names_vec) == 0L) return(FALSE)
     any(vapply(as.character(names_vec), has_output_file, logical(1)))
+  }
+  component_required_csv <- c(
+    "multivar_trace_summary_q50.csv",
+    "multivar_forecast_window_q50_summary.csv",
+    "multivar_forecast_window_q50_metrics.csv",
+    "multivar_transfer_state_window_q50.csv",
+    "multivar_transfer_coefficients_window_q50.csv",
+    "multivar_transfer_state_contract_q50.csv",
+    "multivar_transfer_identity_check_q50.csv",
+    "multivar_transfer_contract_q50.csv"
+  )
+  component_required_figures <- c(
+    "multivar_elbo_trace_q50.png",
+    "multivar_sigma_traces_q50.png",
+    "multivar_gamma_traces_q50.png",
+    "multivar_transfer_zeta_window_q50.png",
+    "multivar_transfer_coefficients_window_q50.png",
+    "multivar_transfer_observation_decomposition_q50.png",
+    "multivar_transfer_source_mu_window_q50.png",
+    "multivar_transfer_discrepancy_identity_q50.png"
+  )
+  check_multivar_component_contract <- function() {
+    missing_component <- c(
+      component_required_csv[!vapply(component_required_csv, has_output_file, logical(1))],
+      component_required_figures[!vapply(component_required_figures, has_output_file, logical(1))]
+    )
+    checks$multivar_component_diagnostics_present <<- length(missing_component) == 0L
+    if (!checks$multivar_component_diagnostics_present) {
+      missing_paths <<- c(missing_paths, file.path(outputs_dir, missing_component))
+      messages <<- c(messages, sprintf(
+        "missing multivariate component diagnostics: %s",
+        paste(missing_component, collapse = ", ")
+      ))
+    }
+
+    contract_path <- file.path(outputs_dir, "multivar_transfer_contract_q50.csv")
+    contract_df <- tryCatch(
+      if (file.exists(contract_path)) utils::read.csv(contract_path, stringsAsFactors = FALSE, check.names = FALSE) else NULL,
+      error = function(e) e
+    )
+    checks$multivar_component_transfer_contract_ok <<- FALSE
+    if (inherits(contract_df, "error") || is.null(contract_df) || !is.data.frame(contract_df) || nrow(contract_df) < 1L) {
+      messages <<- c(messages, "multivar_transfer_contract_q50.csv is missing or unreadable.")
+      if (!file.exists(contract_path)) missing_paths <<- c(missing_paths, contract_path)
+      return(invisible(FALSE))
+    }
+
+    row <- contract_df[1L, , drop = FALSE]
+    num_field <- function(name) {
+      if (!name %in% names(row)) return(NA_real_)
+      suppressWarnings(as.numeric(row[[name]][[1L]]))
+    }
+    chr_field <- function(name) {
+      if (!name %in% names(row)) return("")
+      as.character(row[[name]][[1L]])
+    }
+    bool_field <- function(name) {
+      val <- tolower(trimws(chr_field(name)))
+      val %in% c("true", "t", "1", "yes")
+    }
+
+    transfer_mode_raw <- if (is.null(multivar_component_transfer_mode)) "" else multivar_component_transfer_mode
+    transfer_mode <- tolower(trimws(as.character(transfer_mode_raw)))
+    if (!nzchar(transfer_mode) || is.na(transfer_mode)) {
+      transfer_mode <- tolower(trimws(chr_field("transfer_mode")))
+    }
+    forecast_has_transfer <- bool_field("forecast_has_transfer")
+    n_forecast_rows <- num_field("n_forecast_rows")
+    finite_zeta <- num_field("finite_zeta_forecast")
+    finite_mu_without_transfer <- num_field("finite_mu_without_transfer_forecast")
+    max_decomp <- num_field("max_abs_mu_decomp_error")
+    max_g <- num_field("max_abs_identity_err_glofas")
+    max_n <- num_field("max_abs_identity_err_nws")
+    tol_decomp <- num_field("tol_decomp")
+    tol_identity <- num_field("tol_identity")
+    if (!is.finite(tol_decomp)) tol_decomp <- 1e-8
+    if (!is.finite(tol_identity)) tol_identity <- 1e-8
+
+    violations <- character(0)
+    if (is.finite(max_decomp) && max_decomp > tol_decomp) {
+      violations <- c(violations, sprintf("mu decomposition error %.6e exceeds tolerance %.6e", max_decomp, tol_decomp))
+    }
+    if (is.finite(max_g) && max_g > tol_identity) {
+      violations <- c(violations, sprintf("GLOFAS identity error %.6e exceeds tolerance %.6e", max_g, tol_identity))
+    }
+    if (is.finite(max_n) && max_n > tol_identity) {
+      violations <- c(violations, sprintf("NWS identity error %.6e exceeds tolerance %.6e", max_n, tol_identity))
+    }
+    if (identical(transfer_mode, "keep")) {
+      if (!isTRUE(forecast_has_transfer)) {
+        violations <- c(violations, "keep mode expected forecast_has_transfer=true")
+      }
+      if (!is.finite(n_forecast_rows) || n_forecast_rows <= 0) {
+        violations <- c(violations, "keep mode expected positive n_forecast_rows")
+      }
+      if (!is.finite(finite_zeta) || finite_zeta <= 0) {
+        violations <- c(violations, "keep mode expected finite forecast zeta values")
+      }
+      if (!is.finite(finite_mu_without_transfer) || finite_mu_without_transfer <= 0) {
+        violations <- c(violations, "keep mode expected finite mu_without_transfer values")
+      }
+    }
+
+    checks$multivar_component_transfer_contract_ok <<- length(violations) == 0L
+    if (!checks$multivar_component_transfer_contract_ok) {
+      messages <<- c(messages, sprintf(
+        "multivariate component transfer contract failed: %s",
+        paste(violations, collapse = "; ")
+      ))
+    }
+    invisible(checks$multivar_component_transfer_contract_ok)
   }
   checks$outputs_nonempty <- nrow(outputs_df) > 0L
   if (!checks$outputs_nonempty) {
@@ -421,7 +535,31 @@ unified_post_contract_check <- function(
     }
   }
 
-  checks_vec <- unlist(checks, use.names = TRUE)
+  if (isTRUE(multivar_component_diagnostics)) {
+    if (!isTRUE(model_run_exdqlm_multivar)) {
+      checks$multivar_component_diagnostics_present <- FALSE
+      messages <- c(messages, "multivar component diagnostics were requested but exdqlm multivar is disabled.")
+    } else {
+      check_multivar_component_contract()
+    }
+  }
+
+  status_checks <- checks
+  if (isTRUE(multivar_component_diagnostics) && !isTRUE(multivar_component_fail_fast)) {
+    component_check_names <- grep("^multivar_component_", names(status_checks), value = TRUE)
+    if (length(component_check_names) > 0L) {
+      component_values <- unlist(status_checks[component_check_names], use.names = TRUE)
+      if (any(!component_values)) {
+        messages <- c(
+          messages,
+          "multivar component diagnostics failed but multivar_component_fail_fast=false; not failing post contract."
+        )
+      }
+      status_checks[component_check_names] <- as.list(rep(TRUE, length(component_check_names)))
+    }
+  }
+
+  checks_vec <- unlist(status_checks, use.names = TRUE)
   status <- length(checks_vec) > 0L && all(checks_vec)
   list(
     status = isTRUE(status),

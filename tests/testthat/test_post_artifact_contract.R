@@ -12,6 +12,53 @@ create_dummy_png <- function(path) {
   invisible(TRUE)
 }
 
+write_multivar_component_diagnostics <- function(outputs_dir, contract_overrides = list()) {
+  csv_names <- c(
+    "multivar_trace_summary_q50.csv",
+    "multivar_forecast_window_q50_summary.csv",
+    "multivar_forecast_window_q50_metrics.csv",
+    "multivar_transfer_state_window_q50.csv",
+    "multivar_transfer_coefficients_window_q50.csv",
+    "multivar_transfer_state_contract_q50.csv",
+    "multivar_transfer_identity_check_q50.csv"
+  )
+  for (name in csv_names) {
+    write.csv(data.frame(x = 1), file.path(outputs_dir, name), row.names = FALSE)
+  }
+
+  fig_names <- c(
+    "multivar_elbo_trace_q50.png",
+    "multivar_sigma_traces_q50.png",
+    "multivar_gamma_traces_q50.png",
+    "multivar_transfer_zeta_window_q50.png",
+    "multivar_transfer_coefficients_window_q50.png",
+    "multivar_transfer_observation_decomposition_q50.png",
+    "multivar_transfer_source_mu_window_q50.png",
+    "multivar_transfer_discrepancy_identity_q50.png"
+  )
+  for (name in fig_names) {
+    create_dummy_png(file.path(outputs_dir, name))
+  }
+
+  contract <- modifyList(
+    list(
+      transfer_mode = "keep",
+      forecast_has_transfer = TRUE,
+      n_forecast_rows = 30L,
+      finite_zeta_forecast = 30L,
+      finite_mu_without_transfer_forecast = 30L,
+      max_abs_mu_decomp_error = 0,
+      max_abs_identity_err_glofas = 0,
+      max_abs_identity_err_nws = 0,
+      tol_decomp = 1e-8,
+      tol_identity = 1e-8
+    ),
+    contract_overrides
+  )
+  write.csv(as.data.frame(contract), file.path(outputs_dir, "multivar_transfer_contract_q50.csv"), row.names = FALSE)
+  invisible(TRUE)
+}
+
 test_that("smoke post contract passes with smoke marker", {
   outputs_dir <- tempfile("post_outputs_smoke_")
   cache_dir <- tempfile("post_cache_smoke_")
@@ -135,6 +182,114 @@ test_that("multivar-only post contract accepts multivar diagnostics without synt
   expect_true(isTRUE(contract$checks$multivar_trace_figure_present))
   expect_true(isTRUE(contract$checks$multivar_summary_csv_present))
   expect_true(isTRUE(contract$checks$table_exports_present))
+})
+
+test_that("smoke-fast multivar component contract requires q50 diagnostics and keep semantics", {
+  outputs_dir <- tempfile("post_outputs_multivar_components_")
+  cache_dir <- tempfile("post_cache_multivar_components_")
+  dir.create(outputs_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+
+  write_multivar_component_diagnostics(outputs_dir)
+
+  contract <- unified_post_contract_check(
+    artifacts_df = NULL,
+    outputs_dir = outputs_dir,
+    cache_dir = cache_dir,
+    post_figures = TRUE,
+    export_tables = TRUE,
+    post_smoke_fast = TRUE,
+    multivar_component_diagnostics = TRUE,
+    multivar_component_transfer_mode = "keep",
+    model_run_exdqlm_multivar = TRUE,
+    model_run_exdqlm_univar = FALSE,
+    model_run_ndlm_main = FALSE,
+    model_run_ndlm_univar = FALSE
+  )
+
+  expect_true(isTRUE(contract$status))
+  expect_true(isTRUE(contract$checks$multivar_component_diagnostics_present))
+  expect_true(isTRUE(contract$checks$multivar_component_transfer_contract_ok))
+})
+
+test_that("smoke-fast multivar component contract fails closed on missing or dropped forecast transfer", {
+  outputs_missing <- tempfile("post_outputs_multivar_components_missing_")
+  cache_missing <- tempfile("post_cache_multivar_components_missing_")
+  dir.create(outputs_missing, recursive = TRUE, showWarnings = FALSE)
+  dir.create(cache_missing, recursive = TRUE, showWarnings = FALSE)
+  create_dummy_png(file.path(outputs_missing, "multivar_elbo_trace_q50.png"))
+
+  missing_contract <- unified_post_contract_check(
+    artifacts_df = NULL,
+    outputs_dir = outputs_missing,
+    cache_dir = cache_missing,
+    post_figures = TRUE,
+    export_tables = TRUE,
+    post_smoke_fast = TRUE,
+    multivar_component_diagnostics = TRUE,
+    multivar_component_transfer_mode = "keep",
+    model_run_exdqlm_multivar = TRUE,
+    model_run_exdqlm_univar = FALSE,
+    model_run_ndlm_main = FALSE,
+    model_run_ndlm_univar = FALSE
+  )
+
+  expect_false(isTRUE(missing_contract$status))
+  expect_false(isTRUE(missing_contract$checks$multivar_component_diagnostics_present))
+  expect_true(any(grepl("multivar_transfer_contract_q50.csv", missing_contract$missing_paths, fixed = TRUE)))
+
+  nonfatal_contract <- unified_post_contract_check(
+    artifacts_df = NULL,
+    outputs_dir = outputs_missing,
+    cache_dir = cache_missing,
+    post_figures = TRUE,
+    export_tables = TRUE,
+    post_smoke_fast = TRUE,
+    multivar_component_diagnostics = TRUE,
+    multivar_component_fail_fast = FALSE,
+    multivar_component_transfer_mode = "keep",
+    model_run_exdqlm_multivar = TRUE,
+    model_run_exdqlm_univar = FALSE,
+    model_run_ndlm_main = FALSE,
+    model_run_ndlm_univar = FALSE
+  )
+
+  expect_true(isTRUE(nonfatal_contract$status))
+  expect_false(isTRUE(nonfatal_contract$checks$multivar_component_diagnostics_present))
+  expect_true(any(grepl("multivar_component_fail_fast=false", nonfatal_contract$messages, fixed = TRUE)))
+
+  outputs_bad <- tempfile("post_outputs_multivar_components_bad_")
+  cache_bad <- tempfile("post_cache_multivar_components_bad_")
+  dir.create(outputs_bad, recursive = TRUE, showWarnings = FALSE)
+  dir.create(cache_bad, recursive = TRUE, showWarnings = FALSE)
+  write_multivar_component_diagnostics(
+    outputs_bad,
+    contract_overrides = list(
+      forecast_has_transfer = FALSE,
+      finite_zeta_forecast = 0L,
+      finite_mu_without_transfer_forecast = 0L
+    )
+  )
+
+  bad_contract <- unified_post_contract_check(
+    artifacts_df = NULL,
+    outputs_dir = outputs_bad,
+    cache_dir = cache_bad,
+    post_figures = TRUE,
+    export_tables = TRUE,
+    post_smoke_fast = TRUE,
+    multivar_component_diagnostics = TRUE,
+    multivar_component_transfer_mode = "keep",
+    model_run_exdqlm_multivar = TRUE,
+    model_run_exdqlm_univar = FALSE,
+    model_run_ndlm_main = FALSE,
+    model_run_ndlm_univar = FALSE
+  )
+
+  expect_false(isTRUE(bad_contract$status))
+  expect_true(isTRUE(bad_contract$checks$multivar_component_diagnostics_present))
+  expect_false(isTRUE(bad_contract$checks$multivar_component_transfer_contract_ok))
+  expect_true(any(grepl("forecast_has_transfer=true", bad_contract$messages, fixed = TRUE)))
 })
 
 test_that("univar-only post contract accepts isolated univariate diagnostics and CRPS exports", {

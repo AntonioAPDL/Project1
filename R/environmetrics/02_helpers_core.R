@@ -340,6 +340,58 @@ post_resolve_analysis_scale_post_internal <- local({
   }
 })
 
+post_flow_scale_label <- function(scale = NULL) {
+  scale <- as.character(scale %||% post_resolve_analysis_scale_post_internal())
+  if (identical(scale, "raw_cms")) return("raw cms")
+  if (identical(scale, "log_cms")) return("log(cms)")
+  if (identical(scale, "log1p_cms")) return("log1p cms")
+  if (identical(scale, "log_log_cms")) return("log(log(cms))")
+  if (identical(scale, "log_log1p_cms")) return("log(log1p(cms))")
+  scale
+}
+
+post_transform_usgs_log1p_truth_to_analysis_scale <- function(
+  log1p_values,
+  target_scale = NULL,
+  context = "usgs_truth"
+) {
+  x <- suppressWarnings(as.numeric(log1p_values))
+  target_scale <- as.character(target_scale %||% post_resolve_analysis_scale_post_internal())
+  if (exists("unified_assert_known_scale", inherits = TRUE)) {
+    unified_assert_known_scale(target_scale, "target_scale")
+  }
+
+  out <- rep(NA_real_, length(x))
+  finite <- is.finite(x)
+  if (!any(finite)) {
+    return(out)
+  }
+
+  if (identical(target_scale, "log1p_cms")) {
+    out[finite] <- x[finite]
+    return(out)
+  }
+
+  if (identical(target_scale, "log_log1p_cms")) {
+    positive <- finite & x > 0
+    out[positive] <- log(x[positive])
+    return(out)
+  }
+
+  if (!exists("unified_convert_scale", inherits = TRUE)) {
+    stop(sprintf("[%s_SCALE_HELPER] unified_convert_scale is required for target_scale=%s.", context, target_scale), call. = FALSE)
+  }
+  converted <- tryCatch(
+    unified_convert_scale(x[finite], from_scale = "log1p_cms", to_scale = target_scale),
+    error = function(e) e
+  )
+  if (inherits(converted, "error")) {
+    stop(sprintf("[%s_SCALE_CONVERT] %s", context, conditionMessage(converted)), call. = FALSE)
+  }
+  out[finite] <- converted
+  out
+}
+
 post_write_scale_transform_report <- function(summary, report_path = NULL) {
   if (is.null(report_path) || !nzchar(report_path)) {
     return(invisible(FALSE))

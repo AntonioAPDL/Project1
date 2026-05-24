@@ -1,4 +1,5 @@
 source(file.path("..", "..", "R", "unified", "utils_scale.R"))
+source(testthat::test_path("..", "..", "R", "environmetrics", "02_helpers_core.R"))
 
 test_that("all declared scales convert deterministically to legacy log1p_cms", {
   x_raw <- c(1.2, 2.0, 10.0)
@@ -54,4 +55,26 @@ test_that("adapter guardrails enforce positive legacy-log input", {
     unified_adapt_csv_scale(tmp_in, tmp_out, from_scale = "raw_cms", to_scale = "raw_cms", positive_required = TRUE),
     "> 0"
   )
+})
+
+test_that("post truth helper keeps shared USGS truth on log1p unless loglog is explicit", {
+  x_log1p <- c(0, log1p(9), NA_real_)
+
+  expect_equal(
+    post_transform_usgs_log1p_truth_to_analysis_scale(x_log1p, target_scale = "log1p_cms"),
+    x_log1p
+  )
+  expect_equal(
+    post_transform_usgs_log1p_truth_to_analysis_scale(x_log1p, target_scale = "raw_cms"),
+    c(0, 9, NA_real_),
+    tolerance = 1e-12
+  )
+  expect_equal(
+    post_transform_usgs_log1p_truth_to_analysis_scale(x_log1p, target_scale = "log_log1p_cms"),
+    c(NA_real_, log(log1p(9)), NA_real_),
+    tolerance = 1e-12
+  )
+
+  expect_equal(post_flow_scale_label("log1p_cms"), "log1p cms")
+  expect_equal(post_flow_scale_label("log_log1p_cms"), "log(log1p(cms))")
 })

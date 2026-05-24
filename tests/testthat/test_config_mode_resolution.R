@@ -20,6 +20,10 @@ test_that("unified config defaults include new likelihood and ndlm transfer mode
   expect_equal(cfg$post$crps_input_health$fail_fast, FALSE)
   expect_equal(cfg$post$crps_input_health$min_finite_share, 1)
   expect_true(is.na(cfg$post$crps_input_health$max_abs))
+  expect_equal(cfg$post$multivar_component_diagnostics$enabled, FALSE)
+  expect_equal(cfg$post$multivar_component_diagnostics$quantile, 0.50)
+  expect_equal(cfg$post$multivar_component_diagnostics$pre_days, 30L)
+  expect_equal(cfg$post$multivar_component_diagnostics$fail_fast, TRUE)
   expect_equal(cfg$fit$exdqlm_multivar$latent_ablation$mode, "free")
   expect_equal(cfg$fit$exdqlm_multivar$latent_ablation$e_inv_u_cap, 5000)
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$enabled, TRUE)
@@ -84,6 +88,10 @@ test_that("config validation rejects invalid diagnostics and crps input health c
   cfg$post$crps_input_health$fail_fast <- "bad"
   cfg$post$crps_input_health$min_finite_share <- 2
   cfg$post$crps_input_health$max_abs <- 0
+  cfg$post$multivar_component_diagnostics$enabled <- "bad"
+  cfg$post$multivar_component_diagnostics$fail_fast <- "bad"
+  cfg$post$multivar_component_diagnostics$quantile <- 1
+  cfg$post$multivar_component_diagnostics$pre_days <- -1L
 
   errs <- unified_validate_config(cfg)
   expect_true(any(grepl("fit\\.diagnostics\\.full_slice_psd", errs)))
@@ -93,6 +101,20 @@ test_that("config validation rejects invalid diagnostics and crps input health c
   expect_true(any(grepl("post\\.crps_input_health\\.fail_fast", errs)))
   expect_true(any(grepl("post\\.crps_input_health\\.min_finite_share", errs)))
   expect_true(any(grepl("post\\.crps_input_health\\.max_abs", errs)))
+  expect_true(any(grepl("post\\.multivar_component_diagnostics\\.enabled", errs)))
+  expect_true(any(grepl("post\\.multivar_component_diagnostics\\.fail_fast", errs)))
+  expect_true(any(grepl("post\\.multivar_component_diagnostics\\.quantile", errs)))
+  expect_true(any(grepl("post\\.multivar_component_diagnostics\\.pre_days", errs)))
+})
+
+test_that("config validation restricts enabled multivar component diagnostics to q50", {
+  cfg <- unified_config_defaults()
+  cfg$post$multivar_component_diagnostics$enabled <- TRUE
+  cfg$post$multivar_component_diagnostics$quantile <- 0.65
+
+  errs <- unified_validate_config(cfg)
+
+  expect_true(any(grepl("currently supports quantile=0.50 only", errs, fixed = TRUE)))
 })
 
 test_that("config validation accepts and rejects exdqlm multivar runtime guard controls", {

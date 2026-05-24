@@ -92,7 +92,7 @@ The post stage produced, for each cutoff:
 
 The campaign root contains no remaining `.RData` / `.rda` files after successful post-stage cleanup.
 
-Important limitation: this campaign used `post.smoke_fast=true` and `post.force_isolation_smoke_fast=true`, so it did not run the retained-state q50 component diagnostics in `40_figures_multivar_only.R`. The current root therefore cannot be used to reconstruct the full trend/season/transfer state paths after cleanup. Future epsilon/discount-factor campaigns must run a repaired log1p-safe component-diagnostic gate before `.RData` cleanup.
+Important limitation: this campaign used `post.smoke_fast=true` and `post.force_isolation_smoke_fast=true`, so it did not run the retained-state q50 component diagnostics in `40_figures_multivar_only.R`. The current root therefore cannot be used to reconstruct the full trend/season/transfer state paths after cleanup. The 2026-05-24 pre-grid patch adds a repaired log1p-safe q50 component-diagnostic gate; future epsilon/discount-factor campaigns must enable that gate before `.RData` cleanup.
 
 Follow-up plan:
 

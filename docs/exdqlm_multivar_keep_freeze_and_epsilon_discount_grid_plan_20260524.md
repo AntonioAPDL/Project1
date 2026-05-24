@@ -13,9 +13,9 @@ The 2026-05-23 near-zero all-cutoff `exdqlm_multivar_keep` campaign is a valid f
 - current post outputs include the main publication-style cutoff-window figures, ELBO overview, CRPS tables, input-health tables, gamma/sigma summaries, and final-time covariate-effect summaries;
 - `.RData` artifacts under the campaign root have already been cleaned successfully.
 
-The campaign is **not** a complete component-diagnostics freeze point. It ran the smoke-fast post path, which intentionally skips the retained-state component diagnostics. The future epsilon/discount-factor grid must therefore add a component-diagnostic gate that runs while `.RData` is still present, then deletes `.RData` only after those diagnostics and CRPS tables pass.
+The campaign is **not** a complete component-diagnostics freeze point. It ran the smoke-fast post path, which intentionally skips the retained-state component diagnostics. The future epsilon/discount-factor grid must therefore run the new component-diagnostic gate while `.RData` is still present, then delete `.RData` only after those diagnostics and CRPS tables pass.
 
-Do not simply turn on the current full `40_figures_multivar_only.R` path for `log1p_only` production until it is repaired and tested. That module still contains loglog-era labels and truth conversion logic.
+Do not simply switch off smoke-fast and run the entire legacy full post stack for `log1p_only` production. The q50 component-diagnostic path has now been repaired and gated for the grid workflow, but the intended production mode is smoke-fast outputs plus the dedicated q50 component module, not the broad legacy figure stack.
 
 ## Current Freeze Evidence
 
@@ -114,13 +114,15 @@ Those retained-state outputs are implemented in `R/environmetrics/40_figures_mul
 
 ## Log1p Hazard in the Full Component Module
 
-Before enabling full multivar-only diagnostics in production, repair its scale assumptions:
+The original component module had loglog-era assumptions that were unsafe for the current `log1p_only` workflow:
 
 - `R/environmetrics/40_figures_multivar_only.R:112-118` reads `San_Lorenzo_Daily_USGS_R$data0` as `flow_log1p` and then applies `log(...)`, producing loglog values when the current post input is already `log1p_cms`;
 - `R/environmetrics/40_figures_multivar_only.R:1315-1484` labels multiple plots as `log(log(flow + 1))`;
 - the smoke-fast multivar cutoff-window path already uses log1p-scale helpers such as `smoke_usgs_log1p_by_dates()` in `R/environmetrics/40_figures_smoke_fast.R:618-639` and log1p-scale plotting labels in `R/environmetrics/40_figures_smoke_fast.R:1147-1196`.
 
 Therefore the next implementation should not just set `post.smoke_fast=false`. It should either repair `40_figures_multivar_only.R` for `log1p_only` or extract a new lightweight component-diagnostics module that reuses the log1p-safe helpers from smoke-fast.
+
+Implementation status on 2026-05-24: repaired for the q50 component-diagnostic gate. `R/environmetrics/02_helpers_core.R` now provides a scale-aware helper for shared USGS `data0` truth, `R/environmetrics/40_figures_multivar_only.R` uses that helper and dynamic labels, and `tests/testthat/test_scale_contract_adapters.R` covers the log1p identity and explicit loglog conversion behavior.
 
 ## Grid Selection Contract
 
@@ -166,6 +168,8 @@ The current per-run CRPS summary contains model/run fields but not enough explic
 
 ### P1. Repair Component Diagnostics for `log1p_only`
 
+Status: implemented and tested on 2026-05-24.
+
 1. Replace loglog-era truth conversion in `40_figures_multivar_only.R` with a scale-aware helper:
    - if `UNIFIED_ANALYSIS_SCALE_POST_INTERNAL=log1p_cms`, use `data0` directly;
    - if `log_log1p_cms`, convert to loglog only when explicitly requested;
@@ -175,6 +179,8 @@ The current per-run CRPS summary contains model/run fields but not enough explic
 4. Add tests for the scale-aware future-truth helper and labels.
 
 ### P2. Add a Production Component-Diagnostic Mode
+
+Status: implemented and tested on 2026-05-24.
 
 Add a config switch such as:
 
@@ -197,7 +203,18 @@ The intended behavior:
 
 This avoids using the entire full legacy post stack while still producing the retained-state diagnostics we need.
 
+Implemented wiring:
+
+- `R/unified/config.R` adds and validates `post.multivar_component_diagnostics`;
+- `R/unified/stages/stage_post.R` exports the component-diagnostic environment only when multivariate exDQLM is active;
+- `scripts/run_environmetrics_figures.R` logs the switch, appends the component module to the selected post modules, and passes the gate into the artifact contract;
+- `R/unified/post_module_plan.R` keeps smoke-fast as the main post route and appends `40_figures_multivar_only.R` only when the component gate is enabled.
+
+Production grid configs should keep `post.multivar_component_diagnostics.fail_fast=true`. The switch is wired through for debug runs, but the production cleanup policy depends on the default fail-fast behavior.
+
 ### P3. Strengthen the Post Artifact Contract
+
+Status: implemented and tested on 2026-05-24.
 
 When `post.multivar_component_diagnostics.enabled=true`, require:
 
@@ -206,13 +223,19 @@ When `post.multivar_component_diagnostics.enabled=true`, require:
 - `multivar_forecast_window_q50_metrics.csv`;
 - `multivar_transfer_state_window_q50.csv`;
 - `multivar_transfer_coefficients_window_q50.csv`;
+- `multivar_transfer_state_contract_q50.csv`;
+- `multivar_transfer_identity_check_q50.csv`;
 - `multivar_transfer_contract_q50.csv`;
 - q50 trend/season/transfer/source figures;
 - contract fields showing finite forecast transfer retention in `keep` mode.
 
 The contract must pass before `.RData` cleanup. If it fails, `.RData` should remain for debugging.
 
+Implemented in `R/unified/post_artifact_contract.R`. The new gate requires the q50 CSV/PNG diagnostics and checks `multivar_transfer_contract_q50.csv` for retained-transfer semantics under `keep`, including finite forecast zeta and finite `mu_without_transfer` rows.
+
 ### P4. Add a Grid Aggregator
+
+Status: deferred to the grid phase. The component-diagnostic repair and gate are complete; the spec-aware CRPS aggregator should be implemented with the grid launch tooling rather than mixed into this pre-grid gate patch.
 
 Create a reproducible script that consumes one or more grid runtime roots and writes under `reports/`:
 
@@ -271,18 +294,30 @@ Ready now:
 - all-cutoff baseline public figures and CRPS tables;
 - current `.RData` cleanup behavior after post success;
 - existing smoke-fast synthesis/CRPS path for `log1p_only`.
+- repaired log1p-safe q50 component diagnostics;
+- `post.multivar_component_diagnostics` wiring for smoke-fast plus component diagnostics;
+- post artifact contract checks for q50 component outputs and retained-transfer `keep` semantics.
 
 Not ready yet:
 
-- production epsilon/discount grid with component summaries, because the component diagnostic path needs a log1p repair and a post-contract gate;
 - retrospective production of full component paths from the already-cleaned 2026-05-23 root;
-- final grid ranking without a spec-aware CRPS aggregator.
+- final grid ranking without a spec-aware CRPS aggregator;
+- production epsilon/discount grid launch, because the grid manifest, prelaunch validation, smoke run, and ranking/reporting scripts still need to be executed.
 
 Immediate next engineering work:
 
-1. repair/scale-test q50 component diagnostics;
-2. add `post.multivar_component_diagnostics` wiring;
-3. extend the post artifact contract;
-4. add the grid CRPS/spec aggregator;
-5. run a one-cutoff retained-diagnostics smoke with cleanup disabled for inspection;
-6. rerun that smoke with cleanup enabled to verify `.RData` removal only after diagnostics pass.
+1. add the grid CRPS/spec aggregator;
+2. add prelaunch validation for each generated grid config and spec manifest;
+3. run a one-cutoff retained-diagnostics smoke with cleanup disabled for inspection;
+4. rerun that smoke with cleanup enabled to verify `.RData` removal only after diagnostics pass;
+5. then start the staged epsilon/discount-factor grid.
+
+## Validation Added on 2026-05-24
+
+The pre-grid component gate was validated with:
+
+- parse checks for `R/environmetrics/02_helpers_core.R`, `R/environmetrics/40_figures_multivar_only.R`, `R/unified/config.R`, `R/unified/stages/stage_post.R`, `R/unified/post_artifact_contract.R`, `R/unified/post_module_plan.R`, and `scripts/run_environmetrics_figures.R`;
+- `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_module_plan.R')"`: pass, 22 expectations;
+- `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_artifact_contract.R')"`: pass, 46 expectations;
+- `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_config_mode_resolution.R')"`: pass, 64 expectations;
+- `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_scale_contract_adapters.R')"`: pass, 18 expectations.

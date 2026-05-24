@@ -57,6 +57,8 @@ MODEL_RUN_NDLM_MAIN <- env_flag("UNIFIED_MODEL_RUN_NDLM_MAIN", "FALSE")
 MODEL_RUN_NDLM_UNIVAR <- env_flag("UNIFIED_MODEL_RUN_NDLM_UNIVAR", "FALSE")
 POST_FIGURES <- env_flag("UNIFIED_POST_FIGURES", "TRUE")
 POST_SMOKE_FAST <- env_flag("UNIFIED_POST_SMOKE_FAST", "FALSE")
+POST_MULTIVAR_COMPONENT_DIAGNOSTICS <- env_flag("UNIFIED_POST_MULTIVAR_COMPONENT_DIAGNOSTICS", "FALSE")
+POST_MULTIVAR_COMPONENT_FAIL_FAST <- env_flag("UNIFIED_POST_MULTIVAR_COMPONENT_FAIL_FAST", "TRUE")
 POST_PUBLICATION_FIGURES <- env_flag("UNIFIED_POST_PUBLICATION_FIGURES", "TRUE")
 POST_PUBLICATION_REWRITE_CANONICAL <- env_flag("UNIFIED_POST_PUBLICATION_REWRITE_CANONICAL", "TRUE")
 POST_PUBLICATION_EXPORT_PDF <- env_flag("UNIFIED_POST_PUBLICATION_EXPORT_PDF", "TRUE")
@@ -173,6 +175,8 @@ cat(sprintf("MODEL_RUN_NDLM_MAIN: %s\n", MODEL_RUN_NDLM_MAIN))
 cat(sprintf("MODEL_RUN_NDLM_UNIVAR: %s\n", MODEL_RUN_NDLM_UNIVAR))
 cat(sprintf("POST_FIGURES: %s\n", POST_FIGURES))
 cat(sprintf("POST_SMOKE_FAST: %s\n", POST_SMOKE_FAST))
+cat(sprintf("POST_MULTIVAR_COMPONENT_DIAGNOSTICS: %s\n", POST_MULTIVAR_COMPONENT_DIAGNOSTICS))
+cat(sprintf("POST_MULTIVAR_COMPONENT_FAIL_FAST: %s\n", POST_MULTIVAR_COMPONENT_FAIL_FAST))
 cat(sprintf("POST_PUBLICATION_FIGURES: %s\n", POST_PUBLICATION_FIGURES))
 cat(sprintf("POST_PUBLICATION_REWRITE_CANONICAL: %s\n", POST_PUBLICATION_REWRITE_CANONICAL))
 cat(sprintf("POST_PUBLICATION_EXPORT_PDF: %s\n", POST_PUBLICATION_EXPORT_PDF))
@@ -386,7 +390,8 @@ modules <- unified_post_select_modules(
   model_run_exdqlm_univar = MODEL_RUN_EXDQLM_UNIVAR,
   model_run_ndlm_main = MODEL_RUN_NDLM_MAIN,
   model_run_ndlm_univar = MODEL_RUN_NDLM_UNIVAR,
-  core_modules = core_modules
+  core_modules = core_modules,
+  multivar_component_diagnostics = POST_MULTIVAR_COMPONENT_DIAGNOSTICS
 )
 
 missing <- modules[!file.exists(file.path(modules_dir, modules))]
@@ -521,6 +526,9 @@ post_contract <- unified_post_contract_check(
   post_figures = isTRUE(POST_FIGURES),
   export_tables = isTRUE(EXPORT_TABLES),
   post_smoke_fast = isTRUE(POST_SMOKE_FAST_EFFECTIVE),
+  multivar_component_diagnostics = isTRUE(POST_MULTIVAR_COMPONENT_DIAGNOSTICS),
+  multivar_component_fail_fast = isTRUE(POST_MULTIVAR_COMPONENT_FAIL_FAST),
+  multivar_component_transfer_mode = Sys.getenv("UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE", ""),
   model_run_exdqlm_multivar = isTRUE(MODEL_RUN_EXDQLM_MULTIVAR),
   model_run_exdqlm_univar = isTRUE(MODEL_RUN_EXDQLM_UNIVAR),
   model_run_ndlm_main = isTRUE(MODEL_RUN_NDLM_MAIN),

@@ -9,6 +9,28 @@ safe_get <- function(name, default = NULL) {
   get0(name, ifnotfound = default, inherits = TRUE)
 }
 
+multivar_component_analysis_scale <- function(default = "log1p_cms") {
+  if (exists("post_resolve_analysis_scale_post_internal", mode = "function", inherits = TRUE)) {
+    return(post_resolve_analysis_scale_post_internal(default = default))
+  }
+  Sys.getenv("UNIFIED_ANALYSIS_SCALE_POST_INTERNAL", default)
+}
+
+multivar_component_y_label <- function() {
+  scale <- multivar_component_analysis_scale()
+  label <- if (exists("post_flow_scale_label", mode = "function", inherits = TRUE)) {
+    post_flow_scale_label(scale)
+  } else {
+    scale
+  }
+  sprintf("USGS / model scale (%s)", label)
+}
+
+multivar_component_pre_days <- function(default = 30L) {
+  raw <- suppressWarnings(as.integer(Sys.getenv("UNIFIED_POST_MULTIVAR_COMPONENT_PRE_DAYS", as.character(default))))
+  if (!is.finite(raw) || raw < 0L) as.integer(default) else raw
+}
+
 as_numeric_vec <- function(x) {
   if (is.null(x)) return(numeric(0))
   if (is.atomic(x)) return(as.numeric(x))
@@ -109,13 +131,29 @@ resolve_future_truth_multivar <- function(horizon) {
     } else {
       as.Date(rep(NA_character_, nrow(sl)))
     }
+    # `data0` is shared USGS truth on log1p(cms). Keep it on log1p for the
+    # repaired production contract; convert only for explicitly older scales.
     flow_log1p <- suppressWarnings(as.numeric(sl$data0))
-    ok <- !is.na(date_col) & is.finite(flow_log1p) & (flow_log1p > 0)
+    flow_analysis <- if (exists("post_transform_usgs_log1p_truth_to_analysis_scale", mode = "function", inherits = TRUE)) {
+      post_transform_usgs_log1p_truth_to_analysis_scale(
+        flow_log1p,
+        target_scale = multivar_component_analysis_scale(),
+        context = "multivar_component.future_truth"
+      )
+    } else if (identical(multivar_component_analysis_scale(), "log_log1p_cms")) {
+      out <- rep(NA_real_, length(flow_log1p))
+      ok_pos <- is.finite(flow_log1p) & flow_log1p > 0
+      out[ok_pos] <- log(flow_log1p[ok_pos])
+      out
+    } else {
+      flow_log1p
+    }
+    ok <- !is.na(date_col) & is.finite(flow_analysis)
     if (sum(ok) > 0L) {
       idx_map <- match(target_dates, date_col[ok])
       valid <- !is.na(idx_map)
       if (any(valid)) {
-        truth[valid] <- log(flow_log1p[ok][idx_map[valid]])
+        truth[valid] <- flow_analysis[ok][idx_map[valid]]
       }
     }
   }
@@ -1075,7 +1113,7 @@ plot_transfer_observation_decomp_q50 <- function(state_df, out_file, forecast_ha
   plot(
     state_df$day_rel[ok], state_df$mu_usgs[ok], type = "n",
     xlab = "Day relative to cutoff (0 = T)",
-    ylab = "Location component scale",
+    ylab = multivar_component_y_label(),
     main = "USGS location decomposition around cutoff: total, trend, seasonal, transfer, and observed USGS",
     ylim = ylim_use
   )
@@ -1140,7 +1178,7 @@ plot_transfer_sources_window_q50 <- function(state_df, out_file, forecast_has_tr
   plot(
     state_df$day_rel[ok], state_df$mu_usgs[ok], type = "n",
     xlab = "Day relative to cutoff (0 = T)",
-    ylab = "Location component scale",
+    ylab = multivar_component_y_label(),
     main = "Source-level location reconstruction around cutoff: USGS, GLOFAS, NWS (95% bands)",
     ylim = ylim_use
   )
@@ -1307,6 +1345,7 @@ profile_section("figures_multivar_only.trace_summary", {
 profile_section("figures_multivar_only.fit_and_forecast", {
   fs <- build_multivar_q50_forecast_summary()
   if (is.null(fs)) return(invisible(NULL))
+  scale_ylab <- multivar_component_y_label()
 
   idx_fit <- seq_len(fs$fit_n)
   fit_obs <- as.numeric(fs$fit_obs)
@@ -1318,7 +1357,7 @@ profile_section("figures_multivar_only.fit_and_forecast", {
   y_min <- min(c(fit_obs, fit_mu), na.rm = TRUE)
   y_max <- max(c(fit_obs, fit_mu), na.rm = TRUE)
   plot(idx_fit, fit_obs, type = "p", pch = 16, cex = 0.35, col = "gray25",
-       xlab = "Time index", ylab = "log(log(flow + 1))",
+       xlab = "Time index", ylab = scale_ylab,
        main = "Multivariate exDQLM expected location vs observed (in-sample)",
        ylim = c(y_min, y_max))
   lines(idx_fit, fit_mu, col = "#1b7837", lwd = 2.2)
@@ -1335,7 +1374,7 @@ profile_section("figures_multivar_only.fit_and_forecast", {
   y_min_r <- min(c(fit_obs[idx_recent], fit_mu[idx_recent]), na.rm = TRUE)
   y_max_r <- max(c(fit_obs[idx_recent], fit_mu[idx_recent]), na.rm = TRUE)
   plot(idx_recent, fit_obs[idx_recent], type = "p", pch = 16, cex = 0.55, col = "gray25",
-       xlab = "Time index", ylab = "log(log(flow + 1))",
+       xlab = "Time index", ylab = scale_ylab,
        main = sprintf("Multivariate exDQLM expected location vs observed (recent %d points)", recent_n),
        ylim = c(y_min_r, y_max_r))
   lines(idx_recent, fit_mu[idx_recent], col = "#1b7837", lwd = 2.3)
@@ -1411,7 +1450,7 @@ profile_section("figures_multivar_only.fit_and_forecast", {
   y_min_f <- min(c(lo_f, up_f, mu_f, truth), na.rm = TRUE)
   y_max_f <- max(c(lo_f, up_f, mu_f, truth), na.rm = TRUE)
   plot(x_f, mu_f, type = "l", lwd = 2.4, col = "#1b7837",
-       xlab = "Forecast day", ylab = "log(log(flow + 1))",
+       xlab = "Forecast day", ylab = scale_ylab,
        main = "Forecast window: multivariate exDQLM mu_t (q=50) vs future USGS",
        ylim = c(y_min_f, y_max_f))
   if (any(is.finite(lo_f)) && any(is.finite(up_f))) {
@@ -1438,7 +1477,7 @@ profile_section("figures_multivar_only.fit_and_forecast", {
   y_min_mz <- min(c(mu_minus_zeta_f, mu_f, truth), na.rm = TRUE)
   y_max_mz <- max(c(mu_minus_zeta_f, mu_f, truth), na.rm = TRUE)
   plot(x_f, mu_minus_zeta_f, type = "l", lwd = 2.6, col = "#762a83",
-       xlab = "Forecast day", ylab = "log(log(flow + 1))",
+       xlab = "Forecast day", ylab = scale_ylab,
        main = "Forecast window: multivariate exDQLM (mu_t - zeta_t) vs future USGS",
        ylim = c(y_min_mz, y_max_mz))
   lines(x_f, mu_f, lwd = 1.6, lty = 3, col = "#1b7837")
@@ -1458,7 +1497,7 @@ profile_section("figures_multivar_only.fit_and_forecast", {
   y_min_e <- min(c(lo_f, up_f, mu_f, glofas_mean, nws_mean, truth), na.rm = TRUE)
   y_max_e <- max(c(lo_f, up_f, mu_f, glofas_mean, nws_mean, truth), na.rm = TRUE)
   plot(x_f, mu_f, type = "l", lwd = 2.5, col = "#1b7837",
-       xlab = "Forecast day", ylab = "log(log(flow + 1))",
+       xlab = "Forecast day", ylab = scale_ylab,
        main = "Forecast window: multivariate exDQLM vs ensemble means",
        ylim = c(y_min_e, y_max_e))
   lines(x_f, lo_f, lty = 2, lwd = 1.1, col = "#1b7837")
@@ -1480,7 +1519,7 @@ profile_section("figures_multivar_only.fit_and_forecast", {
   y_min_m <- min(c(gmat, nmat, lo_f, up_f, mu_f, truth), na.rm = TRUE)
   y_max_m <- max(c(gmat, nmat, lo_f, up_f, mu_f, truth), na.rm = TRUE)
   plot(x_f, mu_f, type = "l", lwd = 2.6, col = "#1b7837",
-       xlab = "Forecast day", ylab = "log(log(flow + 1))",
+       xlab = "Forecast day", ylab = scale_ylab,
        main = "Forecast window: ensemble members + multivariate q50 (95% band) + future USGS",
        ylim = c(y_min_m, y_max_m))
   if (any(is.finite(lo_f)) && any(is.finite(up_f))) {
@@ -1509,7 +1548,7 @@ profile_section("figures_multivar_only.fit_and_forecast", {
 })
 
 profile_section("figures_multivar_only.transfer_state_verification", {
-  payload <- build_transfer_state_window_q50(pre_days = 30L)
+  payload <- build_transfer_state_window_q50(pre_days = multivar_component_pre_days())
   if (is.null(payload)) return(invisible(NULL))
 
   transfer_mode <- tolower(trimws(Sys.getenv("UNIFIED_MULTIVAR_FORECAST_TRANSFER_MODE", "drop")))

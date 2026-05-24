@@ -531,6 +531,32 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
   if (is.null(sort_keep_na)) sort_keep_na <- TRUE
   export_tables <- cfg$post$export_tables
   if (is.null(export_tables)) export_tables <- TRUE
+  multivar_component_diagnostics_enabled <- isTRUE(unified_get(
+    cfg,
+    c("post", "multivar_component_diagnostics", "enabled"),
+    default = FALSE
+  ))
+  multivar_component_pre_days <- suppressWarnings(as.integer(unified_get(
+    cfg,
+    c("post", "multivar_component_diagnostics", "pre_days"),
+    default = 30L
+  )))
+  if (!is.finite(multivar_component_pre_days) || multivar_component_pre_days < 0L) {
+    multivar_component_pre_days <- 30L
+  }
+  multivar_component_quantile <- suppressWarnings(as.numeric(unified_get(
+    cfg,
+    c("post", "multivar_component_diagnostics", "quantile"),
+    default = 0.50
+  )))
+  if (!is.finite(multivar_component_quantile)) {
+    multivar_component_quantile <- 0.50
+  }
+  multivar_component_fail_fast <- isTRUE(unified_get(
+    cfg,
+    c("post", "multivar_component_diagnostics", "fail_fast"),
+    default = TRUE
+  ))
   table_formats <- cfg$post$table_formats
   if (is.null(table_formats) || length(table_formats) == 0L) {
     table_formats <- "csv"
@@ -620,6 +646,13 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_NDLM_UNIVAR_FORECAST_TRANSFER_MODE = as.character(ndlm_univar_forecast_transfer_mode),
     UNIFIED_NDLM_CRPS_PRIMARY_FAMILY = as.character(ndlm_crps_primary_family),
     UNIFIED_POST_SMOKE_FAST = if (isTRUE(post_smoke_fast_effective)) "TRUE" else "FALSE",
+    UNIFIED_POST_MULTIVAR_COMPONENT_DIAGNOSTICS = if (
+      isTRUE(multivar_component_diagnostics_enabled) &&
+        isTRUE(cfg$models$run_exdqlm_multivar)
+    ) "TRUE" else "FALSE",
+    UNIFIED_POST_MULTIVAR_COMPONENT_PRE_DAYS = as.character(multivar_component_pre_days),
+    UNIFIED_POST_MULTIVAR_COMPONENT_QUANTILE = as.character(multivar_component_quantile),
+    UNIFIED_POST_MULTIVAR_COMPONENT_FAIL_FAST = if (isTRUE(multivar_component_fail_fast)) "TRUE" else "FALSE",
     UNIFIED_FIT_QUANTILE_LABELS = encode_env_list(q_labels),
     UNIFIED_DISC_W_RDATA_PATHS = encode_env_list(disc_w_paths_abs),
     UNIFIED_POST_OUTPUT_SUBDIR = "",
