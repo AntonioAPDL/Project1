@@ -1,0 +1,277 @@
+# exDQLM Multivariate Keep Grid Evaluation Plan
+
+Date: 2026-05-24
+
+Status: evaluation-plan draft. No grid launch is authorized by this document. The concrete epsilon/discount grid is still pending user input.
+
+## Purpose
+
+This document defines how to evaluate the next `exdqlm_multivar_keep` epsilon/discount-factor grid after the
+`log1p_only` repairs, q50 component-diagnostic gate, and quantile-synthesis rearrangement patch.
+
+The selection goal is:
+
+> For each cutoff, choose the best specification from the grid using forecast-window CRPS for
+> `exdqlm_multivar_synth_keep`, while requiring complete run health, post artifacts, component diagnostics,
+> quantile-synthesis diagnostics, and reproducible metadata.
+
+This is intentionally **per cutoff** selection. We should still report pooled performance across cutoffs, but the
+primary decision table must identify the best specification within each cutoff, because different cutoffs can favor
+different epsilon/discount settings.
+
+## Source Contracts
+
+The grid must inherit the locked workflow from:
+
+- `docs/exdqlm_multivar_keep_freeze_and_epsilon_discount_grid_plan_20260524.md`
+- `docs/exdqlm_multivar_keep_synthesis_rearrangement_plan_20260522.md`
+- `docs/exdqlm_multivar_keep_allcutoffs_fullhistory_nearzero_launch_20260523.md`
+
+Fixed workflow contract unless explicitly changed:
+
+| item | required value |
+| --- | --- |
+| model family | `exdqlm_multivar_keep` |
+| cutoffs | `20210123`, `20211112`, `20211221`, `20220511`, `20221225` |
+| quantiles | `0.05`, `0.20`, `0.35`, `0.50`, `0.65`, `0.80`, `0.95` |
+| history start | `1987-05-29` |
+| transform policy | `log1p_only` |
+| fit/post internal scale | `log1p_cms` |
+| transfer mode | `keep` |
+| harmonics | enabled indices `[1, 2, 3]` |
+| transfer covariates | `PPT`, `SOIL`, `PCA`, `PPT_sq`, `SOIL_sq`, `PPT_x_SOIL`, `PPT_lag1`, `PPT_lag2`, `PPT_lag3`, `SOIL_lag1`, `SOIL_lag2`, `SOIL_lag3` |
+| post route | smoke-fast public outputs plus q50 component diagnostics |
+| q50 components | `post.multivar_component_diagnostics.enabled=true`, `fail_fast=true` |
+| cleanup | delete `.RData` only after post artifact contract passes |
+
+The grid values to be supplied later should fill this manifest:
+
+```csv
+grid_spec_id,epsilon,c_factor,df_t,df_s1,df_s2,df_s67,df_discrep,lambda,df_trans,df_covs,max_iter,min_update_iters,notes
+```
+
+Do not infer these values from run names alone. The aggregator must read a frozen spec manifest and/or each run's
+resolved config.
+
+## Required Per-Run Artifacts
+
+Every spec-cutoff run must produce these core artifacts before it can enter the ranking set:
+
+| artifact | purpose |
+| --- | --- |
+| `post/outputs/<run_id>/post_artifacts_summary.json` | post contract pass/fail and missing paths |
+| `post/outputs/<run_id>/tables/crps_forecast_summary.csv` | run-local forecast-window CRPS summary |
+| `post/outputs/<run_id>/tables/crps_forecast_per_time.csv` | lead/time-level CRPS ranking source |
+| `post/outputs/<run_id>/tables/crps_input_health.csv` | finite/in-range sample checks |
+| `post/outputs/<run_id>/tables/crps_input_health_per_time.csv` | lead/time-level input-health checks |
+| `post/outputs/<run_id>/tables/gamma_summary.csv` | gamma stability summary |
+| `post/outputs/<run_id>/tables/sigma_summary.csv` | sigma/scale stability summary |
+| `post/outputs/<run_id>/tables/covariate_effects_summary.csv` | final transfer/covariate summary |
+| `post/outputs/<run_id>/exdqlm_multivar_synth_keep_forecast_quantile_synthesis_summary.csv` | forecast quantile-synthesis crossing summary |
+| `post/outputs/<run_id>/exdqlm_multivar_synth_keep_forecast_quantile_synthesis_*_per_time.csv` | lead-level crossing diagnostics |
+| `post/outputs/<run_id>/multivar_trace_summary_q50.csv` | q50 ELBO/gamma/sigma trace diagnostics |
+| `post/outputs/<run_id>/multivar_forecast_window_q50_summary.csv` | q50 forecast mean/band/truth table |
+| `post/outputs/<run_id>/multivar_forecast_window_q50_metrics.csv` | q50 forecast-window metrics |
+| `post/outputs/<run_id>/multivar_transfer_state_window_q50.csv` | trend/season/transfer/discrepancy state window |
+| `post/outputs/<run_id>/multivar_transfer_coefficients_window_q50.csv` | transfer coefficients around cutoff |
+| `post/outputs/<run_id>/multivar_transfer_contract_q50.csv` | retained-transfer `keep` contract |
+
+Required figure families:
+
+- all-quantile ELBO overview;
+- forecast-window posterior predictive quantiles/samples with held-out USGS;
+- forecast-window model-vs-GLOFAS/NWS controls;
+- q50 ELBO, gamma, and sigma traces;
+- q50 trend/season/transfer/discrepancy decomposition;
+- q50 transfer coefficient paths;
+- q50 retained-transfer identity and source reconstruction plots.
+
+## Eligibility Gates
+
+A spec-cutoff run is eligible for CRPS ranking only if all gates pass:
+
+1. Fit completed for all seven quantiles.
+2. Post, validate, and report stages completed.
+3. Post artifact contract has `status=true`.
+4. CRPS tables exist and include `model_id=exdqlm_multivar_synth_keep`.
+5. Forecast-window truth availability is nonzero for the cutoff window.
+6. `crps_input_health.csv` and per-time health tables pass finite/in-range checks.
+7. Component diagnostics are present and `multivar_transfer_contract_q50.csv` passes `keep` semantics:
+   `forecast_has_transfer=true`, positive forecast rows, finite forecast zeta, and finite `mu_without_transfer`.
+8. Quantile-synthesis repaired anchor/empirical crossing shares are zero or within a predeclared numerical tolerance.
+9. No pseudo-data guard failures, state-guard failures, fatal log errors, or missing q-lane `.RData` before cleanup.
+10. `.RData` cleanup occurred only after post success for production grid rows.
+
+Runs that fail an eligibility gate should remain in the audit tables with `eligible=false`, failure reason, and links to
+the relevant logs/artifacts. They must not be silently dropped.
+
+## Primary CRPS Selection Rule
+
+Primary score source:
+
+```text
+post/outputs/<run_id>/tables/crps_forecast_per_time.csv
+```
+
+Primary row filter:
+
+| field | value |
+| --- | --- |
+| `model_id` or equivalent model column | `exdqlm_multivar_synth_keep` |
+| `score_scale` | `log_cms_plus1` |
+| lead/window | all available held-out forecast-window days for that cutoff |
+
+Primary per-cutoff ranking:
+
+1. For each cutoff and grid spec, compute mean CRPS across forecast-window days.
+2. Exclude ineligible runs from the winner set, but keep them in the diagnostic report.
+3. Pick the lowest mean CRPS spec within each cutoff.
+4. Record the winner, runner-up, absolute CRPS difference, percent CRPS difference, number of forecast days, and all gate statuses.
+
+Tie-breakers, in order:
+
+1. lower median CRPS over the forecast window;
+2. lower worst-lead CRPS;
+3. fewer CRPS/input-health warnings;
+4. cleaner quantile-synthesis diagnostics after rearrangement;
+5. cleaner q50 component contract and smaller decomposition identity errors;
+6. simpler or less aggressive prior/discount setting if scores are practically tied.
+
+Pooled cross-cutoff summaries are secondary. They should be used to understand global behavior, not to override the
+per-cutoff winner unless the user explicitly chooses a single global spec for all cutoffs.
+
+## Required Aggregated Tables
+
+The grid evaluator should write a report directory under `reports/`, for example:
+
+```text
+reports/exdqlm_multivar_keep_grid_eval_<tag>/
+```
+
+Required CSV outputs:
+
+| table | contents |
+| --- | --- |
+| `grid_spec_manifest_resolved.csv` | one row per spec with epsilon, c-factor, discounts, code commit, config paths |
+| `grid_run_registry.csv` | one row per spec-cutoff run with run root, run id, cutoff, status paths |
+| `grid_artifact_gate_summary.csv` | one row per spec-cutoff with eligibility gates and failure reasons |
+| `grid_crps_per_time.csv` | joined CRPS per lead/time/spec/cutoff/model |
+| `grid_crps_summary_by_spec_cutoff.csv` | mean, median, min, max, worst-lead CRPS by spec and cutoff |
+| `grid_crps_winners_by_cutoff.csv` | selected best spec per cutoff with tie-breaker fields |
+| `grid_crps_summary_by_spec_pooled.csv` | pooled cross-cutoff CRPS summary for secondary review |
+| `grid_input_health_summary.csv` | finite share, max abs, warnings/failures by spec and cutoff |
+| `grid_quantile_synthesis_summary.csv` | raw and repaired crossing summaries by spec and cutoff |
+| `grid_component_contract_summary.csv` | q50 retained-transfer and decomposition contract fields |
+| `grid_trace_health_summary.csv` | ELBO/gamma/sigma/state norm health by quantile, spec, and cutoff |
+| `grid_failure_log.csv` | all failed gates, missing artifacts, fatal logs, stale outputs, and cleanup anomalies |
+
+Required Markdown outputs:
+
+- `README.md`: executive summary, winner table, failures, and next action.
+- `GRID_SELECTION_REPORT.md`: full per-cutoff ranking and interpretation.
+- `ARTIFACT_CONTRACT_REPORT.md`: artifact/gate status and missing-path details.
+
+## Required Figures
+
+Grid-level figures:
+
+- heatmap: mean CRPS by cutoff and spec;
+- heatmap: CRPS rank by cutoff and spec;
+- line plot: CRPS by forecast lead for each spec, faceted by cutoff;
+- bar chart: winner and runner-up CRPS difference by cutoff;
+- pooled CRPS distribution by spec;
+- failure matrix: gate status by cutoff/spec.
+
+Per-cutoff winner-review figures:
+
+- forecast-window predictive quantiles/samples with held-out USGS;
+- winner vs GLOFAS/NWS CRPS by lead;
+- q50 ELBO/gamma/sigma traces;
+- q50 state decomposition around cutoff;
+- q50 transfer coefficient paths;
+- q50 retained-transfer identity/source reconstruction;
+- quantile-synthesis crossing diagnostics before and after rearrangement.
+
+The report should copy or symlink the most important per-cutoff winner figures into:
+
+```text
+reports/exdqlm_multivar_keep_grid_eval_<tag>/winner_figures/<cutoff>/
+```
+
+## Quantile Diagnostics
+
+The evaluator should distinguish three crossing concepts:
+
+| diagnostic | interpretation |
+| --- | --- |
+| raw sample-index crossing | arbitrary sample coupling across independently fitted quantile models; useful warning but not a direct failure |
+| raw anchor-curve crossing | scientifically important pre-repair crossing among fitted quantile anchors |
+| repaired anchor/empirical crossing | must be zero or within numerical tolerance after isotonic/rearranged synthesis |
+
+Required checks:
+
+1. Parse `exdqlm_multivar_synth_keep_forecast_quantile_synthesis_summary.csv`.
+2. Record raw sample-index crossing rates and raw anchor crossing shares.
+3. Require repaired anchor and empirical crossing shares to be zero or within tolerance.
+4. Verify cutoff-window quantile CSVs are non-crossing after repair.
+5. Surface any cutoff/spec where q05/q95 behavior is unstable even if CRPS is good.
+
+## Runtime Stability Diagnostics
+
+The evaluator should summarize, at minimum:
+
+- final iteration and convergence status by quantile;
+- final ELBO and last ELBO change by quantile;
+- gamma and sigma/scale values by quantile;
+- pseudo-data guard counts;
+- state guard counts;
+- normalized state norm summaries;
+- q50 component magnitudes around cutoff;
+- q50 transfer coefficient ranges around cutoff.
+
+These diagnostics should not replace CRPS, but they can disqualify a numerically unhealthy spec or flag it for rerun.
+
+## Implementation Plan Once Grid Values Are Provided
+
+1. Freeze the grid spec manifest from the user-provided values.
+2. Generate one config per spec-cutoff row with the locked workflow contract and component diagnostics enabled.
+3. Add static prelaunch validation:
+   - resolved config fields match the manifest;
+   - input bundle is the approved full-history bundle;
+   - all seven quantiles, full harmonics, and full transfer covariates are present;
+   - cleanup is enabled for production rows;
+   - component diagnostics are fail-fast.
+4. Run a small smoke:
+   - one cutoff;
+   - all seven quantiles for one or two specs, or q05/q50/q95 for all specs if the grid is large;
+   - cleanup disabled for the first retained-diagnostic inspection.
+5. Run cleanup-enabled smoke and verify `.RData` is removed only after post contract pass.
+6. Launch the approved grid.
+7. Run the grid evaluator and write all tables/figures under `reports/`.
+8. Select best spec per cutoff using the eligibility gates and primary CRPS rule.
+9. Freeze a final grid-selection doc with exact winners, runner-ups, rejected specs, and remaining caveats.
+
+## Tests To Add With The Evaluator
+
+Targeted deterministic tests should cover:
+
+- spec manifest parsing and resolved-config joins;
+- per-cutoff CRPS ranking and tie-breakers;
+- ineligible-run exclusion from winner selection while retaining failures in reports;
+- quantile crossing summary parsing and repaired-crossing gate;
+- q50 component contract parsing;
+- missing artifact handling;
+- figure-copy/symlink manifest construction;
+- no reliance on run-name parsing for scientific parameters.
+
+## Open Items For User Input
+
+Before implementation, provide:
+
+1. epsilon values;
+2. `c_factor` values if varied;
+3. discount-factor combinations;
+4. whether selection should be strictly per cutoff or whether a secondary single global spec should also be proposed;
+5. smoke size preference if the grid is large.
+
+Default recommendation: select winners per cutoff, and also report the best single global spec as a secondary option.

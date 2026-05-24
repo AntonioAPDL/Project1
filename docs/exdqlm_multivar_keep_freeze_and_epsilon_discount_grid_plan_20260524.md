@@ -237,6 +237,10 @@ Implemented in `R/unified/post_artifact_contract.R`. The new gate requires the q
 
 Status: deferred to the grid phase. The component-diagnostic repair and gate are complete; the spec-aware CRPS aggregator should be implemented with the grid launch tooling rather than mixed into this pre-grid gate patch.
 
+Detailed evaluation and per-cutoff selection plan:
+
+- `docs/exdqlm_multivar_keep_grid_evaluation_plan_20260524.md`
+
 Create a reproducible script that consumes one or more grid runtime roots and writes under `reports/`:
 
 - `grid_crps_per_time.csv`;
