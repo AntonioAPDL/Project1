@@ -89,6 +89,20 @@ def disk_free_gb(artifact_root: str | Path | None = None) -> float:
     return artifact_disk_free_gb(artifact_root)
 
 
+def memory_available_gb() -> float | None:
+    """Return MemAvailable from /proc/meminfo when available."""
+    meminfo = Path("/proc/meminfo")
+    try:
+        for line in meminfo.read_text(encoding="utf-8").splitlines():
+            if line.startswith("MemAvailable:"):
+                parts = line.split()
+                if len(parts) >= 2:
+                    return float(parts[1]) / 1024.0 / 1024.0
+    except Exception:
+        return None
+    return None
+
+
 def pgrep_active_v8(artifact_root: str | Path | None = None) -> list[dict[str, str]]:
     proc = subprocess.run(["ps", "-eo", "pid=,command="], capture_output=True, text=True, check=True)
     rows_by_config: dict[str, dict[str, str]] = {}
@@ -301,11 +315,18 @@ def launch_allowed(
     heavy_free_gb: float,
     heavy_cutoff_max_concurrent: int = 1,
     heavy_cutoff_blocks_ordinary: bool = True,
+    mem_available_gb: float | None = None,
+    pause_mem_gb: float = 0.0,
+    launch_mem_gb: float = 0.0,
+    heavy_mem_gb: float | None = None,
 ) -> tuple[bool, str]:
     if free_gb < pause_free_gb:
         return False, f"paused: free_gb={free_gb} below pause threshold {pause_free_gb}"
+    if mem_available_gb is not None and pause_mem_gb > 0 and mem_available_gb < pause_mem_gb:
+        return False, f"paused: mem_available_gb={mem_available_gb} below pause threshold {pause_mem_gb}"
     active_count = len(active)
     active_heavy_count = sum(1 for row in active if f"multimodel_{HEAVY_CUTOFF}_v8_" in row["command"])
+    heavy_required_mem_gb = launch_mem_gb if heavy_mem_gb is None else heavy_mem_gb
     if candidate["cutoff"] == HEAVY_CUTOFF:
         active_ordinary_count = active_count - active_heavy_count
         if heavy_cutoff_blocks_ordinary and active_ordinary_count > 0:
@@ -316,6 +337,8 @@ def launch_allowed(
             return False, f"heavy cutoff reached concurrency limit {heavy_cutoff_max_concurrent}"
         if free_gb <= heavy_free_gb:
             return False, f"heavy cutoff requires free_gb>{heavy_free_gb}, observed {free_gb}"
+        if mem_available_gb is not None and heavy_required_mem_gb > 0 and mem_available_gb <= heavy_required_mem_gb:
+            return False, f"heavy cutoff requires mem_available_gb>{heavy_required_mem_gb}, observed {mem_available_gb}"
         return True, ""
     if heavy_cutoff_blocks_ordinary and active_heavy_count > 0:
         return False, "ordinary cutoff waits while heavy cutoff is active"
@@ -323,6 +346,8 @@ def launch_allowed(
         return False, f"active_count={active_count} reached ordinary concurrency limit {ordinary_max_concurrent}"
     if free_gb <= launch_free_gb:
         return False, f"ordinary lane requires free_gb>{launch_free_gb}, observed {free_gb}"
+    if mem_available_gb is not None and launch_mem_gb > 0 and mem_available_gb <= launch_mem_gb:
+        return False, f"ordinary lane requires mem_available_gb>{launch_mem_gb}, observed {mem_available_gb}"
     return True, ""
 
 
@@ -356,6 +381,9 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--pause-free-gb", type=float, default=180)
     ap.add_argument("--launch-free-gb", type=float, default=220)
     ap.add_argument("--heavy-free-gb", type=float, default=240)
+    ap.add_argument("--pause-mem-gb", type=float, default=0.0)
+    ap.add_argument("--launch-mem-gb", type=float, default=0.0)
+    ap.add_argument("--heavy-mem-gb", type=float, default=None)
     ap.add_argument("--heavy-cutoff-max-concurrent", type=int, default=1)
     ap.add_argument("--no-heavy-cutoff-blocks-ordinary", action="store_true")
     ap.add_argument("--continue-on-fail", action="store_true")
@@ -437,6 +465,7 @@ def main() -> int:
 
                 active = pgrep_active_v8(artifact_root if args.artifact_root else None)
                 free_gb = disk_free_gb(artifact_root if args.artifact_root else None)
+                mem_gb = memory_available_gb()
                 launched = False
                 for _, row in plan.iterrows():
                     run_id = str(row["run_id"])
@@ -457,6 +486,10 @@ def main() -> int:
                         heavy_free_gb=args.heavy_free_gb,
                         heavy_cutoff_max_concurrent=args.heavy_cutoff_max_concurrent,
                         heavy_cutoff_blocks_ordinary=not args.no_heavy_cutoff_blocks_ordinary,
+                        mem_available_gb=mem_gb,
+                        pause_mem_gb=args.pause_mem_gb,
+                        launch_mem_gb=args.launch_mem_gb,
+                        heavy_mem_gb=args.heavy_mem_gb,
                     )
                     if not allowed:
                         continue
@@ -467,7 +500,7 @@ def main() -> int:
                         cleanup_rdata_after_post=not args.no_cleanup,
                     )
                     print(
-                        f"[{utc_now()}] launched run_id={run_id} pid={pid} cutoff={row['cutoff']} epsilon={row['epsilon']} lane={row['lane']} free_gb={free_gb}",
+                        f"[{utc_now()}] launched run_id={run_id} pid={pid} cutoff={row['cutoff']} epsilon={row['epsilon']} lane={row['lane']} free_gb={free_gb} mem_available_gb={mem_gb}",
                         file=log_handle,
                         flush=True,
                     )
@@ -475,7 +508,7 @@ def main() -> int:
                     break
 
                 if not launched:
-                    print(f"[{utc_now()}] idle wait free_gb={free_gb} active={len(active)}", file=log_handle, flush=True)
+                    print(f"[{utc_now()}] idle wait free_gb={free_gb} mem_available_gb={mem_gb} active={len(active)}", file=log_handle, flush=True)
                 time.sleep(max(args.poll_seconds, 5))
         except KeyboardInterrupt:
             exit_code = 130

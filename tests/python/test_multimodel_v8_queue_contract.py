@@ -65,6 +65,56 @@ class MultimodelV8QueueContractTest(unittest.TestCase):
         )
         self.assertTrue(allowed_ordinary)
 
+    def test_memory_gate_blocks_ordinary_launch_when_available_ram_is_low(self) -> None:
+        candidate = pd.Series({"cutoff": "20211221"})
+        allowed, note = launch_allowed(
+            candidate=candidate,
+            active=[],
+            free_gb=500.0,
+            ordinary_max_concurrent=15,
+            pause_free_gb=180.0,
+            launch_free_gb=220.0,
+            heavy_free_gb=240.0,
+            mem_available_gb=149.0,
+            launch_mem_gb=150.0,
+        )
+        self.assertFalse(allowed)
+        self.assertIn("mem_available_gb", note)
+
+    def test_memory_gate_blocks_heavy_launch_with_heavy_threshold(self) -> None:
+        candidate = pd.Series({"cutoff": "20221225"})
+        allowed, note = launch_allowed(
+            candidate=candidate,
+            active=[],
+            free_gb=500.0,
+            ordinary_max_concurrent=15,
+            pause_free_gb=180.0,
+            launch_free_gb=220.0,
+            heavy_free_gb=240.0,
+            mem_available_gb=199.0,
+            launch_mem_gb=150.0,
+            heavy_mem_gb=200.0,
+            heavy_cutoff_max_concurrent=15,
+            heavy_cutoff_blocks_ordinary=False,
+        )
+        self.assertFalse(allowed)
+        self.assertIn("heavy cutoff requires mem_available_gb", note)
+
+    def test_memory_gate_allows_launch_when_ram_is_unobserved(self) -> None:
+        candidate = pd.Series({"cutoff": "20211221"})
+        allowed, _ = launch_allowed(
+            candidate=candidate,
+            active=[],
+            free_gb=500.0,
+            ordinary_max_concurrent=15,
+            pause_free_gb=180.0,
+            launch_free_gb=220.0,
+            heavy_free_gb=240.0,
+            mem_available_gb=None,
+            launch_mem_gb=150.0,
+        )
+        self.assertTrue(allowed)
+
     def test_default_queue_runner_keeps_rdata_through_post_then_cleanup(self) -> None:
         class DummyProc:
             pid = 12345

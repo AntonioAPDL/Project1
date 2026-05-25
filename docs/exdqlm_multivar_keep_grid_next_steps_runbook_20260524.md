@@ -2,7 +2,13 @@
 
 Date: 2026-05-24
 
-Status: prepared, not launched.
+Status: prepared; no-cleanup smoke launch in progress as of 2026-05-25 UTC.
+
+2026-05-25 live hardening note: the first no-cleanup smoke row (`c05_eps030`, cutoff `20211112`)
+showed that one seven-quantile fit row can use roughly 68 GB resident memory during fit and that
+post can reach 55+ GB while loading retained posterior objects. The queue now supports explicit
+`MemAvailable` gates. The full grid should start memory-aware rather than using the originally
+planned 8 concurrent rows by default.
 
 ## Current Prepared State
 
@@ -47,6 +53,9 @@ python3 scripts/run_multimodel_v8_queue.py \
   --pause-free-gb 25 \
   --launch-free-gb 35 \
   --heavy-free-gb 35 \
+  --pause-mem-gb 80 \
+  --launch-mem-gb 120 \
+  --heavy-mem-gb 120 \
   --heavy-cutoff-max-concurrent 1 \
   --poll-seconds 30 \
   --continue-on-fail \
@@ -92,6 +101,9 @@ python3 scripts/run_multimodel_v8_queue.py \
   --pause-free-gb 25 \
   --launch-free-gb 35 \
   --heavy-free-gb 35 \
+  --pause-mem-gb 80 \
+  --launch-mem-gb 120 \
+  --heavy-mem-gb 120 \
   --heavy-cutoff-max-concurrent 1 \
   --poll-seconds 30 \
   --continue-on-fail \
@@ -106,17 +118,25 @@ under their run roots.
 
 Purpose: run the complete 30-spec, five-cutoff grid.
 
+The original CPU-oriented target was 8 concurrent rows (`8 x 7 = 56` quantile workers). Live smoke
+evidence shows this is not the safe first full-grid setting because RAM, not CPU, is the limiting
+resource. Start at 4 concurrent rows with memory gates; consider increasing to 5 only after the
+first full-grid fit/post cycle shows stable RAM and disk headroom.
+
 Launch command, only after both smokes pass:
 
 ```bash
 python3 scripts/run_multimodel_v8_queue.py \
   --matrix-dir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/publication_relaunch_matrix \
   --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524 \
-  --ordinary-max-concurrent 8 \
+  --ordinary-max-concurrent 4 \
   --pause-free-gb 25 \
   --launch-free-gb 35 \
   --heavy-free-gb 35 \
-  --heavy-cutoff-max-concurrent 8 \
+  --pause-mem-gb 120 \
+  --launch-mem-gb 170 \
+  --heavy-mem-gb 190 \
+  --heavy-cutoff-max-concurrent 4 \
   --poll-seconds 30 \
   --continue-on-fail \
   --skip-compares \
@@ -124,6 +144,10 @@ python3 scripts/run_multimodel_v8_queue.py \
 ```
 
 This uses production cleanup through `scripts/run_unified_with_cleanup.sh`.
+
+If the first full-grid wave leaves more than 220 GB `MemAvailable` during both fit and post, a second
+controller launch may use `--ordinary-max-concurrent 5 --heavy-cutoff-max-concurrent 5`. Do not use
+8-way concurrency unless a new smoke or pilot demonstrates a much lower per-row memory footprint.
 
 ## Step 4. Live Monitoring
 
