@@ -712,6 +712,11 @@ Operational contract:
 | 2026-05-24 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_post_artifact_contract.R')"` | pass, 46 expectations; verifies q50 component output requirements, fail-closed retained-transfer `keep` contract, and non-fatal debug behavior |
 | 2026-05-24 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_config_mode_resolution.R')"` | pass, 64 expectations; verifies component-diagnostic defaults and validation |
 | 2026-05-24 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_scale_contract_adapters.R')"` | pass, 18 expectations; verifies shared USGS truth remains log1p under `log1p_only` |
+| 2026-05-24 | `python3 scripts/build_he2_exdqlm_multivar_keep_grid_configs.py --config config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_epsilon_discount_grid_20260524.template.yaml --reset-status` | pass; generated 30 specs, 150 spec-cutoff rows, and 1050 quantile fits under the isolated 2026-05-24 epsilon/discount grid runtime root |
+| 2026-05-24 | `python3 scripts/validate_he2_exdqlm_multivar_keep_grid_prelaunch.py --matrix-dir ... --artifact-root ...` | pass, 8720 checks and 0 failures; verifies spec manifest, generated configs, canonical bundles, harmonics, transfer covariates, log1p scale, q50 component gate, cleanup wrapper, and 56-worker queue contract |
+| 2026-05-24 | `python3 -m unittest tests.python.test_he2_exdqlm_keep_grid_tooling -v` | pass, 3 tests; verifies frozen grid manifest and generated spec patches |
+| 2026-05-24 | `python3 -m unittest tests.python.test_he2_exdqlm_keep_allcutoff_monitor -v` | pass, 3 tests; verifies spec-aware monitor table and state-norm scaling |
+| 2026-05-24 | `python3 -m unittest tests.python.test_multimodel_v8_tooling -v` | pass, 12 tests; verifies queue continue-on-fail terminal semantics and existing v8 tooling contracts |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R')"` | pass, 45 expectations |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_transform_scale_sensitivity.R')"` | pass, 10 expectations |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_scale_contract_adapters.R')"` | pass, 13 expectations |
@@ -779,3 +784,4 @@ Operational contract:
 | 2026-05-21 | Completed latent-freeze and latent-cap v3 ablations, regenerated normalized runtime/curated evidence bundles, and added isolated promotion guard-profile tooling | done |
 | 2026-05-21 | Added delayed promotion state-guard start, completed promotion v2, and recorded v1/v2 evidence | done |
 | 2026-05-24 | Added log1p-safe q50 component diagnostics, smoke-fast append wiring, and fail-closed post artifact contract for retained-transfer `keep` semantics | done |
+| 2026-05-24 | Prepared and validated the 30-spec all-cutoff epsilon/discount grid with 56-worker queue policy and continue-on-fail semantics | done |

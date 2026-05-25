@@ -37,12 +37,14 @@ class HE2ExDQLMKeepAllCutoffMonitorTests(unittest.TestCase):
             with (matrix_dir / "matrix_plan.csv").open("w", newline="", encoding="utf-8") as handle:
                 writer = csv.DictWriter(
                     handle,
-                    fieldnames=["order_index", "cutoff", "lane", "run_id", "active_quantiles"],
+                    fieldnames=["order_index", "cutoff", "grid_spec_id", "epsilon", "lane", "run_id", "active_quantiles"],
                 )
                 writer.writeheader()
                 writer.writerow({
                     "order_index": "1",
                     "cutoff": "20210123",
+                    "grid_spec_id": "c01_eps365",
+                    "epsilon": "365",
                     "lane": "exdqlm_multivar_keep",
                     "run_id": run_id,
                     "active_quantiles": "05|50",
@@ -65,6 +67,8 @@ class HE2ExDQLMKeepAllCutoffMonitorTests(unittest.TestCase):
 
             rows = monitor.build_snapshot_rows(artifact_root, matrix_dir, data_start="1987-05-29")
             q05 = next(row for row in rows if row["q"] == "q05")
+            self.assertEqual(q05["grid_spec_id"], "c01_eps365")
+            self.assertEqual(q05["epsilon_label"], "365")
             self.assertEqual(q05["iter"], "7")
             self.assertEqual(q05["elbo"], "-12.3")
             self.assertEqual(q05["guard_count"], 2)
@@ -86,6 +90,8 @@ class HE2ExDQLMKeepAllCutoffMonitorTests(unittest.TestCase):
             self.assertTrue((out_dir / "live_status_latest.csv").exists())
             latest_text = (out_dir / "LIVE_STATUS.md").read_text(encoding="utf-8")
             self.assertIn("state/T", latest_text)
+            self.assertIn("| cutoff | spec | q |", latest_text)
+            self.assertIn("c01_eps365", latest_text)
             self.assertIn("near0", latest_text)
             self.assertIn("q05", latest_text)
 

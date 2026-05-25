@@ -17,7 +17,7 @@ from build_multimodel_v8_matrix_configs import build_v8_config  # noqa: E402
 from build_multimodel_v8_compare_bundle import LaneSpec, build_bundle  # noqa: E402
 from check_multimodel_v8_matrix_health import build_status  # noqa: E402
 from multimodel_v8_lib import TARGET_MODELS, build_lane_plan_rows, load_yaml, parse_epsilon_spec_list, reports_dir, runs_dir, v7_template_config_path  # noqa: E402
-from run_multimodel_v8_queue import compare_cells_from_plan, pgrep_active_v8  # noqa: E402
+from run_multimodel_v8_queue import compare_cells_from_plan, pgrep_active_v8, run_terminal_for_matrix  # noqa: E402
 
 
 class MultimodelV8ToolingTests(unittest.TestCase):
@@ -272,6 +272,29 @@ class MultimodelV8ToolingTests(unittest.TestCase):
             {"order_index": 4, "cutoff": "20221225", "epsilon": "eps20", "lane": "l2_mv"},
         ])
         self.assertEqual(compare_cells_from_plan(plan), [("20221225", "eps25"), ("20221225", "eps20")])
+
+    def test_failed_run_is_terminal_only_when_continue_on_fail_is_enabled(self) -> None:
+        td = Path(tempfile.mkdtemp(prefix="v8_terminal_test_"))
+        try:
+            artifact_root = td / "artifact_root"
+            run_id = "multimodel_20990101_v8_he2grid_c01_eps030_exdqlm_multivar_keep"
+            run_root = runs_dir(artifact_root) / run_id
+            run_root.mkdir(parents=True, exist_ok=True)
+            manifest = {
+                "stages": {
+                    "forecats": {"status": "pass"},
+                    "data_prep_shared": {"status": "pass"},
+                    "fit": {"status": "pass"},
+                    "post": {"status": "fail"},
+                    "validate": {"status": "pending"},
+                    "report": {"status": "pending"},
+                }
+            }
+            (run_root / "run_manifest.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+            self.assertFalse(run_terminal_for_matrix(run_id, artifact_root=artifact_root, continue_on_fail=False))
+            self.assertTrue(run_terminal_for_matrix(run_id, artifact_root=artifact_root, continue_on_fail=True))
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
 
     def test_pgrep_active_v8_matches_real_r_command_shape(self) -> None:
         import subprocess

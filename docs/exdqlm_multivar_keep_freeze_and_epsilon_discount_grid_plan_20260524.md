@@ -235,7 +235,33 @@ Implemented in `R/unified/post_artifact_contract.R`. The new gate requires the q
 
 ### P4. Add a Grid Aggregator
 
-Status: deferred to the grid phase. The component-diagnostic repair and gate are complete; the spec-aware CRPS aggregator should be implemented with the grid launch tooling rather than mixed into this pre-grid gate patch.
+Status: grid launch matrix prepared; full post-run CRPS/spec aggregator still deferred until outputs exist.
+
+The frozen user grid now lives in:
+
+- `config/he2_grid_specs/exdqlm_multivar_keep_epsilon_discount_grid_20260524.csv`
+- `config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_epsilon_discount_grid_20260524.template.yaml`
+
+The grid config builder is:
+
+- `scripts/build_he2_exdqlm_multivar_keep_grid_configs.py`
+
+Prepared scope:
+
+| item | value |
+| --- | ---: |
+| discount cases | 6 |
+| epsilon values per case | 5 |
+| grid specs | 30 |
+| cutoffs | 5 |
+| spec-cutoff rows | 150 |
+| quantile fits | 1050 |
+| concurrent rows | 8 |
+| workers per row | 7 |
+| max active quantile workers | 56 |
+
+The queue is intentionally configured to continue after failed spec-cutoff rows. Those failures are expected to be
+kept as evidence in the later ranking report rather than treated as launch-controller failures.
 
 Detailed evaluation and per-cutoff selection plan:
 
@@ -254,6 +280,20 @@ Create a reproducible script that consumes one or more grid runtime roots and wr
 The script should never infer epsilon/discount values from run names alone; it must read the frozen spec manifest or resolved configs.
 
 ### P5. Add Prelaunch Validation
+
+Status: static validation implemented and passed for the prepared 2026-05-24 grid.
+
+Validator:
+
+- `scripts/validate_he2_exdqlm_multivar_keep_grid_prelaunch.py`
+
+Runtime validation result under the prepared matrix root:
+
+- `PRELAUNCH_VALIDATION.md`
+- `prelaunch_validation_summary.json`
+- `prelaunch_validation_checks.csv`
+
+Observed validation result: `8720` checks, `0` failures.
 
 Before any grid launch, validate:
 
@@ -301,20 +341,25 @@ Ready now:
 - repaired log1p-safe q50 component diagnostics;
 - `post.multivar_component_diagnostics` wiring for smoke-fast plus component diagnostics;
 - post artifact contract checks for q50 component outputs and retained-transfer `keep` semantics.
+- frozen 30-spec epsilon/discount manifest;
+- generated 150-row all-cutoff grid matrix;
+- static prelaunch validation for the generated configs;
+- queue support for `--continue-on-fail` and `--skip-compares`;
+- monitor support for spec-aware all-cutoff/all-grid live status tables.
 
 Not ready yet:
 
 - retrospective production of full component paths from the already-cleaned 2026-05-23 root;
 - final grid ranking without a spec-aware CRPS aggregator;
-- production epsilon/discount grid launch, because the grid manifest, prelaunch validation, smoke run, and ranking/reporting scripts still need to be executed.
+- production epsilon/discount grid launch, because a smoke/prelaunch execution pass and ranking/reporting scripts still need to be executed.
 
 Immediate next engineering work:
 
-1. add the grid CRPS/spec aggregator;
-2. add prelaunch validation for each generated grid config and spec manifest;
-3. run a one-cutoff retained-diagnostics smoke with cleanup disabled for inspection;
-4. rerun that smoke with cleanup enabled to verify `.RData` removal only after diagnostics pass;
-5. then start the staged epsilon/discount-factor grid.
+1. run a one-cutoff retained-diagnostics smoke with cleanup disabled for inspection;
+2. rerun that smoke with cleanup enabled to verify `.RData` removal only after diagnostics pass;
+3. launch the prepared grid if the smoke passes;
+4. add/run the grid CRPS/spec aggregator once outputs exist;
+5. freeze per-cutoff winners and rejected/failing specs in a final grid-selection report.
 
 ## Validation Added on 2026-05-24
 

@@ -148,6 +148,11 @@ def run_failed(run_id: str, artifact_root: str | Path | None = None) -> bool:
     return status == "fail"
 
 
+def run_terminal_for_matrix(run_id: str, artifact_root: str | Path | None = None, continue_on_fail: bool = False) -> bool:
+    _phase, status = stage_status(manifest_path_for(run_id, artifact_root))
+    return status == "pass" or (continue_on_fail and status == "fail")
+
+
 def run_started(run_id: str, artifact_root: str | Path | None = None) -> bool:
     return manifest_path_for(run_id, artifact_root).exists()
 
@@ -352,6 +357,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--heavy-free-gb", type=float, default=240)
     ap.add_argument("--heavy-cutoff-max-concurrent", type=int, default=1)
     ap.add_argument("--no-heavy-cutoff-blocks-ordinary", action="store_true")
+    ap.add_argument("--continue-on-fail", action="store_true")
+    ap.add_argument("--skip-compares", action="store_true")
     ap.add_argument("--poll-seconds", type=int, default=60)
     return ap.parse_args()
 
@@ -369,6 +376,8 @@ def main() -> int:
     if args.pilot_only:
         plan = plan.loc[(plan["cutoff"] == PILOT_CUTOFF) & (plan["epsilon"].isin(PILOT_EPSILONS))].copy()
         compare_cells = compare_cells_from_plan(plan)
+    elif args.skip_compares:
+        compare_cells = []
     else:
         compare_cells = compare_cells_from_plan(plan)
     plan = plan.sort_values(["order_index", "lane"]).reset_index(drop=True)
@@ -383,31 +392,35 @@ def main() -> int:
         try:
             while True:
                 refresh_health(matrix_dir, log_handle, artifact_root if args.artifact_root else None)
-                maybe_build_compares(
-                    compare_cells,
-                    plan,
-                    matrix_dir,
-                    log_handle,
-                    artifact_root if args.artifact_root else None,
-                    metadata=metadata,
-                )
+                if not args.skip_compares:
+                    maybe_build_compares(
+                        compare_cells,
+                        plan,
+                        matrix_dir,
+                        log_handle,
+                        artifact_root if args.artifact_root else None,
+                        metadata=metadata,
+                    )
 
-                # Fail fast if any planned run failed.
                 for _, row in plan.iterrows():
-                    if run_failed(str(row["run_id"]), artifact_root if args.artifact_root else None):
+                    if (not args.continue_on_fail) and run_failed(str(row["run_id"]), artifact_root if args.artifact_root else None):
                         print(f"[{utc_now()}] aborting: run failed {row['run_id']}", file=log_handle, flush=True)
                         exit_code = 1
                         return exit_code
 
-                all_runs_pass = all(
-                    run_passed(str(row["run_id"]), artifact_root if args.artifact_root else None)
+                all_runs_terminal = all(
+                    run_terminal_for_matrix(
+                        str(row["run_id"]),
+                        artifact_root if args.artifact_root else None,
+                        continue_on_fail=args.continue_on_fail,
+                    )
                     for _, row in plan.iterrows()
                 )
-                all_compares_ready = all(
+                all_compares_ready = args.skip_compares or all(
                     compare_ready(cutoff, epsilon, artifact_root if args.artifact_root else None)
                     for cutoff, epsilon in compare_cells
                 )
-                if all_runs_pass and all_compares_ready:
+                if all_runs_terminal and all_compares_ready:
                     if args.pilot_only:
                         write_pilot_summary(matrix_dir, artifact_root if args.artifact_root else None)
                     write_final_summary(matrix_dir, compare_cells, artifact_root if args.artifact_root else None)

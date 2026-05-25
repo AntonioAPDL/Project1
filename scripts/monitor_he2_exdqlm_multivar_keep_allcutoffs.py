@@ -219,6 +219,8 @@ def lane_snapshot(
 
     return {
         "cutoff": cutoff,
+        "grid_spec_id": str(run_row.get("grid_spec_id", run_row.get("epsilon", ""))),
+        "epsilon_label": str(run_row.get("epsilon", "")),
         "q": f"q{q_label}",
         "run_id": run_id,
         "stage": stage,
@@ -263,7 +265,7 @@ def build_snapshot_rows(artifact_root: Path, matrix_dir: Path, data_start: str) 
         matrix_status = status_by_run_id.get(run_id, {})
         for q_label in q_labels:
             rows.append(lane_snapshot(artifact_root, run_row, matrix_status, q_label, data_start=data_start))
-    rows.sort(key=lambda r: (str(r["cutoff"]), int(str(r["q"]).replace("q", ""))))
+    rows.sort(key=lambda r: (str(r["cutoff"]), str(r.get("grid_spec_id", "")), int(str(r["q"]).replace("q", ""))))
     return rows
 
 
@@ -293,12 +295,12 @@ def write_markdown(path: Path, rows: list[dict[str, Any]], audited_at: str, arti
         f"- matrix_dir: `{matrix_dir}`",
         f"- lane_status_counts: `{counts}`",
         "",
-        "| cutoff | q | stage/status | iter | upd | ELBO | dELBO | sigma | gamma | state/T | guards | near0 | pseudo | fatal | output |",
-        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "| cutoff | spec | q | stage/status | iter | upd | ELBO | dELBO | sigma | gamma | state/T | guards | near0 | pseudo | fatal | output |",
+        "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for row in rows:
         lines.append(
-            "| {cutoff} | {q} | {stage}/{status} | {iter} | {updates} | {elbo} | {d_elbo} | "
+            "| {cutoff} | {grid_spec_id} | {q} | {stage}/{status} | {iter} | {updates} | {elbo} | {d_elbo} | "
             "{sigma_exp} | {gamma_exp} | {state_norm_sq_per_history_day} | {guard_count} | "
             "{near_zero_fallback_count} | "
             "{pseudodata_guard_fail_count} | {fatal_error_count} | {output_state} |".format(**row)
