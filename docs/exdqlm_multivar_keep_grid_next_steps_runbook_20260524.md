@@ -20,7 +20,7 @@ The full epsilon/discount grid is frozen and statically validated:
 - cutoffs: `5`
 - run rows: `150`
 - quantile fits: `1050`
-- static prelaunch validation: `8720` checks, `0` failures
+- static prelaunch validation: `8723` checks, `0` failures after the memory-aware queue refresh
 
 No model fit was launched while preparing this runbook.
 

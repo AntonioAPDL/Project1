@@ -112,7 +112,7 @@ python3 scripts/validate_he2_exdqlm_multivar_keep_grid_prelaunch.py \
   --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524
 ```
 
-Validation result: `8720` checks, `0` failures. Runtime validation outputs are under the matrix directory:
+Validation result after the memory-aware queue refresh: `8723` checks, `0` failures. Runtime validation outputs are under the matrix directory:
 
 - `PRELAUNCH_VALIDATION.md`
 - `prelaunch_validation_summary.json`
@@ -133,13 +133,21 @@ The prepared queue policy is:
 
 | item | value |
 | --- | ---: |
-| concurrent spec-cutoff rows | 8 |
+| concurrent spec-cutoff rows | 4 |
 | quantile workers per row | 7 |
-| maximum active quantile workers | 56 |
-| available-core target | 56 of 64 |
+| maximum active quantile workers | 28 |
+| initial available-core target | 28 of 64 |
+| pause memory gate | 120 GB MemAvailable |
+| launch memory gate | 170 GB MemAvailable |
+| heavy-cutoff memory gate | 190 GB MemAvailable |
 | continue after failed run rows | yes |
 | build legacy compare bundles during queue | no |
 | cleanup `.RData` after successful post | yes |
+
+The original 8-row/56-worker target is not the first safe full-grid setting after live smoke evidence: one seven-quantile
+fit row can use roughly 68 GB resident memory, and post can use 55+ GB while loading retained posterior objects. Start
+with 4 concurrent rows and the explicit memory gates above; consider 5 only after the first full-grid wave leaves stable
+RAM headroom.
 
 Failure is information for this grid. A failed spec-cutoff row should be recorded as failed and left in the final
 failure table; it should not stop the rest of the matrix. The queue therefore uses `--continue-on-fail` and
