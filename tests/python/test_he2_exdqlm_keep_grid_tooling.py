@@ -4,6 +4,8 @@ import sys
 import unittest
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
@@ -53,6 +55,16 @@ class HE2ExDQLMKeepGridToolingTests(unittest.TestCase):
             grid.grid_run_id("20210123", "case 1 / eps=365"),
             "multimodel_20210123_v8_he2grid_case_1_eps_365_exdqlm_multivar_keep",
         )
+
+    def test_grid_template_uses_memory_aware_queue_defaults(self) -> None:
+        template = ROOT / "config" / "he2_bayesian_publication_relaunch_exdqlm_multivar_keep_epsilon_discount_grid_20260524.template.yaml"
+        cfg = yaml.safe_load(template.read_text(encoding="utf-8"))
+        queue = cfg["queue"]
+        self.assertEqual(int(queue["ordinary_max_concurrent"]), 4)
+        self.assertEqual(int(queue["heavy_cutoff_max_concurrent"]), 4)
+        self.assertEqual(float(queue["pause_mem_gb"]), 120.0)
+        self.assertEqual(float(queue["launch_mem_gb"]), 170.0)
+        self.assertEqual(float(queue["heavy_mem_gb"]), 190.0)
 
 
 if __name__ == "__main__":

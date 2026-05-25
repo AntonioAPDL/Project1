@@ -93,7 +93,7 @@ def rewrite_config(
     return cfg
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Prepare a small smoke matrix from the HE2 exDQLM keep epsilon/discount grid.")
     ap.add_argument("--source-matrix-dir", default=str(DEFAULT_SOURCE_MATRIX_DIR))
     ap.add_argument("--artifact-root", default=str(DEFAULT_SMOKE_ARTIFACT_ROOT))
@@ -104,10 +104,13 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--pause-free-gb", type=float, default=25.0)
     ap.add_argument("--launch-free-gb", type=float, default=35.0)
     ap.add_argument("--heavy-free-gb", type=float, default=35.0)
+    ap.add_argument("--pause-mem-gb", type=float, default=80.0)
+    ap.add_argument("--launch-mem-gb", type=float, default=120.0)
+    ap.add_argument("--heavy-mem-gb", type=float, default=120.0)
     ap.add_argument("--heavy-cutoff-max-concurrent", type=int, default=1)
     ap.add_argument("--poll-seconds", type=int, default=30)
     ap.add_argument("--reset-status", action="store_true")
-    return ap.parse_args()
+    return ap.parse_args(argv)
 
 
 def main() -> int:
@@ -203,6 +206,9 @@ def main() -> int:
         "pause_free_gb": float(args.pause_free_gb),
         "launch_free_gb": float(args.launch_free_gb),
         "heavy_free_gb": float(args.heavy_free_gb),
+        "pause_mem_gb": float(args.pause_mem_gb),
+        "launch_mem_gb": float(args.launch_mem_gb),
+        "heavy_mem_gb": float(args.heavy_mem_gb),
         "heavy_cutoff_max_concurrent": int(args.heavy_cutoff_max_concurrent),
         "heavy_cutoff_blocks_ordinary": False,
         "poll_seconds": int(args.poll_seconds),
@@ -237,6 +243,9 @@ def main() -> int:
         "--pause-free-gb", str(queue["pause_free_gb"]),
         "--launch-free-gb", str(queue["launch_free_gb"]),
         "--heavy-free-gb", str(queue["heavy_free_gb"]),
+        "--pause-mem-gb", str(queue["pause_mem_gb"]),
+        "--launch-mem-gb", str(queue["launch_mem_gb"]),
+        "--heavy-mem-gb", str(queue["heavy_mem_gb"]),
         "--heavy-cutoff-max-concurrent", str(queue["heavy_cutoff_max_concurrent"]),
         "--poll-seconds", str(queue["poll_seconds"]),
         "--continue-on-fail",
@@ -252,6 +261,15 @@ def main() -> int:
             f"MATRIX_DIR={matrix_dir}",
             f"TAG={tag}",
             f"ORDINARY_MAX_CONCURRENT={queue['ordinary_max_concurrent']}",
+            f"PAUSE_FREE_GB={queue['pause_free_gb']}",
+            f"LAUNCH_FREE_GB={queue['launch_free_gb']}",
+            f"HEAVY_FREE_GB={queue['heavy_free_gb']}",
+            f"PAUSE_MEM_GB={queue['pause_mem_gb']}",
+            f"LAUNCH_MEM_GB={queue['launch_mem_gb']}",
+            f"HEAVY_MEM_GB={queue['heavy_mem_gb']}",
+            f"HEAVY_CUTOFF_MAX_CONCURRENT={queue['heavy_cutoff_max_concurrent']}",
+            f"HEAVY_CUTOFF_BLOCKS_ORDINARY={1 if queue['heavy_cutoff_blocks_ordinary'] else 0}",
+            f"POLL_SECONDS={queue['poll_seconds']}",
             "CONTINUE_ON_FAIL=1",
             "SKIP_COMPARES=1",
             "",
@@ -271,6 +289,9 @@ def main() -> int:
         f"- run rows: `{len(plan_df)}`",
         f"- quantile fits: `{len(plan_df) * 7}`",
         f"- concurrent rows: `{queue['ordinary_max_concurrent']}`",
+        f"- pause memory GB: `{queue['pause_mem_gb']}`",
+        f"- launch memory GB: `{queue['launch_mem_gb']}`",
+        f"- heavy memory GB: `{queue['heavy_mem_gb']}`",
         f"- artifact disk free GB: `{artifact_disk_free_gb(artifact_root)}`",
         "",
         "## No-Cleanup Smoke Launch",

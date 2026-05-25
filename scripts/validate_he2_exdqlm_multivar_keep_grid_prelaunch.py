@@ -115,7 +115,10 @@ def validate_matrix(matrix_dir: Path, artifact_root: Path | None) -> tuple[Recor
     rec.check("matrix", "active_quantiles", set(plan["active_quantiles"].astype(str)) == {EXPECTED_QUANTILE_LABELS}, str(sorted(plan["active_quantiles"].unique())))
     rec.check("matrix", "allow_failures", bool(metadata.get("allow_run_failures")) is True, str(metadata.get("allow_run_failures")))
     rec.check("matrix", "skip_compare_bundles", bool(metadata.get("skip_compare_bundles")) is True, str(metadata.get("skip_compare_bundles")))
-    rec.check("matrix", "queue_rows_at_once_8", int(nested(metadata, ["queue", "ordinary_max_concurrent"], 0)) == 8, str(nested(metadata, ["queue", "ordinary_max_concurrent"], "")))
+    rec.check("matrix", "queue_rows_at_once_4", int(nested(metadata, ["queue", "ordinary_max_concurrent"], 0)) == 4, str(nested(metadata, ["queue", "ordinary_max_concurrent"], "")))
+    rec.check("matrix", "queue_pause_mem_gb_120", float(nested(metadata, ["queue", "pause_mem_gb"], 0)) == 120.0, str(nested(metadata, ["queue", "pause_mem_gb"], "")))
+    rec.check("matrix", "queue_launch_mem_gb_170", float(nested(metadata, ["queue", "launch_mem_gb"], 0)) == 170.0, str(nested(metadata, ["queue", "launch_mem_gb"], "")))
+    rec.check("matrix", "queue_heavy_mem_gb_190", float(nested(metadata, ["queue", "heavy_mem_gb"], 0)) == 190.0, str(nested(metadata, ["queue", "heavy_mem_gb"], "")))
     rec.check("matrix", "fit_parallel_workers_7", int(nested(metadata, ["resources", "fit_parallel_workers"], 0)) == 7, str(nested(metadata, ["resources", "fit_parallel_workers"], "")))
     rec.check("matrix", "mc_cores_7", int(nested(metadata, ["resources", "mc_cores"], 0)) == 7, str(nested(metadata, ["resources", "mc_cores"], "")))
 

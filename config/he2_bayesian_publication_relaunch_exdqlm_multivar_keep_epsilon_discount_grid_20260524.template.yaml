@@ -42,11 +42,14 @@ grid:
     fail_fast: true
 
 queue:
-  ordinary_max_concurrent: 8
+  ordinary_max_concurrent: 4
   pause_free_gb: 25
   launch_free_gb: 35
   heavy_free_gb: 35
-  heavy_cutoff_max_concurrent: 8
+  pause_mem_gb: 120
+  launch_mem_gb: 170
+  heavy_mem_gb: 190
+  heavy_cutoff_max_concurrent: 4
   heavy_cutoff_blocks_ordinary: false
   poll_seconds: 30
 

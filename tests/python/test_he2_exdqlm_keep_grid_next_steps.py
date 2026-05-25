@@ -21,6 +21,12 @@ from multimodel_v8_lib import runs_dir  # noqa: E402
 
 
 class HE2ExDQLMKeepGridNextStepsTests(unittest.TestCase):
+    def test_smoke_builder_memory_gate_defaults_match_runbook(self) -> None:
+        args = smoke.parse_args([])
+        self.assertEqual(float(args.pause_mem_gb), 80.0)
+        self.assertEqual(float(args.launch_mem_gb), 120.0)
+        self.assertEqual(float(args.heavy_mem_gb), 120.0)
+
     def test_smoke_rewrite_config_moves_run_to_smoke_root(self) -> None:
         td = Path(tempfile.mkdtemp(prefix="keep_grid_smoke_test_"))
         try:
