@@ -717,6 +717,9 @@ Operational contract:
 | 2026-05-24 | `python3 -m unittest tests.python.test_he2_exdqlm_keep_grid_tooling -v` | pass, 3 tests; verifies frozen grid manifest and generated spec patches |
 | 2026-05-24 | `python3 -m unittest tests.python.test_he2_exdqlm_keep_allcutoff_monitor -v` | pass, 3 tests; verifies spec-aware monitor table and state-norm scaling |
 | 2026-05-24 | `python3 -m unittest tests.python.test_multimodel_v8_tooling -v` | pass, 12 tests; verifies queue continue-on-fail terminal semantics and existing v8 tooling contracts |
+| 2026-05-24 | `python3 scripts/build_he2_exdqlm_multivar_keep_grid_smoke_matrix.py --reset-status` and cleanup-root variant | pass; prepared no-cleanup and cleanup smoke matrices with 3 run rows / 21 quantile fits each |
+| 2026-05-24 | `python3 -m unittest tests.python.test_he2_exdqlm_keep_grid_next_steps -v` | pass, 2 tests; verifies smoke config rewriting and evaluator winner eligibility logic |
+| 2026-05-24 | `python3 -m unittest tests.python.test_multimodel_v8_queue_contract -v` | pass, 4 tests; verifies cleanup and no-cleanup queue launch wrappers |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R')"` | pass, 45 expectations |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_exdqlm_transform_scale_sensitivity.R')"` | pass, 10 expectations |
 | 2026-05-21 | `Rscript --vanilla -e "testthat::test_file('tests/testthat/test_scale_contract_adapters.R')"` | pass, 13 expectations |
@@ -785,3 +788,4 @@ Operational contract:
 | 2026-05-21 | Added delayed promotion state-guard start, completed promotion v2, and recorded v1/v2 evidence | done |
 | 2026-05-24 | Added log1p-safe q50 component diagnostics, smoke-fast append wiring, and fail-closed post artifact contract for retained-transfer `keep` semantics | done |
 | 2026-05-24 | Prepared and validated the 30-spec all-cutoff epsilon/discount grid with 56-worker queue policy and continue-on-fail semantics | done |
+| 2026-05-24 | Prepared no-cleanup and cleanup smoke matrices, grid evaluator scaffold, and next-step launch/evaluation runbook | done |

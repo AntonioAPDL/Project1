@@ -326,11 +326,12 @@ def launch_allowed(
     return True, ""
 
 
-def launch_run(config_path: Path, log_path: Path) -> int:
+def launch_run(config_path: Path, log_path: Path, cleanup_rdata_after_post: bool = True) -> int:
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    runner = "scripts/run_unified_with_cleanup.sh" if cleanup_rdata_after_post else "scripts/run_unified_without_cleanup.sh"
     with log_path.open("ab") as handle:
         proc = subprocess.Popen(
-            ["bash", "scripts/run_unified_with_cleanup.sh", "--config", str(config_path)],
+            ["bash", runner, "--config", str(config_path)],
             cwd=ROOT,
             stdout=handle,
             stderr=subprocess.STDOUT,
@@ -359,6 +360,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--no-heavy-cutoff-blocks-ordinary", action="store_true")
     ap.add_argument("--continue-on-fail", action="store_true")
     ap.add_argument("--skip-compares", action="store_true")
+    ap.add_argument("--no-cleanup", action="store_true", help="Retain .RData after post by using run_unified_without_cleanup.sh.")
     ap.add_argument("--poll-seconds", type=int, default=60)
     return ap.parse_args()
 
@@ -386,7 +388,12 @@ def main() -> int:
 
     with queue_log.open("a", encoding="utf-8") as log_handle:
         install_signal_logging(log_handle)
-        print(f"[{utc_now()}] controller start pilot_only={args.pilot_only} artifact_root={artifact_root}", file=log_handle, flush=True)
+        print(
+            f"[{utc_now()}] controller start pilot_only={args.pilot_only} artifact_root={artifact_root} "
+            f"cleanup_rdata_after_post={not args.no_cleanup}",
+            file=log_handle,
+            flush=True,
+        )
         metadata = load_matrix_metadata(matrix_dir)
         exit_code = 0
         try:
@@ -454,7 +461,11 @@ def main() -> int:
                     if not allowed:
                         continue
                     log_path = matrix_dir / "run_logs" / f"{run_id}.log"
-                    pid = launch_run(Path(str(row["config_path"])), log_path)
+                    pid = launch_run(
+                        Path(str(row["config_path"])),
+                        log_path,
+                        cleanup_rdata_after_post=not args.no_cleanup,
+                    )
                     print(
                         f"[{utc_now()}] launched run_id={run_id} pid={pid} cutoff={row['cutoff']} epsilon={row['epsilon']} lane={row['lane']} free_gb={free_gb}",
                         file=log_handle,

@@ -118,6 +118,15 @@ Validation result: `8720` checks, `0` failures. Runtime validation outputs are u
 - `prelaunch_validation_summary.json`
 - `prelaunch_validation_checks.csv`
 
+Next-step runbook:
+
+- `docs/exdqlm_multivar_keep_grid_next_steps_runbook_20260524.md`
+
+Prepared helper scripts:
+
+- `scripts/build_he2_exdqlm_multivar_keep_grid_smoke_matrix.py`
+- `scripts/evaluate_he2_exdqlm_multivar_keep_grid.py`
+
 ## Resource And Failure Policy
 
 The prepared queue policy is:
@@ -324,13 +333,13 @@ These diagnostics should not replace CRPS, but they can disqualify a numerically
    - all seven quantiles, full harmonics, and full transfer covariates are present;
    - cleanup is enabled for production rows;
    - component diagnostics are fail-fast.
-4. Run a small smoke. Status: next.
+4. Run a small smoke. Status: prepared, not launched.
    - one cutoff;
    - all seven quantiles for one or two specs, or q05/q50/q95 for all specs if the grid is large;
    - cleanup disabled for the first retained-diagnostic inspection.
-5. Run cleanup-enabled smoke and verify `.RData` is removed only after post contract pass.
-6. Launch the approved grid.
-7. Run the grid evaluator and write all tables/figures under `reports/`.
+5. Run cleanup-enabled smoke and verify `.RData` is removed only after post contract pass. Status: prepared, not launched.
+6. Launch the approved grid. Status: command prepared, not launched.
+7. Run the grid evaluator and write all tables/figures under `reports/`. Status: evaluator scaffold implemented.
 8. Select best spec per cutoff using the eligibility gates and primary CRPS rule.
 9. Freeze a final grid-selection doc with exact winners, runner-ups, rejected specs, and remaining caveats.
 

@@ -355,11 +355,15 @@ Not ready yet:
 
 Immediate next engineering work:
 
-1. run a one-cutoff retained-diagnostics smoke with cleanup disabled for inspection;
-2. rerun that smoke with cleanup enabled to verify `.RData` removal only after diagnostics pass;
+1. run the prepared one-cutoff retained-diagnostics smoke with cleanup disabled for inspection;
+2. run the prepared cleanup-enabled smoke to verify `.RData` removal only after diagnostics pass;
 3. launch the prepared grid if the smoke passes;
-4. add/run the grid CRPS/spec aggregator once outputs exist;
+4. run the grid CRPS/spec evaluator once outputs exist;
 5. freeze per-cutoff winners and rejected/failing specs in a final grid-selection report.
+
+The executable next-step runbook is:
+
+- `docs/exdqlm_multivar_keep_grid_next_steps_runbook_20260524.md`
 
 ## Validation Added on 2026-05-24
 

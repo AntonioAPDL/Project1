@@ -83,6 +83,25 @@ class MultimodelV8QueueContractTest(unittest.TestCase):
         self.assertEqual(cmd[-2:], ["--config", str(ROOT / "config" / "example.yaml")])
         self.assertIn("CLEANUP_RDATA_AFTER_POST=1", (ROOT / "scripts" / "run_unified_with_cleanup.sh").read_text(encoding="utf-8"))
 
+    def test_queue_runner_can_launch_no_cleanup_smoke(self) -> None:
+        class DummyProc:
+            pid = 12346
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = Path(tmpdir) / "unit_test_queue_launch_no_cleanup.log"
+            with mock.patch.object(run_multimodel_v8_queue.subprocess, "Popen", return_value=DummyProc()) as popen:
+                pid = run_multimodel_v8_queue.launch_run(
+                    ROOT / "config" / "example.yaml",
+                    log_path,
+                    cleanup_rdata_after_post=False,
+                )
+
+        self.assertEqual(pid, 12346)
+        cmd = popen.call_args.args[0]
+        self.assertEqual(cmd[:2], ["bash", "scripts/run_unified_without_cleanup.sh"])
+        self.assertEqual(cmd[-2:], ["--config", str(ROOT / "config" / "example.yaml")])
+        self.assertIn("CLEANUP_RDATA_AFTER_POST=0", (ROOT / "scripts" / "run_unified_without_cleanup.sh").read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()
