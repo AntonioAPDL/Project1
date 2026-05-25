@@ -2,7 +2,8 @@
 
 Date: 2026-05-24
 
-Status: frozen grid prepared and statically validated. No grid launch is authorized by this document.
+Status: grid plan promoted after smoke validation. The full grid was launched after explicit approval on
+2026-05-25 UTC with memory-gated four-row concurrency.
 
 ## Purpose
 
@@ -126,6 +127,51 @@ Prepared helper scripts:
 
 - `scripts/build_he2_exdqlm_multivar_keep_grid_smoke_matrix.py`
 - `scripts/evaluate_he2_exdqlm_multivar_keep_grid.py`
+
+## Execution Evidence
+
+No-cleanup smoke evidence:
+
+| item | value |
+| --- | --- |
+| root | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_smoke_nocleanup_20260524` |
+| scope | cutoff `20211112`; specs `c01_eps365`, `c05_eps030`, `c06_eps030`; 21 quantile fits |
+| evaluator report | `reports/exdqlm_multivar_keep_grid_eval_smoke_nocleanup_20260524/README.md` |
+| result | 3 rows evaluated, 3 eligible, 0 failed/ineligible |
+| smoke winner | `c01_eps365`, mean CRPS `0.06742386511601428`, runner-up `c06_eps030` |
+| runner-up scores | `c06_eps030` mean CRPS `0.06965513961065666`; `c05_eps030` mean CRPS `0.07657749964241033` |
+| cleanup after evidence | retained no-cleanup `.RData` files were removed after post/evaluator evidence was captured; 21 files, about 154.38 GiB reclaimed |
+
+Cleanup-enabled smoke evidence:
+
+| item | value |
+| --- | --- |
+| root | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_smoke_cleanup_20260524` |
+| scope | cutoff `20211112`; specs `c01_eps365`, `c05_eps030`, `c06_eps030`; 21 quantile fits |
+| evaluator report | `reports/exdqlm_multivar_keep_grid_eval_smoke_cleanup_20260524/README.md` |
+| result | 3 rows evaluated, 3 eligible, 0 failed/ineligible |
+| smoke winner | `c01_eps365`, mean CRPS `0.06742386511601428`, runner-up `c06_eps030` |
+| cleanup proof | `find ... -name '*.RData' -o -name '*.rda'` returned `0` retained files after successful post/report cleanup |
+
+The two smokes gave the same CRPS ranking and confirmed the post artifact contract, q50 component diagnostics, repaired
+quantile-synthesis crossing gate, and production cleanup behavior.
+
+Full grid launch evidence:
+
+| item | value |
+| --- | --- |
+| launch time | `2026-05-25T07:33:04Z` controller start |
+| controller PID | `3758588` |
+| controller stdout | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/publication_relaunch_matrix/full_grid_queue_20260525T0734Z.stdout.log` |
+| queue log | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/publication_relaunch_matrix/queue.log` |
+| pid file | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/publication_relaunch_matrix/full_grid_queue_20260525T0734Z.pid` |
+| launch command | `setsid ... scripts/run_multimodel_v8_queue.py ... --ordinary-max-concurrent 4 ... --continue-on-fail --skip-compares --no-heavy-cutoff-blocks-ordinary` |
+| first wave | `c01_eps365` launched for cutoffs `20210123`, `20211112`, `20211221`, `20220511`; controller idled at active row count `4` |
+| live monitor | `reports/he2_exdqlm_multivar_keep_epsilon_discount_grid_live_20260524/LIVE_STATUS.md` |
+
+Smoke memory evidence supports the four-row launch policy: one seven-quantile row can use roughly 68 GB RSS during fit,
+and cleanup-smoke post stages reached about 84--86 GB RSS. The full grid should not be increased toward the original
+8-row/56-worker target unless a later monitored wave shows substantial RAM headroom through both fit and post.
 
 ## Resource And Failure Policy
 
@@ -341,15 +387,20 @@ These diagnostics should not replace CRPS, but they can disqualify a numerically
    - all seven quantiles, full harmonics, and full transfer covariates are present;
    - cleanup is enabled for production rows;
    - component diagnostics are fail-fast.
-4. Run a small smoke. Status: prepared, not launched.
-   - one cutoff;
-   - all seven quantiles for one or two specs, or q05/q50/q95 for all specs if the grid is large;
-   - cleanup disabled for the first retained-diagnostic inspection.
-5. Run cleanup-enabled smoke and verify `.RData` is removed only after post contract pass. Status: prepared, not launched.
-6. Launch the approved grid. Status: command prepared, not launched.
-7. Run the grid evaluator and write all tables/figures under `reports/`. Status: evaluator scaffold implemented.
-8. Select best spec per cutoff using the eligibility gates and primary CRPS rule.
-9. Freeze a final grid-selection doc with exact winners, runner-ups, rejected specs, and remaining caveats.
+4. Run a small smoke. Status: complete.
+   - no-cleanup smoke completed for cutoff `20211112` and specs `c01_eps365`, `c05_eps030`, `c06_eps030`;
+   - evaluator found 3 eligible rows and 0 failed/ineligible rows;
+   - retained `.RData` was then removed after evidence capture to reclaim disk.
+5. Run cleanup-enabled smoke and verify `.RData` is removed only after post contract pass. Status: complete.
+   - cleanup smoke completed for the same three rows;
+   - evaluator again found 3 eligible rows and 0 failed/ineligible rows;
+   - final retained `.RData` / `.rda` count under the cleanup root was `0`.
+6. Launch the approved grid. Status: running.
+   - full grid launched with detached controller PID `3758588`;
+   - queue policy is 4 concurrent spec-cutoff rows, 28 quantile workers, cleanup enabled, continue-on-fail enabled.
+7. Run the grid evaluator and write all tables/figures under `reports/`. Status: pending full-grid completion.
+8. Select best spec per cutoff using the eligibility gates and primary CRPS rule. Status: pending full-grid completion.
+9. Freeze a final grid-selection doc with exact winners, runner-ups, rejected specs, and remaining caveats. Status: pending evaluator review.
 
 ## Tests To Add With The Evaluator
 
@@ -364,14 +415,11 @@ Targeted deterministic tests should cover:
 - figure-copy/symlink manifest construction;
 - no reliance on run-name parsing for scientific parameters.
 
-## Open Items For User Input
+## Remaining Work
 
-Before implementation, provide:
-
-1. epsilon values;
-2. `c_factor` values if varied;
-3. discount-factor combinations;
-4. whether selection should be strictly per cutoff or whether a secondary single global spec should also be proposed;
-5. smoke size preference if the grid is large.
-
-Default recommendation: select winners per cutoff, and also report the best single global spec as a secondary option.
+1. Continue live monitoring until all 150 spec-cutoff rows finish or fail informatively.
+2. Preserve failed rows in the final report instead of forcing repair during the grid.
+3. Run the full-grid evaluator after completion.
+4. Select winners per cutoff using eligible `exdqlm_multivar_synth_keep` CRPS on `log_cms_plus1`.
+5. Report the best single global spec only as a secondary summary.
+6. Freeze winner figures, component diagnostics, CRPS tables, quantile-synthesis diagnostics, and failure reasons in a final tracked selection document.

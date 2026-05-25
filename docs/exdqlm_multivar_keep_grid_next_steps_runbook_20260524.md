@@ -2,7 +2,7 @@
 
 Date: 2026-05-24
 
-Status: prepared; no-cleanup smoke launch in progress as of 2026-05-25 UTC.
+Status: smokes passed and full grid running as of 2026-05-25 UTC.
 
 2026-05-25 live hardening note: the first no-cleanup smoke row (`c05_eps030`, cutoff `20211112`)
 showed that one seven-quantile fit row can use roughly 68 GB resident memory during fit and that
@@ -22,7 +22,7 @@ The full epsilon/discount grid is frozen and statically validated:
 - quantile fits: `1050`
 - static prelaunch validation: `8723` checks, `0` failures after the memory-aware queue refresh
 
-No model fit was launched while preparing this runbook.
+This runbook started as a launch plan. It now also records the executed smoke gates and the approved full-grid launch.
 
 ## Step 1. No-Cleanup Smoke
 
@@ -43,7 +43,7 @@ Scope:
 | concurrent rows | `1` |
 | cleanup | disabled |
 
-Launch command, only after explicit approval:
+Executed launch command:
 
 ```bash
 python3 scripts/run_multimodel_v8_queue.py \
@@ -64,7 +64,7 @@ python3 scripts/run_multimodel_v8_queue.py \
   --no-cleanup
 ```
 
-After it completes, run:
+Executed evaluator command:
 
 ```bash
 python3 scripts/evaluate_he2_exdqlm_multivar_keep_grid.py \
@@ -73,13 +73,17 @@ python3 scripts/evaluate_he2_exdqlm_multivar_keep_grid.py \
   --tag smoke_nocleanup_20260524
 ```
 
-Required pass criteria:
+Observed result:
 
-- all three rows complete fit/post/validate/report or any failure is clearly understood;
-- q50 component contract is present and passes for successful rows;
-- forecast CRPS tables are present for `exdqlm_multivar_synth_keep`;
-- quantile synthesis repaired anchor/empirical crossing shares are zero or numerical tolerance only;
-- retained `.RData` remains available for inspection.
+- all three rows completed fit/post/validate/report;
+- evaluator report: `reports/exdqlm_multivar_keep_grid_eval_smoke_nocleanup_20260524/README.md`;
+- evaluator result: 3 rows evaluated, 3 eligible, 0 failed/ineligible;
+- smoke winner: `c01_eps365`, mean CRPS `0.06742386511601428`;
+- runner-up: `c06_eps030`, mean CRPS `0.06965513961065666`;
+- third row: `c05_eps030`, mean CRPS `0.07657749964241033`;
+- q50 component contract and forecast CRPS tables were present for successful rows;
+- repaired quantile-synthesis anchor/empirical crossing checks were clean;
+- retained `.RData` was intentionally removed after evaluator evidence capture, reclaiming about 154.38 GiB from 21 files.
 
 ## Step 2. Cleanup-Enabled Smoke
 
@@ -91,7 +95,7 @@ Prepared root:
 
 Scope is the same three spec rows as the no-cleanup smoke.
 
-Launch command, only after the no-cleanup smoke is inspected:
+Executed launch command after no-cleanup inspection:
 
 ```bash
 python3 scripts/run_multimodel_v8_queue.py \
@@ -111,8 +115,23 @@ python3 scripts/run_multimodel_v8_queue.py \
   --no-heavy-cutoff-blocks-ordinary
 ```
 
-After it completes, run the evaluator on the cleanup smoke root and confirm successful rows have no retained `.RData`
-under their run roots.
+Executed evaluator:
+
+```bash
+python3 scripts/evaluate_he2_exdqlm_multivar_keep_grid.py \
+  --matrix-dir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_smoke_cleanup_20260524/control/publication_relaunch_matrix \
+  --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_smoke_cleanup_20260524 \
+  --tag smoke_cleanup_20260524
+```
+
+Observed result:
+
+- evaluator report: `reports/exdqlm_multivar_keep_grid_eval_smoke_cleanup_20260524/README.md`;
+- evaluator result: 3 rows evaluated, 3 eligible, 0 failed/ineligible;
+- winner and CRPS ordering matched the no-cleanup smoke;
+- all 21 quantile lanes reached `report pass` in the cleanup monitor;
+- retained `.RData` / `.rda` count under the cleanup root was `0`;
+- row roots were reduced to lightweight post/report artifacts after cleanup.
 
 ## Step 3. Full Grid Launch
 
@@ -123,10 +142,10 @@ evidence shows this is not the safe first full-grid setting because RAM, not CPU
 resource. Start at 4 concurrent rows with memory gates; consider increasing to 5 only after the
 first full-grid fit/post cycle shows stable RAM and disk headroom.
 
-Launch command, only after both smokes pass:
+Executed full-grid launch after both smokes passed:
 
 ```bash
-python3 scripts/run_multimodel_v8_queue.py \
+setsid bash -lc 'cd /data/muscat_data/jaguir26/project1_ucsc_phd && exec python3 scripts/run_multimodel_v8_queue.py \
   --matrix-dir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/publication_relaunch_matrix \
   --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524 \
   --ordinary-max-concurrent 4 \
@@ -140,14 +159,22 @@ python3 scripts/run_multimodel_v8_queue.py \
   --poll-seconds 30 \
   --continue-on-fail \
   --skip-compares \
-  --no-heavy-cutoff-blocks-ordinary
+  --no-heavy-cutoff-blocks-ordinary' > /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/publication_relaunch_matrix/full_grid_queue_20260525T0734Z.stdout.log 2>&1 &
 ```
 
 This uses production cleanup through `scripts/run_unified_with_cleanup.sh`.
 
-If the first full-grid wave leaves more than 220 GB `MemAvailable` during both fit and post, a second
-controller launch may use `--ordinary-max-concurrent 5 --heavy-cutoff-max-concurrent 5`. Do not use
-8-way concurrency unless a new smoke or pilot demonstrates a much lower per-row memory footprint.
+Launch evidence:
+
+- controller PID: `3758588`;
+- pid file: `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/publication_relaunch_matrix/full_grid_queue_20260525T0734Z.pid`;
+- queue log: `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/publication_relaunch_matrix/queue.log`;
+- first wave launched `c01_eps365` for cutoffs `20210123`, `20211112`, `20211221`, and `20220511`;
+- live status snapshot: `reports/he2_exdqlm_multivar_keep_epsilon_discount_grid_live_20260524/LIVE_STATUS.md`.
+
+If the first full-grid wave leaves more than 220 GB `MemAvailable` during both fit and post, a later controller launch
+may use `--ordinary-max-concurrent 5 --heavy-cutoff-max-concurrent 5`. Do not use 8-way concurrency unless a new smoke
+or pilot demonstrates a much lower per-row memory footprint.
 
 ## Step 4. Live Monitoring
 
