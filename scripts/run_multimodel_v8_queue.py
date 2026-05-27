@@ -69,7 +69,10 @@ def install_signal_logging(log_handle) -> None:
 def stage_status(manifest_path: Path) -> tuple[str, str]:
     if not manifest_path.exists():
         return "not_started", "not_started"
-    manifest = load_yaml(manifest_path)
+    try:
+        manifest = load_yaml(manifest_path)
+    except Exception:
+        return "manifest", "pending"
     stages = manifest.get("stages", {}) if isinstance(manifest, dict) else {}
     for stage in ["forecats", "data_prep_shared", "fit", "post", "validate", "report"]:
         entry = stages.get(stage, {}) if isinstance(stages, dict) else {}
@@ -369,7 +372,13 @@ def refresh_health(matrix_dir: Path, log_handle, artifact_root: str | Path | Non
     cmd = ["python3", "scripts/check_multimodel_v8_matrix_health.py", "--matrix-dir", str(matrix_dir)]
     if artifact_root is not None:
         cmd.extend(["--artifact-root", str(artifact_root)])
-    subprocess.run(cmd, cwd=ROOT, stdout=log_handle, stderr=subprocess.STDOUT, check=True)
+    completed = subprocess.run(cmd, cwd=ROOT, stdout=log_handle, stderr=subprocess.STDOUT, check=False)
+    if completed.returncode != 0:
+        print(
+            f"[{utc_now()}] health refresh warning returncode={completed.returncode}; continuing queue loop",
+            file=log_handle,
+            flush=True,
+        )
 
 
 def parse_args() -> argparse.Namespace:

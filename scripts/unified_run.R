@@ -126,10 +126,26 @@ if (!requireNamespace("yaml", quietly = TRUE)) {
 }
 
 resolved_config_path <- file.path(run_root, "resolved_config.yaml")
-writeLines(
+unified_write_text_atomic <- function(text, out_path) {
+  dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
+  tmp_path <- tempfile(pattern = paste0(".", basename(out_path), "."), tmpdir = dirname(out_path))
+  ok <- FALSE
+  on.exit({
+    if (!ok && file.exists(tmp_path)) {
+      unlink(tmp_path)
+    }
+  }, add = TRUE)
+  writeLines(text, con = tmp_path, useBytes = TRUE)
+  ok <- file.rename(tmp_path, out_path)
+  if (!isTRUE(ok)) {
+    stop(sprintf("Failed atomic write to %s", out_path), call. = FALSE)
+  }
+  invisible(out_path)
+}
+
+unified_write_text_atomic(
   yaml::as.yaml(cfg, indent.mapping.sequence = TRUE, precision = 15),
-  con = resolved_config_path,
-  useBytes = TRUE
+  resolved_config_path
 )
 
 repro_record <- unified_apply_seed(seed = cfg$run$seed, mode = cfg$run$repro_mode)
@@ -192,6 +208,12 @@ stage_log_path <- function(stage) {
 
 cleanup_rdata_after_post_enabled <- {
   v <- tolower(trimws(Sys.getenv("CLEANUP_RDATA_AFTER_POST", "0")))
+  v %in% c("1", "true", "yes")
+}
+
+cleanup_rdata_on_failure_enabled <- {
+  default <- if (isTRUE(cleanup_rdata_after_post_enabled)) "1" else "0"
+  v <- tolower(trimws(Sys.getenv("CLEANUP_RDATA_ON_FAILURE", default)))
   v %in% c("1", "true", "yes")
 }
 
@@ -265,6 +287,19 @@ for (stage in stage_order) {
   )
   if (!is.null(stage_error)) {
     manifest <- unified_manifest_stage_mark_fail(manifest, stage, log_path = stage_log_path(stage))
+    if (isTRUE(cleanup_rdata_on_failure_enabled)) {
+      cleanup_info <- cleanup_rdata_under_run(run_root)
+      manifest$rdata_cleanup <- manifest$rdata_cleanup %||% list()
+      manifest$rdata_cleanup$on_failure <- cleanup_info
+      cat(
+        sprintf(
+          "Failure-stage .RData cleanup: before=%d removed=%d remaining=%d\n",
+          cleanup_info$before,
+          cleanup_info$removed,
+          cleanup_info$remaining
+        )
+      )
+    }
     try(unified_manifest_write(manifest, manifest_path), silent = TRUE)
     stop(conditionMessage(stage_error), call. = FALSE)
   }
@@ -295,6 +330,9 @@ for (stage in stage_order) {
 
   if (identical(stage, "post") && isTRUE(cleanup_rdata_after_post_enabled)) {
     cleanup_info <- cleanup_rdata_under_run(run_root)
+    manifest$rdata_cleanup <- manifest$rdata_cleanup %||% list()
+    manifest$rdata_cleanup$after_post <- cleanup_info
+    unified_manifest_write(manifest, manifest_path)
     cat(
       sprintf(
         "Post-stage .RData cleanup: before=%d removed=%d remaining=%d\n",

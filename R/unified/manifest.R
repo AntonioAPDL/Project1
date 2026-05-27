@@ -290,6 +290,17 @@ unified_manifest_write <- function(manifest, out_path) {
   }
   dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
   yaml_text <- yaml::as.yaml(manifest, indent.mapping.sequence = TRUE)
-  writeLines(yaml_text, con = out_path, useBytes = TRUE)
+  tmp_path <- tempfile(pattern = paste0(".", basename(out_path), "."), tmpdir = dirname(out_path))
+  ok <- FALSE
+  on.exit({
+    if (!ok && file.exists(tmp_path)) {
+      unlink(tmp_path)
+    }
+  }, add = TRUE)
+  writeLines(yaml_text, con = tmp_path, useBytes = TRUE)
+  ok <- file.rename(tmp_path, out_path)
+  if (!isTRUE(ok)) {
+    stop(sprintf("Failed atomic manifest write to %s", out_path), call. = FALSE)
+  }
   invisible(out_path)
 }

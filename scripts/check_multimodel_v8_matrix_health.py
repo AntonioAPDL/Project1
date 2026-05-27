@@ -33,6 +33,12 @@ def _latest_stage_log_mtime(run_root: Path, stage: str, fallback: Path | None) -
     return _iso_mtime(newest)
 
 
+def _manifest_pending_view(manifest_path: Path, err: Exception) -> tuple[str, str, str, str, str, str]:
+    latest = _iso_mtime(manifest_path)
+    note = f"manifest_unreadable:{type(err).__name__}:{str(err).replace(',', ';')[:180]}"
+    return "manifest", "pending", "", "", latest, note
+
+
 def _stage_view(manifest: dict[str, Any], run_root: Path) -> tuple[str, str, str, str, str]:
     stages = manifest.get("stages", {}) if isinstance(manifest, dict) else {}
     latest_log = None
@@ -86,15 +92,18 @@ def build_status(matrix_dir: Path, artifact_root: str | Path | None = None) -> p
     for _, row in plan.iterrows():
         manifest_path = active_runs_dir / str(row["run_id"]) / "run_manifest.yaml"
         if manifest_path.exists():
-            manifest = load_yaml(manifest_path)
-            phase, status, started_at, finished_at, latest_log_mtime = _stage_view(manifest, manifest_path.parent)
-            note = ""
-            if status == "pass":
-                note = "closed"
-            elif status == "pending":
-                note = "in_progress"
-            elif status == "fail":
-                note = "failed"
+            try:
+                manifest = load_yaml(manifest_path)
+                phase, status, started_at, finished_at, latest_log_mtime = _stage_view(manifest, manifest_path.parent)
+                note = ""
+                if status == "pass":
+                    note = "closed"
+                elif status == "pending":
+                    note = "in_progress"
+                elif status == "fail":
+                    note = "failed"
+            except Exception as err:
+                phase, status, started_at, finished_at, latest_log_mtime, note = _manifest_pending_view(manifest_path, err)
         else:
             phase, status, started_at, finished_at, latest_log_mtime = "not_started", "not_started", "", "", ""
             note = "manifest_missing"

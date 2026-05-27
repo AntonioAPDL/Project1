@@ -182,8 +182,16 @@ def load_yaml(path: Path, retries: int = 5, delay_seconds: float = 0.2) -> dict[
 
 def write_yaml(path: Path, data: dict[str, Any]) -> None:
     ensure_dir(path.parent)
-    with path.open("w", encoding="utf-8") as handle:
-        yaml.safe_dump(data, handle, sort_keys=False, default_flow_style=False)
+    tmp_path = path.with_name(f".{path.name}.tmp.{os.getpid()}.{time.time_ns()}")
+    try:
+        with tmp_path.open("w", encoding="utf-8") as handle:
+            yaml.safe_dump(data, handle, sort_keys=False, default_flow_style=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, path)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
 
 
 def read_text(path: Path) -> str:

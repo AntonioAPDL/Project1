@@ -16,8 +16,8 @@ os.sys.path.insert(0, str(ROOT / "scripts"))
 from build_multimodel_v8_matrix_configs import build_v8_config  # noqa: E402
 from build_multimodel_v8_compare_bundle import LaneSpec, build_bundle  # noqa: E402
 from check_multimodel_v8_matrix_health import build_status  # noqa: E402
-from multimodel_v8_lib import TARGET_MODELS, build_lane_plan_rows, load_yaml, parse_epsilon_spec_list, reports_dir, runs_dir, v7_template_config_path  # noqa: E402
-from run_multimodel_v8_queue import compare_cells_from_plan, pgrep_active_v8, run_terminal_for_matrix  # noqa: E402
+from multimodel_v8_lib import TARGET_MODELS, build_lane_plan_rows, load_yaml, parse_epsilon_spec_list, reports_dir, runs_dir, v7_template_config_path, write_yaml  # noqa: E402
+from run_multimodel_v8_queue import compare_cells_from_plan, pgrep_active_v8, run_terminal_for_matrix, stage_status  # noqa: E402
 
 
 class MultimodelV8ToolingTests(unittest.TestCase):
@@ -239,6 +239,53 @@ class MultimodelV8ToolingTests(unittest.TestCase):
             self.assertTrue(df.iloc[0]["latest_log_mtime"])
         finally:
             shutil.rmtree(td, ignore_errors=True)
+
+    def test_health_checker_treats_unreadable_manifest_as_pending(self) -> None:
+        td = Path(tempfile.mkdtemp(prefix="v8_health_bad_manifest_test_"))
+        try:
+            matrix_dir = td / "matrix"
+            matrix_dir.mkdir(parents=True, exist_ok=True)
+            artifact_root = td / "artifact_root"
+            run_id = "multimodel_20990101_v8_epsTT_l1"
+            pd.DataFrame([
+                {
+                    "order_index": 1,
+                    "cutoff": "20990101",
+                    "epsilon": "epsTT",
+                    "epsilon_value": "TT",
+                    "lane": "l1",
+                    "run_scope": "full_tt",
+                    "run_id": run_id,
+                    "config_path": "/tmp/cfg.yaml",
+                    "compare_outdir": "/tmp/out",
+                    "priority_group": 1,
+                    "max_concurrent_class": "ordinary",
+                }
+            ]).to_csv(matrix_dir / "matrix_plan.csv", index=False)
+            run_root = runs_dir(artifact_root) / run_id
+            run_root.mkdir(parents=True, exist_ok=True)
+            (run_root / "run_manifest.yaml").write_text("[]\n", encoding="utf-8")
+
+            df = build_status(matrix_dir, artifact_root=artifact_root)
+            self.assertEqual(df.iloc[0]["phase"], "manifest")
+            self.assertEqual(df.iloc[0]["status"], "pending")
+            self.assertIn("manifest_unreadable", df.iloc[0]["note"])
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+    def test_queue_stage_status_treats_unreadable_manifest_as_pending(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="v8_queue_bad_manifest_test_") as td:
+            manifest_path = Path(td) / "run_manifest.yaml"
+            manifest_path.write_text("[]\n", encoding="utf-8")
+            self.assertEqual(stage_status(manifest_path), ("manifest", "pending"))
+
+    def test_write_yaml_replaces_existing_file_atomically(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="v8_atomic_yaml_test_") as td:
+            path = Path(td) / "config.yaml"
+            path.write_text("old: true\n", encoding="utf-8")
+            write_yaml(path, {"new": {"value": 1}})
+            self.assertEqual(load_yaml(path), {"new": {"value": 1}})
+            self.assertEqual(list(Path(td).glob(".config.yaml.tmp.*")), [])
 
     def test_plan_rows_skip_duplicate_v4_epsilon(self) -> None:
         plan = build_lane_plan_rows()

@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import tempfile
 import unittest
+from io import StringIO
 from unittest import mock
 from pathlib import Path
 
@@ -151,6 +152,13 @@ class MultimodelV8QueueContractTest(unittest.TestCase):
         self.assertEqual(cmd[:2], ["bash", "scripts/run_unified_without_cleanup.sh"])
         self.assertEqual(cmd[-2:], ["--config", str(ROOT / "config" / "example.yaml")])
         self.assertIn("CLEANUP_RDATA_AFTER_POST=0", (ROOT / "scripts" / "run_unified_without_cleanup.sh").read_text(encoding="utf-8"))
+
+    def test_health_refresh_warning_does_not_raise(self) -> None:
+        completed = run_multimodel_v8_queue.subprocess.CompletedProcess(args=["python3"], returncode=7)
+        with mock.patch.object(run_multimodel_v8_queue.subprocess, "run", return_value=completed):
+            log_handle = StringIO()
+            run_multimodel_v8_queue.refresh_health(Path("/tmp/matrix"), log_handle)
+        self.assertIn("health refresh warning returncode=7", log_handle.getvalue())
 
 
 if __name__ == "__main__":

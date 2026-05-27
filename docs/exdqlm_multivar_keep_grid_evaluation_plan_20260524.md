@@ -417,9 +417,26 @@ Targeted deterministic tests should cover:
 
 ## Remaining Work
 
-1. Continue live monitoring until all 150 spec-cutoff rows finish or fail informatively.
+1. Relaunch the 32 rows that never started after the 2026-05-26 queue-controller health-refresh crash.
 2. Preserve failed rows in the final report instead of forcing repair during the grid.
 3. Run the full-grid evaluator after completion.
 4. Select winners per cutoff using eligible `exdqlm_multivar_synth_keep` CRPS on `log_cms_plus1`.
 5. Report the best single global spec only as a secondary summary.
 6. Freeze winner figures, component diagnostics, CRPS tables, quantile-synthesis diagnostics, and failure reasons in a final tracked selection document.
+
+## 2026-05-27 Queue Recovery
+
+The queue controller stopped at `2026-05-26T22:08:29Z` after a transient health-check parse failure against a
+`run_manifest.yaml` that was being written. A later health check parsed all manifests successfully and showed
+`116` passed rows, `2` failed rows, and `32` not-started rows. The recovery patch is documented in
+[`exdqlm_multivar_keep_grid_recovery_20260527.md`](exdqlm_multivar_keep_grid_recovery_20260527.md).
+
+The two failed rows are kept as valid grid failures:
+
+| cutoff | spec | failure summary |
+| --- | --- | --- |
+| `20220511` | `c02_eps090` | q20 pseudo-data guard failed at iter `32` |
+| `20221225` | `c03_eps060` | q20 pseudo-data guard failed at iter `47` |
+
+The relaunch should use the existing memory-gated queue settings and `--continue-on-fail`; it should only start rows
+whose manifest is still missing.
