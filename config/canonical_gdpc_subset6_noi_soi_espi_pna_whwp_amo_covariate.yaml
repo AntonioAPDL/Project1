@@ -1,0 +1,73 @@
+version: v20260527_subset6_noi_soi_espi_pna_whwp_amo
+description: Isolated GDPC1 covariate using only NOI, SOI, ESPI, PNA, WHWP, and AMO; does not replace active publication input bundles.
+artifact_root: data/canonical_gdpc_subset6_noi_soi_espi_pna_whwp_amo/v20260527
+canonical_window:
+  start_date: '1987-05-29'
+  end_date: '2023-01-22'
+monthly_source_window:
+  start_month: '1987-01-01'
+  end_month: '2023-01-01'
+download:
+  timeout_seconds: 30
+  retries: 3
+  user_agent: canonical-gdpc-subset6-climate-pipeline/20260527
+postprocess:
+  interpolation:
+    method: cubic_spline_with_linear_tail
+    linear_tail_days: 30
+    require_monthly_coverage_through_end_month: true
+  standardization:
+    method: zscore
+    ddof: 1
+gdpc:
+  method: gdpc
+  component_name: GDPC1
+  k: 2
+  tol: 1.0e-3
+  niter_max: 200
+  crit: BIC
+  require_convergence: true
+  blas_threads: 8
+  sign_rule:
+    method: positive_correlation
+    anchor_index_id: soi
+screening:
+  enabled: false
+  candidate_k_values:
+    - 2
+  criterion: BIC
+  tol: 1.0e-3
+  niter_max: 200
+  max_runtime_seconds_per_k: 900
+  require_convergence: true
+  selection_rule:
+    primary_metric: criterion_value
+    objective: minimize
+    require_converged_fit: true
+    tie_breakers:
+      - lower_runtime_seconds
+      - smaller_k
+compatibility_aliases:
+  - alias_filename: cov_03_PCA.csv
+    value_column: Static_PCA
+  - alias_filename: cov_05_PCA.csv
+    value_column: Static_PCA
+indices:
+  - index_id: noi
+    display_name: NOI
+    url: https://psl.noaa.gov/data/correlation/noi.data
+  - index_id: soi
+    display_name: SOI
+    url: https://psl.noaa.gov/data/correlation/soi.data
+  - index_id: espi
+    display_name: ESPI
+    url: https://psl.noaa.gov/data/correlation/espi.data
+  - index_id: pna
+    display_name: PNA
+    url: https://psl.noaa.gov/data/correlation/pna.data
+  - index_id: whwp
+    display_name: WHWP
+    url: https://psl.noaa.gov/data/correlation/whwp.data
+  - index_id: amo
+    display_name: AMO
+    url: https://psl.noaa.gov/data/correlation/amon.us.data
