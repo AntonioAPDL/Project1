@@ -35,6 +35,7 @@ promoted `E[1/u_t]` cap reports zero capped cells. The new evidence must disting
 | ELBO accounting fix | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:5310` and `:5315` | forecast `s_t` ELBO terms now use `new.sts.out_f$E.sts2` and `new.uts.out_f$E.inv.uts`, not missing `new.uts.out_f$E.sts2` / `E.uts` |
 | config generator | `scripts/prepare_he2_exdqlm_multivar_keep_latent_diag_configs.py` | prepares isolated A/B/C targeted q20 diagnostic configs from the completed grid configs |
 | report collector | `scripts/report_he2_exdqlm_multivar_keep_latent_diagnostics.py` | concatenates latent, gamma/sigma, pseudo-data, guard, and sampling diagnostic outputs into one report directory |
+| staged overnight runner | `scripts/run_he2_exdqlm_multivar_keep_latent_diag_ladder.py` | runs prepared A/B/C rows phase-by-phase, writes `phase_status.csv`, aggregates reports after each phase, and removes `.RData`/`.rda` artifacts after each row exits |
 
 ## Important Semantics
 
@@ -117,3 +118,32 @@ Then decide from the evidence:
 | active state guard fixes A but controls remain healthy | move `state_guard_start_iter` inside the 100-iteration budget |
 | only forecast top cells fail | audit forecast segment/member bookkeeping |
 | only sampling walltime appears | treat `c06_eps365` as a sampler/runtime issue, separate from q20 fit failures |
+
+## Overnight Ladder
+
+The staged controller is:
+
+`scripts/run_he2_exdqlm_multivar_keep_latent_diag_ladder.py`
+
+Default execution:
+
+```bash
+python3 scripts/run_he2_exdqlm_multivar_keep_latent_diag_ladder.py \
+  --matrix-plan /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_latent_diag_20260529_prepared/control/latent_diag_matrix/latent_diag_matrix_plan.csv \
+  --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_latent_diag_20260529_prepared \
+  --report-root reports/he2_exdqlm_multivar_keep_latent_diag_overnight_20260529 \
+  --phases A,B,C \
+  --poll-seconds 60
+```
+
+Outputs:
+
+| artifact | path |
+| --- | --- |
+| controller status | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_latent_diag_20260529_prepared/control/overnight_ladder/phase_status.csv` |
+| live status | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_latent_diag_20260529_prepared/control/overnight_ladder/LIVE_STATUS.md` |
+| row logs | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_latent_diag_20260529_prepared/control/overnight_ladder/run_logs/` |
+| report root | `reports/he2_exdqlm_multivar_keep_latent_diag_overnight_20260529/` |
+
+The controller continues through model failures because failed rows are evidence. It only stops on infrastructure or
+controller errors.
