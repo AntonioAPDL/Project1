@@ -119,6 +119,10 @@ testthat::test_that("active runner uses stable latent formulas", {
   testthat::expect_true(grepl("post_save_objective_enabled", stage_text, fixed = TRUE))
   testthat::expect_true(grepl("DISC_W_POST_SAVE_JSD_ENABLED", stage_text, fixed = TRUE))
   testthat::expect_true(grepl("post_save_jsd_enabled", stage_text, fixed = TRUE))
+  testthat::expect_false(grepl("new\\.sts\\.out\\$E\\.tot\\.entrop", text))
+  testthat::expect_false(grepl("new\\.gamsig\\.out\\$E\\.sig\\.gam\\.entrop", text))
+  testthat::expect_true(grepl("new\\.sts\\.out\\$tot\\.entrop", text))
+  testthat::expect_true(grepl("new\\.gamsig\\.out\\$entrop", text))
 })
 
 testthat::test_that("active runner exposes diagnostic latent ablation controls", {

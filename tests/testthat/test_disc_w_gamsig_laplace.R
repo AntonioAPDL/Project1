@@ -167,6 +167,68 @@ test_that("disc_w_build_laplace_covariance falls back to ridge regularization wh
   expect_equal(out$covariance, diag(1000, nrow = 2))
 })
 
+test_that("gamma/sigma coherence guard rejects impossible delta moments", {
+  bad <- list(
+    E.sigma = 0.0591065682981376,
+    E.inv.sigma = 16.99359,
+    E.gam = 0.412405945133386,
+    E.c2.invb.absgam2.sigma = 0.1,
+    E.c.invb.absgam = 0.55854951,
+    E.c.a.invb.absgam = 1,
+    E.a2.invb.inv.sigma = -148.186240,
+    E.invb.inv.sigma = 5.680444,
+    E.a.invb.inv.sigma = -9.371085,
+    E.log.sig.b = 0,
+    E.log.sig = log(0.0591065682981376),
+    E.prior.sig.gam = -1,
+    E.theta = c(log(0.0591065682981376), disc_w_gamma_to_theta(0.412405945133386, L = -1, U = 1)),
+    Sigma.LD = diag(c(0.01, 0.01), nrow = 2)
+  )
+
+  out <- disc_w_validate_gamsig_moments(
+    bad,
+    L = -1,
+    U = 1,
+    min_uts_psi = 1e-8
+  )
+  expect_false(out$ok)
+  expect_identical(out$reason, "negative_theory_moment")
+
+  bad2 <- bad
+  bad2$E.a2.invb.inv.sigma <- -40
+  out2 <- disc_w_validate_gamsig_moments(
+    bad2,
+    L = -1,
+    U = 1,
+    min_uts_psi = 1e-8,
+    nonnegative_tol = 100
+  )
+  expect_false(out2$ok)
+  expect_identical(out2$reason, "invalid_latent_psi_floor")
+})
+
+test_that("gamma/sigma coherence guard permits zero a^2 moment when latent psi stays positive", {
+  median_like <- list(
+    E.sigma = 1,
+    E.inv.sigma = 1,
+    E.gam = 0,
+    E.c2.invb.absgam2.sigma = 0,
+    E.c.invb.absgam = 0,
+    E.c.a.invb.absgam = 0,
+    E.a2.invb.inv.sigma = 0,
+    E.invb.inv.sigma = 0.125,
+    E.a.invb.inv.sigma = 0,
+    E.log.sig.b = log(8),
+    E.log.sig = 0,
+    E.prior.sig.gam = -1,
+    E.theta = c(0, disc_w_gamma_to_theta(0, L = -1, U = 1)),
+    Sigma.LD = diag(c(0.01, 0.01), nrow = 2)
+  )
+
+  out <- disc_w_validate_gamsig_moments(median_like, L = -1, U = 1)
+  expect_true(out$ok)
+})
+
 test_that("disc_w_candidate_is_interior detects near-boundary branch candidates", {
   interior <- disc_w_candidate_is_interior(
     theta_pair = c(0, 0),
@@ -291,6 +353,9 @@ test_that("active multivariate runner exposes near-zero fallback policy and diag
   expect_true(grepl("DISC_GAMSIG_NEAR_ZERO_FALLBACK_ENABLED", text, fixed = TRUE))
   expect_true(grepl("DISC_GAMSIG_NEAR_ZERO_FALLBACK_MODE", text, fixed = TRUE))
   expect_true(grepl("DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR", text, fixed = TRUE))
+  expect_true(grepl("DISC_GAMSIG_COHERENCE_GUARD_ENABLED", text, fixed = TRUE))
+  expect_true(grepl("disc_w_prepare_gamsig_for_commit", text, fixed = TRUE))
+  expect_true(grepl("[gamsig_rollback]", text, fixed = TRUE))
   expect_true(grepl("near_zero_sigma_only_fallback", text, fixed = TRUE))
   expect_true(grepl("[gamsig_near_zero_fallback]", text, fixed = TRUE))
   expect_true(grepl("near_zero_fallback_count", text, fixed = TRUE))

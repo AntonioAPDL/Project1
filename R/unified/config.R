@@ -345,6 +345,12 @@ unified_config_defaults <- function() {
             mode = "sigma_only",
             gamma_anchor = "full_candidate"
           ),
+          coherence_guard = list(
+            enabled = TRUE,
+            rollback_on_guard = TRUE,
+            min_uts_psi = 1e-8,
+            nonnegative_tol = 1e-10
+          ),
           terminal_sampling_guard = list(
             mode = "off",
             min_guard_count = 1L,
@@ -458,6 +464,12 @@ unified_config_defaults <- function() {
             enabled = TRUE,
             mode = "sigma_only",
             gamma_anchor = "full_candidate"
+          ),
+          coherence_guard = list(
+            enabled = TRUE,
+            rollback_on_guard = TRUE,
+            min_uts_psi = 1e-8,
+            nonnegative_tol = 1e-10
           )
         ),
         legacy = list(
@@ -2124,6 +2136,36 @@ unified_validate_config <- function(cfg) {
       ))
     }
 
+    coherence_guard_enabled <- cfg_get(
+      c("coherence_guard", "enabled"),
+      defaults$coherence_guard$enabled
+    )
+    if (!isTRUE(coherence_guard_enabled) && !identical(coherence_guard_enabled, FALSE)) {
+      add_err(sprintf("%s.coherence_guard.enabled must be boolean (true/false)", key_prefix))
+    }
+
+    coherence_rollback_on_guard <- cfg_get(
+      c("coherence_guard", "rollback_on_guard"),
+      defaults$coherence_guard$rollback_on_guard
+    )
+    if (!isTRUE(coherence_rollback_on_guard) && !identical(coherence_rollback_on_guard, FALSE)) {
+      add_err(sprintf("%s.coherence_guard.rollback_on_guard must be boolean (true/false)", key_prefix))
+    }
+
+    coherence_min_uts_psi <- suppressWarnings(as.numeric(
+      cfg_get(c("coherence_guard", "min_uts_psi"), defaults$coherence_guard$min_uts_psi)
+    ))
+    if (!is.finite(coherence_min_uts_psi) || coherence_min_uts_psi <= 0) {
+      add_err(sprintf("%s.coherence_guard.min_uts_psi must be numeric and > 0", key_prefix))
+    }
+
+    coherence_nonnegative_tol <- suppressWarnings(as.numeric(
+      cfg_get(c("coherence_guard", "nonnegative_tol"), defaults$coherence_guard$nonnegative_tol)
+    ))
+    if (!is.finite(coherence_nonnegative_tol) || coherence_nonnegative_tol < 0) {
+      add_err(sprintf("%s.coherence_guard.nonnegative_tol must be numeric and >= 0", key_prefix))
+    }
+
     terminal_sampling_guard_mode <- cfg_get(
       c("terminal_sampling_guard", "mode"),
       defaults$terminal_sampling_guard_mode
@@ -2303,6 +2345,12 @@ unified_validate_config <- function(cfg) {
       enabled = TRUE,
       mode = "sigma_only",
       gamma_anchor = "full_candidate"
+    ),
+    coherence_guard = list(
+      enabled = TRUE,
+      rollback_on_guard = TRUE,
+      min_uts_psi = 1e-8,
+      nonnegative_tol = 1e-10
     ),
     terminal_sampling_guard_mode = "off",
     terminal_sampling_guard_min_guard_count = 1L,

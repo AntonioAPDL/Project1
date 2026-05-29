@@ -94,3 +94,10 @@ Less likely as primary root cause from this ladder:
    Phase C-style guarded rows.
 6. Only after those pass, relaunch the selected all-quantile/cutoff production experiments.
 
+## Implementation Follow-up
+
+The first root-cause patch from this evidence is documented in
+[`exdqlm_multivar_keep_gamma_sigma_coherence_guard_20260529.md`](exdqlm_multivar_keep_gamma_sigma_coherence_guard_20260529.md).
+It adds a theory-coherence validator for gamma/sigma moment packages, transactional source-block rollback before
+committing incoherent moments, latent `psi/chi` guard logging, unified config wiring, and focused tests. The required
+next runtime step is still a minimal q20 ladder before any full grid or production relaunch.

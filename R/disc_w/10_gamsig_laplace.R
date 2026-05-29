@@ -534,6 +534,129 @@ disc_w_validate_covariance_matrix <- function(
   )
 }
 
+disc_w_validate_gamsig_moments <- function(
+  gamsig_out,
+  L = NULL,
+  U = NULL,
+  min_positive = 1e-12,
+  nonnegative_tol = 1e-10,
+  min_uts_psi = 1e-8,
+  check_covariance = TRUE
+) {
+  fail <- function(reason, detail = "") {
+    list(ok = FALSE, reason = as.character(reason), detail = as.character(detail))
+  }
+  if (!is.list(gamsig_out)) {
+    return(fail("not_a_list"))
+  }
+
+  get1 <- function(name) {
+    value <- suppressWarnings(as.numeric(gamsig_out[[name]]))
+    if (!length(value)) return(NA_real_)
+    value[[1L]]
+  }
+
+  required <- c(
+    "E.sigma", "E.inv.sigma", "E.gam",
+    "E.c2.invb.absgam2.sigma", "E.c.invb.absgam",
+    "E.c.a.invb.absgam", "E.a2.invb.inv.sigma",
+    "E.invb.inv.sigma", "E.a.invb.inv.sigma",
+    "E.log.sig.b", "E.log.sig", "E.prior.sig.gam",
+    "E.theta"
+  )
+  missing <- required[!vapply(required, function(name) name %in% names(gamsig_out), logical(1))]
+  if (length(missing)) {
+    return(fail("missing_fields", paste(missing, collapse = ",")))
+  }
+
+  finite_fields <- setdiff(required, "E.theta")
+  finite_values <- vapply(finite_fields, get1, numeric(1))
+  bad_finite <- names(finite_values)[!is.finite(finite_values)]
+  if (length(bad_finite)) {
+    return(fail("nonfinite_fields", paste(bad_finite, collapse = ",")))
+  }
+
+  theta <- suppressWarnings(as.numeric(gamsig_out$E.theta))
+  if (length(theta) < 2L || any(!is.finite(theta[1:2]))) {
+    return(fail("invalid_E.theta"))
+  }
+
+  min_positive <- suppressWarnings(as.numeric(min_positive)[1L])
+  if (!is.finite(min_positive) || min_positive <= 0) {
+    min_positive <- 1e-12
+  }
+  nonnegative_tol <- suppressWarnings(as.numeric(nonnegative_tol)[1L])
+  if (!is.finite(nonnegative_tol) || nonnegative_tol < 0) {
+    nonnegative_tol <- 1e-10
+  }
+  min_uts_psi <- suppressWarnings(as.numeric(min_uts_psi)[1L])
+  if (!is.finite(min_uts_psi) || min_uts_psi <= 0) {
+    min_uts_psi <- 1e-8
+  }
+
+  positive_fields <- c("E.sigma", "E.inv.sigma", "E.invb.inv.sigma")
+  positive_values <- finite_values[positive_fields]
+  bad_positive <- names(positive_values)[positive_values <= min_positive]
+  if (length(bad_positive)) {
+    return(fail(
+      "nonpositive_fields",
+      paste(sprintf("%s=%s", bad_positive, format(positive_values[bad_positive], digits = 8)), collapse = ",")
+    ))
+  }
+
+  nonnegative_fields <- c("E.a2.invb.inv.sigma", "E.c2.invb.absgam2.sigma")
+  nonnegative_values <- finite_values[nonnegative_fields]
+  bad_nonnegative <- names(nonnegative_values)[nonnegative_values < -nonnegative_tol]
+  if (length(bad_nonnegative)) {
+    return(fail(
+      "negative_theory_moment",
+      paste(sprintf("%s=%s", bad_nonnegative, format(nonnegative_values[bad_nonnegative], digits = 8)), collapse = ",")
+    ))
+  }
+
+  uts_psi_floor <- finite_values[["E.a2.invb.inv.sigma"]] + 2 * finite_values[["E.inv.sigma"]]
+  if (!is.finite(uts_psi_floor) || uts_psi_floor <= min_uts_psi) {
+    return(fail(
+      "invalid_latent_psi_floor",
+      sprintf(
+        "E.a2.invb.inv.sigma + 2*E.inv.sigma = %s",
+        format(uts_psi_floor, digits = 8)
+      )
+    ))
+  }
+
+  if (!is.null(L) && !is.null(U)) {
+    L <- suppressWarnings(as.numeric(L)[1L])
+    U <- suppressWarnings(as.numeric(U)[1L])
+    gamma <- finite_values[["E.gam"]]
+    if (is.finite(L) && is.finite(U) && L < U &&
+        (gamma <= L || gamma >= U)) {
+      return(fail("gamma_outside_open_support", format(gamma, digits = 8)))
+    }
+  }
+
+  if (isTRUE(check_covariance) && !is.null(gamsig_out$Sigma.LD)) {
+    cov_validation <- disc_w_validate_covariance_matrix(gamsig_out$Sigma.LD)
+    if (!isTRUE(cov_validation$ok)) {
+      return(fail(
+        "invalid_laplace_covariance",
+        sprintf(
+          "reason=%s min_diag=%s min_eigen=%s",
+          cov_validation$reason,
+          format(cov_validation$min_diag, digits = 8),
+          format(cov_validation$min_eigen, digits = 8)
+        )
+      ))
+    }
+  }
+
+  list(ok = TRUE, reason = "ok", detail = "")
+}
+
+disc_w_gamsig_moments_are_coherent <- function(...) {
+  isTRUE(disc_w_validate_gamsig_moments(...)$ok)
+}
+
 disc_w_build_laplace_covariance <- function(
   log_hessian,
   ridge_init = 1e-6,

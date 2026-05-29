@@ -249,6 +249,26 @@ DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR <- disc_env_choice(
   choices = c("full_candidate", "zero", "previous"),
   default = "full_candidate"
 )
+DISC_GAMSIG_COHERENCE_GUARD_ENABLED <- disc_env_flag(
+  "DISC_GAMSIG_COHERENCE_GUARD_ENABLED",
+  default = TRUE
+)
+DISC_GAMSIG_COHERENCE_ROLLBACK_ON_GUARD <- disc_env_flag(
+  "DISC_GAMSIG_COHERENCE_ROLLBACK_ON_GUARD",
+  default = TRUE
+)
+DISC_GAMSIG_COHERENCE_MIN_UTS_PSI <- disc_env_pos_num(
+  "DISC_GAMSIG_COHERENCE_MIN_UTS_PSI",
+  default = 1e-8
+)
+DISC_GAMSIG_COHERENCE_NONNEGATIVE_TOL <- disc_env_num(
+  "DISC_GAMSIG_COHERENCE_NONNEGATIVE_TOL",
+  default = 1e-10
+)
+if (!is.finite(DISC_GAMSIG_COHERENCE_NONNEGATIVE_TOL) ||
+    DISC_GAMSIG_COHERENCE_NONNEGATIVE_TOL < 0) {
+  DISC_GAMSIG_COHERENCE_NONNEGATIVE_TOL <- 1e-10
+}
 DISC_GAMSIG_THETA_SIGMA_LOWER <- disc_env_num(
   "DISC_GAMSIG_THETA_SIGMA_LOWER",
   default = log(1e-4)
@@ -1945,8 +1965,29 @@ update_uts<-function(y, exps,exps2,sts,sts2,inv.sigma,a2.invb.inv.sigma,invb.inv
   u.psi = as.numeric(a2.invb.inv.sigma + 2*inv.sigma)
   u.chi = as.numeric(invb.inv.sigma*(y^2-2*y*exps+exps2) - 2*c.invb.absgam*sts*(y-exps) + c2.invb.absgam2.sigma*sts2)
 
-  u.psi[!is.finite(u.psi) | u.psi <= 0] <- 1e-6
-  u.chi[!is.finite(u.chi) | u.chi <= 0] <- 1e-6
+  bad_psi <- !is.finite(u.psi) | u.psi <= 0
+  bad_chi <- !is.finite(u.chi) | u.chi <= 0
+  if ((any(bad_psi) || any(bad_chi)) &&
+      isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+    cat(sprintf(
+      paste0(
+        "[latent_parameter_guard] p0=%s bad_psi=%d/%d bad_chi=%d/%d ",
+        "psi_min=%s psi_max=%s chi_min=%s chi_max=%s action=clamp_to_floor\n"
+      ),
+      as.character(p0),
+      as.integer(sum(bad_psi)),
+      as.integer(length(u.psi)),
+      as.integer(sum(bad_chi)),
+      as.integer(length(u.chi)),
+      format(suppressWarnings(min(u.psi, na.rm = TRUE)), digits = 8),
+      format(suppressWarnings(max(u.psi, na.rm = TRUE)), digits = 8),
+      format(suppressWarnings(min(u.chi, na.rm = TRUE)), digits = 8),
+      format(suppressWarnings(max(u.chi, na.rm = TRUE)), digits = 8)
+    ))
+    flush.console()
+  }
+  u.psi[bad_psi] <- 1e-6
+  u.chi[bad_chi] <- 1e-6
 
   s.ab <- sqrt(pmax(u.psi * u.chi, 1e-12))
 
@@ -2409,32 +2450,28 @@ if(!Climate_Center){
   initial_values <- clip_theta_pair(theta_s_init, theta_g_init)
 
   gamsig_point_moments_are_finite <- function(result) {
-    if (!is.list(result)) {
-      return(FALSE)
+    if (!isTRUE(DISC_GAMSIG_COHERENCE_GUARD_ENABLED)) {
+      if (!is.list(result)) return(FALSE)
+      required <- c(
+        "E.sigma", "E.inv.sigma", "E.gam",
+        "E.c2.invb.absgam2.sigma", "E.c.invb.absgam",
+        "E.c.a.invb.absgam", "E.a2.invb.inv.sigma",
+        "E.invb.inv.sigma", "E.a.invb.inv.sigma",
+        "E.log.sig.b", "E.log.sig", "E.prior.sig.gam",
+        "E.theta"
+      )
+      if (!all(required %in% names(result))) return(FALSE)
+      vals <- suppressWarnings(as.numeric(unlist(result[required], use.names = FALSE)))
+      return(all(is.finite(vals)))
     }
-    required <- c(
-      "E.sigma",
-      "E.inv.sigma",
-      "E.gam",
-      "E.c2.invb.absgam2.sigma",
-      "E.c.invb.absgam",
-      "E.c.a.invb.absgam",
-      "E.a2.invb.inv.sigma",
-      "E.invb.inv.sigma",
-      "E.a.invb.inv.sigma",
-      "E.log.sig.b",
-      "E.log.sig",
-      "E.prior.sig.gam",
-      "E.theta"
-    )
-    if (!all(required %in% names(result))) {
-      return(FALSE)
-    }
-    vals <- unlist(result[required], use.names = FALSE)
-    all(is.finite(vals)) &&
-      is.finite(result$E.sigma) && result$E.sigma > 0 &&
-      is.finite(result$E.inv.sigma) && result$E.inv.sigma > 0 &&
-      is.finite(result$E.invb.inv.sigma) && result$E.invb.inv.sigma > 0
+    isTRUE(disc_w_validate_gamsig_moments(
+      result,
+      L = L,
+      U = U,
+      min_uts_psi = DISC_GAMSIG_COHERENCE_MIN_UTS_PSI,
+      nonnegative_tol = DISC_GAMSIG_COHERENCE_NONNEGATIVE_TOL,
+      check_covariance = TRUE
+    )$ok)
   }
 
   run_sigma_only_fallback <- function(
@@ -3169,30 +3206,53 @@ if(!Climate_Center){
     return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = msg))
   }
 
-  return(list(E.sigma=E.sig,E.inv.sigma=E.inv.sigma,E.gam=E.gam,
-              E.c2.invb.absgam2.sigma = E.c2.invb.absgam2.sigma, E.c.invb.absgam = E.c.invb.absgam,
-              E.c.a.invb.absgam = E.c.a.invb.absgam, E.a2.invb.inv.sigma = E.a2.invb.inv.sigma,
-              E.invb.inv.sigma = E.invb.inv.sigma, E.a.invb.inv.sigma = E.a.invb.inv.sigma,
-              Sigma.LD = LD_S,
-              Hess.LD = LD_S,
-              E.log.sig.b=E.log.sig.b, 
-              E.log.sig = E.log.sig, 
-              E.prior.sig.gam= E.prior.sig.gam,
-              E.theta = LD_mu,
-              entrop = entrop,
-              guard_triggered = FALSE,
-              guard_message = "",
-              laplace_status = "ok",
-              laplace_status_message = "",
-              laplace_covariance_type = covariance_build$covariance_type,
-              laplace_covariance_reason = covariance_build$covariance_reason,
-              laplace_covariance_min_diag = covariance_build$min_diag,
-              laplace_covariance_min_eigen = covariance_build$min_eigen,
-              laplace_ridge = covariance_build$ridge_used,
-              laplace_ridge_regularized = isTRUE(covariance_build$ridge_regularized),
-              laplace_mode_search = selected_candidate$label,
-              laplace_hessian_source = laplace_hessian_source,
-              laplace_is_fallback = FALSE))
+  result <- list(E.sigma=E.sig,E.inv.sigma=E.inv.sigma,E.gam=E.gam,
+                 E.c2.invb.absgam2.sigma = E.c2.invb.absgam2.sigma, E.c.invb.absgam = E.c.invb.absgam,
+                 E.c.a.invb.absgam = E.c.a.invb.absgam, E.a2.invb.inv.sigma = E.a2.invb.inv.sigma,
+                 E.invb.inv.sigma = E.invb.inv.sigma, E.a.invb.inv.sigma = E.a.invb.inv.sigma,
+                 Sigma.LD = LD_S,
+                 Hess.LD = LD_S,
+                 E.log.sig.b=E.log.sig.b,
+                 E.log.sig = E.log.sig,
+                 E.prior.sig.gam= E.prior.sig.gam,
+                 E.theta = LD_mu,
+                 entrop = entrop,
+                 guard_triggered = FALSE,
+                 guard_message = "",
+                 laplace_status = "ok",
+                 laplace_status_message = "",
+                 laplace_covariance_type = covariance_build$covariance_type,
+                 laplace_covariance_reason = covariance_build$covariance_reason,
+                 laplace_covariance_min_diag = covariance_build$min_diag,
+                 laplace_covariance_min_eigen = covariance_build$min_eigen,
+                 laplace_ridge = covariance_build$ridge_used,
+                 laplace_ridge_regularized = isTRUE(covariance_build$ridge_regularized),
+                 laplace_mode_search = selected_candidate$label,
+                 laplace_hessian_source = laplace_hessian_source,
+                 laplace_is_fallback = FALSE)
+  if (isTRUE(DISC_GAMSIG_COHERENCE_GUARD_ENABLED)) {
+    coherence <- disc_w_validate_gamsig_moments(
+      result,
+      L = L,
+      U = U,
+      min_uts_psi = DISC_GAMSIG_COHERENCE_MIN_UTS_PSI,
+      nonnegative_tol = DISC_GAMSIG_COHERENCE_NONNEGATIVE_TOL,
+      check_covariance = TRUE
+    )
+    if (!isTRUE(coherence$ok)) {
+      msg <- sprintf(
+        "incoherent gamma/sigma moments at p0=%s context=%s label=%s reason=%s detail=%s",
+        as.character(p0),
+        context_label,
+        selected_candidate$label,
+        coherence$reason,
+        coherence$detail
+      )
+      log_guard_failure(msg)
+      return(build_guard_fallback(theta_s_init, theta_g_init, guard_msg = msg))
+    }
+  }
+  return(result)
 }
 
 ########################
@@ -4100,6 +4160,177 @@ record_near_zero_fallback <- function(gamsig_result, iter, j) {
   invisible(TRUE)
 }
 
+disc_w_gamsig_commit_fields <- c(
+  "E.gam",
+  "E.sigma",
+  "E.inv.sigma",
+  "E.c2.invb.absgam2.sigma",
+  "E.c.invb.absgam",
+  "E.c.a.invb.absgam",
+  "E.a2.invb.inv.sigma",
+  "E.invb.inv.sigma",
+  "E.a.invb.inv.sigma",
+  "E.log.sig.b",
+  "E.log.sig",
+  "E.prior.sig.gam",
+  "entrop"
+)
+
+disc_w_gamsig_source_value <- function(gamsig_out, field, source_index, default = NA_real_) {
+  if (!is.list(gamsig_out) || is.null(gamsig_out[[field]])) {
+    return(default)
+  }
+  out <- tryCatch(
+    suppressWarnings(as.numeric(gamsig_out[[field]][source_index, ][1L])),
+    error = function(e) NA_real_
+  )
+  if (!is.finite(out)) default else out
+}
+
+disc_w_gamsig_source_snapshot <- function(gamsig_out, source_index) {
+  sigma <- disc_w_gamsig_source_value(gamsig_out, "E.sigma", source_index, default = 1)
+  gamma <- disc_w_gamsig_source_value(gamsig_out, "E.gam", source_index, default = 0)
+  sigma <- if (is.finite(sigma) && sigma > 0) sigma else 1
+  gamma <- if (is.finite(gamma)) gamma else 0
+  gamma <- pmin(pmax(gamma, L + 1e-12), U - 1e-12)
+  theta_g <- tryCatch(
+    disc_w_gamma_to_theta(gamma, L = L, U = U),
+    error = function(e) disc_w_gamma_to_theta(0, L = L, U = U)
+  )
+  var_sig <- disc_w_gamsig_source_value(gamsig_out, "V.sig", source_index, default = 1e-3)
+  var_gam <- disc_w_gamsig_source_value(gamsig_out, "V.gam", source_index, default = 1e-3)
+  var_sig <- if (is.finite(var_sig) && var_sig > 0) var_sig else 1e-3
+  var_gam <- if (is.finite(var_gam) && var_gam > 0) var_gam else 1e-3
+  out <- lapply(disc_w_gamsig_commit_fields, function(field) {
+    disc_w_gamsig_source_value(gamsig_out, field, source_index, default = 0)
+  })
+  names(out) <- disc_w_gamsig_commit_fields
+  out$E.sigma <- sigma
+  out$E.gam <- gamma
+  out$E.inv.sigma <- if (is.finite(out$E.inv.sigma) && out$E.inv.sigma > 0) out$E.inv.sigma else 1 / sigma
+  out$Sigma.LD <- diag(c(var_sig, var_gam), nrow = 2L)
+  out$Hess.LD <- out$Sigma.LD
+  out$E.theta <- c(log(sigma), theta_g)
+  out$guard_triggered <- FALSE
+  out$guard_message <- ""
+  out$laplace_status <- "previous"
+  out$laplace_status_message <- ""
+  out$laplace_covariance_type <- "previous_diagonal"
+  out$laplace_ridge <- NA_real_
+  out$laplace_ridge_regularized <- FALSE
+  out$laplace_mode_search <- "previous"
+  out$laplace_hessian_source <- "previous_diagonal"
+  out$laplace_is_fallback <- TRUE
+  out$near_zero_fallback <- FALSE
+  out$near_zero_fallback_reason <- ""
+  out$near_zero_fallback_anchor <- ""
+  coherence <- disc_w_validate_gamsig_moments(
+    out,
+    L = L,
+    U = U,
+    min_uts_psi = DISC_GAMSIG_COHERENCE_MIN_UTS_PSI,
+    nonnegative_tol = DISC_GAMSIG_COHERENCE_NONNEGATIVE_TOL,
+    check_covariance = TRUE
+  )
+  if (!isTRUE(coherence$ok)) {
+    a <- A.fn(p0, gamma)
+    b <- B.fn(p0, gamma)
+    c <- C.fn(p0, gamma)
+    out$E.c2.invb.absgam2.sigma <- c^2 * sigma * abs(gamma)^2 / b
+    out$E.c.invb.absgam <- c * abs(gamma) / b
+    out$E.c.a.invb.absgam <- c * abs(gamma) * a / b
+    out$E.a2.invb.inv.sigma <- a^2 / (sigma * b)
+    out$E.invb.inv.sigma <- 1 / (sigma * b)
+    out$E.a.invb.inv.sigma <- a / (sigma * b)
+    out$E.log.sig.b <- log(sigma * b)
+    out$E.log.sig <- log(sigma)
+    out$E.prior.sig.gam <- 0
+    out$entrop <- 0
+    out$laplace_status <- "previous_point_repair"
+    out$laplace_status_message <- sprintf(
+      "previous source moments repaired from gamma/sigma after coherence failure reason=%s detail=%s",
+      coherence$reason,
+      coherence$detail
+    )
+    out$laplace_mode_search <- "previous_point_repair"
+  }
+  out
+}
+
+disc_w_prepare_gamsig_for_commit <- function(gamsig_candidate, current_gamsig, source_index, iter, context_label) {
+  reject <- FALSE
+  reason <- ""
+  detail <- ""
+  if (!is.list(gamsig_candidate)) {
+    reject <- TRUE
+    reason <- "not_a_list"
+  } else if (isTRUE(DISC_GAMSIG_COHERENCE_GUARD_ENABLED)) {
+    coherence <- disc_w_validate_gamsig_moments(
+      gamsig_candidate,
+      L = L,
+      U = U,
+      min_uts_psi = DISC_GAMSIG_COHERENCE_MIN_UTS_PSI,
+      nonnegative_tol = DISC_GAMSIG_COHERENCE_NONNEGATIVE_TOL,
+      check_covariance = TRUE
+    )
+    if (!isTRUE(coherence$ok)) {
+      reject <- TRUE
+      reason <- coherence$reason
+      detail <- coherence$detail
+    }
+  }
+  if (!reject &&
+      isTRUE(DISC_GAMSIG_COHERENCE_ROLLBACK_ON_GUARD) &&
+      isTRUE(gamsig_candidate$guard_triggered)) {
+    reject <- TRUE
+    reason <- "guard_triggered"
+    detail <- ifelse(
+      is.null(gamsig_candidate$guard_message),
+      "",
+      as.character(gamsig_candidate$guard_message)
+    )
+  }
+  if (!reject) {
+    return(gamsig_candidate)
+  }
+
+  rollback <- disc_w_gamsig_source_snapshot(current_gamsig, source_index)
+  rollback$guard_triggered <- TRUE
+  rollback$guard_message <- sprintf(
+    "rolled back gamma/sigma source update at iter=%d j=%d context=%s reason=%s detail=%s",
+    as.integer(iter),
+    as.integer(source_index),
+    as.character(context_label),
+    as.character(reason),
+    as.character(detail)
+  )
+  rollback$laplace_status <- "rollback_previous"
+  rollback$laplace_status_message <- rollback$guard_message
+  rollback$laplace_mode_search <- "rollback_previous"
+  if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+    cat(sprintf(
+      "[gamsig_rollback] p0=%s iter=%d j=%d context=%s reason=%s detail=%s\n",
+      as.character(p0),
+      as.integer(iter),
+      as.integer(source_index),
+      as.character(context_label),
+      as.character(reason),
+      as.character(detail)
+    ))
+    flush.console()
+  }
+  rollback
+}
+
+disc_w_assign_gamsig_source <- function(target_gamsig, source_index, gamsig_source) {
+  for (field in disc_w_gamsig_commit_fields) {
+    if (!is.null(target_gamsig[[field]]) && !is.null(gamsig_source[[field]])) {
+      target_gamsig[[field]][source_index, ] <- gamsig_source[[field]]
+    }
+  }
+  target_gamsig
+}
+
 disc_w_symmetrize <- function(M) {
   0.5 * (M + t(M))
 }
@@ -4400,6 +4631,14 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$hold_iters),
     as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$refresh_iters),
     as.integer(DISC_GAMSIG_STATE_GUARD_START_ITER)
+  ))
+  cat(sprintf(
+    "[gamsig_coherence_policy] p0=%s enabled=%s rollback_on_guard=%s min_uts_psi=%g nonnegative_tol=%g\n",
+    as.character(p0),
+    ifelse(isTRUE(DISC_GAMSIG_COHERENCE_GUARD_ENABLED), "true", "false"),
+    ifelse(isTRUE(DISC_GAMSIG_COHERENCE_ROLLBACK_ON_GUARD), "true", "false"),
+    as.numeric(DISC_GAMSIG_COHERENCE_MIN_UTS_PSI),
+    as.numeric(DISC_GAMSIG_COHERENCE_NONNEGATIVE_TOL)
   ))
   flush.console()
 }
@@ -5063,12 +5302,19 @@ while (isTRUE(FLAG) && iter < max_iter) {
                                               new.uts.out$E.inv.uts[j,],
 	                                              cur.gamsig.out$E.sigma[j,],
 	                                              cur.gamsig.out$E.gam[j,],
-	                                              FALSE,
-	                                              context_label = sprintf("vb_main iter=%d j=%d climate_center=FALSE", iter, j))
-	          record_near_zero_fallback(gamsig.dummy, iter, j)
-	          if (isTRUE(gamsig.dummy$guard_triggered) &&
-	              DISC_GAMSIG_GUARD_REFREEZE_ITERS > 0L &&
-	              identical(DISC_GAMSIG_FREEZE_TARGET, "gamma_sigma")) {
+		                                              FALSE,
+		                                              context_label = sprintf("vb_main iter=%d j=%d climate_center=FALSE", iter, j))
+		          record_near_zero_fallback(gamsig.dummy, iter, j)
+		          gamsig.dummy <- disc_w_prepare_gamsig_for_commit(
+		            gamsig_candidate = gamsig.dummy,
+		            current_gamsig = cur.gamsig.out,
+		            source_index = j,
+		            iter = iter,
+		            context_label = sprintf("vb_main iter=%d j=%d climate_center=FALSE", iter, j)
+		          )
+		          if (isTRUE(gamsig.dummy$guard_triggered) &&
+		              DISC_GAMSIG_GUARD_REFREEZE_ITERS > 0L &&
+		              identical(DISC_GAMSIG_FREEZE_TARGET, "gamma_sigma")) {
             old_freeze_until <- gamsig_dynamic_freeze_until_iter
             gamsig_dynamic_freeze_until_iter <- max(
               as.integer(gamsig_dynamic_freeze_until_iter),
@@ -5085,25 +5331,13 @@ while (isTRUE(FLAG) && iter < max_iter) {
                 as.integer(gamsig_dynamic_freeze_until_iter),
                 ifelse(is.null(gamsig.dummy$guard_message), "", as.character(gamsig.dummy$guard_message))
               ))
-              flush.console()
-            }
-          }
-          new.gamsig.out$E.gam[j,] <- gamsig.dummy$E.gam
-          new.gamsig.out$E.sigma[j,] <- gamsig.dummy$E.sigma
-          new.gamsig.out$E.inv.sigma[j,] <- gamsig.dummy$E.inv.sigma
-          new.gamsig.out$E.c2.invb.absgam2.sigma[j,] <- gamsig.dummy$E.c2.invb.absgam2.sigma
-          new.gamsig.out$E.c.invb.absgam[j,] <- gamsig.dummy$E.c.invb.absgam
-          new.gamsig.out$E.c.a.invb.absgam[j,] <- gamsig.dummy$E.c.a.invb.absgam
-          new.gamsig.out$E.a2.invb.inv.sigma[j,] <- gamsig.dummy$E.a2.invb.inv.sigma
-          new.gamsig.out$E.invb.inv.sigma[j,] <- gamsig.dummy$E.invb.inv.sigma
-          new.gamsig.out$E.a.invb.inv.sigma[j,] <- gamsig.dummy$E.a.invb.inv.sigma
-          new.gamsig.out$E.log.sig.b[j,] <- gamsig.dummy$E.log.sig.b
-          new.gamsig.out$E.log.sig[j,] <- gamsig.dummy$E.log.sig
-          new.gamsig.out$E.prior.sig.gam[j,] <- gamsig.dummy$E.prior.sig.gam
-          new.gamsig.out$entrop[j,] <- gamsig.dummy$entrop
-          disc_w_diag_record_gamsig_update(
-            iter = iter,
-            source_index = j,
+		              flush.console()
+		            }
+		          }
+	          new.gamsig.out <- disc_w_assign_gamsig_source(new.gamsig.out, j, gamsig.dummy)
+	          disc_w_diag_record_gamsig_update(
+	            iter = iter,
+	            source_index = j,
             climate_center = FALSE,
             gamsig_out = gamsig.dummy,
             context_label = "fit_history",
@@ -5205,12 +5439,19 @@ while (isTRUE(FLAG) && iter < max_iter) {
                                               new.sts.out_f$E.sts[[j-1]],
                                               new.sts.out_f$E.sts2[[j-1]],
 	                                              new.uts.out_f$E.uts[[j-1]],
-	                                              new.uts.out_f$E.inv.uts[[j-1]],
-	                                              context_label = sprintf("vb_main iter=%d j=%d climate_center=TRUE", iter, j))
-	          record_near_zero_fallback(gamsig.dummy, iter, j)
-	          if (isTRUE(gamsig.dummy$guard_triggered) &&
-	              DISC_GAMSIG_GUARD_REFREEZE_ITERS > 0L &&
-	              identical(DISC_GAMSIG_FREEZE_TARGET, "gamma_sigma")) {
+		                                              new.uts.out_f$E.inv.uts[[j-1]],
+		                                              context_label = sprintf("vb_main iter=%d j=%d climate_center=TRUE", iter, j))
+		          record_near_zero_fallback(gamsig.dummy, iter, j)
+		          gamsig.dummy <- disc_w_prepare_gamsig_for_commit(
+		            gamsig_candidate = gamsig.dummy,
+		            current_gamsig = cur.gamsig.out,
+		            source_index = j,
+		            iter = iter,
+		            context_label = sprintf("vb_main iter=%d j=%d climate_center=TRUE", iter, j)
+		          )
+		          if (isTRUE(gamsig.dummy$guard_triggered) &&
+		              DISC_GAMSIG_GUARD_REFREEZE_ITERS > 0L &&
+		              identical(DISC_GAMSIG_FREEZE_TARGET, "gamma_sigma")) {
             old_freeze_until <- gamsig_dynamic_freeze_until_iter
             gamsig_dynamic_freeze_until_iter <- max(
               as.integer(gamsig_dynamic_freeze_until_iter),
@@ -5228,25 +5469,13 @@ while (isTRUE(FLAG) && iter < max_iter) {
                 ifelse(is.null(gamsig.dummy$guard_message), "", as.character(gamsig.dummy$guard_message))
               ))
               flush.console()
-            }
-          }
+		            }
+		          }
 
-          new.gamsig.out$E.gam[j,] <- gamsig.dummy$E.gam
-          new.gamsig.out$E.sigma[j,] <- gamsig.dummy$E.sigma
-          new.gamsig.out$E.inv.sigma[j,] <- gamsig.dummy$E.inv.sigma
-          new.gamsig.out$E.c2.invb.absgam2.sigma[j,] <- gamsig.dummy$E.c2.invb.absgam2.sigma
-          new.gamsig.out$E.c.invb.absgam[j,] <- gamsig.dummy$E.c.invb.absgam
-          new.gamsig.out$E.c.a.invb.absgam[j,] <- gamsig.dummy$E.c.a.invb.absgam
-          new.gamsig.out$E.a2.invb.inv.sigma[j,] <- gamsig.dummy$E.a2.invb.inv.sigma
-          new.gamsig.out$E.invb.inv.sigma[j,] <- gamsig.dummy$E.invb.inv.sigma
-          new.gamsig.out$E.a.invb.inv.sigma[j,] <- gamsig.dummy$E.a.invb.inv.sigma
-          new.gamsig.out$E.log.sig.b[j,] <- gamsig.dummy$E.log.sig.b
-          new.gamsig.out$E.log.sig[j,] <- gamsig.dummy$E.log.sig
-          new.gamsig.out$E.prior.sig.gam[j,] <- gamsig.dummy$E.prior.sig.gam
-          new.gamsig.out$entrop[j,] <- gamsig.dummy$entrop
-          disc_w_diag_record_gamsig_update(
-            iter = iter,
-            source_index = j,
+	          new.gamsig.out <- disc_w_assign_gamsig_source(new.gamsig.out, j, gamsig.dummy)
+	          disc_w_diag_record_gamsig_update(
+	            iter = iter,
+	            source_index = j,
             climate_center = TRUE,
             gamsig_out = gamsig.dummy,
             context_label = "fit_forecast",
@@ -5333,8 +5562,8 @@ while (isTRUE(FLAG) && iter < max_iter) {
   elbo <- elbo +sum(new.gamsig.out$E.prior.sig.gam[,])
 
   elbo <- elbo +sum(new.uts.out$tot.entrop[,])+sum(unlist(new.uts.out_f$tot.entrop))
-  elbo <- elbo +sum(new.sts.out$E.tot.entrop[,])+sum(unlist(new.sts.out_f$tot.entrop)) 
-  elbo <- elbo +sum(new.gamsig.out$E.sig.gam.entrop[,])
+  elbo <- elbo +sum(new.sts.out$tot.entrop[,])+sum(unlist(new.sts.out_f$tot.entrop))
+  elbo <- elbo +sum(new.gamsig.out$entrop[,])
   elbo <- elbo + new.theta.out$elbo.part
 
   ######################
@@ -5797,24 +6026,19 @@ for (j in 1:(J+1)) {
                                             new.sts.out$E.sts2[j,], 
                                             new.uts.out$E.uts[j,], 
                                             new.uts.out$E.inv.uts[j,],
-                                            cur.gamsig.out$E.sigma[j,], 
-                                            cur.gamsig.out$E.gam[j,],
-                                            FALSE,
-                                            context_label = sprintf("sampling j=%d climate_center=FALSE", j))    
-        new.gamsig.out$E.gam[j,] <- gamsig.dummy$E.gam
-        new.gamsig.out$E.sigma[j,] <- gamsig.dummy$E.sigma
-        new.gamsig.out$E.inv.sigma[j,] <- gamsig.dummy$E.inv.sigma
-        new.gamsig.out$E.c2.invb.absgam2.sigma[j,] <- gamsig.dummy$E.c2.invb.absgam2.sigma
-        new.gamsig.out$E.c.invb.absgam[j,] <- gamsig.dummy$E.c.invb.absgam
-        new.gamsig.out$E.c.a.invb.absgam[j,] <- gamsig.dummy$E.c.a.invb.absgam
-        new.gamsig.out$E.a2.invb.inv.sigma[j,] <- gamsig.dummy$E.a2.invb.inv.sigma
-        new.gamsig.out$E.invb.inv.sigma[j,] <- gamsig.dummy$E.invb.inv.sigma
-        new.gamsig.out$E.a.invb.inv.sigma[j,] <- gamsig.dummy$E.a.invb.inv.sigma
-        new.gamsig.out$E.log.sig.b[j,] <- gamsig.dummy$E.log.sig.b
-        new.gamsig.out$E.log.sig[j,] <- gamsig.dummy$E.log.sig
-        new.gamsig.out$E.prior.sig.gam[j,] <- gamsig.dummy$E.prior.sig.gam
-        new.gamsig.out$entrop[j,] <- gamsig.dummy$entrop
-        ########################
+	                                            cur.gamsig.out$E.sigma[j,],
+	                                            cur.gamsig.out$E.gam[j,],
+	                                            FALSE,
+	                                            context_label = sprintf("sampling j=%d climate_center=FALSE", j))
+	        gamsig.dummy <- disc_w_prepare_gamsig_for_commit(
+	          gamsig_candidate = gamsig.dummy,
+	          current_gamsig = cur.gamsig.out,
+	          source_index = j,
+	          iter = iter,
+	          context_label = sprintf("sampling j=%d climate_center=FALSE", j)
+	        )
+	        new.gamsig.out <- disc_w_assign_gamsig_source(new.gamsig.out, j, gamsig.dummy)
+	        ########################
         ########################
         theta_s <- gamsig.dummy$E.theta[1]
         theta_g <- gamsig.dummy$E.theta[2]
@@ -6026,24 +6250,19 @@ disc_sampling_diag_mark("sampling_gamma_sigma", sprintf("forecast_blocks=%d", as
                                             k_forecast,
                                             new.sts.out_f$E.sts[[j-1]],
                                             new.sts.out_f$E.sts2[[j-1]],
-                                            new.uts.out_f$E.uts[[j-1]],
-                                            new.uts.out_f$E.inv.uts[[j-1]],
-                                            context_label = sprintf("sampling j=%d climate_center=TRUE", j))
+	                                            new.uts.out_f$E.uts[[j-1]],
+	                                            new.uts.out_f$E.inv.uts[[j-1]],
+	                                            context_label = sprintf("sampling j=%d climate_center=TRUE", j))
 
-        new.gamsig.out$E.gam[j,] <- gamsig.dummy$E.gam
-        new.gamsig.out$E.sigma[j,] <- gamsig.dummy$E.sigma
-        new.gamsig.out$E.inv.sigma[j,] <- gamsig.dummy$E.inv.sigma
-        new.gamsig.out$E.c2.invb.absgam2.sigma[j,] <- gamsig.dummy$E.c2.invb.absgam2.sigma
-        new.gamsig.out$E.c.invb.absgam[j,] <- gamsig.dummy$E.c.invb.absgam
-        new.gamsig.out$E.c.a.invb.absgam[j,] <- gamsig.dummy$E.c.a.invb.absgam
-        new.gamsig.out$E.a2.invb.inv.sigma[j,] <- gamsig.dummy$E.a2.invb.inv.sigma
-        new.gamsig.out$E.invb.inv.sigma[j,] <- gamsig.dummy$E.invb.inv.sigma
-        new.gamsig.out$E.a.invb.inv.sigma[j,] <- gamsig.dummy$E.a.invb.inv.sigma
-        new.gamsig.out$E.log.sig.b[j,] <- gamsig.dummy$E.log.sig.b
-        new.gamsig.out$E.log.sig[j,] <- gamsig.dummy$E.log.sig
-        new.gamsig.out$E.prior.sig.gam[j,] <- gamsig.dummy$E.prior.sig.gam
-        new.gamsig.out$entrop[j,] <- gamsig.dummy$entrop
-        ########################
+	        gamsig.dummy <- disc_w_prepare_gamsig_for_commit(
+	          gamsig_candidate = gamsig.dummy,
+	          current_gamsig = cur.gamsig.out,
+	          source_index = j,
+	          iter = iter,
+	          context_label = sprintf("sampling j=%d climate_center=TRUE", j)
+	        )
+	        new.gamsig.out <- disc_w_assign_gamsig_source(new.gamsig.out, j, gamsig.dummy)
+	        ########################
         theta_s <- gamsig.dummy$E.theta[1]
         theta_g <- gamsig.dummy$E.theta[2]
         ########################

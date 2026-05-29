@@ -1219,6 +1219,18 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR = as.character(unified_get(
         gamsig_policy, c("near_zero_fallback", "gamma_anchor"), default = "full_candidate"
       )),
+      DISC_GAMSIG_COHERENCE_GUARD_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("coherence_guard", "enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_COHERENCE_ROLLBACK_ON_GUARD = if (isTRUE(unified_get(
+        gamsig_policy, c("coherence_guard", "rollback_on_guard"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_COHERENCE_MIN_UTS_PSI = as.character(unified_get(
+        gamsig_policy, c("coherence_guard", "min_uts_psi"), default = 1e-8
+      )),
+      DISC_GAMSIG_COHERENCE_NONNEGATIVE_TOL = as.character(unified_get(
+        gamsig_policy, c("coherence_guard", "nonnegative_tol"), default = 1e-10
+      )),
       DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE = as.character(unified_get(
         gamsig_policy, c("terminal_sampling_guard", "mode"), default = "off"
       )),

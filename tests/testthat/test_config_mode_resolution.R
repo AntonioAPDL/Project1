@@ -27,6 +27,10 @@ test_that("unified config defaults include new likelihood and ndlm transfer mode
   expect_equal(cfg$fit$exdqlm_multivar$latent_ablation$mode, "free")
   expect_equal(cfg$fit$exdqlm_multivar$latent_ablation$e_inv_u_cap, 5000)
   expect_equal(cfg$fit$exdqlm_multivar$latent_ablation$e_u_cap, 1e6)
+  expect_equal(cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$enabled, TRUE)
+  expect_equal(cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$rollback_on_guard, TRUE)
+  expect_equal(cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$min_uts_psi, 1e-8)
+  expect_equal(cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$nonnegative_tol, 1e-10)
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$enabled, TRUE)
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$mode, "warn")
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$caps$e_inv_u_abs_cap, 5000)
@@ -146,6 +150,10 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   cfg$fit$exdqlm_multivar$diagnostics$latent$enabled <- TRUE
   cfg$fit$exdqlm_multivar$diagnostics$latent$report_dir <- file.path(tmp_root, "latent_diag")
   cfg$fit$exdqlm_multivar$diagnostics$latent$top_k <- 12L
+  cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$enabled <- TRUE
+  cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$rollback_on_guard <- TRUE
+  cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$min_uts_psi <- 1e-8
+  cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$nonnegative_tol <- 1e-10
   cfg$fit$exdqlm_multivar$gamma_sigma$stabilization <- list(state_guard_start_iter = 1000L)
 
   expect_equal(unified_validate_config(cfg), character(0))
@@ -161,6 +169,10 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   cfg_bad$fit$exdqlm_multivar$diagnostics$latent$top_k <- 0L
   cfg_bad$fit$exdqlm_multivar$diagnostics$latent$write_iteration_summary <- "yes"
   cfg_bad$fit$exdqlm_multivar$diagnostics$latent$write_top_cells <- "no"
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$coherence_guard$enabled <- "yes"
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$coherence_guard$rollback_on_guard <- "yes"
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$coherence_guard$min_uts_psi <- 0
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$coherence_guard$nonnegative_tol <- -1
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_start_iter <- -1L
   cfg_bad$fit$exdqlm_multivar$legacy$post_save_objective_enabled <- "yes"
   cfg_bad$fit$exdqlm_multivar$legacy$post_save_jsd_enabled <- "no"
@@ -177,6 +189,10 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   expect_true(any(grepl("diagnostics\\.latent\\.top_k", errs)))
   expect_true(any(grepl("diagnostics\\.latent\\.write_iteration_summary", errs)))
   expect_true(any(grepl("diagnostics\\.latent\\.write_top_cells", errs)))
+  expect_true(any(grepl("coherence_guard\\.enabled", errs)))
+  expect_true(any(grepl("coherence_guard\\.rollback_on_guard", errs)))
+  expect_true(any(grepl("coherence_guard\\.min_uts_psi", errs)))
+  expect_true(any(grepl("coherence_guard\\.nonnegative_tol", errs)))
   expect_true(any(grepl("stabilization\\.state_guard_start_iter", errs)))
   expect_true(any(grepl("post_save_objective_enabled", errs)))
   expect_true(any(grepl("post_save_jsd_enabled", errs)))
