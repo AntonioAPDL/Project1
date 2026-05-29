@@ -175,3 +175,9 @@ git diff --check
 ```
 
 Result: pass, 24 expectations.
+
+## Completed Ladder Results
+
+The A/B/C ladder completed on 2026-05-29. See
+[`exdqlm_multivar_keep_latent_diag_overnight_results_20260529.md`](exdqlm_multivar_keep_latent_diag_overnight_results_20260529.md)
+for the run outcome, evidence paths, interpretation, and prioritized fix plan.
