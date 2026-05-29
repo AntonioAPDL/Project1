@@ -131,6 +131,7 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
 
   X_f <- merge(X_ppt_f, X_soil_f, by = "time")
   X_f <- merge(X_f, X_pca_f, by = "time")
+  forecast_dates <- as.Date(X_f[, "time"])
 
   #############
   ## Retrosp ##
@@ -191,6 +192,8 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
     X_f = X_f,
     Y = Y,
     TT = TT,
-    J = J
+    J = J,
+    history_dates = as.Date(timestamps),
+    forecast_dates = forecast_dates
   )
 }

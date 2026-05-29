@@ -643,3 +643,25 @@ The plan is ready to implement when these are all true:
 7. the final report template exists before the diagnostic runs start.
 
 The first implementation step should be diagnostic instrumentation, not algorithmic stabilization.
+
+## Implementation Status 2026-05-29
+
+The no-run implementation step is complete and documented in
+[`exdqlm_multivar_keep_20260524_latent_diagnostics_implementation.md`](exdqlm_multivar_keep_20260524_latent_diagnostics_implementation.md).
+
+Implemented:
+
+| item | status |
+| --- | --- |
+| default-off latent/pseudodata/gamsig diagnostic flags | done |
+| `latent_update_summary.csv` and `latent_update_top_cells.csv` writers | done |
+| `gamsig_source_iteration_summary.csv` writer | done |
+| `pseudodata_iteration_summary.csv` and `pseudodata_top_cells.csv` writers | done |
+| forecast ELBO `s_t` source-accounting fix and source-contract test | done |
+| isolated A/B/C q20 diagnostic config preparer | done |
+| diagnostic report collector, including sampling log extraction | done |
+| generated 10-row A/B/C diagnostic matrix under isolated runtime root | done, not launched |
+
+The next action is not a full grid rerun. The next action is to launch only the prepared targeted diagnostic rows after
+explicit approval, then aggregate the resulting diagnostics with
+`scripts/report_he2_exdqlm_multivar_keep_latent_diagnostics.py`.

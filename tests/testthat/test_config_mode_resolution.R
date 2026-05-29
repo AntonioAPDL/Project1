@@ -26,9 +26,14 @@ test_that("unified config defaults include new likelihood and ndlm transfer mode
   expect_equal(cfg$post$multivar_component_diagnostics$fail_fast, TRUE)
   expect_equal(cfg$fit$exdqlm_multivar$latent_ablation$mode, "free")
   expect_equal(cfg$fit$exdqlm_multivar$latent_ablation$e_inv_u_cap, 5000)
+  expect_equal(cfg$fit$exdqlm_multivar$latent_ablation$e_u_cap, 1e6)
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$enabled, TRUE)
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$mode, "warn")
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$caps$e_inv_u_abs_cap, 5000)
+  expect_equal(cfg$fit$exdqlm_multivar$diagnostics$latent$enabled, FALSE)
+  expect_equal(cfg$fit$exdqlm_multivar$diagnostics$latent$top_k, 20L)
+  expect_equal(cfg$fit$exdqlm_multivar$diagnostics$latent$write_iteration_summary, TRUE)
+  expect_equal(cfg$fit$exdqlm_multivar$diagnostics$latent$write_top_cells, TRUE)
   expect_equal(cfg$fit$exdqlm_multivar$legacy$post_save_objective_enabled, FALSE)
   expect_equal(cfg$fit$exdqlm_multivar$legacy$post_save_jsd_enabled, FALSE)
   expect_equal(cfg$fit$exdqlm_multivar$legacy$post_save_jsd_gridsize, 100L)
@@ -133,10 +138,14 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   cfg$inputs$fit$nws_forecast_path <- nws_path
   cfg$inputs$fit$glofas_forecast_path <- glofas_path
   cfg$inputs$forecats$existing_bundle_path <- bundle_path
-  cfg$fit$exdqlm_multivar$latent_ablation$mode <- "cap_e_inv_u"
+  cfg$fit$exdqlm_multivar$latent_ablation$mode <- "cap_e_u_and_e_inv_u"
   cfg$fit$exdqlm_multivar$latent_ablation$e_inv_u_cap <- 5000
+  cfg$fit$exdqlm_multivar$latent_ablation$e_u_cap <- 1e6
   cfg$fit$exdqlm_multivar$pseudodata_guard$enabled <- TRUE
   cfg$fit$exdqlm_multivar$pseudodata_guard$mode <- "fail"
+  cfg$fit$exdqlm_multivar$diagnostics$latent$enabled <- TRUE
+  cfg$fit$exdqlm_multivar$diagnostics$latent$report_dir <- file.path(tmp_root, "latent_diag")
+  cfg$fit$exdqlm_multivar$diagnostics$latent$top_k <- 12L
   cfg$fit$exdqlm_multivar$gamma_sigma$stabilization <- list(state_guard_start_iter = 1000L)
 
   expect_equal(unified_validate_config(cfg), character(0))
@@ -144,9 +153,14 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   cfg_bad <- cfg
   cfg_bad$fit$exdqlm_multivar$latent_ablation$mode <- "bogus"
   cfg_bad$fit$exdqlm_multivar$latent_ablation$e_inv_u_cap <- 0
+  cfg_bad$fit$exdqlm_multivar$latent_ablation$e_u_cap <- 0
   cfg_bad$fit$exdqlm_multivar$pseudodata_guard$enabled <- "yes"
   cfg_bad$fit$exdqlm_multivar$pseudodata_guard$mode <- "panic"
   cfg_bad$fit$exdqlm_multivar$pseudodata_guard$caps$fff_abs_cap <- -1
+  cfg_bad$fit$exdqlm_multivar$diagnostics$latent$enabled <- "yes"
+  cfg_bad$fit$exdqlm_multivar$diagnostics$latent$top_k <- 0L
+  cfg_bad$fit$exdqlm_multivar$diagnostics$latent$write_iteration_summary <- "yes"
+  cfg_bad$fit$exdqlm_multivar$diagnostics$latent$write_top_cells <- "no"
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_start_iter <- -1L
   cfg_bad$fit$exdqlm_multivar$legacy$post_save_objective_enabled <- "yes"
   cfg_bad$fit$exdqlm_multivar$legacy$post_save_jsd_enabled <- "no"
@@ -155,9 +169,14 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   errs <- unified_validate_config(cfg_bad)
   expect_true(any(grepl("latent_ablation\\.mode", errs)))
   expect_true(any(grepl("latent_ablation\\.e_inv_u_cap", errs)))
+  expect_true(any(grepl("latent_ablation\\.e_u_cap", errs)))
   expect_true(any(grepl("pseudodata_guard\\.enabled", errs)))
   expect_true(any(grepl("pseudodata_guard\\.mode", errs)))
   expect_true(any(grepl("pseudodata_guard\\.caps\\.fff_abs_cap", errs)))
+  expect_true(any(grepl("diagnostics\\.latent\\.enabled", errs)))
+  expect_true(any(grepl("diagnostics\\.latent\\.top_k", errs)))
+  expect_true(any(grepl("diagnostics\\.latent\\.write_iteration_summary", errs)))
+  expect_true(any(grepl("diagnostics\\.latent\\.write_top_cells", errs)))
   expect_true(any(grepl("stabilization\\.state_guard_start_iter", errs)))
   expect_true(any(grepl("post_save_objective_enabled", errs)))
   expect_true(any(grepl("post_save_jsd_enabled", errs)))

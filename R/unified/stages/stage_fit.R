@@ -914,6 +914,10 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       cfg, c("fit", "exdqlm_multivar", "pseudodata_guard"), default = list()
     )
     if (!is.list(pseudodata_guard_policy)) pseudodata_guard_policy <- list()
+    latent_diagnostics_policy <- unified_get(
+      cfg, c("fit", "exdqlm_multivar", "diagnostics", "latent"), default = list()
+    )
+    if (!is.list(latent_diagnostics_policy)) latent_diagnostics_policy <- list()
     pseudodata_guard_report_dir <- as.character(unified_get(
       pseudodata_guard_policy, c("report_dir"), default = ""
     ))
@@ -924,6 +928,17 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     }
     if (!nzchar(pseudodata_guard_report_dir)) {
       pseudodata_guard_report_dir <- file.path(q_logs, "pseudodata_guard")
+    }
+    latent_diagnostics_report_dir <- as.character(unified_get(
+      latent_diagnostics_policy, c("report_dir"), default = ""
+    ))
+    if (!length(latent_diagnostics_report_dir) || is.na(latent_diagnostics_report_dir[[1L]])) {
+      latent_diagnostics_report_dir <- ""
+    } else {
+      latent_diagnostics_report_dir <- latent_diagnostics_report_dir[[1L]]
+    }
+    if (!nzchar(latent_diagnostics_report_dir)) {
+      latent_diagnostics_report_dir <- file.path(q_logs, "latent_diagnostics")
     }
 
     transfer_compare_fast_enabled <- isTRUE(unified_get(
@@ -1057,6 +1072,22 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_LATENT_E_INV_U_CAP = as.character(unified_get(
         latent_ablation_policy, c("e_inv_u_cap"), default = 5000
       )),
+      DISC_LATENT_E_U_CAP = as.character(unified_get(
+        latent_ablation_policy, c("e_u_cap"), default = 1e6
+      )),
+      DISC_W_LATENT_DIAG_ENABLED = if (isTRUE(unified_get(
+        latent_diagnostics_policy, c("enabled"), default = FALSE
+      ))) "TRUE" else "FALSE",
+      DISC_W_LATENT_DIAG_REPORT_DIR = latent_diagnostics_report_dir,
+      DISC_W_LATENT_DIAG_TOP_K = as.character(unified_get(
+        latent_diagnostics_policy, c("top_k"), default = 20L
+      )),
+      DISC_W_LATENT_DIAG_WRITE_ITERATION_SUMMARY = if (isTRUE(unified_get(
+        latent_diagnostics_policy, c("write_iteration_summary"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_W_LATENT_DIAG_WRITE_TOP_CELLS = if (isTRUE(unified_get(
+        latent_diagnostics_policy, c("write_top_cells"), default = TRUE
+      ))) "TRUE" else "FALSE",
       DISC_PSEUDODATA_GUARD_ENABLED = if (isTRUE(unified_get(
         pseudodata_guard_policy, c("enabled"), default = TRUE
       ))) "TRUE" else "FALSE",

@@ -361,7 +361,8 @@ unified_config_defaults <- function() {
         ),
         latent_ablation = list(
           mode = "free",
-          e_inv_u_cap = 5000
+          e_inv_u_cap = 5000,
+          e_u_cap = 1e6
         ),
         pseudodata_guard = list(
           enabled = TRUE,
@@ -374,6 +375,15 @@ unified_config_defaults <- function() {
             e_s2_abs_cap = 1e6,
             e_u_abs_cap = 1e6,
             e_inv_u_abs_cap = 5000
+          )
+        ),
+        diagnostics = list(
+          latent = list(
+            enabled = FALSE,
+            report_dir = "",
+            top_k = 20L,
+            write_iteration_summary = TRUE,
+            write_top_cells = TRUE
           )
         ),
         forecast_health = list(
@@ -2172,12 +2182,20 @@ unified_validate_config <- function(cfg) {
       cfg, c("fit", "exdqlm_multivar", "latent_ablation", "mode"), default = "free"
     ))
     latent_mode <- if (length(latent_mode) > 0L) latent_mode[[1L]] else ""
-    if (!(latent_mode %in% c("free", "freeze", "cap_e_inv_u"))) {
-      add_err("fit.exdqlm_multivar.latent_ablation.mode must be one of: free, freeze, cap_e_inv_u")
+    latent_modes <- c("free", "freeze", "cap_e_inv_u", "cap_e_u_and_e_inv_u", "freeze_on_e_u_guard")
+    if (!(latent_mode %in% latent_modes)) {
+      add_err(sprintf(
+        "fit.exdqlm_multivar.latent_ablation.mode must be one of: %s",
+        paste(latent_modes, collapse = ", ")
+      ))
     }
     pos_num(
       c("fit", "exdqlm_multivar", "latent_ablation", "e_inv_u_cap"),
       "fit.exdqlm_multivar.latent_ablation.e_inv_u_cap"
+    )
+    pos_num(
+      c("fit", "exdqlm_multivar", "latent_ablation", "e_u_cap"),
+      "fit.exdqlm_multivar.latent_ablation.e_u_cap"
     )
 
     guard_enabled <- unified_get(
@@ -2213,6 +2231,36 @@ unified_validate_config <- function(cfg) {
         c("fit", "exdqlm_multivar", "pseudodata_guard", "caps", cap_name),
         sprintf("fit.exdqlm_multivar.pseudodata_guard.caps.%s", cap_name)
       )
+    }
+
+    latent_diag_enabled <- unified_get(
+      cfg, c("fit", "exdqlm_multivar", "diagnostics", "latent", "enabled"), default = FALSE
+    )
+    if (!bool_ok(latent_diag_enabled)) {
+      add_err("fit.exdqlm_multivar.diagnostics.latent.enabled must be boolean (true/false)")
+    }
+    latent_diag_report_dir <- unified_get(
+      cfg, c("fit", "exdqlm_multivar", "diagnostics", "latent", "report_dir"), default = ""
+    )
+    if (length(latent_diag_report_dir) > 1L || anyNA(latent_diag_report_dir)) {
+      add_err("fit.exdqlm_multivar.diagnostics.latent.report_dir must be a single string")
+    }
+    latent_diag_top_k <- suppressWarnings(as.integer(unified_get(
+      cfg, c("fit", "exdqlm_multivar", "diagnostics", "latent", "top_k"), default = 20L
+    )))
+    if (!is.finite(latent_diag_top_k) || latent_diag_top_k < 1L) {
+      add_err("fit.exdqlm_multivar.diagnostics.latent.top_k must be an integer >= 1")
+    }
+    for (bool_name in c("write_iteration_summary", "write_top_cells")) {
+      bool_value <- unified_get(
+        cfg, c("fit", "exdqlm_multivar", "diagnostics", "latent", bool_name), default = TRUE
+      )
+      if (!bool_ok(bool_value)) {
+        add_err(sprintf(
+          "fit.exdqlm_multivar.diagnostics.latent.%s must be boolean (true/false)",
+          bool_name
+        ))
+      }
     }
   }
 

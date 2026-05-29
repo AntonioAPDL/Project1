@@ -364,12 +364,36 @@ DISC_GAMSIG_COV_BLEND_ALPHA_OPT <- disc_env_opt_prob(
 )
 DISC_LATENT_ABLATION_MODE <- disc_env_choice(
   "DISC_LATENT_ABLATION_MODE",
-  choices = c("free", "freeze", "cap_e_inv_u"),
+  choices = c("free", "freeze", "cap_e_inv_u", "cap_e_u_and_e_inv_u", "freeze_on_e_u_guard"),
   default = "free"
 )
 DISC_LATENT_E_INV_U_CAP <- disc_env_pos_num(
   "DISC_LATENT_E_INV_U_CAP",
   default = 5000
+)
+DISC_LATENT_E_U_CAP <- disc_env_pos_num(
+  "DISC_LATENT_E_U_CAP",
+  default = 1e6
+)
+DISC_W_LATENT_DIAG_ENABLED <- disc_env_flag(
+  "DISC_W_LATENT_DIAG_ENABLED",
+  default = FALSE
+)
+DISC_W_LATENT_DIAG_REPORT_DIR <- trimws(Sys.getenv("DISC_W_LATENT_DIAG_REPORT_DIR", ""))
+DISC_W_LATENT_DIAG_TOP_K <- disc_env_nonneg_int(
+  "DISC_W_LATENT_DIAG_TOP_K",
+  default = 20L
+)
+if (!is.finite(DISC_W_LATENT_DIAG_TOP_K) || DISC_W_LATENT_DIAG_TOP_K < 1L) {
+  DISC_W_LATENT_DIAG_TOP_K <- 20L
+}
+DISC_W_LATENT_DIAG_WRITE_ITERATION_SUMMARY <- disc_env_flag(
+  "DISC_W_LATENT_DIAG_WRITE_ITERATION_SUMMARY",
+  default = TRUE
+)
+DISC_W_LATENT_DIAG_WRITE_TOP_CELLS <- disc_env_flag(
+  "DISC_W_LATENT_DIAG_WRITE_TOP_CELLS",
+  default = TRUE
 )
 DISC_STRICT_CONTRACTS <- disc_env_flag(
   "DISC_STRICT_CONTRACTS",
@@ -1370,6 +1394,8 @@ X_f <- covariate_bundle$X_f
 Y <- covariate_bundle$Y
 TT <- covariate_bundle$TT
 J <- covariate_bundle$J
+disc_w_history_dates <- covariate_bundle$history_dates
+disc_w_forecast_dates <- covariate_bundle$forecast_dates
 
 if(use_covariates){
   ending <- "_exAL_synth_DISC"
@@ -1943,7 +1969,7 @@ update_uts<-function(y, exps,exps2,sts,sts2,inv.sigma,a2.invb.inv.sigma,invb.inv
               tot.entrop=tot.ent))
 }
 
-disc_w_cap_e_inv_uts_matrix <- function(x, cap) {
+disc_w_cap_numeric_matrix <- function(x, cap) {
   cap <- suppressWarnings(as.numeric(cap)[1L])
   if (!is.finite(cap) || cap <= 0) return(x)
   raw <- suppressWarnings(as.numeric(x))
@@ -1952,16 +1978,25 @@ disc_w_cap_e_inv_uts_matrix <- function(x, cap) {
   list(value = x, capped_n = as.integer(capped_n))
 }
 
-disc_w_cap_e_inv_uts_list <- function(xs, cap) {
+disc_w_cap_numeric_list <- function(xs, cap) {
   total <- 0L
   if (!is.list(xs)) return(list(value = xs, capped_n = total))
   out <- xs
   for (i in seq_along(out)) {
-    capped <- disc_w_cap_e_inv_uts_matrix(out[[i]], cap)
+    capped <- disc_w_cap_numeric_matrix(out[[i]], cap)
     out[[i]] <- capped$value
     total <- total + capped$capped_n
   }
   list(value = out, capped_n = as.integer(total))
+}
+
+disc_w_any_e_uts_exceeds <- function(uts_out, uts_out_f, cap) {
+  cap <- suppressWarnings(as.numeric(cap)[1L])
+  if (!is.finite(cap) || cap <= 0) return(FALSE)
+  history <- suppressWarnings(as.numeric(uts_out$E.uts))
+  if (any(is.finite(history) & history > cap)) return(TRUE)
+  forecast <- suppressWarnings(as.numeric(unlist(uts_out_f$E.uts, use.names = FALSE)))
+  any(is.finite(forecast) & forecast > cap)
 }
 
 disc_w_apply_latent_ablation <- function(
@@ -2002,20 +2037,52 @@ disc_w_apply_latent_ablation <- function(
       uts_out_f = cur_uts_out_f
     ))
   }
-  if (identical(mode, "cap_e_inv_u")) {
-    capped_history <- disc_w_cap_e_inv_uts_matrix(uts_out$E.inv.uts, DISC_LATENT_E_INV_U_CAP)
-    capped_forecast <- disc_w_cap_e_inv_uts_list(uts_out_f$E.inv.uts, DISC_LATENT_E_INV_U_CAP)
-    uts_out$E.inv.uts <- capped_history$value
-    uts_out_f$E.inv.uts <- capped_forecast$value
+  if (identical(mode, "freeze_on_e_u_guard") &&
+      disc_w_any_e_uts_exceeds(uts_out, uts_out_f, DISC_LATENT_E_U_CAP)) {
     if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
       cat(sprintf(
-        "[latent_ablation] mode=cap_e_inv_u p0=%s iter=%d context=%s cap=%g capped_history=%d capped_forecast=%d\n",
+        "[latent_ablation] mode=freeze_on_e_u_guard p0=%s iter=%d context=%s e_u_cap=%g action=reuse_previous_latents\n",
+        as.character(p0),
+        as.integer(iter),
+        as.character(context_label),
+        as.numeric(DISC_LATENT_E_U_CAP)
+      ))
+      flush.console()
+    }
+    return(list(
+      sts_out = cur_sts_out,
+      uts_out = cur_uts_out,
+      sts_out_f = cur_sts_out_f,
+      uts_out_f = cur_uts_out_f
+    ))
+  }
+  if (identical(mode, "cap_e_inv_u") || identical(mode, "cap_e_u_and_e_inv_u") ||
+      identical(mode, "freeze_on_e_u_guard")) {
+    capped_inv_history <- disc_w_cap_numeric_matrix(uts_out$E.inv.uts, DISC_LATENT_E_INV_U_CAP)
+    capped_inv_forecast <- disc_w_cap_numeric_list(uts_out_f$E.inv.uts, DISC_LATENT_E_INV_U_CAP)
+    capped_u_history <- list(value = uts_out$E.uts, capped_n = 0L)
+    capped_u_forecast <- list(value = uts_out_f$E.uts, capped_n = 0L)
+    if (identical(mode, "cap_e_u_and_e_inv_u")) {
+      capped_u_history <- disc_w_cap_numeric_matrix(uts_out$E.uts, DISC_LATENT_E_U_CAP)
+      capped_u_forecast <- disc_w_cap_numeric_list(uts_out_f$E.uts, DISC_LATENT_E_U_CAP)
+      uts_out$E.uts <- capped_u_history$value
+      uts_out_f$E.uts <- capped_u_forecast$value
+    }
+    uts_out$E.inv.uts <- capped_inv_history$value
+    uts_out_f$E.inv.uts <- capped_inv_forecast$value
+    if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+      cat(sprintf(
+        "[latent_ablation] mode=%s p0=%s iter=%d context=%s e_inv_u_cap=%g capped_inv_history=%d capped_inv_forecast=%d e_u_cap=%g capped_u_history=%d capped_u_forecast=%d\n",
+        as.character(mode),
         as.character(p0),
         as.integer(iter),
         as.character(context_label),
         as.numeric(DISC_LATENT_E_INV_U_CAP),
-        as.integer(capped_history$capped_n),
-        as.integer(capped_forecast$capped_n)
+        as.integer(capped_inv_history$capped_n),
+        as.integer(capped_inv_forecast$capped_n),
+        as.numeric(DISC_LATENT_E_U_CAP),
+        as.integer(capped_u_history$capped_n),
+        as.integer(capped_u_forecast$capped_n)
       ))
       flush.console()
     }
@@ -3311,6 +3378,262 @@ disc_w_extract_diag_values <- function(x) {
   as.numeric(x)
 }
 
+disc_w_diag_report_dir <- function(default = "") {
+  report_dir <- DISC_W_LATENT_DIAG_REPORT_DIR
+  if (!nzchar(report_dir) &&
+      exists("DISC_PSEUDODATA_GUARD_REPORT_DIR", inherits = TRUE) &&
+      nzchar(DISC_PSEUDODATA_GUARD_REPORT_DIR)) {
+    report_dir <- DISC_PSEUDODATA_GUARD_REPORT_DIR
+  }
+  if (!nzchar(report_dir)) report_dir <- default
+  report_dir
+}
+
+disc_w_append_csv <- function(rows, report_dir, file_name) {
+  if (!nzchar(report_dir) || is.null(rows) || !nrow(rows)) return(invisible(FALSE))
+  dir.create(report_dir, recursive = TRUE, showWarnings = FALSE)
+  path <- file.path(report_dir, file_name)
+  utils::write.table(
+    rows,
+    file = path,
+    sep = ",",
+    row.names = FALSE,
+    col.names = !file.exists(path),
+    append = file.exists(path)
+  )
+  invisible(TRUE)
+}
+
+disc_w_diag_source_name <- function(source_index) {
+  source_index <- suppressWarnings(as.integer(source_index)[1L])
+  if (!is.finite(source_index)) return("")
+  if (source_index == 1L) return("usgs")
+  paste0("source_", as.integer(source_index - 1L))
+}
+
+disc_w_diag_history_date <- function(time_index) {
+  time_index <- suppressWarnings(as.integer(time_index))
+  out <- rep(as.Date(NA), length(time_index))
+  if (exists("disc_w_history_dates", inherits = TRUE) &&
+      length(disc_w_history_dates) > 0L) {
+    ok <- is.finite(time_index) & time_index >= 1L & time_index <= length(disc_w_history_dates)
+    out[ok] <- as.Date(disc_w_history_dates[time_index[ok]])
+  }
+  out
+}
+
+disc_w_diag_forecast_date <- function(lead_index) {
+  lead_index <- suppressWarnings(as.integer(lead_index))
+  out <- rep(as.Date(NA), length(lead_index))
+  if (exists("disc_w_forecast_dates", inherits = TRUE) &&
+      length(disc_w_forecast_dates) > 0L) {
+    ok <- is.finite(lead_index) & lead_index >= 1L & lead_index <= length(disc_w_forecast_dates)
+    out[ok] <- as.Date(disc_w_forecast_dates[lead_index[ok]])
+  }
+  out
+}
+
+disc_w_diag_stats <- function(values) {
+  raw <- suppressWarnings(as.numeric(values))
+  finite <- raw[is.finite(raw)]
+  qs <- function(prob) {
+    if (!length(finite)) return(NA_real_)
+    as.numeric(stats::quantile(finite, probs = prob, names = FALSE, na.rm = TRUE, type = 7))
+  }
+  data.frame(
+    n = length(raw),
+    finite_n = length(finite),
+    nonfinite_n = length(raw) - length(finite),
+    min = if (length(finite)) min(finite) else NA_real_,
+    p01 = qs(0.01),
+    median = qs(0.50),
+    p95 = qs(0.95),
+    p99 = qs(0.99),
+    max = if (length(finite)) max(finite) else NA_real_,
+    max_abs = if (length(finite)) max(abs(finite)) else NA_real_,
+    stringsAsFactors = FALSE
+  )
+}
+
+disc_w_diag_summary_row <- function(
+  values,
+  quantity,
+  block,
+  iter,
+  context_label,
+  source_index = NA_integer_,
+  source_name = NA_character_,
+  member_index = NA_integer_
+) {
+  stats <- disc_w_diag_stats(values)
+  data.frame(
+    p0 = as.character(p0),
+    iter = as.integer(iter),
+    context = as.character(context_label),
+    block = as.character(block),
+    source_index = suppressWarnings(as.integer(source_index)[1L]),
+    source_name = as.character(source_name)[1L],
+    member_index = suppressWarnings(as.integer(member_index)[1L]),
+    quantity = as.character(quantity),
+    stats,
+    stringsAsFactors = FALSE
+  )
+}
+
+disc_w_diag_context_value <- function(x, idx) {
+  raw <- suppressWarnings(as.numeric(x))
+  idx <- suppressWarnings(as.integer(idx))
+  out <- rep(NA_real_, length(idx))
+  ok <- is.finite(idx) & idx >= 1L & idx <= length(raw)
+  out[ok] <- raw[idx[ok]]
+  out
+}
+
+disc_w_diag_record_latent_update <- function(
+  iter,
+  context_label,
+  block,
+  source_index,
+  member_index = NA_integer_,
+  y,
+  exps,
+  exps2,
+  sts_out,
+  uts_out,
+  gamma = NA_real_,
+  sigma = NA_real_
+) {
+  if (!isTRUE(DISC_W_LATENT_DIAG_ENABLED)) return(invisible(NULL))
+  report_dir <- disc_w_diag_report_dir()
+  if (!nzchar(report_dir)) return(invisible(NULL))
+  source_name <- disc_w_diag_source_name(source_index)
+  quantity_values <- list(
+    E_s = sts_out$E.sts,
+    E_s2 = sts_out$E.sts2,
+    E_u = uts_out$E.uts,
+    E_inv_u = uts_out$E.inv.uts,
+    psi = uts_out$uts.psi,
+    chi = uts_out$uts.chi
+  )
+  if (isTRUE(DISC_W_LATENT_DIAG_WRITE_ITERATION_SUMMARY)) {
+    summary_rows <- do.call(rbind, lapply(names(quantity_values), function(quantity) {
+      disc_w_diag_summary_row(
+        quantity_values[[quantity]],
+        quantity = quantity,
+        block = block,
+        iter = iter,
+        context_label = context_label,
+        source_index = source_index,
+        source_name = source_name,
+        member_index = member_index
+      )
+    }))
+    disc_w_append_csv(summary_rows, report_dir, "latent_update_summary.csv")
+  }
+  if (!isTRUE(DISC_W_LATENT_DIAG_WRITE_TOP_CELLS)) return(invisible(NULL))
+  top_k <- as.integer(DISC_W_LATENT_DIAG_TOP_K)
+  make_top <- function(values, quantity, low = FALSE) {
+    raw <- suppressWarnings(as.numeric(values))
+    finite_idx <- which(is.finite(raw))
+    if (!length(finite_idx)) return(NULL)
+    scores <- if (isTRUE(low)) raw[finite_idx] else abs(raw[finite_idx])
+    ord <- if (isTRUE(low)) order(scores, decreasing = FALSE) else order(scores, decreasing = TRUE)
+    idx <- finite_idx[ord[seq_len(min(top_k, length(ord)))]]
+    n <- length(idx)
+    local_time_index <- idx
+    lead_index <- rep(NA_integer_, n)
+    if (identical(block, "forecast")) {
+      lead_index <- local_time_index
+      date <- disc_w_diag_forecast_date(lead_index)
+    } else {
+      date <- disc_w_diag_history_date(local_time_index)
+    }
+    data.frame(
+      p0 = as.character(p0),
+      iter = as.integer(iter),
+      context = as.character(context_label),
+      block = as.character(block),
+      source_index = as.integer(source_index),
+      source_name = source_name,
+      member_index = suppressWarnings(as.integer(member_index)[1L]),
+      lead_index = lead_index,
+      time_index = local_time_index,
+      date = as.character(date),
+      quantity = as.character(quantity),
+      rank = seq_len(n),
+      value = raw[idx],
+      y = disc_w_diag_context_value(y, idx),
+      exps = disc_w_diag_context_value(exps, idx),
+      exps2 = disc_w_diag_context_value(exps2, idx),
+      resid = disc_w_diag_context_value(y, idx) - disc_w_diag_context_value(exps, idx),
+      E_s = disc_w_diag_context_value(sts_out$E.sts, idx),
+      E_s2 = disc_w_diag_context_value(sts_out$E.sts2, idx),
+      E_u = disc_w_diag_context_value(uts_out$E.uts, idx),
+      E_inv_u = disc_w_diag_context_value(uts_out$E.inv.uts, idx),
+      psi = disc_w_diag_context_value(uts_out$uts.psi, idx),
+      chi = disc_w_diag_context_value(uts_out$uts.chi, idx),
+      gamma = suppressWarnings(as.numeric(gamma)[1L]),
+      sigma = suppressWarnings(as.numeric(sigma)[1L]),
+      stringsAsFactors = FALSE
+    )
+  }
+  rows <- do.call(rbind, Filter(Negate(is.null), list(
+    make_top(uts_out$E.uts, "E_u"),
+    make_top(uts_out$E.inv.uts, "E_inv_u"),
+    make_top(uts_out$uts.psi, "psi"),
+    make_top(uts_out$uts.chi, "chi"),
+    make_top(uts_out$uts.psi, "psi_low", low = TRUE),
+    make_top(uts_out$uts.chi, "chi_low", low = TRUE)
+  )))
+  disc_w_append_csv(rows, report_dir, "latent_update_top_cells.csv")
+  invisible(rows)
+}
+
+disc_w_diag_record_gamsig_update <- function(
+  iter,
+  source_index,
+  climate_center,
+  gamsig_out,
+  context_label,
+  refreeze_until = NA_integer_
+) {
+  if (!isTRUE(DISC_W_LATENT_DIAG_ENABLED)) return(invisible(NULL))
+  report_dir <- disc_w_diag_report_dir()
+  if (!nzchar(report_dir)) return(invisible(NULL))
+  sigma_ld <- gamsig_out$Sigma.LD
+  sigma_ld_diag <- if (!is.null(sigma_ld) && length(dim(sigma_ld)) == 2L) diag(sigma_ld) else c(NA_real_, NA_real_)
+  row <- data.frame(
+    p0 = as.character(p0),
+    iter = as.integer(iter),
+    context = as.character(context_label),
+    source_index = as.integer(source_index),
+    source_name = disc_w_diag_source_name(source_index),
+    climate_center = isTRUE(climate_center),
+    E_gamma = suppressWarnings(as.numeric(gamsig_out$E.gam)[1L]),
+    E_sigma = suppressWarnings(as.numeric(gamsig_out$E.sigma)[1L]),
+    E_inv_sigma = suppressWarnings(as.numeric(gamsig_out$E.inv.sigma)[1L]),
+    V_theta_log_sigma = suppressWarnings(as.numeric(sigma_ld_diag)[1L]),
+    V_theta_gamma = suppressWarnings(as.numeric(sigma_ld_diag)[2L]),
+    E_c_invb_absgam = suppressWarnings(as.numeric(gamsig_out$E.c.invb.absgam)[1L]),
+    E_a_invb_inv_sigma = suppressWarnings(as.numeric(gamsig_out$E.a.invb.inv.sigma)[1L]),
+    E_invb_inv_sigma = suppressWarnings(as.numeric(gamsig_out$E.invb.inv.sigma)[1L]),
+    E_a2_invb_inv_sigma = suppressWarnings(as.numeric(gamsig_out$E.a2.invb.inv.sigma)[1L]),
+    E_c2_invb_absgam2_sigma = suppressWarnings(as.numeric(gamsig_out$E.c2.invb.absgam2.sigma)[1L]),
+    guard_triggered = isTRUE(gamsig_out$guard_triggered),
+    guard_message = ifelse(is.null(gamsig_out$guard_message), "", as.character(gamsig_out$guard_message)),
+    refreeze_until = suppressWarnings(as.integer(refreeze_until)[1L]),
+    laplace_status = ifelse(is.null(gamsig_out$laplace_status), "", as.character(gamsig_out$laplace_status)),
+    laplace_mode_search = ifelse(is.null(gamsig_out$laplace_mode_search), "", as.character(gamsig_out$laplace_mode_search)),
+    laplace_ridge = ifelse(is.null(gamsig_out$laplace_ridge), NA_real_, suppressWarnings(as.numeric(gamsig_out$laplace_ridge)[1L])),
+    laplace_covariance_type = ifelse(is.null(gamsig_out$laplace_covariance_type), "", as.character(gamsig_out$laplace_covariance_type)),
+    near_zero_fallback = isTRUE(gamsig_out$near_zero_fallback),
+    near_zero_fallback_reason = ifelse(is.null(gamsig_out$near_zero_fallback_reason), "", as.character(gamsig_out$near_zero_fallback_reason)),
+    stringsAsFactors = FALSE
+  )
+  disc_w_append_csv(row, report_dir, "gamsig_source_iteration_summary.csv")
+  invisible(row)
+}
+
 disc_w_guard_summary <- function(values, quantity, block, iter, context_label, abs_cap = Inf, positive_required = FALSE) {
   raw <- as.numeric(values)
   finite <- raw[is.finite(raw)]
@@ -3346,18 +3669,239 @@ disc_w_guard_summary <- function(values, quantity, block, iter, context_label, a
 }
 
 disc_w_append_guard_report <- function(rows, report_dir) {
-  if (!nzchar(report_dir) || is.null(rows) || !nrow(rows)) return(invisible(FALSE))
-  dir.create(report_dir, recursive = TRUE, showWarnings = FALSE)
-  path <- file.path(report_dir, "pseudodata_guard_events.csv")
-  utils::write.table(
-    rows,
-    file = path,
-    sep = ",",
-    row.names = FALSE,
-    col.names = !file.exists(path),
-    append = file.exists(path)
+  disc_w_append_csv(rows, report_dir, "pseudodata_guard_events.csv")
+}
+
+disc_w_diag_qqq_diag_matrix <- function(x) {
+  d <- dim(x)
+  if (is.null(d)) return(matrix(as.numeric(x), nrow = 1L))
+  if (length(d) == 3L && d[[1L]] == d[[2L]]) {
+    out <- sapply(seq_len(d[[3L]]), function(i) diag(x[, , i, drop = TRUE]))
+    if (is.null(dim(out))) out <- matrix(out, nrow = d[[1L]])
+    return(out)
+  }
+  as.matrix(x)
+}
+
+disc_w_diag_gamsig_source_value <- function(gamsig_out, field, source_index) {
+  if (is.null(gamsig_out) || is.null(gamsig_out[[field]])) return(NA_real_)
+  x <- gamsig_out[[field]]
+  source_index <- suppressWarnings(as.integer(source_index)[1L])
+  if (!is.finite(source_index) || source_index < 1L) return(NA_real_)
+  if (length(dim(x)) >= 1L && source_index <= dim(x)[[1L]]) {
+    return(suppressWarnings(as.numeric(x[source_index, ])[1L]))
+  }
+  suppressWarnings(as.numeric(x)[1L])
+}
+
+disc_w_diag_top_matrix_rows <- function(
+  values,
+  quantity,
+  block,
+  iter,
+  context_label,
+  threshold = NA_real_,
+  source_offset = 0L,
+  positive_low = FALSE,
+  gamsig_out = NULL,
+  sts_out = NULL,
+  uts_out = NULL,
+  theta_out = NULL,
+  y_history = NULL
+) {
+  x <- values
+  if (is.null(x)) return(NULL)
+  if (isTRUE(positive_low)) x <- disc_w_diag_qqq_diag_matrix(x)
+  d <- dim(x)
+  if (is.null(d)) {
+    x <- matrix(as.numeric(x), nrow = 1L)
+    d <- dim(x)
+  }
+  raw <- suppressWarnings(as.numeric(x))
+  finite_idx <- which(is.finite(raw))
+  if (!length(finite_idx)) return(NULL)
+  scores <- if (isTRUE(positive_low)) raw[finite_idx] else abs(raw[finite_idx])
+  ord <- if (isTRUE(positive_low)) order(scores, decreasing = FALSE) else order(scores, decreasing = TRUE)
+  top_k <- as.integer(DISC_W_LATENT_DIAG_TOP_K)
+  idx <- finite_idx[ord[seq_len(min(top_k, length(ord)))]]
+  coords <- arrayInd(idx, .dim = d)
+  source_index <- suppressWarnings(as.integer(coords[, 1L] + source_offset))
+  time_index <- if (ncol(coords) >= 2L) suppressWarnings(as.integer(coords[, 2L])) else idx
+  lead_index <- rep(NA_integer_, length(idx))
+  member_index <- rep(NA_integer_, length(idx))
+  date <- disc_w_diag_history_date(time_index)
+  if (identical(block, "forecast")) {
+    lead_index <- time_index
+    if (ncol(coords) >= 2L) member_index <- suppressWarnings(as.integer(coords[, 2L]))
+    date <- disc_w_diag_forecast_date(lead_index)
+  }
+  y_val <- rep(NA_real_, length(idx))
+  exps_val <- rep(NA_real_, length(idx))
+  exps2_val <- rep(NA_real_, length(idx))
+  E_s_val <- rep(NA_real_, length(idx))
+  E_s2_val <- rep(NA_real_, length(idx))
+  E_u_val <- rep(NA_real_, length(idx))
+  E_inv_u_val <- rep(NA_real_, length(idx))
+  if (identical(block, "history")) {
+    for (ii in seq_along(idx)) {
+      s_idx <- source_index[[ii]]
+      t_idx <- time_index[[ii]]
+      if (!is.null(y_history) && s_idx <= nrow(y_history) && t_idx <= ncol(y_history)) {
+        y_val[[ii]] <- y_history[s_idx, t_idx]
+      }
+      if (!is.null(theta_out$exps) && s_idx <= nrow(theta_out$exps) && t_idx <= ncol(theta_out$exps)) {
+        exps_val[[ii]] <- theta_out$exps[s_idx, t_idx]
+      }
+      if (!is.null(theta_out$exps2) && s_idx <= nrow(theta_out$exps2) && t_idx <= ncol(theta_out$exps2)) {
+        exps2_val[[ii]] <- theta_out$exps2[s_idx, t_idx]
+      }
+      if (!is.null(sts_out$E.sts) && s_idx <= nrow(sts_out$E.sts) && t_idx <= ncol(sts_out$E.sts)) {
+        E_s_val[[ii]] <- sts_out$E.sts[s_idx, t_idx]
+      }
+      if (!is.null(sts_out$E.sts2) && s_idx <= nrow(sts_out$E.sts2) && t_idx <= ncol(sts_out$E.sts2)) {
+        E_s2_val[[ii]] <- sts_out$E.sts2[s_idx, t_idx]
+      }
+      if (!is.null(uts_out$E.uts) && s_idx <= nrow(uts_out$E.uts) && t_idx <= ncol(uts_out$E.uts)) {
+        E_u_val[[ii]] <- uts_out$E.uts[s_idx, t_idx]
+      }
+      if (!is.null(uts_out$E.inv.uts) && s_idx <= nrow(uts_out$E.inv.uts) && t_idx <= ncol(uts_out$E.inv.uts)) {
+        E_inv_u_val[[ii]] <- uts_out$E.inv.uts[s_idx, t_idx]
+      }
+    }
+  }
+  data.frame(
+    p0 = as.character(p0),
+    iter = as.integer(iter),
+    context = as.character(context_label),
+    block = as.character(block),
+    quantity = as.character(quantity),
+    rank = seq_along(idx),
+    value = raw[idx],
+    threshold = suppressWarnings(as.numeric(threshold)[1L]),
+    source_index = source_index,
+    source_name = vapply(source_index, disc_w_diag_source_name, character(1)),
+    time_index = time_index,
+    lead_index = lead_index,
+    member_index = member_index,
+    date = as.character(date),
+    y = y_val,
+    exps = exps_val,
+    exps2 = exps2_val,
+    resid = y_val - exps_val,
+    resid_sq = (y_val - exps_val)^2,
+    E_s = E_s_val,
+    E_s2 = E_s2_val,
+    E_u = E_u_val,
+    E_inv_u = E_inv_u_val,
+    E_c_invb_absgam = vapply(source_index, function(s) {
+      disc_w_diag_gamsig_source_value(gamsig_out, "E.c.invb.absgam", s)
+    }, numeric(1)),
+    E_a_invb_inv_sigma = vapply(source_index, function(s) {
+      disc_w_diag_gamsig_source_value(gamsig_out, "E.a.invb.inv.sigma", s)
+    }, numeric(1)),
+    E_invb_inv_sigma = vapply(source_index, function(s) {
+      disc_w_diag_gamsig_source_value(gamsig_out, "E.invb.inv.sigma", s)
+    }, numeric(1)),
+    gamma = vapply(source_index, function(s) {
+      disc_w_diag_gamsig_source_value(gamsig_out, "E.gam", s)
+    }, numeric(1)),
+    sigma = vapply(source_index, function(s) {
+      disc_w_diag_gamsig_source_value(gamsig_out, "E.sigma", s)
+    }, numeric(1)),
+    stringsAsFactors = FALSE
   )
-  invisible(TRUE)
+}
+
+disc_w_diag_record_pseudodata <- function(
+  summary_rows,
+  bad_rows,
+  iter,
+  context_label,
+  FFF,
+  QQQ,
+  FFF_forecast,
+  QQQ_forecast,
+  sts_out,
+  uts_out,
+  sts_out_f,
+  uts_out_f,
+  gamsig_out = NULL,
+  theta_out = NULL,
+  y_history = NULL
+) {
+  if (!isTRUE(DISC_W_LATENT_DIAG_ENABLED)) return(invisible(NULL))
+  report_dir <- disc_w_diag_report_dir(DISC_PSEUDODATA_GUARD_REPORT_DIR)
+  if (!nzchar(report_dir)) return(invisible(NULL))
+  if (isTRUE(DISC_W_LATENT_DIAG_WRITE_ITERATION_SUMMARY) &&
+      !is.null(summary_rows) && nrow(summary_rows)) {
+    disc_w_append_csv(summary_rows, report_dir, "pseudodata_iteration_summary.csv")
+  }
+  if (!isTRUE(DISC_W_LATENT_DIAG_WRITE_TOP_CELLS) ||
+      is.null(bad_rows) || !nrow(bad_rows)) {
+    return(invisible(NULL))
+  }
+  rows <- list(
+    disc_w_diag_top_matrix_rows(
+      FFF, "FFF", "history", iter, context_label,
+      threshold = DISC_PSEUDODATA_FFF_ABS_CAP,
+      gamsig_out = gamsig_out, sts_out = sts_out, uts_out = uts_out,
+      theta_out = theta_out, y_history = y_history
+    ),
+    disc_w_diag_top_matrix_rows(
+      QQQ, "QQQ_diag", "history", iter, context_label,
+      threshold = DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP, positive_low = TRUE,
+      gamsig_out = gamsig_out, sts_out = sts_out, uts_out = uts_out,
+      theta_out = theta_out, y_history = y_history
+    ),
+    disc_w_diag_top_matrix_rows(
+      sts_out$E.sts, "E_s", "history", iter, context_label,
+      threshold = DISC_PSEUDODATA_E_S_ABS_CAP,
+      gamsig_out = gamsig_out, sts_out = sts_out, uts_out = uts_out,
+      theta_out = theta_out, y_history = y_history
+    ),
+    disc_w_diag_top_matrix_rows(
+      sts_out$E.sts2, "E_s2", "history", iter, context_label,
+      threshold = DISC_PSEUDODATA_E_S2_ABS_CAP,
+      gamsig_out = gamsig_out, sts_out = sts_out, uts_out = uts_out,
+      theta_out = theta_out, y_history = y_history
+    ),
+    disc_w_diag_top_matrix_rows(
+      uts_out$E.uts, "E_u", "history", iter, context_label,
+      threshold = DISC_PSEUDODATA_E_U_ABS_CAP,
+      gamsig_out = gamsig_out, sts_out = sts_out, uts_out = uts_out,
+      theta_out = theta_out, y_history = y_history
+    ),
+    disc_w_diag_top_matrix_rows(
+      uts_out$E.inv.uts, "E_inv_u", "history", iter, context_label,
+      threshold = DISC_PSEUDODATA_E_INV_U_ABS_CAP,
+      gamsig_out = gamsig_out, sts_out = sts_out, uts_out = uts_out,
+      theta_out = theta_out, y_history = y_history
+    )
+  )
+  if (is.list(FFF_forecast)) {
+    rows <- c(rows, lapply(seq_along(FFF_forecast), function(j) {
+      disc_w_diag_top_matrix_rows(
+        FFF_forecast[[j]], "FFF_forecast", "forecast", iter, context_label,
+        threshold = DISC_PSEUDODATA_FFF_ABS_CAP,
+        source_offset = 1L,
+        gamsig_out = gamsig_out
+      )
+    }))
+  }
+  if (is.list(QQQ_forecast)) {
+    rows <- c(rows, lapply(seq_along(QQQ_forecast), function(j) {
+      disc_w_diag_top_matrix_rows(
+        QQQ_forecast[[j]], "QQQ_forecast_diag", "forecast", iter, context_label,
+        threshold = DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP,
+        source_offset = 1L,
+        positive_low = TRUE,
+        gamsig_out = gamsig_out
+      )
+    }))
+  }
+  out <- do.call(rbind, Filter(Negate(is.null), rows))
+  disc_w_append_csv(out, report_dir, "pseudodata_top_cells.csv")
+  invisible(out)
 }
 
 disc_w_check_pseudodata_guard <- function(
@@ -3370,9 +3914,13 @@ disc_w_check_pseudodata_guard <- function(
   sts_out,
   uts_out,
   sts_out_f,
-  uts_out_f
+  uts_out_f,
+  gamsig_out = NULL,
+  theta_out = NULL,
+  y_history = NULL
 ) {
-  if (!isTRUE(DISC_PSEUDODATA_GUARD_ENABLED)) return(invisible(NULL))
+  if (!isTRUE(DISC_PSEUDODATA_GUARD_ENABLED) &&
+      !isTRUE(DISC_W_LATENT_DIAG_ENABLED)) return(invisible(NULL))
   rows <- list()
   add <- function(values, quantity, block, cap, positive = FALSE, diag_values = FALSE) {
     if (is.null(values)) return(invisible(NULL))
@@ -3404,6 +3952,24 @@ disc_w_check_pseudodata_guard <- function(
 
   out <- do.call(rbind, rows)
   bad <- out[out$status != "ok", , drop = FALSE]
+  disc_w_diag_record_pseudodata(
+    summary_rows = out,
+    bad_rows = bad,
+    iter = iter,
+    context_label = context_label,
+    FFF = FFF,
+    QQQ = QQQ,
+    FFF_forecast = FFF_forecast,
+    QQQ_forecast = QQQ_forecast,
+    sts_out = sts_out,
+    uts_out = uts_out,
+    sts_out_f = sts_out_f,
+    uts_out_f = uts_out_f,
+    gamsig_out = gamsig_out,
+    theta_out = theta_out,
+    y_history = y_history
+  )
+  if (!isTRUE(DISC_PSEUDODATA_GUARD_ENABLED)) return(invisible(out))
   if (nrow(bad)) {
     disc_w_append_guard_report(bad, DISC_PSEUDODATA_GUARD_REPORT_DIR)
     for (i in seq_len(nrow(bad))) {
@@ -3777,10 +4343,14 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     ifelse(nzchar(DISC_PSEUDODATA_GUARD_REPORT_DIR), DISC_PSEUDODATA_GUARD_REPORT_DIR, "-")
   ))
   cat(sprintf(
-    "[latent_ablation_policy] p0=%s mode=%s e_inv_u_cap=%g\n",
+    "[latent_ablation_policy] p0=%s mode=%s e_inv_u_cap=%g e_u_cap=%g latent_diag_enabled=%s latent_diag_top_k=%d latent_diag_report_dir=%s\n",
     as.character(p0),
     DISC_LATENT_ABLATION_MODE,
-    as.numeric(DISC_LATENT_E_INV_U_CAP)
+    as.numeric(DISC_LATENT_E_INV_U_CAP),
+    as.numeric(DISC_LATENT_E_U_CAP),
+    ifelse(isTRUE(DISC_W_LATENT_DIAG_ENABLED), "true", "false"),
+    as.integer(DISC_W_LATENT_DIAG_TOP_K),
+    ifelse(nzchar(DISC_W_LATENT_DIAG_REPORT_DIR), DISC_W_LATENT_DIAG_REPORT_DIR, "-")
   ))
   cat(sprintf(
     "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s near_zero_fallback_enabled=%s near_zero_fallback_mode=%s near_zero_gamma_anchor=%s state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d state_guard_start_iter=%d\n",
@@ -3891,7 +4461,10 @@ disc_w_materialize_theta_payload <- function(theta_out, context_label = "theta_s
 	    sts_out = new.sts.out,
 	    uts_out = new.uts.out,
 	    sts_out_f = new.sts.out_f,
-	    uts_out_f = new.uts.out_f
+	    uts_out_f = new.uts.out_f,
+	    gamsig_out = new.gamsig.out,
+	    theta_out = new.theta.out,
+	    y_history = y
 	  )
 
 	  if (isTRUE(DISC_STRICT_CONTRACTS)) {
@@ -4116,7 +4689,10 @@ while (isTRUE(FLAG) && iter < max_iter) {
 	      sts_out = new.sts.out,
 	      uts_out = new.uts.out,
 	      sts_out_f = new.sts.out_f,
-	      uts_out_f = new.uts.out_f
+	      uts_out_f = new.uts.out_f,
+	      gamsig_out = new.gamsig.out,
+	      theta_out = new.theta.out,
+	      y_history = y
 	    )
 	  iter_candidate <- as.integer(iter + 1L)
   schedule_phase <- disc_w_state_refresh_phase(
@@ -4455,6 +5031,19 @@ while (isTRUE(FLAG) && iter < max_iter) {
       new.uts.out$E.inv.uts[j,] <- uts.dummy$E.inv.uts
       new.uts.out$E.log.uts[j,] <- uts.dummy$E.log.uts
       new.uts.out$tot.entrop[j,] <- uts.dummy$tot.entrop
+      disc_w_diag_record_latent_update(
+        iter = iter,
+        context_label = "fit_history",
+        block = "history",
+        source_index = j,
+        y = y[j,],
+        exps = new.theta.out$exps[j, 1:TT_sub],
+        exps2 = new.theta.out$exps2[j, 1:TT_sub],
+        sts_out = sts.dummy,
+        uts_out = uts.dummy,
+        gamma = cur.gamsig.out$E.gam[j,],
+        sigma = cur.gamsig.out$E.sigma[j,]
+      )
       ########################
       if (j == 1) {
         if (!gamsig_frozen_now) {
@@ -4512,6 +5101,14 @@ while (isTRUE(FLAG) && iter < max_iter) {
           new.gamsig.out$E.log.sig[j,] <- gamsig.dummy$E.log.sig
           new.gamsig.out$E.prior.sig.gam[j,] <- gamsig.dummy$E.prior.sig.gam
           new.gamsig.out$entrop[j,] <- gamsig.dummy$entrop
+          disc_w_diag_record_gamsig_update(
+            iter = iter,
+            source_index = j,
+            climate_center = FALSE,
+            gamsig_out = gamsig.dummy,
+            context_label = "fit_history",
+            refreeze_until = gamsig_dynamic_freeze_until_iter
+          )
         }
       }else{
           k_forecast <- ranges[j-1]
@@ -4546,6 +5143,20 @@ while (isTRUE(FLAG) && iter < max_iter) {
           new.uts.out_f$E.inv.uts[[j-1]][,i] <- uts.dummy$E.inv.uts
           new.uts.out_f$E.log.uts[[j-1]][i] <- uts.dummy$E.log.uts
           new.uts.out_f$tot.entrop[[j-1]][i] <- uts.dummy$tot.entrop
+          disc_w_diag_record_latent_update(
+            iter = iter,
+            context_label = "fit_forecast",
+            block = "forecast",
+            source_index = j,
+            member_index = i,
+            y = matrix(ensembles[[j-1]][, i], ncol = 1),
+            exps = matrix(new.theta.out$exps[j, (TT_sub+1):(TT_sub+k_forecast)], ncol = 1),
+            exps2 = matrix(new.theta.out$exps2[j, (TT_sub+1):(TT_sub+k_forecast)], ncol = 1),
+            sts_out = sts.dummy,
+            uts_out = uts.dummy,
+            gamma = cur.gamsig.out$E.gam[j,],
+            sigma = cur.gamsig.out$E.sigma[j,]
+          )
           }
 
       }
@@ -4633,6 +5244,14 @@ while (isTRUE(FLAG) && iter < max_iter) {
           new.gamsig.out$E.log.sig[j,] <- gamsig.dummy$E.log.sig
           new.gamsig.out$E.prior.sig.gam[j,] <- gamsig.dummy$E.prior.sig.gam
           new.gamsig.out$entrop[j,] <- gamsig.dummy$entrop
+          disc_w_diag_record_gamsig_update(
+            iter = iter,
+            source_index = j,
+            climate_center = TRUE,
+            gamsig_out = gamsig.dummy,
+            context_label = "fit_forecast",
+            refreeze_until = gamsig_dynamic_freeze_until_iter
+          )
   }
 
   if (!gamsig_frozen_now) {
@@ -4690,12 +5309,12 @@ while (isTRUE(FLAG) && iter < max_iter) {
 
   elbo <- elbo -0.5*sum(new.sts.out$E.sts2[,]*new.uts.out$E.inv.uts[,]*new.gamsig.out$E.c2.invb.absgam2.sigma[,])
   ss <- 0
-  for(j in 2:J){ss <- ss - 0.5*sum(new.gamsig.out$E.c2.invb.absgam2.sigma[j,]*new.uts.out_f$E.sts2[[j-1]]*new.uts.out_f$E.uts[[j-1]])}
+  for(j in 2:J){ss <- ss - 0.5*sum(new.gamsig.out$E.c2.invb.absgam2.sigma[j,]*new.sts.out_f$E.sts2[[j-1]]*new.uts.out_f$E.inv.uts[[j-1]])}
   elbo <- elbo + ss
 
   elbo <- elbo -sum(new.gamsig.out$E.c.a.invb.absgam[,]*new.sts.out$E.sts[,])
   ss <- 0
-  for(j in 2:J){ss <- ss - sum(new.gamsig.out$E.c.a.invb.absgam[j,]*new.uts.out_f$E.sts[[j-1]])}
+  for(j in 2:J){ss <- ss - sum(new.gamsig.out$E.c.a.invb.absgam[j,]*new.sts.out_f$E.sts[[j-1]])}
   elbo <- elbo + ss
 
   elbo <- elbo -0.5*sum(new.gamsig.out$E.a2.invb.inv.sigma[,]*new.uts.out$E.uts[,])

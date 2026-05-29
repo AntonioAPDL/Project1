@@ -126,12 +126,24 @@ testthat::test_that("active runner exposes diagnostic latent ablation controls",
   text <- paste(readLines(runner, warn = FALSE), collapse = "\n")
 
   testthat::expect_true(grepl("DISC_LATENT_ABLATION_MODE", text, fixed = TRUE))
-  testthat::expect_true(grepl("choices = c(\"free\", \"freeze\", \"cap_e_inv_u\")", text, fixed = TRUE))
+  testthat::expect_true(grepl("cap_e_u_and_e_inv_u", text, fixed = TRUE))
+  testthat::expect_true(grepl("freeze_on_e_u_guard", text, fixed = TRUE))
   testthat::expect_true(grepl("DISC_LATENT_E_INV_U_CAP", text, fixed = TRUE))
+  testthat::expect_true(grepl("DISC_LATENT_E_U_CAP", text, fixed = TRUE))
   testthat::expect_true(grepl("disc_w_apply_latent_ablation", text, fixed = TRUE))
-  testthat::expect_true(grepl("mode=cap_e_inv_u", text, fixed = TRUE))
+  testthat::expect_true(grepl("capped_inv_history", text, fixed = TRUE))
+  testthat::expect_true(grepl("latent_update_summary.csv", text, fixed = TRUE))
+  testthat::expect_true(grepl("latent_update_top_cells.csv", text, fixed = TRUE))
+  testthat::expect_true(grepl("gamsig_source_iteration_summary.csv", text, fixed = TRUE))
+  testthat::expect_true(grepl("pseudodata_iteration_summary.csv", text, fixed = TRUE))
+  testthat::expect_true(grepl("pseudodata_top_cells.csv", text, fixed = TRUE))
   testthat::expect_true(grepl("context_label = \"fit_pre_gamsig\"", text, fixed = TRUE))
   testthat::expect_true(grepl("context_label = \"sampling_pre_gamsig\"", text, fixed = TRUE))
+
+  stage_fit <- testthat::test_path("..", "..", "R", "unified", "stages", "stage_fit.R")
+  stage_text <- paste(readLines(stage_fit, warn = FALSE), collapse = "\n")
+  testthat::expect_true(grepl("DISC_W_LATENT_DIAG_ENABLED", stage_text, fixed = TRUE))
+  testthat::expect_true(grepl("diagnostics\", \"latent", stage_text, fixed = TRUE))
 })
 
 testthat::test_that("pseudo-data offset and variance reproduce information-form algebra", {
@@ -223,4 +235,21 @@ testthat::test_that("active forecast u_t updates index forecast columns with TT_
     length(grep("new\\.theta\\.out\\$exps2?\\[j,\\(TT_sub\\+1\\):\\(TT_sub\\+k_forecast\\)\\]", src)),
     4L
   )
+})
+
+testthat::test_that("forecast ELBO accounting uses forecast s_t objects and inverse u moments", {
+  runner <- testthat::test_path("..", "..", "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r")
+  src <- readLines(runner, warn = FALSE)
+  text <- paste(src, collapse = "\n")
+
+  testthat::expect_false(grepl("new\\.uts\\.out_f\\$E\\.sts2", text))
+  testthat::expect_false(grepl("new\\.uts\\.out_f\\$E\\.sts\\[", text))
+  testthat::expect_true(grepl(
+    "new\\.sts\\.out_f\\$E\\.sts2\\[\\[j-1\\]\\]\\*new\\.uts\\.out_f\\$E\\.inv\\.uts\\[\\[j-1\\]\\]",
+    text
+  ))
+  testthat::expect_true(grepl(
+    "new\\.gamsig\\.out\\$E\\.c\\.a\\.invb\\.absgam\\[j,\\]\\*new\\.sts\\.out_f\\$E\\.sts\\[\\[j-1\\]\\]",
+    text
+  ))
 })
