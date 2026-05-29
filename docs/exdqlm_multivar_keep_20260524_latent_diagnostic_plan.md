@@ -2,7 +2,8 @@
 
 Date: 2026-05-28
 
-Status: plan for the next targeted diagnostic cycle. This document does not authorize a full grid relaunch.
+Status: revised diagnostic plan after a second pass through the failed q-lane logs, generated configs, and active
+implementation. This document does not authorize a full grid relaunch.
 
 ## Purpose
 
@@ -35,6 +36,15 @@ Key audit tables:
 | `gamsig_guard_events.csv` | gamma/sigma guard and near-zero objective events |
 | `spec_failure_summary.csv` | spec-level pass/fail and guard totals |
 
+Additional second-pass sources:
+
+| source | evidence used |
+| --- | --- |
+| failed `q20` `fit.log` files | exact iteration timeline, gamma/sigma vectors, refreeze events, pseudodata guard stop |
+| failed `q20` `logs/pseudodata_guard/pseudodata_guard_events.csv` files | guard quantities, cap counts, finite/nonfinite status |
+| generated YAML configs under `control/generated_configs/` | discount/epsilon profile, input bundle, transform, guard policy, state guard start |
+| `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r` | exact pseudo-data construction, guard function, latent updates, gamma/sigma objective, ELBO accounting |
+
 Current final matrix state from the audit:
 
 | status | count |
@@ -51,6 +61,83 @@ Failed rows:
 | `20221225` | `c03_eps060` | fit-stage pseudodata guard | `q20` | `E[u_t]`, historical `FFF`, forecast `FFF`, and forecast `E[u_t]` exceed caps at iter 47 |
 | `20210123` | `c06_eps365` | terminal sampling walltime | `q05`, `q35`, `q80` | fit reaches terminal sampling; failure is not the same pseudodata path |
 
+## Corrections From The First Draft
+
+The first version of this plan was directionally right but not evidence-sharp enough. The corrected investigation is:
+
+1. The current guard CSVs are aggregate summaries only. They prove which quantity and block failed, but they do not
+   identify source, date, lead, or member. Any source-level claim must therefore come from fit-log gamma/sigma events,
+   not from the pseudodata guard CSV itself.
+2. The two q20 failures do not show `E[1/u_t]` cap activity. In both failed q20 logs,
+   `[latent_ablation] mode=cap_e_inv_u ... capped_history=0 capped_forecast=0` immediately before the failure.
+   Therefore these failures are not simply "the old uncapped `E[1/u_t]` explosion".
+3. The failing q20 guard stop is on `E[u_t]` and `FFF`, while `E[1/u_t]` is not reported as exceeding its cap. Since
+   `E[u_t]` is not a direct term in `FFF`, the likely mechanism is indirect: `E[u_t]` affects gamma/sigma objective
+   terms, and the resulting gamma/sigma/latent state creates bad pseudo-data.
+4. State norm alone is not a sufficient explanation. Some passing q20 controls have state norms similar to or larger
+   than the failing lanes. The inactive state guard is still a real wiring issue, but the evidence does not yet prove
+   that state growth is the first cause.
+5. The `20210123 c06_eps365` row is a separate sampling-stage runtime issue. It should not be mixed with the q20
+   pseudodata failures when testing latent/gamma/sigma fixes.
+
+## Second-Pass Failure Timelines
+
+The q20 failures share a stronger pattern than the first draft stated: source-3 gamma moves from a near-zero value to a
+large positive value in the iteration before the hard pseudodata stop, then the split-gamma guard cannot find an
+acceptable interior candidate for source block `j=3`.
+
+### `20220511 c02_eps090 q20`
+
+| iter | ELBO | gamma mean | gamma vector | state norm sq | event |
+| ---: | ---: | ---: | --- | ---: | --- |
+| 30 | `-52.81148` | `0.1639871` | `[0.120449, 0.3604348, 0.01107759]` | `21302.59` | stable near-zero source-3 gamma |
+| 31 | `-52.81176` | `0.2943224` | `[0.1174336, 0.3531277, 0.412406]` | `21377.72` | source-3 gamma jump after split-positive selection |
+| 32 | `-210249.3` | `0.2965318` | `[0.1278294, 0.3493601, 0.412406]` | `20117.77` | source-3 guard/refreeze; pseudodata guard fails |
+
+Guard details at iter 32:
+
+| quantity | block | max abs | cap | exceed count |
+| --- | --- | ---: | ---: | ---: |
+| `FFF` | history | `22417.859` | `1000` | `2099` |
+| `E_uts` | history | `1009613.467` | `1e6` | `12767` |
+| `E_uts` | forecast | `1000001` | `1e6` | `56` |
+
+### `20221225 c03_eps060 q20`
+
+| iter | ELBO | gamma mean | gamma vector | state norm sq | event |
+| ---: | ---: | ---: | --- | ---: | --- |
+| 45 | `-7.168543` | `0.1299293` | `[0.1184119, 0.2598715, 0.01150441]` | `18683.05` | stable near-zero source-3 gamma |
+| 46 | `-7.168171` | `0.23501` | `[0.1181079, 0.2591283, 0.3277937]` | `18687.49` | source-3 gamma jump after split-positive selection |
+| 47 | `-216120.4` | `0.2384521` | `[0.1265825, 0.2609802, 0.3277937]` | `20376.18` | source-3 guard/refreeze; pseudodata guard fails |
+
+Guard details at iter 47:
+
+| quantity | block | max abs | cap | exceed count |
+| --- | --- | ---: | ---: | ---: |
+| `FFF` | history | `22518.780` | `1000` | `2313` |
+| `FFF_forecast` | forecast | `14700.713` | `1000` | `54` |
+| `E_uts` | history | `1008735.025` | `1e6` | `12995` |
+| `E_uts` | forecast | `1005275.987` | `1e6` | `56` |
+
+### Matched Control Signals
+
+These controls are not a formal proof, but they are enough to prioritize the next diagnostics.
+
+| lane | status | last iter | last ELBO | state norm sq | gamsig guards | latent cap events | pseudodata bad rows |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `20220511 c02_eps090 q20` | fail | 32 | `-210249.3` | `20117.77` | `41` | `0` | `3` |
+| `20220511 c02_eps180 q20` | pass | 100 | `-52.81225` | `21416.50` | `31` | `0` | `0` |
+| `20221225 c03_eps060 q20` | fail | 47 | `-216120.4` | `20376.18` | `51` | `0` | `4` |
+| `20221225 c03_eps090 q20` | pass | 100 | `-7.171472` | `18371.44` | `80` | `12795` | `0` |
+| `20211112 c02_eps090 q20` | pass | 100 | `-53.52599` | `21837.23` | `30` | `0` | `0` |
+| `20211112 c03_eps060 q20` | pass | 100 | `-7.278374` | `21218.94` | `30` | `0` | `0` |
+
+Interpretation:
+
+- source-3 gamma behavior is more suspicious than raw state norm;
+- latent cap count alone is not sufficient, because `20221225 c03_eps090 q20` passes with many `E[1/u_t]` cap events;
+- the failed q20 lanes need source/time/member top-cell diagnostics before any algorithmic change.
+
 ## Active Code Contract To Diagnose
 
 The active implementation path is:
@@ -64,6 +151,9 @@ The active implementation path is:
 | historical pseudodata | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:4060-4066` | constructs `FFF` and `QQQ` passed to the Kalman layer |
 | forecast pseudodata | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:4073-4089` | constructs forecast-member `FFF_forecast` and `QQQ_forecast` |
 | latent update loop | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:4432-4568` | updates historical and forecast `s_t/u_t`, then applies latent ablation before gamma/sigma update |
+| gamma/sigma objective | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:2045-3025` | consumes `E[u_t]`, `E[1/u_t]`, `E[s_t]`, `E[s_t^2]` and produces the expectations used in `FFF` |
+| gamma/sigma forecast update | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:4570-4608` | source blocks `j=2:(J+1)` include forecast-member latent moments in the gamma/sigma update |
+| ELBO accounting | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:4669-4718` | useful diagnostic, but not the safest primary failure signal until the forecast terms are rechecked |
 | config validation | `R/unified/config.R:2153-2214` | validates delayed state guard, latent ablation, and pseudodata guard fields |
 | fit environment wiring | `R/unified/stages/stage_fit.R:909-1083` | turns YAML policy into `DISC_LATENT_*` and `DISC_PSEUDODATA_*` environment variables |
 
@@ -85,6 +175,39 @@ However, `E[u_t]` enters the gamma/sigma update objective and is a symptom of th
 
 The diagnostic must identify which term moves first.
 
+Iteration semantics matter. The live pseudodata guard is called after `FFF`/`QQQ` are built at the top of the loop, and
+it is checking the latent and gamma/sigma objects produced by the previous completed update cycle with the same printed
+iteration number. For the q20 failures, the relevant diagnostic window is therefore:
+
+1. after `update_uts(...)`, while `psi` and `chi` are still available in `uts.dummy`;
+2. after `disc_w_apply_latent_ablation(...)`, to see whether any cap/freeze changed the latent moments;
+3. after `update_gamma_sigma(...)`, especially for source block `j=3`;
+4. before `disc_w_check_pseudodata_guard(...)`, to decompose `FFF`/`QQQ`.
+
+The current production objects do not retain `psi` and `chi` after the local `uts.dummy` update. Any top-cell diagnostic
+that needs GIG parameters must either write them inside the latent update loops or store a diagnostic-only copy.
+
+## Newly Found Code Discrepancy To Verify Separately
+
+The deeper code pass also found a likely ELBO-accounting discrepancy in the forecast terms:
+
+```text
+DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:4693
+new.uts.out_f$E.sts2[[j-1]] * new.uts.out_f$E.uts[[j-1]]
+
+DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:4698
+new.uts.out_f$E.sts[[j-1]]
+```
+
+The forecast `s_t` moments live in `new.sts.out_f`, not `new.uts.out_f`. In R, multiplying by `NULL` silently produces
+length-zero terms whose sum is zero, so these forecast ELBO terms can be omitted without throwing an error. Also, the
+quadratic `s_t^2` term appears to need `E[1/u_t]`, as in the historical term and the gamma/sigma objective, not
+`E[u_t]`.
+
+This likely affects ELBO accounting and convergence interpretation more than the direct pseudodata failure, because the
+state/latent/gamma-sigma updates use their own paths. Still, it must be verified with a focused test before trusting
+ELBO differences as a primary diagnostic signal.
+
 ## What Is Already Known
 
 The current grid is not running the free latent path. Generated configs use:
@@ -104,7 +227,9 @@ That last line is a crucial wiring fact: with `max_iter=100`, the delayed state 
 therefore protected by pseudodata and gamma/sigma guards, but not by an active state-norm refreeze guard.
 
 The two q20 failures also show that the explicit `E[1/u_t]` cap is not enough to classify all remaining failures. The
-hard stop is on `E[u_t]` and `FFF`, not on an uncapped `E[1/u_t]` explosion.
+hard stop is on `E[u_t]` and `FFF`, not on an uncapped `E[1/u_t]` explosion. However, the current evidence does not yet
+prove that `E[u_t]` itself is the root cause, because it could be a symptom of a gamma/sigma source-block jump or a
+near-zero transform/residual regime.
 
 ## Hypotheses And Discriminating Evidence
 
@@ -121,12 +246,78 @@ disprove it.
 | H6 | forecast-member bookkeeping contributes to the failure | forecast-only top cells are concentrated in one source/member/lead segment, with valid historical quantities | history and forecast fail together from shared gamma/sigma/latent terms |
 | H7 | `c06_eps365` is a sampling-only runtime issue | fit diagnostics are healthy and only posterior sampling GIG/truncated-normal calls exceed walltime | fit-stage pseudodata or state guards fire before sampling |
 
+Current evidence ranking before new diagnostics:
+
+| rank | hypothesis | current status |
+| ---: | --- | --- |
+| 1 | H3 gamma/sigma approximation/source-3 near-zero split behavior | strongest q20 signal; source-3 gamma jumps immediately before both failures |
+| 2 | H1 GIG `u_t` moment degeneracy | supported by `E[u_t]` hard guard, but missing `psi/chi` top cells prevents root-cause claim |
+| 3 | H5 log1p/near-zero transformed value edge case | plausible because gamma split repeatedly operates near zero; no top-cell values yet |
+| 4 | H4 state feedback | possible, but state norms in passing controls are similar or higher |
+| 5 | H6 forecast bookkeeping | plausible for `20221225 c03_eps060` because forecast `FFF` also fails, weaker for `20220511` |
+| 6 | H2 `s_t` truncation | not currently supported or rejected because aggregate guard did not flag `E[s]`/`E[s^2]` |
+| separate | H7 sampling-only runtime | confirmed separate for `20210123 c06_eps365`; do not use q20 fixes to treat it |
+
 ## Instrumentation Plan
 
-Add diagnostics before changing the algorithm. The instrumentation should be low-overhead and enabled only when a new
-diagnostic flag is set.
+Add diagnostics before changing the algorithm. The instrumentation should be low-overhead, disabled by default, and
+enabled only when a new diagnostic flag is set.
 
-### 1. Pre-pseudodata iteration summary
+The instrumentation must answer two different questions:
+
+1. Which quantity first leaves the healthy range?
+2. Which source/time/member cell is responsible for the aggregate guard failure?
+
+The current guard answers neither question completely because it only writes aggregate rows once a hard guard is
+violated.
+
+### 1. Post-latent update trace
+
+Write a diagnostic row immediately after each `update_uts(...)` call, before `uts.dummy$psi` and `uts.dummy$chi` are
+discarded.
+
+Suggested files:
+
+| file | contents |
+| --- | --- |
+| `latent_update_summary.csv` | one row per iteration/source/block, with min/max/p99 of `E[s]`, `E[s^2]`, `E[u]`, `E[1/u]`, `psi`, `chi` |
+| `latent_update_top_cells.csv` | top cells for `E[u]`, `E[1/u]`, `chi`, and `psi`, including source, time/date, lead/member where available |
+
+Minimum columns:
+
+| column | description |
+| --- | --- |
+| `p0`, `iter`, `block`, `source_index`, `source_name` | q-lane and source |
+| `member_index`, `lead_index`, `time_index`, `date` | cell location, blank where not applicable |
+| `y`, `exps`, `exps2`, `resid` | residual context |
+| `E_s`, `E_s2`, `E_u`, `E_inv_u`, `psi`, `chi` | latent/GIG context |
+| `gamma`, `sigma` | current gamma/sigma moments used to compute the update |
+| `transform_scale`, `raw_value_if_available` | log1p-specific context |
+
+This is the only reliable place to diagnose `psi`/`chi` without changing persistent model objects.
+
+### 2. Post-gamma/sigma source trace
+
+Write a source-level row after each `update_gamma_sigma(...)` call and after any guard/refreeze decision.
+
+Suggested file:
+
+`gamsig_source_iteration_summary.csv`
+
+Minimum columns:
+
+| column | description |
+| --- | --- |
+| `p0`, `iter`, `source_index`, `source_name`, `climate_center` | source block |
+| `E_gamma`, `E_sigma`, `V_gamma`, `V_sigma` | primary moments |
+| `E_c_invb_absgam`, `E_a_invb_inv_sigma`, `E_invb_inv_sigma` | exact `FFF` ingredients |
+| `E_a2_invb_inv_sigma`, `E_c2_invb_absgam2_sigma` | exact `u_t/s_t` objective ingredients |
+| `guard_triggered`, `guard_message`, `refreeze_until` | stabilization outcome |
+| `selected_candidate_label`, `split_reason`, `hessian_ridge` | near-zero/split behavior |
+
+This directly tests the source-3 gamma-jump hypothesis.
+
+### 3. Pre-pseudodata iteration summary
 
 Write one CSV row per iteration, quantile, and block:
 
@@ -150,7 +341,7 @@ Minimum columns:
 This table answers whether the failure was sudden or slowly growing, and whether the first abnormal term is latent,
 gamma/sigma, pseudodata denominator, or state feedback.
 
-### 2. Top-k offending cells
+### 4. Top-k pseudodata cells
 
 When any soft threshold is exceeded, write:
 
@@ -172,7 +363,7 @@ absolute value or extremeness. Required columns:
 This is the most important diagnostic artifact. Without it, we know that `FFF` failed but not which source/time/member
 caused the failure.
 
-### 3. Optional compact snapshots
+### 5. Optional compact snapshots
 
 Do not save full `.RData` by default. Instead, if a guard is about to fail, save compact RDS/CSV diagnostics only:
 
@@ -184,7 +375,7 @@ Do not save full `.RData` by default. Instead, if a guard is about to fail, save
 
 Full `.RData` is only justified if the compact top-cell diagnostics cannot identify the bad path.
 
-### 4. Sampling-stage timer details
+### 6. Sampling-stage timer details
 
 For `20210123 c06_eps365`, add or reuse sampling diagnostics to write per-call timings for:
 
@@ -204,14 +395,17 @@ These are ordered so every step produces useful evidence even if the next step i
 | --- | --- | --- | --- |
 | 1 | Add diagnostic flag parsing for latent/pseudodata iteration summaries | config/env fields, disabled by default | R config validation test |
 | 2 | Implement reusable summary helpers for matrices/lists/forecast segments | tested helper functions | deterministic R unit tests |
-| 3 | Add pre-guard iteration summary writer before `disc_w_check_pseudodata_guard(...)` | `pseudodata_iteration_summary.csv` | source-contract test confirms call location |
-| 4 | Add top-k cell writer triggered by soft thresholds or hard guard pre-failure | `pseudodata_top_cells.csv` | fixture verifies correct top rows and indices |
-| 5 | Expose `state_guard_start_iter` override in the diagnostic config generator | generated YAML with start iter <= 20 | Python config-builder test |
-| 6 | Add a named experimental latent mode for `E[u_t]` sensitivity only if diagnostics confirm H1/H3 | e.g. `cap_e_u_and_e_inv_u`, not default | R moment-cap tests and config validation |
-| 7 | Add sampling timer extraction/reporting for the c06 walltime issue | sampling walltime table | parser test with synthetic log |
-| 8 | Build one parser/report script for the targeted diagnostic roots | `reports/.../README.md` plus CSVs/plots | Python unit test on fixture logs |
+| 3 | Add latent update summary/top-cell writer inside historical and forecast update loops | `latent_update_summary.csv`, `latent_update_top_cells.csv` | fixture verifies retained `psi/chi` and indices |
+| 4 | Add gamma/sigma source summary writer after each source update | `gamsig_source_iteration_summary.csv` | fixture verifies source-3 jump is capturable |
+| 5 | Add pre-guard pseudodata summary before `disc_w_check_pseudodata_guard(...)` | `pseudodata_iteration_summary.csv` | source-contract test confirms call location |
+| 6 | Add top-k pseudodata cell writer triggered by soft thresholds or hard guard pre-failure | `pseudodata_top_cells.csv` | fixture verifies correct top rows and indices |
+| 7 | Add an ELBO-accounting source-contract test for forecast `s_t` terms | failing test first if current code is wrong | R or Python source test |
+| 8 | Expose `state_guard_start_iter` override in the diagnostic config generator | generated YAML with start iter <= 20 | Python config-builder test |
+| 9 | Add a named experimental latent mode for `E[u_t]` sensitivity only if diagnostics confirm H1/H3 | e.g. `cap_e_u_and_e_inv_u`, not default | R moment-cap tests and config validation |
+| 10 | Add sampling timer extraction/reporting for the c06 walltime issue | sampling walltime table | parser test with synthetic log |
+| 11 | Build one parser/report script for the targeted diagnostic roots | `reports/.../README.md` plus CSVs/plots | Python unit test on fixture logs |
 
-Step 6 should not be implemented first. Capping `E[u_t]` changes the VB update behavior and can hide the root cause.
+Step 9 should not be implemented first. Capping `E[u_t]` changes the VB update behavior and can hide the root cause.
 It is a sensitivity experiment, not a first-line diagnosis.
 
 ## Targeted Relaunch Design
@@ -221,6 +415,23 @@ Use a new isolated runtime root, for example:
 `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_latent_diag_20260529`
 
 Do not modify the completed grid root. Do not touch older protected live roots.
+
+### Phase 0: no-run code/test preparation
+
+Before launching any diagnostic q-lane:
+
+1. add the diagnostic writers behind disabled-by-default config flags;
+2. add source-contract tests proving the writers are called at the intended locations;
+3. add or extend a test that checks forecast ELBO terms reference `new.sts.out_f`, not `new.uts.out_f`;
+4. statically generate the diagnostic configs and verify they differ from the grid configs only by diagnostics and
+   declared sensitivity settings.
+
+Acceptance:
+
+- no live or grid root is modified;
+- all diagnostics are disabled by default;
+- generated diagnostic YAMLs preserve cutoff, bundle, transform, discount factors, epsilon, quantiles, and cleanup
+  policy unless the phase explicitly changes one setting.
 
 ### Phase A: exact reproductions with better visibility
 
@@ -234,7 +445,8 @@ Run only the failing q-lanes with the same model/data/spec and diagnostic loggin
 Acceptance:
 
 - reproducible failure within +/- 2 iterations, or a documented reason for nondeterminism;
-- top-cell diagnostics identify the source, time/date, block, and exact bad formula term;
+- latent/gamsig/pseudodata top-cell diagnostics identify the source, time/date, block, and exact bad formula term;
+- source-3 gamma jump is either confirmed as the first abnormal event or rejected by earlier latent/top-cell evidence;
 - no large `.RData` retained unless explicitly required.
 
 ### Phase B: matched controls
@@ -258,7 +470,7 @@ Acceptance:
 
 ### Phase C: active state-guard sensitivity
 
-Repeat A1/A2 with only the state guard start changed:
+Repeat A1/A2 with only the state guard start changed after Phase A/B have established the baseline trace:
 
 | target | changed setting | unchanged settings |
 | --- | --- | --- |
@@ -268,14 +480,17 @@ This tests whether the existing state guard is simply wired outside the 100-iter
 
 Acceptance:
 
-- if state guard fires before the pseudodata failure and stabilizes the lane, the production fix is likely a config
-  policy fix;
-- if pseudodata still fails with active state guard, the root is more likely latent/gamma/sigma or pseudo-data
-  formula sensitivity.
+- if state guard fires before the pseudodata failure and stabilizes the lane, the production fix may include a config
+  policy change;
+- if state guard does not fire, or fires after source-3 gamma/latent quantities have already gone bad, state guard is
+  not the root fix;
+- if pseudodata still fails with active state guard, the root is more likely latent/gamma/sigma or pseudo-data formula
+  sensitivity.
 
 ### Phase D: `E[u_t]` sensitivity, only if justified
 
-Only run this phase if A/B show that `E[u_t]` or its direct ingredients move first.
+Only run this phase if A/B show that `E[u_t]`, `psi`, `chi`, or a direct `u_t` ingredient moves before source-3
+gamma/sigma or state feedback.
 
 Candidate diagnostic modes:
 
@@ -299,6 +514,25 @@ Promotion bar:
 - tests must prove both moments are capped as intended;
 - controls must not show degraded CRPS, broken quantile synthesis, or worse component diagnostics;
 - final docs must state that this changes the variational update.
+
+### Phase D2: gamma/sigma near-zero sensitivity, if H3 remains strongest
+
+Only run this phase if A/B confirm that source-3 gamma/sigma moves first.
+
+Candidate sensitivity tests:
+
+| mode | behavior | purpose |
+| --- | --- | --- |
+| stronger split-interior margin | reject source-3 split candidates closer to support boundaries | tests whether the accepted split-positive candidate is too aggressive |
+| source-specific gamma step damping | limit one-iteration gamma movement for source blocks | tests whether the source-3 jump itself drives `FFF` |
+| refreeze-before-commit on no-acceptable-split | reuse previous gamma/sigma before the bad state reaches pseudodata | tests whether current refreeze happens too late |
+| sigma-only fallback for guard-triggered source block | update sigma but hold gamma near previous/anchor | tests whether gamma movement, not sigma, causes the failure |
+
+Promotion bar:
+
+- the candidate must explain both q20 failures and leave matched controls unchanged or improved;
+- the candidate must be named in config and logs;
+- the report must distinguish "stabilizes numerical failure" from "improves CRPS".
 
 ### Phase E: sampling walltime isolation
 
@@ -349,10 +583,14 @@ Required files:
 | --- | --- |
 | `README.md` | executive conclusion, exact run roots, pass/fail, recommended next action |
 | `diagnostic_run_matrix.csv` | all targeted q-lanes, config deltas, status |
+| `latent_update_summary.csv` | per-iteration source/member summaries of `s_t/u_t`, including `psi/chi` |
+| `latent_update_top_cells.csv` | top offending latent/GIG cells |
+| `gamsig_source_iteration_summary.csv` | source-level gamma/sigma and `FFF` ingredient trajectory |
 | `pseudodata_iteration_summary.csv` | concatenated iteration summaries |
 | `pseudodata_top_cells.csv` | offending cells with formula ingredients |
 | `control_comparison.csv` | failed vs control lanes by first abnormal quantity |
 | `state_guard_sensitivity.csv` | baseline vs active-state-guard result |
+| `elbo_accounting_check.md` | result of forecast `s_t` ELBO source-contract test and any fix status |
 | `sampling_walltime_diagnostics.csv` | c06 sampling-only analysis |
 | `recommended_fix_decision.md` | one of: config fix, code fix, sampling fallback, or no change |
 
@@ -362,7 +600,9 @@ Recommended plots:
 | --- | --- |
 | `max_FFF_by_iter.png` | shows sudden vs gradual pseudo-data failure |
 | `max_Eu_EinvU_by_iter.png` | separates `E[u_t]` and `E[1/u_t]` regimes |
+| `psi_chi_by_iter.png` | shows whether GIG parameters move before `E[u_t]` |
 | `gamsig_by_iter_source.png` | shows source-specific gamma/sigma jumps |
+| `fff_ingredient_by_iter_source.png` | decomposes `FFF` into numerator and denominator ingredients |
 | `state_norm_per_t_by_iter.png` | tests state feedback hypothesis |
 | `top_cell_residual_decomposition.png` | explains formula-level failure |
 
@@ -374,11 +614,13 @@ Use the diagnostic evidence to choose the smallest correct intervention.
 | --- | --- |
 | active state guard prevents A1/A2 without hurting controls | change grid/promotion config so `state_guard_start_iter` is inside the iteration budget |
 | `E[u_t]` moves first and capping/freezing that moment fixes A1/A2 while preserving controls | promote a named `E[u_t]` stabilization profile with tests and docs |
-| gamma/sigma denominator terms move first | improve gamma/sigma guard/damping/refreeze, especially around source block that first moves |
+| source-3 gamma/sigma terms move first | improve gamma/sigma guard/damping/refreeze, especially around source block `j=3` |
+| `E_invb_inv_sigma` denominator collapses first | stabilize gamma/sigma expectation calculation or denominator floor with explicit sensitivity labeling |
 | `s_t` moments move first | revisit truncated-normal moment bounds and `s_t` update stabilization |
 | transformed near-zero values create tiny `chi` or pathological residual terms | add transform-scale specific guard or input preprocessing check; do not change transform blindly |
 | only forecast-member top cells fail | audit forecast segment assembly and member bookkeeping before changing latents |
 | only sampling walltime fails with finite fit diagnostics | add sampler fallback/timing guard or classify that spec as failed for runtime reasons |
+| only ELBO accounting is wrong and hard guards stay healthy | fix ELBO accounting, but do not relabel it as the q20 pseudodata root cause |
 
 ## What Not To Do
 
@@ -395,8 +637,9 @@ The plan is ready to implement when these are all true:
 1. a new isolated diagnostic root is chosen;
 2. instrumentation is disabled by default and enabled only in diagnostic configs;
 3. source-contract and helper tests pass;
-4. A/B/C diagnostic matrix is generated and statically validated;
-5. disk cleanup policy is explicit and compact diagnostics are preserved;
-6. the final report template exists before the diagnostic runs start.
+4. the ELBO forecast `s_t` source-contract test has either passed or produced a documented code fix;
+5. A/B/C diagnostic matrix is generated and statically validated;
+6. disk cleanup policy is explicit and compact diagnostics are preserved;
+7. the final report template exists before the diagnostic runs start.
 
 The first implementation step should be diagnostic instrumentation, not algorithmic stabilization.
