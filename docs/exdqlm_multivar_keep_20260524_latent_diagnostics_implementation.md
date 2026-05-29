@@ -147,3 +147,31 @@ Outputs:
 
 The controller continues through model failures because failed rows are evidence. It only stops on infrastructure or
 controller errors.
+
+## Single-Quantile Post-Stage Guard
+
+The q20 diagnostic rows intentionally run one quantile lane at a time. They can still validate the fit-stage latent,
+gamma/sigma, pseudo-data, and sampling diagnostics, but they cannot produce a multivariate quantile-synthesis CRPS
+object because `post_synthesize_rearranged_sample_cube()` requires at least two sorted quantile probabilities.
+
+To keep one-lane diagnostics from failing after a successful fit, `R/environmetrics/40_figures_smoke_fast.R` now checks
+the active quantile grid before historical or forecast multivariate synthesis:
+
+| check | behavior |
+| --- | --- |
+| fewer than two active probabilities | warn with `SKIP_SINGLE_Q` and return `NULL` for that synthesis product |
+| unsorted/non-finite/out-of-range probabilities | warn with `SKIP_BAD_Q_PROBS` and return `NULL` |
+| valid multi-quantile grid | continue to `post_synthesize_rearranged_sample_cube()` |
+
+This is a post-stage diagnostic guard only. It does not relax the formal synthesis helper, and it does not alter
+production multi-quantile synthesis. The helper still errors on a single quantile lane; the smoke-fast caller now skips
+products that are mathematically unavailable for q20-only rows.
+
+Additional verification:
+
+```bash
+Rscript -e 'testthat::test_file("tests/testthat/test_post_quantile_synthesis_rearrangement.R")'
+git diff --check
+```
+
+Result: pass, 24 expectations.

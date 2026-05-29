@@ -98,6 +98,20 @@ testthat::test_that("quantile synthesis cache names include the synthesis method
   testthat::expect_match(cache_name, "\\.rds$")
 })
 
+testthat::test_that("formal synthesis helper rejects a single quantile lane", {
+  sample_cube <- array(0, dim = c(1L, 4L, 2L))
+  testthat::expect_error(
+    post_synthesize_rearranged_sample_cube(
+      sample_cube = sample_cube,
+      q_probs = 0.20,
+      n_samp = 4L,
+      context = "ut.single_q"
+    ),
+    "ut.single_q_Q_PROBS",
+    fixed = TRUE
+  )
+})
+
 testthat::test_that("active smoke-fast multivariate path uses formal rearranged synthesis", {
   smoke_path <- testthat::test_path("..", "..", "R", "environmetrics", "40_figures_smoke_fast.R")
   smoke_text <- readLines(smoke_path, warn = FALSE)
@@ -105,4 +119,6 @@ testthat::test_that("active smoke-fast multivariate path uses formal rearranged 
   testthat::expect_true(any(grepl("smoke_multivar_synthesis_method_tag", smoke_text, fixed = TRUE)))
   testthat::expect_true(any(grepl("synth_multivar_forecast_diagnostics.rds", smoke_text, fixed = TRUE)))
   testthat::expect_true(any(grepl("synth_multivar_hist_diagnostics.rds", smoke_text, fixed = TRUE)))
+  testthat::expect_true(any(grepl("smoke_multivar_can_synthesize_quantile_grid", smoke_text, fixed = TRUE)))
+  testthat::expect_true(any(grepl("SKIP_SINGLE_Q", smoke_text, fixed = TRUE)))
 })

@@ -642,6 +642,32 @@ smoke_multivar_quantile_spec <- function() {
   post_requested_quantile_spec()
 }
 
+smoke_multivar_can_synthesize_quantile_grid <- function(q_probs, context = "multivar.synthesis") {
+  q_probs <- as.numeric(q_probs)
+  if (length(q_probs) < 2L) {
+    warning(
+      sprintf(
+        "[%s_SKIP_SINGLE_Q] Skipping multivariate quantile synthesis because at least two active quantile probabilities are required; got %d.",
+        context,
+        length(q_probs)
+      ),
+      call. = FALSE
+    )
+    return(FALSE)
+  }
+  if (any(!is.finite(q_probs)) || any(q_probs <= 0 | q_probs >= 1) || is.unsorted(q_probs)) {
+    warning(
+      sprintf(
+        "[%s_SKIP_BAD_Q_PROBS] Skipping multivariate quantile synthesis because q_probs are not sorted finite probabilities in (0, 1).",
+        context
+      ),
+      call. = FALSE
+    )
+    return(FALSE)
+  }
+  TRUE
+}
+
 smoke_multivar_required_object_names <- function(spec) {
   c(
     unlist(lapply(spec$tags, function(tag) sprintf("new.theta.out_%s_exAL_synth_DISC", tag)), use.names = FALSE),
@@ -713,6 +739,13 @@ smoke_build_multivar_synth_f <- function() {
   }
 
   spec <- smoke_multivar_quantile_spec()
+  q_probs <- spec$probs
+  if (!smoke_multivar_can_synthesize_quantile_grid(
+    q_probs,
+    context = sprintf("%s.multivar.forecast_synthesis", multivar_meta$model_id)
+  )) {
+    return(NULL)
+  }
   required_objs <- smoke_multivar_required_object_names(spec)
   missing_objs <- required_objs[!vapply(required_objs, exists, logical(1), inherits = TRUE)]
   if (length(missing_objs) > 0L) {
@@ -726,7 +759,6 @@ smoke_build_multivar_synth_f <- function() {
     return(NULL)
   }
 
-  q_probs <- spec$probs
   theta_objs <- lapply(spec$tags, function(tag) get(sprintf("new.theta.out_%s_exAL_synth_DISC", tag), inherits = TRUE))
   gamma_mats <- lapply(spec$tags, function(tag) get(sprintf("samp.gamma_%s_exAL_synth_DISC", tag), inherits = TRUE))
   sigma_mats <- lapply(spec$tags, function(tag) get(sprintf("samp.sigma_%s_exAL_synth_DISC", tag), inherits = TRUE))
@@ -1280,6 +1312,12 @@ smoke_build_multivar_hist_synth <- function() {
   spec <- smoke_multivar_quantile_spec()
   q_tags <- spec$tags
   q_probs <- spec$probs
+  if (!smoke_multivar_can_synthesize_quantile_grid(
+    q_probs,
+    context = sprintf("%s.multivar.hist_synthesis", meta$model_id)
+  )) {
+    return(NULL)
+  }
   required_objs <- c("FF", unlist(lapply(q_tags, function(tag) {
     c(
       sprintf("samp.theta_%s_exAL_synth_DISC", tag),
