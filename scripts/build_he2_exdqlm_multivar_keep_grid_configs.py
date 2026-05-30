@@ -151,6 +151,22 @@ def build_spec_patch(spec: pd.Series, component_cfg: dict[str, Any]) -> dict[str
                     "max_iter": int(spec["max_iter"]),
                     "min_update_iters": int(spec["min_update_iters"]),
                     "min_total_iters": int(spec["min_update_iters"]),
+                    "coherence_guard": {
+                        "enabled": True,
+                        "rollback_on_guard": True,
+                        "min_uts_psi": 1e-8,
+                        "nonnegative_tol": 1e-10,
+                    },
+                    "terminal_sampling_guard": {
+                        "mode": "fail_fast",
+                        "min_guard_count": 1,
+                        "max_guard_lag_iters": 20,
+                        "require_frozen": True,
+                    },
+                },
+                "pseudodata_guard": {
+                    "enabled": True,
+                    "mode": "fail",
                 },
                 "legacy": {
                     "forecast_cov": {

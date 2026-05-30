@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ARTIFACT_ROOT = Path(
     "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/"
@@ -103,6 +105,16 @@ def read_csv_rows(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
+def load_yaml_optional(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def read_matrix_plan(matrix_dir: Path) -> list[dict[str, str]]:
     rows = read_csv_rows(matrix_dir / "matrix_plan.csv")
     for row in rows:
@@ -126,7 +138,10 @@ def scan_log(path: Path) -> dict[str, Any]:
     latest_progress: dict[str, str] = {}
     latest_sampling_phase = ""
     gamsig_guard_count = 0
+    gamsig_rollback_count = 0
+    latent_parameter_guard_count = 0
     state_guard_count = 0
+    pseudodata_guard_event_count = 0
     pseudodata_guard_fail_count = 0
     near_zero_fallback_log_count = 0
     fatal_error_count = 0
@@ -138,7 +153,10 @@ def scan_log(path: Path) -> dict[str, Any]:
             "latest_progress": latest_progress,
             "latest_sampling_phase": latest_sampling_phase,
             "gamsig_guard_count": 0,
+            "gamsig_rollback_count": 0,
+            "latent_parameter_guard_count": 0,
             "state_guard_count": 0,
+            "pseudodata_guard_event_count": 0,
             "pseudodata_guard_fail_count": 0,
             "near_zero_fallback_log_count": 0,
             "fatal_error_count": 0,
@@ -154,8 +172,14 @@ def scan_log(path: Path) -> dict[str, Any]:
                 latest_sampling_phase = line
             if "[gamsig_guard]" in line:
                 gamsig_guard_count += 1
+            if "[gamsig_rollback]" in line:
+                gamsig_rollback_count += 1
+            if "[latent_parameter_guard]" in line:
+                latent_parameter_guard_count += 1
             if "[state_guard]" in line:
                 state_guard_count += 1
+            if "[pseudodata_guard]" in line and "policy" not in line:
+                pseudodata_guard_event_count += 1
             if ("[pseudodata_guard_fail]" in line) or ("[pseudodata_guard_violation]" in line):
                 pseudodata_guard_fail_count += 1
             if "[gamsig_near_zero_fallback]" in line:
@@ -171,7 +195,10 @@ def scan_log(path: Path) -> dict[str, Any]:
         "latest_progress": latest_progress,
         "latest_sampling_phase": latest_sampling_phase,
         "gamsig_guard_count": gamsig_guard_count,
+        "gamsig_rollback_count": gamsig_rollback_count,
+        "latent_parameter_guard_count": latent_parameter_guard_count,
         "state_guard_count": state_guard_count,
+        "pseudodata_guard_event_count": pseudodata_guard_event_count,
         "pseudodata_guard_fail_count": pseudodata_guard_fail_count,
         "near_zero_fallback_log_count": near_zero_fallback_log_count,
         "fatal_error_count": fatal_error_count,
@@ -190,6 +217,12 @@ def lane_snapshot(
     cutoff = str(run_row["cutoff"]).zfill(8)
     q_int = int(q_label)
     run_root = artifact_root / "runs" / run_id
+    manifest = load_yaml_optional(run_root / "run_manifest.yaml")
+    cleanup_after_post = ((manifest.get("rdata_cleanup") or {}).get("after_post") or {})
+    cleanup_before = cleanup_after_post.get("before", "")
+    cleanup_removed = cleanup_after_post.get("removed", "")
+    cleanup_remaining = cleanup_after_post.get("remaining", "")
+    run_rdata_count = len(list(run_root.rglob("*.RData"))) + len(list(run_root.rglob("*.rda"))) if run_root.exists() else 0
     q_root = run_root / "fit" / "exdqlm_multivar" / "keep" / f"q={q_label}"
     log_path = q_root / "logs" / "fit.log"
     sampling_diag_path = q_root / "logs" / "sampling_diagnostics.log"
@@ -210,12 +243,27 @@ def lane_snapshot(
     status = matrix_status.get("status", "not_started")
     if rdata_path.exists():
         output_state = "rdata_present"
+    elif status == "pass" and str(cleanup_remaining) == "0":
+        output_state = "post_cleaned"
     elif status == "pass":
         output_state = "post_cleaned_or_absent"
     elif log_path.exists():
         output_state = "fit_or_post_pending"
     else:
         output_state = "missing"
+    pseudodata_total = int(scan["pseudodata_guard_event_count"]) + int(scan["pseudodata_guard_fail_count"])
+    if int(scan["fatal_error_count"]) > 0:
+        failure_layer = "fatal"
+    elif int(scan["pseudodata_guard_fail_count"]) > 0:
+        failure_layer = "pseudodata"
+    elif int(scan["gamsig_rollback_count"]) > 0:
+        failure_layer = "gamma_sigma_guarded"
+    elif int(scan["latent_parameter_guard_count"]) > 0:
+        failure_layer = "latent_boundary"
+    elif status == "pass":
+        failure_layer = "none"
+    else:
+        failure_layer = "pending"
 
     return {
         "cutoff": cutoff,
@@ -237,10 +285,14 @@ def lane_snapshot(
         "history_len_to_cutoff": hist_len,
         "state_norm_sq_per_history_day": "" if state_norm_sq_per_history_day is None else f"{state_norm_sq_per_history_day:.12g}",
         "frozen": latest.get("frozen", ""),
-        "guard_count": int(scan["gamsig_guard_count"]) + int(scan["state_guard_count"]),
+        "guard_count": int(scan["gamsig_guard_count"]) + int(scan["state_guard_count"]) + int(scan["gamsig_rollback_count"]),
         "gamsig_guard_count": int(scan["gamsig_guard_count"]),
+        "gamsig_rollback_count": int(scan["gamsig_rollback_count"]),
+        "latent_parameter_guard_count": int(scan["latent_parameter_guard_count"]),
         "state_guard_count": int(scan["state_guard_count"]),
+        "pseudodata_guard_event_count": int(scan["pseudodata_guard_event_count"]),
         "pseudodata_guard_fail_count": int(scan["pseudodata_guard_fail_count"]),
+        "pseudodata_guard_total_count": pseudodata_total,
         "near_zero_fallback_count": near_zero_fallback_count,
         "near_zero_fallback_log_count": int(scan["near_zero_fallback_log_count"]),
         "fatal_error_count": int(scan["fatal_error_count"]),
@@ -249,6 +301,11 @@ def lane_snapshot(
         "sampling_diag_exists": sampling_diag_path.exists(),
         "latest_sampling_phase": sampling_scan["latest_sampling_phase"] or scan["latest_sampling_phase"],
         "output_state": output_state,
+        "failure_layer": failure_layer,
+        "run_rdata_count": run_rdata_count,
+        "rdata_cleanup_after_post_before": cleanup_before,
+        "rdata_cleanup_after_post_removed": cleanup_removed,
+        "rdata_cleanup_after_post_remaining": cleanup_remaining,
         "fit_log_path": str(log_path),
     }
 
@@ -295,18 +352,19 @@ def write_markdown(path: Path, rows: list[dict[str, Any]], audited_at: str, arti
         f"- matrix_dir: `{matrix_dir}`",
         f"- lane_status_counts: `{counts}`",
         "",
-        "| cutoff | spec | q | stage/status | iter | upd | ELBO | dELBO | sigma | gamma | state/T | guards | near0 | pseudo | fatal | output |",
-        "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "| cutoff | spec | q | stage/status | iter | upd | ELBO | sigma | gamma | state/T | roll | latent | pseudo | fatal | output | layer |",
+        "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|",
     ]
     for row in rows:
         lines.append(
-            "| {cutoff} | {grid_spec_id} | {q} | {stage}/{status} | {iter} | {updates} | {elbo} | {d_elbo} | "
-            "{sigma_exp} | {gamma_exp} | {state_norm_sq_per_history_day} | {guard_count} | "
-            "{near_zero_fallback_count} | "
-            "{pseudodata_guard_fail_count} | {fatal_error_count} | {output_state} |".format(**row)
+            "| {cutoff} | {grid_spec_id} | {q} | {stage}/{status} | {iter} | {updates} | {elbo} | "
+            "{sigma_exp} | {gamma_exp} | {state_norm_sq_per_history_day} | {gamsig_rollback_count} | "
+            "{latent_parameter_guard_count} | {pseudodata_guard_total_count} | {fatal_error_count} | "
+            "{output_state} | {failure_layer} |".format(**row)
         )
     lines.append("")
     lines.append("`state/T` is `state_norm_sq` divided by the history length from `1987-05-29` through the cutoff date.")
+    lines.append("`roll`, `latent`, and `pseudo` count gamma/sigma rollbacks, latent-parameter guards, and pseudo-data guard events.")
     lines.append("This monitor is read-only: it parses logs/manifests and writes report files only.")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

@@ -57,6 +57,124 @@ def read_csv_optional(path: Path) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def count_run_rdata(run_root: Path) -> int:
+    if not run_root.exists():
+        return 0
+    return len(list(run_root.rglob("*.RData"))) + len(list(run_root.rglob("*.rda")))
+
+
+def collect_run_stability_diagnostics(run_root: Path) -> dict[str, Any]:
+    fit_root = run_root / "fit" / "exdqlm_multivar" / "keep"
+    logs = sorted(fit_root.glob("q=*/logs/fit.log")) if fit_root.exists() else []
+    counts = {
+        "quantile_log_count": len(logs),
+        "gamsig_rollback_count": 0,
+        "gamsig_guard_count": 0,
+        "latent_parameter_guard_count": 0,
+        "pseudodata_guard_event_count": 0,
+        "pseudodata_guard_fail_count": 0,
+        "state_guard_count": 0,
+        "near_zero_fallback_count": 0,
+        "fatal_error_count": 0,
+        "sampling_finalize_count": 0,
+    }
+    first_event = ""
+    for log in logs:
+        try:
+            lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
+        except Exception:
+            continue
+        for line in lines:
+            if "[gamsig_rollback]" in line:
+                counts["gamsig_rollback_count"] += 1
+                if not first_event:
+                    first_event = f"{log.parent.parent.name}:{line}"
+            if "[gamsig_guard]" in line:
+                counts["gamsig_guard_count"] += 1
+            if "[latent_parameter_guard]" in line:
+                counts["latent_parameter_guard_count"] += 1
+                if not first_event:
+                    first_event = f"{log.parent.parent.name}:{line}"
+            if "[pseudodata_guard]" in line and "policy" not in line:
+                counts["pseudodata_guard_event_count"] += 1
+                if not first_event:
+                    first_event = f"{log.parent.parent.name}:{line}"
+            if "[pseudodata_guard_fail]" in line or "[pseudodata_guard_violation]" in line:
+                counts["pseudodata_guard_fail_count"] += 1
+                if not first_event:
+                    first_event = f"{log.parent.parent.name}:{line}"
+            if "[state_guard]" in line:
+                counts["state_guard_count"] += 1
+            if "[gamsig_near_zero_fallback]" in line:
+                counts["near_zero_fallback_count"] += 1
+            if line.startswith("Error") or "Execution halted" in line or "Traceback (most recent call last)" in line:
+                counts["fatal_error_count"] += 1
+                if not first_event:
+                    first_event = f"{log.parent.parent.name}:{line}"
+            if "phase=sampling_finalize" in line:
+                counts["sampling_finalize_count"] += 1
+
+    manifest = load_yaml(run_root / "run_manifest.yaml")
+    cleanup_after_post = ((manifest.get("rdata_cleanup") or {}).get("after_post") or {})
+    rdata_count = count_run_rdata(run_root)
+    cleanup_remaining = cleanup_after_post.get("remaining", pd.NA)
+    cleanup_removed = cleanup_after_post.get("removed", pd.NA)
+    cleanup_before = cleanup_after_post.get("before", pd.NA)
+    cleanup_recorded = bool(cleanup_after_post)
+    cleanup_ok = rdata_count == 0
+    if cleanup_recorded and pd.notna(cleanup_remaining):
+        try:
+            cleanup_ok = cleanup_ok and int(cleanup_remaining) == 0
+        except Exception:
+            cleanup_ok = False
+
+    hard_failures: list[str] = []
+    if counts["fatal_error_count"] > 0:
+        hard_failures.append("fatal_error")
+    if counts["pseudodata_guard_fail_count"] > 0:
+        hard_failures.append("pseudodata_guard_fail")
+    if not cleanup_ok:
+        hard_failures.append("rdata_not_cleaned")
+
+    guarded = (
+        counts["gamsig_rollback_count"] > 0
+        or counts["latent_parameter_guard_count"] > 0
+        or counts["pseudodata_guard_event_count"] > 0
+        or counts["near_zero_fallback_count"] > 0
+    )
+    if hard_failures:
+        stability_status = "failed"
+    elif guarded:
+        stability_status = "guarded_pass"
+    else:
+        stability_status = "clean"
+
+    warning_parts = []
+    for key in [
+        "gamsig_rollback_count",
+        "latent_parameter_guard_count",
+        "pseudodata_guard_event_count",
+        "near_zero_fallback_count",
+    ]:
+        if counts[key] > 0:
+            warning_parts.append(f"{key}={counts[key]}")
+
+    return {
+        **counts,
+        "run_rdata_count": rdata_count,
+        "rdata_cleanup_recorded": cleanup_recorded,
+        "rdata_cleanup_after_post_before": cleanup_before,
+        "rdata_cleanup_after_post_removed": cleanup_removed,
+        "rdata_cleanup_after_post_remaining": cleanup_remaining,
+        "rdata_cleanup_ok": cleanup_ok,
+        "stability_status": stability_status,
+        "stability_gate_ok": not hard_failures,
+        "stability_warning": ";".join(warning_parts),
+        "stability_failure_reason": ";".join(hard_failures),
+        "first_guard_event": first_event,
+    }
+
+
 def output_root(artifact_root: Path, run_id: str) -> Path:
     return runs_dir(artifact_root) / run_id / "post" / "outputs" / run_id
 
@@ -147,11 +265,15 @@ def build_gate_summary(plan: pd.DataFrame, artifact_root: Path) -> tuple[pd.Data
         "quantile_synthesis": [],
         "component_contract": [],
         "trace_health": [],
+        "stability_diagnostics": [],
     }
     for _, row in plan.iterrows():
         run_id = str(row["run_id"])
+        run_root = runs_dir(artifact_root) / run_id
         out_root = output_root(artifact_root, run_id)
         phase, status = stage_status(manifest_path_for(run_id, artifact_root))
+        stability = collect_run_stability_diagnostics(run_root)
+        tables["stability_diagnostics"].append(add_metadata(pd.DataFrame([stability]), row, run_root / "run_manifest.yaml"))
         post_summary = load_json(out_root / "post_artifacts_summary.json")
         contract = post_summary.get("contract", {}) if isinstance(post_summary.get("contract"), dict) else {}
         post_contract_ok = bool(contract.get("status", False))
@@ -198,6 +320,8 @@ def build_gate_summary(plan: pd.DataFrame, artifact_root: Path) -> tuple[pd.Data
             failures.append(component_reason)
         if trace.empty:
             failures.append("missing_trace_q50")
+        if not bool(stability["stability_gate_ok"]):
+            failures.append(stability["stability_failure_reason"])
 
         gate = row.to_dict()
         gate.update({
@@ -210,6 +334,7 @@ def build_gate_summary(plan: pd.DataFrame, artifact_root: Path) -> tuple[pd.Data
             "quantile_synthesis_ok": synth_ok,
             "component_contract_ok": component_ok,
             "trace_q50_present": not trace.empty,
+            **stability,
             "eligible": len(failures) == 0,
             "failure_reason": "|".join([f for f in failures if f]),
         })
@@ -256,14 +381,34 @@ def summarize_crps(crps: pd.DataFrame, gates: pd.DataFrame) -> tuple[pd.DataFram
         .agg(n_days="count", mean_crps="mean", median_crps="median", min_crps="min", max_crps="max", sd_crps="std")
         .reset_index()
     )
-    eligible = gates.loc[:, ["run_id", "eligible", "failure_reason"]].drop_duplicates()
+    eligible_cols = [
+        "run_id",
+        "eligible",
+        "failure_reason",
+        "stability_status",
+        "stability_warning",
+        "stability_failure_reason",
+        "gamsig_rollback_count",
+        "latent_parameter_guard_count",
+        "pseudodata_guard_event_count",
+        "pseudodata_guard_fail_count",
+        "fatal_error_count",
+        "run_rdata_count",
+        "rdata_cleanup_ok",
+    ]
+    eligible = gates.loc[:, [col for col in eligible_cols if col in gates.columns]].drop_duplicates()
     summary = summary.merge(eligible, on="run_id", how="left")
     summary["eligible"] = summary["eligible"].fillna(False).astype(bool)
-    summary = summary.sort_values(["cutoff", "eligible", "mean_crps", "median_crps", "max_crps"], ascending=[True, False, True, True, True])
+    stability_rank = {"clean": 0, "guarded_pass": 1, "failed": 9}
+    summary["selection_tier"] = summary["stability_status"].map(stability_rank).fillna(9).astype(int)
+    summary = summary.sort_values(
+        ["cutoff", "eligible", "selection_tier", "mean_crps", "median_crps", "max_crps"],
+        ascending=[True, False, True, True, True, True],
+    )
 
     winners = []
     for cutoff, group in summary.loc[summary["eligible"]].groupby("cutoff", dropna=False):
-        ranked = group.sort_values(["mean_crps", "median_crps", "max_crps", "grid_spec_id"]).reset_index(drop=True)
+        ranked = group.sort_values(["selection_tier", "mean_crps", "median_crps", "max_crps", "grid_spec_id"]).reset_index(drop=True)
         if ranked.empty:
             continue
         winner = ranked.iloc[0].to_dict()
@@ -332,6 +477,12 @@ def maybe_write_figures(out_dir: Path, summary: pd.DataFrame, winners: pd.DataFr
 
 def write_report(out_dir: Path, gates: pd.DataFrame, summary: pd.DataFrame, winners: pd.DataFrame, pooled: pd.DataFrame) -> None:
     eligible_count = int(gates["eligible"].sum()) if "eligible" in gates else 0
+    stability_counts = (
+        gates["stability_status"].astype(str).value_counts(dropna=False).to_dict()
+        if "stability_status" in gates
+        else {}
+    )
+    stability_text = ", ".join(f"{k}={v}" for k, v in sorted(stability_counts.items())) or "none"
     lines = [
         "# HE2 exDQLM Multivar Keep Grid Evaluation",
         "",
@@ -339,6 +490,7 @@ def write_report(out_dir: Path, gates: pd.DataFrame, summary: pd.DataFrame, winn
         f"- run rows evaluated: `{len(gates)}`",
         f"- eligible rows: `{eligible_count}`",
         f"- failed/ineligible rows: `{len(gates) - eligible_count}`",
+        f"- stability statuses: `{stability_text}`",
         f"- target model: `{TARGET_MODEL_ID}`",
         f"- target score scale: `{TARGET_SCORE_SCALE}`",
         "",
@@ -360,6 +512,8 @@ def write_report(out_dir: Path, gates: pd.DataFrame, summary: pd.DataFrame, winn
         "grid_crps_summary_by_spec_cutoff.csv",
         "grid_crps_winners_by_cutoff.csv",
         "grid_crps_summary_by_spec_pooled.csv",
+        "grid_stability_diagnostics.csv",
+        "grid_guarded_candidate_log.csv",
         "grid_failure_log.csv",
     ]:
         lines.append(f"- `{name}`")
@@ -397,7 +551,11 @@ def main() -> int:
     tables["quantile_synthesis"].to_csv(out_dir / "grid_quantile_synthesis_summary.csv", index=False)
     tables["component_contract"].to_csv(out_dir / "grid_component_contract_summary.csv", index=False)
     tables["trace_health"].to_csv(out_dir / "grid_trace_health_summary.csv", index=False)
+    tables["stability_diagnostics"].to_csv(out_dir / "grid_stability_diagnostics.csv", index=False)
     gates.loc[~gates["eligible"]].to_csv(out_dir / "grid_failure_log.csv", index=False)
+    gates.loc[
+        gates["eligible"] & gates["stability_status"].astype(str).eq("guarded_pass")
+    ].to_csv(out_dir / "grid_guarded_candidate_log.csv", index=False)
     maybe_write_figures(out_dir, summary, winners)
     write_report(out_dir, gates, summary, winners, pooled)
 

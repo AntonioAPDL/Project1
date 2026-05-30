@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
@@ -57,11 +59,18 @@ class HE2ExDQLMKeepAllCutoffMonitorTests(unittest.TestCase):
             q_root.joinpath("logs", "fit.log").write_text(
                 "\n".join([
                     "[gamsig_guard] p0=0.05 iter=3",
+                    "[gamsig_rollback] p0=0.05 iter=3 reason=guard_triggered detail=incoherent gamma/sigma moments",
+                    "[latent_parameter_guard] p0=0.05 bad_psi=0/1 bad_chi=12/100 action=clamp_to_floor",
                     "[state_guard] p0=0.05 iter=4",
+                    "[pseudodata_guard] p0=0.05 iter=5 scope=history metric=FFF max_abs=1200",
                     "[pseudodata_guard_fail] p0=0.05 iter=5",
                     "[gamsig_near_zero_fallback] p0=0.05 context=vb_main iter=6 j=3 status=near_zero_sigma_only_fallback anchor=full_candidate gamma_hat=0.01 threshold=0.05",
                     "[gamsig_progress] p0=0.05 iter=7 elbo=-12.3 crit_elbo=0.01 sigma_exp=0.4 gamma_exp=-0.2 state_norm_sq=100 gamsig_update_iters=3 near_zero_fallback_count=1 frozen=false",
                 ]) + "\n",
+                encoding="utf-8",
+            )
+            (artifact_root / "runs" / run_id / "run_manifest.yaml").write_text(
+                yaml.safe_dump({"rdata_cleanup": {"after_post": {"before": 1, "removed": 1, "remaining": 0}}}),
                 encoding="utf-8",
             )
 
@@ -71,10 +80,17 @@ class HE2ExDQLMKeepAllCutoffMonitorTests(unittest.TestCase):
             self.assertEqual(q05["epsilon_label"], "365")
             self.assertEqual(q05["iter"], "7")
             self.assertEqual(q05["elbo"], "-12.3")
-            self.assertEqual(q05["guard_count"], 2)
+            self.assertEqual(q05["guard_count"], 3)
+            self.assertEqual(q05["gamsig_rollback_count"], 1)
+            self.assertEqual(q05["latent_parameter_guard_count"], 1)
+            self.assertEqual(q05["pseudodata_guard_event_count"], 1)
             self.assertEqual(q05["pseudodata_guard_fail_count"], 1)
+            self.assertEqual(q05["pseudodata_guard_total_count"], 2)
             self.assertEqual(q05["near_zero_fallback_count"], 1)
             self.assertEqual(q05["near_zero_fallback_log_count"], 1)
+            self.assertEqual(q05["output_state"], "fit_or_post_pending")
+            self.assertEqual(q05["rdata_cleanup_after_post_remaining"], 0)
+            self.assertEqual(q05["failure_layer"], "pseudodata")
             expected_scaled = 100.0 / monitor.history_length("20210123")
             self.assertAlmostEqual(float(q05["state_norm_sq_per_history_day"]), expected_scaled)
 
@@ -92,7 +108,7 @@ class HE2ExDQLMKeepAllCutoffMonitorTests(unittest.TestCase):
             self.assertIn("state/T", latest_text)
             self.assertIn("| cutoff | spec | q |", latest_text)
             self.assertIn("c01_eps365", latest_text)
-            self.assertIn("near0", latest_text)
+            self.assertIn("latent", latest_text)
             self.assertIn("q05", latest_text)
 
 

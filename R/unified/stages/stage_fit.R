@@ -1092,7 +1092,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         pseudodata_guard_policy, c("enabled"), default = TRUE
       ))) "TRUE" else "FALSE",
       DISC_PSEUDODATA_GUARD_MODE = as.character(unified_get(
-        pseudodata_guard_policy, c("mode"), default = "warn"
+        pseudodata_guard_policy, c("mode"), default = "fail"
       )),
       DISC_PSEUDODATA_GUARD_REPORT_DIR = pseudodata_guard_report_dir,
       DISC_PSEUDODATA_FFF_ABS_CAP = as.character(unified_get(

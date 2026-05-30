@@ -130,6 +130,60 @@ unified_extract_multivar_quantiles_by_mode <- function(paths, primary_mode = "dr
   out
 }
 
+unified_merge_quantiles_by_mode <- function(lhs, rhs) {
+  out <- list()
+  modes <- sort(unique(c(names(lhs), names(rhs))))
+  for (mode in modes) {
+    vals <- c(lhs[[mode]], rhs[[mode]])
+    vals <- suppressWarnings(as.integer(vals))
+    vals <- vals[is.finite(vals)]
+    out[[mode]] <- sort(unique(vals))
+  }
+  out
+}
+
+unified_detect_multivar_quantiles_by_mode_from_run_root <- function(run_root, primary_mode = "drop") {
+  out <- list()
+  run_root <- normalizePath(run_root, mustWork = FALSE)
+  fit_root <- file.path(run_root, "fit", "exdqlm_multivar")
+
+  append_q <- function(mode, q_val) {
+    mode <- tolower(trimws(as.character(mode)))
+    if (!nzchar(mode)) return(invisible(NULL))
+    q_val <- suppressWarnings(as.integer(q_val))
+    if (!is.finite(q_val)) return(invisible(NULL))
+    prev <- out[[mode]]
+    if (is.null(prev)) prev <- integer(0)
+    out[[mode]] <<- sort(unique(c(prev, q_val)))
+    invisible(NULL)
+  }
+
+  if (dir.exists(fit_root)) {
+    q_dirs <- list.dirs(fit_root, recursive = TRUE, full.names = TRUE)
+    q_dirs <- q_dirs[grepl("/q=[0-9]{2}$", q_dirs, perl = TRUE)]
+    for (q_dir in q_dirs) {
+      rel <- sub(paste0("^", gsub("([\\^\\$\\.\\|\\?\\*\\+\\(\\)\\[\\]\\{\\}\\\\])", "\\\\\\1", fit_root), "/?"), "", q_dir, perl = TRUE)
+      parts <- strsplit(rel, "/", fixed = TRUE)[[1L]]
+      q_token <- parts[[length(parts)]]
+      q_val <- suppressWarnings(as.integer(sub("^q=", "", q_token)))
+      mode <- if (length(parts) >= 2L) parts[[length(parts) - 1L]] else primary_mode
+      append_q(mode, q_val)
+    }
+  }
+
+  legacy_fit_root <- file.path(run_root, "fit")
+  if (dir.exists(legacy_fit_root)) {
+    q_dirs <- list.dirs(legacy_fit_root, recursive = FALSE, full.names = TRUE)
+    q_dirs <- q_dirs[grepl("/q=[0-9]{2}$", q_dirs, perl = TRUE)]
+    for (q_dir in q_dirs) {
+      q_val <- suppressWarnings(as.integer(sub("^q=", "", basename(q_dir))))
+      append_q(primary_mode, q_val)
+    }
+  }
+
+  out
+}
+
 unified_detect_ndlm_output_present <- function(paths) {
   paths <- as.character(paths)
   paths <- paths[nzchar(paths)]
@@ -250,6 +304,14 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     artifact_paths,
     primary_mode = primary_multivar_transfer_mode
   )
+  multivar_found_by_mode_fs <- unified_detect_multivar_quantiles_by_mode_from_run_root(
+    run_root,
+    primary_mode = primary_multivar_transfer_mode
+  )
+  multivar_found_by_mode_raw <- unified_merge_quantiles_by_mode(
+    multivar_found_by_mode_raw,
+    multivar_found_by_mode_fs
+  )
   multivar_found_by_mode <- list()
   if (isTRUE(cfg$models$run_exdqlm_multivar)) {
     if (!length(multivar_transfer_modes)) {
@@ -341,6 +403,7 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     profile_summary_path = if (is.null(profile_summary_path)) NA_character_ else profile_summary_path,
     artifacts_recorded = length(manifest$artifacts),
     deterministic_climate = detclim_summary,
+    rdata_cleanup = manifest$rdata_cleanup,
     report = list(
       families = families_summary
     )
@@ -399,7 +462,9 @@ unified_stage_report <- function(cfg, run_root, repo_root, manifest) {
     sprintf("- families.ndlm_main.enabled: `%s`", families_summary$ndlm_main$enabled),
     sprintf("- families.ndlm_main.output_present: `%s`", families_summary$ndlm_main$output_present),
     sprintf("- families.ndlm_univar.enabled: `%s`", families_summary$ndlm_univar$enabled),
-    sprintf("- families.ndlm_univar.output_present: `%s`", families_summary$ndlm_univar$output_present)
+    sprintf("- families.ndlm_univar.output_present: `%s`", families_summary$ndlm_univar$output_present),
+    sprintf("- rdata_cleanup.after_post.remaining: `%s`",
+            if (!is.null(manifest$rdata_cleanup$after_post$remaining)) manifest$rdata_cleanup$after_post$remaining else NA)
   )
 
   if (isTRUE(families_summary$exdqlm_multivar$enabled) &&

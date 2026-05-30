@@ -377,6 +377,26 @@ The evaluator should summarize, at minimum:
 
 These diagnostics should not replace CRPS, but they can disqualify a numerically unhealthy spec or flag it for rerun.
 
+### 2026-05-30 Guard Promotion Update
+
+Status: implemented and tested. See
+`docs/exdqlm_multivar_keep_grid_guard_promotion_20260530.md`.
+
+The grid tooling now promotes the validated gamma/sigma coherence repair into every generated grid config:
+
+- gamma/sigma coherence rollback is explicitly enabled;
+- terminal sampling guard is fail-fast;
+- pseudo-data guard defaults to `fail`;
+- report-stage quantile discovery no longer depends on retained `.RData`;
+- the live monitor reports rollback, latent, pseudo-data, fatal, output, and failure-layer columns;
+- the grid evaluator writes `grid_stability_diagnostics.csv` and `grid_guarded_candidate_log.csv`;
+- eligible rows are ranked by stability tier before CRPS, so `clean` rows beat `guarded_pass` rows unless no clean
+  alternative is available for the cutoff.
+
+Hard stability failures are fatal log errors, pseudo-data guard failures, and retained `.RData` after a production
+cleanup pass. Guarded but completed rows remain visible and eligible, because the validated q20 repair is a recovered
+guarded pass rather than a hidden failure.
+
 ## Implementation Plan Status
 
 1. Freeze the grid spec manifest from the user-provided values. Status: complete.
@@ -398,9 +418,10 @@ These diagnostics should not replace CRPS, but they can disqualify a numerically
 6. Launch the approved grid. Status: running.
    - full grid launched with detached controller PID `3758588`;
    - queue policy is 4 concurrent spec-cutoff rows, 28 quantile workers, cleanup enabled, continue-on-fail enabled.
-7. Run the grid evaluator and write all tables/figures under `reports/`. Status: pending full-grid completion.
-8. Select best spec per cutoff using the eligibility gates and primary CRPS rule. Status: pending full-grid completion.
-9. Freeze a final grid-selection doc with exact winners, runner-ups, rejected specs, and remaining caveats. Status: pending evaluator review.
+7. Promote guard-aware health diagnostics into the builder, monitor, evaluator, and report stage. Status: complete.
+8. Run the grid evaluator and write all tables/figures under `reports/`. Status: pending full-grid completion.
+9. Select best spec per cutoff using the eligibility gates and primary CRPS rule. Status: pending full-grid completion.
+10. Freeze a final grid-selection doc with exact winners, runner-ups, rejected specs, and remaining caveats. Status: pending evaluator review.
 
 ## Tests To Add With The Evaluator
 
@@ -413,7 +434,9 @@ Targeted deterministic tests should cover:
 - q50 component contract parsing;
 - missing artifact handling;
 - figure-copy/symlink manifest construction;
-- no reliance on run-name parsing for scientific parameters.
+- no reliance on run-name parsing for scientific parameters;
+- guard-aware stability classification;
+- `.RData` cleanup classification after successful post.
 
 ## Remaining Work
 

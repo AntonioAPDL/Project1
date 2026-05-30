@@ -125,11 +125,26 @@ class HE2ExDQLMKeepGridNextStepsTests(unittest.TestCase):
                         "report": {"status": report_status},
                     }
                 }
+                if run_id == "run_good":
+                    manifest["rdata_cleanup"] = {"after_post": {"before": 7, "removed": 7, "remaining": 0}}
                 (run_root / "run_manifest.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
 
             out_root = runs_dir(artifact_root) / "run_good" / "post/outputs/run_good"
             tables = out_root / "tables"
             tables.mkdir(parents=True)
+            good_log = runs_dir(artifact_root) / "run_good" / "fit/exdqlm_multivar/keep/q=20/logs/fit.log"
+            good_log.parent.mkdir(parents=True)
+            good_log.write_text(
+                "\n".join([
+                    "[gamsig_rollback] p0=0.2 iter=46 reason=guard_triggered detail=incoherent gamma/sigma moments",
+                    "[latent_parameter_guard] p0=0.2 bad_psi=0/1 bad_chi=2/100 action=clamp_to_floor",
+                    "[sampling_phase] p0=0.2 phase=sampling_finalize elapsed=10s detail=n_samp=2000",
+                ]) + "\n",
+                encoding="utf-8",
+            )
+            bad_log = runs_dir(artifact_root) / "run_bad" / "fit/exdqlm_multivar/keep/q=20/logs/fit.log"
+            bad_log.parent.mkdir(parents=True)
+            bad_log.write_text("[pseudodata_guard_fail] p0=0.2 iter=47\nExecution halted\n", encoding="utf-8")
             (out_root / "post_artifacts_summary.json").write_text(
                 json.dumps({"contract": {"status": True, "missing_paths": []}}),
                 encoding="utf-8",
@@ -182,10 +197,21 @@ class HE2ExDQLMKeepGridNextStepsTests(unittest.TestCase):
             gates, tables_by_name = evaluator.build_gate_summary(plan, artifact_root)
             summary, winners, pooled = evaluator.summarize_crps(tables_by_name["crps_per_time"], gates)
             self.assertEqual(int(gates["eligible"].sum()), 1)
+            good_gate = gates.loc[gates["run_id"] == "run_good"].iloc[0]
+            self.assertEqual(good_gate["stability_status"], "guarded_pass")
+            self.assertEqual(int(good_gate["gamsig_rollback_count"]), 1)
+            self.assertEqual(int(good_gate["latent_parameter_guard_count"]), 1)
+            self.assertTrue(bool(good_gate["rdata_cleanup_ok"]))
+            bad_gate = gates.loc[gates["run_id"] == "run_bad"].iloc[0]
+            self.assertEqual(bad_gate["stability_status"], "failed")
+            self.assertIn("pseudodata_guard_fail", bad_gate["stability_failure_reason"])
             self.assertEqual(winners.iloc[0]["grid_spec_id"], "c01_eps365")
             self.assertAlmostEqual(float(winners.iloc[0]["mean_crps"]), 0.15)
+            self.assertEqual(winners.iloc[0]["stability_status"], "guarded_pass")
             self.assertFalse(summary.empty)
             self.assertFalse(pooled.empty)
+            self.assertIn("stability_diagnostics", tables_by_name)
+            self.assertFalse(tables_by_name["stability_diagnostics"].empty)
         finally:
             shutil.rmtree(td, ignore_errors=True)
 

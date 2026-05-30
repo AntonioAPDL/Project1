@@ -32,7 +32,7 @@ test_that("unified config defaults include new likelihood and ndlm transfer mode
   expect_equal(cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$min_uts_psi, 1e-8)
   expect_equal(cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$nonnegative_tol, 1e-10)
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$enabled, TRUE)
-  expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$mode, "warn")
+  expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$mode, "fail")
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$caps$e_inv_u_abs_cap, 5000)
   expect_equal(cfg$fit$exdqlm_multivar$diagnostics$latent$enabled, FALSE)
   expect_equal(cfg$fit$exdqlm_multivar$diagnostics$latent$top_k, 20L)

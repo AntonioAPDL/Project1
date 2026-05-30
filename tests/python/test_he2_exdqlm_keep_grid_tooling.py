@@ -41,6 +41,13 @@ class HE2ExDQLMKeepGridToolingTests(unittest.TestCase):
         self.assertEqual(state["df_covs"], 0.999999)
         self.assertEqual(state["lambda"], 0.97)
         self.assertEqual(patch["fit"]["quantiles"], [0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95])
+        gamsig = patch["fit"]["exdqlm_multivar"]["gamma_sigma"]
+        self.assertTrue(gamsig["coherence_guard"]["enabled"])
+        self.assertTrue(gamsig["coherence_guard"]["rollback_on_guard"])
+        self.assertEqual(gamsig["terminal_sampling_guard"]["mode"], "fail_fast")
+        self.assertEqual(gamsig["terminal_sampling_guard"]["max_guard_lag_iters"], 20)
+        self.assertTrue(patch["fit"]["exdqlm_multivar"]["pseudodata_guard"]["enabled"])
+        self.assertEqual(patch["fit"]["exdqlm_multivar"]["pseudodata_guard"]["mode"], "fail")
         self.assertEqual(patch["fit"]["exdqlm_multivar"]["legacy"]["forecast_cov"]["epsilon"], 30.0)
         self.assertEqual(patch["fit"]["exdqlm_multivar"]["legacy"]["forecast_cov"]["c_factor"], 1.0)
         self.assertTrue(patch["post"]["multivar_component_diagnostics"]["enabled"])

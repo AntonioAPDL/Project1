@@ -372,7 +372,7 @@ unified_config_defaults <- function() {
         ),
         pseudodata_guard = list(
           enabled = TRUE,
-          mode = "warn",
+          mode = "fail",
           report_dir = "",
           caps = list(
             fff_abs_cap = 1000,
@@ -2247,7 +2247,7 @@ unified_validate_config <- function(cfg) {
       add_err("fit.exdqlm_multivar.pseudodata_guard.enabled must be boolean (true/false)")
     }
     guard_mode <- as.character(unified_get(
-      cfg, c("fit", "exdqlm_multivar", "pseudodata_guard", "mode"), default = "warn"
+      cfg, c("fit", "exdqlm_multivar", "pseudodata_guard", "mode"), default = "fail"
     ))
     guard_mode <- if (length(guard_mode) > 0L) guard_mode[[1L]] else ""
     if (!(guard_mode %in% c("warn", "fail"))) {
