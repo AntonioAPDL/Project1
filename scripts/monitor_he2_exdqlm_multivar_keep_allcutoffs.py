@@ -206,23 +206,56 @@ def scan_log(path: Path) -> dict[str, Any]:
     }
 
 
+def run_cleanup_snapshot(
+    artifact_root: Path,
+    run_id: str,
+    cache: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    if run_id in cache:
+        return cache[run_id]
+
+    run_root = artifact_root / "runs" / run_id
+    manifest = load_yaml_optional(run_root / "run_manifest.yaml")
+    cleanup_after_post = ((manifest.get("rdata_cleanup") or {}).get("after_post") or {})
+    fit_root = run_root / "fit" / "exdqlm_multivar" / "keep"
+    if fit_root.exists():
+        run_rdata_count = (
+            len(list(fit_root.glob("q=*/outputs/*.RData")))
+            + len(list(fit_root.glob("q=*/outputs/*.rda")))
+        )
+    else:
+        run_rdata_count = 0
+
+    snapshot = {
+        "run_root": run_root,
+        "cleanup_before": cleanup_after_post.get("before", ""),
+        "cleanup_removed": cleanup_after_post.get("removed", ""),
+        "cleanup_remaining": cleanup_after_post.get("remaining", ""),
+        "run_rdata_count": run_rdata_count,
+    }
+    cache[run_id] = snapshot
+    return snapshot
+
+
 def lane_snapshot(
     artifact_root: Path,
     run_row: dict[str, str],
     matrix_status: dict[str, str],
     q_label: str,
     data_start: str,
+    run_cache: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     run_id = run_row["run_id"]
     cutoff = str(run_row["cutoff"]).zfill(8)
     q_int = int(q_label)
-    run_root = artifact_root / "runs" / run_id
-    manifest = load_yaml_optional(run_root / "run_manifest.yaml")
-    cleanup_after_post = ((manifest.get("rdata_cleanup") or {}).get("after_post") or {})
-    cleanup_before = cleanup_after_post.get("before", "")
-    cleanup_removed = cleanup_after_post.get("removed", "")
-    cleanup_remaining = cleanup_after_post.get("remaining", "")
-    run_rdata_count = len(list(run_root.rglob("*.RData"))) + len(list(run_root.rglob("*.rda"))) if run_root.exists() else 0
+    if run_cache is None:
+        run_cache = {}
+    cleanup = run_cleanup_snapshot(artifact_root, run_id, run_cache)
+    run_root = cleanup["run_root"]
+    cleanup_before = cleanup["cleanup_before"]
+    cleanup_removed = cleanup["cleanup_removed"]
+    cleanup_remaining = cleanup["cleanup_remaining"]
+    run_rdata_count = cleanup["run_rdata_count"]
     q_root = run_root / "fit" / "exdqlm_multivar" / "keep" / f"q={q_label}"
     log_path = q_root / "logs" / "fit.log"
     sampling_diag_path = q_root / "logs" / "sampling_diagnostics.log"
@@ -314,6 +347,7 @@ def build_snapshot_rows(artifact_root: Path, matrix_dir: Path, data_start: str) 
     matrix_plan = read_matrix_plan(matrix_dir)
     status_by_run_id = read_status_by_run_id(matrix_dir)
     rows: list[dict[str, Any]] = []
+    run_cache: dict[str, dict[str, Any]] = {}
     for run_row in matrix_plan:
         run_id = run_row.get("run_id", "")
         if not run_id:
@@ -321,7 +355,14 @@ def build_snapshot_rows(artifact_root: Path, matrix_dir: Path, data_start: str) 
         q_labels = parse_quantiles(run_row.get("active_quantiles"))
         matrix_status = status_by_run_id.get(run_id, {})
         for q_label in q_labels:
-            rows.append(lane_snapshot(artifact_root, run_row, matrix_status, q_label, data_start=data_start))
+            rows.append(lane_snapshot(
+                artifact_root,
+                run_row,
+                matrix_status,
+                q_label,
+                data_start=data_start,
+                run_cache=run_cache,
+            ))
     rows.sort(key=lambda r: (str(r["cutoff"]), str(r.get("grid_spec_id", "")), int(str(r["q"]).replace("q", ""))))
     return rows
 
