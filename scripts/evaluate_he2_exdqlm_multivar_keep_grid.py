@@ -140,7 +140,6 @@ def collect_run_stability_diagnostics(run_root: Path) -> dict[str, Any]:
         counts["gamsig_rollback_count"] > 0
         or counts["latent_parameter_guard_count"] > 0
         or counts["pseudodata_guard_event_count"] > 0
-        or counts["near_zero_fallback_count"] > 0
     )
     if hard_failures:
         stability_status = "failed"

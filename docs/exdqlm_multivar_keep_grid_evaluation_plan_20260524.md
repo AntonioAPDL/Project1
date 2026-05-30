@@ -391,7 +391,8 @@ The grid tooling now promotes the validated gamma/sigma coherence repair into ev
 - the live monitor reports rollback, latent, pseudo-data, fatal, output, and failure-layer columns;
 - the grid evaluator writes `grid_stability_diagnostics.csv` and `grid_guarded_candidate_log.csv`;
 - eligible rows are ranked by stability tier before CRPS, so `clean` rows beat `guarded_pass` rows unless no clean
-  alternative is available for the cutoff.
+  alternative is available for the cutoff;
+- near-zero gamma/sigma fallback is retained as a warning, not a stability-tier penalty by itself.
 
 Hard stability failures are fatal log errors, pseudo-data guard failures, and retained `.RData` after a production
 cleanup pass. Guarded but completed rows remain visible and eligible, because the validated q20 repair is a recovered

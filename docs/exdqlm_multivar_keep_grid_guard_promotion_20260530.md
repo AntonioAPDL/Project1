@@ -33,7 +33,9 @@ Key evidence from the untracked runtime diagnostic:
 
 This is strong evidence for the known gamma/sigma-to-latent-to-pseudo-data failure chain, but it is not a proof that
 every future grid row is clean. The grid evaluator now distinguishes `clean`, `guarded_pass`, and `failed` rows so this
-caveat remains visible during CRPS selection.
+caveat remains visible during CRPS selection. Near-zero gamma/sigma fallback is recorded as a warning, not as a
+selection penalty by itself, because it is common in stable completed grid rows and is not the same as a rollback,
+latent-boundary event, pseudo-data guard event, or fatal failure.
 
 ## Promoted Runtime Policy
 
@@ -115,12 +117,16 @@ Stability statuses:
 
 | status | meaning | ranking behavior |
 | --- | --- | --- |
-| `clean` | no rollback, latent guard, pseudo-data event, near-zero fallback, fatal error, or cleanup anomaly found | preferred tier |
+| `clean` | no rollback, latent guard, pseudo-data event, fatal error, or cleanup anomaly found; may still carry a near-zero fallback warning | preferred tier |
 | `guarded_pass` | run passed, but used a rollback or guard that should remain visible | eligible, but lower priority than clean rows |
 | `failed` | fatal error, pseudo-data guard failure, or `.RData` cleanup anomaly | ineligible |
 
 This policy avoids two bad outcomes: it does not hide instability behind CRPS, and it does not automatically discard a
 known recovered row like the q20 validation case when no clean alternative exists.
+
+The first full-grid evaluator pass after this promotion showed that most warnings were benign near-zero fallback
+events, with no gamma/sigma rollbacks and no latent-parameter guards in completed rows. Therefore near-zero fallback is
+kept in `stability_warning` but no longer moves a run from `clean` to `guarded_pass`.
 
 ## CRPS Selection Rule After Promotion
 
@@ -131,7 +137,8 @@ Per-cutoff model selection remains based on forecast-window CRPS for `exdqlm_mul
    quantile synthesis, missing q50 component contract, or missing q50 trace.
 2. Exclude rows with hard stability failures: fatal log errors, pseudo-data guard failures, or retained `.RData` after
    successful cleanup.
-3. Rank eligible rows by `selection_tier` first: `clean` before `guarded_pass`.
+3. Rank eligible rows by `selection_tier` first: `clean` before `guarded_pass`, where near-zero-only rows remain
+   `clean`.
 4. Within the same tier, rank by mean CRPS, median CRPS, worst-lead CRPS, then grid spec id.
 5. Preserve all failed and guarded rows in CSV outputs so the final selection doc can explain why a low-CRPS run was
    rejected or demoted.
@@ -162,10 +169,10 @@ Results:
 
 1. Re-run the grid evaluator on the current grid root after all active/relaunched rows finish.
 2. Review `grid_stability_diagnostics.csv` before accepting winners; a `guarded_pass` winner is acceptable only if no
-   clean row has comparable CRPS for that cutoff.
+   clean row has comparable CRPS for that cutoff. Near-zero-only warnings should be interpreted separately from
+   rollback/latent/pseudo-data guards.
 3. Inspect `grid_guarded_candidate_log.csv` for repeated q20-style rollbacks or frequent latent boundary events.
 4. Treat any `pseudodata_guard_fail` row as a real failed spec/cutoff unless a separate source-lock investigation finds
    an input or wiring error.
 5. Freeze final winners in a tracked grid-selection document with CRPS, raw forecast controls, stability tier, cleanup
    proof, and winner figure paths.
-

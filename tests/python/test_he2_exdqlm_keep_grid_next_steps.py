@@ -215,6 +215,30 @@ class HE2ExDQLMKeepGridNextStepsTests(unittest.TestCase):
         finally:
             shutil.rmtree(td, ignore_errors=True)
 
+    def test_near_zero_fallback_is_warning_not_stability_penalty(self) -> None:
+        td = Path(tempfile.mkdtemp(prefix="keep_grid_nearzero_test_"))
+        try:
+            run_root = td / "runs" / "nearzero_only"
+            run_root.mkdir(parents=True)
+            (run_root / "run_manifest.yaml").write_text(
+                yaml.safe_dump({"rdata_cleanup": {"after_post": {"before": 7, "removed": 7, "remaining": 0}}}),
+                encoding="utf-8",
+            )
+            log = run_root / "fit/exdqlm_multivar/keep/q=50/logs/fit.log"
+            log.parent.mkdir(parents=True)
+            log.write_text(
+                "[gamsig_near_zero_fallback] p0=0.5 context=vb_main iter=12 status=near_zero_sigma_only_fallback\n",
+                encoding="utf-8",
+            )
+
+            diag = evaluator.collect_run_stability_diagnostics(run_root)
+            self.assertEqual(diag["near_zero_fallback_count"], 1)
+            self.assertEqual(diag["stability_status"], "clean")
+            self.assertTrue(bool(diag["stability_gate_ok"]))
+            self.assertIn("near_zero_fallback_count=1", diag["stability_warning"])
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()
