@@ -64,6 +64,17 @@ def split_csv_tokens(raw: str | list[str] | None, default: list[str]) -> list[st
     return out or list(default)
 
 
+def set_nested(data: dict[str, Any], keys: list[str], value: Any) -> None:
+    cur = data
+    for key in keys[:-1]:
+        nxt = cur.get(key)
+        if not isinstance(nxt, dict):
+            nxt = {}
+            cur[key] = nxt
+        cur = nxt
+    cur[keys[-1]] = value
+
+
 def rewrite_config(
     source_config: Path,
     *,
@@ -73,6 +84,9 @@ def rewrite_config(
     tag: str,
     source_run_id: str,
     source_grid_spec_id: str,
+    gamma_sigma_max_iter: int | None = None,
+    gamma_sigma_min_update_iters: int | None = None,
+    state_guard_start_iter: int | None = None,
 ) -> dict[str, Any]:
     cfg = load_yaml(source_config)
     cfg.setdefault("run", {})
@@ -82,12 +96,34 @@ def rewrite_config(
     cfg["run"]["auto_suffix_on_collision"] = False
     cfg["run"]["resolved_run_root"] = str(runs_dir(artifact_root) / run_id)
     cfg["run"]["resolved_config_path"] = str(config_path)
+    if gamma_sigma_max_iter is not None:
+        set_nested(cfg, ["fit", "exdqlm_multivar", "gamma_sigma", "max_iter"], int(gamma_sigma_max_iter))
+    if gamma_sigma_min_update_iters is not None:
+        set_nested(
+            cfg,
+            ["fit", "exdqlm_multivar", "gamma_sigma", "min_update_iters"],
+            int(gamma_sigma_min_update_iters),
+        )
+        set_nested(
+            cfg,
+            ["fit", "exdqlm_multivar", "gamma_sigma", "min_total_iters"],
+            int(gamma_sigma_min_update_iters),
+        )
+    if state_guard_start_iter is not None:
+        set_nested(
+            cfg,
+            ["fit", "exdqlm_multivar", "gamma_sigma", "stabilization", "state_guard_start_iter"],
+            int(state_guard_start_iter),
+        )
     cfg.setdefault("debug_he2_exdqlm_keep_grid_smoke", {})
     cfg["debug_he2_exdqlm_keep_grid_smoke"] = {
         "tag": tag,
         "source_run_id": source_run_id,
         "source_config": str(source_config),
         "source_grid_spec_id": source_grid_spec_id,
+        "gamma_sigma_max_iter_override": gamma_sigma_max_iter,
+        "gamma_sigma_min_update_iters_override": gamma_sigma_min_update_iters,
+        "state_guard_start_iter_override": state_guard_start_iter,
         "code_commit": git_head(),
     }
     return cfg
@@ -109,6 +145,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--heavy-mem-gb", type=float, default=120.0)
     ap.add_argument("--heavy-cutoff-max-concurrent", type=int, default=1)
     ap.add_argument("--poll-seconds", type=int, default=30)
+    ap.add_argument("--gamma-sigma-max-iter", type=int, default=None)
+    ap.add_argument("--gamma-sigma-min-update-iters", type=int, default=None)
+    ap.add_argument("--state-guard-start-iter", type=int, default=None)
     ap.add_argument("--reset-status", action="store_true")
     return ap.parse_args(argv)
 
@@ -120,6 +159,18 @@ def main() -> int:
     tag = safe_token(args.tag)
     cutoffs = [str(x).zfill(8) for x in split_csv_tokens(args.cutoffs, DEFAULT_CUTOFFS)]
     grid_spec_ids = split_csv_tokens(args.grid_spec_ids, DEFAULT_GRID_SPEC_IDS)
+    if args.gamma_sigma_max_iter is not None and int(args.gamma_sigma_max_iter) < 1:
+        raise SystemExit("--gamma-sigma-max-iter must be >= 1")
+    if args.gamma_sigma_min_update_iters is not None and int(args.gamma_sigma_min_update_iters) < 1:
+        raise SystemExit("--gamma-sigma-min-update-iters must be >= 1")
+    if args.state_guard_start_iter is not None and int(args.state_guard_start_iter) < 1:
+        raise SystemExit("--state-guard-start-iter must be >= 1")
+    if (
+        args.gamma_sigma_max_iter is not None
+        and args.gamma_sigma_min_update_iters is not None
+        and int(args.gamma_sigma_max_iter) < int(args.gamma_sigma_min_update_iters)
+    ):
+        raise SystemExit("--gamma-sigma-max-iter must be >= --gamma-sigma-min-update-iters")
 
     source_plan = pd.read_csv(source_matrix_dir / "matrix_plan.csv", dtype=str)
     selected = source_plan.loc[
@@ -153,6 +204,9 @@ def main() -> int:
             tag=tag,
             source_run_id=source_run_id,
             source_grid_spec_id=str(row["grid_spec_id"]),
+            gamma_sigma_max_iter=args.gamma_sigma_max_iter,
+            gamma_sigma_min_update_iters=args.gamma_sigma_min_update_iters,
+            state_guard_start_iter=args.state_guard_start_iter,
         )
         write_yaml(config_path, cfg)
 
@@ -165,6 +219,11 @@ def main() -> int:
         out["compare_outdir"] = str(reports_dir(artifact_root) / f"{run_id}_compare_not_used")
         out["run_scope"] = f"he2_exdqlm_multivar_keep_epsilon_discount_grid_smoke_{tag}"
         out["profile_name"] = tag
+        out["gamma_sigma_max_iter_override"] = "" if args.gamma_sigma_max_iter is None else int(args.gamma_sigma_max_iter)
+        out["gamma_sigma_min_update_iters_override"] = (
+            "" if args.gamma_sigma_min_update_iters is None else int(args.gamma_sigma_min_update_iters)
+        )
+        out["state_guard_start_iter_override"] = "" if args.state_guard_start_iter is None else int(args.state_guard_start_iter)
         plan_rows.append(out)
 
     plan_df = pd.DataFrame(plan_rows)
@@ -226,6 +285,11 @@ def main() -> int:
         "allow_run_failures": True,
         "queue": queue,
         "resources": {"fit_parallel_workers": 7, "mc_cores": 7},
+        "overrides": {
+            "gamma_sigma_max_iter": args.gamma_sigma_max_iter,
+            "gamma_sigma_min_update_iters": args.gamma_sigma_min_update_iters,
+            "state_guard_start_iter": args.state_guard_start_iter,
+        },
         "code_commit": git_head(),
         "n_specs": len(set(plan_df["grid_spec_id"])),
         "n_cutoffs": len(set(plan_df["cutoff"])),
@@ -270,6 +334,9 @@ def main() -> int:
             f"HEAVY_CUTOFF_MAX_CONCURRENT={queue['heavy_cutoff_max_concurrent']}",
             f"HEAVY_CUTOFF_BLOCKS_ORDINARY={1 if queue['heavy_cutoff_blocks_ordinary'] else 0}",
             f"POLL_SECONDS={queue['poll_seconds']}",
+            f"GAMMA_SIGMA_MAX_ITER_OVERRIDE={args.gamma_sigma_max_iter or ''}",
+            f"GAMMA_SIGMA_MIN_UPDATE_ITERS_OVERRIDE={args.gamma_sigma_min_update_iters or ''}",
+            f"STATE_GUARD_START_ITER_OVERRIDE={args.state_guard_start_iter or ''}",
             "CONTINUE_ON_FAIL=1",
             "SKIP_COMPARES=1",
             "",
@@ -293,6 +360,9 @@ def main() -> int:
         f"- launch memory GB: `{queue['launch_mem_gb']}`",
         f"- heavy memory GB: `{queue['heavy_mem_gb']}`",
         f"- artifact disk free GB: `{artifact_disk_free_gb(artifact_root)}`",
+        f"- gamma/sigma max_iter override: `{args.gamma_sigma_max_iter}`",
+        f"- gamma/sigma min_update_iters override: `{args.gamma_sigma_min_update_iters}`",
+        f"- state guard start iter override: `{args.state_guard_start_iter}`",
         "",
         "## No-Cleanup Smoke Launch",
         "",

@@ -60,6 +60,53 @@ class HE2ExDQLMKeepGridNextStepsTests(unittest.TestCase):
         finally:
             shutil.rmtree(td, ignore_errors=True)
 
+    def test_smoke_rewrite_config_can_override_phase_b_iteration_controls(self) -> None:
+        td = Path(tempfile.mkdtemp(prefix="keep_grid_smoke_override_test_"))
+        try:
+            source_cfg = td / "source.yaml"
+            source_cfg.write_text(
+                yaml.safe_dump(
+                    {
+                        "run": {"run_id": "old", "run_root": "/old/runs"},
+                        "fit": {
+                            "exdqlm_multivar": {
+                                "gamma_sigma": {
+                                    "max_iter": 100,
+                                    "min_update_iters": 50,
+                                    "min_total_iters": 50,
+                                    "stabilization": {"state_guard_start_iter": 1000},
+                                }
+                            }
+                        },
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+            cfg = smoke.rewrite_config(
+                source_cfg,
+                artifact_root=td / "artifact",
+                run_id="phase_b",
+                config_path=td / "artifact/control/generated_configs/phase_b.yaml",
+                tag="phase_b",
+                source_run_id="source_run",
+                source_grid_spec_id="c02_eps060",
+                gamma_sigma_max_iter=1000,
+                gamma_sigma_min_update_iters=100,
+                state_guard_start_iter=50,
+            )
+            gamsig = cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]
+            self.assertEqual(gamsig["max_iter"], 1000)
+            self.assertEqual(gamsig["min_update_iters"], 100)
+            self.assertEqual(gamsig["min_total_iters"], 100)
+            self.assertEqual(gamsig["stabilization"]["state_guard_start_iter"], 50)
+            debug = cfg["debug_he2_exdqlm_keep_grid_smoke"]
+            self.assertEqual(debug["gamma_sigma_max_iter_override"], 1000)
+            self.assertEqual(debug["gamma_sigma_min_update_iters_override"], 100)
+            self.assertEqual(debug["state_guard_start_iter_override"], 50)
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
     def test_grid_evaluator_selects_only_eligible_lowest_crps_spec(self) -> None:
         td = Path(tempfile.mkdtemp(prefix="keep_grid_eval_test_"))
         try:
