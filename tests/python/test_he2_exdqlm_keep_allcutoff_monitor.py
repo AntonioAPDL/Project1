@@ -92,7 +92,9 @@ class HE2ExDQLMKeepAllCutoffMonitorTests(unittest.TestCase):
             self.assertEqual(q05["rdata_cleanup_after_post_remaining"], 0)
             self.assertEqual(q05["failure_layer"], "pseudodata")
             expected_scaled = 100.0 / monitor.history_length("20210123")
+            expected_sqrt_scaled = 10.0 / monitor.history_length("20210123")
             self.assertAlmostEqual(float(q05["state_norm_sq_per_history_day"]), expected_scaled)
+            self.assertAlmostEqual(float(q05["sqrt_state_norm_over_history_len"]), expected_sqrt_scaled)
 
             out_dir = root / "monitor_out"
             rc = monitor.main([
@@ -105,6 +107,7 @@ class HE2ExDQLMKeepAllCutoffMonitorTests(unittest.TestCase):
             self.assertTrue((out_dir / "LIVE_STATUS.md").exists())
             self.assertTrue((out_dir / "live_status_latest.csv").exists())
             latest_text = (out_dir / "LIVE_STATUS.md").read_text(encoding="utf-8")
+            self.assertIn("sqrt(state)/T", latest_text)
             self.assertIn("state/T", latest_text)
             self.assertIn("| cutoff | spec | q |", latest_text)
             self.assertIn("c01_eps365", latest_text)

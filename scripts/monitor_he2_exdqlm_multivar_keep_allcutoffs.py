@@ -267,6 +267,11 @@ def lane_snapshot(
     hist_len = history_length(cutoff, data_start=data_start)
     state_norm_sq = parse_number(latest.get("state_norm_sq"))
     state_norm_sq_per_history_day = state_norm_sq / hist_len if state_norm_sq is not None and hist_len > 0 else None
+    sqrt_state_norm_over_history_len = (
+        math.sqrt(state_norm_sq) / hist_len
+        if state_norm_sq is not None and state_norm_sq >= 0 and hist_len > 0
+        else None
+    )
     progress_near_zero_count = parse_number(latest.get("near_zero_fallback_count"))
     near_zero_fallback_count = max(
         int(scan["near_zero_fallback_log_count"]),
@@ -317,6 +322,9 @@ def lane_snapshot(
         "state_norm_sq": latest.get("state_norm_sq", ""),
         "history_len_to_cutoff": hist_len,
         "state_norm_sq_per_history_day": "" if state_norm_sq_per_history_day is None else f"{state_norm_sq_per_history_day:.12g}",
+        "sqrt_state_norm_over_history_len": (
+            "" if sqrt_state_norm_over_history_len is None else f"{sqrt_state_norm_over_history_len:.12g}"
+        ),
         "frozen": latest.get("frozen", ""),
         "guard_count": int(scan["gamsig_guard_count"]) + int(scan["state_guard_count"]) + int(scan["gamsig_rollback_count"]),
         "gamsig_guard_count": int(scan["gamsig_guard_count"]),
@@ -393,18 +401,19 @@ def write_markdown(path: Path, rows: list[dict[str, Any]], audited_at: str, arti
         f"- matrix_dir: `{matrix_dir}`",
         f"- lane_status_counts: `{counts}`",
         "",
-        "| cutoff | spec | q | stage/status | iter | upd | ELBO | sigma | gamma | state/T | roll | latent | pseudo | fatal | output | layer |",
-        "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|",
+        "| cutoff | spec | q | stage/status | iter | upd | ELBO | sigma | gamma | sqrt(state)/T | state/T | roll | latent | pseudo | fatal | output | layer |",
+        "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|",
     ]
     for row in rows:
         lines.append(
             "| {cutoff} | {grid_spec_id} | {q} | {stage}/{status} | {iter} | {updates} | {elbo} | "
-            "{sigma_exp} | {gamma_exp} | {state_norm_sq_per_history_day} | {gamsig_rollback_count} | "
+            "{sigma_exp} | {gamma_exp} | {sqrt_state_norm_over_history_len} | {state_norm_sq_per_history_day} | {gamsig_rollback_count} | "
             "{latent_parameter_guard_count} | {pseudodata_guard_total_count} | {fatal_error_count} | "
             "{output_state} | {failure_layer} |".format(**row)
         )
     lines.append("")
-    lines.append("`state/T` is `state_norm_sq` divided by the history length from `1987-05-29` through the cutoff date.")
+    lines.append("`sqrt(state)/T` is `sqrt(state_norm_sq)` divided by the history length through the cutoff date.")
+    lines.append("`state/T` is `state_norm_sq` divided by the history length through the cutoff date, retained for backward comparison.")
     lines.append("`roll`, `latent`, and `pseudo` count gamma/sigma rollbacks, latent-parameter guards, and pseudo-data guard events.")
     lines.append("This monitor is read-only: it parses logs/manifests and writes report files only.")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
