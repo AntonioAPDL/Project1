@@ -172,7 +172,9 @@ unified_post_contract_check <- function(
     "multivar_transfer_coefficients_window_q50.csv",
     "multivar_transfer_state_contract_q50.csv",
     "multivar_transfer_identity_check_q50.csv",
-    "multivar_transfer_contract_q50.csv"
+    "multivar_transfer_contract_q50.csv",
+    "multivar_vb_usgs_location_quantiles_cutoff_window.csv",
+    "multivar_vb_usgs_location_quantile_summary.csv"
   )
   component_required_figures <- c(
     "multivar_elbo_trace_q50.png",
@@ -182,7 +184,8 @@ unified_post_contract_check <- function(
     "multivar_transfer_coefficients_window_q50.png",
     "multivar_transfer_observation_decomposition_q50.png",
     "multivar_transfer_source_mu_window_q50.png",
-    "multivar_transfer_discrepancy_identity_q50.png"
+    "multivar_transfer_discrepancy_identity_q50.png",
+    "multivar_vb_usgs_location_quantiles_cutoff_window.png"
   )
   check_multivar_component_contract <- function() {
     missing_component <- c(

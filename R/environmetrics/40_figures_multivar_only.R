@@ -982,6 +982,396 @@ build_transfer_state_window_q50 <- function(pre_days = 30L) {
   )
 }
 
+multivar_vb_location_quantile_specs <- function() {
+  raw <- Sys.getenv("UNIFIED_FIT_QUANTILE_LABELS", "")
+  if (nzchar(raw)) {
+    labels <- unlist(strsplit(raw, ",", fixed = TRUE), use.names = FALSE)
+  } else {
+    labels <- safe_get("quantile_labels", c("05", "20", "35", "50", "65", "80", "95"))
+  }
+  labels <- trimws(as.character(labels))
+  labels <- labels[nzchar(labels)]
+  labels <- gsub("^q", "", labels, ignore.case = TRUE)
+  q_num <- suppressWarnings(as.integer(labels))
+  q_num <- q_num[is.finite(q_num)]
+  if (length(q_num) == 0L) q_num <- c(5L, 20L, 35L, 50L, 65L, 80L, 95L)
+  q_num <- unique(q_num)
+  q_num <- q_num[order(q_num)]
+  data.frame(
+    quantile = sprintf("q%02d", q_num),
+    suffix = as.character(q_num),
+    probability = q_num / 100,
+    stringsAsFactors = FALSE
+  )
+}
+
+multivar_get_vb_theta_for_quantile <- function(suffix) {
+  suffix <- as.character(suffix[[1L]])
+  candidates <- unique(c(
+    sprintf("new.theta.out_%s_exAL_synth_DISC", suffix),
+    sprintf("new.theta.out_%02d_exAL_synth_DISC", suppressWarnings(as.integer(suffix)))
+  ))
+  for (nm in candidates) {
+    obj <- safe_get(nm, NULL)
+    if (is.list(obj)) return(obj)
+  }
+  NULL
+}
+
+build_multivar_vb_usgs_location_rows_for_quantile <- function(theta_obj, quantile_label, probability, pre_days = 30L) {
+  y <- safe_get("Y", NULL)
+  p_hint <- suppressWarnings(as.integer(safe_get("p", NA_integer_)))
+  layout <- infer_transfer_layout_q50(theta_obj, p_hint = p_hint)
+  if (!isTRUE(layout$valid)) return(data.frame())
+
+  j_total <- layout$J
+  p <- layout$p
+  ppx <- layout$ppx
+  tt_hist <- layout$TT_hist
+  core_hist_dim <- layout$core_hist_dim
+  seg_contract <- layout$seg_contract
+  ff_base <- infer_baseline_ff_q50(p)
+
+  pre_n <- suppressWarnings(as.integer(pre_days))
+  if (!is.finite(pre_n) || pre_n < 0L) pre_n <- 30L
+  hist_start <- max(1L, tt_hist - pre_n)
+  hist_idx <- seq.int(hist_start, tt_hist)
+  n_hist <- length(hist_idx)
+  hist_day_rel <- seq.int(-n_hist + 1L, 0L)
+
+  cutoff_date <- suppressWarnings(as.Date(Sys.getenv("UNIFIED_CUTOFF_DATE", "")))
+  make_dates <- function(day_rel) {
+    if (is.na(cutoff_date)) {
+      return(rep(as.Date(NA), length(day_rel)))
+    }
+    cutoff_date + as.integer(day_rel)
+  }
+
+  sm_hist <- as.matrix(theta_obj$sm)
+  exps <- as.matrix(theta_obj$exps)
+  h_obs <- rep(NA_real_, n_hist)
+  if (is.matrix(y) && nrow(y) >= 1L && ncol(y) >= max(hist_idx)) {
+    h_obs <- as.numeric(y[1, hist_idx])
+  }
+
+  hist_rows <- data.frame(
+    quantile = quantile_label,
+    probability = as.numeric(probability),
+    day_rel = hist_day_rel,
+    date = make_dates(hist_day_rel),
+    phase = "history",
+    mu_usgs = rep(NA_real_, n_hist),
+    mu_usgs_state = rep(NA_real_, n_hist),
+    mu_usgs_exps = rep(NA_real_, n_hist),
+    mu_glofas_exps = rep(NA_real_, n_hist),
+    agg_discrep_glofas = rep(NA_real_, n_hist),
+    mu_usgs_from_glofas = rep(NA_real_, n_hist),
+    mu_nws_exps = rep(NA_real_, n_hist),
+    agg_discrep_nws = rep(NA_real_, n_hist),
+    mu_usgs_from_nws = rep(NA_real_, n_hist),
+    identity_err_glofas = rep(NA_real_, n_hist),
+    identity_err_nws = rep(NA_real_, n_hist),
+    usgs_observed = h_obs,
+    source_basis = rep("history_exps", n_hist),
+    stringsAsFactors = FALSE
+  )
+
+  zeta_hist_idx <- core_hist_dim + 1L
+  has_hist_transfer <- zeta_hist_idx <= nrow(sm_hist)
+  for (ii in seq_len(n_hist)) {
+    tt <- hist_idx[ii]
+    mt <- as.numeric(sm_hist[, tt])
+    theta_idx <- seq_len(p)
+    delta_g_idx <- if (j_total >= 1L) seq.int(p + 1L, 2L * p) else integer(0)
+    delta_n_idx <- if (j_total >= 2L) seq.int(2L * p + 1L, 3L * p) else integer(0)
+
+    base_no_transfer <- sum(ff_base * mt[theta_idx])
+    zeta_mean <- if (has_hist_transfer) mt[zeta_hist_idx] else 0
+    mu_state <- base_no_transfer + zeta_mean
+    disc_g <- if (length(delta_g_idx) == p) sum(ff_base * mt[delta_g_idx]) else NA_real_
+    disc_n <- if (length(delta_n_idx) == p) sum(ff_base * mt[delta_n_idx]) else NA_real_
+    mu_exps <- if (is.matrix(exps) && nrow(exps) >= 1L && ncol(exps) >= tt) exps[1L, tt] else NA_real_
+    mu_g <- if (is.finite(disc_g)) mu_state + disc_g else NA_real_
+    mu_n <- if (is.finite(disc_n)) mu_state + disc_n else NA_real_
+
+    hist_rows$mu_usgs_state[ii] <- mu_state
+    hist_rows$mu_usgs_exps[ii] <- mu_exps
+    hist_rows$mu_usgs[ii] <- if (is.finite(mu_exps)) mu_exps else mu_state
+    hist_rows$mu_glofas_exps[ii] <- mu_g
+    hist_rows$agg_discrep_glofas[ii] <- disc_g
+    hist_rows$mu_usgs_from_glofas[ii] <- if (is.finite(mu_g) && is.finite(disc_g)) mu_g - disc_g else NA_real_
+    hist_rows$mu_nws_exps[ii] <- mu_n
+    hist_rows$agg_discrep_nws[ii] <- disc_n
+    hist_rows$mu_usgs_from_nws[ii] <- if (is.finite(mu_n) && is.finite(disc_n)) mu_n - disc_n else NA_real_
+    hist_rows$identity_err_glofas[ii] <- hist_rows$mu_usgs_from_glofas[ii] - mu_state
+    hist_rows$identity_err_nws[ii] <- hist_rows$mu_usgs_from_nws[ii] - mu_state
+    if (!is.finite(mu_exps) && is.finite(mu_state)) hist_rows$source_basis[ii] <- "history_state"
+  }
+
+  seg_h <- vapply(theta_obj$sm_ens, function(x) ncol(as.matrix(x)), integer(1))
+  h <- sum(seg_h)
+  fore_day_rel <- if (h > 0L) seq_len(h) else integer(0)
+  truth_future <- resolve_future_truth_multivar(h)
+  fore_rows <- data.frame(
+    quantile = quantile_label,
+    probability = as.numeric(probability),
+    day_rel = fore_day_rel,
+    date = make_dates(fore_day_rel),
+    phase = "forecast",
+    mu_usgs = rep(NA_real_, h),
+    mu_usgs_state = rep(NA_real_, h),
+    mu_usgs_exps = rep(NA_real_, h),
+    mu_glofas_exps = rep(NA_real_, h),
+    agg_discrep_glofas = rep(NA_real_, h),
+    mu_usgs_from_glofas = rep(NA_real_, h),
+    mu_nws_exps = rep(NA_real_, h),
+    agg_discrep_nws = rep(NA_real_, h),
+    mu_usgs_from_nws = rep(NA_real_, h),
+    identity_err_glofas = rep(NA_real_, h),
+    identity_err_nws = rep(NA_real_, h),
+    usgs_observed = truth_future,
+    source_basis = rep("forecast_unresolved", h),
+    stringsAsFactors = FALSE
+  )
+
+  cursor <- 0L
+  for (j in seq_len(j_total)) {
+    seg_len <- seg_h[j]
+    if (!is.finite(seg_len) || seg_len <= 0L) next
+    seg_idx <- seq.int(cursor + 1L, cursor + seg_len)
+    cursor <- cursor + seg_len
+
+    sm_seg <- as.matrix(theta_obj$sm_ens[[j]])
+    if (!is.matrix(sm_seg)) next
+    t_use <- min(seg_len, ncol(sm_seg))
+    if (!is.finite(t_use) || t_use <= 0L) next
+
+    jj <- j_total - j + 1L
+    core_dim_j <- as.integer(p * (jj + 1L))
+    has_transfer <- isTRUE(seg_contract$transfer_retained[j])
+    zeta_idx_j <- if (has_transfer) core_dim_j + 1L else NA_integer_
+
+    for (tt in seq_len(t_use)) {
+      g_idx <- seg_idx[tt]
+      mt <- as.numeric(sm_seg[, tt])
+      theta_idx <- seq_len(p)
+      delta_g_idx <- if (jj >= 1L) seq.int(p + 1L, 2L * p) else integer(0)
+      delta_n_idx <- if (jj >= 2L) seq.int(2L * p + 1L, 3L * p) else integer(0)
+
+      base_no_transfer <- sum(ff_base * mt[theta_idx])
+      zeta_mean <- if (isTRUE(has_transfer) && is.finite(zeta_idx_j) && zeta_idx_j <= length(mt)) mt[zeta_idx_j] else 0
+      mu_state <- base_no_transfer + zeta_mean
+      disc_g <- if (length(delta_g_idx) == p) sum(ff_base * mt[delta_g_idx]) else NA_real_
+      disc_n <- if (length(delta_n_idx) == p) sum(ff_base * mt[delta_n_idx]) else NA_real_
+
+      exps_col <- tt_hist + g_idx
+      mu_exps <- if (is.matrix(exps) && nrow(exps) >= 1L && ncol(exps) >= exps_col) exps[1L, exps_col] else NA_real_
+      mu_g <- if (is.matrix(exps) && nrow(exps) >= 2L && ncol(exps) >= exps_col) exps[2L, exps_col] else NA_real_
+      mu_n <- if (is.matrix(exps) && nrow(exps) >= 3L && ncol(exps) >= exps_col) exps[3L, exps_col] else NA_real_
+      usgs_from_g <- if (is.finite(mu_g) && is.finite(disc_g)) mu_g - disc_g else NA_real_
+      usgs_from_n <- if (is.finite(mu_n) && is.finite(disc_n)) mu_n - disc_n else NA_real_
+
+      mu_usgs <- NA_real_
+      source_basis <- "forecast_unresolved"
+      if (is.finite(usgs_from_g)) {
+        mu_usgs <- usgs_from_g
+        source_basis <- "forecast_glofas_minus_discrepancy"
+      } else if (is.finite(usgs_from_n)) {
+        mu_usgs <- usgs_from_n
+        source_basis <- "forecast_nws_minus_discrepancy"
+      } else if (is.finite(mu_exps)) {
+        mu_usgs <- mu_exps
+        source_basis <- "forecast_exps_row1"
+      } else if (is.finite(mu_state)) {
+        mu_usgs <- mu_state
+        source_basis <- "forecast_state"
+      }
+
+      fore_rows$mu_usgs[g_idx] <- mu_usgs
+      fore_rows$mu_usgs_state[g_idx] <- mu_state
+      fore_rows$mu_usgs_exps[g_idx] <- mu_exps
+      fore_rows$mu_glofas_exps[g_idx] <- mu_g
+      fore_rows$agg_discrep_glofas[g_idx] <- disc_g
+      fore_rows$mu_usgs_from_glofas[g_idx] <- usgs_from_g
+      fore_rows$mu_nws_exps[g_idx] <- mu_n
+      fore_rows$agg_discrep_nws[g_idx] <- disc_n
+      fore_rows$mu_usgs_from_nws[g_idx] <- usgs_from_n
+      fore_rows$identity_err_glofas[g_idx] <- usgs_from_g - mu_state
+      fore_rows$identity_err_nws[g_idx] <- usgs_from_n - mu_state
+      fore_rows$source_basis[g_idx] <- source_basis
+    }
+  }
+
+  rbind(hist_rows, fore_rows)
+}
+
+summarize_multivar_vb_location_quantiles <- function(rows, tol = 1e-10) {
+  if (!is.data.frame(rows) || nrow(rows) == 0L) return(data.frame())
+  phases <- unique(as.character(rows$phase))
+  phases <- phases[nzchar(phases)]
+  do.call(rbind, lapply(phases, function(ph) {
+    dd <- rows[rows$phase == ph, , drop = FALSE]
+    days <- sort(unique(as.integer(dd$day_rel[is.finite(dd$day_rel)])))
+    n_days <- length(days)
+    n_all <- 0L
+    n_cross <- 0L
+    worst_gap <- NA_real_
+    for (day in days) {
+      di <- dd[as.integer(dd$day_rel) == day & is.finite(dd$mu_usgs), , drop = FALSE]
+      if (nrow(di) < 2L) next
+      di <- di[order(di$probability), , drop = FALSE]
+      gaps <- diff(as.numeric(di$mu_usgs))
+      if (nrow(di) >= length(unique(rows$probability))) n_all <- n_all + 1L
+      if (length(gaps) > 0L && any(gaps < -tol, na.rm = TRUE)) n_cross <- n_cross + 1L
+      finite_gaps <- gaps[is.finite(gaps)]
+      if (length(finite_gaps) > 0L) {
+        gap_min <- min(finite_gaps)
+        if (!is.finite(worst_gap) || gap_min < worst_gap) worst_gap <- gap_min
+      }
+    }
+    max_id_g <- suppressWarnings(max(abs(dd$identity_err_glofas[is.finite(dd$identity_err_glofas)]), na.rm = TRUE))
+    max_id_n <- suppressWarnings(max(abs(dd$identity_err_nws[is.finite(dd$identity_err_nws)]), na.rm = TRUE))
+    if (!is.finite(max_id_g)) max_id_g <- NA_real_
+    if (!is.finite(max_id_n)) max_id_n <- NA_real_
+    data.frame(
+      phase = ph,
+      n_rows = nrow(dd),
+      n_days = n_days,
+      n_days_all_quantiles = n_all,
+      n_crossing_days = n_cross,
+      crossing_share = if (n_days > 0L) n_cross / n_days else NA_real_,
+      worst_adjacent_quantile_gap = worst_gap,
+      max_abs_identity_err_glofas = max_id_g,
+      max_abs_identity_err_nws = max_id_n,
+      tol_crossing = tol,
+      stringsAsFactors = FALSE
+    )
+  }))
+}
+
+build_multivar_vb_usgs_location_quantile_window <- function(pre_days = 30L) {
+  specs <- multivar_vb_location_quantile_specs()
+  rows <- list()
+  missing <- character(0)
+  for (i in seq_len(nrow(specs))) {
+    theta_obj <- multivar_get_vb_theta_for_quantile(specs$suffix[i])
+    if (!is.list(theta_obj)) {
+      missing <- c(missing, specs$quantile[i])
+      next
+    }
+    qq <- build_multivar_vb_usgs_location_rows_for_quantile(
+      theta_obj = theta_obj,
+      quantile_label = specs$quantile[i],
+      probability = specs$probability[i],
+      pre_days = pre_days
+    )
+    if (is.data.frame(qq) && nrow(qq) > 0L) rows[[length(rows) + 1L]] <- qq
+  }
+  if (length(rows) == 0L) return(NULL)
+  state_df <- do.call(rbind, rows)
+  rownames(state_df) <- NULL
+  summary_df <- summarize_multivar_vb_location_quantiles(state_df)
+  list(state_df = state_df, summary_df = summary_df, missing_quantiles = missing)
+}
+
+plot_multivar_vb_usgs_location_quantiles <- function(state_df, summary_df, out_png, out_pdf = NULL) {
+  if (!is.data.frame(state_df) || nrow(state_df) == 0L) return(invisible(FALSE))
+  ok_y <- is.finite(state_df$mu_usgs) | is.finite(state_df$usgs_observed)
+  if (!any(ok_y)) return(invisible(FALSE))
+
+  palette <- c(
+    q05 = "#8b1a1a",
+    q20 = "#d95f02",
+    q35 = "#e6ab02",
+    q50 = "#1b9e77",
+    q65 = "#1f9fb0",
+    q80 = "#386cb0",
+    q95 = "#762a83"
+  )
+  draw_one <- function() {
+    y_vals <- c(state_df$mu_usgs[ok_y], state_df$usgs_observed[ok_y])
+    ylim_use <- range(y_vals, na.rm = TRUE)
+    if (!all(is.finite(ylim_use)) || diff(ylim_use) <= 0) ylim_use <- c(-1, 1)
+    pad <- max(0.05, diff(ylim_use) * 0.06)
+    ylim_use <- ylim_use + c(-pad, pad)
+    xlim_use <- range(state_df$day_rel[is.finite(state_df$day_rel)], na.rm = TRUE)
+    if (!all(is.finite(xlim_use)) || diff(xlim_use) <= 0) xlim_use <- c(-30, 28)
+
+    plot(
+      NA_real_, NA_real_,
+      xlim = xlim_use,
+      ylim = ylim_use,
+      xlab = "Day relative to cutoff (0 = T)",
+      ylab = multivar_component_y_label(),
+      main = "VB USGS location quantiles around cutoff (theta.out means; no sampling)"
+    )
+    rect(0, ylim_use[1], xlim_use[2], ylim_use[2], col = grDevices::adjustcolor("#f0f0f0", alpha.f = 0.35), border = NA)
+    abline(v = 0, lty = 3, lwd = 1.2, col = "gray40")
+    abline(h = pretty(ylim_use), col = grDevices::adjustcolor("gray80", alpha.f = 0.45), lwd = 0.6)
+
+    obs <- state_df[!duplicated(paste(state_df$phase, state_df$day_rel)) & is.finite(state_df$usgs_observed), , drop = FALSE]
+    hist_obs <- obs[obs$phase == "history", , drop = FALSE]
+    fore_obs <- obs[obs$phase == "forecast", , drop = FALSE]
+    if (nrow(hist_obs) > 0L) {
+      lines(hist_obs$day_rel, hist_obs$usgs_observed, lwd = 1.4, col = "black")
+      points(hist_obs$day_rel, hist_obs$usgs_observed, pch = 16, cex = 0.45, col = "black")
+    }
+    if (nrow(fore_obs) > 0L) {
+      lines(fore_obs$day_rel, fore_obs$usgs_observed, lwd = 1.4, col = "#4d4d4d")
+      points(fore_obs$day_rel, fore_obs$usgs_observed, pch = 16, cex = 0.55, col = "#4d4d4d")
+    }
+
+    q_levels <- unique(as.character(state_df$quantile))
+    q_levels <- q_levels[order(suppressWarnings(as.numeric(sub("^q", "", q_levels))))]
+    for (qq in q_levels) {
+      dd <- state_df[state_df$quantile == qq & is.finite(state_df$mu_usgs), , drop = FALSE]
+      if (nrow(dd) < 1L) next
+      dd <- dd[order(dd$day_rel), , drop = FALSE]
+      col <- palette[[qq]]
+      if (is.null(col) || !nzchar(col)) col <- "#525252"
+      lines(dd$day_rel, dd$mu_usgs, lwd = if (identical(qq, "q50")) 2.6 else 2.0, col = col)
+    }
+
+    leg_q <- q_levels[q_levels %in% names(palette)]
+    legend(
+      "topleft",
+      legend = c(leg_q, "USGS observed/held-out"),
+      col = c(unname(palette[leg_q]), "black"),
+      lwd = c(rep(2.0, length(leg_q)), 1.4),
+      pch = c(rep(NA, length(leg_q)), 16),
+      bty = "n",
+      cex = 0.82
+    )
+    if (is.data.frame(summary_df) && nrow(summary_df) > 0L) {
+      msg <- paste(
+        sprintf(
+          "%s crossing=%s/%s",
+          summary_df$phase,
+          summary_df$n_crossing_days,
+          summary_df$n_days
+        ),
+        collapse = "   "
+      )
+      mtext(msg, side = 3, line = 0.25, cex = 0.8, col = "gray30")
+    }
+  }
+
+  grDevices::png(out_png, width = 3200, height = 1600, res = 300)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  draw_one()
+  grDevices::dev.off()
+  on.exit(NULL, add = FALSE)
+
+  if (!is.null(out_pdf) && nzchar(out_pdf)) {
+    grDevices::pdf(out_pdf, width = 11, height = 5.5, onefile = TRUE)
+    on.exit(grDevices::dev.off(), add = TRUE)
+    draw_one()
+    grDevices::dev.off()
+    on.exit(NULL, add = FALSE)
+  }
+  invisible(TRUE)
+}
+
 draw_phase_band <- function(df_phase, y_lo, y_hi, fill_col) {
   if (!is.data.frame(df_phase) || nrow(df_phase) == 0L) return(invisible(NULL))
   ok <- is.finite(df_phase[[y_lo]]) & is.finite(df_phase[[y_hi]]) & is.finite(df_phase$day_rel)
@@ -1545,6 +1935,41 @@ profile_section("figures_multivar_only.fit_and_forecast", {
          legend = c("Multivar mu_t q=50", "Multivar q50 95% band", "GLOFAS members", "NWS members", "Future USGS (withheld)"),
          col = c("#1b7837", "#1b7837", "#2166ac", "#762a83", "black"),
          lty = c(1, 2, 1, 1, 1), lwd = c(2.6, 1.0, 1.0, 1.0, 1.1), pch = c(NA, NA, NA, NA, 16), bty = "n")
+})
+
+profile_section("figures_multivar_only.vb_usgs_location_quantiles", {
+  payload <- build_multivar_vb_usgs_location_quantile_window(pre_days = multivar_component_pre_days())
+  if (is.null(payload)) return(invisible(NULL))
+
+  state_df <- payload$state_df
+  summary_df <- payload$summary_df
+  if (is.data.frame(state_df) && nrow(state_df) > 0L) {
+    write.csv(
+      state_df,
+      file.path(OUT_DIR, "multivar_vb_usgs_location_quantiles_cutoff_window.csv"),
+      row.names = FALSE
+    )
+  }
+  if (is.data.frame(summary_df) && nrow(summary_df) > 0L) {
+    write.csv(
+      summary_df,
+      file.path(OUT_DIR, "multivar_vb_usgs_location_quantile_summary.csv"),
+      row.names = FALSE
+    )
+  }
+  if (length(payload$missing_quantiles) > 0L) {
+    writeLines(
+      payload$missing_quantiles,
+      con = file.path(OUT_DIR, "multivar_vb_usgs_location_quantiles_missing.txt"),
+      useBytes = TRUE
+    )
+  }
+  plot_multivar_vb_usgs_location_quantiles(
+    state_df = state_df,
+    summary_df = summary_df,
+    out_png = file.path(OUT_DIR, "multivar_vb_usgs_location_quantiles_cutoff_window.png"),
+    out_pdf = file.path(OUT_DIR, "multivar_vb_usgs_location_quantiles_cutoff_window.pdf")
+  )
 })
 
 profile_section("figures_multivar_only.transfer_state_verification", {

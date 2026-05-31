@@ -20,7 +20,9 @@ write_multivar_component_diagnostics <- function(outputs_dir, contract_overrides
     "multivar_transfer_state_window_q50.csv",
     "multivar_transfer_coefficients_window_q50.csv",
     "multivar_transfer_state_contract_q50.csv",
-    "multivar_transfer_identity_check_q50.csv"
+    "multivar_transfer_identity_check_q50.csv",
+    "multivar_vb_usgs_location_quantiles_cutoff_window.csv",
+    "multivar_vb_usgs_location_quantile_summary.csv"
   )
   for (name in csv_names) {
     write.csv(data.frame(x = 1), file.path(outputs_dir, name), row.names = FALSE)
@@ -34,7 +36,8 @@ write_multivar_component_diagnostics <- function(outputs_dir, contract_overrides
     "multivar_transfer_coefficients_window_q50.png",
     "multivar_transfer_observation_decomposition_q50.png",
     "multivar_transfer_source_mu_window_q50.png",
-    "multivar_transfer_discrepancy_identity_q50.png"
+    "multivar_transfer_discrepancy_identity_q50.png",
+    "multivar_vb_usgs_location_quantiles_cutoff_window.png"
   )
   for (name in fig_names) {
     create_dummy_png(file.path(outputs_dir, name))
