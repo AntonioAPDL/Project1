@@ -35,6 +35,9 @@ Default diagnostic output path:
 <fit output dir>/diagnostics/vb_iteration/fit_iteration_health_summary.csv
 ```
 
+The unified stage wiring in `R/unified/stages/stage_fit.R` passes these defaults explicitly, so normal unified
+multivariate keep launches get the same compact health stream without requiring per-config overrides.
+
 The compact health CSV includes one row per VB iteration with:
 
 - `elbo`, `crit_elbo`, `sigma_exp`, `gamma_exp`;

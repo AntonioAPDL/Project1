@@ -938,7 +938,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       latent_diagnostics_report_dir <- latent_diagnostics_report_dir[[1L]]
     }
     if (!nzchar(latent_diagnostics_report_dir)) {
-      latent_diagnostics_report_dir <- file.path(q_logs, "latent_diagnostics")
+      latent_diagnostics_report_dir <- file.path(q_outputs, "diagnostics", "vb_iteration")
     }
 
     transfer_compare_fast_enabled <- isTRUE(unified_get(
@@ -1076,17 +1076,20 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         latent_ablation_policy, c("e_u_cap"), default = 1e6
       )),
       DISC_W_LATENT_DIAG_ENABLED = if (isTRUE(unified_get(
-        latent_diagnostics_policy, c("enabled"), default = FALSE
+        latent_diagnostics_policy, c("enabled"), default = TRUE
       ))) "TRUE" else "FALSE",
       DISC_W_LATENT_DIAG_REPORT_DIR = latent_diagnostics_report_dir,
       DISC_W_LATENT_DIAG_TOP_K = as.character(unified_get(
         latent_diagnostics_policy, c("top_k"), default = 20L
       )),
       DISC_W_LATENT_DIAG_WRITE_ITERATION_SUMMARY = if (isTRUE(unified_get(
-        latent_diagnostics_policy, c("write_iteration_summary"), default = TRUE
+        latent_diagnostics_policy, c("write_iteration_summary"), default = FALSE
+      ))) "TRUE" else "FALSE",
+      DISC_W_LATENT_DIAG_WRITE_HEALTH_SUMMARY = if (isTRUE(unified_get(
+        latent_diagnostics_policy, c("write_health_summary"), default = TRUE
       ))) "TRUE" else "FALSE",
       DISC_W_LATENT_DIAG_WRITE_TOP_CELLS = if (isTRUE(unified_get(
-        latent_diagnostics_policy, c("write_top_cells"), default = TRUE
+        latent_diagnostics_policy, c("write_top_cells"), default = FALSE
       ))) "TRUE" else "FALSE",
       DISC_PSEUDODATA_GUARD_ENABLED = if (isTRUE(unified_get(
         pseudodata_guard_policy, c("enabled"), default = TRUE

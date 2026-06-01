@@ -385,11 +385,12 @@ unified_config_defaults <- function() {
         ),
         diagnostics = list(
           latent = list(
-            enabled = FALSE,
+            enabled = TRUE,
             report_dir = "",
             top_k = 20L,
-            write_iteration_summary = TRUE,
-            write_top_cells = TRUE
+            write_iteration_summary = FALSE,
+            write_health_summary = TRUE,
+            write_top_cells = FALSE
           )
         ),
         forecast_health = list(
@@ -2276,7 +2277,7 @@ unified_validate_config <- function(cfg) {
     }
 
     latent_diag_enabled <- unified_get(
-      cfg, c("fit", "exdqlm_multivar", "diagnostics", "latent", "enabled"), default = FALSE
+      cfg, c("fit", "exdqlm_multivar", "diagnostics", "latent", "enabled"), default = TRUE
     )
     if (!bool_ok(latent_diag_enabled)) {
       add_err("fit.exdqlm_multivar.diagnostics.latent.enabled must be boolean (true/false)")
@@ -2293,9 +2294,11 @@ unified_validate_config <- function(cfg) {
     if (!is.finite(latent_diag_top_k) || latent_diag_top_k < 1L) {
       add_err("fit.exdqlm_multivar.diagnostics.latent.top_k must be an integer >= 1")
     }
-    for (bool_name in c("write_iteration_summary", "write_top_cells")) {
+    for (bool_name in c("write_iteration_summary", "write_health_summary", "write_top_cells")) {
       bool_value <- unified_get(
-        cfg, c("fit", "exdqlm_multivar", "diagnostics", "latent", bool_name), default = TRUE
+        cfg,
+        c("fit", "exdqlm_multivar", "diagnostics", "latent", bool_name),
+        default = if (identical(bool_name, "write_health_summary")) TRUE else FALSE
       )
       if (!bool_ok(bool_value)) {
         add_err(sprintf(
