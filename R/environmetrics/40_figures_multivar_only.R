@@ -1675,6 +1675,73 @@ plot_trace_lines <- function(values, title_txt, ylab_txt, file_name, line_cols =
   invisible(TRUE)
 }
 
+run_multivar_vb_latent_audit_report <- function() {
+  enabled <- tolower(trimws(Sys.getenv("UNIFIED_POST_MULTIVAR_VB_LATENT_AUDIT", "TRUE")))
+  if (enabled %in% c("0", "false", "no", "off")) return(invisible(FALSE))
+
+  run_root <- as.character(safe_get("RUN_ROOT", ""))[1L]
+  project_root <- as.character(safe_get("PROJECT_ROOT", getwd()))[1L]
+  rdata_paths <- as.character(safe_get("DISC_W_RDATA_PATHS", character(0)))
+  rdata_paths <- rdata_paths[nzchar(rdata_paths)]
+  if (!nzchar(run_root) || !dir.exists(run_root) || !length(rdata_paths)) {
+    return(invisible(FALSE))
+  }
+
+  script_path <- file.path(project_root, "scripts", "audit_exdqlm_multivar_keep_vb_latents.R")
+  if (!file.exists(script_path)) {
+    warning(sprintf("multivar VB latent audit script not found: %s", script_path), call. = FALSE)
+    return(invisible(FALSE))
+  }
+
+  out_dir <- file.path(OUT_DIR, "vb_latent_component_audit")
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+  log_path <- file.path(out_dir, "audit_rscript.log")
+  err_path <- file.path(out_dir, "audit_rscript.err")
+  status_path <- file.path(OUT_DIR, "multivar_vb_latent_audit_status.csv")
+  window_days <- suppressWarnings(as.integer(Sys.getenv(
+    "UNIFIED_POST_MULTIVAR_LATENT_AUDIT_WINDOW_DAYS",
+    as.character(max(90L, multivar_component_pre_days()))
+  )))
+  if (!is.finite(window_days) || window_days < 1L) window_days <- 90L
+
+  cmd <- file.path(R.home("bin"), "Rscript")
+  args <- c(
+    "--vanilla",
+    script_path,
+    "--run-root", run_root,
+    "--out-dir", out_dir,
+    "--window-days", as.character(window_days)
+  )
+  started <- Sys.time()
+  status <- suppressWarnings(system2(cmd, args = args, stdout = log_path, stderr = err_path))
+  finished <- Sys.time()
+  if (is.null(status)) status <- 0L
+  status <- suppressWarnings(as.integer(status)[1L])
+  ok <- identical(status, 0L)
+  status_df <- data.frame(
+    audit_enabled = TRUE,
+    ok = ok,
+    exit_status = status,
+    run_root = run_root,
+    out_dir = out_dir,
+    window_days = as.integer(window_days),
+    log_path = log_path,
+    err_path = err_path,
+    started_at = format(started, "%Y-%m-%d %H:%M:%S %Z"),
+    finished_at = format(finished, "%Y-%m-%d %H:%M:%S %Z"),
+    stringsAsFactors = FALSE
+  )
+  write.csv(status_df, status_path, row.names = FALSE)
+
+  strict <- tolower(trimws(Sys.getenv("UNIFIED_POST_MULTIVAR_VB_LATENT_AUDIT_STRICT", "FALSE")))
+  if (!ok) {
+    msg <- sprintf("multivar VB latent audit failed with status %d; see %s and %s", status, log_path, err_path)
+    if (strict %in% c("1", "true", "yes", "on")) stop(msg, call. = FALSE)
+    warning(msg, call. = FALSE)
+  }
+  invisible(ok)
+}
+
 profile_section("figures_multivar_only.trace_plots", {
   plot_trace_lines(
     values = safe_get("seq.elbo_50_exAL_synth_DISC", NULL),
@@ -2103,4 +2170,8 @@ profile_section("figures_multivar_only.transfer_state_verification", {
     state_df = state_df,
     out_file = file.path(OUT_DIR, "multivar_transfer_discrepancy_identity_q50.png")
   )
+})
+
+profile_section("figures_multivar_only.vb_latent_component_audit", {
+  run_multivar_vb_latent_audit_report()
 })

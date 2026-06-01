@@ -397,7 +397,7 @@ DISC_LATENT_E_U_CAP <- disc_env_pos_num(
 )
 DISC_W_LATENT_DIAG_ENABLED <- disc_env_flag(
   "DISC_W_LATENT_DIAG_ENABLED",
-  default = FALSE
+  default = TRUE
 )
 DISC_W_LATENT_DIAG_REPORT_DIR <- trimws(Sys.getenv("DISC_W_LATENT_DIAG_REPORT_DIR", ""))
 DISC_W_LATENT_DIAG_TOP_K <- disc_env_nonneg_int(
@@ -409,11 +409,15 @@ if (!is.finite(DISC_W_LATENT_DIAG_TOP_K) || DISC_W_LATENT_DIAG_TOP_K < 1L) {
 }
 DISC_W_LATENT_DIAG_WRITE_ITERATION_SUMMARY <- disc_env_flag(
   "DISC_W_LATENT_DIAG_WRITE_ITERATION_SUMMARY",
+  default = FALSE
+)
+DISC_W_LATENT_DIAG_WRITE_HEALTH_SUMMARY <- disc_env_flag(
+  "DISC_W_LATENT_DIAG_WRITE_HEALTH_SUMMARY",
   default = TRUE
 )
 DISC_W_LATENT_DIAG_WRITE_TOP_CELLS <- disc_env_flag(
   "DISC_W_LATENT_DIAG_WRITE_TOP_CELLS",
-  default = TRUE
+  default = FALSE
 )
 DISC_STRICT_CONTRACTS <- disc_env_flag(
   "DISC_STRICT_CONTRACTS",
@@ -3446,6 +3450,13 @@ disc_w_diag_report_dir <- function(default = "") {
     report_dir <- DISC_PSEUDODATA_GUARD_REPORT_DIR
   }
   if (!nzchar(report_dir)) report_dir <- default
+  if (!nzchar(report_dir) &&
+      exists("disc_w_paths", inherits = TRUE) &&
+      is.list(disc_w_paths) &&
+      !is.null(disc_w_paths$output_dir) &&
+      nzchar(as.character(disc_w_paths$output_dir)[1L])) {
+    report_dir <- file.path(as.character(disc_w_paths$output_dir)[1L], "diagnostics", "vb_iteration")
+  }
   report_dir
 }
 
@@ -3726,6 +3737,180 @@ disc_w_guard_summary <- function(values, quantity, block, iter, context_label, a
     status = status,
     stringsAsFactors = FALSE
   )
+}
+
+disc_w_diag_threshold <- function(name, default) {
+  val <- get0(name, ifnotfound = default, inherits = TRUE)
+  val <- suppressWarnings(as.numeric(val)[1L])
+  if (is.finite(val)) val else default
+}
+
+disc_w_diag_health_stats <- function(values, prefix, diag_values = FALSE, positive_required = FALSE) {
+  raw <- if (is.null(values)) {
+    numeric(0)
+  } else if (isTRUE(diag_values)) {
+    disc_w_extract_diag_values(values)
+  } else {
+    suppressWarnings(as.numeric(unlist(values, use.names = FALSE)))
+  }
+  stats <- disc_w_diag_stats(raw)
+  finite <- raw[is.finite(raw)]
+  out <- as.list(stats[1L, , drop = TRUE])
+  names(out) <- paste0(prefix, "_", names(out))
+  out[[paste0(prefix, "_nonpositive_n")]] <- if (isTRUE(positive_required)) {
+    as.integer(sum(finite <= 0))
+  } else {
+    NA_integer_
+  }
+  out
+}
+
+disc_w_diag_record_iteration_health <- function(
+  iter,
+  context_label,
+  elbo,
+  crit_elbo,
+  sigma_exp,
+  gamma_exp,
+  state_norm_sq,
+  crit_state_norm_sq,
+  conv_check,
+  gamsig_update_iters,
+  frozen,
+  state_growth_ratio = NA_real_,
+  state_guard_reason = "",
+  TT_sub = NA_integer_,
+  FFF = NULL,
+  QQQ = NULL,
+  FFF_forecast = NULL,
+  QQQ_forecast = NULL,
+  sts_out = NULL,
+  uts_out = NULL,
+  sts_out_f = NULL,
+  uts_out_f = NULL
+) {
+  if (!isTRUE(DISC_W_LATENT_DIAG_ENABLED) ||
+      !isTRUE(DISC_W_LATENT_DIAG_WRITE_HEALTH_SUMMARY)) {
+    return(invisible(NULL))
+  }
+  report_dir <- disc_w_diag_report_dir()
+  if (!nzchar(report_dir)) return(invisible(NULL))
+
+  tt_norm <- suppressWarnings(as.numeric(TT_sub)[1L])
+  state_norm_sq_per_T <- if (is.finite(tt_norm) && tt_norm > 0) {
+    suppressWarnings(as.numeric(state_norm_sq)[1L]) / tt_norm
+  } else {
+    NA_real_
+  }
+  state_guard_reason <- if (is.null(state_guard_reason)) "" else as.character(state_guard_reason)[1L]
+
+  stat_parts <- c(
+    disc_w_diag_health_stats(if (!is.null(sts_out)) sts_out$E.sts else NULL, "hist_E_s", positive_required = TRUE),
+    disc_w_diag_health_stats(if (!is.null(sts_out)) sts_out$E.sts2 else NULL, "hist_E_s2", positive_required = TRUE),
+    disc_w_diag_health_stats(if (!is.null(uts_out)) uts_out$E.uts else NULL, "hist_E_u", positive_required = TRUE),
+    disc_w_diag_health_stats(if (!is.null(uts_out)) uts_out$E.inv.uts else NULL, "hist_E_inv_u", positive_required = TRUE),
+    disc_w_diag_health_stats(FFF, "hist_FFF"),
+    disc_w_diag_health_stats(QQQ, "hist_QQQ_diag", diag_values = TRUE, positive_required = TRUE),
+    disc_w_diag_health_stats(if (!is.null(sts_out_f)) sts_out_f$E.sts else NULL, "fore_E_s", positive_required = TRUE),
+    disc_w_diag_health_stats(if (!is.null(sts_out_f)) sts_out_f$E.sts2 else NULL, "fore_E_s2", positive_required = TRUE),
+    disc_w_diag_health_stats(if (!is.null(uts_out_f)) uts_out_f$E.uts else NULL, "fore_E_u", positive_required = TRUE),
+    disc_w_diag_health_stats(if (!is.null(uts_out_f)) uts_out_f$E.inv.uts else NULL, "fore_E_inv_u", positive_required = TRUE),
+    disc_w_diag_health_stats(FFF_forecast, "fore_FFF"),
+    disc_w_diag_health_stats(QQQ_forecast, "fore_QQQ_diag", diag_values = TRUE, positive_required = TRUE)
+  )
+
+  e_inv_u_cap <- disc_w_diag_threshold("DISC_PSEUDODATA_E_INV_U_ABS_CAP", 5000)
+  e_u_min <- disc_w_diag_threshold("DISC_DIAG_E_U_MIN", 1e-8)
+  qqq_cap <- disc_w_diag_threshold("DISC_PSEUDODATA_QQQ_DIAG_ABS_CAP", 10000)
+  fff_cap <- disc_w_diag_threshold("DISC_PSEUDODATA_FFF_ABS_CAP", 1000)
+  state_ratio_cap <- disc_w_diag_threshold("DISC_GAMSIG_STATE_NORM_MAX_RATIO", Inf)
+
+  get_stat <- function(name) {
+    val <- stat_parts[[name]]
+    val <- suppressWarnings(as.numeric(val)[1L])
+    if (is.finite(val)) val else NA_real_
+  }
+  get_int <- function(name) {
+    val <- stat_parts[[name]]
+    val <- suppressWarnings(as.integer(val)[1L])
+    if (is.finite(val)) val else 0L
+  }
+  max2 <- function(a, b) {
+    vals <- c(a, b)
+    vals <- vals[is.finite(vals)]
+    if (!length(vals)) NA_real_ else max(vals)
+  }
+  min2 <- function(a, b) {
+    vals <- c(a, b)
+    vals <- vals[is.finite(vals)]
+    if (!length(vals)) NA_real_ else min(vals)
+  }
+
+  max_e_inv_u <- max2(get_stat("hist_E_inv_u_max"), get_stat("fore_E_inv_u_max"))
+  min_e_u <- min2(get_stat("hist_E_u_min"), get_stat("fore_E_u_min"))
+  max_qqq <- max2(get_stat("hist_QQQ_diag_max_abs"), get_stat("fore_QQQ_diag_max_abs"))
+  max_fff <- max2(get_stat("hist_FFF_max_abs"), get_stat("fore_FFF_max_abs"))
+  qqq_nonpositive_n <- get_int("hist_QQQ_diag_nonpositive_n") + get_int("fore_QQQ_diag_nonpositive_n")
+  e_u_nonpositive_n <- get_int("hist_E_u_nonpositive_n") + get_int("fore_E_u_nonpositive_n")
+  e_inv_u_nonpositive_n <- get_int("hist_E_inv_u_nonpositive_n") + get_int("fore_E_inv_u_nonpositive_n")
+
+  flag_e_inv_u_extreme <- is.finite(max_e_inv_u) && max_e_inv_u > e_inv_u_cap
+  flag_e_u_tiny <- is.finite(min_e_u) && min_e_u <= e_u_min
+  flag_qqq_nonpositive <- qqq_nonpositive_n > 0L
+  flag_qqq_extreme <- is.finite(max_qqq) && max_qqq > qqq_cap
+  flag_fff_extreme <- is.finite(max_fff) && max_fff > fff_cap
+  flag_state_growth <- is.finite(state_growth_ratio) &&
+    is.finite(state_ratio_cap) &&
+    state_growth_ratio > state_ratio_cap
+  flag_nonfinite_state <- !is.finite(suppressWarnings(as.numeric(state_norm_sq)[1L]))
+  health_flag_n <- sum(c(
+    flag_e_inv_u_extreme,
+    flag_e_u_tiny,
+    flag_qqq_nonpositive,
+    flag_qqq_extreme,
+    flag_fff_extreme,
+    flag_state_growth,
+    flag_nonfinite_state,
+    e_u_nonpositive_n > 0L,
+    e_inv_u_nonpositive_n > 0L
+  ))
+
+  base <- list(
+    p0 = as.character(p0),
+    iter = as.integer(iter),
+    context = as.character(context_label),
+    elbo = suppressWarnings(as.numeric(elbo)[1L]),
+    crit_elbo = suppressWarnings(as.numeric(crit_elbo)[1L]),
+    sigma_exp = suppressWarnings(as.numeric(sigma_exp)[1L]),
+    gamma_exp = suppressWarnings(as.numeric(gamma_exp)[1L]),
+    state_norm_sq = suppressWarnings(as.numeric(state_norm_sq)[1L]),
+    state_norm_sq_per_T = state_norm_sq_per_T,
+    crit_state_norm_sq = suppressWarnings(as.numeric(crit_state_norm_sq)[1L]),
+    conv_check = suppressWarnings(as.numeric(conv_check)[1L]),
+    gamsig_update_iters = suppressWarnings(as.integer(gamsig_update_iters)[1L]),
+    frozen = isTRUE(frozen),
+    state_growth_ratio = suppressWarnings(as.numeric(state_growth_ratio)[1L]),
+    state_guard_reason = state_guard_reason,
+    max_E_inv_u = max_e_inv_u,
+    min_E_u = min_e_u,
+    max_QQQ_diag_abs = max_qqq,
+    max_FFF_abs = max_fff,
+    qqq_nonpositive_n = as.integer(qqq_nonpositive_n),
+    e_u_nonpositive_n = as.integer(e_u_nonpositive_n),
+    e_inv_u_nonpositive_n = as.integer(e_inv_u_nonpositive_n),
+    flag_e_inv_u_extreme = isTRUE(flag_e_inv_u_extreme),
+    flag_e_u_tiny = isTRUE(flag_e_u_tiny),
+    flag_qqq_nonpositive = isTRUE(flag_qqq_nonpositive),
+    flag_qqq_extreme = isTRUE(flag_qqq_extreme),
+    flag_fff_extreme = isTRUE(flag_fff_extreme),
+    flag_state_growth = isTRUE(flag_state_growth),
+    flag_nonfinite_state = isTRUE(flag_nonfinite_state),
+    health_flag_n = as.integer(health_flag_n)
+  )
+
+  row <- as.data.frame(c(base, stat_parts), stringsAsFactors = FALSE, check.names = FALSE)
+  disc_w_append_csv(row, report_dir, "fit_iteration_health_summary.csv")
+  invisible(row)
 }
 
 disc_w_append_guard_report <- function(rows, report_dir) {
@@ -4574,14 +4759,17 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     ifelse(nzchar(DISC_PSEUDODATA_GUARD_REPORT_DIR), DISC_PSEUDODATA_GUARD_REPORT_DIR, "-")
   ))
   cat(sprintf(
-    "[latent_ablation_policy] p0=%s mode=%s e_inv_u_cap=%g e_u_cap=%g latent_diag_enabled=%s latent_diag_top_k=%d latent_diag_report_dir=%s\n",
+    "[latent_ablation_policy] p0=%s mode=%s e_inv_u_cap=%g e_u_cap=%g latent_diag_enabled=%s latent_diag_summary=%s latent_diag_health=%s latent_diag_top_cells=%s latent_diag_top_k=%d latent_diag_report_dir=%s\n",
     as.character(p0),
     DISC_LATENT_ABLATION_MODE,
     as.numeric(DISC_LATENT_E_INV_U_CAP),
     as.numeric(DISC_LATENT_E_U_CAP),
     ifelse(isTRUE(DISC_W_LATENT_DIAG_ENABLED), "true", "false"),
+    ifelse(isTRUE(DISC_W_LATENT_DIAG_WRITE_ITERATION_SUMMARY), "true", "false"),
+    ifelse(isTRUE(DISC_W_LATENT_DIAG_WRITE_HEALTH_SUMMARY), "true", "false"),
+    ifelse(isTRUE(DISC_W_LATENT_DIAG_WRITE_TOP_CELLS), "true", "false"),
     as.integer(DISC_W_LATENT_DIAG_TOP_K),
-    ifelse(nzchar(DISC_W_LATENT_DIAG_REPORT_DIR), DISC_W_LATENT_DIAG_REPORT_DIR, "-")
+    ifelse(nzchar(disc_w_diag_report_dir()), disc_w_diag_report_dir(), "-")
   ))
   cat(sprintf(
     "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s near_zero_fallback_enabled=%s near_zero_fallback_mode=%s near_zero_gamma_anchor=%s state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d state_guard_start_iter=%d\n",
@@ -5692,6 +5880,30 @@ while (isTRUE(FLAG) && iter < max_iter) {
   } else {
     crit_gamma_exp <- Inf
   }
+  disc_w_diag_record_iteration_health(
+    iter = iter,
+    context_label = "fit_main",
+    elbo = elbo,
+    crit_elbo = crit_ELBO,
+    sigma_exp = sigma_exp,
+    gamma_exp = gamma_exp,
+    state_norm_sq = state_norm_sq,
+    crit_state_norm_sq = crit_state_norm_sq,
+    conv_check = conv.check,
+    gamsig_update_iters = gamsig_update_iters,
+    frozen = gamsig_frozen_now,
+    state_growth_ratio = state_growth_ratio,
+    state_guard_reason = state_guard_reason,
+    TT_sub = TT_sub,
+    FFF = FFF,
+    QQQ = QQQ,
+    FFF_forecast = FFF_forecast,
+    QQQ_forecast = QQQ_forecast,
+    sts_out = new.sts.out,
+    uts_out = new.uts.out,
+    sts_out_f = new.sts.out_f,
+    uts_out_f = new.uts.out_f
+  )
   prev_state_norm_sq <- state_norm_sq
   prev_sigma_exp <- sigma_exp
   prev_gamma_exp <- gamma_exp

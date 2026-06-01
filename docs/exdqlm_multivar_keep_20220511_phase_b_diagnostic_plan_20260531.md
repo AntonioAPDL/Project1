@@ -259,3 +259,19 @@ Yes, we are ready to move to Phase B in a controlled way. The first launch shoul
 
 Then read those results before launching B1c or B2-guard. If B1a/B1b already show clear tail-state or latent
 pathology, the narrow B2 diagnostics should be launched immediately to locate the mechanism.
+
+## 2026-05-31 Diagnostic Promotion Addendum
+
+The useful Phase B readouts have now been promoted into the active fit/post workflow; see
+`docs/exdqlm_multivar_keep_diagnostics_promotion_20260531.md`.
+
+Key promotion points:
+
+- future fits write compact per-iteration health rows under
+  `<fit output dir>/diagnostics/vb_iteration/fit_iteration_health_summary.csv`;
+- future multivariate-only post stages run the tracked audit helper and write the component/latent report under
+  `<post output dir>/vb_latent_component_audit/`;
+- the default diagnostics are lightweight: the compact health CSV is enabled, while heavy per-source/member top-cell
+  tables remain opt-in;
+- this promotion is diagnostic only. It does not change the statistical update, warmup schedule, state guard, or
+  latent update formulas.

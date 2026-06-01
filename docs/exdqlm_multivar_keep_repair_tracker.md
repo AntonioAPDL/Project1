@@ -803,3 +803,4 @@ Operational contract:
 | 2026-05-24 | Prepared no-cleanup and cleanup smoke matrices, grid evaluator scaffold, and next-step launch/evaluation runbook | done |
 | 2026-05-25 | Hardened the queue around RAM gates after smoke evidence and relaunched the full grid at 4 concurrent rows / 28 quantile workers | running |
 | 2026-05-25 | Completed no-cleanup and cleanup smoke gates, captured CRPS/evaluator evidence, and verified post-success `.RData` cleanup | done |
+| 2026-05-31 | Promoted Phase B VB latent/component diagnostics into the active fit/post workflow: compact iteration health CSVs now write by default, and multivariate-only post now emits the tracked latent/component audit report | done |
