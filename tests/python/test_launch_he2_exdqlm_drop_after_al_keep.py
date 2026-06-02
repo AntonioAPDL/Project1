@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 os.sys.path.insert(0, str(ROOT / "scripts"))
 
-from launch_he2_exdqlm_drop_after_al_keep import handoff_once, matrix_dir  # noqa: E402
+from launch_he2_exdqlm_drop_after_al_keep import DEFAULT_DROP_ARTIFACT_ROOT, DEFAULT_SESSION, handoff_once, matrix_dir  # noqa: E402
 
 
 def write_matrix_status(artifact_root: Path, rows: list[dict[str, str]]) -> None:
@@ -44,6 +44,10 @@ def rows(statuses: list[str]) -> list[dict[str, str]]:
 
 
 class LaunchHE2ExdqlmDropAfterALKeepTests(unittest.TestCase):
+    def test_defaults_point_to_promoted_q50_repair_drop_package(self) -> None:
+        self.assertIn("q50repair", DEFAULT_DROP_ARTIFACT_ROOT.name)
+        self.assertEqual(DEFAULT_SESSION, "he2_exal_drop_q50repair_20260602")
+
     def test_waits_until_keep_matrix_passes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             keep = Path(tmp) / "keep"

@@ -135,7 +135,7 @@ post-stage `exdqlm_multivar_synth_drop` draws are pathologically inflated and th
 
 The refreshed current-code `exAL-M-T0` package is:
 
-`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_20260602`
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602`
 
 Tooling:
 
@@ -147,7 +147,8 @@ python3 -m unittest tests.python.test_he2_exdqlm_multivar_drop_current_relaunch 
 
 This package uses the canonical 20260510 input bundle, `data_start=1987-05-29`, `log1p_cms` fit/post scale, `PPT|SOIL|PCA`
 transfer covariates with lags `1,2,3`, squares and interaction, explicit `trend + harmonics 1,2,3`, `epsilon=30`,
-`c_factor=1`, seven quantile workers per cutoff row, two cutoff rows at a time, and post-success heavy-artifact cleanup.
+`c_factor=1`, seven quantile workers per cutoff row, two cutoff rows at a time, post-success heavy-artifact cleanup, and the
+promoted `20211112 q50` repair documented in `docs/he2_exdqlm_multivar_drop_q50_repair_promotion_20260602.md`.
 Launch it only after the active `AL-M-T1` relaunch has freed the 14-worker slot.
 
 For the overnight sequence, use the guarded handoff:
@@ -158,7 +159,7 @@ python3 scripts/launch_he2_exdqlm_drop_after_al_keep.py --poll-seconds 300
 
 The handoff refuses to launch if AL-M-T1 failed, if any AL-M-T1 unified run is still active, if the drop matrix already
 failed or is active, or if the current-code drop validator fails. Successful launch starts tmux session
-`he2_exal_drop_20260602` from the generated `launch_current_drop.sh`.
+`he2_exal_drop_q50repair_20260602` from the generated `launch_current_drop.sh`.
 
 The final benchmark gate is closed only when:
 

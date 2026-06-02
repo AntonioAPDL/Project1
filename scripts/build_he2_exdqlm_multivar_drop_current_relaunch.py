@@ -17,6 +17,11 @@ if str(ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts"))
 
 from he2_publication_relaunch_lib import EXPECTED_CUTOFFS, initialize_matrix_status  # noqa: E402
+from he2_exdqlm_multivar_drop_q50_policy import (  # noqa: E402
+    Q50_REPAIR_STABILIZATION,
+    Q50_REPAIR_TERMINAL_SAMPLING_GUARD,
+    build_q50_repair_patch,
+)
 
 
 TARGET_FAMILY = "exdqlm_multivar_drop"
@@ -27,7 +32,9 @@ RUN_ROWS_AT_ONCE = 2
 QUANTILE_WORKERS_PER_RUN = 7
 MAX_ACTIVE_QUANTILE_WORKERS = RUN_ROWS_AT_ONCE * QUANTILE_WORKERS_PER_RUN
 DEFAULT_ARTIFACT_ROOT = (
-    ROOT.parent / "project1_ucsc_phd_runtime" / "multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_20260602"
+    ROOT.parent
+    / "project1_ucsc_phd_runtime"
+    / "multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602"
 )
 TEMPLATE = ROOT / "config" / "he2_bayesian_publication_relaunch_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516.template.yaml"
 SOURCE_BATCH = ROOT / "config" / "he2_relaunch_batches" / "exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516.yaml"
@@ -123,6 +130,7 @@ def current_batch_payload(source_batch: Path) -> dict[str, Any]:
             },
         },
     )
+    family_patch["config_patch"] = deep_merge(family_patch["config_patch"], build_q50_repair_patch(TARGET_MODEL_KEY))
     return batch
 
 
@@ -145,7 +153,7 @@ def build_package(
     matrix_dir = artifact_root / "control" / "publication_relaunch_matrix"
     config_output_dir = artifact_root / "control" / "generated_configs"
     generated_batch_dir = artifact_root / "control" / "generated_batches"
-    generated_batch = generated_batch_dir / "exdqlm_multivar_drop_current_relaunch_20260602.yaml"
+    generated_batch = generated_batch_dir / "exdqlm_multivar_drop_current_relaunch_q50repair_20260602.yaml"
     write_yaml(generated_batch, current_batch_payload(source_batch))
 
     if reset_status:
@@ -205,10 +213,15 @@ def build_package(
             "cleanup_rdata_after_post": True,
             "skip_compare_bundles": True,
             "continue_on_fail": True,
+            "q50_repair_promoted": True,
+            "q50_repair_terminal_sampling_guard": Q50_REPAIR_TERMINAL_SAMPLING_GUARD,
+            "q50_repair_stabilization": Q50_REPAIR_STABILIZATION,
+            "q50_repair_source_doc": "docs/he2_exdqlm_multivar_drop_20211112_q50_repair_20260602.md",
             "code_commit": git_head(),
             "current_relaunch_note": (
-                "Fresh current-code exAL-M-T0 package. Do not promote the older 20260516 completed root as final "
-                "without rerun because its finite/pass post tables contain pathological synthesis magnitudes."
+                "Fresh current-code exAL-M-T0 package with the promoted 20211112 q50 terminal-guard/stabilization "
+                "repair. Do not promote older completed roots as final because the pre-repair q50 row could pass "
+                "finite checks while producing pathological synthesis magnitudes."
             ),
         }
     )
@@ -265,6 +278,8 @@ def build_package(
         "- likelihood/transfer: `exal` / `drop`",
         "- explicit harmonics: `1,2,3` with trend included",
         "- canonical bundle: `20260510_publication_shared_r01`",
+        "- promoted q50 repair: terminal guard `fail_fast`, freeze target `states`, hold-after-guard `10`, "
+        "state/cov blend `1.0`, gamma step cap `0.075`, log-sigma step cap `0.15`",
         "- cleanup after post: `true` via the queue wrapper",
         "",
         "## Launch Command",

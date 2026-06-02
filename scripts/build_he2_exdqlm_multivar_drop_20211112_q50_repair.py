@@ -29,6 +29,7 @@ from build_he2_exdqlm_multivar_drop_current_relaunch import (  # noqa: E402
     git_head,
 )
 from he2_publication_relaunch_lib import initialize_matrix_status  # noqa: E402
+from he2_exdqlm_multivar_drop_q50_policy import build_q50_repair_patch  # noqa: E402
 
 
 TARGET_CUTOFF = "20211112"
@@ -40,32 +41,7 @@ DEFAULT_ARTIFACT_ROOT = (
     / "multimodel_v8_he2_exdqlm_multivar_drop_20211112_q50repair_20260602"
 )
 
-Q50_REPAIR_PATCH: dict[str, Any] = {
-    "fit": {
-        TARGET_MODEL_KEY: {
-            "gamma_sigma": {
-                "quantile_overrides": {
-                    "q50": {
-                        "freeze_target": "states",
-                        "terminal_sampling_guard": {
-                            "mode": "fail_fast",
-                            "min_guard_count": 1,
-                            "max_guard_lag_iters": 0,
-                            "require_frozen": True,
-                        },
-                        "stabilization": {
-                            "median_state_hold_after_guard_iters": 10,
-                            "median_state_blend_alpha": 1.0,
-                            "median_cov_blend_alpha": 1.0,
-                            "median_max_abs_gamma_step": 0.075,
-                            "median_max_abs_log_sigma_step": 0.15,
-                        },
-                    }
-                }
-            }
-        }
-    }
-}
+Q50_REPAIR_PATCH: dict[str, Any] = build_q50_repair_patch(TARGET_MODEL_KEY)
 
 
 def utc_now() -> str:

@@ -16,6 +16,7 @@ from build_he2_exdqlm_multivar_drop_shared_relaunch_plan import (  # noqa: E402
     build_payload,
     write_outputs,
 )
+from he2_exdqlm_multivar_drop_q50_policy import Q50_REPAIR_STABILIZATION
 
 
 class He2ExdqlmMultivarDropSharedRelaunchPlanTests(unittest.TestCase):
@@ -28,7 +29,13 @@ class He2ExdqlmMultivarDropSharedRelaunchPlanTests(unittest.TestCase):
         self.assertEqual(summary['shared_c_factor'], SHARED_C_FACTOR)
         self.assertEqual(summary['shared_state_evolution']['lambda'], 0.97)
         self.assertEqual(summary['shared_state_evolution']['df_discrep'], 0.99999)
-        self.assertEqual(summary['q50_stabilization']['median_state_hold_after_guard_iters'], 0)
+        self.assertEqual(summary['q50_stabilization']['median_state_hold_after_guard_iters'], 10)
+        self.assertEqual(summary['q50_stabilization']['median_state_blend_alpha'], 1.0)
+        self.assertEqual(summary['q50_stabilization']['median_cov_blend_alpha'], 1.0)
+        self.assertEqual(summary['q50_stabilization']['median_max_abs_gamma_step'], 0.075)
+        self.assertEqual(summary['q50_stabilization']['median_max_abs_log_sigma_step'], 0.15)
+        for key, value in Q50_REPAIR_STABILIZATION.items():
+            self.assertEqual(summary['q50_stabilization'][key], value)
         self.assertEqual(payload['discount_ranking_rows'][0]['discount_set'], 'set08')
         self.assertEqual(len(payload['shared_spec_rows']), 5)
         self.assertEqual({row['shared_discount_set'] for row in payload['shared_spec_rows']}, {SHARED_DISCOUNT_SET})

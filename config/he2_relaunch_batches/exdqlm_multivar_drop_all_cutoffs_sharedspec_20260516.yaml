@@ -76,11 +76,11 @@ overrides:
                   max_guard_lag_iters: 0
                   require_frozen: true
                 stabilization:
-                  median_state_hold_after_guard_iters: 0
-                  median_state_blend_alpha: 0.5
-                  median_cov_blend_alpha: 0.5
-                  median_max_abs_gamma_step: 0.15
-                  median_max_abs_log_sigma_step: 0.25
+                  median_state_hold_after_guard_iters: 10
+                  median_state_blend_alpha: 1.0
+                  median_cov_blend_alpha: 1.0
+                  median_max_abs_gamma_step: 0.075
+                  median_max_abs_log_sigma_step: 0.15
               q65:
                 init:
                   mode: robust

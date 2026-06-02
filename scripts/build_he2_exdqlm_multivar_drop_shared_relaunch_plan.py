@@ -17,6 +17,7 @@ from he2_publication_relaunch_lib import (
     canonical_shared_paths,
     load_yaml,
 )
+from he2_exdqlm_multivar_drop_q50_policy import Q50_REPAIR_STABILIZATION, Q50_REPAIR_TERMINAL_SAMPLING_GUARD
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_ROOT = ROOT / 'reports' / 'he2_exdqlm_multivar_drop_shared_relaunch_plan_20260516'
@@ -46,15 +47,11 @@ SHARED_STATE = {
 
 Q50_STABILIZATION = {
     'freeze_target': 'states',
-    'terminal_sampling_guard.mode': 'fail_fast',
-    'terminal_sampling_guard.min_guard_count': 1,
-    'terminal_sampling_guard.max_guard_lag_iters': 0,
-    'terminal_sampling_guard.require_frozen': True,
-    'median_state_hold_after_guard_iters': 0,
-    'median_state_blend_alpha': 0.5,
-    'median_cov_blend_alpha': 0.5,
-    'median_max_abs_gamma_step': 0.15,
-    'median_max_abs_log_sigma_step': 0.25,
+    'terminal_sampling_guard.mode': Q50_REPAIR_TERMINAL_SAMPLING_GUARD['mode'],
+    'terminal_sampling_guard.min_guard_count': Q50_REPAIR_TERMINAL_SAMPLING_GUARD['min_guard_count'],
+    'terminal_sampling_guard.max_guard_lag_iters': Q50_REPAIR_TERMINAL_SAMPLING_GUARD['max_guard_lag_iters'],
+    'terminal_sampling_guard.require_frozen': Q50_REPAIR_TERMINAL_SAMPLING_GUARD['require_frozen'],
+    **Q50_REPAIR_STABILIZATION,
 }
 
 
@@ -234,7 +231,7 @@ def _render_md(payload: dict[str, Any]) -> str:
     lines.append(f"- shared forecast-covariance spec: `epsilon={s['shared_epsilon']}`, `c_factor={s['shared_c_factor']}`")
     lines.append(f"- shared discount set: `{s['shared_discount_set']}`")
     lines.append(f"- selection basis: `{s['shared_selection_basis']}`")
-    lines.append('- shared q50 stabilization layer: enabled from the successful 2026-05-15 recovery path')
+    lines.append('- shared q50 stabilization layer: promoted from the successful 2026-06-02 20211112 repair path')
     lines.append('')
     lines.append('## Why this shared spec')
     lines.append('')

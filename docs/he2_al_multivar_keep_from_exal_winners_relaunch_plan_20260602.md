@@ -167,12 +167,13 @@ python3 -m unittest tests.python.test_he2_exdqlm_multivar_drop_current_relaunch 
 
 Prepared artifact root:
 
-`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_20260602`
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602`
 
 This package reuses the shared-spec `exAL-M-T0` scientific settings (`epsilon=30`, `c_factor=1`, shared high discount
 factors), but makes the previously implicit full-harmonic contract explicit (`trend + harmonics 1,2,3`), pins the
 canonical 20260510 bundle, uses the same two-cutoff-row/14-quantile-worker queue policy as the AL keep package, and
-keeps post-success `.RData/.rda` cleanup enabled.
+keeps post-success `.RData/.rda` cleanup enabled. It also promotes the proven `20211112 q50` repair from
+`docs/he2_exdqlm_multivar_drop_q50_repair_promotion_20260602.md`.
 
 Launch order: let the active `AL-M-T1` queue keep the 14 intended workers. Launch the fresh `exAL-M-T0` current-code
 queue only after `AL-M-T1` finishes or clearly fails and is triaged. The guarded overnight handoff is:
@@ -183,9 +184,9 @@ python3 scripts/launch_he2_exdqlm_drop_after_al_keep.py --poll-seconds 300
 
 The handoff script writes:
 
-`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_20260602/control/publication_relaunch_matrix/drop_after_al_keep_handoff_status.json`
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602/control/publication_relaunch_matrix/drop_after_al_keep_handoff_status.json`
 
-and starts the drop controller in tmux session `he2_exal_drop_20260602` only after:
+and starts the drop controller in tmux session `he2_exal_drop_q50repair_20260602` only after:
 
 1. the AL-M-T1 matrix status is fully `pass`;
 2. no AL-M-T1 `scripts/unified_run.R` process remains active under its artifact root;

@@ -151,3 +151,19 @@ Final CRPS summary for this repaired row:
 | `nws_nwm_ensemble` | `8` | `1.371917` |
 
 Interpretation: the failed row was not a threshold artifact. It was a q50 median stabilization failure that allowed sampling from a bad terminal state in the original drop entrypoint. The repaired q50 stabilization plus the terminal-guard semantic fix removes the pathological q50 state/forecast scale while preserving the scientific spec and input bundle.
+
+## Promotion
+
+The repaired q50 policy is now promoted into the authoritative all-cutoff `exdqlm_multivar_drop` relaunch workflow.
+
+Promotion doc:
+
+`docs/he2_exdqlm_multivar_drop_q50_repair_promotion_20260602.md`
+
+Shared policy module:
+
+`scripts/he2_exdqlm_multivar_drop_q50_policy.py`
+
+Fresh all-cutoff relaunch root:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602`

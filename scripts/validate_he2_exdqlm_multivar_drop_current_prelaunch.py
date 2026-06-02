@@ -25,6 +25,11 @@ from build_he2_exdqlm_multivar_drop_current_relaunch import (  # noqa: E402
     TARGET_MODEL_ID,
     TARGET_MODEL_KEY,
 )
+from he2_exdqlm_multivar_drop_q50_policy import (  # noqa: E402
+    Q50_REPAIR_FREEZE_TARGET,
+    Q50_REPAIR_STABILIZATION,
+    Q50_REPAIR_TERMINAL_SAMPLING_GUARD,
+)
 from he2_publication_relaunch_lib import (  # noqa: E402
     DEFAULT_BUNDLE_ARTIFACT_ROOT,
     DEFAULT_BUNDLE_RUN_ID,
@@ -135,6 +140,7 @@ def validate(artifact_root: Path = DEFAULT_ARTIFACT_ROOT) -> tuple[Recorder, dic
     rec.check("matrix", "metadata_target_family", metadata.get("target_family") == TARGET_FAMILY, str(metadata.get("target_family")))
     rec.check("matrix", "metadata_max_workers_14", int(metadata.get("max_active_quantile_workers", 0)) == MAX_ACTIVE_QUANTILE_WORKERS, str(metadata.get("max_active_quantile_workers", "")))
     rec.check("matrix", "metadata_cleanup_after_post", bool(metadata.get("cleanup_rdata_after_post")) is True, str(metadata.get("cleanup_rdata_after_post")))
+    rec.check("matrix", "metadata_q50_repair_promoted", bool(metadata.get("q50_repair_promoted")) is True, str(metadata.get("q50_repair_promoted")))
     rec.check("matrix", "queue_ordinary_rows_2", int(nested(metadata, ["queue", "ordinary_max_concurrent"], 0)) == RUN_ROWS_AT_ONCE, str(nested(metadata, ["queue", "ordinary_max_concurrent"], "")))
     rec.check("matrix", "queue_heavy_rows_2", int(nested(metadata, ["queue", "heavy_cutoff_max_concurrent"], 0)) == RUN_ROWS_AT_ONCE, str(nested(metadata, ["queue", "heavy_cutoff_max_concurrent"], "")))
     rec.check("matrix", "queue_heavy_does_not_block", bool(nested(metadata, ["queue", "heavy_cutoff_blocks_ordinary"], True)) is False, str(nested(metadata, ["queue", "heavy_cutoff_blocks_ordinary"], "")))
@@ -171,6 +177,15 @@ def validate(artifact_root: Path = DEFAULT_ARTIFACT_ROOT) -> tuple[Recorder, dic
             rec.check(scope, f"state_{key}", same_float(nested(cfg, ["models", TARGET_MODEL_KEY, "state_evolution", key]), value), str(nested(cfg, ["models", TARGET_MODEL_KEY, "state_evolution", key])))
 
         rec.check(scope, "max_iter_100", int(nested(cfg, ["fit", TARGET_MODEL_KEY, "gamma_sigma", "max_iter"], 0)) == 100, str(nested(cfg, ["fit", TARGET_MODEL_KEY, "gamma_sigma", "max_iter"], "")))
+        q50 = nested(cfg, ["fit", TARGET_MODEL_KEY, "gamma_sigma", "quantile_overrides", "q50"], {})
+        rec.check(scope, "q50_freeze_target_repaired", nested(q50, ["freeze_target"]) == Q50_REPAIR_FREEZE_TARGET, str(nested(q50, ["freeze_target"])))
+        for key, expected in Q50_REPAIR_TERMINAL_SAMPLING_GUARD.items():
+            observed = nested(q50, ["terminal_sampling_guard", key])
+            ok = observed == expected if isinstance(expected, bool) else same_float(observed, expected) if isinstance(expected, (int, float)) else observed == expected
+            rec.check(scope, f"q50_terminal_guard_{key}", ok, f"observed={observed} expected={expected}")
+        for key, expected in Q50_REPAIR_STABILIZATION.items():
+            observed = nested(q50, ["stabilization", key])
+            rec.check(scope, f"q50_stabilization_{key}", same_float(observed, expected), f"observed={observed} expected={expected}")
         rec.check(scope, "forecast_cov_epsilon_30", same_float(nested(cfg, ["fit", TARGET_MODEL_KEY, "legacy", "forecast_cov", "epsilon"]), 30.0), str(nested(cfg, ["fit", TARGET_MODEL_KEY, "legacy", "forecast_cov", "epsilon"])))
         rec.check(scope, "forecast_cov_c_factor_1", same_float(nested(cfg, ["fit", TARGET_MODEL_KEY, "legacy", "forecast_cov", "c_factor"]), 1.0), str(nested(cfg, ["fit", TARGET_MODEL_KEY, "legacy", "forecast_cov", "c_factor"])))
         rec.check(scope, "quantiles", [float(q) for q in nested(cfg, ["fit", "quantiles"], [])] == EXPECTED_QUANTILES, str(nested(cfg, ["fit", "quantiles"], [])))

@@ -18,9 +18,11 @@ DEFAULT_KEEP_ARTIFACT_ROOT = (
     ROOT.parent / "project1_ucsc_phd_runtime" / "multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602"
 )
 DEFAULT_DROP_ARTIFACT_ROOT = (
-    ROOT.parent / "project1_ucsc_phd_runtime" / "multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_20260602"
+    ROOT.parent
+    / "project1_ucsc_phd_runtime"
+    / "multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602"
 )
-DEFAULT_SESSION = "he2_exal_drop_20260602"
+DEFAULT_SESSION = "he2_exal_drop_q50repair_20260602"
 DEFAULT_STATUS_NAME = "drop_after_al_keep_handoff_status.json"
 
 

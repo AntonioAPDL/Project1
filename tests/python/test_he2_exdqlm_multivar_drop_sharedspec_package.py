@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import unittest
+import os
 from pathlib import Path
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
+os.sys.path.insert(0, str(ROOT / "scripts"))
+
+from he2_exdqlm_multivar_drop_q50_policy import Q50_REPAIR_STABILIZATION  # noqa: E402
+
 TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516.template.yaml'
 BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516.yaml'
 
@@ -43,8 +48,9 @@ class He2ExdqlmMultivarDropSharedspecPackageTests(unittest.TestCase):
         self.assertEqual(fit['gamma_sigma']['quantile_overrides']['q50']['freeze_target'], 'states')
         self.assertEqual(
             fit['gamma_sigma']['quantile_overrides']['q50']['stabilization']['median_state_hold_after_guard_iters'],
-            0,
+            10,
         )
+        self.assertEqual(fit['gamma_sigma']['quantile_overrides']['q50']['stabilization'], Q50_REPAIR_STABILIZATION)
 
         state = family_patch['config_patch']['models']['exdqlm_multivar']['state_evolution']
         self.assertEqual(state['df_t'], 0.99999999)
