@@ -3965,13 +3965,24 @@ terminal_sampling_guard_frozen <- (
 )
 terminal_sampling_guard_recent <- is.finite(last_state_guard_iter) &&
   as.integer(last_state_guard_iter) >= as.integer(iter)
+terminal_sampling_guard_recent_enough <- is.finite(terminal_guard_lag_iters) &&
+  as.integer(terminal_guard_lag_iters) <=
+    as.integer(DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MAX_GUARD_LAG_ITERS)
+terminal_sampling_guard_blocked <- if (isTRUE(DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_REQUIRE_FROZEN)) {
+  isTRUE(terminal_sampling_guard_frozen) ||
+    isTRUE(terminal_sampling_guard_recent) ||
+    isTRUE(terminal_sampling_guard_recent_enough)
+} else {
+  isTRUE(terminal_sampling_guard_recent_enough)
+}
 disc_sampling_diag_emit(
   "sampling_preflight",
   "vb_terminal_guard",
   sprintf(
     paste0(
       "mode=%s median=%s guard_count=%d last_guard_iter=%s lag_iters=%s ",
-      "frozen=%s recent=%s update_iters=%d min_update_iters=%d reason=%s"
+      "frozen=%s recent=%s recent_enough=%s blocked=%s ",
+      "update_iters=%d min_update_iters=%d reason=%s"
     ),
     as.character(DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE),
     ifelse(isTRUE(median_quantile_active), "true", "false"),
@@ -3980,6 +3991,8 @@ disc_sampling_diag_emit(
     if (is.finite(terminal_guard_lag_iters)) as.character(as.integer(terminal_guard_lag_iters)) else "NA",
     ifelse(isTRUE(terminal_sampling_guard_frozen), "true", "false"),
     ifelse(isTRUE(terminal_sampling_guard_recent), "true", "false"),
+    ifelse(isTRUE(terminal_sampling_guard_recent_enough), "true", "false"),
+    ifelse(isTRUE(terminal_sampling_guard_blocked), "true", "false"),
     as.integer(gamsig_update_iters),
     as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
     if (!nzchar(last_state_guard_reason)) "-" else last_state_guard_reason
@@ -3988,15 +4001,11 @@ disc_sampling_diag_emit(
 if (terminal_sampling_guard_is_active &&
     state_guard_count >= DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MIN_GUARD_COUNT &&
     is.finite(last_state_guard_iter) &&
-    is.finite(terminal_guard_lag_iters) &&
-    terminal_guard_lag_iters <= DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MAX_GUARD_LAG_ITERS &&
-    (!isTRUE(DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_REQUIRE_FROZEN) ||
-      isTRUE(terminal_sampling_guard_frozen) ||
-      isTRUE(terminal_sampling_guard_recent))) {
+    isTRUE(terminal_sampling_guard_blocked)) {
   guard_msg <- sprintf(
     paste0(
       "terminal sampling guard tripped for p0=%s: guard_count=%d last_guard_iter=%d ",
-      "lag_iters=%d frozen=%s recent=%s reason=%s"
+      "lag_iters=%d frozen=%s recent=%s recent_enough=%s blocked=%s reason=%s"
     ),
     as.character(p0),
     as.integer(state_guard_count),
@@ -4004,6 +4013,8 @@ if (terminal_sampling_guard_is_active &&
     as.integer(terminal_guard_lag_iters),
     ifelse(isTRUE(terminal_sampling_guard_frozen), "true", "false"),
     ifelse(isTRUE(terminal_sampling_guard_recent), "true", "false"),
+    ifelse(isTRUE(terminal_sampling_guard_recent_enough), "true", "false"),
+    ifelse(isTRUE(terminal_sampling_guard_blocked), "true", "false"),
     if (!nzchar(last_state_guard_reason)) "-" else last_state_guard_reason
   )
   cat(sprintf("[terminal_sampling_guard] %s\n", guard_msg))
