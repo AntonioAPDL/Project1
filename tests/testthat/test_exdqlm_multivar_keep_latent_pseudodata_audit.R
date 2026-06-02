@@ -211,6 +211,44 @@ testthat::test_that("pseudo-data guard passes healthy finite positive inputs", {
   testthat::expect_true(all(guard$status == "ok"))
 })
 
+testthat::test_that("pseudo-data guard allows zero s moments only for AL contract", {
+  qqq <- array(diag(c(1, 2)), dim = c(2, 2, 1))
+
+  exal_guard <- disc_w_audit_pseudodata_guard(
+    iter = 9,
+    FFF = matrix(c(0, 0), nrow = 1),
+    QQQ = qqq,
+    E_sts = matrix(c(0, 0), nrow = 1),
+    E_sts2 = matrix(c(0, 0), nrow = 1),
+    E_uts = matrix(c(1, 2), nrow = 1),
+    E_inv_uts = matrix(c(10, 20), nrow = 1),
+    E_sts_forecast = matrix(c(0, 0), nrow = 1),
+    E_sts2_forecast = matrix(c(0, 0), nrow = 1),
+    E_uts_forecast = matrix(c(1, 2), nrow = 1),
+    E_inv_uts_forecast = matrix(c(10, 20), nrow = 1)
+  )
+  testthat::expect_true(any(exal_guard$quantity == "E_sts" & exal_guard$status == "nonpositive"))
+  testthat::expect_true(any(exal_guard$quantity == "E_sts2" & exal_guard$status == "nonpositive"))
+
+  al_guard <- disc_w_audit_pseudodata_guard(
+    iter = 10,
+    FFF = matrix(c(0, 0), nrow = 1),
+    QQQ = qqq,
+    E_sts = matrix(c(0, 0), nrow = 1),
+    E_sts2 = matrix(c(0, 0), nrow = 1),
+    E_uts = matrix(c(1, 2), nrow = 1),
+    E_inv_uts = matrix(c(10, 20), nrow = 1),
+    E_sts_forecast = matrix(c(0, 0), nrow = 1),
+    E_sts2_forecast = matrix(c(0, 0), nrow = 1),
+    E_uts_forecast = matrix(c(1, 2), nrow = 1),
+    E_inv_uts_forecast = matrix(c(10, 20), nrow = 1),
+    allow_zero_sts = TRUE
+  )
+  sts_rows <- al_guard[al_guard$quantity %in% c("E_sts", "E_sts2"), , drop = FALSE]
+  testthat::expect_true(all(sts_rows$status == "ok"))
+  testthat::expect_true(all(sts_rows$positive_required == FALSE))
+})
+
 testthat::test_that("keep forecast dimension table follows active segment algebra", {
   dims <- disc_w_audit_keep_dimension_table(
     p = 4,

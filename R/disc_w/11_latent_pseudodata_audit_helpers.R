@@ -325,7 +325,8 @@ disc_w_audit_pseudodata_guard <- function(
   e_s_abs_cap = 1000,
   e_s2_abs_cap = 1e6,
   e_u_abs_cap = 1e6,
-  e_inv_u_abs_cap = 5000
+  e_inv_u_abs_cap = 5000,
+  allow_zero_sts = FALSE
 ) {
   rows <- list()
   add <- function(values, quantity, block, cap, positive = FALSE, diag_values = FALSE) {
@@ -346,12 +347,13 @@ disc_w_audit_pseudodata_guard <- function(
   add(QQQ, "QQQ_diag", "history", qqq_diag_abs_cap, positive = TRUE, diag_values = TRUE)
   add(FFF_forecast, "FFF_forecast", "forecast", fff_abs_cap)
   add(QQQ_forecast, "QQQ_forecast_diag", "forecast", qqq_diag_abs_cap, positive = TRUE, diag_values = TRUE)
-  add(E_sts, "E_sts", "history", e_s_abs_cap, positive = TRUE)
-  add(E_sts2, "E_sts2", "history", e_s2_abs_cap, positive = TRUE)
+  sts_positive_required <- !isTRUE(allow_zero_sts)
+  add(E_sts, "E_sts", "history", e_s_abs_cap, positive = sts_positive_required)
+  add(E_sts2, "E_sts2", "history", e_s2_abs_cap, positive = sts_positive_required)
   add(E_uts, "E_uts", "history", e_u_abs_cap, positive = TRUE)
   add(E_inv_uts, "E_inv_uts", "history", e_inv_u_abs_cap, positive = TRUE)
-  add(E_sts_forecast, "E_sts", "forecast", e_s_abs_cap, positive = TRUE)
-  add(E_sts2_forecast, "E_sts2", "forecast", e_s2_abs_cap, positive = TRUE)
+  add(E_sts_forecast, "E_sts", "forecast", e_s_abs_cap, positive = sts_positive_required)
+  add(E_sts2_forecast, "E_sts2", "forecast", e_s2_abs_cap, positive = sts_positive_required)
   add(E_uts_forecast, "E_uts", "forecast", e_u_abs_cap, positive = TRUE)
   add(E_inv_uts_forecast, "E_inv_uts", "forecast", e_inv_u_abs_cap, positive = TRUE)
 
