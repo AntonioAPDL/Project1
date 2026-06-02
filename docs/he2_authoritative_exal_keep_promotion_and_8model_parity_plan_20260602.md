@@ -83,6 +83,43 @@ Pending families:
 | `exAL-U-T1` | `exdqlm_univar` | rerun/promote on 20260510 canonical bundle |
 | `exAL-M-T0` | `exdqlm_multivar_drop` | rerun/promote on 20260510 canonical bundle |
 
+## Immediate Next Package: AL-M-T1 From The exAL-M-T1 Winners
+
+The first pending quantile-family relaunch should be `AL-M-T1` / `dqlm_multivar_al_keep`, cloned from the five
+promoted `exAL-M-T1` winner configs. This is deliberately not the older shared-spec AL package: the goal is exact
+input-bundle and winner-spec parity with the current authoritative exAL keep rows, changing only the active likelihood
+from `exal` to `al`.
+
+Dedicated plan:
+
+`docs/he2_al_multivar_keep_from_exal_winners_relaunch_plan_20260602.md`
+
+Prepared no-launch artifact root:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602`
+
+Tooling:
+
+```bash
+python3 scripts/build_he2_dqlm_multivar_al_keep_from_exal_winners.py
+python3 scripts/validate_he2_dqlm_multivar_al_keep_from_exal_winners_prelaunch.py
+python3 -m unittest tests.python.test_he2_dqlm_multivar_al_keep_from_exal_winners -v
+```
+
+Hard invariant: generated `AL-M-T1` configs must preserve the source exAL winner `inputs`, `dates`, `scale_contract`,
+`stages`, state evolution, structure, transfer covariate engineering, epsilon, c_factor, and `max_iter=100`, while
+switching `models.exdqlm_multivar.likelihood_mode` to `al`. The active R workflow supports this switch directly:
+`DISC_W_LIKELIHOOD_MODE=al` defines `DISC_W_AL_MODE`, forces gamma to zero, and makes `update_sts(...)` return zero
+VB moments for `s_t`.
+
+Follow-on sequence after this package completes and validates:
+
+1. `exAL-M-T0` / `exdqlm_multivar_drop` on the same 20260510 bundle contract;
+2. `AL-M-T0` / `dqlm_multivar_al_drop` as the paired AL run;
+3. `exAL-U-T1` / `exdqlm_univar`;
+4. `AL-U-T1` / `dqlm_univar_al`;
+5. remaining NDLM families, unless the manuscript schedule prioritizes NDLM earlier.
+
 The final benchmark gate is closed only when:
 
 1. all 45 rows are sourced from the same cutoff-specific canonical input bundle;
