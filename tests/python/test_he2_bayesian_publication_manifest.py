@@ -15,6 +15,7 @@ from build_he2_bayesian_publication_manifest import (  # noqa: E402
     REQUIRED_ALIGNMENT_ARTIFACTS,
     build_outputs,
 )
+from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402
 
 
 class He2BayesianPublicationManifestTests(unittest.TestCase):
@@ -25,20 +26,18 @@ class He2BayesianPublicationManifestTests(unittest.TestCase):
         self.assertEqual(len(alignment_rows), len(CUTOFFS) * len(ARTIFACT_SPECS))
         self.assertEqual(sorted({row["manuscript_label"] for row in manifest_rows}), sorted(FAMILY_TO_LABEL.values()))
 
-    def test_override_row_points_to_exact_discount_grid_winner(self) -> None:
+    def test_exal_keep_rows_point_to_authoritative_grid_winners(self) -> None:
         manifest_rows, _input_rows, _alignment_rows = build_outputs()
-        row = next(
-            row
-            for row in manifest_rows
-            if row["cutoff"] == "20221225" and row["manuscript_label"] == "exAL-M-T1"
-        )
-        self.assertEqual(
-            row["run_id"],
-            "multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep",
-        )
-        self.assertEqual(row["crps_display4"], "0.4375")
-        self.assertEqual(row["campaign_lineage"], "exalm_t1_discount_grid_exact_20260424:set09_override")
-        self.assertTrue(row["replaced_source_run_id"])
+        authoritative = load_authoritative_spec()
+        for winner in authoritative.winners:
+            row = next(
+                row
+                for row in manifest_rows
+                if row["cutoff"] == winner.cutoff and row["manuscript_label"] == "exAL-M-T1"
+            )
+            self.assertEqual(row["run_id"], winner.run_id)
+            self.assertAlmostEqual(float(row["crps_exact"]), winner.mean_crps, places=12)
+            self.assertEqual(row["campaign_lineage"], "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner")
 
     def test_all_rows_share_current_featurecov_contract(self) -> None:
         manifest_rows, _input_rows, alignment_rows = build_outputs()
@@ -49,13 +48,12 @@ class He2BayesianPublicationManifestTests(unittest.TestCase):
             self.assertEqual(row["lag_orders"], "1|2|3")
             self.assertEqual(row["include_squares"], "True")
             self.assertEqual(row["include_interaction"], "True")
-            self.assertEqual(row["within_cutoff_shared_inputs_aligned"], "True")
+        required = [row for row in alignment_rows if row["artifact"] in REQUIRED_ALIGNMENT_ARTIFACTS]
+        self.assertEqual(sum(row["all_equal"] == "True" for row in required), 35)
+        self.assertEqual(len(required), len(CUTOFFS) * len(REQUIRED_ALIGNMENT_ARTIFACTS))
         self.assertTrue(
-            all(
-                row["all_equal"] == "True"
-                for row in alignment_rows
-                if row["artifact"] in REQUIRED_ALIGNMENT_ARTIFACTS
-            )
+            any(row["within_cutoff_shared_inputs_aligned"] == "False" for row in manifest_rows),
+            "The manifest should expose the pending 8-model canonical-input parity gate.",
         )
 
 

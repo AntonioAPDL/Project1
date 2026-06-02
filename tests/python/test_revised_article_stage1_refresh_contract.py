@@ -28,7 +28,11 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
         self.assertIn('load_runtime_bindings', text)
         self.assertEqual(
             bindings['exal_m_t1']['keep_runtime_root'],
-            '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516',
+            '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524',
+        )
+        self.assertEqual(
+            bindings['exal_m_t1']['authoritative_keep_manifest'],
+            '/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml',
         )
         self.assertIn('--univar-runtime-root', text)
         self.assertIn('--multivar-support-run-root', text)
@@ -43,7 +47,7 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
         payload = json.loads((ARTICLE_ROOT / 'MANUSCRIPT_ASSET_MANIFEST.json').read_text(encoding='utf-8'))
         fig = next(item for item in payload['figures'] if item['label'] == 'fig:synth1')
         self.assertEqual(fig['source_path'], 'artifacts/representative_selected_model_2022_12_25/representative_synthesis_multivariate.png')
-        self.assertIn('he2pubgdpc1r1', fig['note'])
+        self.assertIn('exAL-M-T1', fig['note'])
 
     def test_figure_polish_audit_contract_references_cutoff_wide_synthesis_manifests(self) -> None:
         text = (ARTICLE_ROOT / 'scripts' / 'build_figure_polish_status_audit.py').read_text(encoding='utf-8')

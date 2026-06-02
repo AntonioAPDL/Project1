@@ -14,6 +14,12 @@ import yaml
 ROOT = Path("/data/muscat_data/jaguir26/project1_ucsc_phd")
 RUNTIME_ROOT = ROOT.parent / "project1_ucsc_phd_runtime"
 OUT_DIR = ROOT / "reports" / "he2_publication_manifest"
+import sys
+
+if str(ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(ROOT / "scripts"))
+
+from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402
 
 CUTOFFS = ["20210123", "20211112", "20211221", "20220511", "20221225"]
 FAMILY_ORDER = [
@@ -134,14 +140,12 @@ ALIGNMENT_FIELDS = [
     "hash_groups_json",
     "missing_labels",
 ]
-OVERRIDE_EXAL_20221225 = {
-    "run_id": "multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep",
-    "campaign_lineage": "exalm_t1_discount_grid_exact_20260424:set09_override",
-    "publication_note": (
-        "HE2 publication override: exact-input apples-to-apples exAL-M-T1 discount-grid winner "
-        "replaces the earlier cf1 sweep source run for cutoff 20221225."
-    ),
-}
+AUTHORITATIVE_EXAL_KEEP_MANIFEST = ROOT / "docs" / "exdqlm_multivar_keep_authoritative_specs_20260601.yaml"
+AUTHORITATIVE_EXAL_KEEP_LINEAGE = "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner"
+TRANSITION_PUBLICATION_NOTE = (
+    "Authoritative canonical-grid exAL-M-T1 winner. Full 9-model benchmark remains transitional until the other "
+    "eight HE2 Bayesian comparison families are rerun or promoted onto the same 20260510 canonical input bundle."
+)
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -244,14 +248,28 @@ def resolve_multivar_rows() -> list[dict[str, str]]:
         RUNTIME_ROOT
         / "multimodel_v8_featurecov_cf1_eps_sweep_20260416/reports/final_featurecov_cf1_eps_analysis/best_by_cutoff_long.csv"
     )
+    authoritative = load_authoritative_spec(AUTHORITATIVE_EXAL_KEEP_MANIFEST)
+    authoritative_by_cutoff = authoritative.winner_by_cutoff()
     rows = []
     for cutoff in CUTOFFS:
+        winner = authoritative_by_cutoff[cutoff]
+        rows.append(
+            {
+                "cutoff": cutoff,
+                "family": "exdqlm_multivar_keep",
+                "run_id": winner.run_id,
+                "run_root": str(authoritative.run_root(winner)),
+                "compare_dir": "",
+                "campaign_lineage": AUTHORITATIVE_EXAL_KEEP_LINEAGE,
+                "publication_note": TRANSITION_PUBLICATION_NOTE,
+                "replaced_source_run_id": "",
+            }
+        )
         best_rows = [
             row
             for row in read_csv(best_path)
             if row["cutoff"] == cutoff
             and row["model_variant"] in {
-                "exdqlm_multivar_keep",
                 "dqlm_multivar_al_keep",
                 "exdqlm_multivar_drop",
                 "dqlm_multivar_al_drop",
@@ -332,29 +350,8 @@ def resolve_ndlm_rows() -> list[dict[str, str]]:
     return rows
 
 
-def apply_override(rows: list[dict[str, str]]) -> None:
-    for row in rows:
-        if row["cutoff"] == "20221225" and row["family"] == "exdqlm_multivar_keep":
-            row["replaced_source_run_id"] = row["run_id"]
-            row["run_id"] = OVERRIDE_EXAL_20221225["run_id"]
-            row["run_root"] = str(
-                RUNTIME_ROOT
-                / "multimodel_v8_exalm_t1_discount_grid_exact_20260424/runs"
-                / OVERRIDE_EXAL_20221225["run_id"]
-            )
-            row["compare_dir"] = str(
-                RUNTIME_ROOT
-                / "multimodel_v8_exalm_t1_discount_grid_exact_20260424/control/exalm_t1_discount_grid_exact_v1"
-            )
-            row["campaign_lineage"] = OVERRIDE_EXAL_20221225["campaign_lineage"]
-            row["publication_note"] = OVERRIDE_EXAL_20221225["publication_note"]
-            return
-    raise RuntimeError("Could not find exAL-M-T1 20221225 row to override")
-
-
 def build_resolved_rows() -> list[dict[str, str]]:
     rows = resolve_multivar_rows() + resolve_univar_rows() + resolve_ndlm_rows()
-    apply_override(rows)
     rows = sorted(rows, key=lambda row: (row["cutoff"], FAMILY_ORDER.index(row["family"])))
     if len(rows) != 45:
         raise RuntimeError(f"Expected 45 publication rows, found {len(rows)}")
@@ -480,6 +477,8 @@ def build_outputs() -> tuple[list[dict[str, str]], list[dict[str, str]], list[di
 
 
 def validate(manifest_rows: list[dict[str, str]], alignment_rows: list[dict[str, str]]) -> None:
+    authoritative = load_authoritative_spec(AUTHORITATIVE_EXAL_KEEP_MANIFEST)
+    authoritative_by_cutoff = authoritative.winner_by_cutoff()
     if len(manifest_rows) != 45:
         raise RuntimeError(f"Expected 45 manifest rows, found {len(manifest_rows)}")
     observed_labels = sorted({row["manuscript_label"] for row in manifest_rows})
@@ -496,20 +495,14 @@ def validate(manifest_rows: list[dict[str, str]], alignment_rows: list[dict[str,
             raise RuntimeError(f"Unexpected lag orders in {row['run_id']}: {row['lag_orders']}")
         if row["include_squares"] != "True" or row["include_interaction"] != "True":
             raise RuntimeError(f"Feature transform contract failed in {row['run_id']}")
-        if row["within_cutoff_shared_inputs_aligned"] != "True":
-            raise RuntimeError(f"Shared input alignment failed for cutoff {row['cutoff']}")
-    for row in alignment_rows:
-        if row["artifact"] not in REQUIRED_ALIGNMENT_ARTIFACTS:
-            continue
-        if row["all_equal"] != "True":
-            raise RuntimeError(f"Artifact mismatch: cutoff={row['cutoff']} artifact={row['artifact']}")
-    override = next(
-        row for row in manifest_rows if row["cutoff"] == "20221225" and row["manuscript_label"] == "exAL-M-T1"
-    )
-    if override["run_id"] != OVERRIDE_EXAL_20221225["run_id"]:
-        raise RuntimeError(f"Unexpected override run: {override['run_id']}")
-    if override["crps_display4"] != "0.4375":
-        raise RuntimeError(f"Unexpected override CRPS: {override['crps_display4']}")
+    for cutoff, winner in authoritative_by_cutoff.items():
+        row = next(item for item in manifest_rows if item["cutoff"] == cutoff and item["manuscript_label"] == "exAL-M-T1")
+        if row["run_id"] != winner.run_id:
+            raise RuntimeError(f"Unexpected authoritative exAL-M-T1 run for {cutoff}: {row['run_id']} != {winner.run_id}")
+        if abs(float(row["crps_exact"]) - float(winner.mean_crps)) > 1e-12:
+            raise RuntimeError(f"Unexpected authoritative exAL-M-T1 CRPS for {cutoff}: {row['crps_exact']} != {winner.mean_crps}")
+        if row["campaign_lineage"] != AUTHORITATIVE_EXAL_KEEP_LINEAGE:
+            raise RuntimeError(f"Unexpected authoritative exAL-M-T1 lineage for {cutoff}: {row['campaign_lineage']}")
 
 
 def write_csv(path: Path, rows: list[dict[str, str]], fieldnames: list[str]) -> None:
@@ -536,12 +529,15 @@ def write_markdown(manifest_rows: list[dict[str, str]], alignment_rows: list[dic
             and row["artifact"] in REQUIRED_ALIGNMENT_ARTIFACTS
             and row["all_equal"] == "True"
         )
-        cutoff_rows.append([cutoff_display(cutoff), f"{aligned} / {len(REQUIRED_ALIGNMENT_ARTIFACTS)}", "Aligned"])
+        result = "Aligned" if aligned == len(REQUIRED_ALIGNMENT_ARTIFACTS) else "Transition mismatch"
+        cutoff_rows.append([cutoff_display(cutoff), f"{aligned} / {len(REQUIRED_ALIGNMENT_ARTIFACTS)}", result])
 
     current_rows = []
+    exal_transition_rows = []
     for row in manifest_rows:
-        if row["cutoff"] == "20221225" and row["manuscript_label"] == "exAL-M-T1":
-            note = "updated winner"
+        if row["manuscript_label"] == "exAL-M-T1":
+            note = "authoritative canonical-grid winner"
+            exal_transition_rows.append([row["cutoff_display"], row["crps_display4"], row["run_id"]])
         else:
             note = ""
         current_rows.append(
@@ -556,6 +552,13 @@ def write_markdown(manifest_rows: list[dict[str, str]], alignment_rows: list[dic
         )
 
     unique_likelihoods = sorted({row["likelihood_mode"] for row in manifest_rows})
+    aligned_full = sum(
+        1
+        for row in alignment_rows
+        if row["artifact"] in REQUIRED_ALIGNMENT_ARTIFACTS and row["all_equal"] == "True"
+    )
+    total_full = len(CUTOFFS) * len(REQUIRED_ALIGNMENT_ARTIFACTS)
+
     md = f"""# HE2 Bayesian Publication Manifest
 
 This report freezes the **current manuscript-facing HE2 Bayesian table** at the run level for all `9 x 5 = 45` cells.
@@ -571,16 +574,23 @@ Headline checks:
 - square terms observed: `True`
 - interaction term observed: `True`
 - likelihood modes observed: `{', '.join(unique_likelihoods)}`
+- full within-cutoff shared-input alignment checks passing: `{aligned_full} / {total_full}`
 
 Special publication update:
-- `12/25/2022 / exAL-M-T1` now resolves to `{OVERRIDE_EXAL_20221225['run_id']}` with mean CRPS `0.4375`, replacing the earlier cf1-sweep source row for that single HE2 cell.
+- All five `exAL-M-T1` rows now resolve to the authoritative canonical-grid winners in `{AUTHORITATIVE_EXAL_KEEP_MANIFEST}`.
+- Transition gate: the remaining eight HE2 Bayesian comparison families still need rerun/promotion onto the same canonical 20260510 input-bundle contract before the full benchmark table should be treated as final.
+
+## Authoritative exAL-M-T1 Rows
+
+{markdown_table(["Cutoff", "Mean CRPS", "Run ID"], exal_transition_rows)}
 
 ## Within-Cutoff Input Congruence
 
 {markdown_table(["Cutoff", "Artifact Checks Passing", "Result"], cutoff_rows)}
 
 Archival caveat:
-- `usgs_daily.csv` was not preserved inside some older multivariate quantile run roots, so the strict within-cutoff congruence gate is evaluated on the **10 fit/forecast/blended-covariate artifacts** rather than on the auxiliary USGS cache file.
+- `usgs_daily.csv` was not preserved inside some older multivariate quantile run roots, so the strict within-cutoff congruence table is evaluated on the **10 fit/forecast/blended-covariate artifacts** rather than on the auxiliary USGS cache file.
+- Input congruence is now a diagnostic gate, not a final-pass claim, because `exAL-M-T1` has been promoted first and the other eight comparison families still require matching canonical-input promotion.
 
 ## Publication Rows
 

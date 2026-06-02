@@ -823,3 +823,4 @@ Operational contract:
 | 2026-05-25 | Hardened the queue around RAM gates after smoke evidence and relaunched the full grid at 4 concurrent rows / 28 quantile workers | running |
 | 2026-05-25 | Completed no-cleanup and cleanup smoke gates, captured CRPS/evaluator evidence, and verified post-success `.RData` cleanup | done |
 | 2026-05-31 | Promoted Phase B VB latent/component diagnostics into the active fit/post workflow: compact iteration health CSVs now write by default, and multivariate-only post now emits the tracked latent/component audit report | done |
+| 2026-06-02 | Promoted the five authoritative canonical-grid `exAL-M-T1` winners into a YAML source of truth, project publication manifest, revised-doc refresh scripts, fixed-scale article assets, and a tested 8-family same-bundle parity gate; see `docs/he2_authoritative_exal_keep_promotion_and_8model_parity_plan_20260602.md` | done |

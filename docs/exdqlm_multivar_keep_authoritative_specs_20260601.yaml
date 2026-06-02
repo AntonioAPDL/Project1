@@ -1,10 +1,21 @@
 metadata:
   date: "2026-06-01 PDT / 2026-06-02 UTC"
   authority_scope: "canonical_grid_production"
+  model_family: "exdqlm_multivar_keep"
+  manuscript_label: "exAL-M-T1"
+  model_id: "exdqlm_multivar_synth_keep"
+  runtime_root: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524"
   input_bundle_contract: "PPT|SOIL|PCA(alias=GDPC1)"
+  bundle_artifact_root: "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510"
+  bundle_run_id: "20260510_publication_shared_r01"
+  data_start: "1987-05-29"
   max_iter: 100
+  active_quantiles: "05|20|35|50|65|80|95"
+  score_scale: "log_cms_plus1"
+  figure_scale: "log1p_cms"
   evidence_csv: "reports/exdqlm_multivar_keep_grid_eval_guard_promotion_final_20260530/combined_winners_by_cutoff.csv"
   companion_note: "docs/exdqlm_multivar_keep_authoritative_refocus_20260601.md"
+  publication_transition_note: "The remaining 8 HE2 Bayesian comparison families still need rerun/promotion onto this same canonical 20260510 input-bundle contract before the full 9-model manuscript benchmark table can be treated as final."
 
 winners:
   - cutoff: "20210123"

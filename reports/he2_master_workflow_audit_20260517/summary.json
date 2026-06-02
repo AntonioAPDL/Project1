@@ -1,9 +1,14 @@
 {
-  "ultimate_goal": "Rebuild authoritative manuscript tables and figures from corrected run roots under one documented, reproducible workflow.",
+  "generated_at_utc": "2026-06-02T07:33:25Z",
+  "ultimate_goal": "Freeze exAL-M-T1 on the authoritative canonical-grid winners, then rerun/promote the remaining eight HE2 Bayesian families onto the same input bundle before final paper benchmarking.",
+  "authoritative_exal_keep_manifest": "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml",
+  "authoritative_exal_keep_runtime_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524",
   "canonical_contract": {
-    "scale": "log1p",
+    "scale": "log1p_cms",
+    "score_scale": "log_cms_plus1",
     "retrospective_start": "1987-05-29",
-    "forecast_alignment": "within-cutoff NWS and GloFAS versions must match the authoritative bundle audit",
+    "shared_bundle_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510",
+    "shared_bundle_run_id": "20260510_publication_shared_r01",
     "covariates": [
       "PPT",
       "SOIL",
@@ -18,271 +23,176 @@
       "include_squares": true,
       "include_interaction": true
     },
-    "deterministic_climate": "blended PPT/SOIL forecast contract where applicable",
-    "debugging_policy": "warm-up and stabilization first; epsilon and c_factor only as last resort with explicit approval"
+    "active_quantiles": "05|20|35|50|65|80|95"
   },
-  "publication_manifest_state": "legacy_publication_manifest_still_points_to_pre-relaunch_sources",
-  "al_q65_diag_processes_active": false,
-  "ndlm_current_bundle_alignment": {
-    "aligned_to_20260510_canonical_shared_bundle": false,
-    "unique_source_roots": [
-      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs",
-      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs",
-      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/runs"
-    ]
+  "publication_parity_gate": {
+    "generated_at_utc": "2026-06-02T07:33:25Z",
+    "rows": 45,
+    "cutoffs": 5,
+    "promoted_rows": 5,
+    "pending_rows": 40,
+    "promoted_labels": [
+      "exAL-M-T1"
+    ],
+    "pending_labels": [
+      "AL-M-T0",
+      "AL-M-T1",
+      "AL-U-T1",
+      "N-M-T0",
+      "N-M-T1",
+      "N-U-T1",
+      "exAL-M-T0",
+      "exAL-U-T1"
+    ],
+    "remaining_model_families_pending": 8,
+    "remaining_submodels_pending": 190,
+    "canonical_bundle_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510",
+    "canonical_bundle_run_id": "20260510_publication_shared_r01",
+    "canonical_data_start": "1987-05-29",
+    "within_cutoff_alignment_passes": 35,
+    "within_cutoff_alignment_checks": 50,
+    "final_9_model_benchmark_ready": false,
+    "gate_reason": "exAL-M-T1 is promoted first; the remaining eight families must use the same canonical input bundle before the all-model table is final."
   },
-  "article_state": {
-    "lineage_status_counts": {
-      "unchanged_intentionally": 8,
-      "updated_now": 39
-    },
-    "historical_support_background": {
-      "state": "completed",
-      "message": "Historical-support replay artifacts were rendered successfully and the revised-doc article assets were refreshed."
-    },
-    "historical_support_contract_status": "repaired_via_retained_support_contract",
-    "exal_revised_doc_audit": {
-      "scope": [
-        "exAL-M-T1",
-        "exAL-M-T0",
-        "exAL-U-T1"
-      ],
-      "article_figure_status_counts": {
-        "unchanged_intentionally": 8,
-        "updated_now": 39
-      },
-      "representative_table_sources_current": true,
-      "historical_support_repaired": true,
-      "benchmark_table_source": "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv",
-      "benchmark_table_note": "Generated from the frozen HE2 publication manifest plus the raw-baseline rows in the five exAL-M-T1 CRPS summaries. This remains the manuscript benchmark source pending reconciliation with the completed shared-spec exAL rerun-local synthesis CRPS outputs.",
-      "benchmark_row_count": 15,
-      "benchmark_mismatch_count": 15,
-      "benchmark_mismatch_labels": [
-        "exAL-M-T0",
-        "exAL-M-T1",
-        "exAL-U-T1"
-      ],
-      "family_status_counts": {
-        "figures_closed_benchmark_blocked": 1,
-        "run_complete_benchmark_blocked": 1,
-        "run_complete_reference_figure_benchmark_blocked": 1
-      },
-      "rerun_local_score_median_by_label": {
-        "exAL-M-T1": 114729517528.2864,
-        "exAL-M-T0": 287742.7067656857,
-        "exAL-U-T1": 0.2379174106643723
-      },
-      "frozen_score_median_by_label": {
-        "exAL-M-T1": 0.15685973014263893,
-        "exAL-M-T0": 0.47196305101412395,
-        "exAL-U-T1": 0.2229046420122957
-      },
-      "final_certification": "blocked_on_benchmark_table_reconciliation"
-    },
-    "crps_table_readiness": {
-      "crps_table_should_be_updated_now": false,
-      "decision": "keep_frozen_current_benchmark_table",
-      "why": [
-        "ndlm_families_are_not_current_canonical_bundle_aligned",
-        "al_multivar_keep_drop_are_not_launched_and_failed_q65_diagnostics",
-        "exal_completed_sharedspec_rerun_local_scores_do_not_match_frozen_benchmark_rows"
-      ],
-      "benchmark_table_source": "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv",
-      "benchmark_table_note": "Generated from the frozen HE2 publication manifest plus the raw-baseline rows in the five exAL-M-T1 CRPS summaries. This remains the manuscript benchmark source pending reconciliation with the completed shared-spec exAL rerun-local synthesis CRPS outputs.",
-      "exal_benchmark_mismatch_count": 15,
-      "ndlm_bundle_alignment": {
-        "aligned_to_20260510_canonical_shared_bundle": false,
-        "unique_source_roots": [
-          "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_20260402/runs",
-          "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs",
-          "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_ndlm_20260411/runs"
-        ]
-      },
-      "family_gates": [
-        {
-          "label": "exAL-M-T1",
-          "family": "exdqlm_multivar_keep",
-          "current_status": "authoritative_complete",
-          "authoritative_state": "production_complete",
-          "crps_table_gate": "blocked",
-          "blocking_reason": "exal_benchmark_rows_not_reconciled_to_completed_sharedspec_reruns"
-        },
-        {
-          "label": "exAL-M-T0",
-          "family": "exdqlm_multivar_drop",
-          "current_status": "authoritative_complete",
-          "authoritative_state": "production_complete",
-          "crps_table_gate": "blocked",
-          "blocking_reason": "exal_benchmark_rows_not_reconciled_to_completed_sharedspec_reruns"
-        },
-        {
-          "label": "exAL-U-T1",
-          "family": "exdqlm_univar",
-          "current_status": "authoritative_complete",
-          "authoritative_state": "production_complete",
-          "crps_table_gate": "blocked",
-          "blocking_reason": "exal_benchmark_rows_not_reconciled_to_completed_sharedspec_reruns"
-        },
-        {
-          "label": "AL-M-T1",
-          "family": "dqlm_multivar_al_keep",
-          "current_status": "diagnostic_failed",
-          "authoritative_state": "not_launched",
-          "crps_table_gate": "blocked",
-          "blocking_reason": "al_multivar_not_launched_and_q65_diagnostics_failed"
-        },
-        {
-          "label": "AL-M-T0",
-          "family": "dqlm_multivar_al_drop",
-          "current_status": "diagnostic_failed",
-          "authoritative_state": "not_launched",
-          "crps_table_gate": "blocked",
-          "blocking_reason": "al_multivar_not_launched_and_q65_diagnostics_failed"
-        },
-        {
-          "label": "AL-U-T1",
-          "family": "dqlm_univar_al",
-          "current_status": "authoritative_complete",
-          "authoritative_state": "production_complete",
-          "crps_table_gate": "pending_family_set",
-          "blocking_reason": "al_univar_complete_but_al_multivar_family_set_not_ready"
-        },
-        {
-          "label": "N-M-T1",
-          "family": "ndlm_main_keep",
-          "current_status": "completed_but_not_current_bundle_aligned",
-          "authoritative_state": "older_corrected_rerun_complete",
-          "crps_table_gate": "blocked",
-          "blocking_reason": "ndlm_not_current_canonical_bundle_aligned"
-        },
-        {
-          "label": "N-M-T0",
-          "family": "ndlm_main_drop",
-          "current_status": "completed_but_not_current_bundle_aligned",
-          "authoritative_state": "older_corrected_rerun_complete",
-          "crps_table_gate": "blocked",
-          "blocking_reason": "ndlm_not_current_canonical_bundle_aligned"
-        },
-        {
-          "label": "N-U-T1",
-          "family": "ndlm_univar_keep",
-          "current_status": "completed_but_not_current_bundle_aligned",
-          "authoritative_state": "older_corrected_rerun_complete",
-          "crps_table_gate": "blocked",
-          "blocking_reason": "ndlm_not_current_canonical_bundle_aligned"
-        }
-      ],
-      "all_ready": false
-    }
-  },
+  "remaining_8_model_input_parity_required": true,
   "families": [
     {
-      "label": "exAL-M-T1",
-      "family": "exdqlm_multivar_keep",
-      "mode": "exAL",
-      "shape": "multivar_keep",
-      "authoritative_state": "production_complete",
-      "cutoffs_passed": "5/5",
-      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
-      "current_status": "authoritative_complete",
-      "blocker": "",
-      "notes": "Corrected shared-spec rerun complete."
-    },
-    {
-      "label": "exAL-M-T0",
-      "family": "exdqlm_multivar_drop",
-      "mode": "exAL",
-      "shape": "multivar_drop",
-      "authoritative_state": "production_complete",
-      "cutoffs_passed": "5/5",
-      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
-      "current_status": "authoritative_complete",
-      "blocker": "",
-      "notes": "Corrected shared-spec rerun complete."
-    },
-    {
-      "label": "exAL-U-T1",
-      "family": "exdqlm_univar",
-      "mode": "exAL",
-      "shape": "univar",
-      "authoritative_state": "production_complete",
-      "cutoffs_passed": "5/5",
-      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
-      "current_status": "authoritative_complete",
-      "blocker": "",
-      "notes": "Corrected shared-spec rerun complete."
+      "label": "AL-M-T0",
+      "family": "dqlm_multivar_al_drop",
+      "cutoff_rows": "5",
+      "submodels_represented": "35",
+      "current_status": "pending_same_bundle_promotion",
+      "authoritative_state": "transition_pending",
+      "required_action": "rerun_or_promote_on_20260510_canonical_bundle",
+      "paper_table_gate": "blocks_final_9_model_table",
+      "notes": "Needs rerun or promotion onto the same 20260510 canonical input bundle before final all-model paper claims."
     },
     {
       "label": "AL-M-T1",
       "family": "dqlm_multivar_al_keep",
-      "mode": "AL",
-      "shape": "multivar_keep",
-      "authoritative_state": "not_launched",
-      "cutoffs_passed": "0/5",
-      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
-      "current_status": "diagnostic_failed",
-      "blocker": "20221225 q65 prodclone failed forecast-health validation.",
-      "notes": "- global_models exdqlm_multivar_keep q=65: [FIT_FORECAST_HEALTH_FAIL] multivar keep q=65 violated forecast-health limits: max_abs_sm_ens=10017306363.541973 > 1000.000000 | max_abs_forecast_exps=16557925554.469927 > 650.000000 | max_E_sigma=596.181551 > 100.000000. See /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_20221225_q65_prodclone_diagnostic_20260517/control/prelaunch_validation_prodclone_20221225_q65_20260517/smoke_runs/fit_quantile/dqlm_multivar_al_keep/20221225/fit_smoke_dqlm_multivar_al_keep_20221225_qsubset/fit/exdqlm_multivar/keep/q=65/outputs/multivar_forecast_health.txt"
-    },
-    {
-      "label": "AL-M-T0",
-      "family": "dqlm_multivar_al_drop",
-      "mode": "AL",
-      "shape": "multivar_drop",
-      "authoritative_state": "not_launched",
-      "cutoffs_passed": "0/5",
-      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
-      "current_status": "diagnostic_failed",
-      "blocker": "20221225 q65 prodclone failed forecast-health validation.",
-      "notes": "- global_models exdqlm_multivar_drop q=65: [FIT_FORECAST_HEALTH_FAIL] multivar drop q=65 violated forecast-health limits: max_E_sigma=131.529506 > 100.000000. See /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_20221225_q65_prodclone_diagnostic_20260517/control/prelaunch_validation_prodclone_20221225_q65_20260517/smoke_runs/fit_quantile/dqlm_multivar_al_drop/20221225/fit_smoke_dqlm_multivar_al_drop_20221225_qsubset/fit/q=65/outputs/multivar_forecast_health.txt"
+      "cutoff_rows": "5",
+      "submodels_represented": "35",
+      "current_status": "pending_same_bundle_promotion",
+      "authoritative_state": "transition_pending",
+      "required_action": "rerun_or_promote_on_20260510_canonical_bundle",
+      "paper_table_gate": "blocks_final_9_model_table",
+      "notes": "Needs rerun or promotion onto the same 20260510 canonical input bundle before final all-model paper claims."
     },
     {
       "label": "AL-U-T1",
       "family": "dqlm_univar_al",
-      "mode": "AL",
-      "shape": "univar",
-      "authoritative_state": "production_complete",
-      "cutoffs_passed": "5/5",
-      "quantile_contract": "q05,q20,q35,q50,q65,q80,q95",
-      "current_status": "authoritative_complete",
-      "blocker": "",
-      "notes": "Canonical AL univar shared-spec rerun complete across all five cutoffs."
-    },
-    {
-      "label": "N-M-T1",
-      "family": "ndlm_main_keep",
-      "mode": "normal",
-      "shape": "ndlm_multivar_keep",
-      "authoritative_state": "older_corrected_rerun_complete",
-      "cutoffs_passed": "5/5",
-      "quantile_contract": "single_model",
-      "current_status": "completed_but_not_current_bundle_aligned",
-      "blocker": "NDLM rerun does not yet use the current 20260510 canonical shared bundle lineage.",
-      "notes": "Corrected NDLM featurecov rerun complete, but source_map still points to older input lineages."
+      "cutoff_rows": "5",
+      "submodels_represented": "35",
+      "current_status": "pending_same_bundle_promotion",
+      "authoritative_state": "transition_pending",
+      "required_action": "rerun_or_promote_on_20260510_canonical_bundle",
+      "paper_table_gate": "blocks_final_9_model_table",
+      "notes": "Needs rerun or promotion onto the same 20260510 canonical input bundle before final all-model paper claims."
     },
     {
       "label": "N-M-T0",
       "family": "ndlm_main_drop",
-      "mode": "normal",
-      "shape": "ndlm_multivar_drop",
-      "authoritative_state": "older_corrected_rerun_complete",
-      "cutoffs_passed": "5/5",
-      "quantile_contract": "single_model",
-      "current_status": "completed_but_not_current_bundle_aligned",
-      "blocker": "NDLM rerun does not yet use the current 20260510 canonical shared bundle lineage.",
-      "notes": "Corrected NDLM featurecov rerun complete, but source_map still points to older input lineages."
+      "cutoff_rows": "5",
+      "submodels_represented": "5",
+      "current_status": "pending_same_bundle_promotion",
+      "authoritative_state": "transition_pending",
+      "required_action": "rerun_or_promote_on_20260510_canonical_bundle",
+      "paper_table_gate": "blocks_final_9_model_table",
+      "notes": "Needs rerun or promotion onto the same 20260510 canonical input bundle before final all-model paper claims."
+    },
+    {
+      "label": "N-M-T1",
+      "family": "ndlm_main_keep",
+      "cutoff_rows": "5",
+      "submodels_represented": "5",
+      "current_status": "pending_same_bundle_promotion",
+      "authoritative_state": "transition_pending",
+      "required_action": "rerun_or_promote_on_20260510_canonical_bundle",
+      "paper_table_gate": "blocks_final_9_model_table",
+      "notes": "Needs rerun or promotion onto the same 20260510 canonical input bundle before final all-model paper claims."
     },
     {
       "label": "N-U-T1",
       "family": "ndlm_univar_keep",
-      "mode": "normal",
-      "shape": "ndlm_univar",
-      "authoritative_state": "older_corrected_rerun_complete",
-      "cutoffs_passed": "5/5",
-      "quantile_contract": "single_model",
-      "current_status": "completed_but_not_current_bundle_aligned",
-      "blocker": "NDLM rerun does not yet use the current 20260510 canonical shared bundle lineage.",
-      "notes": "Corrected NDLM featurecov rerun complete, but source_map still points to older input lineages."
+      "cutoff_rows": "5",
+      "submodels_represented": "5",
+      "current_status": "pending_same_bundle_promotion",
+      "authoritative_state": "transition_pending",
+      "required_action": "rerun_or_promote_on_20260510_canonical_bundle",
+      "paper_table_gate": "blocks_final_9_model_table",
+      "notes": "Needs rerun or promotion onto the same 20260510 canonical input bundle before final all-model paper claims."
+    },
+    {
+      "label": "exAL-M-T0",
+      "family": "exdqlm_multivar_drop",
+      "cutoff_rows": "5",
+      "submodels_represented": "35",
+      "current_status": "pending_same_bundle_promotion",
+      "authoritative_state": "transition_pending",
+      "required_action": "rerun_or_promote_on_20260510_canonical_bundle",
+      "paper_table_gate": "blocks_final_9_model_table",
+      "notes": "Needs rerun or promotion onto the same 20260510 canonical input bundle before final all-model paper claims."
+    },
+    {
+      "label": "exAL-M-T1",
+      "family": "exdqlm_multivar_keep",
+      "cutoff_rows": "5",
+      "submodels_represented": "35",
+      "current_status": "authoritative_current_bundle_promoted",
+      "authoritative_state": "production_authoritative",
+      "required_action": "none",
+      "paper_table_gate": "ready_for_exal_m_t1_only",
+      "notes": "Canonical-grid exAL-M-T1 winner set is wired into the publication manifest and revised-doc refresh."
+    },
+    {
+      "label": "exAL-U-T1",
+      "family": "exdqlm_univar",
+      "cutoff_rows": "5",
+      "submodels_represented": "35",
+      "current_status": "pending_same_bundle_promotion",
+      "authoritative_state": "transition_pending",
+      "required_action": "rerun_or_promote_on_20260510_canonical_bundle",
+      "paper_table_gate": "blocks_final_9_model_table",
+      "notes": "Needs rerun or promotion onto the same 20260510 canonical input bundle before final all-model paper claims."
     }
-  ]
+  ],
+  "article_state": {
+    "asset_manifest_exists": true,
+    "lineage_summary": {
+      "setup_support_runtime_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exal_m_t1_setup_support_by_cutoff_v2_20260516",
+      "completed_keep_output_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524",
+      "completed_univar_output_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516",
+      "live_keep_sharedspec_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524",
+      "live_keep_sharedspec_complete": false,
+      "setup_support_full_history_all_cutoffs": true,
+      "setup_support_gdpc_all_cutoffs": true,
+      "uppercase_lowercase_figure_trees_match": true,
+      "lowercase_figure_file_count": 47,
+      "uppercase_figure_file_count": 47,
+      "status_counts": {
+        "unchanged_intentionally": 8,
+        "updated_now": 39
+      }
+    },
+    "historical_support_refresh": {
+      "command": [
+        "/home/jaguir26/python39/bin/python3",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2/scripts/refresh_current_model_output_support_figures.py",
+        "--article-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2",
+        "--workflow-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd",
+        "--multivar-runtime-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524",
+        "--multivar-support-run-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_historical_support_replay_20260517/runs/multimodel_20220511_v8_he2pubgdpc1r1_exdqlm_multivar_keep_historical_support_replay",
+        "--univar-runtime-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516"
+      ],
+      "returncode": 0,
+      "stdout": "[1] \"/home/jaguir26/R/x86_64-redhat-linux-gnu-library/4.5\"\n[2] \"/usr/lib64/R/library\"                                \n[3] \"/usr/share/R/library\"                                \n[4] \"/home/jaguir26/R/libs\"                               \n+ Rscript /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2/scripts/render_current_model_output_support_figures.R --workflow-root /data/muscat_data/jaguir26/project1_ucsc_phd --run-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20220511_v8_he2grid_c02_eps060_exdqlm_multivar_keep --output-dir /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2/artifacts/historical_support_from_current_models/figures --cutoff-date 2022-05-11 --forecast-start-date 2022-05-12 --display-flow-scale log1p_cms --internal-flow-scale log1p_cms --state-summary-path /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2/artifacts/historical_support_from_current_models/figures/cache/historical_support_state_summaries.rds\nRefreshed current-model output support figures successfully.\n",
+      "stderr": "\nAttaching package: \u2018sn\u2019\n\nThe following object is masked from \u2018package:stats\u2019:\n\n    sd\n\n\nAttaching package: \u2018Matrix\u2019\n\nThe following object is masked from \u2018package:dlm\u2019:\n\n    bdiag\n\n\nAttaching package: \u2018zoo\u2019\n\nThe following objects are masked from \u2018package:base\u2019:\n\n    as.Date, as.Date.numeric\n\nnimble version 1.4.2 is loaded.\nFor more information on NIMBLE and a User Manual,\nplease visit https://R-nimble.org.\n\nAttaching package: \u2018nimble\u2019\n\nThe following object is masked from \u2018package:Matrix\u2019:\n\n    expm\n\nThe following object is masked from \u2018package:stats\u2019:\n\n    simulate\n\nThe following object is masked from \u2018package:base\u2019:\n\n    declare\n\n\nAttaching package: \u2018expm\u2019\n\nThe following object is masked from \u2018package:nimble\u2019:\n\n    expm\n\nThe following object is masked from \u2018package:Matrix\u2019:\n\n    expm\n\nRegistered S3 methods overwritten by 'RcppEigen':\n  method               from         \n  predict.fastLm       RcppArmadillo\n  print.fastLm         RcppArmadillo\n  summary.fastLm       RcppArmadillo\n  print.summary.fastLm RcppArmadillo\n\nAttaching package: \u2018RcppEigen\u2019\n\nThe following objects are masked from \u2018package:RcppArmadillo\u2019:\n\n    fastLm, fastLmPure\n\n\nAttaching package: \u2018ks\u2019\n\nThe following object is masked from \u2018package:sn\u2019:\n\n    vech\n\n\nAttaching package: \u2018MASS\u2019\n\nThe following object is masked from \u2018package:patchwork\u2019:\n\n    area\n\n\nAttaching package: \u2018ggplot2\u2019\n\nThe following object is masked from \u2018package:dlm\u2019:\n\n    %+%\n\n\nAttaching package: \u2018dplyr\u2019\n\nThe following object is masked from \u2018package:matrixStats\u2019:\n\n    count\n\nThe following object is masked from \u2018package:MASS\u2019:\n\n    select\n\nThe following objects are masked from \u2018package:stats\u2019:\n\n    filter, lag\n\nThe following objects are masked from \u2018package:base\u2019:\n\n    intersect, setdiff, setequal, union\n\n\nAttaching package: \u2018tidyr\u2019\n\nThe following objects are masked from \u2018package:Matrix\u2019:\n\n    expand, pack, unpack\n\n\nAttaching package: \u2018scales\u2019\n\nThe following object is masked from \u2018package:readr\u2019:\n\n    col_factor\n\n\nAttaching package: \u2018lubridate\u2019\n\nThe following object is masked from \u2018package:sn\u2019:\n\n    dst\n\nThe following objects are masked from \u2018package:base\u2019:\n\n    date, intersect, setdiff, union\n\nOptional package 'dataRetrieval' is not installed; continuing without it.\nOptional package 'tseries' is not installed; continuing without it.\nOptional package 'rvest' is not installed; continuing without it.\nOptional package 'tidyverse' is not installed; continuing without it.\nUsing local USGS daily truth CSV: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20220511_v8_he2grid_c02_eps060_exdqlm_multivar_keep/inputs/shared/usgs/usgs_daily.csv\nLoading retained historical-support state summary...\nLoading cached historical-support state summaries...\nRendered current-model historical support figures successfully.\n",
+      "status": "ok"
+    }
+  }
 }

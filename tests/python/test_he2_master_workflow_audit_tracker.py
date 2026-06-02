@@ -12,11 +12,16 @@ OUT = ROOT / 'reports' / 'he2_master_workflow_audit_20260517'
 def test_master_workflow_audit_tracker_current_state() -> None:
     subprocess.run(['python3', 'scripts/build_he2_master_workflow_audit_tracker.py'], cwd=ROOT, check=True)
     summary = json.loads((OUT / 'summary.json').read_text())
-    assert summary['article_state']['historical_support_contract_status'] == 'repaired_via_retained_support_contract'
-    assert summary['article_state']['crps_table_readiness']['decision'] == 'keep_frozen_current_benchmark_table'
-    assert summary['article_state']['lineage_status_counts'] == {'unchanged_intentionally': 8, 'updated_now': 39}
+    assert summary['remaining_8_model_input_parity_required'] is True
+    assert summary['publication_parity_gate']['promoted_rows'] == 5
+    assert summary['publication_parity_gate']['pending_rows'] == 40
+    assert summary['publication_parity_gate']['final_9_model_benchmark_ready'] is False
+    assert summary['article_state']['historical_support_refresh']['status'] == 'ok'
 
     rows = list(csv.DictReader((OUT / 'family_tracker.csv').open()))
-    al_univar = next(r for r in rows if r['label'] == 'AL-U-T1')
-    assert al_univar['current_status'] == 'authoritative_complete'
-    assert al_univar['authoritative_state'] == 'production_complete'
+    promoted = next(r for r in rows if r['label'] == 'exAL-M-T1')
+    assert promoted['current_status'] == 'authoritative_current_bundle_promoted'
+    assert promoted['authoritative_state'] == 'production_authoritative'
+    pending = [r for r in rows if r['label'] != 'exAL-M-T1']
+    assert len(pending) == 8
+    assert all(r['current_status'] == 'pending_same_bundle_promotion' for r in pending)
