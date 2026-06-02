@@ -85,6 +85,19 @@ The builder writes:
 - `control/publication_relaunch_matrix/AL_KEEP_FROM_EXAL_WINNERS_SCOPE.md`
 - `control/generated_configs/*.yaml`
 
+## Resource And Cleanup Policy
+
+The prepared queue uses two cutoff rows at a time. Each row is one multivariate quantile run with seven internal
+quantile workers, so the intended maximum active quantile workers is `2 x 7 = 14`.
+
+Queue policy:
+
+- first two cutoffs launch first;
+- as those finish, the next two cutoffs are allowed to launch;
+- the fifth cutoff launches after capacity opens;
+- post-stage cleanup is enabled through `scripts/run_unified_with_cleanup.sh`, which sets `CLEANUP_RDATA_AFTER_POST=1`;
+- large `.RData/.rda` files should not be retained after successful post evidence is written.
+
 ## Hard Validation Gates
 
 Before launch, validation must pass with zero failures:
@@ -105,7 +118,7 @@ Before launch, validation must pass with zero failures:
 Only run after explicit launch approval:
 
 ```bash
-python3 scripts/run_multimodel_v8_queue.py --matrix-dir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602/control/publication_relaunch_matrix --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602 --ordinary-max-concurrent 5 --pause-free-gb 25.0 --launch-free-gb 35.0 --heavy-free-gb 35.0 --pause-mem-gb 0.0 --launch-mem-gb 0.0 --heavy-mem-gb 0.0 --heavy-cutoff-max-concurrent 5 --poll-seconds 30 --continue-on-fail --skip-compares --no-heavy-cutoff-blocks-ordinary
+python3 scripts/run_multimodel_v8_queue.py --matrix-dir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602/control/publication_relaunch_matrix --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602 --ordinary-max-concurrent 2 --pause-free-gb 25.0 --launch-free-gb 35.0 --heavy-free-gb 35.0 --pause-mem-gb 0.0 --launch-mem-gb 0.0 --heavy-mem-gb 0.0 --heavy-cutoff-max-concurrent 2 --poll-seconds 30 --continue-on-fail --skip-compares --no-heavy-cutoff-blocks-ordinary
 ```
 
 This uses cleanup after post by default through `scripts/run_unified_with_cleanup.sh`.
@@ -121,3 +134,8 @@ After `AL-M-T1` completes and passes post-output validation:
 5. rebuild the HE2 publication manifest and article assets only after all pending families pass the same-bundle parity gate.
 
 Do not promote any of these families into the revised article benchmark table until their CRPS tables, synthesis figures, diagnostics, source-config hashes, and cleanup evidence are frozen.
+
+Important drop-family note: older `exdqlm_multivar_drop` shared-spec tooling exists, but it predates the current
+authoritative exAL-M-T1 winner-clone promotion. It should be treated as context, not as an already launch-ready
+same-bundle parity package. The drop-family wave should get its own refreshed no-launch matrix, validator, 2-row/14-worker
+queue policy, and cleanup gate before it is launched.

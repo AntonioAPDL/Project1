@@ -17,6 +17,9 @@ if str(ROOT / "scripts") not in sys.path:
 
 from build_he2_dqlm_multivar_al_keep_from_exal_winners import (  # noqa: E402
     DEFAULT_ARTIFACT_ROOT,
+    MAX_ACTIVE_QUANTILE_WORKERS,
+    QUANTILE_WORKERS_PER_RUN,
+    RUN_ROWS_AT_ONCE,
     SOURCE_FAMILY,
     SOURCE_LABEL,
     SOURCE_MODEL_ID,
@@ -142,6 +145,12 @@ def validate(manifest_path: Path, artifact_root: Path) -> tuple[Recorder, dict[s
     rec.check("matrix", "metadata_cleanup_after_post", bool(metadata.get("cleanup_rdata_after_post")) is True, str(metadata.get("cleanup_rdata_after_post")))
     rec.check("matrix", "metadata_skip_compares", bool(metadata.get("skip_compare_bundles")) is True, str(metadata.get("skip_compare_bundles")))
     rec.check("matrix", "metadata_continue_on_fail", bool(metadata.get("continue_on_fail")) is True, str(metadata.get("continue_on_fail")))
+    rec.check("matrix", "queue_run_rows_at_once_2", int(nested(metadata, ["queue", "ordinary_max_concurrent"], 0)) == RUN_ROWS_AT_ONCE, str(nested(metadata, ["queue", "ordinary_max_concurrent"], "")))
+    rec.check("matrix", "queue_heavy_rows_at_once_2", int(nested(metadata, ["queue", "heavy_cutoff_max_concurrent"], 0)) == RUN_ROWS_AT_ONCE, str(nested(metadata, ["queue", "heavy_cutoff_max_concurrent"], "")))
+    rec.check("matrix", "queue_heavy_does_not_block_ordinary", bool(nested(metadata, ["queue", "heavy_cutoff_blocks_ordinary"], True)) is False, str(nested(metadata, ["queue", "heavy_cutoff_blocks_ordinary"], "")))
+    rec.check("matrix", "resources_quantile_workers_7", int(nested(metadata, ["resources", "fit_parallel_workers"], 0)) == QUANTILE_WORKERS_PER_RUN, str(nested(metadata, ["resources", "fit_parallel_workers"], "")))
+    rec.check("matrix", "resources_mc_cores_7", int(nested(metadata, ["resources", "mc_cores"], 0)) == QUANTILE_WORKERS_PER_RUN, str(nested(metadata, ["resources", "mc_cores"], "")))
+    rec.check("matrix", "metadata_max_active_quantile_workers_14", int(metadata.get("max_active_quantile_workers", 0)) == MAX_ACTIVE_QUANTILE_WORKERS, str(metadata.get("max_active_quantile_workers", "")))
     rec.check("matrix", "matrix_status_exists", (matrix_dir / "matrix_status.csv").exists(), str(matrix_dir / "matrix_status.csv"))
     rec.check("matrix", "queue_log_exists", (matrix_dir / "queue.log").exists(), str(matrix_dir / "queue.log"))
 

@@ -34,6 +34,9 @@ TARGET_MODEL_KEY = "exdqlm_multivar"
 SOURCE_FAMILY = "exdqlm_multivar_keep"
 SOURCE_LABEL = "exAL-M-T1"
 SOURCE_MODEL_ID = "exdqlm_multivar_synth_keep"
+RUN_ROWS_AT_ONCE = 2
+QUANTILE_WORKERS_PER_RUN = len(EXPECTED_QUANTILES)
+MAX_ACTIVE_QUANTILE_WORKERS = RUN_ROWS_AT_ONCE * QUANTILE_WORKERS_PER_RUN
 DEFAULT_ARTIFACT_ROOT = (
     ROOT.parent / "project1_ucsc_phd_runtime" / "multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602"
 )
@@ -385,20 +388,20 @@ def build_package(manifest_path: Path, artifact_root: Path, *, reset_status: boo
     )
 
     queue = {
-        "ordinary_max_concurrent": 5,
+        "ordinary_max_concurrent": RUN_ROWS_AT_ONCE,
         "pause_free_gb": 25.0,
         "launch_free_gb": 35.0,
         "heavy_free_gb": 35.0,
         "pause_mem_gb": 0.0,
         "launch_mem_gb": 0.0,
         "heavy_mem_gb": 0.0,
-        "heavy_cutoff_max_concurrent": 5,
+        "heavy_cutoff_max_concurrent": RUN_ROWS_AT_ONCE,
         "heavy_cutoff_blocks_ordinary": False,
         "poll_seconds": 30,
     }
     resources = {
-        "fit_parallel_workers": 7,
-        "mc_cores": 7,
+        "fit_parallel_workers": QUANTILE_WORKERS_PER_RUN,
+        "mc_cores": QUANTILE_WORKERS_PER_RUN,
     }
     metadata = {
         "generated_at_utc": utc_now(),
@@ -426,6 +429,9 @@ def build_package(manifest_path: Path, artifact_root: Path, *, reset_status: boo
         "n_quantile_fits": len(plan_rows) * len(EXPECTED_QUANTILES),
         "queue": queue,
         "resources": resources,
+        "run_rows_at_once": RUN_ROWS_AT_ONCE,
+        "quantile_workers_per_run": QUANTILE_WORKERS_PER_RUN,
+        "max_active_quantile_workers": MAX_ACTIVE_QUANTILE_WORKERS,
         "cleanup_rdata_after_post": True,
         "skip_compare_bundles": True,
         "continue_on_fail": True,
@@ -499,6 +505,9 @@ def build_package(manifest_path: Path, artifact_root: Path, *, reset_status: boo
         f"- generated configs: `{config_output_dir}`",
         f"- run rows: `{len(plan_rows)}`",
         f"- quantile fits: `{len(plan_rows) * len(EXPECTED_QUANTILES)}`",
+        f"- run rows at once: `{RUN_ROWS_AT_ONCE}`",
+        f"- quantile workers per run: `{QUANTILE_WORKERS_PER_RUN}`",
+        f"- max active quantile workers: `{MAX_ACTIVE_QUANTILE_WORKERS}`",
         "- intended scientific change: `likelihood_mode: exal -> al`",
         "- preserved: source input bundle paths, cutoff dates, data start, harmonics, transfer covariates, discount factors, epsilon, c_factor, and max_iter.",
         "- cleanup after post: `true`",

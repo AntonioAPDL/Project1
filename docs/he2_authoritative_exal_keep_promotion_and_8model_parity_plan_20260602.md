@@ -112,6 +112,9 @@ switching `models.exdqlm_multivar.likelihood_mode` to `al`. The active R workflo
 `DISC_W_LIKELIHOOD_MODE=al` defines `DISC_W_AL_MODE`, forces gamma to zero, and makes `update_sts(...)` return zero
 VB moments for `s_t`.
 
+Launch policy for this package: two cutoff rows at a time, seven quantile workers per row, maximum 14 active quantile
+workers, with post-success `.RData/.rda` cleanup enabled.
+
 Follow-on sequence after this package completes and validates:
 
 1. `exAL-M-T0` / `exdqlm_multivar_drop` on the same 20260510 bundle contract;

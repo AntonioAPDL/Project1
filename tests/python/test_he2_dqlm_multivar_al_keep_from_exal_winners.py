@@ -12,6 +12,9 @@ ROOT = Path(__file__).resolve().parents[2]
 os.sys.path.insert(0, str(ROOT / "scripts"))
 
 from build_he2_dqlm_multivar_al_keep_from_exal_winners import (  # noqa: E402
+    MAX_ACTIVE_QUANTILE_WORKERS,
+    QUANTILE_WORKERS_PER_RUN,
+    RUN_ROWS_AT_ONCE,
     TARGET_FAMILY,
     TARGET_LABEL,
     TARGET_MODEL_ID,
@@ -46,6 +49,14 @@ class HE2DQLMMultivarALKeepFromExALWinnersTests(unittest.TestCase):
             self.assertEqual(metadata["target_model_id"], TARGET_MODEL_ID)
             self.assertEqual(metadata["n_run_rows"], 5)
             self.assertEqual(metadata["n_quantile_fits"], 35)
+            self.assertEqual(metadata["run_rows_at_once"], RUN_ROWS_AT_ONCE)
+            self.assertEqual(metadata["quantile_workers_per_run"], QUANTILE_WORKERS_PER_RUN)
+            self.assertEqual(metadata["max_active_quantile_workers"], MAX_ACTIVE_QUANTILE_WORKERS)
+            self.assertEqual(metadata["queue"]["ordinary_max_concurrent"], 2)
+            self.assertEqual(metadata["queue"]["heavy_cutoff_max_concurrent"], 2)
+            self.assertFalse(metadata["queue"]["heavy_cutoff_blocks_ordinary"])
+            self.assertEqual(metadata["resources"]["fit_parallel_workers"], 7)
+            self.assertEqual(metadata["resources"]["mc_cores"], 7)
 
             matrix_path = artifact_root / "control" / "publication_relaunch_matrix" / "matrix_plan.csv"
             with matrix_path.open(newline="") as handle:
