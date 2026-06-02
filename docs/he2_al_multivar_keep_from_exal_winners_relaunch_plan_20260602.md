@@ -134,7 +134,7 @@ This uses cleanup after post by default through `scripts/run_unified_with_cleanu
 
 After `AL-M-T1` completes and passes post-output validation:
 
-1. build `exAL-M-T0` / `exdqlm_multivar_drop` on the same 20260510 bundle contract;
+1. build/run `exAL-M-T0` / `exdqlm_multivar_drop` on the same 20260510 bundle contract;
 2. build `AL-M-T0` / `dqlm_multivar_al_drop` as the paired AL clone/check;
 3. build `exAL-U-T1` / `exdqlm_univar`;
 4. build `AL-U-T1` / `dqlm_univar_al`;
@@ -146,3 +146,48 @@ Important drop-family note: older `exdqlm_multivar_drop` shared-spec tooling exi
 authoritative exAL-M-T1 winner-clone promotion. It should be treated as context, not as an already launch-ready
 same-bundle parity package. The drop-family wave should get its own refreshed no-launch matrix, validator, 2-row/14-worker
 queue policy, and cleanup gate before it is launched.
+
+## 2026-06-02 Current-Code Drop Decision
+
+The older completed `exAL-M-T0` root:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516`
+
+is not being promoted as the final benchmark row. It completed all five cutoffs and has no retained `.RData/.rda`, but
+its post-stage synthesis draws and `log_cms_plus1` CRPS values are pathologically large in multiple cutoffs. That makes
+it useful historical evidence, not an authoritative current-code result.
+
+Fresh current-code drop tooling is now the target package:
+
+```bash
+python3 scripts/build_he2_exdqlm_multivar_drop_current_relaunch.py
+python3 scripts/validate_he2_exdqlm_multivar_drop_current_prelaunch.py
+python3 -m unittest tests.python.test_he2_exdqlm_multivar_drop_current_relaunch -v
+```
+
+Prepared artifact root:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_20260602`
+
+This package reuses the shared-spec `exAL-M-T0` scientific settings (`epsilon=30`, `c_factor=1`, shared high discount
+factors), but makes the previously implicit full-harmonic contract explicit (`trend + harmonics 1,2,3`), pins the
+canonical 20260510 bundle, uses the same two-cutoff-row/14-quantile-worker queue policy as the AL keep package, and
+keeps post-success `.RData/.rda` cleanup enabled.
+
+Launch order: let the active `AL-M-T1` queue keep the 14 intended workers. Launch the fresh `exAL-M-T0` current-code
+queue only after `AL-M-T1` finishes or clearly fails and is triaged. The guarded overnight handoff is:
+
+```bash
+python3 scripts/launch_he2_exdqlm_drop_after_al_keep.py --poll-seconds 300
+```
+
+The handoff script writes:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_20260602/control/publication_relaunch_matrix/drop_after_al_keep_handoff_status.json`
+
+and starts the drop controller in tmux session `he2_exal_drop_20260602` only after:
+
+1. the AL-M-T1 matrix status is fully `pass`;
+2. no AL-M-T1 `scripts/unified_run.R` process remains active under its artifact root;
+3. the current-code exAL-M-T0 prelaunch validator passes;
+4. the drop matrix is not already failed, active, or complete.

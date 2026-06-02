@@ -123,6 +123,43 @@ Follow-on sequence after this package completes and validates:
 4. `AL-U-T1` / `dqlm_univar_al`;
 5. remaining NDLM families, unless the manuscript schedule prioritizes NDLM earlier.
 
+## Current exAL-M-T0 Drop Gate
+
+Do not promote the older completed `exAL-M-T0` / `exdqlm_multivar_drop` root as final:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516`
+
+It is useful context because the rows reached `report/pass/closed` and no `.RData/.rda` files remain, but its
+post-stage `exdqlm_multivar_synth_drop` draws are pathologically inflated and the CRPS table records very large
+`log_cms_plus1` scores. Treat it as a stale/current-code-regression target, not a publication promotion target.
+
+The refreshed current-code `exAL-M-T0` package is:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_20260602`
+
+Tooling:
+
+```bash
+python3 scripts/build_he2_exdqlm_multivar_drop_current_relaunch.py
+python3 scripts/validate_he2_exdqlm_multivar_drop_current_prelaunch.py
+python3 -m unittest tests.python.test_he2_exdqlm_multivar_drop_current_relaunch -v
+```
+
+This package uses the canonical 20260510 input bundle, `data_start=1987-05-29`, `log1p_cms` fit/post scale, `PPT|SOIL|PCA`
+transfer covariates with lags `1,2,3`, squares and interaction, explicit `trend + harmonics 1,2,3`, `epsilon=30`,
+`c_factor=1`, seven quantile workers per cutoff row, two cutoff rows at a time, and post-success heavy-artifact cleanup.
+Launch it only after the active `AL-M-T1` relaunch has freed the 14-worker slot.
+
+For the overnight sequence, use the guarded handoff:
+
+```bash
+python3 scripts/launch_he2_exdqlm_drop_after_al_keep.py --poll-seconds 300
+```
+
+The handoff refuses to launch if AL-M-T1 failed, if any AL-M-T1 unified run is still active, if the drop matrix already
+failed or is active, or if the current-code drop validator fails. Successful launch starts tmux session
+`he2_exal_drop_20260602` from the generated `launch_current_drop.sh`.
+
 The final benchmark gate is closed only when:
 
 1. all 45 rows are sourced from the same cutoff-specific canonical input bundle;
