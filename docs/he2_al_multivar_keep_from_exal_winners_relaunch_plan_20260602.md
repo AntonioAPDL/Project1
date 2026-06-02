@@ -96,7 +96,14 @@ Queue policy:
 - as those finish, the next two cutoffs are allowed to launch;
 - the fifth cutoff launches after capacity opens;
 - post-stage cleanup is enabled through `scripts/run_unified_with_cleanup.sh`, which sets `CLEANUP_RDATA_AFTER_POST=1`;
+- queued wrappers also prepend `/data/muscat_data/jaguir26/libs/boost/lib` to `LD_LIBRARY_PATH`, which is required for
+  the active `Rcpp::sourceCpp(...)` Kalman/sampling shared objects to load `libboost_random.so.1.82.0`;
 - large `.RData/.rda` files should not be retained after successful post evidence is written.
+
+Launch incident note: an initial detached launch attempt on 2026-06-02 failed immediately at q05 for the first two
+cutoffs because the wrapper environment did not expose `libboost_random.so.1.82.0` to the dynamic loader. This was a
+runtime wrapper issue, not an input-bundle or AL likelihood issue. The fix is to set `LD_LIBRARY_PATH` in both unified
+queue wrappers before `Rscript` starts.
 
 ## Hard Validation Gates
 

@@ -132,7 +132,10 @@ class MultimodelV8QueueContractTest(unittest.TestCase):
         cmd = popen.call_args.args[0]
         self.assertEqual(cmd[:2], ["bash", "scripts/run_unified_with_cleanup.sh"])
         self.assertEqual(cmd[-2:], ["--config", str(ROOT / "config" / "example.yaml")])
-        self.assertIn("CLEANUP_RDATA_AFTER_POST=1", (ROOT / "scripts" / "run_unified_with_cleanup.sh").read_text(encoding="utf-8"))
+        wrapper_text = (ROOT / "scripts" / "run_unified_with_cleanup.sh").read_text(encoding="utf-8")
+        self.assertIn("CLEANUP_RDATA_AFTER_POST=1", wrapper_text)
+        self.assertIn("/data/muscat_data/jaguir26/libs/boost/lib", wrapper_text)
+        self.assertIn("LD_LIBRARY_PATH", wrapper_text)
 
     def test_queue_runner_can_launch_no_cleanup_smoke(self) -> None:
         class DummyProc:
@@ -151,7 +154,10 @@ class MultimodelV8QueueContractTest(unittest.TestCase):
         cmd = popen.call_args.args[0]
         self.assertEqual(cmd[:2], ["bash", "scripts/run_unified_without_cleanup.sh"])
         self.assertEqual(cmd[-2:], ["--config", str(ROOT / "config" / "example.yaml")])
-        self.assertIn("CLEANUP_RDATA_AFTER_POST=0", (ROOT / "scripts" / "run_unified_without_cleanup.sh").read_text(encoding="utf-8"))
+        wrapper_text = (ROOT / "scripts" / "run_unified_without_cleanup.sh").read_text(encoding="utf-8")
+        self.assertIn("CLEANUP_RDATA_AFTER_POST=0", wrapper_text)
+        self.assertIn("/data/muscat_data/jaguir26/libs/boost/lib", wrapper_text)
+        self.assertIn("LD_LIBRARY_PATH", wrapper_text)
 
     def test_health_refresh_warning_does_not_raise(self) -> None:
         completed = run_multimodel_v8_queue.subprocess.CompletedProcess(args=["python3"], returncode=7)
