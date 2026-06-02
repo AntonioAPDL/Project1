@@ -1154,6 +1154,19 @@ smoke_sample_subset_df <- function(model_id, sample_mat, dates, segment, cap = 1
   out
 }
 
+smoke_synthesis_y_limits <- function(default = c(0, 6.5)) {
+  raw <- trimws(Sys.getenv("UNIFIED_POST_SYNTHESIS_Y_LIMITS", ""))
+  vals <- if (nzchar(raw)) {
+    suppressWarnings(as.numeric(strsplit(raw, ",", fixed = TRUE)[[1L]]))
+  } else {
+    as.numeric(default)
+  }
+  if (length(vals) != 2L || any(!is.finite(vals)) || vals[[1L]] >= vals[[2L]]) {
+    stop("UNIFIED_POST_SYNTHESIS_Y_LIMITS must be two increasing numeric values, e.g. 0,6.5", call. = FALSE)
+  }
+  vals
+}
+
 smoke_plot_synthesis_window <- function(
   model_id,
   title_text,
@@ -1169,8 +1182,7 @@ smoke_plot_synthesis_window <- function(
   probs = c(0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95)
 ) {
   all_dates <- c(as.Date(hist_dates), as.Date(fc_dates))
-  ylim_vals <- range(c(hist_obs, fc_obs, hist_q, fc_q), finite = TRUE)
-  if (!all(is.finite(ylim_vals))) ylim_vals <- c(0, 1)
+  ylim_vals <- smoke_synthesis_y_limits()
 
   open_png(out_file, width = 3200, height = 1600, res = 320)
   on.exit(dev.off(), add = TRUE)

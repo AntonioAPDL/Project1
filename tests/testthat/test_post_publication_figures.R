@@ -1,13 +1,24 @@
 source(testthat::test_path("..", "..", "R", "unified", "post_publication_figures.R"))
 
-test_that("cutoff-specific shared y-limits are resolved from style", {
+test_that("shared y-limits are resolved from style", {
   style <- post_publication_load_style(
     project_root = normalizePath(testthat::test_path("..", ".."), mustWork = TRUE),
     config_path = testthat::test_path("..", "..", "config", "post_publication_figures.yaml")
   )
-  expect_equal(post_publication_y_limits_for_cutoff(as.Date("2021-01-23"), style), c(0, 6))
-  expect_equal(post_publication_y_limits_for_cutoff(as.Date("2021-11-12"), style), c(0, 4))
-  expect_equal(post_publication_y_limits_for_cutoff(as.Date("2022-12-25"), style), c(0, 10))
+  expect_equal(post_publication_y_limits_for_cutoff(as.Date("2021-01-23"), style), c(0, 6.5))
+  expect_equal(post_publication_y_limits_for_cutoff(as.Date("2022-05-11"), style), c(0, 6.5))
+  expect_equal(post_publication_y_limits_for_cutoff(as.Date("2022-12-25"), style), c(0, 6.5))
+})
+
+test_that("cutoff-specific y-limits remain available when shared limits are unset", {
+  style <- list(
+    y_limits = NULL,
+    y_limits_by_cutoff = list(
+      `20220511` = c(0.4, 0.9)
+    )
+  )
+  expect_equal(post_publication_y_limits_for_cutoff(as.Date("2022-05-11"), style), c(0.4, 0.9))
+  expect_null(post_publication_y_limits_for_cutoff(as.Date("2022-12-25"), style))
 })
 
 make_quant_df <- function(model_id) {

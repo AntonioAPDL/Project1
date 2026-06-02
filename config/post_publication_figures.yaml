@@ -38,9 +38,5 @@ posterior:
   show_inner_interval: false
 predictive:
   show_inner_interval: false
-y_limits_by_cutoff:
-  "20210123": [0, 6]
-  "20211112": [0, 4]
-  "20211221": [0, 8]
-  "20220511": [0.4, 0.9]
-  "20221225": [0, 10]
+y_limits: [0, 6.5]
+y_limits_by_cutoff: {}

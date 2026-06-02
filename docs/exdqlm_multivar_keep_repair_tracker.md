@@ -1,6 +1,25 @@
 # exDQLM Multivariate Keep Repair Tracker
 
-Last updated: 2026-05-23
+Last updated: 2026-06-01 PDT / 2026-06-02 UTC
+
+## 2026-06-01 Authoritative Refocus Update
+
+The old 2026-05-23 repair-gated status is superseded for the all-cutoff exDQLM multivariate `keep` workflow.
+
+The completed guard-promotion grid and failed-row recovery now represent all 150 canonical-input spec-cutoff cells,
+with zero failed or ineligible cells after recovery. Final canonical-grid production winners are frozen in:
+
+- `docs/exdqlm_multivar_keep_authoritative_refocus_20260601.md`
+- `docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml`
+- `reports/exdqlm_multivar_keep_grid_eval_guard_promotion_final_20260530/combined_winners_by_cutoff.csv`
+
+The latest 20220511 visual concern is now interpreted as a plotting-scale artifact rather than an unresolved algorithmic
+failure. The synthesis cutoff-window plots should be rendered on a common `0` to `6.5` `log1p(cms)` y-axis for
+cross-cutoff review. The promoted latent/component diagnostics remain useful as monitoring evidence, especially for
+deterministic quantile-ordering warnings, but they do not block promotion of the CRPS-selected canonical-grid winners.
+
+The GDPC6 20221225 experiment remains a documented off-grid covariate-bundle candidate. It should not silently replace
+the canonical 17-index GDPC bundle in production until a controlled covariate-bundle comparison is approved.
 
 ## Scope
 

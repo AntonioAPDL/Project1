@@ -51,13 +51,8 @@ post_publication_default_style <- function() {
     predictive = list(
       show_inner_interval = FALSE
     ),
-    y_limits_by_cutoff = list(
-      `20210123` = c(0, 6),
-      `20211112` = c(0, 4),
-      `20211221` = c(0, 8),
-      `20220511` = c(0.4, 0.9),
-      `20221225` = c(0, 10)
-    )
+    y_limits = c(0, 6.5),
+    y_limits_by_cutoff = list()
   )
 }
 
@@ -983,17 +978,25 @@ post_publication_focus_caption <- function(cutoff_date) {
   )
 }
 
-post_publication_y_limits_for_cutoff <- function(cutoff_date, style) {
-  cutoff_key <- format(as.Date(cutoff_date), "%Y%m%d")
-  raw <- style$y_limits_by_cutoff[[cutoff_key]] %||% NULL
+post_publication_parse_y_limits <- function(raw, context) {
   if (is.null(raw)) {
     return(NULL)
   }
   vals <- as.numeric(unlist(raw, use.names = FALSE))
   if (length(vals) != 2L || any(!is.finite(vals)) || vals[[1L]] >= vals[[2L]]) {
-    stop(sprintf("invalid y limits configured for cutoff %s", cutoff_key), call. = FALSE)
+    stop(sprintf("invalid y limits configured for %s", context), call. = FALSE)
   }
   vals
+}
+
+post_publication_y_limits_for_cutoff <- function(cutoff_date, style) {
+  shared <- post_publication_parse_y_limits(style$y_limits %||% NULL, "shared publication style")
+  if (!is.null(shared)) {
+    return(shared)
+  }
+  cutoff_key <- format(as.Date(cutoff_date), "%Y%m%d")
+  raw <- style$y_limits_by_cutoff[[cutoff_key]] %||% NULL
+  post_publication_parse_y_limits(raw, sprintf("cutoff %s", cutoff_key))
 }
 
 post_publication_render_focus_predictive_plot <- function(
