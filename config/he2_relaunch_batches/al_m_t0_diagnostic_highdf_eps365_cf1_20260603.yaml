@@ -1,0 +1,29 @@
+spec_id: highdf_eps365_cf1_al_m_t0_20260603
+description: >
+  Confirmed AL-M-T0 diagnostic candidate for the dqlm_multivar_al_drop workflow.
+  This is a near-frozen state-evolution stress test with the article-aligned
+  epsilon/c_factor pair used to determine whether the blocked AL-M-T0 failures
+  are primarily specification-induced rather than a remaining code-side wiring
+  defect. It is intended for staged diagnostic launches, not immediate broad
+  promotion.
+requires_user_discount_decision: false
+
+state_evolution:
+  df_t: 0.99999999
+  df_s1: 0.99999999
+  df_s2: 0.99999999
+  df_s67: 0.99999999
+  df_discrep: 0.99999999
+  lambda: 0.97
+  df_trans: 0.99999999
+  df_covs: 0.99999999
+
+forecast_cov:
+  epsilon: 365.0
+  c_factor: 1.0
+
+gamma_sigma:
+  max_iter: 100
+
+legacy:
+  n_samp: 2000

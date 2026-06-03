@@ -11,6 +11,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 BUILDER = ROOT / "scripts" / "build_he2_dqlm_multivar_al_drop_diagnostic_plan.py"
 VALIDATOR = ROOT / "scripts" / "validate_he2_dqlm_multivar_al_drop_diagnostic_plan.py"
+HIGHDF_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_diagnostic_highdf_eps365_cf1_20260603.yaml"
 
 
 class He2AlMT0DiagnosticPlanTests(unittest.TestCase):
@@ -113,6 +114,58 @@ class He2AlMT0DiagnosticPlanTests(unittest.TestCase):
             self.assertEqual(cfg["fit"]["exdqlm_multivar"]["legacy"]["forecast_cov"]["epsilon"], 90.0)
             summary = self.load_yaml(artifact_root / "control" / "diagnostic_validation" / "diagnostic_validation_summary.json")
             self.assertFalse(summary["launch_performed"])
+
+    def test_tracked_highdf_spec_is_concrete_and_validated_without_launching(self) -> None:
+        spec = self.load_yaml(HIGHDF_SPEC)
+        self.assertEqual(spec["spec_id"], "highdf_eps365_cf1_al_m_t0_20260603")
+        self.assertFalse(spec["requires_user_discount_decision"])
+        self.assertEqual(
+            spec["state_evolution"],
+            {
+                "df_t": 0.99999999,
+                "df_s1": 0.99999999,
+                "df_s2": 0.99999999,
+                "df_s67": 0.99999999,
+                "df_discrep": 0.99999999,
+                "lambda": 0.97,
+                "df_trans": 0.99999999,
+                "df_covs": 0.99999999,
+            },
+        )
+        self.assertEqual(spec["forecast_cov"], {"epsilon": 365.0, "c_factor": 1.0})
+        self.assertEqual(spec["gamma_sigma"], {"max_iter": 100})
+        with tempfile.TemporaryDirectory(prefix="he2_al_m_t0_diag_highdf_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            proc = subprocess.run(
+                [
+                    "python3",
+                    str(VALIDATOR),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--discount-spec-yaml",
+                    str(HIGHDF_SPEC),
+                    "--lane-scope",
+                    "representative",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            matrix_dir = artifact_root / "control" / "diagnostic_matrix"
+            rows = self.read_csv(matrix_dir / "diagnostic_matrix_plan.csv")
+            self.assertEqual(len(rows), 4)
+            self.assertEqual({row["spec_id"] for row in rows}, {"highdf_eps365_cf1_al_m_t0_20260603"})
+            self.assertEqual({row["requires_user_discount_decision"] for row in rows}, {"False"})
+            self.assertEqual({row["forecast_cov_epsilon"] for row in rows}, {"365.0"})
+            self.assertEqual({row["c_factor"] for row in rows}, {"1.0"})
+            self.assertEqual({row["max_iter"] for row in rows}, {"100"})
+            cfg = self.load_yaml(Path(rows[0]["config_path"]))
+            self.assertEqual(cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]["max_iter"], 100)
+            self.assertEqual(cfg["fit"]["exdqlm_multivar"]["legacy"]["forecast_cov"]["epsilon"], 365.0)
+            self.assertEqual(cfg["models"]["exdqlm_multivar"]["state_evolution"]["df_discrep"], 0.99999999)
+            self.assertFalse((matrix_dir / "launch_al_drop_diagnostics.sh").exists())
 
 
 if __name__ == "__main__":

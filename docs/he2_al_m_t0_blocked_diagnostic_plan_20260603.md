@@ -62,6 +62,46 @@ The tracked placeholder is:
 
 `config/he2_relaunch_batches/al_m_t0_diagnostic_discount_spec_template_20260603.yaml`
 
+## Confirmed Candidate Spec
+
+The current confirmed diagnostic candidate is:
+
+`config/he2_relaunch_batches/al_m_t0_diagnostic_highdf_eps365_cf1_20260603.yaml`
+
+This spec uses:
+
+| parameter | value |
+|---|---:|
+| `df_t` | `0.99999999` |
+| `df_s1` | `0.99999999` |
+| `df_s2` | `0.99999999` |
+| `df_s67` | `0.99999999` |
+| `df_discrep` | `0.99999999` |
+| `lambda` | `0.97` |
+| `df_trans` | `0.99999999` |
+| `df_covs` | `0.99999999` |
+| `epsilon` | `365.0` |
+| `c_factor` | `1.0` |
+| `max_iter` | `100` |
+
+Interpretation: this is the right next diagnostic move, but it is not yet the right broad production move. The spec
+tests whether the blocked `AL-M-T0` failures are caused by the direct exAL-to-AL clone being too dynamically loose for
+the AL likelihood, while preserving the same input bundles and the same transfer-drop model family. The discrepancy
+discount is also set to `0.99999999` so the diagnostic does not leave one state block at the failed clone setting.
+
+Recommended staged launch order:
+
+1. Prepare and inspect no-launch representative diagnostics: four single-quantile lanes covering the main failure
+   signatures.
+2. If the representative lanes are healthy, launch those four lanes only with retained fit objects and trace outputs.
+3. If those pass, prepare/launch the ten failed lanes only.
+4. If all failed lanes pass, relaunch all five cutoffs and seven quantiles for `AL-M-T0`.
+5. Promote `AL-M-T0` only after fit, post, validate, report, CRPS tables, component summaries, diagnostic plots, and
+   cleanup pass on the full relaunch.
+
+Do not launch all five cutoffs and seven quantiles first. That would use more cores and disk while providing less
+diagnostic information if the first representative lanes still expose a code-side PSD or scale issue.
+
 ## No-Launch Diagnostic Package
 
 New tracked builder:
@@ -111,12 +151,34 @@ python3 scripts/build_he2_dqlm_multivar_al_drop_diagnostic_plan.py \
 
 Do not run any generated config until the discount/epsilon/c_factor values are confirmed.
 
+Prepare the confirmed high-discount representative diagnostics without launching:
+
+```bash
+python3 scripts/validate_he2_dqlm_multivar_al_drop_diagnostic_plan.py \
+  --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_diagnostics_highdf_eps365_cf1_representative_20260603 \
+  --lane-scope representative \
+  --discount-spec-yaml config/he2_relaunch_batches/al_m_t0_diagnostic_highdf_eps365_cf1_20260603.yaml
+```
+
+Prepare the confirmed high-discount all-failed-lane diagnostics without launching:
+
+```bash
+python3 scripts/validate_he2_dqlm_multivar_al_drop_diagnostic_plan.py \
+  --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_diagnostics_highdf_eps365_cf1_allfailed_20260603 \
+  --lane-scope all_failed \
+  --discount-spec-yaml config/he2_relaunch_batches/al_m_t0_diagnostic_highdf_eps365_cf1_20260603.yaml
+```
+
+Both commands are validators/builders only. They write config matrices and `NO_LAUNCH_GUARD.txt`; they do not create or
+run a launch shell.
+
 ## Next Implementation Steps
 
 1. Promote the completed univariate AL/exAL rows into the publication manifest and parity gate.
 2. Keep `AL-M-T0` out of promotion; record it as blocked pending targeted diagnostics.
-3. Fill a real AL-M-T0 diagnostic discount spec.
-4. Build and validate the no-launch diagnostic package.
+3. Use the confirmed high-discount `epsilon=365`, `c_factor=1`, `max_iter=100` spec as the first AL-M-T0 diagnostic
+   candidate.
+4. Build and validate the no-launch representative and all-failed diagnostic packages.
 5. Only after explicit approval, launch the representative diagnostic lanes with retained failed objects.
 6. Use those retained objects to decide whether the fix is a spec retune, PSD-safe covariance handling, or both.
 7. Relaunch all five `AL-M-T0` cutoffs only after the targeted lanes pass.
