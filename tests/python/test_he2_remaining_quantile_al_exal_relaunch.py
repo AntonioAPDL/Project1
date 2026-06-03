@@ -11,8 +11,11 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 AL_DROP_BUILDER = ROOT / "scripts" / "build_he2_dqlm_multivar_al_drop_from_exal_drop.py"
 AL_DROP_VALIDATOR = ROOT / "scripts" / "validate_he2_dqlm_multivar_al_drop_from_exal_drop_prelaunch.py"
+AL_DROP_DIAGNOSTIC_BUILDER = ROOT / "scripts" / "build_he2_dqlm_multivar_al_drop_diagnostic_plan.py"
+AL_DROP_DIAGNOSTIC_VALIDATOR = ROOT / "scripts" / "validate_he2_dqlm_multivar_al_drop_diagnostic_plan.py"
 UNIVAR_TEMPLATE = ROOT / "config" / "he2_bayesian_publication_relaunch_univar_al_exal_20260603.template.yaml"
 UNIVAR_BATCH = ROOT / "config" / "he2_relaunch_batches" / "univar_al_exal_publication_relaunch_20260603.yaml"
+AL_DROP_DIAGNOSTIC_SPEC_TEMPLATE = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_diagnostic_discount_spec_template_20260603.yaml"
 LAUNCHER = ROOT / "scripts" / "launch_he2_remaining_quantile_al_exal.py"
 
 
@@ -26,7 +29,16 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             return list(csv.DictReader(handle))
 
     def test_required_tracked_files_exist(self) -> None:
-        for path in [AL_DROP_BUILDER, AL_DROP_VALIDATOR, UNIVAR_TEMPLATE, UNIVAR_BATCH, LAUNCHER]:
+        for path in [
+            AL_DROP_BUILDER,
+            AL_DROP_VALIDATOR,
+            AL_DROP_DIAGNOSTIC_BUILDER,
+            AL_DROP_DIAGNOSTIC_VALIDATOR,
+            AL_DROP_DIAGNOSTIC_SPEC_TEMPLATE,
+            UNIVAR_TEMPLATE,
+            UNIVAR_BATCH,
+            LAUNCHER,
+        ]:
             self.assertTrue(path.exists(), path)
 
     def test_univar_template_and_batch_scope(self) -> None:
@@ -135,6 +147,12 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
                 self.assertEqual(cfg["models"]["exdqlm_multivar"]["structure"]["enabled_harmonic_indices"], [1, 2, 3])
             clone_rows = self.read_csv(matrix_dir / "source_clone_manifest.csv")
             self.assertEqual({row["only_intended_scientific_change"] for row in clone_rows}, {"likelihood_mode exal -> al"})
+
+    def test_launcher_blocks_al_m_t0_by_default(self) -> None:
+        text = LAUNCHER.read_text(encoding="utf-8")
+        self.assertIn("--include-blocked-al-drop", text)
+        self.assertIn("blocked_not_launched", text)
+        self.assertIn("requires targeted diagnostics/new discount spec before relaunch", text)
 
 
 if __name__ == "__main__":

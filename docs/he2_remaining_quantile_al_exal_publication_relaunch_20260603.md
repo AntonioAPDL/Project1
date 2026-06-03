@@ -4,15 +4,30 @@ Date: 2026-06-03
 
 ## Scope
 
-This wave covers the three remaining quantile families in the 9-model HE2 Bayesian publication table:
+This wave covered the three remaining quantile families in the 9-model HE2 Bayesian publication table:
 
 | label | family | source contract | target root |
 |---|---|---|---|
-| `AL-M-T0` | `dqlm_multivar_al_drop` | paired AL clone of promoted current-code `exAL-M-T0` | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_from_exal_drop_20260603` |
-| `exAL-U-T1` | `exdqlm_univar` | univariate exAL shared-spec relaunch on canonical bundle | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_publication_relaunch_20260603` |
-| `AL-U-T1` | `dqlm_univar_al` | univariate AL shared-spec relaunch on canonical bundle | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_publication_relaunch_20260603` |
+| `AL-M-T0` | `dqlm_multivar_al_drop` | paired AL clone of promoted current-code `exAL-M-T0` | blocked after fit-stage sigma/PSD failures |
+| `exAL-U-T1` | `exdqlm_univar` | univariate exAL shared-spec relaunch on canonical bundle | passed fit/post/validate/report |
+| `AL-U-T1` | `dqlm_univar_al` | univariate AL shared-spec relaunch on canonical bundle | passed fit/post/validate/report |
 
 The remaining Gaussian/NDLM families are deliberately out of scope for this wave: `N-U-T1`, `N-M-T0`, and `N-M-T1`.
+
+## Runtime Outcome
+
+The univariate rows completed successfully and are now promotable canonical-bundle rows:
+
+| label | rows | status |
+|---|---:|---|
+| `AL-U-T1` | 5 | fit/post/validate/report pass; CRPS tables and publication figure manifests present; no retained `.RData/.rda` |
+| `exAL-U-T1` | 5 | fit/post/validate/report pass; CRPS tables and publication figure manifests present; no retained `.RData/.rda` |
+
+The `AL-M-T0` clone is not promotable. It completed data prep but all five cutoff rows failed in fit. The recurring
+failure signatures are forecast-health `max_E_sigma` explosions, post-save `chol(G)` non-positive-definite failures,
+and forecast `mvrnorm` non-positive-definite covariance failures. The promoted source `exAL-M-T0` drop rows are healthy
+under the same input bundle, so the failure is specific to forcing this multivariate-drop contract into AL mode under
+the cloned exAL spec.
 
 ## Canonical Input Contract
 
@@ -27,7 +42,7 @@ All launched rows must use the 20260510 publication bundle contract:
 - covariate features: lags `1,2,3`, squares enabled, PPT-SOIL interaction enabled
 - scale policy: log1p-only internal legacy fit/post scale (`log1p_cms`)
 
-## AL-M-T0 Pairing Decision
+## AL-M-T0 Pairing Decision And Blocker
 
 `AL-M-T0` is not rebuilt from the older April `dqlm_multivar_al_drop` manifest row. It is cloned from the promoted
 current-code `exAL-M-T0` package:
@@ -42,22 +57,31 @@ The clone validator checks that the following are preserved exactly: input paths
 mode, trend/full-harmonic structure, state discount factors, `epsilon=30`, `c_factor=1`, active quantiles, max_iter,
 and scale contract.
 
+That exact clone was a useful scientific control, but it is now blocked. Do not relaunch it broadly. The next AL-M-T0
+step is the no-launch targeted diagnostic package documented in:
+
+`docs/he2_al_m_t0_blocked_diagnostic_plan_20260603.md`
+
 ## New Tracked Wiring
 
 - AL-drop builder: `scripts/build_he2_dqlm_multivar_al_drop_from_exal_drop.py`
 - AL-drop prelaunch validator: `scripts/validate_he2_dqlm_multivar_al_drop_from_exal_drop_prelaunch.py`
 - univariate template: `config/he2_bayesian_publication_relaunch_univar_al_exal_20260603.template.yaml`
 - univariate batch: `config/he2_relaunch_batches/univar_al_exal_publication_relaunch_20260603.yaml`
-- combined launcher: `scripts/launch_he2_remaining_quantile_al_exal.py`
+- combined launcher: `scripts/launch_he2_remaining_quantile_al_exal.py` now skips blocked `AL-M-T0` unless
+  `--include-blocked-al-drop` is passed explicitly
+- AL-M-T0 no-launch diagnostic builder: `scripts/build_he2_dqlm_multivar_al_drop_diagnostic_plan.py`
+- AL-M-T0 no-launch diagnostic validator: `scripts/validate_he2_dqlm_multivar_al_drop_diagnostic_plan.py`
+- AL-M-T0 discount-spec template: `config/he2_relaunch_batches/al_m_t0_diagnostic_discount_spec_template_20260603.yaml`
 - focused tests: `tests/python/test_he2_remaining_quantile_al_exal_relaunch.py`
 
 ## Validation Gates
 
-Before launch:
+Before any future launch:
 
 ```bash
-python3 scripts/build_he2_dqlm_multivar_al_drop_from_exal_drop.py
-python3 scripts/validate_he2_dqlm_multivar_al_drop_from_exal_drop_prelaunch.py
+python3 scripts/build_he2_dqlm_multivar_al_drop_diagnostic_plan.py --lane-scope representative
+python3 scripts/validate_he2_dqlm_multivar_al_drop_diagnostic_plan.py --lane-scope representative
 python3 scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py \
   --config config/he2_bayesian_publication_relaunch_univar_al_exal_20260603.template.yaml \
   --batch-file config/he2_relaunch_batches/univar_al_exal_publication_relaunch_20260603.yaml \
@@ -69,26 +93,29 @@ The validators run deterministic data-prep checks, canonical-bundle alignment ch
 univariate full-pipeline smoke rows, and post-success heavy-artifact cleanup checks. The q35+q50 full-pipeline scope is
 intentional because the legacy univariate post repair requires at least two fitted quantiles.
 
-## Launch
+## Launch Safety
 
-The combined launcher validates unless `--skip-validation` is provided, then starts two detached queue controllers:
+The combined launcher now validates unless `--skip-validation` is provided and starts only the univariate controller by
+default. It records `AL-M-T0` as blocked rather than starting it:
 
 ```bash
 python3 scripts/launch_he2_remaining_quantile_al_exal.py
 ```
 
-Expected max active quantile workers:
+`AL-M-T0` can only be included with the explicit override flag:
 
-| controller | rows at once | quantiles per row | max workers |
-|---|---:|---:|---:|
-| `AL-M-T0` | 2 | 7 | 14 |
-| `AL-U-T1` + `exAL-U-T1` | 2 | 7 | 14 |
-| total | 4 | 7 | 28 |
+```bash
+python3 scripts/launch_he2_remaining_quantile_al_exal.py --include-blocked-al-drop
+```
 
-Both queues use `scripts/run_unified_with_cleanup.sh`, which sets `CLEANUP_RDATA_AFTER_POST=1`.
+Do not use that override until the targeted diagnostics or a new AL-specific discount/epsilon/c_factor spec have been
+approved.
 
 ## Promotion Rule
 
-Do not update the project publication manifest or revised-article CRPS table for these three families until every cutoff
-has `fit`, `post`, `validate`, and `report` stages marked `pass`, CRPS summary tables exist, publication figure manifests
-exist, and no `.RData`, `.rda`, or `.Rda` files remain under the run roots.
+Promote `AL-U-T1` and `exAL-U-T1` because every cutoff has `fit`, `post`, `validate`, and `report` stages marked `pass`,
+CRPS summary tables exist, publication figure manifests exist, and no `.RData`, `.rda`, or `.Rda` files remain under the
+run roots.
+
+Do not promote `AL-M-T0` until all five cutoffs pass the same gates after targeted diagnostics and any required
+AL-specific discount/epsilon/c_factor adjustment.

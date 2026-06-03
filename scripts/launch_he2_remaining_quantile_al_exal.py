@@ -174,6 +174,14 @@ def main() -> int:
     parser.add_argument("--skip-validation", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--poll-seconds", type=int, default=30)
+    parser.add_argument(
+        "--include-blocked-al-drop",
+        action="store_true",
+        help=(
+            "Include AL-M-T0. This is disabled by default because the 2026-06-03 AL-M-T0 clone failed "
+            "fit-stage sigma/PSD gates and requires a targeted diagnostic spec before relaunch."
+        ),
+    )
     args = parser.parse_args()
 
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -185,31 +193,50 @@ def main() -> int:
         "builds": {},
     }
 
-    al_drop_metadata = build_al_drop_package(AL_DROP_ROOT.resolve(), reset_status=True)
-    launch_summary["builds"]["al_drop"] = al_drop_metadata
-    if not args.skip_validation:
-        run_checked(
-            [
-                "python3",
-                "scripts/validate_he2_dqlm_multivar_al_drop_from_exal_drop_prelaunch.py",
-                "--artifact-root",
-                str(AL_DROP_ROOT),
-            ],
-            label="validate_al_drop_from_exal_drop",
-            outdir=REPORT_DIR,
+    if args.include_blocked_al_drop:
+        al_drop_metadata = build_al_drop_package(AL_DROP_ROOT.resolve(), reset_status=True)
+        launch_summary["builds"]["al_drop"] = al_drop_metadata
+        if not args.skip_validation:
+            run_checked(
+                [
+                    "python3",
+                    "scripts/validate_he2_dqlm_multivar_al_drop_from_exal_drop_prelaunch.py",
+                    "--artifact-root",
+                    str(AL_DROP_ROOT),
+                ],
+                label="validate_al_drop_from_exal_drop",
+                outdir=REPORT_DIR,
+            )
+        al_drop_matrix = Path(al_drop_metadata["matrix_dir"])
+        launch_summary["controllers"].append(
+            start_controller(
+                label="AL-M-T0",
+                artifact_root=AL_DROP_ROOT.resolve(),
+                matrix_dir=al_drop_matrix,
+                ordinary_max_concurrent=2,
+                heavy_cutoff_max_concurrent=2,
+                poll_seconds=args.poll_seconds,
+                dry_run=args.dry_run,
+            )
         )
-    al_drop_matrix = Path(al_drop_metadata["matrix_dir"])
-    launch_summary["controllers"].append(
-        start_controller(
-            label="AL-M-T0",
-            artifact_root=AL_DROP_ROOT.resolve(),
-            matrix_dir=al_drop_matrix,
-            ordinary_max_concurrent=2,
-            heavy_cutoff_max_concurrent=2,
-            poll_seconds=args.poll_seconds,
-            dry_run=args.dry_run,
+    else:
+        launch_summary["builds"]["al_drop"] = {
+            "status": "blocked_not_built_not_launched",
+            "reason": (
+                "AL-M-T0 failed the 2026-06-03 fit-stage sigma/PSD gates. Use "
+                "scripts/build_he2_dqlm_multivar_al_drop_diagnostic_plan.py for no-launch diagnostics "
+                "and pass --include-blocked-al-drop only after an explicit relaunch decision."
+            ),
+            "artifact_root": str(AL_DROP_ROOT.resolve()),
+        }
+        launch_summary["controllers"].append(
+            {
+                "label": "AL-M-T0",
+                "status": "blocked_not_launched",
+                "artifact_root": str(AL_DROP_ROOT.resolve()),
+                "reason": "requires targeted diagnostics/new discount spec before relaunch",
+            }
         )
-    )
 
     if args.skip_validation:
         univar_build = build_univar(REPORT_DIR)

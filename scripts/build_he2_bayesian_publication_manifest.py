@@ -150,16 +150,19 @@ ALIGNMENT_FIELDS = [
 AUTHORITATIVE_EXAL_KEEP_MANIFEST = ROOT / "docs" / "exdqlm_multivar_keep_authoritative_specs_20260601.yaml"
 AUTHORITATIVE_EXAL_KEEP_LINEAGE = "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner"
 TRANSITION_PUBLICATION_NOTE = (
-    "Authoritative canonical-grid exAL-M-T1 winner. exAL-M-T1, AL-M-T1, and exAL-M-T0 are promoted onto "
-    "canonical 20260510 input bundles; the full 9-model benchmark remains transitional until the remaining six "
+    "Authoritative canonical-grid exAL-M-T1 winner. exAL-M-T1, AL-M-T1, exAL-M-T0, AL-U-T1, and exAL-U-T1 "
+    "are promoted onto canonical 20260510 input bundles; the full 9-model benchmark remains transitional until the remaining four "
     "HE2 Bayesian comparison families are rerun or promoted onto the same bundle."
 )
 PROMOTED_AL_KEEP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602"
 PROMOTED_EXAL_DROP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602"
+PROMOTED_UNIVAR_AL_EXAL_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_univar_al_exal_publication_relaunch_20260603"
 PROMOTED_FAMILY_LINEAGES = {
     "exdqlm_multivar_keep": AUTHORITATIVE_EXAL_KEEP_LINEAGE,
     "dqlm_multivar_al_keep": "dqlm_multivar_al_keep_from_exal_winners_20260602:canonical_bundle_promoted",
     "exdqlm_multivar_drop": "exdqlm_multivar_drop_current_relaunch_q50repair_20260602:canonical_bundle_promoted",
+    "dqlm_univar_al": "univar_al_exal_publication_relaunch_20260603:canonical_bundle_promoted",
+    "exdqlm_univar": "univar_al_exal_publication_relaunch_20260603:canonical_bundle_promoted",
 }
 PROMOTED_FAMILY_NOTES = {
     "exdqlm_multivar_keep": TRANSITION_PUBLICATION_NOTE,
@@ -170,6 +173,14 @@ PROMOTED_FAMILY_NOTES = {
     "exdqlm_multivar_drop": (
         "Promoted current-code exAL-M-T0 relaunch on the canonical 20260510 bundle with the q50 repair policy; "
         "fit/post/validate/report passed and heavy RData cleanup is complete."
+    ),
+    "dqlm_univar_al": (
+        "Promoted AL-U-T1 canonical-bundle relaunch from 2026-06-03; fit/post/validate/report passed and "
+        "heavy RData cleanup is complete."
+    ),
+    "exdqlm_univar": (
+        "Promoted exAL-U-T1 canonical-bundle relaunch from 2026-06-03; fit/post/validate/report passed and "
+        "heavy RData cleanup is complete."
     ),
 }
 
@@ -406,7 +417,11 @@ def resolve_multivar_rows() -> list[dict[str, str]]:
                     "run_root": str(run_root),
                     "compare_dir": str(compare_dir),
                     "campaign_lineage": "featurecov_cf1_eps_sweep_20260416",
-                    "publication_note": "",
+                    "publication_note": (
+                        "Transitional historical AL-M-T0 row only. The canonical-bundle AL-M-T0 clone failed "
+                        "2026-06-03 fit-stage sigma/PSD gates and is blocked pending targeted diagnostics or a "
+                        "new AL-specific discount/epsilon/c_factor spec."
+                    ),
                     "replaced_source_run_id": "",
                 }
             )
@@ -415,23 +430,18 @@ def resolve_multivar_rows() -> list[dict[str, str]]:
 
 def resolve_univar_rows() -> list[dict[str, str]]:
     rows = []
-    base = RUNTIME_ROOT / "multimodel_v8_univar_featurecov_he2_rerun_20260422"
     for cutoff in CUTOFFS:
-        prov_rows = read_csv(base / f"reports/multimodel_{cutoff}_v8_univar_featurecov_he2_v1_compare/source_provenance.csv")
-        for row in prov_rows:
-            family = MODEL_ID_TO_FAMILY.get(row["model_id"], "")
-            if family not in {"exdqlm_univar", "dqlm_univar_al"}:
-                continue
-            run_id = row["source_run"]
+        for family in ["dqlm_univar_al", "exdqlm_univar"]:
+            run_id = f"multimodel_{cutoff}_v8_he2pubgdpc1r1_{family}"
             rows.append(
                 {
                     "cutoff": cutoff,
                     "family": family,
                     "run_id": run_id,
-                    "run_root": str(base / "runs" / run_id),
-                    "compare_dir": str(base / f"reports/multimodel_{cutoff}_v8_univar_featurecov_he2_v1_compare"),
-                    "campaign_lineage": "univar_featurecov_he2_rerun_20260422",
-                    "publication_note": "",
+                    "run_root": str(PROMOTED_UNIVAR_AL_EXAL_ROOT / "runs" / run_id),
+                    "compare_dir": "",
+                    "campaign_lineage": PROMOTED_FAMILY_LINEAGES[family],
+                    "publication_note": PROMOTED_FAMILY_NOTES[family],
                     "replaced_source_run_id": "",
                 }
             )
@@ -627,6 +637,8 @@ def validate(
         "exdqlm_multivar_keep": {"label": "exAL-M-T1", "likelihood": "exal", "transfer": "keep"},
         "dqlm_multivar_al_keep": {"label": "AL-M-T1", "likelihood": "al", "transfer": "keep"},
         "exdqlm_multivar_drop": {"label": "exAL-M-T0", "likelihood": "exal", "transfer": "drop"},
+        "dqlm_univar_al": {"label": "AL-U-T1", "likelihood": "al", "transfer": ""},
+        "exdqlm_univar": {"label": "exAL-U-T1", "likelihood": "exal", "transfer": ""},
     }
     canonical_source_hash_artifacts = {
         "parameters",
@@ -652,7 +664,24 @@ def validate(
             ]
             hashes = {row["sha256_16"] for row in subset if row["exists"] == "True"}
             missing = [row["run_id"] for row in subset if row["exists"] != "True"]
-            if len(subset) != len(promoted_labels) or missing or len(hashes) != 1:
+            if len(subset) != len(promoted_labels) or missing:
+                raise RuntimeError(
+                    f"Promoted rows have missing materialized input for cutoff={cutoff} "
+                    f"artifact={artifact}: missing={missing}"
+                )
+            if artifact in canonical_semantic_csv_artifacts:
+                canonical_path = canonical_artifact_path(canonical_bundle_root, canonical_bundle_run_id, cutoff, artifact)
+                semantic_failures = []
+                for item in subset:
+                    ok, detail = csv_semantically_equal(Path(item["path"]), canonical_path, tol=1e-10)
+                    if not ok:
+                        semantic_failures.append(f"{item['run_id']}:{detail}")
+                if semantic_failures:
+                    raise RuntimeError(
+                        f"Promoted semantic CSV inputs do not match canonical bundle for cutoff={cutoff} "
+                        f"artifact={artifact}: {semantic_failures}"
+                    )
+            elif len(hashes) != 1:
                 raise RuntimeError(
                     f"Promoted rows do not share one materialized input for cutoff={cutoff} "
                     f"artifact={artifact}: hashes={sorted(hashes)} missing={missing}"
@@ -804,8 +833,8 @@ Headline checks:
 - full within-cutoff shared-input alignment checks passing: `{aligned_full} / {total_full}`
 
 Special publication update:
-- `exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` now resolve to canonical-bundle promoted roots.
-- Transition gate: the remaining six HE2 Bayesian comparison families still need rerun/promotion onto the same canonical 20260510 input-bundle contract before the full benchmark table should be treated as final.
+- `exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-U-T1`, and `exAL-U-T1` now resolve to canonical-bundle promoted roots.
+- Transition gate: the remaining four HE2 Bayesian comparison families still need rerun/promotion onto the same canonical 20260510 input-bundle contract before the full benchmark table should be treated as final.
 
 ## Canonical-Bundle Promoted Rows
 

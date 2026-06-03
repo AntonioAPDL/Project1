@@ -1,0 +1,25 @@
+spec_id: pending_user_al_m_t0_discount_spec
+description: >
+  Template only. Replace these values with the confirmed AL-M-T0 diagnostic
+  discount/epsilon/c_factor specification before launching any diagnostic rows.
+requires_user_discount_decision: true
+
+state_evolution:
+  df_t: null
+  df_s1: null
+  df_s2: null
+  df_s67: null
+  df_discrep: null
+  lambda: null
+  df_trans: null
+  df_covs: null
+
+forecast_cov:
+  epsilon: null
+  c_factor: null
+
+gamma_sigma:
+  max_iter: 100
+
+legacy:
+  n_samp: 2000

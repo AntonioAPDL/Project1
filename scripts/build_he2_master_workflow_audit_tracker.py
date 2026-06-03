@@ -49,20 +49,34 @@ def family_rows(gate_rows: list[dict[str, str]]) -> list[dict[str, str]]:
         rows = grouped[label]
         first = rows[0]
         promoted = first["target_status"] == "authoritative_promoted"
+        blocked = first["target_status"] == "blocked_canonical_input_promotion"
         out.append(
             {
                 "label": label,
                 "family": first["family"],
                 "cutoff_rows": str(len(rows)),
                 "submodels_represented": str(sum(int(row["target_submodels"]) for row in rows)),
-                "current_status": "authoritative_current_bundle_promoted" if promoted else "pending_same_bundle_promotion",
-                "authoritative_state": "production_authoritative" if promoted else "transition_pending",
+                "current_status": (
+                    "authoritative_current_bundle_promoted"
+                    if promoted
+                    else ("blocked_pending_targeted_diagnostics" if blocked else "pending_same_bundle_promotion")
+                ),
+                "authoritative_state": (
+                    "production_authoritative"
+                    if promoted
+                    else ("blocked_transition_pending" if blocked else "transition_pending")
+                ),
                 "required_action": "none" if promoted else first["required_action"],
                 "paper_table_gate": first["paper_table_gate"],
                 "notes": (
                     "Canonical-bundle promoted family is wired into the publication manifest."
                     if promoted
-                    else "Needs rerun or promotion onto the same 20260510 canonical input bundle before final all-model paper claims."
+                    else (
+                        "Blocked by AL-M-T0 sigma/PSD diagnostics; requires a targeted diagnostic or new AL-specific "
+                        "discount spec before relaunch."
+                        if blocked
+                        else "Needs rerun or promotion onto the same 20260510 canonical input bundle before final all-model paper claims."
+                    )
                 ),
             }
         )
@@ -111,10 +125,10 @@ def render_markdown(families: list[dict[str, str]], summary: dict[str, Any]) -> 
         "",
         "## Current Decision",
         "",
-        "`exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` are now promoted onto canonical-bundle roots.",
-        "The full 9-model HE2 benchmark table is still transitional: the remaining six Bayesian comparison families",
-        "must be rerun or promoted onto the same 20260510 canonical input bundle before the paper can make final",
-        "all-model CRPS claims.",
+        "`exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-U-T1`, and `exAL-U-T1` are now promoted onto canonical-bundle roots.",
+        "The full 9-model HE2 benchmark table is still transitional: `AL-M-T0` is blocked pending targeted diagnostics",
+        "or a new AL-specific discount spec, and the three NDLM comparison families must be rerun or promoted onto",
+        "the same 20260510 canonical input bundle before the paper can make final all-model CRPS claims.",
         "",
         "## Canonical Contract",
         "",
@@ -149,11 +163,12 @@ def render_markdown(families: list[dict[str, str]], summary: dict[str, Any]) -> 
             "",
             "## Next Work",
             "",
-            "1. Build or select same-bundle rerun packages for the six pending families.",
-            "2. Run fit/post/validate/report with post-success heavy `.RData/.rda` cleanup enabled.",
-            "3. Rebuild the HE2 publication manifest; the alignment gate should move from `35 / 50` to `50 / 50`.",
-            "4. Refresh article assets and tables from the manifest only after the parity gate passes.",
-            "5. Then update manuscript prose and benchmark interpretation from the final 45-row source.",
+            "1. Fill or confirm the AL-M-T0 diagnostic discount/epsilon/c_factor spec.",
+            "2. Prepare and validate the no-launch AL-M-T0 diagnostic matrix.",
+            "3. After explicit approval, run only the targeted AL-M-T0 diagnostic lanes with retained objects.",
+            "4. Build or select same-bundle rerun packages for the three NDLM pending families.",
+            "5. Rebuild the HE2 publication manifest; the alignment gate should move to full pass only after AL-M-T0 and NDLM are resolved.",
+            "6. Refresh article assets and tables from the manifest only after the parity gate passes.",
             "",
             "## Outputs",
             "",

@@ -14,6 +14,7 @@ from build_he2_bayesian_publication_manifest import (  # noqa: E402
     FAMILY_TO_LABEL,
     PROMOTED_AL_KEEP_ROOT,
     PROMOTED_EXAL_DROP_ROOT,
+    PROMOTED_UNIVAR_AL_EXAL_ROOT,
     PROMOTED_FAMILY_LINEAGES,
     REQUIRED_ALIGNMENT_ARTIFACTS,
     build_outputs,
@@ -63,6 +64,23 @@ class He2BayesianPublicationManifestTests(unittest.TestCase):
             self.assertEqual(exal_drop["likelihood_mode"], "exal")
             self.assertEqual(exal_drop["forecast_transfer_mode"], "drop")
             self.assertEqual(exal_drop["reused_external_pass"], "False")
+
+    def test_univar_al_exal_rows_point_to_20260603_promoted_root(self) -> None:
+        manifest_rows, _input_rows, _alignment_rows = build_outputs()
+        for cutoff in CUTOFFS:
+            al = next(row for row in manifest_rows if row["cutoff"] == cutoff and row["manuscript_label"] == "AL-U-T1")
+            self.assertEqual(al["run_id"], f"multimodel_{cutoff}_v8_he2pubgdpc1r1_dqlm_univar_al")
+            self.assertTrue(al["run_root"].startswith(str(PROMOTED_UNIVAR_AL_EXAL_ROOT)))
+            self.assertEqual(al["campaign_lineage"], PROMOTED_FAMILY_LINEAGES["dqlm_univar_al"])
+            self.assertEqual(al["likelihood_mode"], "al")
+            self.assertEqual(al["reused_external_pass"], "False")
+
+            exal = next(row for row in manifest_rows if row["cutoff"] == cutoff and row["manuscript_label"] == "exAL-U-T1")
+            self.assertEqual(exal["run_id"], f"multimodel_{cutoff}_v8_he2pubgdpc1r1_exdqlm_univar")
+            self.assertTrue(exal["run_root"].startswith(str(PROMOTED_UNIVAR_AL_EXAL_ROOT)))
+            self.assertEqual(exal["campaign_lineage"], PROMOTED_FAMILY_LINEAGES["exdqlm_univar"])
+            self.assertEqual(exal["likelihood_mode"], "exal")
+            self.assertEqual(exal["reused_external_pass"], "False")
 
     def test_all_rows_share_current_featurecov_contract(self) -> None:
         manifest_rows, _input_rows, alignment_rows = build_outputs()
