@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts"))
 
-from build_he2_publication_parity_gate import PROMOTED_LABEL, build_gate  # noqa: E402
+from build_he2_publication_parity_gate import build_gate  # noqa: E402
 from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402
 
 OUT_ROOT = ROOT / "reports" / "he2_master_workflow_audit_20260517"
@@ -58,9 +58,9 @@ def family_rows(gate_rows: list[dict[str, str]]) -> list[dict[str, str]]:
                 "current_status": "authoritative_current_bundle_promoted" if promoted else "pending_same_bundle_promotion",
                 "authoritative_state": "production_authoritative" if promoted else "transition_pending",
                 "required_action": "none" if promoted else first["required_action"],
-                "paper_table_gate": "ready_for_exal_m_t1_only" if promoted else "blocks_final_9_model_table",
+                "paper_table_gate": first["paper_table_gate"],
                 "notes": (
-                    "Canonical-grid exAL-M-T1 winner set is wired into the publication manifest and revised-doc refresh."
+                    "Canonical-bundle promoted family is wired into the publication manifest."
                     if promoted
                     else "Needs rerun or promotion onto the same 20260510 canonical input bundle before final all-model paper claims."
                 ),
@@ -80,7 +80,7 @@ def build_tracker() -> tuple[list[dict[str, str]], list[dict[str, str]], dict[st
     }
     summary = {
         "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "ultimate_goal": "Freeze exAL-M-T1 on the authoritative canonical-grid winners, then rerun/promote the remaining eight HE2 Bayesian families onto the same input bundle before final paper benchmarking.",
+        "ultimate_goal": "Freeze promoted canonical-bundle families, then rerun/promote the remaining HE2 Bayesian families onto the same input bundle before final paper benchmarking.",
         "authoritative_exal_keep_manifest": str(spec.manifest_path),
         "authoritative_exal_keep_runtime_root": str(spec.runtime_root),
         "canonical_contract": {
@@ -94,7 +94,8 @@ def build_tracker() -> tuple[list[dict[str, str]], list[dict[str, str]], dict[st
             "active_quantiles": spec.metadata.get("active_quantiles", "05|20|35|50|65|80|95"),
         },
         "publication_parity_gate": gate_summary,
-        "remaining_8_model_input_parity_required": True,
+        "remaining_model_input_parity_required": gate_summary["pending_rows"] > 0,
+        "remaining_8_model_input_parity_required": False,
         "families": families,
         "article_state": article_state,
     }
@@ -110,8 +111,8 @@ def render_markdown(families: list[dict[str, str]], summary: dict[str, Any]) -> 
         "",
         "## Current Decision",
         "",
-        "The exAL-M-T1 / `exdqlm_multivar_keep` family is now promoted from the canonical 20260524 epsilon/discount grid.",
-        "The full 9-model HE2 benchmark table is still transitional: the remaining eight Bayesian comparison families",
+        "`exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` are now promoted onto canonical-bundle roots.",
+        "The full 9-model HE2 benchmark table is still transitional: the remaining six Bayesian comparison families",
         "must be rerun or promoted onto the same 20260510 canonical input bundle before the paper can make final",
         "all-model CRPS claims.",
         "",
@@ -148,7 +149,7 @@ def render_markdown(families: list[dict[str, str]], summary: dict[str, Any]) -> 
             "",
             "## Next Work",
             "",
-            "1. Build or select same-bundle rerun packages for the eight pending families.",
+            "1. Build or select same-bundle rerun packages for the six pending families.",
             "2. Run fit/post/validate/report with post-success heavy `.RData/.rda` cleanup enabled.",
             "3. Rebuild the HE2 publication manifest; the alignment gate should move from `35 / 50` to `50 / 50`.",
             "4. Refresh article assets and tables from the manifest only after the parity gate passes.",

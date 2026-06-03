@@ -152,7 +152,8 @@ def build_matrix(manifest_path: Path, matrix_dir: Path | None = None, *, freeze_
         "quantile_fits_represented": len(rows) * 7,
         "required_output_files_per_winner": len(REQUIRED_OUTPUT_FILES),
         "publication_transition_gate": spec.metadata.get("publication_transition_note", ""),
-        "remaining_8_model_input_parity_required": True,
+        "remaining_model_input_parity_required": True,
+        "remaining_8_model_input_parity_required": False,
     }
     write_yaml(matrix_dir / "matrix_metadata.yaml", metadata)
     (matrix_dir / "README.md").write_text(
@@ -160,7 +161,7 @@ def build_matrix(manifest_path: Path, matrix_dir: Path | None = None, *, freeze_
         "This matrix freezes the five CRPS-selected `exAL-M-T1` / `exdqlm_multivar_keep` canonical-grid winners.\n\n"
         "It is a source-of-truth and validation artifact only; it does not launch or modify model runs.\n\n"
         "Important transition gate:\n"
-        "- the remaining eight HE2 Bayesian comparison families still need to be rerun or promoted onto the same "
+        "- the remaining six HE2 Bayesian comparison families still need to be rerun or promoted onto the same "
         "canonical 20260510 input-bundle contract before the full 9-model manuscript benchmark table is final.\n\n"
         "Generated files:\n"
         "- `matrix_plan.csv`\n"

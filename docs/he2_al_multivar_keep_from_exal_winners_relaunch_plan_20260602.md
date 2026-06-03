@@ -2,6 +2,11 @@
 
 Date: 2026-06-02
 
+2026-06-03 status update: this `AL-M-T1` package completed all five cutoff rows with
+`fit/post/validate/report=pass`, no retained `.RData/.rda`, and is now promoted in the project publication manifest.
+The paired current-code `exAL-M-T0` drop package also completed and is promoted; the next multivariate target is
+`AL-M-T0`.
+
 ## Decision
 
 Yes, the next launch sequence makes sense:

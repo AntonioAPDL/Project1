@@ -15,7 +15,7 @@ metadata:
   figure_scale: "log1p_cms"
   evidence_csv: "reports/exdqlm_multivar_keep_grid_eval_guard_promotion_final_20260530/combined_winners_by_cutoff.csv"
   companion_note: "docs/exdqlm_multivar_keep_authoritative_refocus_20260601.md"
-  publication_transition_note: "The remaining 8 HE2 Bayesian comparison families still need rerun/promotion onto this same canonical 20260510 input-bundle contract before the full 9-model manuscript benchmark table can be treated as final."
+  publication_transition_note: "The remaining six HE2 Bayesian comparison families still need rerun/promotion onto this same canonical 20260510 input-bundle contract before the full 9-model manuscript benchmark table can be treated as final."
 
 winners:
   - cutoff: "20210123"

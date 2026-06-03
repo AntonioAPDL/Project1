@@ -13,9 +13,14 @@ bundle:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510`
 
-The full 9-model HE2 Bayesian benchmark is not paper-final yet. The other eight Bayesian comparison families must be
-rerun or promoted onto the same canonical 20260510 input-bundle contract before the manuscript table can be interpreted
-as a final apples-to-apples comparison.
+The full 9-model HE2 Bayesian benchmark is not paper-final yet. As of the 2026-06-03 promotion pass, three families
+are now canonical-bundle promoted: `exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0`. The remaining six Bayesian comparison
+families must be rerun or promoted onto the same canonical 20260510 input-bundle contract before the manuscript table
+can be interpreted as a final apples-to-apples comparison.
+
+Promotion update:
+
+`docs/he2_three_family_publication_manifest_promotion_20260603.md`
 
 ## Promoted exAL-M-T1 Winners
 
@@ -46,8 +51,8 @@ Project-side source of truth:
 - `scripts/he2_exdqlm_keep_authoritative.py` loads and validates the authoritative YAML.
 - `scripts/build_he2_exdqlm_multivar_keep_authoritative_matrix.py` freezes the five winner rows, source configs, and post-output hashes.
 - `scripts/validate_he2_exdqlm_multivar_keep_authoritative_prelaunch.py` validates run roots, source configs, CRPS, post outputs, cleanup state, scale contract, harmonics, transfer covariates, lags, squares, and interactions.
-- `scripts/build_he2_bayesian_publication_manifest.py` now points all five `exAL-M-T1` rows to the canonical-grid winners and exposes the remaining 8-family transition gate.
-- `scripts/build_he2_publication_parity_gate.py` builds a 45-cell gate: 5 promoted `exAL-M-T1` cells and 40 pending comparison cells.
+- `scripts/build_he2_bayesian_publication_manifest.py` now points `exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` rows to canonical-bundle promoted roots and exposes the remaining 6-family transition gate.
+- `scripts/build_he2_publication_parity_gate.py` builds a 45-cell gate: 15 promoted cells and 30 pending comparison cells.
 - `scripts/build_he2_master_workflow_audit_tracker.py` now uses that gate as the current status spine.
 
 Article-side wiring:
@@ -62,13 +67,14 @@ Figure and table assets:
 
 - The five promoted synthesis figures were rerendered with the fixed common `log1p(cms)` y-axis.
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py --article-root Evironmetrics---REVISED-DOC-2` completed successfully after the retained-support repair.
-- The article manifest and generated tables now carry the promoted `exAL-M-T1` rows, while still warning that the 8-family parity gate is open.
+- The project publication manifest and generated tables now carry the promoted `exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` rows, while still warning that the 6-family parity gate is open.
 
 ## Current Gate State
 
-The publication manifest currently reports `35 / 50` required within-cutoff input-alignment checks passing. This is
-expected in the transition state: the promoted `exAL-M-T1` rows use the canonical 20260510 bundle, while the other eight
-families still point to older campaign roots.
+The publication manifest currently reports `15` promoted cells, `30` pending cells, and `35 / 50` required within-cutoff
+input-alignment checks passing. This is expected in the transition state: the promoted `exAL-M-T1`, `AL-M-T1`, and
+`exAL-M-T0` rows use the canonical 20260510 bundle contract, while the other six families still point to older campaign
+roots.
 
 Pending families:
 
@@ -79,22 +85,18 @@ Pending families:
 | `N-M-T1` | `ndlm_main_keep` | rerun/promote on 20260510 canonical bundle |
 | `AL-U-T1` | `dqlm_univar_al` | rerun/promote on 20260510 canonical bundle |
 | `AL-M-T0` | `dqlm_multivar_al_drop` | rerun/promote on 20260510 canonical bundle |
-| `AL-M-T1` | `dqlm_multivar_al_keep` | rerun/promote on 20260510 canonical bundle |
 | `exAL-U-T1` | `exdqlm_univar` | rerun/promote on 20260510 canonical bundle |
-| `exAL-M-T0` | `exdqlm_multivar_drop` | rerun/promote on 20260510 canonical bundle |
 
-## Immediate Next Package: AL-M-T1 From The exAL-M-T1 Winners
+## Closed Package: AL-M-T1 From The exAL-M-T1 Winners
 
-The first pending quantile-family relaunch should be `AL-M-T1` / `dqlm_multivar_al_keep`, cloned from the five
-promoted `exAL-M-T1` winner configs. This is deliberately not the older shared-spec AL package: the goal is exact
-input-bundle and winner-spec parity with the current authoritative exAL keep rows, changing only the active likelihood
-from `exal` to `al`.
+The first pending quantile-family relaunch was `AL-M-T1` / `dqlm_multivar_al_keep`, cloned from the five promoted
+`exAL-M-T1` winner configs. This package is now complete and promoted in the project publication manifest.
 
 Dedicated plan:
 
 `docs/he2_al_multivar_keep_from_exal_winners_relaunch_plan_20260602.md`
 
-Prepared no-launch artifact root:
+Promoted artifact root:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602`
 
@@ -112,15 +114,15 @@ switching `models.exdqlm_multivar.likelihood_mode` to `al`. The active R workflo
 `DISC_W_LIKELIHOOD_MODE=al` defines `DISC_W_AL_MODE`, forces gamma to zero, and makes `update_sts(...)` return zero
 VB moments for `s_t`.
 
-Launch policy for this package: two cutoff rows at a time, seven quantile workers per row, maximum 14 active quantile
-workers, with post-success `.RData/.rda` cleanup enabled.
+Runtime result: all five cutoff rows reached `fit/post/validate/report=pass`, local CRPS tables and figure manifests
+exist, and post-success `.RData/.rda` cleanup left no retained heavy artifacts.
 
-Follow-on sequence after this package completes and validates:
+Follow-on sequence after this package completed and validated:
 
-1. `exAL-M-T0` / `exdqlm_multivar_drop` on the same 20260510 bundle contract;
-2. `AL-M-T0` / `dqlm_multivar_al_drop` as the paired AL run;
-3. `exAL-U-T1` / `exdqlm_univar`;
-4. `AL-U-T1` / `dqlm_univar_al`;
+1. `exAL-M-T0` / `exdqlm_multivar_drop` on the same 20260510 bundle contract: complete and promoted.
+2. `AL-M-T0` / `dqlm_multivar_al_drop` as the paired AL run: next quantile-family target.
+3. `exAL-U-T1` / `exdqlm_univar`.
+4. `AL-U-T1` / `dqlm_univar_al`.
 5. remaining NDLM families, unless the manuscript schedule prioritizes NDLM earlier.
 
 ## Current exAL-M-T0 Drop Gate
@@ -133,7 +135,7 @@ It is useful context because the rows reached `report/pass/closed` and no `.RDat
 post-stage `exdqlm_multivar_synth_drop` draws are pathologically inflated and the CRPS table records very large
 `log_cms_plus1` scores. Treat it as a stale/current-code-regression target, not a publication promotion target.
 
-The refreshed current-code `exAL-M-T0` package is:
+The refreshed current-code `exAL-M-T0` package is now promoted:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602`
 
@@ -149,9 +151,11 @@ This package uses the canonical 20260510 input bundle, `data_start=1987-05-29`, 
 transfer covariates with lags `1,2,3`, squares and interaction, explicit `trend + harmonics 1,2,3`, `epsilon=30`,
 `c_factor=1`, seven quantile workers per cutoff row, two cutoff rows at a time, post-success heavy-artifact cleanup, and the
 promoted `20211112 q50` repair documented in `docs/he2_exdqlm_multivar_drop_q50_repair_promotion_20260602.md`.
-Launch it only after the active `AL-M-T1` relaunch has freed the 14-worker slot.
+Runtime result: all five cutoff rows reached `fit/post/validate/report=pass`, local CRPS tables and figure manifests
+exist, post-success `.RData/.rda` cleanup left no retained heavy artifacts, and the 20211112 q50 terminal sampling
+failure did not reproduce under the promoted policy.
 
-For the overnight sequence, use the guarded handoff:
+The overnight sequence used the guarded handoff:
 
 ```bash
 python3 scripts/launch_he2_exdqlm_drop_after_al_keep.py --poll-seconds 300
@@ -171,20 +175,19 @@ The final benchmark gate is closed only when:
 
 The last condition is intentionally not true today.
 
-## Implementation Plan For The Eight Pending Families
+## Implementation Plan For The Six Pending Families
 
 1. Source-lock the canonical input bundle.
    Use `20260510_publication_shared_r01`, start date `1987-05-29`, `PPT|SOIL|PCA(alias=GDPC1)`, blended PPT/SOIL
    forecasts, lags `1,2,3`, squares, and interaction.
 
 2. Build one launch matrix per family class.
-   Use the existing shared-spec templates as starting points:
+   Use the promoted current-code multivariate drop package as the starting point for `AL-M-T0`; use the existing
+   shared-spec templates as starting points for the univariate and NDLM families:
    `config/he2_bayesian_publication_relaunch_wave_a_ndlm_20260516.template.yaml`,
    `config/he2_bayesian_publication_relaunch_dqlm_univar_al_all_cutoffs_sharedspec_20260517.template.yaml`,
    `config/he2_bayesian_publication_relaunch_dqlm_multivar_al_drop_all_cutoffs_sharedspec_20260517.template.yaml`,
-   `config/he2_bayesian_publication_relaunch_dqlm_multivar_al_keep_all_cutoffs_sharedspec_20260517.template.yaml`,
-   `config/he2_bayesian_publication_relaunch_exdqlm_univar_all_cutoffs_sharedspec_20260516.template.yaml`, and
-   `config/he2_bayesian_publication_relaunch_exdqlm_multivar_drop_all_cutoffs_sharedspec_20260516.template.yaml`.
+   and `config/he2_bayesian_publication_relaunch_exdqlm_univar_all_cutoffs_sharedspec_20260516.template.yaml`.
 
 3. Run smoke rows before any full launch.
    For quantile families, smoke at least `q05`, `q50`, and `q95` for one wet and one dry cutoff. For NDLM, smoke one
@@ -229,6 +232,6 @@ python3 -m unittest \
 
 ## Final Takeaway
 
-`exAL-M-T1` is now reproducibly promoted and wired through the project and revised article. The next scientific and
-paper-readiness task is not more latent-debugging of that family; it is completing the same-bundle promotion for the
-other eight model families so the final 9-model HE2 benchmark becomes a fair, reader-reproducible comparison.
+`exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` are now reproducibly promoted and wired through the project manifest. The next
+scientific and paper-readiness task is completing the same-bundle promotion for the remaining six model families so the
+final 9-model HE2 benchmark becomes a fair, reader-reproducible comparison.

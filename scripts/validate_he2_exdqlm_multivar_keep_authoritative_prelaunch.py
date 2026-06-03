@@ -154,7 +154,8 @@ def validate(manifest_path: Path, matrix_dir: Path | None = None) -> tuple[Recor
         "checks": len(rec.rows),
         "failures": len(rec.failures),
         "winner_rows": len(plan),
-        "remaining_8_model_input_parity_required": True,
+        "remaining_model_input_parity_required": True,
+        "remaining_8_model_input_parity_required": False,
     }
     return rec, summary
 
@@ -178,7 +179,7 @@ def write_outputs(matrix_dir: Path, rec: Recorder, summary: dict[str, Any]) -> N
         "",
         "This validates the five selected `exAL-M-T1` winner rows, their source configs, post outputs, CRPS values, and cleanup state.",
         "",
-        "Transition gate: the remaining eight HE2 Bayesian comparison families still need the same canonical input-bundle promotion before the full manuscript benchmark table is final.",
+        "Transition gate: the remaining six HE2 Bayesian comparison families still need the same canonical input-bundle promotion before the full manuscript benchmark table is final.",
     ]
     if rec.failures:
         lines.extend(["", "## Failures", ""])

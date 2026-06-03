@@ -24,6 +24,7 @@ from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402
 
 OUT_DIR = ROOT / "reports" / "he2_publication_manifest"
 PROMOTED_LABEL = "exAL-M-T1"
+PROMOTED_LABELS = {"exAL-M-T1", "AL-M-T1", "exAL-M-T0"}
 CANONICAL_LINEAGE = "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner"
 PENDING_ACTION = "rerun_or_promote_on_20260510_canonical_bundle"
 
@@ -33,7 +34,7 @@ def _submodel_count(family: str) -> int:
 
 
 def _row_status(label: str) -> tuple[str, str]:
-    if label == PROMOTED_LABEL:
+    if label in PROMOTED_LABELS:
         return "authoritative_promoted", "none"
     return "pending_canonical_input_promotion", PENDING_ACTION
 
@@ -68,7 +69,7 @@ def build_gate() -> tuple[list[dict[str, str]], dict[str, Any]]:
                 "target_data_start": data_start,
                 "target_quantile_lanes": active_quantiles if _submodel_count(row["family"]) == 7 else "single_model",
                 "target_submodels": str(_submodel_count(row["family"])),
-                "paper_table_gate": "ready_for_exal_m_t1_only" if label == PROMOTED_LABEL else "blocks_final_9_model_table",
+                "paper_table_gate": "ready_for_promoted_canonical_families" if label in PROMOTED_LABELS else "blocks_final_9_model_table",
             }
         )
 
@@ -94,7 +95,7 @@ def build_gate() -> tuple[list[dict[str, str]], dict[str, Any]]:
         "within_cutoff_alignment_passes": alignment_passes,
         "within_cutoff_alignment_checks": len(alignment_required),
         "final_9_model_benchmark_ready": False,
-        "gate_reason": "exAL-M-T1 is promoted first; the remaining eight families must use the same canonical input bundle before the all-model table is final.",
+        "gate_reason": "exAL-M-T1, AL-M-T1, and exAL-M-T0 are promoted; the remaining six families must use the same canonical input bundle before the all-model table is final.",
     }
     return rows, summary
 
@@ -124,7 +125,7 @@ def _write_markdown(path: Path, rows: list[dict[str, str]], summary: dict[str, A
         f"- bundle run id: `{summary['canonical_bundle_run_id']}`",
         f"- final 9-model benchmark ready: `{summary['final_9_model_benchmark_ready']}`",
         "",
-        "The five `exAL-M-T1` rows are promoted onto the authoritative canonical-grid winners. The remaining eight",
+        "`exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` are promoted onto canonical-bundle roots. The remaining six",
         "Bayesian comparison families must be rerun or promoted onto the same 20260510 bundle before the full",
         "manuscript benchmark table is paper-final.",
         "",

@@ -49,6 +49,29 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
         self.assertEqual(fig['source_path'], 'artifacts/representative_selected_model_2022_12_25/representative_synthesis_multivariate.png')
         self.assertIn('exAL-M-T1', fig['note'])
 
+    def test_benchmark_table_note_and_freeze_contract_match_three_family_promotion(self) -> None:
+        payload = json.loads((ARTICLE_ROOT / 'MANUSCRIPT_ASSET_MANIFEST.json').read_text(encoding='utf-8'))
+        note = payload['tables']['tab:benchmark_crps_models']['note']
+        self.assertIn('exAL-M-T1, AL-M-T1, and exAL-M-T0', note)
+        self.assertIn('remaining six', note)
+        self.assertNotIn('eight HE2', note)
+
+        text = (ARTICLE_ROOT / 'scripts' / 'refresh_he2_manifest_snapshot.py').read_text(encoding='utf-8')
+        self.assertIn('he2_publication_parity_gate.md', text)
+        self.assertIn('he2_publication_parity_gate.csv', text)
+        self.assertIn('he2_publication_parity_gate_summary.json', text)
+
+        summary = json.loads((ARTICLE_ROOT / 'artifacts' / 'he2_publication_freeze' / 'he2_publication_parity_gate_summary.json').read_text(encoding='utf-8'))
+        self.assertEqual(summary['promoted_rows'], 15)
+        self.assertEqual(summary['pending_rows'], 30)
+        self.assertEqual(set(summary['promoted_labels']), {'AL-M-T1', 'exAL-M-T0', 'exAL-M-T1'})
+
+    def test_generated_benchmark_table_carries_promoted_family_crps_values(self) -> None:
+        rows = (ARTICLE_ROOT / 'tables' / 'generated_tex' / 'benchmark_crps_bayesian_rows.tex').read_text(encoding='utf-8')
+        self.assertIn('AL-M-T1 & 0.1459 & 0.0555 & 0.2778 & 0.0572 & 0.6276', rows)
+        self.assertIn('exAL-M-T0 & 1.2215 & 1.7987 & 1.0850 & 2.1310 & 1.2113', rows)
+        self.assertIn('exAL-M-T1 & \\textbf{0.1397} & \\textbf{0.0472} & \\textbf{0.2654} & 0.0323 & 0.6655', rows)
+
     def test_figure_polish_audit_contract_references_cutoff_wide_synthesis_manifests(self) -> None:
         text = (ARTICLE_ROOT / 'scripts' / 'build_figure_polish_status_audit.py').read_text(encoding='utf-8')
         self.assertIn('figures/multivariate_synthesis_by_cutoff/manifest.csv', text)

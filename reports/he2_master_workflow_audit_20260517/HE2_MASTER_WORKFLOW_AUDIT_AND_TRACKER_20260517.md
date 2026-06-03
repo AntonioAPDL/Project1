@@ -1,11 +1,11 @@
 # HE2 Master Workflow Audit And Tracker
 
-Date: 2026-06-02T07:33:25Z
+Date: 2026-06-03T06:59:49Z
 
 ## Current Decision
 
-The exAL-M-T1 / `exdqlm_multivar_keep` family is now promoted from the canonical 20260524 epsilon/discount grid.
-The full 9-model HE2 benchmark table is still transitional: the remaining eight Bayesian comparison families
+`exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` are now promoted onto canonical-bundle roots.
+The full 9-model HE2 benchmark table is still transitional: the remaining six Bayesian comparison families
 must be rerun or promoted onto the same 20260510 canonical input bundle before the paper can make final
 all-model CRPS claims.
 
@@ -21,10 +21,10 @@ all-model CRPS claims.
 
 ## Publication Gate
 
-- promoted rows: `5`
-- pending rows: `40`
-- pending families: `8`
-- pending submodels: `190`
+- promoted rows: `15`
+- pending rows: `30`
+- pending families: `6`
+- pending submodels: `120`
 - within-cutoff input-alignment checks passing now: `35 / 50`
 - final 9-model benchmark ready: `False`
 
@@ -33,18 +33,18 @@ all-model CRPS claims.
 | Label | Family | Rows | State | Required Action |
 |---|---|---:|---|---|
 | `AL-M-T0` | `dqlm_multivar_al_drop` | 5 | `pending_same_bundle_promotion` | `rerun_or_promote_on_20260510_canonical_bundle` |
-| `AL-M-T1` | `dqlm_multivar_al_keep` | 5 | `pending_same_bundle_promotion` | `rerun_or_promote_on_20260510_canonical_bundle` |
+| `AL-M-T1` | `dqlm_multivar_al_keep` | 5 | `authoritative_current_bundle_promoted` | `none` |
 | `AL-U-T1` | `dqlm_univar_al` | 5 | `pending_same_bundle_promotion` | `rerun_or_promote_on_20260510_canonical_bundle` |
 | `N-M-T0` | `ndlm_main_drop` | 5 | `pending_same_bundle_promotion` | `rerun_or_promote_on_20260510_canonical_bundle` |
 | `N-M-T1` | `ndlm_main_keep` | 5 | `pending_same_bundle_promotion` | `rerun_or_promote_on_20260510_canonical_bundle` |
 | `N-U-T1` | `ndlm_univar_keep` | 5 | `pending_same_bundle_promotion` | `rerun_or_promote_on_20260510_canonical_bundle` |
-| `exAL-M-T0` | `exdqlm_multivar_drop` | 5 | `pending_same_bundle_promotion` | `rerun_or_promote_on_20260510_canonical_bundle` |
+| `exAL-M-T0` | `exdqlm_multivar_drop` | 5 | `authoritative_current_bundle_promoted` | `none` |
 | `exAL-M-T1` | `exdqlm_multivar_keep` | 5 | `authoritative_current_bundle_promoted` | `none` |
 | `exAL-U-T1` | `exdqlm_univar` | 5 | `pending_same_bundle_promotion` | `rerun_or_promote_on_20260510_canonical_bundle` |
 
 ## Next Work
 
-1. Build or select same-bundle rerun packages for the eight pending families.
+1. Build or select same-bundle rerun packages for the six pending families.
 2. Run fit/post/validate/report with post-success heavy `.RData/.rda` cleanup enabled.
 3. Rebuild the HE2 publication manifest; the alignment gate should move from `35 / 50` to `50 / 50`.
 4. Refresh article assets and tables from the manifest only after the parity gate passes.

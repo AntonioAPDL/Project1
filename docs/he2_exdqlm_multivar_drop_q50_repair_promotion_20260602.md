@@ -4,6 +4,10 @@ Date: 2026-06-02
 
 Scope: promote the proven `20211112 q50` repair from an isolated diagnostic row into the authoritative all-cutoff `exdqlm_multivar_drop` / `exAL-M-T0` relaunch workflow.
 
+2026-06-03 status update: the repaired all-cutoff relaunch completed all five cutoffs with
+`fit/post/validate/report=pass`, no retained `.RData/.rda`, and is now promoted as the project publication-manifest
+`exAL-M-T0` source. The stale final `matrix_status.csv` row was reconciled by refreshing the matrix from run manifests.
+
 ## Decision
 
 The active all-cutoff drop package must use the repaired q50 terminal-guard and stabilization policy. The older current-code package rooted at:

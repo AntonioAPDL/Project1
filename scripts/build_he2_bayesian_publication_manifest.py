@@ -22,6 +22,13 @@ if str(ROOT / "scripts") not in sys.path:
 from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402
 
 CUTOFFS = ["20210123", "20211112", "20211221", "20220511", "20221225"]
+CUTOFF_TO_DATE = {
+    "20210123": "2021-01-23",
+    "20211112": "2021-11-12",
+    "20211221": "2021-12-21",
+    "20220511": "2022-05-11",
+    "20221225": "2022-12-25",
+}
 FAMILY_ORDER = [
     "ndlm_univar_keep",
     "ndlm_main_drop",
@@ -143,9 +150,28 @@ ALIGNMENT_FIELDS = [
 AUTHORITATIVE_EXAL_KEEP_MANIFEST = ROOT / "docs" / "exdqlm_multivar_keep_authoritative_specs_20260601.yaml"
 AUTHORITATIVE_EXAL_KEEP_LINEAGE = "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner"
 TRANSITION_PUBLICATION_NOTE = (
-    "Authoritative canonical-grid exAL-M-T1 winner. Full 9-model benchmark remains transitional until the other "
-    "eight HE2 Bayesian comparison families are rerun or promoted onto the same 20260510 canonical input bundle."
+    "Authoritative canonical-grid exAL-M-T1 winner. exAL-M-T1, AL-M-T1, and exAL-M-T0 are promoted onto "
+    "canonical 20260510 input bundles; the full 9-model benchmark remains transitional until the remaining six "
+    "HE2 Bayesian comparison families are rerun or promoted onto the same bundle."
 )
+PROMOTED_AL_KEEP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602"
+PROMOTED_EXAL_DROP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602"
+PROMOTED_FAMILY_LINEAGES = {
+    "exdqlm_multivar_keep": AUTHORITATIVE_EXAL_KEEP_LINEAGE,
+    "dqlm_multivar_al_keep": "dqlm_multivar_al_keep_from_exal_winners_20260602:canonical_bundle_promoted",
+    "exdqlm_multivar_drop": "exdqlm_multivar_drop_current_relaunch_q50repair_20260602:canonical_bundle_promoted",
+}
+PROMOTED_FAMILY_NOTES = {
+    "exdqlm_multivar_keep": TRANSITION_PUBLICATION_NOTE,
+    "dqlm_multivar_al_keep": (
+        "Promoted AL-M-T1 clone of the authoritative exAL-M-T1 winner configs on the canonical 20260510 bundle. "
+        "Only the likelihood mode is changed to AL; fit/post/report passed and heavy RData cleanup is complete."
+    ),
+    "exdqlm_multivar_drop": (
+        "Promoted current-code exAL-M-T0 relaunch on the canonical 20260510 bundle with the q50 repair policy; "
+        "fit/post/validate/report passed and heavy RData cleanup is complete."
+    ),
+}
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -160,6 +186,51 @@ def read_yaml(path: Path) -> dict[str, Any]:
 
 def sha16(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+
+
+def csv_semantically_equal(left: Path, right: Path, tol: float = 1e-12) -> tuple[bool, str]:
+    with left.open("r", encoding="utf-8", newline="") as handle:
+        left_rows = list(csv.DictReader(handle))
+        left_fields = list(left_rows[0].keys()) if left_rows else []
+    with right.open("r", encoding="utf-8", newline="") as handle:
+        right_rows = list(csv.DictReader(handle))
+        right_fields = list(right_rows[0].keys()) if right_rows else []
+    if left_fields != right_fields:
+        return False, f"field mismatch: {left_fields} != {right_fields}"
+    if len(left_rows) != len(right_rows):
+        return False, f"row count mismatch: {len(left_rows)} != {len(right_rows)}"
+    for idx, (lrow, rrow) in enumerate(zip(left_rows, right_rows), start=1):
+        for field in left_fields:
+            lval = str(lrow.get(field, ""))
+            rval = str(rrow.get(field, ""))
+            try:
+                lf = float(lval)
+                rf = float(rval)
+            except ValueError:
+                if lval != rval:
+                    return False, f"row {idx} field {field} text mismatch: {lval!r} != {rval!r}"
+            else:
+                if abs(lf - rf) > tol:
+                    return False, f"row {idx} field {field} numeric mismatch: {lf} != {rf}"
+    return True, "ok"
+
+
+def canonical_artifact_path(bundle_root: Path, bundle_run_id: str, cutoff: str, artifact: str) -> Path:
+    stable = bundle_root / "stable_inputs" / "site=11160500" / f"cutoff_date={CUTOFF_TO_DATE[cutoff]}" / f"run_id={bundle_run_id}"
+    support = bundle_root / "supporting_inputs"
+    mapping = {
+        "parameters": support / "parameters" / "parameters.txt",
+        "retros": stable / "retros.csv",
+        "nws_forecast": stable / "nws_forecast.csv",
+        "glofas_forecast": stable / "glofas_forecast.csv",
+        "cov_01_PPT": support / "covariates" / "cov_03_PPT.csv",
+        "cov_02_SOIL": support / "covariates" / "cov_04_SOIL.csv",
+        "cov_03_PCA": support / "covariates" / "cov_05_PCA.csv",
+    }
+    try:
+        return mapping[artifact]
+    except KeyError as exc:
+        raise ValueError(f"no canonical artifact mapping for {artifact}") from exc
 
 
 def cutoff_display(cutoff: str) -> str:
@@ -214,6 +285,26 @@ def resolve_artifact(run_root: Path, rel: str, cfg: dict[str, Any]) -> Path | No
     return None
 
 
+def manifest_stage_statuses(run_root: Path) -> dict[str, str]:
+    manifest_path = run_root / "run_manifest.yaml"
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"Missing promoted run manifest: {manifest_path}")
+    manifest = read_yaml(manifest_path)
+    stages = manifest.get("stages") or {}
+    return {
+        stage: str((stages.get(stage) or {}).get("status", "")).strip().lower()
+        for stage in ["fit", "post", "validate", "report"]
+    }
+
+
+def retained_heavy_artifacts(run_root: Path) -> list[Path]:
+    patterns = ["*.RData", "*.rda", "*.Rda"]
+    out: list[Path] = []
+    for pattern in patterns:
+        out.extend(path for path in run_root.rglob(pattern) if path.is_file())
+    return sorted(out)
+
+
 def artifact_context(pointer_run_root: Path) -> tuple[Path, Path, bool]:
     reuse_pointer = pointer_run_root / "reuse_pointer.yaml"
     if reuse_pointer.exists():
@@ -260,8 +351,34 @@ def resolve_multivar_rows() -> list[dict[str, str]]:
                 "run_id": winner.run_id,
                 "run_root": str(authoritative.run_root(winner)),
                 "compare_dir": "",
-                "campaign_lineage": AUTHORITATIVE_EXAL_KEEP_LINEAGE,
-                "publication_note": TRANSITION_PUBLICATION_NOTE,
+                "campaign_lineage": PROMOTED_FAMILY_LINEAGES["exdqlm_multivar_keep"],
+                "publication_note": PROMOTED_FAMILY_NOTES["exdqlm_multivar_keep"],
+                "replaced_source_run_id": "",
+            }
+        )
+        al_keep_run_id = f"multimodel_{cutoff}_v8_he2grid_{winner.grid_spec_id}_dqlm_multivar_al_keep"
+        rows.append(
+            {
+                "cutoff": cutoff,
+                "family": "dqlm_multivar_al_keep",
+                "run_id": al_keep_run_id,
+                "run_root": str(PROMOTED_AL_KEEP_ROOT / "runs" / al_keep_run_id),
+                "compare_dir": "",
+                "campaign_lineage": PROMOTED_FAMILY_LINEAGES["dqlm_multivar_al_keep"],
+                "publication_note": PROMOTED_FAMILY_NOTES["dqlm_multivar_al_keep"],
+                "replaced_source_run_id": "",
+            }
+        )
+        exal_drop_run_id = f"multimodel_{cutoff}_v8_he2pubgdpc1r1_exdqlm_multivar_drop"
+        rows.append(
+            {
+                "cutoff": cutoff,
+                "family": "exdqlm_multivar_drop",
+                "run_id": exal_drop_run_id,
+                "run_root": str(PROMOTED_EXAL_DROP_ROOT / "runs" / exal_drop_run_id),
+                "compare_dir": "",
+                "campaign_lineage": PROMOTED_FAMILY_LINEAGES["exdqlm_multivar_drop"],
+                "publication_note": PROMOTED_FAMILY_NOTES["exdqlm_multivar_drop"],
                 "replaced_source_run_id": "",
             }
         )
@@ -269,11 +386,7 @@ def resolve_multivar_rows() -> list[dict[str, str]]:
             row
             for row in read_csv(best_path)
             if row["cutoff"] == cutoff
-            and row["model_variant"] in {
-                "dqlm_multivar_al_keep",
-                "exdqlm_multivar_drop",
-                "dqlm_multivar_al_drop",
-            }
+            and row["model_variant"] in {"dqlm_multivar_al_drop"}
         ]
         for best_row in best_rows:
             family = best_row["model_variant"]
@@ -476,9 +589,15 @@ def build_outputs() -> tuple[list[dict[str, str]], list[dict[str, str]], list[di
     return manifest_rows, input_rows, alignment_rows
 
 
-def validate(manifest_rows: list[dict[str, str]], alignment_rows: list[dict[str, str]]) -> None:
+def validate(
+    manifest_rows: list[dict[str, str]],
+    input_rows: list[dict[str, str]],
+    alignment_rows: list[dict[str, str]],
+) -> None:
     authoritative = load_authoritative_spec(AUTHORITATIVE_EXAL_KEEP_MANIFEST)
     authoritative_by_cutoff = authoritative.winner_by_cutoff()
+    canonical_bundle_root = Path(str(authoritative.metadata.get("bundle_artifact_root", "")))
+    canonical_bundle_run_id = str(authoritative.metadata.get("bundle_run_id", ""))
     if len(manifest_rows) != 45:
         raise RuntimeError(f"Expected 45 manifest rows, found {len(manifest_rows)}")
     observed_labels = sorted({row["manuscript_label"] for row in manifest_rows})
@@ -503,6 +622,113 @@ def validate(manifest_rows: list[dict[str, str]], alignment_rows: list[dict[str,
             raise RuntimeError(f"Unexpected authoritative exAL-M-T1 CRPS for {cutoff}: {row['crps_exact']} != {winner.mean_crps}")
         if row["campaign_lineage"] != AUTHORITATIVE_EXAL_KEEP_LINEAGE:
             raise RuntimeError(f"Unexpected authoritative exAL-M-T1 lineage for {cutoff}: {row['campaign_lineage']}")
+
+    expected_promoted = {
+        "exdqlm_multivar_keep": {"label": "exAL-M-T1", "likelihood": "exal", "transfer": "keep"},
+        "dqlm_multivar_al_keep": {"label": "AL-M-T1", "likelihood": "al", "transfer": "keep"},
+        "exdqlm_multivar_drop": {"label": "exAL-M-T0", "likelihood": "exal", "transfer": "drop"},
+    }
+    canonical_source_hash_artifacts = {
+        "parameters",
+        "nws_forecast",
+        "glofas_forecast",
+    }
+    canonical_semantic_csv_artifacts = {"retros"}
+    canonical_covariate_artifacts = {
+        "cov_01_PPT",
+        "cov_02_SOIL",
+        "cov_03_PCA",
+    }
+    input_by_run_artifact = {(row["run_id"], row["artifact"]): row for row in input_rows}
+    promoted_labels = {expected["label"] for expected in expected_promoted.values()}
+    for cutoff in CUTOFFS:
+        for artifact in REQUIRED_ALIGNMENT_ARTIFACTS:
+            subset = [
+                row
+                for row in input_rows
+                if row["cutoff"] == cutoff
+                and row["manuscript_label"] in promoted_labels
+                and row["artifact"] == artifact
+            ]
+            hashes = {row["sha256_16"] for row in subset if row["exists"] == "True"}
+            missing = [row["run_id"] for row in subset if row["exists"] != "True"]
+            if len(subset) != len(promoted_labels) or missing or len(hashes) != 1:
+                raise RuntimeError(
+                    f"Promoted rows do not share one materialized input for cutoff={cutoff} "
+                    f"artifact={artifact}: hashes={sorted(hashes)} missing={missing}"
+                )
+    for family, expected in expected_promoted.items():
+        rows = [row for row in manifest_rows if row["family"] == family]
+        if len(rows) != len(CUTOFFS):
+            raise RuntimeError(f"Expected {len(CUTOFFS)} promoted rows for {family}, found {len(rows)}")
+        for row in rows:
+            if row["manuscript_label"] != expected["label"]:
+                raise RuntimeError(f"Unexpected promoted label for {row['run_id']}: {row['manuscript_label']}")
+            if row["campaign_lineage"] != PROMOTED_FAMILY_LINEAGES[family]:
+                raise RuntimeError(f"Unexpected promoted lineage for {row['run_id']}: {row['campaign_lineage']}")
+            if row["likelihood_mode"] != expected["likelihood"]:
+                raise RuntimeError(f"Unexpected likelihood for {row['run_id']}: {row['likelihood_mode']}")
+            if row["forecast_transfer_mode"] != expected["transfer"]:
+                raise RuntimeError(f"Unexpected transfer mode for {row['run_id']}: {row['forecast_transfer_mode']}")
+            artifact_root = Path(row["artifact_run_root"])
+            stage_statuses = manifest_stage_statuses(artifact_root)
+            if any(stage_statuses[stage] != "pass" for stage in ["fit", "post", "validate", "report"]):
+                raise RuntimeError(f"Promoted run has non-pass stages: {row['run_id']} {stage_statuses}")
+            heavy = retained_heavy_artifacts(artifact_root)
+            if heavy:
+                raise RuntimeError(f"Promoted run retained heavy RData artifacts: {row['run_id']} {heavy[:3]}")
+            score_source = Path(row["score_source"])
+            if not score_source.exists():
+                raise RuntimeError(f"Promoted CRPS table missing: {score_source}")
+            figure_manifest = artifact_root / "post" / "outputs" / artifact_root.name / "publication_figure_manifest.csv"
+            if not figure_manifest.exists():
+                raise RuntimeError(f"Promoted figure manifest missing: {figure_manifest}")
+            for artifact in canonical_source_hash_artifacts:
+                input_row = input_by_run_artifact.get((row["run_id"], artifact))
+                if not input_row or input_row["exists"] != "True":
+                    raise RuntimeError(f"Promoted canonical artifact missing: {row['run_id']} {artifact}")
+                canonical_path = canonical_artifact_path(canonical_bundle_root, canonical_bundle_run_id, row["cutoff"], artifact)
+                if not canonical_path.exists():
+                    raise RuntimeError(f"Canonical bundle artifact missing: {canonical_path}")
+                canonical_hash = sha16(canonical_path)
+                if input_row["sha256_16"] != canonical_hash:
+                    raise RuntimeError(
+                        f"Promoted artifact content does not match canonical bundle: "
+                        f"{row['run_id']} {artifact} observed={input_row['sha256_16']} "
+                        f"canonical={canonical_hash} observed_path={input_row['path']} canonical_path={canonical_path}"
+                    )
+            for artifact in canonical_semantic_csv_artifacts:
+                input_row = input_by_run_artifact.get((row["run_id"], artifact))
+                if not input_row or input_row["exists"] != "True":
+                    raise RuntimeError(f"Promoted canonical artifact missing: {row['run_id']} {artifact}")
+                canonical_path = canonical_artifact_path(canonical_bundle_root, canonical_bundle_run_id, row["cutoff"], artifact)
+                if not canonical_path.exists():
+                    raise RuntimeError(f"Canonical bundle artifact missing: {canonical_path}")
+                ok, detail = csv_semantically_equal(Path(input_row["path"]), canonical_path, tol=1e-10)
+                if not ok:
+                    raise RuntimeError(
+                        f"Promoted semantic CSV artifact does not match canonical bundle: "
+                        f"{row['run_id']} {artifact} detail={detail} observed_path={input_row['path']} "
+                        f"canonical_path={canonical_path}"
+                    )
+            cfg = read_yaml(Path(row["artifact_resolved_config_path"]))
+            fit_covariates = {
+                cov.get("name"): str(cov.get("path", ""))
+                for cov in ((cfg.get("inputs") or {}).get("fit") or {}).get("covariates") or []
+            }
+            cov_name_by_artifact = {
+                "cov_01_PPT": "PPT",
+                "cov_02_SOIL": "SOIL",
+                "cov_03_PCA": "PCA",
+            }
+            for artifact in canonical_covariate_artifacts:
+                cov_name = cov_name_by_artifact[artifact]
+                canonical_path = canonical_artifact_path(canonical_bundle_root, canonical_bundle_run_id, row["cutoff"], artifact)
+                if fit_covariates.get(cov_name) != str(canonical_path):
+                    raise RuntimeError(
+                        f"Promoted config covariate source is not canonical: "
+                        f"{row['run_id']} {cov_name} observed={fit_covariates.get(cov_name)} canonical={canonical_path}"
+                    )
 
 
 def write_csv(path: Path, rows: list[dict[str, str]], fieldnames: list[str]) -> None:
@@ -533,13 +759,12 @@ def write_markdown(manifest_rows: list[dict[str, str]], alignment_rows: list[dic
         cutoff_rows.append([cutoff_display(cutoff), f"{aligned} / {len(REQUIRED_ALIGNMENT_ARTIFACTS)}", result])
 
     current_rows = []
-    exal_transition_rows = []
+    promoted_rows = []
     for row in manifest_rows:
-        if row["manuscript_label"] == "exAL-M-T1":
-            note = "authoritative canonical-grid winner"
-            exal_transition_rows.append([row["cutoff_display"], row["crps_display4"], row["run_id"]])
-        else:
-            note = ""
+        promoted = row["campaign_lineage"] in set(PROMOTED_FAMILY_LINEAGES.values())
+        note = "canonical-bundle promoted" if promoted else ""
+        if promoted:
+            promoted_rows.append([row["cutoff_display"], row["manuscript_label"], row["crps_display4"], row["run_id"]])
         current_rows.append(
             [
                 row["cutoff_display"],
@@ -566,6 +791,8 @@ This report freezes the **current manuscript-facing HE2 Bayesian table** at the 
 Headline checks:
 - published Bayesian HE2 cells documented: `{len(manifest_rows)}`
 - cutoffs documented: `{len(CUTOFFS)}`
+- canonical-bundle promoted cells: `{len(promoted_rows)}`
+- remaining transition cells: `{len(manifest_rows) - len(promoted_rows)}`
 - required shared-input artifacts checked within each cutoff: `{len(REQUIRED_ALIGNMENT_ARTIFACTS)}`
 - fit covariate contract observed: `PPT|SOIL|PCA`
 - deterministic-climate enabled flags observed: `True`
@@ -577,12 +804,12 @@ Headline checks:
 - full within-cutoff shared-input alignment checks passing: `{aligned_full} / {total_full}`
 
 Special publication update:
-- All five `exAL-M-T1` rows now resolve to the authoritative canonical-grid winners in `{AUTHORITATIVE_EXAL_KEEP_MANIFEST}`.
-- Transition gate: the remaining eight HE2 Bayesian comparison families still need rerun/promotion onto the same canonical 20260510 input-bundle contract before the full benchmark table should be treated as final.
+- `exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` now resolve to canonical-bundle promoted roots.
+- Transition gate: the remaining six HE2 Bayesian comparison families still need rerun/promotion onto the same canonical 20260510 input-bundle contract before the full benchmark table should be treated as final.
 
-## Authoritative exAL-M-T1 Rows
+## Canonical-Bundle Promoted Rows
 
-{markdown_table(["Cutoff", "Mean CRPS", "Run ID"], exal_transition_rows)}
+{markdown_table(["Cutoff", "Label", "Mean CRPS", "Run ID"], promoted_rows)}
 
 ## Within-Cutoff Input Congruence
 
@@ -590,7 +817,7 @@ Special publication update:
 
 Archival caveat:
 - `usgs_daily.csv` was not preserved inside some older multivariate quantile run roots, so the strict within-cutoff congruence table is evaluated on the **10 fit/forecast/blended-covariate artifacts** rather than on the auxiliary USGS cache file.
-- Input congruence is now a diagnostic gate, not a final-pass claim, because `exAL-M-T1` has been promoted first and the other eight comparison families still require matching canonical-input promotion.
+- Input congruence is now a diagnostic gate, not a final-pass claim, because three families have been promoted and the other six comparison families still require matching canonical-input promotion.
 
 ## Publication Rows
 
@@ -608,7 +835,7 @@ Archival caveat:
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     manifest_rows, input_rows, alignment_rows = build_outputs()
-    validate(manifest_rows, alignment_rows)
+    validate(manifest_rows, input_rows, alignment_rows)
     write_csv(OUT_DIR / "he2_bayesian_publication_manifest.csv", manifest_rows, CSV_FIELDS)
     write_csv(OUT_DIR / "he2_bayesian_publication_inputs.csv", input_rows, INPUT_FIELDS)
     write_csv(OUT_DIR / "he2_bayesian_publication_alignment.csv", alignment_rows, ALIGNMENT_FIELDS)

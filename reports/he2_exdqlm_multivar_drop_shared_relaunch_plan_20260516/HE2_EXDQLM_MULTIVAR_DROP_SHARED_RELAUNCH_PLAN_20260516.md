@@ -9,7 +9,7 @@ Date: 2026-05-16
 - shared forecast-covariance spec: `epsilon=30.0`, `c_factor=1.0`
 - shared discount set: `set10_manual_20260516`
 - selection basis: `manual_override_20260516`
-- shared q50 stabilization layer: enabled from the successful 2026-05-15 recovery path
+- shared q50 stabilization layer: promoted from the successful 2026-06-02 20211112 repair path
 
 ## Why this shared spec
 
@@ -40,11 +40,11 @@ Date: 2026-05-16
 - `terminal_sampling_guard.min_guard_count`: `1`
 - `terminal_sampling_guard.max_guard_lag_iters`: `0`
 - `terminal_sampling_guard.require_frozen`: `True`
-- `median_state_hold_after_guard_iters`: `0`
-- `median_state_blend_alpha`: `0.5`
-- `median_cov_blend_alpha`: `0.5`
-- `median_max_abs_gamma_step`: `0.15`
-- `median_max_abs_log_sigma_step`: `0.25`
+- `median_state_hold_after_guard_iters`: `10`
+- `median_state_blend_alpha`: `1.0`
+- `median_cov_blend_alpha`: `1.0`
+- `median_max_abs_gamma_step`: `0.075`
+- `median_max_abs_log_sigma_step`: `0.15`
 
 ## Historical discount-set ranking across all 5 cutoffs
 
