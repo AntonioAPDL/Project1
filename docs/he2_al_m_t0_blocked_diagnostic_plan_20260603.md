@@ -112,9 +112,17 @@ New tracked validator:
 
 `scripts/validate_he2_dqlm_multivar_al_drop_diagnostic_plan.py`
 
+New tracked representative launcher:
+
+`scripts/launch_he2_al_m_t0_representative_diagnostics.py`
+
 The package prepares single-quantile, fit-only configs and deliberately writes a `NO_LAUNCH_GUARD.txt` instead of a
 launch script. It preserves diagnostics/RData if the configs are later launched manually or by an explicitly approved
 queue. This is intentional: the next AL-M-T0 diagnostic needs retained failed objects, not automatic cleanup.
+
+The builder writes both detailed diagnostic files and a queue/health-compatible `matrix_plan.csv`. The latter allows
+`scripts/check_multimodel_v8_matrix_health.py` to track these diagnostic rows with the same status format used by the
+larger HE2 campaigns.
 
 Representative lanes:
 
@@ -172,6 +180,44 @@ python3 scripts/validate_he2_dqlm_multivar_al_drop_diagnostic_plan.py \
 Both commands are validators/builders only. They write config matrices and `NO_LAUNCH_GUARD.txt`; they do not create or
 run a launch shell.
 
+Launch the confirmed high-discount representative rows only after the prelaunch gates pass:
+
+```bash
+python3 scripts/launch_he2_al_m_t0_representative_diagnostics.py \
+  --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_diagnostics_highdf_eps365_cf1_representative_20260603 \
+  --max-concurrent 4 \
+  --confirm-launch
+```
+
+This launcher is intentionally narrow. It requires `lane_scope: representative`,
+`spec_id: highdf_eps365_cf1_al_m_t0_20260603`, `requires_user_discount_decision: false`, exactly four rows, and existing
+generated configs. It runs through `scripts/run_unified_without_cleanup.sh`, so fit-stage objects remain inspectable.
+
+Launch tracking files are written under the representative matrix directory:
+
+- `diagnostic_launch_manifest.csv`
+- `diagnostic_launch_metadata.json`
+- `LAUNCHED_REPRESENTATIVE_DIAGNOSTICS.md`
+- `run_logs/*.log`
+
+Refresh representative health:
+
+```bash
+python3 scripts/check_multimodel_v8_matrix_health.py \
+  --matrix-dir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_diagnostics_highdf_eps365_cf1_representative_20260603/control/diagnostic_matrix \
+  --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_diagnostics_highdf_eps365_cf1_representative_20260603
+```
+
+Prelaunch gates for the representative launch:
+
+| check | status |
+|---|---|
+| Python focused tests for builder/validator/launcher/queue contracts | pass |
+| `py_compile` for builder/validator/launcher | pass |
+| R config load for four representative configs with deterministic climate parser sourced | pass |
+| health-compatible `matrix_plan.csv` creation | pass |
+| launcher dry run | pass |
+
 ## Next Implementation Steps
 
 1. Promote the completed univariate AL/exAL rows into the publication manifest and parity gate.
@@ -179,6 +225,8 @@ run a launch shell.
 3. Use the confirmed high-discount `epsilon=365`, `c_factor=1`, `max_iter=100` spec as the first AL-M-T0 diagnostic
    candidate.
 4. Build and validate the no-launch representative and all-failed diagnostic packages.
-5. Only after explicit approval, launch the representative diagnostic lanes with retained failed objects.
-6. Use those retained objects to decide whether the fix is a spec retune, PSD-safe covariance handling, or both.
-7. Relaunch all five `AL-M-T0` cutoffs only after the targeted lanes pass.
+5. Launch the representative diagnostic lanes with retained failed objects.
+6. Monitor representative health and inspect retained objects if any lane fails.
+7. If the representative lanes pass, launch the ten all-failed lanes.
+8. Use retained objects to decide whether the fix is a spec retune, PSD-safe covariance handling, or both.
+9. Relaunch all five `AL-M-T0` cutoffs only after the targeted lanes pass.

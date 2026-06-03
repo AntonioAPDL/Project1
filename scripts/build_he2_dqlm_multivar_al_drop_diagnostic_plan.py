@@ -132,6 +132,42 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         writer.writerows(rows)
 
 
+def matrix_row_from_diagnostic_row(row: dict[str, Any]) -> dict[str, Any]:
+    epsilon_value = row.get("forecast_cov_epsilon", "")
+    try:
+        epsilon_label = f"eps{int(float(epsilon_value))}"
+    except Exception:
+        epsilon_label = str(epsilon_value or "eps_unknown")
+    q_float_value = q_float(str(row["q"]))
+    return {
+        "order_index": row["order_index"],
+        "cutoff": row["cutoff"],
+        "epsilon": epsilon_label,
+        "epsilon_value": epsilon_value,
+        "lane": f"q{row['q']}",
+        "run_scope": "diagnostic_single_quantile_fit_only",
+        "run_id": row["run_id"],
+        "config_path": row["config_path"],
+        "compare_outdir": "",
+        "priority_group": "al_m_t0_representative_diagnostic" if row["tier"] == "representative" else "al_m_t0_extended_diagnostic",
+        "max_concurrent_class": "ordinary",
+        "family_id": row["family_id"],
+        "model_id": row["model_id"],
+        "model_key": row["model_key"],
+        "model_class": "dqlm",
+        "likelihood_mode": row["likelihood_mode"],
+        "transfer_mode": row["transfer_mode"],
+        "manuscript_label": row["manuscript_label"],
+        "row_kind": "diagnostic_fit_only",
+        "quantile_submodels": f"{q_float_value:.2f}",
+        "active_quantiles": f"{q_float_value:.2f}",
+        "spec_id": row["spec_id"],
+        "failure_signature": row["failure_signature"],
+        "no_launch_guarded": row["no_launch"],
+        "fit_only": row["fit_only"],
+    }
+
+
 def q_float(q_label: str) -> float:
     return int(q_label) / 100.0
 
@@ -340,8 +376,10 @@ def build_package(
             }
         )
 
+    queue_rows = [matrix_row_from_diagnostic_row(row) for row in rows]
     write_csv(matrix_dir / "diagnostic_matrix_plan.csv", rows)
     write_csv(matrix_dir / "diagnostic_config_manifest.csv", rows)
+    write_csv(matrix_dir / "matrix_plan.csv", queue_rows)
     metadata = {
         "generated_at_utc": utc_now(),
         "status": "prepared_not_launched",
@@ -391,6 +429,7 @@ def build_package(
         "",
         "- `diagnostic_matrix_plan.csv`",
         "- `diagnostic_config_manifest.csv`",
+        "- `matrix_plan.csv`",
         "- `diagnostic_matrix_metadata.yaml`",
         "- `NO_LAUNCH_GUARD.txt`",
     ]

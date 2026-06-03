@@ -50,21 +50,25 @@ def validate_package(artifact_root: Path, *, expected_lane_scope: str) -> dict[s
     matrix_dir = artifact_root / "control" / "diagnostic_matrix"
     metadata_path = matrix_dir / "diagnostic_matrix_metadata.yaml"
     plan_path = matrix_dir / "diagnostic_matrix_plan.csv"
+    queue_plan_path = matrix_dir / "matrix_plan.csv"
     manifest_path = matrix_dir / "diagnostic_config_manifest.csv"
     guard_path = matrix_dir / "NO_LAUNCH_GUARD.txt"
     assert_true(metadata_path.exists(), f"missing metadata: {metadata_path}")
     assert_true(plan_path.exists(), f"missing plan: {plan_path}")
+    assert_true(queue_plan_path.exists(), f"missing queue-compatible matrix plan: {queue_plan_path}")
     assert_true(manifest_path.exists(), f"missing config manifest: {manifest_path}")
     assert_true(guard_path.exists(), f"missing no-launch guard: {guard_path}")
     assert_true(not (matrix_dir / "launch_al_drop_diagnostics.sh").exists(), "diagnostic package must not write launch shell")
 
     metadata = load_yaml(metadata_path)
     rows = read_csv(plan_path)
+    queue_rows = read_csv(queue_plan_path)
     assert_true(metadata.get("status") == "prepared_not_launched", f"unexpected status: {metadata.get('status')}")
     assert_true(metadata.get("no_launch") is True, "metadata no_launch must be true")
     assert_true(metadata.get("launch_files_written") is False, "launch_files_written must be false")
     assert_true(metadata.get("lane_scope") == expected_lane_scope, "lane scope mismatch")
     assert_true(len(rows) == int(metadata["n_lanes"]), "row count metadata mismatch")
+    assert_true(len(queue_rows) == len(rows), "queue row count mismatch")
 
     for row in rows:
         assert_true(row["family_id"] == TARGET_FAMILY, f"unexpected family: {row}")
@@ -88,6 +92,7 @@ def validate_package(artifact_root: Path, *, expected_lane_scope: str) -> dict[s
     return {
         "metadata": metadata,
         "rows": len(rows),
+        "queue_rows": len(queue_rows),
         "spec_id": metadata.get("discount_spec", {}).get("spec_id", ""),
         "requires_user_discount_decision": metadata.get("requires_user_discount_decision"),
     }
@@ -132,6 +137,7 @@ def main() -> int:
                 f"- lane_scope: `{args.lane_scope}`",
                 "- launch_performed: `False`",
                 f"- rows: `{summary['checks']['rows']}`",
+                f"- queue_rows: `{summary['checks']['queue_rows']}`",
                 f"- spec_id: `{summary['checks']['spec_id']}`",
                 f"- requires_user_discount_decision: `{summary['checks']['requires_user_discount_decision']}`",
             ]
