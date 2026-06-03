@@ -218,6 +218,29 @@ Prelaunch gates for the representative launch:
 | health-compatible `matrix_plan.csv` creation | pass |
 | launcher dry run | pass |
 
+## Representative Launch Status
+
+Launched: 2026-06-03T23:27:42Z
+
+Runtime root:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_diagnostics_highdf_eps365_cf1_representative_20260603`
+
+Initial launch manifest:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_diagnostics_highdf_eps365_cf1_representative_20260603/control/diagnostic_matrix/diagnostic_launch_manifest.csv`
+
+Initial health immediately after launch:
+
+| cutoff | q | status |
+|---|---:|---|
+| `20211112` | `35` | `fit/pending` |
+| `20211221` | `80` | `fit/pending` |
+| `20220511` | `65` | `fit/pending` |
+| `20221225` | `80` | `fit/pending` |
+
+All four logs showed `data_prep_shared` passed and the run entered the fit scheduler with `workers=1`, `jobs=1`.
+
 ## Next Implementation Steps
 
 1. Promote the completed univariate AL/exAL rows into the publication manifest and parity gate.
