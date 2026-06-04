@@ -175,6 +175,93 @@ class He2AlMT0DiagnosticPlanTests(unittest.TestCase):
             self.assertEqual(cfg["models"]["exdqlm_multivar"]["state_evolution"]["df_discrep"], 0.99999999)
             self.assertFalse((matrix_dir / "launch_al_drop_diagnostics.sh").exists())
 
+    def test_ladder_package_prepares_a0_to_a4_transfer_variants(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_m_t0_diag_ladder_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            proc = subprocess.run(
+                [
+                    "python3",
+                    str(VALIDATOR),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--discount-spec-yaml",
+                    str(HIGHDF_SPEC),
+                    "--lane-scope",
+                    "representative",
+                    "--experiment-scope",
+                    "ladder",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            matrix_dir = artifact_root / "control" / "diagnostic_matrix"
+            metadata = self.load_yaml(matrix_dir / "diagnostic_matrix_metadata.yaml")
+            rows = self.read_csv(matrix_dir / "diagnostic_matrix_plan.csv")
+            queue_rows = self.read_csv(matrix_dir / "matrix_plan.csv")
+            self.assertEqual(metadata["experiment_scope"], "ladder")
+            self.assertEqual(metadata["n_experiments"], 5)
+            self.assertEqual(len(rows), 20)
+            self.assertEqual(len(queue_rows), 20)
+            self.assertEqual(
+                {row["experiment_id"] for row in rows},
+                {
+                    "a0_full_sd",
+                    "a1_transfer_level_only",
+                    "a2_full_zscore",
+                    "a3_base_sd",
+                    "a4_base_zscore",
+                },
+            )
+            by_experiment = {row["experiment_id"]: row for row in rows}
+            self.assertEqual(by_experiment["a1_transfer_level_only"]["transfer_feature_mode"], "none")
+            self.assertEqual(by_experiment["a1_transfer_level_only"]["transfer_feature_columns"], "")
+            self.assertEqual(by_experiment["a2_full_zscore"]["transfer_feature_scaling"], "zscore")
+            self.assertEqual(by_experiment["a3_base_sd"]["transfer_feature_mode"], "base_only")
+            self.assertEqual(by_experiment["a4_base_zscore"]["transfer_feature_scaling"], "zscore")
+            a1_cfg = self.load_yaml(Path(by_experiment["a1_transfer_level_only"]["config_path"]))
+            self.assertEqual(a1_cfg["inputs"]["transfer_function_covariates"]["mode"], "none")
+            self.assertEqual(a1_cfg["inputs"]["transfer_function_covariates"]["base_covariates"], [])
+            self.assertEqual(a1_cfg["inputs"]["transfer_function_covariates"]["engineered_terms"], [])
+            a2_cfg = self.load_yaml(Path(by_experiment["a2_full_zscore"]["config_path"]))
+            self.assertEqual(a2_cfg["inputs"]["transfer_function_covariates"]["mode"], "full")
+            self.assertEqual(a2_cfg["inputs"]["transfer_function_covariates"]["scaling"], "zscore")
+
+    def test_single_a1_scope_prepares_transfer_level_only_rows(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_m_t0_diag_a1_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            proc = subprocess.run(
+                [
+                    "python3",
+                    str(VALIDATOR),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--discount-spec-yaml",
+                    str(HIGHDF_SPEC),
+                    "--lane-scope",
+                    "representative",
+                    "--experiment-scope",
+                    "a1",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            matrix_dir = artifact_root / "control" / "diagnostic_matrix"
+            rows = self.read_csv(matrix_dir / "diagnostic_matrix_plan.csv")
+            self.assertEqual(len(rows), 4)
+            self.assertEqual({row["experiment_id"] for row in rows}, {"a1_transfer_level_only"})
+            for row in rows:
+                cfg = self.load_yaml(Path(row["config_path"]))
+                transfer = cfg["inputs"]["transfer_function_covariates"]
+                self.assertEqual(transfer["mode"], "none")
+                self.assertEqual(transfer["base_covariates"], [])
+                self.assertEqual(transfer["engineered_terms"], [])
+
     def test_representative_launcher_dry_run_records_no_process_launch(self) -> None:
         with tempfile.TemporaryDirectory(prefix="he2_al_m_t0_diag_launch_") as tmp:
             artifact_root = Path(tmp) / "artifact"
@@ -216,6 +303,61 @@ class He2AlMT0DiagnosticPlanTests(unittest.TestCase):
             launch_metadata = self.load_yaml(matrix_dir / "diagnostic_launch_metadata.json")
             self.assertTrue(launch_metadata["dry_run"])
             self.assertEqual(launch_metadata["launched"], 0)
+
+    def test_ladder_launcher_dry_run_records_all_twenty_rows(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_m_t0_diag_ladder_launch_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            build_proc = subprocess.run(
+                [
+                    "python3",
+                    str(VALIDATOR),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--discount-spec-yaml",
+                    str(HIGHDF_SPEC),
+                    "--lane-scope",
+                    "representative",
+                    "--experiment-scope",
+                    "ladder",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(build_proc.returncode, 0, build_proc.stderr)
+            launch_proc = subprocess.run(
+                [
+                    "python3",
+                    str(LAUNCHER),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--expected-experiment-scope",
+                    "ladder",
+                    "--dry-run",
+                    "--max-concurrent",
+                    "20",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(launch_proc.returncode, 0, launch_proc.stderr)
+            matrix_dir = artifact_root / "control" / "diagnostic_matrix"
+            launch_rows = self.read_csv(matrix_dir / "diagnostic_launch_manifest.csv")
+            self.assertEqual(len(launch_rows), 20)
+            self.assertEqual({row["launch_action"] for row in launch_rows}, {"dry_run"})
+            self.assertEqual(
+                {row["experiment_id"] for row in launch_rows},
+                {
+                    "a0_full_sd",
+                    "a1_transfer_level_only",
+                    "a2_full_zscore",
+                    "a3_base_sd",
+                    "a4_base_zscore",
+                },
+            )
 
 
 if __name__ == "__main__":

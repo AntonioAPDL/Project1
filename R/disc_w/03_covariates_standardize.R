@@ -151,6 +151,20 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
 
   feature_ready <- nzchar(Sys.getenv("UNIFIED_COVARIATE_FEATURES_CSV", "")) &&
     file.exists(Sys.getenv("UNIFIED_COVARIATE_FEATURES_CSV", ""))
+  transfer_feature_mode <- tolower(trimws(Sys.getenv(
+    "DISC_W_TRANSFER_FEATURE_MODE",
+    Sys.getenv("UNIFIED_TRANSFER_FEATURE_MODE", "full")
+  )))
+  if (!transfer_feature_mode %in% c("full", "base_only", "custom", "none")) {
+    transfer_feature_mode <- "full"
+  }
+  transfer_feature_scaling <- tolower(trimws(Sys.getenv(
+    "DISC_W_TRANSFER_FEATURE_SCALING",
+    Sys.getenv("UNIFIED_TRANSFER_FEATURE_SCALING", "sd")
+  )))
+  if (!transfer_feature_scaling %in% c("sd", "zscore")) {
+    transfer_feature_scaling <- "sd"
+  }
   transfer_feature_columns_raw <- Sys.getenv(
     "DISC_W_TRANSFER_FEATURE_COLUMNS",
     Sys.getenv("UNIFIED_TRANSFER_FEATURE_COLUMNS", "")
@@ -169,7 +183,9 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
       forecast_dates = X_f[, "time"],
       feature_path = Sys.getenv("UNIFIED_COVARIATE_FEATURES_CSV", ""),
       fill_value = 0,
-      selected_feature_names = transfer_feature_columns
+      selected_feature_names = transfer_feature_columns,
+      feature_mode = transfer_feature_mode,
+      scaling_mode = transfer_feature_scaling
     )
     X <- design$X
     X_f <- design$X_f
@@ -181,7 +197,9 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
       forecast_dates = X_f[, "time"],
       feature_path = "",
       fill_value = 0,
-      selected_feature_names = transfer_feature_columns
+      selected_feature_names = transfer_feature_columns,
+      feature_mode = transfer_feature_mode,
+      scaling_mode = transfer_feature_scaling
     )
     X <- design$X
     X_f <- design$X_f

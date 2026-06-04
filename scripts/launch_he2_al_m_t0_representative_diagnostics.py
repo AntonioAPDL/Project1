@@ -20,6 +20,7 @@ DEFAULT_ARTIFACT_ROOT = (
     / "multimodel_v8_he2_dqlm_multivar_al_drop_diagnostics_highdf_eps365_cf1_representative_20260603"
 )
 EXPECTED_SPEC_ID = "highdf_eps365_cf1_al_m_t0_20260603"
+EXPECTED_EXPERIMENT_SCOPE = "a0"
 
 
 def utc_now() -> str:
@@ -91,7 +92,11 @@ def active_config_processes() -> dict[str, dict[str, str]]:
     return active
 
 
-def validate_matrix(matrix_dir: Path, expected_spec_id: str) -> tuple[dict[str, Any], list[dict[str, str]]]:
+def validate_matrix(
+    matrix_dir: Path,
+    expected_spec_id: str,
+    expected_experiment_scope: str,
+) -> tuple[dict[str, Any], list[dict[str, str]]]:
     metadata_path = matrix_dir / "diagnostic_matrix_metadata.yaml"
     guard_path = matrix_dir / "NO_LAUNCH_GUARD.txt"
     matrix_plan_path = matrix_dir / "matrix_plan.csv"
@@ -112,12 +117,23 @@ def validate_matrix(matrix_dir: Path, expected_spec_id: str) -> tuple[dict[str, 
     spec_id = (metadata.get("discount_spec") or {}).get("spec_id")
     if spec_id != expected_spec_id:
         raise ValueError(f"unexpected spec_id={spec_id}; expected {expected_spec_id}")
+    experiment_scope = metadata.get("experiment_scope", "a0")
+    if experiment_scope != expected_experiment_scope:
+        raise ValueError(
+            f"unexpected experiment_scope={experiment_scope}; expected {expected_experiment_scope}"
+        )
     rows = read_csv(matrix_plan_path)
-    if len(rows) != 4:
-        raise ValueError(f"representative diagnostic launch expects exactly 4 rows, found {len(rows)}")
+    expected_rows = 20 if expected_experiment_scope == "ladder" else 4
+    if len(rows) != expected_rows:
+        raise ValueError(
+            f"representative diagnostic launch expects {expected_rows} rows for {expected_experiment_scope}, "
+            f"found {len(rows)}"
+        )
     for row in rows:
         if row.get("spec_id") != expected_spec_id:
             raise ValueError(f"unexpected row spec: {row}")
+        if row.get("experiment_id", "") == "":
+            raise ValueError(f"missing experiment_id: {row}")
         if row.get("run_scope") != "diagnostic_single_quantile_fit_only":
             raise ValueError(f"unexpected run_scope: {row}")
         config_path = Path(row["config_path"])
@@ -168,6 +184,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--artifact-root", type=Path, default=DEFAULT_ARTIFACT_ROOT)
     parser.add_argument("--matrix-dir", type=Path)
     parser.add_argument("--expected-spec-id", default=EXPECTED_SPEC_ID)
+    parser.add_argument(
+        "--expected-experiment-scope",
+        choices=["a0", "a1", "a2", "a3", "a4", "ladder"],
+        default=EXPECTED_EXPERIMENT_SCOPE,
+    )
     parser.add_argument("--max-concurrent", type=int, default=4)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--force-relaunch-failed", action="store_true")
@@ -183,7 +204,7 @@ def main() -> int:
         raise ValueError("--max-concurrent must be positive")
     if not args.dry_run and not args.confirm_launch:
         raise ValueError("real launches require --confirm-launch")
-    metadata, rows = validate_matrix(matrix_dir, args.expected_spec_id)
+    metadata, rows = validate_matrix(matrix_dir, args.expected_spec_id, args.expected_experiment_scope)
     active = active_config_processes()
     launch_rows: list[dict[str, Any]] = []
     launched_count = 0
@@ -218,6 +239,9 @@ def main() -> int:
                 "lane": row["lane"],
                 "config_path": row["config_path"],
                 "spec_id": row["spec_id"],
+                "experiment_id": row.get("experiment_id", ""),
+                "transfer_feature_mode": row.get("transfer_feature_mode", ""),
+                "transfer_feature_scaling": row.get("transfer_feature_scaling", ""),
                 "prior_status": prior_status,
                 "launch_action": action,
                 "pid": pid,
@@ -231,6 +255,8 @@ def main() -> int:
         "artifact_root": str(artifact_root),
         "matrix_dir": str(matrix_dir),
         "expected_spec_id": args.expected_spec_id,
+        "expected_experiment_scope": args.expected_experiment_scope,
+        "source_experiment_scope": metadata.get("experiment_scope", "a0"),
         "source_metadata_generated_at_utc": metadata.get("generated_at_utc", ""),
         "dry_run": bool(args.dry_run),
         "confirm_launch": bool(args.confirm_launch),

@@ -46,7 +46,12 @@ def nested(payload: dict[str, Any], keys: list[str], default: Any = None) -> Any
     return cur
 
 
-def validate_package(artifact_root: Path, *, expected_lane_scope: str) -> dict[str, Any]:
+def validate_package(
+    artifact_root: Path,
+    *,
+    expected_lane_scope: str,
+    expected_experiment_scope: str,
+) -> dict[str, Any]:
     matrix_dir = artifact_root / "control" / "diagnostic_matrix"
     metadata_path = matrix_dir / "diagnostic_matrix_metadata.yaml"
     plan_path = matrix_dir / "diagnostic_matrix_plan.csv"
@@ -67,6 +72,7 @@ def validate_package(artifact_root: Path, *, expected_lane_scope: str) -> dict[s
     assert_true(metadata.get("no_launch") is True, "metadata no_launch must be true")
     assert_true(metadata.get("launch_files_written") is False, "launch_files_written must be false")
     assert_true(metadata.get("lane_scope") == expected_lane_scope, "lane scope mismatch")
+    assert_true(metadata.get("experiment_scope", "a0") == expected_experiment_scope, "experiment scope mismatch")
     assert_true(len(rows) == int(metadata["n_lanes"]), "row count metadata mismatch")
     assert_true(len(queue_rows) == len(rows), "queue row count mismatch")
 
@@ -80,6 +86,14 @@ def validate_package(artifact_root: Path, *, expected_lane_scope: str) -> dict[s
         assert_true(nested(cfg, ["models", TARGET_MODEL_KEY, "likelihood_mode"]) == "al", row["config_path"])
         assert_true(nested(cfg, ["models", TARGET_MODEL_KEY, "forecast_transfer_mode"]) == "drop", row["config_path"])
         assert_true(nested(cfg, ["fit", "quantiles"]) == [int(row["q"]) / 100.0], row["config_path"])
+        assert_true(
+            nested(cfg, ["inputs", "transfer_function_covariates", "mode"]) == row["transfer_feature_mode"],
+            row["config_path"],
+        )
+        assert_true(
+            nested(cfg, ["inputs", "transfer_function_covariates", "scaling"]) == row["transfer_feature_scaling"],
+            row["config_path"],
+        )
         assert_true(nested(cfg, ["fit", "parallel", "workers"]) == 1, row["config_path"])
         assert_true(nested(cfg, ["run", "threads", "mc_cores"]) == 1, row["config_path"])
         assert_true(nested(cfg, ["stages", "fit"]) is True, row["config_path"])
@@ -89,10 +103,13 @@ def validate_package(artifact_root: Path, *, expected_lane_scope: str) -> dict[s
         debug = nested(cfg, ["debug_he2_al_m_t0_diagnostic"], {})
         assert_true(debug.get("no_launch") is True, row["config_path"])
         assert_true(debug.get("retain_rdata_if_launched") is True, row["config_path"])
+        assert_true(debug.get("experiment_id") == row["experiment_id"], row["config_path"])
     return {
         "metadata": metadata,
         "rows": len(rows),
         "queue_rows": len(queue_rows),
+        "experiment_scope": metadata.get("experiment_scope", "a0"),
+        "experiments": sorted({row["experiment_id"] for row in rows}),
         "spec_id": metadata.get("discount_spec", {}).get("spec_id", ""),
         "requires_user_discount_decision": metadata.get("requires_user_discount_decision"),
     }
@@ -104,6 +121,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--source-artifact-root", type=Path, default=SOURCE_ARTIFACT_ROOT)
     parser.add_argument("--discount-spec-yaml", type=Path)
     parser.add_argument("--lane-scope", choices=["representative", "all_failed"], default="representative")
+    parser.add_argument("--experiment-scope", choices=["a0", "a1", "a2", "a3", "a4", "ladder"], default="a0")
     parser.add_argument("--outdir", type=Path)
     return parser.parse_args()
 
@@ -116,13 +134,18 @@ def main() -> int:
         source_artifact_root=args.source_artifact_root.resolve(),
         discount_spec_path=args.discount_spec_yaml,
         lane_scope=args.lane_scope,
+        experiment_scope=args.experiment_scope,
     )
     summary = {
         "validated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "artifact_root": str(artifact_root),
         "source_artifact_root": str(args.source_artifact_root.resolve()),
         "lane_scope": args.lane_scope,
-        "checks": validate_package(artifact_root, expected_lane_scope=args.lane_scope),
+        "checks": validate_package(
+            artifact_root,
+            expected_lane_scope=args.lane_scope,
+            expected_experiment_scope=args.experiment_scope,
+        ),
         "launch_performed": False,
     }
     outdir = args.outdir.resolve() if args.outdir else artifact_root / "control" / "diagnostic_validation"
@@ -135,6 +158,7 @@ def main() -> int:
                 "",
                 f"- artifact_root: `{artifact_root}`",
                 f"- lane_scope: `{args.lane_scope}`",
+                f"- experiment_scope: `{summary['checks']['experiment_scope']}`",
                 "- launch_performed: `False`",
                 f"- rows: `{summary['checks']['rows']}`",
                 f"- queue_rows: `{summary['checks']['queue_rows']}`",

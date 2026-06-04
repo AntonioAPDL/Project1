@@ -339,11 +339,11 @@ family_shared_transfer_design_diagnostics <- function(
     condition_rows(X_f, "forecast")
   )
   metadata <- data.frame(
-    mode = as.character(mode),
+    mode = rep(as.character(mode), length(feature_names)),
     feature_index = seq_along(feature_names),
     feature_name = as.character(feature_names),
-    history_n = nrow(X),
-    forecast_n = if (is.null(X_f)) 0L else nrow(X_f),
+    history_n = rep(nrow(X), length(feature_names)),
+    forecast_n = rep(if (is.null(X_f)) 0L else nrow(X_f), length(feature_names)),
     stringsAsFactors = FALSE
   )
 
@@ -357,9 +357,20 @@ family_shared_transfer_design_diagnostics <- function(
   list(summary = summary, condition = condition, metadata = metadata)
 }
 
-family_shared_build_feature_matrices <- function(path, history_dates, forecast_dates = NULL, fill_value = 0, scale_with_history = TRUE) {
+family_shared_build_feature_matrices <- function(
+  path,
+  history_dates,
+  forecast_dates = NULL,
+  fill_value = 0,
+  scale_with_history = TRUE,
+  scale_mode = "sd"
+) {
   history_dates <- as.Date(history_dates)
   forecast_dates <- as.Date(forecast_dates)
+  scale_mode <- tolower(trimws(as.character(scale_mode[[1L]])))
+  if (!scale_mode %in% c("sd", "zscore")) {
+    scale_mode <- "sd"
+  }
   if (is.null(path) || !nzchar(path) || !file.exists(path)) {
     return(list(
       history = matrix(numeric(0), nrow = length(history_dates), ncol = 0L),
@@ -387,8 +398,11 @@ family_shared_build_feature_matrices <- function(path, history_dates, forecast_d
     hist_vals_raw <- family_shared_align_by_dates(src_dates, vals, history_dates, fill_value = NA_real_)
     fore_vals_raw <- family_shared_align_by_dates(src_dates, vals, forecast_dates, fill_value = NA_real_)
     if (isTRUE(scale_with_history)) {
-      scaled <- family_shared_sd_scale_history_future(hist_vals_raw, fore_vals_raw)
+      scaled <- family_shared_scale_history_future(hist_vals_raw, fore_vals_raw, mode = scale_mode)
       fill_scaled <- as.numeric(fill_value) / scaled$sd
+      if (identical(scale_mode, "zscore")) {
+        fill_scaled <- (as.numeric(fill_value) - scaled$center) / scaled$sd
+      }
       hist_vals <- scaled$history
       fore_vals <- scaled$future
       hist_vals[!is.finite(hist_vals_raw)] <- fill_scaled
@@ -448,15 +462,40 @@ family_shared_build_featurecov_design_matrices <- function(
   forecast_dates,
   feature_path = "",
   fill_value = 0,
-  selected_feature_names = NULL
+  selected_feature_names = NULL,
+  feature_mode = "full",
+  scaling_mode = "sd"
 ) {
   history_dates <- as.Date(history_dates)
   forecast_dates <- as.Date(forecast_dates)
   history_n <- length(history_dates)
   forecast_n <- length(forecast_dates)
+  feature_mode <- tolower(trimws(as.character(feature_mode[[1L]])))
+  if (!feature_mode %in% c("full", "base_only", "custom", "none")) {
+    feature_mode <- "full"
+  }
+  scaling_mode <- tolower(trimws(as.character(scaling_mode[[1L]])))
+  if (!scaling_mode %in% c("sd", "zscore")) {
+    scaling_mode <- "sd"
+  }
 
   if (!is.data.frame(history_df)) history_df <- as.data.frame(history_df)
   if (!is.data.frame(forecast_df)) forecast_df <- as.data.frame(forecast_df)
+
+  if (identical(feature_mode, "none")) {
+    X <- matrix(numeric(0), nrow = history_n, ncol = 0L)
+    X_f <- matrix(numeric(0), nrow = forecast_n, ncol = 0L)
+    colnames(X) <- character(0)
+    colnames(X_f) <- character(0)
+    return(list(
+      X = X,
+      X_f = X_f,
+      mode = paste("transfer_level_only", scaling_mode, sep = "_"),
+      feature_names = character(0),
+      feature_mode = feature_mode,
+      scaling_mode = scaling_mode
+    ))
+  }
 
   if (nzchar(feature_path) && file.exists(feature_path)) {
     feature_bundle <- family_shared_build_feature_matrices(
@@ -464,7 +503,8 @@ family_shared_build_featurecov_design_matrices <- function(
       history_dates = history_dates,
       forecast_dates = forecast_dates,
       fill_value = fill_value,
-      scale_with_history = TRUE
+      scale_with_history = TRUE,
+      scale_mode = scaling_mode
     )
     # Keep SD-only scaling from the engineered feature table, but do not
     # append an explicit intercept feature. The transfer block already has its
@@ -484,8 +524,10 @@ family_shared_build_featurecov_design_matrices <- function(
     return(list(
       X = selected$X,
       X_f = selected$X_f,
-      mode = "engineered_feature_table",
-      feature_names = selected$feature_names
+      mode = paste("engineered_feature_table", scaling_mode, sep = "_"),
+      feature_names = selected$feature_names,
+      feature_mode = feature_mode,
+      scaling_mode = scaling_mode
     ))
   }
 
@@ -511,8 +553,8 @@ family_shared_build_featurecov_design_matrices <- function(
     PCA = fore_pca
   )
 
-  # Legacy fallback mirrors the no-centering, SD-only scaling contract, but
-  # likewise omits an explicit intercept feature from the transfer design.
+  # Legacy fallback omits an explicit intercept feature from the transfer
+  # design. The default scaling is the historical SD-only contract.
   X <- base_hist
   X_f <- base_fore
 
@@ -523,9 +565,6 @@ family_shared_build_featurecov_design_matrices <- function(
   x_ext[, 4L] <- c(0, X[seq_len(history_n - 1L), 1L])^2
   x_ext[, 5L] <- c(0, 0, X[seq_len(history_n - 2L), 1L])^2
 
-  ext_sds <- apply(x_ext, 2, family_shared_safe_sd)
-  x_ext <- sweep(x_ext, 2, ext_sds, FUN = "/")
-
   x_ext_f <- matrix(NA_real_, ncol = 5L, nrow = forecast_n)
   x_ext_f[, 1L] <- c(X[history_n, 1L], X_f[seq_len(forecast_n - 1L), 1L])
   x_ext_f[, 2L] <- c(X[history_n - 1L, 1L], X[history_n, 1L], X_f[seq_len(forecast_n - 2L), 1L])
@@ -533,10 +572,20 @@ family_shared_build_featurecov_design_matrices <- function(
   x_ext_f[, 4L] <- c(X[history_n, 1L], X_f[seq_len(forecast_n - 1L), 1L])^2
   x_ext_f[, 5L] <- c(X[history_n - 1L, 1L], X[history_n, 1L], X_f[seq_len(forecast_n - 2L), 1L])^2
 
-  main_sds <- apply(X[, 1:3, drop = FALSE], 2, family_shared_safe_sd)
-  X[, 1:3] <- sweep(X[, 1:3, drop = FALSE], 2, main_sds, FUN = "/")
-  X_f[, 1:3] <- sweep(X_f[, 1:3, drop = FALSE], 2, main_sds, FUN = "/")
-  x_ext_f <- sweep(x_ext_f, 2, ext_sds, FUN = "/")
+  scale_pair <- function(hist_mat, fore_mat) {
+    for (j in seq_len(ncol(hist_mat))) {
+      scaled <- family_shared_scale_history_future(hist_mat[, j], fore_mat[, j], mode = scaling_mode)
+      hist_mat[, j] <- scaled$history
+      fore_mat[, j] <- scaled$future
+    }
+    list(history = hist_mat, forecast = fore_mat)
+  }
+  main_scaled <- scale_pair(X[, 1:3, drop = FALSE], X_f[, 1:3, drop = FALSE])
+  X[, 1:3] <- main_scaled$history
+  X_f[, 1:3] <- main_scaled$forecast
+  ext_scaled <- scale_pair(x_ext, x_ext_f)
+  x_ext <- ext_scaled$history
+  x_ext_f <- ext_scaled$forecast
 
   X <- cbind(X, x_ext)
   X_f <- cbind(X_f, x_ext_f)
@@ -555,8 +604,10 @@ family_shared_build_featurecov_design_matrices <- function(
   list(
     X = selected$X,
     X_f = selected$X_f,
-    mode = "legacy_precip_extension",
-    feature_names = selected$feature_names
+    mode = paste("legacy_precip_extension", scaling_mode, sep = "_"),
+    feature_names = selected$feature_names,
+    feature_mode = feature_mode,
+    scaling_mode = scaling_mode
   )
 }
 
@@ -613,8 +664,41 @@ family_shared_sd_scale_history_future <- function(history, future = NULL) {
   list(
     history = history_scaled,
     future = future_scaled,
-    sd = sd_hist
+    sd = sd_hist,
+    center = 0
   )
+}
+
+family_shared_zscore_history_future <- function(history, future = NULL) {
+  history <- as.numeric(history)
+  future <- as.numeric(future)
+  hist_finite <- history[is.finite(history)]
+  center_hist <- if (length(hist_finite)) mean(hist_finite, na.rm = TRUE) else 0
+  if (!is.finite(center_hist)) {
+    center_hist <- 0
+  }
+  sd_hist <- suppressWarnings(stats::sd(hist_finite, na.rm = TRUE))
+  if (!is.finite(sd_hist) || sd_hist <= 1e-8) {
+    sd_hist <- 1
+  }
+  history_scaled <- (history - center_hist) / sd_hist
+  history_scaled[!is.finite(history_scaled)] <- 0
+  future_scaled <- (future - center_hist) / sd_hist
+  future_scaled[!is.finite(future_scaled)] <- 0
+  list(
+    history = history_scaled,
+    future = future_scaled,
+    sd = sd_hist,
+    center = center_hist
+  )
+}
+
+family_shared_scale_history_future <- function(history, future = NULL, mode = "sd") {
+  mode <- tolower(trimws(as.character(mode[[1L]])))
+  if (identical(mode, "zscore")) {
+    return(family_shared_zscore_history_future(history, future))
+  }
+  family_shared_sd_scale_history_future(history, future)
 }
 
 family_shared_covariate_preferences <- function(cov_name) {

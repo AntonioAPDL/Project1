@@ -175,7 +175,9 @@ if (use_covariates) {
 
   Gx <- as.matrix(bdiag(lambda, diag(px)))
   Gx <- array(rep(Gx, TT), dim = c(ppx, ppx, TT))
-  Gx[1, 2:ppx, ] <- as.matrix(t(X))
+  if (ppx > 1L) {
+    Gx[1, 2:ppx, ] <- as.matrix(t(X))
+  }
   GGx[(dim(GG)[1]+1):dim(GGx)[1],(dim(GG)[2]+1):dim(GGx)[1],] <- Gx
 
   model$FF <- FFx

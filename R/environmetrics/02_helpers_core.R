@@ -2505,12 +2505,13 @@ dlm_df = function(y, model, df, dim.df, s.priors = list(l0=1,S0=10), just.lik=FA
 make_df_mat = function(df,dim.df,n){
   if(sum(dim.df)!=n){ stop("sum of component dimensions given in dim.df does not match m0") }
   if(length(df)!=length(dim.df)){ stop("length of component discount factors does not match length of component dimensions") }
-  dfs = rep(df,dim.df)
   n.dfs = length(dim.df)
   ind.dfs = c(0,sapply(1:length(dim.df),function(x){sum(dim.df[1:x])}),n)
   df.mat = matrix(0,n,n)
   for(j in 1:n.dfs){
-    df.mat[(ind.dfs[j]+1):ind.dfs[(j+1)],(ind.dfs[j]+1):ind.dfs[(j+1)]] = (1-dfs[ind.dfs[(j+1)]])/dfs[ind.dfs[(j+1)]]
+    if (dim.df[j] <= 0L) next
+    idx <- (ind.dfs[j]+1):ind.dfs[(j+1)]
+    df.mat[idx, idx] = (1-df[j])/df[j]
   }
   return(df.mat)
 }
@@ -2742,12 +2743,13 @@ dlm_df = function(y, model, df, dim.df, s.priors = list(l0=1,S0=10), just.lik=FA
 make_df_mat = function(df,dim.df,n){
   if(sum(dim.df)!=n){ stop("sum of component dimensions given in dim.df does not match m0") }
   if(length(df)!=length(dim.df)){ stop("length of component discount factors does not match length of component dimensions") }
-  dfs = rep(df,dim.df)
   n.dfs = length(dim.df)
   ind.dfs = c(0,sapply(1:length(dim.df),function(x){sum(dim.df[1:x])}),n)
   df.mat = matrix(0,n,n)
   for(j in 1:n.dfs){
-    df.mat[(ind.dfs[j]+1):ind.dfs[(j+1)],(ind.dfs[j]+1):ind.dfs[(j+1)]] = (1-dfs[ind.dfs[(j+1)]])/dfs[ind.dfs[(j+1)]]
+    if (dim.df[j] <= 0L) next
+    idx <- (ind.dfs[j]+1):ind.dfs[(j+1)]
+    df.mat[idx, idx] = (1-df[j])/df[j]
   }
   return(df.mat)
 }
@@ -2755,12 +2757,13 @@ make_df_mat = function(df,dim.df,n){
 make_df_mat_k = function(df,dim.df,n,k){
   if(sum(dim.df)!=n){ stop("sum of component dimensions given in dim.df does not match m0") }
   if(length(df)!=length(dim.df)){ stop("length of component discount factors does not match length of component dimensions") }
-  dfs = rep(df,dim.df)
   n.dfs = length(dim.df)
   ind.dfs = c(0,sapply(1:length(dim.df),function(x){sum(dim.df[1:x])}),n)
   df.mat = matrix(0,n,n)
   for(j in 1:n.dfs){
-    df.mat[(ind.dfs[j]+1):ind.dfs[(j+1)],(ind.dfs[j]+1):ind.dfs[(j+1)]] = (1-dfs[ind.dfs[(j+1)]]^k)/dfs[ind.dfs[(j+1)]]^k
+    if (dim.df[j] <= 0L) next
+    idx <- (ind.dfs[j]+1):ind.dfs[(j+1)]
+    df.mat[idx, idx] = (1-df[j]^k)/df[j]^k
   }
   return(df.mat)
 }

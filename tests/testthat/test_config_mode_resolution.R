@@ -24,6 +24,16 @@ test_that("unified config defaults include new likelihood and ndlm transfer mode
   expect_equal(cfg$post$multivar_component_diagnostics$quantile, 0.50)
   expect_equal(cfg$post$multivar_component_diagnostics$pre_days, 30L)
   expect_equal(cfg$post$multivar_component_diagnostics$fail_fast, TRUE)
+  expect_equal(cfg$inputs$transfer_function_covariates$mode, "full")
+  expect_equal(cfg$inputs$transfer_function_covariates$scaling, "sd")
+  expect_equal(unified_resolve_transfer_feature_mode(cfg), "full")
+  expect_equal(unified_resolve_transfer_feature_scaling(cfg), "sd")
+  expect_equal(unified_resolve_transfer_feature_columns(cfg), c(
+    "PPT", "SOIL", "PCA",
+    "PPT_sq", "SOIL_sq", "PPT_x_SOIL",
+    "PPT_lag1", "PPT_lag2", "PPT_lag3",
+    "SOIL_lag1", "SOIL_lag2", "SOIL_lag3"
+  ))
   expect_equal(cfg$fit$exdqlm_multivar$latent_ablation$mode, "free")
   expect_equal(cfg$fit$exdqlm_multivar$latent_ablation$e_inv_u_cap, 5000)
   expect_equal(cfg$fit$exdqlm_multivar$latent_ablation$e_u_cap, 1e6)
@@ -55,11 +65,21 @@ test_that("mode resolvers normalize invalid values safely", {
   cfg$models$exdqlm_multivar$likelihood_mode <- "bad_mode"
   cfg$models$ndlm_main$forecast_transfer_mode <- "BAD"
   cfg$models$ndlm_univar$forecast_transfer_mode <- "BAD"
+  cfg$inputs$transfer_function_covariates$mode <- "BAD"
+  cfg$inputs$transfer_function_covariates$scaling <- "BAD"
 
   expect_equal(unified_resolve_univar_likelihood_mode(cfg), "al")
   expect_equal(unified_resolve_multivar_likelihood_mode(cfg), "exal")
   expect_equal(unified_resolve_ndlm_forecast_transfer_mode(cfg), "keep")
   expect_equal(unified_resolve_ndlm_univar_forecast_transfer_mode(cfg), "keep")
+  expect_equal(unified_resolve_transfer_feature_mode(cfg), "full")
+  expect_equal(unified_resolve_transfer_feature_scaling(cfg), "sd")
+
+  cfg$inputs$transfer_function_covariates$mode <- "none"
+  expect_equal(unified_resolve_transfer_feature_columns(cfg), character(0))
+  cfg$inputs$transfer_function_covariates$mode <- "base_only"
+  cfg$inputs$transfer_function_covariates$base_covariates <- c("PPT", "SOIL")
+  expect_equal(unified_resolve_transfer_feature_columns(cfg), c("PPT", "SOIL"))
 })
 
 test_that("config validation rejects invalid likelihood and ndlm transfer modes", {
@@ -68,6 +88,8 @@ test_that("config validation rejects invalid likelihood and ndlm transfer modes"
   cfg$models$exdqlm_multivar$likelihood_mode <- "bogus"
   cfg$models$ndlm_main$forecast_transfer_mode <- "bogus"
   cfg$models$ndlm_univar$forecast_transfer_mode <- "bogus"
+  cfg$inputs$transfer_function_covariates$mode <- "bogus"
+  cfg$inputs$transfer_function_covariates$scaling <- "bogus"
 
   errs <- unified_validate_config(cfg)
 
@@ -75,6 +97,21 @@ test_that("config validation rejects invalid likelihood and ndlm transfer modes"
   expect_true(any(grepl("models\\.exdqlm_multivar\\.likelihood_mode", errs)))
   expect_true(any(grepl("models\\.ndlm_main\\.forecast_transfer_mode", errs)))
   expect_true(any(grepl("models\\.ndlm_univar\\.forecast_transfer_mode", errs)))
+  expect_true(any(grepl("inputs\\.transfer_function_covariates\\.mode", errs)))
+  expect_true(any(grepl("inputs\\.transfer_function_covariates\\.scaling", errs)))
+})
+
+test_that("transfer function covariate validation permits explicit transfer-level-only mode", {
+  cfg <- unified_config_defaults()
+  cfg$inputs$transfer_function_covariates <- list(
+    mode = "none",
+    scaling = "sd",
+    base_covariates = character(0),
+    engineered_terms = character(0)
+  )
+
+  expect_equal(unified_resolve_transfer_feature_columns(cfg), character(0))
+  expect_false(any(grepl("transfer_function_covariates", unified_validate_config(cfg))))
 })
 
 test_that("config validation rejects invalid ndlm stabilization controls", {

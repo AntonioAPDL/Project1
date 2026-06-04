@@ -96,6 +96,67 @@ DEFAULT_DIAGNOSTIC_LANES: list[dict[str, str]] = [
     },
 ]
 
+DEFAULT_TRANSFER_BASE_FEATURES = ["PPT", "SOIL", "PCA"]
+DEFAULT_TRANSFER_ENGINEERED_FEATURES = [
+    "PPT_sq",
+    "SOIL_sq",
+    "PPT_x_SOIL",
+    "PPT_lag1",
+    "PPT_lag2",
+    "PPT_lag3",
+    "SOIL_lag1",
+    "SOIL_lag2",
+    "SOIL_lag3",
+]
+
+TRANSFER_EXPERIMENTS: list[dict[str, Any]] = [
+    {
+        "experiment_id": "a0_full_sd",
+        "label": "A0",
+        "description": "Current high-discount AL-M-T0 full transfer design with historical SD-only scaling.",
+        "mode": "full",
+        "scaling": "sd",
+        "base_covariates": DEFAULT_TRANSFER_BASE_FEATURES,
+        "engineered_terms": DEFAULT_TRANSFER_ENGINEERED_FEATURES,
+    },
+    {
+        "experiment_id": "a1_transfer_level_only",
+        "label": "A1",
+        "description": "Transfer level only; no covariate driver rows.",
+        "mode": "none",
+        "scaling": "sd",
+        "base_covariates": [],
+        "engineered_terms": [],
+    },
+    {
+        "experiment_id": "a2_full_zscore",
+        "label": "A2",
+        "description": "Full transfer design with history-fitted mean-zero unit-SD scaling.",
+        "mode": "full",
+        "scaling": "zscore",
+        "base_covariates": DEFAULT_TRANSFER_BASE_FEATURES,
+        "engineered_terms": DEFAULT_TRANSFER_ENGINEERED_FEATURES,
+    },
+    {
+        "experiment_id": "a3_base_sd",
+        "label": "A3",
+        "description": "Base transfer covariates only with historical SD-only scaling.",
+        "mode": "base_only",
+        "scaling": "sd",
+        "base_covariates": DEFAULT_TRANSFER_BASE_FEATURES,
+        "engineered_terms": [],
+    },
+    {
+        "experiment_id": "a4_base_zscore",
+        "label": "A4",
+        "description": "Base transfer covariates only with history-fitted mean-zero unit-SD scaling.",
+        "mode": "base_only",
+        "scaling": "zscore",
+        "base_covariates": DEFAULT_TRANSFER_BASE_FEATURES,
+        "engineered_terms": [],
+    },
+]
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -162,6 +223,10 @@ def matrix_row_from_diagnostic_row(row: dict[str, Any]) -> dict[str, Any]:
         "quantile_submodels": f"{q_float_value:.2f}",
         "active_quantiles": f"{q_float_value:.2f}",
         "spec_id": row["spec_id"],
+        "experiment_id": row["experiment_id"],
+        "transfer_feature_mode": row["transfer_feature_mode"],
+        "transfer_feature_scaling": row["transfer_feature_scaling"],
+        "transfer_feature_columns": row["transfer_feature_columns"],
         "failure_signature": row["failure_signature"],
         "no_launch_guarded": row["no_launch"],
         "fit_only": row["fit_only"],
@@ -181,9 +246,10 @@ def nested(payload: dict[str, Any], keys: list[str], default: Any = None) -> Any
     return cur
 
 
-def diagnostic_run_id(cutoff: str, q: str, spec_id: str) -> str:
+def diagnostic_run_id(cutoff: str, q: str, spec_id: str, experiment_id: str = "a0_full_sd") -> str:
     safe_spec = "".join(ch if ch.isalnum() else "_" for ch in spec_id).strip("_").lower()
-    return f"diagnostic_{cutoff}_{TARGET_FAMILY}_q{q}_{safe_spec}"
+    safe_experiment = "".join(ch if ch.isalnum() else "_" for ch in experiment_id).strip("_").lower()
+    return f"diagnostic_{cutoff}_{TARGET_FAMILY}_q{q}_{safe_spec}_{safe_experiment}"
 
 
 def load_discount_spec(path: Path | None) -> dict[str, Any]:
@@ -232,6 +298,24 @@ def apply_discount_spec(cfg: dict[str, Any], spec: dict[str, Any]) -> None:
         fit_model.setdefault("legacy", {}).setdefault("forecast_cov", {}).update(deepcopy(forecast_cov_patch))
 
 
+def apply_transfer_experiment(cfg: dict[str, Any], experiment: dict[str, Any]) -> None:
+    cfg.setdefault("inputs", {})["transfer_function_covariates"] = {
+        "mode": experiment["mode"],
+        "scaling": experiment["scaling"],
+        "base_covariates": list(experiment["base_covariates"]),
+        "engineered_terms": list(experiment["engineered_terms"]),
+    }
+    cfg["debug_he2_al_m_t0_transfer_experiment"] = {
+        "experiment_id": experiment["experiment_id"],
+        "label": experiment["label"],
+        "description": experiment["description"],
+        "mode": experiment["mode"],
+        "scaling": experiment["scaling"],
+        "base_covariates": list(experiment["base_covariates"]),
+        "engineered_terms": list(experiment["engineered_terms"]),
+    }
+
+
 def prepare_config(
     *,
     source_root: Path,
@@ -240,6 +324,7 @@ def prepare_config(
     cutoff: str,
     q: str,
     spec: dict[str, Any],
+    experiment: dict[str, Any],
     code_commit: str,
 ) -> tuple[dict[str, Any], Path, str]:
     src_path = source_config_path(source_root, cutoff)
@@ -247,7 +332,7 @@ def prepare_config(
         raise FileNotFoundError(f"missing source exAL-M-T0 config: {src_path}")
     source_cfg = load_yaml(src_path)
     spec_id = str(spec["spec_id"])
-    run_id = diagnostic_run_id(cutoff, q, spec_id)
+    run_id = diagnostic_run_id(cutoff, q, spec_id, str(experiment["experiment_id"]))
     target_cfg_path = config_dir / f"{run_id}.yaml"
     cfg = clone_config(
         source_cfg,
@@ -281,6 +366,7 @@ def prepare_config(
     stages["fit"] = True
 
     apply_discount_spec(cfg, spec)
+    apply_transfer_experiment(cfg, experiment)
 
     cfg["debug_he2_al_m_t0_diagnostic"] = {
         "status": "prepared_not_launched",
@@ -289,12 +375,14 @@ def prepare_config(
         "cutoff": cutoff,
         "q": q,
         "spec_id": spec_id,
+        "experiment_id": experiment["experiment_id"],
         "source_run_id": source_run_id(cutoff),
         "source_artifact_root": str(source_root),
         "target_artifact_root": str(artifact_root),
         "run_id": run_id,
         "config_path": str(target_cfg_path),
         "discount_spec": spec,
+        "transfer_experiment": experiment,
         "retain_rdata_if_launched": True,
         "launch_status": "blocked_until_user_confirms_discount_spec_and_launch",
     }
@@ -309,12 +397,24 @@ def select_lanes(scope: str) -> list[dict[str, str]]:
     raise ValueError(f"unknown lane scope: {scope}")
 
 
+def select_experiments(scope: str) -> list[dict[str, Any]]:
+    if scope == "a0":
+        return [deepcopy(TRANSFER_EXPERIMENTS[0])]
+    for experiment in TRANSFER_EXPERIMENTS:
+        if scope == str(experiment["label"]).lower():
+            return [deepcopy(experiment)]
+    if scope == "ladder":
+        return [deepcopy(row) for row in TRANSFER_EXPERIMENTS]
+    raise ValueError(f"unknown experiment scope: {scope}")
+
+
 def build_package(
     artifact_root: Path,
     *,
     source_artifact_root: Path = SOURCE_ARTIFACT_ROOT,
     discount_spec_path: Path | None = None,
     lane_scope: str = "representative",
+    experiment_scope: str = "a0",
 ) -> dict[str, Any]:
     artifact_root = artifact_root.resolve()
     source_artifact_root = source_artifact_root.resolve()
@@ -325,56 +425,68 @@ def build_package(
 
     spec = load_discount_spec(discount_spec_path)
     lanes = select_lanes(lane_scope)
+    experiments = select_experiments(experiment_scope)
     code_commit = git_head()
     rows: list[dict[str, Any]] = []
-    for idx, lane in enumerate(lanes, start=1):
-        cfg, cfg_path, run_id = prepare_config(
-            source_root=source_artifact_root,
-            artifact_root=artifact_root,
-            config_dir=config_dir,
-            cutoff=lane["cutoff"],
-            q=lane["q"],
-            spec=spec,
-            code_commit=code_commit,
-        )
-        write_yaml(cfg_path, cfg)
-        state = nested(cfg, ["models", TARGET_MODEL_KEY, "state_evolution"], {}) or {}
-        forecast_cov = nested(cfg, ["fit", TARGET_MODEL_KEY, "legacy", "forecast_cov"], {}) or {}
-        rows.append(
-            {
-                "order_index": idx,
-                "cutoff": lane["cutoff"],
-                "q": lane["q"],
-                "tier": lane["tier"],
-                "failure_signature": lane["failure_signature"],
-                "family_id": TARGET_FAMILY,
-                "manuscript_label": TARGET_LABEL,
-                "model_id": TARGET_MODEL_ID,
-                "model_key": TARGET_MODEL_KEY,
-                "likelihood_mode": "al",
-                "transfer_mode": "drop",
-                "spec_id": spec["spec_id"],
-                "requires_user_discount_decision": str(bool(spec.get("requires_user_discount_decision", False))),
-                "run_id": run_id,
-                "config_path": str(cfg_path),
-                "source_run_id": source_run_id(lane["cutoff"]),
-                "source_config_path": str(source_config_path(source_artifact_root, lane["cutoff"])),
-                "df_t": state.get("df_t", ""),
-                "df_s1": state.get("df_s1", ""),
-                "df_s2": state.get("df_s2", ""),
-                "df_s67": state.get("df_s67", ""),
-                "df_discrep": state.get("df_discrep", ""),
-                "lambda": state.get("lambda", ""),
-                "df_trans": state.get("df_trans", ""),
-                "df_covs": state.get("df_covs", ""),
-                "forecast_cov_epsilon": forecast_cov.get("epsilon", ""),
-                "c_factor": forecast_cov.get("c_factor", ""),
-                "max_iter": nested(cfg, ["fit", TARGET_MODEL_KEY, "gamma_sigma", "max_iter"], ""),
-                "no_launch": "True",
-                "fit_only": "True",
-                "cleanup_disabled_for_diagnostic": "True",
-            }
-        )
+    idx = 0
+    for experiment in experiments:
+        for lane in lanes:
+            idx += 1
+            cfg, cfg_path, run_id = prepare_config(
+                source_root=source_artifact_root,
+                artifact_root=artifact_root,
+                config_dir=config_dir,
+                cutoff=lane["cutoff"],
+                q=lane["q"],
+                spec=spec,
+                experiment=experiment,
+                code_commit=code_commit,
+            )
+            write_yaml(cfg_path, cfg)
+            state = nested(cfg, ["models", TARGET_MODEL_KEY, "state_evolution"], {}) or {}
+            forecast_cov = nested(cfg, ["fit", TARGET_MODEL_KEY, "legacy", "forecast_cov"], {}) or {}
+            feature_columns = list(experiment["base_covariates"]) + list(experiment["engineered_terms"])
+            rows.append(
+                {
+                    "order_index": idx,
+                    "cutoff": lane["cutoff"],
+                    "q": lane["q"],
+                    "tier": lane["tier"],
+                    "failure_signature": lane["failure_signature"],
+                    "family_id": TARGET_FAMILY,
+                    "manuscript_label": TARGET_LABEL,
+                    "model_id": TARGET_MODEL_ID,
+                    "model_key": TARGET_MODEL_KEY,
+                    "likelihood_mode": "al",
+                    "transfer_mode": "drop",
+                    "spec_id": spec["spec_id"],
+                    "experiment_id": experiment["experiment_id"],
+                    "experiment_label": experiment["label"],
+                    "experiment_description": experiment["description"],
+                    "transfer_feature_mode": experiment["mode"],
+                    "transfer_feature_scaling": experiment["scaling"],
+                    "transfer_feature_columns": ",".join(feature_columns),
+                    "requires_user_discount_decision": str(bool(spec.get("requires_user_discount_decision", False))),
+                    "run_id": run_id,
+                    "config_path": str(cfg_path),
+                    "source_run_id": source_run_id(lane["cutoff"]),
+                    "source_config_path": str(source_config_path(source_artifact_root, lane["cutoff"])),
+                    "df_t": state.get("df_t", ""),
+                    "df_s1": state.get("df_s1", ""),
+                    "df_s2": state.get("df_s2", ""),
+                    "df_s67": state.get("df_s67", ""),
+                    "df_discrep": state.get("df_discrep", ""),
+                    "lambda": state.get("lambda", ""),
+                    "df_trans": state.get("df_trans", ""),
+                    "df_covs": state.get("df_covs", ""),
+                    "forecast_cov_epsilon": forecast_cov.get("epsilon", ""),
+                    "c_factor": forecast_cov.get("c_factor", ""),
+                    "max_iter": nested(cfg, ["fit", TARGET_MODEL_KEY, "gamma_sigma", "max_iter"], ""),
+                    "no_launch": "True",
+                    "fit_only": "True",
+                    "cleanup_disabled_for_diagnostic": "True",
+                }
+            )
 
     queue_rows = [matrix_row_from_diagnostic_row(row) for row in rows]
     write_csv(matrix_dir / "diagnostic_matrix_plan.csv", rows)
@@ -391,7 +503,11 @@ def build_package(
         "matrix_dir": str(matrix_dir),
         "config_dir": str(config_dir),
         "lane_scope": lane_scope,
+        "experiment_scope": experiment_scope,
         "n_lanes": len(rows),
+        "n_lane_templates": len(lanes),
+        "n_experiments": len(experiments),
+        "experiments": experiments,
         "discount_spec_path": str(discount_spec_path) if discount_spec_path else "",
         "discount_spec": spec,
         "requires_user_discount_decision": bool(spec.get("requires_user_discount_decision", False)),
@@ -418,6 +534,7 @@ def build_package(
         f"- source root: `{source_artifact_root}`",
         f"- artifact root: `{artifact_root}`",
         f"- lane scope: `{lane_scope}`",
+        f"- experiment scope: `{experiment_scope}`",
         f"- lanes: `{len(rows)}`",
         f"- discount spec id: `{spec['spec_id']}`",
         f"- requires user discount decision: `{bool(spec.get('requires_user_discount_decision', False))}`",
@@ -443,6 +560,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--source-artifact-root", type=Path, default=SOURCE_ARTIFACT_ROOT)
     parser.add_argument("--discount-spec-yaml", type=Path)
     parser.add_argument("--lane-scope", choices=["representative", "all_failed"], default="representative")
+    parser.add_argument("--experiment-scope", choices=["a0", "a1", "a2", "a3", "a4", "ladder"], default="a0")
     return parser.parse_args()
 
 
@@ -453,6 +571,7 @@ def main() -> int:
         source_artifact_root=args.source_artifact_root,
         discount_spec_path=args.discount_spec_yaml,
         lane_scope=args.lane_scope,
+        experiment_scope=args.experiment_scope,
     )
     print(json.dumps(metadata, indent=2))
     return 0

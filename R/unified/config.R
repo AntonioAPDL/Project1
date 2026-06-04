@@ -13,6 +13,8 @@ unified_normalize_string_list <- function(x) {
 
 unified_default_transfer_function_covariates <- function() {
   list(
+    mode = "full",
+    scaling = "sd",
     base_covariates = c("PPT", "SOIL", "PCA"),
     engineered_terms = c(
       "PPT_sq",
@@ -37,11 +39,58 @@ unified_resolve_transfer_feature_columns <- function(cfg) {
   if (!is.list(block)) {
     block <- unified_default_transfer_function_covariates()
   }
+  mode_raw <- if (!is.null(block$mode) && length(block$mode) > 0L) block$mode else "full"
+  mode <- tolower(trimws(as.character(mode_raw)[[1L]]))
+  if (!mode %in% c("full", "base_only", "custom", "none")) {
+    mode <- "full"
+  }
+  if (identical(mode, "none")) {
+    return(character(0))
+  }
+  base_covs <- unified_normalize_string_list(block$base_covariates)
+  eng_terms <- unified_normalize_string_list(block$engineered_terms)
+  if (identical(mode, "base_only")) {
+    return(unique(base_covs[nzchar(base_covs)]))
+  }
   cols <- c(
-    unified_normalize_string_list(block$base_covariates),
-    unified_normalize_string_list(block$engineered_terms)
+    base_covs,
+    eng_terms
   )
   unique(cols[nzchar(cols)])
+}
+
+unified_resolve_transfer_feature_mode <- function(cfg) {
+  block <- unified_get(
+    cfg,
+    c("inputs", "transfer_function_covariates"),
+    default = unified_default_transfer_function_covariates()
+  )
+  if (!is.list(block)) {
+    block <- unified_default_transfer_function_covariates()
+  }
+  mode_raw <- if (!is.null(block$mode) && length(block$mode) > 0L) block$mode else "full"
+  mode <- tolower(trimws(as.character(mode_raw)[[1L]]))
+  if (!mode %in% c("full", "base_only", "custom", "none")) {
+    mode <- "full"
+  }
+  mode
+}
+
+unified_resolve_transfer_feature_scaling <- function(cfg) {
+  block <- unified_get(
+    cfg,
+    c("inputs", "transfer_function_covariates"),
+    default = unified_default_transfer_function_covariates()
+  )
+  if (!is.list(block)) {
+    block <- unified_default_transfer_function_covariates()
+  }
+  scaling_raw <- if (!is.null(block$scaling) && length(block$scaling) > 0L) block$scaling else "sd"
+  scaling <- tolower(trimws(as.character(scaling_raw)[[1L]]))
+  if (!scaling %in% c("sd", "zscore")) {
+    scaling <- "sd"
+  }
+  scaling
 }
 
 unified_resolve_source_run_dir <- function(source_run_root, source_run_id, fallback_run_root = NULL) {
@@ -1581,9 +1630,20 @@ unified_validate_config <- function(cfg) {
   if (!is.list(transfer_cov)) {
     add_err("inputs.transfer_function_covariates must be a map with base_covariates/engineered_terms")
   } else {
+    mode <- tolower(trimws(as.character(if (!is.null(transfer_cov$mode)) transfer_cov$mode else "full")[[1L]]))
+    scaling <- tolower(trimws(as.character(if (!is.null(transfer_cov$scaling)) transfer_cov$scaling else "sd")[[1L]]))
+    if (!mode %in% c("full", "base_only", "custom", "none")) {
+      add_err("inputs.transfer_function_covariates.mode must be one of: full, base_only, custom, none")
+    }
+    if (!scaling %in% c("sd", "zscore")) {
+      add_err("inputs.transfer_function_covariates.scaling must be one of: sd, zscore")
+    }
     base_covs <- unified_normalize_string_list(transfer_cov$base_covariates)
     eng_terms <- unified_normalize_string_list(transfer_cov$engineered_terms)
-    if (length(base_covs) + length(eng_terms) < 1L) {
+    if (!identical(mode, "none") && identical(mode, "base_only") && length(base_covs) < 1L) {
+      add_err("inputs.transfer_function_covariates base_only mode must select at least one base covariate")
+    }
+    if (!identical(mode, "none") && !identical(mode, "base_only") && length(base_covs) + length(eng_terms) < 1L) {
       add_err("inputs.transfer_function_covariates must select at least one transfer feature")
     }
   }

@@ -63,6 +63,62 @@ Results:
 - broader filtered R `testthat` pass: 572 pass, 0 fail, 3 expected warning assertions.
 - retained-output replay helper parse check: pass.
 
+## Targeted Transfer Ladder Implementation - 2026-06-04
+
+The Phase 5 A0-A4 ladder is now implemented in tracked code and launched in isolated diagnostic roots.
+
+Tracked implementation:
+
+| Surface | Status | Notes |
+|---|---|---|
+| Transfer feature modes | implemented | `inputs.transfer_function_covariates.mode` supports `full`, `base_only`, `custom`, and `none`; publication default remains `full` |
+| Transfer feature scaling | implemented | `inputs.transfer_function_covariates.scaling` supports historical `sd` and diagnostic `zscore` |
+| Transfer-level-only state setup | implemented | both `DISC_Optimal_Synth_Ranges_W.r` and `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r` now skip `2:ppx` assignments when `ppx == 1` |
+| Zero-sized discount blocks | implemented | legacy `make_df_mat(...)` and `make_df_mat_k(...)` skip zero-dimensional covariate blocks instead of indexing `2:1` |
+| Diagnostic package builder | implemented | `scripts/build_he2_dqlm_multivar_al_drop_diagnostic_plan.py` can prepare `a0`, `a1`, `a2`, `a3`, `a4`, or full `ladder` scopes |
+| Diagnostic launcher | implemented | `scripts/launch_he2_al_m_t0_representative_diagnostics.py` validates the requested experiment scope before launch |
+| Live monitor | implemented | `scripts/monitor_he2_al_m_t0_diagnostic_ladder.py` writes compact CSV/Markdown status across one or more diagnostic roots |
+
+Experiment definitions:
+
+| Experiment | Transfer design | Scaling | Purpose |
+|---|---|---|---|
+| `a0_full_sd` | full feature set | SD-only | current high-discount control with new guards/checks |
+| `a1_transfer_level_only` | transfer level only, no covariate rows | SD-only placeholder | tests whether covariate driver rows cause runaway |
+| `a2_full_zscore` | full feature set | history-fitted z-score | tests scale-driven instability |
+| `a3_base_sd` | `PPT`, `SOIL`, `PCA` only | SD-only | tests reduced identifiability |
+| `a4_base_zscore` | `PPT`, `SOIL`, `PCA` only | history-fitted z-score | candidate low-complexity stable specification |
+
+Validation commands added/run:
+
+```bash
+python3 -m unittest tests.python.test_he2_al_m_t0_diagnostic_plan -v
+Rscript --vanilla -e "library(testthat); test_file('tests/testthat/test_config_mode_resolution.R'); test_file('tests/testthat/test_covariate_feature_engineering.R'); test_file('tests/testthat/test_exdqlm_multivar_transfer_level_only_helpers.R')"
+Rscript --vanilla -e "invisible(parse('DISC_Optimal_Synth_Ranges_W.r')); invisible(parse('DISC_Optimal_Synth_Ranges_W_transfer_forecast.r')); invisible(parse('R/environmetrics/02_helpers_core.R')); cat('parse_ok\n')"
+```
+
+Observed validation status:
+
+- Python diagnostic-plan tests: 7 pass, 0 fail.
+- R config/covariate/transfer-level-only helper tests: pass, 0 fail.
+- Legacy DISC entrypoint parse check: pass.
+
+Runtime roots:
+
+| Root | Role | Status |
+|---|---|---|
+| `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_transfer_ladder_highdf_eps365_cf1_20260604` | first 20-lane A0-A4 launch | A0/A2/A3/A4 active; its A1 rows failed before the actual drop entrypoint was patched |
+| `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_a1_transfer_level_only_retry_highdf_eps365_cf1_20260604` | first A1 retry | failed for the same reason: `DISC_Optimal_Synth_Ranges_W.r` still had the zero-column `2:ppx` bug |
+| `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_a1_transfer_level_only_retry2_highdf_eps365_cf1_20260604` | patched A1 retry | active after patching the actual drop entrypoint |
+
+The failed A1 roots are retained as useful implementation evidence: they show that `transfer_level_only` exposed a real code-path gap in the drop entrypoint. They should not be interpreted as scientific model failures.
+
+Live status report:
+
+`reports/he2_al_m_t0_transfer_ladder_live_20260604/DIAGNOSTIC_LADDER_LIVE_STATUS.md`
+
+This report is intentionally untracked under `reports/`.
+
 ## Evidence Lock
 
 The plan is grounded in these verified facts:

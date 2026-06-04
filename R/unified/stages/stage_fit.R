@@ -981,6 +981,8 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       unified_resolve_transfer_feature_columns(cfg),
       collapse = ","
     )
+  exdqlm_transfer_feature_mode <- unified_resolve_transfer_feature_mode(cfg)
+  exdqlm_transfer_feature_scaling <- unified_resolve_transfer_feature_scaling(cfg)
     output_suffix <- unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC")
 
     warm_start_enabled <- isTRUE(unified_get(cfg, c("fit", "warm_start", "enabled"), default = FALSE))
@@ -1155,6 +1157,10 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_W_ENABLED_HARMONIC_INDICES = exdqlm_structure_harmonics,
       DISC_W_TRANSFER_FEATURE_COLUMNS = exdqlm_transfer_feature_columns,
       UNIFIED_TRANSFER_FEATURE_COLUMNS = exdqlm_transfer_feature_columns,
+      DISC_W_TRANSFER_FEATURE_MODE = exdqlm_transfer_feature_mode,
+      UNIFIED_TRANSFER_FEATURE_MODE = exdqlm_transfer_feature_mode,
+      DISC_W_TRANSFER_FEATURE_SCALING = exdqlm_transfer_feature_scaling,
+      UNIFIED_TRANSFER_FEATURE_SCALING = exdqlm_transfer_feature_scaling,
       DISC_W_CUTOFF_DATE = as.character(cutoff_date),
       DISC_W_FORECAST_START_DATE = as.character(forecast_start_date),
       DISC_W_OUTPUT_DIR = q_outputs,
