@@ -327,6 +327,15 @@ def apply_transfer_experiment(cfg: dict[str, Any], experiment: dict[str, Any]) -
     }
 
 
+def enforce_legacy_fit_call_contract(cfg: dict[str, Any]) -> None:
+    legacy = cfg.setdefault("fit", {}).setdefault(TARGET_MODEL_KEY, {}).setdefault("legacy", {})
+    # In the legacy multivariate entrypoint this setting gates the top-level
+    # objective call that performs fit, sampling, and save-state. It is not only
+    # an optional post-save diagnostic switch despite the historical name.
+    legacy["post_save_objective_enabled"] = True
+    legacy["post_save_jsd_enabled"] = False
+
+
 def prepare_config(
     *,
     source_root: Path,
@@ -378,6 +387,7 @@ def prepare_config(
 
     apply_discount_spec(cfg, spec)
     apply_transfer_experiment(cfg, experiment)
+    enforce_legacy_fit_call_contract(cfg)
 
     cfg["debug_he2_al_m_t0_diagnostic"] = {
         "status": "prepared_not_launched",
@@ -395,6 +405,11 @@ def prepare_config(
         "discount_spec": spec,
         "transfer_experiment": experiment,
         "retain_rdata_if_launched": True,
+        "legacy_fit_call_contract": (
+            "fit.exdqlm_multivar.legacy.post_save_objective_enabled is forced true because "
+            "DISC_Optimal_Synth_Ranges_W.r uses DISC_W_POST_SAVE_OBJECTIVE_ENABLED to call objective_deltas(), "
+            "which performs the actual fit and save-state. JSD remains disabled."
+        ),
         "launch_status": "blocked_until_user_confirms_discount_spec_and_launch",
     }
     return cfg, target_cfg_path, run_id
@@ -493,6 +508,12 @@ def build_package(
                     "forecast_cov_epsilon": forecast_cov.get("epsilon", ""),
                     "c_factor": forecast_cov.get("c_factor", ""),
                     "max_iter": nested(cfg, ["fit", TARGET_MODEL_KEY, "gamma_sigma", "max_iter"], ""),
+                    "legacy_fit_call_enabled": str(bool(nested(
+                        cfg, ["fit", TARGET_MODEL_KEY, "legacy", "post_save_objective_enabled"], False
+                    ))),
+                    "legacy_post_save_jsd_enabled": str(bool(nested(
+                        cfg, ["fit", TARGET_MODEL_KEY, "legacy", "post_save_jsd_enabled"], False
+                    ))),
                     "no_launch": "True",
                     "fit_only": "True",
                     "cleanup_disabled_for_diagnostic": "True",
@@ -552,6 +573,11 @@ def build_package(
         "",
         "The configs are single-quantile, fit-only diagnostics. They preserve outputs if eventually launched so that",
         "`E[s_t]`, `E[u_t]`, sigma, state norms, forecast covariance, and post-save Cholesky failures can be inspected.",
+        "",
+        "Important legacy bridge contract: `fit.exdqlm_multivar.legacy.post_save_objective_enabled` is forced",
+        "`true` in these fit-only configs because the historical multivariate entrypoint uses",
+        "`DISC_W_POST_SAVE_OBJECTIVE_ENABLED` to call `objective_deltas()`, which performs the actual fit and",
+        "save-state. `post_save_jsd_enabled` remains `false` to avoid optional KDE/JSD work.",
         "",
         "## Files",
         "",

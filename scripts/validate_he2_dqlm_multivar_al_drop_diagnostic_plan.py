@@ -98,6 +98,14 @@ def validate_package(
         assert_true(nested(cfg, ["run", "threads", "mc_cores"]) == 1, row["config_path"])
         assert_true(nested(cfg, ["stages", "fit"]) is True, row["config_path"])
         assert_true(nested(cfg, ["stages", "data_prep_shared"]) is True, row["config_path"])
+        assert_true(
+            nested(cfg, ["fit", TARGET_MODEL_KEY, "legacy", "post_save_objective_enabled"]) is True,
+            f"{row['config_path']} would skip the legacy objective_deltas() fit call",
+        )
+        assert_true(
+            nested(cfg, ["fit", TARGET_MODEL_KEY, "legacy", "post_save_jsd_enabled"]) is False,
+            f"{row['config_path']} should keep optional post-save JSD disabled for diagnostics",
+        )
         for stage in ["forecats", "post", "validate", "report"]:
             assert_true(nested(cfg, ["stages", stage]) is False, f"{row['config_path']} stage {stage} not disabled")
         debug = nested(cfg, ["debug_he2_al_m_t0_diagnostic"], {})
