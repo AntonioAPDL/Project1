@@ -730,3 +730,44 @@ Implement Phase 1 and Phase 2 together:
 4. replay retained q35/q65/q80 outputs through the new health code.
 
 This is the highest leverage first move because it prevents future silent promotion while preserving the ability to diagnose and tune the model scientifically.
+
+## Drop Runner Post-Save Gate Fix - 2026-06-04
+
+The A0-A4 diagnostic ladder exposed an implementation asymmetry between the two legacy multivariate
+entrypoints. `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r` already honored
+`DISC_W_POST_SAVE_OBJECTIVE_ENABLED` and `DISC_W_POST_SAVE_JSD_ENABLED`, but the active AL-M-T0 drop
+entrypoint, `DISC_Optimal_Synth_Ranges_W.r`, still ran the old post-save JSD/objective block
+unconditionally after saving `DISC_variables_*_exAL_synth_DISC.RData`.
+
+Observed evidence:
+
+- `diagnostic_20211221_dqlm_multivar_al_drop_q80_highdf_eps365_cf1_al_m_t0_20260603_a4_base_zscore`
+  saved its RData successfully and then failed in
+  `dmvnorm.deriv.unique -> chol2inv -> chol` because the optional post-save objective path received
+  a non-positive-definite matrix.
+- This is not a VB fit failure by itself; it is an optional legacy diagnostic failure occurring after
+  the fit artifact is written.
+
+Repair:
+
+- `DISC_Optimal_Synth_Ranges_W.r` now defines the same post-save objective/JSD environment switches
+  as the keep runner.
+- Its post-save objective block now emits `[post_save_objective] disabled ...` and skips the old
+  `objective_deltas(...)` call when `DISC_W_POST_SAVE_OBJECTIVE_ENABLED=FALSE`.
+- Its post-save JSD block now emits `[post_save_jsd] disabled ...` and skips the KDE/JSD computation
+  when `DISC_W_POST_SAVE_JSD_ENABLED=FALSE`.
+- `tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R` now asserts that both the keep
+  and drop legacy entrypoints expose the post-save switches and disabled log markers.
+
+Validation:
+
+- `Rscript --vanilla -e "invisible(parse('DISC_Optimal_Synth_Ranges_W.r')); invisible(parse('DISC_Optimal_Synth_Ranges_W_transfer_forecast.r')); cat('parse_ok\n')"`
+- `Rscript --vanilla -e "library(testthat); test_file('tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R')"`
+
+Operational consequence:
+
+- Already-launched diagnostic lanes can still exit nonzero after saving because they started before this
+  patch. For those lanes, terminal health should be replayed from the saved RData artifact rather than
+  treating the post-save objective crash as a model failure.
+- Future AL-M-T0 drop diagnostic launches should finish the fit stage cleanly when post-save objective
+  and JSD are disabled in the unified config.

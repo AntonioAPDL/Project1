@@ -98,9 +98,11 @@ testthat::test_that("u_t half-order GIG moments stay finite at extreme chi value
 })
 
 testthat::test_that("active runner uses stable latent formulas", {
-  runner <- testthat::test_path("..", "..", "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r")
-  src <- readLines(runner, warn = FALSE)
+  keep_runner <- testthat::test_path("..", "..", "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r")
+  drop_runner <- testthat::test_path("..", "..", "DISC_Optimal_Synth_Ranges_W.r")
+  src <- readLines(keep_runner, warn = FALSE)
   text <- paste(src, collapse = "\n")
+  drop_text <- paste(readLines(drop_runner, warn = FALSE), collapse = "\n")
 
   testthat::expect_false(grepl("log2\\(2\\*pi\\*exp\\(1\\)\\*s\\.sig2\\)", text))
   testthat::expect_false(grepl("HyperbolicDist::besselRatio", text, fixed = TRUE))
@@ -110,6 +112,10 @@ testthat::test_that("active runner uses stable latent formulas", {
   testthat::expect_true(grepl("DISC_PSEUDODATA_GUARD_MODE", text, fixed = TRUE))
   testthat::expect_true(grepl("DISC_W_POST_SAVE_OBJECTIVE_ENABLED", text, fixed = TRUE))
   testthat::expect_true(grepl("\\[post_save_objective\\] disabled", text))
+  testthat::expect_true(grepl("DISC_W_POST_SAVE_OBJECTIVE_ENABLED", drop_text, fixed = TRUE))
+  testthat::expect_true(grepl("\\[post_save_objective\\] disabled", drop_text))
+  testthat::expect_true(grepl("DISC_W_POST_SAVE_JSD_ENABLED", drop_text, fixed = TRUE))
+  testthat::expect_true(grepl("\\[post_save_jsd\\] disabled", drop_text))
   testthat::expect_true(grepl("DISC_GAMSIG_STATE_GUARD_START_ITER", text, fixed = TRUE))
   testthat::expect_true(grepl("state_guard_start_iter", text, fixed = TRUE))
   testthat::expect_true(grepl("state_guard_effective_policy", text, fixed = TRUE))
