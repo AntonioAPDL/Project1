@@ -109,19 +109,34 @@ def terminal_health(run_root: Path, q_label: str) -> dict[str, str]:
             "state_norm_sq_per_T": "",
             "transfer_level_max_abs": "",
             "max_abs_history_exps": "",
+            "transfer_coef_max_abs": "",
         }
     try:
         rows = read_csv(path)
     except Exception:
         rows = []
-    row = rows[0] if rows else {}
+    by_metric = {row.get("metric", ""): row for row in rows}
+    fail_n = sum(1 for row in rows if row.get("status", "") not in ("", "ok"))
+
+    def metric_value(name: str) -> str:
+        return by_metric.get(name, {}).get("value", "")
+
     return {
         "terminal_health_exists": "True",
-        "terminal_violation_n": row.get("violation_n", ""),
-        "state_norm_sq_per_T": row.get("state_norm_sq_per_T", ""),
-        "transfer_level_max_abs": row.get("transfer_level_max_abs", ""),
-        "max_abs_history_exps": row.get("max_abs_history_exps", ""),
+        "terminal_violation_n": str(fail_n),
+        "state_norm_sq_per_T": metric_value("state_norm_sq_per_T"),
+        "transfer_level_max_abs": metric_value("transfer_level_max_abs"),
+        "max_abs_history_exps": metric_value("max_abs_history_exps"),
+        "transfer_coef_max_abs": metric_value("transfer_coef_max_abs"),
     }
+
+
+def saved_rdata(run_root: Path, q_label: str) -> dict[str, str]:
+    outputs = run_root / "fit" / f"q={q_label}" / "outputs"
+    candidates = sorted(outputs.glob(f"DISC_variables_{q_label}_exAL_synth_*.RData"))
+    if not candidates:
+        return {"rdata_exists": "False", "rdata_path": ""}
+    return {"rdata_exists": "True", "rdata_path": str(candidates[-1])}
 
 
 def collect_root(root: Path, active: dict[str, str]) -> list[dict[str, Any]]:
@@ -137,6 +152,7 @@ def collect_root(root: Path, active: dict[str, str]) -> list[dict[str, Any]]:
         fit_log = run_root / "fit" / f"q={q_label}" / "logs" / "fit.log"
         progress = parse_progress(fit_log)
         health = terminal_health(run_root, q_label)
+        rdata = saved_rdata(run_root, q_label)
         out.append(
             {
                 "root": root.name,
@@ -154,6 +170,7 @@ def collect_root(root: Path, active: dict[str, str]) -> list[dict[str, Any]]:
                 "fit_log_tail": progress["fit_log_tail"],
                 "fit_message": fit_message,
                 **health,
+                **rdata,
                 "run_id": row.get("run_id", ""),
                 "config_path": row.get("config_path", ""),
             }
@@ -176,15 +193,18 @@ def write_markdown(path: Path, rows: list[dict[str, Any]], roots: list[Path]) ->
         f"- fit_pass: `{pass_n}`",
         f"- fit_fail: `{fail_n}`",
         "",
-        "| root | experiment | cutoff | q | fit | pid | iter | elbo | sigma | gamma | state norm sq | terminal health |",
-        "|---|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---|",
+        "| root | experiment | cutoff | q | fit | pid | iter | elbo | sigma | gamma | state norm sq | RData | term fail | state/T | transfer level | max exps |",
+        "|---|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|",
     ]
     for row in rows:
-        health = "yes" if row.get("terminal_health_exists") == "True" else ""
+        rdata = "yes" if row.get("rdata_exists") == "True" else ""
+        term_fail = row.get("terminal_violation_n", "")
         lines.append(
             f"| `{row['root']}` | `{row['experiment_id']}` | {row['cutoff']} | {row['lane']} | "
             f"{row['fit_status']} | {row['pid']} | {row['iter']} | {row['elbo']} | {row['sigma']} | "
-            f"{row['gamma']} | {row['state_norm_sq']} | {health} |"
+            f"{row['gamma']} | {row['state_norm_sq']} | {rdata} | {term_fail} | "
+            f"{row.get('state_norm_sq_per_T', '')} | {row.get('transfer_level_max_abs', '')} | "
+            f"{row.get('max_abs_history_exps', '')} |"
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

@@ -771,3 +771,17 @@ Operational consequence:
   treating the post-save objective crash as a model failure.
 - Future AL-M-T0 drop diagnostic launches should finish the fit stage cleanly when post-save objective
   and JSD are disabled in the unified config.
+
+## Terminal Ladder Findings - 2026-06-04
+
+The A0-A4 ladder completed with zero active processes and a complete terminal-health classification.
+The full findings are recorded in
+`docs/he2_al_m_t0_transfer_ladder_terminal_findings_20260604.md`.
+
+Main conclusion:
+
+- all q80 control lanes passed terminal health across the valid ladder;
+- all q35/q65 suspect lanes failed terminal health across the valid ladder;
+- `a1_transfer_level_only` still failed q35/q65, so the remaining instability is not solely caused by
+  transfer covariate driver rows;
+- the next diagnostic target should be the AL sigma/latent/state interaction, especially q35/q65 lanes.
