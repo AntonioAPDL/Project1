@@ -3705,16 +3705,32 @@ disc_w_diag_record_gamsig_update <- function(
   invisible(row)
 }
 
-disc_w_guard_summary <- function(values, quantity, block, iter, context_label, abs_cap = Inf, positive_required = FALSE) {
+disc_w_guard_summary <- function(
+  values,
+  quantity,
+  block,
+  iter,
+  context_label,
+  abs_cap = Inf,
+  positive_required = FALSE,
+  floor_min = NA_real_,
+  floor_frac_cap = NA_real_
+) {
   raw <- as.numeric(values)
   finite <- raw[is.finite(raw)]
   cap_exceed <- if (is.finite(abs_cap)) sum(abs(finite) > abs_cap) else 0L
   nonpositive <- if (isTRUE(positive_required)) sum(finite <= 0) else 0L
+  floor_n <- if (is.finite(floor_min)) sum(finite <= floor_min) else 0L
+  floor_frac <- if (length(finite) > 0L) floor_n / length(finite) else NA_real_
   status <- "ok"
   if (length(finite) < length(raw)) {
     status <- "nonfinite"
   } else if (nonpositive > 0L) {
     status <- "nonpositive"
+  } else if (is.finite(floor_frac) &&
+             is.finite(floor_frac_cap) &&
+             floor_frac > floor_frac_cap) {
+    status <- "floor_saturated"
   } else if (cap_exceed > 0L) {
     status <- "cap_exceeded"
   }
@@ -3734,6 +3750,10 @@ disc_w_guard_summary <- function(values, quantity, block, iter, context_label, a
     max_abs = if (length(finite)) max(abs(finite)) else NA_real_,
     abs_cap = as.numeric(abs_cap),
     cap_exceed_n = as.integer(cap_exceed),
+    floor_min = as.numeric(floor_min),
+    floor_n = as.integer(floor_n),
+    floor_frac = as.numeric(floor_frac),
+    floor_frac_cap = as.numeric(floor_frac_cap),
     status = status,
     stringsAsFactors = FALSE
   )
@@ -3745,7 +3765,13 @@ disc_w_diag_threshold <- function(name, default) {
   if (is.finite(val)) val else default
 }
 
-disc_w_diag_health_stats <- function(values, prefix, diag_values = FALSE, positive_required = FALSE) {
+disc_w_diag_health_stats <- function(
+  values,
+  prefix,
+  diag_values = FALSE,
+  positive_required = FALSE,
+  floor_min = NA_real_
+) {
   raw <- if (is.null(values)) {
     numeric(0)
   } else if (isTRUE(diag_values)) {
@@ -3761,6 +3787,14 @@ disc_w_diag_health_stats <- function(values, prefix, diag_values = FALSE, positi
     as.integer(sum(finite <= 0))
   } else {
     NA_integer_
+  }
+  floor_n <- if (is.finite(floor_min)) sum(finite <= floor_min) else NA_integer_
+  out[[paste0(prefix, "_floor_min")]] <- as.numeric(floor_min)
+  out[[paste0(prefix, "_floor_n")]] <- as.integer(floor_n)
+  out[[paste0(prefix, "_floor_frac")]] <- if (length(finite) > 0L && is.finite(floor_min)) {
+    as.numeric(floor_n) / length(finite)
+  } else {
+    NA_real_
   }
   out
 }
@@ -3808,13 +3842,23 @@ disc_w_diag_record_iteration_health <- function(
     disc_w_diag_health_stats(if (!is.null(sts_out)) sts_out$E.sts else NULL, "hist_E_s", positive_required = TRUE),
     disc_w_diag_health_stats(if (!is.null(sts_out)) sts_out$E.sts2 else NULL, "hist_E_s2", positive_required = TRUE),
     disc_w_diag_health_stats(if (!is.null(uts_out)) uts_out$E.uts else NULL, "hist_E_u", positive_required = TRUE),
-    disc_w_diag_health_stats(if (!is.null(uts_out)) uts_out$E.inv.uts else NULL, "hist_E_inv_u", positive_required = TRUE),
+    disc_w_diag_health_stats(
+      if (!is.null(uts_out)) uts_out$E.inv.uts else NULL,
+      "hist_E_inv_u",
+      positive_required = TRUE,
+      floor_min = DISC_PSEUDODATA_E_INV_U_FLOOR
+    ),
     disc_w_diag_health_stats(FFF, "hist_FFF"),
     disc_w_diag_health_stats(QQQ, "hist_QQQ_diag", diag_values = TRUE, positive_required = TRUE),
     disc_w_diag_health_stats(if (!is.null(sts_out_f)) sts_out_f$E.sts else NULL, "fore_E_s", positive_required = TRUE),
     disc_w_diag_health_stats(if (!is.null(sts_out_f)) sts_out_f$E.sts2 else NULL, "fore_E_s2", positive_required = TRUE),
     disc_w_diag_health_stats(if (!is.null(uts_out_f)) uts_out_f$E.uts else NULL, "fore_E_u", positive_required = TRUE),
-    disc_w_diag_health_stats(if (!is.null(uts_out_f)) uts_out_f$E.inv.uts else NULL, "fore_E_inv_u", positive_required = TRUE),
+    disc_w_diag_health_stats(
+      if (!is.null(uts_out_f)) uts_out_f$E.inv.uts else NULL,
+      "fore_E_inv_u",
+      positive_required = TRUE,
+      floor_min = DISC_PSEUDODATA_E_INV_U_FLOOR
+    ),
     disc_w_diag_health_stats(FFF_forecast, "fore_FFF"),
     disc_w_diag_health_stats(QQQ_forecast, "fore_QQQ_diag", diag_values = TRUE, positive_required = TRUE)
   )
@@ -3847,6 +3891,7 @@ disc_w_diag_record_iteration_health <- function(
   }
 
   max_e_inv_u <- max2(get_stat("hist_E_inv_u_max"), get_stat("fore_E_inv_u_max"))
+  max_e_inv_u_floor_frac <- max2(get_stat("hist_E_inv_u_floor_frac"), get_stat("fore_E_inv_u_floor_frac"))
   min_e_u <- min2(get_stat("hist_E_u_min"), get_stat("fore_E_u_min"))
   max_qqq <- max2(get_stat("hist_QQQ_diag_max_abs"), get_stat("fore_QQQ_diag_max_abs"))
   max_fff <- max2(get_stat("hist_FFF_max_abs"), get_stat("fore_FFF_max_abs"))
@@ -3855,6 +3900,8 @@ disc_w_diag_record_iteration_health <- function(
   e_inv_u_nonpositive_n <- get_int("hist_E_inv_u_nonpositive_n") + get_int("fore_E_inv_u_nonpositive_n")
 
   flag_e_inv_u_extreme <- is.finite(max_e_inv_u) && max_e_inv_u > e_inv_u_cap
+  flag_e_inv_u_floor_saturated <- is.finite(max_e_inv_u_floor_frac) &&
+    max_e_inv_u_floor_frac > as.numeric(DISC_PSEUDODATA_E_INV_U_FLOOR_FRAC_CAP)
   flag_e_u_tiny <- is.finite(min_e_u) && min_e_u <= e_u_min
   flag_qqq_nonpositive <- qqq_nonpositive_n > 0L
   flag_qqq_extreme <- is.finite(max_qqq) && max_qqq > qqq_cap
@@ -3865,6 +3912,7 @@ disc_w_diag_record_iteration_health <- function(
   flag_nonfinite_state <- !is.finite(suppressWarnings(as.numeric(state_norm_sq)[1L]))
   health_flag_n <- sum(c(
     flag_e_inv_u_extreme,
+    flag_e_inv_u_floor_saturated,
     flag_e_u_tiny,
     flag_qqq_nonpositive,
     flag_qqq_extreme,
@@ -3892,6 +3940,7 @@ disc_w_diag_record_iteration_health <- function(
     state_growth_ratio = suppressWarnings(as.numeric(state_growth_ratio)[1L]),
     state_guard_reason = state_guard_reason,
     max_E_inv_u = max_e_inv_u,
+    max_E_inv_u_floor_frac = max_e_inv_u_floor_frac,
     min_E_u = min_e_u,
     max_QQQ_diag_abs = max_qqq,
     max_FFF_abs = max_fff,
@@ -3899,6 +3948,7 @@ disc_w_diag_record_iteration_health <- function(
     e_u_nonpositive_n = as.integer(e_u_nonpositive_n),
     e_inv_u_nonpositive_n = as.integer(e_inv_u_nonpositive_n),
     flag_e_inv_u_extreme = isTRUE(flag_e_inv_u_extreme),
+    flag_e_inv_u_floor_saturated = isTRUE(flag_e_inv_u_floor_saturated),
     flag_e_u_tiny = isTRUE(flag_e_u_tiny),
     flag_qqq_nonpositive = isTRUE(flag_qqq_nonpositive),
     flag_qqq_extreme = isTRUE(flag_qqq_extreme),
@@ -4167,7 +4217,16 @@ disc_w_check_pseudodata_guard <- function(
   if (!isTRUE(DISC_PSEUDODATA_GUARD_ENABLED) &&
       !isTRUE(DISC_W_LATENT_DIAG_ENABLED)) return(invisible(NULL))
   rows <- list()
-  add <- function(values, quantity, block, cap, positive = FALSE, diag_values = FALSE) {
+  add <- function(
+    values,
+    quantity,
+    block,
+    cap,
+    positive = FALSE,
+    diag_values = FALSE,
+    floor_min = NA_real_,
+    floor_frac_cap = NA_real_
+  ) {
     if (is.null(values)) return(invisible(NULL))
     vals <- if (isTRUE(diag_values)) disc_w_extract_diag_values(values) else as.numeric(unlist(values, use.names = FALSE))
     rows[[length(rows) + 1L]] <<- disc_w_guard_summary(
@@ -4177,7 +4236,9 @@ disc_w_check_pseudodata_guard <- function(
       iter = iter,
       context_label = context_label,
       abs_cap = cap,
-      positive_required = positive
+      positive_required = positive,
+      floor_min = floor_min,
+      floor_frac_cap = floor_frac_cap
     )
     invisible(NULL)
   }
@@ -4190,11 +4251,27 @@ disc_w_check_pseudodata_guard <- function(
   add(sts_out$E.sts, "E_sts", "history", DISC_PSEUDODATA_E_S_ABS_CAP, positive = sts_positive_required)
   add(sts_out$E.sts2, "E_sts2", "history", DISC_PSEUDODATA_E_S2_ABS_CAP, positive = sts_positive_required)
   add(uts_out$E.uts, "E_uts", "history", DISC_PSEUDODATA_E_U_ABS_CAP, positive = TRUE)
-  add(uts_out$E.inv.uts, "E_inv_uts", "history", DISC_PSEUDODATA_E_INV_U_ABS_CAP, positive = TRUE)
+  add(
+    uts_out$E.inv.uts,
+    "E_inv_uts",
+    "history",
+    DISC_PSEUDODATA_E_INV_U_ABS_CAP,
+    positive = TRUE,
+    floor_min = DISC_PSEUDODATA_E_INV_U_FLOOR,
+    floor_frac_cap = DISC_PSEUDODATA_E_INV_U_FLOOR_FRAC_CAP
+  )
   add(sts_out_f$E.sts, "E_sts", "forecast", DISC_PSEUDODATA_E_S_ABS_CAP, positive = sts_positive_required)
   add(sts_out_f$E.sts2, "E_sts2", "forecast", DISC_PSEUDODATA_E_S2_ABS_CAP, positive = sts_positive_required)
   add(uts_out_f$E.uts, "E_uts", "forecast", DISC_PSEUDODATA_E_U_ABS_CAP, positive = TRUE)
-  add(uts_out_f$E.inv.uts, "E_inv_uts", "forecast", DISC_PSEUDODATA_E_INV_U_ABS_CAP, positive = TRUE)
+  add(
+    uts_out_f$E.inv.uts,
+    "E_inv_uts",
+    "forecast",
+    DISC_PSEUDODATA_E_INV_U_ABS_CAP,
+    positive = TRUE,
+    floor_min = DISC_PSEUDODATA_E_INV_U_FLOOR,
+    floor_frac_cap = DISC_PSEUDODATA_E_INV_U_FLOOR_FRAC_CAP
+  )
 
   out <- do.call(rbind, rows)
   bad <- out[out$status != "ok", , drop = FALSE]
@@ -4220,7 +4297,7 @@ disc_w_check_pseudodata_guard <- function(
     disc_w_append_guard_report(bad, DISC_PSEUDODATA_GUARD_REPORT_DIR)
     for (i in seq_len(nrow(bad))) {
       cat(sprintf(
-        "[pseudodata_guard] mode=%s p0=%s iter=%d context=%s quantity=%s block=%s status=%s max_abs=%g cap=%g nonfinite=%d nonpositive=%d cap_exceed=%d\n",
+        "[pseudodata_guard] mode=%s p0=%s iter=%d context=%s quantity=%s block=%s status=%s max_abs=%g cap=%g floor_frac=%g floor_frac_cap=%g nonfinite=%d nonpositive=%d cap_exceed=%d floor_n=%d\n",
         DISC_PSEUDODATA_GUARD_MODE,
         as.character(p0),
         as.integer(iter),
@@ -4230,9 +4307,12 @@ disc_w_check_pseudodata_guard <- function(
         bad$status[[i]],
         as.numeric(bad$max_abs[[i]]),
         as.numeric(bad$abs_cap[[i]]),
+        as.numeric(bad$floor_frac[[i]]),
+        as.numeric(bad$floor_frac_cap[[i]]),
         as.integer(bad$nonfinite_n[[i]]),
         as.integer(bad$nonpositive_n[[i]]),
-        as.integer(bad$cap_exceed_n[[i]])
+        as.integer(bad$cap_exceed_n[[i]]),
+        as.integer(bad$floor_n[[i]])
       ))
     }
     flush.console()
@@ -4725,6 +4805,7 @@ state_control_scope <- if (generic_state_controls_present) {
 } else {
   "inactive"
 }
+state_guard_disabled_reason <- if (isTRUE(state_guard_enabled)) "" else "state_guard_enabled_false"
 state_log_prefix <- if (generic_state_controls_present || !median_quantile_active) "state" else "median_state"
 state_hold_until_iter <- 0L
 state_guard_count <- 0L
@@ -4744,10 +4825,12 @@ DISC_PSEUDODATA_E_S_ABS_CAP <- disc_env_pos_num("DISC_PSEUDODATA_E_S_ABS_CAP", d
 DISC_PSEUDODATA_E_S2_ABS_CAP <- disc_env_pos_num("DISC_PSEUDODATA_E_S2_ABS_CAP", default = 1e6)
 DISC_PSEUDODATA_E_U_ABS_CAP <- disc_env_pos_num("DISC_PSEUDODATA_E_U_ABS_CAP", default = 1e6)
 DISC_PSEUDODATA_E_INV_U_ABS_CAP <- disc_env_pos_num("DISC_PSEUDODATA_E_INV_U_ABS_CAP", default = 5000)
+DISC_PSEUDODATA_E_INV_U_FLOOR <- disc_env_pos_num("DISC_PSEUDODATA_E_INV_U_FLOOR", default = 1e-9)
+DISC_PSEUDODATA_E_INV_U_FLOOR_FRAC_CAP <- disc_env_prob("DISC_PSEUDODATA_E_INV_U_FLOOR_FRAC_CAP", default = 0.25)
 
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   cat(sprintf(
-    "[pseudodata_guard_policy] p0=%s enabled=%s mode=%s fff_abs_cap=%g qqq_diag_abs_cap=%g e_s_abs_cap=%g e_s2_abs_cap=%g e_u_abs_cap=%g e_inv_u_abs_cap=%g report_dir=%s\n",
+    "[pseudodata_guard_policy] p0=%s enabled=%s mode=%s fff_abs_cap=%g qqq_diag_abs_cap=%g e_s_abs_cap=%g e_s2_abs_cap=%g e_u_abs_cap=%g e_inv_u_abs_cap=%g e_inv_u_floor=%g e_inv_u_floor_frac_cap=%g report_dir=%s\n",
     as.character(p0),
     ifelse(isTRUE(DISC_PSEUDODATA_GUARD_ENABLED), "true", "false"),
     DISC_PSEUDODATA_GUARD_MODE,
@@ -4757,6 +4840,8 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     as.numeric(DISC_PSEUDODATA_E_S2_ABS_CAP),
     as.numeric(DISC_PSEUDODATA_E_U_ABS_CAP),
     as.numeric(DISC_PSEUDODATA_E_INV_U_ABS_CAP),
+    as.numeric(DISC_PSEUDODATA_E_INV_U_FLOOR),
+    as.numeric(DISC_PSEUDODATA_E_INV_U_FLOOR_FRAC_CAP),
     ifelse(nzchar(DISC_PSEUDODATA_GUARD_REPORT_DIR), DISC_PSEUDODATA_GUARD_REPORT_DIR, "-")
   ))
   cat(sprintf(
@@ -4773,8 +4858,9 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     ifelse(nzchar(disc_w_diag_report_dir()), disc_w_diag_report_dir(), "-")
   ))
   cat(sprintf(
-    "[gamsig_policy] p0=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s near_zero_fallback_enabled=%s near_zero_fallback_mode=%s near_zero_gamma_anchor=%s state_control_scope=%s state_guard=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d state_guard_start_iter=%d\n",
+    "[gamsig_policy] p0=%s likelihood_mode=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s near_zero_fallback_enabled=%s near_zero_fallback_mode=%s near_zero_gamma_anchor=%s state_control_scope=%s state_guard=%s state_guard_configured=%s state_guard_effective_policy=%s state_guard_disabled_reason=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d state_guard_start_iter=%d\n",
     as.character(p0),
+    ifelse(isTRUE(DISC_W_AL_MODE), "al", "exal"),
     DISC_GAMSIG_FREEZE_TARGET,
     as.integer(DISC_GAMSIG_FREEZE_ITERS),
     as.integer(DISC_GAMSIG_MIN_UPDATE_ITERS),
@@ -4803,6 +4889,9 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR,
     state_control_scope,
     ifelse(isTRUE(state_guard_enabled), "true", "false"),
+    ifelse(isTRUE(state_guard_enabled), "true", "false"),
+    ifelse(isTRUE(state_guard_enabled), "true", "false"),
+    ifelse(nzchar(state_guard_disabled_reason), state_guard_disabled_reason, "-"),
     state_norm_max_ratio,
     state_norm_abs_cap,
     as.integer(state_guard_refreeze_iters),
@@ -5771,8 +5860,7 @@ while (isTRUE(FLAG) && iter < max_iter) {
   if (!is.finite(sigma_exp)) sigma_exp <- NA_real_
   if (!is.finite(gamma_exp)) gamma_exp <- NA_real_
   if (!is.finite(state_norm_sq)) state_norm_sq <- NA_real_
-  state_guard_active <- (!isTRUE(DISC_W_AL_MODE) &&
-    isTRUE(state_guard_enabled) &&
+  state_guard_active <- (isTRUE(state_guard_enabled) &&
     as.integer(iter) >= as.integer(DISC_GAMSIG_STATE_GUARD_START_ITER))
   state_growth_ratio <- NA_real_
   if (state_guard_active &&

@@ -12,9 +12,56 @@ The verified evidence bundle is:
 
 The key conclusion is:
 
-The invalid `20211112_q35` and `20220511_q65` AL-M-T0 fits are not a plotting problem and not primarily an `s_t` bug. They are invalid saved fits caused by transfer-level runaway coupled with AL `u_t` / pseudo-data instability. The current AL guard and health checks do not reliably intercept this failure before outputs can be promoted.
+The invalid `20211112_q35` and `20220511_q65` AL-M-T0 fits are not a plotting problem and not primarily an `s_t` bug. They are invalid saved fits caused by transfer-level runaway coupled with AL `u_t` / pseudo-data instability. Before the 2026-06-04 repair, the AL guard and health checks did not reliably intercept this failure before outputs could be promoted.
 
 This plan is deliberately conservative. We first make failures detectable and reproducible. Then we stabilize the latent/pseudo-data and transfer-design layers. Only after those gates pass do we relaunch publication workflows.
+
+## Implementation Status - 2026-06-04
+
+Implemented in commit-ready local changes after the plan was written:
+
+| Area | Status | Tracked implementation |
+|---|---|---|
+| AL state guard bypass | fixed | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r` now lets `state_guard_enabled` apply to AL and exAL; the policy log includes `likelihood_mode`, `state_guard`, `state_guard_configured`, `state_guard_effective_policy`, and `state_guard_disabled_reason` |
+| Terminal saved-state health | fixed | `R/unified/stages/stage_fit.R` extends `unified_multivar_fit_health_check(...)` to check historical `theta.out$exps`, `theta.out$sm`, `state_norm_sq/T`, transfer row 22, and transfer coefficients |
+| Terminal health artifacts | fixed | future fits write `multivar_terminal_state_health.txt` and `multivar_terminal_state_health.csv` next to `multivar_forecast_health.txt` |
+| AL `E[1/u_t]` floor saturation | fixed as detection/gate | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r` and `R/disc_w/11_latent_pseudodata_audit_helpers.R` now classify excessive floor mass as `floor_saturated` |
+| Runtime config propagation | fixed | `R/unified/config.R` and `R/unified/stages/stage_fit.R` carry `e_inv_u_floor`, `e_inv_u_floor_frac_cap`, historical location/state limits, and transfer limits |
+| Transfer design diagnostics | implemented | `R/unified/families/shared_input_helpers.R` adds `family_shared_transfer_design_diagnostics(...)`; `R/disc_w/03_covariates_standardize.R` writes transfer design summary/condition/metadata when the fit stage provides a diagnostic directory |
+| Deterministic tests | implemented | added/extended `test_exdqlm_multivar_terminal_health.R`, `test_exdqlm_multivar_keep_latent_pseudodata_audit.R`, `test_config_mode_resolution.R`, and `test_covariate_feature_engineering.R` |
+| Retained-output replay helper | implemented | `scripts/replay_he2_al_m_t0_terminal_health.R` regenerates the terminal-health replay report from retained representative `.RData` files |
+
+Real retained-output replay was run without modifying the retained runs:
+
+`reports/he2_al_m_t0_terminal_health_replay_20260604/terminal_health_replay_summary.csv`
+
+| lane | new violation count | max historical exps abs | state norm sq / T | transfer row 22 max abs | result |
+|---|---:|---:|---:|---:|---|
+| `20211112_q35` | 3 | 964.608 | 434474.403 | 964.431 | fail, as expected |
+| `20211221_q80` | 0 | 8.274 | 9.223 | 4.913 | pass, as expected |
+| `20220511_q65` | 3 | 560.034 | 205100.754 | 552.359 | fail, as expected |
+| `20221225_q80` | 0 | 8.386 | 12.029 | 4.730 | pass, as expected |
+
+The replay confirms that Phases 1-3 now catch the two verified bad saved fits while preserving the q80 controls. No broad relaunch was started. The next launchable step is the targeted Phase 5 experiment ladder, using the new gates and transfer diagnostics.
+
+Validation run on 2026-06-04:
+
+```bash
+Rscript --vanilla -e "invisible(parse('DISC_Optimal_Synth_Ranges_W_transfer_forecast.r')); invisible(parse('R/unified/stages/stage_fit.R')); invisible(parse('R/unified/config.R')); invisible(parse('R/disc_w/03_covariates_standardize.R')); invisible(parse('R/unified/families/shared_input_helpers.R')); invisible(parse('R/disc_w/11_latent_pseudodata_audit_helpers.R')); cat('parse_ok\n')"
+Rscript --vanilla -e "library(testthat); test_file('tests/testthat/test_exdqlm_multivar_terminal_health.R'); test_file('tests/testthat/test_exdqlm_multivar_keep_latent_pseudodata_audit.R')"
+Rscript --vanilla -e "library(testthat); test_file('tests/testthat/test_config_mode_resolution.R'); test_file('tests/testthat/test_covariate_feature_engineering.R')"
+python3 -m unittest tests.python.test_stage_fit_quantile_gamma_sigma_overrides tests.python.test_he2_al_m_t0_diagnostic_plan tests.python.test_he2_remaining_quantile_al_exal_relaunch
+Rscript --vanilla -e "library(testthat); test_dir('tests/testthat', filter='exdqlm|config|post|visual|latent|pseudodata|covariate_feature')"
+Rscript --vanilla -e "invisible(parse('scripts/replay_he2_al_m_t0_terminal_health.R')); cat('replay_script_parse_ok\n')"
+```
+
+Results:
+
+- parse check: pass.
+- targeted terminal/latent/config/covariate R tests: pass.
+- targeted Python launch/config tests: 12 tests pass.
+- broader filtered R `testthat` pass: 572 pass, 0 fail, 3 expected warning assertions.
+- retained-output replay helper parse check: pass.
 
 ## Evidence Lock
 
@@ -135,7 +182,7 @@ Primary code:
 - `R/unified/config.R`
 - existing guard/config tests under `tests/python/` and `tests/testthat/`
 
-Current defect:
+Pre-repair defect:
 
 ```r
 state_guard_active <- (!isTRUE(DISC_W_AL_MODE) &&
@@ -143,7 +190,7 @@ state_guard_active <- (!isTRUE(DISC_W_AL_MODE) &&
   as.integer(iter) >= as.integer(DISC_GAMSIG_STATE_GUARD_START_ITER))
 ```
 
-This disables the state guard for AL mode, even though AL is exactly where the retained failure occurs.
+This disabled the state guard for AL mode, even though AL is exactly where the retained failure occurs. The 2026-06-04 repair removes the AL exclusion and adds explicit effective-policy logging.
 
 Investigation tasks:
 

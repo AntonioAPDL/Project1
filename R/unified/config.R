@@ -380,7 +380,9 @@ unified_config_defaults <- function() {
             e_s_abs_cap = 1000,
             e_s2_abs_cap = 1e6,
             e_u_abs_cap = 1e6,
-            e_inv_u_abs_cap = 5000
+            e_inv_u_abs_cap = 5000,
+            e_inv_u_floor = 1e-9,
+            e_inv_u_floor_frac_cap = 0.25
           )
         ),
         diagnostics = list(
@@ -399,7 +401,11 @@ unified_config_defaults <- function() {
           write_reports = TRUE,
           latent_limit = 650,
           sigma_limit = 100,
-          state_limit = 1000
+          state_limit = 1000,
+          history_latent_limit = 25,
+          state_norm_sq_per_T_limit = 1e4,
+          transfer_level_limit = 25,
+          transfer_coef_limit = 100
         ),
         legacy = list(
           lam1 = 1 - 1e-6,
@@ -1317,6 +1323,10 @@ unified_validate_config <- function(cfg) {
   validate_real_min(c("fit", "exdqlm_multivar", "forecast_health", "latent_limit"), "fit.exdqlm_multivar.forecast_health.latent_limit", min_value = 1e-6)
   validate_real_min(c("fit", "exdqlm_multivar", "forecast_health", "sigma_limit"), "fit.exdqlm_multivar.forecast_health.sigma_limit", min_value = 1e-6)
   validate_real_min(c("fit", "exdqlm_multivar", "forecast_health", "state_limit"), "fit.exdqlm_multivar.forecast_health.state_limit", min_value = 1e-6)
+  validate_real_min(c("fit", "exdqlm_multivar", "forecast_health", "history_latent_limit"), "fit.exdqlm_multivar.forecast_health.history_latent_limit", min_value = 1e-6)
+  validate_real_min(c("fit", "exdqlm_multivar", "forecast_health", "state_norm_sq_per_T_limit"), "fit.exdqlm_multivar.forecast_health.state_norm_sq_per_T_limit", min_value = 1e-6)
+  validate_real_min(c("fit", "exdqlm_multivar", "forecast_health", "transfer_level_limit"), "fit.exdqlm_multivar.forecast_health.transfer_level_limit", min_value = 1e-6)
+  validate_real_min(c("fit", "exdqlm_multivar", "forecast_health", "transfer_coef_limit"), "fit.exdqlm_multivar.forecast_health.transfer_coef_limit", min_value = 1e-6)
 
   validate_prob_01(c("fit", "ndlm_main", "legacy", "lam1"), "fit.ndlm_main.legacy.lam1")
   validate_prob_01(c("fit", "ndlm_main", "legacy", "lam2"), "fit.ndlm_main.legacy.lam2")
@@ -2267,13 +2277,22 @@ unified_validate_config <- function(cfg) {
       "e_s_abs_cap",
       "e_s2_abs_cap",
       "e_u_abs_cap",
-      "e_inv_u_abs_cap"
+      "e_inv_u_abs_cap",
+      "e_inv_u_floor"
     )
     for (cap_name in cap_names) {
       pos_num(
         c("fit", "exdqlm_multivar", "pseudodata_guard", "caps", cap_name),
         sprintf("fit.exdqlm_multivar.pseudodata_guard.caps.%s", cap_name)
       )
+    }
+    e_inv_u_floor_frac_cap <- suppressWarnings(as.numeric(unified_get(
+      cfg,
+      c("fit", "exdqlm_multivar", "pseudodata_guard", "caps", "e_inv_u_floor_frac_cap"),
+      default = 0.25
+    )))
+    if (!is.finite(e_inv_u_floor_frac_cap) || e_inv_u_floor_frac_cap <= 0 || e_inv_u_floor_frac_cap >= 1) {
+      add_err("fit.exdqlm_multivar.pseudodata_guard.caps.e_inv_u_floor_frac_cap must be numeric in (0,1)")
     }
 
     latent_diag_enabled <- unified_get(

@@ -275,16 +275,31 @@ disc_w_audit_extract_diag_values <- function(x) {
   as.numeric(x)
 }
 
-disc_w_audit_guard_summary <- function(values, quantity, block, iter = NA_integer_, abs_cap = Inf, positive_required = FALSE) {
+disc_w_audit_guard_summary <- function(
+  values,
+  quantity,
+  block,
+  iter = NA_integer_,
+  abs_cap = Inf,
+  positive_required = FALSE,
+  floor_min = NA_real_,
+  floor_frac_cap = NA_real_
+) {
   raw <- as.numeric(values)
   finite <- raw[is.finite(raw)]
   cap_exceed <- if (is.finite(abs_cap)) sum(abs(finite) > abs_cap) else 0L
   nonpositive <- if (isTRUE(positive_required)) sum(finite <= 0) else 0L
+  floor_n <- if (is.finite(floor_min)) sum(finite <= floor_min) else 0L
+  floor_frac <- if (length(finite) > 0L) floor_n / length(finite) else NA_real_
   status <- "ok"
   if (length(finite) < length(raw)) {
     status <- "nonfinite"
   } else if (nonpositive > 0L) {
     status <- "nonpositive"
+  } else if (is.finite(floor_frac) &&
+             is.finite(floor_frac_cap) &&
+             floor_frac > floor_frac_cap) {
+    status <- "floor_saturated"
   } else if (cap_exceed > 0L) {
     status <- "cap_exceeded"
   }
@@ -302,6 +317,10 @@ disc_w_audit_guard_summary <- function(values, quantity, block, iter = NA_intege
     max_abs = if (length(finite)) max(abs(finite)) else NA_real_,
     abs_cap = as.numeric(abs_cap),
     cap_exceed_n = as.integer(cap_exceed),
+    floor_min = as.numeric(floor_min),
+    floor_n = as.integer(floor_n),
+    floor_frac = as.numeric(floor_frac),
+    floor_frac_cap = as.numeric(floor_frac_cap),
     status = status
   )
 }
@@ -326,10 +345,21 @@ disc_w_audit_pseudodata_guard <- function(
   e_s2_abs_cap = 1e6,
   e_u_abs_cap = 1e6,
   e_inv_u_abs_cap = 5000,
+  e_inv_u_floor = 1e-9,
+  e_inv_u_floor_frac_cap = 0.25,
   allow_zero_sts = FALSE
 ) {
   rows <- list()
-  add <- function(values, quantity, block, cap, positive = FALSE, diag_values = FALSE) {
+  add <- function(
+    values,
+    quantity,
+    block,
+    cap,
+    positive = FALSE,
+    diag_values = FALSE,
+    floor_min = NA_real_,
+    floor_frac_cap = NA_real_
+  ) {
     if (is.null(values)) return(invisible(NULL))
     vals <- if (isTRUE(diag_values)) disc_w_audit_extract_diag_values(values) else as.numeric(unlist(values, use.names = FALSE))
     rows[[length(rows) + 1L]] <<- disc_w_audit_guard_summary(
@@ -338,7 +368,9 @@ disc_w_audit_pseudodata_guard <- function(
       block = block,
       iter = iter,
       abs_cap = cap,
-      positive_required = positive
+      positive_required = positive,
+      floor_min = floor_min,
+      floor_frac_cap = floor_frac_cap
     )
     invisible(NULL)
   }
@@ -351,11 +383,27 @@ disc_w_audit_pseudodata_guard <- function(
   add(E_sts, "E_sts", "history", e_s_abs_cap, positive = sts_positive_required)
   add(E_sts2, "E_sts2", "history", e_s2_abs_cap, positive = sts_positive_required)
   add(E_uts, "E_uts", "history", e_u_abs_cap, positive = TRUE)
-  add(E_inv_uts, "E_inv_uts", "history", e_inv_u_abs_cap, positive = TRUE)
+  add(
+    E_inv_uts,
+    "E_inv_uts",
+    "history",
+    e_inv_u_abs_cap,
+    positive = TRUE,
+    floor_min = e_inv_u_floor,
+    floor_frac_cap = e_inv_u_floor_frac_cap
+  )
   add(E_sts_forecast, "E_sts", "forecast", e_s_abs_cap, positive = sts_positive_required)
   add(E_sts2_forecast, "E_sts2", "forecast", e_s2_abs_cap, positive = sts_positive_required)
   add(E_uts_forecast, "E_uts", "forecast", e_u_abs_cap, positive = TRUE)
-  add(E_inv_uts_forecast, "E_inv_uts", "forecast", e_inv_u_abs_cap, positive = TRUE)
+  add(
+    E_inv_uts_forecast,
+    "E_inv_uts",
+    "forecast",
+    e_inv_u_abs_cap,
+    positive = TRUE,
+    floor_min = e_inv_u_floor,
+    floor_frac_cap = e_inv_u_floor_frac_cap
+  )
 
   do.call(rbind, rows)
 }

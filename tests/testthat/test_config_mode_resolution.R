@@ -34,6 +34,11 @@ test_that("unified config defaults include new likelihood and ndlm transfer mode
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$enabled, TRUE)
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$mode, "fail")
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$caps$e_inv_u_abs_cap, 5000)
+  expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$caps$e_inv_u_floor, 1e-9)
+  expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$caps$e_inv_u_floor_frac_cap, 0.25)
+  expect_equal(cfg$fit$exdqlm_multivar$forecast_health$history_latent_limit, 25)
+  expect_equal(cfg$fit$exdqlm_multivar$forecast_health$state_norm_sq_per_T_limit, 1e4)
+  expect_equal(cfg$fit$exdqlm_multivar$forecast_health$transfer_level_limit, 25)
   expect_equal(cfg$fit$exdqlm_multivar$diagnostics$latent$enabled, TRUE)
   expect_equal(cfg$fit$exdqlm_multivar$diagnostics$latent$top_k, 20L)
   expect_equal(cfg$fit$exdqlm_multivar$diagnostics$latent$write_iteration_summary, FALSE)
@@ -166,6 +171,11 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   cfg_bad$fit$exdqlm_multivar$pseudodata_guard$enabled <- "yes"
   cfg_bad$fit$exdqlm_multivar$pseudodata_guard$mode <- "panic"
   cfg_bad$fit$exdqlm_multivar$pseudodata_guard$caps$fff_abs_cap <- -1
+  cfg_bad$fit$exdqlm_multivar$pseudodata_guard$caps$e_inv_u_floor <- 0
+  cfg_bad$fit$exdqlm_multivar$pseudodata_guard$caps$e_inv_u_floor_frac_cap <- 2
+  cfg_bad$fit$exdqlm_multivar$forecast_health$history_latent_limit <- 0
+  cfg_bad$fit$exdqlm_multivar$forecast_health$state_norm_sq_per_T_limit <- 0
+  cfg_bad$fit$exdqlm_multivar$forecast_health$transfer_level_limit <- 0
   cfg_bad$fit$exdqlm_multivar$diagnostics$latent$enabled <- "yes"
   cfg_bad$fit$exdqlm_multivar$diagnostics$latent$top_k <- 0L
   cfg_bad$fit$exdqlm_multivar$diagnostics$latent$write_iteration_summary <- "yes"
@@ -186,6 +196,11 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   expect_true(any(grepl("pseudodata_guard\\.enabled", errs)))
   expect_true(any(grepl("pseudodata_guard\\.mode", errs)))
   expect_true(any(grepl("pseudodata_guard\\.caps\\.fff_abs_cap", errs)))
+  expect_true(any(grepl("pseudodata_guard\\.caps\\.e_inv_u_floor", errs)))
+  expect_true(any(grepl("pseudodata_guard\\.caps\\.e_inv_u_floor_frac_cap", errs)))
+  expect_true(any(grepl("forecast_health\\.history_latent_limit", errs)))
+  expect_true(any(grepl("forecast_health\\.state_norm_sq_per_T_limit", errs)))
+  expect_true(any(grepl("forecast_health\\.transfer_level_limit", errs)))
   expect_true(any(grepl("diagnostics\\.latent\\.enabled", errs)))
   expect_true(any(grepl("diagnostics\\.latent\\.top_k", errs)))
   expect_true(any(grepl("diagnostics\\.latent\\.write_iteration_summary", errs)))

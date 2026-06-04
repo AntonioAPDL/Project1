@@ -112,6 +112,9 @@ testthat::test_that("active runner uses stable latent formulas", {
   testthat::expect_true(grepl("\\[post_save_objective\\] disabled", text))
   testthat::expect_true(grepl("DISC_GAMSIG_STATE_GUARD_START_ITER", text, fixed = TRUE))
   testthat::expect_true(grepl("state_guard_start_iter", text, fixed = TRUE))
+  testthat::expect_true(grepl("state_guard_effective_policy", text, fixed = TRUE))
+  testthat::expect_true(grepl("likelihood_mode=%s", text, fixed = TRUE))
+  testthat::expect_false(grepl("state_guard_active <- \\(!isTRUE\\(DISC_W_AL_MODE\\)", text))
 
   stage_fit <- testthat::test_path("..", "..", "R", "unified", "stages", "stage_fit.R")
   stage_text <- paste(readLines(stage_fit, warn = FALSE), collapse = "\n")
@@ -148,6 +151,7 @@ testthat::test_that("active runner exposes diagnostic latent ablation controls",
   stage_text <- paste(readLines(stage_fit, warn = FALSE), collapse = "\n")
   testthat::expect_true(grepl("DISC_W_LATENT_DIAG_ENABLED", stage_text, fixed = TRUE))
   testthat::expect_true(grepl("diagnostics\", \"latent", stage_text, fixed = TRUE))
+  testthat::expect_true(grepl("DISC_PSEUDODATA_E_INV_U_FLOOR", stage_text, fixed = TRUE))
 })
 
 testthat::test_that("pseudo-data offset and variance reproduce information-form algebra", {
@@ -191,6 +195,30 @@ testthat::test_that("pseudo-data guard flags destructive offsets and invalid var
   testthat::expect_true(any(guard$quantity == "FFF" & guard$status == "cap_exceeded"))
   testthat::expect_true(any(guard$quantity == "QQQ_diag" & guard$status == "nonpositive"))
   testthat::expect_true(any(guard$quantity == "E_inv_uts" & guard$status == "cap_exceeded"))
+})
+
+testthat::test_that("pseudo-data guard flags AL E_inv_u floor saturation separately from large caps", {
+  qqq <- array(diag(c(1, 2)), dim = c(2, 2, 1))
+
+  guard <- disc_w_audit_pseudodata_guard(
+    iter = 11,
+    FFF = matrix(c(1, 2, 3, 4), nrow = 1),
+    QQQ = qqq,
+    E_sts = matrix(c(0, 0, 0, 0), nrow = 1),
+    E_sts2 = matrix(c(0, 0, 0, 0), nrow = 1),
+    E_uts = matrix(c(100, 110, 120, 130), nrow = 1),
+    E_inv_uts = matrix(c(1e-10, 1e-10, 1e-10, 0.01), nrow = 1),
+    e_inv_u_abs_cap = 5000,
+    e_inv_u_floor = 1e-9,
+    e_inv_u_floor_frac_cap = 0.25,
+    allow_zero_sts = TRUE
+  )
+
+  row <- guard[guard$quantity == "E_inv_uts" & guard$block == "history", , drop = FALSE]
+  testthat::expect_equal(row$status, "floor_saturated")
+  testthat::expect_equal(row$floor_n, 3L)
+  testthat::expect_equal(row$floor_frac, 0.75)
+  testthat::expect_equal(row$cap_exceed_n, 0L)
 })
 
 testthat::test_that("pseudo-data guard passes healthy finite positive inputs", {

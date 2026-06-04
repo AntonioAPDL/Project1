@@ -85,3 +85,32 @@ test_that("feature matrices align and scale with history only", {
   lag_sd <- stats::sd(c(1, 2), na.rm = TRUE)
   expect_equal(as.numeric(mats$forecast[, "PPT_lag1"]), c(3, 10) / lag_sd)
 })
+
+test_that("transfer design diagnostics write summary condition and metadata files", {
+  td <- withr::local_tempdir()
+  X <- cbind(
+    PPT = c(1, 2, 3, 4),
+    SOIL = c(0.1, 0.3, 0.2, 0.5),
+    PCA = c(-1, 0.5, 1, 2)
+  )
+  X_f <- cbind(
+    PPT = c(5, 6),
+    SOIL = c(0.5, 0.6),
+    PCA = c(3, 4)
+  )
+
+  diag <- family_shared_transfer_design_diagnostics(
+    X = X,
+    X_f = X_f,
+    out_dir = td,
+    mode = "unit_test"
+  )
+
+  expect_true(file.exists(file.path(td, "transfer_design_summary.csv")))
+  expect_true(file.exists(file.path(td, "transfer_design_condition.csv")))
+  expect_true(file.exists(file.path(td, "transfer_feature_metadata.csv")))
+  expect_equal(unique(diag$summary$block), c("history", "forecast"))
+  expect_equal(diag$metadata$feature_name, c("PPT", "SOIL", "PCA"))
+  expect_true(is.finite(diag$condition$condition_number[diag$condition$block == "history"]))
+  expect_false(diag$condition$rank_deficient[diag$condition$block == "history"])
+})

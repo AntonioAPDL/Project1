@@ -214,6 +214,149 @@ family_shared_apply_feature_selection <- function(X, X_f, selected_feature_names
   )
 }
 
+family_shared_transfer_design_diagnostics <- function(
+  X,
+  X_f = NULL,
+  out_dir = "",
+  mode = "",
+  feature_names = NULL
+) {
+  if (!is.matrix(X)) X <- as.matrix(X)
+  if (!is.null(X_f) && !is.matrix(X_f)) X_f <- as.matrix(X_f)
+  if (is.null(feature_names) || length(feature_names) != ncol(X)) {
+    feature_names <- colnames(X)
+  }
+  if (is.null(feature_names) || length(feature_names) != ncol(X)) {
+    feature_names <- sprintf("feature_%02d", seq_len(ncol(X)))
+  }
+  colnames(X) <- feature_names
+  if (!is.null(X_f) && ncol(X_f) == length(feature_names)) {
+    colnames(X_f) <- feature_names
+  }
+
+  empty_summary <- function() {
+    data.frame(
+      block = character(0),
+      feature_index = integer(0),
+      feature_name = character(0),
+      n = integer(0),
+      finite_n = integer(0),
+      nonfinite_n = integer(0),
+      mean = numeric(0),
+      sd = numeric(0),
+      min = numeric(0),
+      q01 = numeric(0),
+      median = numeric(0),
+      q99 = numeric(0),
+      max = numeric(0),
+      max_abs = numeric(0),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  empty_condition <- function(block) {
+    data.frame(
+      block = block,
+      n_rows = 0L,
+      n_features = 0L,
+      finite_complete_rows = 0L,
+      rank = 0L,
+      rank_deficient = NA,
+      singular_min = NA_real_,
+      singular_max = NA_real_,
+      condition_number = NA_real_,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  summarize_block <- function(mat, block) {
+    if (is.null(mat) || ncol(mat) < 1L) {
+      return(empty_summary())
+    }
+    rows <- lapply(seq_len(ncol(mat)), function(j) {
+      vals <- suppressWarnings(as.numeric(mat[, j]))
+      finite <- vals[is.finite(vals)]
+      q <- function(p) {
+        if (!length(finite)) return(NA_real_)
+        as.numeric(stats::quantile(finite, probs = p, names = FALSE, na.rm = TRUE, type = 7))
+      }
+      data.frame(
+        block = block,
+        feature_index = j,
+        feature_name = colnames(mat)[[j]],
+        n = length(vals),
+        finite_n = length(finite),
+        nonfinite_n = length(vals) - length(finite),
+        mean = if (length(finite)) mean(finite) else NA_real_,
+        sd = if (length(finite) > 1L) stats::sd(finite) else NA_real_,
+        min = if (length(finite)) min(finite) else NA_real_,
+        q01 = q(0.01),
+        median = q(0.50),
+        q99 = q(0.99),
+        max = if (length(finite)) max(finite) else NA_real_,
+        max_abs = if (length(finite)) max(abs(finite)) else NA_real_,
+        stringsAsFactors = FALSE
+      )
+    })
+    do.call(rbind, rows)
+  }
+
+  condition_rows <- function(mat, block) {
+    if (is.null(mat) || ncol(mat) < 1L || nrow(mat) < 1L) {
+      return(empty_condition(block))
+    }
+    finite_rows <- apply(mat, 1L, function(row) all(is.finite(row)))
+    mat_finite <- mat[finite_rows, , drop = FALSE]
+    if (nrow(mat_finite) < 1L) {
+      svals <- numeric(0)
+    } else {
+      svals <- tryCatch(svd(mat_finite, nu = 0L, nv = 0L)$d, error = function(e) numeric(0))
+    }
+    s_all <- svals[is.finite(svals)]
+    s_finite <- s_all[s_all > 0]
+    rank_val <- if (length(s_finite)) sum(s_finite > max(s_finite) * .Machine$double.eps * max(dim(mat_finite))) else 0L
+    rank_deficient <- rank_val < min(nrow(mat_finite), ncol(mat_finite))
+    data.frame(
+      block = block,
+      n_rows = nrow(mat),
+      n_features = ncol(mat),
+      finite_complete_rows = sum(finite_rows),
+      rank = rank_val,
+      rank_deficient = isTRUE(rank_deficient),
+      singular_min = if (length(s_finite)) min(s_finite) else NA_real_,
+      singular_max = if (length(s_finite)) max(s_finite) else NA_real_,
+      condition_number = if (isTRUE(rank_deficient)) Inf else if (length(s_finite)) max(s_finite) / min(s_finite) else NA_real_,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  summary <- rbind(
+    summarize_block(X, "history"),
+    summarize_block(X_f, "forecast")
+  )
+  condition <- rbind(
+    condition_rows(X, "history"),
+    condition_rows(X_f, "forecast")
+  )
+  metadata <- data.frame(
+    mode = as.character(mode),
+    feature_index = seq_along(feature_names),
+    feature_name = as.character(feature_names),
+    history_n = nrow(X),
+    forecast_n = if (is.null(X_f)) 0L else nrow(X_f),
+    stringsAsFactors = FALSE
+  )
+
+  if (!is.null(out_dir) && nzchar(as.character(out_dir))) {
+    dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+    utils::write.csv(summary, file.path(out_dir, "transfer_design_summary.csv"), row.names = FALSE)
+    utils::write.csv(condition, file.path(out_dir, "transfer_design_condition.csv"), row.names = FALSE)
+    utils::write.csv(metadata, file.path(out_dir, "transfer_feature_metadata.csv"), row.names = FALSE)
+  }
+
+  list(summary = summary, condition = condition, metadata = metadata)
+}
+
 family_shared_build_feature_matrices <- function(path, history_dates, forecast_dates = NULL, fill_value = 0, scale_with_history = TRUE) {
   history_dates <- as.Date(history_dates)
   forecast_dates <- as.Date(forecast_dates)

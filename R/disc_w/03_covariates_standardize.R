@@ -186,6 +186,14 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
     X <- design$X
     X_f <- design$X_f
   }
+  transfer_design_diag_dir <- trimws(Sys.getenv("DISC_W_TRANSFER_DESIGN_DIAG_DIR", ""))
+  transfer_design_diag <- family_shared_transfer_design_diagnostics(
+    X = X,
+    X_f = X_f,
+    out_dir = transfer_design_diag_dir,
+    mode = if (!is.null(design$mode)) design$mode else "",
+    feature_names = if (!is.null(design$feature_names)) design$feature_names else colnames(X)
+  )
 
   list(
     X = X,
@@ -194,6 +202,7 @@ disc_w_build_covariates_and_retro <- function(disc_w_paths, ranges) {
     TT = TT,
     J = J,
     history_dates = as.Date(timestamps),
-    forecast_dates = forecast_dates
+    forecast_dates = forecast_dates,
+    transfer_design_diag = transfer_design_diag
   )
 }

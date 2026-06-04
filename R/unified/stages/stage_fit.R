@@ -21,9 +21,15 @@ unified_multivar_fit_health_check <- function(
   quantile,
   transfer_mode,
   report_path = NULL,
+  terminal_report_path = NULL,
+  terminal_csv_path = NULL,
   latent_limit = 650,
   sigma_limit = 100,
-  state_limit = 1000
+  state_limit = 1000,
+  history_latent_limit = 25,
+  state_norm_sq_per_T_limit = 1e4,
+  transfer_level_limit = 25,
+  transfer_coef_limit = 100
 ) {
   if (!file.exists(rdata_path)) {
     stop(sprintf("[FIT_FORECAST_HEALTH_MISSING] missing RData: %s", rdata_path), call. = FALSE)
@@ -65,6 +71,56 @@ unified_multivar_fit_health_check <- function(
     TT <- as.integer(ncol(theta$sm))
   }
 
+  sm_mat <- if (is.numeric(theta$sm) && !is.null(dim(theta$sm)) && length(dim(theta$sm)) == 2L) {
+    as.matrix(theta$sm)
+  } else {
+    matrix(numeric(0), nrow = 0L, ncol = 0L)
+  }
+  sm_vals_all <- as.numeric(sm_mat)
+  nonfinite_sm <- sum(!is.finite(sm_vals_all))
+  sm_vals_finite <- sm_vals_all[is.finite(sm_vals_all)]
+  state_norm_sq <- if (length(sm_vals_finite) > 0L) sum(sm_vals_finite^2) else NA_real_
+  state_norm_sq_per_T <- if (is.finite(state_norm_sq) && is.finite(TT) && TT > 0L) {
+    state_norm_sq / as.numeric(TT)
+  } else {
+    NA_real_
+  }
+
+  transfer_level_max_abs <- NA_real_
+  transfer_level_median_abs <- NA_real_
+  if (nrow(sm_mat) >= 22L && ncol(sm_mat) > 0L) {
+    transfer_level_vals <- as.numeric(sm_mat[22L, , drop = TRUE])
+    transfer_level_finite <- transfer_level_vals[is.finite(transfer_level_vals)]
+    if (length(transfer_level_finite) > 0L) {
+      transfer_level_max_abs <- max(abs(transfer_level_finite), na.rm = TRUE)
+      transfer_level_median_abs <- stats::median(abs(transfer_level_finite), na.rm = TRUE)
+    }
+  }
+
+  transfer_coef_max_abs <- NA_real_
+  if (nrow(sm_mat) >= 23L && ncol(sm_mat) > 0L) {
+    transfer_coef_vals <- as.numeric(sm_mat[23L:nrow(sm_mat), , drop = FALSE])
+    transfer_coef_vals <- transfer_coef_vals[is.finite(transfer_coef_vals)]
+    if (length(transfer_coef_vals) > 0L) {
+      transfer_coef_max_abs <- max(abs(transfer_coef_vals), na.rm = TRUE)
+    }
+  }
+
+  max_abs_history_exps <- NA_real_
+  nonfinite_history_exps <- 0L
+  finite_history_exps <- 0L
+  if (is.numeric(theta$exps) && !is.null(dim(theta$exps)) && length(dim(theta$exps)) == 2L &&
+      ncol(theta$exps) > 0L) {
+    hist_end <- if (is.finite(TT) && TT > 0L) min(as.integer(TT), ncol(theta$exps)) else ncol(theta$exps)
+    exps_hist <- theta$exps[, seq_len(hist_end), drop = FALSE]
+    nonfinite_history_exps <- sum(!is.finite(exps_hist))
+    finite_vals <- exps_hist[is.finite(exps_hist)]
+    finite_history_exps <- length(finite_vals)
+    if (length(finite_vals) > 0L) {
+      max_abs_history_exps <- max(abs(finite_vals), na.rm = TRUE)
+    }
+  }
+
   max_abs_forecast_exps <- NA_real_
   nonfinite_forecast_exps <- 0L
   finite_forecast_exps <- 0L
@@ -97,16 +153,74 @@ unified_multivar_fit_health_check <- function(
     sprintf("TT=%s", if (is.finite(TT)) as.character(TT) else "NA"),
     sprintf("max_abs_sm_ens=%s", if (is.finite(max_abs_sm_ens)) format(max_abs_sm_ens, digits = 10) else "NA"),
     sprintf("nonfinite_sm_ens=%d", as.integer(nonfinite_sm_ens)),
+    sprintf("state_norm_sq=%s", if (is.finite(state_norm_sq)) format(state_norm_sq, digits = 10) else "NA"),
+    sprintf("state_norm_sq_per_T=%s", if (is.finite(state_norm_sq_per_T)) format(state_norm_sq_per_T, digits = 10) else "NA"),
+    sprintf("nonfinite_sm=%d", as.integer(nonfinite_sm)),
+    sprintf("transfer_level_max_abs=%s", if (is.finite(transfer_level_max_abs)) format(transfer_level_max_abs, digits = 10) else "NA"),
+    sprintf("transfer_level_median_abs=%s", if (is.finite(transfer_level_median_abs)) format(transfer_level_median_abs, digits = 10) else "NA"),
+    sprintf("transfer_coef_max_abs=%s", if (is.finite(transfer_coef_max_abs)) format(transfer_coef_max_abs, digits = 10) else "NA"),
+    sprintf("max_abs_history_exps=%s", if (is.finite(max_abs_history_exps)) format(max_abs_history_exps, digits = 10) else "NA"),
+    sprintf("finite_history_exps=%d", as.integer(finite_history_exps)),
+    sprintf("nonfinite_history_exps=%d", as.integer(nonfinite_history_exps)),
     sprintf("max_abs_forecast_exps=%s", if (is.finite(max_abs_forecast_exps)) format(max_abs_forecast_exps, digits = 10) else "NA"),
     sprintf("finite_forecast_exps=%d", as.integer(finite_forecast_exps)),
     sprintf("nonfinite_forecast_exps=%d", as.integer(nonfinite_forecast_exps)),
     sprintf("max_E_sigma=%s", if (is.finite(max_E_sigma)) format(max_E_sigma, digits = 10) else "NA"),
     sprintf("latent_limit=%s", format(as.numeric(latent_limit), digits = 10)),
     sprintf("sigma_limit=%s", format(as.numeric(sigma_limit), digits = 10)),
-    sprintf("state_limit=%s", format(as.numeric(state_limit), digits = 10))
+    sprintf("state_limit=%s", format(as.numeric(state_limit), digits = 10)),
+    sprintf("history_latent_limit=%s", format(as.numeric(history_latent_limit), digits = 10)),
+    sprintf("state_norm_sq_per_T_limit=%s", format(as.numeric(state_norm_sq_per_T_limit), digits = 10)),
+    sprintf("transfer_level_limit=%s", format(as.numeric(transfer_level_limit), digits = 10)),
+    sprintf("transfer_coef_limit=%s", format(as.numeric(transfer_coef_limit), digits = 10))
   )
   if (!is.null(report_path) && nzchar(report_path)) {
     writeLines(summary_lines, con = report_path)
+  }
+
+  health_row <- function(metric, value, limit, direction = "max") {
+    value <- suppressWarnings(as.numeric(value)[1L])
+    limit <- suppressWarnings(as.numeric(limit)[1L])
+    failed <- FALSE
+    if (identical(direction, "required_positive_count")) {
+      failed <- !is.finite(value) || value <= 0
+    } else if (identical(direction, "required_zero_count")) {
+      failed <- is.finite(value) && value > 0
+    } else if (identical(direction, "max")) {
+      failed <- is.finite(value) && is.finite(limit) && value > limit
+    }
+    data.frame(
+      metric = metric,
+      value = value,
+      limit = limit,
+      direction = direction,
+      status = if (isTRUE(failed)) "fail" else "ok",
+      stringsAsFactors = FALSE
+    )
+  }
+  terminal_rows <- rbind(
+    health_row("finite_history_exps", finite_history_exps, 0, "required_positive_count"),
+    health_row("nonfinite_history_exps", nonfinite_history_exps, 0, "required_zero_count"),
+    health_row("nonfinite_sm", nonfinite_sm, 0, "required_zero_count"),
+    health_row("max_abs_history_exps", max_abs_history_exps, history_latent_limit),
+    health_row("state_norm_sq_per_T", state_norm_sq_per_T, state_norm_sq_per_T_limit),
+    health_row("transfer_level_max_abs", transfer_level_max_abs, transfer_level_limit),
+    health_row("transfer_coef_max_abs", transfer_coef_max_abs, transfer_coef_limit)
+  )
+  if (!is.null(terminal_csv_path) && nzchar(terminal_csv_path)) {
+    utils::write.csv(terminal_rows, file = terminal_csv_path, row.names = FALSE)
+  }
+  if (!is.null(terminal_report_path) && nzchar(terminal_report_path)) {
+    terminal_lines <- c(
+      sprintf("rdata_path=%s", normalizePath(rdata_path, mustWork = FALSE)),
+      sprintf("transfer_mode=%s", as.character(transfer_mode)),
+      sprintf("quantile=%s", as.character(quantile)),
+      sprintf("theta_object=%s", theta_name[[1L]]),
+      sprintf("TT=%s", if (is.finite(TT)) as.character(TT) else "NA"),
+      sprintf("terminal_status=%s", if (any(terminal_rows$status == "fail")) "fail" else "ok"),
+      sprintf("violations=%s", paste(terminal_rows$metric[terminal_rows$status == "fail"], collapse = "|"))
+    )
+    writeLines(terminal_lines, con = terminal_report_path)
   }
 
   violations <- character(0)
@@ -116,11 +230,32 @@ unified_multivar_fit_health_check <- function(
   if (finite_forecast_exps <= 0L) {
     violations <- c(violations, "finite_forecast_exps=0")
   }
+  if (finite_history_exps <= 0L) {
+    violations <- c(violations, "finite_history_exps=0")
+  }
+  if (nonfinite_history_exps > 0L) {
+    violations <- c(violations, sprintf("nonfinite_history_exps=%d", as.integer(nonfinite_history_exps)))
+  }
+  if (nonfinite_sm > 0L) {
+    violations <- c(violations, sprintf("nonfinite_sm=%d", as.integer(nonfinite_sm)))
+  }
   if (is.finite(max_abs_sm_ens) && max_abs_sm_ens > state_limit) {
     violations <- c(violations, sprintf("max_abs_sm_ens=%.6f > %.6f", max_abs_sm_ens, as.numeric(state_limit)))
   }
+  if (is.finite(max_abs_history_exps) && max_abs_history_exps > history_latent_limit) {
+    violations <- c(violations, sprintf("max_abs_history_exps=%.6f > %.6f", max_abs_history_exps, as.numeric(history_latent_limit)))
+  }
   if (is.finite(max_abs_forecast_exps) && max_abs_forecast_exps > latent_limit) {
     violations <- c(violations, sprintf("max_abs_forecast_exps=%.6f > %.6f", max_abs_forecast_exps, as.numeric(latent_limit)))
+  }
+  if (is.finite(state_norm_sq_per_T) && state_norm_sq_per_T > state_norm_sq_per_T_limit) {
+    violations <- c(violations, sprintf("state_norm_sq_per_T=%.6f > %.6f", state_norm_sq_per_T, as.numeric(state_norm_sq_per_T_limit)))
+  }
+  if (is.finite(transfer_level_max_abs) && transfer_level_max_abs > transfer_level_limit) {
+    violations <- c(violations, sprintf("transfer_level_max_abs=%.6f > %.6f", transfer_level_max_abs, as.numeric(transfer_level_limit)))
+  }
+  if (is.finite(transfer_coef_max_abs) && transfer_coef_max_abs > transfer_coef_limit) {
+    violations <- c(violations, sprintf("transfer_coef_max_abs=%.6f > %.6f", transfer_coef_max_abs, as.numeric(transfer_coef_limit)))
   }
   if (is.finite(max_E_sigma) && max_E_sigma > sigma_limit) {
     violations <- c(violations, sprintf("max_E_sigma=%.6f > %.6f", max_E_sigma, as.numeric(sigma_limit)))
@@ -129,8 +264,20 @@ unified_multivar_fit_health_check <- function(
   list(
     violations = violations,
     report_path = report_path,
+    terminal_report_path = terminal_report_path,
+    terminal_csv_path = terminal_csv_path,
     max_abs_sm_ens = max_abs_sm_ens,
     nonfinite_sm_ens = nonfinite_sm_ens,
+    state_norm_sq = state_norm_sq,
+    state_norm_sq_per_T = state_norm_sq_per_T,
+    nonfinite_sm = nonfinite_sm,
+    max_abs_history_exps = max_abs_history_exps,
+    finite_history_exps = finite_history_exps,
+    nonfinite_history_exps = nonfinite_history_exps,
+    transfer_level_max_abs = transfer_level_max_abs,
+    transfer_level_median_abs = transfer_level_median_abs,
+    transfer_coef_max_abs = transfer_coef_max_abs,
+    terminal_rows = terminal_rows,
     max_abs_forecast_exps = max_abs_forecast_exps,
     finite_forecast_exps = finite_forecast_exps,
     nonfinite_forecast_exps = nonfinite_forecast_exps,
@@ -652,6 +799,26 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       cfg,
       c("fit", "exdqlm_multivar", "forecast_health", "state_limit"),
       default = 1000
+    )),
+    history_latent = as.numeric(unified_get(
+      cfg,
+      c("fit", "exdqlm_multivar", "forecast_health", "history_latent_limit"),
+      default = 25
+    )),
+    state_norm_sq_per_T = as.numeric(unified_get(
+      cfg,
+      c("fit", "exdqlm_multivar", "forecast_health", "state_norm_sq_per_T_limit"),
+      default = 1e4
+    )),
+    transfer_level = as.numeric(unified_get(
+      cfg,
+      c("fit", "exdqlm_multivar", "forecast_health", "transfer_level_limit"),
+      default = 25
+    )),
+    transfer_coef = as.numeric(unified_get(
+      cfg,
+      c("fit", "exdqlm_multivar", "forecast_health", "transfer_coef_limit"),
+      default = 100
     ))
   )
 
@@ -1060,6 +1227,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_W_POST_SAVE_JSD_GRIDSIZE = as.character(unified_get(
         cfg, c("fit", "exdqlm_multivar", "legacy", "post_save_jsd_gridsize"), default = 100L
       )),
+      DISC_W_TRANSFER_DESIGN_DIAG_DIR = file.path(q_outputs, "diagnostics", "transfer_design"),
       DISC_W_C_FACTOR = as.character(unified_get(
         cfg, c("fit", "exdqlm_multivar", "legacy", "forecast_cov", "c_factor"), default = 1e2
       )),
@@ -1115,6 +1283,12 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       )),
       DISC_PSEUDODATA_E_INV_U_ABS_CAP = as.character(unified_get(
         pseudodata_guard_policy, c("caps", "e_inv_u_abs_cap"), default = 5000
+      )),
+      DISC_PSEUDODATA_E_INV_U_FLOOR = as.character(unified_get(
+        pseudodata_guard_policy, c("caps", "e_inv_u_floor"), default = 1e-9
+      )),
+      DISC_PSEUDODATA_E_INV_U_FLOOR_FRAC_CAP = as.character(unified_get(
+        pseudodata_guard_policy, c("caps", "e_inv_u_floor_frac_cap"), default = 0.25
       )),
       DISC_GAMSIG_FREEZE_ITERS = gamsig_freeze_iters,
       DISC_GAMSIG_MIN_UPDATE_ITERS = gamsig_min_update_iters,
@@ -1371,18 +1545,28 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
 
     output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_%s.RData", q_num, output_suffix))
     forecast_health_path <- file.path(q_outputs, "multivar_forecast_health.txt")
+    terminal_health_path <- file.path(q_outputs, "multivar_terminal_state_health.txt")
+    terminal_health_csv_path <- file.path(q_outputs, "multivar_terminal_state_health.csv")
     forecast_health <- NULL
     if (!is.null(cmd_status) && is.finite(cmd_status) && as.integer(cmd_status) == 0L &&
         multivar_forecast_health_enabled) {
       report_target <- if (isTRUE(multivar_forecast_health_write_reports)) forecast_health_path else NULL
+      terminal_report_target <- if (isTRUE(multivar_forecast_health_write_reports)) terminal_health_path else NULL
+      terminal_csv_target <- if (isTRUE(multivar_forecast_health_write_reports)) terminal_health_csv_path else NULL
       forecast_health <- unified_multivar_fit_health_check(
         rdata_path = output_path,
         quantile = q,
         transfer_mode = forecast_transfer_mode,
         report_path = report_target,
+        terminal_report_path = terminal_report_target,
+        terminal_csv_path = terminal_csv_target,
         latent_limit = multivar_forecast_health_limits$latent,
         sigma_limit = multivar_forecast_health_limits$sigma,
-        state_limit = multivar_forecast_health_limits$state
+        state_limit = multivar_forecast_health_limits$state,
+        history_latent_limit = multivar_forecast_health_limits$history_latent,
+        state_norm_sq_per_T_limit = multivar_forecast_health_limits$state_norm_sq_per_T,
+        transfer_level_limit = multivar_forecast_health_limits$transfer_level,
+        transfer_coef_limit = multivar_forecast_health_limits$transfer_coef
       )
       if (length(forecast_health$violations) > 0L) {
         msg <- sprintf(
@@ -1413,6 +1597,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       output_path = output_path,
       log_path = log_path,
       forecast_health_path = if (file.exists(forecast_health_path)) forecast_health_path else "",
+      terminal_health_path = if (file.exists(terminal_health_path)) terminal_health_path else "",
+      terminal_health_csv_path = if (file.exists(terminal_health_csv_path)) terminal_health_csv_path else "",
+      transfer_design_diag_dir = file.path(q_outputs, "diagnostics", "transfer_design"),
       status = as.integer(cmd_status)
     )
   }
@@ -1444,6 +1631,33 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         storage_scale = "text",
         role = "diagnostics"
       )
+    }
+    terminal_paths <- c(res$terminal_health_path, res$terminal_health_csv_path)
+    terminal_paths <- terminal_paths[nzchar(as.character(terminal_paths))]
+    for (terminal_path in terminal_paths) {
+      if (!is.null(terminal_path) && file.exists(as.character(terminal_path))) {
+        manifest <- unified_manifest_add_artifact(
+          manifest,
+          as.character(terminal_path),
+          storage_scale = "text",
+          role = "diagnostics"
+        )
+      }
+    }
+    transfer_diag_dir <- as.character(res$transfer_design_diag_dir)
+    if (length(transfer_diag_dir) == 1L && nzchar(transfer_diag_dir) && dir.exists(transfer_diag_dir)) {
+      transfer_diag_paths <- file.path(
+        transfer_diag_dir,
+        c("transfer_design_summary.csv", "transfer_design_condition.csv", "transfer_feature_metadata.csv")
+      )
+      for (transfer_diag_path in transfer_diag_paths[file.exists(transfer_diag_paths)]) {
+        manifest <- unified_manifest_add_artifact(
+          manifest,
+          as.character(transfer_diag_path),
+          storage_scale = "text",
+          role = "diagnostics"
+        )
+      }
     }
     if (!is.null(res$log_path) && file.exists(as.character(res$log_path))) {
       manifest <- unified_manifest_add_artifact(
