@@ -1,5 +1,32 @@
 # HE2 AL-M-T0 Transfer/u_t Guard Repair Plan - 2026-06-04
 
+## Second-Pass Correction - 2026-06-04
+
+This plan remains useful historical context, but the next operational plan is now:
+
+`docs/he2_al_m_t0_scale_state_diagnostic_plan_revision_20260604.md`
+
+The second-pass investigation found that the state-guard repair was not yet
+symmetrical across the two legacy multivariate entrypoints. In particular,
+`DISC_Optimal_Synth_Ranges_W_transfer_forecast.r` uses the intended AL-compatible
+state-guard condition, while `DISC_Optimal_Synth_Ranges_W.r` still contains an
+AL-mode bypass:
+
+```r
+state_guard_active <- (!isTRUE(DISC_W_AL_MODE) &&
+  isTRUE(state_guard_enabled))
+```
+
+That means AL-drop diagnostics still need a code-path parity patch before more
+launch outcomes can be interpreted as scientific evidence.
+
+The transfer ladder also changed the root-cause ranking. The original retained
+bad fits had transfer row 22 runaway, but the valid `a1_transfer_level_only`
+diagnostic still failed q35/q65 while keeping the transfer level small. The
+current leading hypothesis is therefore an AL sigma / latent `u_t` / pseudo-data /
+state-update two-cycle, with transfer features acting as an amplifier in some
+specifications rather than the sole cause.
+
 ## Purpose
 
 This document is the execution plan for repairing and validating the HE2 AL-M-T0 workflow after the deep diagnostic audit found invalid saved fits in representative quantile lanes.
@@ -42,7 +69,13 @@ Real retained-output replay was run without modifying the retained runs:
 | `20220511_q65` | 3 | 560.034 | 205100.754 | 552.359 | fail, as expected |
 | `20221225_q80` | 0 | 8.386 | 12.029 | 4.730 | pass, as expected |
 
-The replay confirms that Phases 1-3 now catch the two verified bad saved fits while preserving the q80 controls. No broad relaunch was started. The next launchable step is the targeted Phase 5 experiment ladder, using the new gates and transfer diagnostics.
+The replay confirms that terminal saved-state checks can catch the two verified bad
+saved fits while preserving the q80 controls. No broad relaunch was started.
+However, the second-pass investigation found that the active AL-drop entrypoint
+still has an AL-mode state-guard bypass, so the targeted Phase 5 experiment ladder
+is no longer the immediate launchable step. Use
+`docs/he2_al_m_t0_scale_state_diagnostic_plan_revision_20260604.md` for the
+current next-step order.
 
 Validation run on 2026-06-04:
 
@@ -127,12 +160,12 @@ The plan is grounded in these verified facts:
 |---|---|
 | `20211112_q35` and `20220511_q65` are invalid saved fits | `terminal_gamsig_summary.csv`, `theta_exps_summary.csv`, `state_block_summary.csv` |
 | Direct `.RData` recomputation validates the audit tables | `final_verification_crosscheck.csv`; 56/56 rows pass |
-| The dominant state failure is transfer row 22 | `state_block_summary.csv`, `state_top_coordinates.csv` |
+| The dominant state failure in the original retained bad fits is transfer row 22 | `state_block_summary.csv`, `state_top_coordinates.csv`; later `a1_transfer_level_only` evidence shows this is not the sole failure mechanism |
 | `20211112_q35` terminal `E[sigma]` is about 41.76 and `state_norm_sq/T` is about 434474 | `terminal_gamsig_summary.csv`, `state_block_summary.csv` |
 | `20220511_q65` terminal `E[sigma]` is about 90.27 and `state_norm_sq/T` is about 205101 | `terminal_gamsig_summary.csv`, `state_block_summary.csv` |
 | AL mode zeroes `gamma` and `s_t` moments | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:739-740`, `1638-1644`, `1919-1924` |
 | `u_t` and pseudo-data are central in AL mode | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:1967-2004`, `5061-5080` |
-| AL state guard is currently bypassed | `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:5774-5776`, `gamsig_policy_summary.csv`, `fit_log_event_summary.csv` |
+| AL state guard is fixed in the transfer-forecast entrypoint but still bypassed in the active AL-drop entrypoint | fixed: `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:5868-5869`; still bypassed: `DISC_Optimal_Synth_Ranges_W.r:3770-3771` |
 | Existing health checks can miss impossible historical fitted locations | `forecast_health_summary.csv`, `theta_exps_summary.csv` |
 | q80 controls can recover from transient large early values | representative q80 retained outputs and final terminal summaries |
 
