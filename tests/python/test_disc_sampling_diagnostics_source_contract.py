@@ -85,6 +85,26 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
         ):
             self.assertIn(token, text)
 
+    def test_al_state_guard_is_not_bypassed_in_legacy_multivar_entrypoints(self) -> None:
+        forbidden = 'state_guard_active <- (!isTRUE(DISC_W_AL_MODE) &&'
+        expected_condition = (
+            'state_guard_active <- (isTRUE(state_guard_enabled) &&\n'
+            '    as.integer(iter) >= as.integer(DISC_GAMSIG_STATE_GUARD_START_ITER))'
+        )
+        for source in (DISC_SOURCE, DISC_TRANSFER_SOURCE):
+            text = source.read_text(encoding='utf-8')
+            self.assertNotIn(forbidden, text, source.name)
+            self.assertIn(expected_condition, text, source.name)
+            for token in (
+                'DISC_GAMSIG_STATE_GUARD_START_ITER',
+                'likelihood_mode=%s',
+                'state_guard_configured=%s',
+                'state_guard_effective_policy=%s',
+                'state_guard_disabled_reason=%s',
+                'terminal_sampling_guard_mode',
+            ):
+                self.assertIn(token, text, source.name)
+
     def test_run_disc_entrypoint_routes_keep_to_transfer_source(self) -> None:
         text = RUN_DISC_SOURCE.read_text(encoding='utf-8')
         self.assertIn('DISC_W_FORECAST_TRANSFER_MODE', text)

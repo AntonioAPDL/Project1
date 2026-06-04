@@ -1,0 +1,31 @@
+spec_id: scale_state_p1_terminal_guard_highdf_eps365_cf1_20260604
+description: >
+  Minimal AL-M-T0 scale/state diagnostic spec P1. This preserves the high-discount
+  epsilon/c_factor stress-test settings and enables terminal sampling guard
+  fail-fast behavior so guard events cannot silently proceed into sampling/post.
+requires_user_discount_decision: false
+
+state_evolution:
+  df_t: 0.99999999
+  df_s1: 0.99999999
+  df_s2: 0.99999999
+  df_s67: 0.99999999
+  df_discrep: 0.99999999
+  lambda: 0.97
+  df_trans: 0.99999999
+  df_covs: 0.99999999
+
+forecast_cov:
+  epsilon: 365.0
+  c_factor: 1.0
+
+gamma_sigma:
+  max_iter: 100
+  terminal_sampling_guard:
+    mode: fail_fast
+    min_guard_count: 1
+    max_guard_lag_iters: 0
+    require_frozen: true
+
+legacy:
+  n_samp: 2000

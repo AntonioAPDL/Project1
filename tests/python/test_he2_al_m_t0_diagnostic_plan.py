@@ -13,6 +13,7 @@ BUILDER = ROOT / "scripts" / "build_he2_dqlm_multivar_al_drop_diagnostic_plan.py
 VALIDATOR = ROOT / "scripts" / "validate_he2_dqlm_multivar_al_drop_diagnostic_plan.py"
 LAUNCHER = ROOT / "scripts" / "launch_he2_al_m_t0_representative_diagnostics.py"
 HIGHDF_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_diagnostic_highdf_eps365_cf1_20260603.yaml"
+P2_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_scale_state_p2_force_gamma_sigma_highdf_eps365_cf1_20260604.yaml"
 
 
 class He2AlMT0DiagnosticPlanTests(unittest.TestCase):
@@ -228,6 +229,40 @@ class He2AlMT0DiagnosticPlanTests(unittest.TestCase):
             a2_cfg = self.load_yaml(Path(by_experiment["a2_full_zscore"]["config_path"]))
             self.assertEqual(a2_cfg["inputs"]["transfer_function_covariates"]["mode"], "full")
             self.assertEqual(a2_cfg["inputs"]["transfer_function_covariates"]["scaling"], "zscore")
+
+    def test_scale_state_policy_override_deep_merges_quantile_overrides(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_m_t0_scale_state_p2_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            proc = subprocess.run(
+                [
+                    "python3",
+                    str(VALIDATOR),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--discount-spec-yaml",
+                    str(P2_SPEC),
+                    "--lane-scope",
+                    "representative",
+                    "--experiment-scope",
+                    "a1",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            rows = self.read_csv(artifact_root / "control" / "diagnostic_matrix" / "diagnostic_matrix_plan.csv")
+            by_q = {row["q"]: self.load_yaml(Path(row["config_path"])) for row in rows}
+            q35_policy = by_q["35"]["fit"]["exdqlm_multivar"]["gamma_sigma"]["quantile_overrides"]["q35"]
+            q65_policy = by_q["65"]["fit"]["exdqlm_multivar"]["gamma_sigma"]["quantile_overrides"]["q65"]
+            q80_policy = by_q["80"]["fit"]["exdqlm_multivar"]["gamma_sigma"]["quantile_overrides"]["q80"]
+            self.assertEqual(q35_policy["freeze_target"], "gamma_sigma")
+            self.assertEqual(q65_policy["freeze_target"], "gamma_sigma")
+            self.assertTrue(q35_policy["stabilization"]["state_guard_enabled"])
+            self.assertTrue(q65_policy["stabilization"]["state_guard_enabled"])
+            self.assertEqual(q80_policy["init"]["sigma_floor"], 0.01)
+            self.assertNotIn("freeze_target", q80_policy)
 
     def test_single_a1_scope_prepares_transfer_level_only_rows(self) -> None:
         with tempfile.TemporaryDirectory(prefix="he2_al_m_t0_diag_a1_") as tmp:

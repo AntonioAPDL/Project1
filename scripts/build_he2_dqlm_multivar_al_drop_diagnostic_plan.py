@@ -193,6 +193,16 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         writer.writerows(rows)
 
 
+def deep_merge_dict(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
+    out = deepcopy(base)
+    for key, value in patch.items():
+        if isinstance(value, dict) and isinstance(out.get(key), dict):
+            out[key] = deep_merge_dict(out[key], value)
+        else:
+            out[key] = deepcopy(value)
+    return out
+
+
 def matrix_row_from_diagnostic_row(row: dict[str, Any]) -> dict[str, Any]:
     epsilon_value = row.get("forecast_cov_epsilon", "")
     try:
@@ -287,15 +297,16 @@ def apply_discount_spec(cfg: dict[str, Any], spec: dict[str, Any]) -> None:
     fit_model = cfg.setdefault("fit", {}).setdefault(TARGET_MODEL_KEY, {})
     gamma_sigma_patch = spec.get("gamma_sigma") or {}
     if gamma_sigma_patch:
-        fit_model.setdefault("gamma_sigma", {}).update(deepcopy(gamma_sigma_patch))
+        fit_model["gamma_sigma"] = deep_merge_dict(fit_model.get("gamma_sigma", {}), gamma_sigma_patch)
 
     legacy_patch = spec.get("legacy") or {}
     if legacy_patch:
-        fit_model.setdefault("legacy", {}).update(deepcopy(legacy_patch))
+        fit_model["legacy"] = deep_merge_dict(fit_model.get("legacy", {}), legacy_patch)
 
     forecast_cov_patch = spec.get("forecast_cov") or {}
     if forecast_cov_patch:
-        fit_model.setdefault("legacy", {}).setdefault("forecast_cov", {}).update(deepcopy(forecast_cov_patch))
+        legacy = fit_model.setdefault("legacy", {})
+        legacy["forecast_cov"] = deep_merge_dict(legacy.get("forecast_cov", {}), forecast_cov_patch)
 
 
 def apply_transfer_experiment(cfg: dict[str, Any], experiment: dict[str, Any]) -> None:

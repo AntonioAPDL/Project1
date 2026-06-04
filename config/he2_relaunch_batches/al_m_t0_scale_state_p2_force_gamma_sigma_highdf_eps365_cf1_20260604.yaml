@@ -1,0 +1,62 @@
+spec_id: scale_state_p2_force_gamma_sigma_highdf_eps365_cf1_20260604
+description: >
+  Minimal AL-M-T0 scale/state diagnostic spec P2. This preserves the high-discount
+  epsilon/c_factor settings and forces q35/q65 to update gamma/sigma rather than
+  state during the warm-up freeze, while keeping explicit generic state guards for
+  those suspect quantile lanes.
+requires_user_discount_decision: false
+
+state_evolution:
+  df_t: 0.99999999
+  df_s1: 0.99999999
+  df_s2: 0.99999999
+  df_s67: 0.99999999
+  df_discrep: 0.99999999
+  lambda: 0.97
+  df_trans: 0.99999999
+  df_covs: 0.99999999
+
+forecast_cov:
+  epsilon: 365.0
+  c_factor: 1.0
+
+gamma_sigma:
+  max_iter: 100
+  quantile_overrides:
+    q35:
+      freeze_target: gamma_sigma
+      warmup_freeze_iters: 5
+      terminal_sampling_guard:
+        mode: fail_fast
+        min_guard_count: 1
+        max_guard_lag_iters: 0
+        require_frozen: true
+      stabilization:
+        state_guard_enabled: true
+        state_norm_max_ratio: 25
+        state_norm_abs_cap: 1.0e12
+        state_guard_start_iter: 0
+        state_guard_refreeze_iters: 10
+        state_hold_after_guard_iters: 10
+        state_blend_alpha: 1.0
+        cov_blend_alpha: 1.0
+    q65:
+      freeze_target: gamma_sigma
+      warmup_freeze_iters: 5
+      terminal_sampling_guard:
+        mode: fail_fast
+        min_guard_count: 1
+        max_guard_lag_iters: 0
+        require_frozen: true
+      stabilization:
+        state_guard_enabled: true
+        state_norm_max_ratio: 25
+        state_norm_abs_cap: 1.0e12
+        state_guard_start_iter: 0
+        state_guard_refreeze_iters: 10
+        state_hold_after_guard_iters: 10
+        state_blend_alpha: 1.0
+        cov_blend_alpha: 1.0
+
+legacy:
+  n_samp: 2000

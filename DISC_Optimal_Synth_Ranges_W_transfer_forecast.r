@@ -4863,7 +4863,7 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     ifelse(nzchar(disc_w_diag_report_dir()), disc_w_diag_report_dir(), "-")
   ))
   cat(sprintf(
-    "[gamsig_policy] p0=%s likelihood_mode=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s near_zero_fallback_enabled=%s near_zero_fallback_mode=%s near_zero_gamma_anchor=%s state_control_scope=%s state_guard=%s state_guard_configured=%s state_guard_effective_policy=%s state_guard_disabled_reason=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d state_guard_start_iter=%d\n",
+    "[gamsig_policy] p0=%s likelihood_mode=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s near_zero_fallback_enabled=%s near_zero_fallback_mode=%s near_zero_gamma_anchor=%s state_control_scope=%s state_guard=%s state_guard_configured=%s state_guard_effective_policy=%s state_guard_disabled_reason=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d state_guard_start_iter=%d terminal_sampling_guard_mode=%s\n",
     as.character(p0),
     ifelse(isTRUE(DISC_W_AL_MODE), "al", "exal"),
     DISC_GAMSIG_FREEZE_TARGET,
@@ -4913,7 +4913,8 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$end_iter),
     as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$hold_iters),
     as.integer(DISC_GAMSIG_STATE_REFRESH_SCHEDULE$refresh_iters),
-    as.integer(DISC_GAMSIG_STATE_GUARD_START_ITER)
+    as.integer(DISC_GAMSIG_STATE_GUARD_START_ITER),
+    DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE
   ))
   cat(sprintf(
     "[gamsig_coherence_policy] p0=%s enabled=%s rollback_on_guard=%s min_uts_psi=%g nonnegative_tol=%g\n",
