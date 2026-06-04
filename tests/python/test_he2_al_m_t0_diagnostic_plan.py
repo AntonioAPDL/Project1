@@ -14,6 +14,7 @@ VALIDATOR = ROOT / "scripts" / "validate_he2_dqlm_multivar_al_drop_diagnostic_pl
 LAUNCHER = ROOT / "scripts" / "launch_he2_al_m_t0_representative_diagnostics.py"
 HIGHDF_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_diagnostic_highdf_eps365_cf1_20260603.yaml"
 P2_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_scale_state_p2_force_gamma_sigma_highdf_eps365_cf1_20260604.yaml"
+P3_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_scale_state_p3_force_gamma_sigma_iter160_highdf_eps365_cf1_20260604.yaml"
 
 
 class He2AlMT0DiagnosticPlanTests(unittest.TestCase):
@@ -273,6 +274,42 @@ class He2AlMT0DiagnosticPlanTests(unittest.TestCase):
             self.assertTrue(q65_policy["stabilization"]["state_guard_enabled"])
             self.assertEqual(q80_policy["init"]["sigma_floor"], 0.01)
             self.assertNotIn("freeze_target", q80_policy)
+
+    def test_scale_state_p3_raises_iteration_budget_for_guarded_lanes(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_m_t0_scale_state_p3_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            proc = subprocess.run(
+                [
+                    "python3",
+                    str(VALIDATOR),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--discount-spec-yaml",
+                    str(P3_SPEC),
+                    "--lane-scope",
+                    "representative",
+                    "--experiment-scope",
+                    "a1",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            rows = self.read_csv(artifact_root / "control" / "diagnostic_matrix" / "diagnostic_matrix_plan.csv")
+            self.assertEqual({row["spec_id"] for row in rows}, {"scale_state_p3_force_gamma_sigma_iter160_highdf_eps365_cf1_20260604"})
+            self.assertEqual({row["max_iter"] for row in rows}, {"160"})
+            by_q = {row["q"]: self.load_yaml(Path(row["config_path"])) for row in rows}
+            gamma_sigma = by_q["65"]["fit"]["exdqlm_multivar"]["gamma_sigma"]
+            self.assertEqual(gamma_sigma["max_iter"], 160)
+            self.assertEqual(gamma_sigma["min_update_iters"], 50)
+            self.assertEqual(gamma_sigma["min_total_iters"], 50)
+            q65_policy = gamma_sigma["quantile_overrides"]["q65"]
+            self.assertEqual(q65_policy["freeze_target"], "gamma_sigma")
+            self.assertEqual(q65_policy["terminal_sampling_guard"]["mode"], "fail_fast")
+            self.assertTrue(q65_policy["stabilization"]["state_guard_enabled"])
+            self.assertTrue(by_q["65"]["fit"]["exdqlm_multivar"]["legacy"]["post_save_objective_enabled"])
 
     def test_single_a1_scope_prepares_transfer_level_only_rows(self) -> None:
         with tempfile.TemporaryDirectory(prefix="he2_al_m_t0_diag_a1_") as tmp:
