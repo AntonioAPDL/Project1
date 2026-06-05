@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.audit_he2_al_m_t0_gamsig_cycles import classify_two_cycle, parse_progress_lines
+from scripts.audit_he2_al_m_t0_gamsig_cycles import classify_two_cycle, parse_progress_lines, summarize_log, write_markdown
 from scripts.prepare_he2_single_quantile_fit_diagnostic import prepare_config
 from scripts.summarize_he2_al_m_t0_fit_logs import summarize
 
@@ -60,6 +60,37 @@ class He2AlMT0GamsigCycleAuditTests(unittest.TestCase):
         self.assertEqual(preflight["guard_count"], "1")
         self.assertEqual(guard_count, 0)
         self.assertTrue(math.isfinite(rows[0].sigma_exp))
+
+    def test_cycle_audit_markdown_tolerates_early_logs(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_m_t0_early_cycle_") as tmp:
+            root = Path(tmp)
+            log_path = (
+                root
+                / "runs"
+                / "multimodel_20210123_v8_he2pubgdpc1r1_dqlm_multivar_al_drop"
+                / "fit"
+                / "q=05"
+                / "logs"
+                / "fit.log"
+            )
+            log_path.parent.mkdir(parents=True)
+            log_path.write_text(
+                "\n".join(
+                    [
+                        progress_line(1, 0.3987874, 2.1e7, p0=0.05),
+                        progress_line(2, 0.3987874, 2.0e7, p0=0.05),
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            row = summarize_log(log_path)
+            self.assertEqual(row["cycle_reason"], "too_few_progress_rows")
+            out = root / "audit.md"
+            write_markdown(out, [row])
+            text = out.read_text(encoding="utf-8")
+            self.assertIn("multimodel_20210123", text)
+            self.assertIn("too_few_progress_rows", str(row["cycle_reason"]))
 
     def test_compact_fit_log_summary_reads_terminal_health_and_errors(self) -> None:
         with tempfile.TemporaryDirectory(prefix="he2_al_m_t0_log_summary_") as tmp:

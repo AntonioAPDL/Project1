@@ -252,12 +252,27 @@ def write_markdown(path: Path, rows: list[dict[str, object]]) -> None:
         "| run_id | q | rows | two-cycle | final iter | sigma | state norm sq | tail sigma ratio | tail state ratio | freeze | guard | log |",
         "|---|---:|---:|---|---:|---:|---:|---:|---:|---|---:|---|",
     ]
+    fields = [
+        "run_id",
+        "q",
+        "progress_rows",
+        "two_cycle_suspect",
+        "last_iter",
+        "last_sigma_exp",
+        "last_state_norm_sq",
+        "tail_sigma_ratio",
+        "tail_state_ratio",
+        "policy_freeze_target",
+        "observed_state_guard_count",
+        "log_path",
+    ]
     for row in rows:
+        values = {field: row.get(field, "") for field in fields}
         lines.append(
             "| {run_id} | {q} | {progress_rows} | {two_cycle_suspect} | {last_iter} | "
             "{last_sigma_exp} | {last_state_norm_sq} | {tail_sigma_ratio} | "
             "{tail_state_ratio} | {policy_freeze_target} | {observed_state_guard_count} | `{log_path}` |".format(
-                **{key: row.get(key, "") for key in row.keys()}
+                **values
             )
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
