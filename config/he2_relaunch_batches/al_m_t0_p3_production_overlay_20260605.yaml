@@ -86,5 +86,13 @@ gamma_sigma:
         state_blend_alpha: 1.0
         cov_blend_alpha: 1.0
 
+# The promoted exAL-M-T0 source configs contain a q50 states-freeze override
+# from the earlier repair campaign. P3 production should inherit the source
+# input/design contract, not that old q50 gamma/sigma policy. q20/q80 source
+# init-only tweaks are left intact.
+gamma_sigma_drop_quantile_overrides:
+  - q50
+gamma_sigma_disallow_freeze_target_states: true
+
 legacy:
   n_samp: 2000

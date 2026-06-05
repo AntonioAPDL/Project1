@@ -87,6 +87,14 @@ It intentionally changes:
 | q35/q65 terminal sampling guard | `fail_fast` |
 | legacy fit-save bridge | `post_save_objective_enabled=true` |
 
+It also intentionally drops the stale source q50 `freeze_target=states`
+gamma/sigma override from the earlier exAL-M-T0 repair campaign. The q50
+override was valid context for that source campaign, but it is not part of the
+P3 AL-M-T0 production policy. The builder records this as
+`debug_he2_dqlm_al_drop_policy_overlay.gamma_sigma_dropped_quantile_overrides`,
+and the validator now blocks any P3 production config that still contains a
+quantile-level `freeze_target=states` override.
+
 ## Smoke Gate
 
 Smoke artifact root:
@@ -192,4 +200,3 @@ python3 -m unittest \
   tests.python.test_he2_al_m_t0_gamsig_cycle_audit \
   -v
 ```
-

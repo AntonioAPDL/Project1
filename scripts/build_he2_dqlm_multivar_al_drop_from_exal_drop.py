@@ -259,11 +259,25 @@ def apply_policy_spec(cfg: dict[str, Any], policy_spec: dict[str, Any] | None) -
     legacy_cfg["post_save_objective_enabled"] = True
     legacy_cfg["post_save_jsd_enabled"] = False
 
+    dropped_quantile_overrides: list[str] = []
     if isinstance(policy_spec.get("gamma_sigma"), dict):
-        fit_model_cfg["gamma_sigma"] = deep_merge(
-            fit_model_cfg.get("gamma_sigma", {}) if isinstance(fit_model_cfg.get("gamma_sigma"), dict) else {},
-            policy_spec["gamma_sigma"],
+        gamma_sigma_cfg = (
+            deepcopy(fit_model_cfg.get("gamma_sigma", {}))
+            if isinstance(fit_model_cfg.get("gamma_sigma"), dict)
+            else {}
         )
+        drop_overrides = policy_spec.get("gamma_sigma_drop_quantile_overrides", [])
+        if isinstance(drop_overrides, str):
+            drop_overrides = [drop_overrides]
+        if drop_overrides:
+            overrides = gamma_sigma_cfg.get("quantile_overrides")
+            if isinstance(overrides, dict):
+                for key in drop_overrides:
+                    key = str(key)
+                    if key in overrides:
+                        dropped_quantile_overrides.append(key)
+                        overrides.pop(key, None)
+        fit_model_cfg["gamma_sigma"] = deep_merge(gamma_sigma_cfg, policy_spec["gamma_sigma"])
 
     if isinstance(policy_spec.get("fit"), dict):
         fit_model_cfg.update(deep_merge(fit_model_cfg, policy_spec["fit"]))
@@ -276,6 +290,7 @@ def apply_policy_spec(cfg: dict[str, Any], policy_spec: dict[str, Any] | None) -
         "state_evolution_overridden": isinstance(policy_spec.get("state_evolution"), dict),
         "forecast_cov_overridden": isinstance(policy_spec.get("forecast_cov"), dict),
         "gamma_sigma_overridden": isinstance(policy_spec.get("gamma_sigma"), dict),
+        "gamma_sigma_dropped_quantile_overrides": dropped_quantile_overrides,
         "legacy_post_save_objective_forced": True,
     }
     return cfg

@@ -252,6 +252,24 @@ def validate_configs(
                     deep_contains(actual_overrides, expected_overrides),
                     f"{cutoff}: quantile overrides do not contain policy overrides",
                 )
+                drop_overrides = policy_spec.get("gamma_sigma_drop_quantile_overrides", [])
+                if isinstance(drop_overrides, str):
+                    drop_overrides = [drop_overrides]
+                for key in drop_overrides:
+                    assert_true(
+                        str(key) not in actual_overrides,
+                        f"{cutoff}: dropped gamma_sigma quantile override is still present: {key}",
+                    )
+                if bool(policy_spec.get("gamma_sigma_disallow_freeze_target_states", False)):
+                    offenders = sorted(
+                        key
+                        for key, value in actual_overrides.items()
+                        if isinstance(value, dict) and value.get("freeze_target") == "states"
+                    )
+                    assert_true(
+                        not offenders,
+                        f"{cutoff}: disallowed freeze_target=states override(s): {offenders}",
+                    )
         rows.append(
             {
                 "cutoff": cutoff,

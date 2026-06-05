@@ -201,9 +201,17 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
                 self.assertEqual(gamma_sigma["min_total_iters"], 50)
                 self.assertEqual(gamma_sigma["quantile_overrides"]["q35"]["freeze_target"], "gamma_sigma")
                 self.assertEqual(gamma_sigma["quantile_overrides"]["q65"]["freeze_target"], "gamma_sigma")
+                self.assertNotIn("q50", gamma_sigma["quantile_overrides"])
+                self.assertFalse(
+                    any(
+                        isinstance(value, dict) and value.get("freeze_target") == "states"
+                        for value in gamma_sigma["quantile_overrides"].values()
+                    )
+                )
                 self.assertTrue(gamma_sigma["quantile_overrides"]["q35"]["stabilization"]["state_guard_enabled"])
                 self.assertTrue(gamma_sigma["quantile_overrides"]["q65"]["stabilization"]["state_guard_enabled"])
                 self.assertEqual(cfg["debug_he2_dqlm_al_drop_policy_overlay"]["spec_id"], "al_m_t0_p3_production_highdf_eps365_cf1_20260605")
+                self.assertEqual(cfg["debug_he2_dqlm_al_drop_policy_overlay"]["gamma_sigma_dropped_quantile_overrides"], ["q50"])
 
     def test_al_drop_p3_prelaunch_validator_accepts_overlay_without_smoke(self) -> None:
         with tempfile.TemporaryDirectory(prefix="he2_al_drop_p3_validator_") as tmp:
