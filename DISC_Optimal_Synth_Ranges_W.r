@@ -333,6 +333,15 @@ disc_blend_numeric_like <- function(current, candidate, alpha, label = "value") 
   if (alpha <= 0) {
     return(current)
   }
+  if (is.null(current) && is.null(candidate)) {
+    return(NULL)
+  }
+  if (is.null(current)) {
+    return(candidate)
+  }
+  if (is.null(candidate)) {
+    return(current)
+  }
   current_arr <- as.array(current)
   candidate_arr <- as.array(candidate)
   if (!identical(dim(current_arr), dim(candidate_arr))) {
@@ -356,6 +365,15 @@ disc_blend_numeric_like <- function(current, candidate, alpha, label = "value") 
 }
 
 disc_blend_numeric_list <- function(current_list, candidate_list, alpha, label_prefix = "list") {
+  if (is.null(current_list) && is.null(candidate_list)) {
+    return(NULL)
+  }
+  if (is.null(current_list)) {
+    return(candidate_list)
+  }
+  if (is.null(candidate_list)) {
+    return(current_list)
+  }
   if (!is.list(current_list) || !is.list(candidate_list)) {
     stop(sprintf("blend list mismatch for %s", label_prefix), call. = FALSE)
   }

@@ -56,6 +56,10 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
             if 'source("R/disc_w/09_state_blend.R")' in text:
                 blend_contract_text += state_blend_text
             self.assertIn('blend dim mismatch for %s current=%s candidate=%s', blend_contract_text, source.name)
+            self.assertIn('if (is.null(current) && is.null(candidate))', blend_contract_text, source.name)
+            self.assertIn('if (is.null(candidate))', blend_contract_text, source.name)
+            self.assertIn('if (is.null(current_list) && is.null(candidate_list))', blend_contract_text, source.name)
+            self.assertIn('if (is.null(candidate_list))', blend_contract_text, source.name)
             self.assertIn('theta payload horizon mismatch for %s', text, source.name)
 
     def test_stage_fit_exports_quantile_sampling_diagnostic_path(self) -> None:

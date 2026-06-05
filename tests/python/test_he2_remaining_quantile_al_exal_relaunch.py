@@ -17,6 +17,7 @@ UNIVAR_TEMPLATE = ROOT / "config" / "he2_bayesian_publication_relaunch_univar_al
 UNIVAR_BATCH = ROOT / "config" / "he2_relaunch_batches" / "univar_al_exal_publication_relaunch_20260603.yaml"
 AL_DROP_DIAGNOSTIC_SPEC_TEMPLATE = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_diagnostic_discount_spec_template_20260603.yaml"
 AL_DROP_P3_PRODUCTION_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_p3_production_overlay_20260605.yaml"
+AL_DROP_P4_Q65_GUARD_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_p4_q65_guard_recovery_overlay_20260605.yaml"
 LAUNCHER = ROOT / "scripts" / "launch_he2_remaining_quantile_al_exal.py"
 
 
@@ -37,6 +38,7 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             AL_DROP_DIAGNOSTIC_VALIDATOR,
             AL_DROP_DIAGNOSTIC_SPEC_TEMPLATE,
             AL_DROP_P3_PRODUCTION_SPEC,
+            AL_DROP_P4_Q65_GUARD_SPEC,
             UNIVAR_TEMPLATE,
             UNIVAR_BATCH,
             LAUNCHER,
@@ -213,6 +215,57 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
                 self.assertEqual(cfg["debug_he2_dqlm_al_drop_policy_overlay"]["spec_id"], "al_m_t0_p3_production_highdf_eps365_cf1_20260605")
                 self.assertEqual(cfg["debug_he2_dqlm_al_drop_policy_overlay"]["gamma_sigma_dropped_quantile_overrides"], ["q50"])
 
+    def test_al_drop_builder_applies_p4_q65_guard_recovery_overlay(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_drop_p4_q65_builder_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(AL_DROP_BUILDER),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--policy-spec-yaml",
+                    str(AL_DROP_P4_Q65_GUARD_SPEC),
+                    "--cutoffs",
+                    "20220511",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            matrix_dir = artifact_root / "control" / "publication_relaunch_matrix"
+            rows = self.read_csv(matrix_dir / "matrix_plan.csv")
+            self.assertEqual([row["cutoff"] for row in rows], ["20220511"])
+            self.assertEqual({row["policy_spec_id"] for row in rows}, {"al_m_t0_p4_q65_guard_recovery_highdf_eps365_cf1_20260605"})
+            cfg = self.load_yaml(Path(rows[0]["config_path"]))
+            gamma_sigma = cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]
+            self.assertEqual(gamma_sigma["max_iter"], 160)
+            self.assertEqual(gamma_sigma["min_update_iters"], 50)
+            self.assertNotIn("q50", gamma_sigma["quantile_overrides"])
+            self.assertFalse(
+                any(
+                    isinstance(value, dict) and value.get("freeze_target") == "states"
+                    for value in gamma_sigma["quantile_overrides"].values()
+                )
+            )
+            q35_stab = gamma_sigma["quantile_overrides"]["q35"]["stabilization"]
+            self.assertEqual(q35_stab["state_blend_alpha"], 1.0)
+            self.assertEqual(q35_stab["state_guard_refreeze_iters"], 10)
+            self.assertEqual(q35_stab["state_hold_after_guard_iters"], 10)
+            q65 = gamma_sigma["quantile_overrides"]["q65"]
+            q65_stab = q65["stabilization"]
+            self.assertEqual(q65["max_iter"], 220)
+            self.assertEqual(q65["freeze_target"], "gamma_sigma")
+            self.assertEqual(q65["terminal_sampling_guard"]["mode"], "fail_fast")
+            self.assertEqual(q65_stab["state_norm_max_ratio"], 25)
+            self.assertEqual(q65_stab["state_guard_refreeze_iters"], 2)
+            self.assertEqual(q65_stab["state_hold_after_guard_iters"], 0)
+            self.assertEqual(q65_stab["state_blend_alpha"], 0.15)
+            self.assertEqual(q65_stab["cov_blend_alpha"], 0.5)
+            self.assertEqual(cfg["debug_he2_dqlm_al_drop_policy_overlay"]["gamma_sigma_dropped_quantile_overrides"], ["q50"])
+
     def test_al_drop_p3_prelaunch_validator_accepts_overlay_without_smoke(self) -> None:
         with tempfile.TemporaryDirectory(prefix="he2_al_drop_p3_validator_") as tmp:
             artifact_root = Path(tmp) / "artifact"
@@ -238,6 +291,33 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             summary = self.load_yaml(summary_path)
             self.assertEqual(summary["policy_spec_id"], "al_m_t0_p3_production_highdf_eps365_cf1_20260605")
             self.assertEqual(summary["selected_cutoffs"], ["20211112", "20220511"])
+            self.assertEqual(summary["checks"]["smoke_runs"]["skipped"], 1)
+
+    def test_al_drop_p4_prelaunch_validator_accepts_overlay_without_smoke(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_drop_p4_validator_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(AL_DROP_VALIDATOR),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--policy-spec-yaml",
+                    str(AL_DROP_P4_Q65_GUARD_SPEC),
+                    "--cutoffs",
+                    "20220511",
+                    "--skip-smoke",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            summary_path = next((artifact_root / "control").glob("prelaunch_validation_*/prelaunch_validation_summary.json"))
+            summary = self.load_yaml(summary_path)
+            self.assertEqual(summary["policy_spec_id"], "al_m_t0_p4_q65_guard_recovery_highdf_eps365_cf1_20260605")
+            self.assertEqual(summary["selected_cutoffs"], ["20220511"])
             self.assertEqual(summary["checks"]["smoke_runs"]["skipped"], 1)
 
     def test_launcher_blocks_al_m_t0_by_default(self) -> None:

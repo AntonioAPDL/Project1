@@ -5,6 +5,13 @@
 This note turns the completed AL-M-T0 P3 diagnostic into a production promotion
 path for the manuscript-facing Bayesian HE2 table.
 
+Update after the full-design P3 smoke: P3 is not production-promotable as-is.
+The stale q50 `freeze_target=states` inheritance is fixed, but the two-cutoff
+full-design smoke exposed a deterministic 20220511 q65 state-guard lockout with
+`gamsig_update_iters=0`. The active follow-up plan is now:
+
+`docs/he2_al_m_t0_p4_q65_guard_recovery_plan_20260605.md`
+
 The diagnostic finding is recorded in:
 
 `docs/he2_al_m_t0_scale_state_diagnostic_findings_20260604.md`
@@ -123,7 +130,9 @@ Acceptance gates:
 
 ## Full Production Gate
 
-Only after the two-cutoff smoke passes, prepare the full root:
+Only after the two-cutoff smoke passes, prepare the full root. Because the P3
+smoke did not pass, this section is retained as the promotion target but is not
+currently authorized for launch under the P3 overlay:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_p3_production_20260605`
 

@@ -1,0 +1,102 @@
+spec_id: al_m_t0_p4_q65_guard_recovery_highdf_eps365_cf1_20260605
+description: >
+  Targeted AL-M-T0 P4 production-smoke overlay after the 2026-06-05 P3
+  full-design smoke exposed a deterministic 20220511 q65 state-guard lockout.
+  The scientific/input contract is identical to P3: promoted exAL-M-T0
+  canonical bundle, AL likelihood, transfer drop, full transfer design,
+  high discount factors, epsilon 365, and c_factor 1. P4 changes only the q65
+  recovery policy: retain fail-fast terminal sampling, retain the same state
+  norm guard threshold, but damp the accepted state/covariance step and shorten
+  refreeze/hold so the lane can make valid gamma/sigma updates instead of
+  retrying the same rejected jump.
+requires_user_discount_decision: false
+
+diagnostic_evidence:
+  p3_plan: docs/he2_al_m_t0_p3_production_promotion_plan_20260605.md
+  p3_smoke_fit_summary: reports/he2_al_m_t0_p3_production_smoke_20260605/fit_log_summary/P3_SMOKE_FIT_LOG_SUMMARY.md
+  p3_smoke_cycle_audit: reports/he2_al_m_t0_p3_production_smoke_20260605/cycles/GAMSIG_CYCLE_AUDIT.md
+
+promotion_gate:
+  isolated_fit_cutoff: "20220511"
+  isolated_fit_quantile: 0.65
+  smoke_cutoffs:
+    - "20211112"
+    - "20220511"
+  full_cutoffs:
+    - "20210123"
+    - "20211112"
+    - "20211221"
+    - "20220511"
+    - "20221225"
+  require_terminal_health_pass: true
+  require_min_gamma_sigma_updates: 50
+  require_two_cycle_free: true
+  require_post_crps: true
+  require_publication_figure_manifest: true
+  require_post_success_rdata_cleanup: true
+  keep_failed_rows_visible: true
+
+state_evolution:
+  df_t: 0.99999999
+  df_s1: 0.99999999
+  df_s2: 0.99999999
+  df_s67: 0.99999999
+  df_discrep: 0.99999999
+  lambda: 0.97
+  df_trans: 0.99999999
+  df_covs: 0.99999999
+
+forecast_cov:
+  epsilon: 365.0
+  c_factor: 1.0
+
+gamma_sigma:
+  max_iter: 160
+  min_update_iters: 50
+  min_total_iters: 50
+  quantile_overrides:
+    q35:
+      freeze_target: gamma_sigma
+      warmup_freeze_iters: 5
+      terminal_sampling_guard:
+        mode: fail_fast
+        min_guard_count: 1
+        max_guard_lag_iters: 0
+        require_frozen: true
+      stabilization:
+        state_guard_enabled: true
+        state_norm_max_ratio: 25
+        state_norm_abs_cap: 1.0e12
+        state_guard_start_iter: 0
+        state_guard_refreeze_iters: 10
+        state_hold_after_guard_iters: 10
+        state_blend_alpha: 1.0
+        cov_blend_alpha: 1.0
+    q65:
+      max_iter: 220
+      freeze_target: gamma_sigma
+      warmup_freeze_iters: 5
+      terminal_sampling_guard:
+        mode: fail_fast
+        min_guard_count: 1
+        max_guard_lag_iters: 0
+        require_frozen: true
+      stabilization:
+        state_guard_enabled: true
+        state_norm_max_ratio: 25
+        state_norm_abs_cap: 1.0e12
+        state_guard_start_iter: 0
+        state_guard_refreeze_iters: 2
+        state_hold_after_guard_iters: 0
+        state_blend_alpha: 0.15
+        cov_blend_alpha: 0.5
+
+# The promoted exAL-M-T0 source configs contain a q50 states-freeze override
+# from an earlier source repair. P4 inherits the source input/design contract,
+# not that old gamma/sigma policy.
+gamma_sigma_drop_quantile_overrides:
+  - q50
+gamma_sigma_disallow_freeze_target_states: true
+
+legacy:
+  n_samp: 2000

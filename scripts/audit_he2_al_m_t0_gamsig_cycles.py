@@ -123,6 +123,20 @@ def classify_two_cycle(
     state_ratio_threshold: float = 100.0,
     min_transition_fraction: float = 0.80,
 ) -> dict[str, str | int | float | bool]:
+    def last_fields(tail_rows: list[ProgressRow]) -> dict[str, str | int | float | bool]:
+        if not tail_rows:
+            return {}
+        last = tail_rows[-1]
+        return {
+            "last_iter": last.iteration,
+            "last_elbo": last.elbo,
+            "last_sigma_exp": last.sigma_exp,
+            "last_gamma_exp": last.gamma_exp,
+            "last_state_norm_sq": last.state_norm_sq,
+            "last_gamsig_update_iters": last.gamsig_update_iters,
+            "last_frozen": last.frozen,
+        }
+
     if not rows:
         return {
             "two_cycle_suspect": False,
@@ -135,6 +149,7 @@ def classify_two_cycle(
             "two_cycle_suspect": False,
             "cycle_reason": "too_few_progress_rows",
             "window_n": len(tail),
+            **last_fields(tail),
         }
     sigma_values = [row.sigma_exp for row in tail]
     state_values = [row.state_norm_sq for row in tail]
@@ -161,13 +176,7 @@ def classify_two_cycle(
         "two_cycle_suspect": suspect,
         "cycle_reason": "+".join(reason_parts),
         "window_n": len(tail),
-        "last_iter": tail[-1].iteration,
-        "last_elbo": tail[-1].elbo,
-        "last_sigma_exp": tail[-1].sigma_exp,
-        "last_gamma_exp": tail[-1].gamma_exp,
-        "last_state_norm_sq": tail[-1].state_norm_sq,
-        "last_gamsig_update_iters": tail[-1].gamsig_update_iters,
-        "last_frozen": tail[-1].frozen,
+        **last_fields(tail),
         "tail_sigma_min": min(finite_positive(sigma_values), default=math.nan),
         "tail_sigma_max": max(finite_positive(sigma_values), default=math.nan),
         "tail_sigma_ratio": sigma_ratio,
