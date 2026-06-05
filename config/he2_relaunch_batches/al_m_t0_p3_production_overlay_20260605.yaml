@@ -1,0 +1,90 @@
+spec_id: al_m_t0_p3_production_highdf_eps365_cf1_20260605
+description: >
+  Production promotion overlay for AL-M-T0 after the 2026-06-04 P3 scale/state
+  diagnostic. It preserves the promoted exAL-M-T0 canonical input bundle and full
+  transfer-drop design, switches only the target likelihood to AL through the
+  production clone builder, and applies the P3 stabilization policy that passed
+  the representative q35/q65/q80 diagnostic matrix. This is not an A1
+  transfer-level-only diagnostic spec; it is the full-design smoke/production
+  candidate.
+requires_user_discount_decision: false
+
+diagnostic_evidence:
+  findings_doc: docs/he2_al_m_t0_scale_state_diagnostic_findings_20260604.md
+  p3_runtime_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_scale_state_p3_a1_force_gammasigma_iter160_fitcontract_20260604
+  p3_live_status: reports/he2_al_m_t0_scale_state_diagnostic_20260604/minimal_matrix_p3_live/DIAGNOSTIC_LADDER_LIVE_STATUS.md
+  p3_cycle_audit: reports/he2_al_m_t0_scale_state_diagnostic_20260604/minimal_matrix_p3_cycles/GAMSIG_CYCLE_AUDIT.md
+
+promotion_gate:
+  smoke_cutoffs:
+    - "20211112"
+    - "20220511"
+  full_cutoffs:
+    - "20210123"
+    - "20211112"
+    - "20211221"
+    - "20220511"
+    - "20221225"
+  require_terminal_health_pass: true
+  require_two_cycle_free: true
+  require_post_crps: true
+  require_publication_figure_manifest: true
+  require_post_success_rdata_cleanup: true
+  keep_failed_rows_visible: true
+
+state_evolution:
+  df_t: 0.99999999
+  df_s1: 0.99999999
+  df_s2: 0.99999999
+  df_s67: 0.99999999
+  df_discrep: 0.99999999
+  lambda: 0.97
+  df_trans: 0.99999999
+  df_covs: 0.99999999
+
+forecast_cov:
+  epsilon: 365.0
+  c_factor: 1.0
+
+gamma_sigma:
+  max_iter: 160
+  min_update_iters: 50
+  min_total_iters: 50
+  quantile_overrides:
+    q35:
+      freeze_target: gamma_sigma
+      warmup_freeze_iters: 5
+      terminal_sampling_guard:
+        mode: fail_fast
+        min_guard_count: 1
+        max_guard_lag_iters: 0
+        require_frozen: true
+      stabilization:
+        state_guard_enabled: true
+        state_norm_max_ratio: 25
+        state_norm_abs_cap: 1.0e12
+        state_guard_start_iter: 0
+        state_guard_refreeze_iters: 10
+        state_hold_after_guard_iters: 10
+        state_blend_alpha: 1.0
+        cov_blend_alpha: 1.0
+    q65:
+      freeze_target: gamma_sigma
+      warmup_freeze_iters: 5
+      terminal_sampling_guard:
+        mode: fail_fast
+        min_guard_count: 1
+        max_guard_lag_iters: 0
+        require_frozen: true
+      stabilization:
+        state_guard_enabled: true
+        state_norm_max_ratio: 25
+        state_norm_abs_cap: 1.0e12
+        state_guard_start_iter: 0
+        state_guard_refreeze_iters: 10
+        state_hold_after_guard_iters: 10
+        state_blend_alpha: 1.0
+        cov_blend_alpha: 1.0
+
+legacy:
+  n_samp: 2000

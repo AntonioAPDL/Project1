@@ -38,6 +38,9 @@ SOURCE_ARTIFACT_ROOT = (
 DEFAULT_ARTIFACT_ROOT = (
     ROOT.parent / "project1_ucsc_phd_runtime" / "multimodel_v8_he2_dqlm_multivar_al_drop_from_exal_drop_20260603"
 )
+DEFAULT_P3_POLICY_SPEC = (
+    ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_p3_production_overlay_20260605.yaml"
+)
 
 
 def utc_now() -> str:
@@ -58,6 +61,16 @@ def load_yaml(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"YAML root must be a mapping: {path}")
     return payload
+
+
+def deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
+    out = deepcopy(base)
+    for key, value in patch.items():
+        if isinstance(value, dict) and isinstance(out.get(key), dict):
+            out[key] = deep_merge(out[key], value)
+        else:
+            out[key] = deepcopy(value)
+    return out
 
 
 def write_yaml(path: Path, payload: dict[str, Any]) -> None:
@@ -94,6 +107,24 @@ def target_run_id(cutoff: str) -> str:
     return f"multimodel_{cutoff}_v8_{CAMPAIGN_SPEC_ID}_{TARGET_FAMILY}"
 
 
+def parse_cutoff_list(value: str | None) -> list[str] | None:
+    if value is None or not str(value).strip():
+        return None
+    cutoffs: list[str] = []
+    for item in str(value).split(","):
+        item = item.strip()
+        if not item:
+            continue
+        compact = item.replace("-", "")
+        if len(compact) != 8 or not compact.isdigit():
+            raise ValueError(f"invalid cutoff value: {item}")
+        cutoffs.append(compact)
+    unknown = sorted(set(cutoffs) - set(EXPECTED_CUTOFFS))
+    if unknown:
+        raise ValueError(f"unknown cutoff(s): {', '.join(unknown)}")
+    return cutoffs
+
+
 def nested(payload: dict[str, Any], keys: list[str], default: Any = None) -> Any:
     cur: Any = payload
     for key in keys:
@@ -128,7 +159,9 @@ def update_debug_blocks(
     source_root: Path,
     artifact_root: Path,
     code_commit: str,
+    policy_spec: dict[str, Any] | None = None,
 ) -> None:
+    policy_spec_id = str(policy_spec.get("spec_id", "")) if isinstance(policy_spec, dict) else ""
     if isinstance(cfg.get("debug_featurecov_cf1_eps_campaign"), dict):
         debug = cfg["debug_featurecov_cf1_eps_campaign"]
         debug["family_id"] = TARGET_FAMILY
@@ -139,6 +172,8 @@ def update_debug_blocks(
         debug["selected_source_run"] = source_run_id(cutoff)
         debug["selected_source_type"] = "exdqlm_multivar_drop_current_q50repair_al_clone_20260603"
         debug["selected_source_config"] = str(source_cfg_path)
+        if policy_spec_id:
+            debug["selected_spec_token"] = policy_spec_id
 
     if isinstance(cfg.get("debug_he2_publication_relaunch"), dict):
         debug = cfg["debug_he2_publication_relaunch"]
@@ -153,7 +188,7 @@ def update_debug_blocks(
         debug["likelihood_mode"] = "al"
         debug["forecast_transfer_mode"] = "drop"
         debug["publication_crps_display4"] = ""
-        debug["selected_spec_token"] = "eps030_cf1_highdiscount_drop_clone"
+        debug["selected_spec_token"] = policy_spec_id or "eps030_cf1_highdiscount_drop_clone"
         debug["model_config_key"] = TARGET_MODEL_KEY
         debug["config_patch_applied"] = True
         debug["config_patch_source"] = str(ROOT / "scripts" / "build_he2_dqlm_multivar_al_drop_from_exal_drop.py")
@@ -188,6 +223,62 @@ def update_debug_blocks(
         "expected_st_contract": "DISC_W_AL_MODE makes update_sts return zero E.sts/E.sts2 for the active AL likelihood path.",
         "no_launch": True,
     }
+    if policy_spec_id:
+        cfg["debug_he2_dqlm_al_drop_from_exal_drop"]["policy_spec_id"] = policy_spec_id
+        cfg["debug_he2_dqlm_al_drop_from_exal_drop"]["policy_spec_description"] = str(
+            policy_spec.get("description", "")
+        )
+
+
+def apply_policy_spec(cfg: dict[str, Any], policy_spec: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(policy_spec, dict) or not policy_spec:
+        return cfg
+
+    model_cfg = cfg.setdefault("models", {}).setdefault(TARGET_MODEL_KEY, {})
+    fit_model_cfg = cfg.setdefault("fit", {}).setdefault(TARGET_MODEL_KEY, {})
+    legacy_cfg = fit_model_cfg.setdefault("legacy", {})
+
+    if isinstance(policy_spec.get("state_evolution"), dict):
+        model_cfg["state_evolution"] = deep_merge(
+            model_cfg.get("state_evolution", {}) if isinstance(model_cfg.get("state_evolution"), dict) else {},
+            policy_spec["state_evolution"],
+        )
+
+    if isinstance(policy_spec.get("forecast_cov"), dict):
+        legacy_cfg["forecast_cov"] = deep_merge(
+            legacy_cfg.get("forecast_cov", {}) if isinstance(legacy_cfg.get("forecast_cov"), dict) else {},
+            policy_spec["forecast_cov"],
+        )
+
+    if isinstance(policy_spec.get("legacy"), dict):
+        legacy_cfg.update(deepcopy(policy_spec["legacy"]))
+
+    # The legacy AL-drop entrypoint performs the actual fit/save operation inside
+    # objective_deltas(...). The production P3 overlay must therefore force this
+    # bridge on instead of inheriting a null/false source value.
+    legacy_cfg["post_save_objective_enabled"] = True
+    legacy_cfg["post_save_jsd_enabled"] = False
+
+    if isinstance(policy_spec.get("gamma_sigma"), dict):
+        fit_model_cfg["gamma_sigma"] = deep_merge(
+            fit_model_cfg.get("gamma_sigma", {}) if isinstance(fit_model_cfg.get("gamma_sigma"), dict) else {},
+            policy_spec["gamma_sigma"],
+        )
+
+    if isinstance(policy_spec.get("fit"), dict):
+        fit_model_cfg.update(deep_merge(fit_model_cfg, policy_spec["fit"]))
+
+    cfg.setdefault("debug_he2_dqlm_al_drop_policy_overlay", {})
+    cfg["debug_he2_dqlm_al_drop_policy_overlay"] = {
+        "applied": True,
+        "spec_id": str(policy_spec.get("spec_id", "")),
+        "description": str(policy_spec.get("description", "")),
+        "state_evolution_overridden": isinstance(policy_spec.get("state_evolution"), dict),
+        "forecast_cov_overridden": isinstance(policy_spec.get("forecast_cov"), dict),
+        "gamma_sigma_overridden": isinstance(policy_spec.get("gamma_sigma"), dict),
+        "legacy_post_save_objective_forced": True,
+    }
+    return cfg
 
 
 def clone_config(
@@ -199,6 +290,7 @@ def clone_config(
     source_root: Path,
     artifact_root: Path,
     code_commit: str,
+    policy_spec: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     cfg = deepcopy(source_cfg)
     run_id = target_run_id(cutoff)
@@ -222,6 +314,7 @@ def clone_config(
     cfg["models"].setdefault(TARGET_MODEL_KEY, {})
     cfg["models"][TARGET_MODEL_KEY]["likelihood_mode"] = "al"
     cfg["models"][TARGET_MODEL_KEY]["forecast_transfer_mode"] = "drop"
+    cfg = apply_policy_spec(cfg, policy_spec)
 
     update_debug_blocks(
         cfg,
@@ -231,6 +324,7 @@ def clone_config(
         source_root=source_root,
         artifact_root=artifact_root,
         code_commit=code_commit,
+        policy_spec=policy_spec,
     )
     return cfg
 
@@ -240,6 +334,8 @@ def build_package(
     *,
     source_artifact_root: Path = SOURCE_ARTIFACT_ROOT,
     reset_status: bool = True,
+    policy_spec_path: Path | None = None,
+    selected_cutoffs: list[str] | None = None,
 ) -> dict[str, Any]:
     artifact_root = artifact_root.resolve()
     source_artifact_root = source_artifact_root.resolve()
@@ -249,12 +345,22 @@ def build_package(
     config_output_dir.mkdir(parents=True, exist_ok=True)
 
     code_commit = git_head()
+    policy_spec: dict[str, Any] | None = None
+    if policy_spec_path is not None:
+        policy_spec_path = policy_spec_path.resolve()
+        policy_spec = load_yaml(policy_spec_path)
+        if not str(policy_spec.get("spec_id", "")).strip():
+            raise ValueError(f"policy spec missing spec_id: {policy_spec_path}")
+    selected_cutoffs = selected_cutoffs or list(EXPECTED_CUTOFFS)
+    unknown = sorted(set(selected_cutoffs) - set(EXPECTED_CUTOFFS))
+    if unknown:
+        raise ValueError(f"unknown selected cutoff(s): {', '.join(unknown)}")
     plan_rows: list[dict[str, Any]] = []
     frozen_rows: list[dict[str, Any]] = []
     clone_rows: list[dict[str, Any]] = []
     bundle_rows: list[dict[str, Any]] = []
 
-    for order_index, cutoff in enumerate(EXPECTED_CUTOFFS, 1):
+    for order_index, cutoff in enumerate(selected_cutoffs, 1):
         src_path = source_config_path(source_artifact_root, cutoff)
         if not src_path.exists():
             raise FileNotFoundError(f"missing promoted exAL-M-T0 source config: {src_path}")
@@ -268,6 +374,7 @@ def build_package(
             source_root=source_artifact_root,
             artifact_root=artifact_root,
             code_commit=code_commit,
+            policy_spec=policy_spec,
         )
         write_yaml(tgt_path, target_cfg)
 
@@ -301,6 +408,9 @@ def build_package(
             "quantile_submodels": len(active_quantiles),
             "active_quantiles": "|".join(f"{int(round(float(q) * 100)):02d}" for q in active_quantiles),
             "profile_name": "al_drop_from_exal_drop_20260603",
+            "policy_spec_id": str(policy_spec.get("spec_id", "")) if policy_spec else "",
+            "policy_spec_path": str(policy_spec_path) if policy_spec_path is not None else "",
+            "policy_overlay_applied": bool(policy_spec),
             "selected_source_run": source_run_id(cutoff),
             "selected_source_type": "exdqlm_multivar_drop_current_q50repair_al_clone_20260603",
             "selected_source_config": str(src_path),
@@ -318,6 +428,11 @@ def build_package(
             "c_factor": forecast_cov.get("c_factor"),
             "forecast_cov_epsilon": forecast_cov.get("epsilon"),
             "max_iter": nested(target_cfg, ["fit", TARGET_MODEL_KEY, "gamma_sigma", "max_iter"], ""),
+            "min_update_iters": nested(target_cfg, ["fit", TARGET_MODEL_KEY, "gamma_sigma", "min_update_iters"], ""),
+            "min_total_iters": nested(target_cfg, ["fit", TARGET_MODEL_KEY, "gamma_sigma", "min_total_iters"], ""),
+            "post_save_objective_enabled": nested(
+                target_cfg, ["fit", TARGET_MODEL_KEY, "legacy", "post_save_objective_enabled"], ""
+            ),
             "data_start": str(nested(target_cfg, ["dates", "data_start"], "")),
             "cutoff_date": str(nested(target_cfg, ["dates", "cutoff_date"], cutoff_dash(cutoff))),
             "artifact_root": str(artifact_root),
@@ -393,7 +508,11 @@ def build_package(
         "likelihood_switch": "exal_to_al",
         "forecast_transfer_mode": "drop",
         "active_quantiles": ["05", "20", "35", "50", "65", "80", "95"],
-        "n_cutoffs": len(EXPECTED_CUTOFFS),
+        "policy_spec_id": str(policy_spec.get("spec_id", "")) if policy_spec else "",
+        "policy_spec_path": str(policy_spec_path) if policy_spec_path is not None else "",
+        "policy_overlay_applied": bool(policy_spec),
+        "selected_cutoffs": selected_cutoffs,
+        "n_cutoffs": len(selected_cutoffs),
         "n_run_rows": len(plan_rows),
         "n_quantile_fits": len(plan_rows) * QUANTILE_WORKERS_PER_RUN,
         "queue": queue,
@@ -512,6 +631,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--artifact-root", type=Path, default=DEFAULT_ARTIFACT_ROOT)
     parser.add_argument("--source-artifact-root", type=Path, default=SOURCE_ARTIFACT_ROOT)
     parser.add_argument("--no-reset-status", action="store_true")
+    parser.add_argument(
+        "--policy-spec-yaml",
+        type=Path,
+        help="Optional explicit AL-M-T0 production policy overlay, for example the P3 stabilization spec.",
+    )
+    parser.add_argument(
+        "--cutoffs",
+        help="Optional comma-separated cutoff subset, e.g. 20211112,20220511 for smoke packaging.",
+    )
     return parser.parse_args()
 
 
@@ -521,6 +649,8 @@ def main() -> int:
         args.artifact_root.resolve(),
         source_artifact_root=args.source_artifact_root.resolve(),
         reset_status=not args.no_reset_status,
+        policy_spec_path=args.policy_spec_yaml,
+        selected_cutoffs=parse_cutoff_list(args.cutoffs),
     )
     print(json.dumps(metadata, indent=2))
     return 0

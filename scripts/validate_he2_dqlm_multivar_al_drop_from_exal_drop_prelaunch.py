@@ -27,6 +27,7 @@ from build_he2_dqlm_multivar_al_drop_from_exal_drop import (  # noqa: E402
     TARGET_FAMILY,
     TARGET_MODEL_KEY,
     build_package,
+    parse_cutoff_list,
     source_config_path,
     source_run_id,
     target_run_id,
@@ -78,6 +79,14 @@ def deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def deep_contains(actual: Any, expected: Any) -> bool:
+    if isinstance(expected, dict):
+        if not isinstance(actual, dict):
+            return False
+        return all(key in actual and deep_contains(actual[key], value) for key, value in expected.items())
+    return actual == expected
+
+
 def strip_operational(payload: dict[str, Any]) -> dict[str, Any]:
     out = copy.deepcopy(payload)
     for key in [
@@ -86,6 +95,7 @@ def strip_operational(payload: dict[str, Any]) -> dict[str, Any]:
         "debug_featurecov_cf1_eps_campaign",
         "debug_he2_publication_relaunch",
         "debug_he2_dqlm_al_drop_from_exal_drop",
+        "debug_he2_dqlm_al_drop_policy_overlay",
     ]:
         out.pop(key, None)
     if isinstance(out.get("models"), dict) and isinstance(out["models"].get(TARGET_MODEL_KEY), dict):
@@ -139,11 +149,19 @@ def write_smoke_config(src_config: Path, smoke_root: Path) -> Path:
     return smoke_cfg
 
 
-def validate_configs(artifact_root: Path, source_root: Path) -> dict[str, Any]:
+def validate_configs(
+    artifact_root: Path,
+    source_root: Path,
+    *,
+    policy_spec: dict[str, Any] | None = None,
+    selected_cutoffs: list[str] | None = None,
+) -> dict[str, Any]:
     matrix_dir = artifact_root / "control" / "publication_relaunch_matrix"
     config_dir = artifact_root / "control" / "generated_configs"
     rows = []
-    for cutoff in EXPECTED_CUTOFFS:
+    selected_cutoffs = selected_cutoffs or list(EXPECTED_CUTOFFS)
+    policy_spec = policy_spec if isinstance(policy_spec, dict) and policy_spec else None
+    for cutoff in selected_cutoffs:
         src_path = source_config_path(source_root, cutoff)
         tgt_path = config_dir / f"{target_run_id(cutoff)}.yaml"
         assert_true(src_path.exists(), f"{cutoff}: missing source config {src_path}")
@@ -167,17 +185,73 @@ def validate_configs(artifact_root: Path, source_root: Path) -> dict[str, Any]:
             ["inputs", "deterministic_climate"],
             ["inputs", "covariate_features"],
             ["scale_contract"],
-            ["models", TARGET_MODEL_KEY, "state_evolution"],
             ["models", TARGET_MODEL_KEY, "structure"],
-            ["fit", TARGET_MODEL_KEY, "legacy", "forecast_cov"],
-            ["fit", TARGET_MODEL_KEY, "gamma_sigma", "max_iter"],
             ["fit", "quantiles"],
         ]
+        if policy_spec is None:
+            preserved_paths.extend(
+                [
+                    ["models", TARGET_MODEL_KEY, "state_evolution"],
+                    ["fit", TARGET_MODEL_KEY, "legacy", "forecast_cov"],
+                    ["fit", TARGET_MODEL_KEY, "gamma_sigma", "max_iter"],
+                ]
+            )
         for keys in preserved_paths:
             assert_true(nested(source_cfg, keys) == nested(target_cfg, keys), f"{cutoff}: did not preserve {'.'.join(keys)}")
-        src_stripped = strip_operational(source_cfg)
-        tgt_stripped = strip_operational(target_cfg)
-        assert_true(src_stripped == tgt_stripped, f"{cutoff}: unexpected non-operational diff beyond likelihood/run/debug")
+        if policy_spec is None:
+            src_stripped = strip_operational(source_cfg)
+            tgt_stripped = strip_operational(target_cfg)
+            assert_true(src_stripped == tgt_stripped, f"{cutoff}: unexpected non-operational diff beyond likelihood/run/debug")
+        else:
+            spec_id = str(policy_spec.get("spec_id", ""))
+            assert_true(
+                nested(target_cfg, ["debug_he2_dqlm_al_drop_policy_overlay", "spec_id"]) == spec_id,
+                f"{cutoff}: missing policy overlay debug spec id",
+            )
+            if isinstance(policy_spec.get("state_evolution"), dict):
+                assert_true(
+                    nested(target_cfg, ["models", TARGET_MODEL_KEY, "state_evolution"]) == policy_spec["state_evolution"],
+                    f"{cutoff}: state_evolution does not match policy spec",
+                )
+            if isinstance(policy_spec.get("forecast_cov"), dict):
+                assert_true(
+                    nested(target_cfg, ["fit", TARGET_MODEL_KEY, "legacy", "forecast_cov"]) == policy_spec["forecast_cov"],
+                    f"{cutoff}: forecast_cov does not match policy spec",
+                )
+            if isinstance(policy_spec.get("legacy"), dict):
+                for key, value in policy_spec["legacy"].items():
+                    assert_true(
+                        nested(target_cfg, ["fit", TARGET_MODEL_KEY, "legacy", key]) == value,
+                        f"{cutoff}: legacy.{key} does not match policy spec",
+                    )
+            assert_true(
+                nested(target_cfg, ["fit", TARGET_MODEL_KEY, "legacy", "post_save_objective_enabled"]) is True,
+                f"{cutoff}: post_save_objective_enabled must be forced true",
+            )
+            assert_true(
+                nested(target_cfg, ["fit", TARGET_MODEL_KEY, "legacy", "post_save_jsd_enabled"]) is False,
+                f"{cutoff}: post_save_jsd_enabled must be false",
+            )
+            if isinstance(policy_spec.get("gamma_sigma"), dict):
+                target_gs = nested(target_cfg, ["fit", TARGET_MODEL_KEY, "gamma_sigma"], {})
+                assert_true(
+                    int(target_gs.get("max_iter")) == int(policy_spec["gamma_sigma"]["max_iter"]),
+                    f"{cutoff}: gamma_sigma.max_iter does not match policy spec",
+                )
+                assert_true(
+                    int(target_gs.get("min_update_iters")) == int(policy_spec["gamma_sigma"]["min_update_iters"]),
+                    f"{cutoff}: gamma_sigma.min_update_iters does not match policy spec",
+                )
+                assert_true(
+                    int(target_gs.get("min_total_iters")) == int(policy_spec["gamma_sigma"]["min_total_iters"]),
+                    f"{cutoff}: gamma_sigma.min_total_iters does not match policy spec",
+                )
+                expected_overrides = policy_spec["gamma_sigma"].get("quantile_overrides", {})
+                actual_overrides = target_gs.get("quantile_overrides", {})
+                assert_true(
+                    deep_contains(actual_overrides, expected_overrides),
+                    f"{cutoff}: quantile overrides do not contain policy overrides",
+                )
         rows.append(
             {
                 "cutoff": cutoff,
@@ -200,19 +274,39 @@ def main() -> int:
     parser.add_argument("--source-artifact-root", type=Path, default=SOURCE_ARTIFACT_ROOT)
     parser.add_argument("--outdir", type=Path)
     parser.add_argument("--skip-smoke", action="store_true")
+    parser.add_argument(
+        "--policy-spec-yaml",
+        type=Path,
+        help="Optional explicit AL-M-T0 policy overlay to validate, e.g. the P3 production spec.",
+    )
+    parser.add_argument(
+        "--cutoffs",
+        help="Optional comma-separated cutoff subset matching the builder package.",
+    )
     args = parser.parse_args()
 
     artifact_root = args.artifact_root.resolve()
     source_root = args.source_artifact_root.resolve()
+    selected_cutoffs = parse_cutoff_list(args.cutoffs)
+    policy_spec = load_yaml(args.policy_spec_yaml.resolve()) if args.policy_spec_yaml else None
     outdir = (args.outdir.resolve() if args.outdir else artifact_root / "control" / f"prelaunch_validation_{utc_stamp()}")
     outdir.mkdir(parents=True, exist_ok=True)
 
-    metadata = build_package(artifact_root, source_artifact_root=source_root, reset_status=True)
+    metadata = build_package(
+        artifact_root,
+        source_artifact_root=source_root,
+        reset_status=True,
+        policy_spec_path=args.policy_spec_yaml,
+        selected_cutoffs=selected_cutoffs,
+    )
     summary: dict[str, Any] = {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "artifact_root": str(artifact_root),
         "source_artifact_root": str(source_root),
         "metadata": metadata,
+        "policy_spec_path": str(args.policy_spec_yaml.resolve()) if args.policy_spec_yaml else "",
+        "policy_spec_id": str(policy_spec.get("spec_id", "")) if isinstance(policy_spec, dict) else "",
+        "selected_cutoffs": selected_cutoffs or list(EXPECTED_CUTOFFS),
         "checks": {},
         "smoke_runs": [],
     }
@@ -232,7 +326,12 @@ def main() -> int:
     assert_true(compile_proc.returncode == 0, compile_proc.stderr)
     summary["checks"]["py_compile"] = "passed"
 
-    config_summary = validate_configs(artifact_root, source_root)
+    config_summary = validate_configs(
+        artifact_root,
+        source_root,
+        policy_spec=policy_spec,
+        selected_cutoffs=selected_cutoffs,
+    )
     summary["checks"]["clone_contract"] = config_summary
 
     source_r_artifacts = find_heavy_rdata_artifacts(source_root)
