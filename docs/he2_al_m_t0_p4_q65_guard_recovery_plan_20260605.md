@@ -179,3 +179,54 @@ root usable without accumulating avoidable disk pressure.
 This result satisfies the isolated q65 gate and authorizes a full two-cutoff P4
 smoke, not full production promotion. Production remains gated on the all-seven
 quantile, full-post smoke for `20211112` and `20220511`.
+
+## Full Two-Cutoff P4 Smoke Result
+
+The full P4 smoke passed on commit
+`a354b7894d13fd3d5e76d137ec27b258d7e3e89f`.
+
+| Item | Evidence |
+|---|---|
+| smoke root | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_p4_smoke_20260605` |
+| matrix status | `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_p4_smoke_20260605/control/publication_relaunch_matrix/matrix_status.csv` |
+| final fit-log summary | `reports/he2_al_m_t0_p4_smoke_20260605/final_fit_logs/P4_SMOKE_FINAL_FIT_LOG_SUMMARY.md` |
+| final cycle audit | `reports/he2_al_m_t0_p4_smoke_20260605/final_cycles/GAMSIG_CYCLE_AUDIT.md` |
+| final runtime report | `reports/he2_al_m_t0_p4_smoke_20260605/P4_SMOKE_FINAL_REPORT.md` |
+
+Both smoke rows closed with `phase=report`, `status=pass`:
+
+| cutoff | final phase | status | finished UTC |
+|---|---|---|---|
+| `20211112` | report | pass | 2026-06-05T10:03:12Z |
+| `20220511` | report | pass | 2026-06-05T10:07:04Z |
+
+The q65 recovery gate passed for both cutoffs:
+
+| cutoff | q | final iter | updates | sigma | gamma | state norm sq/T | guards | two-cycle | terminal fail |
+|---|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| `20211112` | 0.65 | 220 | 215 | 0.05754201 | 0 | 3.84727109785607 | 0 | false | 0 |
+| `20220511` | 0.65 | 220 | 215 | 0.05764058 | 0 | 1.64949875793094 | 0 | false | 0 |
+
+The final cycle audit reports `two-cycle=False` for all 14 quantile fits. The
+post artifact contracts passed for both cutoffs, including synthesis cache
+shape checks, figure presence, and table-export presence.
+
+CRPS smoke outputs were produced with finite truth availability:
+
+| cutoff | model | horizon | mean CRPS | median CRPS |
+|---|---|---:|---:|---:|
+| `20211112` | `dqlm_multivar_al_synth_drop` | 28 | 0.19741118135136021 | 0.20144921851044836 |
+| `20211112` | `glofas_ensemble` | 28 | 0.16957475641561054 | 0.17538905902916158 |
+| `20211112` | `nws_nwm_ensemble` | 8 | 1.3719166338517021 | 1.3605649135592990 |
+| `20220511` | `dqlm_multivar_al_synth_drop` | 28 | 0.21550211143045339 | 0.21906773159992321 |
+| `20220511` | `glofas_ensemble` | 28 | 0.27226751146296652 | 0.26428106570693211 |
+| `20220511` | `nws_nwm_ensemble` | 8 | 0.28365909559653485 | 0.28612739832195971 |
+
+Successful-run `.RData` cleanup also passed: there are zero retained fit
+`.RData` files under the P4 smoke run roots after post/report completion, and
+disk recovered to 138 GB free on `/data`.
+
+This result satisfies the P4 two-cutoff smoke gate. The next promotion step is
+to prepare the five-cutoff AL-M-T0 production matrix using the P4 q65 policy and
+the same scientific/input contract, then run the usual no-launch validation
+before starting production.
