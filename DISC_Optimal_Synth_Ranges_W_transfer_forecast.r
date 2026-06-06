@@ -1326,6 +1326,116 @@ compute_kl_divergence <- function(sample) {
   return(kl_divergence)
 }
 #
+disc_w_fmt_num <- function(x) {
+  if (length(x) < 1L) {
+    return("NA")
+  }
+  if (is.na(x[1L]) || !is.finite(x[1L])) {
+    return(as.character(x[1L]))
+  }
+  sprintf("%.8g", as.numeric(x[1L]))
+}
+
+disc_w_post_save_sample_summary <- function(sample, label) {
+  sample <- as.matrix(sample)
+  total <- length(sample)
+  finite_count <- sum(is.finite(sample))
+  finite_rows <- if (nrow(sample) > 0L) {
+    apply(is.finite(sample), 1L, all)
+  } else {
+    logical(0L)
+  }
+  cov_min_eig <- NA_real_
+  cov_max_eig <- NA_real_
+  cov_condition <- NA_real_
+  cov_chol_ok <- FALSE
+  cov_diag_min <- NA_real_
+  cov_diag_max <- NA_real_
+  if (ncol(sample) > 0L && sum(finite_rows) > 1L) {
+    cov_mat <- tryCatch(stats::cov(sample[finite_rows, , drop = FALSE]), error = function(e) NULL)
+    if (!is.null(cov_mat)) {
+      cov_mat <- as.matrix(cov_mat)
+      cov_mat <- (cov_mat + t(cov_mat)) / 2
+      cov_diag <- diag(cov_mat)
+      cov_diag_min <- suppressWarnings(min(cov_diag, na.rm = TRUE))
+      cov_diag_max <- suppressWarnings(max(cov_diag, na.rm = TRUE))
+      eig <- tryCatch(eigen(cov_mat, symmetric = TRUE, only.values = TRUE)$values, error = function(e) numeric(0L))
+      if (length(eig) > 0L) {
+        cov_min_eig <- min(eig, na.rm = TRUE)
+        cov_max_eig <- max(eig, na.rm = TRUE)
+        if (is.finite(cov_min_eig) && is.finite(cov_max_eig) && cov_min_eig > 0) {
+          cov_condition <- cov_max_eig / cov_min_eig
+        }
+      }
+      cov_chol_ok <- !inherits(try(chol(cov_mat), silent = TRUE), "try-error")
+    }
+  }
+  cat(sprintf(
+    "[post_save_objective_sample] p0=%s label=%s rows=%d cols=%d finite=%d/%d finite_rows=%d cov_chol_ok=%s cov_min_eig=%s cov_max_eig=%s cov_condition=%s cov_diag_min=%s cov_diag_max=%s\n",
+    as.character(p0),
+    as.character(label),
+    as.integer(nrow(sample)),
+    as.integer(ncol(sample)),
+    as.integer(finite_count),
+    as.integer(total),
+    as.integer(sum(finite_rows)),
+    if (isTRUE(cov_chol_ok)) "true" else "false",
+    disc_w_fmt_num(cov_min_eig),
+    disc_w_fmt_num(cov_max_eig),
+    disc_w_fmt_num(cov_condition),
+    disc_w_fmt_num(cov_diag_min),
+    disc_w_fmt_num(cov_diag_max)
+  ))
+  flush.console()
+  invisible(NULL)
+}
+
+disc_w_empirical_gaussian_kl_standard <- function(sample) {
+  sample <- as.matrix(sample)
+  finite_rows <- if (nrow(sample) > 0L) {
+    apply(is.finite(sample), 1L, all)
+  } else {
+    logical(0L)
+  }
+  sample <- sample[finite_rows, , drop = FALSE]
+  if (nrow(sample) < 2L || ncol(sample) < 1L) {
+    return(NA_real_)
+  }
+  mu <- colMeans(sample)
+  cov_mat <- as.matrix(stats::cov(sample))
+  cov_mat <- (cov_mat + t(cov_mat)) / 2
+  eig <- tryCatch(eigen(cov_mat, symmetric = TRUE, only.values = TRUE)$values, error = function(e) numeric(0L))
+  if (length(eig) < 1L || any(!is.finite(eig))) {
+    return(NA_real_)
+  }
+  eig_floor <- max(1e-8, max(abs(eig), na.rm = TRUE) * 1e-10)
+  eig_adj <- pmax(eig, eig_floor)
+  k <- ncol(sample)
+  0.5 * (sum(eig_adj) + sum(mu^2) - k - sum(log(eig_adj)))
+}
+
+disc_w_safe_post_save_metric <- function(metric, code) {
+  tryCatch(
+    {
+      value <- as.numeric(code)
+      if (length(value) < 1L) {
+        return(NA_real_)
+      }
+      value[1L]
+    },
+    error = function(e) {
+      cat(sprintf(
+        "[post_save_objective_metric_error] p0=%s metric=%s error=%s\n",
+        as.character(p0),
+        as.character(metric),
+        conditionMessage(e)
+      ))
+      flush.console()
+      NA_real_
+    }
+  )
+}
+#
 concatenate_matrix_columns <- function(matrix_input) {
   # Concatenate the columns of the matrix
   concatenated_vector <- c(matrix_input)
@@ -6706,7 +6816,29 @@ if (!isTRUE(DISC_W_POST_SAVE_OBJECTIVE_ENABLED)) {
 }
 
 errors <- new.theta.out$standard_forecast_errors
-s <- 0.5*(compute_kl_divergence(t(errors))+estimate_kl_divergence(t(errors)))
+error_sample <- t(errors)
+disc_w_post_save_sample_summary(error_sample, "standard_forecast_errors")
+kl_p_to_standard <- disc_w_safe_post_save_metric(
+  "compute_kl_divergence",
+  compute_kl_divergence(error_sample)
+)
+kl_standard_to_p <- disc_w_safe_post_save_metric(
+  "estimate_kl_divergence",
+  estimate_kl_divergence(error_sample)
+)
+s <- 0.5 * (kl_p_to_standard + kl_standard_to_p)
+if (!is.finite(s)) {
+  s_fallback <- disc_w_empirical_gaussian_kl_standard(error_sample)
+  cat(sprintf(
+    "[post_save_objective_fallback] p0=%s reason=kl_metric_nonfinite kl_p_to_standard=%s kl_standard_to_p=%s fallback_empirical_gaussian_kl=%s\n",
+    as.character(p0),
+    disc_w_fmt_num(kl_p_to_standard),
+    disc_w_fmt_num(kl_standard_to_p),
+    disc_w_fmt_num(s_fallback)
+  ))
+  flush.console()
+  s <- s_fallback
+}
 ######################
 
 # Function to compute JSD for a given sample matrix
@@ -6760,7 +6892,10 @@ compute_jsd <- function(p_sample, gridsize = c(100, 100, 100)) {
 
 if (isTRUE(DISC_W_POST_SAVE_JSD_ENABLED)) {
   jsd_grid <- rep(as.integer(DISC_W_POST_SAVE_JSD_GRIDSIZE), 3L)
-  js_divergence <- compute_jsd(t(errors), gridsize = jsd_grid)
+  js_divergence <- disc_w_safe_post_save_metric(
+    "compute_jsd",
+    compute_jsd(error_sample, gridsize = jsd_grid)
+  )
 } else {
   cat(sprintf(
     "[post_save_jsd] disabled p0=%s env=DISC_W_POST_SAVE_JSD_ENABLED\n",

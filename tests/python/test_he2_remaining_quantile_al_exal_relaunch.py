@@ -18,6 +18,7 @@ UNIVAR_BATCH = ROOT / "config" / "he2_relaunch_batches" / "univar_al_exal_public
 AL_DROP_DIAGNOSTIC_SPEC_TEMPLATE = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_diagnostic_discount_spec_template_20260603.yaml"
 AL_DROP_P3_PRODUCTION_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_p3_production_overlay_20260605.yaml"
 AL_DROP_P4_Q65_GUARD_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_p4_q65_guard_recovery_overlay_20260605.yaml"
+AL_DROP_P5_POSTSAVE_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_p5_q65_q80_warmup40_postsave_overlay_20260606.yaml"
 LAUNCHER = ROOT / "scripts" / "launch_he2_remaining_quantile_al_exal.py"
 
 
@@ -39,6 +40,7 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             AL_DROP_DIAGNOSTIC_SPEC_TEMPLATE,
             AL_DROP_P3_PRODUCTION_SPEC,
             AL_DROP_P4_Q65_GUARD_SPEC,
+            AL_DROP_P5_POSTSAVE_SPEC,
             UNIVAR_TEMPLATE,
             UNIVAR_BATCH,
             LAUNCHER,
@@ -274,6 +276,65 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             self.assertEqual(q80["init"]["sigma_scale"], 0.5)
             self.assertEqual(cfg["debug_he2_dqlm_al_drop_policy_overlay"]["gamma_sigma_dropped_quantile_overrides"], ["q50"])
 
+    def test_al_drop_builder_applies_p5_postsave_warmup40_overlay(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_drop_p5_postsave_builder_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(AL_DROP_BUILDER),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--policy-spec-yaml",
+                    str(AL_DROP_P5_POSTSAVE_SPEC),
+                    "--cutoffs",
+                    "20210123",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            matrix_dir = artifact_root / "control" / "publication_relaunch_matrix"
+            rows = self.read_csv(matrix_dir / "matrix_plan.csv")
+            self.assertEqual([row["cutoff"] for row in rows], ["20210123"])
+            self.assertEqual(
+                {row["policy_spec_id"] for row in rows},
+                {"al_m_t0_p5_q65_q80_warmup40_postsave_highdf_eps365_cf1_20260606"},
+            )
+            cfg = self.load_yaml(Path(rows[0]["config_path"]))
+            gamma_sigma = cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]
+            self.assertEqual(gamma_sigma["max_iter"], 160)
+            self.assertEqual(gamma_sigma["min_update_iters"], 50)
+            self.assertEqual(gamma_sigma["min_total_iters"], 50)
+            self.assertNotIn("q50", gamma_sigma["quantile_overrides"])
+            self.assertFalse(
+                any(
+                    isinstance(value, dict) and value.get("freeze_target") == "states"
+                    for value in gamma_sigma["quantile_overrides"].values()
+                )
+            )
+            q65 = gamma_sigma["quantile_overrides"]["q65"]
+            self.assertEqual(q65["max_iter"], 220)
+            self.assertEqual(q65["freeze_target"], "gamma_sigma")
+            self.assertEqual(q65["warmup_freeze_iters"], 40)
+            self.assertEqual(q65["terminal_sampling_guard"]["mode"], "fail_fast")
+            self.assertTrue(q65["stabilization"]["state_guard_enabled"])
+            self.assertEqual(q65["stabilization"]["state_blend_alpha"], 0.15)
+            q80 = gamma_sigma["quantile_overrides"]["q80"]
+            self.assertEqual(q80["freeze_target"], "gamma_sigma")
+            self.assertEqual(q80["warmup_freeze_iters"], 40)
+            self.assertEqual(q80["init"]["mode"], "robust")
+            self.assertEqual(q80["init"]["gamma"], 0.0)
+            self.assertEqual(q80["init"]["sigma_floor"], 0.01)
+            self.assertEqual(q80["init"]["sigma_scale"], 0.5)
+            self.assertEqual(
+                cfg["debug_he2_dqlm_al_drop_policy_overlay"]["spec_id"],
+                "al_m_t0_p5_q65_q80_warmup40_postsave_highdf_eps365_cf1_20260606",
+            )
+            self.assertEqual(cfg["debug_he2_dqlm_al_drop_policy_overlay"]["gamma_sigma_dropped_quantile_overrides"], ["q50"])
+
     def test_al_drop_p3_prelaunch_validator_accepts_overlay_without_smoke(self) -> None:
         with tempfile.TemporaryDirectory(prefix="he2_al_drop_p3_validator_") as tmp:
             artifact_root = Path(tmp) / "artifact"
@@ -327,6 +388,49 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             self.assertEqual(summary["policy_spec_id"], "al_m_t0_p4_q65_q80_warmup20_highdf_eps365_cf1_20260606")
             self.assertEqual(summary["selected_cutoffs"], ["20220511"])
             self.assertEqual(summary["checks"]["smoke_runs"]["skipped"], 1)
+
+    def test_al_drop_p5_prelaunch_validator_accepts_overlay_without_smoke(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_drop_p5_validator_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(AL_DROP_VALIDATOR),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--policy-spec-yaml",
+                    str(AL_DROP_P5_POSTSAVE_SPEC),
+                    "--cutoffs",
+                    "20210123",
+                    "--skip-smoke",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            summary_path = next((artifact_root / "control").glob("prelaunch_validation_*/prelaunch_validation_summary.json"))
+            summary = self.load_yaml(summary_path)
+            self.assertEqual(summary["policy_spec_id"], "al_m_t0_p5_q65_q80_warmup40_postsave_highdf_eps365_cf1_20260606")
+            self.assertEqual(summary["selected_cutoffs"], ["20210123"])
+            self.assertEqual(summary["checks"]["smoke_runs"]["skipped"], 1)
+
+    def test_disc_post_save_objective_is_hardened_after_state_save(self) -> None:
+        for script_name in [
+            "DISC_Optimal_Synth_Ranges_W.r",
+            "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r",
+        ]:
+            script = ROOT / script_name
+            text = script.read_text(encoding="utf-8")
+            self.assertIn("disc_w_safe_post_save_metric", text, script_name)
+            self.assertIn("[post_save_objective_metric_error]", text, script_name)
+            self.assertIn("[post_save_objective_sample]", text, script_name)
+            self.assertIn("[post_save_objective_fallback]", text, script_name)
+            self.assertIn("disc_w_empirical_gaussian_kl_standard", text, script_name)
+            save_idx = text.index("disc_w_save_state(")
+            sample_idx = text.index("disc_w_post_save_sample_summary(error_sample")
+            self.assertLess(save_idx, sample_idx, script_name)
 
     def test_launcher_blocks_al_m_t0_by_default(self) -> None:
         text = LAUNCHER.read_text(encoding="utf-8")
