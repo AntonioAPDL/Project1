@@ -1,20 +1,26 @@
-spec_id: al_m_t0_p4_q65_guard_recovery_highdf_eps365_cf1_20260605
+spec_id: al_m_t0_p4_q65_q80_warmup20_highdf_eps365_cf1_20260606
 description: >
-  Targeted AL-M-T0 P4 production-smoke overlay after the 2026-06-05 P3
-  full-design smoke exposed a deterministic 20220511 q65 state-guard lockout.
+  Targeted AL-M-T0 P4 repair overlay after the 2026-06-05 P3 full-design
+  smoke exposed a deterministic 20220511 q65 state-guard lockout and the
+  subsequent five-cutoff P4 production matrix exposed post-save chol(G)
+  failures in 20210123 q80 and 20211221 q65.
   The scientific/input contract is identical to P3: promoted exAL-M-T0
   canonical bundle, AL likelihood, transfer drop, full transfer design,
-  high discount factors, epsilon 365, and c_factor 1. P4 changes only the q65
-  recovery policy: retain fail-fast terminal sampling, retain the same state
-  norm guard threshold, but damp the accepted state/covariance step and shorten
-  refreeze/hold so the lane can make valid gamma/sigma updates instead of
-  retrying the same rejected jump.
+  high discount factors, epsilon 365, and c_factor 1. This revision retains the
+  q65 P4 recovery policy and extends the q65/q80 gamma-sigma warm-up freeze to
+  20 iterations. The q80 change is intentionally narrow: keep its existing
+  robust initialization and do not add the q65 state/covariance damping policy.
 requires_user_discount_decision: false
 
 diagnostic_evidence:
   p3_plan: docs/he2_al_m_t0_p3_production_promotion_plan_20260605.md
   p3_smoke_fit_summary: reports/he2_al_m_t0_p3_production_smoke_20260605/fit_log_summary/P3_SMOKE_FIT_LOG_SUMMARY.md
   p3_smoke_cycle_audit: reports/he2_al_m_t0_p3_production_smoke_20260605/cycles/GAMSIG_CYCLE_AUDIT.md
+  p4_production_plan: docs/he2_al_m_t0_p4_five_cutoff_production_launch_20260605.md
+  p4_production_matrix_status: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_p4_production_20260605/control/publication_relaunch_matrix/matrix_status.csv
+  p4_failed_lanes:
+    - "20210123 q80: fit failed after sampling with chol(G) non-PD in dmvnorm.deriv.unique"
+    - "20211221 q65: fit failed after sampling with chol(G) non-PD in dmvnorm.deriv.unique"
 
 promotion_gate:
   isolated_fit_cutoff: "20220511"
@@ -75,7 +81,7 @@ gamma_sigma:
     q65:
       max_iter: 220
       freeze_target: gamma_sigma
-      warmup_freeze_iters: 5
+      warmup_freeze_iters: 20
       terminal_sampling_guard:
         mode: fail_fast
         min_guard_count: 1
@@ -90,6 +96,9 @@ gamma_sigma:
         state_hold_after_guard_iters: 0
         state_blend_alpha: 0.15
         cov_blend_alpha: 0.5
+    q80:
+      freeze_target: gamma_sigma
+      warmup_freeze_iters: 20
 
 # The promoted exAL-M-T0 source configs contain a q50 states-freeze override
 # from an earlier source repair. P4 inherits the source input/design contract,

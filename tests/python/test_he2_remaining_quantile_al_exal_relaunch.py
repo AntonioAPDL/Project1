@@ -238,7 +238,7 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             matrix_dir = artifact_root / "control" / "publication_relaunch_matrix"
             rows = self.read_csv(matrix_dir / "matrix_plan.csv")
             self.assertEqual([row["cutoff"] for row in rows], ["20220511"])
-            self.assertEqual({row["policy_spec_id"] for row in rows}, {"al_m_t0_p4_q65_guard_recovery_highdf_eps365_cf1_20260605"})
+            self.assertEqual({row["policy_spec_id"] for row in rows}, {"al_m_t0_p4_q65_q80_warmup20_highdf_eps365_cf1_20260606"})
             cfg = self.load_yaml(Path(rows[0]["config_path"]))
             gamma_sigma = cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]
             self.assertEqual(gamma_sigma["max_iter"], 160)
@@ -258,12 +258,20 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             q65_stab = q65["stabilization"]
             self.assertEqual(q65["max_iter"], 220)
             self.assertEqual(q65["freeze_target"], "gamma_sigma")
+            self.assertEqual(q65["warmup_freeze_iters"], 20)
             self.assertEqual(q65["terminal_sampling_guard"]["mode"], "fail_fast")
             self.assertEqual(q65_stab["state_norm_max_ratio"], 25)
             self.assertEqual(q65_stab["state_guard_refreeze_iters"], 2)
             self.assertEqual(q65_stab["state_hold_after_guard_iters"], 0)
             self.assertEqual(q65_stab["state_blend_alpha"], 0.15)
             self.assertEqual(q65_stab["cov_blend_alpha"], 0.5)
+            q80 = gamma_sigma["quantile_overrides"]["q80"]
+            self.assertEqual(q80["freeze_target"], "gamma_sigma")
+            self.assertEqual(q80["warmup_freeze_iters"], 20)
+            self.assertEqual(q80["init"]["mode"], "robust")
+            self.assertEqual(q80["init"]["gamma"], 0.0)
+            self.assertEqual(q80["init"]["sigma_floor"], 0.01)
+            self.assertEqual(q80["init"]["sigma_scale"], 0.5)
             self.assertEqual(cfg["debug_he2_dqlm_al_drop_policy_overlay"]["gamma_sigma_dropped_quantile_overrides"], ["q50"])
 
     def test_al_drop_p3_prelaunch_validator_accepts_overlay_without_smoke(self) -> None:
@@ -316,7 +324,7 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             summary_path = next((artifact_root / "control").glob("prelaunch_validation_*/prelaunch_validation_summary.json"))
             summary = self.load_yaml(summary_path)
-            self.assertEqual(summary["policy_spec_id"], "al_m_t0_p4_q65_guard_recovery_highdf_eps365_cf1_20260605")
+            self.assertEqual(summary["policy_spec_id"], "al_m_t0_p4_q65_q80_warmup20_highdf_eps365_cf1_20260606")
             self.assertEqual(summary["selected_cutoffs"], ["20220511"])
             self.assertEqual(summary["checks"]["smoke_runs"]["skipped"], 1)
 
