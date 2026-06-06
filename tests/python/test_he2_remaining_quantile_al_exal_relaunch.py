@@ -19,6 +19,7 @@ AL_DROP_DIAGNOSTIC_SPEC_TEMPLATE = ROOT / "config" / "he2_relaunch_batches" / "a
 AL_DROP_P3_PRODUCTION_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_p3_production_overlay_20260605.yaml"
 AL_DROP_P4_Q65_GUARD_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_p4_q65_guard_recovery_overlay_20260605.yaml"
 AL_DROP_P5_POSTSAVE_SPEC = ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_p5_q65_q80_warmup40_postsave_overlay_20260606.yaml"
+AL_DROP_P5_PROMOTION_DOC = ROOT / "docs" / "he2_al_m_t0_p5_production_promotion_20260606.md"
 LAUNCHER = ROOT / "scripts" / "launch_he2_remaining_quantile_al_exal.py"
 
 
@@ -41,6 +42,7 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             AL_DROP_P3_PRODUCTION_SPEC,
             AL_DROP_P4_Q65_GUARD_SPEC,
             AL_DROP_P5_POSTSAVE_SPEC,
+            AL_DROP_P5_PROMOTION_DOC,
             UNIVAR_TEMPLATE,
             UNIVAR_BATCH,
             LAUNCHER,
@@ -130,7 +132,13 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="he2_al_drop_clone_builder_") as tmp:
             artifact_root = Path(tmp) / "artifact"
             completed = subprocess.run(
-                ["python3", str(AL_DROP_BUILDER), "--artifact-root", str(artifact_root)],
+                [
+                    "python3",
+                    str(AL_DROP_BUILDER),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--no-policy-spec",
+                ],
                 cwd=ROOT,
                 text=True,
                 capture_output=True,
@@ -153,6 +161,41 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
                 self.assertEqual(cfg["models"]["exdqlm_multivar"]["structure"]["enabled_harmonic_indices"], [1, 2, 3])
             clone_rows = self.read_csv(matrix_dir / "source_clone_manifest.csv")
             self.assertEqual({row["only_intended_scientific_change"] for row in clone_rows}, {"likelihood_mode exal -> al"})
+
+    def test_al_drop_builder_defaults_to_promoted_p5_policy(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_drop_default_p5_builder_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(AL_DROP_BUILDER),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--cutoffs",
+                    "20210123",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            matrix_dir = artifact_root / "control" / "publication_relaunch_matrix"
+            rows = self.read_csv(matrix_dir / "matrix_plan.csv")
+            self.assertEqual([row["cutoff"] for row in rows], ["20210123"])
+            self.assertEqual(
+                {row["policy_spec_id"] for row in rows},
+                {"al_m_t0_p5_q65_q80_warmup40_postsave_highdf_eps365_cf1_20260606"},
+            )
+            metadata = self.load_yaml(matrix_dir / "matrix_metadata.yaml")
+            self.assertEqual(metadata["campaign_id"], "he2_dqlm_multivar_al_drop_p5_production_20260606")
+            self.assertTrue(metadata["policy_overlay_applied"])
+            self.assertTrue(str(metadata["artifact_root"]).endswith("artifact"))
+            cfg = self.load_yaml(Path(rows[0]["config_path"]))
+            gamma_sigma = cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]
+            self.assertEqual(gamma_sigma["quantile_overrides"]["q65"]["warmup_freeze_iters"], 40)
+            self.assertEqual(gamma_sigma["quantile_overrides"]["q80"]["warmup_freeze_iters"], 40)
+            self.assertEqual(cfg["debug_he2_dqlm_al_drop_policy_overlay"]["spec_id"], "al_m_t0_p5_q65_q80_warmup40_postsave_highdf_eps365_cf1_20260606")
 
     def test_al_drop_builder_applies_p3_production_overlay_for_smoke_cutoffs(self) -> None:
         with tempfile.TemporaryDirectory(prefix="he2_al_drop_p3_builder_") as tmp:
@@ -416,6 +459,32 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             self.assertEqual(summary["selected_cutoffs"], ["20210123"])
             self.assertEqual(summary["checks"]["smoke_runs"]["skipped"], 1)
 
+    def test_al_drop_prelaunch_validator_defaults_to_promoted_p5_without_smoke(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="he2_al_drop_default_p5_validator_") as tmp:
+            artifact_root = Path(tmp) / "artifact"
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(AL_DROP_VALIDATOR),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--cutoffs",
+                    "20210123",
+                    "--skip-smoke",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            summary_path = next((artifact_root / "control").glob("prelaunch_validation_*/prelaunch_validation_summary.json"))
+            summary = self.load_yaml(summary_path)
+            self.assertEqual(summary["policy_spec_id"], "al_m_t0_p5_q65_q80_warmup40_postsave_highdf_eps365_cf1_20260606")
+            self.assertTrue(summary["metadata"]["policy_overlay_applied"])
+            self.assertEqual(summary["selected_cutoffs"], ["20210123"])
+            self.assertEqual(summary["checks"]["smoke_runs"]["skipped"], 1)
+
     def test_disc_post_save_objective_is_hardened_after_state_save(self) -> None:
         for script_name in [
             "DISC_Optimal_Synth_Ranges_W.r",
@@ -432,11 +501,14 @@ class He2RemainingQuantileAlExalRelaunchTests(unittest.TestCase):
             sample_idx = text.index("disc_w_post_save_sample_summary(error_sample")
             self.assertLess(save_idx, sample_idx, script_name)
 
-    def test_launcher_blocks_al_m_t0_by_default(self) -> None:
+    def test_launcher_includes_promoted_al_m_t0_by_default_and_allows_skip(self) -> None:
         text = LAUNCHER.read_text(encoding="utf-8")
+        self.assertIn("DEFAULT_P5_POLICY_SPEC as AL_DROP_POLICY_SPEC", text)
+        self.assertIn("--skip-al-drop", text)
         self.assertIn("--include-blocked-al-drop", text)
-        self.assertIn("blocked_not_launched", text)
-        self.assertIn("requires targeted diagnostics/new discount spec before relaunch", text)
+        self.assertIn("AL-M-T0 is no longer blocked", text)
+        self.assertIn("build_al_drop_package(AL_DROP_ROOT.resolve(), reset_status=True, policy_spec_path=AL_DROP_POLICY_SPEC)", text)
+        self.assertIn("skipped_by_user", text)
 
 
 if __name__ == "__main__":

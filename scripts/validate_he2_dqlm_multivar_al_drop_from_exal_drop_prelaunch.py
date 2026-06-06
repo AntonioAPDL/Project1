@@ -21,6 +21,7 @@ if str(ROOT / "scripts") not in sys.path:
 
 from build_he2_dqlm_multivar_al_drop_from_exal_drop import (  # noqa: E402
     DEFAULT_ARTIFACT_ROOT,
+    DEFAULT_P5_POLICY_SPEC,
     EXPECTED_CUTOFFS,
     SOURCE_ARTIFACT_ROOT,
     SOURCE_FAMILY,
@@ -295,7 +296,13 @@ def main() -> int:
     parser.add_argument(
         "--policy-spec-yaml",
         type=Path,
-        help="Optional explicit AL-M-T0 policy overlay to validate, e.g. the P3 production spec.",
+        default=DEFAULT_P5_POLICY_SPEC,
+        help="AL-M-T0 policy overlay to validate. Defaults to the promoted P5 warmup/post-save spec.",
+    )
+    parser.add_argument(
+        "--no-policy-spec",
+        action="store_true",
+        help="Validate the historical raw exAL-to-AL clone without a policy overlay.",
     )
     parser.add_argument(
         "--cutoffs",
@@ -306,7 +313,8 @@ def main() -> int:
     artifact_root = args.artifact_root.resolve()
     source_root = args.source_artifact_root.resolve()
     selected_cutoffs = parse_cutoff_list(args.cutoffs)
-    policy_spec = load_yaml(args.policy_spec_yaml.resolve()) if args.policy_spec_yaml else None
+    policy_spec_path = None if args.no_policy_spec else args.policy_spec_yaml
+    policy_spec = load_yaml(policy_spec_path.resolve()) if policy_spec_path else None
     outdir = (args.outdir.resolve() if args.outdir else artifact_root / "control" / f"prelaunch_validation_{utc_stamp()}")
     outdir.mkdir(parents=True, exist_ok=True)
 
@@ -314,7 +322,7 @@ def main() -> int:
         artifact_root,
         source_artifact_root=source_root,
         reset_status=True,
-        policy_spec_path=args.policy_spec_yaml,
+        policy_spec_path=policy_spec_path,
         selected_cutoffs=selected_cutoffs,
     )
     summary: dict[str, Any] = {
@@ -322,7 +330,7 @@ def main() -> int:
         "artifact_root": str(artifact_root),
         "source_artifact_root": str(source_root),
         "metadata": metadata,
-        "policy_spec_path": str(args.policy_spec_yaml.resolve()) if args.policy_spec_yaml else "",
+        "policy_spec_path": str(policy_spec_path.resolve()) if policy_spec_path else "",
         "policy_spec_id": str(policy_spec.get("spec_id", "")) if isinstance(policy_spec, dict) else "",
         "selected_cutoffs": selected_cutoffs or list(EXPECTED_CUTOFFS),
         "checks": {},

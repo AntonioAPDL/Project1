@@ -36,10 +36,10 @@ SOURCE_ARTIFACT_ROOT = (
     ROOT.parent / "project1_ucsc_phd_runtime" / "multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602"
 )
 DEFAULT_ARTIFACT_ROOT = (
-    ROOT.parent / "project1_ucsc_phd_runtime" / "multimodel_v8_he2_dqlm_multivar_al_drop_from_exal_drop_20260603"
+    ROOT.parent / "project1_ucsc_phd_runtime" / "multimodel_v8_he2_dqlm_multivar_al_drop_p5_production_20260606"
 )
-DEFAULT_P3_POLICY_SPEC = (
-    ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_p3_production_overlay_20260605.yaml"
+DEFAULT_P5_POLICY_SPEC = (
+    ROOT / "config" / "he2_relaunch_batches" / "al_m_t0_p5_q65_q80_warmup40_postsave_overlay_20260606.yaml"
 )
 
 
@@ -254,7 +254,7 @@ def apply_policy_spec(cfg: dict[str, Any], policy_spec: dict[str, Any] | None) -
         legacy_cfg.update(deepcopy(policy_spec["legacy"]))
 
     # The legacy AL-drop entrypoint performs the actual fit/save operation inside
-    # objective_deltas(...). The production P3 overlay must therefore force this
+    # objective_deltas(...). The promoted policy overlay must therefore force this
     # bridge on instead of inheriting a null/false source value.
     legacy_cfg["post_save_objective_enabled"] = True
     legacy_cfg["post_save_jsd_enabled"] = False
@@ -349,7 +349,7 @@ def build_package(
     *,
     source_artifact_root: Path = SOURCE_ARTIFACT_ROOT,
     reset_status: bool = True,
-    policy_spec_path: Path | None = None,
+    policy_spec_path: Path | None = DEFAULT_P5_POLICY_SPEC,
     selected_cutoffs: list[str] | None = None,
 ) -> dict[str, Any]:
     artifact_root = artifact_root.resolve()
@@ -406,7 +406,7 @@ def build_package(
             "epsilon": CAMPAIGN_SPEC_ID,
             "epsilon_value": CAMPAIGN_SPEC_ID,
             "lane": TARGET_FAMILY,
-            "run_scope": "he2_dqlm_multivar_al_drop_from_exal_drop_20260603",
+            "run_scope": "he2_dqlm_multivar_al_drop_p5_production_20260606",
             "run_id": target_run_id(cutoff),
             "config_path": str(tgt_path),
             "compare_outdir": "",
@@ -422,7 +422,7 @@ def build_package(
             "row_kind": "quantile_multivariate",
             "quantile_submodels": len(active_quantiles),
             "active_quantiles": "|".join(f"{int(round(float(q) * 100)):02d}" for q in active_quantiles),
-            "profile_name": "al_drop_from_exal_drop_20260603",
+            "profile_name": "al_drop_p5_production_20260606",
             "policy_spec_id": str(policy_spec.get("spec_id", "")) if policy_spec else "",
             "policy_spec_path": str(policy_spec_path) if policy_spec_path is not None else "",
             "policy_overlay_applied": bool(policy_spec),
@@ -507,7 +507,7 @@ def build_package(
     metadata = {
         "generated_at_utc": utc_now(),
         "status": "prepared_not_launched",
-        "campaign_id": "he2_dqlm_multivar_al_drop_from_exal_drop_20260603",
+        "campaign_id": "he2_dqlm_multivar_al_drop_p5_production_20260606",
         "campaign_spec_id": CAMPAIGN_SPEC_ID,
         "source_artifact_root": str(source_artifact_root),
         "artifact_root": str(artifact_root),
@@ -617,7 +617,8 @@ def build_package(
         f"- quantile workers per run: `{QUANTILE_WORKERS_PER_RUN}`",
         f"- max active quantile workers: `{MAX_ACTIVE_QUANTILE_WORKERS}`",
         "- intended scientific change: `likelihood_mode: exal -> al`",
-        "- preserved: source input bundle paths, cutoff dates, data start, harmonics, transfer covariates, discount factors, epsilon, c_factor, and max_iter.",
+        "- preserved: source input bundle paths, cutoff dates, data start, harmonics, transfer covariates, and scale contract.",
+        "- promoted policy: P5 overrides AL-M-T0 discount factors, epsilon/c_factor, gamma-sigma controls, and post-save objective handling unless `--no-policy-spec` is used for a historical raw-clone diagnostic.",
         "- cleanup after post: `true`",
         "",
         "## Launch Command",
@@ -649,7 +650,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--policy-spec-yaml",
         type=Path,
-        help="Optional explicit AL-M-T0 production policy overlay, for example the P3 stabilization spec.",
+        default=DEFAULT_P5_POLICY_SPEC,
+        help="AL-M-T0 production policy overlay. Defaults to the promoted P5 warmup/post-save spec.",
+    )
+    parser.add_argument(
+        "--no-policy-spec",
+        action="store_true",
+        help="Build the raw exAL-to-AL clone without a policy overlay. Intended only for historical diagnostics/tests.",
     )
     parser.add_argument(
         "--cutoffs",
@@ -664,7 +671,7 @@ def main() -> int:
         args.artifact_root.resolve(),
         source_artifact_root=args.source_artifact_root.resolve(),
         reset_status=not args.no_reset_status,
-        policy_spec_path=args.policy_spec_yaml,
+        policy_spec_path=None if args.no_policy_spec else args.policy_spec_yaml,
         selected_cutoffs=parse_cutoff_list(args.cutoffs),
     )
     print(json.dumps(metadata, indent=2))

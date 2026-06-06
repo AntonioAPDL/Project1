@@ -19,6 +19,7 @@ if str(ROOT / "scripts") not in sys.path:
 
 from build_he2_dqlm_multivar_al_drop_from_exal_drop import (  # noqa: E402
     DEFAULT_ARTIFACT_ROOT as AL_DROP_ROOT,
+    DEFAULT_P5_POLICY_SPEC as AL_DROP_POLICY_SPEC,
     build_package as build_al_drop_package,
 )
 
@@ -175,12 +176,14 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--poll-seconds", type=int, default=30)
     parser.add_argument(
+        "--skip-al-drop",
+        action="store_true",
+        help="Skip promoted AL-M-T0. By default AL-M-T0 is built from the P5 warmup/post-save policy.",
+    )
+    parser.add_argument(
         "--include-blocked-al-drop",
         action="store_true",
-        help=(
-            "Include AL-M-T0. This is disabled by default because the 2026-06-03 AL-M-T0 clone failed "
-            "fit-stage sigma/PSD gates and requires a targeted diagnostic spec before relaunch."
-        ),
+        help="Deprecated no-op kept for old commands. AL-M-T0 is no longer blocked and is included unless --skip-al-drop is passed.",
     )
     args = parser.parse_args()
 
@@ -193,8 +196,8 @@ def main() -> int:
         "builds": {},
     }
 
-    if args.include_blocked_al_drop:
-        al_drop_metadata = build_al_drop_package(AL_DROP_ROOT.resolve(), reset_status=True)
+    if not args.skip_al_drop:
+        al_drop_metadata = build_al_drop_package(AL_DROP_ROOT.resolve(), reset_status=True, policy_spec_path=AL_DROP_POLICY_SPEC)
         launch_summary["builds"]["al_drop"] = al_drop_metadata
         if not args.skip_validation:
             run_checked(
@@ -203,6 +206,8 @@ def main() -> int:
                     "scripts/validate_he2_dqlm_multivar_al_drop_from_exal_drop_prelaunch.py",
                     "--artifact-root",
                     str(AL_DROP_ROOT),
+                    "--policy-spec-yaml",
+                    str(AL_DROP_POLICY_SPEC),
                 ],
                 label="validate_al_drop_from_exal_drop",
                 outdir=REPORT_DIR,
@@ -221,20 +226,17 @@ def main() -> int:
         )
     else:
         launch_summary["builds"]["al_drop"] = {
-            "status": "blocked_not_built_not_launched",
-            "reason": (
-                "AL-M-T0 failed the 2026-06-03 fit-stage sigma/PSD gates. Use "
-                "scripts/build_he2_dqlm_multivar_al_drop_diagnostic_plan.py for no-launch diagnostics "
-                "and pass --include-blocked-al-drop only after an explicit relaunch decision."
-            ),
+            "status": "skipped_by_user",
+            "reason": "AL-M-T0 is promoted to the P5 production-ready workflow but was skipped with --skip-al-drop.",
             "artifact_root": str(AL_DROP_ROOT.resolve()),
         }
         launch_summary["controllers"].append(
             {
                 "label": "AL-M-T0",
-                "status": "blocked_not_launched",
+                "status": "skipped_by_user",
                 "artifact_root": str(AL_DROP_ROOT.resolve()),
-                "reason": "requires targeted diagnostics/new discount spec before relaunch",
+                "matrix_dir": str(AL_DROP_ROOT.resolve() / "control" / "publication_relaunch_matrix"),
+                "reason": "skipped with --skip-al-drop",
             }
         )
 
