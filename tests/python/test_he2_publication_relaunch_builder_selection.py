@@ -30,6 +30,8 @@ EXDQLM_FULLHISTORY_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 
 EXDQLM_ALLCUTOFFS_FULLHISTORY_PROMOTION_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.template.yaml'
 EXDQLM_ALLCUTOFFS_FULLHISTORY_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml'
 BUILDER = ROOT / 'scripts' / 'build_he2_bayesian_publication_relaunch_configs.py'
+NDLM_THIRD_HARMONIC = 1 / 6.8068493
+NDLM_HARMONICS = [1, 2, NDLM_THIRD_HARMONIC]
 
 
 class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
@@ -1090,13 +1092,18 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(sample_cfg['fit']['ndlm_main']['gamma_sigma']['min_total_iters'], 20)
         self.assertEqual(sample_cfg['fit']['ndlm_main']['gamma_sigma']['max_iter'], 100)
         self.assertEqual(sample_cfg['models']['ndlm_main']['seasonality']['period'], 363.5854)
-        self.assertEqual(sample_cfg['models']['ndlm_main']['seasonality']['harmonics'], [1, 2, 0.1469118904])
+        self.assertEqual(sample_cfg['models']['ndlm_main']['seasonality']['harmonics'], NDLM_HARMONICS)
 
         univar_cfg = yaml.safe_load(
             (config_output_dir / 'multimodel_20221225_v8_he2pubgdpc1r1_ndlm_univar_keep.yaml').read_text(encoding='utf-8')
         ) or {}
         self.assertEqual(univar_cfg['models']['ndlm_univar']['seasonality']['period'], 363.5854)
-        self.assertEqual(univar_cfg['models']['ndlm_univar']['seasonality']['harmonics'], [1, 2, 3])
+        self.assertEqual(univar_cfg['models']['ndlm_univar']['seasonality']['harmonics'], NDLM_HARMONICS)
+
+        for cfg_path in sorted(config_output_dir.glob('*.yaml')):
+            cfg = yaml.safe_load(cfg_path.read_text(encoding='utf-8')) or {}
+            self.assertEqual(cfg['models']['ndlm_main']['seasonality']['harmonics'], NDLM_HARMONICS)
+            self.assertEqual(cfg['models']['ndlm_univar']['seasonality']['harmonics'], NDLM_HARMONICS)
 
     def test_exdqlm_rerun_batch_builds_all_cutoffs_and_freezes_publication_winning_specs(self) -> None:
         proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(

@@ -158,10 +158,10 @@ Seasonality:
 
 | Model | Period | Harmonics |
 |---|---:|---|
-| `ndlm_main_drop` / `ndlm_main_keep` | `363.5854` | `1`, `2`, `0.1469118904` |
+| `ndlm_main_drop` / `ndlm_main_keep` | `363.5854` | `1`, `2`, `1/6.8068493` |
 
-This non-integer third harmonic is intentionally preserved from the source
-resolved configs and must not be replaced by literal harmonic `3`.
+The third entry is the non-integer value `1/6.8068493`
+(`0.14691084757818865`). It must not be replaced by literal harmonic `3`.
 
 ### NDLM univar keep
 
@@ -184,7 +184,10 @@ Seasonality:
 
 | Model | Period | Harmonics |
 |---|---:|---|
-| `ndlm_univar_keep` | `363.5854` | `1`, `2`, `3` |
+| `ndlm_univar_keep` | `363.5854` | `1`, `2`, `1/6.8068493` |
+
+The NDLM univariate path follows the same harmonic-value contract as the NDLM
+main path. Literal harmonic `3` is not allowed in NDLM seasonality configs.
 
 ## Queue and Cleanup Contract
 
@@ -245,8 +248,8 @@ Covered behavior:
 - lag orders, squares, and interaction terms;
 - one-core NDLM rows;
 - high-discount NDLM spec;
-- NDLM main harmonics `[1, 2, 0.1469118904]`;
-- NDLM univar harmonics `[1, 2, 3]`.
+- NDLM main harmonics `[1, 2, 1/6.8068493]`;
+- NDLM univar harmonics `[1, 2, 1/6.8068493]`.
 
 ### Real prelaunch validation
 
@@ -260,7 +263,7 @@ python3 scripts/validate_he2_bayesian_publication_relaunch_prelaunch.py \
 
 Successful validation output root:
 
-`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/control/prelaunch_validation_20260607T193033Z`
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/control/prelaunch_validation_20260607T203117Z`
 
 The earlier validation attempt at
 `.../control/prelaunch_validation_20260607T191317Z` was superseded before
@@ -272,6 +275,16 @@ a validation-only NDLM-main smoke override:
 retain `fit.ndlm_main.gamma_sigma.min_total_iters = 20` and
 `fit.ndlm_main.gamma_sigma.max_iter = 100`; this separation is tested in
 `tests/python/test_he2_publication_relaunch_builder_selection.py`.
+
+The intermediate successful validation at
+`.../control/prelaunch_validation_20260607T193033Z` was also superseded before
+production launch because it predated the final NDLM harmonic correction. The
+authoritative validation root is `.../control/prelaunch_validation_20260607T203117Z`,
+which rebuilds the 15 generated configs after forcing NDLM main and NDLM univar
+seasonality to `[1, 2, 1/6.8068493]`. The final NDLM-main keep smoke reached
+runtime with `NDLM_SEASONAL_HARMONICS=1,2,0.146910847578189`, confirming that
+the noninteger third harmonic value, not literal `3`, is wired through the
+runtime path.
 
 Final status:
 
@@ -287,13 +300,13 @@ Final status:
 - selected scope: 15 rows, 5 cutoffs, 3 NDLM families
 - smoke runs: 14 total; 12 passed and 2 quantile smokes intentionally skipped
   because this batch is NDLM-only
-- cleanup: 16 temporary fit files removed, `297851748` bytes removed
+- cleanup: 16 temporary fit files removed, `297866711` bytes removed
 - retained `.RData` / `.rdata` / `.Rda` / `.rda` files under the June 7
   promotion root after validation: `0`
 
 Summary evidence:
 
-`.../control/prelaunch_validation_20260607T193033Z/prelaunch_validation_summary.json`
+`.../control/prelaunch_validation_20260607T203117Z/prelaunch_validation_summary.json`
 
 The full-pipeline smoke outputs also confirm the post/report wiring by producing
 the NDLM ELBO figure, recent-fit figure, forecast-window raw-cms quantile figure,
@@ -379,7 +392,7 @@ python3 scripts/build_he2_master_workflow_audit_tracker.py
 | Bundle/covariate audit | done | `.../control/publication_relaunch_matrix/cutoff_bundle_audit.csv` |
 | Frozen spec audit | done | `.../control/publication_relaunch_matrix/frozen_spec_manifest.csv` |
 | Deterministic tests | done | unittest and py_compile commands above |
-| Full prelaunch validation | done | `.../control/prelaunch_validation_20260607T193033Z/prelaunch_validation_summary.json` |
-| Production launch | not started | gated on full validation pass |
+| Full prelaunch validation | done | `.../control/prelaunch_validation_20260607T203117Z/prelaunch_validation_summary.json` |
+| Production launch | not started | validation passed; awaiting explicit launch approval |
 | Manifest/parity promotion | not started | gated on 15 production rows passing |
 | Article CRPS/table refresh | not started | gated on manifest promotion |

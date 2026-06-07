@@ -57,7 +57,7 @@ ndlm_univar_theory_constants <- function(seed = 777L) {
   df_covs <- ndlm_univar_env_prob("NDLM_UNIV_DF_COVS", default = 0.99999)
   lambda <- ndlm_univar_env_prob("NDLM_UNIV_LAMBDA", default = 0.99)
   period <- ndlm_univar_env_num("NDLM_UNIV_SEASONAL_PERIOD", default = 363.5854, min_val = 1e-8)
-  harmonics <- ndlm_univar_env_num_vec("NDLM_UNIV_SEASONAL_HARMONICS", default = c(1, 2, 3))
+  harmonics <- ndlm_univar_env_num_vec("NDLM_UNIV_SEASONAL_HARMONICS", default = c(1, 2, 1 / 6.8068493))
 
   n0 <- ndlm_univar_env_num("NDLM_UNIV_N0", default = 20, min_val = 1e-6)
   S0 <- ndlm_univar_env_num("NDLM_UNIV_S0", default = 1, min_val = 1e-8)

@@ -2657,7 +2657,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       NDLM_UNIV_SEASONAL_HARMONICS = paste(
         as.character(unified_get(
           cfg, c("models", "ndlm_univar", "seasonality", "harmonics"),
-          default = c(1, 2, 3)
+          default = c(1, 2, 1 / 6.8068493)
         )),
         collapse = ","
       ),

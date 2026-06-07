@@ -134,7 +134,7 @@ specs:
       kalman_backend: cpp
       seasonality:
         period: 363.5854
-        harmonics: [1, 2, 0.1469118904]
+        harmonics: [1, 2, 0.14691084757818865]
       state_evolution:
         df_t: 0.99999999
         df_s1: 0.99999999
@@ -164,7 +164,7 @@ specs:
       kalman_backend: cpp
       seasonality:
         period: 363.5854
-        harmonics: [1, 2, 3]
+        harmonics: [1, 2, 0.14691084757818865]
       horizon_cap: 90
       posterior_draws: 64
       prior:

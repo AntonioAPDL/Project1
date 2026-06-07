@@ -18,3 +18,14 @@ queue:
   ordinary_max_concurrent: 5
   heavy_cutoff_max_concurrent: 1
   heavy_cutoff_blocks_ordinary: false
+overrides:
+  common_config_patch:
+    models:
+      ndlm_main:
+        seasonality:
+          period: 363.5854
+          harmonics: [1, 2, 0.14691084757818865]
+      ndlm_univar:
+        seasonality:
+          period: 363.5854
+          harmonics: [1, 2, 0.14691084757818865]

@@ -43,9 +43,40 @@ EXDQLM_FULLHISTORY_PROMOTION_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publicat
 EXDQLM_FULLHISTORY_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_20221225_fullhistory_promotion_20260522.yaml'
 EXDQLM_ALLCUTOFFS_FULLHISTORY_PROMOTION_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.template.yaml'
 EXDQLM_ALLCUTOFFS_FULLHISTORY_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_fullhistory_promotion_20260522.yaml'
+NDLM_THIRD_HARMONIC = 1 / 6.8068493
+NDLM_HARMONICS = [1, 2, NDLM_THIRD_HARMONIC]
+NDLM_TEMPLATE_CONTRACTS = [
+    ROOT / 'config' / 'unified_run.template.yaml',
+    ROOT / 'config' / 'multimodel_v8_ndlm_campaign.template.yaml',
+    ROOT / 'config' / 'multimodel_v8_ndlm_featurecov_rerun.template.yaml',
+    ROOT / 'config' / 'multimodel_v8_ndlm_featurecov_rerun_postfix_20260421.template.yaml',
+]
 
 
 class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
+    def _collect_harmonic_vectors(self, node):
+        vectors = []
+        if isinstance(node, dict):
+            seasonality = node.get('seasonality')
+            if isinstance(seasonality, dict) and 'harmonics' in seasonality:
+                vectors.append(seasonality['harmonics'])
+            for value in node.values():
+                vectors.extend(self._collect_harmonic_vectors(value))
+        elif isinstance(node, list):
+            for value in node:
+                vectors.extend(self._collect_harmonic_vectors(value))
+        return vectors
+
+    def test_ndlm_templates_use_noninteger_third_harmonic_value(self) -> None:
+        for path in NDLM_TEMPLATE_CONTRACTS:
+            with self.subTest(path=path):
+                self.assertTrue(path.exists())
+                payload = yaml.safe_load(path.read_text(encoding='utf-8')) or {}
+                harmonic_vectors = self._collect_harmonic_vectors(payload)
+                self.assertGreaterEqual(len(harmonic_vectors), 2)
+                for harmonics in harmonic_vectors:
+                    self.assertEqual(harmonics, NDLM_HARMONICS)
+
     def test_template_exists_and_has_expected_campaign_contract(self) -> None:
         self.assertTrue(TEMPLATE.exists())
         payload = yaml.safe_load(TEMPLATE.read_text(encoding='utf-8')) or {}
@@ -491,6 +522,9 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         self.assertEqual(batch_payload['resources']['mc_cores'], 1)
         self.assertEqual(batch_payload['queue']['ordinary_max_concurrent'], 5)
         self.assertFalse(batch_payload['queue']['heavy_cutoff_blocks_ordinary'])
+        patch_models = batch_payload['overrides']['common_config_patch']['models']
+        self.assertEqual(patch_models['ndlm_main']['seasonality']['harmonics'], NDLM_HARMONICS)
+        self.assertEqual(patch_models['ndlm_univar']['seasonality']['harmonics'], NDLM_HARMONICS)
 
     def test_exdqlm_rerun_template_and_batch_freeze_all_cutoff_publication_specs(self) -> None:
         self.assertTrue(EXDQLM_RERUN_TEMPLATE.exists())
