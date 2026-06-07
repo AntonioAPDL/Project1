@@ -33,6 +33,8 @@ Q50_20221225_STATEFREEZE_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exd
 Q50_20221225_PROOF_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_20221225_q50_proof_promotion_20260515.yaml'
 WAVE_A_NDLM_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_wave_a_ndlm_20260516.template.yaml'
 WAVE_A_NDLM_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'he2_wave_a_ndlm_remaining_families_20260516.yaml'
+WAVE_A_NDLM_PROMOTION_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607.template.yaml'
+WAVE_A_NDLM_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'he2_wave_a_ndlm_remaining_families_promotion_20260607.yaml'
 EXDQLM_RERUN_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_rerun_20260516.template.yaml'
 EXDQLM_RERUN_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_rerun_20260516.yaml'
 EXDQLM_SHARED_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.template.yaml'
@@ -454,6 +456,41 @@ class HE2PublicationRelaunchTemplateTests(unittest.TestCase):
         self.assertEqual(batch_payload['resources']['fit_parallel_workers'], 1)
         self.assertEqual(batch_payload['resources']['mc_cores'], 1)
         self.assertEqual(batch_payload['queue']['ordinary_max_concurrent'], 2)
+
+    def test_wave_a_ndlm_promotion_template_uses_fresh_root_and_full_family_smokes(self) -> None:
+        self.assertTrue(WAVE_A_NDLM_PROMOTION_TEMPLATE.exists())
+        self.assertTrue(WAVE_A_NDLM_PROMOTION_BATCH.exists())
+
+        template_payload = yaml.safe_load(WAVE_A_NDLM_PROMOTION_TEMPLATE.read_text(encoding='utf-8')) or {}
+        self.assertEqual(
+            template_payload['campaign']['families'],
+            ['ndlm_univar_keep', 'ndlm_main_drop', 'ndlm_main_keep'],
+        )
+        self.assertIn('wave_a_ndlm_promotion_20260607', template_payload['campaign']['artifact_root'])
+        self.assertIn('multimodel_v8_he2_publication_shared_inputs_20260510', template_payload['bundles']['artifact_root'])
+        self.assertEqual(template_payload['bundles']['bundle_run_id'], '20260510_publication_shared_r01')
+        self.assertEqual(template_payload['bundles']['data_start'], '1987-05-29')
+        self.assertEqual(template_payload['queue']['ordinary_max_concurrent'], 5)
+        self.assertFalse(template_payload['queue']['heavy_cutoff_blocks_ordinary'])
+        self.assertEqual(template_payload['validation']['quantile_fit_smoke_family'], '__disabled__')
+        ndlm_main_smoke = template_payload['validation']['smoke_fit_overrides']['ndlm_main']['gamma_sigma']
+        self.assertEqual(ndlm_main_smoke['min_total_iters'], 1)
+        self.assertEqual(ndlm_main_smoke['max_iter'], 1)
+        self.assertEqual(
+            [case['family'] for case in template_payload['validation']['full_pipeline_ndlm_cases']],
+            ['ndlm_univar_keep', 'ndlm_main_drop', 'ndlm_main_keep'],
+        )
+        self.assertEqual(
+            [case['cutoff'] for case in template_payload['validation']['full_pipeline_ndlm_cases']],
+            ['20210123', '20210123', '20210123'],
+        )
+
+        batch_payload = yaml.safe_load(WAVE_A_NDLM_PROMOTION_BATCH.read_text(encoding='utf-8')) or {}
+        self.assertEqual(batch_payload['selection']['model_classes'], ['ndlm'])
+        self.assertEqual(batch_payload['resources']['fit_parallel_workers'], 1)
+        self.assertEqual(batch_payload['resources']['mc_cores'], 1)
+        self.assertEqual(batch_payload['queue']['ordinary_max_concurrent'], 5)
+        self.assertFalse(batch_payload['queue']['heavy_cutoff_blocks_ordinary'])
 
     def test_exdqlm_rerun_template_and_batch_freeze_all_cutoff_publication_specs(self) -> None:
         self.assertTrue(EXDQLM_RERUN_TEMPLATE.exists())

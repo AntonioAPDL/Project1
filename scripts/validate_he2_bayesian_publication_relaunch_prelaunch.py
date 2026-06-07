@@ -311,6 +311,38 @@ def _normalize_quantile_smoke_cases(
     }]
 
 
+def _normalize_ndlm_smoke_cases(
+    validation_cfg: dict[str, Any],
+    *,
+    cases_key: str,
+    family_key: str,
+    cutoff_key: str,
+    default_family: str,
+    default_cutoff: str,
+) -> list[dict[str, Any]]:
+    def _is_disabled_family(value: Any) -> bool:
+        token = str(value or '').strip().lower()
+        return token in {'', '__disabled__', 'disabled', 'none', 'null', 'false'}
+
+    raw_cases = validation_cfg.get(cases_key)
+    if raw_cases:
+        normalized: list[dict[str, Any]] = []
+        for idx, item in enumerate(raw_cases, start=1):
+            if not isinstance(item, dict):
+                raise TypeError(f'{cases_key}[{idx - 1}] must be a mapping')
+            family = str(item.get('family') or default_family)
+            cutoff = str(item.get('cutoff') or default_cutoff)
+            label = str(item.get('label') or f'{family}_{cutoff}')
+            fit_overrides = copy.deepcopy(item.get('fit_overrides') or {})
+            normalized.append({'family': family, 'cutoff': cutoff, 'label': label, 'fit_overrides': fit_overrides})
+        return normalized
+    family = str(validation_cfg.get(family_key, default_family))
+    if _is_disabled_family(family):
+        return []
+    cutoff = str(validation_cfg.get(cutoff_key, default_cutoff))
+    return [{'family': family, 'cutoff': cutoff, 'label': f'{family}_{cutoff}', 'fit_overrides': {}}]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description='Validate the unified HE2 Bayesian publication relaunch before queue launch.')
     ap.add_argument('--config', required=True)
@@ -621,12 +653,19 @@ def main() -> int:
             cleanup_removed_bytes=uqfit_cleanup['removed_bytes'],
         )
 
-    full_ndlm_family = str(validation_cfg.get('full_pipeline_ndlm_family', fit_smoke_family_pref))
-    full_ndlm_cutoff = str(validation_cfg.get('full_pipeline_ndlm_cutoff', fit_smoke_cutoff_pref))
-    ndlm_full_row = _choose_smoke_row(plan_rows, preferred_family=full_ndlm_family, preferred_cutoff=full_ndlm_cutoff, class_name='ndlm')
-    if ndlm_full_row is None:
-        _append_smoke_result(summary, scope='full_pipeline_ndlm', status='skipped', family=full_ndlm_family, cutoff=full_ndlm_cutoff, reason='no NDLM row available in selected scope')
-    else:
+    full_ndlm_cases = _normalize_ndlm_smoke_cases(
+        validation_cfg,
+        cases_key='full_pipeline_ndlm_cases',
+        family_key='full_pipeline_ndlm_family',
+        cutoff_key='full_pipeline_ndlm_cutoff',
+        default_family=fit_smoke_family_pref,
+        default_cutoff=fit_smoke_cutoff_pref,
+    )
+    for case in full_ndlm_cases:
+        ndlm_full_row = _choose_smoke_row(plan_rows, preferred_family=case['family'], preferred_cutoff=case['cutoff'], class_name='ndlm')
+        if ndlm_full_row is None:
+            _append_smoke_result(summary, scope='full_pipeline_ndlm', status='skipped', family=case['family'], cutoff=case['cutoff'], reason='no NDLM row available in selected scope')
+            continue
         ndlm_full_cfg_src = Path(ndlm_full_row['config_path'])
         ndlm_full_run_id = f'full_pipeline_{ndlm_full_row["family_id"]}_{ndlm_full_row["cutoff"]}'
         ndlm_full_run_root = smoke_root / 'full_pipeline' / 'ndlm' / ndlm_full_row['family_id'] / ndlm_full_row['cutoff']
@@ -638,7 +677,7 @@ def main() -> int:
             stage_mode='full_pipeline',
             fit_parallel_workers=1,
             mc_cores=1,
-            fit_overrides=smoke_fit_overrides,
+            fit_overrides=deep_merge_dict(smoke_fit_overrides, case.get('fit_overrides') or {}),
         )
         ndlm_full_proc = run_unified(ndlm_full_cfg, cwd=ROOT)
         (outdir / f'{ndlm_full_run_id}.stdout.log').write_text(ndlm_full_proc.stdout, encoding='utf-8')

@@ -1,0 +1,20 @@
+selection:
+  cutoffs:
+    - '20210123'
+    - '20211112'
+    - '20211221'
+    - '20220511'
+    - '20221225'
+  families:
+    - ndlm_univar_keep
+    - ndlm_main_drop
+    - ndlm_main_keep
+  model_classes:
+    - ndlm
+resources:
+  fit_parallel_workers: 1
+  mc_cores: 1
+queue:
+  ordinary_max_concurrent: 5
+  heavy_cutoff_max_concurrent: 1
+  heavy_cutoff_blocks_ordinary: false

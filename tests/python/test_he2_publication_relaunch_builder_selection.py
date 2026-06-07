@@ -19,6 +19,8 @@ Q50_20221225_PROOF_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 
 Q50_20221225_STATEFREEZE_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_20221225_q50_statefreeze_diagnostic_20260515.template.yaml'
 WAVE_A_NDLM_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_wave_a_ndlm_20260516.template.yaml'
 WAVE_A_NDLM_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'he2_wave_a_ndlm_remaining_families_20260516.yaml'
+WAVE_A_NDLM_PROMOTION_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607.template.yaml'
+WAVE_A_NDLM_PROMOTION_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'he2_wave_a_ndlm_remaining_families_promotion_20260607.yaml'
 EXDQLM_RERUN_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_rerun_20260516.template.yaml'
 EXDQLM_RERUN_BATCH = ROOT / 'config' / 'he2_relaunch_batches' / 'exdqlm_multivar_keep_all_cutoffs_rerun_20260516.yaml'
 EXDQLM_SHARED_TEMPLATE = ROOT / 'config' / 'he2_bayesian_publication_relaunch_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516.template.yaml'
@@ -1017,6 +1019,84 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
             ['PPT', 'SOIL', 'PCA'],
         )
         self.assertEqual(sample_cfg['run']['threads']['mc_cores'], 1)
+
+    def test_wave_a_ndlm_promotion_batch_builds_canonical_bundle_matrix(self) -> None:
+        proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(
+            '--batch-file', str(WAVE_A_NDLM_PROMOTION_BATCH),
+            template=WAVE_A_NDLM_PROMOTION_TEMPLATE,
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+
+        launch_settings = (matrix_dir / 'launch_settings.env').read_text(encoding='utf-8')
+        self.assertIn('ORDINARY_MAX_CONCURRENT=5', launch_settings)
+        self.assertIn('HEAVY_CUTOFF_MAX_CONCURRENT=1', launch_settings)
+        self.assertIn('HEAVY_CUTOFF_BLOCKS_ORDINARY=0', launch_settings)
+
+        with (matrix_dir / 'matrix_plan.csv').open('r', encoding='utf-8') as handle:
+            plan_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(plan_rows), 15)
+        self.assertEqual(sorted({row['cutoff'] for row in plan_rows}), ['20210123', '20211112', '20211221', '20220511', '20221225'])
+        self.assertEqual(sorted({row['family_id'] for row in plan_rows}), ['ndlm_main_drop', 'ndlm_main_keep', 'ndlm_univar_keep'])
+        self.assertEqual({row['model_class'] for row in plan_rows}, {'ndlm'})
+        self.assertEqual({row['active_quantiles'] for row in plan_rows}, {'05|20|35|50|65|80|95'})
+
+        with (matrix_dir / 'cutoff_bundle_audit.csv').open('r', encoding='utf-8') as handle:
+            audit_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(audit_rows), 5)
+        for row in audit_rows:
+            self.assertEqual(row['retros_start'], '1987-05-29')
+            self.assertIn('multimodel_v8_he2_publication_shared_inputs_20260510', row['bundle_root'])
+            self.assertEqual(row['deterministic_precip_source'], 'gefs_apcp')
+            self.assertEqual(row['deterministic_precip_reduction'], 'q85')
+            self.assertEqual(row['deterministic_soil_source'], 'gefs_soilw_0_0.1m')
+            self.assertEqual(row['deterministic_soil_reduction'], 'q85')
+            self.assertTrue(row['gdpc_alias_path'].endswith('supporting_inputs/covariates/cov_05_PCA.csv'))
+            self.assertEqual(row['gdpc_alias_start'], '1987-05-29')
+            self.assertEqual(row['gdpc_alias_end'], '2023-01-22')
+
+        with (matrix_dir / 'frozen_spec_manifest.csv').open('r', encoding='utf-8') as handle:
+            frozen_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(frozen_rows), 15)
+        self.assertEqual({row['selected_spec_token'] for row in frozen_rows}, {'ndlm_featurecov_v1_postfix'})
+        self.assertEqual({row['legacy_fit_input_scale'] for row in frozen_rows}, {'log1p_cms'})
+        self.assertEqual({row['legacy_post_input_scale'] for row in frozen_rows}, {'log1p_cms'})
+        self.assertEqual({row['fit_parallel_workers'] for row in frozen_rows}, {'1'})
+        self.assertEqual({row['run_mc_cores'] for row in frozen_rows}, {'1'})
+        for row in frozen_rows:
+            self.assertEqual(row['df_t'], '0.99999999')
+            self.assertEqual(row['lambda'], '0.97')
+            self.assertEqual(row['df_trans'], '0.9999999')
+            self.assertEqual(row['df_covs'], '0.99999999')
+            if row['family'] == 'ndlm_univar_keep':
+                self.assertEqual(row['implementation_mode'], 'theory_aligned_closed_form')
+            else:
+                self.assertEqual(row['implementation_mode'], 'theory_aligned')
+                self.assertEqual(row['df_discrep'], '0.99999999')
+                self.assertEqual(row['forecast_cov_c_factor_model_prior'], '1.0')
+
+        self.assertEqual(len(list(config_output_dir.glob('*.yaml'))), 15)
+        sample_cfg = yaml.safe_load(
+            (config_output_dir / 'multimodel_20221225_v8_he2pubgdpc1r1_ndlm_main_keep.yaml').read_text(encoding='utf-8')
+        ) or {}
+        self.assertEqual(sample_cfg['dates']['data_start'], '1987-05-29')
+        self.assertEqual(sample_cfg['scale_contract']['legacy_fit_input_scale'], 'log1p_cms')
+        self.assertEqual(sample_cfg['debug_he2_publication_relaunch']['canonical_fit_covariate_contract'], 'PPT|SOIL|PCA(alias=GDPC1)')
+        self.assertEqual([entry['name'] for entry in sample_cfg['inputs']['fit']['covariates']], ['PPT', 'SOIL', 'PCA'])
+        self.assertEqual(sample_cfg['inputs']['covariate_features']['lag_orders'], [1, 2, 3])
+        self.assertTrue(sample_cfg['inputs']['covariate_features']['include_squares'])
+        self.assertTrue(sample_cfg['inputs']['covariate_features']['include_interaction'])
+        self.assertEqual(sample_cfg['run']['threads']['mc_cores'], 1)
+        self.assertEqual(sample_cfg['fit']['parallel']['workers'], 1)
+        self.assertEqual(sample_cfg['fit']['ndlm_main']['gamma_sigma']['min_total_iters'], 20)
+        self.assertEqual(sample_cfg['fit']['ndlm_main']['gamma_sigma']['max_iter'], 100)
+        self.assertEqual(sample_cfg['models']['ndlm_main']['seasonality']['period'], 363.5854)
+        self.assertEqual(sample_cfg['models']['ndlm_main']['seasonality']['harmonics'], [1, 2, 0.1469118904])
+
+        univar_cfg = yaml.safe_load(
+            (config_output_dir / 'multimodel_20221225_v8_he2pubgdpc1r1_ndlm_univar_keep.yaml').read_text(encoding='utf-8')
+        ) or {}
+        self.assertEqual(univar_cfg['models']['ndlm_univar']['seasonality']['period'], 363.5854)
+        self.assertEqual(univar_cfg['models']['ndlm_univar']['seasonality']['harmonics'], [1, 2, 3])
 
     def test_exdqlm_rerun_batch_builds_all_cutoffs_and_freezes_publication_winning_specs(self) -> None:
         proc, matrix_dir, config_output_dir, _artifact_root = self._run_builder(

@@ -10,7 +10,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 
-from validate_he2_bayesian_publication_relaunch_prelaunch import _choose_smoke_row, _pick_row, write_temp_smoke_config
+from validate_he2_bayesian_publication_relaunch_prelaunch import _choose_smoke_row, _normalize_ndlm_smoke_cases, _pick_row, write_temp_smoke_config
 from validate_he2_bayesian_publication_relaunch_prelaunch import _normalize_quantile_smoke_cases, _prune_r_artifacts
 
 
@@ -54,6 +54,38 @@ class HE2PublicationRelaunchValidatorTests(unittest.TestCase):
             default_family='exdqlm_multivar_keep',
             default_cutoff='20210123',
             default_quantiles=[0.05],
+        )
+        self.assertEqual(cases, [])
+
+    def test_normalize_ndlm_smoke_cases_supports_explicit_case_list(self) -> None:
+        validation_cfg = {
+            'full_pipeline_ndlm_cases': [
+                {'family': 'ndlm_univar_keep', 'cutoff': '20210123'},
+                {'family': 'ndlm_main_drop', 'cutoff': '20210123', 'label': 'drop_smoke'},
+                {'family': 'ndlm_main_keep', 'cutoff': '20221225', 'fit_overrides': {'ndlm_main': {'gamma_sigma': {'max_iter': 25}}}},
+            ]
+        }
+        cases = _normalize_ndlm_smoke_cases(
+            validation_cfg,
+            cases_key='full_pipeline_ndlm_cases',
+            family_key='full_pipeline_ndlm_family',
+            cutoff_key='full_pipeline_ndlm_cutoff',
+            default_family='ndlm_univar_keep',
+            default_cutoff='20210123',
+        )
+        self.assertEqual([case['family'] for case in cases], ['ndlm_univar_keep', 'ndlm_main_drop', 'ndlm_main_keep'])
+        self.assertEqual(cases[1]['label'], 'drop_smoke')
+        self.assertEqual(cases[2]['cutoff'], '20221225')
+        self.assertEqual(cases[2]['fit_overrides']['ndlm_main']['gamma_sigma']['max_iter'], 25)
+
+    def test_normalize_ndlm_smoke_cases_honors_disabled_family_sentinel(self) -> None:
+        cases = _normalize_ndlm_smoke_cases(
+            {'full_pipeline_ndlm_family': '__disabled__'},
+            cases_key='full_pipeline_ndlm_cases',
+            family_key='full_pipeline_ndlm_family',
+            cutoff_key='full_pipeline_ndlm_cutoff',
+            default_family='ndlm_univar_keep',
+            default_cutoff='20210123',
         )
         self.assertEqual(cases, [])
 
