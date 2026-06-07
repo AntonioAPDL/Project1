@@ -112,7 +112,8 @@ Tracked promotion changes:
 - `--no-policy-spec` remains available on builder/validator for the historical
   raw exAL-to-AL clone diagnostic only.
 
-This is a workflow promotion, not yet a publication-table promotion. The
-publication row still requires the five canonical cutoffs to pass fit, post,
-validate, report, CRPS extraction, publication figure manifest checks, and
-post-success heavy-artifact cleanup.
+The later P5 production closeout promoted this workflow into the publication
+manifest after all five canonical cutoffs passed fit, post, validate, report,
+CRPS extraction, publication figure manifest checks, canonical-bundle checks,
+and post-success heavy-artifact cleanup. See
+`docs/he2_al_m_t0_p5_production_closeout_20260606.md`.

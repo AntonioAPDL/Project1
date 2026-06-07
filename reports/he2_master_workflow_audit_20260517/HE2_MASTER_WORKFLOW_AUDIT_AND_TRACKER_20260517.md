@@ -1,13 +1,12 @@
 # HE2 Master Workflow Audit And Tracker
 
-Date: 2026-06-03T22:31:26Z
+Date: 2026-06-07T00:39:15Z
 
 ## Current Decision
 
-`exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-U-T1`, and `exAL-U-T1` are now promoted onto canonical-bundle roots.
-The full 9-model HE2 benchmark table is still transitional: `AL-M-T0` is blocked pending targeted diagnostics
-or a new AL-specific discount spec, and the three NDLM comparison families must be rerun or promoted onto
-the same 20260510 canonical input bundle before the paper can make final all-model CRPS claims.
+`exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` are now promoted onto canonical-bundle roots.
+The full 9-model HE2 benchmark table is still transitional because the three NDLM comparison families must be
+rerun or promoted onto the same 20260510 canonical input bundle before the paper can make final all-model CRPS claims.
 
 ## Canonical Contract
 
@@ -21,10 +20,10 @@ the same 20260510 canonical input bundle before the paper can make final all-mod
 
 ## Publication Gate
 
-- promoted rows: `25`
-- pending rows: `20`
-- pending families: `4`
-- pending submodels: `50`
+- promoted rows: `30`
+- pending rows: `15`
+- pending families: `3`
+- pending submodels: `15`
 - within-cutoff input-alignment checks passing now: `35 / 50`
 - final 9-model benchmark ready: `False`
 
@@ -32,7 +31,7 @@ the same 20260510 canonical input bundle before the paper can make final all-mod
 
 | Label | Family | Rows | State | Required Action |
 |---|---|---:|---|---|
-| `AL-M-T0` | `dqlm_multivar_al_drop` | 5 | `blocked_pending_targeted_diagnostics` | `blocked_pending_al_drop_diagnostics_or_new_discount_spec` |
+| `AL-M-T0` | `dqlm_multivar_al_drop` | 5 | `authoritative_current_bundle_promoted` | `none` |
 | `AL-M-T1` | `dqlm_multivar_al_keep` | 5 | `authoritative_current_bundle_promoted` | `none` |
 | `AL-U-T1` | `dqlm_univar_al` | 5 | `authoritative_current_bundle_promoted` | `none` |
 | `N-M-T0` | `ndlm_main_drop` | 5 | `pending_same_bundle_promotion` | `rerun_or_promote_on_20260510_canonical_bundle` |
@@ -44,12 +43,10 @@ the same 20260510 canonical input bundle before the paper can make final all-mod
 
 ## Next Work
 
-1. Fill or confirm the AL-M-T0 diagnostic discount/epsilon/c_factor spec.
-2. Prepare and validate the no-launch AL-M-T0 diagnostic matrix.
-3. After explicit approval, run only the targeted AL-M-T0 diagnostic lanes with retained objects.
-4. Build or select same-bundle rerun packages for the three NDLM pending families.
-5. Rebuild the HE2 publication manifest; the alignment gate should move to full pass only after AL-M-T0 and NDLM are resolved.
-6. Refresh article assets and tables from the manifest only after the parity gate passes.
+1. Build or select same-bundle rerun packages for the three NDLM pending families.
+2. Run the NDLM promotion/validation workflow on the canonical 20260510 bundle.
+3. Rebuild the HE2 publication manifest and parity gate; the alignment gate should move to full pass only after NDLM is resolved.
+4. Refresh article assets and tables from the manifest only after the parity gate passes.
 
 ## Outputs
 

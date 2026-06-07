@@ -8,7 +8,7 @@ This wave covered the three remaining quantile families in the 9-model HE2 Bayes
 
 | label | family | source contract | target root |
 |---|---|---|---|
-| `AL-M-T0` | `dqlm_multivar_al_drop` | paired AL clone of promoted current-code `exAL-M-T0` plus promoted P5 AL policy | production-ready rebuild path; publication-pending |
+| `AL-M-T0` | `dqlm_multivar_al_drop` | paired AL clone of promoted current-code `exAL-M-T0` plus promoted P5 AL policy | publication-promoted through P5 closeout |
 | `exAL-U-T1` | `exdqlm_univar` | univariate exAL shared-spec relaunch on canonical bundle | passed fit/post/validate/report |
 | `AL-U-T1` | `dqlm_univar_al` | univariate AL shared-spec relaunch on canonical bundle | passed fit/post/validate/report |
 
@@ -144,6 +144,7 @@ Promote `AL-U-T1` and `exAL-U-T1` because every cutoff has `fit`, `post`, `valid
 CRPS summary tables exist, publication figure manifests exist, and no `.RData`, `.rda`, or `.Rda` files remain under the
 run roots.
 
-Do not publication-promote `AL-M-T0` until all five P5 production cutoffs pass the same gates: fit, post, validate,
-report, CRPS table extraction, publication figure manifest generation, canonical-bundle parity checks, and no retained
-`.RData`, `.rda`, or `.Rda` after successful post cleanup.
+`AL-M-T0` is now publication-promoted through the P5 production root after all five production cutoffs passed the same
+gates: fit, post, validate, report, CRPS table extraction, publication figure manifest generation, canonical-bundle
+parity checks, and no retained `.RData`, `.rda`, or `.Rda` after successful post cleanup. See
+`docs/he2_al_m_t0_p5_production_closeout_20260606.md`.

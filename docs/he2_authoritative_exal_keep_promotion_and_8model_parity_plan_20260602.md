@@ -13,14 +13,14 @@ bundle:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510`
 
-The full 9-model HE2 Bayesian benchmark is not paper-final yet. As of the 2026-06-03 promotion pass, three families
-are now canonical-bundle promoted: `exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0`. The remaining six Bayesian comparison
-families must be rerun or promoted onto the same canonical 20260510 input-bundle contract before the manuscript table
+The full 9-model HE2 Bayesian benchmark is not paper-final yet. As of the 2026-06-06 P5 production closeout, six
+families are now canonical-bundle promoted: `exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1`.
+The remaining three NDLM Bayesian comparison families must be rerun or promoted onto the same canonical 20260510 input-bundle contract before the manuscript table
 can be interpreted as a final apples-to-apples comparison.
 
 Promotion update:
 
-`docs/he2_three_family_publication_manifest_promotion_20260603.md`
+`docs/he2_three_family_publication_manifest_promotion_20260603.md` and `docs/he2_al_m_t0_p5_production_closeout_20260606.md`
 
 ## Promoted exAL-M-T1 Winners
 
@@ -51,8 +51,8 @@ Project-side source of truth:
 - `scripts/he2_exdqlm_keep_authoritative.py` loads and validates the authoritative YAML.
 - `scripts/build_he2_exdqlm_multivar_keep_authoritative_matrix.py` freezes the five winner rows, source configs, and post-output hashes.
 - `scripts/validate_he2_exdqlm_multivar_keep_authoritative_prelaunch.py` validates run roots, source configs, CRPS, post outputs, cleanup state, scale contract, harmonics, transfer covariates, lags, squares, and interactions.
-- `scripts/build_he2_bayesian_publication_manifest.py` now points `exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` rows to canonical-bundle promoted roots and exposes the remaining 6-family transition gate.
-- `scripts/build_he2_publication_parity_gate.py` builds a 45-cell gate: 15 promoted cells and 30 pending comparison cells.
+- `scripts/build_he2_bayesian_publication_manifest.py` now points `exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` rows to canonical-bundle promoted roots and exposes the remaining 3-family transition gate.
+- `scripts/build_he2_publication_parity_gate.py` builds a 45-cell gate: 30 promoted cells and 15 pending comparison cells.
 - `scripts/build_he2_master_workflow_audit_tracker.py` now uses that gate as the current status spine.
 
 Article-side wiring:
@@ -67,14 +67,14 @@ Figure and table assets:
 
 - The five promoted synthesis figures were rerendered with the fixed common `log1p(cms)` y-axis.
 - `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py --article-root Evironmetrics---REVISED-DOC-2` completed successfully after the retained-support repair.
-- The project publication manifest and generated tables now carry the promoted `exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` rows, while still warning that the 6-family parity gate is open.
+- The project publication manifest and generated tables now carry the promoted `exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` rows, while still warning that the 3-family NDLM parity gate is open.
 
 ## Current Gate State
 
-The publication manifest currently reports `15` promoted cells, `30` pending cells, and `35 / 50` required within-cutoff
-input-alignment checks passing. This is expected in the transition state: the promoted `exAL-M-T1`, `AL-M-T1`, and
-`exAL-M-T0` rows use the canonical 20260510 bundle contract, while the other six families still point to older campaign
-roots.
+The publication manifest currently reports `30` promoted cells, `15` pending cells, and `35 / 50` required within-cutoff
+input-alignment checks passing. This is expected in the transition state: the promoted `exAL-M-T1`, `AL-M-T1`,
+`exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` rows use the canonical 20260510 bundle contract, while the three
+NDLM families still point to older campaign roots.
 
 Pending families:
 
@@ -83,9 +83,6 @@ Pending families:
 | `N-U-T1` | `ndlm_univar_keep` | rerun/promote on 20260510 canonical bundle |
 | `N-M-T0` | `ndlm_main_drop` | rerun/promote on 20260510 canonical bundle |
 | `N-M-T1` | `ndlm_main_keep` | rerun/promote on 20260510 canonical bundle |
-| `AL-U-T1` | `dqlm_univar_al` | rerun/promote on 20260510 canonical bundle |
-| `AL-M-T0` | `dqlm_multivar_al_drop` | rerun/promote on 20260510 canonical bundle |
-| `exAL-U-T1` | `exdqlm_univar` | rerun/promote on 20260510 canonical bundle |
 
 ## Closed Package: AL-M-T1 From The exAL-M-T1 Winners
 
@@ -232,6 +229,6 @@ python3 -m unittest \
 
 ## Final Takeaway
 
-`exAL-M-T1`, `AL-M-T1`, and `exAL-M-T0` are now reproducibly promoted and wired through the project manifest. The next
-scientific and paper-readiness task is completing the same-bundle promotion for the remaining six model families so the
+`exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` are now reproducibly promoted and wired through the project manifest. The next
+scientific and paper-readiness task is completing the same-bundle promotion for the remaining three NDLM model families so the
 final 9-model HE2 benchmark becomes a fair, reader-reproducible comparison.

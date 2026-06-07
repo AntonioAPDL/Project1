@@ -4,9 +4,10 @@
 
 Promote P5 as the default AL-M-T0 production rebuild workflow.
 
-This is not yet a publication-table promotion. It means the builder,
-validator, and combined launcher now use the P5 AL-M-T0 policy by default so
-the five canonical cutoffs can be rebuilt under the repaired workflow.
+As of the P5 production closeout, this is also a publication-table promotion:
+the five canonical cutoffs passed fit/post/validate/report, CRPS extraction,
+publication figure manifest generation, canonical-bundle checks, and
+post-success heavy-artifact cleanup.
 
 ## Authoritative Production Contract
 
@@ -104,8 +105,7 @@ canonical source cleanup, and Python compile checks.
 
 ## Publication Promotion Gate
 
-Do not add AL-M-T0 to the promoted publication manifest until all five cutoff
-rows pass:
+The AL-M-T0 publication promotion gate is closed. All five cutoff rows passed:
 
 - fit stage;
 - post stage;
@@ -118,3 +118,9 @@ rows pass:
 
 Failures should remain visible in the matrix status rather than being silently
 retried or hidden.
+
+Closeout evidence:
+
+- `docs/he2_al_m_t0_p5_production_closeout_20260606.md`
+- `reports/he2_al_m_t0_p5_production_closeout_20260606/P5_PRODUCTION_CLOSEOUT.md`
+- `reports/he2_publication_manifest/he2_bayesian_publication_manifest.md`

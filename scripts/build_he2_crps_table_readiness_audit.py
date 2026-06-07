@@ -27,7 +27,7 @@ def read_csv(path: Path):
 
 def write_csv(path: Path, rows: list[dict[str, str]], fieldnames: list[str]) -> None:
     with path.open('w', newline='') as f:
-        w = csv.DictWriter(f, fieldnames=fieldnames)
+        w = csv.DictWriter(f, fieldnames=fieldnames, lineterminator='\n')
         w.writeheader()
         w.writerows(rows)
 
@@ -44,21 +44,15 @@ def main() -> None:
     rows = []
     for row in master_families:
         label = row['label']
-        if label.startswith('N-'):
+        if row['authoritative_state'] == 'production_authoritative':
+            gate = 'ready_transitional_snapshot'
+            reason = 'canonical_bundle_promoted_current_manifest_row'
+        elif label.startswith('N-'):
             gate = 'blocked'
             reason = 'ndlm_not_current_canonical_bundle_aligned'
-        elif label in {'AL-M-T1', 'AL-M-T0'}:
-            gate = 'blocked'
-            reason = 'al_multivar_not_launched_and_q65_diagnostics_failed'
-        elif label == 'AL-U-T1':
-            gate = 'pending_family_set'
-            reason = 'al_univar_complete_but_al_multivar_family_set_not_ready'
-        elif label.startswith('exAL-'):
-            gate = 'blocked'
-            reason = 'exal_benchmark_rows_not_reconciled_to_completed_sharedspec_reruns'
         else:
             gate = 'blocked'
-            reason = 'unknown'
+            reason = 'not_current_canonical_bundle_aligned'
         rows.append({
             'label': label,
             'family': row['family'],
@@ -71,16 +65,19 @@ def main() -> None:
     ready = all(r['crps_table_gate'] == 'ready' for r in rows)
     summary = {
         'crps_table_should_be_updated_now': False,
-        'decision': 'keep_frozen_current_benchmark_table',
+        'decision': 'current_manifest_snapshot_updated_but_not_paper_final',
         'why': [
             'ndlm_families_are_not_current_canonical_bundle_aligned',
-            'al_multivar_keep_drop_are_not_launched_and_failed_q65_diagnostics',
-            'exal_completed_sharedspec_rerun_local_scores_do_not_match_frozen_benchmark_rows',
+            'full_9_model_benchmark_requires_ndlm_same_bundle_promotion',
         ],
         'benchmark_table_source': benchmark_src,
         'benchmark_table_note': benchmark_note,
         'exal_benchmark_mismatch_count': exal_summary['benchmark_mismatch_count'],
-        'ndlm_bundle_alignment': master_summary['ndlm_current_bundle_alignment'],
+        'ndlm_bundle_alignment': {
+            'aligned_to_20260510_canonical_shared_bundle': False,
+            'pending_labels': [row['label'] for row in master_families if row['label'].startswith('N-')],
+        },
+        'publication_parity_gate': master_summary.get('publication_parity_gate', {}),
         'family_gates': rows,
         'all_ready': ready,
     }
@@ -91,12 +88,11 @@ def main() -> None:
     md = []
     md.append('# HE2 CRPS Table Readiness Audit (2026-05-17)\n\n')
     md.append('## Decision\n\n')
-    md.append('Do **not** rebuild or promote the revised-doc CRPS benchmark table yet.\n\n')
-    md.append('The table should remain frozen on the current manuscript benchmark source until the full family set is ready under the canonical workflow.\n\n')
+    md.append('The revised-doc CRPS benchmark table may use the current manifest snapshot as a transitional source, but it is **not paper-final** yet.\n\n')
+    md.append('The full 9-model benchmark should not be interpreted as final until the three NDLM families are promoted onto the canonical workflow.\n\n')
     md.append('## Why\n\n')
     md.append('- The three NDLM families are not yet aligned to the current `20260510` canonical shared-input bundle contract.\n')
-    md.append('- `AL-M-T1` and `AL-M-T0` are not launched and are currently blocked by the late `20221225 q65` diagnostic failures.\n')
-    md.append('- The completed shared-spec exAL rerun-local benchmark scores do not reconcile to the frozen exAL manuscript benchmark rows (`15/15` mismatches in the exAL audit).\n\n')
+    md.append('- Six Bayesian families are now canonical-bundle promoted in the manifest: `exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1`.\n\n')
     md.append('## Current Benchmark Source\n\n')
     md.append(f"- Bayesian source: `{benchmark_src}`\n")
     md.append(f"- Note: {benchmark_note}\n\n")
@@ -107,10 +103,10 @@ def main() -> None:
         md.append(f"| `{row['label']}` | `{row['family']}` | `{row['current_status']}` | `{row['crps_table_gate']}` | `{row['blocking_reason']}` |\n")
     md.append('\n')
     md.append('## Conclusion\n\n')
-    md.append('The revised-doc benchmark CRPS table should stay frozen until we have:')
-    md.append('\n1. NDLM relaunched on the canonical shared bundle,')
-    md.append('\n2. AL multivariate keep/drop launched successfully, and')
-    md.append('\n3. a deliberate benchmark-table reconciliation policy for the completed exAL shared-spec reruns.\n')
+    md.append('The revised-doc benchmark CRPS table should remain labeled transitional until we have:')
+    md.append('\n1. NDLM relaunched or promoted on the canonical shared bundle,')
+    md.append('\n2. a rebuilt publication manifest and parity gate with no pending families, and')
+    md.append('\n3. refreshed article assets and generated tables from that final manifest.\n')
     (OUT_DIR / 'HE2_CRPS_TABLE_READINESS_20260517.md').write_text(''.join(md) + '\n')
     print(OUT_DIR)
 

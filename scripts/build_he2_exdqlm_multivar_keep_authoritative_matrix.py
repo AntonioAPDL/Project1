@@ -161,7 +161,7 @@ def build_matrix(manifest_path: Path, matrix_dir: Path | None = None, *, freeze_
         "This matrix freezes the five CRPS-selected `exAL-M-T1` / `exdqlm_multivar_keep` canonical-grid winners.\n\n"
         "It is a source-of-truth and validation artifact only; it does not launch or modify model runs.\n\n"
         "Important transition gate:\n"
-        "- the remaining six HE2 Bayesian comparison families still need to be rerun or promoted onto the same "
+        "- the remaining three NDLM HE2 Bayesian comparison families still need to be rerun or promoted onto the same "
         "canonical 20260510 input-bundle contract before the full 9-model manuscript benchmark table is final.\n\n"
         "Generated files:\n"
         "- `matrix_plan.csv`\n"

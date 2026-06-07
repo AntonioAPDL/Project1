@@ -150,17 +150,19 @@ ALIGNMENT_FIELDS = [
 AUTHORITATIVE_EXAL_KEEP_MANIFEST = ROOT / "docs" / "exdqlm_multivar_keep_authoritative_specs_20260601.yaml"
 AUTHORITATIVE_EXAL_KEEP_LINEAGE = "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner"
 TRANSITION_PUBLICATION_NOTE = (
-    "Authoritative canonical-grid exAL-M-T1 winner. exAL-M-T1, AL-M-T1, exAL-M-T0, AL-U-T1, and exAL-U-T1 "
-    "are promoted onto canonical 20260510 input bundles; the full 9-model benchmark remains transitional until the remaining four "
+    "Authoritative canonical-grid exAL-M-T1 winner. exAL-M-T1, AL-M-T1, exAL-M-T0, AL-M-T0, AL-U-T1, and exAL-U-T1 "
+    "are promoted onto canonical 20260510 input bundles; the full 9-model benchmark remains transitional until the remaining three "
     "HE2 Bayesian comparison families are rerun or promoted onto the same bundle."
 )
 PROMOTED_AL_KEEP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602"
 PROMOTED_EXAL_DROP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602"
+PROMOTED_AL_DROP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_dqlm_multivar_al_drop_p5_production_20260606"
 PROMOTED_UNIVAR_AL_EXAL_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_univar_al_exal_publication_relaunch_20260603"
 PROMOTED_FAMILY_LINEAGES = {
     "exdqlm_multivar_keep": AUTHORITATIVE_EXAL_KEEP_LINEAGE,
     "dqlm_multivar_al_keep": "dqlm_multivar_al_keep_from_exal_winners_20260602:canonical_bundle_promoted",
     "exdqlm_multivar_drop": "exdqlm_multivar_drop_current_relaunch_q50repair_20260602:canonical_bundle_promoted",
+    "dqlm_multivar_al_drop": "dqlm_multivar_al_drop_p5_production_20260606:canonical_bundle_promoted",
     "dqlm_univar_al": "univar_al_exal_publication_relaunch_20260603:canonical_bundle_promoted",
     "exdqlm_univar": "univar_al_exal_publication_relaunch_20260603:canonical_bundle_promoted",
 }
@@ -173,6 +175,11 @@ PROMOTED_FAMILY_NOTES = {
     "exdqlm_multivar_drop": (
         "Promoted current-code exAL-M-T0 relaunch on the canonical 20260510 bundle with the q50 repair policy; "
         "fit/post/validate/report passed and heavy RData cleanup is complete."
+    ),
+    "dqlm_multivar_al_drop": (
+        "Promoted P5 AL-M-T0 clone of the current-code exAL-M-T0 drop configs on the canonical 20260510 bundle. "
+        "The P5 warmup/post-save policy passed fit/post/validate/report for all five cutoffs and heavy RData "
+        "cleanup is complete."
     ),
     "dqlm_univar_al": (
         "Promoted AL-U-T1 canonical-bundle relaunch from 2026-06-03; fit/post/validate/report passed and "
@@ -346,10 +353,6 @@ def compare_score_row(compare_dir: Path, family: str) -> dict[str, str]:
 
 
 def resolve_multivar_rows() -> list[dict[str, str]]:
-    best_path = (
-        RUNTIME_ROOT
-        / "multimodel_v8_featurecov_cf1_eps_sweep_20260416/reports/final_featurecov_cf1_eps_analysis/best_by_cutoff_long.csv"
-    )
     authoritative = load_authoritative_spec(AUTHORITATIVE_EXAL_KEEP_MANIFEST)
     authoritative_by_cutoff = authoritative.winner_by_cutoff()
     rows = []
@@ -393,38 +396,19 @@ def resolve_multivar_rows() -> list[dict[str, str]]:
                 "replaced_source_run_id": "",
             }
         )
-        best_rows = [
-            row
-            for row in read_csv(best_path)
-            if row["cutoff"] == cutoff
-            and row["model_variant"] in {"dqlm_multivar_al_drop"}
-        ]
-        for best_row in best_rows:
-            family = best_row["model_variant"]
-            compare_dir = (
-                RUNTIME_ROOT
-                / f"multimodel_v8_featurecov_cf1_eps_sweep_20260416/reports/multimodel_{cutoff}_v8_{best_row['best_epsilon_label']}_compare"
-            )
-            prov_rows = read_csv(compare_dir / "source_provenance.csv")
-            match = next(row for row in prov_rows if row.get("family_id") == family)
-            run_id = match["source_run"]
-            run_root = RUNTIME_ROOT / "multimodel_v8_featurecov_cf1_eps_sweep_20260416/runs" / run_id
-            rows.append(
-                {
-                    "cutoff": cutoff,
-                    "family": family,
-                    "run_id": run_id,
-                    "run_root": str(run_root),
-                    "compare_dir": str(compare_dir),
-                    "campaign_lineage": "featurecov_cf1_eps_sweep_20260416",
-                    "publication_note": (
-                        "Transitional historical AL-M-T0 row only. The canonical-bundle AL-M-T0 clone failed "
-                        "2026-06-03 fit-stage sigma/PSD gates and is blocked pending targeted diagnostics or a "
-                        "new AL-specific discount/epsilon/c_factor spec."
-                    ),
-                    "replaced_source_run_id": "",
-                }
-            )
+        al_drop_run_id = f"multimodel_{cutoff}_v8_he2pubgdpc1r1_dqlm_multivar_al_drop"
+        rows.append(
+            {
+                "cutoff": cutoff,
+                "family": "dqlm_multivar_al_drop",
+                "run_id": al_drop_run_id,
+                "run_root": str(PROMOTED_AL_DROP_ROOT / "runs" / al_drop_run_id),
+                "compare_dir": "",
+                "campaign_lineage": PROMOTED_FAMILY_LINEAGES["dqlm_multivar_al_drop"],
+                "publication_note": PROMOTED_FAMILY_NOTES["dqlm_multivar_al_drop"],
+                "replaced_source_run_id": "",
+            }
+        )
     return rows
 
 
@@ -637,6 +621,7 @@ def validate(
         "exdqlm_multivar_keep": {"label": "exAL-M-T1", "likelihood": "exal", "transfer": "keep"},
         "dqlm_multivar_al_keep": {"label": "AL-M-T1", "likelihood": "al", "transfer": "keep"},
         "exdqlm_multivar_drop": {"label": "exAL-M-T0", "likelihood": "exal", "transfer": "drop"},
+        "dqlm_multivar_al_drop": {"label": "AL-M-T0", "likelihood": "al", "transfer": "drop"},
         "dqlm_univar_al": {"label": "AL-U-T1", "likelihood": "al", "transfer": ""},
         "exdqlm_univar": {"label": "exAL-U-T1", "likelihood": "exal", "transfer": ""},
     }
@@ -762,7 +747,7 @@ def validate(
 
 def write_csv(path: Path, rows: list[dict[str, str]], fieldnames: list[str]) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -833,8 +818,8 @@ Headline checks:
 - full within-cutoff shared-input alignment checks passing: `{aligned_full} / {total_full}`
 
 Special publication update:
-- `exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-U-T1`, and `exAL-U-T1` now resolve to canonical-bundle promoted roots.
-- Transition gate: the remaining four HE2 Bayesian comparison families still need rerun/promotion onto the same canonical 20260510 input-bundle contract before the full benchmark table should be treated as final.
+- `exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` now resolve to canonical-bundle promoted roots.
+- Transition gate: the remaining three HE2 Bayesian comparison families still need rerun/promotion onto the same canonical 20260510 input-bundle contract before the full benchmark table should be treated as final.
 
 ## Canonical-Bundle Promoted Rows
 
@@ -846,7 +831,7 @@ Special publication update:
 
 Archival caveat:
 - `usgs_daily.csv` was not preserved inside some older multivariate quantile run roots, so the strict within-cutoff congruence table is evaluated on the **10 fit/forecast/blended-covariate artifacts** rather than on the auxiliary USGS cache file.
-- Input congruence is now a diagnostic gate, not a final-pass claim, because three families have been promoted and the other six comparison families still require matching canonical-input promotion.
+- Input congruence is now a diagnostic gate, not a final-pass claim, because six families have been promoted and the other three comparison families still require matching canonical-input promotion.
 
 ## Publication Rows
 

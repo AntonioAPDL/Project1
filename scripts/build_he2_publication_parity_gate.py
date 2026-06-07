@@ -24,12 +24,10 @@ from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402
 
 OUT_DIR = ROOT / "reports" / "he2_publication_manifest"
 PROMOTED_LABEL = "exAL-M-T1"
-PROMOTED_LABELS = {"exAL-M-T1", "AL-M-T1", "exAL-M-T0", "AL-U-T1", "exAL-U-T1"}
+PROMOTED_LABELS = {"exAL-M-T1", "AL-M-T1", "exAL-M-T0", "AL-M-T0", "AL-U-T1", "exAL-U-T1"}
 CANONICAL_LINEAGE = "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner"
 PENDING_ACTION = "rerun_or_promote_on_20260510_canonical_bundle"
-BLOCKED_ACTION_BY_LABEL = {
-    "AL-M-T0": "blocked_pending_al_drop_diagnostics_or_new_discount_spec",
-}
+BLOCKED_ACTION_BY_LABEL: dict[str, str] = {}
 
 
 def _submodel_count(family: str) -> int:
@@ -102,7 +100,7 @@ def build_gate() -> tuple[list[dict[str, str]], dict[str, Any]]:
         "within_cutoff_alignment_passes": alignment_passes,
         "within_cutoff_alignment_checks": len(alignment_required),
         "final_9_model_benchmark_ready": False,
-        "gate_reason": "exAL-M-T1, AL-M-T1, exAL-M-T0, AL-U-T1, and exAL-U-T1 are promoted; AL-M-T0 is blocked pending diagnostics/new AL discount specs, and the three NDLM families must use the same canonical input bundle before the all-model table is final.",
+        "gate_reason": "exAL-M-T1, AL-M-T1, exAL-M-T0, AL-M-T0, AL-U-T1, and exAL-U-T1 are promoted; the three NDLM families must use the same canonical input bundle before the all-model table is final.",
     }
     return rows, summary
 
@@ -133,9 +131,8 @@ def _write_markdown(path: Path, rows: list[dict[str, str]], summary: dict[str, A
         f"- bundle run id: `{summary['canonical_bundle_run_id']}`",
         f"- final 9-model benchmark ready: `{summary['final_9_model_benchmark_ready']}`",
         "",
-        "`exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-U-T1`, and `exAL-U-T1` are promoted onto canonical-bundle roots.",
-        "`AL-M-T0` is blocked pending targeted diagnostics or a new AL-specific discount spec. The three NDLM",
-        "comparison families must also be rerun or promoted onto the same 20260510 bundle before the full manuscript",
+        "`exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` are promoted onto canonical-bundle roots.",
+        "The three NDLM comparison families must also be rerun or promoted onto the same 20260510 bundle before the full manuscript",
         "benchmark table is paper-final.",
         "",
         "## Pending Families",

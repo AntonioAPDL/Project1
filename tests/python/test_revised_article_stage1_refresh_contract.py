@@ -49,11 +49,11 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
         self.assertEqual(fig['source_path'], 'artifacts/representative_selected_model_2022_12_25/representative_synthesis_multivariate.png')
         self.assertIn('exAL-M-T1', fig['note'])
 
-    def test_benchmark_table_note_and_freeze_contract_match_three_family_promotion(self) -> None:
+    def test_benchmark_table_note_and_freeze_contract_match_six_family_promotion(self) -> None:
         payload = json.loads((ARTICLE_ROOT / 'MANUSCRIPT_ASSET_MANIFEST.json').read_text(encoding='utf-8'))
         note = payload['tables']['tab:benchmark_crps_models']['note']
-        self.assertIn('exAL-M-T1, AL-M-T1, and exAL-M-T0', note)
-        self.assertIn('remaining six', note)
+        self.assertIn('exAL-M-T1, AL-M-T1, exAL-M-T0, AL-M-T0, AL-U-T1, and exAL-U-T1', note)
+        self.assertIn('three NDLM', note)
         self.assertNotIn('eight HE2', note)
 
         text = (ARTICLE_ROOT / 'scripts' / 'refresh_he2_manifest_snapshot.py').read_text(encoding='utf-8')
@@ -62,9 +62,9 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
         self.assertIn('he2_publication_parity_gate_summary.json', text)
 
         summary = json.loads((ARTICLE_ROOT / 'artifacts' / 'he2_publication_freeze' / 'he2_publication_parity_gate_summary.json').read_text(encoding='utf-8'))
-        self.assertEqual(summary['promoted_rows'], 15)
-        self.assertEqual(summary['pending_rows'], 30)
-        self.assertEqual(set(summary['promoted_labels']), {'AL-M-T1', 'exAL-M-T0', 'exAL-M-T1'})
+        self.assertEqual(summary['promoted_rows'], 30)
+        self.assertEqual(summary['pending_rows'], 15)
+        self.assertEqual(set(summary['promoted_labels']), {'AL-M-T0', 'AL-M-T1', 'AL-U-T1', 'exAL-M-T0', 'exAL-M-T1', 'exAL-U-T1'})
 
     def test_generated_benchmark_table_carries_promoted_family_crps_values(self) -> None:
         rows = (ARTICLE_ROOT / 'tables' / 'generated_tex' / 'benchmark_crps_bayesian_rows.tex').read_text(encoding='utf-8')

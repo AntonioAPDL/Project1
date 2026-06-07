@@ -12,6 +12,7 @@ from build_he2_bayesian_publication_manifest import (  # noqa: E402
     ARTIFACT_SPECS,
     CUTOFFS,
     FAMILY_TO_LABEL,
+    PROMOTED_AL_DROP_ROOT,
     PROMOTED_AL_KEEP_ROOT,
     PROMOTED_EXAL_DROP_ROOT,
     PROMOTED_UNIVAR_AL_EXAL_ROOT,
@@ -43,7 +44,7 @@ class He2BayesianPublicationManifestTests(unittest.TestCase):
             self.assertAlmostEqual(float(row["crps_exact"]), winner.mean_crps, places=12)
             self.assertEqual(row["campaign_lineage"], "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner")
 
-    def test_al_keep_and_exal_drop_rows_point_to_canonical_promoted_roots(self) -> None:
+    def test_multivar_quantile_rows_point_to_canonical_promoted_roots(self) -> None:
         manifest_rows, _input_rows, _alignment_rows = build_outputs()
         authoritative = load_authoritative_spec()
         winners = authoritative.winner_by_cutoff()
@@ -64,6 +65,14 @@ class He2BayesianPublicationManifestTests(unittest.TestCase):
             self.assertEqual(exal_drop["likelihood_mode"], "exal")
             self.assertEqual(exal_drop["forecast_transfer_mode"], "drop")
             self.assertEqual(exal_drop["reused_external_pass"], "False")
+
+            al_drop = next(row for row in manifest_rows if row["cutoff"] == cutoff and row["manuscript_label"] == "AL-M-T0")
+            self.assertEqual(al_drop["run_id"], f"multimodel_{cutoff}_v8_he2pubgdpc1r1_dqlm_multivar_al_drop")
+            self.assertTrue(al_drop["run_root"].startswith(str(PROMOTED_AL_DROP_ROOT)))
+            self.assertEqual(al_drop["campaign_lineage"], PROMOTED_FAMILY_LINEAGES["dqlm_multivar_al_drop"])
+            self.assertEqual(al_drop["likelihood_mode"], "al")
+            self.assertEqual(al_drop["forecast_transfer_mode"], "drop")
+            self.assertEqual(al_drop["reused_external_pass"], "False")
 
     def test_univar_al_exal_rows_point_to_20260603_promoted_root(self) -> None:
         manifest_rows, _input_rows, _alignment_rows = build_outputs()
