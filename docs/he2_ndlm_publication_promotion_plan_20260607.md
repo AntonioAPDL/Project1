@@ -393,6 +393,54 @@ python3 scripts/build_he2_master_workflow_audit_tracker.py
 | Frozen spec audit | done | `.../control/publication_relaunch_matrix/frozen_spec_manifest.csv` |
 | Deterministic tests | done | unittest and py_compile commands above |
 | Full prelaunch validation | done | `.../control/prelaunch_validation_20260607T203117Z/prelaunch_validation_summary.json` |
-| Production launch | not started | validation passed; awaiting explicit launch approval |
+| Production launch | in progress | queue controller `3315314`; see production launch record below |
 | Manifest/parity promotion | not started | gated on 15 production rows passing |
 | Article CRPS/table refresh | not started | gated on manifest promotion |
+
+## Production Launch Record
+
+Launch started after the authoritative prelaunch validation
+`.../control/prelaunch_validation_20260607T203117Z/prelaunch_validation_summary.json`
+passed and after the harmonic-corrected workflow was pushed to origin at commit
+`3d402f9`.
+
+Command:
+
+```bash
+python3 scripts/launch_he2_bayesian_publication_relaunch.py \
+  --template config/he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607.template.yaml \
+  --batch-file config/he2_relaunch_batches/he2_wave_a_ndlm_remaining_families_promotion_20260607.yaml \
+  --skip-validate \
+  --start-monitor \
+  --monitor-out-dir reports/he2_ndlm_promotion_20260607_live \
+  --monitor-interval 300 \
+  --monitor-max-snapshots 288
+```
+
+Launch metadata:
+
+- start time: `2026-06-07T21:15:15Z`
+- queue controller pid: `3315314`
+- artifact root:
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607`
+- matrix/status directory:
+  `.../control/publication_relaunch_matrix`
+- generated configs: `15`
+- selected rows: `15`
+- queue settings: `ordinary_max_concurrent=5`,
+  `heavy_cutoff_max_concurrent=1`, `heavy_cutoff_blocks_ordinary=false`
+- cleanup policy: `.RData` cleanup after post is enabled by the queue
+  controller
+- live monitor output:
+  `reports/he2_ndlm_promotion_20260607_live`
+
+Initial launch evidence:
+
+- `queue.log` recorded controller startup and the first row launch at
+  `2026-06-07T21:15:15Z`;
+- the first two live rows were
+  `multimodel_20210123_v8_he2pubgdpc1r1_ndlm_univar_keep` and
+  `multimodel_20210123_v8_he2pubgdpc1r1_ndlm_main_drop`;
+- all 15 generated production configs were rechecked after launch and retained
+  NDLM main and NDLM univar seasonality harmonics
+  `[1, 2, 0.14691084757818865]`.
