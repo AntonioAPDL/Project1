@@ -109,7 +109,36 @@ Regression tests completed before launch:
 python3 -m unittest tests.python.test_he3_exdqlm_ablation_tooling -v
 ```
 
-Result: 7 tests passed.
+Result after the noTF/drop save-contract repair: 8 tests passed.
+
+## noTF/drop Save-Contract Repair
+
+The first pilot launch exposed a launch-contract bug in the legacy `drop` entrypoint
+used by `noTF`. The `noTF` row correctly set:
+
+- `fit.exdqlm_multivar.legacy.use_covariates: false`
+- `models.exdqlm_multivar.forecast_transfer_mode: drop`
+- `DISC_W_POST_SAVE_OBJECTIVE_ENABLED=FALSE`
+
+However, `DISC_Optimal_Synth_Ranges_W.r` previously skipped the only call to
+`objective_deltas(...)` when the optional post-save objective was disabled. Because the
+fit/save side effect lives inside `objective_deltas(...)`, the R process exited with
+status zero but wrote no `DISC_variables_*_exAL_synth_simp.RData`. This was a workflow
+bug, not evidence that the `noTF` model failed statistically.
+
+The repaired contract is:
+
+1. the legacy `drop` entrypoint always runs one `objective_deltas(...)` evaluation to
+   fit and save the selected model state;
+2. if `DISC_W_POST_SAVE_OBJECTIVE_ENABLED=FALSE`, it returns immediately after
+   `disc_w_save_state(...)`;
+3. `stage_fit.R` passes `DISC_W_EXPECTED_RDATA_PATH` to the wrapper; and
+4. `scripts/run_DISC_Optimal_Synth_Ranges_W.R` fails loudly with
+   `[DISC_W_EXPECTED_RDATA_MISSING]` if the expected RData is absent or empty.
+
+Regression coverage:
+
+- `tests.python.test_he3_exdqlm_ablation_tooling.test_no_tf_drop_fit_still_saves_when_post_objective_disabled`
 
 ## Launch
 

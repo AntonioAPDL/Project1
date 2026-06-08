@@ -447,6 +447,21 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
         proc = self.run_script("Rscript", "--vanilla", "-e", r_code)
         self.assertEqual(proc.stdout.strip(), "simp")
 
+    def test_no_tf_drop_fit_still_saves_when_post_objective_disabled(self) -> None:
+        drop_script = (ROOT / "DISC_Optimal_Synth_Ranges_W.r").read_text(encoding="utf-8")
+        wrapper_script = (ROOT / "scripts" / "run_DISC_Optimal_Synth_Ranges_W.R").read_text(encoding="utf-8")
+        stage_fit = (ROOT / "R" / "unified" / "stages" / "stage_fit.R").read_text(encoding="utf-8")
+
+        self.assertIn("disc_w_save_state(p0 = p0, ending = ending, disc_w_paths = disc_w_paths)", drop_script)
+        self.assertIn("[post_save_objective] skipped after save", drop_script)
+        self.assertIn(
+            "d <- initial_delta\nobjective_deltas(d, DISC_W_SIMS_ENABLED, DISC_W_USE_COVARIATES)",
+            drop_script,
+        )
+        self.assertIn("DISC_W_EXPECTED_RDATA_PATH = expected_output_path", stage_fit)
+        self.assertIn("[DISC_W_EXPECTED_RDATA_MISSING]", wrapper_script)
+        self.assertIn("[DISC_W_EXPECTED_RDATA_OK]", wrapper_script)
+
     def test_audit_script_confirms_inheritance_and_runtime_hashes(self) -> None:
         self.run_script(
             "python3",

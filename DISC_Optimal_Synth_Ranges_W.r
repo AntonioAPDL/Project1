@@ -4688,6 +4688,15 @@ if (verbose) {
 }
 
 disc_w_save_state(p0 = p0, ending = ending, disc_w_paths = disc_w_paths)
+
+if (!isTRUE(DISC_W_POST_SAVE_OBJECTIVE_ENABLED)) {
+  cat(sprintf(
+    "[post_save_objective] skipped after save p0=%s env=DISC_W_POST_SAVE_OBJECTIVE_ENABLED\n",
+    as.character(p0)
+  ))
+  flush.console()
+  return(NA_real_)
+}
 }
 
 errors <- new.theta.out$standard_forecast_errors
@@ -4828,13 +4837,7 @@ objective_deltas_min <- function(delta) {
   objective_deltas(delta, DISC_W_SIMS_ENABLED, DISC_W_USE_COVARIATES)  # Minimize the negative of the original function
 }
 
-if (!isTRUE(DISC_W_POST_SAVE_OBJECTIVE_ENABLED)) {
-  cat(sprintf(
-    "[post_save_objective] disabled p0=%s env=DISC_W_POST_SAVE_OBJECTIVE_ENABLED\n",
-    as.character(p0)
-  ))
-  flush.console()
-} else {
+if (isTRUE(DISC_W_POST_SAVE_OBJECTIVE_ENABLED)) {
   # result <- nloptr(x0 = initial_delta,
   #                  eval_f = objective_deltas_min,  # Objective function
   #                  lb = lower_bounds,
@@ -4842,8 +4845,8 @@ if (!isTRUE(DISC_W_POST_SAVE_OBJECTIVE_ENABLED)) {
   #                  opts = opts)
   # d = as.numeric(c(result$solution))
   # print(result)
-
-  d <- initial_delta
-  objective_deltas(d, DISC_W_SIMS_ENABLED, DISC_W_USE_COVARIATES)
 }
+
+d <- initial_delta
+objective_deltas(d, DISC_W_SIMS_ENABLED, DISC_W_USE_COVARIATES)
 ###########################################################################################################################

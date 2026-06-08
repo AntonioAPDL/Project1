@@ -58,3 +58,31 @@ entrypoint <- if (identical(transfer_mode, "keep")) {
   "DISC_Optimal_Synth_Ranges_W.r"
 }
 source(entrypoint, chdir = TRUE)
+
+expected_rdata_path <- Sys.getenv("DISC_W_EXPECTED_RDATA_PATH", "")
+if (nzchar(expected_rdata_path)) {
+  output_info <- suppressWarnings(file.info(expected_rdata_path))
+  output_size <- suppressWarnings(as.numeric(output_info$size[1L]))
+  if (!file.exists(expected_rdata_path) || !is.finite(output_size) || output_size <= 0) {
+    output_dir <- Sys.getenv("DISC_W_OUTPUT_DIR", "")
+    candidates <- character()
+    if (nzchar(output_dir) && dir.exists(output_dir)) {
+      candidates <- list.files(
+        output_dir,
+        pattern = "^DISC_variables_.*\\.RData$",
+        full.names = TRUE
+      )
+    }
+    candidate_text <- if (length(candidates)) paste(candidates, collapse = " | ") else "<none>"
+    stop(sprintf(
+      "[DISC_W_EXPECTED_RDATA_MISSING] expected output not written: %s candidates=%s",
+      expected_rdata_path,
+      candidate_text
+    ), call. = FALSE)
+  }
+  message(sprintf(
+    "[DISC_W_EXPECTED_RDATA_OK] path=%s bytes=%d",
+    expected_rdata_path,
+    as.integer(output_size)
+  ))
+}

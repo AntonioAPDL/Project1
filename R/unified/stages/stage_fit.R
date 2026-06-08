@@ -984,6 +984,10 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
   exdqlm_transfer_feature_mode <- unified_resolve_transfer_feature_mode(cfg)
   exdqlm_transfer_feature_scaling <- unified_resolve_transfer_feature_scaling(cfg)
     output_suffix <- unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC")
+    expected_output_path <- file.path(
+      q_outputs,
+      sprintf("DISC_variables_%d_exAL_synth_%s.RData", q_num, output_suffix)
+    )
 
     warm_start_enabled <- isTRUE(unified_get(cfg, c("fit", "warm_start", "enabled"), default = FALSE))
     warm_start_source_run_root <- unified_get(cfg, c("fit", "warm_start", "source_run_root"), default = NULL)
@@ -1164,6 +1168,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_W_CUTOFF_DATE = as.character(cutoff_date),
       DISC_W_FORECAST_START_DATE = as.character(forecast_start_date),
       DISC_W_OUTPUT_DIR = q_outputs,
+      DISC_W_EXPECTED_RDATA_PATH = expected_output_path,
       DISC_W_PARAMETERS_PATH = parameters_copy,
       DISC_W_RETROS_PATH = adapted_retros,
       DISC_W_NWS_PATH = adapted_nws,
@@ -1549,7 +1554,7 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
     ))
     if (!is.finite(cmd_status)) cmd_status <- 0L
 
-    output_path <- file.path(q_outputs, sprintf("DISC_variables_%d_exAL_synth_%s.RData", q_num, output_suffix))
+    output_path <- expected_output_path
     forecast_health_path <- file.path(q_outputs, "multivar_forecast_health.txt")
     terminal_health_path <- file.path(q_outputs, "multivar_terminal_state_health.txt")
     terminal_health_csv_path <- file.path(q_outputs, "multivar_terminal_state_health.csv")
