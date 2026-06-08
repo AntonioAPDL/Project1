@@ -164,12 +164,16 @@ unified_post_contract_check <- function(
     if (length(names_vec) == 0L) return(FALSE)
     any(vapply(as.character(names_vec), has_output_file, logical(1)))
   }
+  requested_component_transfer_mode <- {
+    raw <- if (is.null(multivar_component_transfer_mode)) "" else as.character(multivar_component_transfer_mode)
+    raw <- tolower(trimws(raw[[1L]]))
+    if (!nzchar(raw) || is.na(raw)) "" else raw
+  }
   component_required_csv <- c(
     "multivar_trace_summary_q50.csv",
     "multivar_forecast_window_q50_summary.csv",
     "multivar_forecast_window_q50_metrics.csv",
     "multivar_transfer_state_window_q50.csv",
-    "multivar_transfer_coefficients_window_q50.csv",
     "multivar_transfer_state_contract_q50.csv",
     "multivar_transfer_identity_check_q50.csv",
     "multivar_transfer_contract_q50.csv",
@@ -181,12 +185,15 @@ unified_post_contract_check <- function(
     "multivar_sigma_traces_q50.png",
     "multivar_gamma_traces_q50.png",
     "multivar_transfer_zeta_window_q50.png",
-    "multivar_transfer_coefficients_window_q50.png",
     "multivar_transfer_observation_decomposition_q50.png",
     "multivar_transfer_source_mu_window_q50.png",
     "multivar_transfer_discrepancy_identity_q50.png",
     "multivar_vb_usgs_location_quantiles_cutoff_window.png"
   )
+  if (!identical(requested_component_transfer_mode, "drop")) {
+    component_required_csv <- c(component_required_csv, "multivar_transfer_coefficients_window_q50.csv")
+    component_required_figures <- c(component_required_figures, "multivar_transfer_coefficients_window_q50.png")
+  }
   check_multivar_component_contract <- function() {
     missing_component <- c(
       component_required_csv[!vapply(component_required_csv, has_output_file, logical(1))],

@@ -498,8 +498,8 @@ infer_transfer_layout_q50 <- function(theta_obj, p_hint = NA_integer_) {
   full_hist_dim <- nrow(theta_obj$sm)
   core_hist_dim <- as.integer(p_val * (j_total + 1L))
   ppx_val <- as.integer(full_hist_dim - core_hist_dim)
-  if (!is.finite(ppx_val) || ppx_val <= 0L) {
-    out$reason <- "no_transfer_block_detected"
+  if (!is.finite(ppx_val) || ppx_val < 0L) {
+    out$reason <- "state_dim_smaller_than_expected_core"
     return(out)
   }
 
@@ -508,7 +508,11 @@ infer_transfer_layout_q50 <- function(theta_obj, p_hint = NA_integer_) {
   seg_idx <- seq_len(j_total)
   expected_core <- as.integer(p_val * (j_total - seg_idx + 2L))
   expected_with_transfer <- expected_core + ppx_val
-  transfer_retained <- seg_rows >= expected_with_transfer
+  transfer_retained <- if (ppx_val > 0L) {
+    seg_rows >= expected_with_transfer
+  } else {
+    rep(FALSE, length(seg_rows))
+  }
 
   seg_contract <- data.frame(
     segment = seg_idx,
@@ -684,8 +688,8 @@ build_transfer_state_window_q50 <- function(pre_days = 30L) {
     stringsAsFactors = FALSE
   )
 
-  zeta_hist_idx <- core_hist_dim + 1L
-  has_hist_transfer <- zeta_hist_idx <= nrow(sm_hist)
+  zeta_hist_idx <- if (ppx > 0L) core_hist_dim + 1L else NA_integer_
+  has_hist_transfer <- is.finite(zeta_hist_idx) && zeta_hist_idx <= nrow(sm_hist)
 
   for (ii in seq_len(n_hist)) {
     tt <- hist_idx[ii]
@@ -1076,8 +1080,8 @@ build_multivar_vb_usgs_location_rows_for_quantile <- function(theta_obj, quantil
     stringsAsFactors = FALSE
   )
 
-  zeta_hist_idx <- core_hist_dim + 1L
-  has_hist_transfer <- zeta_hist_idx <= nrow(sm_hist)
+  zeta_hist_idx <- if (ppx > 0L) core_hist_dim + 1L else NA_integer_
+  has_hist_transfer <- is.finite(zeta_hist_idx) && zeta_hist_idx <= nrow(sm_hist)
   for (ii in seq_len(n_hist)) {
     tt <- hist_idx[ii]
     mt <- as.numeric(sm_hist[, tt])

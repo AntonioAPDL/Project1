@@ -1403,7 +1403,12 @@ main <- function() {
   dir.create(file.path(out_dir, "plots"), recursive = TRUE, showWarnings = FALSE)
 
   rdata_paths <- sort(unique(unlist(lapply(args$run_roots, function(root) {
-    list.files(root, pattern = "^DISC_variables_.*_exAL_synth_DISC\\.RData$", recursive = TRUE, full.names = TRUE)
+    list.files(
+      root,
+      pattern = "^DISC_variables_.*_exAL_synth_[A-Za-z0-9._-]+\\.RData$",
+      recursive = TRUE,
+      full.names = TRUE
+    )
   }))))
   if (!length(rdata_paths)) stop("No DISC_variables RData files found.", call. = FALSE)
 

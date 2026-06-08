@@ -62,6 +62,54 @@ write_multivar_component_diagnostics <- function(outputs_dir, contract_overrides
   invisible(TRUE)
 }
 
+write_multivar_drop_component_diagnostics <- function(outputs_dir, contract_overrides = list()) {
+  csv_names <- c(
+    "multivar_trace_summary_q50.csv",
+    "multivar_forecast_window_q50_summary.csv",
+    "multivar_forecast_window_q50_metrics.csv",
+    "multivar_transfer_state_window_q50.csv",
+    "multivar_transfer_state_contract_q50.csv",
+    "multivar_transfer_identity_check_q50.csv",
+    "multivar_vb_usgs_location_quantiles_cutoff_window.csv",
+    "multivar_vb_usgs_location_quantile_summary.csv"
+  )
+  for (name in csv_names) {
+    write.csv(data.frame(x = 1), file.path(outputs_dir, name), row.names = FALSE)
+  }
+
+  fig_names <- c(
+    "multivar_elbo_trace_q50.png",
+    "multivar_sigma_traces_q50.png",
+    "multivar_gamma_traces_q50.png",
+    "multivar_transfer_zeta_window_q50.png",
+    "multivar_transfer_observation_decomposition_q50.png",
+    "multivar_transfer_source_mu_window_q50.png",
+    "multivar_transfer_discrepancy_identity_q50.png",
+    "multivar_vb_usgs_location_quantiles_cutoff_window.png"
+  )
+  for (name in fig_names) {
+    create_dummy_png(file.path(outputs_dir, name))
+  }
+
+  contract <- modifyList(
+    list(
+      transfer_mode = "drop",
+      forecast_has_transfer = FALSE,
+      n_forecast_rows = 30L,
+      finite_zeta_forecast = 30L,
+      finite_mu_without_transfer_forecast = 30L,
+      max_abs_mu_decomp_error = 0,
+      max_abs_identity_err_glofas = 0,
+      max_abs_identity_err_nws = 0,
+      tol_decomp = 1e-8,
+      tol_identity = 1e-8
+    ),
+    contract_overrides
+  )
+  write.csv(as.data.frame(contract), file.path(outputs_dir, "multivar_transfer_contract_q50.csv"), row.names = FALSE)
+  invisible(TRUE)
+}
+
 test_that("smoke post contract passes with smoke marker", {
   outputs_dir <- tempfile("post_outputs_smoke_")
   cache_dir <- tempfile("post_cache_smoke_")
@@ -213,6 +261,35 @@ test_that("smoke-fast multivar component contract requires q50 diagnostics and k
   expect_true(isTRUE(contract$status))
   expect_true(isTRUE(contract$checks$multivar_component_diagnostics_present))
   expect_true(isTRUE(contract$checks$multivar_component_transfer_contract_ok))
+})
+
+test_that("smoke-fast multivar component contract accepts no-transfer drop diagnostics", {
+  outputs_dir <- tempfile("post_outputs_multivar_components_drop_")
+  cache_dir <- tempfile("post_cache_multivar_components_drop_")
+  dir.create(outputs_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+
+  write_multivar_drop_component_diagnostics(outputs_dir)
+
+  contract <- unified_post_contract_check(
+    artifacts_df = NULL,
+    outputs_dir = outputs_dir,
+    cache_dir = cache_dir,
+    post_figures = TRUE,
+    export_tables = TRUE,
+    post_smoke_fast = TRUE,
+    multivar_component_diagnostics = TRUE,
+    multivar_component_transfer_mode = "drop",
+    model_run_exdqlm_multivar = TRUE,
+    model_run_exdqlm_univar = FALSE,
+    model_run_ndlm_main = FALSE,
+    model_run_ndlm_univar = FALSE
+  )
+
+  expect_true(isTRUE(contract$status))
+  expect_true(isTRUE(contract$checks$multivar_component_diagnostics_present))
+  expect_true(isTRUE(contract$checks$multivar_component_transfer_contract_ok))
+  expect_false(any(grepl("multivar_transfer_coefficients", contract$missing_paths, fixed = TRUE)))
 })
 
 test_that("smoke-fast multivar component contract fails closed on missing or dropped forecast transfer", {

@@ -173,6 +173,27 @@ script accepts only the declared `noTF` override. Any undeclared drift in scient
 settings, runtime input hashes, target model IDs, finite checks, state diagnostics, or
 post-stage CRPS outputs remains audit-visible.
 
+## noTF Post-Contract Repair
+
+The no-transfer ablation has a different post-stage component contract from the retained
+transfer models:
+
+- `noTF` saves `DISC_variables_*_exAL_synth_simp.RData` fit-state bundles because the
+  historical transfer covariates are disabled.
+- The no-transfer state layout has a zero-width transfer block. This is valid for
+  `forecast_transfer_mode: drop`; `zeta_t` is fixed to zero and transfer coefficients are
+  structurally not applicable.
+- The multivariate component diagnostics still produce q50 state, decomposition,
+  identity, and VB USGS-location outputs around the cutoff.
+- The post artifact contract therefore requires state/identity/VB diagnostics for
+  `transfer_mode: drop`, but does not require transfer-coefficient CSV/PNG artifacts.
+- The VB latent audit accepts all `DISC_variables_*_exAL_synth_<suffix>.RData` bundles,
+  including `simp`, so noTF is audited with the same latent/pseudo-data machinery before
+  post-cleanup removes heavy `.RData` files.
+
+This repair keeps full/keep rows strict: retained-transfer models still require the
+transfer-coefficient diagnostics and the keep-mode transfer contract.
+
 ## Launch
 
 ```bash
