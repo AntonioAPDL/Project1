@@ -393,9 +393,9 @@ python3 scripts/build_he2_master_workflow_audit_tracker.py
 | Frozen spec audit | done | `.../control/publication_relaunch_matrix/frozen_spec_manifest.csv` |
 | Deterministic tests | done | unittest and py_compile commands above |
 | Full prelaunch validation | done | `.../control/prelaunch_validation_20260607T203117Z/prelaunch_validation_summary.json` |
-| Production launch | in progress | queue controller `3315314`; see production launch record below |
-| Manifest/parity promotion | not started | gated on 15 production rows passing |
-| Article CRPS/table refresh | not started | gated on manifest promotion |
+| Production launch | done | 15/15 rows `report/pass`; `.../control/publication_relaunch_matrix/matrix_status.csv` |
+| Manifest/parity promotion | done | `reports/he2_publication_manifest/he2_publication_parity_gate_summary.json` reports 45 promoted rows, 0 pending rows |
+| Article CRPS/table refresh | done | `Evironmetrics---REVISED-DOC-2/tables/generated_tex/benchmark_crps_main_table.tex` regenerated from the refreshed article freeze |
 
 ## Production Launch Record
 
@@ -444,3 +444,53 @@ Initial launch evidence:
 - all 15 generated production configs were rechecked after launch and retained
   NDLM main and NDLM univar seasonality harmonics
   `[1, 2, 0.14691084757818865]`.
+
+## Production Closeout - 2026-06-08
+
+Final runtime state:
+
+| Gate | Result | Evidence |
+|---|---|---|
+| matrix rows | 15/15 `report/pass` | `.../control/publication_relaunch_matrix/matrix_status.csv` |
+| controller | exited cleanly | `.../control/publication_relaunch_matrix/queue.log` |
+| retained heavy fit files | 0 `.RData` / `.rda` files under the NDLM promotion root | `find ... -name '*.RData' -o -name '*.rda' -o -name '*.Rda'` |
+| compare bundles | 5/5 present | `.../reports/multimodel_<cutoff>_v8_he2pubgdpc1r1_compare/` |
+| post artifacts | all NDLM rows have CRPS tables, ELBO plots, recent-fit plots, forecast-window quantile plots, post manifests, and posterior export manifests | per-run `post/outputs/<run_id>/` |
+| input contract | canonical 20260510 bundle, `PPT|SOIL|PCA(alias=GDPC1)`, lags 1/2/3, squares, interaction | generated configs and `cutoff_bundle_audit.csv` |
+| harmonic contract | `[1, 2, 1/6.8068493]`, not literal harmonic `3` | `frozen_spec_manifest.csv` and generated configs |
+
+Manifest/table promotion:
+
+- `scripts/build_he2_bayesian_publication_manifest.py` now resolves the three
+  NDLM families from the June 7 promotion root instead of the older
+  `ndlm_featurecov_rerun_postfix_20260421` root.
+- `scripts/build_he2_publication_parity_gate.py` now reports all nine labels as
+  promoted and sets `final_9_model_benchmark_ready = true`.
+- The workflow-side manifest has `45` promoted rows, `0` pending rows, and
+  `50 / 50` within-cutoff congruence checks passing. The retrospective CSV
+  rows use semantic CSV equality against the canonical bundle because some
+  materialized `retros.csv` files differ by representation while matching
+  values.
+- The revised article freeze was refreshed with
+  `Evironmetrics---REVISED-DOC-2/scripts/refresh_he2_manifest_snapshot.py`,
+  and the generated TeX table includes were rebuilt with
+  `Evironmetrics---REVISED-DOC-2/scripts/build_generated_table_includes.py`.
+
+CRPS table interpretation after promotion:
+
+- `exAL-M-T1` is the lowest-CRPS row for the first four rolling-origin cutoffs.
+- At `2022-12-25`, `RAW-NWS` is lowest in the article table and `AL-M-T1` is the
+  best corrected Bayesian row. The manuscript prose was updated to avoid the
+  stale claim that `exAL-M-T1` wins all five cutoffs.
+- The article table keeps raw-baseline rows from the existing five-run
+  exAL-M-T1 CRPS validation freeze. The June 7 NDLM compare bundles remain the
+  provenance/evidence source for the relaunched NDLM rows and merged all-model
+  compare tables.
+
+Final generated CRPS rows for the three promoted NDLM labels:
+
+| Label | 01/23/2021 | 11/12/2021 | 12/21/2021 | 05/11/2022 | 12/25/2022 |
+|---|---:|---:|---:|---:|---:|
+| `N-U-T1` | 0.3359 | 0.1706 | 1.1935 | 0.1508 | 2.4997 |
+| `N-M-T0` | 1.8456 | 0.3802 | 0.6596 | 0.6701 | 0.6440 |
+| `N-M-T1` | 3.2149 | 0.8910 | 3.0456 | 0.8682 | 3.8886 |

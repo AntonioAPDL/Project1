@@ -24,7 +24,17 @@ from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402
 
 OUT_DIR = ROOT / "reports" / "he2_publication_manifest"
 PROMOTED_LABEL = "exAL-M-T1"
-PROMOTED_LABELS = {"exAL-M-T1", "AL-M-T1", "exAL-M-T0", "AL-M-T0", "AL-U-T1", "exAL-U-T1"}
+PROMOTED_LABELS = {
+    "N-U-T1",
+    "N-M-T0",
+    "N-M-T1",
+    "AL-U-T1",
+    "AL-M-T0",
+    "AL-M-T1",
+    "exAL-U-T1",
+    "exAL-M-T0",
+    "exAL-M-T1",
+}
 CANONICAL_LINEAGE = "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner"
 PENDING_ACTION = "rerun_or_promote_on_20260510_canonical_bundle"
 BLOCKED_ACTION_BY_LABEL: dict[str, str] = {}
@@ -72,7 +82,7 @@ def build_gate() -> tuple[list[dict[str, str]], dict[str, Any]]:
                 "target_data_start": data_start,
                 "target_quantile_lanes": active_quantiles if _submodel_count(row["family"]) == 7 else "single_model",
                 "target_submodels": str(_submodel_count(row["family"])),
-                "paper_table_gate": "ready_for_promoted_canonical_families" if label in PROMOTED_LABELS else "blocks_final_9_model_table",
+                "paper_table_gate": "ready_final_9_model_table" if label in PROMOTED_LABELS else "blocks_final_9_model_table",
             }
         )
 
@@ -82,13 +92,15 @@ def build_gate() -> tuple[list[dict[str, str]], dict[str, Any]]:
     promoted_labels = sorted({row["manuscript_label"] for row in rows if row["target_status"] == "authoritative_promoted"})
     alignment_required = [row for row in alignment_rows if row["artifact"] != "usgs_daily"]
     alignment_passes = sum(row["all_equal"] == "True" for row in alignment_required)
+    pending_rows = status_counts.get("pending_canonical_input_promotion", 0) + status_counts.get(
+        "blocked_canonical_input_promotion", 0
+    )
     summary = {
         "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "rows": len(rows),
         "cutoffs": len(CUTOFFS),
         "promoted_rows": status_counts.get("authoritative_promoted", 0),
-        "pending_rows": status_counts.get("pending_canonical_input_promotion", 0)
-        + status_counts.get("blocked_canonical_input_promotion", 0),
+        "pending_rows": pending_rows,
         "blocked_rows": status_counts.get("blocked_canonical_input_promotion", 0),
         "promoted_labels": promoted_labels,
         "pending_labels": pending_labels,
@@ -99,8 +111,8 @@ def build_gate() -> tuple[list[dict[str, str]], dict[str, Any]]:
         "canonical_data_start": data_start,
         "within_cutoff_alignment_passes": alignment_passes,
         "within_cutoff_alignment_checks": len(alignment_required),
-        "final_9_model_benchmark_ready": False,
-        "gate_reason": "exAL-M-T1, AL-M-T1, exAL-M-T0, AL-M-T0, AL-U-T1, and exAL-U-T1 are promoted; the three NDLM families must use the same canonical input bundle before the all-model table is final.",
+        "final_9_model_benchmark_ready": pending_rows == 0,
+        "gate_reason": "All nine HE2 Bayesian benchmark families are promoted onto the same canonical 20260510 input bundle.",
     }
     return rows, summary
 
@@ -131,18 +143,20 @@ def _write_markdown(path: Path, rows: list[dict[str, str]], summary: dict[str, A
         f"- bundle run id: `{summary['canonical_bundle_run_id']}`",
         f"- final 9-model benchmark ready: `{summary['final_9_model_benchmark_ready']}`",
         "",
-        "`exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` are promoted onto canonical-bundle roots.",
-        "The three NDLM comparison families must also be rerun or promoted onto the same 20260510 bundle before the full manuscript",
-        "benchmark table is paper-final.",
+        "All nine HE2 Bayesian benchmark families are promoted onto canonical-bundle roots.",
+        "The full manuscript benchmark table is paper-final for the current publication snapshot.",
         "",
         "## Pending Families",
         "",
         "| Label | Rows | Required Action |",
         "|---|---:|---|",
     ]
-    for label in sorted(by_label):
-        action = BLOCKED_ACTION_BY_LABEL.get(label, PENDING_ACTION)
-        lines.append(f"| `{label}` | {by_label[label]} | `{action}` |")
+    if by_label:
+        for label in sorted(by_label):
+            action = BLOCKED_ACTION_BY_LABEL.get(label, PENDING_ACTION)
+            lines.append(f"| `{label}` | {by_label[label]} | `{action}` |")
+    else:
+        lines.append("| None | 0 | `none` |")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

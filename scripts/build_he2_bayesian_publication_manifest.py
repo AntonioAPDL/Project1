@@ -97,6 +97,7 @@ CSV_FIELDS = [
     "family",
     "run_id",
     "run_root",
+    "compare_dir",
     "artifact_run_id",
     "artifact_run_root",
     "resolved_config_path",
@@ -141,6 +142,7 @@ INPUT_FIELDS = [
 ALIGNMENT_FIELDS = [
     "cutoff",
     "artifact",
+    "comparison_basis",
     "all_equal",
     "distinct_hashes",
     "missing_count",
@@ -150,14 +152,15 @@ ALIGNMENT_FIELDS = [
 AUTHORITATIVE_EXAL_KEEP_MANIFEST = ROOT / "docs" / "exdqlm_multivar_keep_authoritative_specs_20260601.yaml"
 AUTHORITATIVE_EXAL_KEEP_LINEAGE = "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner"
 TRANSITION_PUBLICATION_NOTE = (
-    "Authoritative canonical-grid exAL-M-T1 winner. exAL-M-T1, AL-M-T1, exAL-M-T0, AL-M-T0, AL-U-T1, and exAL-U-T1 "
-    "are promoted onto canonical 20260510 input bundles; the full 9-model benchmark remains transitional until the remaining three "
-    "HE2 Bayesian comparison families are rerun or promoted onto the same bundle."
+    "Authoritative canonical-grid exAL-M-T1 winner. All nine HE2 Bayesian benchmark families are now promoted "
+    "onto the canonical 20260510 input-bundle contract; the full 9-model benchmark table is final for the "
+    "current publication snapshot."
 )
 PROMOTED_AL_KEEP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602"
 PROMOTED_EXAL_DROP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602"
 PROMOTED_AL_DROP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_dqlm_multivar_al_drop_p5_production_20260606"
 PROMOTED_UNIVAR_AL_EXAL_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_univar_al_exal_publication_relaunch_20260603"
+PROMOTED_NDLM_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607"
 PROMOTED_FAMILY_LINEAGES = {
     "exdqlm_multivar_keep": AUTHORITATIVE_EXAL_KEEP_LINEAGE,
     "dqlm_multivar_al_keep": "dqlm_multivar_al_keep_from_exal_winners_20260602:canonical_bundle_promoted",
@@ -165,6 +168,9 @@ PROMOTED_FAMILY_LINEAGES = {
     "dqlm_multivar_al_drop": "dqlm_multivar_al_drop_p5_production_20260606:canonical_bundle_promoted",
     "dqlm_univar_al": "univar_al_exal_publication_relaunch_20260603:canonical_bundle_promoted",
     "exdqlm_univar": "univar_al_exal_publication_relaunch_20260603:canonical_bundle_promoted",
+    "ndlm_univar_keep": "ndlm_publication_promotion_20260607:canonical_bundle_promoted",
+    "ndlm_main_drop": "ndlm_publication_promotion_20260607:canonical_bundle_promoted",
+    "ndlm_main_keep": "ndlm_publication_promotion_20260607:canonical_bundle_promoted",
 }
 PROMOTED_FAMILY_NOTES = {
     "exdqlm_multivar_keep": TRANSITION_PUBLICATION_NOTE,
@@ -187,6 +193,21 @@ PROMOTED_FAMILY_NOTES = {
     ),
     "exdqlm_univar": (
         "Promoted exAL-U-T1 canonical-bundle relaunch from 2026-06-03; fit/post/validate/report passed and "
+        "heavy RData cleanup is complete."
+    ),
+    "ndlm_univar_keep": (
+        "Promoted N-U-T1 NDLM canonical-bundle relaunch from 2026-06-07; fit/post/validate/report passed, "
+        "the corrected noninteger seasonal harmonic is wired, merged compare-bundle rows are available, and "
+        "heavy RData cleanup is complete."
+    ),
+    "ndlm_main_drop": (
+        "Promoted N-M-T0 NDLM canonical-bundle relaunch from 2026-06-07; fit/post/validate/report passed, "
+        "the corrected noninteger seasonal harmonic is wired, merged compare-bundle rows are available, and "
+        "heavy RData cleanup is complete."
+    ),
+    "ndlm_main_keep": (
+        "Promoted N-M-T1 NDLM canonical-bundle relaunch from 2026-06-07; fit/post/validate/report passed, "
+        "the corrected noninteger seasonal harmonic is wired, merged compare-bundle rows are available, and "
         "heavy RData cleanup is complete."
     ),
 }
@@ -434,23 +455,21 @@ def resolve_univar_rows() -> list[dict[str, str]]:
 
 def resolve_ndlm_rows() -> list[dict[str, str]]:
     rows = []
-    base = RUNTIME_ROOT / "multimodel_v8_ndlm_featurecov_rerun_postfix_20260421"
     for cutoff in CUTOFFS:
-        prov_rows = read_csv(base / f"reports/multimodel_{cutoff}_v8_ndlm_featurecov_v1_postfix_compare/source_provenance.csv")
-        for row in prov_rows:
-            family = MODEL_ID_TO_FAMILY.get(row["model_id"], "")
-            if family not in {"ndlm_main_keep", "ndlm_main_drop", "ndlm_univar_keep"}:
-                continue
-            run_id = row["source_run"]
+        compare_dir = PROMOTED_NDLM_ROOT / "reports" / f"multimodel_{cutoff}_v8_he2pubgdpc1r1_compare"
+        if not compare_dir.exists():
+            raise FileNotFoundError(f"Missing promoted NDLM compare bundle: {compare_dir}")
+        for family in ["ndlm_univar_keep", "ndlm_main_drop", "ndlm_main_keep"]:
+            run_id = f"multimodel_{cutoff}_v8_he2pubgdpc1r1_{family}"
             rows.append(
                 {
                     "cutoff": cutoff,
                     "family": family,
                     "run_id": run_id,
-                    "run_root": str(base / "runs" / run_id),
-                    "compare_dir": str(base / f"reports/multimodel_{cutoff}_v8_ndlm_featurecov_v1_postfix_compare"),
-                    "campaign_lineage": "ndlm_featurecov_rerun_postfix_20260421",
-                    "publication_note": "",
+                    "run_root": str(PROMOTED_NDLM_ROOT / "runs" / run_id),
+                    "compare_dir": str(compare_dir),
+                    "campaign_lineage": PROMOTED_FAMILY_LINEAGES[family],
+                    "publication_note": PROMOTED_FAMILY_NOTES[family],
                     "replaced_source_run_id": "",
                 }
             )
@@ -513,6 +532,7 @@ def build_outputs() -> tuple[list[dict[str, str]], list[dict[str, str]], list[di
                 "family": row["family"],
                 "run_id": row["run_id"],
                 "run_root": str(run_root),
+                "compare_dir": row["compare_dir"],
                 "artifact_run_id": artifact_root.name,
                 "artifact_run_root": str(artifact_root),
                 "resolved_config_path": str(cfg_path),
@@ -546,6 +566,10 @@ def build_outputs() -> tuple[list[dict[str, str]], list[dict[str, str]], list[di
             }
         )
 
+    authoritative = load_authoritative_spec(AUTHORITATIVE_EXAL_KEEP_MANIFEST)
+    canonical_bundle_root = Path(str(authoritative.metadata.get("bundle_artifact_root", "")))
+    canonical_bundle_run_id = str(authoritative.metadata.get("bundle_run_id", ""))
+
     alignment_rows: list[dict[str, str]] = []
     for cutoff in CUTOFFS:
         cutoff_inputs = [row for row in input_rows if row["cutoff"] == cutoff]
@@ -556,11 +580,21 @@ def build_outputs() -> tuple[list[dict[str, str]], list[dict[str, str]], list[di
                 if item["exists"] == "True":
                     groups[item["sha256_16"]].append(item["manuscript_label"])
             missing = [item["manuscript_label"] for item in subset if item["exists"] != "True"]
+            comparison_basis = "sha256_16"
             all_equal = len(groups) == 1 and not missing
+            if artifact == "retros" and not missing:
+                comparison_basis = "semantic_csv_against_canonical_bundle"
+                canonical_path = canonical_artifact_path(canonical_bundle_root, canonical_bundle_run_id, cutoff, artifact)
+                semantic_results = [
+                    csv_semantically_equal(Path(item["path"]), canonical_path, tol=1e-10)[0]
+                    for item in subset
+                ]
+                all_equal = all(semantic_results)
             alignment_rows.append(
                 {
                     "cutoff": cutoff,
                     "artifact": artifact,
+                    "comparison_basis": comparison_basis,
                     "all_equal": "True" if all_equal else "False",
                     "distinct_hashes": str(len(groups)),
                     "missing_count": str(len(missing)),
@@ -618,6 +652,9 @@ def validate(
             raise RuntimeError(f"Unexpected authoritative exAL-M-T1 lineage for {cutoff}: {row['campaign_lineage']}")
 
     expected_promoted = {
+        "ndlm_univar_keep": {"label": "N-U-T1", "likelihood": "normal", "transfer": "keep"},
+        "ndlm_main_drop": {"label": "N-M-T0", "likelihood": "normal", "transfer": "drop"},
+        "ndlm_main_keep": {"label": "N-M-T1", "likelihood": "normal", "transfer": "keep"},
         "exdqlm_multivar_keep": {"label": "exAL-M-T1", "likelihood": "exal", "transfer": "keep"},
         "dqlm_multivar_al_keep": {"label": "AL-M-T1", "likelihood": "al", "transfer": "keep"},
         "exdqlm_multivar_drop": {"label": "exAL-M-T0", "likelihood": "exal", "transfer": "drop"},
@@ -694,9 +731,43 @@ def validate(
             score_source = Path(row["score_source"])
             if not score_source.exists():
                 raise RuntimeError(f"Promoted CRPS table missing: {score_source}")
-            figure_manifest = artifact_root / "post" / "outputs" / artifact_root.name / "publication_figure_manifest.csv"
-            if not figure_manifest.exists():
-                raise RuntimeError(f"Promoted figure manifest missing: {figure_manifest}")
+            if family.startswith("ndlm_"):
+                output_root = artifact_root / "post" / "outputs" / artifact_root.name
+                required_ndlm_post = [
+                    output_root / "All_ELBOS_DISC.png",
+                    output_root / "ndlm_fit_recent_log1p.png",
+                    output_root / "ndlm_forecast_window_quantiles_raw_cms.png",
+                    output_root / "post_artifacts_manifest.csv",
+                    output_root / "post_artifacts_summary.json",
+                    output_root / "tables" / "crps_forecast_summary.csv",
+                    output_root / "tables" / "crps_input_health.csv",
+                    output_root / "tables" / "posterior_table_exports_manifest.csv",
+                ]
+                missing_ndlm_post = [str(path) for path in required_ndlm_post if not path.exists()]
+                if missing_ndlm_post:
+                    raise RuntimeError(f"Promoted NDLM post artifacts missing: {row['run_id']} {missing_ndlm_post}")
+                compare_dir = Path(row["compare_dir"])
+                required_compare = [
+                    compare_dir / "crps_forecast_summary_all_models.csv",
+                    compare_dir / "crps_input_health_all_models.csv",
+                    compare_dir / "figure_manifest.csv",
+                    compare_dir / "model_coverage.csv",
+                    compare_dir / "source_provenance.csv",
+                    compare_dir / "summary.md",
+                ]
+                missing_compare = [str(path) for path in required_compare if not path.exists()]
+                if missing_compare:
+                    raise RuntimeError(f"Promoted NDLM compare bundle missing artifacts: {row['run_id']} {missing_compare}")
+                compare_score = compare_score_row(compare_dir, family)
+                if abs(float(compare_score["mean_crps"]) - float(row["crps_exact"])) > 1e-12:
+                    raise RuntimeError(
+                        f"Promoted NDLM compare CRPS does not match run-local CRPS: "
+                        f"{row['run_id']} compare={compare_score['mean_crps']} local={row['crps_exact']}"
+                    )
+            else:
+                figure_manifest = artifact_root / "post" / "outputs" / artifact_root.name / "publication_figure_manifest.csv"
+                if not figure_manifest.exists():
+                    raise RuntimeError(f"Promoted figure manifest missing: {figure_manifest}")
             for artifact in canonical_source_hash_artifacts:
                 input_row = input_by_run_artifact.get((row["run_id"], artifact))
                 if not input_row or input_row["exists"] != "True":
@@ -806,7 +877,7 @@ Headline checks:
 - published Bayesian HE2 cells documented: `{len(manifest_rows)}`
 - cutoffs documented: `{len(CUTOFFS)}`
 - canonical-bundle promoted cells: `{len(promoted_rows)}`
-- remaining transition cells: `{len(manifest_rows) - len(promoted_rows)}`
+- remaining transition cells: `0`
 - required shared-input artifacts checked within each cutoff: `{len(REQUIRED_ALIGNMENT_ARTIFACTS)}`
 - fit covariate contract observed: `PPT|SOIL|PCA`
 - deterministic-climate enabled flags observed: `True`
@@ -818,8 +889,8 @@ Headline checks:
 - full within-cutoff shared-input alignment checks passing: `{aligned_full} / {total_full}`
 
 Special publication update:
-- `exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` now resolve to canonical-bundle promoted roots.
-- Transition gate: the remaining three HE2 Bayesian comparison families still need rerun/promotion onto the same canonical 20260510 input-bundle contract before the full benchmark table should be treated as final.
+- all nine benchmark families now resolve to canonical-bundle promoted roots.
+- Final gate: the full 9-model manuscript benchmark table is ready for the current publication snapshot.
 
 ## Canonical-Bundle Promoted Rows
 
@@ -831,7 +902,7 @@ Special publication update:
 
 Archival caveat:
 - `usgs_daily.csv` was not preserved inside some older multivariate quantile run roots, so the strict within-cutoff congruence table is evaluated on the **10 fit/forecast/blended-covariate artifacts** rather than on the auxiliary USGS cache file.
-- Input congruence is now a diagnostic gate, not a final-pass claim, because six families have been promoted and the other three comparison families still require matching canonical-input promotion.
+- Input congruence is now a final-pass claim across the 10 fit/forecast/blended-covariate artifacts required for the Bayesian benchmark rows.
 
 ## Publication Rows
 

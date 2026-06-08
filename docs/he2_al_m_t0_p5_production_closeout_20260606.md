@@ -73,6 +73,10 @@ python3 scripts/build_he2_bayesian_publication_manifest.py
 
 ## Remaining Work
 
+2026-06-08 supersession note: the NDLM blocker described below has been closed
+by the June 7 NDLM promotion and the final manifest closeout in
+`docs/he2_publication_manifest_promotion_closeout_20260608.md`.
+
 The AL-M-T0 blocker is closed. The remaining benchmark-table promotion work is now the three NDLM families:
 
 - `N-U-T1` / `ndlm_univar_keep`

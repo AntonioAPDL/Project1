@@ -4,6 +4,11 @@ Date: 2026-06-02
 
 ## Current Decision
 
+2026-06-08 supersession note: this historical parity plan has been closed by
+`docs/he2_publication_manifest_promotion_closeout_20260608.md`. The full
+9-model benchmark now has 45 promoted rows, 0 pending rows, and the NDLM
+families resolve to the June 7 promotion root.
+
 The authoritative HE2 `exAL-M-T1` / `exdqlm_multivar_keep` results are the five CRPS-selected winners in:
 
 `docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml`
@@ -13,10 +18,10 @@ bundle:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510`
 
-The full 9-model HE2 Bayesian benchmark is not paper-final yet. As of the 2026-06-06 P5 production closeout, six
-families are now canonical-bundle promoted: `exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1`.
-The remaining three NDLM Bayesian comparison families must be rerun or promoted onto the same canonical 20260510 input-bundle contract before the manuscript table
-can be interpreted as a final apples-to-apples comparison.
+The full 9-model HE2 Bayesian benchmark is now paper-ready for the current
+snapshot. As of the 2026-06-08 closeout, all nine families are
+canonical-bundle promoted, including the three NDLM Bayesian comparison
+families.
 
 Promotion update:
 
@@ -51,8 +56,11 @@ Project-side source of truth:
 - `scripts/he2_exdqlm_keep_authoritative.py` loads and validates the authoritative YAML.
 - `scripts/build_he2_exdqlm_multivar_keep_authoritative_matrix.py` freezes the five winner rows, source configs, and post-output hashes.
 - `scripts/validate_he2_exdqlm_multivar_keep_authoritative_prelaunch.py` validates run roots, source configs, CRPS, post outputs, cleanup state, scale contract, harmonics, transfer covariates, lags, squares, and interactions.
-- `scripts/build_he2_bayesian_publication_manifest.py` now points `exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` rows to canonical-bundle promoted roots and exposes the remaining 3-family transition gate.
-- `scripts/build_he2_publication_parity_gate.py` builds a 45-cell gate: 30 promoted cells and 15 pending comparison cells.
+- `scripts/build_he2_bayesian_publication_manifest.py` now points all nine
+  benchmark families to canonical-bundle promoted roots, including the June 7
+  NDLM promotion root.
+- `scripts/build_he2_publication_parity_gate.py` builds a 45-cell gate: 45
+  promoted cells and 0 pending comparison cells.
 - `scripts/build_he2_master_workflow_audit_tracker.py` now uses that gate as the current status spine.
 
 Article-side wiring:
@@ -229,6 +237,6 @@ python3 -m unittest \
 
 ## Final Takeaway
 
-`exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` are now reproducibly promoted and wired through the project manifest. The next
-scientific and paper-readiness task is completing the same-bundle promotion for the remaining three NDLM model families so the
-final 9-model HE2 benchmark becomes a fair, reader-reproducible comparison.
+All nine HE2 Bayesian benchmark families are now reproducibly promoted and
+wired through the project manifest. The final 9-model HE2 benchmark is a
+fair, reader-reproducible comparison for the current publication snapshot.

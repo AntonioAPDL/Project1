@@ -15,6 +15,7 @@ from build_he2_bayesian_publication_manifest import (  # noqa: E402
     PROMOTED_AL_DROP_ROOT,
     PROMOTED_AL_KEEP_ROOT,
     PROMOTED_EXAL_DROP_ROOT,
+    PROMOTED_NDLM_ROOT,
     PROMOTED_UNIVAR_AL_EXAL_ROOT,
     PROMOTED_FAMILY_LINEAGES,
     REQUIRED_ALIGNMENT_ARTIFACTS,
@@ -91,6 +92,24 @@ class He2BayesianPublicationManifestTests(unittest.TestCase):
             self.assertEqual(exal["likelihood_mode"], "exal")
             self.assertEqual(exal["reused_external_pass"], "False")
 
+    def test_ndlm_rows_point_to_20260607_promoted_root(self) -> None:
+        manifest_rows, _input_rows, _alignment_rows = build_outputs()
+        expected = {
+            "N-U-T1": ("ndlm_univar_keep", "keep"),
+            "N-M-T0": ("ndlm_main_drop", "drop"),
+            "N-M-T1": ("ndlm_main_keep", "keep"),
+        }
+        for cutoff in CUTOFFS:
+            for label, (family, transfer_mode) in expected.items():
+                row = next(row for row in manifest_rows if row["cutoff"] == cutoff and row["manuscript_label"] == label)
+                self.assertEqual(row["run_id"], f"multimodel_{cutoff}_v8_he2pubgdpc1r1_{family}")
+                self.assertTrue(row["run_root"].startswith(str(PROMOTED_NDLM_ROOT)))
+                self.assertEqual(row["campaign_lineage"], PROMOTED_FAMILY_LINEAGES[family])
+                self.assertEqual(row["likelihood_mode"], "normal")
+                self.assertEqual(row["forecast_transfer_mode"], transfer_mode)
+                self.assertEqual(row["reused_external_pass"], "False")
+                self.assertIn("20260607", row["campaign_lineage"])
+
     def test_all_rows_share_current_featurecov_contract(self) -> None:
         manifest_rows, _input_rows, alignment_rows = build_outputs()
         for row in manifest_rows:
@@ -101,12 +120,9 @@ class He2BayesianPublicationManifestTests(unittest.TestCase):
             self.assertEqual(row["include_squares"], "True")
             self.assertEqual(row["include_interaction"], "True")
         required = [row for row in alignment_rows if row["artifact"] in REQUIRED_ALIGNMENT_ARTIFACTS]
-        self.assertEqual(sum(row["all_equal"] == "True" for row in required), 35)
+        self.assertEqual(sum(row["all_equal"] == "True" for row in required), len(CUTOFFS) * len(REQUIRED_ALIGNMENT_ARTIFACTS))
         self.assertEqual(len(required), len(CUTOFFS) * len(REQUIRED_ALIGNMENT_ARTIFACTS))
-        self.assertTrue(
-            any(row["within_cutoff_shared_inputs_aligned"] == "False" for row in manifest_rows),
-            "The manifest should expose the pending canonical-input parity gate.",
-        )
+        self.assertTrue(all(row["within_cutoff_shared_inputs_aligned"] == "True" for row in manifest_rows))
 
 
 if __name__ == "__main__":

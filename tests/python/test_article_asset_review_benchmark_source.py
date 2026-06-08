@@ -16,4 +16,4 @@ def test_benchmark_table_is_not_marked_current_model_output_wired() -> None:
     )
     text = AUDIT_MD.read_text()
     assert '| `tab:benchmark_crps_models` | Table 1 | `tables/generated_tex/benchmark_crps_main_table.tex` |' in text
-    assert '| No | Generated from the frozen HE2 publication manifest plus the raw-baseline rows in the five exAL-M-T1 CRPS summaries. This remains the manuscript benchmark source pending reconciliation with the completed shared-spec exAL rerun-local synthesis CRPS outputs.; now auto-included into TeX |' in text
+    assert '| No | Generated from the frozen HE2 publication manifest plus the raw-baseline rows in the five authoritative exAL-M-T1 CRPS summaries. All nine Bayesian benchmark families are promoted onto the canonical 20260510 input-bundle contract; this is the final CRPS table source for the current publication snapshot.; now auto-included into TeX |' in text

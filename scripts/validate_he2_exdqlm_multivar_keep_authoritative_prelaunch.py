@@ -179,7 +179,7 @@ def write_outputs(matrix_dir: Path, rec: Recorder, summary: dict[str, Any]) -> N
         "",
         "This validates the five selected `exAL-M-T1` winner rows, their source configs, post outputs, CRPS values, and cleanup state.",
         "",
-        "Transition gate: the remaining three NDLM HE2 Bayesian comparison families still need the same canonical input-bundle promotion before the full manuscript benchmark table is final.",
+        "Publication gate: all nine HE2 Bayesian comparison families now resolve to canonical-bundle promoted roots after the 2026-06-07 NDLM promotion.",
     ]
     if rec.failures:
         lines.extend(["", "## Failures", ""])
