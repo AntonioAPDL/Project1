@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import json
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ from he3_exdqlm_ablation_lib import (
     SOURCE_INTERNAL_MODEL_ID,
     cutoff_to_display,
     crps_summary_path,
+    deep_merge,
     dump_yaml,
     ensure_parent,
     he3_run_id,
@@ -182,6 +184,11 @@ def build_launch_config(
     cfg["fit"].setdefault("exdqlm_multivar", {})
     cfg["fit"]["exdqlm_multivar"].setdefault("legacy", {})
     cfg["fit"]["exdqlm_multivar"]["legacy"]["use_covariates"] = bool(variant.use_covariates)
+    if variant.forecast_health_overrides:
+        cfg["fit"]["exdqlm_multivar"]["forecast_health"] = deep_merge(
+            cfg["fit"]["exdqlm_multivar"].get("forecast_health", {}),
+            variant.forecast_health_overrides,
+        )
 
     cfg["he3_ablation"] = {
         "study_id": "he3_exdqlm_ablation_v1",
@@ -196,6 +203,7 @@ def build_launch_config(
         "enabled_harmonic_indices": [int(x) for x in variant.enabled_harmonic_indices],
         "use_covariates": bool(variant.use_covariates),
         "forecast_transfer_mode": variant.forecast_transfer_mode,
+        "forecast_health_overrides": copy.deepcopy(variant.forecast_health_overrides),
         "target_model_id": variant.target_model_id,
     }
     return cfg
@@ -307,6 +315,10 @@ def main() -> int:
                     "enabled_harmonic_indices": normalize_harmonic_string(variant.enabled_harmonic_indices),
                     "use_covariates": bool(variant.use_covariates),
                     "forecast_transfer_mode": variant.forecast_transfer_mode,
+                    "forecast_health_overrides_json": json.dumps(
+                        variant.forecast_health_overrides,
+                        sort_keys=True,
+                    ),
                     "target_model_id": variant.target_model_id,
                     "source_full_crps": source_full_crps,
                     "selection_basis": str(target.get("selection_basis", "")),
@@ -338,6 +350,9 @@ def main() -> int:
         "fit_workers": fit_workers,
         "pilot_sequence": pilot_sequence,
         "variant_keys": [variant.key for variant in variant_specs],
+        "variant_forecast_health_overrides": {
+            variant.key: variant.forecast_health_overrides for variant in variant_specs
+        },
         "article_sync": template_cfg.get("article_sync", {}),
     }
     dump_yaml(matrix_dir / "matrix_metadata.yaml", metadata)

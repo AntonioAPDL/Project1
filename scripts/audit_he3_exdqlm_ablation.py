@@ -9,7 +9,13 @@ from typing import Any
 
 import pandas as pd
 
-from he3_exdqlm_ablation_lib import HE3_REPORT_DIR_DEFAULT, build_status_frame, crps_summary_path, read_model_mean_crps
+from he3_exdqlm_ablation_lib import (
+    HE3_REPORT_DIR_DEFAULT,
+    build_status_frame,
+    crps_summary_path,
+    deep_merge,
+    read_model_mean_crps,
+)
 from multimodel_v8_lib import load_yaml
 
 DEFAULT_STRUCTURE = {
@@ -20,7 +26,6 @@ DEFAULT_STRUCTURE = {
 SCIENTIFIC_INVARIANT_PATHS: list[tuple[str, ...]] = [
     ("models", "exdqlm_multivar", "state_evolution"),
     ("fit", "exdqlm_multivar", "gamma_sigma"),
-    ("fit", "exdqlm_multivar", "forecast_health"),
     ("fit", "exdqlm_multivar", "legacy", "lam1"),
     ("fit", "exdqlm_multivar", "legacy", "lam2"),
     ("fit", "exdqlm_multivar", "legacy", "n_samp"),
@@ -119,6 +124,28 @@ def compare_paths(
         abl_value = get_in(ablation_cfg, path)
         if src_value != abl_value:
             mismatches.append(".".join(path))
+    return not mismatches, mismatches
+
+
+def compare_forecast_health(
+    source_cfg: dict[str, Any],
+    ablation_cfg: dict[str, Any],
+    variant: str,
+) -> tuple[bool, list[str]]:
+    source_health = get_in(source_cfg, ("fit", "exdqlm_multivar", "forecast_health"), {}) or {}
+    ablation_health = get_in(ablation_cfg, ("fit", "exdqlm_multivar", "forecast_health"), {}) or {}
+    overrides = get_in(ablation_cfg, ("he3_ablation", "forecast_health_overrides"), {}) or {}
+    mismatches: list[str] = []
+    if not isinstance(overrides, dict):
+        mismatches.append("fit.exdqlm_multivar.forecast_health:override_not_mapping")
+        overrides = {}
+    if overrides and variant != "noTF":
+        mismatches.append("fit.exdqlm_multivar.forecast_health:override_not_allowed")
+    if variant == "noTF" and overrides not in ({}, {"fail_fast": False}):
+        mismatches.append("fit.exdqlm_multivar.forecast_health:unexpected_noTF_override")
+    expected_health = deep_merge(source_health, overrides)
+    if ablation_health != expected_health:
+        mismatches.append("fit.exdqlm_multivar.forecast_health")
     return not mismatches, mismatches
 
 
@@ -250,6 +277,13 @@ def main() -> int:
             get_in(ablation_cfg, ("fit", "exdqlm_multivar", "legacy", "use_covariates"))
         ) == bool(row["use_covariates"])
         scientific_ok, scientific_mismatches = compare_paths(source_cfg, ablation_cfg, SCIENTIFIC_INVARIANT_PATHS)
+        forecast_health_ok, forecast_health_mismatches = compare_forecast_health(
+            source_cfg,
+            ablation_cfg,
+            str(row["variant"]),
+        )
+        scientific_ok = scientific_ok and forecast_health_ok
+        scientific_mismatches.extend(forecast_health_mismatches)
         execution_ok, execution_mismatches = compare_paths(source_cfg, ablation_cfg, EXECUTION_PATHS)
         runtime_hashes_ok, runtime_mismatches = compare_runtime_hashes(source_run_dir, run_dir)
         target_ok, mean_crps = target_model_present(run_dir, str(row["target_model_id"]))

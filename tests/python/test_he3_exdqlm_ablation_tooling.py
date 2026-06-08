@@ -215,6 +215,7 @@ class He3ToolingTests(unittest.TestCase):
                     "enabled_harmonic_indices": [1, 2, 3],
                     "use_covariates": False,
                     "forecast_transfer_mode": "drop",
+                    "forecast_health": {"fail_fast": False},
                 },
                 "noH1": {
                     "enabled": True,
@@ -314,6 +315,13 @@ class He3ToolingTests(unittest.TestCase):
         self.assertEqual(cfg["models"]["exdqlm_multivar"]["forecast_transfer_mode"], "drop")
         self.assertFalse(cfg["fit"]["exdqlm_multivar"]["legacy"]["use_covariates"])
         self.assertEqual(cfg["models"]["exdqlm_multivar"]["structure"]["enabled_harmonic_indices"], [1, 2, 3])
+        self.assertFalse(cfg["fit"]["exdqlm_multivar"]["forecast_health"]["fail_fast"])
+        self.assertEqual(cfg["he3_ablation"]["forecast_health_overrides"], {"fail_fast": False})
+
+        no_h1 = plan[(plan["cutoff"] == "20210123") & (plan["variant"] == "noH1")].iloc[0]
+        no_h1_cfg = yaml.safe_load(Path(no_h1["config_path"]).read_text(encoding="utf-8"))
+        self.assertTrue(no_h1_cfg["fit"]["exdqlm_multivar"]["forecast_health"]["fail_fast"])
+        self.assertEqual(no_h1_cfg["he3_ablation"]["forecast_health_overrides"], {})
 
     def test_validator_passes_for_fresh_matrix(self) -> None:
         self.run_script(

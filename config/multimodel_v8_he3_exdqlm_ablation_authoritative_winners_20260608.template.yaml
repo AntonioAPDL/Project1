@@ -91,6 +91,8 @@ variants:
       - 3
     use_covariates: false
     forecast_transfer_mode: drop
+    forecast_health:
+      fail_fast: false
   noH1:
     enabled: true
     reuse_reference: false

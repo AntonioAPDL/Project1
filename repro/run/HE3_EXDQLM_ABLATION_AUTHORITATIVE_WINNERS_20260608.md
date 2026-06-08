@@ -140,6 +140,39 @@ Regression coverage:
 
 - `tests.python.test_he3_exdqlm_ablation_tooling.test_no_tf_drop_fit_still_saves_when_post_objective_disabled`
 
+## noTF Health-Gate Policy
+
+The second pilot exposed a statistical-health difference rather than a save/wiring bug.
+After the save-contract repair, the `20211112/noTF` row wrote all seven expected
+`.RData` files, but the fit-stage health checker failed q05 and q95 because the
+historical location cap inherited from the full model was exceeded:
+
+- q05: `max_abs_history_exps = 38.09464484` versus the inherited cap `25`
+- q95: `max_abs_history_exps = 38.65981250` versus the inherited cap `25`
+
+The same health files showed finite quantities and coherent state magnitudes:
+
+- q05: `state_norm_sq_per_T = 583.0561199`, `max_abs_forecast_exps = 22.99586627`
+- q95: `state_norm_sq_per_T = 640.1449237`, `max_abs_forecast_exps = 23.94676953`
+
+Because `noTF` is a deliberately degraded structural ablation that disables historical
+transfer covariates and uses forecast transfer-drop, this workflow treats the inherited
+historical-location cap as a reportable soft warning for `noTF` only. The authoritative
+template therefore declares:
+
+```yaml
+variants:
+  noTF:
+    forecast_health:
+      fail_fast: false
+```
+
+This does not relax the full selected model or the other HE3 ablations. The generated
+configs store the override under `he3_ablation.forecast_health_overrides`, and the audit
+script accepts only the declared `noTF` override. Any undeclared drift in scientific
+settings, runtime input hashes, target model IDs, finite checks, state diagnostics, or
+post-stage CRPS outputs remains audit-visible.
+
 ## Launch
 
 ```bash

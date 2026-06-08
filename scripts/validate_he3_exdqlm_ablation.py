@@ -14,6 +14,7 @@ from he3_exdqlm_ablation_lib import (
     HE3_TEMPLATE_DEFAULT,
     build_status_frame,
     crps_summary_path,
+    deep_merge,
     load_variant_specs,
     load_template,
     manifest_path,
@@ -117,6 +118,7 @@ def main() -> int:
     artifact_root = Path(metadata["artifact_root"]).resolve()
     fit_workers = int(metadata["fit_workers"])
     variant_specs = load_variant_specs(template)
+    variant_by_key = {spec.key: spec for spec in variant_specs}
 
     findings: list[str] = []
     expected_cutoffs = int(plan["cutoff"].astype(str).str.zfill(8).nunique())
@@ -184,6 +186,21 @@ def main() -> int:
             findings.append(f"fit.parallel.workers mismatch in {cfg_path}")
         if int(run_cfg.get("threads", {}).get("mc_cores", 0)) != fit_workers:
             findings.append(f"run.threads.mc_cores mismatch in {cfg_path}")
+        variant_spec = variant_by_key.get(str(row["variant"]))
+        if variant_spec is None:
+            findings.append(f"Unknown variant in plan: {row['variant']}")
+            continue
+        he3_meta = cfg.get("he3_ablation", {})
+        actual_override = he3_meta.get("forecast_health_overrides", {}) if isinstance(he3_meta, dict) else {}
+        expected_override = variant_spec.forecast_health_overrides
+        if actual_override != expected_override:
+            findings.append(f"forecast_health_overrides metadata mismatch in {cfg_path}")
+        source_cfg = load_yaml(Path(str(row["source_config_path"])))
+        source_health = source_cfg.get("fit", {}).get("exdqlm_multivar", {}).get("forecast_health", {}) or {}
+        expected_health = deep_merge(source_health, expected_override)
+        actual_health = fit_cfg.get("exdqlm_multivar", {}).get("forecast_health", {}) or {}
+        if actual_health != expected_health:
+            findings.append(f"forecast_health resolved config mismatch in {cfg_path}")
 
     smoke_rows = run_structure_smoke(plan)
     for row in smoke_rows:

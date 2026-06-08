@@ -41,6 +41,7 @@ class VariantSpec:
     enabled_harmonic_indices: tuple[int, ...]
     use_covariates: bool
     forecast_transfer_mode: str
+    forecast_health_overrides: dict[str, Any]
 
     @property
     def target_model_id(self) -> str:
@@ -71,6 +72,9 @@ def load_variant_specs(template_cfg: dict[str, Any]) -> list[VariantSpec]:
         forecast_transfer_mode = str(raw.get("forecast_transfer_mode", "keep")).strip().lower() or "keep"
         if forecast_transfer_mode not in {"keep", "drop"}:
             raise ValueError(f"Unsupported forecast_transfer_mode for variant={key}: {forecast_transfer_mode}")
+        forecast_health_overrides = raw.get("forecast_health", {}) or {}
+        if not isinstance(forecast_health_overrides, dict):
+            raise ValueError(f"variants.{key}.forecast_health must be a mapping when provided.")
         specs.append(
             VariantSpec(
                 key=str(key),
@@ -80,6 +84,7 @@ def load_variant_specs(template_cfg: dict[str, Any]) -> list[VariantSpec]:
                 enabled_harmonic_indices=harmonic_indices,
                 use_covariates=bool(raw.get("use_covariates", True)),
                 forecast_transfer_mode=forecast_transfer_mode,
+                forecast_health_overrides=dict(forecast_health_overrides),
             )
         )
     if not specs:
@@ -166,6 +171,16 @@ def normalize_harmonic_string(values: tuple[int, ...] | list[int] | Any) -> str:
     if values is None:
         return ""
     return ",".join(str(int(v)) for v in values)
+
+
+def deep_merge(base: dict[str, Any] | None, override: dict[str, Any] | None) -> dict[str, Any]:
+    merged: dict[str, Any] = dict(base or {})
+    for key, value in (override or {}).items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
 
 
 def write_launch_settings(
