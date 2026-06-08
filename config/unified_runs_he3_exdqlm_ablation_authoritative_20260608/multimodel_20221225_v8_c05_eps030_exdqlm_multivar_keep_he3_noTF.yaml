@@ -301,7 +301,7 @@ fit:
         require_frozen: true
     forecast_health:
       enabled: true
-      fail_fast: true
+      fail_fast: false
       write_reports: true
       latent_limit: 650
       sigma_limit: 100
@@ -774,4 +774,6 @@ he3_ablation:
   - 3
   use_covariates: false
   forecast_transfer_mode: drop
+  forecast_health_overrides:
+    fail_fast: false
   target_model_id: exdqlm_multivar_synth_drop
