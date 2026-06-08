@@ -81,8 +81,8 @@ if (nzchar(expected_rdata_path)) {
     ), call. = FALSE)
   }
   message(sprintf(
-    "[DISC_W_EXPECTED_RDATA_OK] path=%s bytes=%d",
+    "[DISC_W_EXPECTED_RDATA_OK] path=%s bytes=%s",
     expected_rdata_path,
-    as.integer(output_size)
+    format(output_size, scientific = FALSE, trim = TRUE)
   ))
 }

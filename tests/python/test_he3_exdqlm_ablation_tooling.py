@@ -461,6 +461,7 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
         self.assertIn("DISC_W_EXPECTED_RDATA_PATH = expected_output_path", stage_fit)
         self.assertIn("[DISC_W_EXPECTED_RDATA_MISSING]", wrapper_script)
         self.assertIn("[DISC_W_EXPECTED_RDATA_OK]", wrapper_script)
+        self.assertIn("bytes=%s", wrapper_script)
 
     def test_audit_script_confirms_inheritance_and_runtime_hashes(self) -> None:
         self.run_script(
