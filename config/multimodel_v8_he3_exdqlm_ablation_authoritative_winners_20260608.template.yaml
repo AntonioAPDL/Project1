@@ -1,0 +1,123 @@
+version: 1
+campaign:
+  campaign_id: multimodel_v8_he3_exdqlm_ablation_authoritative_winners_20260608
+  study_id: he3_exdqlm_ablation_authoritative_winners_v1
+  artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_authoritative_winners_20260608
+  matrix_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_authoritative_winners_20260608/control/he3_exdqlm_ablation_authoritative_winners_v1
+  config_output_dir: config/unified_runs_he3_exdqlm_ablation_authoritative_20260608
+source:
+  cf1_sweep_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524
+  cf1_config_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/generated_configs
+  best_by_cutoff_csv: /data/muscat_data/jaguir26/project1_ucsc_phd/config/he3_exdqlm_ablation_authoritative_20260608_best_by_cutoff_long.csv
+  selected_model_variant: exdqlm_multivar_keep
+  cutoff_overrides:
+    20210123:
+      source_label: c04_eps365
+      source_run_id: multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+      source_run_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+      source_config_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/generated_configs/multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep.yaml
+      source_full_crps: 0.1397088548478634
+    20211112:
+      source_label: c04_eps365
+      source_run_id: multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+      source_run_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+      source_config_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/generated_configs/multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep.yaml
+      source_full_crps: 0.0472363501409807
+    20211221:
+      source_label: c03_eps030
+      source_run_id: multimodel_20211221_v8_he2grid_c03_eps030_exdqlm_multivar_keep
+      source_run_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20211221_v8_he2grid_c03_eps030_exdqlm_multivar_keep
+      source_config_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/generated_configs/multimodel_20211221_v8_he2grid_c03_eps030_exdqlm_multivar_keep.yaml
+      source_full_crps: 0.2653720407651523
+    20220511:
+      source_label: c02_eps060
+      source_run_id: multimodel_20220511_v8_he2grid_c02_eps060_exdqlm_multivar_keep
+      source_run_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20220511_v8_he2grid_c02_eps060_exdqlm_multivar_keep
+      source_config_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/generated_configs/multimodel_20220511_v8_he2grid_c02_eps060_exdqlm_multivar_keep.yaml
+      source_full_crps: 0.0323251196672885
+    20221225:
+      source_label: c05_eps030
+      source_run_id: multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep
+      source_run_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep
+      source_config_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/control/generated_configs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep.yaml
+      source_full_crps: 0.6654596601212303
+queue:
+  ordinary_max_concurrent: 4
+  heavy_cutoff_max_concurrent: 1
+  pause_free_gb: 180
+  launch_free_gb: 220
+  heavy_free_gb: 240
+  poll_seconds: 60
+fit_parallel:
+  workers: 7
+pilot_sequence:
+  - 20211112
+  - 20221225
+article_sync:
+  enabled: true
+  article_root: /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2
+  corrections_root: /data/muscat_data/jaguir26/Corrections---Project-1
+variants:
+  full:
+    enabled: true
+    reuse_reference: true
+    manuscript_label: exAL-M-T1
+    include_trend: true
+    enabled_harmonic_indices:
+      - 1
+      - 2
+      - 3
+    use_covariates: true
+    forecast_transfer_mode: keep
+  noTrend:
+    enabled: true
+    reuse_reference: false
+    manuscript_label: exAL-M-T1-noTrend
+    include_trend: false
+    enabled_harmonic_indices:
+      - 1
+      - 2
+      - 3
+    use_covariates: true
+    forecast_transfer_mode: keep
+  noTF:
+    enabled: true
+    reuse_reference: false
+    manuscript_label: exAL-M-noTF
+    include_trend: true
+    enabled_harmonic_indices:
+      - 1
+      - 2
+      - 3
+    use_covariates: false
+    forecast_transfer_mode: drop
+  noH1:
+    enabled: true
+    reuse_reference: false
+    manuscript_label: exAL-M-T1-noH1
+    include_trend: true
+    enabled_harmonic_indices:
+      - 2
+      - 3
+    use_covariates: true
+    forecast_transfer_mode: keep
+  noH2:
+    enabled: true
+    reuse_reference: false
+    manuscript_label: exAL-M-T1-noH2
+    include_trend: true
+    enabled_harmonic_indices:
+      - 1
+      - 3
+    use_covariates: true
+    forecast_transfer_mode: keep
+  noH3:
+    enabled: true
+    reuse_reference: false
+    manuscript_label: exAL-M-T1-noH3
+    include_trend: true
+    enabled_harmonic_indices:
+      - 1
+      - 2
+    use_covariates: true
+    forecast_transfer_mode: keep

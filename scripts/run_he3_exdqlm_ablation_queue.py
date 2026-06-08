@@ -15,7 +15,7 @@ from pathlib import Path
 import pandas as pd
 
 from he3_exdqlm_ablation_lib import HEAVY_CUTOFF, build_status_frame, write_status_markdown
-from multimodel_v8_lib import ROOT, artifact_disk_free_gb
+from multimodel_v8_lib import ROOT, artifact_disk_free_gb, load_yaml
 
 
 def utc_now() -> str:
@@ -99,6 +99,11 @@ def refresh_status(matrix_dir: Path, artifact_root: Path, plan: pd.DataFrame) ->
     return status
 
 
+def run_completion_cmd(cmd: list[str], log_handle) -> None:
+    print(f"[{utc_now()}] completion cmd={' '.join(cmd)}", file=log_handle, flush=True)
+    subprocess.run(cmd, cwd=ROOT, check=True, stdout=log_handle, stderr=subprocess.STDOUT)
+
+
 def maybe_complete(matrix_dir: Path, log_handle) -> None:
     summary_cmd = [
         "python3",
@@ -106,7 +111,32 @@ def maybe_complete(matrix_dir: Path, log_handle) -> None:
         "--matrix-dir",
         str(matrix_dir),
     ]
-    subprocess.run(summary_cmd, cwd=ROOT, check=True, stdout=log_handle, stderr=subprocess.STDOUT)
+    run_completion_cmd(summary_cmd, log_handle)
+
+    audit_cmd = [
+        "python3",
+        "scripts/audit_he3_exdqlm_ablation.py",
+        "--matrix-dir",
+        str(matrix_dir),
+    ]
+    run_completion_cmd(audit_cmd, log_handle)
+
+    metadata = load_yaml(matrix_dir / "matrix_metadata.yaml")
+    article_sync = metadata.get("article_sync", {}) if isinstance(metadata, dict) else {}
+    if isinstance(article_sync, dict) and bool(article_sync.get("enabled", False)):
+        sync_cmd = [
+            "python3",
+            "scripts/sync_he3_ablation_article_tables.py",
+            "--matrix-dir",
+            str(matrix_dir),
+        ]
+        article_root = str(article_sync.get("article_root", "")).strip()
+        corrections_root = str(article_sync.get("corrections_root", "")).strip()
+        if article_root:
+            sync_cmd.extend(["--article-root", article_root])
+        if corrections_root:
+            sync_cmd.extend(["--corrections-root", corrections_root])
+        run_completion_cmd(sync_cmd, log_handle)
 
 
 def main() -> int:

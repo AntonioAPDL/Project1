@@ -1,0 +1,716 @@
+config_version: 1
+run:
+  run_id: multimodel_20220511_v8_c02_eps060_exdqlm_multivar_keep_he3_noH1
+  run_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_authoritative_winners_20260608/runs
+  repro_mode: strict
+  seed: 20220511
+  overwrite: false
+  auto_suffix_on_collision: false
+  dry_run: false
+  git_require_clean: false
+  io:
+    enabled: false
+    min_free_gb: 20.0
+    preflight_scope: legacy
+    min_free_inodes_pct: 5.0
+  threads:
+    omp: 1
+    openblas: 1
+    mkl: 1
+    veclib: 1
+    numexpr: 1
+    mc_cores: 7
+stages:
+  forecats: false
+  data_prep_shared: true
+  fit: true
+  post: true
+  validate: true
+  report: true
+models:
+  run_exdqlm_multivar: true
+  run_exdqlm_univar: false
+  run_ndlm_main: false
+  run_ndlm_univar: false
+  exdqlm_multivar:
+    implementation_mode: legacy_bridge
+    likelihood_mode: exal
+    forecast_transfer_mode: keep
+    state_evolution:
+      df_t: 0.99995
+      df_s1: 0.9995
+      df_s2: 0.9995
+      df_s67: 0.9995
+      df_discrep: 0.999
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.9999999
+    structure:
+      include_trend: true
+      enabled_harmonic_indices:
+      - 2
+      - 3
+  exdqlm_univar:
+    implementation_mode: legacy_bridge
+    likelihood_mode: exal
+    state_evolution:
+      df_t: 0.99999999
+      df_s1: 0.9999
+      df_s2: 0.9999
+      df_s67: 0.9999
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.99999
+  ndlm_main:
+    implementation_mode: theory_aligned
+    kalman_backend: cpp
+    forecast_transfer_mode: drop
+    state_evolution:
+      df_t: 0.99999999
+      df_s1: 0.9999
+      df_s2: 0.9999
+      df_s67: 0.9999
+      df_discrep: 0.999
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.9999
+    stabilization:
+      cov_eig_floor: 1.0e-08
+      cov_eig_cap: 100000000.0
+      cov_diag_jitter: 1.0e-10
+      sigma_upper_cap: 1000000000000.0
+      sigma_update_damping: 1.0
+      latent_var_cap_mult: 10000.0
+      latent_var_cap_abs: 100000000.0
+    prior:
+      forecast_cov:
+        c_factor: 1.0
+        epsilon: null
+  ndlm_univar:
+    implementation_mode: theory_aligned_closed_form
+    kalman_backend: cpp
+    forecast_transfer_mode: keep
+    horizon_cap: 1080
+    posterior_draws: 64
+    prior:
+      n0: 20.0
+      S0: 1.0
+    state_evolution:
+      df_t: 0.99999999
+      df_s1: 0.9999
+      df_s2: 0.9999
+      df_s67: 0.9999
+      lambda: 0.97
+      df_trans: 0.9999999
+      df_covs: 0.99999
+    stabilization:
+      cov_eig_floor: 1.0e-08
+      cov_eig_cap: 100000000.0
+      cov_diag_jitter: 1.0e-10
+site:
+  usgs_site: '11160500'
+  lat: 37.0443931
+  lon: -122.072464
+dates:
+  cutoff_date: '2022-05-11'
+  plot_start: '2022-04-23'
+  plot_end: '2022-06-08'
+  data_start: '1987-05-29'
+inputs:
+  fit:
+    parameters_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/supporting_inputs/parameters/parameters.txt
+    retros_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2022-05-11/run_id=20260510_publication_shared_r01/retros.csv
+    retros_storage_scale: log1p_cms
+    nws_forecast_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2022-05-11/run_id=20260510_publication_shared_r01/nws_forecast.csv
+    nws_storage_scale: raw_cms
+    glofas_forecast_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2022-05-11/run_id=20260510_publication_shared_r01/glofas_forecast.csv
+    glofas_storage_scale: raw_cms
+    usgs_mode: live
+    covariates:
+    - name: PPT
+      path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/supporting_inputs/covariates/cov_03_PPT.csv
+    - name: SOIL
+      path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/supporting_inputs/covariates/cov_04_SOIL.csv
+    - name: PCA
+      path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/supporting_inputs/covariates/cov_05_PCA.csv
+  post:
+    use_fit_outputs_from_run: true
+  forecats:
+    mode: use_existing
+    pipeline_config_path: /data/muscat_data/jaguir26/project1_ucsc_phd/config/forecats_pipeline.template.yaml
+    existing_bundle_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2022-05-11/run_id=20260510_publication_shared_r01/meta.yaml
+    snapshot:
+      enabled: true
+      dest_rel: inputs/shared/forecats_bundle
+      copy_list: []
+  shared:
+    prefer_forecats_snapshot: false
+    exact_source_snapshot_root: ''
+  deterministic_climate:
+    enabled: true
+    handoff_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/data_recovery/site=11160500/recovery_run=site11160500_recovery_20260406T185022Z/family=gefs_forecasts/full_runs/source_native_tranche1_20260406T194500Z/gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z/handoff_forecasts/site=11160500/run_id=gefs_nwm_forecast_manifest_source_native_tranche1_20260406T194500Z
+    require_full_horizon: true
+    precip:
+      enabled: true
+      source: gefs_apcp
+      reduction: q85
+      dry_day_threshold_mm: 0.0
+      noisy_blend:
+        enabled: true
+        noise_sd: 30.0
+        noise_seed: 20260415
+        noise_distribution: normal
+        floor_at_zero: true
+        lambda_mode: constant
+        lambda: 0.5
+        lambda_start: 0.8
+        lambda_end: 0.2
+        noise_sd_multiplier: 0.5
+        zero_zero_force_prob: 0.0
+      observed_blend:
+        enabled: true
+        observed_weight: 0.5
+        observed_zero_stay_prob: 0.9
+        observed_zero_stay_seed: 20260415
+      tail_blend:
+        enabled: false
+        target: climatology_median
+        start_day: 7
+        end_day: 14
+    soil:
+      enabled: true
+      source: gefs_soilw_0_0.1m
+      reduction: q85
+      noisy_blend:
+        enabled: true
+        noise_sd: 0.05
+        noise_seed: 20260415
+        noise_distribution: abs_normal
+        floor_at_zero: false
+        lambda_mode: constant
+        lambda: 0.5
+        lambda_start: 0.8
+        lambda_end: 0.2
+        noise_sd_multiplier: 0.5
+      observed_blend:
+        enabled: true
+        observed_weight: 0.5
+        observed_zero_stay_seed: 20260415
+  covariate_features:
+    enabled: true
+    output_filename: covariate_features.csv
+    lag_orders:
+    - 1
+    - 2
+    - 3
+    include_squares: true
+    include_interaction: true
+  shared_covariates: []
+  transfer_function_covariates:
+    base_covariates:
+    - PPT
+    - SOIL
+    - PCA
+    engineered_terms:
+    - PPT_sq
+    - SOIL_sq
+    - PPT_x_SOIL
+    - PPT_lag1
+    - PPT_lag2
+    - PPT_lag3
+    - SOIL_lag1
+    - SOIL_lag2
+    - SOIL_lag3
+fit:
+  quantiles:
+  - 0.05
+  - 0.2
+  - 0.35
+  - 0.5
+  - 0.65
+  - 0.8
+  - 0.95
+  parallel:
+    mode: global_models
+    workers: 7
+  warm_start:
+    enabled: false
+    mode: resume
+  exdqlm_multivar:
+    gamma_sigma:
+      warmup_freeze_iters: 10
+      min_update_iters: 50
+      min_total_iters: 50
+      max_iter: 100
+      convergence_tol: 1.0e-06
+      convergence:
+        elbo_tol: 1.0e-06
+        state_norm_sq_tol: 1.0e-06
+        sigma_exp_tol: 1.0e-06
+        gamma_exp_tol: 1.0e-06
+      freeze_target: gamma_sigma
+      guard_refreeze_iters: 10
+      init:
+        mode: robust
+        gamma: 0.0
+        sigma_floor: 0.001
+        sigma_scale: 1.0
+      objective_guard:
+        enabled: true
+        fail_fast: false
+        log_failures: true
+        mode: adaptive_freeze
+        penalty: 1.0e12
+      transfer_compare_fast:
+        enabled: false
+        warmup_freeze_iters: 5
+        min_update_iters: 15
+        min_total_iters: 20
+        max_iter: 20
+      laplace_split_near_zero:
+        enabled: true
+        abs_gamma_threshold: 0.05
+        rel_support_threshold: 0.02
+        zero_margin_abs_gamma: 1.0e-06
+        split_on_guard: true
+      near_zero_fallback:
+        enabled: true
+        mode: sigma_only
+        gamma_anchor: full_candidate
+      stabilization:
+        state_guard_enabled: true
+        state_norm_max_ratio: 25
+        state_norm_abs_cap: 1.0e6
+        state_guard_start_iter: 1000
+        state_guard_refreeze_iters: 20
+        state_hold_after_guard_iters: 20
+        state_blend_alpha: 1.0
+        cov_blend_alpha: 1.0
+      terminal_sampling_guard:
+        mode: fail_fast
+        min_guard_count: 1
+        max_guard_lag_iters: 20
+        require_frozen: true
+    forecast_health:
+      enabled: true
+      fail_fast: true
+      write_reports: true
+      latent_limit: 650
+      sigma_limit: 100
+      state_limit: 1000
+    legacy:
+      lam1: 1.0
+      lam2: 1.0
+      n_samp: 2000
+      sims_enabled: true
+      use_covariates: true
+      forecast_cov:
+        c_factor: 1.0
+        epsilon: 60.0
+      post_save_objective_enabled: false
+      post_save_jsd_enabled: false
+      post_save_jsd_gridsize: 100
+      sampling_diagnostics:
+        heartbeat_enabled: true
+        heartbeat_seconds: 30
+        phase_markers_enabled: true
+        walltime_seconds: 1800
+        member_walltime_seconds: 30
+    latent_ablation:
+      mode: cap_e_inv_u
+      e_inv_u_cap: 5000
+    pseudodata_guard:
+      enabled: true
+      mode: fail
+      report_dir: ''
+      caps:
+        fff_abs_cap: 1000
+        qqq_diag_abs_cap: 10000
+        e_s_abs_cap: 1000
+        e_s2_abs_cap: 1.0e6
+        e_u_abs_cap: 1.0e6
+        e_inv_u_abs_cap: 5000
+  exdqlm_univar:
+    gamma_sigma:
+      warmup_freeze_iters: 5
+      min_update_iters: 50
+      min_total_iters: 50
+      max_iter: 100
+      convergence_tol: 1.0e-06
+      convergence:
+        elbo_tol: 1.0e-06
+        state_norm_sq_tol: 1.0e-06
+        sigma_exp_tol: 1.0e-06
+        gamma_exp_tol: 1.0e-06
+      freeze_target: gamma_sigma
+      guard_refreeze_iters: 10
+      init:
+        mode: robust
+        gamma: 0.0
+        sigma_floor: 0.001
+        sigma_scale: 1.0
+      objective_guard:
+        enabled: true
+        fail_fast: false
+        log_failures: true
+        mode: adaptive_freeze
+        penalty: 1.0e12
+    legacy:
+      lam1: 1.0
+      lam2: 1.0
+      n_samp: 2000
+      sims_enabled: true
+      use_covariates: true
+  ndlm_main:
+    gamma_sigma:
+      min_total_iters: 10
+      max_iter: 20
+      convergence_tol: 1.0e-06
+      convergence:
+        elbo_tol: 1.0e-06
+        elbo_rel_tol: 0.00025
+    legacy:
+      lam1: 0.999999
+      lam2: 0.9
+      n_samp: 2000
+      sims_enabled: true
+      use_covariates: true
+  contract_checks:
+    enabled: true
+    fail_fast: true
+    write_reports: true
+  diagnostics:
+    enabled: true
+    fail_fast: true
+    write_reports: true
+    max_time_checks: 5000
+    seed: 777
+    psd_tol: -1.0e-08
+    full_slice_psd: true
+    psd_warn_tol: -1.0e-10
+    psd_fail_tol: -1.0e-08
+post:
+  figures: true
+  profile: false
+  profile_detail: false
+  sort_keep_na: true
+  export_tables: true
+  allow_legacy_root_fallback: false
+  crps_input_health:
+    enabled: true
+    fail_fast: true
+    min_finite_share: 1.0
+    max_abs: .na.real
+  smoke_fast: true
+  table_formats: csv
+  force_isolation_smoke_fast: true
+  multivar_component_diagnostics:
+    enabled: true
+    quantile: 0.5
+    pre_days: 30
+    fail_fast: true
+validation:
+  profile: production_proof
+  canonical_run_id: __SELF__
+  compare:
+    mode: none
+    numeric_abs_tol: 0.0
+    numeric_rel_tol: 0.0
+    pixel_max_abs_tol: 0.0
+scale_contract:
+  canonical_storage_scale: raw_cms
+  legacy_fit_input_scale: log1p_cms
+  legacy_post_input_scale: log1p_cms
+  analysis_scale_fit_internal: log1p_cms
+  analysis_scale_post_internal: log1p_cms
+  transform_policy: log1p_only
+write_audit:
+  enabled: true
+  enforce_from_stage: 4
+  allowlist_outside_run_root: []
+debug_v8_matrix:
+  cutoff: '20220511'
+  epsilon_label: epsTT
+  epsilon_value: null
+  run_scope: full_tt
+  template_source: /data/muscat_data/jaguir26/project1_ucsc_phd/config/unified_runs/multimodel_20220511_v7_l2.yaml
+  forecats_bundle_path: /data/muscat_data/jaguir26/project1_ucsc_phd/data/forecats_inputs/site=11160500/cutoff_date=2022-05-11/run_id=20260219_single_retro_policy_pre1080_r01/meta.yaml
+  shared_input_contract: run_local_snapshot_from_stable_forecats_bundle
+  historical_mapping_note: 'Preserved historical mapping: base=TT/null, v2=30, v3=90,
+    v4=30 duplicate, v5=180, v6=360.'
+  compare_bundle_outdir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports/multimodel_20220511_v8_epsTT_compare
+  multivar_c_factor: 100.0
+  fit_parallel_mode: global_models
+  fit_parallel_workers: 22
+debug_histfix:
+  phase: tt
+  data_start: '1987-05-29'
+  histfix_bundle_path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/stable_inputs/site=11160500/cutoff_date=2022-05-11/run_id=20260407_long_history_r01/meta.yaml
+  support_manifest: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/supporting_inputs/support_manifest.json
+  intended_nws_policy: nws_retro_v21 with v30 tail fill after 2020-12-31
+  intended_glofas_policy: glofas_hist_v31_lisflood_cons
+  fit_parallel_mode: global_models
+  fit_parallel_workers: 22
+debug_featurecov_cf1_eps_campaign:
+  family_id: exdqlm_multivar_keep
+  model_id: exdqlm_multivar_synth_keep
+  model_key: exdqlm_multivar
+  likelihood_mode: exal
+  transfer_mode: keep
+  epsilon_label: eps180cf1
+  epsilon_value: 180.0
+  target_c_factor: 1.0
+  selected_source_run: multimodel_20220511_v8_epsTT_l2
+  selected_source_type: baseline_tt
+  selected_compare_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/reports/multimodel_20220511_v8_epsTT_compare
+  selected_mean_crps: 0.0164959678591
+  selected_source_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_histfix_20260407/runs/multimodel_20220511_v8_epsTT_l2/resolved_config.yaml
+  fit_parallel_mode: global_models
+  fit_parallel_workers: 1
+  transfer_function_covariates:
+    base_covariates:
+    - PPT
+    - SOIL
+    - PCA
+    engineered_terms:
+    - PPT_sq
+    - SOIL_sq
+    - PPT_x_SOIL
+    - PPT_lag1
+    - PPT_lag2
+    - PPT_lag3
+    - SOIL_lag1
+    - SOIL_lag2
+    - SOIL_lag3
+debug_he2_publication_relaunch:
+  campaign_spec_id: he2grid
+  source_publication_run_id: multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1
+  source_publication_run_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_featurecov_cf1_eps_sweep_20260416/runs/multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1
+  source_publication_resolved_config: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_featurecov_cf1_eps_sweep_20260416/runs/multimodel_20220511_v8_eps180cf1_exdqlm_multivar_keep_featurecov_cf1/resolved_config.yaml
+  campaign_lineage: featurecov_cf1_eps_sweep_20260416
+  manuscript_label: exAL-M-T1
+  family: exdqlm_multivar_keep
+  model_class: quantile_multivariate
+  implementation_mode: legacy_bridge
+  likelihood_mode: exal
+  forecast_transfer_mode: keep
+  publication_crps_display4: '0.0210'
+  selected_spec_token: eps180cf1
+  canonical_bundle_meta: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2022-05-11/run_id=20260510_publication_shared_r01/meta.yaml
+  canonical_bundle_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/stable_inputs/site=11160500/cutoff_date=2022-05-11/run_id=20260510_publication_shared_r01
+  support_manifest: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510/supporting_inputs/support_manifest.json
+  canonical_fit_covariate_contract: PPT|SOIL|PCA(alias=GDPC1)
+  profile_name: epsilon_discount_grid_20260524
+  transform_policy: log1p_only
+  full_quantiles:
+  - 0.05
+  - 0.2
+  - 0.35
+  - 0.5
+  - 0.65
+  - 0.8
+  - 0.95
+  active_quantiles:
+  - 0.05
+  - 0.2
+  - 0.35
+  - 0.5
+  - 0.65
+  - 0.8
+  - 0.95
+  fit_parallel_workers_effective: 7
+  mc_cores_effective: 7
+  model_config_key: exdqlm_multivar
+  config_patch_applied: true
+  config_patch_source: /data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_grid_specs/exdqlm_multivar_keep_epsilon_discount_grid_20260524.csv
+  config_patch_json:
+    run:
+      threads:
+        omp: 1
+        openblas: 1
+        mkl: 1
+        veclib: 1
+        numexpr: 1
+      seed: 20220511
+    inputs:
+      transfer_function_covariates:
+        base_covariates:
+        - PPT
+        - SOIL
+        - PCA
+        engineered_terms:
+        - PPT_sq
+        - SOIL_sq
+        - PPT_x_SOIL
+        - PPT_lag1
+        - PPT_lag2
+        - PPT_lag3
+        - SOIL_lag1
+        - SOIL_lag2
+        - SOIL_lag3
+    models:
+      exdqlm_multivar:
+        forecast_transfer_mode: keep
+        structure:
+          include_trend: true
+          enabled_harmonic_indices:
+          - 1
+          - 2
+          - 3
+        state_evolution:
+          df_t: 0.99995
+          df_s1: 0.9995
+          df_s2: 0.9995
+          df_s67: 0.9995
+          df_discrep: 0.999
+          lambda: 0.97
+          df_trans: 0.9999999
+          df_covs: 0.9999999
+    fit:
+      quantiles:
+      - 0.05
+      - 0.2
+      - 0.35
+      - 0.5
+      - 0.65
+      - 0.8
+      - 0.95
+      exdqlm_multivar:
+        gamma_sigma:
+          warmup_freeze_iters: 10
+          min_update_iters: 50
+          min_total_iters: 50
+          max_iter: 100
+          convergence_tol: 1.0e-06
+          convergence:
+            elbo_tol: 1.0e-06
+            state_norm_sq_tol: 1.0e-06
+            sigma_exp_tol: 1.0e-06
+            gamma_exp_tol: 1.0e-06
+          freeze_target: gamma_sigma
+          guard_refreeze_iters: 10
+          init:
+            mode: robust
+            gamma: 0.0
+            sigma_floor: 0.001
+            sigma_scale: 1.0
+          objective_guard:
+            enabled: true
+            fail_fast: false
+            log_failures: true
+            mode: adaptive_freeze
+            penalty: 1.0e12
+          laplace_split_near_zero:
+            enabled: true
+            abs_gamma_threshold: 0.05
+            rel_support_threshold: 0.02
+            zero_margin_abs_gamma: 1.0e-06
+            split_on_guard: true
+          near_zero_fallback:
+            enabled: true
+            mode: sigma_only
+            gamma_anchor: full_candidate
+          stabilization:
+            state_guard_enabled: true
+            state_norm_max_ratio: 25
+            state_norm_abs_cap: 1.0e6
+            state_guard_start_iter: 1000
+            state_guard_refreeze_iters: 20
+            state_hold_after_guard_iters: 20
+            state_blend_alpha: 1.0
+            cov_blend_alpha: 1.0
+          terminal_sampling_guard:
+            mode: fail_fast
+            min_guard_count: 1
+            max_guard_lag_iters: 20
+            require_frozen: true
+          transfer_compare_fast:
+            enabled: false
+            warmup_freeze_iters: 5
+            min_update_iters: 15
+            min_total_iters: 20
+            max_iter: 20
+        latent_ablation:
+          mode: cap_e_inv_u
+          e_inv_u_cap: 5000
+        pseudodata_guard:
+          enabled: true
+          mode: fail
+          report_dir: ''
+          caps:
+            fff_abs_cap: 1000
+            qqq_diag_abs_cap: 10000
+            e_s_abs_cap: 1000
+            e_s2_abs_cap: 1.0e6
+            e_u_abs_cap: 1.0e6
+            e_inv_u_abs_cap: 5000
+        forecast_health:
+          enabled: true
+          fail_fast: true
+          write_reports: true
+          latent_limit: 650
+          sigma_limit: 100
+          state_limit: 1000
+        legacy:
+          lam1: 1.0
+          lam2: 1.0
+          n_samp: 2000
+          sims_enabled: true
+          use_covariates: true
+          post_save_objective_enabled: false
+          post_save_jsd_enabled: false
+          post_save_jsd_gridsize: 100
+          forecast_cov:
+            c_factor: 1.0
+            epsilon: 60.0
+          sampling_diagnostics:
+            heartbeat_enabled: true
+            heartbeat_seconds: 30
+            phase_markers_enabled: true
+            walltime_seconds: 1800
+            member_walltime_seconds: 30
+    post:
+      figures: true
+      export_tables: true
+      smoke_fast: true
+      force_isolation_smoke_fast: true
+      multivar_component_diagnostics:
+        enabled: true
+        quantile: 0.5
+        pre_days: 30
+        fail_fast: true
+    scale_contract:
+      canonical_storage_scale: raw_cms
+      legacy_fit_input_scale: log1p_cms
+      legacy_post_input_scale: log1p_cms
+      analysis_scale_fit_internal: log1p_cms
+      analysis_scale_post_internal: log1p_cms
+      transform_policy: log1p_only
+  grid_spec_id: c02_eps060
+debug_he2_exdqlm_keep_grid:
+  grid_spec_id: c02_eps060
+  discount_case_id: c02
+  epsilon: 60.0
+  c_factor: 1.0
+  spec_manifest: /data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_grid_specs/exdqlm_multivar_keep_epsilon_discount_grid_20260524.csv
+  base_batch_file: /data/muscat_data/jaguir26/project1_ucsc_phd/config/he2_relaunch_batches/exdqlm_multivar_keep_all_cutoffs_fullhistory_nearzero_20260523.yaml
+  code_commit: e8c3423
+  allow_run_failures: true
+  skip_compare_bundles: true
+  cleanup_rdata_after_post: true
+he3_ablation:
+  study_id: he3_exdqlm_ablation_v1
+  variant: noH1
+  manuscript_label: exAL-M-T1-noH1
+  source_model_variant: exdqlm_multivar_keep
+  source_run_id: multimodel_20220511_v8_he2grid_c02_eps060_exdqlm_multivar_keep
+  source_cutoff: '20220511'
+  source_best_epsilon_label: c02_eps060
+  source_best_crps: 0.0323251196672885
+  include_trend: true
+  enabled_harmonic_indices:
+  - 2
+  - 3
+  use_covariates: true
+  forecast_transfer_mode: keep
+  target_model_id: exdqlm_multivar_synth_keep

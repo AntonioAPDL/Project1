@@ -1,5 +1,10 @@
 # HE3 exDQLM Multivar Ablation Workflow
 
+Current manuscript-facing note, 2026-06-08: the older April 2026 CF1-sweep
+campaign documented below is superseded by the authoritative-winner campaign in
+`repro/run/HE3_EXDQLM_ABLATION_AUTHORITATIVE_WINNERS_20260608.md`. Use that
+new runbook for article/corrections values.
+
 This workflow runs the HE3 ablation study for the finalized `exdqlm_multivar_keep`
 winner selected from the completed `featurecov_cf1_eps` sweep.
 

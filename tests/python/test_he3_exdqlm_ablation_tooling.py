@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import tempfile
@@ -525,6 +526,113 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
         lead = pd.read_csv(audit_dir / "he3_ablation_lead_buckets.csv")
         self.assertIn("lead_22_28", lead.columns)
         self.assertEqual(int((lead["variant"] == "full").sum()), 5)
+
+    def test_sync_ablation_tables_updates_article_and_corrections_outputs(self) -> None:
+        matrix_dir = self.td / "sync_matrix"
+        artifact_root = self.td / "sync_artifacts"
+        report_dir = artifact_root / "reports" / "he3_exdqlm_ablation"
+        matrix_dir.mkdir(parents=True, exist_ok=True)
+        report_dir.mkdir(parents=True, exist_ok=True)
+        with (matrix_dir / "matrix_metadata.yaml").open("w", encoding="utf-8") as handle:
+            yaml.safe_dump({"artifact_root": str(artifact_root)}, handle, sort_keys=False)
+
+        variants = ["full", "noTrend", "noTF", "noH1", "noH2", "noH3"]
+        rows = []
+        for cutoff_idx, (cutoff, _epsilon, _crps) in enumerate(CUTOFFS):
+            for variant_idx, variant in enumerate(variants):
+                rows.append(
+                    {
+                        "cutoff": cutoff,
+                        "cutoff_display": f"display-{cutoff}",
+                        "variant": variant,
+                        "manuscript_label": variant,
+                        "mean_crps": 0.10 + cutoff_idx / 10.0 + variant_idx / 100.0,
+                        "status": "pass",
+                        "best_epsilon_label": "cXX_epsYYY",
+                    }
+                )
+        pd.DataFrame(rows).to_csv(report_dir / "he3_ablation_long.csv", index=False)
+        pd.DataFrame(rows).to_csv(report_dir / "he3_ablation_wide.csv", index=False)
+        (report_dir / "he3_ablation_summary.md").write_text("# summary\n", encoding="utf-8")
+        (report_dir / "he3_table_rows.tex").write_text("% rows\n", encoding="utf-8")
+        audit_dir = report_dir / "audit"
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame([{"ok": True}]).to_csv(audit_dir / "he3_ablation_audit.csv", index=False)
+        pd.DataFrame([{"lead_01_07": 0.1}]).to_csv(audit_dir / "he3_ablation_lead_buckets.csv", index=False)
+        (audit_dir / "he3_ablation_audit.md").write_text("# audit\n", encoding="utf-8")
+
+        article_root = self.td / "article"
+        raw_root = article_root / "artifacts" / "five_cutoff_crps_validation_sources"
+        for cutoff, _epsilon, _crps in CUTOFFS:
+            slug = {
+                "20210123": "20210123_exal_m_t1",
+                "20211112": "20211112_exal_m_t1",
+                "20211221": "20211221_exal_m_t1",
+                "20220511": "20220511_exal_m_t1",
+                "20221225": "20221225_exal_m_t1",
+            }[cutoff]
+            table_dir = raw_root / slug
+            table_dir.mkdir(parents=True, exist_ok=True)
+            pd.DataFrame(
+                [
+                    {"model_id": "glofas_ensemble", "mean_crps": 1.1},
+                    {"model_id": "nws_nwm_ensemble", "mean_crps": 1.2},
+                ]
+            ).to_csv(table_dir / "crps_forecast_summary.csv", index=False)
+        (article_root / "tables" / "generated_tex").mkdir(parents=True, exist_ok=True)
+        (article_root / "tables" / "generated_tex" / "manifest.csv").write_text(
+            "table_label,row_label,source_class,source_note\n",
+            encoding="utf-8",
+        )
+        (article_root / "MANUSCRIPT_ASSET_MANIFEST.json").write_text(
+            json.dumps({"tables": {}}) + "\n",
+            encoding="utf-8",
+        )
+        (article_root / "wileyNJD-APA.tex").write_text(
+            "Before\n\\section{INTERPRETATION OF THE SELECTED SPECIFICATION}\nAfter\n",
+            encoding="utf-8",
+        )
+
+        corrections_root = self.td / "corrections"
+        corrections_root.mkdir(parents=True, exist_ok=True)
+        (corrections_root / "main.tex").write_text(
+            "\\begin{center}\n"
+            "\\scriptsize\n"
+            "\\setlength{\\tabcolsep}{4pt}\n"
+            "\\begin{tabular}{>{\\ttfamily}l c c c c c}\n"
+            "\\toprule\n"
+            "Ablation model & old \\\\\n"
+            "\\bottomrule\n"
+            "\\end{tabular}\n"
+            "\\end{center}\n",
+            encoding="utf-8",
+        )
+
+        self.run_script(
+            "python3",
+            "scripts/sync_he3_ablation_article_tables.py",
+            "--matrix-dir",
+            str(matrix_dir),
+            "--article-root",
+            str(article_root),
+            "--corrections-root",
+            str(corrections_root),
+        )
+
+        table_text = (article_root / "tables" / "generated_tex" / "he3_ablation_crps_main_table.tex").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("exAL-M-T1-noTrend", table_text)
+        self.assertIn("\\textbf{0.1000}", table_text)
+        self.assertIn(
+            "\\input{tables/generated_tex/he3_ablation_crps_main_table.tex}",
+            (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8"),
+        )
+        manifest = json.loads((article_root / "MANUSCRIPT_ASSET_MANIFEST.json").read_text(encoding="utf-8"))
+        self.assertIn("tab:he3_ablation_crps", manifest["tables"])
+        corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+        self.assertIn("RAW-GLOFAS", corrections_text)
+        self.assertNotIn("Ablation model & old", corrections_text)
 
 
 if __name__ == "__main__":

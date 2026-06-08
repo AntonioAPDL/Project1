@@ -35,7 +35,7 @@ from multimodel_v8_lib import ensure_dir, load_yaml
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Build the HE3 exdqlm multivar ablation matrix and configs.")
     ap.add_argument("--template", default=str(HE3_TEMPLATE_DEFAULT))
-    ap.add_argument("--best-by-cutoff-csv", default=str(BEST_BY_CUTOFF_CSV_DEFAULT))
+    ap.add_argument("--best-by-cutoff-csv", default=None)
     ap.add_argument("--matrix-dir")
     ap.add_argument("--artifact-root")
     ap.add_argument("--config-output-dir")
@@ -224,7 +224,11 @@ def main() -> int:
     cf1_config_dir = Path(source_cfg.get("cf1_config_dir", "")).resolve()
     if not cf1_config_dir.is_absolute():
         cf1_config_dir = (template_path.parents[1] / cf1_config_dir).resolve()
-    best_by_cutoff_csv = Path(args.best_by_cutoff_csv or source_cfg.get("best_by_cutoff_csv", "")).resolve()
+    best_by_cutoff_csv = Path(
+        args.best_by_cutoff_csv
+        or source_cfg.get("best_by_cutoff_csv")
+        or BEST_BY_CUTOFF_CSV_DEFAULT
+    ).resolve()
     selected_model_variant = str(source_cfg.get("selected_model_variant", "exdqlm_multivar_keep"))
     cutoff_filter = normalize_cutoff_filter(source_cfg)
     source_overrides = normalize_source_overrides(source_cfg)
@@ -322,6 +326,8 @@ def main() -> int:
     metadata = {
         "generated_at_utc": pd.Timestamp.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
         "template_path": str(template_path),
+        "campaign_id": str(campaign_cfg.get("campaign_id", "")),
+        "study_id": str(campaign_cfg.get("study_id", "")),
         "artifact_root": str(artifact_root),
         "matrix_dir": str(matrix_dir),
         "config_output_dir": str(config_output_dir),
@@ -332,6 +338,7 @@ def main() -> int:
         "fit_workers": fit_workers,
         "pilot_sequence": pilot_sequence,
         "variant_keys": [variant.key for variant in variant_specs],
+        "article_sync": template_cfg.get("article_sync", {}),
     }
     dump_yaml(matrix_dir / "matrix_metadata.yaml", metadata)
 
