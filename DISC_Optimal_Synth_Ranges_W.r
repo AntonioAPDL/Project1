@@ -4024,12 +4024,13 @@ while (isTRUE(FLAG) && iter < max_iter) {
   elbo <- elbo +sum(new.uts.out$tot.entrop[,])+sum(unlist(new.uts.out_f$tot.entrop))
   elbo <- elbo +sum(new.sts.out$E.tot.entrop[,])+sum(unlist(new.sts.out_f$tot.entrop)) 
   elbo <- elbo +sum(new.gamsig.out$E.sig.gam.entrop[,])
-  elbo <- elbo + new.theta.out$elbo.part
+  elbo <- elbo + disc_w_scalar_finite_or_default(new.theta.out$elbo.part, default = 0)
 
   ######################
 
   elbo <- elbo/sum(T_size)/( p*(J+1) + ppx)
-  prev_ELBO_iter <- ELBO
+  prev_ELBO_iter <- disc_w_scalar_finite_or_default(ELBO, default = NA_real_)
+  elbo <- disc_w_scalar_finite_or_default(elbo, default = NA_real_)
   crit_ELBO <- if (is.finite(prev_ELBO_iter) && is.finite(elbo)) {
     abs(prev_ELBO_iter - elbo)
   } else {
@@ -4214,15 +4215,21 @@ while (isTRUE(FLAG) && iter < max_iter) {
     new.sig <- safe.sig
     gamma_delta_vec <- rep(0, length(safe.gam))
     sigma_delta_vec <- rep(0, length(safe.sig))
-    elbo <- prev_ELBO_iter
-    ELBO <- prev_ELBO_iter
+    rollback_elbo <- disc_w_scalar_finite_or_default(prev_ELBO_iter, default = 0)
+    elbo <- rollback_elbo
+    ELBO <- rollback_elbo
     crit_ELBO <- Inf
     if (ncol(seq.elbo) >= 1L) {
-      seq.elbo[, ncol(seq.elbo)] <- prev_ELBO_iter
+      seq.elbo[, ncol(seq.elbo)] <- rollback_elbo
     }
     sigma_exp <- disc_w_numeric_mean_all_finite(new.sig, positive_required = TRUE)
     gamma_exp <- disc_w_numeric_mean_all_finite(new.gam)
-    state_norm_sq <- prev_state_norm_sq
+    rollback_state_norm_sq <- disc_w_state_norm_sq_all_finite(new.theta.out$sm)
+    state_norm_sq <- if (is.finite(rollback_state_norm_sq)) {
+      rollback_state_norm_sq
+    } else {
+      prev_state_norm_sq
+    }
     crit_sigma_exp <- Inf
     crit_gamma_exp <- Inf
     crit_state_norm_sq <- Inf

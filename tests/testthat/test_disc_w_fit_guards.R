@@ -112,6 +112,14 @@ test_that("summary helpers reject partial non-finite payloads", {
   expect_equal(disc_w_state_norm_sq_all_finite(c(1, 2, 3)), 14)
 })
 
+test_that("scalar helper protects first-iteration rollback ELBO bookkeeping", {
+  expect_equal(disc_w_scalar_finite_or_default(0, default = 99), 0)
+  expect_equal(disc_w_scalar_finite_or_default(numeric(0), default = 99), 99)
+  expect_equal(disc_w_scalar_finite_or_default(NULL, default = 99), 99)
+  expect_equal(disc_w_scalar_finite_or_default(Inf, default = 99), 99)
+  expect_equal(disc_w_scalar_finite_or_default(c(1, 2), default = 99), 99)
+})
+
 test_that("finite square matrix assertion fails before SPD projection", {
   expect_equal(disc_w_assert_finite_square_matrix(diag(2), label = "ok"), diag(2))
   expect_error(

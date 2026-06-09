@@ -17,6 +17,14 @@ disc_w_state_norm_sq_all_finite <- function(x) {
   sum(values^2)
 }
 
+disc_w_scalar_finite_or_default <- function(x, default = NA_real_) {
+  value <- suppressWarnings(as.numeric(x))
+  if (length(value) != 1L || !is.finite(value)) {
+    return(default)
+  }
+  value
+}
+
 disc_w_fit_guard_fmt_num <- function(x, digits = 8L) {
   value <- suppressWarnings(as.numeric(x)[1L])
   if (!is.finite(value)) {

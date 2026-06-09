@@ -458,3 +458,46 @@ Residual risk:
   for the no-transfer ablation because q50 has zero AL skew at the recovery
   anchor, but the full promoted row should still be inspected for repeated guard
   cycling before the nine remaining rows are resumed.
+
+## Promotion Attempt 1 and Additional Root-Cause Fix
+
+After commit `b7d3860`, the failed row was archived to:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_authoritative_winners_20260608/failed_evidence/reanchor_prepatch_failed_20260609T115625Z/multimodel_20210123_v8_c04_eps365_exdqlm_multivar_keep_he3_noTF`
+
+The promoted row was then relaunched manually from:
+
+`config/unified_runs_he3_exdqlm_ablation_authoritative_20260608/multimodel_20210123_v8_c04_eps365_exdqlm_multivar_keep_he3_noTF.yaml`
+
+The row-level relaunch exposed a second first-iteration rollback bug. Extreme
+lanes `q05`, `q20`, `q80`, and `q95` hit the hard absolute state cap at iter 1.
+The guard correctly rolled the state back and activated a short latent hold, but
+the next iteration attempted ELBO bookkeeping while the restored
+`theta.out$elbo.part` baseline was zero-length. The failure signature was:
+
+`Error in if (is.finite(prev_ELBO_iter) && is.finite(elbo)) : missing value where TRUE/FALSE needed`
+
+This was not the original q50/gamma instability; it was an incomplete rollback
+baseline for the newly generalized first-iteration hard-cap path. The robust
+fix is:
+
+1. add `disc_w_scalar_finite_or_default(...)` in `R/disc_w/09_fit_guards.R`;
+2. treat a missing `new.theta.out$elbo.part` as zero during ELBO reconstruction;
+3. coerce `ELBO`, `prev_ELBO_iter`, and reconstructed `elbo` to scalar finite
+   values before convergence arithmetic;
+4. during rollback, use a scalar fallback ELBO instead of preserving a
+   zero-length baseline;
+5. recompute rollback `state_norm_sq` from the restored `new.theta.out$sm`
+   whenever possible, instead of forcing the previous `NA` placeholder through
+   progress bookkeeping.
+
+Validation for this incremental fix:
+
+| check | command | result |
+|---|---|---|
+| R parse | `Rscript --vanilla -e 'parse(file="R/disc_w/09_fit_guards.R"); parse(file="DISC_Optimal_Synth_Ranges_W_transfer_forecast.r"); parse(file="DISC_Optimal_Synth_Ranges_W.r")'` | pass |
+| focused R guard tests | `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test_disc_w_fit_guards.R")'` | pass, 59 assertions |
+| source contract | `python3 -m unittest tests.python.test_disc_sampling_diagnostics_source_contract -v` | pass, 7 tests |
+
+The failed manual relaunch directory should be archived before the next relaunch,
+then the same row should be rerun once more from the authoritative config.
