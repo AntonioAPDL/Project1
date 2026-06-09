@@ -10,6 +10,7 @@ DISC_TRANSFER_SOURCE = ROOT / 'DISC_Optimal_Synth_Ranges_W_transfer_forecast.r'
 STAGE_FIT_SOURCE = ROOT / 'R' / 'unified' / 'stages' / 'stage_fit.R'
 RUN_DISC_SOURCE = ROOT / 'scripts' / 'run_DISC_Optimal_Synth_Ranges_W.R'
 STATE_BLEND_SOURCE = ROOT / 'R' / 'disc_w' / '09_state_blend.R'
+FIT_GUARDS_SOURCE = ROOT / 'R' / 'disc_w' / '09_fit_guards.R'
 
 
 class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
@@ -83,22 +84,67 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
             'DISC_PSEUDODATA_E_U_ABS_CAP',
             'DISC_PSEUDODATA_E_INV_U_ABS_CAP',
             'DISC_GAMSIG_STATE_GUARD_START_ITER',
+            'DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_ENABLED',
+            'DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_FACTOR',
+            'DISC_GAMSIG_STATE_GUARD_MIN_STEP_SCALE',
+            'DISC_GAMSIG_STATE_HOLD_FREEZE_LATENTS_ENABLED',
+            'DISC_GAMSIG_STATE_GUARD_HOLD_STEP_SCALE_ENABLED',
+            'DISC_GAMSIG_STATE_GUARD_MIN_REFREEZE_ITERS',
+            'DISC_GAMSIG_STATE_GUARD_MIN_HOLD_ITERS',
+            'DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ENABLED',
+            'DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_AFTER',
+            'DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ANCHOR',
             'DISC_GAMSIG_NEAR_ZERO_FALLBACK_ENABLED',
             'DISC_GAMSIG_NEAR_ZERO_FALLBACK_MODE',
             'DISC_GAMSIG_NEAR_ZERO_GAMMA_ANCHOR',
         ):
             self.assertIn(token, text)
 
-    def test_al_state_guard_is_not_bypassed_in_legacy_multivar_entrypoints(self) -> None:
+    def test_legacy_multivar_entrypoints_use_unconditional_finite_iteration_guard(self) -> None:
         forbidden = 'state_guard_active <- (!isTRUE(DISC_W_AL_MODE) &&'
-        expected_condition = (
-            'state_guard_active <- (isTRUE(state_guard_enabled) &&\n'
-            '    as.integer(iter) >= as.integer(DISC_GAMSIG_STATE_GUARD_START_ITER))'
-        )
+        fit_guard_text = FIT_GUARDS_SOURCE.read_text(encoding='utf-8')
+        self.assertIn('disc_w_iteration_guard_decision <- function', fit_guard_text)
+        self.assertIn('disc_w_guard_backoff_step_scale <- function', fit_guard_text)
+        self.assertIn('disc_w_guard_scaled_hold_iters <- function', fit_guard_text)
+        self.assertIn('disc_w_effective_step_cap <- function', fit_guard_text)
+        self.assertIn('disc_w_reanchor_gamsig_to_gamma <- function', fit_guard_text)
+        self.assertIn('bad_core <- names(core_values)[!is.finite(core_values)]', fit_guard_text)
+        self.assertIn('finite_guard = TRUE', fit_guard_text)
         for source in (DISC_SOURCE, DISC_TRANSFER_SOURCE):
             text = source.read_text(encoding='utf-8')
             self.assertNotIn(forbidden, text, source.name)
-            self.assertIn(expected_condition, text, source.name)
+            self.assertIn('disc_w_iteration_guard_decision(', text, source.name)
+            self.assertIn('disc_w_numeric_mean_all_finite(new.sig, positive_required = TRUE)', text, source.name)
+            self.assertIn('disc_w_numeric_mean_all_finite(new.gam)', text, source.name)
+            self.assertIn('disc_w_state_norm_sq_all_finite(new.theta.out$sm)', text, source.name)
+            self.assertIn('prev_ELBO_iter <- ELBO', text, source.name)
+            self.assertIn('gamsig_finite_guard', text, source.name)
+            self.assertIn('state_compatible.gamsig.out <- new.gamsig.out', text, source.name)
+            self.assertIn('new.gamsig.out <- state_compatible.gamsig.out', text, source.name)
+            self.assertIn('state_compatible_gamsig_update_iters <- as.integer(gamsig_update_iters)', text, source.name)
+            self.assertIn('gamsig_update_iters <- as.integer(state_compatible_gamsig_update_iters)', text, source.name)
+            self.assertIn('gamsig_state_guard_step_scale <- disc_w_guard_backoff_step_scale(', text, source.name)
+            self.assertIn('effective_refreeze_iters <- disc_w_guard_scaled_hold_iters(', text, source.name)
+            self.assertIn('effective_hold_iters <- disc_w_guard_scaled_hold_iters(', text, source.name)
+            self.assertIn('step_scale=%s', text, source.name)
+            self.assertIn('effective_refreeze_iters=%d effective_hold_iters=%d', text, source.name)
+            self.assertIn('state_guard_step_backoff_enabled', text, source.name)
+            self.assertIn('state_hold_freeze_latents_enabled', text, source.name)
+            self.assertIn('state_guard_hold_step_scale_enabled', text, source.name)
+            self.assertIn('gamsig_median_state_guard_sigma_only_active <- FALSE', text, source.name)
+            self.assertIn('median state guard sigma-only anchor=%s', text, source.name)
+            self.assertIn('disc_w_reanchor_gamsig_to_gamma(', text, source.name)
+            self.assertIn('state_compatible_gamsig_update_iters <- 0L', text, source.name)
+            self.assertIn('[gamsig_state_guard_recovery] p0=%s iter=%d recovery=%s sigma_exp=%s gamma_exp=%s reason=%s', text, source.name)
+            self.assertIn('recovery=%s step_scale=%s->%s', text, source.name)
+            self.assertIn('sigma-only fallback damping at p0=%s context=%s after %s step_scale=%s sigma_log_step=%s->%s', text, source.name)
+            self.assertIn('[gamsig_median_state_guard_sigma_only] p0=%s iter=%d guard_count=%d activate=true anchor=%s reason=%s', text, source.name)
+            self.assertIn('[latent_hold] p0=%s iter=%d hold_until_iter=%d freeze_latents=true', text, source.name)
+            self.assertIn('disc_w_assert_finite_square_matrix(M, label = label)', text, source.name)
+            self.assertIn('initial seq.eigen covariance slice', text, source.name)
+            self.assertNotIn('mean(new.sig, na.rm = TRUE)', text, source.name)
+            self.assertNotIn('sum(new.theta.out$sm^2, na.rm = TRUE)', text, source.name)
+            self.assertNotIn('M[!is.finite(M)] <- 0', text, source.name)
             for token in (
                 'DISC_GAMSIG_STATE_GUARD_START_ITER',
                 'likelihood_mode=%s',

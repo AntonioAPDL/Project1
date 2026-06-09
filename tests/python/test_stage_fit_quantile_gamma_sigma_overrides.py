@@ -31,6 +31,16 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
                       theta_sigma_lower = -5,
                       theta_sigma_upper = 6,
                       median_sigma_only_fallback_enabled = TRUE,
+                      state_guard_step_backoff_enabled = TRUE,
+                      state_guard_step_backoff_factor = 0.25,
+                      state_guard_min_step_scale = 0.05,
+                      state_hold_freeze_latents_enabled = TRUE,
+                      state_guard_hold_step_scale_enabled = TRUE,
+                      state_guard_min_refreeze_iters = 1L,
+                      state_guard_min_hold_iters = 1L,
+                      median_state_guard_sigma_only_enabled = TRUE,
+                      median_state_guard_sigma_only_after = 1L,
+                      median_state_guard_sigma_only_anchor = "zero",
                       median_state_norm_max_ratio = 25,
                       median_state_hold_after_guard_iters = 0L,
                       median_state_blend_alpha = 1.0,
@@ -45,6 +55,15 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
                         ),
                         stabilization = list(
                           theta_sigma_upper = 4,
+                          state_guard_step_backoff_factor = 0.2,
+                          state_guard_min_step_scale = 0.025,
+                          state_hold_freeze_latents_enabled = FALSE,
+                          state_guard_hold_step_scale_enabled = FALSE,
+                          state_guard_min_refreeze_iters = 3L,
+                          state_guard_min_hold_iters = 4L,
+                          median_state_guard_sigma_only_enabled = FALSE,
+                          median_state_guard_sigma_only_after = 2L,
+                          median_state_guard_sigma_only_anchor = "previous",
                           median_state_norm_abs_cap = 5e7,
                           median_state_hold_after_guard_iters = 12L,
                           median_state_blend_alpha = 0.5,
@@ -70,8 +89,27 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
             cat(sprintf('p50_state_hold=%s\n', p50$stabilization$median_state_hold_after_guard_iters))
             cat(sprintf('p50_state_blend=%s\n', p50$stabilization$median_state_blend_alpha))
             cat(sprintf('p50_cov_blend=%s\n', p50$stabilization$median_cov_blend_alpha))
+            cat(sprintf('p50_step_backoff=%s\n', p50$stabilization$state_guard_step_backoff_factor))
+            cat(sprintf('p50_min_step_scale=%s\n', p50$stabilization$state_guard_min_step_scale))
+            cat(sprintf('p50_freeze_latents=%s\n', p50$stabilization$state_hold_freeze_latents_enabled))
+            cat(sprintf('p50_hold_step_scale_enabled=%s\n', p50$stabilization$state_guard_hold_step_scale_enabled))
+            cat(sprintf('p50_min_refreeze=%s\n', p50$stabilization$state_guard_min_refreeze_iters))
+            cat(sprintf('p50_min_hold=%s\n', p50$stabilization$state_guard_min_hold_iters))
+            cat(sprintf('p50_state_guard_sigma_only=%s\n', p50$stabilization$median_state_guard_sigma_only_enabled))
+            cat(sprintf('p50_state_guard_sigma_only_after=%s\n', p50$stabilization$median_state_guard_sigma_only_after))
+            cat(sprintf('p50_state_guard_sigma_only_anchor=%s\n', p50$stabilization$median_state_guard_sigma_only_anchor))
             cat(sprintf('p50_near_zero_anchor=%s\n', p50$near_zero_fallback$gamma_anchor))
             cat(sprintf('p80_theta_sigma_upper=%s\n', p80$stabilization$theta_sigma_upper))
+            cat(sprintf('p80_step_backoff_enabled=%s\n', p80$stabilization$state_guard_step_backoff_enabled))
+            cat(sprintf('p80_step_backoff=%s\n', p80$stabilization$state_guard_step_backoff_factor))
+            cat(sprintf('p80_min_step_scale=%s\n', p80$stabilization$state_guard_min_step_scale))
+            cat(sprintf('p80_freeze_latents=%s\n', p80$stabilization$state_hold_freeze_latents_enabled))
+            cat(sprintf('p80_hold_step_scale_enabled=%s\n', p80$stabilization$state_guard_hold_step_scale_enabled))
+            cat(sprintf('p80_min_refreeze=%s\n', p80$stabilization$state_guard_min_refreeze_iters))
+            cat(sprintf('p80_min_hold=%s\n', p80$stabilization$state_guard_min_hold_iters))
+            cat(sprintf('p80_state_guard_sigma_only=%s\n', p80$stabilization$median_state_guard_sigma_only_enabled))
+            cat(sprintf('p80_state_guard_sigma_only_after=%s\n', p80$stabilization$median_state_guard_sigma_only_after))
+            cat(sprintf('p80_state_guard_sigma_only_anchor=%s\n', p80$stabilization$median_state_guard_sigma_only_anchor))
             cat(sprintf('p80_state_ratio=%s\n', p80$stabilization$median_state_norm_max_ratio))
             cat(sprintf('p80_median_sigma_only=%s\n', p80$stabilization$median_sigma_only_fallback_enabled))
             cat(sprintf('p80_state_hold=%s\n', p80$stabilization$median_state_hold_after_guard_iters))
@@ -79,13 +117,19 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
             cat(sprintf('p80_near_zero_anchor=%s\n', p80$near_zero_fallback$gamma_anchor))
             '''
         )
-        proc = subprocess.run(
-            ['Rscript', '--vanilla', '-e', script],
-            cwd=REPO_ROOT,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        with tempfile.NamedTemporaryFile('w', suffix='.R', delete=False) as handle:
+            handle.write(script)
+            script_path = Path(handle.name)
+        try:
+            proc = subprocess.run(
+                ['Rscript', '--vanilla', script_path.as_posix()],
+                cwd=REPO_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+        finally:
+            script_path.unlink(missing_ok=True)
         self.assertEqual(proc.returncode, 0, msg=proc.stdout + '\n' + proc.stderr)
         out = {}
         for line in proc.stdout.splitlines():
@@ -102,8 +146,27 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
         self.assertEqual(out['p50_state_hold'], '12')
         self.assertEqual(out['p50_state_blend'], '0.5')
         self.assertEqual(out['p50_cov_blend'], '0.25')
+        self.assertEqual(out['p50_step_backoff'], '0.2')
+        self.assertEqual(out['p50_min_step_scale'], '0.025')
+        self.assertEqual(out['p50_freeze_latents'], 'FALSE')
+        self.assertEqual(out['p50_hold_step_scale_enabled'], 'FALSE')
+        self.assertEqual(out['p50_min_refreeze'], '3')
+        self.assertEqual(out['p50_min_hold'], '4')
+        self.assertEqual(out['p50_state_guard_sigma_only'], 'FALSE')
+        self.assertEqual(out['p50_state_guard_sigma_only_after'], '2')
+        self.assertEqual(out['p50_state_guard_sigma_only_anchor'], 'previous')
         self.assertEqual(out['p50_near_zero_anchor'], 'zero')
         self.assertEqual(out['p80_theta_sigma_upper'], '6')
+        self.assertEqual(out['p80_step_backoff_enabled'], 'TRUE')
+        self.assertEqual(out['p80_step_backoff'], '0.25')
+        self.assertEqual(out['p80_min_step_scale'], '0.05')
+        self.assertEqual(out['p80_freeze_latents'], 'TRUE')
+        self.assertEqual(out['p80_hold_step_scale_enabled'], 'TRUE')
+        self.assertEqual(out['p80_min_refreeze'], '1')
+        self.assertEqual(out['p80_min_hold'], '1')
+        self.assertEqual(out['p80_state_guard_sigma_only'], 'TRUE')
+        self.assertEqual(out['p80_state_guard_sigma_only_after'], '1')
+        self.assertEqual(out['p80_state_guard_sigma_only_anchor'], 'zero')
         self.assertEqual(out['p80_state_ratio'], '25')
         self.assertEqual(out['p80_median_sigma_only'], 'TRUE')
         self.assertEqual(out['p80_state_hold'], '0')

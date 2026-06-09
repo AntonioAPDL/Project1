@@ -253,6 +253,19 @@ DISC_GAMSIG_MEDIAN_STEP_DAMPING_ENABLED <- disc_env_flag(
   "DISC_GAMSIG_MEDIAN_STEP_DAMPING_ENABLED",
   default = TRUE
 )
+DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ENABLED <- disc_env_flag(
+  "DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ENABLED",
+  default = TRUE
+)
+DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_AFTER <- disc_env_nonneg_int(
+  "DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_AFTER",
+  default = 1L
+)
+DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ANCHOR <- disc_env_choice(
+  "DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ANCHOR",
+  choices = c("zero", "previous"),
+  default = "zero"
+)
 DISC_GAMSIG_MEDIAN_MAX_ABS_GAMMA_STEP <- disc_env_pos_num(
   "DISC_GAMSIG_MEDIAN_MAX_ABS_GAMMA_STEP",
   default = 0.25
@@ -260,6 +273,34 @@ DISC_GAMSIG_MEDIAN_MAX_ABS_GAMMA_STEP <- disc_env_pos_num(
 DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP <- disc_env_pos_num(
   "DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP",
   default = 0.5
+)
+DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_ENABLED <- disc_env_flag(
+  "DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_ENABLED",
+  default = TRUE
+)
+DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_FACTOR <- disc_env_prob(
+  "DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_FACTOR",
+  default = 0.2
+)
+DISC_GAMSIG_STATE_GUARD_MIN_STEP_SCALE <- disc_env_prob(
+  "DISC_GAMSIG_STATE_GUARD_MIN_STEP_SCALE",
+  default = 0.005
+)
+DISC_GAMSIG_STATE_HOLD_FREEZE_LATENTS_ENABLED <- disc_env_flag(
+  "DISC_GAMSIG_STATE_HOLD_FREEZE_LATENTS_ENABLED",
+  default = TRUE
+)
+DISC_GAMSIG_STATE_GUARD_HOLD_STEP_SCALE_ENABLED <- disc_env_flag(
+  "DISC_GAMSIG_STATE_GUARD_HOLD_STEP_SCALE_ENABLED",
+  default = TRUE
+)
+DISC_GAMSIG_STATE_GUARD_MIN_REFREEZE_ITERS <- disc_env_nonneg_int(
+  "DISC_GAMSIG_STATE_GUARD_MIN_REFREEZE_ITERS",
+  default = 1L
+)
+DISC_GAMSIG_STATE_GUARD_MIN_HOLD_ITERS <- disc_env_nonneg_int(
+  "DISC_GAMSIG_STATE_GUARD_MIN_HOLD_ITERS",
+  default = 1L
 )
 DISC_GAMSIG_MEDIAN_STATE_GUARD_ENABLED <- disc_env_flag(
   "DISC_GAMSIG_MEDIAN_STATE_GUARD_ENABLED",
@@ -2119,8 +2160,16 @@ apply_median_step_damping <- function(theta_pair, reason_label) {
   cand_gamma <- L + (U - L) * cand_pi
   gamma_step <- abs(cand_gamma - g_seed)
   sigma_step <- abs(log(cand_sigma) - log(s_seed))
-  gamma_cap <- as.numeric(DISC_GAMSIG_MEDIAN_MAX_ABS_GAMMA_STEP)
-  sigma_cap <- as.numeric(DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP)
+  step_scale <- if (exists("gamsig_state_guard_step_scale", inherits = TRUE)) {
+    suppressWarnings(as.numeric(get("gamsig_state_guard_step_scale", inherits = TRUE))[1L])
+  } else {
+    1
+  }
+  if (!is.finite(step_scale) || step_scale <= 0 || step_scale > 1) {
+    step_scale <- 1
+  }
+  gamma_cap <- disc_w_effective_step_cap(DISC_GAMSIG_MEDIAN_MAX_ABS_GAMMA_STEP, step_scale)
+  sigma_cap <- disc_w_effective_step_cap(DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP, step_scale)
   damped_log_sigma <- log(cand_sigma)
   if (is.finite(sigma_cap) && sigma_cap > 0) {
     damped_log_sigma <- pmin(pmax(damped_log_sigma, log(s_seed) - sigma_cap), log(s_seed) + sigma_cap)
@@ -2148,10 +2197,11 @@ apply_median_step_damping <- function(theta_pair, reason_label) {
     return(theta_pair)
   }
   log_stabilization_event(sprintf(
-    "median step damping at p0=%s context=%s reason=%s gamma_step=%s->%s sigma_log_step=%s->%s",
+    "median step damping at p0=%s context=%s reason=%s step_scale=%s gamma_step=%s->%s sigma_log_step=%s->%s",
     as.character(p0),
     context_label,
     reason_label,
+    format(step_scale, digits = 6),
     format(gamma_step, digits = 6),
     format(gamma_step_new, digits = 6),
     format(sigma_step, digits = 6),
@@ -2284,15 +2334,69 @@ if(!Climate_Center){
       log_stabilization_event(msg)
       return(NULL)
     }
+    theta_s_fallback <- sigma_opt$minimum
+    if (use_median_step_damping) {
+      step_scale <- if (exists("gamsig_state_guard_step_scale", inherits = TRUE)) {
+        suppressWarnings(as.numeric(get("gamsig_state_guard_step_scale", inherits = TRUE))[1L])
+      } else {
+        1
+      }
+      if (!is.finite(step_scale) || step_scale <= 0 || step_scale > 1) {
+        step_scale <- 1
+      }
+      sigma_cap <- disc_w_effective_step_cap(DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP, step_scale)
+      if (is.finite(sigma_cap) && sigma_cap > 0) {
+        theta_s_damped <- pmin(
+          pmax(theta_s_fallback, theta_s_init - sigma_cap),
+          theta_s_init + sigma_cap
+        )
+        if (abs(theta_s_damped - theta_s_fallback) > 1e-12) {
+          log_stabilization_event(sprintf(
+            "sigma-only fallback damping at p0=%s context=%s after %s step_scale=%s sigma_log_step=%s->%s",
+            as.character(p0),
+            context_label,
+            reason_label,
+            format(step_scale, digits = 6),
+            format(abs(theta_s_fallback - theta_s_init), digits = 6),
+            format(abs(theta_s_damped - theta_s_init), digits = 6)
+          ))
+          theta_s_fallback <- theta_s_damped
+        }
+      }
+    }
     log_stabilization_event(sprintf(
       "sigma-only fallback accepted at p0=%s context=%s after %s with theta_s=%s theta_g=%s",
       as.character(p0),
       context_label,
       reason_label,
-      format(sigma_opt$minimum, digits = 16),
+      format(theta_s_fallback, digits = 16),
       format(theta_g_fixed, digits = 16)
     ))
-    build_mode_result(sigma_opt$minimum, theta_g_fixed, guard = FALSE, guard_msg = reason_label)
+    build_mode_result(theta_s_fallback, theta_g_fixed, guard = FALSE, guard_msg = reason_label)
+  }
+
+  median_state_guard_sigma_only_now <- (!isTRUE(DISC_W_AL_MODE) &&
+    use_median_sigma_only_fallback &&
+    isTRUE(DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ENABLED) &&
+    exists("gamsig_median_state_guard_sigma_only_active", inherits = TRUE) &&
+    isTRUE(get("gamsig_median_state_guard_sigma_only_active", inherits = TRUE)))
+  if (isTRUE(median_state_guard_sigma_only_now)) {
+    theta_g_anchor <- if (identical(DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ANCHOR, "zero")) {
+      zero_pi <- pmin(pmax((0 - L) / (U - L), 1e-12), 1 - 1e-12)
+      qlogis(zero_pi)
+    } else {
+      theta_g_init
+    }
+    sigma_only_result <- run_sigma_only_fallback(
+      sprintf(
+        "median state guard sigma-only anchor=%s",
+        DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ANCHOR
+      ),
+      theta_g_anchor = theta_g_anchor
+    )
+    if (!is.null(sigma_only_result)) {
+      return(sigma_only_result)
+    }
   }
 
   build_ld_covariance <- function(log_hessian, label) {
@@ -2828,14 +2932,7 @@ disc_w_symmetrize <- function(M) {
 }
 
 disc_w_force_spd <- function(M, label = "matrix", eps_base = 1e-10, max_tries = 7L) {
-  M <- as.matrix(M)
-  storage.mode(M) <- "double"
-  if (!is.matrix(M) || nrow(M) < 1L || ncol(M) < 1L || nrow(M) != ncol(M)) {
-    stop(sprintf("%s must be a non-empty square matrix", label), call. = FALSE)
-  }
-  if (any(!is.finite(M))) {
-    M[!is.finite(M)] <- 0
-  }
+  M <- disc_w_assert_finite_square_matrix(M, label = label)
   S <- disc_w_symmetrize(M)
   n <- nrow(S)
   jitter_seq <- c(0, eps_base * (10 ^ (0:(max_tries - 1L))))
@@ -2958,7 +3055,11 @@ new.covs_list <- mapply(function(n, r) {
 
 # # Example: inspect the first covariance matrix of the first period
 # print(covs_list[[2]][ , , 1])
-seq.eigen <- min(abs(eigen(new.covs_list[[2]][,,ranges_per[1]])$values))
+seq_eigen_slice <- disc_w_assert_finite_square_matrix(
+  new.covs_list[[2]][,,ranges_per[1]],
+  label = "initial seq.eigen covariance slice"
+)
+seq.eigen <- min(abs(eigen(seq_eigen_slice, symmetric = TRUE, only.values = TRUE)$values))
 # FLAG <- FALSE
 
 ########################
@@ -3044,9 +3145,16 @@ state_hold_until_iter <- 0L
 state_guard_count <- 0L
 last_state_guard_iter <- NA_integer_
 last_state_guard_reason <- ""
+state_compatible.gamsig.out <- new.gamsig.out
+state_compatible_gamsig_update_iters <- 0L
+state_compatible_iter <- 0L
+gamsig_state_guard_step_scale <- 1.0
+gamsig_median_state_guard_sigma_only_active <- FALSE
+gamsig_median_state_guard_sigma_only_guard_count <- 0L
+gamsig_median_state_guard_sigma_only_iter <- NA_integer_
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   cat(sprintf(
-    "[gamsig_policy] p0=%s likelihood_mode=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d state_control_scope=%s state_guard=%s state_guard_configured=%s state_guard_effective_policy=%s state_guard_disabled_reason=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_start_iter=%d state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g terminal_sampling_guard_mode=%s median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g\n",
+    "[gamsig_policy] p0=%s likelihood_mode=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d state_control_scope=%s state_guard=%s state_guard_configured=%s state_guard_effective_policy=%s state_guard_disabled_reason=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_start_iter=%d state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g state_guard_step_backoff_enabled=%s state_guard_step_backoff_factor=%g state_guard_min_step_scale=%g state_hold_freeze_latents_enabled=%s state_guard_hold_step_scale_enabled=%s state_guard_min_refreeze_iters=%d state_guard_min_hold_iters=%d terminal_sampling_guard_mode=%s median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_state_guard_sigma_only_enabled=%s median_state_guard_sigma_only_after=%d median_state_guard_sigma_only_anchor=%s median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g\n",
     as.character(p0),
     ifelse(isTRUE(DISC_W_AL_MODE), "al", "exal"),
     DISC_GAMSIG_FREEZE_TARGET,
@@ -3079,9 +3187,19 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     as.integer(state_hold_after_guard_iters),
     state_blend_alpha,
     cov_blend_alpha,
+    ifelse(isTRUE(DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_ENABLED), "true", "false"),
+    as.numeric(DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_FACTOR),
+    as.numeric(DISC_GAMSIG_STATE_GUARD_MIN_STEP_SCALE),
+    ifelse(isTRUE(DISC_GAMSIG_STATE_HOLD_FREEZE_LATENTS_ENABLED), "true", "false"),
+    ifelse(isTRUE(DISC_GAMSIG_STATE_GUARD_HOLD_STEP_SCALE_ENABLED), "true", "false"),
+    as.integer(DISC_GAMSIG_STATE_GUARD_MIN_REFREEZE_ITERS),
+    as.integer(DISC_GAMSIG_STATE_GUARD_MIN_HOLD_ITERS),
     DISC_GAMSIG_TERMINAL_SAMPLING_GUARD_MODE,
     ifelse(isTRUE(DISC_GAMSIG_MEDIAN_SIGMA_ONLY_FALLBACK_ENABLED), "true", "false"),
     as.numeric(DISC_GAMSIG_MEDIAN_SIGMA_ONLY_FALLBACK_TOL),
+    ifelse(isTRUE(DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ENABLED), "true", "false"),
+    as.integer(DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_AFTER),
+    DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ANCHOR,
     ifelse(isTRUE(DISC_GAMSIG_MEDIAN_STEP_DAMPING_ENABLED), "true", "false"),
     as.numeric(DISC_GAMSIG_MEDIAN_MAX_ABS_GAMMA_STEP),
     as.numeric(DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP)
@@ -3294,6 +3412,7 @@ while (isTRUE(FLAG) && iter < max_iter) {
     cur.sts.out_f = new.sts.out_f
 
     cur.gamsig.out = new.gamsig.out
+    cur_gamsig_update_iters <- as.integer(gamsig_update_iters)
     cur.theta.out = new.theta.out
 
     ex.df.mat_f <- as.matrix(ex.df.mat_f)
@@ -3619,6 +3738,21 @@ while (isTRUE(FLAG) && iter < max_iter) {
     flush.console()
   }
 
+  latent_hold_now <- isTRUE(DISC_GAMSIG_STATE_HOLD_FREEZE_LATENTS_ENABLED) &&
+    isTRUE(state_hold_now)
+  if (latent_hold_now) {
+    gamsig_frozen_now <- TRUE
+    if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+      cat(sprintf(
+        "[latent_hold] p0=%s iter=%d hold_until_iter=%d freeze_latents=true\n",
+        as.character(p0),
+        as.integer(iter),
+        as.integer(state_hold_until_iter)
+      ))
+      flush.console()
+    }
+  } else {
+
   ## UPDATE s and u
   for (j in 1:(J+1)) {   
       sts.dummy <- update_sts(y[j,],
@@ -3807,6 +3941,8 @@ while (isTRUE(FLAG) && iter < max_iter) {
           new.gamsig.out$entrop[j,] <- gamsig.dummy$entrop
   }
 
+  }
+
   if (!gamsig_frozen_now) {
     gamsig_update_iters <- as.integer(gamsig_update_iters + 1L)
   }
@@ -3893,112 +4029,234 @@ while (isTRUE(FLAG) && iter < max_iter) {
   ######################
 
   elbo <- elbo/sum(T_size)/( p*(J+1) + ppx)
-  crit_ELBO <- abs(ELBO-elbo)
+  prev_ELBO_iter <- ELBO
+  crit_ELBO <- if (is.finite(prev_ELBO_iter) && is.finite(elbo)) {
+    abs(prev_ELBO_iter - elbo)
+  } else {
+    Inf
+  }
   ELBO <- elbo
-  seq.elbo =  cbind(seq.elbo, ELBO) 
- 
-  seq.eigen = cbind(seq.eigen, min(abs(eigen(new.covs_list[[2]][,,ranges_per[1]])$values))) 
+  seq.elbo =  cbind(seq.elbo, ELBO)
+
+  seq_eigen_candidate <- tryCatch(
+    {
+      cov_slice <- disc_w_assert_finite_square_matrix(
+        new.covs_list[[2]][,,ranges_per[1]],
+        label = "seq.eigen covariance slice"
+      )
+      min(abs(eigen(cov_slice, symmetric = TRUE, only.values = TRUE)$values))
+    },
+    error = function(e) NA_real_
+  )
+  seq.eigen = cbind(seq.eigen, seq_eigen_candidate)
 
   print(c(iter, elbo, crit_ELBO))
-  sigma_exp <- suppressWarnings(as.numeric(mean(new.sig, na.rm = TRUE)))
-  gamma_exp <- suppressWarnings(as.numeric(mean(new.gam, na.rm = TRUE)))
-  state_norm_sq <- suppressWarnings(as.numeric(sum(new.theta.out$sm^2, na.rm = TRUE)))
-  if (!is.finite(sigma_exp)) sigma_exp <- NA_real_
-  if (!is.finite(gamma_exp)) gamma_exp <- NA_real_
-  if (!is.finite(state_norm_sq)) state_norm_sq <- NA_real_
-  state_guard_active <- (isTRUE(state_guard_enabled) &&
-    as.integer(iter) >= as.integer(DISC_GAMSIG_STATE_GUARD_START_ITER))
-  state_growth_ratio <- NA_real_
-  if (state_guard_active &&
-      theta_update &&
-      !isTRUE(gamsig_frozen_now) &&
-      is.finite(prev_state_norm_sq) &&
-      prev_state_norm_sq > 0 &&
-      is.finite(state_norm_sq)) {
-    state_growth_ratio <- state_norm_sq / prev_state_norm_sq
-  }
-  state_guard_reason <- NULL
-  if (state_guard_active && theta_update && !isTRUE(gamsig_frozen_now)) {
-    if (!is.finite(state_norm_sq)) {
-      state_guard_reason <- "non-finite state_norm_sq"
-    } else if (is.finite(state_norm_abs_cap) && state_norm_sq > state_norm_abs_cap) {
-      state_guard_reason <- sprintf(
-        "state_norm_sq=%s exceeds abs_cap=%s",
-        fmt_iter_num(state_norm_sq),
-        fmt_iter_num(state_norm_abs_cap)
-      )
-    } else if (is.finite(state_growth_ratio) &&
-               is.finite(state_norm_max_ratio) &&
-               state_growth_ratio > state_norm_max_ratio) {
-      state_guard_reason <- sprintf(
-        "state_growth_ratio=%s exceeds max_ratio=%s",
-        fmt_iter_num(state_growth_ratio),
-        fmt_iter_num(state_norm_max_ratio)
-      )
-    }
-  }
+  sigma_exp <- disc_w_numeric_mean_all_finite(new.sig, positive_required = TRUE)
+  gamma_exp <- disc_w_numeric_mean_all_finite(new.gam)
+  state_norm_sq <- disc_w_state_norm_sq_all_finite(new.theta.out$sm)
+  guard_decision <- disc_w_iteration_guard_decision(
+    elbo = elbo,
+    state_norm_sq = state_norm_sq,
+    sigma_exp = sigma_exp,
+    gamma_exp = gamma_exp,
+    theta_update = theta_update,
+    gamsig_frozen_now = gamsig_frozen_now,
+    state_guard_enabled = state_guard_enabled,
+    iter = iter,
+    state_guard_start_iter = DISC_GAMSIG_STATE_GUARD_START_ITER,
+    prev_state_norm_sq = prev_state_norm_sq,
+    state_norm_abs_cap = state_norm_abs_cap,
+    state_norm_max_ratio = state_norm_max_ratio
+  )
+  state_guard_active <- isTRUE(guard_decision$state_guard_active)
+  state_growth_ratio <- suppressWarnings(as.numeric(guard_decision$state_growth_ratio)[1L])
+  state_guard_reason <- guard_decision$reason
   if (!is.null(state_guard_reason)) {
     state_guard_count <- as.integer(state_guard_count + 1L)
     last_state_guard_iter <- as.integer(iter)
     last_state_guard_reason <- state_guard_reason
+    median_state_guard_sigma_only_candidate <- (!isTRUE(DISC_W_AL_MODE) &&
+      isTRUE(DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ENABLED) &&
+      is.finite(p0) &&
+      abs(as.numeric(p0) - 0.5) <= as.numeric(DISC_GAMSIG_MEDIAN_SIGMA_ONLY_FALLBACK_TOL))
+    if (isTRUE(median_state_guard_sigma_only_candidate)) {
+      gamsig_median_state_guard_sigma_only_guard_count <- as.integer(
+        gamsig_median_state_guard_sigma_only_guard_count + 1L
+      )
+      sigma_only_after <- max(0L, as.integer(DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_AFTER))
+      if (!isTRUE(gamsig_median_state_guard_sigma_only_active) &&
+          gamsig_median_state_guard_sigma_only_guard_count >= sigma_only_after) {
+        gamsig_median_state_guard_sigma_only_active <- TRUE
+        gamsig_median_state_guard_sigma_only_iter <- as.integer(iter)
+        if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+          cat(sprintf(
+            "[gamsig_median_state_guard_sigma_only] p0=%s iter=%d guard_count=%d activate=true anchor=%s reason=%s\n",
+            as.character(p0),
+            as.integer(iter),
+            as.integer(gamsig_median_state_guard_sigma_only_guard_count),
+            DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ANCHOR,
+            state_guard_reason
+          ))
+          flush.console()
+        }
+      }
+    }
     old_freeze_until <- gamsig_dynamic_freeze_until_iter
     old_hold_until <- state_hold_until_iter
-    gamsig_dynamic_freeze_until_iter <- max(
-      as.integer(gamsig_dynamic_freeze_until_iter),
-      as.integer(iter + state_guard_refreeze_iters)
-    )
-    if (state_hold_after_guard_iters > 0L) {
-      state_hold_until_iter <- max(
-        as.integer(state_hold_until_iter),
-        as.integer(iter + state_hold_after_guard_iters)
+    gamsig_frozen_now <- TRUE
+    state_guard_recovery_label <- "-"
+    if (isTRUE(median_state_guard_sigma_only_candidate) &&
+        isTRUE(gamsig_median_state_guard_sigma_only_active) &&
+        identical(DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ANCHOR, "zero")) {
+      recovery_candidate <- tryCatch(
+        disc_w_reanchor_gamsig_to_gamma(
+          state_compatible.gamsig.out,
+          gamma = 0,
+          p0 = p0,
+          L = L,
+          U = U,
+          A_fn = A.fn,
+          B_fn = B.fn,
+          C_fn = C.fn,
+          status = "median_state_guard_zero_gamma_anchor"
+        ),
+        error = function(e) e
+      )
+      if (!inherits(recovery_candidate, "error")) {
+        state_compatible.gamsig.out <- recovery_candidate
+        state_compatible_gamsig_update_iters <- 0L
+        state_compatible_iter <- 0L
+        state_guard_recovery_label <- "median_zero_gamma_anchor"
+        if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+          cat(sprintf(
+            "[gamsig_state_guard_recovery] p0=%s iter=%d recovery=%s sigma_exp=%s gamma_exp=%s reason=%s\n",
+            as.character(p0),
+            as.integer(iter),
+            state_guard_recovery_label,
+            fmt_iter_num(disc_w_numeric_mean_all_finite(state_compatible.gamsig.out$E.sigma, positive_required = TRUE)),
+            fmt_iter_num(disc_w_numeric_mean_all_finite(state_compatible.gamsig.out$E.gam)),
+            state_guard_reason
+          ))
+          flush.console()
+        }
+      } else if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+        cat(sprintf(
+          "[gamsig_state_guard_recovery] p0=%s iter=%d recovery=failed error=%s reason=%s\n",
+          as.character(p0),
+          as.integer(iter),
+          conditionMessage(recovery_candidate),
+          state_guard_reason
+        ))
+        flush.console()
+      }
+    }
+    safe.gam <- as.numeric(state_compatible.gamsig.out$E.gam)
+    safe.sig <- as.numeric(state_compatible.gamsig.out$E.sigma)
+    if (length(safe.gam) != length(old.gam) || length(safe.sig) != length(old.sig)) {
+      stop(
+        sprintf(
+          "state-compatible gamma/sigma length drift at iter=%d: safe_gamma=%d old_gamma=%d safe_sigma=%d old_sigma=%d",
+          as.integer(iter),
+          as.integer(length(safe.gam)),
+          as.integer(length(old.gam)),
+          as.integer(length(safe.sig)),
+          as.integer(length(old.sig))
+        ),
+        call. = FALSE
       )
     }
-    gamsig_frozen_now <- TRUE
-    if (gamsig_update_iters > 0L) {
-      gamsig_update_iters <- as.integer(gamsig_update_iters - 1L)
+    old_step_scale <- gamsig_state_guard_step_scale
+    gamsig_state_guard_step_scale <- disc_w_guard_backoff_step_scale(
+      current_scale = gamsig_state_guard_step_scale,
+      backoff_factor = DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_FACTOR,
+      min_scale = DISC_GAMSIG_STATE_GUARD_MIN_STEP_SCALE,
+      enabled = DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_ENABLED
+    )
+    effective_refreeze_iters <- disc_w_guard_scaled_hold_iters(
+      base_iters = state_guard_refreeze_iters,
+      step_scale = gamsig_state_guard_step_scale,
+      min_iters = DISC_GAMSIG_STATE_GUARD_MIN_REFREEZE_ITERS,
+      enabled = DISC_GAMSIG_STATE_GUARD_HOLD_STEP_SCALE_ENABLED
+    )
+    effective_hold_iters <- disc_w_guard_scaled_hold_iters(
+      base_iters = state_hold_after_guard_iters,
+      step_scale = gamsig_state_guard_step_scale,
+      min_iters = DISC_GAMSIG_STATE_GUARD_MIN_HOLD_ITERS,
+      enabled = DISC_GAMSIG_STATE_GUARD_HOLD_STEP_SCALE_ENABLED
+    )
+    if (effective_refreeze_iters > 0L) {
+      gamsig_dynamic_freeze_until_iter <- max(
+        as.integer(gamsig_dynamic_freeze_until_iter),
+        as.integer(iter + effective_refreeze_iters)
+      )
     }
+    if (effective_hold_iters > 0L) {
+      state_hold_until_iter <- max(
+        as.integer(state_hold_until_iter),
+        as.integer(iter + effective_hold_iters)
+      )
+    }
+    gamsig_update_iters <- as.integer(state_compatible_gamsig_update_iters)
     new.theta.out <- cur.theta.out
     new.sts.out <- cur.sts.out
     new.uts.out <- cur.uts.out
     new.sts.out_f <- cur.sts.out_f
     new.uts.out_f <- cur.uts.out_f
-    new.gamsig.out <- cur.gamsig.out
+    new.gamsig.out <- state_compatible.gamsig.out
     new.covs_list <- cur.covs_list
     if (ncol(seq.gamma) >= 1L) {
-      seq.gamma[, ncol(seq.gamma)] <- old.gam
+      seq.gamma[, ncol(seq.gamma)] <- safe.gam
     }
     if (ncol(seq.sigma) >= 1L) {
-      seq.sigma[, ncol(seq.sigma)] <- old.sig
+      seq.sigma[, ncol(seq.sigma)] <- safe.sig
     }
-    new.gam <- old.gam
-    new.sig <- old.sig
-    gamma_delta_vec <- rep(0, length(old.gam))
-    sigma_delta_vec <- rep(0, length(old.sig))
-    elbo <- ELBO
+    new.gam <- safe.gam
+    new.sig <- safe.sig
+    gamma_delta_vec <- rep(0, length(safe.gam))
+    sigma_delta_vec <- rep(0, length(safe.sig))
+    elbo <- prev_ELBO_iter
+    ELBO <- prev_ELBO_iter
     crit_ELBO <- Inf
     if (ncol(seq.elbo) >= 1L) {
-      seq.elbo[, ncol(seq.elbo)] <- ELBO
+      seq.elbo[, ncol(seq.elbo)] <- prev_ELBO_iter
     }
-    sigma_exp <- prev_sigma_exp
-    gamma_exp <- prev_gamma_exp
+    sigma_exp <- disc_w_numeric_mean_all_finite(new.sig, positive_required = TRUE)
+    gamma_exp <- disc_w_numeric_mean_all_finite(new.gam)
     state_norm_sq <- prev_state_norm_sq
     crit_sigma_exp <- Inf
     crit_gamma_exp <- Inf
     crit_state_norm_sq <- Inf
     conv.check <- Inf
     if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
+      guard_tag <- if (isTRUE(guard_decision$finite_guard)) {
+        "gamsig_finite_guard"
+      } else {
+        "gamsig_state_guard"
+      }
       cat(sprintf(
-        "[gamsig_state_guard] p0=%s iter=%d old_until=%d new_until=%d old_hold_until=%d new_hold_until=%d reason=%s\n",
+        "[%s] p0=%s iter=%d old_until=%d new_until=%d old_hold_until=%d new_hold_until=%d compatible_iter=%d compatible_updates=%d recovery=%s step_scale=%s->%s effective_refreeze_iters=%d effective_hold_iters=%d reason=%s\n",
+        guard_tag,
         as.character(p0),
         as.integer(iter),
         as.integer(old_freeze_until),
         as.integer(gamsig_dynamic_freeze_until_iter),
         as.integer(old_hold_until),
         as.integer(state_hold_until_iter),
+        as.integer(state_compatible_iter),
+        as.integer(state_compatible_gamsig_update_iters),
+        state_guard_recovery_label,
+        fmt_iter_num(old_step_scale),
+        fmt_iter_num(gamsig_state_guard_step_scale),
+        as.integer(effective_refreeze_iters),
+        as.integer(effective_hold_iters),
         state_guard_reason
       ))
       flush.console()
     }
+  } else if (theta_update) {
+    state_compatible.gamsig.out <- new.gamsig.out
+    state_compatible_gamsig_update_iters <- as.integer(gamsig_update_iters)
+    state_compatible_iter <- as.integer(iter)
   }
   if (is.finite(prev_state_norm_sq) && is.finite(state_norm_sq)) {
     crit_state_norm_sq <- abs(state_norm_sq - prev_state_norm_sq)

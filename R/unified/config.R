@@ -406,6 +406,37 @@ unified_config_defaults <- function() {
             max_guard_lag_iters = 0L,
             require_frozen = TRUE
           ),
+          stabilization = list(
+            theta_sigma_lower = log(1e-4),
+            theta_sigma_upper = log(1e3),
+            theta_gamma_lower = qlogis(1e-6),
+            theta_gamma_upper = qlogis(1 - 1e-6),
+            hessian_ridge_init = 1e-6,
+            hessian_ridge_multiplier = 10,
+            hessian_ridge_max_tries = 8L,
+            median_sigma_only_fallback_enabled = TRUE,
+            median_sigma_only_fallback_tol = 1e-8,
+            median_state_guard_sigma_only_enabled = TRUE,
+            median_state_guard_sigma_only_after = 1L,
+            median_state_guard_sigma_only_anchor = "zero",
+            median_step_damping_enabled = TRUE,
+            median_max_abs_gamma_step = 0.25,
+            median_max_abs_log_sigma_step = 0.5,
+            state_guard_step_backoff_enabled = TRUE,
+            state_guard_step_backoff_factor = 0.2,
+            state_guard_min_step_scale = 0.005,
+            state_hold_freeze_latents_enabled = TRUE,
+            state_guard_hold_step_scale_enabled = TRUE,
+            state_guard_min_refreeze_iters = 1L,
+            state_guard_min_hold_iters = 1L,
+            median_state_guard_enabled = TRUE,
+            median_state_norm_max_ratio = 25,
+            median_state_norm_abs_cap = 1e8,
+            median_state_guard_refreeze_iters = 10L,
+            median_state_hold_after_guard_iters = 0L,
+            median_state_blend_alpha = 1.0,
+            median_cov_blend_alpha = 1.0
+          ),
           transfer_compare_fast = list(
             enabled = FALSE,
             warmup_freeze_iters = 5L,
@@ -2279,6 +2310,95 @@ unified_validate_config <- function(cfg) {
       if (!is.finite(state_guard_start_iter) || state_guard_start_iter < 0L) {
         add_err(sprintf("%s.stabilization.state_guard_start_iter must be an integer >= 0", key_prefix))
       }
+    }
+
+    state_guard_step_backoff_enabled <- cfg_get(
+      c("stabilization", "state_guard_step_backoff_enabled"),
+      TRUE
+    )
+    if (!isTRUE(state_guard_step_backoff_enabled) &&
+        !identical(state_guard_step_backoff_enabled, FALSE)) {
+      add_err(sprintf("%s.stabilization.state_guard_step_backoff_enabled must be boolean (true/false)", key_prefix))
+    }
+
+    state_guard_step_backoff_factor <- suppressWarnings(as.numeric(
+      cfg_get(c("stabilization", "state_guard_step_backoff_factor"), 0.2)
+    ))
+    if (!is.finite(state_guard_step_backoff_factor) ||
+        state_guard_step_backoff_factor <= 0 ||
+        state_guard_step_backoff_factor >= 1) {
+      add_err(sprintf("%s.stabilization.state_guard_step_backoff_factor must be numeric in (0, 1)", key_prefix))
+    }
+
+    state_guard_min_step_scale <- suppressWarnings(as.numeric(
+      cfg_get(c("stabilization", "state_guard_min_step_scale"), 0.005)
+    ))
+    if (!is.finite(state_guard_min_step_scale) ||
+        state_guard_min_step_scale <= 0 ||
+        state_guard_min_step_scale >= 1) {
+      add_err(sprintf("%s.stabilization.state_guard_min_step_scale must be numeric in (0, 1)", key_prefix))
+    }
+
+    state_hold_freeze_latents_enabled <- cfg_get(
+      c("stabilization", "state_hold_freeze_latents_enabled"),
+      TRUE
+    )
+    if (!isTRUE(state_hold_freeze_latents_enabled) &&
+        !identical(state_hold_freeze_latents_enabled, FALSE)) {
+      add_err(sprintf("%s.stabilization.state_hold_freeze_latents_enabled must be boolean (true/false)", key_prefix))
+    }
+
+    median_state_guard_sigma_only_enabled <- cfg_get(
+      c("stabilization", "median_state_guard_sigma_only_enabled"),
+      TRUE
+    )
+    if (!isTRUE(median_state_guard_sigma_only_enabled) &&
+        !identical(median_state_guard_sigma_only_enabled, FALSE)) {
+      add_err(sprintf("%s.stabilization.median_state_guard_sigma_only_enabled must be boolean (true/false)", key_prefix))
+    }
+
+    median_state_guard_sigma_only_after <- cfg_get(
+      c("stabilization", "median_state_guard_sigma_only_after"),
+      1L
+    )
+    median_state_guard_sigma_only_after <- suppressWarnings(as.integer(median_state_guard_sigma_only_after))
+    if (!is.finite(median_state_guard_sigma_only_after) || median_state_guard_sigma_only_after < 0L) {
+      add_err(sprintf("%s.stabilization.median_state_guard_sigma_only_after must be an integer >= 0", key_prefix))
+    }
+
+    median_state_guard_sigma_only_anchor <- as.character(cfg_get(
+      c("stabilization", "median_state_guard_sigma_only_anchor"),
+      "zero"
+    ))
+    if (!(median_state_guard_sigma_only_anchor %in% c("zero", "previous"))) {
+      add_err(sprintf("%s.stabilization.median_state_guard_sigma_only_anchor must be one of: zero, previous", key_prefix))
+    }
+
+    state_guard_hold_step_scale_enabled <- cfg_get(
+      c("stabilization", "state_guard_hold_step_scale_enabled"),
+      TRUE
+    )
+    if (!isTRUE(state_guard_hold_step_scale_enabled) &&
+        !identical(state_guard_hold_step_scale_enabled, FALSE)) {
+      add_err(sprintf("%s.stabilization.state_guard_hold_step_scale_enabled must be boolean (true/false)", key_prefix))
+    }
+
+    state_guard_min_refreeze_iters <- cfg_get(
+      c("stabilization", "state_guard_min_refreeze_iters"),
+      1L
+    )
+    state_guard_min_refreeze_iters <- suppressWarnings(as.integer(state_guard_min_refreeze_iters))
+    if (!is.finite(state_guard_min_refreeze_iters) || state_guard_min_refreeze_iters < 0L) {
+      add_err(sprintf("%s.stabilization.state_guard_min_refreeze_iters must be an integer >= 0", key_prefix))
+    }
+
+    state_guard_min_hold_iters <- cfg_get(
+      c("stabilization", "state_guard_min_hold_iters"),
+      1L
+    )
+    state_guard_min_hold_iters <- suppressWarnings(as.integer(state_guard_min_hold_iters))
+    if (!is.finite(state_guard_min_hold_iters) || state_guard_min_hold_iters < 0L) {
+      add_err(sprintf("%s.stabilization.state_guard_min_hold_iters must be an integer >= 0", key_prefix))
     }
   }
 

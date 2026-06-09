@@ -197,7 +197,19 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$rollback_on_guard <- TRUE
   cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$min_uts_psi <- 1e-8
   cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$nonnegative_tol <- 1e-10
-  cfg$fit$exdqlm_multivar$gamma_sigma$stabilization <- list(state_guard_start_iter = 1000L)
+  cfg$fit$exdqlm_multivar$gamma_sigma$stabilization <- list(
+    state_guard_start_iter = 1000L,
+    state_guard_step_backoff_enabled = TRUE,
+    state_guard_step_backoff_factor = 0.2,
+    state_guard_min_step_scale = 0.05,
+    state_hold_freeze_latents_enabled = TRUE,
+    state_guard_hold_step_scale_enabled = TRUE,
+    state_guard_min_refreeze_iters = 1L,
+    state_guard_min_hold_iters = 1L,
+    median_state_guard_sigma_only_enabled = TRUE,
+    median_state_guard_sigma_only_after = 1L,
+    median_state_guard_sigma_only_anchor = "zero"
+  )
 
   expect_equal(unified_validate_config(cfg), character(0))
 
@@ -222,6 +234,16 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$coherence_guard$min_uts_psi <- 0
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$coherence_guard$nonnegative_tol <- -1
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_start_iter <- -1L
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_step_backoff_enabled <- "yes"
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_step_backoff_factor <- 1
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_min_step_scale <- 0
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_hold_freeze_latents_enabled <- "yes"
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_hold_step_scale_enabled <- "yes"
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_min_refreeze_iters <- -1L
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_min_hold_iters <- -1L
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$median_state_guard_sigma_only_enabled <- "yes"
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$median_state_guard_sigma_only_after <- -1L
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$median_state_guard_sigma_only_anchor <- "bad"
   cfg_bad$fit$exdqlm_multivar$legacy$post_save_objective_enabled <- "yes"
   cfg_bad$fit$exdqlm_multivar$legacy$post_save_jsd_enabled <- "no"
   cfg_bad$fit$exdqlm_multivar$legacy$post_save_jsd_gridsize <- 4L
@@ -247,6 +269,16 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   expect_true(any(grepl("coherence_guard\\.min_uts_psi", errs)))
   expect_true(any(grepl("coherence_guard\\.nonnegative_tol", errs)))
   expect_true(any(grepl("stabilization\\.state_guard_start_iter", errs)))
+  expect_true(any(grepl("stabilization\\.state_guard_step_backoff_enabled", errs)))
+  expect_true(any(grepl("stabilization\\.state_guard_step_backoff_factor", errs)))
+  expect_true(any(grepl("stabilization\\.state_guard_min_step_scale", errs)))
+  expect_true(any(grepl("stabilization\\.state_hold_freeze_latents_enabled", errs)))
+  expect_true(any(grepl("stabilization\\.state_guard_hold_step_scale_enabled", errs)))
+  expect_true(any(grepl("stabilization\\.state_guard_min_refreeze_iters", errs)))
+  expect_true(any(grepl("stabilization\\.state_guard_min_hold_iters", errs)))
+  expect_true(any(grepl("stabilization\\.median_state_guard_sigma_only_enabled", errs)))
+  expect_true(any(grepl("stabilization\\.median_state_guard_sigma_only_after", errs)))
+  expect_true(any(grepl("stabilization\\.median_state_guard_sigma_only_anchor", errs)))
   expect_true(any(grepl("post_save_objective_enabled", errs)))
   expect_true(any(grepl("post_save_jsd_enabled", errs)))
   expect_true(any(grepl("post_save_jsd_gridsize", errs)))

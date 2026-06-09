@@ -1458,6 +1458,15 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_GAMSIG_MEDIAN_SIGMA_ONLY_FALLBACK_TOL = as.character(unified_get(
         gamsig_policy, c("stabilization", "median_sigma_only_fallback_tol"), default = 1e-8
       )),
+      DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("stabilization", "median_state_guard_sigma_only_enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_AFTER = as.character(unified_get(
+        gamsig_policy, c("stabilization", "median_state_guard_sigma_only_after"), default = 1L
+      )),
+      DISC_GAMSIG_MEDIAN_STATE_GUARD_SIGMA_ONLY_ANCHOR = as.character(unified_get(
+        gamsig_policy, c("stabilization", "median_state_guard_sigma_only_anchor"), default = "zero"
+      )),
       DISC_GAMSIG_MEDIAN_STEP_DAMPING_ENABLED = if (isTRUE(unified_get(
         gamsig_policy, c("stabilization", "median_step_damping_enabled"), default = TRUE
       ))) "TRUE" else "FALSE",
@@ -1466,6 +1475,27 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       )),
       DISC_GAMSIG_MEDIAN_MAX_ABS_LOG_SIGMA_STEP = as.character(unified_get(
         gamsig_policy, c("stabilization", "median_max_abs_log_sigma_step"), default = 0.5
+      )),
+      DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_step_backoff_enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_FACTOR = as.character(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_step_backoff_factor"), default = 0.2
+      )),
+      DISC_GAMSIG_STATE_GUARD_MIN_STEP_SCALE = as.character(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_min_step_scale"), default = 0.005
+      )),
+      DISC_GAMSIG_STATE_HOLD_FREEZE_LATENTS_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("stabilization", "state_hold_freeze_latents_enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_STATE_GUARD_HOLD_STEP_SCALE_ENABLED = if (isTRUE(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_hold_step_scale_enabled"), default = TRUE
+      ))) "TRUE" else "FALSE",
+      DISC_GAMSIG_STATE_GUARD_MIN_REFREEZE_ITERS = as.character(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_min_refreeze_iters"), default = 1L
+      )),
+      DISC_GAMSIG_STATE_GUARD_MIN_HOLD_ITERS = as.character(unified_get(
+        gamsig_policy, c("stabilization", "state_guard_min_hold_iters"), default = 1L
       )),
       DISC_GAMSIG_MEDIAN_STATE_GUARD_ENABLED = if (isTRUE(unified_get(
         gamsig_policy, c("stabilization", "median_state_guard_enabled"), default = TRUE
