@@ -200,6 +200,8 @@ def write_article_outputs(
         "audit/he3_ablation_audit.csv",
         "audit/he3_ablation_lead_buckets.csv",
         "audit/he3_ablation_audit.md",
+        "audit/he3_ablation_runtime_input_detail.csv",
+        "audit/he3_ablation_runtime_input_detail.md",
     ]:
         src = report_dir / name
         if not src.exists():
@@ -242,6 +244,9 @@ def write_article_outputs(
             "sources": {
                 "he3_ablation_long_csv": str(ARTICLE_ARTIFACT_DIR / "he3_ablation_long.csv"),
                 "he3_ablation_audit_csv": str(ARTICLE_ARTIFACT_DIR / "audit__he3_ablation_audit.csv"),
+                "he3_runtime_input_detail_csv": str(
+                    ARTICLE_ARTIFACT_DIR / "audit__he3_ablation_runtime_input_detail.csv"
+                ),
                 "five_run_source_root": "artifacts/five_cutoff_crps_validation_sources",
             },
             "note": TABLE_NOTE,

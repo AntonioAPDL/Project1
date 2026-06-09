@@ -38,6 +38,8 @@ AUDIT_FILES = [
     "audit/he3_ablation_audit.csv",
     "audit/he3_ablation_lead_buckets.csv",
     "audit/he3_ablation_audit.md",
+    "audit/he3_ablation_runtime_input_detail.csv",
+    "audit/he3_ablation_runtime_input_detail.md",
 ]
 
 ARTICLE_FILES = [
@@ -220,10 +222,13 @@ def verify_summary(report_dir: Path) -> dict[str, Any]:
 def verify_audit(report_dir: Path) -> dict[str, Any]:
     audit_path = report_dir / "audit" / "he3_ablation_audit.csv"
     lead_path = report_dir / "audit" / "he3_ablation_lead_buckets.csv"
+    runtime_detail_path = report_dir / "audit" / "he3_ablation_runtime_input_detail.csv"
     if not audit_path.exists():
         raise FileNotFoundError(f"Missing HE3 audit table: {audit_path}")
     if not lead_path.exists():
         raise FileNotFoundError(f"Missing HE3 lead-bucket table: {lead_path}")
+    if not runtime_detail_path.exists():
+        raise FileNotFoundError(f"Missing HE3 runtime input detail table: {runtime_detail_path}")
     audit = pd.read_csv(audit_path)
     if len(audit) != 25:
         raise RuntimeError(f"Expected 25 launched-row audit rows, found {len(audit)}")
@@ -233,7 +238,23 @@ def verify_audit(report_dir: Path) -> dict[str, Any]:
             bad = audit[~ok_values]
             raise RuntimeError(f"HE3 audit has non-ok rows: {bad.to_dict(orient='records')}")
     lead = pd.read_csv(lead_path)
-    return {"audit_rows": int(len(audit)), "lead_bucket_rows": int(len(lead))}
+    runtime_detail = pd.read_csv(runtime_detail_path)
+    if len(runtime_detail) != 25 * 8:
+        raise RuntimeError(f"Expected 200 runtime input detail rows, found {len(runtime_detail)}")
+    if "contract_ok" in runtime_detail.columns:
+        detail_ok = runtime_detail["contract_ok"].map(
+            lambda x: str(x).strip().lower() in {"true", "1", "yes"}
+        )
+        if not detail_ok.all():
+            bad = runtime_detail[~detail_ok]
+            raise RuntimeError(
+                f"HE3 runtime input detail has non-ok rows: {bad.to_dict(orient='records')}"
+            )
+    return {
+        "audit_rows": int(len(audit)),
+        "lead_bucket_rows": int(len(lead)),
+        "runtime_input_detail_rows": int(len(runtime_detail)),
+    }
 
 
 def verify_article_sync(metadata: dict[str, Any]) -> dict[str, Any]:

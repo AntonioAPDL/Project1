@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import importlib.util
 import json
 import signal
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -551,6 +553,62 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
         lead = pd.read_csv(audit_dir / "he3_ablation_lead_buckets.csv")
         self.assertIn("lead_22_28", lead.columns)
         self.assertEqual(int((lead["variant"] == "full").sum()), 5)
+
+    def test_runtime_input_audit_accepts_canonical_numeric_adapter_precision_only(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "audit_he3_exdqlm_ablation",
+            ROOT / "scripts" / "audit_he3_exdqlm_ablation.py",
+        )
+        self.assertIsNotNone(spec)
+        module = importlib.util.module_from_spec(spec)
+        self.assertIsNotNone(spec.loader)
+        sys.path.insert(0, str(ROOT / "scripts"))
+        spec.loader.exec_module(module)
+
+        source_run_dir = self.td / "source_runtime"
+        ablation_run_dir = self.td / "ablation_runtime"
+        for rel_path in module.RUNTIME_HASH_PATHS:
+            source_path = source_run_dir / rel_path
+            ablation_path = ablation_run_dir / rel_path
+            source_path.parent.mkdir(parents=True, exist_ok=True)
+            ablation_path.parent.mkdir(parents=True, exist_ok=True)
+            text = f"{rel_path}|strict\n"
+            source_path.write_text(text, encoding="utf-8")
+            ablation_path.write_text(text, encoding="utf-8")
+
+        source_csv = (
+            '"Date","USGS","GloFAS","NWS3.0"\n'
+            '"1987-10-25",0.333923170797408,1.49009115480153,0.00995033063186363\n'
+        )
+        precision_only_csv = (
+            '"Date","USGS","GloFAS","NWS3.0"\n'
+            '"1987-10-25",0.333923170797408,1.49009115480153,0.0099503306318636\n'
+        )
+        rel = "fit/inputs/retros_fit_adapter.csv"
+        (source_run_dir / rel).write_text(source_csv, encoding="utf-8")
+        (ablation_run_dir / rel).write_text(precision_only_csv, encoding="utf-8")
+
+        ok, mismatches, details = module.compare_runtime_inputs(source_run_dir, ablation_run_dir)
+        self.assertTrue(ok)
+        self.assertEqual(mismatches, [])
+        retro_detail = [row for row in details if row["rel_path"] == rel][0]
+        self.assertFalse(retro_detail["raw_hash_match"])
+        self.assertEqual(retro_detail["comparison_mode"], "canonical_numeric_csv")
+        self.assertTrue(retro_detail["contract_ok"])
+        self.assertEqual(retro_detail["canonical_reason"], "ok")
+        self.assertLessEqual(float(retro_detail["max_abs_diff"]), module.CANONICAL_NUMERIC_ATOL)
+
+        changed_value_csv = (
+            '"Date","USGS","GloFAS","NWS3.0"\n'
+            '"1987-10-25",0.333923170797408,1.49009115480153,0.02\n'
+        )
+        (ablation_run_dir / rel).write_text(changed_value_csv, encoding="utf-8")
+        ok, mismatches, details = module.compare_runtime_inputs(source_run_dir, ablation_run_dir)
+        self.assertFalse(ok)
+        self.assertIn(f"hash:{rel}", mismatches)
+        retro_detail = [row for row in details if row["rel_path"] == rel][0]
+        self.assertFalse(retro_detail["contract_ok"])
+        self.assertEqual(retro_detail["canonical_reason"], "value:NWS3.0")
 
     def test_sync_ablation_tables_updates_article_and_corrections_outputs(self) -> None:
         matrix_dir = self.td / "sync_matrix"

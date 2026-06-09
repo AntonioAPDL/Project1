@@ -779,3 +779,81 @@ The robust fix is:
 This prevents intentionally absent ablation components or unrecognized spec
 labels from crashing a diagnostic report. It does not alter the model fit, post
 CRPS, synthesis figures, or publication tables.
+
+## Final Matrix Completion And Runtime Input Contract Fix
+
+Timestamp: 2026-06-09 16:50 UTC.
+
+The resumed HE3 controller completed all rows:
+
+| status | rows |
+|---|---:|
+| pass | 30 |
+| pending/not started/fail | 0 |
+
+The final `20220511/noH3` row behaved as expected:
+
+1. all seven quantiles reached iteration 100 with no finite/state guard
+   failures;
+2. all seven `.RData.tmp.*` files atomically resolved into final `.RData`
+   outputs;
+3. post generated CRPS tables, synthesis figures, q50 traces, transfer
+   diagnostics, and the VB latent/component audit;
+4. the VB latent audit loaded q05 through q95 and completed with zero-byte
+   stderr;
+5. row-local `.RData` files were removed by the workflow cleanup path after
+   post/report completion.
+
+The controller then ran the completion hooks:
+
+1. `scripts/build_he3_exdqlm_ablation_summary.py`;
+2. `scripts/audit_he3_exdqlm_ablation.py`;
+3. `scripts/sync_he3_ablation_article_tables.py`.
+
+The explicit finalizer gate initially refused to complete because
+`scripts/audit_he3_exdqlm_ablation.py` compared all runtime inputs with raw
+SHA-256 hashes. Fifteen launched ablation rows were marked non-ok only for:
+
+`inputs:hash:fit/inputs/retros_fit_adapter.csv`
+
+The affected cutoffs were `20210123`, `20211112`, and `20221225`, all five
+launched variants per cutoff. A parsed CSV comparison showed:
+
+| check | result |
+|---|---|
+| shape | identical |
+| column names | identical |
+| `Date` values | identical |
+| missingness | identical |
+| numeric values | identical after parsing, max absolute difference `0` |
+| raw bytes | different because numeric writer precision dropped trailing digits |
+
+Example byte-level difference:
+
+| source full run | HE3 ablation run |
+|---|---|
+| `0.00995033063186363` | `0.0099503306318636` |
+
+Therefore the finalizer failure was a reproducibility-audit contract bug, not
+an input-bundle, model, post, or CRPS failure.
+
+The robust fix is:
+
+1. keep strict SHA-256 equality as the first check for every runtime input;
+2. allow generated numeric adapter CSVs
+   (`retros_fit_adapter.csv`, `nws_fit_adapter.csv`, `glofas_fit_adapter.csv`)
+   to pass by canonical parsed-CSV equality when raw hashes differ;
+3. require matching schema, row count, missingness, text/date fields, and
+   numeric values within absolute tolerance `1e-12`;
+4. write `audit/he3_ablation_runtime_input_detail.csv` and `.md` so every
+   raw-hash or canonical-equivalence decision is visible;
+5. make the finalizer require that runtime-detail table;
+6. copy the runtime-detail table into the article-side HE3 artifact bundle when
+   synchronizing tables.
+
+The focused regression test is:
+
+`tests/python/test_he3_exdqlm_ablation_tooling.py::He3ToolingTests::test_runtime_input_audit_accepts_canonical_numeric_adapter_precision_only`
+
+It verifies that writer-precision drift passes canonically, while a real
+numeric value change still fails the runtime input contract.

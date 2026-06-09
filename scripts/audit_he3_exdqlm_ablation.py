@@ -49,6 +49,14 @@ RUNTIME_HASH_PATHS = [
     "fit/inputs/glofas_fit_adapter.csv",
 ]
 
+CANONICAL_NUMERIC_CSV_PATHS = {
+    "fit/inputs/retros_fit_adapter.csv",
+    "fit/inputs/nws_fit_adapter.csv",
+    "fit/inputs/glofas_fit_adapter.csv",
+}
+
+CANONICAL_NUMERIC_ATOL = 1e-12
+
 LEAD_BUCKETS = [
     ("lead_01_07", 1, 7),
     ("lead_08_14", 8, 14),
@@ -100,17 +108,157 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def compare_runtime_hashes(source_run_dir: Path, run_dir: Path) -> tuple[bool, list[str]]:
+def compare_canonical_numeric_csv(source_path: Path, run_path: Path) -> tuple[bool, dict[str, Any]]:
+    """Compare generated numeric CSV adapters independent of writer precision."""
+    detail: dict[str, Any] = {
+        "canonical_match": False,
+        "canonical_reason": "",
+        "row_count": None,
+        "column_count": None,
+        "max_abs_diff": None,
+    }
+    try:
+        source_df = pd.read_csv(source_path)
+        run_df = pd.read_csv(run_path)
+    except Exception as exc:
+        detail["canonical_reason"] = f"read_error:{type(exc).__name__}"
+        return False, detail
+
+    detail["row_count"] = int(len(run_df))
+    detail["column_count"] = int(len(run_df.columns))
+    if list(source_df.columns) != list(run_df.columns):
+        detail["canonical_reason"] = "columns"
+        return False, detail
+    if source_df.shape != run_df.shape:
+        detail["canonical_reason"] = "shape"
+        return False, detail
+
+    max_abs_diff = 0.0
+    for column in source_df.columns:
+        source_numeric = pd.to_numeric(source_df[column], errors="coerce")
+        run_numeric = pd.to_numeric(run_df[column], errors="coerce")
+        source_is_numeric = not source_numeric.isna().all()
+        run_is_numeric = not run_numeric.isna().all()
+        if source_is_numeric or run_is_numeric:
+            if not source_numeric.isna().equals(run_numeric.isna()):
+                detail["canonical_reason"] = f"missingness:{column}"
+                detail["max_abs_diff"] = max_abs_diff
+                return False, detail
+            diff = (source_numeric - run_numeric).abs()
+            column_max = float(diff.max(skipna=True)) if not diff.dropna().empty else 0.0
+            max_abs_diff = max(max_abs_diff, column_max)
+            if column_max > CANONICAL_NUMERIC_ATOL:
+                detail["canonical_reason"] = f"value:{column}"
+                detail["max_abs_diff"] = max_abs_diff
+                return False, detail
+            continue
+
+        source_text = source_df[column].astype("string").fillna("<NA>")
+        run_text = run_df[column].astype("string").fillna("<NA>")
+        if not source_text.equals(run_text):
+            detail["canonical_reason"] = f"text:{column}"
+            detail["max_abs_diff"] = max_abs_diff
+            return False, detail
+
+    detail["canonical_match"] = True
+    detail["canonical_reason"] = "ok"
+    detail["max_abs_diff"] = max_abs_diff
+    return True, detail
+
+
+def compare_runtime_inputs(source_run_dir: Path, run_dir: Path) -> tuple[bool, list[str], list[dict[str, Any]]]:
     mismatches: list[str] = []
+    detail_rows: list[dict[str, Any]] = []
     for rel_path in RUNTIME_HASH_PATHS:
         source_path = source_run_dir / rel_path
         run_path = run_dir / rel_path
+        detail: dict[str, Any] = {
+            "rel_path": rel_path,
+            "source_exists": source_path.exists(),
+            "run_exists": run_path.exists(),
+            "source_sha256": None,
+            "run_sha256": None,
+            "raw_hash_match": False,
+            "comparison_mode": "sha256",
+            "contract_ok": False,
+            "canonical_reason": "",
+            "row_count": None,
+            "column_count": None,
+            "max_abs_diff": None,
+        }
         if not source_path.exists() or not run_path.exists():
             mismatches.append(f"missing:{rel_path}")
+            detail["comparison_mode"] = "missing"
+            detail_rows.append(detail)
             continue
-        if sha256_file(source_path) != sha256_file(run_path):
-            mismatches.append(f"hash:{rel_path}")
-    return not mismatches, mismatches
+
+        source_hash = sha256_file(source_path)
+        run_hash = sha256_file(run_path)
+        detail["source_sha256"] = source_hash
+        detail["run_sha256"] = run_hash
+        detail["raw_hash_match"] = source_hash == run_hash
+        if source_hash == run_hash:
+            detail["contract_ok"] = True
+            detail_rows.append(detail)
+            continue
+
+        if rel_path in CANONICAL_NUMERIC_CSV_PATHS:
+            canonical_ok, canonical_detail = compare_canonical_numeric_csv(source_path, run_path)
+            detail.update(canonical_detail)
+            detail["comparison_mode"] = "canonical_numeric_csv"
+            detail["contract_ok"] = canonical_ok
+            if canonical_ok:
+                detail_rows.append(detail)
+                continue
+
+        mismatches.append(f"hash:{rel_path}")
+        detail_rows.append(detail)
+    return not mismatches, mismatches, detail_rows
+
+
+def compare_runtime_hashes(source_run_dir: Path, run_dir: Path) -> tuple[bool, list[str]]:
+    ok, mismatches, _detail_rows = compare_runtime_inputs(source_run_dir, run_dir)
+    return ok, mismatches
+
+
+def summarize_runtime_detail(detail_rows: list[dict[str, Any]]) -> str:
+    canonical = sum(
+        1
+        for row in detail_rows
+        if row.get("comparison_mode") == "canonical_numeric_csv" and row.get("contract_ok")
+    )
+    failed = sum(1 for row in detail_rows if not row.get("contract_ok"))
+    if failed:
+        return f"failed={failed}; canonical_csv={canonical}"
+    if canonical:
+        return f"ok; canonical_csv={canonical}"
+    return "ok"
+
+
+def render_runtime_detail_markdown(runtime_detail_df: pd.DataFrame) -> str:
+    lines = [
+        "# HE3 runtime input audit detail",
+        "",
+        "The launch-row audit uses strict SHA-256 equality for copied runtime inputs.",
+        "Generated numeric adapter CSVs are first compared by SHA-256; when writer",
+        "precision differs, they may pass by canonical parsed-CSV equality only if",
+        "schema, row count, missingness, dates/text fields, and numeric values agree",
+        f"within absolute tolerance `{CANONICAL_NUMERIC_ATOL}`.",
+        "",
+        "| Cutoff | Variant | Path | Mode | Raw hash match | Contract ok | Max abs diff | Reason |",
+        "|---|---|---|---|---:|---:|---:|---|",
+    ]
+    for _, row in runtime_detail_df.iterrows():
+        max_abs = ""
+        if pd.notna(row.get("max_abs_diff")):
+            max_abs = f"{float(row['max_abs_diff']):.3g}"
+        lines.append(
+            f"| {row['cutoff_display']} | `{row['variant']}` | `{row['rel_path']}` | "
+            f"`{row['comparison_mode']}` | `{row['raw_hash_match']}` | "
+            f"`{row['contract_ok']}` | {max_abs} | {row.get('canonical_reason', '')} |"
+        )
+    return "\n".join(lines) + "\n"
+
 
 
 def compare_paths(
@@ -257,6 +405,7 @@ def main() -> int:
 
     audit_rows: list[dict[str, Any]] = []
     lead_rows: list[dict[str, Any]] = []
+    runtime_detail_rows: list[dict[str, Any]] = []
 
     for _, row in launch_rows.iterrows():
         source_cfg = load_yaml(Path(str(row["source_config_path"])))
@@ -285,7 +434,17 @@ def main() -> int:
         scientific_ok = scientific_ok and forecast_health_ok
         scientific_mismatches.extend(forecast_health_mismatches)
         execution_ok, execution_mismatches = compare_paths(source_cfg, ablation_cfg, EXECUTION_PATHS)
-        runtime_hashes_ok, runtime_mismatches = compare_runtime_hashes(source_run_dir, run_dir)
+        runtime_hashes_ok, runtime_mismatches, runtime_details = compare_runtime_inputs(source_run_dir, run_dir)
+        for detail in runtime_details:
+            runtime_detail_rows.append(
+                {
+                    "cutoff": str(row["cutoff"]).zfill(8),
+                    "cutoff_display": str(row["cutoff_display"]),
+                    "variant": str(row["variant"]),
+                    "run_id": str(row["run_id"]),
+                    **detail,
+                }
+            )
         target_ok, mean_crps = target_model_present(run_dir, str(row["target_model_id"]))
         overall_ok = (
             structure_ok
@@ -330,6 +489,7 @@ def main() -> int:
                 "config_ok": structure_ok and transfer_ok and covariate_ok and scientific_ok,
                 "execution_ok": execution_ok,
                 "runtime_hashes_ok": runtime_hashes_ok,
+                "runtime_input_contract": summarize_runtime_detail(runtime_details),
                 "target_model_ok": target_ok,
                 "overall_ok": overall_ok,
                 "mean_crps": float(mean_crps) if mean_crps is not None else float("nan"),
@@ -354,6 +514,11 @@ def main() -> int:
 
     audit_df = pd.DataFrame(audit_rows).sort_values(["cutoff", "variant"]).reset_index(drop=True)
     lead_df = pd.DataFrame(lead_rows).sort_values(["cutoff", "variant"]).reset_index(drop=True)
+    runtime_detail_df = (
+        pd.DataFrame(runtime_detail_rows)
+        .sort_values(["cutoff", "variant", "rel_path"])
+        .reset_index(drop=True)
+    )
 
     full_rows = merged[merged["variant"] == "full"].copy()
     for _, row in full_rows.iterrows():
@@ -373,12 +538,18 @@ def main() -> int:
 
     audit_df.to_csv(output_dir / "he3_ablation_audit.csv", index=False)
     lead_df.to_csv(output_dir / "he3_ablation_lead_buckets.csv", index=False)
+    runtime_detail_df.to_csv(output_dir / "he3_ablation_runtime_input_detail.csv", index=False)
     (output_dir / "he3_ablation_audit.md").write_text(render_markdown(audit_df, lead_df), encoding="utf-8")
+    (output_dir / "he3_ablation_runtime_input_detail.md").write_text(
+        render_runtime_detail_markdown(runtime_detail_df),
+        encoding="utf-8",
+    )
     (output_dir / "he3_ablation_audit.json").write_text(
         json.dumps(
             {
                 "audit_rows": audit_df.to_dict(orient="records"),
                 "lead_bucket_rows": lead_df.to_dict(orient="records"),
+                "runtime_input_detail_rows": runtime_detail_df.to_dict(orient="records"),
             },
             indent=2,
         )
