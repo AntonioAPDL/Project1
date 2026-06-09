@@ -1718,7 +1718,11 @@ authoritative_support_project_theta <- function(theta_obj, probs = c(0.025, 0.5,
     }
     Ft <- matrix(Ft[seq_len(p_use)], ncol = 1L)
     Mu <- as.numeric(theta_obj$sm[seq_len(p_use), t])
-    Sigma <- as.matrix(theta_obj$sC[seq_len(p_use), seq_len(p_use), t, drop = FALSE])
+    Sigma <- matrix(
+      as.numeric(theta_obj$sC[seq_len(p_use), seq_len(p_use), t]),
+      nrow = p_use,
+      ncol = p_use
+    )
     mu <- as.numeric(crossprod(Ft, Mu))
     var <- as.numeric(t(Ft) %*% Sigma %*% Ft)
     sd <- sqrt(max(var, 0, na.rm = TRUE))

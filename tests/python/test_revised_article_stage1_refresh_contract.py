@@ -36,7 +36,7 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
         )
         self.assertEqual(
             bindings['exal_m_t1']['selected_support_output_root'],
-            '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260609/runs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r3_20260609/post/outputs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r3_20260609',
+            '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260609/runs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r4_20260609/post/outputs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r4_20260609',
         )
         self.assertIn('--univar-runtime-root', text)
         self.assertIn('--multivar-support-run-root', text)
@@ -97,6 +97,15 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
         self.assertIn('rendered_from_historical_support_replay', text)
         self.assertIn('rendered_from_retained_state_summary', text)
         self.assertIn('historical_support_state_summaries.rds', text)
+
+    def test_selected_output_replay_retains_rdata_on_post_failure(self) -> None:
+        launch_text = (ROOT / 'scripts' / 'launch_he2_selected_output_support_replay.py').read_text(encoding='utf-8')
+        builder_text = (ROOT / 'scripts' / 'build_he2_selected_output_support_replay_config.py').read_text(encoding='utf-8')
+        self.assertIn('authoritative_support_r4_20260609.yaml', launch_text)
+        self.assertIn('env["CLEANUP_RDATA_ON_FAILURE"] = "0"', launch_text)
+        self.assertIn('"cleanup_on_failure": False', launch_text)
+        self.assertIn('"cleanup_expected_on_failure": False', builder_text)
+        self.assertIn('"cleanup_on_failure_env": "CLEANUP_RDATA_ON_FAILURE=0"', builder_text)
 
 
 if __name__ == '__main__':

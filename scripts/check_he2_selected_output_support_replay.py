@@ -13,7 +13,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config" / "unified_runs_selected_output_support_20260609" / (
     "multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_"
-    "authoritative_support_r3_20260609.yaml"
+    "authoritative_support_r4_20260609.yaml"
 )
 
 SUPPORT_FILES = [

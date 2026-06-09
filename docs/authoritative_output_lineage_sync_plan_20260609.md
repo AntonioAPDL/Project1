@@ -167,20 +167,43 @@ Final clean launch replay config after the r2 dry-run envelope was consumed:
 
 `config/unified_runs_selected_output_support_20260609/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r3_20260609.yaml`
 
+Post-failure correction after the r3 replay:
+
+- r3 was launched from clean commit `3730667` and all seven quantile fits reached the intended 100-iteration contract;
+- r3 post generated ordinary synthesis/table artifacts, then failed inside
+  `R/environmetrics/40_figures_multivar_only.R:authoritative_support_project_theta()` with
+  `t(Ft) %*% Sigma : non-conformable arguments`;
+- the root cause was a covariance-slice shape bug: `theta_obj$sC[, , t, drop = FALSE]` can remain a 3D `p x p x 1`
+  object and is not a valid matrix operand for the `F_t' C_t F_t` projection;
+- the implementation now materializes each smoother covariance slice as an explicit `p_use x p_use` matrix before
+  projection;
+- because r3 used the default cleanup-on-failure behavior inherited from `CLEANUP_RDATA_AFTER_POST=1`, the failed post
+  removed all seven large `.RData` files and cannot be replayed without refitting;
+- this exposed an operational contract bug for authoritative support replays: success should clean `.RData`, but failure
+  must retain `.RData` for post-stage debugging and retry;
+- the launch/builder contract now sets `CLEANUP_RDATA_ON_FAILURE=0` for selected-output support replays while keeping
+  successful post cleanup enabled.
+
+Replacement clean replay config:
+
+`config/unified_runs_selected_output_support_20260609/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r4_20260609.yaml`
+
 Generated runtime manifest:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260609/control/selected_output_support_replay_manifest.json`
 
 This replay uses the same selected-output authority and input bundle but writes to an isolated runtime root. It enables
-the compact support export and keeps production cleanup behavior, so large `.RData` files are removed only after the post
-artifact contract passes.
+the compact support export and keeps production cleanup behavior on success, so large `.RData` files are removed only
+after the post artifact contract passes. If post fails, `.RData` files are intentionally retained for diagnosis.
 
 Execution correction from the 2026-06-09 implementation pass:
 
 - the first `authoritative_support_20260609` attempt only created the run envelope and did not enter the unified stage
   loop; its manifest records an older dirty code state and must not be used as article evidence;
 - the `authoritative_support_r2_20260609` retry was used for dry-run validation and is not the final launch target;
-- the clean `authoritative_support_r3_20260609` retry is the current support-replay target;
+- the clean `authoritative_support_r3_20260609` retry proved the fit was healthy but exposed the post projection bug and
+  cleanup-on-failure gap;
+- the clean `authoritative_support_r4_20260609` retry is the current support-replay target;
 - launch/status entrypoints:
   - `scripts/launch_he2_selected_output_support_replay.py`;
   - `scripts/check_he2_selected_output_support_replay.py`;

@@ -76,6 +76,7 @@ def build_config(authority_path: Path, replay_root: Path, config_dir: Path, tag:
         "source_runtime_output_root": authority["runtime_output_root"],
         "purpose": "Regenerate compact q05/q50/q95 selected-output support before .RData cleanup.",
         "cleanup_expected_after_post": True,
+        "cleanup_expected_on_failure": False,
     }
 
     write_yaml(config_path, cfg)
@@ -91,6 +92,7 @@ def build_config(authority_path: Path, replay_root: Path, config_dir: Path, tag:
         "resolved_run_root": str(resolved_run_root),
         "runtime_output_root": str(resolved_run_root / "post" / "outputs" / run_id),
         "cleanup_wrapper": "scripts/run_unified_with_cleanup.sh",
+        "cleanup_on_failure_env": "CLEANUP_RDATA_ON_FAILURE=0",
     }
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return {"config": config_path, "manifest": manifest_path}
@@ -101,7 +103,7 @@ def main() -> None:
     parser.add_argument("--authority", type=Path, default=DEFAULT_AUTHORITY)
     parser.add_argument("--replay-root", type=Path, default=DEFAULT_REPLAY_ROOT)
     parser.add_argument("--config-dir", type=Path, default=DEFAULT_CONFIG_DIR)
-    parser.add_argument("--tag", default="authoritative_support_20260609")
+    parser.add_argument("--tag", default="authoritative_support_r4_20260609")
     args = parser.parse_args()
 
     out = build_config(

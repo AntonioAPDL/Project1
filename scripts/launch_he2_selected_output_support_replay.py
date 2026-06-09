@@ -16,7 +16,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config" / "unified_runs_selected_output_support_20260609" / (
     "multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_"
-    "authoritative_support_r3_20260609.yaml"
+    "authoritative_support_r4_20260609.yaml"
 )
 
 
@@ -106,6 +106,7 @@ def main() -> int:
         "stderr_log": str(stderr_path),
         "command": cmd,
         "cleanup_after_post": True,
+        "cleanup_on_failure": False,
     }
 
     if args.dry_run:
@@ -114,6 +115,7 @@ def main() -> int:
 
     env = os.environ.copy()
     env.setdefault("PYTHONDONTWRITEBYTECODE", "1")
+    env["CLEANUP_RDATA_ON_FAILURE"] = "0"
     with stdout_path.open("ab") as stdout_handle, stderr_path.open("ab") as stderr_handle:
         proc = subprocess.Popen(
             cmd,
