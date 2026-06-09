@@ -229,6 +229,10 @@ Expected runtime outputs:
 - `reports/he3_exdqlm_ablation/audit/he3_ablation_lead_buckets.csv`
 - `reports/he3_exdqlm_ablation/audit/he3_ablation_audit.md`
 
+Live checkpoints:
+
+- `repro/run/HE3_EXDQLM_ABLATION_CHECKPOINT_20260609.md`
+
 ## Article And Corrections Sync
 
 The completion sync updates:
