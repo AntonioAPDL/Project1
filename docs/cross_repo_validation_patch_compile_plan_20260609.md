@@ -40,6 +40,28 @@ revision.
   time. Any generated table fragment used by a document must be copied into that
   document repo.
 
+## Final Verification Pass Findings
+
+This plan was rechecked against the current repositories on 2026-06-09 before
+implementation. The verification pass found:
+
+- all existing workflow-side scripts and tests named below are present;
+- all existing revised-article source artifacts named below are present;
+- all existing revised-article generated HE2/HE3 table files are present;
+- all current HE4 publication-manifest quantile artifacts are present for the
+  `5 cutoffs x 4 models = 20` required rows;
+- `pdflatex` and `bibtex` are available on the server, while `latexmk` is not
+  currently available;
+- the corrections repo has a `Makefile` with a `pdflatex` fallback and no
+  generated-table infrastructure yet;
+- the new validator script does not exist yet and is intentionally part of this
+  implementation plan.
+
+Known stale claims were also re-confirmed by direct search in
+`wileyNJD-APA.tex` and `Corrections---Project-1/main.tex`, so the first
+check-only validator run should fail unless run with an explicit
+expected-failure mode.
+
 ## Current Evidence
 
 ### Existing Strong Infrastructure
@@ -60,15 +82,15 @@ Workflow-side:
 
 Revised-article side:
 
-- `MANUSCRIPT_ASSET_MANIFEST.json`
-- `scripts/build_generated_table_includes.py`
-- `scripts/build_article_asset_review_report.py`
-- `scripts/refresh_all_generated_assets.py`
-- `scripts/validate_manuscript_figure_paths.py`
-- `tables/generated_tex/`
-- `artifacts/he2_publication_freeze/`
-- `artifacts/he3_exdqlm_ablation_authoritative/`
-- `artifacts/representative_selected_model_2022_12_25/`
+- `Evironmetrics---REVISED-DOC-2/MANUSCRIPT_ASSET_MANIFEST.json`
+- `Evironmetrics---REVISED-DOC-2/scripts/build_generated_table_includes.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/build_article_asset_review_report.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
+- `Evironmetrics---REVISED-DOC-2/scripts/validate_manuscript_figure_paths.py`
+- `Evironmetrics---REVISED-DOC-2/tables/generated_tex/`
+- `Evironmetrics---REVISED-DOC-2/artifacts/he2_publication_freeze/`
+- `Evironmetrics---REVISED-DOC-2/artifacts/he3_exdqlm_ablation_authoritative/`
+- `Evironmetrics---REVISED-DOC-2/artifacts/representative_selected_model_2022_12_25/`
 
 Corrections side:
 
@@ -212,6 +234,16 @@ The script should support two modes:
 - `--check-only`: fail on stale values/claims without editing files.
 - `--after-patch`: run the same checks after text/table patches and compilation.
 
+It should also support:
+
+- `--allow-known-failures`: for the first baseline run only, write the complete
+  failure report and exit successfully if and only if the observed failures are
+  exactly the known stale HE2/HE4/prose items listed in this plan. This prevents
+  the orchestration from stopping before we have captured the baseline evidence,
+  while still failing on any unexpected mismatch.
+- `--strict`: default for final gates; any stale table value, missing path,
+  forbidden claim, or compile-log failure exits nonzero.
+
 It should also accept explicit repo paths:
 
 ```bash
@@ -249,6 +281,23 @@ Expected outputs:
 - `he4_table_rows.tex`
 - `he4_main_table.tex`
 
+Current-publication run resolution must be direct and reproducible:
+
+1. read `cutoff`, `manuscript_label`, `family`, `run_id`, `run_root`,
+   `crps_exact`, and `horizon_days` from the HE2 publication manifest;
+2. keep only the four HE4 labels;
+3. resolve the post-output directory as `run_root/post/outputs/run_id`;
+4. load the label-specific quantile CSV from that directory;
+5. validate that the run-level CRPS row for the same model id matches
+   `crps_exact`;
+6. never search arbitrary runtime directories unless the manifest path is
+   missing, and if fallback search is ever needed, record it explicitly in
+   `he4_selection_audit.csv`.
+
+The final verification pass confirmed that all 20 current-publication HE4
+quantile CSVs currently exist at the paths implied by the HE2 manifest. The
+implementation must still keep these as hard checks so future drift is caught.
+
 ### Corrections Table Strategy
 
 Preferred robust strategy:
@@ -270,6 +319,10 @@ Fallback strategy:
   hard-coded tables directly and validate them by parsing the hard-coded TeX.
 
 The preferred strategy is better because it prevents future silent drift.
+
+If generated-table fragments are added to the corrections repo, also update
+`Corrections---Project-1/README.md` with the list of tracked TeX fragments that
+must be uploaded with `main.tex` for Overleaf-style compilation.
 
 ## Validator Details
 
@@ -350,6 +403,31 @@ Required claims:
 - HE4 text must state whether values come from the current HE2 publication
   manifest or are corrections-only legacy evidence.
 
+### Reproducibility Metadata
+
+Every validator and HE4-builder run must write reproducibility metadata. At
+minimum:
+
+- command line and working directory;
+- UTC timestamp;
+- git commit, branch, and dirty/clean status for all three repos;
+- Python executable and version;
+- `pdflatex` and `bibtex` paths and versions if discoverable;
+- SHA-256 for every source CSV/JSON/TeX input used in table validation;
+- SHA-256 for generated table fragments produced by the run;
+- row counts for every parsed table and source CSV;
+- explicit pass/fail status by validation family.
+
+Write this as:
+
+- `environment_metadata.json`
+- `source_sha256_manifest.csv`
+- `generated_sha256_manifest.csv`
+
+under the validation output directory. These report files are runtime evidence
+and should remain untracked unless a future publication freeze explicitly
+promotes them.
+
 ### Compile Log Checks
 
 Compile revised article:
@@ -369,8 +447,10 @@ cd /data/muscat_data/jaguir26/Corrections---Project-1
 make
 ```
 
-If `make` fails because `latexmk` is unavailable, the Makefile already falls
-back to two `pdflatex` runs.
+The corrections Makefile already falls back to two `pdflatex` runs when
+`latexmk` is unavailable. Since `latexmk` is not currently available on this
+server, do not make the revised-article compile depend on `latexmk`; use the
+explicit `pdflatex/bibtex/pdflatex/pdflatex` sequence above.
 
 Fail compile validation on:
 
@@ -395,12 +475,15 @@ Report but do not automatically fail on:
 3. Record current commits and ahead counts.
 4. Create `reports/revision_cross_repo_validation_20260609/` for validation
    evidence.
+5. Record environment metadata and source SHA-256 manifests before any patches.
 
 Acceptance gate:
 
 - repo state recorded;
 - no runtime modifications made;
 - output directory created.
+- all referenced existing source paths resolve, with planned-new files recorded
+  as `not_yet_implemented` rather than `missing`.
 
 ### Phase 1. Build Check-Only Validator
 
@@ -423,7 +506,9 @@ Acceptance gate:
 
 - validator produces structured evidence;
 - known stale HE2/corrections/revised-article conclusion items are detected;
-- no false failure on current HE3 table.
+- no false failure on current HE3 table;
+- `--allow-known-failures` succeeds only for the known stale items;
+- normal `--check-only` exits nonzero on the stale current state.
 
 ### Phase 2. Regenerate HE4 From Current HE2 Manifest
 
@@ -448,7 +533,9 @@ Acceptance gate:
 - every forecast horizon is valid;
 - quantile rows are monotone;
 - `resolved_mean_crps` matches HE2 `crps_exact`;
-- comparison to old HE4 is documented.
+- comparison to old HE4 is documented;
+- every resolved run comes from the HE2 publication manifest unless a fallback
+  is explicitly recorded and justified.
 
 ### Phase 3. Decide HE4 Article Placement
 
@@ -510,6 +597,8 @@ Acceptance gate:
 - manifest paths exist;
 - generated table manifest is current;
 - no missing figure path.
+- article-side generated files touched by the refresh are either intended table
+  or manifest changes, or are documented as derived review outputs.
 
 ### Phase 6. Compile Both Documents
 
@@ -559,6 +648,8 @@ Minimum new test coverage:
 - manifest checker catches missing table source;
 - corrections generated-table include path resolves in fixture;
 - HE4 current-manifest source mode resolves fixture rows.
+- `--allow-known-failures` fails if an unexpected mismatch is added to a fixture;
+- reproducibility metadata includes repo commits and source SHA-256 rows.
 
 Acceptance gate:
 
@@ -611,6 +702,8 @@ The work is complete only when all of these are true:
 9. Focused regression tests pass.
 10. All three repos have intentional, reviewable commits and no accidental
     runtime/report clutter staged.
+11. The final validation report contains enough metadata for a future reader to
+    rerun the same checks from the recorded commits and source files.
 
 ## Main Risk and Mitigation
 
@@ -622,6 +715,8 @@ The work is complete only when all of these are true:
 | prose checker misses a new overclaim | use both forbidden phrases and source-derived required-claim checks |
 | article compile creates noisy aux/log changes | commit only intended source/table/manifest changes; leave generated aux/log untracked or ignored as appropriate |
 | HE2 raw-baseline exception is forgotten again | encode raw-NWS final-cutoff exception as a validator assertion |
+| baseline validator masks real failures | require `--allow-known-failures` to match an explicit allow-list; final `--strict` mode has no allow-list |
+| generated corrections fragments drift from source after manual edits | treat generated fragments as validator-owned outputs and fail if manual edits change values away from source-derived displays |
 
 ## Recommended Immediate Next Move
 
