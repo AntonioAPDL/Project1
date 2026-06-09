@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import signal
 import shutil
 import subprocess
 import tempfile
@@ -757,6 +758,40 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
         report_dir = self.he3_root / "reports" / "he3_exdqlm_ablation"
         self.assertTrue((report_dir / "he3_ablation_long.csv").exists())
         self.assertTrue((report_dir / "audit" / "he3_ablation_audit.csv").exists())
+
+    def test_queue_signal_handler_ignores_sighup_and_terminates_on_sigterm(self) -> None:
+        log_path = self.td / "queue_signal.log"
+        code = f"""
+import os
+import signal
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd() / "scripts"))
+from run_he3_exdqlm_ablation_queue import install_signal_logging
+
+with open({str(log_path)!r}, "a", encoding="utf-8") as handle:
+    install_signal_logging(handle)
+    os.kill(os.getpid(), signal.SIGHUP)
+    print("after_sighup", file=handle, flush=True)
+    os.kill(os.getpid(), signal.SIGTERM)
+    print("after_sigterm", file=handle, flush=True)
+"""
+        proc = subprocess.run(
+            ["python3", "-c", code],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 128 + int(signal.SIGTERM), proc.stderr)
+        text = log_path.read_text(encoding="utf-8")
+        self.assertIn("signame=SIGHUP", text)
+        self.assertIn("action=ignored", text)
+        self.assertIn("after_sighup", text)
+        self.assertIn("signame=SIGTERM", text)
+        self.assertIn("action=terminate", text)
+        self.assertNotIn("after_sigterm", text)
 
 
 if __name__ == "__main__":

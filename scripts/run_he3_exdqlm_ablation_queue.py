@@ -22,17 +22,40 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def signal_name(signum: int) -> str:
+    try:
+        return signal.Signals(signum).name
+    except Exception:
+        return f"SIG{signum}"
+
+
 def install_signal_logging(log_handle) -> None:
-    def _handler(signum, _frame) -> None:
-        signame = signal.Signals(signum).name if signum in signal.Signals else f"SIG{signum}"
-        print(f"[{utc_now()}] controller signal signame={signame} signum={signum}", file=log_handle, flush=True)
+    def _terminate_handler(signum, _frame) -> None:
+        signame = signal_name(int(signum))
+        print(
+            f"[{utc_now()}] controller signal signame={signame} signum={signum} action=terminate",
+            file=log_handle,
+            flush=True,
+        )
         raise SystemExit(128 + int(signum))
 
-    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+    def _hup_handler(signum, _frame) -> None:
+        signame = signal_name(int(signum))
+        print(
+            f"[{utc_now()}] controller signal signame={signame} signum={signum} action=ignored",
+            file=log_handle,
+            flush=True,
+        )
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
         try:
-            signal.signal(sig, _handler)
+            signal.signal(sig, _terminate_handler)
         except Exception:
             continue
+    try:
+        signal.signal(signal.SIGHUP, _hup_handler)
+    except Exception:
+        pass
 
 
 def parse_args() -> argparse.Namespace:

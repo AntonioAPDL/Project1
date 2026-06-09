@@ -651,3 +651,44 @@ This does not hide the q05/q95 behavior. It preserves the warning, keeps the
 full value in the CSV, and prevents future HE3 monitoring from confusing a
 soft noTF extreme-tail magnitude warning with the original q50 algorithmic
 failure.
+
+## Queue Resume Root Cause and Controller Fix
+
+After the repaired `20210123/noTF` row passed, the matrix recomputed to:
+
+| status | rows |
+|---|---:|
+| pass | 21 |
+| not_started | 9 |
+| fail | 0 |
+
+The next intended step was to resume only the remaining nine rows. A detached
+resume attempt created a PID file and zero-byte stdout log, but did not append a
+new startup heartbeat to `queue.log` and left the same `21 pass` / `9
+not_started` matrix state.
+
+A foreground diagnostic run isolated the controller lifecycle problem. The
+queue runner installed a custom `SIGHUP` handler, which defeated the launch
+contract used for background/nohup controllers. The handler also used
+`signum in signal.Signals`, which raises a Python 3.9 `TypeError` when a real
+signal is delivered:
+
+`TypeError: unsupported operand type(s) for 'in': 'int' and 'EnumMeta'`
+
+This explains why a background resume could die without launching rows even
+though the matrix itself was healthy. It was not a fit-stage failure and not a
+new HE3 model instability.
+
+The robust controller fix is:
+
+1. introduce `signal_name(...)`, which maps a numeric signal to a name with
+   `signal.Signals(signum)` and falls back to `SIG<signum>`;
+2. treat `SIGTERM` and `SIGINT` as explicit terminating signals and log
+   `action=terminate`;
+3. treat `SIGHUP` as a logged non-terminal detach signal and log
+   `action=ignored`;
+4. test the behavior with real signal delivery in
+   `tests/python/test_he3_exdqlm_ablation_tooling.py`.
+
+This keeps intentional operator stops working while making detached queue
+launches reliable. It also preserves the expected audit trail in `queue.log`.
