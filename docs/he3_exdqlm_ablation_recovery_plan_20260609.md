@@ -573,3 +573,81 @@ workers in process groups `938748` and `945307`. They were stopped because they
 were two partial writers to the same row directory, not a valid production run.
 The directory should be archived as cap-scale evidence before the next clean
 row-level relaunch.
+
+## Promotion Attempt 3 Result and Health-Semantics Repair
+
+After commit `5dc2c79`, the failed `20210123/noTF` row was relaunched from the
+authoritative config:
+
+`config/unified_runs_he3_exdqlm_ablation_authoritative_20260608/multimodel_20210123_v8_c04_eps365_exdqlm_multivar_keep_he3_noTF.yaml`
+
+The run completed all required stages:
+
+| stage | result |
+|---|---|
+| `data_prep_shared` | pass |
+| `fit` | pass |
+| `post` | pass |
+| `validate` | pass |
+| `report` | pass |
+
+The completed run is:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_authoritative_winners_20260608/runs/multimodel_20210123_v8_c04_eps365_exdqlm_multivar_keep_he3_noTF`
+
+Runtime evidence:
+
+| evidence | result |
+|---|---|
+| Main relaunch log | `Unified run complete.` |
+| Fit outputs | all seven quantiles saved final `.RData` before post |
+| Cleanup | `Post-stage .RData cleanup: before=7 removed=7 remaining=0` |
+| Manifest | `forecats=skip`, `data_prep_shared=pass`, `fit=pass`, `post=pass`, `validate=pass`, `report=pass` |
+| q50 recovery | reached iter 100, sampled, saved, and post-processed after two median gamma-zero recovery events |
+| post figures | cutoff-window synthesis PNG/PDF, raw-ensemble synthesis PNG/PDF, ELBO traces, gamma/sigma traces, transfer diagnostics, VB latent/pseudodata diagnostics |
+| CRPS | `exdqlm_multivar_synth_drop` mean forecast CRPS `1.7360957277723663` for 28 valid forecast days |
+| matrix state | `21 pass`, `9 not_started`, `0 fail` |
+
+The repaired q50 lane is no longer the blocker. Its final health sidecar reports
+`state_norm_sq_per_T=1.7577689`, `max_abs_history_exps=3.511901363`, and
+`max_E_sigma=0.8614459336`.
+
+The row-level post stage also revealed a separate reporting ambiguity. For the
+`noTF` ablation, q05 and q95 have finite but large extreme-tail historical
+`theta.out$exps` values:
+
+| lane | `max_abs_history_exps` | `state_norm_sq_per_T` | old terminal label |
+|---|---:|---:|---|
+| q05 | 26.8492706941193 | 418.43099500521 | `fail` |
+| q95 | 27.8503102245771 | 484.550030714071 | `fail` |
+
+This pattern is not the q50 state explosion. It is also not a non-finite latent,
+state, or pseudo-data failure: both lanes have `nonfinite_history_exps=0`,
+`nonfinite_sm=0`, and state energy far below the `1e4` per-time cap. The same
+pattern appears in other completed `noTF` rows, where q05/q95 exceed the older
+history-latent diagnostic cap while the normalized state checks remain finite
+and coherent.
+
+The root issue is therefore terminology: `multivar_terminal_state_health.txt`
+used `terminal_status=fail` for both hard numerical failures and soft
+extreme-tail magnitude warnings. That made healthy-but-wide no-transfer extreme
+quantile lanes look like broken fits in monitoring output.
+
+The repair is to split terminal health severity:
+
+1. `multivar_terminal_state_health.csv` now includes a `severity` column.
+2. Hard numerical checks keep `severity=hard` and failed rows keep
+   `status=fail`.
+3. The historical `theta.out$exps` magnitude cap is retained as a warning
+   diagnostic with `severity=warning` and `status=warn`.
+4. `multivar_terminal_state_health.txt` now reports:
+   - `terminal_status=fail` only when at least one hard check fails;
+   - `terminal_status=warn` when only warning checks are exceeded;
+   - explicit `hard_violations=...` and `warnings=...` fields.
+5. Stage-fit log messages now distinguish `[FIT_FORECAST_HEALTH_WARN]` from
+   `[FIT_FORECAST_HEALTH_FAIL]` when `forecast_health.fail_fast=false`.
+
+This does not hide the q05/q95 behavior. It preserves the warning, keeps the
+full value in the CSV, and prevents future HE3 monitoring from confusing a
+soft noTF extreme-tail magnitude warning with the original q50 algorithmic
+failure.

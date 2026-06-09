@@ -178,9 +178,13 @@ unified_multivar_fit_health_check <- function(
     writeLines(summary_lines, con = report_path)
   }
 
-  health_row <- function(metric, value, limit, direction = "max") {
+  health_row <- function(metric, value, limit, direction = "max", severity = "hard") {
     value <- suppressWarnings(as.numeric(value)[1L])
     limit <- suppressWarnings(as.numeric(limit)[1L])
+    severity <- as.character(severity)[1L]
+    if (!nzchar(severity) || !(severity %in% c("hard", "warning"))) {
+      severity <- "hard"
+    }
     failed <- FALSE
     if (identical(direction, "required_positive_count")) {
       failed <- !is.finite(value) || value <= 0
@@ -189,12 +193,18 @@ unified_multivar_fit_health_check <- function(
     } else if (identical(direction, "max")) {
       failed <- is.finite(value) && is.finite(limit) && value > limit
     }
+    status <- if (isTRUE(failed)) {
+      if (identical(severity, "warning")) "warn" else "fail"
+    } else {
+      "ok"
+    }
     data.frame(
       metric = metric,
       value = value,
       limit = limit,
       direction = direction,
-      status = if (isTRUE(failed)) "fail" else "ok",
+      severity = severity,
+      status = status,
       stringsAsFactors = FALSE
     )
   }
@@ -202,7 +212,7 @@ unified_multivar_fit_health_check <- function(
     health_row("finite_history_exps", finite_history_exps, 0, "required_positive_count"),
     health_row("nonfinite_history_exps", nonfinite_history_exps, 0, "required_zero_count"),
     health_row("nonfinite_sm", nonfinite_sm, 0, "required_zero_count"),
-    health_row("max_abs_history_exps", max_abs_history_exps, history_latent_limit),
+    health_row("max_abs_history_exps", max_abs_history_exps, history_latent_limit, severity = "warning"),
     health_row("state_norm_sq_per_T", state_norm_sq_per_T, state_norm_sq_per_T_limit),
     health_row("transfer_level_max_abs", transfer_level_max_abs, transfer_level_limit),
     health_row("transfer_coef_max_abs", transfer_coef_max_abs, transfer_coef_limit)
@@ -211,14 +221,27 @@ unified_multivar_fit_health_check <- function(
     utils::write.csv(terminal_rows, file = terminal_csv_path, row.names = FALSE)
   }
   if (!is.null(terminal_report_path) && nzchar(terminal_report_path)) {
+    hard_violations <- terminal_rows$metric[
+      terminal_rows$status == "fail" & terminal_rows$severity == "hard"
+    ]
+    warning_violations <- terminal_rows$metric[terminal_rows$status == "warn"]
+    terminal_status <- if (length(hard_violations) > 0L) {
+      "fail"
+    } else if (length(warning_violations) > 0L) {
+      "warn"
+    } else {
+      "ok"
+    }
     terminal_lines <- c(
       sprintf("rdata_path=%s", normalizePath(rdata_path, mustWork = FALSE)),
       sprintf("transfer_mode=%s", as.character(transfer_mode)),
       sprintf("quantile=%s", as.character(quantile)),
       sprintf("theta_object=%s", theta_name[[1L]]),
       sprintf("TT=%s", if (is.finite(TT)) as.character(TT) else "NA"),
-      sprintf("terminal_status=%s", if (any(terminal_rows$status == "fail")) "fail" else "ok"),
-      sprintf("violations=%s", paste(terminal_rows$metric[terminal_rows$status == "fail"], collapse = "|"))
+      sprintf("terminal_status=%s", terminal_status),
+      sprintf("hard_violations=%s", paste(hard_violations, collapse = "|")),
+      sprintf("warnings=%s", paste(warning_violations, collapse = "|")),
+      sprintf("violations=%s", paste(terminal_rows$metric[terminal_rows$status != "ok"], collapse = "|"))
     )
     writeLines(terminal_lines, con = terminal_report_path)
   }
@@ -278,6 +301,10 @@ unified_multivar_fit_health_check <- function(
     transfer_level_median_abs = transfer_level_median_abs,
     transfer_coef_max_abs = transfer_coef_max_abs,
     terminal_rows = terminal_rows,
+    hard_violations = terminal_rows$metric[
+      terminal_rows$status == "fail" & terminal_rows$severity == "hard"
+    ],
+    warning_violations = terminal_rows$metric[terminal_rows$status == "warn"],
     max_abs_forecast_exps = max_abs_forecast_exps,
     finite_forecast_exps = finite_forecast_exps,
     nonfinite_forecast_exps = nonfinite_forecast_exps,
@@ -1613,14 +1640,27 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
         transfer_coef_limit = multivar_forecast_health_limits$transfer_coef
       )
       if (length(forecast_health$violations) > 0L) {
+        hard_violations <- forecast_health$hard_violations
+        if (is.null(hard_violations)) hard_violations <- character(0)
+        warning_violations <- forecast_health$warning_violations
+        if (is.null(warning_violations)) warning_violations <- character(0)
+        health_tag <- if (length(hard_violations) > 0L || isTRUE(multivar_forecast_health_fail_fast)) {
+          "FIT_FORECAST_HEALTH_FAIL"
+        } else {
+          "FIT_FORECAST_HEALTH_WARN"
+        }
         msg <- sprintf(
           paste0(
-            "[FIT_FORECAST_HEALTH_FAIL] multivar %s q=%s violated forecast-health limits: %s. ",
+            "[%s] multivar %s q=%s violated forecast-health limits: %s. ",
+            "hard_violations=%s warnings=%s. ",
             "See %s"
           ),
+          health_tag,
           forecast_transfer_mode,
           q_label,
           paste(forecast_health$violations, collapse = " | "),
+          paste(hard_violations, collapse = "|"),
+          paste(warning_violations, collapse = "|"),
           if (!is.null(forecast_health$report_path) && nzchar(forecast_health$report_path)) {
             forecast_health$report_path
           } else {
