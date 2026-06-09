@@ -121,6 +121,7 @@ The current campaign remains wired to the authoritative workflow in:
 - `scripts/build_he3_exdqlm_ablation_matrix.py`
 - `scripts/validate_he3_exdqlm_ablation.py`
 - `scripts/run_he3_exdqlm_ablation_queue.py`
+- `scripts/finalize_he3_exdqlm_ablation.py`
 - `scripts/build_he3_exdqlm_ablation_summary.py`
 - `scripts/audit_he3_exdqlm_ablation.py`
 - `scripts/sync_he3_ablation_article_tables.py`
@@ -162,7 +163,23 @@ Repository state observed at this checkpoint:
    and fix root-cause wiring or contract failures before relaunching only that row. Do
    not patch manuscript tables around a failed row.
 4. After all rows pass, let the queue completion hooks run. If they do not run
-   automatically, run:
+   automatically, run the finish gate:
+
+```bash
+python3 scripts/finalize_he3_exdqlm_ablation.py \
+  --matrix-dir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_authoritative_winners_20260608/control/he3_exdqlm_ablation_authoritative_winners_v1 \
+  --wait \
+  --cleanup-rdata
+```
+
+The live finish gate for this checkpoint was launched detached with PID `824498`.
+It writes:
+
+- `control/he3_exdqlm_ablation_authoritative_winners_v1/finish_gate.log`
+- `control/he3_exdqlm_ablation_authoritative_winners_v1/finish_gate.pid`
+- `control/he3_exdqlm_ablation_authoritative_winners_v1/finish_gate_status.json`
+
+If manual fallback is needed, run:
 
 ```bash
 python3 scripts/build_he3_exdqlm_ablation_summary.py \

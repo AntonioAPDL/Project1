@@ -219,6 +219,20 @@ python3 scripts/audit_he3_exdqlm_ablation.py --matrix-dir <matrix-dir>
 python3 scripts/sync_he3_ablation_article_tables.py --matrix-dir <matrix-dir>
 ```
 
+The completion hooks are also wrapped by an idempotent finish-gate verifier:
+
+```bash
+python3 scripts/finalize_he3_exdqlm_ablation.py \
+  --matrix-dir /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_authoritative_winners_20260608/control/he3_exdqlm_ablation_authoritative_winners_v1 \
+  --wait \
+  --cleanup-rdata
+```
+
+The finish gate waits for all rows to pass, defers to the live queue controller while
+it is running, fills in missing summary/audit/article-sync outputs only if needed, then
+verifies the final HE3 tables and optionally removes launched-row `.RData` artifacts.
+It does not touch reused full-reference source runs.
+
 Expected runtime outputs:
 
 - `reports/he3_exdqlm_ablation/he3_ablation_long.csv`

@@ -658,6 +658,106 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
         self.assertIn("RAW-GLOFAS", corrections_text)
         self.assertNotIn("Ablation model & old", corrections_text)
 
+    def test_finish_gate_refuses_incomplete_queue_without_wait(self) -> None:
+        self.run_script(
+            "python3",
+            "scripts/build_he3_exdqlm_ablation_matrix.py",
+            "--template",
+            str(self.template_path),
+        )
+        status_json = self.td / "finish_incomplete.json"
+        proc = subprocess.run(
+            [
+                "python3",
+                "scripts/finalize_he3_exdqlm_ablation.py",
+                "--matrix-dir",
+                str(self.matrix_dir),
+                "--no-sync",
+                "--status-json",
+                str(status_json),
+            ],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 2)
+        payload = json.loads(status_json.read_text(encoding="utf-8"))
+        self.assertFalse(payload["completed"])
+        self.assertEqual(payload["reason"], "queue_incomplete")
+
+    def test_finish_gate_builds_outputs_and_cleans_completed_matrix(self) -> None:
+        self.run_script(
+            "python3",
+            "scripts/build_he3_exdqlm_ablation_matrix.py",
+            "--template",
+            str(self.template_path),
+        )
+        plan = pd.read_csv(self.matrix_dir / "matrix_plan.csv")
+        required_rel_paths = [
+            "inputs/shared/covariates/covariate_features.csv",
+            "inputs/shared/covariates/cov_01_PPT.csv",
+            "inputs/shared/covariates/cov_02_SOIL.csv",
+            "inputs/shared/covariates/cov_03_PCA.csv",
+            "fit/inputs/parameters.txt",
+            "fit/inputs/retros_fit_adapter.csv",
+            "fit/inputs/nws_fit_adapter.csv",
+            "fit/inputs/glofas_fit_adapter.csv",
+        ]
+
+        for _, row in plan.iterrows():
+            source_run_dir = Path(row["source_run_dir"])
+            for rel_path in required_rel_paths:
+                src = source_run_dir / rel_path
+                src.parent.mkdir(parents=True, exist_ok=True)
+                src.write_text(f"{row['cutoff']}|{rel_path}\n", encoding="utf-8")
+            if row["launch_mode"] != "launch":
+                continue
+
+            run_dir = self.he3_root / "runs" / row["run_id"]
+            for rel_path in required_rel_paths:
+                dst = run_dir / rel_path
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_text((source_run_dir / rel_path).read_text(encoding="utf-8"), encoding="utf-8")
+
+            tables_dir = run_dir / "post" / "outputs" / row["run_id"] / "tables"
+            tables_dir.mkdir(parents=True, exist_ok=True)
+            pd.DataFrame(
+                [{"model_id": row["target_model_id"], "mean_crps": 0.75}]
+            ).to_csv(tables_dir / "crps_forecast_summary.csv", index=False)
+            pd.DataFrame(
+                [
+                    {"lead_day": lead, "model_id": row["target_model_id"], "crps": 0.75 + lead / 100.0}
+                    for lead in range(1, 29)
+                ]
+            ).to_csv(tables_dir / "crps_forecast_per_time.csv", index=False)
+            with (run_dir / "run_manifest.yaml").open("w", encoding="utf-8") as handle:
+                yaml.safe_dump({"stages": {"report": {"status": "pass"}}}, handle, sort_keys=False)
+            dummy_rdata = run_dir / "fit" / "q=50" / "outputs" / "dummy.RData"
+            dummy_rdata.parent.mkdir(parents=True, exist_ok=True)
+            dummy_rdata.write_bytes(b"dummy-rdata")
+
+        status_json = self.td / "finish_complete.json"
+        self.run_script(
+            "python3",
+            "scripts/finalize_he3_exdqlm_ablation.py",
+            "--matrix-dir",
+            str(self.matrix_dir),
+            "--no-sync",
+            "--cleanup-rdata",
+            "--status-json",
+            str(status_json),
+        )
+        payload = json.loads(status_json.read_text(encoding="utf-8"))
+        self.assertTrue(payload["completed"])
+        self.assertEqual(payload["summary"]["he3_long_rows"], 30)
+        self.assertEqual(payload["audit"]["audit_rows"], 25)
+        self.assertEqual(payload["cleanup"]["rdata_removed"], 25)
+        self.assertEqual(payload["cleanup"]["rdata_remaining"], 0)
+        report_dir = self.he3_root / "reports" / "he3_exdqlm_ablation"
+        self.assertTrue((report_dir / "he3_ablation_long.csv").exists())
+        self.assertTrue((report_dir / "audit" / "he3_ablation_audit.csv").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
