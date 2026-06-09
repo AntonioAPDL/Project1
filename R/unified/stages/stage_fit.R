@@ -1506,6 +1506,9 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       DISC_GAMSIG_MEDIAN_STATE_NORM_ABS_CAP = as.character(unified_get(
         gamsig_policy, c("stabilization", "median_state_norm_abs_cap"), default = 1e8
       )),
+      DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE = as.character(unified_get(
+        gamsig_policy, c("stabilization", "state_norm_abs_cap_scale"), default = "per_time"
+      )),
       DISC_GAMSIG_MEDIAN_STATE_GUARD_REFREEZE_ITERS = as.character(unified_get(
         gamsig_policy, c("stabilization", "median_state_guard_refreeze_iters"), default = unified_get(
           gamsig_policy, c("guard_refreeze_iters"), default = 10L

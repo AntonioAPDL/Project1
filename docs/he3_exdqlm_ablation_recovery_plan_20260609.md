@@ -501,3 +501,75 @@ Validation for this incremental fix:
 
 The failed manual relaunch directory should be archived before the next relaunch,
 then the same row should be rerun once more from the authoritative config.
+
+## Promotion Attempt 2 and State-Norm Cap Scaling
+
+After commit `655da41`, the row-level relaunch advanced past the
+first-iteration rollback bug but exposed a third issue in the promoted hard-cap
+policy. The hard cap was being applied to the total `state_norm_sq`, even though
+all operational health checks and user-facing monitoring interpret state energy
+as `state_norm_sq / T`, where `T` is the history length up to the cutoff.
+
+This distinction matters for long history windows. In the archived prepatch row,
+the extreme quantile lanes had large total state norms but ordinary normalized
+state energy by the end of the successful lanes:
+
+| lane | final `state_norm_sq` | final `state_norm_sq_per_T` |
+|---|---:|---:|
+| q05 | 5144190.653 | 418.430995 |
+| q20 | 65278.37 | 5.31 |
+| q35 | 60623.45 | 4.93 |
+| q65 | 176477.05 | 14.35 |
+| q80 | 226398.88 | 18.42 |
+| q95 | 5957058.078 | 484.55 |
+
+The promoted relaunch was therefore falsely guarding legitimate early extreme
+lanes:
+
+| lane | relaunch guard value | normalized by `T=12294` | interpretation |
+|---|---:|---:|---|
+| q05 | `state_norm_sq=33799896` | 2749.30 | large warmup state, not explosive |
+| q20 | `state_norm_sq=1190504` | 96.84 | ordinary warmup state |
+| q80 | `state_norm_sq=1606932` | 130.71 | ordinary warmup state |
+| q95 | `state_norm_sq=35886283` | 2919.01 | large warmup state, not explosive |
+
+By contrast, the original pathological q50 replay reached
+`state_norm_sq=1.3803749e14`, which is about `1.1228e10` after division by
+`T=12294`. That remains many orders of magnitude above a per-time cap of
+`1e6`, so the corrected policy still catches the real instability.
+
+The robust fix is to make the absolute cap scale explicit:
+
+1. `R/disc_w/09_fit_guards.R` now accepts `state_norm_length` and
+   `state_norm_abs_cap_scale`.
+2. The default scale is `per_time`, so the hard cap compares
+   `state_norm_sq / TT_sub` to the configured cap.
+3. The old total-norm behavior remains reproducible by setting
+   `DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE=total`.
+4. Both multivariate legacy entrypoints pass `TT_sub` into the guard and log
+   `state_norm_abs_cap_scale`.
+5. `R/unified/config.R` exposes and validates
+   `fit.exdqlm_multivar.gamma_sigma.stabilization.state_norm_abs_cap_scale`.
+6. `R/unified/stages/stage_fit.R` exports
+   `DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE` to the legacy fit worker.
+
+This is a root-cause fix rather than a loosening patch: it keeps the hard cap on
+the diagnostic scale used everywhere else in the workflow, separates legitimate
+long-history warmup energy from true state explosion, and preserves an explicit
+switch for old total-scale diagnostics.
+
+Validation for this incremental fix:
+
+| check | command | result |
+|---|---|---|
+| diff hygiene | `git diff --check` | pass |
+| R parse | `Rscript --vanilla -e 'parse(file="R/disc_w/09_fit_guards.R"); parse(file="DISC_Optimal_Synth_Ranges_W_transfer_forecast.r"); parse(file="DISC_Optimal_Synth_Ranges_W.r"); parse(file="R/unified/stages/stage_fit.R"); parse(file="R/unified/config.R")'` | pass |
+| focused R guard tests | `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test_disc_w_fit_guards.R")'` | pass, 62 assertions |
+| unified config tests | `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test_config_mode_resolution.R")'` | pass, 118 assertions |
+| source and stage-fit contracts | `python3 -m unittest tests.python.test_disc_sampling_diagnostics_source_contract tests.python.test_stage_fit_quantile_gamma_sigma_overrides -v` | pass, 10 tests |
+
+The interrupted relaunch attempt that exposed this cap-scale issue had orphaned
+workers in process groups `938748` and `945307`. They were stopped because they
+were two partial writers to the same row directory, not a valid production run.
+The directory should be archived as cap-scale evidence before the next clean
+row-level relaunch.

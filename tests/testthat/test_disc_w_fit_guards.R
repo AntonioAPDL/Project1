@@ -101,6 +101,61 @@ test_that("absolute state norm cap is a hard safety guard", {
   expect_false(out$state_guard_active)
 })
 
+test_that("absolute state norm cap can be scaled by observation length", {
+  healthy_extreme <- disc_w_iteration_guard_decision(
+    elbo = -2,
+    state_norm_sq = 33799896,
+    sigma_exp = 1,
+    gamma_exp = 0,
+    theta_update = TRUE,
+    gamsig_frozen_now = TRUE,
+    state_guard_enabled = TRUE,
+    iter = 1,
+    state_guard_start_iter = 1000,
+    prev_state_norm_sq = NA_real_,
+    state_norm_abs_cap = 1e6,
+    state_norm_max_ratio = 25,
+    state_norm_length = 12294,
+    state_norm_abs_cap_scale = "per_time"
+  )
+  explosive_median <- disc_w_iteration_guard_decision(
+    elbo = -175,
+    state_norm_sq = 1.38e14,
+    sigma_exp = 1,
+    gamma_exp = 0,
+    theta_update = TRUE,
+    gamsig_frozen_now = TRUE,
+    state_guard_enabled = TRUE,
+    iter = 12,
+    state_guard_start_iter = 1000,
+    prev_state_norm_sq = NA_real_,
+    state_norm_abs_cap = 1e6,
+    state_norm_max_ratio = 25,
+    state_norm_length = 12294,
+    state_norm_abs_cap_scale = "per_time"
+  )
+  total_scale <- disc_w_iteration_guard_decision(
+    elbo = -2,
+    state_norm_sq = 33799896,
+    sigma_exp = 1,
+    gamma_exp = 0,
+    theta_update = TRUE,
+    gamsig_frozen_now = TRUE,
+    state_guard_enabled = TRUE,
+    iter = 1,
+    state_guard_start_iter = 1000,
+    prev_state_norm_sq = NA_real_,
+    state_norm_abs_cap = 1e6,
+    state_norm_max_ratio = 25,
+    state_norm_length = 12294,
+    state_norm_abs_cap_scale = "total"
+  )
+
+  expect_null(healthy_extreme$reason)
+  expect_match(explosive_median$reason, "state_norm_sq_per_T=.*exceeds abs_cap")
+  expect_match(total_scale$reason, "state_norm_sq=.*exceeds abs_cap")
+})
+
 test_that("summary helpers reject partial non-finite payloads", {
   expect_true(is.na(disc_w_numeric_mean_all_finite(c(1, NA_real_))))
   expect_true(is.na(disc_w_numeric_mean_all_finite(c(1, Inf))))

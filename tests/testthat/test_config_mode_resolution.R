@@ -41,6 +41,7 @@ test_that("unified config defaults include new likelihood and ndlm transfer mode
   expect_equal(cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$rollback_on_guard, TRUE)
   expect_equal(cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$min_uts_psi, 1e-8)
   expect_equal(cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$nonnegative_tol, 1e-10)
+  expect_equal(cfg$fit$exdqlm_multivar$gamma_sigma$stabilization$state_norm_abs_cap_scale, "per_time")
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$enabled, TRUE)
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$mode, "fail")
   expect_equal(cfg$fit$exdqlm_multivar$pseudodata_guard$caps$e_inv_u_abs_cap, 5000)
@@ -199,6 +200,7 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   cfg$fit$exdqlm_multivar$gamma_sigma$coherence_guard$nonnegative_tol <- 1e-10
   cfg$fit$exdqlm_multivar$gamma_sigma$stabilization <- list(
     state_guard_start_iter = 1000L,
+    state_norm_abs_cap_scale = "per_time",
     state_guard_step_backoff_enabled = TRUE,
     state_guard_step_backoff_factor = 0.2,
     state_guard_min_step_scale = 0.05,
@@ -234,6 +236,7 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$coherence_guard$min_uts_psi <- 0
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$coherence_guard$nonnegative_tol <- -1
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_start_iter <- -1L
+  cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_norm_abs_cap_scale <- "bad"
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_step_backoff_enabled <- "yes"
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_step_backoff_factor <- 1
   cfg_bad$fit$exdqlm_multivar$gamma_sigma$stabilization$state_guard_min_step_scale <- 0
@@ -269,6 +272,7 @@ test_that("config validation accepts and rejects exdqlm multivar runtime guard c
   expect_true(any(grepl("coherence_guard\\.min_uts_psi", errs)))
   expect_true(any(grepl("coherence_guard\\.nonnegative_tol", errs)))
   expect_true(any(grepl("stabilization\\.state_guard_start_iter", errs)))
+  expect_true(any(grepl("stabilization\\.state_norm_abs_cap_scale", errs)))
   expect_true(any(grepl("stabilization\\.state_guard_step_backoff_enabled", errs)))
   expect_true(any(grepl("stabilization\\.state_guard_step_backoff_factor", errs)))
   expect_true(any(grepl("stabilization\\.state_guard_min_step_scale", errs)))

@@ -84,6 +84,7 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
             'DISC_PSEUDODATA_E_U_ABS_CAP',
             'DISC_PSEUDODATA_E_INV_U_ABS_CAP',
             'DISC_GAMSIG_STATE_GUARD_START_ITER',
+            'DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE',
             'DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_ENABLED',
             'DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_FACTOR',
             'DISC_GAMSIG_STATE_GUARD_MIN_STEP_SCALE',
@@ -118,6 +119,8 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
             self.assertIn('disc_w_numeric_mean_all_finite(new.sig, positive_required = TRUE)', text, source.name)
             self.assertIn('disc_w_numeric_mean_all_finite(new.gam)', text, source.name)
             self.assertIn('disc_w_state_norm_sq_all_finite(new.theta.out$sm)', text, source.name)
+            self.assertIn('state_norm_length = TT_sub', text, source.name)
+            self.assertIn('state_norm_abs_cap_scale = DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE', text, source.name)
             self.assertIn('disc_w_scalar_finite_or_default(new.theta.out$elbo.part, default = 0)', text, source.name)
             self.assertIn('prev_ELBO_iter <- disc_w_scalar_finite_or_default(ELBO, default = NA_real_)', text, source.name)
             self.assertIn('rollback_elbo <- disc_w_scalar_finite_or_default(prev_ELBO_iter, default = 0)', text, source.name)

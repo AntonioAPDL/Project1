@@ -45,7 +45,9 @@ disc_w_iteration_guard_decision <- function(
   state_guard_start_iter,
   prev_state_norm_sq,
   state_norm_abs_cap,
-  state_norm_max_ratio
+  state_norm_max_ratio,
+  state_norm_length = NA_real_,
+  state_norm_abs_cap_scale = "per_time"
 ) {
   iter <- suppressWarnings(as.integer(iter)[1L])
   state_guard_start_iter <- suppressWarnings(as.integer(state_guard_start_iter)[1L])
@@ -94,11 +96,25 @@ disc_w_iteration_guard_decision <- function(
 
   state_norm_abs_cap <- suppressWarnings(as.numeric(state_norm_abs_cap)[1L])
   state_norm_max_ratio <- suppressWarnings(as.numeric(state_norm_max_ratio)[1L])
-  if (is.finite(state_norm_abs_cap) && state_norm_sq > state_norm_abs_cap) {
+  state_norm_length <- suppressWarnings(as.numeric(state_norm_length)[1L])
+  state_norm_abs_cap_scale <- tolower(trimws(as.character(state_norm_abs_cap_scale)[1L]))
+  if (!(state_norm_abs_cap_scale %in% c("per_time", "total"))) {
+    state_norm_abs_cap_scale <- "per_time"
+  }
+  state_norm_cap_value <- state_norm_sq
+  state_norm_cap_label <- "state_norm_sq"
+  if (identical(state_norm_abs_cap_scale, "per_time") &&
+      is.finite(state_norm_length) &&
+      state_norm_length > 0) {
+    state_norm_cap_value <- state_norm_sq / state_norm_length
+    state_norm_cap_label <- "state_norm_sq_per_T"
+  }
+  if (is.finite(state_norm_abs_cap) && state_norm_cap_value > state_norm_abs_cap) {
     return(list(
       reason = sprintf(
-        "state_norm_sq=%s exceeds abs_cap=%s",
-        disc_w_fit_guard_fmt_num(state_norm_sq),
+        "%s=%s exceeds abs_cap=%s",
+        state_norm_cap_label,
+        disc_w_fit_guard_fmt_num(state_norm_cap_value),
         disc_w_fit_guard_fmt_num(state_norm_abs_cap)
       ),
       state_guard_active = active_for_state_growth,

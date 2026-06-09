@@ -339,6 +339,11 @@ DISC_GAMSIG_STATE_NORM_MAX_RATIO_OPT <- disc_env_opt_pos_num(
 DISC_GAMSIG_STATE_NORM_ABS_CAP_OPT <- disc_env_opt_pos_num(
   "DISC_GAMSIG_STATE_NORM_ABS_CAP"
 )
+DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE <- disc_env_choice(
+  "DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE",
+  choices = c("per_time", "total"),
+  default = "per_time"
+)
 DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS_OPT <- disc_env_opt_nonneg_int(
   "DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS"
 )
@@ -3154,7 +3159,7 @@ gamsig_median_state_guard_sigma_only_guard_count <- 0L
 gamsig_median_state_guard_sigma_only_iter <- NA_integer_
 if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
   cat(sprintf(
-    "[gamsig_policy] p0=%s likelihood_mode=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d state_control_scope=%s state_guard=%s state_guard_configured=%s state_guard_effective_policy=%s state_guard_disabled_reason=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_guard_start_iter=%d state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g state_guard_step_backoff_enabled=%s state_guard_step_backoff_factor=%g state_guard_min_step_scale=%g state_hold_freeze_latents_enabled=%s state_guard_hold_step_scale_enabled=%s state_guard_min_refreeze_iters=%d state_guard_min_hold_iters=%d terminal_sampling_guard_mode=%s median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_state_guard_sigma_only_enabled=%s median_state_guard_sigma_only_after=%d median_state_guard_sigma_only_anchor=%s median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g\n",
+    "[gamsig_policy] p0=%s likelihood_mode=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d state_control_scope=%s state_guard=%s state_guard_configured=%s state_guard_effective_policy=%s state_guard_disabled_reason=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_norm_abs_cap_scale=%s state_guard_start_iter=%d state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g state_guard_step_backoff_enabled=%s state_guard_step_backoff_factor=%g state_guard_min_step_scale=%g state_hold_freeze_latents_enabled=%s state_guard_hold_step_scale_enabled=%s state_guard_min_refreeze_iters=%d state_guard_min_hold_iters=%d terminal_sampling_guard_mode=%s median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_state_guard_sigma_only_enabled=%s median_state_guard_sigma_only_after=%d median_state_guard_sigma_only_anchor=%s median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g\n",
     as.character(p0),
     ifelse(isTRUE(DISC_W_AL_MODE), "al", "exal"),
     DISC_GAMSIG_FREEZE_TARGET,
@@ -3182,6 +3187,7 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     ifelse(nzchar(state_guard_disabled_reason), state_guard_disabled_reason, "-"),
     state_norm_max_ratio,
     state_norm_abs_cap,
+    DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE,
     as.integer(DISC_GAMSIG_STATE_GUARD_START_ITER),
     as.integer(state_guard_refreeze_iters),
     as.integer(state_hold_after_guard_iters),
@@ -4067,7 +4073,9 @@ while (isTRUE(FLAG) && iter < max_iter) {
     state_guard_start_iter = DISC_GAMSIG_STATE_GUARD_START_ITER,
     prev_state_norm_sq = prev_state_norm_sq,
     state_norm_abs_cap = state_norm_abs_cap,
-    state_norm_max_ratio = state_norm_max_ratio
+    state_norm_max_ratio = state_norm_max_ratio,
+    state_norm_length = TT_sub,
+    state_norm_abs_cap_scale = DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE
   )
   state_guard_active <- isTRUE(guard_decision$state_guard_active)
   state_growth_ratio <- suppressWarnings(as.numeric(guard_decision$state_growth_ratio)[1L])
