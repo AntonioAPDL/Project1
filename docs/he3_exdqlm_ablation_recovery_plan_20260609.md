@@ -692,3 +692,48 @@ The robust controller fix is:
 
 This keeps intentional operator stops working while making detached queue
 launches reliable. It also preserves the expected audit trail in `queue.log`.
+
+## Live Resume Checkpoint After Controller Fix
+
+Timestamp: 2026-06-09 15:36 UTC.
+
+After commit `bdf6df9`, the HE3 queue was resumed from the existing matrix
+without relaunching completed rows. The live controller is:
+
+`python3 scripts/run_he3_exdqlm_ablation_queue.py --matrix-dir .../he3_exdqlm_ablation_authoritative_winners_v1 --artifact-root .../multimodel_v8_he3_exdqlm_ablation_authoritative_winners_20260608 --ordinary-max-concurrent 4 --heavy-cutoff-max-concurrent 1 --pause-free-gb 180 --launch-free-gb 220 --heavy-free-gb 240 --poll-seconds 60`
+
+Process evidence at this checkpoint:
+
+| item | evidence |
+|---|---|
+| controller | PID `970722`, session leader, alive for more than two hours |
+| queue log | heartbeats append normally after the detached resume |
+| disk gate | `/data` has about `301G` free, safely above launch and pause thresholds |
+| matrix counts | `25 pass`, `4 pending`, `1 not_started`, `0 fail` |
+
+Remaining rows are all in the final `20220511` cutoff group:
+
+| cutoff | variant | phase | status | interpretation |
+|---|---|---|---|---|
+| 20220511 | `noH1` | validate | pending | fit/post completed; row-level validation still unwinding |
+| 20220511 | `noH2` | fit | pending | all seven quantile fits reached iter 100 and all seven `.RData` files are finalized |
+| 20220511 | `noH3` | not_started | not_started | waiting for the controller to free an active slot |
+| 20220511 | `noTF` | post | pending | all seven `.RData` files saved; post diagnostics running |
+| 20220511 | `noTrend` | post | pending | all seven `.RData` files saved; post diagnostics running |
+
+The only suspicious symptom in the live check was `20220511/noH2`: for a period
+the quantile logs had already reached `Sampling finished`, while the status
+frame still showed zero expected `.RData` markers. A file-system pass resolved
+that ambiguity. Six quantiles had already atomically moved final `.RData` files,
+and q65 was still present as:
+
+`DISC_variables_65_exAL_synth_DISC.RData.tmp.1023299`
+
+with size about `6.2G`. A follow-up check found seven final `.RData` files and
+zero temp files. Therefore this was a long atomic save/rename interval, not a
+latent-variable, Kalman, gamma/sigma, or pseudo-data failure.
+
+Operational conclusion: no additional model-code patch is justified by the live
+resume evidence. The robust move is to let the controller finish the remaining
+post/validate work, then let it launch `20220511/noH3`. If a later row becomes
+`fail`, diagnose that row from logs and sidecars before relaunching anything.
