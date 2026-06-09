@@ -159,6 +159,14 @@ Generated replay config:
 
 `config/unified_runs_selected_output_support_20260609/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_20260609.yaml`
 
+Corrected clean retry replay config:
+
+`config/unified_runs_selected_output_support_20260609/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r2_20260609.yaml`
+
+Final clean launch replay config after the r2 dry-run envelope was consumed:
+
+`config/unified_runs_selected_output_support_20260609/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r3_20260609.yaml`
+
 Generated runtime manifest:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260609/control/selected_output_support_replay_manifest.json`
@@ -166,6 +174,18 @@ Generated runtime manifest:
 This replay uses the same selected-output authority and input bundle but writes to an isolated runtime root. It enables
 the compact support export and keeps production cleanup behavior, so large `.RData` files are removed only after the post
 artifact contract passes.
+
+Execution correction from the 2026-06-09 implementation pass:
+
+- the first `authoritative_support_20260609` attempt only created the run envelope and did not enter the unified stage
+  loop; its manifest records an older dirty code state and must not be used as article evidence;
+- the `authoritative_support_r2_20260609` retry was used for dry-run validation and is not the final launch target;
+- the clean `authoritative_support_r3_20260609` retry is the current support-replay target;
+- launch/status entrypoints:
+  - `scripts/launch_he2_selected_output_support_replay.py`;
+  - `scripts/check_he2_selected_output_support_replay.py`;
+- revised-article binding:
+  `Evironmetrics---REVISED-DOC-2/config/runtime_bindings.json:exal_m_t1.selected_support_output_root`.
 
 ## Why This Cannot Be Fixed By Renaming Alone
 

@@ -34,14 +34,22 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
             bindings['exal_m_t1']['authoritative_keep_manifest'],
             '/data/muscat_data/jaguir26/project1_ucsc_phd/docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml',
         )
+        self.assertEqual(
+            bindings['exal_m_t1']['selected_support_output_root'],
+            '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260609/runs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r3_20260609/post/outputs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r3_20260609',
+        )
         self.assertIn('--univar-runtime-root', text)
         self.assertIn('--multivar-support-run-root', text)
+        self.assertIn('--authoritative-selected-support-output-root', text)
+        self.assertIn('refresh_authoritative_selected_model_support_figures.py', text)
+        self.assertIn('validate_authoritative_output_lineage.py', text)
         self.assertEqual(
             bindings['exal_m_t1']['historical_support_replay_run_root'],
             '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_historical_support_replay_20260517/runs/multimodel_20220511_v8_he2pubgdpc1r1_exdqlm_multivar_keep_historical_support_replay',
         )
         self.assertIn('--strict-current-model-support', text)
         self.assertIn('historical_support_from_current_models', text)
+        self.assertIn('--skip-authoritative-selected-support', text)
 
     def test_manuscript_asset_manifest_points_selected_model_note_to_corrected_relaunch(self) -> None:
         payload = json.loads((ARTICLE_ROOT / 'MANUSCRIPT_ASSET_MANIFEST.json').read_text(encoding='utf-8'))
