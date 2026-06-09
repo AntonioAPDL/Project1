@@ -101,9 +101,16 @@ q_from_path <- function(path) {
 }
 
 spec_from_run_id <- function(run_id) {
-  m <- regexec("_he2grid_([^_]+_[^_]+)_", run_id)
-  got <- regmatches(run_id, m)[[1L]]
-  if (length(got) >= 2L) got[[2L]] else NA_character_
+  patterns <- c(
+    "_he2grid_([^_]+_[^_]+)_",
+    "_v8_([^_]+_[^_]+)_exdqlm"
+  )
+  for (pattern in patterns) {
+    m <- regexec(pattern, run_id)
+    got <- regmatches(run_id, m)[[1L]]
+    if (length(got) >= 2L) return(got[[2L]])
+  }
+  NA_character_
 }
 
 cutoff_from_run_id <- function(run_id) {
@@ -556,6 +563,21 @@ write_csv <- function(x, path) {
   }
 }
 
+fill_missing_group_values <- function(df, group_cols, missing_label = "__missing__") {
+  if (is.null(df) || !is.data.frame(df) || !nrow(df) || !length(group_cols)) return(df)
+  for (nm in intersect(group_cols, names(df))) {
+    vals <- df[[nm]]
+    missing <- is.na(vals)
+    if (!any(missing)) next
+    if (is.character(vals) || is.factor(vals)) {
+      vals <- as.character(vals)
+      vals[missing] <- missing_label
+      df[[nm]] <- vals
+    }
+  }
+  df
+}
+
 plot_trace <- function(trace, quantity, out_file, ylab = quantity) {
   dat <- trace[trace$quantity == quantity & is.finite(trace$value), , drop = FALSE]
   if (!nrow(dat)) return(invisible(FALSE))
@@ -653,11 +675,13 @@ plot_window_quantity <- function(window_df, run_id, quantity, out_file) {
 plot_forecast_window_quantity <- function(window_df, run_id, quantity, out_file) {
   dat <- window_df[window_df$run_id == run_id & window_df$quantity == quantity & is.finite(window_df$value), , drop = FALSE]
   if (!nrow(dat)) return(invisible(FALSE))
+  dat <- fill_missing_group_values(dat, c("run_id", "q", "source", "day_rel"))
   agg <- stats::aggregate(
     value ~ run_id + q + source + day_rel,
     data = dat,
     FUN = function(x) stats::median(x, na.rm = TRUE)
   )
+  if (!nrow(agg)) return(invisible(FALSE))
   png(out_file, width = 3200, height = 1800, res = 260)
   on.exit(dev.off(), add = TRUE)
   qvals <- sort(unique(agg$q))
@@ -1192,7 +1216,9 @@ aggregate_quantity_long <- function(df, phase_value = NULL) {
   id_cols <- intersect(c("run_id", "cutoff", "cutoff_date", "spec", "q", "block", "source", "day_rel"), names(df))
   work <- df[is.finite(df$value), c(id_cols, "quantity", "value"), drop = FALSE]
   if (!nrow(work)) return(data.frame())
+  work <- fill_missing_group_values(work, id_cols)
   agg <- stats::aggregate(value ~ ., data = work, FUN = function(x) stats::median(x, na.rm = TRUE))
+  if (!nrow(agg)) return(data.frame())
   wide <- stats::reshape(agg, idvar = id_cols, timevar = "quantity", direction = "wide")
   names(wide) <- sub("^value\\.", "", names(wide))
   if ("block" %in% names(wide)) {
@@ -1702,4 +1728,6 @@ main <- function() {
   cat(sprintf("out_dir=%s\n", out_dir))
 }
 
-main()
+if (!identical(toupper(Sys.getenv("EXDQLM_VB_LATENT_AUDIT_NO_MAIN", "FALSE")), "TRUE")) {
+  main()
+}

@@ -737,3 +737,45 @@ Operational conclusion: no additional model-code patch is justified by the live
 resume evidence. The robust move is to let the controller finish the remaining
 post/validate work, then let it launch `20220511/noH3`. If a later row becomes
 `fail`, diagnose that row from logs and sidecars before relaunching anything.
+
+## VB Latent Audit Robustness Fix
+
+Timestamp: 2026-06-09 15:50 UTC.
+
+The live `20220511/noH1` post stage exposed a reporting-only defect in the
+optional VB latent/component audit:
+
+`Error in aggregate.data.frame(lhs, mf[-1L], FUN = FUN, ...) : no rows to aggregate`
+
+Evidence:
+
+| file | evidence |
+|---|---|
+| `post/logs/post_runner.log` | post stage completed and wrote post artifact manifests, but emitted `multivar VB latent audit failed with status 1` |
+| `vb_latent_component_audit/audit_rscript.log` | audit loaded q05 through q95 and failed after q95 |
+| `vb_latent_component_audit/audit_rscript.err` | aggregation error: `no rows to aggregate` |
+| `multivar_vb_latent_audit_status.csv` | `ok=FALSE`, `exit_status=1` |
+
+This is not a fit instability and not a CRPS/post-output failure. The root cause
+is in `scripts/audit_exdqlm_multivar_keep_vb_latents.R`: `spec_from_run_id(...)`
+only parsed older `_he2grid_<case>_<epsilon>_` run IDs. HE3 ablation run IDs
+such as `multimodel_20220511_v8_c02_eps060_exdqlm_multivar_keep_he3_noH1`
+therefore received `spec=NA`. Downstream `aggregate(value ~ .)` calls used
+`spec` as a grouping column, and base R dropped all rows with missing grouping
+values before aggregation.
+
+The robust fix is:
+
+1. parse HE3 run IDs with `_v8_<case>_<epsilon>_exdqlm` as well as legacy
+   `_he2grid_<case>_<epsilon>_`;
+2. normalize missing character/factor grouping fields to an explicit
+   `__missing__` label before diagnostic aggregation;
+3. return an empty diagnostic table instead of throwing if an aggregation is
+   genuinely empty after filtering;
+4. allow the audit helper script to be sourced in tests without executing
+   `main()`;
+5. add a focused test in `tests/testthat/test_vb_latent_audit_helpers.R`.
+
+This prevents intentionally absent ablation components or unrecognized spec
+labels from crashing a diagnostic report. It does not alter the model fit, post
+CRPS, synthesis figures, or publication tables.
