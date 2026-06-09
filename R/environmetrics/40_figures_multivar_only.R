@@ -1652,6 +1652,301 @@ plot_transfer_discrepancy_identity_q50 <- function(state_df, out_file) {
   invisible(TRUE)
 }
 
+authoritative_support_env_flag <- function(name, default = FALSE) {
+  raw <- tolower(trimws(Sys.getenv(name, if (isTRUE(default)) "TRUE" else "FALSE")))
+  raw %in% c("1", "true", "yes", "on")
+}
+
+authoritative_support_quantile_specs <- function() {
+  labels <- c("05", "20", "35", "50", "65", "80", "95")
+  data.frame(
+    suffix = as.character(as.integer(labels)),
+    label = paste0("q", labels),
+    probability = as.numeric(as.integer(labels)) / 100,
+    stringsAsFactors = FALSE
+  )
+}
+
+authoritative_support_theta_obj <- function(suffix) {
+  get0(sprintf("new.theta.out_%s_exAL_synth_DISC", suffix), ifnotfound = NULL, inherits = TRUE)
+}
+
+authoritative_support_samp_theta <- function(suffix) {
+  obj <- get0(sprintf("samp.theta_%s_exAL_synth_DISC", suffix), ifnotfound = NULL, inherits = TRUE)
+  if (is.list(obj) && is.array(obj$samp_theta)) return(obj$samp_theta)
+  if (is.array(obj)) return(obj)
+  NULL
+}
+
+authoritative_support_dates <- function(n_time) {
+  dates <- safe_get("dates_ts_usgs", NULL)
+  if (is.null(dates)) dates <- safe_get("timestamps", NULL)
+  dates <- suppressWarnings(as.Date(dates))
+  if (length(dates) < n_time || all(is.na(dates[seq_len(n_time)]))) {
+    return(as.Date(rep(NA_character_, n_time)))
+  }
+  dates[seq_len(n_time)]
+}
+
+authoritative_support_Ft <- function(t, p_use) {
+  ff <- safe_get("FF", NULL)
+  if (is.array(ff) && length(dim(ff)) == 3L && dim(ff)[3] >= t) {
+    return(as.numeric(ff[seq_len(min(p_use, dim(ff)[1])), 1L, t]))
+  }
+  if (is.matrix(ff) && ncol(ff) >= t) {
+    return(as.numeric(ff[seq_len(min(p_use, nrow(ff))), t]))
+  }
+  out <- rep(0, p_use)
+  if (p_use > 0L) out[[1L]] <- 1
+  out
+}
+
+authoritative_support_project_theta <- function(theta_obj, probs = c(0.025, 0.5, 0.975)) {
+  if (!is.list(theta_obj) || !is.matrix(theta_obj$sm) || !is.array(theta_obj$sC) || length(dim(theta_obj$sC)) != 3L) {
+    return(NULL)
+  }
+  n_time <- min(ncol(theta_obj$sm), dim(theta_obj$sC)[3])
+  if (!is.finite(n_time) || n_time < 1L) return(NULL)
+  rows <- vector("list", n_time)
+  for (t in seq_len(n_time)) {
+    p_use <- min(nrow(theta_obj$sm), dim(theta_obj$sC)[1], dim(theta_obj$sC)[2])
+    Ft <- authoritative_support_Ft(t, p_use)
+    p_use <- min(length(Ft), p_use)
+    if (p_use < 1L) {
+      rows[[t]] <- c(mu_usgs = NA_real_, sd_usgs = NA_real_, lower_025 = NA_real_, median_500 = NA_real_, upper_975 = NA_real_)
+      next
+    }
+    Ft <- matrix(Ft[seq_len(p_use)], ncol = 1L)
+    Mu <- as.numeric(theta_obj$sm[seq_len(p_use), t])
+    Sigma <- as.matrix(theta_obj$sC[seq_len(p_use), seq_len(p_use), t, drop = FALSE])
+    mu <- as.numeric(crossprod(Ft, Mu))
+    var <- as.numeric(t(Ft) %*% Sigma %*% Ft)
+    sd <- sqrt(max(var, 0, na.rm = TRUE))
+    qs <- as.numeric(stats::qnorm(probs, mean = mu, sd = sd))
+    rows[[t]] <- c(mu_usgs = mu, sd_usgs = sd, lower_025 = qs[[1L]], median_500 = qs[[2L]], upper_975 = qs[[3L]])
+  }
+  out <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE)
+  out$time_index <- seq_len(nrow(out))
+  out
+}
+
+authoritative_support_observed_usgs <- function(n_time) {
+  y <- safe_get("Y", NULL)
+  if (is.matrix(y) && nrow(y) >= 1L && ncol(y) >= n_time) {
+    return(as.numeric(y[1L, seq_len(n_time)]))
+  }
+  rep(NA_real_, n_time)
+}
+
+build_authoritative_usgs_quantile_dynamics_summary <- function() {
+  specs <- authoritative_support_quantile_specs()
+  rows <- list()
+  for (i in seq_len(nrow(specs))) {
+    theta_obj <- authoritative_support_theta_obj(specs$suffix[[i]])
+    projected <- authoritative_support_project_theta(theta_obj)
+    if (is.null(projected)) next
+    n_time <- nrow(projected)
+    projected$date <- authoritative_support_dates(n_time)
+    projected$observed_usgs <- authoritative_support_observed_usgs(n_time)
+    projected$quantile <- specs$label[[i]]
+    projected$probability <- specs$probability[[i]]
+    projected$source_object <- sprintf("new.theta.out_%s_exAL_synth_DISC", specs$suffix[[i]])
+    rows[[length(rows) + 1L]] <- projected[, c(
+      "date", "time_index", "quantile", "probability", "mu_usgs", "sd_usgs",
+      "lower_025", "median_500", "upper_975", "observed_usgs", "source_object"
+    ), drop = FALSE]
+  }
+  if (length(rows) == 0L) {
+    return(data.frame())
+  }
+  do.call(rbind, rows)
+}
+
+authoritative_support_theta_array_layout <- function(arr, n_time_hint) {
+  d <- dim(arr)
+  if (length(d) != 3L) return(NULL)
+  if (d[2L] == n_time_hint) return(list(time_dim = 2L, sample_dim = 3L))
+  if (d[3L] == n_time_hint) return(list(time_dim = 3L, sample_dim = 2L))
+  if (d[2L] >= d[3L]) list(time_dim = 2L, sample_dim = 3L) else list(time_dim = 3L, sample_dim = 2L)
+}
+
+authoritative_support_component_summary_for_quantile <- function(suffix, label, probability, probs = c(0.025, 0.5, 0.975)) {
+  arr <- authoritative_support_samp_theta(suffix)
+  if (!is.array(arr) || length(dim(arr)) != 3L) return(data.frame())
+  n_time_hint <- suppressWarnings(as.integer(safe_get("TT", NA_integer_)))
+  if (!is.finite(n_time_hint) || n_time_hint < 1L) {
+    n_time_hint <- max(dim(arr)[2L], dim(arr)[3L])
+  }
+  layout <- authoritative_support_theta_array_layout(arr, n_time_hint)
+  if (is.null(layout)) return(data.frame())
+  d <- dim(arr)
+  n_time <- d[layout$time_dim]
+  n_component <- min(suppressWarnings(as.integer(safe_get("p", 7L))), d[1L])
+  if (!is.finite(n_component) || n_component < 1L) n_component <- min(7L, d[1L])
+  dates <- authoritative_support_dates(n_time)
+  rows <- list()
+  for (component in seq_len(n_component)) {
+    mat <- if (layout$time_dim == 2L) {
+      arr[component, seq_len(n_time), , drop = FALSE]
+    } else {
+      arr[component, , seq_len(n_time), drop = FALSE]
+    }
+    mat <- matrix(mat, nrow = n_time)
+    qs <- safe_row_quantiles(mat, probs = probs)
+    rows[[length(rows) + 1L]] <- data.frame(
+      date = dates,
+      time_index = seq_len(n_time),
+      quantile = label,
+      probability = probability,
+      component = component,
+      component_contract = "raw_state_component",
+      lower_025 = as.numeric(qs[1L, ]),
+      median_500 = as.numeric(qs[2L, ]),
+      upper_975 = as.numeric(qs[3L, ]),
+      source_object = sprintf("samp.theta_%s_exAL_synth_DISC", suffix),
+      stringsAsFactors = FALSE
+    )
+  }
+  out <- do.call(rbind, rows)
+  if (n_component >= 6L) {
+    trend_mat <- if (layout$time_dim == 2L) {
+      arr[1L, seq_len(n_time), , drop = FALSE]
+    } else {
+      arr[1L, , seq_len(n_time), drop = FALSE]
+    }
+    trend_mat <- matrix(trend_mat, nrow = n_time)
+    trend_shift <- rowMeans(trend_mat, na.rm = TRUE)
+    component6 <- out[out$component == 6L, , drop = FALSE]
+    component6$component_contract <- "component_6_shifted_by_posterior_mean_trend_component_1"
+    component6$lower_025 <- component6$lower_025 + trend_shift
+    component6$median_500 <- component6$median_500 + trend_shift
+    component6$upper_975 <- component6$upper_975 + trend_shift
+    out <- rbind(out, component6)
+  }
+  out
+}
+
+build_authoritative_component_summary <- function() {
+  specs <- authoritative_support_quantile_specs()
+  specs <- specs[specs$label %in% c("q05", "q50", "q95"), , drop = FALSE]
+  rows <- list()
+  for (i in seq_len(nrow(specs))) {
+    rows[[length(rows) + 1L]] <- authoritative_support_component_summary_for_quantile(
+      suffix = specs$suffix[[i]],
+      label = specs$label[[i]],
+      probability = specs$probability[[i]]
+    )
+  }
+  rows <- Filter(function(x) is.data.frame(x) && nrow(x) > 0L, rows)
+  if (length(rows) == 0L) return(data.frame())
+  do.call(rbind, rows)
+}
+
+write_authoritative_selected_support <- function() {
+  enabled <- authoritative_support_env_flag("UNIFIED_POST_AUTHORITATIVE_SELECTED_SUPPORT", default = FALSE)
+  fail_fast <- authoritative_support_env_flag("UNIFIED_POST_AUTHORITATIVE_SELECTED_SUPPORT_FAIL_FAST", default = TRUE)
+  if (!isTRUE(enabled)) return(invisible(FALSE))
+
+  status <- data.frame(
+    artifact = character(0),
+    status = character(0),
+    rows = integer(0),
+    path = character(0),
+    detail = character(0),
+    stringsAsFactors = FALSE
+  )
+  add_status <- function(artifact, ok, rows, path, detail = "") {
+    status <<- rbind(status, data.frame(
+      artifact = artifact,
+      status = if (isTRUE(ok)) "pass" else "fail",
+      rows = as.integer(rows),
+      path = as.character(path),
+      detail = as.character(detail),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  dyn <- build_authoritative_usgs_quantile_dynamics_summary()
+  comp <- build_authoritative_component_summary()
+
+  dyn_csv <- file.path(OUT_DIR, "authoritative_usgs_quantile_dynamics_summary.csv")
+  dyn_rds <- file.path(OUT_DIR, "authoritative_usgs_quantile_dynamics_summary.rds")
+  comp_csv <- file.path(OUT_DIR, "authoritative_component_summary.csv")
+  comp_rds <- file.path(OUT_DIR, "authoritative_component_summary.rds")
+  lineage_csv <- file.path(OUT_DIR, "authoritative_selected_support_lineage.csv")
+  manifest_json <- file.path(OUT_DIR, "authoritative_selected_support_manifest.json")
+
+  if (is.data.frame(dyn) && nrow(dyn) > 0L) {
+    write.csv(dyn, dyn_csv, row.names = FALSE)
+    saveRDS(dyn, dyn_rds)
+    add_status("authoritative_usgs_quantile_dynamics_summary", TRUE, nrow(dyn), dyn_csv)
+  } else {
+    add_status("authoritative_usgs_quantile_dynamics_summary", FALSE, 0L, dyn_csv, "no dynamic rows were generated")
+  }
+
+  if (is.data.frame(comp) && nrow(comp) > 0L) {
+    write.csv(comp, comp_csv, row.names = FALSE)
+    saveRDS(comp, comp_rds)
+    add_status("authoritative_component_summary", TRUE, nrow(comp), comp_csv)
+  } else {
+    add_status("authoritative_component_summary", FALSE, 0L, comp_csv, "no component rows were generated")
+  }
+
+  lineage <- data.frame(
+    run_id = as.character(safe_get("RUN_ID", Sys.getenv("RUN_ID", "")))[1L],
+    run_root = as.character(safe_get("RUN_ROOT", Sys.getenv("UNIFIED_RUN_ROOT", "")))[1L],
+    cutoff_date = Sys.getenv("UNIFIED_CUTOFF_DATE", ""),
+    forecast_start_date = Sys.getenv("UNIFIED_FORECAST_START_DATE", ""),
+    scale_contract = multivar_component_analysis_scale(),
+    active_quantiles = Sys.getenv("UNIFIED_FIT_QUANTILE_LABELS", ""),
+    generated_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+    stringsAsFactors = FALSE
+  )
+  write.csv(lineage, lineage_csv, row.names = FALSE)
+  add_status("authoritative_selected_support_lineage", TRUE, nrow(lineage), lineage_csv)
+
+  manifest <- list(
+    artifact_family = "authoritative_selected_model_support",
+    run_id = lineage$run_id[[1L]],
+    run_root = lineage$run_root[[1L]],
+    cutoff_date = lineage$cutoff_date[[1L]],
+    forecast_start_date = lineage$forecast_start_date[[1L]],
+    scale_contract = lineage$scale_contract[[1L]],
+    active_quantiles = lineage$active_quantiles[[1L]],
+    representative_quantiles = c("q05", "q50", "q95"),
+    dynamics_rows = if (is.data.frame(dyn)) nrow(dyn) else 0L,
+    component_rows = if (is.data.frame(comp)) nrow(comp) else 0L,
+    files = list(
+      dynamics_csv = basename(dyn_csv),
+      dynamics_rds = basename(dyn_rds),
+      component_csv = basename(comp_csv),
+      component_rds = basename(comp_rds),
+      lineage_csv = basename(lineage_csv)
+    ),
+    generated_at_utc = lineage$generated_at_utc[[1L]]
+  )
+  if (requireNamespace("jsonlite", quietly = TRUE)) {
+    jsonlite::write_json(manifest, path = manifest_json, auto_unbox = TRUE, pretty = TRUE)
+  } else {
+    writeLines("{\"artifact_family\":\"authoritative_selected_model_support\"}", manifest_json)
+  }
+  add_status("authoritative_selected_support_manifest", TRUE, 1L, manifest_json)
+
+  status_path <- file.path(OUT_DIR, "authoritative_selected_support_status.csv")
+  write.csv(status, status_path, row.names = FALSE)
+  failed <- status$status != "pass"
+  if (any(failed) && isTRUE(fail_fast)) {
+    stop(
+      sprintf(
+        "authoritative selected-model support export failed: %s",
+        paste(status$artifact[failed], collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+  invisible(!any(failed))
+}
+
 plot_trace_lines <- function(values, title_txt, ylab_txt, file_name, line_cols = NULL) {
   mat <- as_trace_matrix(values)
   if (ncol(mat) == 0L) return(invisible(FALSE))
@@ -1745,6 +2040,10 @@ run_multivar_vb_latent_audit_report <- function() {
   }
   invisible(ok)
 }
+
+profile_section("figures_multivar_only.authoritative_selected_support", {
+  write_authoritative_selected_support()
+})
 
 profile_section("figures_multivar_only.trace_plots", {
   plot_trace_lines(

@@ -140,6 +140,8 @@ unified_post_contract_check <- function(
   post_smoke_fast = FALSE,
   multivar_component_diagnostics = FALSE,
   multivar_component_fail_fast = TRUE,
+  authoritative_selected_model_support = FALSE,
+  authoritative_selected_model_support_fail_fast = TRUE,
   multivar_component_transfer_mode = NA_character_,
   model_run_exdqlm_multivar = TRUE,
   model_run_exdqlm_univar = TRUE,
@@ -193,6 +195,28 @@ unified_post_contract_check <- function(
   if (!identical(requested_component_transfer_mode, "drop")) {
     component_required_csv <- c(component_required_csv, "multivar_transfer_coefficients_window_q50.csv")
     component_required_figures <- c(component_required_figures, "multivar_transfer_coefficients_window_q50.png")
+  }
+  authoritative_support_required <- c(
+    "authoritative_usgs_quantile_dynamics_summary.csv",
+    "authoritative_usgs_quantile_dynamics_summary.rds",
+    "authoritative_component_summary.csv",
+    "authoritative_component_summary.rds",
+    "authoritative_selected_support_lineage.csv",
+    "authoritative_selected_support_manifest.json"
+  )
+  check_authoritative_selected_support_contract <- function() {
+    missing_support <- authoritative_support_required[
+      !vapply(authoritative_support_required, has_output_file, logical(1))
+    ]
+    checks$authoritative_selected_model_support_present <<- length(missing_support) == 0L
+    if (!checks$authoritative_selected_model_support_present) {
+      missing_paths <<- c(missing_paths, file.path(outputs_dir, missing_support))
+      messages <<- c(messages, sprintf(
+        "missing authoritative selected-model support artifacts: %s",
+        paste(missing_support, collapse = ", ")
+      ))
+    }
+    invisible(checks$authoritative_selected_model_support_present)
   }
   check_multivar_component_contract <- function() {
     missing_component <- c(
@@ -553,6 +577,14 @@ unified_post_contract_check <- function(
       check_multivar_component_contract()
     }
   }
+  if (isTRUE(authoritative_selected_model_support)) {
+    if (!isTRUE(model_run_exdqlm_multivar)) {
+      checks$authoritative_selected_model_support_present <- FALSE
+      messages <- c(messages, "authoritative selected-model support was requested but exdqlm multivar is disabled.")
+    } else {
+      check_authoritative_selected_support_contract()
+    }
+  }
 
   status_checks <- checks
   if (isTRUE(multivar_component_diagnostics) && !isTRUE(multivar_component_fail_fast)) {
@@ -566,6 +598,19 @@ unified_post_contract_check <- function(
         )
       }
       status_checks[component_check_names] <- as.list(rep(TRUE, length(component_check_names)))
+    }
+  }
+  if (isTRUE(authoritative_selected_model_support) && !isTRUE(authoritative_selected_model_support_fail_fast)) {
+    support_check_names <- grep("^authoritative_selected_model_support_", names(status_checks), value = TRUE)
+    if (length(support_check_names) > 0L) {
+      support_values <- unlist(status_checks[support_check_names], use.names = TRUE)
+      if (any(!support_values)) {
+        messages <- c(
+          messages,
+          "authoritative selected-model support failed but authoritative_selected_model_support_fail_fast=false; not failing post contract."
+        )
+      }
+      status_checks[support_check_names] <- as.list(rep(TRUE, length(support_check_names)))
     }
   }
 

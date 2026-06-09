@@ -616,6 +616,10 @@ unified_config_defaults <- function() {
         pre_days = 30L,
         fail_fast = TRUE
       ),
+      authoritative_selected_model_support = list(
+        enabled = FALSE,
+        fail_fast = TRUE
+      ),
       crps_input_health = list(
         enabled = TRUE,
         fail_fast = FALSE,
@@ -1041,6 +1045,22 @@ unified_validate_config <- function(cfg) {
   )))
   if (!is.finite(post_multivar_component_pre_days) || post_multivar_component_pre_days < 0L) {
     add_err("post.multivar_component_diagnostics.pre_days must be an integer >= 0")
+  }
+  post_authoritative_support_enabled <- unified_get(
+    cfg,
+    c("post", "authoritative_selected_model_support", "enabled"),
+    default = FALSE
+  )
+  if (!isTRUE(post_authoritative_support_enabled) && !identical(post_authoritative_support_enabled, FALSE)) {
+    add_err("post.authoritative_selected_model_support.enabled must be boolean (true/false)")
+  }
+  post_authoritative_support_fail_fast <- unified_get(
+    cfg,
+    c("post", "authoritative_selected_model_support", "fail_fast"),
+    default = TRUE
+  )
+  if (!isTRUE(post_authoritative_support_fail_fast) && !identical(post_authoritative_support_fail_fast, FALSE)) {
+    add_err("post.authoritative_selected_model_support.fail_fast must be boolean (true/false)")
   }
   post_crps_health_enabled <- unified_get(cfg, c("post", "crps_input_health", "enabled"), default = TRUE)
   if (!isTRUE(post_crps_health_enabled) && !identical(post_crps_health_enabled, FALSE)) {

@@ -122,6 +122,51 @@ Focused test:
 
 Current result: 2 tests pass, including a deliberate run-id drift rejection.
 
+Implemented post-stage durable export switch:
+
+- config key: `post.authoritative_selected_model_support.enabled`;
+- environment flag: `UNIFIED_POST_AUTHORITATIVE_SELECTED_SUPPORT`;
+- exporter location: `R/environmetrics/40_figures_multivar_only.R`;
+- required post artifacts when enabled:
+  - `authoritative_usgs_quantile_dynamics_summary.csv`;
+  - `authoritative_usgs_quantile_dynamics_summary.rds`;
+  - `authoritative_component_summary.csv`;
+  - `authoritative_component_summary.rds`;
+  - `authoritative_selected_support_lineage.csv`;
+  - `authoritative_selected_support_manifest.json`.
+
+The post artifact contract now fails before cleanup if these files are requested but missing. The focused contract test is:
+
+`python3 -m unittest tests.python.test_authoritative_selected_support_contract -v`
+
+Implemented article-side import/render path:
+
+- `Evironmetrics---REVISED-DOC-2/scripts/refresh_authoritative_selected_model_support_figures.py`;
+- `Evironmetrics---REVISED-DOC-2/scripts/render_authoritative_selected_model_support_figures.R`.
+
+These scripts import compact workflow support artifacts into:
+
+`Evironmetrics---REVISED-DOC-2/artifacts/representative_selected_model_2022_12_25/authoritative_support/`
+
+and then update only `fig:dry_quantile`, `fig:rainy_quantile`, and `fig:80_components` to point at the representative
+selected-model bundle.
+
+Implemented isolated replay config builder:
+
+`scripts/build_he2_selected_output_support_replay_config.py`
+
+Generated replay config:
+
+`config/unified_runs_selected_output_support_20260609/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_20260609.yaml`
+
+Generated runtime manifest:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260609/control/selected_output_support_replay_manifest.json`
+
+This replay uses the same selected-output authority and input bundle but writes to an isolated runtime root. It enables
+the compact support export and keeps production cleanup behavior, so large `.RData` files are removed only after the post
+artifact contract passes.
+
 ## Why This Cannot Be Fixed By Renaming Alone
 
 The current authoritative `2022-12-25` post output contains the synthesis artifacts and median-only component diagnostics,
@@ -377,9 +422,10 @@ Current cross-repo gate status:
 ## Immediate Next Actions
 
 1. Keep the strict validator and current failing report as evidence of the bug.
-2. Implement the compact support export in the workflow post stage.
-3. Run a targeted `2022-12-25 c05_eps030` authoritative support replay, or recover the original retained fit-state objects.
-4. Promote one internally consistent selected-model bundle into the revised article repo.
+2. Run the isolated `2022-12-25 c05_eps030` authoritative support replay from the generated config.
+3. Import the replay support artifacts into the revised article repo with
+   `scripts/refresh_authoritative_selected_model_support_figures.py`.
+4. Promote manuscript figures and rebuild article asset review reports.
 5. Patch corrections prose.
 6. Run cross-repo validation and compile both documents.
 

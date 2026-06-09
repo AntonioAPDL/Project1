@@ -557,6 +557,16 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     c("post", "multivar_component_diagnostics", "fail_fast"),
     default = TRUE
   ))
+  authoritative_selected_support_enabled <- isTRUE(unified_get(
+    cfg,
+    c("post", "authoritative_selected_model_support", "enabled"),
+    default = FALSE
+  ))
+  authoritative_selected_support_fail_fast <- isTRUE(unified_get(
+    cfg,
+    c("post", "authoritative_selected_model_support", "fail_fast"),
+    default = TRUE
+  ))
   table_formats <- cfg$post$table_formats
   if (is.null(table_formats) || length(table_formats) == 0L) {
     table_formats <- "csv"
@@ -653,6 +663,11 @@ unified_stage_post <- function(cfg, run_root, repo_root, manifest) {
     UNIFIED_POST_MULTIVAR_COMPONENT_PRE_DAYS = as.character(multivar_component_pre_days),
     UNIFIED_POST_MULTIVAR_COMPONENT_QUANTILE = as.character(multivar_component_quantile),
     UNIFIED_POST_MULTIVAR_COMPONENT_FAIL_FAST = if (isTRUE(multivar_component_fail_fast)) "TRUE" else "FALSE",
+    UNIFIED_POST_AUTHORITATIVE_SELECTED_SUPPORT = if (
+      isTRUE(authoritative_selected_support_enabled) &&
+        isTRUE(cfg$models$run_exdqlm_multivar)
+    ) "TRUE" else "FALSE",
+    UNIFIED_POST_AUTHORITATIVE_SELECTED_SUPPORT_FAIL_FAST = if (isTRUE(authoritative_selected_support_fail_fast)) "TRUE" else "FALSE",
     UNIFIED_FIT_QUANTILE_LABELS = encode_env_list(q_labels),
     UNIFIED_DISC_W_RDATA_PATHS = encode_env_list(disc_w_paths_abs),
     UNIFIED_POST_OUTPUT_SUBDIR = "",
