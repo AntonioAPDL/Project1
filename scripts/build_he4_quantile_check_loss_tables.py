@@ -27,6 +27,17 @@ OUTPUT_DIR_DEFAULT = (
     / "final_featurecov_cf1_eps_analysis"
     / "he4_quantile_check_loss"
 )
+HE2_PUBLICATION_MANIFEST_DEFAULT = (
+    ROOT
+    / "Evironmetrics---REVISED-DOC-2"
+    / "artifacts"
+    / "he2_publication_freeze"
+    / "he2_bayesian_publication_manifest.csv"
+)
+
+SOURCE_MODE_CF1_SWEEP = "cf1-sweep"
+SOURCE_MODE_HE2_PUBLICATION_MANIFEST = "he2-publication-manifest"
+SOURCE_MODE_CHOICES = (SOURCE_MODE_CF1_SWEEP, SOURCE_MODE_HE2_PUBLICATION_MANIFEST)
 
 TAU_SPECS: tuple[tuple[str, str, float], ...] = (
     ("q0.05", "q05", 0.05),
@@ -79,6 +90,11 @@ HE4_TARGET_SPECS: dict[str, He4TargetSpec] = {
     ),
 }
 
+HE4_LABEL_TO_FAMILY = {
+    spec.manuscript_label: family
+    for family, spec in HE4_TARGET_SPECS.items()
+}
+
 MANUSCRIPT_MODEL_ORDER = [
     "exAL-M-T1",
     "AL-M-T1",
@@ -125,6 +141,73 @@ def _load_he4_targets(best_by_cutoff_csv: Path) -> pd.DataFrame:
     df["cutoff_display"] = df["cutoff"].map(cutoff_to_display)
     df["expected_mean_crps"] = pd.to_numeric(df["forecast_window_crps"])
     return df.sort_values(["cutoff", "manuscript_label"]).reset_index(drop=True)
+
+
+def load_he4_targets_from_publication_manifest(he2_publication_manifest: Path) -> pd.DataFrame:
+    df = pd.read_csv(he2_publication_manifest)
+    required = {
+        "cutoff",
+        "cutoff_display",
+        "manuscript_label",
+        "family",
+        "run_id",
+        "run_root",
+        "crps_exact",
+        "horizon_days",
+        "score_scale",
+    }
+    missing = required.difference(df.columns)
+    if missing:
+        raise ValueError(f"{he2_publication_manifest} is missing required columns: {sorted(missing)}")
+
+    targets = df[df["manuscript_label"].isin(HE4_LABEL_TO_FAMILY)].copy()
+    if targets.empty:
+        raise ValueError(f"No HE4 publication targets found in {he2_publication_manifest}")
+
+    expected_pairs = {
+        label: HE4_LABEL_TO_FAMILY[label]
+        for label in MANUSCRIPT_MODEL_ORDER
+        if label in HE4_LABEL_TO_FAMILY
+    }
+    observed_pairs = dict(zip(targets["manuscript_label"], targets["family"]))
+    for label, family in expected_pairs.items():
+        if label not in observed_pairs:
+            raise ValueError(f"Missing HE4 publication target for manuscript label {label}")
+        if observed_pairs[label] != family and not (
+            (targets["manuscript_label"] == label) & (targets["family"] == family)
+        ).any():
+            raise ValueError(
+                f"HE4 publication target {label} should map to family {family}, "
+                f"found {sorted(targets.loc[targets['manuscript_label'] == label, 'family'].unique())}"
+            )
+
+    targets["cutoff"] = targets["cutoff"].astype(str)
+    targets["model_variant"] = targets["family"].astype(str)
+    targets["spec"] = targets["model_variant"].map(HE4_TARGET_SPECS)
+    if targets["spec"].isna().any():
+        missing_families = sorted(targets.loc[targets["spec"].isna(), "model_variant"].unique())
+        raise ValueError(f"Missing HE4 target specs for publication families: {missing_families}")
+    targets["internal_model_id"] = targets["spec"].map(lambda spec: spec.internal_model_id)
+    targets["quantile_filename"] = targets["spec"].map(lambda spec: spec.quantile_filename)
+    targets["selection_mode"] = SOURCE_MODE_HE2_PUBLICATION_MANIFEST
+    targets["expected_mean_crps"] = pd.to_numeric(targets["crps_exact"], errors="raise")
+    targets["horizon_days"] = pd.to_numeric(targets["horizon_days"], errors="raise").astype(int)
+    targets["run_root"] = targets["run_root"].astype(str)
+    targets["run_id"] = targets["run_id"].astype(str)
+
+    duplicate_keys = targets.duplicated(["cutoff", "manuscript_label"], keep=False)
+    if duplicate_keys.any():
+        duplicates = targets.loc[duplicate_keys, ["cutoff", "manuscript_label", "run_id"]]
+        raise ValueError(f"Duplicate HE4 publication targets detected:\n{duplicates.to_string(index=False)}")
+
+    expected_n = len(set(targets["cutoff"])) * len(expected_pairs)
+    if len(targets) != expected_n:
+        raise ValueError(
+            f"Expected {expected_n} HE4 publication rows "
+            f"({len(set(targets['cutoff']))} cutoffs x {len(expected_pairs)} models), found {len(targets)}"
+        )
+
+    return targets.sort_values(["cutoff", "manuscript_label"]).reset_index(drop=True)
 
 
 def _candidate_source_provenance_paths(compare_reports_root: Path, cutoff: str) -> list[Path]:
@@ -387,20 +470,59 @@ def summarize_quantile_check_losses(
 def build_he4_outputs(
     *,
     best_by_cutoff_csv: Path,
+    he2_publication_manifest: Path | None = None,
     compare_reports_root: Path,
     runtime_root: Path,
     output_dir: Path,
     tolerance: float,
+    source_mode: str = SOURCE_MODE_CF1_SWEEP,
 ) -> dict[str, Path]:
     ensure_dir(output_dir)
-    targets = _load_he4_targets(best_by_cutoff_csv)
+    if source_mode == SOURCE_MODE_CF1_SWEEP:
+        targets = _load_he4_targets(best_by_cutoff_csv)
+        provenance_source = str(best_by_cutoff_csv)
+    elif source_mode == SOURCE_MODE_HE2_PUBLICATION_MANIFEST:
+        if he2_publication_manifest is None:
+            raise ValueError("--he2-publication-manifest is required for he2-publication-manifest mode")
+        targets = load_he4_targets_from_publication_manifest(he2_publication_manifest)
+        provenance_source = str(he2_publication_manifest)
+    else:
+        raise ValueError(f"Unsupported HE4 source mode: {source_mode}")
 
     selection_rows: list[dict[str, object]] = []
     per_day_rows: list[dict[str, object]] = []
     summary_rows: list[dict[str, object]] = []
 
     for row in targets.to_dict("records"):
-        if row["selection_mode"] == "tuned_current_cf1":
+        if row["selection_mode"] == SOURCE_MODE_HE2_PUBLICATION_MANIFEST:
+            expected_run_name = str(row["run_id"])
+            resolved_run_dir = Path(str(row["run_root"])).resolve()
+            if not resolved_run_dir.is_dir():
+                raise FileNotFoundError(f"HE2 manifest run_root does not exist: {resolved_run_dir}")
+            if resolved_run_dir.name != expected_run_name:
+                raise ValueError(
+                    f"HE2 manifest run_root/run_id mismatch: run_root={resolved_run_dir}, run_id={expected_run_name}"
+                )
+            resolved_mean_crps = read_model_mean_crps(
+                crps_summary_path_for_run(resolved_run_dir),
+                str(row["internal_model_id"]),
+            )
+            if abs(float(row["expected_mean_crps"]) - float(resolved_mean_crps)) > tolerance:
+                raise ValueError(
+                    f"HE2 manifest CRPS mismatch for {expected_run_name}: expected "
+                    f"{float(row['expected_mean_crps']):.6f}, observed {float(resolved_mean_crps):.6f}"
+                )
+            provenance_metadata = {
+                "provenance_path": provenance_source,
+                "provenance_source_run": expected_run_name,
+                "provenance_selected_source_run": expected_run_name,
+                "provenance_reuse_source_run_id": "",
+                "provenance_reused": False,
+                "provenance_source_type": SOURCE_MODE_HE2_PUBLICATION_MANIFEST,
+                "provenance_selected_epsilon": np.nan,
+                "provenance_selected_c_factor": np.nan,
+            }
+        elif row["selection_mode"] == "tuned_current_cf1":
             expected_run_name, provenance_metadata = resolve_tuned_selected_source_run(
                 compare_reports_root=compare_reports_root,
                 cutoff=str(row["cutoff"]),
@@ -433,13 +555,14 @@ def build_he4_outputs(
                 "provenance_selected_epsilon": np.nan,
                 "provenance_selected_c_factor": np.nan,
             }
-        resolved_run_dir, resolved_mean_crps = resolve_run_dir(
-            runtime_root=runtime_root,
-            run_name=expected_run_name,
-            internal_model_id=str(row["internal_model_id"]),
-            expected_mean_crps=float(row["expected_mean_crps"]),
-            tolerance=tolerance,
-        )
+        if row["selection_mode"] != SOURCE_MODE_HE2_PUBLICATION_MANIFEST:
+            resolved_run_dir, resolved_mean_crps = resolve_run_dir(
+                runtime_root=runtime_root,
+                run_name=expected_run_name,
+                internal_model_id=str(row["internal_model_id"]),
+                expected_mean_crps=float(row["expected_mean_crps"]),
+                tolerance=tolerance,
+            )
         quantile_csv = quantile_path_for_run(resolved_run_dir, str(row["quantile_filename"]))
         forecast_df = load_forecast_quantile_frame(
             quantile_csv=quantile_csv,
@@ -467,6 +590,7 @@ def build_he4_outputs(
                 "manuscript_label": row["manuscript_label"],
                 "model_variant": row["model_variant"],
                 "selection_mode": row["selection_mode"],
+                "source_mode": source_mode,
                 "best_epsilon_label": row.get("best_epsilon_label", ""),
                 "best_epsilon_value": row.get("best_epsilon_value", np.nan),
                 "best_c_factor": row.get("best_c_factor", np.nan),
@@ -502,6 +626,7 @@ def build_he4_outputs(
     wide_path = output_dir / "he4_quantile_check_loss_wide.csv"
     summary_md_path = output_dir / "he4_quantile_check_loss_summary.md"
     latex_path = output_dir / "he4_table_rows.tex"
+    latex_main_path = output_dir / "he4_main_table.tex"
 
     selection_df.to_csv(selection_path, index=False)
     per_day_df.to_csv(per_day_path, index=False)
@@ -509,6 +634,7 @@ def build_he4_outputs(
     wide_df.to_csv(wide_path, index=False)
     summary_md_path.write_text(render_he4_markdown(selection_df, wide_df), encoding="utf-8")
     latex_path.write_text(render_he4_latex_rows(wide_df), encoding="utf-8")
+    latex_main_path.write_text(render_he4_latex_main_table(wide_df), encoding="utf-8")
 
     return {
         "selection_audit": selection_path,
@@ -517,6 +643,7 @@ def build_he4_outputs(
         "wide": wide_path,
         "summary_md": summary_md_path,
         "latex_rows": latex_path,
+        "latex_main": latex_main_path,
     }
 
 
@@ -555,22 +682,71 @@ def render_he4_markdown(selection_df: pd.DataFrame, wide_df: pd.DataFrame) -> st
     return "\n".join(lines)
 
 
-def render_he4_latex_rows(wide_df: pd.DataFrame) -> str:
+def _format_he4_value(
+    value: float,
+    *,
+    best_value: float | None,
+    bold_best: bool,
+    tolerance: float = 5e-5,
+) -> str:
+    rendered = f"{float(value):.4f}"
+    if bold_best and best_value is not None and abs(round(float(value), 4) - round(float(best_value), 4)) <= tolerance:
+        return rf"\textbf{{{rendered}}}"
+    return rendered
+
+
+def render_he4_latex_rows(wide_df: pd.DataFrame, *, bold_best: bool = True) -> str:
     lines: list[str] = []
     tau_labels = [label for label, _col, _tau in TAU_SPECS]
     for cutoff, cutoff_panel in wide_df.groupby("cutoff", sort=True):
         display = cutoff_panel["cutoff_display"].iloc[0]
         lines.append(rf"\multicolumn{{8}}{{l}}{{\textit{{Cutoff {display}}}}} \\")
+        best_by_tau = {
+            tau_label: float(cutoff_panel[tau_label].astype(float).min())
+            for tau_label in tau_labels
+        }
         for manuscript_label in MANUSCRIPT_MODEL_ORDER:
             row = cutoff_panel[cutoff_panel["manuscript_label"] == manuscript_label]
             if row.empty:
                 raise ValueError(f"Missing HE4 row for cutoff={cutoff}, manuscript_label={manuscript_label}")
             record = row.iloc[0]
-            values = " & ".join(f"{float(record[tau_label]):.4f}" for tau_label in tau_labels)
+            values = " & ".join(
+                _format_he4_value(
+                    float(record[tau_label]),
+                    best_value=best_by_tau[tau_label],
+                    bold_best=bold_best,
+                )
+                for tau_label in tau_labels
+            )
             lines.append(f"{manuscript_label} & {values} \\\\")
         lines.append(r"\addlinespace[1pt]")
     if lines and lines[-1] == r"\addlinespace[1pt]":
         lines.pop()
+    return "\n".join(lines) + "\n"
+
+
+def render_he4_latex_main_table(wide_df: pd.DataFrame) -> str:
+    body = render_he4_latex_rows(wide_df).rstrip("\n").splitlines()
+    lines = [
+        r"\begin{table*}[htbp]",
+        r"\centering",
+        r"\renewcommand{\arraystretch}{1.08}",
+        r"\begin{threeparttable}",
+        r"\caption{Mean forecast-window quantile check loss by synthesis model, cutoff, and target quantile. Lower values are better; bold indicates the lowest check loss within each cutoff and quantile column.}",
+        r"\label{tab:he4_quantile_check_loss}",
+        r"\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} >{\ttfamily}l r r r r r r r}",
+        r"\toprule",
+        r"Model & q0.05 & q0.20 & q0.35 & q0.50 & q0.65 & q0.80 & q0.95 \\",
+        r"\midrule",
+        *body,
+        r"\bottomrule",
+        r"\end{tabular*}",
+        r"\begin{tablenotes}",
+        r"\item \textit{Note:} Check loss is computed on forecast-window rows only, using the held-out USGS observation as the verification target on the same $\log(1+Q)$ scale used for CRPS. The four synthesis competitors are resolved directly from the frozen HE-2 publication manifest.",
+        r"\end{tablenotes}",
+        r"\end{threeparttable}",
+        r"\end{table*}",
+    ]
     return "\n".join(lines) + "\n"
 
 
@@ -581,10 +757,25 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         )
     )
     parser.add_argument(
+        "--source-mode",
+        choices=SOURCE_MODE_CHOICES,
+        default=SOURCE_MODE_CF1_SWEEP,
+        help=(
+            "Target source contract. Use cf1-sweep for the legacy April sweep or "
+            "he2-publication-manifest for the current publication HE2 manifest."
+        ),
+    )
+    parser.add_argument(
         "--best-by-cutoff-csv",
         type=Path,
         default=BEST_BY_CUTOFF_CSV_DEFAULT,
         help="Path to best_by_cutoff_long.csv from the finalized cf1 sweep analysis.",
+    )
+    parser.add_argument(
+        "--he2-publication-manifest",
+        type=Path,
+        default=HE2_PUBLICATION_MANIFEST_DEFAULT,
+        help="Path to the frozen HE2 publication manifest used by he2-publication-manifest mode.",
     )
     parser.add_argument(
         "--compare-reports-root",
@@ -617,10 +808,12 @@ def main(argv: Iterable[str] | None = None) -> int:
     args = parse_args(argv)
     outputs = build_he4_outputs(
         best_by_cutoff_csv=args.best_by_cutoff_csv.resolve(),
+        he2_publication_manifest=args.he2_publication_manifest.resolve(),
         compare_reports_root=args.compare_reports_root.resolve(),
         runtime_root=args.runtime_root.resolve(),
         output_dir=args.output_dir.resolve(),
         tolerance=float(args.crps_match_tolerance),
+        source_mode=str(args.source_mode),
     )
     print("HE4 outputs written:")
     for key, path in outputs.items():

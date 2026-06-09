@@ -13,10 +13,13 @@ ROOT = Path(__file__).resolve().parents[2]
 os.sys.path.insert(0, str(ROOT / "scripts"))
 
 from build_he4_quantile_check_loss_tables import (  # noqa: E402
+    HE4_LABEL_TO_FAMILY,
     TAU_SPECS,
     cutoff_to_display,
+    load_he4_targets_from_publication_manifest,
     load_forecast_quantile_frame,
     pinball_loss,
+    render_he4_latex_main_table,
     render_he4_latex_rows,
     resolve_baseline_source_run,
     resolve_run_dir,
@@ -231,6 +234,44 @@ class He4QuantileCheckLossTableTests(unittest.TestCase):
         latex = render_he4_latex_rows(wide_df)
         self.assertIn(r"\multicolumn{8}{l}{\textit{Cutoff 01/23/2021}} \\", latex)
         self.assertIn("exAL-U-T1", latex)
+        self.assertIn(r"\textbf{", latex)
+        main_table = render_he4_latex_main_table(wide_df)
+        self.assertIn(r"\label{tab:he4_quantile_check_loss}", main_table)
+        self.assertIn("forecast-window quantile check loss", main_table)
+
+    def test_load_he4_targets_from_publication_manifest_maps_current_contract(self) -> None:
+        td = Path(tempfile.mkdtemp(prefix="he4_publication_manifest_"))
+        try:
+            rows = []
+            for cutoff in ["20210123", "20211112"]:
+                for label, family in HE4_LABEL_TO_FAMILY.items():
+                    rows.append(
+                        {
+                            "cutoff": cutoff,
+                            "cutoff_display": cutoff_to_display(cutoff),
+                            "manuscript_label": label,
+                            "family": family,
+                            "run_id": f"run_{cutoff}_{family}",
+                            "run_root": str(td / "runs" / f"run_{cutoff}_{family}"),
+                            "crps_exact": 0.1,
+                            "horizon_days": 28,
+                            "score_scale": "log_cms_plus1",
+                        }
+                    )
+            manifest = td / "he2_bayesian_publication_manifest.csv"
+            pd.DataFrame(rows).to_csv(manifest, index=False)
+            targets = load_he4_targets_from_publication_manifest(manifest)
+            self.assertEqual(len(targets), 8)
+            self.assertEqual(set(targets["selection_mode"]), {"he2-publication-manifest"})
+            self.assertEqual(set(targets["internal_model_id"]), {
+                "exdqlm_multivar_synth_keep",
+                "dqlm_multivar_al_synth_keep",
+                "exdqlm_univar_synth",
+                "dqlm_univar_al_synth",
+            })
+            self.assertTrue((targets["expected_mean_crps"] == 0.1).all())
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
 
 
 if __name__ == "__main__":

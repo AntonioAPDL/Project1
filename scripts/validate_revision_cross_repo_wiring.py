@@ -1,0 +1,579 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Iterable
+
+import pandas as pd
+
+
+CUTOFF_ORDER = ["20210123", "20211112", "20211221", "20220511", "20221225"]
+CUTOFF_DISPLAY = {
+    "20210123": "01/23/2021",
+    "20211112": "11/12/2021",
+    "20211221": "12/21/2021",
+    "20220511": "05/11/2022",
+    "20221225": "12/25/2022",
+}
+MODEL_ORDER = [
+    "N-U-T1",
+    "N-M-T0",
+    "N-M-T1",
+    "AL-U-T1",
+    "AL-M-T0",
+    "AL-M-T1",
+    "exAL-U-T1",
+    "exAL-M-T0",
+    "exAL-M-T1",
+]
+HE3_ORDER = [
+    "exAL-M-T1 (full)",
+    "exAL-M-T1-noTrend",
+    "exAL-M-noTF",
+    "exAL-M-T1-noH1",
+    "exAL-M-T1-noH2",
+    "exAL-M-T1-noH3",
+    "RAW-GLOFAS",
+    "RAW-NWS",
+]
+HE4_ORDER = ["exAL-M-T1", "AL-M-T1", "exAL-U-T1", "AL-U-T1"]
+HE4_TAU_COLUMNS = ["q0.05", "q0.20", "q0.35", "q0.50", "q0.65", "q0.80", "q0.95"]
+RAW_MODEL_MAP = {"RAW-GLOFAS": "glofas_ensemble", "RAW-NWS": "nws_nwm_ensemble"}
+RUN_SLUG_MAP = {
+    "20210123": "20210123_exal_m_t1",
+    "20211112": "20211112_exal_m_t1",
+    "20211221": "20211221_exal_m_t1",
+    "20220511": "20220511_exal_m_t1",
+    "20221225": "20221225_exal_m_t1",
+}
+
+FORBIDDEN_CLAIMS = [
+    "lowest forecast-window CRPS in every case",
+    "best-performing model in all five cutoffs",
+    "outperforms the best raw forecast baseline across the panel",
+    "lower forecast-window CRPS than \\texttt{AL-M-T1} at all five",
+    "better than \\texttt{AL-M-T1} in all five",
+    "TODO[",
+]
+REQUIRED_CLAIMS = [
+    ("article", "raw NWS forecast product has the lowest CRPS"),
+    ("article", "AL-M-T1 is the best corrected Bayesian row at the December 25, 2022 cutoff"),
+    ("corrections", "raw NWS forecast product has the lowest CRPS overall"),
+    ("corrections", "raw NWS forecast product is best overall"),
+]
+
+
+@dataclass
+class CheckRow:
+    family: str
+    item: str
+    status: str
+    detail: str
+
+
+def read_csv_rows(path: Path) -> list[dict[str, str]]:
+    with path.open(newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def git_metadata(repo: Path) -> dict[str, object]:
+    def run_git(*args: str) -> str:
+        try:
+            return subprocess.check_output(["git", "-C", str(repo), *args], text=True).strip()
+        except Exception as exc:
+            return f"ERROR: {exc}"
+
+    return {
+        "path": str(repo),
+        "branch": run_git("rev-parse", "--abbrev-ref", "HEAD"),
+        "commit": run_git("rev-parse", "HEAD"),
+        "status_short": run_git("status", "--short"),
+    }
+
+
+def write_csv(path: Path, rows: list[dict[str, object]], fieldnames: list[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def strip_tex(cell: str) -> str:
+    text = cell.strip()
+    previous = None
+    while previous != text:
+        previous = text
+        text = re.sub(r"\\textbf\{([^{}]+)\}", r"\1", text)
+        text = re.sub(r"\\textit\{([^{}]+)\}", r"\1", text)
+    text = text.replace("$", "").replace("\\,", " ").replace("\\", "")
+    return text.strip()
+
+
+def parse_numeric_cell(cell: str) -> float:
+    cleaned = strip_tex(cell)
+    match = re.search(r"-?\d+(?:\.\d+)?", cleaned)
+    if not match:
+        raise ValueError(f"Could not parse numeric table cell: {cell!r}")
+    return float(match.group(0))
+
+
+def parse_flat_table(path: Path, expected_numeric_cells: int) -> dict[str, list[float]]:
+    rows: dict[str, list[float]] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if "&" not in line or line.startswith("\\") or "\\multicolumn" in line:
+            continue
+        parts = [part.strip() for part in line.rstrip("\\").split("&")]
+        if len(parts) != expected_numeric_cells + 1:
+            continue
+        label = strip_tex(parts[0])
+        if label in {"Model", "Model label", "Ablation model"}:
+            continue
+        try:
+            values = [parse_numeric_cell(cell) for cell in parts[1:]]
+        except ValueError:
+            continue
+        rows[label] = values
+    return rows
+
+
+def parse_panel_table(path: Path, expected_numeric_cells: int) -> dict[tuple[str, str], list[float]]:
+    rows: dict[tuple[str, str], list[float]] = {}
+    current_panel = ""
+    panel_re = re.compile(r"Cutoff\s+(\d{2}/\d{2}/\d{4})")
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        panel_match = panel_re.search(line)
+        if panel_match:
+            current_panel = panel_match.group(1)
+            continue
+        if not current_panel or "&" not in line or line.startswith("\\") or "\\multicolumn" in line:
+            continue
+        parts = [part.strip() for part in line.rstrip("\\").split("&")]
+        if len(parts) != expected_numeric_cells + 1:
+            continue
+        label = strip_tex(parts[0])
+        if label in {"Model", "Model label", "Ablation model"}:
+            continue
+        try:
+            values = [parse_numeric_cell(cell) for cell in parts[1:]]
+        except ValueError:
+            continue
+        rows[(current_panel, label)] = values
+    return rows
+
+
+def load_manifest(article_root: Path) -> dict:
+    return json.loads((article_root / "MANUSCRIPT_ASSET_MANIFEST.json").read_text(encoding="utf-8"))
+
+
+def build_he2_expected(article_root: Path, manifest: dict) -> dict[str, list[float]]:
+    cfg = manifest["tables"]["tab:benchmark_crps_models"]
+    manifest_rows = pd.read_csv(article_root / cfg["sources"]["bayesian_manifest_csv"])
+    bayes = {(str(row.cutoff), row.manuscript_label): float(row.crps_exact) for row in manifest_rows.itertuples()}
+    expected: dict[str, list[float]] = {}
+
+    five_root = article_root / cfg["sources"]["five_run_source_root"]
+    for raw_label, model_id in RAW_MODEL_MAP.items():
+        values = []
+        for cutoff in CUTOFF_ORDER:
+            crps = pd.read_csv(five_root / RUN_SLUG_MAP[cutoff] / "crps_forecast_summary.csv")
+            row = crps[crps["model_id"] == model_id]
+            if len(row) != 1:
+                raise ValueError(f"Expected one {model_id} row for cutoff {cutoff}")
+            values.append(float(row["mean_crps"].iloc[0]))
+        expected[raw_label] = values
+    for label in MODEL_ORDER:
+        expected[label] = [bayes[(cutoff, label)] for cutoff in CUTOFF_ORDER]
+    return expected
+
+
+def build_he3_expected(article_root: Path, manifest: dict) -> dict[str, list[float]]:
+    cfg = manifest["tables"]["tab:he3_ablation_crps"]
+    rows = pd.read_csv(article_root / cfg["sources"]["he3_ablation_long_csv"])
+    label_map = {"exAL-M-T1": "exAL-M-T1 (full)"}
+    expected: dict[str, list[float]] = {}
+    for raw_label, model_id in RAW_MODEL_MAP.items():
+        values = []
+        five_root = article_root / cfg["sources"]["five_run_source_root"]
+        for cutoff in CUTOFF_ORDER:
+            crps = pd.read_csv(five_root / RUN_SLUG_MAP[cutoff] / "crps_forecast_summary.csv")
+            row = crps[crps["model_id"] == model_id]
+            if len(row) != 1:
+                raise ValueError(f"Expected one {model_id} row for cutoff {cutoff}")
+            values.append(float(row["mean_crps"].iloc[0]))
+        expected[raw_label] = values
+    for manuscript_label in sorted(rows["manuscript_label"].unique()):
+        out_label = label_map.get(manuscript_label, manuscript_label)
+        values = []
+        for cutoff in CUTOFF_ORDER:
+            row = rows[(rows["cutoff"].astype(str) == cutoff) & (rows["manuscript_label"] == manuscript_label)]
+            if len(row) != 1:
+                raise ValueError(f"Expected one HE3 row for {manuscript_label} / {cutoff}")
+            values.append(float(row["mean_crps"].iloc[0]))
+        expected[out_label] = values
+    return {label: expected[label] for label in HE3_ORDER}
+
+
+def build_he4_expected(article_root: Path, manifest: dict) -> dict[tuple[str, str], list[float]]:
+    cfg = manifest["tables"]["tab:he4_quantile_check_loss"]
+    rows = pd.read_csv(article_root / cfg["sources"]["he4_quantile_check_loss_wide_csv"])
+    expected: dict[tuple[str, str], list[float]] = {}
+    for cutoff in CUTOFF_ORDER:
+        display = CUTOFF_DISPLAY[cutoff]
+        for label in HE4_ORDER:
+            row = rows[(rows["cutoff"].astype(str) == cutoff) & (rows["manuscript_label"] == label)]
+            if len(row) != 1:
+                raise ValueError(f"Expected one HE4 row for {label} / {cutoff}")
+            expected[(display, label)] = [float(row[col].iloc[0]) for col in HE4_TAU_COLUMNS]
+    return expected
+
+
+def compare_table(
+    *,
+    table_name: str,
+    expected: dict,
+    observed: dict,
+    columns: list[str],
+    out_rows: list[dict[str, object]],
+    tolerance: float = 5e-5,
+) -> list[CheckRow]:
+    checks: list[CheckRow] = []
+    for key, expected_values in expected.items():
+        observed_values = observed.get(key)
+        if observed_values is None:
+            checks.append(CheckRow("table_values", f"{table_name}:{key}", "fail", "missing rendered row"))
+            continue
+        if len(observed_values) != len(expected_values):
+            checks.append(CheckRow("table_values", f"{table_name}:{key}", "fail", "wrong numeric cell count"))
+            continue
+        for column, expected_value, observed_value in zip(columns, expected_values, observed_values):
+            diff = abs(round(float(expected_value), 4) - float(observed_value))
+            status = "pass" if diff <= tolerance else "fail"
+            out_rows.append(
+                {
+                    "table": table_name,
+                    "row_key": str(key),
+                    "column": column,
+                    "expected_rounded4": f"{float(expected_value):.4f}",
+                    "observed": f"{float(observed_value):.4f}",
+                    "abs_diff": f"{diff:.8f}",
+                    "status": status,
+                }
+            )
+            if status == "fail":
+                checks.append(
+                    CheckRow(
+                        "table_values",
+                        f"{table_name}:{key}:{column}",
+                        "fail",
+                        f"expected {expected_value:.4f}, observed {observed_value:.4f}",
+                    )
+                )
+    extra = sorted(set(observed).difference(expected))
+    for key in extra:
+        checks.append(CheckRow("table_values", f"{table_name}:{key}", "fail", "unexpected rendered row"))
+    if not checks:
+        checks.append(CheckRow("table_values", table_name, "pass", f"{len(expected)} rendered rows match sources"))
+    return checks
+
+
+def audit_manifest_paths(article_root: Path, manifest: dict) -> tuple[list[CheckRow], list[dict[str, object]], list[Path]]:
+    checks: list[CheckRow] = []
+    rows: list[dict[str, object]] = []
+    source_paths: list[Path] = [article_root / "MANUSCRIPT_ASSET_MANIFEST.json"]
+
+    def add_row(kind: str, label: str, rel_path: str) -> None:
+        path = article_root / rel_path
+        exists = path.exists()
+        rows.append(
+            {
+                "kind": kind,
+                "label": label,
+                "relative_path": rel_path,
+                "absolute_path": str(path),
+                "exists": exists,
+            }
+        )
+        checks.append(
+            CheckRow("manifest_paths", f"{kind}:{label}:{rel_path}", "pass" if exists else "fail", "exists" if exists else "missing")
+        )
+        if exists and path.is_file():
+            source_paths.append(path)
+
+    for fig in manifest.get("figures", []):
+        add_row("figure_manuscript_path", fig["label"], fig["manuscript_path"])
+        add_row("figure_source_path", fig["label"], fig["source_path"])
+    for label, table in manifest.get("tables", {}).items():
+        add_row("table_tex_path", label, table["table_tex_path"])
+        for source_name, source_rel in table.get("sources", {}).items():
+            add_row(f"table_source:{source_name}", label, source_rel)
+
+    for tex_path in [article_root / "wileyNJD-APA.tex"]:
+        if tex_path.exists():
+            source_paths.append(tex_path)
+            for rel_input in re.findall(r"\\input\{([^}]+)\}", tex_path.read_text(encoding="utf-8")):
+                rel = rel_input if rel_input.endswith(".tex") else f"{rel_input}.tex"
+                add_row("article_input", tex_path.name, rel)
+
+    return checks, rows, source_paths
+
+
+def audit_corrections_inputs(corrections_root: Path) -> tuple[list[CheckRow], list[dict[str, object]], list[Path]]:
+    checks: list[CheckRow] = []
+    rows: list[dict[str, object]] = []
+    sources = [corrections_root / "main.tex"]
+    text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+    for rel_input in re.findall(r"\\input\{([^}]+)\}", text):
+        rel = rel_input if rel_input.endswith(".tex") else f"{rel_input}.tex"
+        path = corrections_root / rel
+        exists = path.exists()
+        rows.append(
+            {
+                "kind": "corrections_input",
+                "label": "main.tex",
+                "relative_path": rel,
+                "absolute_path": str(path),
+                "exists": exists,
+            }
+        )
+        checks.append(CheckRow("manifest_paths", f"corrections_input:{rel}", "pass" if exists else "fail", "exists" if exists else "missing"))
+        if exists and path.is_file():
+            sources.append(path)
+    return checks, rows, sources
+
+
+def audit_prose_claims(article_root: Path, corrections_root: Path) -> tuple[list[CheckRow], list[dict[str, object]]]:
+    checks: list[CheckRow] = []
+    rows: list[dict[str, object]] = []
+    texts = {
+        "article": (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8"),
+        "corrections": (corrections_root / "main.tex").read_text(encoding="utf-8"),
+    }
+    for repo_name, text in texts.items():
+        for claim in FORBIDDEN_CLAIMS:
+            present = claim in text
+            status = "fail" if present else "pass"
+            rows.append({"repo": repo_name, "claim_type": "forbidden", "claim": claim, "status": status})
+            checks.append(CheckRow("prose_claims", f"{repo_name}:forbidden:{claim}", status, "present" if present else "absent"))
+    for repo_name, claim in REQUIRED_CLAIMS:
+        present = claim in texts[repo_name]
+        status = "pass" if present else "fail"
+        rows.append({"repo": repo_name, "claim_type": "required", "claim": claim, "status": status})
+        checks.append(CheckRow("prose_claims", f"{repo_name}:required:{claim}", status, "present" if present else "missing"))
+    return checks, rows
+
+
+def audit_he4_selection(article_root: Path, manifest: dict) -> tuple[list[CheckRow], list[Path]]:
+    cfg = manifest["tables"]["tab:he4_quantile_check_loss"]
+    selection_path = article_root / cfg["sources"]["he4_selection_audit_csv"]
+    source_paths = [selection_path]
+    df = pd.read_csv(selection_path)
+    checks: list[CheckRow] = []
+    expected_n = len(CUTOFF_ORDER) * len(HE4_ORDER)
+    checks.append(CheckRow("he4_selection", "row_count", "pass" if len(df) == expected_n else "fail", f"{len(df)} rows"))
+    max_diff = float(df["crps_abs_diff"].max())
+    checks.append(CheckRow("he4_selection", "crps_abs_diff", "pass" if max_diff <= 1e-6 else "fail", f"max={max_diff:.3g}"))
+    source_modes = sorted(set(df["source_mode"].astype(str)))
+    checks.append(
+        CheckRow(
+            "he4_selection",
+            "source_mode",
+            "pass" if source_modes == ["he2-publication-manifest"] else "fail",
+            ",".join(source_modes),
+        )
+    )
+    return checks, source_paths
+
+
+def audit_compile_logs(article_root: Path, corrections_root: Path, enabled: bool) -> tuple[list[CheckRow], list[dict[str, object]], list[Path]]:
+    if not enabled:
+        return [CheckRow("compile_logs", "skipped", "pass", "compile-log checks are only required in --after-patch mode")], [], []
+    logs = {
+        "article": article_root / "output.log",
+        "corrections": corrections_root / "main.log",
+    }
+    bad_patterns = [
+        "LaTeX Error",
+        "Emergency stop",
+        "Fatal error",
+        "Undefined control sequence",
+        "Citation.*undefined",
+        "Reference.*undefined",
+        "No file",
+    ]
+    checks: list[CheckRow] = []
+    rows: list[dict[str, object]] = []
+    sources: list[Path] = []
+    for name, path in logs.items():
+        exists = path.exists()
+        text = path.read_text(errors="replace") if exists else ""
+        if exists:
+            sources.append(path)
+        matched = [pattern for pattern in bad_patterns if re.search(pattern, text)]
+        status = "pass" if exists and not matched else "fail"
+        detail = "clean" if status == "pass" else ("missing" if not exists else ",".join(matched))
+        checks.append(CheckRow("compile_logs", name, status, detail))
+        rows.append({"document": name, "log_path": str(path), "exists": exists, "status": status, "detail": detail})
+    return checks, rows, sources
+
+
+def build_metadata(workflow_root: Path, article_root: Path, corrections_root: Path, argv: list[str]) -> dict[str, object]:
+    return {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "argv": argv,
+        "cwd": str(Path.cwd()),
+        "python": sys.version,
+        "repos": {
+            "workflow": git_metadata(workflow_root),
+            "article": git_metadata(article_root),
+            "corrections": git_metadata(corrections_root),
+        },
+    }
+
+
+def render_summary_md(checks: list[CheckRow], metadata: dict[str, object]) -> str:
+    fail_count = sum(1 for check in checks if check.status != "pass")
+    family_counts: dict[str, dict[str, int]] = {}
+    for check in checks:
+        family_counts.setdefault(check.family, {"pass": 0, "fail": 0})
+        family_counts[check.family]["pass" if check.status == "pass" else "fail"] += 1
+    lines = [
+        "# Cross-Repo Validation Summary",
+        "",
+        f"- Timestamp UTC: `{metadata['timestamp_utc']}`",
+        f"- Overall status: `{'pass' if fail_count == 0 else 'fail'}`",
+        f"- Failed checks: `{fail_count}`",
+        "",
+        "## By Family",
+        "",
+        "| family | pass | fail |",
+        "|---|---:|---:|",
+    ]
+    for family in sorted(family_counts):
+        counts = family_counts[family]
+        lines.append(f"| {family} | {counts['pass']} | {counts['fail']} |")
+    failures = [check for check in checks if check.status != "pass"]
+    if failures:
+        lines.extend(["", "## Failures", "", "| family | item | detail |", "|---|---|---|"])
+        for check in failures:
+            lines.append(f"| {check.family} | `{check.item}` | {check.detail} |")
+    return "\n".join(lines) + "\n"
+
+
+def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Validate cross-repo revised-article and corrections wiring.")
+    parser.add_argument("--workflow-root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument("--article-root", type=Path, default=Path(__file__).resolve().parents[1] / "Evironmetrics---REVISED-DOC-2")
+    parser.add_argument("--corrections-root", type=Path, default=Path("/data/muscat_data/jaguir26/Corrections---Project-1"))
+    parser.add_argument("--output-dir", type=Path, default=Path("reports/revision_cross_repo_validation_20260609"))
+    parser.add_argument("--check-only", action="store_true")
+    parser.add_argument("--after-patch", action="store_true")
+    parser.add_argument("--allow-known-failures", action="store_true")
+    parser.add_argument("--strict", action="store_true", default=True)
+    return parser.parse_args(argv)
+
+
+def main(argv: Iterable[str] | None = None) -> int:
+    args = parse_args(argv)
+    workflow_root = args.workflow_root.resolve()
+    article_root = args.article_root.resolve()
+    corrections_root = args.corrections_root.resolve()
+    output_dir = (workflow_root / args.output_dir).resolve() if not args.output_dir.is_absolute() else args.output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    checks: list[CheckRow] = []
+    source_paths: list[Path] = []
+    table_value_rows: list[dict[str, object]] = []
+
+    manifest = load_manifest(article_root)
+    metadata = build_metadata(workflow_root, article_root, corrections_root, list(argv or sys.argv[1:]))
+
+    manifest_checks, manifest_rows, manifest_sources = audit_manifest_paths(article_root, manifest)
+    correction_input_checks, correction_input_rows, correction_input_sources = audit_corrections_inputs(corrections_root)
+    checks.extend(manifest_checks)
+    checks.extend(correction_input_checks)
+    source_paths.extend(manifest_sources)
+    source_paths.extend(correction_input_sources)
+
+    he2_expected = build_he2_expected(article_root, manifest)
+    he3_expected = build_he3_expected(article_root, manifest)
+    he4_expected = build_he4_expected(article_root, manifest)
+
+    he2_article = parse_flat_table(article_root / "tables/generated_tex/benchmark_crps_main_table.tex", 5)
+    he2_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he2_benchmark_crps_response_table.tex", 5)
+    he3_article = parse_flat_table(article_root / "tables/generated_tex/he3_ablation_crps_main_table.tex", 5)
+    he3_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he3_ablation_crps_response_table.tex", 5)
+    he4_article = parse_panel_table(article_root / "tables/generated_tex/he4_quantile_check_loss_main_table.tex", 7)
+    he4_corrections = parse_panel_table(corrections_root / "tables/generated_tex/he4_quantile_check_loss_response_table.tex", 7)
+
+    cutoff_cols = [CUTOFF_DISPLAY[cutoff] for cutoff in CUTOFF_ORDER]
+    checks.extend(compare_table(table_name="article_he2", expected=he2_expected, observed=he2_article, columns=cutoff_cols, out_rows=table_value_rows))
+    checks.extend(compare_table(table_name="corrections_he2", expected=he2_expected, observed=he2_corrections, columns=cutoff_cols, out_rows=table_value_rows))
+    checks.extend(compare_table(table_name="article_he3", expected=he3_expected, observed=he3_article, columns=cutoff_cols, out_rows=table_value_rows))
+    checks.extend(compare_table(table_name="corrections_he3", expected=he3_expected, observed=he3_corrections, columns=cutoff_cols, out_rows=table_value_rows))
+    checks.extend(compare_table(table_name="article_he4", expected=he4_expected, observed=he4_article, columns=HE4_TAU_COLUMNS, out_rows=table_value_rows))
+    checks.extend(compare_table(table_name="corrections_he4", expected=he4_expected, observed=he4_corrections, columns=HE4_TAU_COLUMNS, out_rows=table_value_rows))
+
+    he4_selection_checks, he4_selection_sources = audit_he4_selection(article_root, manifest)
+    checks.extend(he4_selection_checks)
+    source_paths.extend(he4_selection_sources)
+
+    prose_checks, prose_rows = audit_prose_claims(article_root, corrections_root)
+    checks.extend(prose_checks)
+
+    compile_checks, compile_rows, compile_sources = audit_compile_logs(article_root, corrections_root, enabled=bool(args.after_patch))
+    checks.extend(compile_checks)
+    source_paths.extend(compile_sources)
+
+    check_rows = [
+        {"family": check.family, "item": check.item, "status": check.status, "detail": check.detail}
+        for check in checks
+    ]
+    write_csv(output_dir / "check_summary.csv", check_rows, ["family", "item", "status", "detail"])
+    write_csv(output_dir / "manifest_path_audit.csv", manifest_rows + correction_input_rows, ["kind", "label", "relative_path", "absolute_path", "exists"])
+    write_csv(output_dir / "table_value_audit.csv", table_value_rows, ["table", "row_key", "column", "expected_rounded4", "observed", "abs_diff", "status"])
+    write_csv(output_dir / "prose_claim_audit.csv", prose_rows, ["repo", "claim_type", "claim", "status"])
+    write_csv(output_dir / "compile_log_audit.csv", compile_rows, ["document", "log_path", "exists", "status", "detail"])
+
+    unique_sources = sorted({path.resolve() for path in source_paths if path.exists() and path.is_file()})
+    sha_rows = [{"path": str(path), "sha256": sha256_file(path)} for path in unique_sources]
+    write_csv(output_dir / "source_sha256_manifest.csv", sha_rows, ["path", "sha256"])
+
+    metadata["source_file_count"] = len(unique_sources)
+    metadata["checks"] = {
+        "total": len(checks),
+        "failed": sum(1 for check in checks if check.status != "pass"),
+    }
+    (output_dir / "environment_metadata.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    (output_dir / "cross_repo_validation_summary.json").write_text(json.dumps(metadata["checks"], indent=2) + "\n", encoding="utf-8")
+    (output_dir / "cross_repo_validation_summary.md").write_text(render_summary_md(checks, metadata), encoding="utf-8")
+
+    failed = [check for check in checks if check.status != "pass"]
+    if failed and not args.allow_known_failures:
+        print(f"Cross-repo validation failed with {len(failed)} failed checks. See {output_dir}")
+        return 1
+    print(f"Cross-repo validation passed. See {output_dir}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
