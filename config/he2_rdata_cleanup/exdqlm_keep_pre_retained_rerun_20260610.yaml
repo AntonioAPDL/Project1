@@ -1,0 +1,66 @@
+cleanup:
+  cleanup_id: exdqlm_keep_pre_retained_rerun_20260610
+  runtime_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime
+  report_root: repro/reports/cleanup_runs
+  quarantine_root: repro/quarantine/cleanup_runs
+  min_size_mb: 1
+  prune_extensions:
+    - .RData
+    - .rda
+  protected_roots:
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dft9995_datastart2010_ready_20260520/runs/multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dft9995_datastart2010_ready_exdqlm_multivar_keep
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dfall999999_datastart2017_ready_20260520/runs/multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dfall999999_datastart2017_ready_exdqlm_multivar_keep_rerun_20260520_160916
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dft9995_datastart2010_parallelpatchfix_20260520/runs/multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dft9995_datastart2010_parallelpatchfix_exdqlm_multivar_keep
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dfall999999_datastart2017_parallelpatchfix_20260520/runs/multimodel_20221225_v8_he2pubgdpc1r1_defaultvb_schedhold20refresh1_iter3000_dfall999999_datastart2017_parallelpatchfix_exdqlm_multivar_keep
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260609
+    - /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_authoritative_rdata_retention_20260610
+  evidence_patterns:
+    - "**/run_manifest.yaml"
+    - "**/queue.log"
+    - "**/matrix_status.csv"
+    - "**/matrix_metadata.yaml"
+    - "**/README.md"
+    - "**/summary.md"
+    - "**/summary.json"
+    - "**/fit.log"
+    - "**/post_runner.log"
+    - "**/post_artifacts_summary.json"
+    - "**/crps_forecast_summary.csv"
+    - "**/figure_manifest.csv"
+    - "**/publication_figure_manifest.csv"
+  candidate_roots:
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/warmstart_seeds/he2_exal_m_t1_reducedspec_h1_ppt_iter1000_warm1000_20260520_seed_root
+      reason: superseded_warmstart_seed_outputs_replaced_by_current_authoritative_rerun_plan
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd/repro/runs/paper_exalm_t1_r440_q20_keep_20221225_20260506
+      reason: old_r440_single_quantile_repro_blob_not_needed_for_current_log1p_authoritative_rerun
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_finiteguard_diagnostic_20260609
+      reason: finiteguard_diagnostic_heavy_state_after_summary_capture
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dft9995_datastart2010_2010_q95_fixverify_20260520
+      reason: superseded_pre_authoritative_fixverify
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dft9995_datastart2010_parallelpatch_20260520
+      reason: superseded_pre_fix_parallelpatch_without_final_fix
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dft9995_datastart2010_2010_q80_fixverify_20260520
+      reason: superseded_pre_authoritative_fixverify
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_freeze
+      reason: superseded_latent_freeze_ablation_rdata_after_report_capture
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_guarded_log1p_q05_q35_q50_q95_20260521
+      reason: superseded_guarded_reproduction_rdata_after_report_capture
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_ablation_log1p_q05_q35_q50_q95_v3_20260521_latent_cap_e_inv_u
+      reason: superseded_latent_cap_ablation_rdata_after_report_capture
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_promotion_log1p_q05_q35_q50_q95_v2_20260521_latent_cap_e_inv_u
+      reason: superseded_promotion_probe_rdata_after_authoritative_grid
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_ablation_log1p_q05_q35_q50_q95_v3_20260521_fixed_gamsig
+      reason: superseded_fixed_gamsig_ablation_rdata_after_report_capture
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dft9995_datastart2017_ready_20260520
+      reason: superseded_pre_authoritative_2017_ready_root
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dfall999999_datastart2017_parallelpatch_20260520
+      reason: superseded_parallelpatch_without_final_fix
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dfall999999_datastart2017_2017_q50_fixverify_20260520
+      reason: superseded_pre_authoritative_fixverify
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dfall999999_datastart2017_2017_q20_fixverify_20260520
+      reason: superseded_pre_authoritative_fixverify
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_20221225_reducedspec_defaultvb_iter3000_dfall999999_datastart2017_2017_q80_fixverify_20260520
+      reason: superseded_pre_authoritative_fixverify
+    - path: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/exdqlm_keep_promotion_log1p_q05_q35_q50_q95_v1_20260521_latent_cap_e_inv_u
+      reason: superseded_promotion_probe_rdata_after_authoritative_grid
