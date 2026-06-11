@@ -102,6 +102,16 @@ Minimum keys:
 The existing five-cutoff winner YAML remains the CRPS/winner-selection source. The selected-output authority file is the
 article-facing promotion lock for the representative figures/tables.
 
+2026-06-10 Figure A1/table display addendum:
+
+`docs/figure_a1_component_and_table_precision_contract_20260610.md`
+
+This addendum locks the Figure A1 internal rendering contract to the samplewise
+`component_6_plus_trend_component_1_samplewise` construction, keeps the
+article-facing wording as the 80-month seasonal component, restores the dry/wet
+period overlays, and standardizes publication-facing generated TeX tables to
+fixed five-decimal display.
+
 Implemented workflow-side validation gate:
 
 `scripts/validate_he2_selected_output_authority.py`

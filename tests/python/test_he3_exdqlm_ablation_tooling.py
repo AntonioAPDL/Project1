@@ -706,7 +706,8 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
             encoding="utf-8"
         )
         self.assertIn("exAL-M-T1-noTrend", table_text)
-        self.assertIn("\\textbf{0.1000}", table_text)
+        self.assertIn("\\textbf{0.10000}", table_text)
+        self.assertNotIn("0.1000 &", table_text)
         self.assertIn(
             "\\input{tables/generated_tex/he3_ablation_crps_main_table.tex}",
             (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8"),
@@ -716,6 +717,11 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
         corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
         self.assertIn("RAW-GLOFAS", corrections_text)
         self.assertNotIn("Ablation model & old", corrections_text)
+        corrections_table = (
+            corrections_root / "tables" / "generated_tex" / "he3_ablation_crps_response_table.tex"
+        ).read_text(encoding="utf-8")
+        self.assertIn("\\textbf{0.10000}", corrections_table)
+        self.assertNotIn("0.1000 &", corrections_table)
 
     def test_finish_gate_refuses_incomplete_queue_without_wait(self) -> None:
         self.run_script(

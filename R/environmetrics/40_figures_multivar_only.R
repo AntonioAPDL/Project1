@@ -1774,6 +1774,47 @@ authoritative_support_theta_array_layout <- function(arr, n_time_hint) {
   if (d[2L] >= d[3L]) list(time_dim = 2L, sample_dim = 3L) else list(time_dim = 3L, sample_dim = 2L)
 }
 
+authoritative_support_component_matrix <- function(arr, component, n_time, layout) {
+  if (!is.array(arr) || length(dim(arr)) != 3L || is.null(layout)) return(NULL)
+  component <- suppressWarnings(as.integer(component))
+  n_time <- suppressWarnings(as.integer(n_time))
+  if (!is.finite(component) || component < 1L || component > dim(arr)[1L]) return(NULL)
+  if (!is.finite(n_time) || n_time < 1L) return(NULL)
+  if (layout$time_dim == 2L) {
+    mat <- arr[component, seq_len(n_time), , drop = FALSE]
+  } else {
+    mat <- arr[component, , seq_len(n_time), drop = FALSE]
+  }
+  matrix(mat, nrow = n_time)
+}
+
+authoritative_support_component_summary_row <- function(
+  mat,
+  dates,
+  label,
+  probability,
+  component,
+  component_contract,
+  source_object,
+  probs = c(0.025, 0.5, 0.975)
+) {
+  if (!is.matrix(mat) || nrow(mat) == 0L) return(data.frame())
+  qs <- safe_row_quantiles(mat, probs = probs)
+  data.frame(
+    date = dates,
+    time_index = seq_len(nrow(mat)),
+    quantile = label,
+    probability = probability,
+    component = component,
+    component_contract = component_contract,
+    lower_025 = as.numeric(qs[1L, ]),
+    median_500 = as.numeric(qs[2L, ]),
+    upper_975 = as.numeric(qs[3L, ]),
+    source_object = source_object,
+    stringsAsFactors = FALSE
+  )
+}
+
 authoritative_support_component_summary_for_quantile <- function(suffix, label, probability, probs = c(0.025, 0.5, 0.975)) {
   arr <- authoritative_support_samp_theta(suffix)
   if (!is.array(arr) || length(dim(arr)) != 3L) return(data.frame())
@@ -1789,43 +1830,41 @@ authoritative_support_component_summary_for_quantile <- function(suffix, label, 
   if (!is.finite(n_component) || n_component < 1L) n_component <- min(7L, d[1L])
   dates <- authoritative_support_dates(n_time)
   rows <- list()
+  source_object <- sprintf("samp.theta_%s_exAL_synth_DISC", suffix)
   for (component in seq_len(n_component)) {
-    mat <- if (layout$time_dim == 2L) {
-      arr[component, seq_len(n_time), , drop = FALSE]
-    } else {
-      arr[component, , seq_len(n_time), drop = FALSE]
-    }
-    mat <- matrix(mat, nrow = n_time)
-    qs <- safe_row_quantiles(mat, probs = probs)
-    rows[[length(rows) + 1L]] <- data.frame(
-      date = dates,
-      time_index = seq_len(n_time),
-      quantile = label,
+    mat <- authoritative_support_component_matrix(arr, component, n_time, layout)
+    rows[[length(rows) + 1L]] <- authoritative_support_component_summary_row(
+      mat = mat,
+      dates = dates,
+      label = label,
       probability = probability,
       component = component,
       component_contract = "raw_state_component",
-      lower_025 = as.numeric(qs[1L, ]),
-      median_500 = as.numeric(qs[2L, ]),
-      upper_975 = as.numeric(qs[3L, ]),
-      source_object = sprintf("samp.theta_%s_exAL_synth_DISC", suffix),
-      stringsAsFactors = FALSE
+      source_object = source_object,
+      probs = probs
     )
   }
   out <- do.call(rbind, rows)
   if (n_component >= 6L) {
-    trend_mat <- if (layout$time_dim == 2L) {
-      arr[1L, seq_len(n_time), , drop = FALSE]
-    } else {
-      arr[1L, , seq_len(n_time), drop = FALSE]
-    }
-    trend_mat <- matrix(trend_mat, nrow = n_time)
+    trend_mat <- authoritative_support_component_matrix(arr, 1L, n_time, layout)
+    component6_mat <- authoritative_support_component_matrix(arr, 6L, n_time, layout)
+    samplewise_component6 <- authoritative_support_component_summary_row(
+      mat = trend_mat + component6_mat,
+      dates = dates,
+      label = label,
+      probability = probability,
+      component = 6L,
+      component_contract = "component_6_plus_trend_component_1_samplewise",
+      source_object = source_object,
+      probs = probs
+    )
     trend_shift <- rowMeans(trend_mat, na.rm = TRUE)
     component6 <- out[out$component == 6L, , drop = FALSE]
     component6$component_contract <- "component_6_shifted_by_posterior_mean_trend_component_1"
     component6$lower_025 <- component6$lower_025 + trend_shift
     component6$median_500 <- component6$median_500 + trend_shift
     component6$upper_975 <- component6$upper_975 + trend_shift
-    out <- rbind(out, component6)
+    out <- rbind(out, samplewise_component6, component6)
   }
   out
 }

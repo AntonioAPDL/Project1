@@ -349,7 +349,7 @@ if (posterior_table_exports_enabled) {
   )
   post_write_table_exports_readme(
     output_dir = posterior_table_output_dir,
-    ci_digits = 3L,
+    ci_digits = 5L,
     table_formats = posterior_table_formats
   )
 }

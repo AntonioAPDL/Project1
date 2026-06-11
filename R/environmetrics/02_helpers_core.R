@@ -1368,7 +1368,7 @@ post_quantile_label_to_int <- function(x) {
   out
 }
 
-post_ci_string <- function(lower, upper, digits = 3L) {
+post_ci_string <- function(lower, upper, digits = 5L) {
   lower <- as.numeric(lower)
   upper <- as.numeric(upper)
   fmt <- paste0("%.", as.integer(digits), "f")
@@ -1594,7 +1594,7 @@ post_component_to_covariate <- function(component) {
 post_export_gamma_sigma_tables <- function(
   all_quantiles,
   output_dir,
-  ci_digits = 3L,
+  ci_digits = 5L,
   write_tex = TRUE,
   table_formats = c("csv"),
   keep_na = TRUE,
@@ -1665,14 +1665,14 @@ post_export_gamma_sigma_tables <- function(
     gamma_lines <- c(
       "% quantile & source & center & [q2.5, q97.5] \\\\",
       if (nrow(gamma_df) == 0L) "% <empty>" else sprintf(
-        "%d & %s & %.6f & [%.6f, %.6f] \\\\",
+        "%d & %s & %.5f & [%.5f, %.5f] \\\\",
         gamma_df$quantile, gamma_df$source, gamma_df$center, gamma_df$q2_5, gamma_df$q97_5
       )
     )
     sigma_lines <- c(
       "% quantile & source & center & [q2.5, q97.5] \\\\",
       if (nrow(sigma_df) == 0L) "% <empty>" else sprintf(
-        "%d & %s & %.6f & [%.6f, %.6f] \\\\",
+        "%d & %s & %.5f & [%.5f, %.5f] \\\\",
         sigma_df$quantile, sigma_df$source, sigma_df$center, sigma_df$q2_5, sigma_df$q97_5
       )
     )
@@ -1687,7 +1687,7 @@ post_export_covariate_effects_table <- function(
   summary_df,
   output_dir,
   time_index = NA_integer_,
-  ci_digits = 3L,
+  ci_digits = 5L,
   write_tex = TRUE,
   table_formats = c("csv"),
   keep_na = TRUE,
@@ -1732,7 +1732,7 @@ post_export_covariate_effects_table <- function(
     lines <- c(
       "% covariate & quantile & center & [q2.5, q97.5] \\\\",
       if (nrow(out) == 0L) "% <empty>" else sprintf(
-        "%s & %d & %.6f & [%.6f, %.6f] \\\\",
+        "%s & %d & %.5f & [%.5f, %.5f] \\\\",
         out$covariate, out$quantile, out$center, out$q2_5, out$q97_5
       )
     )
@@ -1749,7 +1749,7 @@ post_write_table_exports_manifest <- function(manifest_df, output_dir) {
   invisible(out_path)
 }
 
-post_write_table_exports_readme <- function(output_dir, ci_digits = 3L, table_formats = c("csv")) {
+post_write_table_exports_readme <- function(output_dir, ci_digits = 5L, table_formats = c("csv")) {
   lines <- c(
     "# Posterior Table Exports",
     "",

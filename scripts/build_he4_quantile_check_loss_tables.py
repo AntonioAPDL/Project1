@@ -48,6 +48,8 @@ TAU_SPECS: tuple[tuple[str, str, float], ...] = (
     ("q0.80", "q80", 0.80),
     ("q0.95", "q95", 0.95),
 )
+DISPLAY_DIGITS = 5
+DISPLAY_TOLERANCE = 0.5 * 10 ** (-DISPLAY_DIGITS)
 
 
 @dataclass(frozen=True)
@@ -675,7 +677,7 @@ def render_he4_markdown(selection_df: pd.DataFrame, wide_df: pd.DataFrame) -> st
             [
                 f"### Cutoff {display}",
                 "",
-                frame_to_markdown(cutoff_panel.drop(columns=["cutoff"]), floatfmt=".4f"),
+                frame_to_markdown(cutoff_panel.drop(columns=["cutoff"]), floatfmt=f".{DISPLAY_DIGITS}f"),
                 "",
             ]
         )
@@ -687,10 +689,14 @@ def _format_he4_value(
     *,
     best_value: float | None,
     bold_best: bool,
-    tolerance: float = 5e-5,
+    tolerance: float = DISPLAY_TOLERANCE,
 ) -> str:
-    rendered = f"{float(value):.4f}"
-    if bold_best and best_value is not None and abs(round(float(value), 4) - round(float(best_value), 4)) <= tolerance:
+    rendered = f"{float(value):.{DISPLAY_DIGITS}f}"
+    if (
+        bold_best
+        and best_value is not None
+        and abs(round(float(value), DISPLAY_DIGITS) - round(float(best_value), DISPLAY_DIGITS)) <= tolerance
+    ):
         return rf"\textbf{{{rendered}}}"
     return rendered
 

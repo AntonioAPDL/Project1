@@ -2881,7 +2881,7 @@ if (posterior_table_exports_enabled) {
     gs_export <- post_export_gamma_sigma_tables(
       all_quantiles = all_quantiles,
       output_dir = posterior_table_output_dir,
-      ci_digits = 3L,
+      ci_digits = 5L,
       write_tex = TRUE,
       table_formats = posterior_table_formats,
       keep_na = posterior_table_keep_na
@@ -8567,7 +8567,7 @@ if (posterior_table_exports_enabled) {
       summary_df = summary_df,
       output_dir = posterior_table_output_dir,
       time_index = TT,
-      ci_digits = 3L,
+      ci_digits = 5L,
       write_tex = TRUE,
       table_formats = posterior_table_formats,
       keep_na = posterior_table_keep_na
@@ -8579,7 +8579,7 @@ if (posterior_table_exports_enabled) {
     )
     post_write_table_exports_readme(
       output_dir = posterior_table_output_dir,
-      ci_digits = 3L,
+      ci_digits = 5L,
       table_formats = posterior_table_formats
     )
   })

@@ -55,6 +55,8 @@ RUN_SLUG_MAP = {
     "20220511": "20220511_exal_m_t1",
     "20221225": "20221225_exal_m_t1",
 }
+DISPLAY_DIGITS = 5
+DISPLAY_TOLERANCE = 0.5 * 10 ** (-DISPLAY_DIGITS)
 
 FORBIDDEN_CLAIMS = [
     "lowest forecast-window CRPS in every case",
@@ -254,7 +256,7 @@ def compare_table(
     observed: dict,
     columns: list[str],
     out_rows: list[dict[str, object]],
-    tolerance: float = 5e-5,
+    tolerance: float = DISPLAY_TOLERANCE,
 ) -> list[CheckRow]:
     checks: list[CheckRow] = []
     for key, expected_values in expected.items():
@@ -266,15 +268,17 @@ def compare_table(
             checks.append(CheckRow("table_values", f"{table_name}:{key}", "fail", "wrong numeric cell count"))
             continue
         for column, expected_value, observed_value in zip(columns, expected_values, observed_values):
-            diff = abs(round(float(expected_value), 4) - float(observed_value))
+            expected_display = round(float(expected_value), DISPLAY_DIGITS)
+            observed_display = float(observed_value)
+            diff = abs(expected_display - observed_display)
             status = "pass" if diff <= tolerance else "fail"
             out_rows.append(
                 {
                     "table": table_name,
                     "row_key": str(key),
                     "column": column,
-                    "expected_rounded4": f"{float(expected_value):.4f}",
-                    "observed": f"{float(observed_value):.4f}",
+                    "expected_rounded5": f"{float(expected_value):.{DISPLAY_DIGITS}f}",
+                    "observed": f"{float(observed_value):.{DISPLAY_DIGITS}f}",
                     "abs_diff": f"{diff:.8f}",
                     "status": status,
                 }
@@ -285,7 +289,7 @@ def compare_table(
                         "table_values",
                         f"{table_name}:{key}:{column}",
                         "fail",
-                        f"expected {expected_value:.4f}, observed {observed_value:.4f}",
+                        f"expected {expected_value:.{DISPLAY_DIGITS}f}, observed {observed_value:.{DISPLAY_DIGITS}f}",
                     )
                 )
     extra = sorted(set(observed).difference(expected))
@@ -550,7 +554,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     ]
     write_csv(output_dir / "check_summary.csv", check_rows, ["family", "item", "status", "detail"])
     write_csv(output_dir / "manifest_path_audit.csv", manifest_rows + correction_input_rows, ["kind", "label", "relative_path", "absolute_path", "exists"])
-    write_csv(output_dir / "table_value_audit.csv", table_value_rows, ["table", "row_key", "column", "expected_rounded4", "observed", "abs_diff", "status"])
+    write_csv(output_dir / "table_value_audit.csv", table_value_rows, ["table", "row_key", "column", "expected_rounded5", "observed", "abs_diff", "status"])
     write_csv(output_dir / "prose_claim_audit.csv", prose_rows, ["repo", "claim_type", "claim", "status"])
     write_csv(output_dir / "compile_log_audit.csv", compile_rows, ["document", "log_path", "exists", "status", "detail"])
 

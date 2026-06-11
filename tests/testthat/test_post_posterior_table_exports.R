@@ -26,7 +26,7 @@ test_that("post_export_gamma_sigma_tables writes deterministic schema and orderi
   out <- post_export_gamma_sigma_tables(
     all_quantiles = mock_gamma_sigma(),
     output_dir = td,
-    ci_digits = 3L,
+    ci_digits = 5L,
     write_tex = TRUE,
     table_formats = c("csv", "rds")
   )
@@ -50,6 +50,10 @@ test_that("post_export_gamma_sigma_tables writes deterministic schema and orderi
 
   expect_true(all(nzchar(out$gamma$ci_str)))
   expect_true(all(nzchar(out$sigma$ci_str)))
+  expect_true(all(grepl("^-?[0-9]+\\.[0-9]{5}, -?[0-9]+\\.[0-9]{5}$", out$gamma$ci_str)))
+  gamma_tex <- readLines(file.path(td, "gamma_summary.tex"), warn = FALSE)
+  expect_true(any(grepl("[0-9]+\\.[0-9]{5}", gamma_tex)))
+  expect_false(any(grepl("[0-9]+\\.[0-9]{6}", gamma_tex)))
   expect_equal(
     names(out$manifest),
     c("table_name", "file_path", "nrow", "ncol", "sha256")
@@ -101,7 +105,7 @@ test_that("post_export_covariate_effects_table writes expected columns and stabl
     summary_df = summary_df,
     output_dir = td,
     time_index = 999L,
-    ci_digits = 3L,
+    ci_digits = 5L,
     write_tex = TRUE,
     table_formats = c("csv")
   )
@@ -116,6 +120,10 @@ test_that("post_export_covariate_effects_table writes expected columns and stabl
   expect_equal(unique(out$table$covariate), c("Precipitation", "Soil Moisture", "PC1"))
   expect_true(all(out$table$time_index == 999L))
   expect_true(all(nzchar(out$table$ci_str)))
+  expect_true(all(grepl("^-?[0-9]+\\.[0-9]{5}, -?[0-9]+\\.[0-9]{5}$", out$table$ci_str)))
+  cov_tex <- readLines(file.path(td, "covariate_effects_summary.tex"), warn = FALSE)
+  expect_true(any(grepl("[0-9]+\\.[0-9]{5}", cov_tex)))
+  expect_false(any(grepl("[0-9]+\\.[0-9]{6}", cov_tex)))
   expect_equal(nrow(out$manifest), 1L)
   expect_true(nzchar(out$manifest$sha256[[1L]]))
 })

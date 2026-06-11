@@ -50,6 +50,7 @@ TABLE_NOTE = (
     "20260601 exAL-M-T1 winner manifest; raw forecast references are copied from the article-side "
     "five-cutoff CRPS validation source freeze."
 )
+DISPLAY_DIGITS = 5
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,7 +67,7 @@ def read_csv(path: Path) -> list[dict[str, str]]:
 
 
 def fmt_value(value: float, bold: bool = False) -> str:
-    rendered = f"{float(value):.4f}"
+    rendered = f"{float(value):.{DISPLAY_DIGITS}f}"
     return rf"\textbf{{{rendered}}}" if bold else rendered
 
 
@@ -229,7 +230,11 @@ def write_article_outputs(
             }
         )
     with manifest_csv.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["table_label", "row_label", "source_class", "source_note"])
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=["table_label", "row_label", "source_class", "source_note"],
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(rows)
 
@@ -278,10 +283,18 @@ def write_article_outputs(
 
 
 def write_corrections_outputs(corrections_root: Path, corrections_block: str) -> None:
+    table_dir = corrections_root / "tables" / "generated_tex"
+    table_dir.mkdir(parents=True, exist_ok=True)
+    response_table = table_dir / "he3_ablation_crps_response_table.tex"
+    response_table.write_text(corrections_block + "\n", encoding="utf-8")
+
     tex_path = corrections_root / "main.tex"
     if not tex_path.exists():
         return
     text = tex_path.read_text(encoding="utf-8")
+    input_line = r"\input{tables/generated_tex/he3_ablation_crps_response_table.tex}"
+    if input_line in text:
+        return
     pattern = re.compile(
         r"\\begin\{center\}\s*\\scriptsize\s*\\setlength\{\\tabcolsep\}\{4pt\}\s*"
         r"\\begin\{tabular\}\{>\{\\ttfamily\}l c c c c c\}.*?"
@@ -305,7 +318,7 @@ def main() -> int:
     write_article_outputs(args.article_root.resolve(), report_dir, grid, body_lines, main_table)
     write_corrections_outputs(args.corrections_root.resolve(), corrections_block)
     print(args.article_root.resolve() / ARTICLE_TABLE_DIR / "he3_ablation_crps_main_table.tex")
-    print(args.corrections_root.resolve() / "main.tex")
+    print(args.corrections_root.resolve() / "tables" / "generated_tex" / "he3_ablation_crps_response_table.tex")
     return 0
 
 
