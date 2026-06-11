@@ -92,3 +92,40 @@ test_that("authoritative component support includes samplewise trend plus 80-mon
   testthat::expect_equal(samplewise$upper_975, c(expected_t1[[3L]], expected_t2[[3L]]), tolerance = 1e-12)
   testthat::expect_false(isTRUE(all.equal(samplewise$lower_025[[1L]], legacy$lower_025[[1L]], tolerance = 1e-12)))
 })
+
+test_that("authoritative component analysis specs include raw states and audited samplewise contract only", {
+  helper_path <- file.path("R", "environmetrics", "40_figures_multivar_only.R")
+  if (!file.exists(helper_path)) {
+    helper_path <- file.path("..", "..", helper_path)
+  }
+  lines <- readLines(helper_path, warn = FALSE)
+  start <- grep("^authoritative_component_analysis_slug <-", lines)
+  end <- grep("^write_authoritative_selected_support <-", lines) - 1L
+  testthat::expect_equal(length(start), 1L)
+  testthat::expect_equal(length(end), 1L)
+
+  env <- new.env(parent = globalenv())
+  eval(parse(text = paste(lines[start:end], collapse = "\n")), envir = env)
+
+  comp <- data.frame(
+    component = c(rep(seq_len(7L), each = 3L), 6L, 6L),
+    component_contract = c(
+      rep("raw_state_component", 21L),
+      "component_6_plus_trend_component_1_samplewise",
+      "component_6_shifted_by_posterior_mean_trend_component_1"
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  specs <- env$authoritative_component_analysis_specs(comp)
+  testthat::expect_s3_class(specs, "data.frame")
+  testthat::expect_equal(nrow(specs), 8L)
+  testthat::expect_equal(
+    specs$component[specs$component_contract == "raw_state_component"],
+    seq_len(7L)
+  )
+  testthat::expect_true(any(specs$component_contract == "component_6_plus_trend_component_1_samplewise"))
+  testthat::expect_false(any(specs$component_contract == "component_6_shifted_by_posterior_mean_trend_component_1"))
+  testthat::expect_true(all(!specs$include_in_manuscript))
+  testthat::expect_true(any(specs$filename == "component_06_component_6_plus_trend_component_1_samplewise.png"))
+})

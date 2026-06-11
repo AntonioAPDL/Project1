@@ -1885,6 +1885,279 @@ build_authoritative_component_summary <- function() {
   do.call(rbind, rows)
 }
 
+authoritative_component_analysis_slug <- function(component, contract) {
+  contract_slug <- gsub("[^A-Za-z0-9]+", "_", as.character(contract))
+  contract_slug <- gsub("^_+|_+$", "", tolower(contract_slug))
+  sprintf("component_%02d_%s.png", as.integer(component), contract_slug)
+}
+
+authoritative_component_analysis_label <- function(component, contract) {
+  component <- as.integer(component)
+  contract <- as.character(contract)
+  if (identical(contract, "component_6_plus_trend_component_1_samplewise")) {
+    return("Component 6 plus trend component 1 (samplewise)")
+  }
+  if (identical(contract, "raw_state_component")) {
+    return(sprintf("Raw state component %d", component))
+  }
+  sprintf("Component %d (%s)", component, contract)
+}
+
+authoritative_component_analysis_specs <- function(comp) {
+  if (!is.data.frame(comp) || nrow(comp) == 0L) return(data.frame())
+  required <- c("component", "component_contract")
+  if (!all(required %in% names(comp))) return(data.frame())
+
+  raw_components <- sort(unique(as.integer(comp$component[comp$component_contract == "raw_state_component"])))
+  raw_components <- raw_components[is.finite(raw_components)]
+  rows <- list()
+  for (component in raw_components) {
+    rows[[length(rows) + 1L]] <- data.frame(
+      component = as.integer(component),
+      component_contract = "raw_state_component",
+      display_label = authoritative_component_analysis_label(component, "raw_state_component"),
+      filename = authoritative_component_analysis_slug(component, "raw_state_component"),
+      include_in_manuscript = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  has_samplewise_a1 <- any(
+    comp$component == 6L &
+      comp$component_contract == "component_6_plus_trend_component_1_samplewise",
+    na.rm = TRUE
+  )
+  if (isTRUE(has_samplewise_a1)) {
+    contract <- "component_6_plus_trend_component_1_samplewise"
+    rows[[length(rows) + 1L]] <- data.frame(
+      component = 6L,
+      component_contract = contract,
+      display_label = authoritative_component_analysis_label(6L, contract),
+      filename = authoritative_component_analysis_slug(6L, contract),
+      include_in_manuscript = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  if (length(rows) == 0L) return(data.frame())
+  do.call(rbind, rows)
+}
+
+authoritative_component_analysis_regime_periods <- function() {
+  data.frame(
+    xmin = as.Date(c("2012-01-01", "2017-01-01")),
+    xmax = as.Date(c("2016-12-31", "2019-12-31")),
+    period = c("Dry", "Wet"),
+    fill = c("#fff0b3", "#cfe8f7"),
+    stringsAsFactors = FALSE
+  )
+}
+
+authoritative_component_analysis_axis_label <- function(contract) {
+  if (identical(as.character(contract), "raw_state_component")) {
+    return(sprintf("State component (%s)", multivar_component_analysis_scale()))
+  }
+  multivar_component_y_label()
+}
+
+plot_authoritative_component_analysis_figure <- function(dd, obs, spec, out_file) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("ggplot2 is required to render authoritative component analysis figures", call. = FALSE)
+  }
+  if (!is.data.frame(dd) || nrow(dd) == 0L) {
+    stop(sprintf("No component rows available for %s", spec$display_label[[1L]]), call. = FALSE)
+  }
+
+  dd$date <- as.Date(dd$date)
+  max_time <- suppressWarnings(max(dd$time_index, na.rm = TRUE))
+  if (is.finite(max_time) && max_time > 0L) {
+    min_time <- ceiling(max_time / 10)
+    dd <- dd[dd$time_index >= min_time, , drop = FALSE]
+  }
+  if (nrow(dd) == 0L) {
+    stop(sprintf("No component rows remain after warm-history trim for %s", spec$display_label[[1L]]), call. = FALSE)
+  }
+
+  obs <- obs[!is.na(obs$date) & is.finite(obs$observed_usgs), , drop = FALSE]
+  obs <- obs[obs$date >= min(dd$date, na.rm = TRUE) & obs$date <= max(dd$date, na.rm = TRUE), , drop = FALSE]
+
+  ylim <- range(c(dd$lower_025, dd$upper_975, obs$observed_usgs), na.rm = TRUE)
+  if (!all(is.finite(ylim)) || diff(ylim) <= 0) ylim <- c(0, 1)
+  ylim <- c(min(0, ylim[[1L]]), ylim[[2L]] + diff(ylim) * 0.08)
+
+  shade_periods <- authoritative_component_analysis_regime_periods()
+  shade_periods <- shade_periods[
+    shade_periods$xmax >= min(dd$date, na.rm = TRUE) &
+      shade_periods$xmin <= max(dd$date, na.rm = TRUE),
+    ,
+    drop = FALSE
+  ]
+  if (nrow(shade_periods) > 0L) {
+    shade_periods$xmin <- pmax(shade_periods$xmin, min(dd$date, na.rm = TRUE))
+    shade_periods$xmax <- pmin(shade_periods$xmax, max(dd$date, na.rm = TRUE))
+  }
+
+  col <- c(q05 = "#b2182b", q50 = "#238b45", q95 = "#2171b5")
+  fill <- c(q05 = "#fdbba1", q50 = "#b2df8a", q95 = "#a6bddb")
+
+  p <- ggplot2::ggplot()
+  if (nrow(shade_periods) > 0L) {
+    p <- p +
+      ggplot2::geom_rect(
+        data = shade_periods,
+        ggplot2::aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf, fill = period),
+        alpha = 0.48,
+        inherit.aes = FALSE,
+        show.legend = FALSE
+      )
+  }
+  p <- p +
+    ggplot2::geom_ribbon(
+      data = dd,
+      ggplot2::aes(x = date, ymin = lower_025, ymax = upper_975, fill = quantile),
+      alpha = 0.12
+    ) +
+    ggplot2::geom_line(data = dd, ggplot2::aes(x = date, y = median_500, color = quantile), linewidth = 0.45) +
+    ggplot2::geom_line(data = dd, ggplot2::aes(x = date, y = lower_025, color = quantile), linewidth = 0.12) +
+    ggplot2::geom_line(data = dd, ggplot2::aes(x = date, y = upper_975, color = quantile), linewidth = 0.12) +
+    ggplot2::geom_line(data = obs, ggplot2::aes(x = date, y = observed_usgs), color = "black", linewidth = 0.12) +
+    ggplot2::geom_point(data = obs, ggplot2::aes(x = date, y = observed_usgs), color = "black", size = 0.1, alpha = 0.9) +
+    ggplot2::scale_color_manual(values = col, breaks = c("q05", "q50", "q95")) +
+    ggplot2::scale_fill_manual(values = c(fill, stats::setNames(shade_periods$fill, shade_periods$period))) +
+    ggplot2::coord_cartesian(ylim = ylim) +
+    ggplot2::scale_x_date(date_breaks = "24 months", date_labels = "%Y-%m") +
+    ggplot2::labs(
+      title = sprintf("%s: selected model", spec$display_label[[1L]]),
+      x = NULL,
+      y = authoritative_component_analysis_axis_label(spec$component_contract[[1L]])
+    )
+
+  if (nrow(shade_periods) > 0L) {
+    label_y <- ylim[[1L]] + 0.035 * diff(ylim)
+    p <- p +
+      ggplot2::annotate(
+        "text",
+        x = shade_periods$xmin + (shade_periods$xmax - shade_periods$xmin) / 2,
+        y = label_y,
+        label = shade_periods$period,
+        size = 3.4,
+        color = "#555555",
+        fontface = "italic"
+      )
+  }
+
+  if (exists("theme_manuscript_standard", mode = "function", inherits = TRUE)) {
+    p <- p + theme_manuscript_standard(
+      base_size = 15,
+      title_size = 16,
+      legend_position = "none",
+      axis_text_y_size = 12,
+      x_angle = 35,
+      major_grid_x = TRUE,
+      major_grid_y = TRUE,
+      plot_margin = ggplot2::margin(12, 12, 12, 12)
+    )
+  } else {
+    p <- p + ggplot2::theme_bw(base_size = 15) +
+      ggplot2::theme(
+        legend.position = "none",
+        axis.text.x = ggplot2::element_text(angle = 35, hjust = 1),
+        plot.margin = ggplot2::margin(12, 12, 12, 12)
+      )
+  }
+
+  ggplot2::ggsave(out_file, plot = p, width = 12, height = 6, units = "in", dpi = 350)
+  invisible(TRUE)
+}
+
+write_authoritative_component_analysis_readme <- function(out_dir, manifest) {
+  readme_path <- file.path(out_dir, "README.md")
+  n_figures <- if (is.data.frame(manifest)) nrow(manifest) else 0L
+  writeLines(
+    c(
+      "# Authoritative Component Analysis Figures",
+      "",
+      "This analysis-only gallery is rendered automatically from the compact selected-model support tables.",
+      "It is not a manuscript asset family and should not be added to the article figure manifest by default.",
+      "",
+      "Included contracts:",
+      "",
+      "- `raw_state_component` for every retained state component present in the support CSV.",
+      "- `component_6_plus_trend_component_1_samplewise`, the audited Figure A1 construction.",
+      "",
+      "The older `component_6_shifted_by_posterior_mean_trend_component_1` diagnostic rows are intentionally excluded from the automatic gallery.",
+      "",
+      sprintf("Rendered figures: %d", as.integer(n_figures))
+    ),
+    con = readme_path
+  )
+  readme_path
+}
+
+write_authoritative_component_analysis_figures <- function(dyn, comp, root_dir = OUT_DIR) {
+  if (!is.data.frame(dyn) || nrow(dyn) == 0L) {
+    stop("authoritative dynamics support is required for component analysis figures", call. = FALSE)
+  }
+  if (!is.data.frame(comp) || nrow(comp) == 0L) {
+    stop("authoritative component support is required for component analysis figures", call. = FALSE)
+  }
+  required_comp <- c("date", "time_index", "quantile", "component", "component_contract", "lower_025", "median_500", "upper_975")
+  required_dyn <- c("date", "quantile", "observed_usgs")
+  missing_comp <- setdiff(required_comp, names(comp))
+  missing_dyn <- setdiff(required_dyn, names(dyn))
+  if (length(missing_comp) > 0L) {
+    stop(sprintf("component support is missing required columns: %s", paste(missing_comp, collapse = ", ")), call. = FALSE)
+  }
+  if (length(missing_dyn) > 0L) {
+    stop(sprintf("dynamics support is missing required columns: %s", paste(missing_dyn, collapse = ", ")), call. = FALSE)
+  }
+
+  out_dir <- file.path(root_dir, "analysis_figures", "component_evolution")
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+  specs <- authoritative_component_analysis_specs(comp)
+  if (!is.data.frame(specs) || nrow(specs) == 0L) {
+    stop("no component analysis figure specifications were available", call. = FALSE)
+  }
+
+  dyn$date <- as.Date(dyn$date)
+  comp$date <- as.Date(comp$date)
+  obs <- dyn[dyn$quantile == "q50", c("date", "observed_usgs"), drop = FALSE]
+
+  rows <- list()
+  for (i in seq_len(nrow(specs))) {
+    spec <- specs[i, , drop = FALSE]
+    dd <- comp[
+      comp$quantile %in% c("q05", "q50", "q95") &
+        comp$component == spec$component[[1L]] &
+        comp$component_contract == spec$component_contract[[1L]] &
+        !is.na(comp$date),
+      ,
+      drop = FALSE
+    ]
+    out_file <- file.path(out_dir, spec$filename[[1L]])
+    plot_authoritative_component_analysis_figure(dd, obs, spec, out_file)
+    rows[[length(rows) + 1L]] <- data.frame(
+      component = as.integer(spec$component[[1L]]),
+      component_contract = spec$component_contract[[1L]],
+      display_label = spec$display_label[[1L]],
+      filename = spec$filename[[1L]],
+      relative_path = file.path("analysis_figures", "component_evolution", spec$filename[[1L]]),
+      include_in_manuscript = FALSE,
+      rows = as.integer(nrow(dd)),
+      start_date = as.character(min(dd$date, na.rm = TRUE)),
+      end_date = as.character(max(dd$date, na.rm = TRUE)),
+      rendered_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  manifest <- do.call(rbind, rows)
+  manifest_path <- file.path(out_dir, "component_analysis_manifest.csv")
+  write.csv(manifest, manifest_path, row.names = FALSE)
+  write_authoritative_component_analysis_readme(out_dir, manifest)
+  manifest
+}
+
 write_authoritative_selected_support <- function() {
   enabled <- authoritative_support_env_flag("UNIFIED_POST_AUTHORITATIVE_SELECTED_SUPPORT", default = FALSE)
   fail_fast <- authoritative_support_env_flag("UNIFIED_POST_AUTHORITATIVE_SELECTED_SUPPORT_FAIL_FAST", default = TRUE)
@@ -1935,6 +2208,29 @@ write_authoritative_selected_support <- function() {
     add_status("authoritative_component_summary", FALSE, 0L, comp_csv, "no component rows were generated")
   }
 
+  analysis_manifest <- data.frame()
+  analysis_manifest_path <- file.path(OUT_DIR, "analysis_figures", "component_evolution", "component_analysis_manifest.csv")
+  if (is.data.frame(dyn) && nrow(dyn) > 0L && is.data.frame(comp) && nrow(comp) > 0L) {
+    analysis_result <- tryCatch(
+      write_authoritative_component_analysis_figures(dyn, comp, OUT_DIR),
+      error = function(e) e
+    )
+    if (inherits(analysis_result, "error")) {
+      add_status("authoritative_component_analysis_figures", FALSE, 0L, analysis_manifest_path, conditionMessage(analysis_result))
+    } else {
+      analysis_manifest <- analysis_result
+      add_status("authoritative_component_analysis_figures", TRUE, nrow(analysis_manifest), analysis_manifest_path)
+    }
+  } else {
+    add_status(
+      "authoritative_component_analysis_figures",
+      FALSE,
+      0L,
+      analysis_manifest_path,
+      "requires non-empty dynamics and component support"
+    )
+  }
+
   lineage <- data.frame(
     run_id = as.character(safe_get("RUN_ID", Sys.getenv("RUN_ID", "")))[1L],
     run_root = as.character(safe_get("RUN_ROOT", Sys.getenv("UNIFIED_RUN_ROOT", "")))[1L],
@@ -1965,6 +2261,12 @@ write_authoritative_selected_support <- function() {
       component_csv = basename(comp_csv),
       component_rds = basename(comp_rds),
       lineage_csv = basename(lineage_csv)
+    ),
+    analysis_component_figures = list(
+      directory = file.path("analysis_figures", "component_evolution"),
+      manifest = file.path("analysis_figures", "component_evolution", "component_analysis_manifest.csv"),
+      figure_count = if (is.data.frame(analysis_manifest)) as.integer(nrow(analysis_manifest)) else 0L,
+      files = if (is.data.frame(analysis_manifest) && "filename" %in% names(analysis_manifest)) as.character(analysis_manifest$filename) else character(0)
     ),
     generated_at_utc = lineage$generated_at_utc[[1L]]
   )

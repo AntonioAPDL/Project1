@@ -65,6 +65,47 @@ The metadata is part of the validation surface. Future Figure A1 refreshes shoul
 fail validation if the samplewise component contract or dry/wet period metadata
 is missing.
 
+## Analysis-Only Component Gallery Contract
+
+The workflow post stage and revised-article refresh now also produce an
+analysis-only gallery with the same visual language as Figure A1. This gallery
+is for component diagnostics and cutoff review; it must not be promoted into the
+main manuscript figure manifest unless a future article revision explicitly
+requests that.
+
+Workflow-side output directory:
+
+`post/outputs/<run_id>/analysis_figures/component_evolution/`
+
+Revised-article artifact directory:
+
+`Evironmetrics---REVISED-DOC-2/artifacts/representative_selected_model_2022_12_25/authoritative_support/analysis_figures/component_evolution/`
+
+Included component contracts:
+
+- `raw_state_component` for every retained state component present in
+  `authoritative_component_summary.csv`.
+- `component_6_plus_trend_component_1_samplewise`, matching Figure A1's audited
+  samplewise construction.
+
+Intentionally excluded from the automatic gallery:
+
+- `component_6_shifted_by_posterior_mean_trend_component_1`
+
+That older shifted contract may remain in compact support files for diagnostic
+comparison, but it should not be used for the default gallery because it is not
+the article Figure A1 contract.
+
+The gallery renderer writes:
+
+- `component_analysis_manifest.csv`
+- `README.md`
+- one PNG per included component contract
+
+The revised article refresh includes these files in the local artifact
+`manifest.csv` and `SHA256SUMS.txt`, but not in
+`MANUSCRIPT_ASSET_MANIFEST.json`.
+
 ## Table Display Precision Contract
 
 Publication-facing generated TeX tables use fixed five-decimal display. This
