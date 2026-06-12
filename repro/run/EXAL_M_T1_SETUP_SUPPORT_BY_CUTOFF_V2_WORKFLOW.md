@@ -71,10 +71,10 @@ These use:
 
 ### Article-side mirror and promotion
 
-- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_setup_support_by_cutoff_v2.py`
-- `Evironmetrics---REVISED-DOC-Corrected/scripts/build_setup_support_by_cutoff_v2_review.py`
-- `Evironmetrics---REVISED-DOC-Corrected/scripts/promote_setup_support_v2_to_disc.py`
-- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py`
+- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_setup_support_by_cutoff_v2.py`
+- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/build_setup_support_by_cutoff_v2_review.py`
+- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/promote_setup_support_v2_to_disc.py`
+- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_all_generated_assets.py`
 
 ## Output roots
 
@@ -84,15 +84,15 @@ Workflow runtime family:
 
 Article-side mirror:
 
-- `Evironmetrics---REVISED-DOC-Corrected/generated/setup_support_by_cutoff_v2/`
+- `Evironmetrics---REVISED-DOC-Corrected-2/generated/setup_support_by_cutoff_v2/`
 
 Article-side review:
 
-- `Evironmetrics---REVISED-DOC-Corrected/generated/setup_support_by_cutoff_v2_review/`
+- `Evironmetrics---REVISED-DOC-Corrected-2/generated/setup_support_by_cutoff_v2_review/`
 
 Representative manuscript promotion:
 
-- `Evironmetrics---REVISED-DOC-Corrected/DISC/`
+- `Evironmetrics---REVISED-DOC-Corrected-2/DISC/`
 - selected by `generated/setup_support_by_cutoff_v2_article_selection/selection_manifest.json`
 
 ## Source-layer rules
@@ -123,7 +123,7 @@ python3 /data/muscat_data/jaguir26/project1_ucsc_phd/scripts/render_exal_m_t1_se
 Refresh the article-side mirror and representative `DISC/` figures:
 
 ```bash
-python3 /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py
+python3 /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_all_generated_assets.py
 ```
 
 ## Validation gate
@@ -148,9 +148,9 @@ Workflow-side review:
 
 Article-side review:
 
-- `Evironmetrics---REVISED-DOC-Corrected/generated/setup_support_by_cutoff_v2_review/SETUP_SUPPORT_BY_CUTOFF_V2_REVIEW.md`
-- `Evironmetrics---REVISED-DOC-Corrected/generated/setup_support_by_cutoff_v2_review/gallery.html`
-- `Evironmetrics---REVISED-DOC-Corrected/generated/setup_support_by_cutoff_v2_review/figure_manifest.csv`
+- `Evironmetrics---REVISED-DOC-Corrected-2/generated/setup_support_by_cutoff_v2_review/SETUP_SUPPORT_BY_CUTOFF_V2_REVIEW.md`
+- `Evironmetrics---REVISED-DOC-Corrected-2/generated/setup_support_by_cutoff_v2_review/gallery.html`
+- `Evironmetrics---REVISED-DOC-Corrected-2/generated/setup_support_by_cutoff_v2_review/figure_manifest.csv`
 
 ## Current representative article choice
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="/data/muscat_data/jaguir26/project1_ucsc_phd"
-ARTICLE_ROOT="$ROOT/Evironmetrics---REVISED-DOC-Corrected"
+ARTICLE_ROOT="$ROOT/Evironmetrics---REVISED-DOC-Corrected-2"
 WORKFLOW_ROOT="$ROOT"
 KEEP_RUNTIME_ROOT="/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516"
 UNIVAR_RUNTIME_ROOT="/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_all_cutoffs_sharedspec_20260516"

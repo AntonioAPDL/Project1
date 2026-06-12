@@ -22,7 +22,7 @@ Workflow repo root:
 - `/data/muscat_data/jaguir26/project1_ucsc_phd`
 
 Article repo root:
-- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected`
+- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2`
 
 Figure families:
 - Setup/support family (Figures 1--4 and Appendix A3--A6 panels A/B/C/D)
@@ -43,7 +43,7 @@ Evidence:
   - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506/20221225_exal_m_t1/runs/multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep/inputs/shared/covariates/cov_02_SOIL.csv`
   - `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_publication_replay_representatives_20260506/20221225_exal_m_t1/runs/multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep/inputs/shared/covariates/cov_03_PCA.csv`
 - Current manuscript text still says the transfer covariates are standardized precipitation and standardized soil moisture at:
-  - `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex`
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex`
 
 Implication:
 - Figure 2 and its surrounding prose need a consistent contract. For the current setup/support figure family, the clean contract is to show the raw cutoff-specific support files with explicit units.
@@ -84,7 +84,7 @@ Implication:
 
 Evidence:
 - Current renderer builds `component = 6` directly from state quantile arrays in:
-  - `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/scripts/render_current_model_output_support_figures.R`
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/render_current_model_output_support_figures.R`
 - The article text identifies the long-cycle harmonic as the approximately 80-month component.
 - Legacy figure code confirms component indexing conventions and the harmonic setup in:
   - `/data/muscat_data/jaguir26/project1_ucsc_phd/Environmetrics_Figures__OLDEST_linearized.R`
@@ -181,7 +181,7 @@ Acceptance:
 Targets:
 - `/data/muscat_data/jaguir26/project1_ucsc_phd/scripts/setup_support_bundle_v2_helpers.R`
 - `/data/muscat_data/jaguir26/project1_ucsc_phd/scripts/forecats_plot_bundle.R`
-- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex`
+- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex`
 
 Checklist:
 - [x] Figure 2: remove subtitle
@@ -203,8 +203,8 @@ Acceptance:
 ### WP3. Historical-support family polish (Figures 5, 6, A1)
 
 Targets:
-- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/scripts/render_current_model_output_support_figures.R`
-- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex`
+- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/render_current_model_output_support_figures.R`
+- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex`
 
 Checklist:
 - [x] Figure 5: fix y-range to `0--7`
@@ -225,7 +225,7 @@ Acceptance:
 Targets:
 - `/data/muscat_data/jaguir26/project1_ucsc_phd/R/unified/post_publication_figures.R`
 - `/data/muscat_data/jaguir26/project1_ucsc_phd/scripts/render_focus_publication_posterior_plot.R`
-- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex`
+- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex`
 
 Checklist:
 - [x] align Figure 7 and Figure A2 visual style with Figure 4 where possible
@@ -250,8 +250,8 @@ Acceptance:
 ### WP5. Appendix scope cleanup
 
 Targets:
-- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex`
-- appendix-generation scripts under `Evironmetrics---REVISED-DOC-Corrected/scripts`
+- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex`
+- appendix-generation scripts under `Evironmetrics---REVISED-DOC-Corrected-2/scripts`
 
 Checklist:
 - [x] keep A3--A6 generation in the repo and retain the current manuscript appendix placement for this pass
@@ -265,7 +265,7 @@ Acceptance:
 ## Manuscript Prose And Caption Corrections
 
 Targets:
-- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex`
+- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex`
 
 Checklist:
 - [x] replace `cutoff-centered` wording with reader-facing language
@@ -283,9 +283,9 @@ Acceptance:
 
 Workflow-side reruns to use during implementation:
 - [x] `python3 scripts/render_exal_m_t1_setup_support_by_cutoff_v2.py --clean`
-- [x] `python3 Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_current_model_output_support_figures.py`
-- [x] `python3 Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_exal_m_t1_generated_assets.py`
-- [x] `python3 Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py`
+- [x] `python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_current_model_output_support_figures.py`
+- [x] `python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_exal_m_t1_generated_assets.py`
+- [x] `python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_all_generated_assets.py`
 
 Manifest and appendix wiring checks:
 - [x] `selection_manifest.json` still points to the intended canonical figure outputs

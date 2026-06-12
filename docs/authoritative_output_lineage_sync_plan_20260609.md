@@ -15,7 +15,7 @@ posterior-output source is the same selected-model bundle currently used for the
 - runtime root:
   `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep`
 - article bundle:
-  `Evironmetrics---REVISED-DOC-Corrected/artifacts/representative_selected_model_2022_12_25/`
+  `Evironmetrics---REVISED-DOC-Corrected-2/artifacts/representative_selected_model_2022_12_25/`
 
 This means the q05, q50, and q95 quantile-dynamic figures and the associated component figures must resolve to the
 same authoritative posterior source as `fig:synth1`, not to a separate historical-support replay.
@@ -37,9 +37,9 @@ Scope correction after the 2026-06-09 review:
 The new strict validator in the revised article repo reports `FAIL`:
 
 - validator:
-  `Evironmetrics---REVISED-DOC-Corrected/scripts/validate_authoritative_output_lineage.py`
+  `Evironmetrics---REVISED-DOC-Corrected-2/scripts/validate_authoritative_output_lineage.py`
 - report:
-  `Evironmetrics---REVISED-DOC-Corrected/reports/manuscript_asset_review/authoritative_output_lineage/AUTHORITATIVE_OUTPUT_LINEAGE_VALIDATION.md`
+  `Evironmetrics---REVISED-DOC-Corrected-2/reports/manuscript_asset_review/authoritative_output_lineage/AUTHORITATIVE_OUTPUT_LINEAGE_VALIDATION.md`
 
 Current status:
 
@@ -151,12 +151,12 @@ The post artifact contract now fails before cleanup if these files are requested
 
 Implemented article-side import/render path:
 
-- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_authoritative_selected_model_support_figures.py`;
-- `Evironmetrics---REVISED-DOC-Corrected/scripts/render_authoritative_selected_model_support_figures.R`.
+- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_authoritative_selected_model_support_figures.py`;
+- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/render_authoritative_selected_model_support_figures.R`.
 
 These scripts import compact workflow support artifacts into:
 
-`Evironmetrics---REVISED-DOC-Corrected/artifacts/representative_selected_model_2022_12_25/authoritative_support/`
+`Evironmetrics---REVISED-DOC-Corrected-2/artifacts/representative_selected_model_2022_12_25/authoritative_support/`
 
 and then update only `fig:dry_quantile`, `fig:rainy_quantile`, and `fig:80_components` to point at the representative
 selected-model bundle.
@@ -218,7 +218,7 @@ Execution correction from the 2026-06-09 implementation pass:
   - `scripts/launch_he2_selected_output_support_replay.py`;
   - `scripts/check_he2_selected_output_support_replay.py`;
 - revised-article binding:
-  `Evironmetrics---REVISED-DOC-Corrected/config/runtime_bindings.json:exal_m_t1.selected_support_output_root`.
+  `Evironmetrics---REVISED-DOC-Corrected-2/config/runtime_bindings.json:exal_m_t1.selected_support_output_root`.
 
 ## Why This Cannot Be Fixed By Renaming Alone
 
@@ -251,7 +251,7 @@ together.
 
 ### Phase 1: Make The Gate Permanent
 
-1. Keep `Evironmetrics---REVISED-DOC-Corrected/scripts/validate_authoritative_output_lineage.py` as the strict article gate.
+1. Keep `Evironmetrics---REVISED-DOC-Corrected-2/scripts/validate_authoritative_output_lineage.py` as the strict article gate.
 2. After the rewire is complete, add it to the article full-refresh pipeline after:
    - `promote_generated_figures_to_disc.py`,
    - `sync_legacy_uppercase_figures.py`,
@@ -358,7 +358,7 @@ Replace the old historical-support figure source path with an authoritative sele
 
 Recommended structure:
 
-`Evironmetrics---REVISED-DOC-Corrected/artifacts/representative_selected_model_2022_12_25/authoritative_dynamics/`
+`Evironmetrics---REVISED-DOC-Corrected-2/artifacts/representative_selected_model_2022_12_25/authoritative_dynamics/`
 
 Required article updates:
 

@@ -251,10 +251,10 @@ Live checkpoints:
 
 The completion sync updates:
 
-- `Evironmetrics---REVISED-DOC-Corrected/tables/generated_tex/he3_ablation_crps_main_table.tex`
-- `Evironmetrics---REVISED-DOC-Corrected/tables/generated_tex/he3_ablation_crps_body.tex`
-- `Evironmetrics---REVISED-DOC-Corrected/MANUSCRIPT_ASSET_MANIFEST.json`
-- `Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex`
+- `Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/he3_ablation_crps_main_table.tex`
+- `Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/he3_ablation_crps_body.tex`
+- `Evironmetrics---REVISED-DOC-Corrected-2/MANUSCRIPT_ASSET_MANIFEST.json`
+- `Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex`
 - `/data/muscat_data/jaguir26/Corrections---Project-1/main.tex`
 
 The main article receives an `Ablation of the Selected Specification` subsection if it

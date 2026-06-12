@@ -138,11 +138,11 @@ Post-stage is run-scoped and strict:
 
 Article-side sync targets are:
 
-- `Evironmetrics---REVISED-DOC-Corrected/tables/generated_tex/he3_ablation_crps_main_table.tex`
-- `Evironmetrics---REVISED-DOC-Corrected/tables/generated_tex/he3_ablation_crps_body.tex`
-- `Evironmetrics---REVISED-DOC-Corrected/artifacts/he3_exdqlm_ablation_authoritative/`
-- `Evironmetrics---REVISED-DOC-Corrected/MANUSCRIPT_ASSET_MANIFEST.json`
-- `Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex`
+- `Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/he3_ablation_crps_main_table.tex`
+- `Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/he3_ablation_crps_body.tex`
+- `Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he3_exdqlm_ablation_authoritative/`
+- `Evironmetrics---REVISED-DOC-Corrected-2/MANUSCRIPT_ASSET_MANIFEST.json`
+- `Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex`
 - `/data/muscat_data/jaguir26/Corrections---Project-1/main.tex`
 
 Repository state observed at this checkpoint:
@@ -150,7 +150,7 @@ Repository state observed at this checkpoint:
 | repo | state |
 |---|---|
 | `project1_ucsc_phd` | clean, ahead of origin by 7 commits |
-| `Evironmetrics---REVISED-DOC-Corrected` | clean, ahead of origin by 4 commits |
+| `Evironmetrics---REVISED-DOC-Corrected-2` | clean, ahead of origin by 4 commits |
 | `Corrections---Project-1` | clean |
 
 ## Execution Plan From Here
@@ -207,7 +207,7 @@ python3 scripts/sync_he3_ablation_article_tables.py \
 7. Only after post reports, CRPS tables, audits, article sync, and manifests are
    verified should large `.RData` files be removed by cleanup or manual cleanup.
 8. Commit the final workflow/docs changes in `project1_ucsc_phd`; commit article-table
-   sync in `Evironmetrics---REVISED-DOC-Corrected`; commit corrections-table sync in
+   sync in `Evironmetrics---REVISED-DOC-Corrected-2`; commit corrections-table sync in
    `Corrections---Project-1`. Keep those commits separate so the scientific workflow,
    revised article, and corrections article remain reviewable.
 

@@ -8,7 +8,7 @@ This note freezes the current state of the **narrow retrack goal**:
 
 - reproduce and relaunch only the publication-relevant `exAL-M-T1` runs
 - keep the runs aligned with the current HE2 CRPS table
-- produce the outputs needed to refresh figures and tables for `Evironmetrics---REVISED-DOC-Corrected`
+- produce the outputs needed to refresh figures and tables for `Evironmetrics---REVISED-DOC-Corrected-2`
 
 This is **not** a request to reproduce the full 45-cell Bayesian HE2 table.
 
@@ -137,7 +137,7 @@ The revised article repo has already been refreshed from the verified representa
 - `tab:components_23_31`
 - `tab:gamma_sigma_intervals1`
 - `tab:gamma_sigma_intervals2`
-- local copied provenance bundle under `Evironmetrics---REVISED-DOC-Corrected/generated/exal_m_t1_20221225/`
+- local copied provenance bundle under `Evironmetrics---REVISED-DOC-Corrected-2/generated/exal_m_t1_20221225/`
 
 ### Next execution step
 
@@ -165,5 +165,5 @@ The next operational goal should be:
 3. use those verified outputs for the revised manuscript:
    - predictive synthesis figures
    - covariate / posterior summary tables
-   - any additional figure/table artifacts needed by `Evironmetrics---REVISED-DOC-Corrected`
+   - any additional figure/table artifacts needed by `Evironmetrics---REVISED-DOC-Corrected-2`
 4. keep the replay workflow locked to the verified headless-safe and exact-snapshot-safe path

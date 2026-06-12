@@ -17,7 +17,7 @@ from build_he2_publication_parity_gate import build_gate  # noqa: E402
 from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402
 
 OUT_ROOT = ROOT / "reports" / "he2_master_workflow_audit_20260517"
-ARTICLE_ROOT = ROOT / "Evironmetrics---REVISED-DOC-Corrected"
+ARTICLE_ROOT = ROOT / "Evironmetrics---REVISED-DOC-Corrected-2"
 ARTICLE_LINEAGE_SUMMARY = ARTICLE_ROOT / "reports" / "article_figure_lineage_audit_20260516" / "summary.json"
 ARTICLE_SUPPORT_REFRESH = ARTICLE_ROOT / "artifacts" / "historical_support_from_current_models" / "refresh_status.json"
 ARTICLE_MANIFEST = ARTICLE_ROOT / "MANUSCRIPT_ASSET_MANIFEST.json"

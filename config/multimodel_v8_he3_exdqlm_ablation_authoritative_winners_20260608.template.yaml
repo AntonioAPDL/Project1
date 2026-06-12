@@ -55,7 +55,7 @@ pilot_sequence:
   - 20221225
 article_sync:
   enabled: true
-  article_root: /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected
+  article_root: /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2
   corrections_root: /data/muscat_data/jaguir26/Corrections---Project-1
 variants:
   full:

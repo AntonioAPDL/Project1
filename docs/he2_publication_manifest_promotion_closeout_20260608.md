@@ -16,9 +16,9 @@ Primary evidence:
 - CRPS readiness audit:
   `reports/he2_crps_table_readiness_20260517/crps_table_readiness.json`
 - article freeze:
-  `Evironmetrics---REVISED-DOC-Corrected/artifacts/he2_publication_freeze/`
+  `Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he2_publication_freeze/`
 - generated article table:
-  `Evironmetrics---REVISED-DOC-Corrected/tables/generated_tex/benchmark_crps_main_table.tex`
+  `Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/benchmark_crps_main_table.tex`
 
 ## Final Gates
 
@@ -71,7 +71,7 @@ match the table:
 
 Raw baseline rows in the manuscript table continue to come from the existing
 five-run exAL-M-T1 CRPS validation freeze in
-`Evironmetrics---REVISED-DOC-Corrected/artifacts/five_cutoff_crps_validation_sources/`.
+`Evironmetrics---REVISED-DOC-Corrected-2/artifacts/five_cutoff_crps_validation_sources/`.
 The June 7 NDLM compare bundles are retained as merged all-model provenance
 evidence for the relaunched NDLM rows, not as the article raw-baseline source.
 
@@ -89,15 +89,15 @@ python3 scripts/build_he2_crps_table_readiness_audit.py
 Article side:
 
 ```bash
-python3 Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_he2_manifest_snapshot.py \
-  --article-root Evironmetrics---REVISED-DOC-Corrected \
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_he2_manifest_snapshot.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2 \
   --workflow-root .
 
-python3 Evironmetrics---REVISED-DOC-Corrected/scripts/build_generated_table_includes.py \
-  --article-root Evironmetrics---REVISED-DOC-Corrected
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/build_generated_table_includes.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2
 
-python3 Evironmetrics---REVISED-DOC-Corrected/scripts/build_article_asset_review_report.py \
-  --article-root Evironmetrics---REVISED-DOC-Corrected
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/build_article_asset_review_report.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2
 ```
 
 Regression tests:

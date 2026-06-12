@@ -140,7 +140,7 @@ This should replace the review role currently embedded in the `v1` Python orches
 ### 6. Article-side mirror helper
 
 Create:
-- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_setup_support_by_cutoff_v2.py`
+- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_setup_support_by_cutoff_v2.py`
 
 Purpose:
 - mirror the corrected runtime family into:
@@ -149,7 +149,7 @@ Purpose:
 ### 7. Article-side review builder
 
 Create:
-- `Evironmetrics---REVISED-DOC-Corrected/scripts/build_setup_support_by_cutoff_v2_review.py`
+- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/build_setup_support_by_cutoff_v2_review.py`
 
 Purpose:
 - build:
@@ -193,26 +193,26 @@ Modify to:
 - keep it as historical audit context
 - explicitly say it should not be used for the final article freeze
 
-### 4. `Evironmetrics---REVISED-DOC-Corrected/FIGURE_TABLE_PROVENANCE.md`
+### 4. `Evironmetrics---REVISED-DOC-Corrected-2/FIGURE_TABLE_PROVENANCE.md`
 
 Modify to:
 - mark `generated/setup_support_by_cutoff/` as provisional `v1`
 - point setup/support figure provenance to `setup_support_by_cutoff_v2/` after implementation
 
-### 5. `Evironmetrics---REVISED-DOC-Corrected/EXAL_M_T1_ARTIFACT_RUN_MAP.md`
+### 5. `Evironmetrics---REVISED-DOC-Corrected-2/EXAL_M_T1_ARTIFACT_RUN_MAP.md`
 
 Modify to:
 - split setup/support provenance into:
   - `v1` debugging artifact
   - `v2` canonical article-side family
 
-### 6. `Evironmetrics---REVISED-DOC-Corrected/MANUSCRIPT_REVISION_CHECKLIST.md`
+### 6. `Evironmetrics---REVISED-DOC-Corrected-2/MANUSCRIPT_REVISION_CHECKLIST.md`
 
 Modify to:
 - track the `v2` rollout explicitly
 - prevent the old `v1` cutoff figure family from being treated as done
 
-### 7. `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py`
+### 7. `Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_all_generated_assets.py`
 
 Modify to:
 - call the new `v2` article-side refresh helper and review builder
@@ -308,8 +308,8 @@ Required metadata files per cutoff:
 - `metadata/input_hashes.csv`
 
 Mirror into article repo:
-- `Evironmetrics---REVISED-DOC-Corrected/generated/setup_support_by_cutoff_v2/`
-- `Evironmetrics---REVISED-DOC-Corrected/generated/setup_support_by_cutoff_v2_review/`
+- `Evironmetrics---REVISED-DOC-Corrected-2/generated/setup_support_by_cutoff_v2/`
+- `Evironmetrics---REVISED-DOC-Corrected-2/generated/setup_support_by_cutoff_v2_review/`
 
 ## Implementation order
 

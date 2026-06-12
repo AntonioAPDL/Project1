@@ -5,7 +5,7 @@ Date: 2026-06-09
 Scope:
 
 - Code/workflow repo: `/data/muscat_data/jaguir26/project1_ucsc_phd`
-- Revised article repo: `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected`
+- Revised article repo: `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2`
 - Corrections/rebuttal repo: `/data/muscat_data/jaguir26/Corrections---Project-1`
 
 This note is a cross-repo audit overview of where the project stands after the
@@ -72,13 +72,13 @@ The May workflow established a canonical revised-article path in
 `repro/run/CANONICAL_REVISED_ARTICLE_WORKFLOW.md`. That runbook names
 `scripts/unified_run.R` and `R/unified/stages/stage_post.R` as the canonical
 model/post entrypoints, and describes article-side refresh helpers in
-`Evironmetrics---REVISED-DOC-Corrected/scripts/`. It also defines the current setup and
+`Evironmetrics---REVISED-DOC-Corrected-2/scripts/`. It also defines the current setup and
 support figure contract: full `1987-05-29 -> cutoff` support for USGS and raw
 covariates, corrected retrospective support, a strict `cutoff - 28` to
 `cutoff + 28` forecast-context window, and `log1p_cms` scale.
 
 The revised article now has a manifest-driven asset model in
-`Evironmetrics---REVISED-DOC-Corrected/MANUSCRIPT_ASSET_MANIFEST.json`. The manifest
+`Evironmetrics---REVISED-DOC-Corrected-2/MANUSCRIPT_ASSET_MANIFEST.json`. The manifest
 currently registers:
 
 - `tab:benchmark_crps_models`
@@ -150,11 +150,11 @@ The current HE2 publication closeout is
 That closeout promotes all `9 x 5 = 45` Bayesian table cells onto the canonical
 20260510 shared-input-bundle contract and identifies the article-side freeze:
 
-`Evironmetrics---REVISED-DOC-Corrected/artifacts/he2_publication_freeze/`
+`Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he2_publication_freeze/`
 
 The generated revised-article table is:
 
-`Evironmetrics---REVISED-DOC-Corrected/tables/generated_tex/benchmark_crps_main_table.tex`
+`Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/benchmark_crps_main_table.tex`
 
 The current generated table has:
 
@@ -210,11 +210,11 @@ adapter CSVs where the only difference is writer precision. The detail table is:
 
 The revised article now includes:
 
-`Evironmetrics---REVISED-DOC-Corrected/tables/generated_tex/he3_ablation_crps_main_table.tex`
+`Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/he3_ablation_crps_main_table.tex`
 
 The article artifact bundle is:
 
-`Evironmetrics---REVISED-DOC-Corrected/artifacts/he3_exdqlm_ablation_authoritative/`
+`Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he3_exdqlm_ablation_authoritative/`
 
 HE3 is the strongest cross-repo wiring point right now: runtime, audit,
 article table, article manifest, and corrections text are all connected. The
@@ -309,7 +309,7 @@ exception.
 
 ### P0. Revised Article Conclusion Has a Stale Overclaim
 
-`Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex` has a correct benchmark
+`Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex` has a correct benchmark
 interpretation after the table, but the conclusions section still says
 `exAL-M-T1` has the lowest CRPS "in every case." This is false under the current
 table.

@@ -54,7 +54,7 @@ Goal: make Figures 5, 6, and A1 trustworthy without touching model specs.
 Status: complete in this audit cycle.
 
 Completed tasks:
-- patched `Evironmetrics---REVISED-DOC-Corrected/scripts/render_current_model_output_support_figures.R` so the internal scale is read from the replay contract instead of hardcoding `log_log1p_cms`;
+- patched `Evironmetrics---REVISED-DOC-Corrected-2/scripts/render_current_model_output_support_figures.R` so the internal scale is read from the replay contract instead of hardcoding `log_log1p_cms`;
 - regenerated `artifacts/historical_support_from_current_models/`;
 - rebuilt article refresh/audit outputs;
 - synced the rerendered historical-support figures into the manuscript figure tree.

@@ -10,7 +10,7 @@ tables.
 
 The active revised-article repository for this wiring pass is:
 
-`/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected`
+`/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2`
 
 The selected-output authority is:
 
@@ -79,7 +79,7 @@ Workflow-side output directory:
 
 Revised-article artifact directory:
 
-`Evironmetrics---REVISED-DOC-Corrected/artifacts/representative_selected_model_2022_12_25/authoritative_support/analysis_figures/component_evolution/`
+`Evironmetrics---REVISED-DOC-Corrected-2/artifacts/representative_selected_model_2022_12_25/authoritative_support/analysis_figures/component_evolution/`
 
 Included component contracts:
 
@@ -121,11 +121,11 @@ Primary generators:
 - workflow post table helpers:
   `R/environmetrics/02_helpers_core.R`
 - revised article TeX fragments:
-  `Evironmetrics---REVISED-DOC-Corrected/scripts/build_generated_table_includes.py`
+  `Evironmetrics---REVISED-DOC-Corrected-2/scripts/build_generated_table_includes.py`
 - HE3 ablation article/corrections table sync:
   `scripts/sync_he3_ablation_article_tables.py`
 - corrections response-table sync from revised-article generated bodies:
-  `Evironmetrics---REVISED-DOC-Corrected/scripts/sync_corrections_generated_table_includes.py`
+  `Evironmetrics---REVISED-DOC-Corrected-2/scripts/sync_corrections_generated_table_includes.py`
 
 The corrections repository consumes response-specific wrappers under:
 
@@ -156,7 +156,7 @@ Article refresh/validation:
 - `python3 scripts/sync_corrections_generated_table_includes.py --article-root . --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1`
 - `python3 scripts/validate_authoritative_output_lineage.py --article-root . --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1`
 - `python3 scripts/validate_manuscript_figure_paths.py --article-root .`
-- `python3 scripts/validate_revision_cross_repo_wiring.py --workflow-root /data/muscat_data/jaguir26/project1_ucsc_phd --article-root /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1 --after-patch --strict`
+- `python3 scripts/validate_revision_cross_repo_wiring.py --workflow-root /data/muscat_data/jaguir26/project1_ucsc_phd --article-root /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2 --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1 --after-patch --strict`
 
 Compile checks:
 

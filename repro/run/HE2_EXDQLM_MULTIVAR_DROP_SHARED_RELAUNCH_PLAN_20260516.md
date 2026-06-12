@@ -113,7 +113,7 @@ The point is to prove that the shared spec is structurally valid **before** we s
 2. Review q50 / q65 fit-stage health and full row reports
 3. Full 5-cutoff relaunch under the same shared spec
 4. Article refresh from the new relaunch outputs
-5. Commit and push updated article artifacts to `Evironmetrics---REVISED-DOC-Corrected`
+5. Commit and push updated article artifacts to `Evironmetrics---REVISED-DOC-Corrected-2`
 
 ## Full-launch execution contract
 

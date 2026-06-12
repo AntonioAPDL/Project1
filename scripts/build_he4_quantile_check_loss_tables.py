@@ -29,7 +29,7 @@ OUTPUT_DIR_DEFAULT = (
 )
 HE2_PUBLICATION_MANIFEST_DEFAULT = (
     ROOT
-    / "Evironmetrics---REVISED-DOC-Corrected"
+    / "Evironmetrics---REVISED-DOC-Corrected-2"
     / "artifacts"
     / "he2_publication_freeze"
     / "he2_bayesian_publication_manifest.csv"

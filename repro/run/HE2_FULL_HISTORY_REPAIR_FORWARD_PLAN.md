@@ -21,7 +21,7 @@ This plan exists because the historical-support audit revealed a serious modelin
 Reference audit:
 - `/data/muscat_data/jaguir26/project1_ucsc_phd/reports/he2_publication_manifest/historical_support_audit_20260507/historical_support_audit.md`
 - mirrored article snapshot:
-  - `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/generated/he2_historical_support_audit_20260507/historical_support_audit.md`
+  - `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/generated/he2_historical_support_audit_20260507/historical_support_audit.md`
 
 ## Governing principle
 
@@ -46,22 +46,22 @@ The current publication state is frozen by:
 - `reports/publication_replay/publication_replay_matrix.md`
 - `reports/he2_publication_manifest/historical_support_audit_20260507/historical_support_audit.md`
 - article-side snapshots under:
-  - `Evironmetrics---REVISED-DOC-Corrected/generated/he2_publication_manifest_snapshot/`
-  - `Evironmetrics---REVISED-DOC-Corrected/generated/he2_historical_support_audit_20260507/`
+  - `Evironmetrics---REVISED-DOC-Corrected-2/generated/he2_publication_manifest_snapshot/`
+  - `Evironmetrics---REVISED-DOC-Corrected-2/generated/he2_historical_support_audit_20260507/`
 
 ### Article-side generated-asset wiring
 
 The revised article repo is now the canonical freeze point for generated assets and review bundles.
 
 Current canonical generated families under:
-- `Evironmetrics---REVISED-DOC-Corrected/generated/`
+- `Evironmetrics---REVISED-DOC-Corrected-2/generated/`
 
 Current refresh entrypoint:
-- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py`
+- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_all_generated_assets.py`
 
 Current generated-asset index entrypoint:
-- `Evironmetrics---REVISED-DOC-Corrected/generated/README.md`
-- `Evironmetrics---REVISED-DOC-Corrected/generated/asset_inventory.csv`
+- `Evironmetrics---REVISED-DOC-Corrected-2/generated/README.md`
+- `Evironmetrics---REVISED-DOC-Corrected-2/generated/asset_inventory.csv`
 
 ### Corrections synchronization rule
 
@@ -250,7 +250,7 @@ Only after corrected reruns and bundle refreshes:
 From this point forward, the revised article repo should be the stable freeze point for generated assets used in manuscript work.
 
 That means:
-- every important generated family should live under `Evironmetrics---REVISED-DOC-Corrected/generated/`
+- every important generated family should live under `Evironmetrics---REVISED-DOC-Corrected-2/generated/`
 - every family should have a README/manifest/review path when feasible
 - the generated asset index should be refreshed after asset changes
 - manuscript-facing `DISC/` files should always be traceable back to a generated family and manifest

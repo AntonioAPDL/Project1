@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected'
+ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected-2'
 os.sys.path.insert(0, str(ARTICLE_ROOT / 'scripts'))
 
 from article_repo_layout import build_layout  # noqa: E402

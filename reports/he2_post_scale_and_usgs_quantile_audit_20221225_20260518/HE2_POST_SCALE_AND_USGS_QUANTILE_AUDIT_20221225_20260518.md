@@ -27,10 +27,10 @@ The key code path is:
 - `R/environmetrics/40_figures_smoke_fast.R:2372-2398`
 
 This aligns with the revised-doc theory section:
-- `Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex:111-152`
-- `Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex:164-190`
-- `Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex:332`
-- `Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex:407-411`
+- `Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex:111-152`
+- `Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex:164-190`
+- `Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex:332`
+- `Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex:407-411`
 
 Important distinction:
 - post-cutoff USGS observations are used only as held-out verification overlays and for scoring, not to generate the predictive quantiles.

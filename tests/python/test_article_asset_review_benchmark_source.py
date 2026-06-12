@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected'
+ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected-2'
 AUDIT_MD = ARTICLE_ROOT / 'reports' / 'manuscript_asset_review' / 'CURRENT_MODEL_OUTPUT_WIRING_AUDIT.md'
 
 

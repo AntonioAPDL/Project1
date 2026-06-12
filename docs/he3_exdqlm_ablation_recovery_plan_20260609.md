@@ -319,8 +319,8 @@ When all 30 rows pass:
 3. run `scripts/audit_he3_exdqlm_ablation.py`;
 4. run `scripts/sync_he3_ablation_article_tables.py`;
 5. verify revised-article outputs under
-   `Evironmetrics---REVISED-DOC-Corrected/tables/generated_tex/` and
-   `Evironmetrics---REVISED-DOC-Corrected/artifacts/he3_exdqlm_ablation_authoritative/`;
+   `Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/` and
+   `Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he3_exdqlm_ablation_authoritative/`;
 6. verify corrections-repo table/text sync under
    `/data/muscat_data/jaguir26/Corrections---Project-1`;
 7. clean large `.RData` only after summary, audit, and article sync are verified.

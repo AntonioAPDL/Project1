@@ -8,7 +8,7 @@ from pathlib import Path
 from statistics import median
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected'
+ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected-2'
 RUNTIME_ROOT = ROOT.parent / 'project1_ucsc_phd_runtime'
 REPORT_DIR = ROOT / 'reports' / 'he2_exal_revised_doc_audit_20260517'
 

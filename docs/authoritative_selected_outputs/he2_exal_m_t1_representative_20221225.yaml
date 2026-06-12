@@ -52,7 +52,7 @@ authority:
     durable_support_required_before_cleanup: true
     current_selected_run_rdata_expected: false
   article_sync_contract:
-    revised_article_root: "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected"
+    revised_article_root: "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2"
     representative_bundle_relpath: "artifacts/representative_selected_model_2022_12_25"
     required_representative_posterior_figures:
       - "fig:synth1"

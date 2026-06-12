@@ -10,7 +10,7 @@ Related plan:
 Repos validated:
 
 - workflow/code: `/data/muscat_data/jaguir26/project1_ucsc_phd`
-- revised article: `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected`
+- revised article: `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2`
 - corrections article: `/data/muscat_data/jaguir26/Corrections---Project-1`
 
 ## Implemented Changes
@@ -22,7 +22,7 @@ Repos validated:
 ```bash
 python3 scripts/build_he4_quantile_check_loss_tables.py \
   --source-mode he2-publication-manifest \
-  --he2-publication-manifest Evironmetrics---REVISED-DOC-Corrected/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv \
+  --he2-publication-manifest Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv \
   --runtime-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime \
   --output-dir reports/he4_quantile_check_loss_current_publication_20260609
 ```
@@ -40,7 +40,7 @@ that:
 
 The generated HE4 artifact was frozen into the revised article repo at:
 
-- `Evironmetrics---REVISED-DOC-Corrected/artifacts/he4_quantile_check_loss_current_publication/`
+- `Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he4_quantile_check_loss_current_publication/`
 
 ### Revised Article Wiring
 
@@ -101,32 +101,32 @@ Final result:
 ```bash
 python3 scripts/build_he4_quantile_check_loss_tables.py \
   --source-mode he2-publication-manifest \
-  --he2-publication-manifest Evironmetrics---REVISED-DOC-Corrected/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv \
+  --he2-publication-manifest Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv \
   --runtime-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime \
   --output-dir reports/he4_quantile_check_loss_current_publication_20260609
 
-python3 Evironmetrics---REVISED-DOC-Corrected/scripts/build_generated_table_includes.py \
-  --article-root Evironmetrics---REVISED-DOC-Corrected
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/build_generated_table_includes.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2
 
-python3 Evironmetrics---REVISED-DOC-Corrected/scripts/build_article_asset_review_report.py \
-  --article-root Evironmetrics---REVISED-DOC-Corrected
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/build_article_asset_review_report.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2
 
-python3 Evironmetrics---REVISED-DOC-Corrected/scripts/validate_manuscript_figure_paths.py \
-  --article-root Evironmetrics---REVISED-DOC-Corrected
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/validate_manuscript_figure_paths.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2
 
 python3 -m pytest tests/python/test_he4_quantile_check_loss_tables.py -q
 
 python3 -m py_compile \
   scripts/build_he4_quantile_check_loss_tables.py \
   scripts/validate_revision_cross_repo_wiring.py \
-  Evironmetrics---REVISED-DOC-Corrected/scripts/build_generated_table_includes.py \
-  Evironmetrics---REVISED-DOC-Corrected/scripts/article_repo_layout.py
+  Evironmetrics---REVISED-DOC-Corrected-2/scripts/build_generated_table_includes.py \
+  Evironmetrics---REVISED-DOC-Corrected-2/scripts/article_repo_layout.py
 ```
 
 PDF builds:
 
 ```bash
-cd Evironmetrics---REVISED-DOC-Corrected
+cd Evironmetrics---REVISED-DOC-Corrected-2
 pdflatex -interaction=nonstopmode -halt-on-error -jobname=output wileyNJD-APA.tex
 bibtex output
 pdflatex -interaction=nonstopmode -halt-on-error -jobname=output wileyNJD-APA.tex
@@ -141,7 +141,7 @@ Final gate:
 ```bash
 python3 scripts/validate_revision_cross_repo_wiring.py \
   --workflow-root /data/muscat_data/jaguir26/project1_ucsc_phd \
-  --article-root /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected \
+  --article-root /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2 \
   --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1 \
   --output-dir reports/revision_cross_repo_validation_20260609 \
   --after-patch
