@@ -136,7 +136,7 @@ rebuild_one_quantile <- function(spec) {
   if (is.null(layout)) stop(sprintf("Unable to infer theta sample layout for %s", obj_name), call. = FALSE)
   n_component <- min(7L, dim(arr)[1L])
   source_object <- obj_name
-  rows <- vector("list", n_component + 2L)
+  rows <- vector("list", n_component + 3L)
   for (component in seq_len(n_component)) {
     rows[[component]] <- component_summary_row(
       mat = component_matrix(arr, component, n_time, layout),
@@ -159,6 +159,15 @@ rebuild_one_quantile <- function(spec) {
     component_contract = "component_6_plus_trend_component_1_samplewise",
     source_object = source_object
   )
+  rows[[n_component + 2L]] <- component_summary_row(
+    mat = component6_mat - trend_mat,
+    dates = dates,
+    label = spec$label,
+    probability = spec$probability,
+    component = 6L,
+    component_contract = "component_6_minus_trend_component_1_samplewise",
+    source_object = source_object
+  )
   legacy <- component_summary_row(
     mat = component6_mat,
     dates = dates,
@@ -172,7 +181,7 @@ rebuild_one_quantile <- function(spec) {
   legacy$lower_025 <- legacy$lower_025 + trend_shift
   legacy$median_500 <- legacy$median_500 + trend_shift
   legacy$upper_975 <- legacy$upper_975 + trend_shift
-  rows[[n_component + 2L]] <- legacy
+  rows[[n_component + 3L]] <- legacy
   rm(e, obj, arr, trend_mat, component6_mat)
   invisible(gc())
   do.call(rbind, rows)
@@ -195,7 +204,10 @@ if (file.exists(manifest_src) && requireNamespace("jsonlite", quietly = TRUE)) {
     rebuilt_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     source_support_dir = source_support_dir,
     fit_run_root = fit_run_root,
-    contract_added = "component_6_plus_trend_component_1_samplewise"
+    contracts_added = c(
+      "component_6_plus_trend_component_1_samplewise",
+      "component_6_minus_trend_component_1_samplewise"
+    )
   )
   jsonlite::write_json(manifest, manifest_out, auto_unbox = TRUE, pretty = TRUE)
 } else if (file.exists(manifest_src)) {
@@ -223,7 +235,7 @@ status <- data.frame(
   ),
   detail = c(
     "copied from source selected-support root",
-    "rebuilt from retained RData with samplewise component-6-plus-trend contract",
+    "rebuilt from retained RData with samplewise component-6-plus/minus-trend contracts",
     "copied and updated with component rebuild metadata"
   ),
   stringsAsFactors = FALSE

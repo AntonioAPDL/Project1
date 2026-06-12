@@ -1848,7 +1848,7 @@ authoritative_support_component_summary_for_quantile <- function(suffix, label, 
   if (n_component >= 6L) {
     trend_mat <- authoritative_support_component_matrix(arr, 1L, n_time, layout)
     component6_mat <- authoritative_support_component_matrix(arr, 6L, n_time, layout)
-    samplewise_component6 <- authoritative_support_component_summary_row(
+    samplewise_component6_plus <- authoritative_support_component_summary_row(
       mat = trend_mat + component6_mat,
       dates = dates,
       label = label,
@@ -1858,13 +1858,23 @@ authoritative_support_component_summary_for_quantile <- function(suffix, label, 
       source_object = source_object,
       probs = probs
     )
+    samplewise_component6_minus <- authoritative_support_component_summary_row(
+      mat = component6_mat - trend_mat,
+      dates = dates,
+      label = label,
+      probability = probability,
+      component = 6L,
+      component_contract = "component_6_minus_trend_component_1_samplewise",
+      source_object = source_object,
+      probs = probs
+    )
     trend_shift <- rowMeans(trend_mat, na.rm = TRUE)
     component6 <- out[out$component == 6L, , drop = FALSE]
     component6$component_contract <- "component_6_shifted_by_posterior_mean_trend_component_1"
     component6$lower_025 <- component6$lower_025 + trend_shift
     component6$median_500 <- component6$median_500 + trend_shift
     component6$upper_975 <- component6$upper_975 + trend_shift
-    out <- rbind(out, samplewise_component6, component6)
+    out <- rbind(out, samplewise_component6_plus, samplewise_component6_minus, component6)
   }
   out
 }
@@ -1896,6 +1906,9 @@ authoritative_component_analysis_label <- function(component, contract) {
   contract <- as.character(contract)
   if (identical(contract, "component_6_plus_trend_component_1_samplewise")) {
     return("Component 6 plus trend component 1 (samplewise)")
+  }
+  if (identical(contract, "component_6_minus_trend_component_1_samplewise")) {
+    return("Component 6 minus trend component 1 (samplewise)")
   }
   if (identical(contract, "raw_state_component")) {
     return(sprintf("Raw state component %d", component))
@@ -1929,6 +1942,23 @@ authoritative_component_analysis_specs <- function(comp) {
   )
   if (isTRUE(has_samplewise_a1)) {
     contract <- "component_6_plus_trend_component_1_samplewise"
+    rows[[length(rows) + 1L]] <- data.frame(
+      component = 6L,
+      component_contract = contract,
+      display_label = authoritative_component_analysis_label(6L, contract),
+      filename = authoritative_component_analysis_slug(6L, contract),
+      include_in_manuscript = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  has_samplewise_minus <- any(
+    comp$component == 6L &
+      comp$component_contract == "component_6_minus_trend_component_1_samplewise",
+    na.rm = TRUE
+  )
+  if (isTRUE(has_samplewise_minus)) {
+    contract <- "component_6_minus_trend_component_1_samplewise"
     rows[[length(rows) + 1L]] <- data.frame(
       component = 6L,
       component_contract = contract,
@@ -2084,6 +2114,7 @@ write_authoritative_component_analysis_readme <- function(out_dir, manifest) {
       "",
       "- `raw_state_component` for every retained state component present in the support CSV.",
       "- `component_6_plus_trend_component_1_samplewise`, the audited Figure A1 construction.",
+      "- `component_6_minus_trend_component_1_samplewise`, the samplewise 80-month component minus trend diagnostic.",
       "",
       "The older `component_6_shifted_by_posterior_mean_trend_component_1` diagnostic rows are intentionally excluded from the automatic gallery.",
       "",

@@ -41,7 +41,7 @@ test_that("authoritative selected-support projection uses 2D covariance slices",
   testthat::expect_equal(projected$mu_usgs, c(1.05, 1.4, 1.85), tolerance = 1e-12)
 })
 
-test_that("authoritative component support includes samplewise trend plus 80-month contract", {
+test_that("authoritative component support includes samplewise trend plus/minus 80-month contracts", {
   helper_path <- file.path("R", "environmetrics", "40_figures_multivar_only.R")
   if (!file.exists(helper_path)) {
     helper_path <- file.path("..", "..", helper_path)
@@ -81,19 +81,26 @@ test_that("authoritative component support includes samplewise trend plus 80-mon
   )
 
   samplewise <- out[out$component_contract == "component_6_plus_trend_component_1_samplewise", , drop = FALSE]
+  samplewise_minus <- out[out$component_contract == "component_6_minus_trend_component_1_samplewise", , drop = FALSE]
   legacy <- out[out$component_contract == "component_6_shifted_by_posterior_mean_trend_component_1", , drop = FALSE]
   testthat::expect_equal(nrow(samplewise), 2L)
+  testthat::expect_equal(nrow(samplewise_minus), 2L)
   testthat::expect_equal(nrow(legacy), 2L)
 
   expected_t1 <- as.numeric(stats::quantile(arr[1L, 1L, ] + arr[6L, 1L, ], probs = c(0.25, 0.5, 0.75), type = 8, names = FALSE))
   expected_t2 <- as.numeric(stats::quantile(arr[1L, 2L, ] + arr[6L, 2L, ], probs = c(0.25, 0.5, 0.75), type = 8, names = FALSE))
+  expected_minus_t1 <- as.numeric(stats::quantile(arr[6L, 1L, ] - arr[1L, 1L, ], probs = c(0.25, 0.5, 0.75), type = 8, names = FALSE))
+  expected_minus_t2 <- as.numeric(stats::quantile(arr[6L, 2L, ] - arr[1L, 2L, ], probs = c(0.25, 0.5, 0.75), type = 8, names = FALSE))
   testthat::expect_equal(samplewise$lower_025, c(expected_t1[[1L]], expected_t2[[1L]]), tolerance = 1e-12)
   testthat::expect_equal(samplewise$median_500, c(expected_t1[[2L]], expected_t2[[2L]]), tolerance = 1e-12)
   testthat::expect_equal(samplewise$upper_975, c(expected_t1[[3L]], expected_t2[[3L]]), tolerance = 1e-12)
+  testthat::expect_equal(samplewise_minus$lower_025, c(expected_minus_t1[[1L]], expected_minus_t2[[1L]]), tolerance = 1e-12)
+  testthat::expect_equal(samplewise_minus$median_500, c(expected_minus_t1[[2L]], expected_minus_t2[[2L]]), tolerance = 1e-12)
+  testthat::expect_equal(samplewise_minus$upper_975, c(expected_minus_t1[[3L]], expected_minus_t2[[3L]]), tolerance = 1e-12)
   testthat::expect_false(isTRUE(all.equal(samplewise$lower_025[[1L]], legacy$lower_025[[1L]], tolerance = 1e-12)))
 })
 
-test_that("authoritative component analysis specs include raw states and audited samplewise contract only", {
+test_that("authoritative component analysis specs include raw states and samplewise diagnostics only", {
   helper_path <- file.path("R", "environmetrics", "40_figures_multivar_only.R")
   if (!file.exists(helper_path)) {
     helper_path <- file.path("..", "..", helper_path)
@@ -108,10 +115,11 @@ test_that("authoritative component analysis specs include raw states and audited
   eval(parse(text = paste(lines[start:end], collapse = "\n")), envir = env)
 
   comp <- data.frame(
-    component = c(rep(seq_len(7L), each = 3L), 6L, 6L),
+    component = c(rep(seq_len(7L), each = 3L), 6L, 6L, 6L),
     component_contract = c(
       rep("raw_state_component", 21L),
       "component_6_plus_trend_component_1_samplewise",
+      "component_6_minus_trend_component_1_samplewise",
       "component_6_shifted_by_posterior_mean_trend_component_1"
     ),
     stringsAsFactors = FALSE
@@ -119,13 +127,15 @@ test_that("authoritative component analysis specs include raw states and audited
 
   specs <- env$authoritative_component_analysis_specs(comp)
   testthat::expect_s3_class(specs, "data.frame")
-  testthat::expect_equal(nrow(specs), 8L)
+  testthat::expect_equal(nrow(specs), 9L)
   testthat::expect_equal(
     specs$component[specs$component_contract == "raw_state_component"],
     seq_len(7L)
   )
   testthat::expect_true(any(specs$component_contract == "component_6_plus_trend_component_1_samplewise"))
+  testthat::expect_true(any(specs$component_contract == "component_6_minus_trend_component_1_samplewise"))
   testthat::expect_false(any(specs$component_contract == "component_6_shifted_by_posterior_mean_trend_component_1"))
   testthat::expect_true(all(!specs$include_in_manuscript))
   testthat::expect_true(any(specs$filename == "component_06_component_6_plus_trend_component_1_samplewise.png"))
+  testthat::expect_true(any(specs$filename == "component_06_component_6_minus_trend_component_1_samplewise.png"))
 })
