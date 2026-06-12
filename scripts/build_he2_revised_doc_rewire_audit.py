@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-2'
+ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected'
 OUT_DIR = ROOT / 'reports' / 'he2_revised_doc_rewire_audit_20260517'
 
 
@@ -343,7 +343,7 @@ def main() -> None:
     md.append('Goal: make Figures 5, 6, and A1 trustworthy without touching model specs.\n\n')
     md.append('Status: complete in this audit cycle.\n\n')
     md.append('Completed tasks:\n')
-    md.append('- patched `Evironmetrics---REVISED-DOC-2/scripts/render_current_model_output_support_figures.R` so the internal scale is read from the replay contract instead of hardcoding `log_log1p_cms`;\n')
+    md.append('- patched `Evironmetrics---REVISED-DOC-Corrected/scripts/render_current_model_output_support_figures.R` so the internal scale is read from the replay contract instead of hardcoding `log_log1p_cms`;\n')
     md.append('- regenerated `artifacts/historical_support_from_current_models/`;\n')
     md.append('- rebuilt article refresh/audit outputs;\n')
     md.append('- synced the rerendered historical-support figures into the manuscript figure tree.\n\n')

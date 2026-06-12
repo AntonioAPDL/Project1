@@ -486,7 +486,7 @@ def render_summary_md(checks: list[CheckRow], metadata: dict[str, object]) -> st
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate cross-repo revised-article and corrections wiring.")
     parser.add_argument("--workflow-root", type=Path, default=Path(__file__).resolve().parents[1])
-    parser.add_argument("--article-root", type=Path, default=Path(__file__).resolve().parents[1] / "Evironmetrics---REVISED-DOC-2")
+    parser.add_argument("--article-root", type=Path, default=Path(__file__).resolve().parents[1] / "Evironmetrics---REVISED-DOC-Corrected")
     parser.add_argument("--corrections-root", type=Path, default=Path("/data/muscat_data/jaguir26/Corrections---Project-1"))
     parser.add_argument("--output-dir", type=Path, default=Path("reports/revision_cross_repo_validation_20260609"))
     parser.add_argument("--check-only", action="store_true")

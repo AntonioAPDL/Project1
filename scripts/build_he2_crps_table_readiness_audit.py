@@ -11,7 +11,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 PUBLICATION_MANIFEST = ROOT / 'reports' / 'he2_publication_manifest' / 'he2_bayesian_publication_manifest.csv'
 PUBLICATION_PARITY = ROOT / 'reports' / 'he2_publication_manifest' / 'he2_publication_parity_gate_summary.json'
-ARTICLE_MANIFEST = ROOT / 'Evironmetrics---REVISED-DOC-2' / 'MANUSCRIPT_ASSET_MANIFEST.json'
+ARTICLE_MANIFEST = ROOT / 'Evironmetrics---REVISED-DOC-Corrected' / 'MANUSCRIPT_ASSET_MANIFEST.json'
 
 
 def read_json(path: Path):

@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 
-ARTICLE_ROOT = Path('/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2')
+ARTICLE_ROOT = Path('/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected')
 LOWER = ARTICLE_ROOT / 'figures'
 UPPER = ARTICLE_ROOT / 'Figures'
 MIRROR_MANIFEST = UPPER / 'mirror_manifest.csv'

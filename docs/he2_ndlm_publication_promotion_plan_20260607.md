@@ -377,7 +377,7 @@ python3 scripts/build_he2_master_workflow_audit_tracker.py
    0 pending rows, and final 9-model benchmark ready.
 4. Refresh article-side CRPS and ablation assets in:
 
-`/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2`
+`/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected`
 
 5. Commit repo changes and article changes separately so the runtime promotion
    and manuscript refresh remain reviewable.
@@ -395,7 +395,7 @@ python3 scripts/build_he2_master_workflow_audit_tracker.py
 | Full prelaunch validation | done | `.../control/prelaunch_validation_20260607T203117Z/prelaunch_validation_summary.json` |
 | Production launch | done | 15/15 rows `report/pass`; `.../control/publication_relaunch_matrix/matrix_status.csv` |
 | Manifest/parity promotion | done | `reports/he2_publication_manifest/he2_publication_parity_gate_summary.json` reports 45 promoted rows, 0 pending rows |
-| Article CRPS/table refresh | done | `Evironmetrics---REVISED-DOC-2/tables/generated_tex/benchmark_crps_main_table.tex` regenerated from the refreshed article freeze |
+| Article CRPS/table refresh | done | `Evironmetrics---REVISED-DOC-Corrected/tables/generated_tex/benchmark_crps_main_table.tex` regenerated from the refreshed article freeze |
 
 ## Production Launch Record
 
@@ -472,9 +472,9 @@ Manifest/table promotion:
   materialized `retros.csv` files differ by representation while matching
   values.
 - The revised article freeze was refreshed with
-  `Evironmetrics---REVISED-DOC-2/scripts/refresh_he2_manifest_snapshot.py`,
+  `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_he2_manifest_snapshot.py`,
   and the generated TeX table includes were rebuilt with
-  `Evironmetrics---REVISED-DOC-2/scripts/build_generated_table_includes.py`.
+  `Evironmetrics---REVISED-DOC-Corrected/scripts/build_generated_table_includes.py`.
 
 CRPS table interpretation after promotion:
 

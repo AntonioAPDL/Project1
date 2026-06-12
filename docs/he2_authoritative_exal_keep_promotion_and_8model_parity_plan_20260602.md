@@ -65,16 +65,16 @@ Project-side source of truth:
 
 Article-side wiring:
 
-- `Evironmetrics---REVISED-DOC-2/config/runtime_bindings.json` points `exal_m_t1.keep_runtime_root` at the canonical grid runtime root and records the authoritative YAML path.
-- `Evironmetrics---REVISED-DOC-2/scripts/exal_m_t1_authoritative.py` reads the same YAML for article refresh scripts.
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_exal_m_t1_generated_assets.py` and `refresh_cutoff_synthesis_families.py` now derive the five exAL-M-T1 run IDs from the YAML.
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_current_model_output_support_figures.py` defaults the current-model multivariate support figures to the authoritative 20220511 winner.
-- `Evironmetrics---REVISED-DOC-2/scripts/render_current_model_output_support_figures.R` now supports the no-retained-`.RData` path through retained historical-support summaries.
+- `Evironmetrics---REVISED-DOC-Corrected/config/runtime_bindings.json` points `exal_m_t1.keep_runtime_root` at the canonical grid runtime root and records the authoritative YAML path.
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/exal_m_t1_authoritative.py` reads the same YAML for article refresh scripts.
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_exal_m_t1_generated_assets.py` and `refresh_cutoff_synthesis_families.py` now derive the five exAL-M-T1 run IDs from the YAML.
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_current_model_output_support_figures.py` defaults the current-model multivariate support figures to the authoritative 20220511 winner.
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/render_current_model_output_support_figures.R` now supports the no-retained-`.RData` path through retained historical-support summaries.
 
 Figure and table assets:
 
 - The five promoted synthesis figures were rerendered with the fixed common `log1p(cms)` y-axis.
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py --article-root Evironmetrics---REVISED-DOC-2` completed successfully after the retained-support repair.
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py --article-root Evironmetrics---REVISED-DOC-Corrected` completed successfully after the retained-support repair.
 - The project publication manifest and generated tables now carry the promoted `exAL-M-T1`, `AL-M-T1`, `exAL-M-T0`, `AL-M-T0`, `AL-U-T1`, and `exAL-U-T1` rows, while still warning that the 3-family NDLM parity gate is open.
 
 ## Current Gate State
@@ -221,7 +221,7 @@ python3 scripts/validate_he2_exdqlm_multivar_keep_authoritative_prelaunch.py
 python3 scripts/build_he2_bayesian_publication_manifest.py
 python3 scripts/build_he2_publication_parity_gate.py
 python3 scripts/build_he2_master_workflow_audit_tracker.py
-python3 Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py --article-root Evironmetrics---REVISED-DOC-2
+python3 Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py --article-root Evironmetrics---REVISED-DOC-Corrected
 ```
 
 Focused validation:

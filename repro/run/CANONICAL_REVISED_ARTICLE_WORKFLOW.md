@@ -6,7 +6,7 @@ Date: 2026-05-07
 
 This runbook defines the canonical reproduction and refresh workflow for the current revised article:
 
-- article repo: `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2`
+- article repo: `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected`
 - workflow repo: `/data/muscat_data/jaguir26/project1_ucsc_phd`
 
 The goal is to keep one clear operational path from now on.
@@ -78,23 +78,23 @@ The current canonical `v2` contract is:
 ### 5. Article-side provenance freezing
 
 Use:
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_local_provenance_bundles.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_exal_m_t1_generated_assets.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_he2_manifest_snapshot.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_setup_support_by_cutoff_v2.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/build_setup_support_by_cutoff_v2_review.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/build_setup_support_by_cutoff_v2_appendix.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/promote_setup_support_v2_to_disc.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/build_generated_asset_index.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_local_provenance_bundles.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_exal_m_t1_generated_assets.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_he2_manifest_snapshot.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_setup_support_by_cutoff_v2.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/build_setup_support_by_cutoff_v2_review.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/build_setup_support_by_cutoff_v2_appendix.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/promote_setup_support_v2_to_disc.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/build_generated_asset_index.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py`
 
 These are the canonical article-side refresh helpers.
 
 - `refresh_all_generated_assets.py` is the preferred top-level entrypoint.
 - The narrower helpers remain available when only one bundle family needs refresh.
 - The generated-asset inventory is refreshed automatically and written to:
-  - `Evironmetrics---REVISED-DOC-2/generated/README.md`
-  - `Evironmetrics---REVISED-DOC-2/generated/asset_inventory.csv`
+  - `Evironmetrics---REVISED-DOC-Corrected/generated/README.md`
+  - `Evironmetrics---REVISED-DOC-Corrected/generated/asset_inventory.csv`
 
 ## Non-canonical / legacy items to avoid
 
@@ -151,7 +151,7 @@ Article-facing promotion:
 - the current revised manuscript promotes the representative cutoff
   - `20221225_exal_m_t1`
   into `DISC/` through:
-  - `Evironmetrics---REVISED-DOC-2/scripts/promote_setup_support_v2_to_disc.py`
+  - `Evironmetrics---REVISED-DOC-Corrected/scripts/promote_setup_support_v2_to_disc.py`
 
 Archival note:
 - the older `generated/setup_support_by_cutoff/` family remains a useful `v1` audit artifact only and is not the canonical provenance path.
@@ -191,7 +191,7 @@ Check:
 - `reports/he2_publication_manifest/he2_bayesian_publication_manifest.md`
 - `reports/publication_replay/publication_replay_matrix.md`
 - `reports/publication_replay/representative_replay_verification.md`
-- article-side provenance docs in `Evironmetrics---REVISED-DOC-2/`
+- article-side provenance docs in `Evironmetrics---REVISED-DOC-Corrected/`
 
 ### Step 2. If a selected-model refresh is needed, rerun only through the canonical replay path
 
@@ -212,7 +212,7 @@ Require:
 ### Step 4. Refresh article-side local bundles through the helper script
 
 Use:
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py`
 
 That refreshes:
 - workflow-linked support bundles,

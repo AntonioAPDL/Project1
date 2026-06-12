@@ -9,7 +9,7 @@ Related audit:
 Repos:
 
 - workflow/code: `/data/muscat_data/jaguir26/project1_ucsc_phd`
-- revised article: `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2`
+- revised article: `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected`
 - corrections article: `/data/muscat_data/jaguir26/Corrections---Project-1`
 
 ## Goal
@@ -82,15 +82,15 @@ Workflow-side:
 
 Revised-article side:
 
-- `Evironmetrics---REVISED-DOC-2/MANUSCRIPT_ASSET_MANIFEST.json`
-- `Evironmetrics---REVISED-DOC-2/scripts/build_generated_table_includes.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/build_article_asset_review_report.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/validate_manuscript_figure_paths.py`
-- `Evironmetrics---REVISED-DOC-2/tables/generated_tex/`
-- `Evironmetrics---REVISED-DOC-2/artifacts/he2_publication_freeze/`
-- `Evironmetrics---REVISED-DOC-2/artifacts/he3_exdqlm_ablation_authoritative/`
-- `Evironmetrics---REVISED-DOC-2/artifacts/representative_selected_model_2022_12_25/`
+- `Evironmetrics---REVISED-DOC-Corrected/MANUSCRIPT_ASSET_MANIFEST.json`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/build_generated_table_includes.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/build_article_asset_review_report.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/validate_manuscript_figure_paths.py`
+- `Evironmetrics---REVISED-DOC-Corrected/tables/generated_tex/`
+- `Evironmetrics---REVISED-DOC-Corrected/artifacts/he2_publication_freeze/`
+- `Evironmetrics---REVISED-DOC-Corrected/artifacts/he3_exdqlm_ablation_authoritative/`
+- `Evironmetrics---REVISED-DOC-Corrected/artifacts/representative_selected_model_2022_12_25/`
 
 Corrections side:
 
@@ -119,9 +119,9 @@ The cross-repo audit found these known stale claims:
 Primary publication source:
 
 - revised article artifact freeze:
-  `Evironmetrics---REVISED-DOC-2/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv`
+  `Evironmetrics---REVISED-DOC-Corrected/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv`
 - raw-reference source:
-  `Evironmetrics---REVISED-DOC-2/artifacts/five_cutoff_crps_validation_sources/*/crps_forecast_summary.csv`
+  `Evironmetrics---REVISED-DOC-Corrected/artifacts/five_cutoff_crps_validation_sources/*/crps_forecast_summary.csv`
 
 Validation cross-check:
 
@@ -140,9 +140,9 @@ Expected interpretation:
 
 Primary publication source:
 
-- `Evironmetrics---REVISED-DOC-2/artifacts/he3_exdqlm_ablation_authoritative/he3_ablation_long.csv`
-- `Evironmetrics---REVISED-DOC-2/artifacts/he3_exdqlm_ablation_authoritative/audit__he3_ablation_audit.csv`
-- `Evironmetrics---REVISED-DOC-2/artifacts/he3_exdqlm_ablation_authoritative/audit__he3_ablation_runtime_input_detail.csv`
+- `Evironmetrics---REVISED-DOC-Corrected/artifacts/he3_exdqlm_ablation_authoritative/he3_ablation_long.csv`
+- `Evironmetrics---REVISED-DOC-Corrected/artifacts/he3_exdqlm_ablation_authoritative/audit__he3_ablation_audit.csv`
+- `Evironmetrics---REVISED-DOC-Corrected/artifacts/he3_exdqlm_ablation_authoritative/audit__he3_ablation_runtime_input_detail.csv`
 
 Runtime cross-check:
 
@@ -249,7 +249,7 @@ It should also accept explicit repo paths:
 ```bash
 python3 scripts/validate_revision_cross_repo_wiring.py \
   --workflow-root /data/muscat_data/jaguir26/project1_ucsc_phd \
-  --article-root /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2 \
+  --article-root /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected \
   --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1 \
   --output-dir reports/revision_cross_repo_validation_20260609 \
   --check-only
@@ -266,7 +266,7 @@ Add a current-manifest mode:
 ```bash
 python3 scripts/build_he4_quantile_check_loss_tables.py \
   --source-mode he2-publication-manifest \
-  --he2-publication-manifest Evironmetrics---REVISED-DOC-2/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv \
+  --he2-publication-manifest Evironmetrics---REVISED-DOC-Corrected/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv \
   --runtime-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime \
   --output-dir reports/he4_quantile_check_loss_current_publication_20260609
 ```
@@ -433,7 +433,7 @@ promotes them.
 Compile revised article:
 
 ```bash
-cd /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2
+cd /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected
 pdflatex -interaction=nonstopmode -halt-on-error -jobname=output wileyNJD-APA.tex
 bibtex output
 pdflatex -interaction=nonstopmode -halt-on-error -jobname=output wileyNJD-APA.tex
@@ -521,7 +521,7 @@ CF1 HE4 values:
 ```bash
 python3 scripts/build_he4_quantile_check_loss_tables.py \
   --source-mode he2-publication-manifest \
-  --he2-publication-manifest Evironmetrics---REVISED-DOC-2/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv \
+  --he2-publication-manifest Evironmetrics---REVISED-DOC-Corrected/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv \
   --runtime-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime \
   --output-dir reports/he4_quantile_check_loss_current_publication_20260609
 ```
@@ -583,7 +583,7 @@ Acceptance gate:
 Run article-side asset refresh/validation as appropriate:
 
 ```bash
-cd /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2
+cd /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected
 python3 scripts/build_generated_table_includes.py --article-root .
 python3 scripts/build_article_asset_review_report.py --article-root .
 python3 scripts/validate_manuscript_figure_paths.py --article-root .
@@ -609,7 +609,7 @@ Then run:
 ```bash
 python3 scripts/validate_revision_cross_repo_wiring.py \
   --workflow-root /data/muscat_data/jaguir26/project1_ucsc_phd \
-  --article-root /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2 \
+  --article-root /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected \
   --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1 \
   --output-dir reports/revision_cross_repo_validation_20260609 \
   --after-patch

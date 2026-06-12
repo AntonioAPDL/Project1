@@ -68,18 +68,18 @@ Required outputs:
 ### 2. Refresh the revised-article generated assets
 
 ```bash
-python3 Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py
+python3 Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py
 ```
 
 Required figure-side outputs:
 
-- `Evironmetrics---REVISED-DOC-2/artifacts/five_cutoff_setup_support/`
-- `Evironmetrics---REVISED-DOC-2/figures/forecast_context_by_cutoff/`
-- `Evironmetrics---REVISED-DOC-2/artifacts/five_cutoff_main_model_synthesis/`
-- `Evironmetrics---REVISED-DOC-2/artifacts/five_cutoff_reference_synthesis/`
-- `Evironmetrics---REVISED-DOC-2/figures/multivariate_synthesis_by_cutoff/`
-- `Evironmetrics---REVISED-DOC-2/figures/reference_synthesis_by_cutoff/`
-- `Evironmetrics---REVISED-DOC-2/reports/five_cutoff_synthesis_review/FIVE_CUTOFF_SYNTHESIS_REVIEW.md`
+- `Evironmetrics---REVISED-DOC-Corrected/artifacts/five_cutoff_setup_support/`
+- `Evironmetrics---REVISED-DOC-Corrected/figures/forecast_context_by_cutoff/`
+- `Evironmetrics---REVISED-DOC-Corrected/artifacts/five_cutoff_main_model_synthesis/`
+- `Evironmetrics---REVISED-DOC-Corrected/artifacts/five_cutoff_reference_synthesis/`
+- `Evironmetrics---REVISED-DOC-Corrected/figures/multivariate_synthesis_by_cutoff/`
+- `Evironmetrics---REVISED-DOC-Corrected/figures/reference_synthesis_by_cutoff/`
+- `Evironmetrics---REVISED-DOC-Corrected/reports/five_cutoff_synthesis_review/FIVE_CUTOFF_SYNTHESIS_REVIEW.md`
 
 ## Build step
 

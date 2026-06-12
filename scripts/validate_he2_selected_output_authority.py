@@ -11,7 +11,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_AUTHORITY = ROOT / "docs" / "authoritative_selected_outputs" / "he2_exal_m_t1_representative_20221225.yaml"
-DEFAULT_ARTICLE_ROOT = ROOT / "Evironmetrics---REVISED-DOC-2"
+DEFAULT_ARTICLE_ROOT = ROOT / "Evironmetrics---REVISED-DOC-Corrected"
 
 sys.path.insert(0, str(ROOT / "scripts"))
 from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402

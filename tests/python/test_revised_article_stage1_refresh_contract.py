@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-2'
+ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected'
 os.sys.path.insert(0, str(ARTICLE_ROOT / 'scripts'))
 
 from article_repo_layout import build_layout  # noqa: E402
@@ -36,7 +36,7 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
         )
         self.assertEqual(
             bindings['exal_m_t1']['selected_support_output_root'],
-            '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260609/runs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r4_20260609/post/outputs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_r4_20260609',
+            '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260610/runs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_samplewise_a1_20260610/post/outputs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_samplewise_a1_20260610',
         )
         self.assertIn('--univar-runtime-root', text)
         self.assertIn('--multivar-support-run-root', text)
@@ -81,11 +81,11 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
 
     def test_generated_benchmark_table_carries_promoted_family_crps_values(self) -> None:
         rows = (ARTICLE_ROOT / 'tables' / 'generated_tex' / 'benchmark_crps_bayesian_rows.tex').read_text(encoding='utf-8')
-        self.assertIn('N-U-T1 & 0.3359 & 0.1706 & 1.1935 & 0.1508 & 2.4997', rows)
-        self.assertIn('N-M-T0 & 1.8456 & 0.3802 & 0.6596 & 0.6701 & 0.6440', rows)
-        self.assertIn('AL-M-T1 & 0.1459 & 0.0555 & 0.2778 & 0.0572 & 0.6276', rows)
-        self.assertIn('exAL-M-T0 & 1.2215 & 1.7987 & 1.0850 & 2.1310 & 1.2113', rows)
-        self.assertIn('exAL-M-T1 & \\textbf{0.1397} & \\textbf{0.0472} & \\textbf{0.2654} & \\textbf{0.0323} & 0.6655', rows)
+        self.assertIn('N-U-T1 & 0.33592 & 0.17059 & 1.19345 & 0.15077 & 2.49972', rows)
+        self.assertIn('N-M-T0 & 1.84560 & 0.38023 & 0.65964 & 0.67014 & 0.64404', rows)
+        self.assertIn('AL-M-T1 & 0.14592 & 0.05551 & 0.27775 & 0.05716 & 0.62764', rows)
+        self.assertIn('exAL-M-T0 & 1.22150 & 1.79868 & 1.08503 & 2.13102 & 1.21132', rows)
+        self.assertIn('exAL-M-T1 & \\textbf{0.13971} & \\textbf{0.04724} & \\textbf{0.26537} & \\textbf{0.03233} & 0.66546', rows)
 
     def test_figure_polish_audit_contract_references_cutoff_wide_synthesis_manifests(self) -> None:
         text = (ARTICLE_ROOT / 'scripts' / 'build_figure_polish_status_audit.py').read_text(encoding='utf-8')

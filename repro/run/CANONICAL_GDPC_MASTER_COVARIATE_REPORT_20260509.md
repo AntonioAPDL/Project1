@@ -173,7 +173,7 @@ The revised manuscript currently still says:
 - the first component explains `53.42%`
 
 Relevant files:
-- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2/wileyNJD-APA.tex`
+- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex`
 - `/data/muscat_data/jaguir26/project1_ucsc_phd/article.txt`
 
 At present, those claims are not backed by the active reproducible workflow.

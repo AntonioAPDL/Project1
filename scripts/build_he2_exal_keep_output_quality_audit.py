@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTICLE_ROOT = ROOT / "Evironmetrics---REVISED-DOC-2"
+ARTICLE_ROOT = ROOT / "Evironmetrics---REVISED-DOC-Corrected"
 KEEP_RUNTIME_ROOT = ROOT.parent / "project1_ucsc_phd_runtime" / "multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516"
 OUT_DIR = ROOT / "reports" / "he2_exal_keep_output_quality_audit_20260517"
 

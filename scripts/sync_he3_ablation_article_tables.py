@@ -56,7 +56,7 @@ DISPLAY_DIGITS = 5
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Sync completed HE3 ablation tables into the article repos.")
     parser.add_argument("--matrix-dir", type=Path, required=True)
-    parser.add_argument("--article-root", type=Path, default=ROOT / "Evironmetrics---REVISED-DOC-2")
+    parser.add_argument("--article-root", type=Path, default=ROOT / "Evironmetrics---REVISED-DOC-Corrected")
     parser.add_argument("--corrections-root", type=Path, default=ROOT.parent / "Corrections---Project-1")
     return parser.parse_args()
 

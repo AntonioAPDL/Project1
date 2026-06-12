@@ -50,11 +50,11 @@ Runtime-side render path:
 - `R/environmetrics/40_figures_setup_support.R`
 
 Article-side mirror path:
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_setup_support_by_cutoff.py`
-- `Evironmetrics---REVISED-DOC-2/scripts/build_setup_support_by_cutoff_review.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_setup_support_by_cutoff.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/build_setup_support_by_cutoff_review.py`
 
 Top-level article refresh:
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py`
 
 ## Why this workflow exists
 
@@ -128,14 +128,14 @@ python3 /data/muscat_data/jaguir26/project1_ucsc_phd/scripts/render_exal_m_t1_se
 Mirror it into the revised article repo:
 
 ```bash
-python3 /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2/scripts/refresh_setup_support_by_cutoff.py
-python3 /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2/scripts/build_setup_support_by_cutoff_review.py
+python3 /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_setup_support_by_cutoff.py
+python3 /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/scripts/build_setup_support_by_cutoff_review.py
 ```
 
 Or run the full article refresh:
 
 ```bash
-python3 /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py
+python3 /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py
 ```
 
 ## Review paths
@@ -145,8 +145,8 @@ Workflow-side review:
 - `.../exal_m_t1_setup_support_by_cutoff_20260506/review/REVIEW.md`
 
 Article-side review:
-- `Evironmetrics---REVISED-DOC-2/generated/setup_support_by_cutoff_review/gallery.html`
-- `Evironmetrics---REVISED-DOC-2/generated/setup_support_by_cutoff_review/SETUP_SUPPORT_BY_CUTOFF_REVIEW.md`
+- `Evironmetrics---REVISED-DOC-Corrected/generated/setup_support_by_cutoff_review/gallery.html`
+- `Evironmetrics---REVISED-DOC-Corrected/generated/setup_support_by_cutoff_review/SETUP_SUPPORT_BY_CUTOFF_REVIEW.md`
 
 ## Operational rules
 

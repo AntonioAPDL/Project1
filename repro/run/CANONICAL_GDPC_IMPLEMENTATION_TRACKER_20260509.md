@@ -40,12 +40,12 @@ Workflow repo root:
 - `/data/muscat_data/jaguir26/project1_ucsc_phd`
 
 Article repo root:
-- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2`
+- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected`
 
 Primary planning documents already in place:
 - `/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/CANONICAL_GDPC_MASTER_COVARIATE_REPORT_20260509.md`
 - `/data/muscat_data/jaguir26/project1_ucsc_phd/repro/run/HE2_FULL_HISTORY_REPAIR_FORWARD_PLAN.md`
-- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-2/docs/manuscript_revision_checklist.md`
+- `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected/docs/manuscript_revision_checklist.md`
 
 ## Locked Decisions
 
@@ -287,7 +287,7 @@ Those compatibility files should be generated automatically from the master arti
 Later, after implementation is validated, the article repo should receive only frozen review/snapshot outputs that matter for manuscript provenance, not the whole source lineage.
 
 That later article-side snapshot should be documented under:
-- `Evironmetrics---REVISED-DOC-2/docs/manuscript_revision_checklist.md`
+- `Evironmetrics---REVISED-DOC-Corrected/docs/manuscript_revision_checklist.md`
 - article-side asset manifests / provenance docs as needed
 
 But article syncing is not the primary focus of this phase.

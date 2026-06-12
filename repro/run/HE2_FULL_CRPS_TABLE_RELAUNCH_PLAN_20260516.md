@@ -259,7 +259,7 @@ The revised article repo remains the canonical freeze point for generated assets
 
 Canonical article refresh entrypoint:
 
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py`
 
 Canonical setup/support path:
 
@@ -436,17 +436,17 @@ Actions:
 Stage 1 implementation files:
 - contract builder: `scripts/build_he2_full_crps_stage1_contract.py`
 - Stage 1 output root: `reports/he2_full_crps_stage1_contract_20260516/`
-- revised-article refresh entrypoint: `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
-- five-cutoff setup/support refresh: `Evironmetrics---REVISED-DOC-2/scripts/refresh_exal_m_t1_generated_assets.py`
-- current-model support refresh: `Evironmetrics---REVISED-DOC-2/scripts/refresh_current_model_output_support_figures.py`
-- cutoff synthesis-family refresh: `Evironmetrics---REVISED-DOC-2/scripts/refresh_cutoff_synthesis_families.py`
+- revised-article refresh entrypoint: `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py`
+- five-cutoff setup/support refresh: `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_exal_m_t1_generated_assets.py`
+- current-model support refresh: `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_current_model_output_support_figures.py`
+- cutoff synthesis-family refresh: `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_cutoff_synthesis_families.py`
 
 Stage 1 article-refresh gate:
 - `refresh_all_generated_assets.py` is the approved entrypoint
 - corrected setup/support, forecast-context, and cutoff synthesis families are required
 - current-model historical-support refresh is separately gated behind `--strict-current-model-support`
 - if corrected fit caches are absent, the refresh writes:
-  - `Evironmetrics---REVISED-DOC-2/artifacts/historical_support_from_current_models/refresh_status.json`
+  - `Evironmetrics---REVISED-DOC-Corrected/artifacts/historical_support_from_current_models/refresh_status.json`
   and preserves the prior frozen bundle instead of failing the entire Stage 1 refresh
 
 Deliverables:
@@ -658,7 +658,7 @@ Actions:
 4. preserve the publication-state snapshots alongside the corrected-state outputs
 
 Use:
-- `Evironmetrics---REVISED-DOC-2/scripts/refresh_all_generated_assets.py`
+- `Evironmetrics---REVISED-DOC-Corrected/scripts/refresh_all_generated_assets.py`
 - narrower article-side helpers only when intentionally refreshing one bundle family in isolation
 
 Deliverables:
@@ -808,7 +808,7 @@ Concrete Stage 1 execution artifacts:
   - `reports/he2_full_crps_stage1_contract_20260516/HE2_FULL_CRPS_STAGE1_LAUNCHER_QUALIFICATION_20260516.md`
   - `reports/he2_full_crps_stage1_contract_20260516/launcher_qualification.json`
 - revised-article synthesis review:
-  - `Evironmetrics---REVISED-DOC-2/reports/five_cutoff_synthesis_review/FIVE_CUTOFF_SYNTHESIS_REVIEW.md`
+  - `Evironmetrics---REVISED-DOC-Corrected/reports/five_cutoff_synthesis_review/FIVE_CUTOFF_SYNTHESIS_REVIEW.md`
 - Wave A NDLM template:
   - `config/he2_bayesian_publication_relaunch_wave_a_ndlm_20260516.template.yaml`
 - Wave A NDLM batch:

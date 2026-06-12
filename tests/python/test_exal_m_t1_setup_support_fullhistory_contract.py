@@ -7,8 +7,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path('/data/muscat_data/jaguir26/project1_ucsc_phd')
 CONFIG_PATH = PROJECT_ROOT / 'config' / 'exal_m_t1_setup_support_by_cutoff_v2_20260516.json'
-SUMMARY_PATH = PROJECT_ROOT / 'Evironmetrics---REVISED-DOC-2' / 'reports' / 'article_figure_lineage_audit_20260516' / 'summary.json'
-APPENDIX_MANIFEST = PROJECT_ROOT / 'Evironmetrics---REVISED-DOC-2' / 'figures' / 'appendix_cutoff_panels' / 'manifest.csv'
+SUMMARY_PATH = PROJECT_ROOT / 'Evironmetrics---REVISED-DOC-Corrected' / 'reports' / 'article_figure_lineage_audit_20260516' / 'summary.json'
+APPENDIX_MANIFEST = PROJECT_ROOT / 'Evironmetrics---REVISED-DOC-Corrected' / 'figures' / 'appendix_cutoff_panels' / 'manifest.csv'
 
 
 class ExalMT1SetupSupportFullhistoryContractTest(unittest.TestCase):

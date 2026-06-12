@@ -4,7 +4,7 @@ Date: 2026-05-06
 
 ## Goal
 
-Reproduce and relaunch only the five publication-relevant `exAL-M-T1` runs tied to the current CRPS table, and make those reruns emit the outputs needed to refresh `Evironmetrics---REVISED-DOC-2`.
+Reproduce and relaunch only the five publication-relevant `exAL-M-T1` runs tied to the current CRPS table, and make those reruns emit the outputs needed to refresh `Evironmetrics---REVISED-DOC-Corrected`.
 
 This is a narrow execution plan. It is **not** a request to rerun the full HE2 table.
 
@@ -26,8 +26,8 @@ Use these in this order:
 
 1. `reports/he2_publication_manifest/he2_bayesian_publication_manifest.md`
 2. `reports/publication_replay/EXAL_M_T1_RETRACK_STATUS.md`
-3. `Evironmetrics---REVISED-DOC-2/FIGURE_TABLE_PROVENANCE.md`
-4. `Evironmetrics---REVISED-DOC-2/wileyNJD-APA.tex`
+3. `Evironmetrics---REVISED-DOC-Corrected/FIGURE_TABLE_PROVENANCE.md`
+4. `Evironmetrics---REVISED-DOC-Corrected/wileyNJD-APA.tex`
 
 ## Exact five-run publication lineage
 
@@ -77,7 +77,7 @@ The relaunches should preserve the corrected featurecov/blended-input contract a
 
 These are the outputs that directly support the current manuscript text and should be treated as the first refresh target.
 
-| Manuscript object | Role in `Evironmetrics---REVISED-DOC-2` | Locked provenance role | Required rerun outputs |
+| Manuscript object | Role in `Evironmetrics---REVISED-DOC-Corrected` | Locked provenance role | Required rerun outputs |
 |---|---|---|---|
 | `fig:synth1` | main-text predictive synthesis illustration | representative final cutoff `2022-12-25` | `exdqlm_multivar_synth_keep_cutoff_window_posterior_samples.(png,pdf)`, `..._with_raw_ensembles.(png,pdf)`, `..._quantiles.csv`, `..._sample_subset.csv`, `publication_figure_manifest.csv` |
 | `tab:components_23_31` | main-text covariate-effects table | representative final cutoff `2022-12-25` | `covariate_effects_summary.(csv,tex,rds)` |
@@ -206,7 +206,7 @@ Only after both canaries pass:
 
 ### Step 6. Refresh the revised article from those reruns only
 
-Refresh `Evironmetrics---REVISED-DOC-2` from the newly verified rerun outputs, starting with:
+Refresh `Evironmetrics---REVISED-DOC-Corrected` from the newly verified rerun outputs, starting with:
 - `fig:synth1`
 - `tab:components_23_31`
 - `fig:synth2` if retained
@@ -225,5 +225,5 @@ Only after Phase A is stable, decide whether to regenerate or relabel:
 When the plan is executed successfully, we should have:
 - five reproducible `exAL-M-T1` reruns aligned with the current CRPS table,
 - a verified headless-safe post path for those reruns,
-- refreshed Section 5 assets for `Evironmetrics---REVISED-DOC-2`,
+- refreshed Section 5 assets for `Evironmetrics---REVISED-DOC-Corrected`,
 - and a clean boundary between the narrow exAL-M-T1 refresh and the broader HE2 replay scaffolding.

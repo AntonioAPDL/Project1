@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-2'
+DEFAULT_ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected'
 DEFAULT_MULTIVAR_RUN_ROOT = Path(
     '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/'
     'multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/'
