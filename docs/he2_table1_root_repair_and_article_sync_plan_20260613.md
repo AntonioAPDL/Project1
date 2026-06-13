@@ -27,9 +27,12 @@ Workflow repository:
 
 - root: `/data/muscat_data/jaguir26/project1_ucsc_phd`;
 - branch: `feature/export_posterior_tables`;
-- checked head during this audit: `a16d693`;
-- status during this audit: clean and synced with
-  `origin/feature/export_posterior_tables`.
+- pre-plan implementation baseline: `a16d693`;
+- plan commits added after that baseline:
+  - `8ea431c` documents the initial root-repair/article-sync plan;
+  - `53d67f5` ignores the local live checklist pattern;
+  - `541bbaa` refines the guard repair from a material-scale clause to a
+    scale-aware reference-floor design.
 
 Revised article repository:
 
@@ -78,6 +81,24 @@ Result: pass.
 
 These checks mean the repos are coherent today. They do not mean the HE2 Table
 1 repair campaign is complete.
+
+## Executive Decision
+
+Do not relaunch the remaining targeted repair queue yet. The failed row should
+first be replayed under a repaired state-growth guard, because the current
+failure is driven by an unstable denominator in the relative state-growth ratio,
+not by a large absolute state.
+
+The first implementation step is therefore a narrow numerical guard repair:
+
+`state_growth_effective_ratio = state_norm_sq / max(prev_state_norm_sq, state_norm_ratio_ref_floor * T)`
+
+when `state_norm_abs_cap_scale = per_time`.
+
+This preserves the existing absolute cap and terminal fail-fast gates. It only
+regularizes the denominator used by the relative-ratio guard when the previous
+accepted state norm is too close to zero to define a meaningful relative growth
+rate.
 
 ## Targeted Repair Queue State
 
@@ -223,6 +244,11 @@ Do not use any of these as the primary fix:
 Those moves would either hide a real failure mode or make the publication table
 non-reproducible.
 
+Also do not implement the denominator floor as an undocumented constant inside
+one entrypoint. It must be wired through the shared guard helper and, if used by
+the Table 1 queue, through unified config validation and stage-fit environment
+export.
+
 ## Root Fix Plan
 
 ### Phase 1: Add A Scale-Aware Reference Floor To The State-Growth Guard
@@ -258,6 +284,14 @@ The intended design is:
   state norm does not create a meaningless ratio-only failure;
 - use catastrophic historical fixtures to validate that genuine explosions are
   still blocked.
+
+The initial candidate value for the failed q35 replay is
+`state_norm_ratio_ref_floor = 0.1` on the per-time scale. With
+`T = 12767`, this makes the q35 effective denominator `1276.7` rather than the
+observed previous accepted norm `37.198`, yielding an effective ratio of about
+`17.8`, below the configured cap of `25`. This is intentionally conservative:
+it fixes the near-zero denominator pathology without raising
+`state_norm_max_ratio`.
 
 This is stronger than simply changing `state_norm_max_ratio`, because it
 separates two concepts:
@@ -312,6 +346,13 @@ Before restarting the 24-row queue, run only the failed `20220511`
 `dqlm_multivar_al_drop` q35 fit under the patched guard using the exact same
 input bundle and discount/prior settings.
 
+The isolated replay must be derived from the generated unified config:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/control/generated_configs/multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_drop.yaml`
+
+Do not hand-build an approximate config for this replay. The point is to test
+one code-path change against the same model, bundle, priors, and warmup policy.
+
 Acceptance criteria:
 
 - fit reaches terminal iteration without repeated guard lockout;
@@ -342,7 +383,8 @@ lower the gates to force a pass.
 After q35 passes in isolation:
 
 1. preserve the 16 passed rows;
-2. archive/reset only the failed row and the seven not-started rows;
+2. use the selected `--run-ids` reset path to archive/reset only the failed row
+   and the seven not-started rows;
 3. relaunch the targeted repair queue for those rows only;
 4. keep cleanup enabled after post, so publication runs do not retain heavy
    `.RData` files;
@@ -350,6 +392,9 @@ After q35 passes in isolation:
    silently promoted.
 
 The target completion state is 24 of 24 rows at `report/pass`.
+
+The reset summary must be inspected before relaunch. It should list exactly
+eight selected run IDs and preserve the 16 completed rows.
 
 ### Phase 6: Build Repair Compare Outputs
 
@@ -452,11 +497,26 @@ Do not promote repaired values unless all of these pass:
 | revised article compile | pass |
 | corrections compile | pass |
 
+## Definition Of Done
+
+This repair is complete only when all of the following are true:
+
+1. The q35 guard replay passes with the original terminal gates intact.
+2. The targeted repair matrix reaches 24 of 24 rows at `report/pass`.
+3. The refreshed HE2 manifest applies targeted repairs through a validated
+   overlay, not manual table edits.
+4. HE2 Table 1 and HE4 check-loss tables are regenerated from the refreshed
+   manifest.
+5. The revised article and corrections repo both consume the same generated
+   table sources.
+6. Cross-repo validation and document compiles pass.
+7. The workflow, revised article, and corrections repos are clean and their
+   final heads are recorded.
+
 ## Current Recommendation
 
 The next implementation pass should start with the guard semantic repair and
 q35 isolated replay. The remaining seven not-started rows should wait until the
-failed q35 lane is proven healthy. This is the most efficient path because it
-does not waste time relaunching a queue that is likely to hit the same
-ratio-only deadlock, and it avoids publishing any value produced by a weakened
-gate.
+failed q35 lane is proven healthy. This is the highest-signal path because it
+tests the suspected guard failure directly, preserves the original terminal
+gates, and prevents partial campaign outputs from being promoted.
