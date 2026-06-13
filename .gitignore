@@ -167,6 +167,11 @@ repro/audit_local/
 # Temp files created during interactive sessions
 tmp_glofas_intervals_test.txt
 
+# Local live execution plans/checklists.
+# These are intentionally updated during long repair campaigns and should not
+# be committed as publication-facing evidence.
+docs/local_he2_table1_repair_live_checklist_*.md
+
 # Always ignore teaching folder
 Teaching/
 
