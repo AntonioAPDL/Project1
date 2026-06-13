@@ -225,7 +225,7 @@ non-reproducible.
 
 ## Root Fix Plan
 
-### Phase 1: Add A Material-Scale Clause To The State-Growth Guard
+### Phase 1: Add A Scale-Aware Reference Floor To The State-Growth Guard
 
 The root implementation fix should preserve all hard safety checks while
 preventing ratio-only false positives from tiny reference states.
@@ -235,25 +235,44 @@ Recommended semantics:
 1. Keep the non-finite guard unchanged.
 2. Keep the absolute state norm cap unchanged.
 3. Continue to compute and log the raw `state_growth_ratio`.
-4. Evaluate the relative-ratio guard only when the current state norm is also
-   materially large on the same scale used by the absolute cap.
+4. Compute a second, effective ratio using a scale-aware lower bound for the
+   previous accepted state norm. The lower bound must be interpreted on the
+   same scale as the absolute cap:
+   - if `state_norm_abs_cap_scale = per_time`, use
+     `max(prev_state_norm_sq, state_norm_ratio_ref_floor * T)`;
+   - if `state_norm_abs_cap_scale = total`, use
+     `max(prev_state_norm_sq, state_norm_ratio_ref_floor)`.
+5. Apply the ratio guard to the effective ratio, while retaining the raw ratio
+   in diagnostics.
 
 The intended design is:
 
-- if `state_norm_abs_cap_scale = per_time`, compute material scale from
-  `state_norm_sq / T`;
-- if `state_norm_abs_cap_scale = total`, compute material scale from
-  `state_norm_sq`;
-- allow a configurable ratio-material threshold;
-- default the threshold conservatively so healthy low-scale shifts do not
-  refreeze indefinitely, while true absolute explosions are still caught by the
-  existing absolute cap.
+- add a first-class config/env key such as
+  `stabilization.state_norm_ratio_ref_floor` /
+  `DISC_GAMSIG_STATE_NORM_RATIO_REF_FLOOR`;
+- interpret this key on the current cap scale (`per_time` or `total`) rather
+  than adding a second scale key;
+- keep legacy behavior when the key is absent, unless a deliberate global
+  default is justified by tests;
+- use the q35 failed-lane fixture to validate that a tiny previous accepted
+  state norm does not create a meaningless ratio-only failure;
+- use catastrophic historical fixtures to validate that genuine explosions are
+  still blocked.
 
 This is stronger than simply changing `state_norm_max_ratio`, because it
 separates two concepts:
 
 - absolute numerical safety;
-- relative jump from the immediately previous accepted iterate.
+- relative jump from the immediately previous accepted iterate, with the
+  denominator regularized only when that previous iterate is too close to zero
+  to define a meaningful relative growth rate.
+
+The calibration evidence from the current repair queue supports this direction:
+completed exAL-M-T0 q35 rows have terminal `state_norm_sq / T` values ranging
+from about `37.8` to `395.9`, while the failed AL-M-T0 q35 proposal has
+`state_norm_sq / T = 1.778`. The failed proposal is therefore not suspicious on
+absolute scale; the suspicious value is the denominator
+`prev_state_norm_sq / T = 0.002914`.
 
 ### Phase 2: Test The New Guard Semantics
 
@@ -264,11 +283,13 @@ Add focused tests in `tests/testthat/test_disc_w_fit_guards.R`:
    - `state_norm_length = 12767`;
    - `prev_state_norm_sq = 37.19796`;
    - `state_norm_max_ratio = 25`;
+   - `state_norm_ratio_ref_floor = 0.1` under per-time scaling;
    - absolute cap large enough to be irrelevant;
    - expected result: no ratio-only guard reason.
-2. material-scale fixture:
-   - same ratio geometry but current `state_norm_sq / T` above the material
-     threshold;
+2. reference-floor fixture:
+   - same raw ratio geometry but current `state_norm_sq / T` large enough that
+     the effective ratio remains above the cap even after applying the
+     reference floor;
    - expected result: ratio guard fires.
 3. catastrophic absolute fixture:
    - old-style huge state norm;
@@ -276,8 +297,14 @@ Add focused tests in `tests/testthat/test_disc_w_fit_guards.R`:
 4. non-finite fixture:
    - expected result: finite guard still fires before state-growth logic.
 
-If a new config key is added, extend config resolution/validation tests so the
-key propagates consistently through the generated Table 1 configs.
+The new key must be wired through all active layers, not only the helper:
+
+- `R/disc_w/09_fit_guards.R`;
+- `DISC_Optimal_Synth_Ranges_W.r`;
+- `DISC_Optimal_Synth_Ranges_W_transfer_forecast.r`;
+- `R/unified/config.R`;
+- `R/unified/stages/stage_fit.R`;
+- Python tests for generated Table 1 configs if the repair queue uses the key.
 
 ### Phase 3: Isolated q35 Reproduction Before Queue Relaunch
 
@@ -433,4 +460,3 @@ failed q35 lane is proven healthy. This is the most efficient path because it
 does not waste time relaunching a queue that is likely to hit the same
 ratio-only deadlock, and it avoids publishing any value produced by a weakened
 gate.
-
