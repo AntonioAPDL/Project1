@@ -1,0 +1,181 @@
+selection:
+  run_ids:
+    - multimodel_20210123_v8_he2tbl1fix20260612_ndlm_main_drop
+    - multimodel_20210123_v8_he2tbl1fix20260612_ndlm_main_keep
+    - multimodel_20210123_v8_he2tbl1fix20260612_dqlm_univar_al
+    - multimodel_20210123_v8_he2tbl1fix20260612_exdqlm_univar
+    - multimodel_20210123_v8_he2tbl1fix20260612_exdqlm_multivar_drop
+    - multimodel_20211112_v8_he2tbl1fix20260612_dqlm_univar_al
+    - multimodel_20211112_v8_he2tbl1fix20260612_exdqlm_univar
+    - multimodel_20211112_v8_he2tbl1fix20260612_exdqlm_multivar_drop
+    - multimodel_20211221_v8_he2tbl1fix20260612_ndlm_univar_keep
+    - multimodel_20211221_v8_he2tbl1fix20260612_ndlm_main_keep
+    - multimodel_20211221_v8_he2tbl1fix20260612_dqlm_univar_al
+    - multimodel_20211221_v8_he2tbl1fix20260612_exdqlm_univar
+    - multimodel_20211221_v8_he2tbl1fix20260612_exdqlm_multivar_drop
+    - multimodel_20220511_v8_he2tbl1fix20260612_dqlm_univar_al
+    - multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_drop
+    - multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_keep
+    - multimodel_20220511_v8_he2tbl1fix20260612_exdqlm_univar
+    - multimodel_20220511_v8_he2tbl1fix20260612_exdqlm_multivar_drop
+    - multimodel_20221225_v8_he2tbl1fix20260612_ndlm_univar_keep
+    - multimodel_20221225_v8_he2tbl1fix20260612_ndlm_main_keep
+    - multimodel_20221225_v8_he2tbl1fix20260612_dqlm_univar_al
+    - multimodel_20221225_v8_he2tbl1fix20260612_dqlm_multivar_al_drop
+    - multimodel_20221225_v8_he2tbl1fix20260612_exdqlm_univar
+    - multimodel_20221225_v8_he2tbl1fix20260612_exdqlm_multivar_drop
+queue:
+  ordinary_max_concurrent: 2
+  heavy_cutoff_max_concurrent: 1
+  heavy_cutoff_blocks_ordinary: false
+  pause_free_gb: 25
+  launch_free_gb: 35
+  heavy_free_gb: 35
+  poll_seconds: 30
+overrides:
+  common_config_patch:
+    run:
+      threads:
+        omp: 1
+        openblas: 1
+        mkl: 1
+        veclib: 1
+        numexpr: 1
+  row_config_patches:
+    - family: ndlm_main_drop
+      manuscript_label: N-M-T0
+      config_patch:
+        models:
+          ndlm_main:
+            state_evolution:
+              df_t: 0.99999999
+              df_s1: 0.99999999
+              df_s2: 0.99999999
+              df_s67: 0.99999999
+              df_discrep: 0.99999999
+              lambda: 0.97
+              df_trans: 0.99999999
+              df_covs: 0.99999999
+            prior:
+              forecast_cov:
+                epsilon:
+                c_factor: 1.0
+    - family: ndlm_main_keep
+      manuscript_label: N-M-T1
+      config_patch:
+        models:
+          ndlm_main:
+            state_evolution:
+              df_t: 0.99999999
+              df_s1: 0.99999999
+              df_s2: 0.99999999
+              df_s67: 0.99999999
+              df_discrep: 0.99999999
+              lambda: 0.97
+              df_trans: 0.99999999
+              df_covs: 0.99999999
+            prior:
+              forecast_cov:
+                epsilon:
+                c_factor: 1.0
+    - family: exdqlm_univar
+      manuscript_label: exAL-U-T1
+      config_patch:
+        models:
+          exdqlm_univar:
+            state_evolution:
+              df_t: 0.99999999
+              df_s1: 0.99999999
+              df_s2: 0.99999999
+              df_s67: 0.99999999
+              lambda: 0.97
+              df_trans: 0.9999999
+              df_covs: 0.9999999
+            likelihood_mode: exal
+            implementation_mode: legacy_bridge
+    - family: exdqlm_multivar_drop
+      manuscript_label: exAL-M-T0
+      config_patch:
+        models:
+          exdqlm_multivar:
+            state_evolution:
+              df_t: 0.99999999
+              df_s1: 0.99999999
+              df_s2: 0.99999999
+              df_s67: 0.99999999
+              df_discrep: 0.99999999
+              lambda: 0.97
+              df_trans: 0.9999999
+              df_covs: 0.9999999
+            likelihood_mode: exal
+            implementation_mode: legacy_bridge
+        fit:
+          exdqlm_multivar:
+            legacy:
+              forecast_cov:
+                epsilon: 365.0
+                c_factor: 1.0
+    - family: dqlm_multivar_al_drop
+      manuscript_label: AL-M-T0
+      config_patch:
+        models:
+          exdqlm_multivar:
+            state_evolution:
+              df_t: 0.99999999
+              df_s1: 0.99999999
+              df_s2: 0.99999999
+              df_s67: 0.99999999
+              df_discrep: 0.99999999
+              lambda: 0.97
+              df_trans: 0.99999999
+              df_covs: 0.99999999
+            likelihood_mode: al
+            implementation_mode: legacy_bridge
+        fit:
+          exdqlm_multivar:
+            legacy:
+              forecast_cov:
+                epsilon: 365.0
+                c_factor: 1.0
+    - family: dqlm_multivar_al_keep
+      manuscript_label: AL-M-T1
+      config_patch:
+        models:
+          exdqlm_multivar:
+            state_evolution:
+              df_t: 0.9999999
+              df_s1: 0.9999999
+              df_s2: 0.9999999
+              df_s67: 0.9999999
+              df_discrep: 0.9999999
+              lambda: 0.97
+              df_trans: 0.9999999
+              df_covs: 0.9999999
+            likelihood_mode: al
+            implementation_mode: legacy_bridge
+        fit:
+          exdqlm_multivar:
+            legacy:
+              forecast_cov:
+                epsilon: 365.0
+                c_factor: 1.0
+    - cutoff: '20210123'
+      config_patch:
+        run:
+          seed: 20210123
+    - cutoff: '20211112'
+      config_patch:
+        run:
+          seed: 20211112
+    - cutoff: '20211221'
+      config_patch:
+        run:
+          seed: 20211221
+    - cutoff: '20220511'
+      config_patch:
+        run:
+          seed: 20220511
+    - cutoff: '20221225'
+      config_patch:
+        run:
+          seed: 20221225
