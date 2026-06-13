@@ -155,16 +155,79 @@ suspect is the interaction of full-history HE2 inputs, the multivariate exAL
 drop state-space, and the extreme lower quantile, not a fresh numerical
 instability introduced by the 2026-06-12 discount table.
 
+## Warmup-40 Validation And Launch
+
+The corrected warmup-40 validation passed after changing the univariate
+full-pipeline smoke from `q05` only to `q05` plus `q50`:
+
+- validation outdir:
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/control/prelaunch_validation_20260613_warmup40_q05q50`
+- validation summary:
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/control/prelaunch_validation_20260613_warmup40_q05q50/prelaunch_validation_summary.md`
+- result: `18 / 18` smoke runs passed, with `18` temporary `.RData` files
+  removed by validation cleanup.
+
+The key previously failing multivariate q05 lane passed the full-pipeline smoke
+under `warmup_freeze_iters = 40`. It froze gamma/sigma through iteration `40`,
+released at iteration `41` from a settled state, and remained bounded through
+terminal iteration `43`:
+
+| iter | frozen | sigma_exp | gamma_exp | state_norm_sq |
+|---:|---|---:|---:|---:|
+| 40 | true | 0.3987874 | 0 | 575738.6 |
+| 41 | false | 0.1454220 | -0.002706019 | 574024.8 |
+| 43 | false | 0.1833703 | -0.009039003 | 631142.2 |
+
+The corresponding health report recorded `state_norm_sq_per_T = 51.33741267`,
+`max_E_sigma = 0.2305429405`, and `max_abs_history_exps = 11.26204035`, all
+within the production gate limits.
+
+After this pass, the isolated 24-row Table 1 repair queue was launched with:
+
+```bash
+python3 scripts/launch_he2_bayesian_publication_relaunch.py \
+  --template config/he2_bayesian_publication_relaunch_table1_targeted_repair_20260612.template.yaml \
+  --skip-validate \
+  --reset-state \
+  --start-monitor \
+  --monitor-out-dir reports/he2_table1_targeted_repair_20260612_live_warmup40 \
+  --monitor-interval 300 \
+  --monitor-max-snapshots 288
+```
+
+Runtime root:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612`
+
+Queue controller PID at launch: `3897384`; monitor PID at launch: `3897526`.
+The controller was launched with `.RData` cleanup after post enabled.
+
 ## Recommendation
 
-Do not launch the full targeted repair queue as-is.
+Do not launch the original warmup-5 targeted repair queue as-is. The active
+repair path is the warmup-40 queue documented above.
 
-The next robust move is to split the work:
+The 2026-06-13 relaunch attempt changes the quantile VB warmup policy to
+`warmup_freeze_iters = 40` for all selected AL/exAL quantile families while
+leaving the supplied discount factors, `lambda`, `epsilon`, and `c_factor`
+unchanged. This specifically tests whether the blocked extreme lower-quantile
+lane needs the longer stabilization window that had already helped other
+multivariate AL/exAL repairs.
 
-1. Keep the prepared package as the reproducible specification freeze.
-2. Do not suppress the `max_abs_history_exps` health warning by merely raising
+The next robust move after the warmup-40 relaunch is:
+
+1. Monitor the isolated 24-row queue through `report` completion.
+2. Confirm each selected run records `.RData` cleanup after post.
+3. Build the repair-campaign compare outputs and Table 1 merge candidates.
+4. If any lane fails, keep the prepared package as the reproducible
+   specification freeze and split the work:
+   - launch the non-problematic selected repair rows separately;
+   - keep `20210123` / `exAL-M-T0` / `q05` in a candidate ladder rather than
+     lowering health standards.
+5. Do not suppress any `max_abs_history_exps` health warning by merely raising
    the threshold or disabling fail-fast for production.
-3. Run a small candidate ladder for the `20210123` / `exAL-M-T0` / `q05` lane
+6. If warmup 40 does not resolve the gate, run a small candidate ladder for the
+   `20210123` / `exAL-M-T0` / `q05` lane
    under the canonical full-history bundle:
    - current HE2 source spec as a formal control, with current terminal health
      metrics enabled;
@@ -174,16 +237,13 @@ The next robust move is to split the work:
      layer is responsible for the large location range;
    - optionally a no-transfer or constrained-transfer control if the previous
      controls point to transfer/discrepancy identifiability.
-4. If only `exAL-M-T0` remains problematic, launch the other selected repair
-   rows separately and keep `exAL-M-T0` out of Table 1 promotion until its
-   candidate ladder has a clean winner.
-5. Promote Table 1 values only from runs whose frozen specs, input manifests,
+7. Promote Table 1 values only from runs whose frozen specs, input manifests,
    post outputs, and health reports are all linked in the article manifest.
 
 ## Decision Log
 
 - The targeted repair package was built and tested.
-- Full launch was not started.
+- The original warmup-5 queue was not launched.
 - A validation-only process that was too slow under a 10-iteration NDLM smoke
   was stopped; it was isolated to this package and did not touch production
   campaigns.
@@ -191,3 +251,25 @@ The next robust move is to split the work:
 - A 100-iteration diagnostic confirmed the lane still violates the history
   location warning.
 - The diagnostic `.RData` was removed after evidence capture.
+- On 2026-06-13, the batch-level common patch was updated so all selected
+  AL/exAL quantile-family rows use `warmup_freeze_iters = 40`.
+- The warmup-40 prelaunch run at
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/control/prelaunch_validation_20260613_warmup40`
+  confirmed that the previously blocked multivariate `20210123` /
+  `exAL-M-T0` / `q05` lane passes the health gate:
+  `max_abs_history_exps = 11.26204035`, `state_norm_sq_per_T = 51.33741267`,
+  and terminal status `ok`.
+- The remaining failure in that validation run was a smoke configuration
+  mismatch, not a fit instability: the univariate AL full-pipeline smoke used
+  only `q05`, but the legacy univariate post repair requires at least two
+  fitted quantiles. The Table 1 repair template now uses `q05` and `q50` for
+  that smoke.
+- The corrected warmup-40 validation at
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/control/prelaunch_validation_20260613_warmup40_q05q50`
+  passed all `18` smoke runs.
+- A duplicate dry-run validator started by the launch dry-run was stopped after
+  it began re-running the already completed expensive validation. It was
+  isolated to this package and had not launched the repair queue.
+- The actual 24-row repair queue was launched with `--skip-validate` only after
+  the dedicated warmup-40 validation passed. Queue state was reset into
+  `control/restart_resets/20260613T045037Z` before launch.

@@ -62,10 +62,32 @@ class HE2Table1TargetedRepair20260612Tests(unittest.TestCase):
         self.assertEqual(payload["validation"]["smoke_fit_overrides"]["ndlm_main"]["gamma_sigma"]["max_iter"], 1)
         self.assertEqual(payload["validation"]["full_pipeline_ndlm_family"], "__disabled__")
 
+    def test_univariate_full_pipeline_smoke_has_required_quantile_pair(self) -> None:
+        payload = load_yaml(TEMPLATE)
+        quantiles = payload["validation"]["full_pipeline_univar_quantiles"]
+        self.assertGreaterEqual(len(quantiles), 2)
+        self.assertIn(0.05, quantiles)
+        self.assertIn(0.50, quantiles)
+
     def test_batch_selects_exact_requested_rows(self) -> None:
         payload = load_yaml(BATCH)
         self.assertEqual(set(payload["selection"]["run_ids"]), self.EXPECTED_RUN_IDS)
         self.assertEqual(len(payload["selection"]["run_ids"]), 24)
+
+    def test_common_quantile_warmup_is_uniform_40(self) -> None:
+        payload = load_yaml(BATCH)
+        common_patch = payload["overrides"]["common_config_patch"]
+        self.assertEqual(
+            common_patch["fit"]["exdqlm_univar"]["gamma_sigma"]["warmup_freeze_iters"],
+            40,
+        )
+        multivar_gs = common_patch["fit"]["exdqlm_multivar"]["gamma_sigma"]
+        self.assertEqual(multivar_gs["warmup_freeze_iters"], 40)
+        for q_key in ("q20", "q35", "q50", "q65", "q80"):
+            self.assertEqual(
+                multivar_gs["quantile_overrides"][q_key]["warmup_freeze_iters"],
+                40,
+            )
 
     def test_ndlm_main_override_matches_requested_spec(self) -> None:
         for label in ("N-M-T0", "N-M-T1"):

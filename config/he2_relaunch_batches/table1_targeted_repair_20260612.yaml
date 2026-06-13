@@ -41,6 +41,24 @@ overrides:
         mkl: 1
         veclib: 1
         numexpr: 1
+    fit:
+      exdqlm_univar:
+        gamma_sigma:
+          warmup_freeze_iters: 40
+      exdqlm_multivar:
+        gamma_sigma:
+          warmup_freeze_iters: 40
+          quantile_overrides:
+            q20:
+              warmup_freeze_iters: 40
+            q35:
+              warmup_freeze_iters: 40
+            q50:
+              warmup_freeze_iters: 40
+            q65:
+              warmup_freeze_iters: 40
+            q80:
+              warmup_freeze_iters: 40
   row_config_patches:
     - family: ndlm_main_drop
       manuscript_label: N-M-T0

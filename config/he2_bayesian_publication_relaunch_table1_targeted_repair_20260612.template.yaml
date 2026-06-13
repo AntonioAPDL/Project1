@@ -109,3 +109,4 @@ validation:
   full_pipeline_univar_quantile_cutoff: '20210123'
   full_pipeline_univar_quantiles:
     - 0.05
+    - 0.50
