@@ -90,6 +90,8 @@ class HE2Table1TargetedRepair20260612Tests(unittest.TestCase):
             )
         q35_stabilization = multivar_gs["quantile_overrides"]["q35"]["stabilization"]
         self.assertEqual(q35_stabilization["state_norm_ratio_ref_floor"], 0.1)
+        self.assertEqual(q35_stabilization["state_blend_alpha"], 0.25)
+        self.assertEqual(q35_stabilization["cov_blend_alpha"], 0.5)
         self.assertNotIn("stabilization", multivar_gs["quantile_overrides"]["q20"])
         self.assertNotIn("stabilization", multivar_gs["quantile_overrides"]["q50"])
         self.assertNotIn("stabilization", multivar_gs["quantile_overrides"]["q65"])

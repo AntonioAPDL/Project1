@@ -32,7 +32,9 @@ Workflow repository:
   - `8ea431c` documents the initial root-repair/article-sync plan;
   - `53d67f5` ignores the local live checklist pattern;
   - `541bbaa` refines the guard repair from a material-scale clause to a
-    scale-aware reference-floor design.
+    scale-aware reference-floor design;
+  - `67c9623` wires the scale-aware state-growth reference floor through the
+    active R/unified fit path and adds focused guard/config tests.
 
 Revised article repository:
 
@@ -396,6 +398,108 @@ The target completion state is 24 of 24 rows at `report/pass`.
 The reset summary must be inspected before relaunch. It should list exactly
 eight selected run IDs and preserve the 16 completed rows.
 
+### Phase 5 Implementation Update: q35 Damping-A Selected
+
+The scale-aware reference floor was implemented and tested first. The first
+isolated q35 replay used the exact generated failed-row config plus
+`state_norm_ratio_ref_floor = 0.1`:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/he2_table1_q35_guard_floor_replay_20260613/runs/multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_drop_q35_guardfloor_replay`
+
+That replay showed the floor semantics were wired correctly, but floor-only
+was not enough for this lane. The repeated guard moved from a near-zero
+denominator false positive to a genuine candidate jump relative to the
+regularized denominator:
+
+| Quantity | Value |
+|---|---:|
+| repeated iteration | 52 |
+| `state_growth_effective_ratio` | 610.3149 |
+| raw `state_growth_ratio` | 610.3149 |
+| `ref_floor_total` | 1276.7 |
+| configured max ratio | 25 |
+
+The correct next step was therefore the pre-planned minimal damping ladder, not
+loosening the terminal gates or raising `state_norm_max_ratio`.
+
+Candidate A passed in isolation with the same generated model config, the same
+input bundle, the same terminal gates, and only q35 stabilization changed to:
+
+- `state_norm_ratio_ref_floor: 0.1`;
+- `state_blend_alpha: 0.25`;
+- `cov_blend_alpha: 0.5`.
+
+Successful replay root:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/he2_table1_q35_guard_floor_dampingA_replay_20260613/runs/multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_drop_q35_guardfloor_dampingA_replay`
+
+Fit log:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/he2_table1_q35_guard_floor_dampingA_replay_20260613/runs/multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_drop_q35_guardfloor_dampingA_replay/fit/q=35/logs/fit.log`
+
+Captured evidence:
+
+`reports/he2_table1_q35_guard_floor_dampingA_replay_20260613/FIT_LOG_SUMMARY.md`
+
+Terminal fit summary:
+
+| Quantity | Value |
+|---|---:|
+| final iteration | 160 |
+| `gamsig_update_iters` | 120 |
+| final `sigma_exp` | 0.05416865 |
+| final `gamma_exp` | 0 |
+| final `state_norm_sq` | 13687.35 |
+| `state_norm_sq / T` | 1.0720885083 |
+| guard count | 0 |
+| frozen terminal state | false |
+| terminal fail | false |
+
+This is now the selected policy for the targeted Table 1 q35 row. It is
+minimal, scoped to the problematic quantile, preserves all fail-fast gates, and
+is explicitly tested in
+`tests/python/test_he2_table1_targeted_repair_20260612.py`.
+
+The generated queue configs were rebuilt after this promotion:
+
+```bash
+python3 scripts/build_he2_bayesian_publication_relaunch_configs.py \
+  --config config/he2_bayesian_publication_relaunch_table1_targeted_repair_20260612.template.yaml
+```
+
+The generated failed-row config now contains the selected q35 policy:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/control/generated_configs/multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_drop.yaml`
+
+Focused validation after the promotion:
+
+```bash
+python3 -m unittest \
+  tests.python.test_he2_publication_relaunch_builder_selection \
+  tests.python.test_he2_publication_relaunch_validator \
+  tests.python.test_he2_table1_targeted_repair_20260612 \
+  tests.python.test_disc_sampling_diagnostics_source_contract \
+  tests.python.test_stage_fit_quantile_gamma_sigma_overrides
+
+Rscript -e 'testthat::test_file("tests/testthat/test_disc_w_fit_guards.R"); testthat::test_file("tests/testthat/test_disc_w_state_blend.R")'
+```
+
+Result: all focused Python and R tests passed.
+
+The queue can now be resumed by resetting exactly the failed row plus the seven
+rows that were blocked by queue fail-fast:
+
+- `multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_drop`;
+- `multimodel_20220511_v8_he2tbl1fix20260612_exdqlm_multivar_drop`;
+- `multimodel_20221225_v8_he2tbl1fix20260612_dqlm_multivar_al_drop`;
+- `multimodel_20221225_v8_he2tbl1fix20260612_dqlm_univar_al`;
+- `multimodel_20221225_v8_he2tbl1fix20260612_exdqlm_multivar_drop`;
+- `multimodel_20221225_v8_he2tbl1fix20260612_exdqlm_univar`;
+- `multimodel_20221225_v8_he2tbl1fix20260612_ndlm_main_keep`;
+- `multimodel_20221225_v8_he2tbl1fix20260612_ndlm_univar_keep`.
+
+Do not reset the 16 rows already at `report/pass`.
+
 ### Phase 6: Build Repair Compare Outputs
 
 Once all 24 selected rows pass:
@@ -515,8 +619,9 @@ This repair is complete only when all of the following are true:
 
 ## Current Recommendation
 
-The next implementation pass should start with the guard semantic repair and
-q35 isolated replay. The remaining seven not-started rows should wait until the
-failed q35 lane is proven healthy. This is the highest-signal path because it
-tests the suspected guard failure directly, preserves the original terminal
-gates, and prevents partial campaign outputs from being promoted.
+The next implementation pass should reset only the eight rows listed in the
+Phase 5 implementation update and relaunch them under the rebuilt generated
+configs. The 16 completed rows should remain archived/preserved. Promotion to
+the article and corrections repositories should still wait until the targeted
+repair matrix reaches 24 of 24 rows at `report/pass` and the manifest overlay
+validation gates pass.
