@@ -2,6 +2,8 @@
 
 Date: 2026-05-07
 
+Current path update: 2026-06-14
+
 ## Scope
 
 This runbook defines the canonical reproduction and refresh workflow for the current revised article:
@@ -10,6 +12,20 @@ This runbook defines the canonical reproduction and refresh workflow for the cur
 - workflow repo: `/data/muscat_data/jaguir26/project1_ucsc_phd`
 
 The goal is to keep one clear operational path from now on.
+
+As of the 2026-06-14 publication freeze, the article-side `generated/` and
+`DISC/` naming layers are retired. The current manuscript-local freeze surface
+is:
+
+- `artifacts/`
+- `figures/`
+- `tables/generated_tex/`
+- `reports/manuscript_asset_review/`
+- `MANUSCRIPT_ASSET_MANIFEST.json`
+
+Older references to `generated/` or `DISC/` in historical planning notes should
+be translated through the article repo's `docs/article_repository_structure.md`
+and `docs/article_repository_path_crosswalk.csv`.
 
 ## Canonical scripts to use
 
@@ -78,7 +94,6 @@ The current canonical `v2` contract is:
 ### 5. Article-side provenance freezing
 
 Use:
-- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_local_provenance_bundles.py`
 - `Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_exal_m_t1_generated_assets.py`
 - `Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_he2_manifest_snapshot.py`
 - `Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_setup_support_by_cutoff_v2.py`
@@ -93,8 +108,8 @@ These are the canonical article-side refresh helpers.
 - `refresh_all_generated_assets.py` is the preferred top-level entrypoint.
 - The narrower helpers remain available when only one bundle family needs refresh.
 - The generated-asset inventory is refreshed automatically and written to:
-  - `Evironmetrics---REVISED-DOC-Corrected-2/generated/README.md`
-  - `Evironmetrics---REVISED-DOC-Corrected-2/generated/asset_inventory.csv`
+  - `Evironmetrics---REVISED-DOC-Corrected-2/artifacts/README.md`
+  - `Evironmetrics---REVISED-DOC-Corrected-2/artifacts/artifact_inventory.csv`
 
 ## Non-canonical / legacy items to avoid
 
@@ -116,15 +131,16 @@ Why:
 Canonical source:
 - verified `exAL-M-T1` publication reruns
 - article-side bundles:
-  - `generated/exal_m_t1_five_run_sources/`
-  - `generated/exal_m_t1_20221225/`
+  - `artifacts/five_cutoff_crps_validation_sources/`
+  - `artifacts/five_cutoff_main_model_synthesis/`
+  - `artifacts/representative_selected_model_2022_12_25/`
 
 ### B. Historical-summary support assets
 
 Canonical source:
 - workflow-linked historical figure path
 - article-side bundle:
-  - `generated/historical_summary_sources/`
+  - `artifacts/historical_support_from_current_models/`
 
 ### C. Workflow-linked support assets
 
@@ -135,11 +151,11 @@ Canonical source:
   - `repro/run/EXAL_M_T1_SETUP_SUPPORT_V2_FILE_PLAN.md`
   - `repro/run/EXAL_M_T1_SETUP_SUPPORT_V2_ACCEPTANCE_CHECKLIST.md`
 - article-side bundle:
-  - `generated/setup_support_by_cutoff_v2/`
+  - `artifacts/five_cutoff_setup_support/`
 - article-side review:
-  - `generated/setup_support_by_cutoff_v2_review/`
+  - `reports/five_cutoff_setup_support_review/`
 - article-side appendix-ready composites:
-  - `generated/setup_support_by_cutoff_v2_appendix/`
+  - `figures/appendix_cutoff_panels/`
 
 These are the canonical per-cutoff setup/input/support figures for:
 - `usgs.png`
@@ -150,18 +166,19 @@ These are the canonical per-cutoff setup/input/support figures for:
 Article-facing promotion:
 - the current revised manuscript promotes the representative cutoff
   - `20221225_exal_m_t1`
-  into `DISC/` through:
+  into `figures/manuscript/` through:
   - `Evironmetrics---REVISED-DOC-Corrected-2/scripts/promote_setup_support_v2_to_disc.py`
 
 Archival note:
-- the older `generated/setup_support_by_cutoff/` family remains a useful `v1` audit artifact only and is not the canonical provenance path.
+- the older `generated/setup_support_by_cutoff/` family is superseded and
+  should not be recreated as a canonical provenance path.
 
 ### D. Workflow-linked appendix reference assets
 
 Canonical source:
 - unified post -> figure-runner -> `40_figures.R`
 - article-side bundle:
-  - `generated/workflow_linked_support_sources/`
+  - `artifacts/five_cutoff_reference_synthesis/`
 
 This bundle is now mainly archival/supporting for workflow-linked appendix assets such as:
 - `posterior_samples_counter_valid.png`
@@ -171,14 +188,14 @@ This bundle is now mainly archival/supporting for workflow-linked appendix asset
 Canonical source:
 - `reports/he2_publication_manifest/he2_bayesian_publication_manifest.md`
 - article-side snapshot:
-  - `generated/he2_publication_manifest_snapshot/`
+  - `artifacts/he2_publication_freeze/`
 
 ### F. Historical-support contract audit
 
 Canonical source:
 - `reports/he2_publication_manifest/historical_support_audit_20260507/historical_support_audit.md`
 - article-side snapshot:
-  - `generated/he2_historical_support_audit_20260507/`
+  - `artifacts/he2_historical_support_audit/`
 
 Forward repair planning source:
 - `repro/run/HE2_FULL_HISTORY_REPAIR_FORWARD_PLAN.md`
@@ -224,15 +241,15 @@ That refreshes:
 - and the article asset review report.
 
 Generated review outputs:
-- `generated/setup_support_by_cutoff_v2_review/SETUP_SUPPORT_BY_CUTOFF_V2_REVIEW.md`
-- `generated/setup_support_by_cutoff_v2_review/gallery.html`
-- `generated/setup_support_by_cutoff_v2_review/figure_manifest.csv`
-- `generated/article_asset_review/ARTICLE_ASSET_REVIEW.md`
-- `generated/article_asset_review/figure_gallery.html`
-- `generated/article_asset_review/figure_manifest.csv`
-- `generated/article_asset_review/table_manifest.csv`
-- `generated/README.md`
-- `generated/asset_inventory.csv`
+- `reports/five_cutoff_setup_support_review/SETUP_SUPPORT_BY_CUTOFF_V2_REVIEW.md`
+- `reports/five_cutoff_setup_support_review/gallery.html`
+- `reports/five_cutoff_setup_support_review/figure_manifest.csv`
+- `reports/manuscript_asset_review/ARTICLE_ASSET_REVIEW.md`
+- `reports/manuscript_asset_review/figure_gallery.html`
+- `reports/manuscript_asset_review/figure_manifest.csv`
+- `reports/manuscript_asset_review/table_manifest.csv`
+- `artifacts/README.md`
+- `artifacts/artifact_inventory.csv`
 
 ### Step 5. Only then update manuscript assets or wording
 

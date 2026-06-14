@@ -16,6 +16,8 @@ metadata:
   evidence_csv: "reports/exdqlm_multivar_keep_grid_eval_guard_promotion_final_20260530/combined_winners_by_cutoff.csv"
   companion_note: "docs/exdqlm_multivar_keep_authoritative_refocus_20260601.md"
   publication_transition_note: "All nine HE2 Bayesian comparison families are now promoted onto this same canonical 20260510 input-bundle contract after the 2026-06-07 NDLM promotion; the full 9-model manuscript benchmark table is final for the current publication snapshot."
+  current_authority_policy: "Current publication authority baseline as of 2026-06-14; this freezes the manuscript-facing exAL-M-T1 winners but does not claim that no future per-cutoff calibration can improve them."
+  future_calibration_protocol: "Future improved specifications must enter through a new versioned authority manifest or a validated HE2 publication replacement overlay, followed by article refresh, corrections sync, strict cross-repo validation, and document compilation. Generated TeX tables must not be edited by hand."
 
 winners:
   - cutoff: "20210123"
