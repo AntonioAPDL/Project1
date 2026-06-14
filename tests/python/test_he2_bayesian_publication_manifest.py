@@ -19,6 +19,7 @@ from build_he2_bayesian_publication_manifest import (  # noqa: E402
     PROMOTED_UNIVAR_AL_EXAL_ROOT,
     PROMOTED_FAMILY_LINEAGES,
     REQUIRED_ALIGNMENT_ARTIFACTS,
+    apply_replacement_overlay,
     build_outputs,
 )
 from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402
@@ -123,6 +124,56 @@ class He2BayesianPublicationManifestTests(unittest.TestCase):
         self.assertEqual(sum(row["all_equal"] == "True" for row in required), len(CUTOFFS) * len(REQUIRED_ALIGNMENT_ARTIFACTS))
         self.assertEqual(len(required), len(CUTOFFS) * len(REQUIRED_ALIGNMENT_ARTIFACTS))
         self.assertTrue(all(row["within_cutoff_shared_inputs_aligned"] == "True" for row in manifest_rows))
+
+    def test_replacement_overlay_replaces_only_exact_target_cells(self) -> None:
+        base = [
+            {
+                "cutoff": "20220511",
+                "family": "dqlm_multivar_al_drop",
+                "run_id": "old_al_drop",
+                "run_root": "/old/al_drop",
+                "compare_dir": "",
+                "campaign_lineage": PROMOTED_FAMILY_LINEAGES["dqlm_multivar_al_drop"],
+                "publication_note": "old",
+                "replaced_source_run_id": "",
+            },
+            {
+                "cutoff": "20220511",
+                "family": "exdqlm_multivar_keep",
+                "run_id": "keep_winner",
+                "run_root": "/old/keep",
+                "compare_dir": "",
+                "campaign_lineage": PROMOTED_FAMILY_LINEAGES["exdqlm_multivar_keep"],
+                "publication_note": "keep",
+                "replaced_source_run_id": "",
+            },
+        ]
+        overlay = {
+            "active": True,
+            "artifact_root": "/tmp/he2_table1_overlay_test",
+            "expected_input_bundle_id": "20260510_publication_shared_r01",
+            "campaign_lineage": "he2_table1_targeted_repair_20260612:canonical_bundle_targeted_repair",
+            "replacement_reason": "unit_test_replacement",
+            "publication_note": "new",
+            "replacements": [
+                {
+                    "cutoff": "20220511",
+                    "family": "dqlm_multivar_al_drop",
+                    "manuscript_label": "AL-M-T0",
+                    "run_id": "new_al_drop",
+                }
+            ],
+        }
+        out = apply_replacement_overlay(base, overlay)
+        replaced = next(row for row in out if row["family"] == "dqlm_multivar_al_drop")
+        untouched = next(row for row in out if row["family"] == "exdqlm_multivar_keep")
+
+        self.assertEqual(replaced["run_id"], "new_al_drop")
+        self.assertEqual(replaced["run_root"], "/tmp/he2_table1_overlay_test/runs/new_al_drop")
+        self.assertEqual(replaced["replaced_source_run_id"], "old_al_drop")
+        self.assertEqual(replaced["replacement_reason"], "unit_test_replacement")
+        self.assertEqual(replaced["expected_input_bundle_id"], "20260510_publication_shared_r01")
+        self.assertEqual(untouched["run_id"], "keep_winner")
 
 
 if __name__ == "__main__":

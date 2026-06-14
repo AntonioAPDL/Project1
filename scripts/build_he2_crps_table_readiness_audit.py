@@ -41,7 +41,12 @@ def main() -> None:
     rows = []
     for row in manifest_rows:
         label = row['manuscript_label']
-        promoted = str(row['campaign_lineage']).endswith(':canonical_bundle_promoted') or row['campaign_lineage'].startswith('exdqlm_multivar_keep_canonical_grid_20260524')
+        lineage = str(row['campaign_lineage'])
+        promoted = (
+            lineage.endswith(':canonical_bundle_promoted')
+            or lineage.startswith('exdqlm_multivar_keep_canonical_grid_20260524')
+            or lineage.startswith('he2_table1_targeted_repair_20260612:')
+        )
         rows.append({
             'label': label,
             'family': row['family'],

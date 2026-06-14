@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import os
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -106,6 +107,8 @@ CSV_FIELDS = [
     "campaign_lineage",
     "publication_note",
     "replaced_source_run_id",
+    "replacement_reason",
+    "expected_input_bundle_id",
     "crps_exact",
     "crps_display4",
     "score_source",
@@ -161,6 +164,9 @@ PROMOTED_EXAL_DROP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_exdqlm_multivar_drop
 PROMOTED_AL_DROP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_dqlm_multivar_al_drop_p5_production_20260606"
 PROMOTED_UNIVAR_AL_EXAL_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_univar_al_exal_publication_relaunch_20260603"
 PROMOTED_NDLM_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607"
+DEFAULT_REPLACEMENT_OVERLAY = (
+    ROOT / "config" / "he2_publication_manifest_replacement_overlay_table1_targeted_repair_20260612.yaml"
+)
 PROMOTED_FAMILY_LINEAGES = {
     "exdqlm_multivar_keep": AUTHORITATIVE_EXAL_KEEP_LINEAGE,
     "dqlm_multivar_al_keep": "dqlm_multivar_al_keep_from_exal_winners_20260602:canonical_bundle_promoted",
@@ -221,6 +227,31 @@ def read_csv(path: Path) -> list[dict[str, str]]:
 def read_yaml(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         return yaml.safe_load(handle) or {}
+
+
+def replacement_overlay_path() -> Path | None:
+    raw = os.environ.get("HE2_PUBLICATION_MANIFEST_REPLACEMENT_OVERLAY")
+    if raw is None:
+        return DEFAULT_REPLACEMENT_OVERLAY
+    value = raw.strip()
+    if value.lower() in {"", "none", "disabled", "false", "0"}:
+        return None
+    return Path(value)
+
+
+def load_replacement_overlay(path: Path | None = None) -> dict[str, Any]:
+    overlay_path = replacement_overlay_path() if path is None else path
+    if overlay_path is None or not overlay_path.exists():
+        return {"active": False, "replacements": []}
+    overlay = read_yaml(overlay_path)
+    if not bool(overlay.get("active", False)):
+        return {"active": False, "replacements": []}
+    replacements = overlay.get("replacements") or []
+    if not isinstance(replacements, list):
+        raise RuntimeError(f"Replacement overlay has non-list replacements: {overlay_path}")
+    overlay["replacements"] = replacements
+    overlay["overlay_path"] = str(overlay_path)
+    return overlay
 
 
 def sha16(path: Path) -> str:
@@ -476,8 +507,71 @@ def resolve_ndlm_rows() -> list[dict[str, str]]:
     return rows
 
 
+def apply_replacement_overlay(rows: list[dict[str, str]], overlay: dict[str, Any]) -> list[dict[str, str]]:
+    if not bool(overlay.get("active", False)):
+        return rows
+    artifact_root = Path(str(overlay.get("artifact_root", ""))).expanduser()
+    campaign_lineage = str(overlay.get("campaign_lineage", "")).strip()
+    publication_note = str(overlay.get("publication_note", "")).strip()
+    replacement_reason = str(overlay.get("replacement_reason", "")).strip()
+    expected_input_bundle_id = str(overlay.get("expected_input_bundle_id", "")).strip()
+    if not artifact_root.is_absolute():
+        raise RuntimeError(f"Replacement overlay artifact_root must be absolute: {artifact_root}")
+    if not campaign_lineage:
+        raise RuntimeError("Replacement overlay must define campaign_lineage")
+    if not replacement_reason:
+        raise RuntimeError("Replacement overlay must define replacement_reason")
+    if not expected_input_bundle_id:
+        raise RuntimeError("Replacement overlay must define expected_input_bundle_id")
+
+    by_key = {(row["cutoff"], row["family"]): dict(row) for row in rows}
+    seen: set[tuple[str, str]] = set()
+    label_to_family = {label: family for family, label in FAMILY_TO_LABEL.items()}
+    for repl in overlay["replacements"]:
+        if not isinstance(repl, dict):
+            raise RuntimeError(f"Replacement overlay row is not a mapping: {repl!r}")
+        cutoff = str(repl.get("cutoff", "")).strip()
+        family = str(repl.get("family", "")).strip()
+        manuscript_label = str(repl.get("manuscript_label", "")).strip()
+        run_id = str(repl.get("run_id", "")).strip()
+        if not family and manuscript_label:
+            family = label_to_family.get(manuscript_label, "")
+        if not cutoff or not family or not run_id:
+            raise RuntimeError(f"Replacement overlay row must define cutoff, family/label, and run_id: {repl!r}")
+        if manuscript_label and FAMILY_TO_LABEL.get(family) != manuscript_label:
+            raise RuntimeError(
+                f"Replacement overlay label/family mismatch for {run_id}: "
+                f"{manuscript_label} != {FAMILY_TO_LABEL.get(family)}"
+            )
+        key = (cutoff, family)
+        if key in seen:
+            raise RuntimeError(f"Duplicate replacement overlay key: cutoff={cutoff} family={family}")
+        if key not in by_key:
+            raise RuntimeError(f"Replacement overlay key not present in manifest base rows: cutoff={cutoff} family={family}")
+        seen.add(key)
+
+        old = by_key[key]
+        run_root = str(repl.get("run_root", "")).strip()
+        if not run_root:
+            run_root = str(artifact_root / "runs" / run_id)
+        compare_dir = str(repl.get("compare_dir", "")).strip()
+        by_key[key] = {
+            **old,
+            "run_id": run_id,
+            "run_root": run_root,
+            "compare_dir": compare_dir,
+            "campaign_lineage": str(repl.get("campaign_lineage", campaign_lineage)).strip(),
+            "publication_note": str(repl.get("publication_note", publication_note)).strip(),
+            "replaced_source_run_id": str(repl.get("replaced_source_run_id", old["run_id"])).strip(),
+            "replacement_reason": str(repl.get("replacement_reason", replacement_reason)).strip(),
+            "expected_input_bundle_id": str(repl.get("expected_input_bundle_id", expected_input_bundle_id)).strip(),
+        }
+    return sorted(by_key.values(), key=lambda row: (row["cutoff"], FAMILY_ORDER.index(row["family"])))
+
+
 def build_resolved_rows() -> list[dict[str, str]]:
     rows = resolve_multivar_rows() + resolve_univar_rows() + resolve_ndlm_rows()
+    rows = apply_replacement_overlay(rows, load_replacement_overlay())
     rows = sorted(rows, key=lambda row: (row["cutoff"], FAMILY_ORDER.index(row["family"])))
     if len(rows) != 45:
         raise RuntimeError(f"Expected 45 publication rows, found {len(rows)}")
@@ -541,6 +635,8 @@ def build_outputs() -> tuple[list[dict[str, str]], list[dict[str, str]], list[di
                 "campaign_lineage": row["campaign_lineage"],
                 "publication_note": row["publication_note"],
                 "replaced_source_run_id": row["replaced_source_run_id"],
+                "replacement_reason": row.get("replacement_reason", ""),
+                "expected_input_bundle_id": row.get("expected_input_bundle_id", ""),
                 "crps_exact": str(float(score["mean_crps"])),
                 "crps_display4": display4(float(score["mean_crps"])),
                 "score_source": score_source,
@@ -715,8 +811,19 @@ def validate(
         for row in rows:
             if row["manuscript_label"] != expected["label"]:
                 raise RuntimeError(f"Unexpected promoted label for {row['run_id']}: {row['manuscript_label']}")
-            if row["campaign_lineage"] != PROMOTED_FAMILY_LINEAGES[family]:
+            is_replacement = bool(row.get("replacement_reason", ""))
+            if not is_replacement and row["campaign_lineage"] != PROMOTED_FAMILY_LINEAGES[family]:
                 raise RuntimeError(f"Unexpected promoted lineage for {row['run_id']}: {row['campaign_lineage']}")
+            if is_replacement:
+                if not row["campaign_lineage"].startswith("he2_table1_targeted_repair_20260612:"):
+                    raise RuntimeError(f"Unexpected replacement lineage for {row['run_id']}: {row['campaign_lineage']}")
+                if row.get("expected_input_bundle_id", "") != canonical_bundle_run_id:
+                    raise RuntimeError(
+                        f"Replacement row expected bundle mismatch for {row['run_id']}: "
+                        f"{row.get('expected_input_bundle_id', '')} != {canonical_bundle_run_id}"
+                    )
+                if not row.get("replaced_source_run_id", ""):
+                    raise RuntimeError(f"Replacement row missing replaced source run id: {row['run_id']}")
             if row["likelihood_mode"] != expected["likelihood"]:
                 raise RuntimeError(f"Unexpected likelihood for {row['run_id']}: {row['likelihood_mode']}")
             if row["forecast_transfer_mode"] != expected["transfer"]:
@@ -746,24 +853,25 @@ def validate(
                 missing_ndlm_post = [str(path) for path in required_ndlm_post if not path.exists()]
                 if missing_ndlm_post:
                     raise RuntimeError(f"Promoted NDLM post artifacts missing: {row['run_id']} {missing_ndlm_post}")
-                compare_dir = Path(row["compare_dir"])
-                required_compare = [
-                    compare_dir / "crps_forecast_summary_all_models.csv",
-                    compare_dir / "crps_input_health_all_models.csv",
-                    compare_dir / "figure_manifest.csv",
-                    compare_dir / "model_coverage.csv",
-                    compare_dir / "source_provenance.csv",
-                    compare_dir / "summary.md",
-                ]
-                missing_compare = [str(path) for path in required_compare if not path.exists()]
-                if missing_compare:
-                    raise RuntimeError(f"Promoted NDLM compare bundle missing artifacts: {row['run_id']} {missing_compare}")
-                compare_score = compare_score_row(compare_dir, family)
-                if abs(float(compare_score["mean_crps"]) - float(row["crps_exact"])) > 1e-12:
-                    raise RuntimeError(
-                        f"Promoted NDLM compare CRPS does not match run-local CRPS: "
-                        f"{row['run_id']} compare={compare_score['mean_crps']} local={row['crps_exact']}"
-                    )
+                if row["compare_dir"]:
+                    compare_dir = Path(row["compare_dir"])
+                    required_compare = [
+                        compare_dir / "crps_forecast_summary_all_models.csv",
+                        compare_dir / "crps_input_health_all_models.csv",
+                        compare_dir / "figure_manifest.csv",
+                        compare_dir / "model_coverage.csv",
+                        compare_dir / "source_provenance.csv",
+                        compare_dir / "summary.md",
+                    ]
+                    missing_compare = [str(path) for path in required_compare if not path.exists()]
+                    if missing_compare:
+                        raise RuntimeError(f"Promoted NDLM compare bundle missing artifacts: {row['run_id']} {missing_compare}")
+                    compare_score = compare_score_row(compare_dir, family)
+                    if abs(float(compare_score["mean_crps"]) - float(row["crps_exact"])) > 1e-12:
+                        raise RuntimeError(
+                            f"Promoted NDLM compare CRPS does not match run-local CRPS: "
+                            f"{row['run_id']} compare={compare_score['mean_crps']} local={row['crps_exact']}"
+                        )
             else:
                 figure_manifest = artifact_root / "post" / "outputs" / artifact_root.name / "publication_figure_manifest.csv"
                 if not figure_manifest.exists():
@@ -846,8 +954,8 @@ def write_markdown(manifest_rows: list[dict[str, str]], alignment_rows: list[dic
     current_rows = []
     promoted_rows = []
     for row in manifest_rows:
-        promoted = row["campaign_lineage"] in set(PROMOTED_FAMILY_LINEAGES.values())
-        note = "canonical-bundle promoted" if promoted else ""
+        promoted = row["campaign_lineage"] in set(PROMOTED_FAMILY_LINEAGES.values()) or bool(row.get("replacement_reason", ""))
+        note = "targeted repair replacement" if row.get("replacement_reason", "") else ("canonical-bundle promoted" if promoted else "")
         if promoted:
             promoted_rows.append([row["cutoff_display"], row["manuscript_label"], row["crps_display4"], row["run_id"]])
         current_rows.append(

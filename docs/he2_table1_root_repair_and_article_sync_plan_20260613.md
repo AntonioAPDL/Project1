@@ -619,9 +619,68 @@ This repair is complete only when all of the following are true:
 
 ## Current Recommendation
 
-The next implementation pass should reset only the eight rows listed in the
-Phase 5 implementation update and relaunch them under the rebuilt generated
-configs. The 16 completed rows should remain archived/preserved. Promotion to
-the article and corrections repositories should still wait until the targeted
-repair matrix reaches 24 of 24 rows at `report/pass` and the manifest overlay
-validation gates pass.
+The eight-row continuation was reset and relaunched under the rebuilt generated
+configs after the q35 damping-A policy was promoted. The 16 completed rows were
+preserved. Promotion to the article and corrections repositories should still
+wait until the targeted repair matrix reaches 24 of 24 rows at `report/pass`
+and the manifest overlay validation gates pass.
+
+## Implementation Update: Manifest Overlay
+
+The manifest overlay path is now implemented and tracked, but intentionally
+inactive while the repair queue is still incomplete:
+
+- overlay file:
+  `config/he2_publication_manifest_replacement_overlay_table1_targeted_repair_20260612.yaml`;
+- manifest builder:
+  `scripts/build_he2_bayesian_publication_manifest.py`;
+- readiness audit:
+  `scripts/build_he2_crps_table_readiness_audit.py`;
+- tests:
+  `tests/python/test_he2_bayesian_publication_manifest.py` and
+  `tests/python/test_he2_publication_parity_gate.py`.
+
+The overlay encodes all 24 intended Table 1 replacement cells and is keyed by
+`cutoff`, `family`, `manuscript_label`, and `run_id`. It also records the
+expected canonical bundle id `20260510_publication_shared_r01`, a targeted
+repair lineage, and a replacement reason. The builder applies it only when
+`active: true`; until then, the current 45-row publication manifest remains
+unchanged.
+
+The overlay validation policy is deliberately fail-fast:
+
+1. the replacement lineage must start with
+   `he2_table1_targeted_repair_20260612:`;
+2. the replacement row must declare the canonical shared input bundle id;
+3. the replaced source run id must be recorded;
+4. the replacement run must have `fit`, `post`, `validate`, and `report` all at
+   `pass`;
+5. the replacement run must retain no `.RData/.rda/.Rda` artifacts;
+6. CRPS tables, figure manifests, and NDLM post artifacts must exist;
+7. the canonical input-bundle congruence checks must pass.
+
+Focused validation after implementing the inactive overlay:
+
+```bash
+python3 -m unittest \
+  tests.python.test_he2_bayesian_publication_manifest \
+  tests.python.test_he2_crps_table_readiness_audit \
+  tests.python.test_he2_publication_parity_gate
+```
+
+Result: `10` tests passed.
+
+Live continuation evidence after the q35 damping-A relaunch:
+
+- selected repair matrix reached `3 pass / 1 pending / 4 not_started`;
+- `multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_drop`
+  advanced to `report/pass`;
+- the same row removed all seven fit-stage `.RData` files during post cleanup;
+- `/data` free space recovered from about `174 GB` to about `224 GB`;
+- `multimodel_20221225_v8_he2tbl1fix20260612_ndlm_main_keep` remained active,
+  numerically stable through iteration `6`, with no covariance clipping.
+
+Once the selected eight-row continuation completes, rebuild the full 24-row
+matrix with no run-id selector, verify all 24 rows are `report/pass`, flip the
+overlay to `active: true`, and run the full manifest/table/article validation
+chain.
