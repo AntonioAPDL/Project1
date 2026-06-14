@@ -684,3 +684,97 @@ Once the selected eight-row continuation completes, rebuild the full 24-row
 matrix with no run-id selector, verify all 24 rows are `report/pass`, flip the
 overlay to `active: true`, and run the full manifest/table/article validation
 chain.
+
+## Implementation Update: Final Promotion
+
+Status as of 2026-06-14:
+
+- the selected eight-row continuation completed successfully;
+- the full targeted repair matrix was regenerated from
+  `config/he2_bayesian_publication_relaunch_table1_targeted_repair_20260612.template.yaml`
+  and
+  `config/he2_relaunch_batches/table1_targeted_repair_20260612.yaml`;
+- matrix health reached `24 pass / 0 pending / 0 fail`;
+- cleanup check found `0` `.RData/.rda/.Rda` files under
+  `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs`;
+- the manifest replacement overlay was promoted by setting
+  `active: true` in
+  `config/he2_publication_manifest_replacement_overlay_table1_targeted_repair_20260612.yaml`;
+- the refreshed workflow HE2 manifest contains the 24 targeted replacement
+  rows with lineage
+  `he2_table1_targeted_repair_20260612:canonical_bundle_targeted_repair`;
+- all replacement rows point to the canonical shared input bundle
+  `20260510_publication_shared_r01`.
+
+Workflow validation commands and results:
+
+```bash
+python3 scripts/build_he2_bayesian_publication_manifest.py
+python3 scripts/build_he2_publication_parity_gate.py
+python3 scripts/build_he2_crps_table_readiness_audit.py
+python3 -m unittest \
+  tests.python.test_he2_bayesian_publication_manifest \
+  tests.python.test_he2_crps_table_readiness_audit \
+  tests.python.test_he2_publication_parity_gate
+```
+
+Result: `10` tests passed.
+
+HE4 and cross-repo validation commands and results:
+
+```bash
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_he2_manifest_snapshot.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2 \
+  --workflow-root /data/muscat_data/jaguir26/project1_ucsc_phd
+python3 scripts/build_he4_quantile_check_loss_tables.py \
+  --source-mode he2-publication-manifest \
+  --he2-publication-manifest Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv \
+  --runtime-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime \
+  --output-dir reports/he4_quantile_check_loss_current_publication_20260609
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/build_generated_table_includes.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/sync_corrections_generated_table_includes.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2 \
+  --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1
+python3 -m pytest tests/python/test_he4_quantile_check_loss_tables.py -q
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/build_article_asset_review_report.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/validate_manuscript_figure_paths.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2
+python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/validate_authoritative_output_lineage.py \
+  --article-root Evironmetrics---REVISED-DOC-Corrected-2 \
+  --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1 \
+  --report-dir /tmp/authoritative_output_lineage_check_latest
+python3 scripts/validate_revision_cross_repo_wiring.py \
+  --workflow-root /data/muscat_data/jaguir26/project1_ucsc_phd \
+  --article-root /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2 \
+  --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1 \
+  --output-dir /tmp/revision_cross_repo_wiring_check_latest \
+  --check-only --strict
+```
+
+Results:
+
+- HE4 tests: `7` passed;
+- manuscript figure-path validation: passed;
+- authoritative output lineage validation: passed, with report at
+  `/tmp/authoritative_output_lineage_check_latest/AUTHORITATIVE_OUTPUT_LINEAGE_VALIDATION.md`;
+- strict cross-repo validation: passed, with report at
+  `/tmp/revision_cross_repo_wiring_check_latest`;
+- revised article compile:
+  `pdflatex -interaction=nonstopmode -halt-on-error main.tex` twice, passed;
+- corrections compile:
+  `pdflatex -interaction=nonstopmode -halt-on-error main.tex` twice, passed.
+
+Generated article-side files refreshed from the promoted manifest:
+
+- `Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he2_publication_freeze/`;
+- `Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he4_quantile_check_loss_current_publication/`;
+- `Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/`;
+- `/data/muscat_data/jaguir26/Corrections---Project-1/tables/generated_tex/`.
+
+Final repository heads are recorded below after the promotion commits:
+
+- workflow repo: the commit containing this final-promotion section;
+- revised article repo: `db577b3`;
+- corrections repo: `65da8e1`.
