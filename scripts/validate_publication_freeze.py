@@ -402,13 +402,16 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
     required_article = [
         "AL-M-T1 is the best corrected Bayesian row at 12/25/2022",
         "A separate eight-day NWS-horizon table preserves the direct operational comparison to NWS",
-        "the full model remains best across all five ablation comparisons",
+        r"Appendix~\ref{app:he3ablation} reports a targeted component ablation",
+        r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
         "same 2022-12-25 selected exAL-M-T1 output authority used for the synthesis illustration",
     ]
     required_corrections = [
         "best corrected Bayesian row at 12/25/2022",
         "separate eight-day NWS-horizon comparison",
-        "full model remains the best ablation configuration",
+        "Because this is a sensitivity analysis of the selected specification rather than a primary benchmark table",
+        r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
+        "Within this fixed ablation matrix",
         "same 2022-12-25 selected-model posterior-output authority",
     ]
     forbidden = [
@@ -417,6 +420,8 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "do uniformly dominate the operational baseline",
         "raw NWS forecast product has the lowest CRPS overall",
         "raw NWS forecast product has the lowest CRPS in the table",
+        "the full model remains best across all five ablation comparisons",
+        "full model remains the best ablation configuration",
     ]
     for claim in required_article:
         add(checks, "prose", f"article_required:{claim}", claim in article, claim)
