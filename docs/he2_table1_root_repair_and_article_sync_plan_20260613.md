@@ -627,8 +627,7 @@ and the manifest overlay validation gates pass.
 
 ## Implementation Update: Manifest Overlay
 
-The manifest overlay path is now implemented and tracked, but intentionally
-inactive while the repair queue is still incomplete:
+The manifest overlay path is implemented and tracked:
 
 - overlay file:
   `config/he2_publication_manifest_replacement_overlay_table1_targeted_repair_20260612.yaml`;
@@ -640,12 +639,14 @@ inactive while the repair queue is still incomplete:
   `tests/python/test_he2_bayesian_publication_manifest.py` and
   `tests/python/test_he2_publication_parity_gate.py`.
 
-The overlay encodes all 24 intended Table 1 replacement cells and is keyed by
-`cutoff`, `family`, `manuscript_label`, and `run_id`. It also records the
-expected canonical bundle id `20260510_publication_shared_r01`, a targeted
-repair lineage, and a replacement reason. The builder applies it only when
-`active: true`; until then, the current 45-row publication manifest remains
-unchanged.
+The overlay is keyed by `cutoff`, `family`, `manuscript_label`, and `run_id`.
+It also records the expected canonical bundle id
+`20260510_publication_shared_r01`, a targeted repair lineage, and a replacement
+reason. The builder applies it only when `active: true`. After the selective
+CRPS comparison described below, the active overlay promotes only the 16
+targeted repair cells that are no worse than the pre-overlay authoritative
+row; the eight worse repair reruns remain runtime evidence but are not used in
+the publication manifest.
 
 The overlay validation policy is deliberately fail-fast:
 
@@ -681,9 +682,10 @@ Live continuation evidence after the q35 damping-A relaunch:
   numerically stable through iteration `6`, with no covariance clipping.
 
 Once the selected eight-row continuation completes, rebuild the full 24-row
-matrix with no run-id selector, verify all 24 rows are `report/pass`, flip the
-overlay to `active: true`, and run the full manifest/table/article validation
-chain.
+matrix with no run-id selector, verify all 24 rows are `report/pass`, compare
+each targeted repair against the pre-overlay authoritative row, flip the
+overlay to `active: true` only for non-worse repair cells, and run the full
+manifest/table/article validation chain.
 
 ## Implementation Update: Final Promotion
 
@@ -700,8 +702,13 @@ Status as of 2026-06-14:
 - the manifest replacement overlay was promoted by setting
   `active: true` in
   `config/he2_publication_manifest_replacement_overlay_table1_targeted_repair_20260612.yaml`;
-- the refreshed workflow HE2 manifest contains the 24 targeted replacement
-  rows with lineage
+- the full 24-row repair matrix remains retained as runtime evidence, but the
+  refreshed workflow HE2 manifest promotes only the 16 targeted repair cells
+  whose CRPS is better than or tied with the pre-overlay authoritative row;
+- the eight repair reruns with worse CRPS are intentionally not promoted, so
+  the publication manifest falls back to the previous lower-CRPS authoritative
+  rows for those cells;
+- promoted repair rows use lineage
   `he2_table1_targeted_repair_20260612:canonical_bundle_targeted_repair`;
 - all replacement rows point to the canonical shared input bundle
   `20260510_publication_shared_r01`.
@@ -773,11 +780,40 @@ Generated article-side files refreshed from the promoted manifest:
 - `Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/`;
 - `/data/muscat_data/jaguir26/Corrections---Project-1/tables/generated_tex/`.
 
+## Implementation Update: Selective Best-CRPS Promotion
+
+After the full 24-row repair queue passed, the active overlay was re-audited
+against the pre-overlay authoritative manifest. The corrected promotion rule is:
+
+1. if the repaired row has lower CRPS, promote the repaired row;
+2. if the repaired row ties the previous row to numerical precision, keep the
+   repaired row because it is generated under the current canonical bundle and
+   validation gates;
+3. if the repaired row has higher CRPS, do not promote it; keep the previous
+   lower-CRPS authoritative row.
+
+The eight non-promoted worse repair cells are:
+
+| cutoff | label | previous CRPS | repaired CRPS | delta |
+|---|---|---:|---:|---:|
+| `20210123` | `exAL-U-T1` | 1.59375884 | 1.61124865 | +0.01748981 |
+| `20210123` | `N-M-T1` | 3.21490235 | 3.22348413 | +0.00858178 |
+| `20211112` | `exAL-U-T1` | 1.37206416 | 1.39007525 | +0.01801108 |
+| `20211221` | `exAL-U-T1` | 2.56295469 | 2.57821533 | +0.01526064 |
+| `20220511` | `exAL-U-T1` | 1.26677032 | 1.28804301 | +0.02127269 |
+| `20221225` | `exAL-M-T0` | 1.21131915 | 1.78492636 | +0.57360721 |
+| `20221225` | `exAL-U-T1` | 3.59527754 | 3.61775915 | +0.02248161 |
+| `20221225` | `N-M-T1` | 3.88862909 | 3.89354704 | +0.00491795 |
+
+The final overlay therefore has `16` active replacement rows. A direct
+selection gate verified that no active replacement worsens the pre-overlay
+authoritative row.
+
 Final repository heads are recorded below after the promotion commits. The
 revised article head includes the repaired-table refresh, the
 `overleaf-2026-06-12-0600` remote update merged with generated assets
 preserved, and the helper fix for future Overleaf preservation merges:
 
 - workflow repo: the commit containing this final-promotion section;
-- revised article repo: `a87a762`;
-- corrections repo: `65da8e1`.
+- revised article repo: `7c14d37`;
+- corrections repo: `6288ff6`.
