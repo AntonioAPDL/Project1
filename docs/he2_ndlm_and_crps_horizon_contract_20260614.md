@@ -112,9 +112,24 @@ Corrections repo:
 - `/data/muscat_data/jaguir26/Corrections---Project-1/tables/generated_tex/he2_benchmark_crps_response_table.tex`
   - synced from the revised article 28-day HE2 table body.
 
-## Remaining Watch Item
+## HE3 Ablation Extension
 
-The HE3 ablation response table still includes raw forecast rows as references.
-The current patch fixes the primary HE2 benchmark table and the new NWS-horizon
-companion table. A separate HE3 policy decision is still needed if we want the
-ablation raw-reference rows to follow the exact same split-horizon treatment.
+The same horizon policy is now applied to the HE3 ablation study:
+
+| Table | Horizon | Raw rows | Ablation rows |
+| --- | ---: | --- | --- |
+| `tab:he3_ablation_crps` | 28 days | `RAW-GLOFAS` only | full selected model plus all structural ablations |
+| `tab:he3_ablation_crps_nws_horizon` | 8 days | `RAW-GLOFAS`, `RAW-NWS` | full selected model plus all structural ablations restricted to leads 1--8 |
+
+The HE3 cell-level audit file is:
+
+`Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/he3_ablation_crps_horizon_summary.csv`
+
+The workflow-side generator is:
+
+`scripts/sync_he3_ablation_article_tables.py`
+
+It now recomputes every HE3 table cell from the relevant
+`crps_forecast_per_time.csv` file rather than relying on already averaged
+summary rows. This keeps the HE3 28-day and NWS-horizon ablation tables
+consistent with the HE2 benchmark tables.

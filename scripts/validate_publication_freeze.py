@@ -133,6 +133,18 @@ def parse_flat_tex(path: Path, expected_numeric_cells: int = 5) -> dict[str, lis
     return rows
 
 
+def mean_crps_for_leads(path: Path, *, model_id: str, horizon_days: int) -> float:
+    rows = [
+        row for row in read_csv(path)
+        if row.get("model_id") == model_id and 1 <= int(row["lead_day"]) <= horizon_days
+    ]
+    leads = sorted(int(row["lead_day"]) for row in rows)
+    expected = list(range(1, horizon_days + 1))
+    if leads != expected:
+        raise ValueError(f"Expected leads {expected} for model_id={model_id} in {path}; got {leads}")
+    return sum(as_float(row["crps"]) for row in rows) / len(rows)
+
+
 def keyed(rows: list[dict[str, str]], *cols: str) -> dict[tuple[str, ...], dict[str, str]]:
     out: dict[tuple[str, ...], dict[str, str]] = {}
     for row in rows:
@@ -281,6 +293,12 @@ def check_he3_authoritative(
 
     article_table = parse_flat_tex(article_root / "tables/generated_tex/he3_ablation_crps_main_table.tex")
     corrections_table = parse_flat_tex(corrections_root / "tables/generated_tex/he3_ablation_crps_response_table.tex")
+    article_nws_table = parse_flat_tex(article_root / "tables/generated_tex/he3_ablation_crps_nws_horizon_table.tex")
+    corrections_nws_table = parse_flat_tex(corrections_root / "tables/generated_tex/he3_ablation_crps_nws_horizon_response_table.tex")
+    add(checks, "he3_authority", "article_table_excludes_nws_28day", "RAW-NWS" not in article_table, "NWS omitted from 28-day HE3 table")
+    add(checks, "he3_authority", "corrections_table_excludes_nws_28day", "RAW-NWS" not in corrections_table, "NWS omitted from 28-day HE3 response table")
+    add(checks, "he3_authority", "article_nws_horizon_includes_nws", "RAW-NWS" in article_nws_table, "NWS included in eight-day HE3 table")
+    add(checks, "he3_authority", "corrections_nws_horizon_includes_nws", "RAW-NWS" in corrections_nws_table, "NWS included in eight-day HE3 response table")
     for variant in HE3_VARIANTS:
         label = HE3_LABEL_BY_VARIANT[variant]
         expected = [as_float(runtime_key[(cutoff, variant)]["mean_crps"]) for cutoff in CUTOFF_ORDER]
@@ -299,6 +317,34 @@ def check_he3_authoritative(
             f"corrections_table:{label}",
             corrections_observed is not None and all(same_display(e, o) for e, o in zip(expected, corrections_observed)),
             "five-decimal rendered values",
+        )
+        expected_nws_horizon = []
+        for cutoff in CUTOFF_ORDER:
+            row = runtime_key[(cutoff, variant)]
+            per_time_path = (
+                Path(row["resolved_run_dir"])
+                / "post"
+                / "outputs"
+                / row["resolved_run_id"]
+                / "tables"
+                / "crps_forecast_per_time.csv"
+            )
+            expected_nws_horizon.append(mean_crps_for_leads(per_time_path, model_id=row["target_model_id"], horizon_days=8))
+        observed_nws = article_nws_table.get(label)
+        add(
+            checks,
+            "he3_authority",
+            f"article_nws_horizon_table:{label}",
+            observed_nws is not None and all(same_display(e, o) for e, o in zip(expected_nws_horizon, observed_nws)),
+            "eight-day rendered values",
+        )
+        corrections_observed_nws = corrections_nws_table.get(label)
+        add(
+            checks,
+            "he3_authority",
+            f"corrections_nws_horizon_table:{label}",
+            corrections_observed_nws is not None and all(same_display(e, o) for e, o in zip(expected_nws_horizon, corrections_observed_nws)),
+            "eight-day rendered values",
         )
 
 

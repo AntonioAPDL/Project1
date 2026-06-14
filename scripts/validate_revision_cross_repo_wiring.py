@@ -47,6 +47,16 @@ HE3_ORDER = [
 ]
 HE2_LONG_ORDER = ["RAW-GLOFAS"] + MODEL_ORDER
 HE2_SHORT_ORDER = ["RAW-GLOFAS", "RAW-NWS"] + MODEL_ORDER
+HE3_ABLATION_ORDER = [
+    "exAL-M-T1 (full)",
+    "exAL-M-T1-noTrend",
+    "exAL-M-noTF",
+    "exAL-M-T1-noH1",
+    "exAL-M-T1-noH2",
+    "exAL-M-T1-noH3",
+]
+HE3_LONG_ORDER = HE3_ABLATION_ORDER + ["RAW-GLOFAS"]
+HE3_SHORT_ORDER = HE3_ABLATION_ORDER + ["RAW-GLOFAS", "RAW-NWS"]
 HE4_ORDER = ["exAL-M-T1", "AL-M-T1", "exAL-U-T1", "AL-U-T1"]
 HE4_TAU_COLUMNS = ["q0.05", "q0.20", "q0.35", "q0.50", "q0.65", "q0.80", "q0.95"]
 RAW_MODEL_MAP = {"RAW-GLOFAS": "glofas_ensemble", "RAW-NWS": "nws_nwm_ensemble"}
@@ -234,20 +244,26 @@ def build_he2_expected(
     return {label: expected[label] for label in order}
 
 
-def build_he3_expected(article_root: Path, manifest: dict) -> dict[str, list[float]]:
+def build_he3_expected(
+    article_root: Path,
+    manifest: dict,
+    *,
+    horizon_days: int,
+    include_nws: bool,
+) -> dict[str, list[float]]:
     cfg = manifest["tables"]["tab:he3_ablation_crps"]
     rows = pd.read_csv(article_root / cfg["sources"]["he3_ablation_long_csv"])
     label_map = {"exAL-M-T1": "exAL-M-T1 (full)"}
     expected: dict[str, list[float]] = {}
-    for raw_label, model_id in RAW_MODEL_MAP.items():
+    raw_order = ["RAW-GLOFAS", "RAW-NWS"] if include_nws else ["RAW-GLOFAS"]
+    for raw_label in raw_order:
+        model_id = RAW_MODEL_MAP[raw_label]
         values = []
         five_root = article_root / cfg["sources"]["five_run_source_root"]
         for cutoff in CUTOFF_ORDER:
-            crps = pd.read_csv(five_root / RUN_SLUG_MAP[cutoff] / "crps_forecast_summary.csv")
-            row = crps[crps["model_id"] == model_id]
-            if len(row) != 1:
-                raise ValueError(f"Expected one {model_id} row for cutoff {cutoff}")
-            values.append(float(row["mean_crps"].iloc[0]))
+            source = five_root / RUN_SLUG_MAP[cutoff] / "crps_forecast_per_time.csv"
+            crps = pd.read_csv(source)
+            values.append(mean_crps_for_leads(crps, selector_col="model_id", selector_value=model_id, horizon_days=horizon_days, source=source))
         expected[raw_label] = values
     for manuscript_label in sorted(rows["manuscript_label"].unique()):
         out_label = label_map.get(manuscript_label, manuscript_label)
@@ -256,9 +272,27 @@ def build_he3_expected(article_root: Path, manifest: dict) -> dict[str, list[flo
             row = rows[(rows["cutoff"].astype(str) == cutoff) & (rows["manuscript_label"] == manuscript_label)]
             if len(row) != 1:
                 raise ValueError(f"Expected one HE3 row for {manuscript_label} / {cutoff}")
-            values.append(float(row["mean_crps"].iloc[0]))
+            source = (
+                Path(str(row["resolved_run_dir"].iloc[0]))
+                / "post"
+                / "outputs"
+                / str(row["resolved_run_id"].iloc[0])
+                / "tables"
+                / "crps_forecast_per_time.csv"
+            )
+            crps = pd.read_csv(source)
+            values.append(
+                mean_crps_for_leads(
+                    crps,
+                    selector_col="model_id",
+                    selector_value=str(row["target_model_id"].iloc[0]),
+                    horizon_days=horizon_days,
+                    source=source,
+                )
+            )
         expected[out_label] = values
-    return {label: expected[label] for label in HE3_ORDER}
+    order = HE3_SHORT_ORDER if include_nws else HE3_LONG_ORDER
+    return {label: expected[label] for label in order}
 
 
 def build_he4_expected(article_root: Path, manifest: dict) -> dict[tuple[str, str], list[float]]:
@@ -546,14 +580,17 @@ def main(argv: Iterable[str] | None = None) -> int:
 
     he2_expected = build_he2_expected(article_root, manifest, horizon_days=28, include_nws=False)
     he2_nws_horizon_expected = build_he2_expected(article_root, manifest, horizon_days=8, include_nws=True)
-    he3_expected = build_he3_expected(article_root, manifest)
+    he3_expected = build_he3_expected(article_root, manifest, horizon_days=28, include_nws=False)
+    he3_nws_horizon_expected = build_he3_expected(article_root, manifest, horizon_days=8, include_nws=True)
     he4_expected = build_he4_expected(article_root, manifest)
 
     he2_article = parse_flat_table(article_root / "tables/generated_tex/benchmark_crps_main_table.tex", 5)
     he2_nws_horizon_article = parse_flat_table(article_root / "tables/generated_tex/benchmark_crps_nws_horizon_table.tex", 5)
     he2_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he2_benchmark_crps_response_table.tex", 5)
     he3_article = parse_flat_table(article_root / "tables/generated_tex/he3_ablation_crps_main_table.tex", 5)
+    he3_nws_horizon_article = parse_flat_table(article_root / "tables/generated_tex/he3_ablation_crps_nws_horizon_table.tex", 5)
     he3_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he3_ablation_crps_response_table.tex", 5)
+    he3_nws_horizon_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he3_ablation_crps_nws_horizon_response_table.tex", 5)
     he4_article = parse_panel_table(article_root / "tables/generated_tex/he4_quantile_check_loss_main_table.tex", 7)
     he4_corrections = parse_panel_table(corrections_root / "tables/generated_tex/he4_quantile_check_loss_response_table.tex", 7)
 
@@ -562,7 +599,9 @@ def main(argv: Iterable[str] | None = None) -> int:
     checks.extend(compare_table(table_name="article_he2_nws_horizon", expected=he2_nws_horizon_expected, observed=he2_nws_horizon_article, columns=cutoff_cols, out_rows=table_value_rows))
     checks.extend(compare_table(table_name="corrections_he2", expected=he2_expected, observed=he2_corrections, columns=cutoff_cols, out_rows=table_value_rows))
     checks.extend(compare_table(table_name="article_he3", expected=he3_expected, observed=he3_article, columns=cutoff_cols, out_rows=table_value_rows))
+    checks.extend(compare_table(table_name="article_he3_nws_horizon", expected=he3_nws_horizon_expected, observed=he3_nws_horizon_article, columns=cutoff_cols, out_rows=table_value_rows))
     checks.extend(compare_table(table_name="corrections_he3", expected=he3_expected, observed=he3_corrections, columns=cutoff_cols, out_rows=table_value_rows))
+    checks.extend(compare_table(table_name="corrections_he3_nws_horizon", expected=he3_nws_horizon_expected, observed=he3_nws_horizon_corrections, columns=cutoff_cols, out_rows=table_value_rows))
     checks.extend(compare_table(table_name="article_he4", expected=he4_expected, observed=he4_article, columns=HE4_TAU_COLUMNS, out_rows=table_value_rows))
     checks.extend(compare_table(table_name="corrections_he4", expected=he4_expected, observed=he4_corrections, columns=HE4_TAU_COLUMNS, out_rows=table_value_rows))
 

@@ -42,13 +42,18 @@ RAW_MODEL_MAP = {
     "RAW-GLOFAS": "glofas_ensemble",
     "RAW-NWS": "nws_nwm_ensemble",
 }
+HE3_LONG_RAW_ROW_ORDER = ["RAW-GLOFAS"]
+HE3_SHORT_RAW_ROW_ORDER = ["RAW-GLOFAS", "RAW-NWS"]
+HE3_LONG_HORIZON_DAYS = 28
+HE3_NWS_COMMON_HORIZON_DAYS = 8
 ARTICLE_TABLE_DIR = Path("tables") / "generated_tex"
 ARTICLE_ARTIFACT_DIR = Path("artifacts") / "he3_exdqlm_ablation_authoritative"
 TABLE_LABEL = "tab:he3_ablation_crps"
+NWS_HORIZON_TABLE_LABEL = "tab:he3_ablation_crps_nws_horizon"
 TABLE_NOTE = (
     "Generated from the authoritative HE3 exDQLM multivariate ablation matrix anchored to the "
-    "20260601 exAL-M-T1 winner manifest; raw forecast references are copied from the article-side "
-    "five-cutoff CRPS validation source freeze."
+    "20260601 exAL-M-T1 winner manifest; raw forecast references are recomputed from the "
+    "article-side five-cutoff per-time CRPS validation source freeze."
 )
 DISPLAY_DIGITS = 5
 
@@ -85,30 +90,113 @@ def load_he3_long(matrix_dir: Path) -> tuple[pd.DataFrame, Path, dict[str, Any]]
     return df, report_dir, metadata
 
 
-def load_raw_values(article_root: Path) -> dict[str, dict[str, float]]:
+def mean_crps_for_leads(
+    rows: pd.DataFrame,
+    *,
+    model_key: str,
+    model_value: str,
+    horizon_days: int,
+    source_path: Path,
+) -> float:
+    selected = rows[
+        rows[model_key].astype(str).eq(str(model_value))
+        & rows["lead_day"].astype(int).between(1, horizon_days)
+    ].copy()
+    leads = sorted(selected["lead_day"].astype(int).tolist())
+    expected = list(range(1, horizon_days + 1))
+    if leads != expected:
+        raise RuntimeError(
+            f"Expected leads {expected} for {model_key}={model_value} in {source_path}; got {leads}"
+        )
+    return float(selected.sort_values("lead_day")["crps"].astype(float).mean())
+
+
+def load_raw_values(
+    article_root: Path,
+    *,
+    horizon_days: int,
+    raw_row_order: list[str],
+    table_label: str,
+) -> tuple[dict[str, dict[str, float]], list[dict[str, str]]]:
     root = article_root / "artifacts" / "five_cutoff_crps_validation_sources"
-    out: dict[str, dict[str, float]] = {label: {} for label in RAW_MODEL_MAP}
+    out: dict[str, dict[str, float]] = {label: {} for label in raw_row_order}
+    source_rows: list[dict[str, str]] = []
     for cutoff in CUTOFF_ORDER:
-        rows = read_csv(root / RUN_SLUG_MAP[cutoff] / "crps_forecast_summary.csv")
-        by_model = {row["model_id"]: row for row in rows}
-        for label, model_id in RAW_MODEL_MAP.items():
-            out[label][cutoff] = float(by_model[model_id]["mean_crps"])
-    return out
+        per_time_path = root / RUN_SLUG_MAP[cutoff] / "crps_forecast_per_time.csv"
+        rows = pd.read_csv(per_time_path)
+        for label in raw_row_order:
+            model_id = RAW_MODEL_MAP[label]
+            value = mean_crps_for_leads(
+                rows,
+                model_key="model_id",
+                model_value=model_id,
+                horizon_days=horizon_days,
+                source_path=per_time_path,
+            )
+            out[label][cutoff] = value
+            source_rows.append(
+                {
+                    "table_label": table_label,
+                    "row_label": label,
+                    "cutoff": cutoff,
+                    "horizon_days": str(horizon_days),
+                    "source_class": "raw_forecast_product",
+                    "source_path": str(per_time_path.relative_to(article_root)),
+                    "model_selector": f"model_id={model_id}",
+                    "mean_crps": f"{value:.17g}",
+                }
+            )
+    return out, source_rows
 
 
-def build_value_grid(he3: pd.DataFrame, raw_values: dict[str, dict[str, float]]) -> dict[str, dict[str, float]]:
+def build_value_grid(
+    he3: pd.DataFrame,
+    raw_values: dict[str, dict[str, float]],
+    *,
+    horizon_days: int,
+    table_label: str,
+) -> tuple[dict[str, dict[str, float]], list[dict[str, str]]]:
     grid: dict[str, dict[str, float]] = {}
+    source_rows: list[dict[str, str]] = []
     for variant in VARIANT_ORDER:
         subset = he3[he3["variant"].astype(str).eq(variant)]
         if len(subset) != len(CUTOFF_ORDER):
             raise RuntimeError(f"Expected {len(CUTOFF_ORDER)} rows for HE3 variant={variant}, found {len(subset)}")
-        grid[variant] = {
-            str(row["cutoff"]).zfill(8): float(row["mean_crps"])
-            for _, row in subset.iterrows()
-        }
+        grid[variant] = {}
+        for _, row in subset.iterrows():
+            cutoff = str(row["cutoff"]).zfill(8)
+            per_time_path = (
+                Path(str(row["resolved_run_dir"]))
+                / "post"
+                / "outputs"
+                / str(row["resolved_run_id"])
+                / "tables"
+                / "crps_forecast_per_time.csv"
+            )
+            crps_rows = pd.read_csv(per_time_path)
+            value = mean_crps_for_leads(
+                crps_rows,
+                model_key="model_id",
+                model_value=str(row["target_model_id"]),
+                horizon_days=horizon_days,
+                source_path=per_time_path,
+            )
+            grid[variant][cutoff] = value
+            source_rows.append(
+                {
+                    "table_label": table_label,
+                    "row_label": DISPLAY_LABEL[variant],
+                    "cutoff": cutoff,
+                    "horizon_days": str(horizon_days),
+                    "source_class": "he3_authoritative_ablation",
+                    "source_path": str(per_time_path),
+                    "model_selector": f"model_id={row['target_model_id']}",
+                    "mean_crps": f"{value:.17g}",
+                }
+            )
     for raw_label, values in raw_values.items():
         grid[raw_label] = values
-    return grid
+    return grid, source_rows
 
 
 def render_model_row(label: str, values: dict[str, float], best_by_cutoff: dict[str, float] | None = None) -> str:
@@ -120,7 +208,7 @@ def render_model_row(label: str, values: dict[str, float], best_by_cutoff: dict[
     return " & ".join(parts) + r" \\"
 
 
-def render_body_lines(grid: dict[str, dict[str, float]]) -> list[str]:
+def render_body_lines(grid: dict[str, dict[str, float]], *, raw_row_order: list[str]) -> list[str]:
     ablation_best = {
         cutoff: min(float(grid[variant][cutoff]) for variant in VARIANT_ORDER)
         for cutoff in CUTOFF_ORDER
@@ -129,20 +217,26 @@ def render_body_lines(grid: dict[str, dict[str, float]]) -> list[str]:
         *(render_model_row(DISPLAY_LABEL[variant], grid[variant], ablation_best) for variant in VARIANT_ORDER),
         r"\addlinespace[2pt]",
         r"\multicolumn{6}{l}{\textit{Raw forecast products (reference only)}} \\",
-        *(render_model_row(raw_label, grid[raw_label]) for raw_label in RAW_MODEL_MAP),
+        *(render_model_row(raw_label, grid[raw_label]) for raw_label in raw_row_order),
     ]
     return lines
 
 
-def render_main_table(body_lines: list[str]) -> str:
+def render_main_table(
+    body_lines: list[str],
+    *,
+    table_label: str,
+    caption: str,
+    note: str,
+) -> str:
     return "\n".join(
         [
             r"\begin{table*}[htbp]",
             r"\centering",
             r"\renewcommand{\arraystretch}{1.08}",
             r"\begin{threeparttable}",
-            r"\caption{Targeted ablation of the selected \texttt{exAL-M-T1} specification. Entries are mean forecast-window CRPS; lower values are better, and bold marks the best ablation-row value within each cutoff.}",
-            rf"\label{{{TABLE_LABEL}}}",
+            rf"\caption{{{caption}}}",
+            rf"\label{{{table_label}}}",
             r"\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} >{\ttfamily}l r r r r r}",
             r"\toprule",
             r"Ablation model & 01/23/2021 & 11/12/2021 & 12/21/2021 & 05/11/2022 & 12/25/2022 \\",
@@ -151,7 +245,7 @@ def render_main_table(body_lines: list[str]) -> str:
             r"\bottomrule",
             r"\end{tabular*}",
             r"\begin{tablenotes}",
-            r"\item \textit{Note:} Each ablation inherits the cutoff-specific winning \texttt{exAL-M-T1} input bundle, preprocessing, likelihood, and selected winner hyperparameters, changing only the named structural component. \texttt{noH3} removes the third retained seasonal harmonic pair, where the third harmonic is the noninteger frequency \(1/6.8068493\).",
+            rf"\item \textit{{Note:}} {note}",
             r"\end{tablenotes}",
             r"\end{threeparttable}",
             r"\end{table*}",
@@ -181,14 +275,22 @@ def render_corrections_block(body_lines: list[str]) -> str:
 def write_article_outputs(
     article_root: Path,
     report_dir: Path,
-    grid: dict[str, dict[str, float]],
-    body_lines: list[str],
-    main_table: str,
+    long_body_lines: list[str],
+    long_main_table: str,
+    nws_body_lines: list[str],
+    nws_main_table: str,
+    horizon_source_rows: list[dict[str, str]],
 ) -> None:
     table_dir = article_root / ARTICLE_TABLE_DIR
     table_dir.mkdir(parents=True, exist_ok=True)
-    (table_dir / "he3_ablation_crps_body.tex").write_text("\n".join(body_lines) + "\n", encoding="utf-8")
-    (table_dir / "he3_ablation_crps_main_table.tex").write_text(main_table, encoding="utf-8")
+    (table_dir / "he3_ablation_crps_body.tex").write_text("\n".join(long_body_lines) + "\n", encoding="utf-8")
+    (table_dir / "he3_ablation_crps_main_table.tex").write_text(long_main_table, encoding="utf-8")
+    (table_dir / "he3_ablation_crps_nws_horizon_body.tex").write_text(
+        "\n".join(nws_body_lines) + "\n",
+        encoding="utf-8",
+    )
+    (table_dir / "he3_ablation_crps_nws_horizon_table.tex").write_text(nws_main_table, encoding="utf-8")
+    pd.DataFrame(horizon_source_rows).to_csv(table_dir / "he3_ablation_crps_horizon_summary.csv", index=False)
 
     artifact_dir = article_root / ARTICLE_ARTIFACT_DIR
     artifact_dir.mkdir(parents=True, exist_ok=True)
@@ -219,16 +321,20 @@ def write_article_outputs(
 
     manifest_csv = table_dir / "manifest.csv"
     rows = read_csv(manifest_csv) if manifest_csv.exists() else []
-    rows = [row for row in rows if row.get("table_label") != TABLE_LABEL]
-    for label in [DISPLAY_LABEL[v] for v in VARIANT_ORDER] + list(RAW_MODEL_MAP):
-        rows.append(
-            {
-                "table_label": TABLE_LABEL,
-                "row_label": label,
-                "source_class": "he3_authoritative_ablation",
-                "source_note": TABLE_NOTE,
-            }
-        )
+    rows = [row for row in rows if row.get("table_label") not in {TABLE_LABEL, NWS_HORIZON_TABLE_LABEL}]
+    for table_label, raw_order in (
+        (TABLE_LABEL, HE3_LONG_RAW_ROW_ORDER),
+        (NWS_HORIZON_TABLE_LABEL, HE3_SHORT_RAW_ROW_ORDER),
+    ):
+        for label in [DISPLAY_LABEL[v] for v in VARIANT_ORDER] + raw_order:
+            rows.append(
+                {
+                    "table_label": table_label,
+                    "row_label": label,
+                    "source_class": "he3_authoritative_ablation",
+                    "source_note": TABLE_NOTE,
+                }
+            )
     with manifest_csv.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
             handle,
@@ -238,12 +344,29 @@ def write_article_outputs(
         writer.writeheader()
         writer.writerows(rows)
 
+    build_metadata_json = table_dir / "build_metadata.json"
+    if build_metadata_json.exists():
+        build_metadata = json.loads(build_metadata_json.read_text(encoding="utf-8"))
+        outputs = build_metadata.setdefault("outputs", {})
+        outputs["tab:he3_ablation_crps_body"] = str(ARTICLE_TABLE_DIR / "he3_ablation_crps_body.tex")
+        outputs["tab:he3_ablation_crps_block"] = str(ARTICLE_TABLE_DIR / "he3_ablation_crps_main_table.tex")
+        outputs["tab:he3_ablation_crps_nws_horizon_body"] = str(
+            ARTICLE_TABLE_DIR / "he3_ablation_crps_nws_horizon_body.tex"
+        )
+        outputs["tab:he3_ablation_crps_nws_horizon_block"] = str(
+            ARTICLE_TABLE_DIR / "he3_ablation_crps_nws_horizon_table.tex"
+        )
+        outputs["tab:he3_ablation_crps_horizon_summary"] = str(
+            ARTICLE_TABLE_DIR / "he3_ablation_crps_horizon_summary.csv"
+        )
+        build_metadata_json.write_text(json.dumps(build_metadata, indent=2) + "\n", encoding="utf-8")
+
     manifest_json = article_root / "MANUSCRIPT_ASSET_MANIFEST.json"
     if manifest_json.exists():
         payload = json.loads(manifest_json.read_text(encoding="utf-8"))
         payload.setdefault("tables", {})[TABLE_LABEL] = {
             "label": TABLE_LABEL,
-            "role": "Selected-model ablation CRPS table",
+            "role": "Selected-model 28-day ablation CRPS table",
             "table_tex_path": str(ARTICLE_TABLE_DIR / "he3_ablation_crps_main_table.tex"),
             "source_class": "he3_authoritative_ablation",
             "sources": {
@@ -253,8 +376,34 @@ def write_article_outputs(
                     ARTICLE_ARTIFACT_DIR / "audit__he3_ablation_runtime_input_detail.csv"
                 ),
                 "five_run_source_root": "artifacts/five_cutoff_crps_validation_sources",
+                "he3_ablation_horizon_summary_csv": str(ARTICLE_TABLE_DIR / "he3_ablation_crps_horizon_summary.csv"),
             },
-            "note": TABLE_NOTE,
+            "note": (
+                "Generated from the authoritative HE3 exDQLM multivariate ablation matrix anchored to "
+                "the 20260601 exAL-M-T1 winner manifest. This 28-day table includes RAW-GLOFAS as "
+                "the horizon-compatible raw reference and omits RAW-NWS because NWS has eight valid "
+                "daily leads for these origins."
+            ),
+        }
+        payload.setdefault("tables", {})[NWS_HORIZON_TABLE_LABEL] = {
+            "label": NWS_HORIZON_TABLE_LABEL,
+            "role": "Selected-model common eight-day NWS-horizon ablation CRPS table",
+            "table_tex_path": str(ARTICLE_TABLE_DIR / "he3_ablation_crps_nws_horizon_table.tex"),
+            "source_class": "he3_authoritative_ablation",
+            "sources": {
+                "he3_ablation_long_csv": str(ARTICLE_ARTIFACT_DIR / "he3_ablation_long.csv"),
+                "he3_ablation_audit_csv": str(ARTICLE_ARTIFACT_DIR / "audit__he3_ablation_audit.csv"),
+                "he3_runtime_input_detail_csv": str(
+                    ARTICLE_ARTIFACT_DIR / "audit__he3_ablation_runtime_input_detail.csv"
+                ),
+                "five_run_source_root": "artifacts/five_cutoff_crps_validation_sources",
+                "he3_ablation_horizon_summary_csv": str(ARTICLE_TABLE_DIR / "he3_ablation_crps_horizon_summary.csv"),
+            },
+            "note": (
+                "Generated from the same authoritative HE3 ablation sources as the 28-day table, but "
+                "every row is restricted to leads 1--8 so RAW-NWS, RAW-GLOFAS, the full model, and "
+                "the ablation variants are compared on a common horizon."
+            ),
         }
         manifest_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
@@ -282,18 +431,24 @@ def write_article_outputs(
             wiley.write_text(text, encoding="utf-8")
 
 
-def write_corrections_outputs(corrections_root: Path, corrections_block: str) -> None:
+def write_corrections_outputs(corrections_root: Path, corrections_block: str, nws_corrections_block: str) -> None:
     table_dir = corrections_root / "tables" / "generated_tex"
     table_dir.mkdir(parents=True, exist_ok=True)
     response_table = table_dir / "he3_ablation_crps_response_table.tex"
     response_table.write_text(corrections_block + "\n", encoding="utf-8")
+    response_nws_table = table_dir / "he3_ablation_crps_nws_horizon_response_table.tex"
+    response_nws_table.write_text(nws_corrections_block + "\n", encoding="utf-8")
 
     tex_path = corrections_root / "main.tex"
     if not tex_path.exists():
         return
     text = tex_path.read_text(encoding="utf-8")
     input_line = r"\input{tables/generated_tex/he3_ablation_crps_response_table.tex}"
+    nws_input_line = r"\input{tables/generated_tex/he3_ablation_crps_nws_horizon_response_table.tex}"
     if input_line in text:
+        if nws_input_line not in text:
+            text = text.replace(input_line, input_line + "\n\n" + nws_input_line, 1)
+            tex_path.write_text(text, encoding="utf-8")
         return
     pattern = re.compile(
         r"\\begin\{center\}\s*\\scriptsize\s*\\setlength\{\\tabcolsep\}\{4pt\}\s*"
@@ -301,7 +456,8 @@ def write_corrections_outputs(corrections_root: Path, corrections_block: str) ->
         r"\\end\{tabular\}\s*\\end\{center\}",
         re.DOTALL,
     )
-    new_text, n = pattern.subn(lambda _match: corrections_block, text, count=1)
+    input_block = input_line + "\n\n" + nws_input_line
+    new_text, n = pattern.subn(lambda _match: input_block, text, count=1)
     if n != 1:
         raise RuntimeError(f"Could not replace HE3 ablation table in {tex_path}")
     tex_path.write_text(new_text, encoding="utf-8")
@@ -310,15 +466,80 @@ def write_corrections_outputs(corrections_root: Path, corrections_block: str) ->
 def main() -> int:
     args = parse_args()
     he3, report_dir, _metadata = load_he3_long(args.matrix_dir.resolve())
-    raw_values = load_raw_values(args.article_root.resolve())
-    grid = build_value_grid(he3, raw_values)
-    body_lines = render_body_lines(grid)
-    main_table = render_main_table(body_lines)
-    corrections_block = render_corrections_block(body_lines)
-    write_article_outputs(args.article_root.resolve(), report_dir, grid, body_lines, main_table)
-    write_corrections_outputs(args.corrections_root.resolve(), corrections_block)
+    long_raw_values, long_raw_source_rows = load_raw_values(
+        args.article_root.resolve(),
+        horizon_days=HE3_LONG_HORIZON_DAYS,
+        raw_row_order=HE3_LONG_RAW_ROW_ORDER,
+        table_label=TABLE_LABEL,
+    )
+    long_grid, long_source_rows = build_value_grid(
+        he3,
+        long_raw_values,
+        horizon_days=HE3_LONG_HORIZON_DAYS,
+        table_label=TABLE_LABEL,
+    )
+    long_body_lines = render_body_lines(long_grid, raw_row_order=HE3_LONG_RAW_ROW_ORDER)
+    long_main_table = render_main_table(
+        long_body_lines,
+        table_label=TABLE_LABEL,
+        caption=(
+            r"Targeted 28-day ablation of the selected \texttt{exAL-M-T1} specification. "
+            r"Entries are mean forecast-window CRPS; lower values are better, and bold marks "
+            r"the best ablation-row value within each cutoff."
+        ),
+        note=(
+            r"Each ablation inherits the cutoff-specific winning \texttt{exAL-M-T1} input bundle, "
+            r"preprocessing, likelihood, and selected winner hyperparameters, changing only the named "
+            r"structural component. \texttt{RAW-GLOFAS} is shown as the 28-day raw reference; "
+            r"\texttt{RAW-NWS} is omitted because the archived NWS forecasts provide eight valid daily "
+            r"leads for these origins. \texttt{noH3} removes the third retained seasonal harmonic pair, "
+            r"where the third harmonic is the noninteger frequency \(1/6.8068493\)."
+        ),
+    )
+
+    nws_raw_values, nws_raw_source_rows = load_raw_values(
+        args.article_root.resolve(),
+        horizon_days=HE3_NWS_COMMON_HORIZON_DAYS,
+        raw_row_order=HE3_SHORT_RAW_ROW_ORDER,
+        table_label=NWS_HORIZON_TABLE_LABEL,
+    )
+    nws_grid, nws_source_rows = build_value_grid(
+        he3,
+        nws_raw_values,
+        horizon_days=HE3_NWS_COMMON_HORIZON_DAYS,
+        table_label=NWS_HORIZON_TABLE_LABEL,
+    )
+    nws_body_lines = render_body_lines(nws_grid, raw_row_order=HE3_SHORT_RAW_ROW_ORDER)
+    nws_main_table = render_main_table(
+        nws_body_lines,
+        table_label=NWS_HORIZON_TABLE_LABEL,
+        caption=(
+            r"Targeted ablation CRPS over the common eight-day NWS forecast horizon. "
+            r"Lower values are better, and bold marks the best ablation-row value within each cutoff."
+        ),
+        note=(
+            r"This table restricts the full model, ablation variants, \texttt{RAW-GLOFAS}, and "
+            r"\texttt{RAW-NWS} to forecast leads 1--8, making it the horizon-compatible ablation "
+            r"reference for NWS."
+        ),
+    )
+    horizon_source_rows = long_raw_source_rows + long_source_rows + nws_raw_source_rows + nws_source_rows
+    corrections_block = render_corrections_block(long_body_lines)
+    nws_corrections_block = render_corrections_block(nws_body_lines)
+    write_article_outputs(
+        args.article_root.resolve(),
+        report_dir,
+        long_body_lines,
+        long_main_table,
+        nws_body_lines,
+        nws_main_table,
+        horizon_source_rows,
+    )
+    write_corrections_outputs(args.corrections_root.resolve(), corrections_block, nws_corrections_block)
     print(args.article_root.resolve() / ARTICLE_TABLE_DIR / "he3_ablation_crps_main_table.tex")
+    print(args.article_root.resolve() / ARTICLE_TABLE_DIR / "he3_ablation_crps_nws_horizon_table.tex")
     print(args.corrections_root.resolve() / "tables" / "generated_tex" / "he3_ablation_crps_response_table.tex")
+    print(args.corrections_root.resolve() / "tables" / "generated_tex" / "he3_ablation_crps_nws_horizon_response_table.tex")
     return 0
 
 
