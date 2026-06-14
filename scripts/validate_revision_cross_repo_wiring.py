@@ -45,6 +45,8 @@ HE3_ORDER = [
     "RAW-GLOFAS",
     "RAW-NWS",
 ]
+HE2_LONG_ORDER = ["RAW-GLOFAS"] + MODEL_ORDER
+HE2_SHORT_ORDER = ["RAW-GLOFAS", "RAW-NWS"] + MODEL_ORDER
 HE4_ORDER = ["exAL-M-T1", "AL-M-T1", "exAL-U-T1", "AL-U-T1"]
 HE4_TAU_COLUMNS = ["q0.05", "q0.20", "q0.35", "q0.50", "q0.65", "q0.80", "q0.95"]
 RAW_MODEL_MAP = {"RAW-GLOFAS": "glofas_ensemble", "RAW-NWS": "nws_nwm_ensemble"}
@@ -64,13 +66,15 @@ FORBIDDEN_CLAIMS = [
     "outperforms the best raw forecast baseline across the panel",
     "lower forecast-window CRPS than \\texttt{AL-M-T1} at all five",
     "better than \\texttt{AL-M-T1} in all five",
+    "raw NWS forecast product has the lowest CRPS overall",
+    "raw NWS forecast product is best overall",
     "TODO[",
 ]
 REQUIRED_CLAIMS = [
-    ("article", "raw NWS forecast product has the lowest CRPS"),
+    ("article", "Table~\\ref{tab:benchmark_crps_models_nws_horizon}"),
     ("article", "AL-M-T1 is the best corrected Bayesian row at the December 25, 2022 cutoff"),
-    ("corrections", "raw NWS forecast product has the lowest CRPS overall"),
-    ("corrections", "raw NWS forecast product is best overall"),
+    ("corrections", "separate eight-day NWS-horizon comparison"),
+    ("corrections", "NWS is omitted from the 28-day table"),
 ]
 
 
@@ -187,25 +191,47 @@ def load_manifest(article_root: Path) -> dict:
     return json.loads((article_root / "MANUSCRIPT_ASSET_MANIFEST.json").read_text(encoding="utf-8"))
 
 
-def build_he2_expected(article_root: Path, manifest: dict) -> dict[str, list[float]]:
+def mean_crps_for_leads(df: pd.DataFrame, *, selector_col: str, selector_value: str, horizon_days: int, source: Path) -> float:
+    rows = df[(df[selector_col] == selector_value) & (df["lead_day"].astype(int).between(1, horizon_days))]
+    leads = sorted(rows["lead_day"].astype(int).tolist())
+    expected = list(range(1, horizon_days + 1))
+    if leads != expected:
+        raise ValueError(f"Expected leads {expected} for {selector_col}={selector_value} in {source}; got {leads}")
+    return float(rows.sort_values("lead_day")["crps"].astype(float).mean())
+
+
+def build_he2_expected(
+    article_root: Path,
+    manifest: dict,
+    *,
+    horizon_days: int,
+    include_nws: bool,
+) -> dict[str, list[float]]:
     cfg = manifest["tables"]["tab:benchmark_crps_models"]
     manifest_rows = pd.read_csv(article_root / cfg["sources"]["bayesian_manifest_csv"])
-    bayes = {(str(row.cutoff), row.manuscript_label): float(row.crps_exact) for row in manifest_rows.itertuples()}
+    bayes = {(str(row.cutoff), row.manuscript_label): row for row in manifest_rows.itertuples()}
     expected: dict[str, list[float]] = {}
 
     five_root = article_root / cfg["sources"]["five_run_source_root"]
-    for raw_label, model_id in RAW_MODEL_MAP.items():
+    raw_order = ["RAW-GLOFAS", "RAW-NWS"] if include_nws else ["RAW-GLOFAS"]
+    for raw_label in raw_order:
+        model_id = RAW_MODEL_MAP[raw_label]
         values = []
         for cutoff in CUTOFF_ORDER:
-            crps = pd.read_csv(five_root / RUN_SLUG_MAP[cutoff] / "crps_forecast_summary.csv")
-            row = crps[crps["model_id"] == model_id]
-            if len(row) != 1:
-                raise ValueError(f"Expected one {model_id} row for cutoff {cutoff}")
-            values.append(float(row["mean_crps"].iloc[0]))
+            source = five_root / RUN_SLUG_MAP[cutoff] / "crps_forecast_per_time.csv"
+            crps = pd.read_csv(source)
+            values.append(mean_crps_for_leads(crps, selector_col="model_id", selector_value=model_id, horizon_days=horizon_days, source=source))
         expected[raw_label] = values
     for label in MODEL_ORDER:
-        expected[label] = [bayes[(cutoff, label)] for cutoff in CUTOFF_ORDER]
-    return expected
+        values = []
+        for cutoff in CUTOFF_ORDER:
+            row = bayes[(cutoff, label)]
+            source = Path(row.score_source).with_name("crps_forecast_per_time.csv")
+            crps = pd.read_csv(source)
+            values.append(mean_crps_for_leads(crps, selector_col="model_variant", selector_value=row.family, horizon_days=horizon_days, source=source))
+        expected[label] = values
+    order = HE2_SHORT_ORDER if include_nws else HE2_LONG_ORDER
+    return {label: expected[label] for label in order}
 
 
 def build_he3_expected(article_root: Path, manifest: dict) -> dict[str, list[float]]:
@@ -518,11 +544,13 @@ def main(argv: Iterable[str] | None = None) -> int:
     source_paths.extend(manifest_sources)
     source_paths.extend(correction_input_sources)
 
-    he2_expected = build_he2_expected(article_root, manifest)
+    he2_expected = build_he2_expected(article_root, manifest, horizon_days=28, include_nws=False)
+    he2_nws_horizon_expected = build_he2_expected(article_root, manifest, horizon_days=8, include_nws=True)
     he3_expected = build_he3_expected(article_root, manifest)
     he4_expected = build_he4_expected(article_root, manifest)
 
     he2_article = parse_flat_table(article_root / "tables/generated_tex/benchmark_crps_main_table.tex", 5)
+    he2_nws_horizon_article = parse_flat_table(article_root / "tables/generated_tex/benchmark_crps_nws_horizon_table.tex", 5)
     he2_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he2_benchmark_crps_response_table.tex", 5)
     he3_article = parse_flat_table(article_root / "tables/generated_tex/he3_ablation_crps_main_table.tex", 5)
     he3_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he3_ablation_crps_response_table.tex", 5)
@@ -531,6 +559,7 @@ def main(argv: Iterable[str] | None = None) -> int:
 
     cutoff_cols = [CUTOFF_DISPLAY[cutoff] for cutoff in CUTOFF_ORDER]
     checks.extend(compare_table(table_name="article_he2", expected=he2_expected, observed=he2_article, columns=cutoff_cols, out_rows=table_value_rows))
+    checks.extend(compare_table(table_name="article_he2_nws_horizon", expected=he2_nws_horizon_expected, observed=he2_nws_horizon_article, columns=cutoff_cols, out_rows=table_value_rows))
     checks.extend(compare_table(table_name="corrections_he2", expected=he2_expected, observed=he2_corrections, columns=cutoff_cols, out_rows=table_value_rows))
     checks.extend(compare_table(table_name="article_he3", expected=he3_expected, observed=he3_article, columns=cutoff_cols, out_rows=table_value_rows))
     checks.extend(compare_table(table_name="corrections_he3", expected=he3_expected, observed=he3_corrections, columns=cutoff_cols, out_rows=table_value_rows))

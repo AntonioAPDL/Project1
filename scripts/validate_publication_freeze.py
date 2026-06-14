@@ -355,13 +355,13 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
     corrections = (corrections_root / "main.tex").read_text(encoding="utf-8")
     required_article = [
         "AL-M-T1 is the best corrected Bayesian row at 12/25/2022",
-        "raw NWS forecast product has the lowest CRPS in the table",
+        "A separate eight-day NWS-horizon table preserves the direct operational comparison to NWS",
         "the full model remains best across all five ablation comparisons",
         "same 2022-12-25 selected exAL-M-T1 output authority used for the synthesis illustration",
     ]
     required_corrections = [
         "best corrected Bayesian row at 12/25/2022",
-        "raw NWS forecast product has the lowest CRPS overall",
+        "separate eight-day NWS-horizon comparison",
         "full model remains the best ablation configuration",
         "same 2022-12-25 selected-model posterior-output authority",
     ]
@@ -369,6 +369,8 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "best-performing model in all five cutoffs",
         "lowest forecast-window CRPS in every case",
         "do uniformly dominate the operational baseline",
+        "raw NWS forecast product has the lowest CRPS overall",
+        "raw NWS forecast product has the lowest CRPS in the table",
     ]
     for claim in required_article:
         add(checks, "prose", f"article_required:{claim}", claim in article, claim)
