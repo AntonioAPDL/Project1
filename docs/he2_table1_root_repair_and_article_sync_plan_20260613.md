@@ -773,8 +773,11 @@ Generated article-side files refreshed from the promoted manifest:
 - `Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/`;
 - `/data/muscat_data/jaguir26/Corrections---Project-1/tables/generated_tex/`.
 
-Final repository heads are recorded below after the promotion commits:
+Final repository heads are recorded below after the promotion commits. The
+revised article head includes the repaired-table refresh, the
+`overleaf-2026-06-12-0600` remote update merged with generated assets
+preserved, and the helper fix for future Overleaf preservation merges:
 
 - workflow repo: the commit containing this final-promotion section;
-- revised article repo: `db577b3`;
+- revised article repo: `a87a762`;
 - corrections repo: `65da8e1`.
