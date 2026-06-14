@@ -88,6 +88,12 @@ class HE2Table1TargetedRepair20260612Tests(unittest.TestCase):
                 multivar_gs["quantile_overrides"][q_key]["warmup_freeze_iters"],
                 40,
             )
+        q35_stabilization = multivar_gs["quantile_overrides"]["q35"]["stabilization"]
+        self.assertEqual(q35_stabilization["state_norm_ratio_ref_floor"], 0.1)
+        self.assertNotIn("stabilization", multivar_gs["quantile_overrides"]["q20"])
+        self.assertNotIn("stabilization", multivar_gs["quantile_overrides"]["q50"])
+        self.assertNotIn("stabilization", multivar_gs["quantile_overrides"]["q65"])
+        self.assertNotIn("stabilization", multivar_gs["quantile_overrides"]["q80"])
 
     def test_ndlm_main_override_matches_requested_spec(self) -> None:
         for label in ("N-M-T0", "N-M-T1"):

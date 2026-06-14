@@ -156,6 +156,96 @@ test_that("absolute state norm cap can be scaled by observation length", {
   expect_match(total_scale$reason, "state_norm_sq=.*exceeds abs_cap")
 })
 
+test_that("state-growth ratio guard uses scale-aware reference floor when configured", {
+  q35_like <- disc_w_iteration_guard_decision(
+    elbo = -100,
+    state_norm_sq = 22702.47,
+    sigma_exp = 0.05693132,
+    gamma_exp = 0,
+    theta_update = TRUE,
+    gamsig_frozen_now = FALSE,
+    state_guard_enabled = TRUE,
+    iter = 160,
+    state_guard_start_iter = 50,
+    prev_state_norm_sq = 37.19796,
+    state_norm_abs_cap = 1e6,
+    state_norm_max_ratio = 25,
+    state_norm_length = 12767,
+    state_norm_abs_cap_scale = "per_time",
+    state_norm_ratio_ref_floor = 0.1
+  )
+  no_floor <- disc_w_iteration_guard_decision(
+    elbo = -100,
+    state_norm_sq = 22702.47,
+    sigma_exp = 0.05693132,
+    gamma_exp = 0,
+    theta_update = TRUE,
+    gamsig_frozen_now = FALSE,
+    state_guard_enabled = TRUE,
+    iter = 160,
+    state_guard_start_iter = 50,
+    prev_state_norm_sq = 37.19796,
+    state_norm_abs_cap = 1e6,
+    state_norm_max_ratio = 25,
+    state_norm_length = 12767,
+    state_norm_abs_cap_scale = "per_time"
+  )
+
+  expect_match(no_floor$reason, "state_growth_ratio")
+  expect_null(q35_like$reason)
+  expect_equal(q35_like$state_growth_ref_floor_total, 1276.7)
+  expect_gt(q35_like$state_growth_ratio, 600)
+  expect_lt(q35_like$state_growth_effective_ratio, 25)
+})
+
+test_that("state-growth reference floor does not hide material effective jumps", {
+  out <- disc_w_iteration_guard_decision(
+    elbo = -100,
+    state_norm_sq = 40000,
+    sigma_exp = 0.05,
+    gamma_exp = 0,
+    theta_update = TRUE,
+    gamsig_frozen_now = FALSE,
+    state_guard_enabled = TRUE,
+    iter = 160,
+    state_guard_start_iter = 50,
+    prev_state_norm_sq = 37.19796,
+    state_norm_abs_cap = 1e6,
+    state_norm_max_ratio = 25,
+    state_norm_length = 12767,
+    state_norm_abs_cap_scale = "per_time",
+    state_norm_ratio_ref_floor = 0.1
+  )
+
+  expect_match(out$reason, "state_growth_effective_ratio")
+  expect_match(out$reason, "raw_state_growth_ratio")
+  expect_gt(out$state_growth_effective_ratio, 25)
+})
+
+test_that("state-growth reference floor follows total-scale semantics", {
+  out <- disc_w_iteration_guard_decision(
+    elbo = -100,
+    state_norm_sq = 2400,
+    sigma_exp = 0.05,
+    gamma_exp = 0,
+    theta_update = TRUE,
+    gamsig_frozen_now = FALSE,
+    state_guard_enabled = TRUE,
+    iter = 160,
+    state_guard_start_iter = 50,
+    prev_state_norm_sq = 12,
+    state_norm_abs_cap = 1e6,
+    state_norm_max_ratio = 25,
+    state_norm_length = 1000,
+    state_norm_abs_cap_scale = "total",
+    state_norm_ratio_ref_floor = 100
+  )
+
+  expect_null(out$reason)
+  expect_equal(out$state_growth_ref_floor_total, 100)
+  expect_equal(out$state_growth_effective_ratio, 24)
+})
+
 test_that("summary helpers reject partial non-finite payloads", {
   expect_true(is.na(disc_w_numeric_mean_all_finite(c(1, NA_real_))))
   expect_true(is.na(disc_w_numeric_mean_all_finite(c(1, Inf))))

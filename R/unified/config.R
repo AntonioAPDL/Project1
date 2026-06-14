@@ -433,6 +433,7 @@ unified_config_defaults <- function() {
             median_state_norm_max_ratio = 25,
             median_state_norm_abs_cap = 1e8,
             state_norm_abs_cap_scale = "per_time",
+            state_norm_ratio_ref_floor = NULL,
             median_state_guard_refreeze_iters = 10L,
             median_state_hold_after_guard_iters = 0L,
             median_state_blend_alpha = 1.0,
@@ -2342,6 +2343,17 @@ unified_validate_config <- function(cfg) {
         "%s.stabilization.state_norm_abs_cap_scale must be one of: per_time, total",
         key_prefix
       ))
+    }
+
+    state_norm_ratio_ref_floor <- cfg_get(c("stabilization", "state_norm_ratio_ref_floor"), NULL)
+    if (!is.null(state_norm_ratio_ref_floor)) {
+      state_norm_ratio_ref_floor <- suppressWarnings(as.numeric(state_norm_ratio_ref_floor))
+      if (!is.finite(state_norm_ratio_ref_floor) || state_norm_ratio_ref_floor <= 0) {
+        add_err(sprintf(
+          "%s.stabilization.state_norm_ratio_ref_floor must be numeric and > 0 when set",
+          key_prefix
+        ))
+      }
     }
 
     state_guard_step_backoff_enabled <- cfg_get(

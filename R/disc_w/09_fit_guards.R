@@ -47,7 +47,8 @@ disc_w_iteration_guard_decision <- function(
   state_norm_abs_cap,
   state_norm_max_ratio,
   state_norm_length = NA_real_,
-  state_norm_abs_cap_scale = "per_time"
+  state_norm_abs_cap_scale = "per_time",
+  state_norm_ratio_ref_floor = NA_real_
 ) {
   iter <- suppressWarnings(as.integer(iter)[1L])
   state_guard_start_iter <- suppressWarnings(as.integer(state_guard_start_iter)[1L])
@@ -58,6 +59,8 @@ disc_w_iteration_guard_decision <- function(
     iter >= state_guard_start_iter
 
   state_growth_ratio <- NA_real_
+  state_growth_effective_ratio <- NA_real_
+  state_growth_ref_floor_total <- NA_real_
   prev_state_norm_sq <- suppressWarnings(as.numeric(prev_state_norm_sq)[1L])
   state_norm_sq <- suppressWarnings(as.numeric(state_norm_sq)[1L])
   if (isTRUE(active_for_state_growth) &&
@@ -74,6 +77,8 @@ disc_w_iteration_guard_decision <- function(
       reason = NULL,
       state_guard_active = active_for_state_growth,
       state_growth_ratio = state_growth_ratio,
+      state_growth_effective_ratio = state_growth_effective_ratio,
+      state_growth_ref_floor_total = state_growth_ref_floor_total,
       finite_guard = FALSE
     ))
   }
@@ -90,6 +95,8 @@ disc_w_iteration_guard_decision <- function(
       reason = paste0("non-finite ", paste(bad_core, collapse = ",")),
       state_guard_active = active_for_state_growth,
       state_growth_ratio = state_growth_ratio,
+      state_growth_effective_ratio = state_growth_effective_ratio,
+      state_growth_ref_floor_total = state_growth_ref_floor_total,
       finite_guard = TRUE
     ))
   }
@@ -97,9 +104,18 @@ disc_w_iteration_guard_decision <- function(
   state_norm_abs_cap <- suppressWarnings(as.numeric(state_norm_abs_cap)[1L])
   state_norm_max_ratio <- suppressWarnings(as.numeric(state_norm_max_ratio)[1L])
   state_norm_length <- suppressWarnings(as.numeric(state_norm_length)[1L])
+  state_norm_ratio_ref_floor <- suppressWarnings(as.numeric(state_norm_ratio_ref_floor)[1L])
   state_norm_abs_cap_scale <- tolower(trimws(as.character(state_norm_abs_cap_scale)[1L]))
   if (!(state_norm_abs_cap_scale %in% c("per_time", "total"))) {
     state_norm_abs_cap_scale <- "per_time"
+  }
+  if (is.finite(state_norm_ratio_ref_floor) && state_norm_ratio_ref_floor > 0) {
+    state_growth_ref_floor_total <- state_norm_ratio_ref_floor
+    if (identical(state_norm_abs_cap_scale, "per_time") &&
+        is.finite(state_norm_length) &&
+        state_norm_length > 0) {
+      state_growth_ref_floor_total <- state_norm_ratio_ref_floor * state_norm_length
+    }
   }
   state_norm_cap_value <- state_norm_sq
   state_norm_cap_label <- "state_norm_sq"
@@ -119,22 +135,63 @@ disc_w_iteration_guard_decision <- function(
       ),
       state_guard_active = active_for_state_growth,
       state_growth_ratio = state_growth_ratio,
+      state_growth_effective_ratio = state_growth_effective_ratio,
+      state_growth_ref_floor_total = state_growth_ref_floor_total,
       finite_guard = FALSE
     ))
   }
 
   if (isTRUE(active_for_state_growth) && !isTRUE(gamsig_frozen_now)) {
-    if (is.finite(state_growth_ratio) &&
+    if (is.finite(state_norm_sq)) {
+      state_growth_denominator <- NA_real_
+      if (is.finite(prev_state_norm_sq) && prev_state_norm_sq > 0) {
+        state_growth_denominator <- prev_state_norm_sq
+      }
+      if (is.finite(state_growth_ref_floor_total) && state_growth_ref_floor_total > 0) {
+        if (is.finite(state_growth_denominator)) {
+          state_growth_denominator <- max(state_growth_denominator, state_growth_ref_floor_total)
+        } else if (is.finite(prev_state_norm_sq)) {
+          state_growth_denominator <- state_growth_ref_floor_total
+        }
+      }
+      if (is.finite(state_growth_denominator) && state_growth_denominator > 0) {
+        state_growth_effective_ratio <- state_norm_sq / state_growth_denominator
+      }
+    }
+    ratio_for_guard <- if (is.finite(state_growth_effective_ratio)) {
+      state_growth_effective_ratio
+    } else {
+      state_growth_ratio
+    }
+    if (is.finite(ratio_for_guard) &&
         is.finite(state_norm_max_ratio) &&
-        state_growth_ratio > state_norm_max_ratio) {
+        ratio_for_guard > state_norm_max_ratio) {
+      ratio_label <- if (is.finite(state_growth_effective_ratio)) {
+        "state_growth_effective_ratio"
+      } else {
+        "state_growth_ratio"
+      }
+      ratio_detail <- if (identical(ratio_label, "state_growth_effective_ratio")) {
+        sprintf(
+          " raw_state_growth_ratio=%s ref_floor_total=%s",
+          disc_w_fit_guard_fmt_num(state_growth_ratio),
+          disc_w_fit_guard_fmt_num(state_growth_ref_floor_total)
+        )
+      } else {
+        ""
+      }
       return(list(
         reason = sprintf(
-          "state_growth_ratio=%s exceeds max_ratio=%s",
-          disc_w_fit_guard_fmt_num(state_growth_ratio),
-          disc_w_fit_guard_fmt_num(state_norm_max_ratio)
+          "%s=%s exceeds max_ratio=%s%s",
+          ratio_label,
+          disc_w_fit_guard_fmt_num(ratio_for_guard),
+          disc_w_fit_guard_fmt_num(state_norm_max_ratio),
+          ratio_detail
         ),
         state_guard_active = active_for_state_growth,
         state_growth_ratio = state_growth_ratio,
+        state_growth_effective_ratio = state_growth_effective_ratio,
+        state_growth_ref_floor_total = state_growth_ref_floor_total,
         finite_guard = FALSE
       ))
     }
@@ -144,6 +201,8 @@ disc_w_iteration_guard_decision <- function(
     reason = NULL,
     state_guard_active = active_for_state_growth,
     state_growth_ratio = state_growth_ratio,
+    state_growth_effective_ratio = state_growth_effective_ratio,
+    state_growth_ref_floor_total = state_growth_ref_floor_total,
     finite_guard = FALSE
   )
 }

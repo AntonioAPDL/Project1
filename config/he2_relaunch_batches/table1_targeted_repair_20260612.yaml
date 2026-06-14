@@ -53,6 +53,8 @@ overrides:
               warmup_freeze_iters: 40
             q35:
               warmup_freeze_iters: 40
+              stabilization:
+                state_norm_ratio_ref_floor: 0.1
             q50:
               warmup_freeze_iters: 40
             q65:

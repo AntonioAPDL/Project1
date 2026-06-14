@@ -407,6 +407,9 @@ DISC_GAMSIG_STATE_NORM_MAX_RATIO_OPT <- disc_env_opt_pos_num(
 DISC_GAMSIG_STATE_NORM_ABS_CAP_OPT <- disc_env_opt_pos_num(
   "DISC_GAMSIG_STATE_NORM_ABS_CAP"
 )
+DISC_GAMSIG_STATE_NORM_RATIO_REF_FLOOR_OPT <- disc_env_opt_pos_num(
+  "DISC_GAMSIG_STATE_NORM_RATIO_REF_FLOOR"
+)
 DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE <- disc_env_choice(
   "DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE",
   choices = c("per_time", "total"),
@@ -4041,6 +4044,8 @@ disc_w_diag_record_iteration_health <- function(
   gamsig_update_iters,
   frozen,
   state_growth_ratio = NA_real_,
+  state_growth_effective_ratio = NA_real_,
+  state_growth_ref_floor_total = NA_real_,
   state_guard_reason = "",
   TT_sub = NA_integer_,
   FFF = NULL,
@@ -4135,9 +4140,13 @@ disc_w_diag_record_iteration_health <- function(
   flag_qqq_nonpositive <- qqq_nonpositive_n > 0L
   flag_qqq_extreme <- is.finite(max_qqq) && max_qqq > qqq_cap
   flag_fff_extreme <- is.finite(max_fff) && max_fff > fff_cap
-  flag_state_growth <- is.finite(state_growth_ratio) &&
+  state_growth_ratio_for_health <- suppressWarnings(as.numeric(state_growth_effective_ratio)[1L])
+  if (!is.finite(state_growth_ratio_for_health)) {
+    state_growth_ratio_for_health <- suppressWarnings(as.numeric(state_growth_ratio)[1L])
+  }
+  flag_state_growth <- is.finite(state_growth_ratio_for_health) &&
     is.finite(state_ratio_cap) &&
-    state_growth_ratio > state_ratio_cap
+    state_growth_ratio_for_health > state_ratio_cap
   flag_nonfinite_state <- !is.finite(suppressWarnings(as.numeric(state_norm_sq)[1L]))
   health_flag_n <- sum(c(
     flag_e_inv_u_extreme,
@@ -4167,6 +4176,8 @@ disc_w_diag_record_iteration_health <- function(
     gamsig_update_iters = suppressWarnings(as.integer(gamsig_update_iters)[1L]),
     frozen = isTRUE(frozen),
     state_growth_ratio = suppressWarnings(as.numeric(state_growth_ratio)[1L]),
+    state_growth_effective_ratio = suppressWarnings(as.numeric(state_growth_effective_ratio)[1L]),
+    state_growth_ref_floor_total = suppressWarnings(as.numeric(state_growth_ref_floor_total)[1L]),
     state_guard_reason = state_guard_reason,
     max_E_inv_u = max_e_inv_u,
     max_E_inv_u_floor_frac = max_e_inv_u_floor_frac,
@@ -4972,6 +4983,7 @@ generic_state_controls_present <- (
   !is.na(DISC_GAMSIG_STATE_GUARD_ENABLED_OPT) ||
   is.finite(DISC_GAMSIG_STATE_NORM_MAX_RATIO_OPT) ||
   is.finite(DISC_GAMSIG_STATE_NORM_ABS_CAP_OPT) ||
+  is.finite(DISC_GAMSIG_STATE_NORM_RATIO_REF_FLOOR_OPT) ||
   !is.na(DISC_GAMSIG_STATE_GUARD_REFREEZE_ITERS_OPT) ||
   !is.na(DISC_GAMSIG_STATE_HOLD_AFTER_GUARD_ITERS_OPT) ||
   is.finite(DISC_GAMSIG_STATE_BLEND_ALPHA_OPT) ||
@@ -4993,6 +5005,11 @@ state_norm_abs_cap <- if (is.finite(DISC_GAMSIG_STATE_NORM_ABS_CAP_OPT)) {
   as.numeric(DISC_GAMSIG_STATE_NORM_ABS_CAP_OPT)
 } else if (median_quantile_active) {
   as.numeric(DISC_GAMSIG_MEDIAN_STATE_NORM_ABS_CAP)
+} else {
+  NA_real_
+}
+state_norm_ratio_ref_floor <- if (is.finite(DISC_GAMSIG_STATE_NORM_RATIO_REF_FLOOR_OPT)) {
+  as.numeric(DISC_GAMSIG_STATE_NORM_RATIO_REF_FLOOR_OPT)
 } else {
   NA_real_
 }
@@ -5091,7 +5108,7 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     ifelse(nzchar(disc_w_diag_report_dir()), disc_w_diag_report_dir(), "-")
   ))
   cat(sprintf(
-    "[gamsig_policy] p0=%s likelihood_mode=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s near_zero_fallback_enabled=%s near_zero_fallback_mode=%s near_zero_gamma_anchor=%s state_control_scope=%s state_guard=%s state_guard_configured=%s state_guard_effective_policy=%s state_guard_disabled_reason=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_norm_abs_cap_scale=%s state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g state_guard_step_backoff_enabled=%s state_guard_step_backoff_factor=%g state_guard_min_step_scale=%g state_hold_freeze_latents_enabled=%s state_guard_hold_step_scale_enabled=%s state_guard_min_refreeze_iters=%d state_guard_min_hold_iters=%d median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_state_guard_sigma_only_enabled=%s median_state_guard_sigma_only_after=%d median_state_guard_sigma_only_anchor=%s median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d state_guard_start_iter=%d terminal_sampling_guard_mode=%s\n",
+    "[gamsig_policy] p0=%s likelihood_mode=%s freeze_target=%s warmup_freeze_iters=%d min_update_iters=%d min_total_iters=%d max_iter=%d elbo_tol=%g state_norm_sq_tol=%g sigma_exp_tol=%g gamma_exp_tol=%g guard_mode=%s guard_refreeze_iters=%d theta_sigma_bounds=[%g,%g] theta_gamma_bounds=[%g,%g] hessian_ridge_init=%g hessian_ridge_multiplier=%g hessian_ridge_max_tries=%d laplace_split_near_zero_enabled=%s laplace_split_abs_gamma=%g laplace_split_rel_support=%g laplace_split_zero_margin_abs_gamma=%g laplace_split_on_guard=%s near_zero_fallback_enabled=%s near_zero_fallback_mode=%s near_zero_gamma_anchor=%s state_control_scope=%s state_guard=%s state_guard_configured=%s state_guard_effective_policy=%s state_guard_disabled_reason=%s state_norm_max_ratio=%g state_norm_abs_cap=%g state_norm_abs_cap_scale=%s state_norm_ratio_ref_floor=%g state_guard_refreeze_iters=%d state_hold_after_guard_iters=%d state_blend_alpha=%g cov_blend_alpha=%g state_guard_step_backoff_enabled=%s state_guard_step_backoff_factor=%g state_guard_min_step_scale=%g state_hold_freeze_latents_enabled=%s state_guard_hold_step_scale_enabled=%s state_guard_min_refreeze_iters=%d state_guard_min_hold_iters=%d median_sigma_only_fallback=%s median_sigma_only_fallback_tol=%g median_state_guard_sigma_only_enabled=%s median_state_guard_sigma_only_after=%d median_state_guard_sigma_only_anchor=%s median_step_damping=%s median_max_abs_gamma_step=%g median_max_abs_log_sigma_step=%g state_refresh_schedule_enabled=%s state_refresh_schedule_start_iter=%d state_refresh_schedule_end_iter=%d state_refresh_schedule_hold_iters=%d state_refresh_schedule_refresh_iters=%d state_guard_start_iter=%d terminal_sampling_guard_mode=%s\n",
     as.character(p0),
     ifelse(isTRUE(DISC_W_AL_MODE), "al", "exal"),
     DISC_GAMSIG_FREEZE_TARGET,
@@ -5128,6 +5145,7 @@ if (isTRUE(DISC_GAMSIG_OBJECTIVE_GUARD_LOG_FAILURES)) {
     state_norm_max_ratio,
     state_norm_abs_cap,
     DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE,
+    state_norm_ratio_ref_floor,
     as.integer(state_guard_refreeze_iters),
     as.integer(state_hold_after_guard_iters),
     state_blend_alpha,
@@ -6150,10 +6168,12 @@ while (isTRUE(FLAG) && iter < max_iter) {
     state_norm_abs_cap = state_norm_abs_cap,
     state_norm_max_ratio = state_norm_max_ratio,
     state_norm_length = TT_sub,
-    state_norm_abs_cap_scale = DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE
+    state_norm_abs_cap_scale = DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE,
+    state_norm_ratio_ref_floor = state_norm_ratio_ref_floor
   )
   state_guard_active <- isTRUE(guard_decision$state_guard_active)
   state_growth_ratio <- suppressWarnings(as.numeric(guard_decision$state_growth_ratio)[1L])
+  state_growth_effective_ratio <- suppressWarnings(as.numeric(guard_decision$state_growth_effective_ratio)[1L])
   state_guard_reason <- guard_decision$reason
   if (!is.null(state_guard_reason)) {
     state_guard_count <- as.integer(state_guard_count + 1L)
@@ -6376,6 +6396,8 @@ while (isTRUE(FLAG) && iter < max_iter) {
     gamsig_update_iters = gamsig_update_iters,
     frozen = gamsig_frozen_now,
     state_growth_ratio = state_growth_ratio,
+    state_growth_effective_ratio = state_growth_effective_ratio,
+    state_growth_ref_floor_total = guard_decision$state_growth_ref_floor_total,
     state_guard_reason = state_guard_reason,
     TT_sub = TT_sub,
     FFF = FFF,

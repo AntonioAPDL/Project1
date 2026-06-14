@@ -85,6 +85,7 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
             'DISC_PSEUDODATA_E_INV_U_ABS_CAP',
             'DISC_GAMSIG_STATE_GUARD_START_ITER',
             'DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE',
+            'DISC_GAMSIG_STATE_NORM_RATIO_REF_FLOOR',
             'DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_ENABLED',
             'DISC_GAMSIG_STATE_GUARD_STEP_BACKOFF_FACTOR',
             'DISC_GAMSIG_STATE_GUARD_MIN_STEP_SCALE',
@@ -112,6 +113,9 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
         self.assertIn('disc_w_reanchor_gamsig_to_gamma <- function', fit_guard_text)
         self.assertIn('bad_core <- names(core_values)[!is.finite(core_values)]', fit_guard_text)
         self.assertIn('finite_guard = TRUE', fit_guard_text)
+        self.assertIn('state_norm_ratio_ref_floor = NA_real_', fit_guard_text)
+        self.assertIn('state_growth_effective_ratio', fit_guard_text)
+        self.assertIn('state_growth_ref_floor_total', fit_guard_text)
         for source in (DISC_SOURCE, DISC_TRANSFER_SOURCE):
             text = source.read_text(encoding='utf-8')
             self.assertNotIn(forbidden, text, source.name)
@@ -121,6 +125,9 @@ class DiscSamplingDiagnosticsSourceContractTests(unittest.TestCase):
             self.assertIn('disc_w_state_norm_sq_all_finite(new.theta.out$sm)', text, source.name)
             self.assertIn('state_norm_length = TT_sub', text, source.name)
             self.assertIn('state_norm_abs_cap_scale = DISC_GAMSIG_STATE_NORM_ABS_CAP_SCALE', text, source.name)
+            self.assertIn('state_norm_ratio_ref_floor = state_norm_ratio_ref_floor', text, source.name)
+            self.assertIn('DISC_GAMSIG_STATE_NORM_RATIO_REF_FLOOR', text, source.name)
+            self.assertIn('state_norm_ratio_ref_floor=%g', text, source.name)
             self.assertIn('disc_w_scalar_finite_or_default(new.theta.out$elbo.part, default = 0)', text, source.name)
             self.assertIn('prev_ELBO_iter <- disc_w_scalar_finite_or_default(ELBO, default = NA_real_)', text, source.name)
             self.assertIn('rollback_elbo <- disc_w_scalar_finite_or_default(prev_ELBO_iter, default = 0)', text, source.name)

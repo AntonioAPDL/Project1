@@ -43,6 +43,7 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
                       median_state_guard_sigma_only_anchor = "zero",
                       median_state_norm_max_ratio = 25,
                       state_norm_abs_cap_scale = "per_time",
+                      state_norm_ratio_ref_floor = 0.1,
                       median_state_hold_after_guard_iters = 0L,
                       median_state_blend_alpha = 1.0,
                       median_cov_blend_alpha = 1.0
@@ -67,6 +68,7 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
                           median_state_guard_sigma_only_anchor = "previous",
                           median_state_norm_abs_cap = 5e7,
                           state_norm_abs_cap_scale = "total",
+                          state_norm_ratio_ref_floor = 0.2,
                           median_state_hold_after_guard_iters = 12L,
                           median_state_blend_alpha = 0.5,
                           median_cov_blend_alpha = 0.25
@@ -89,6 +91,7 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
             cat(sprintf('p50_theta_sigma_upper=%s\n', p50$stabilization$theta_sigma_upper))
             cat(sprintf('p50_state_abs_cap=%s\n', p50$stabilization$median_state_norm_abs_cap))
             cat(sprintf('p50_state_abs_cap_scale=%s\n', p50$stabilization$state_norm_abs_cap_scale))
+            cat(sprintf('p50_state_ratio_ref_floor=%s\n', p50$stabilization$state_norm_ratio_ref_floor))
             cat(sprintf('p50_state_hold=%s\n', p50$stabilization$median_state_hold_after_guard_iters))
             cat(sprintf('p50_state_blend=%s\n', p50$stabilization$median_state_blend_alpha))
             cat(sprintf('p50_cov_blend=%s\n', p50$stabilization$median_cov_blend_alpha))
@@ -115,6 +118,7 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
             cat(sprintf('p80_state_guard_sigma_only_anchor=%s\n', p80$stabilization$median_state_guard_sigma_only_anchor))
             cat(sprintf('p80_state_ratio=%s\n', p80$stabilization$median_state_norm_max_ratio))
             cat(sprintf('p80_state_abs_cap_scale=%s\n', p80$stabilization$state_norm_abs_cap_scale))
+            cat(sprintf('p80_state_ratio_ref_floor=%s\n', p80$stabilization$state_norm_ratio_ref_floor))
             cat(sprintf('p80_median_sigma_only=%s\n', p80$stabilization$median_sigma_only_fallback_enabled))
             cat(sprintf('p80_state_hold=%s\n', p80$stabilization$median_state_hold_after_guard_iters))
             cat(sprintf('p80_state_blend=%s\n', p80$stabilization$median_state_blend_alpha))
@@ -148,6 +152,7 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
         self.assertEqual(out['p50_theta_sigma_upper'], '4')
         self.assertEqual(out['p50_state_abs_cap'], '5e+07')
         self.assertEqual(out['p50_state_abs_cap_scale'], 'total')
+        self.assertEqual(out['p50_state_ratio_ref_floor'], '0.2')
         self.assertEqual(out['p50_state_hold'], '12')
         self.assertEqual(out['p50_state_blend'], '0.5')
         self.assertEqual(out['p50_cov_blend'], '0.25')
@@ -174,6 +179,7 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
         self.assertEqual(out['p80_state_guard_sigma_only_anchor'], 'zero')
         self.assertEqual(out['p80_state_ratio'], '25')
         self.assertEqual(out['p80_state_abs_cap_scale'], 'per_time')
+        self.assertEqual(out['p80_state_ratio_ref_floor'], '0.1')
         self.assertEqual(out['p80_median_sigma_only'], 'TRUE')
         self.assertEqual(out['p80_state_hold'], '0')
         self.assertEqual(out['p80_state_blend'], '1')
@@ -193,6 +199,7 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
                       state_norm_max_ratio = 10,
                       state_norm_abs_cap = 1e11,
                       state_norm_abs_cap_scale = "total",
+                      state_norm_ratio_ref_floor = 0.05,
                       state_guard_refreeze_iters = 7L,
                       state_hold_after_guard_iters = 0L,
                       state_blend_alpha = 1.0,
@@ -205,6 +212,7 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
                           state_norm_max_ratio = 25,
                           state_norm_abs_cap = 1e12,
                           state_norm_abs_cap_scale = "per_time",
+                          state_norm_ratio_ref_floor = 0.1,
                           state_guard_refreeze_iters = 10L,
                           state_hold_after_guard_iters = 10L,
                           state_blend_alpha = 0.85,
@@ -222,12 +230,14 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
             cat(sprintf('p35_state_ratio=%s\\n', p35$stabilization$state_norm_max_ratio))
             cat(sprintf('p35_state_abs_cap=%s\\n', p35$stabilization$state_norm_abs_cap))
             cat(sprintf('p35_state_abs_cap_scale=%s\\n', p35$stabilization$state_norm_abs_cap_scale))
+            cat(sprintf('p35_state_ratio_ref_floor=%s\\n', p35$stabilization$state_norm_ratio_ref_floor))
             cat(sprintf('p35_state_refreeze=%s\\n', p35$stabilization$state_guard_refreeze_iters))
             cat(sprintf('p35_state_hold=%s\\n', p35$stabilization$state_hold_after_guard_iters))
             cat(sprintf('p35_state_blend=%s\\n', p35$stabilization$state_blend_alpha))
             cat(sprintf('p80_state_guard=%s\\n', p80$stabilization$state_guard_enabled))
             cat(sprintf('p80_state_ratio=%s\\n', p80$stabilization$state_norm_max_ratio))
             cat(sprintf('p80_state_abs_cap_scale=%s\\n', p80$stabilization$state_norm_abs_cap_scale))
+            cat(sprintf('p80_state_ratio_ref_floor=%s\\n', p80$stabilization$state_norm_ratio_ref_floor))
             '''
         )
         proc = subprocess.run(
@@ -247,12 +257,14 @@ class StageFitQuantileGammaSigmaOverrideTests(unittest.TestCase):
         self.assertEqual(out['p35_state_ratio'], '25')
         self.assertEqual(out['p35_state_abs_cap'], '1e+12')
         self.assertEqual(out['p35_state_abs_cap_scale'], 'per_time')
+        self.assertEqual(out['p35_state_ratio_ref_floor'], '0.1')
         self.assertEqual(out['p35_state_refreeze'], '10')
         self.assertEqual(out['p35_state_hold'], '10')
         self.assertEqual(out['p35_state_blend'], '0.85')
         self.assertEqual(out['p80_state_guard'], 'FALSE')
         self.assertEqual(out['p80_state_ratio'], '10')
         self.assertEqual(out['p80_state_abs_cap_scale'], 'total')
+        self.assertEqual(out['p80_state_ratio_ref_floor'], '0.05')
 
     def test_sampling_diagnostics_and_terminal_guard_validate_and_resolve(self) -> None:
         script = textwrap.dedent(

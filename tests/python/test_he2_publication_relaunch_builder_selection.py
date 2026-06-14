@@ -1008,7 +1008,10 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         with (matrix_dir / 'frozen_spec_manifest.csv').open('r', encoding='utf-8') as handle:
             frozen_rows = list(csv.DictReader(handle))
         self.assertEqual(len(frozen_rows), 15)
-        self.assertTrue(all(row['selected_spec_token'] == 'ndlm_featurecov_v1_postfix' for row in frozen_rows))
+        self.assertTrue(all(
+            row['selected_spec_token'] == 'ndlm_publication_promotion_20260607:canonical_bundle_promoted'
+            for row in frozen_rows
+        ))
 
         self.assertEqual(len(list(config_output_dir.glob('*.yaml'))), 15)
         sample_cfg = yaml.safe_load(
@@ -1059,7 +1062,10 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         with (matrix_dir / 'frozen_spec_manifest.csv').open('r', encoding='utf-8') as handle:
             frozen_rows = list(csv.DictReader(handle))
         self.assertEqual(len(frozen_rows), 15)
-        self.assertEqual({row['selected_spec_token'] for row in frozen_rows}, {'ndlm_featurecov_v1_postfix'})
+        self.assertEqual(
+            {row['selected_spec_token'] for row in frozen_rows},
+            {'ndlm_publication_promotion_20260607:canonical_bundle_promoted'},
+        )
         self.assertEqual({row['legacy_fit_input_scale'] for row in frozen_rows}, {'log1p_cms'})
         self.assertEqual({row['legacy_post_input_scale'] for row in frozen_rows}, {'log1p_cms'})
         self.assertEqual({row['fit_parallel_workers'] for row in frozen_rows}, {'1'})
@@ -1132,7 +1138,10 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(by_cutoff['20221225']['df_s2'], '0.9998')
         self.assertEqual(by_cutoff['20221225']['df_discrep'], '0.998')
         self.assertEqual(by_cutoff['20221225']['df_covs'], '0.9999999')
-        self.assertEqual(by_cutoff['20221225']['selected_spec_token'], 'set09')
+        self.assertEqual(
+            by_cutoff['20221225']['selected_spec_token'],
+            'exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner',
+        )
         self.assertEqual(by_cutoff['20221225']['fit_parallel_workers'], '7')
         self.assertEqual(by_cutoff['20221225']['run_mc_cores'], '7')
         self.assertTrue(all(row['config_patch_applied'] == 'True' for row in frozen_rows))
@@ -1155,8 +1164,14 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['df_s1'], 0.9998)
         self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['df_discrep'], 0.998)
         self.assertEqual(cfg_20221225['models']['exdqlm_multivar']['state_evolution']['df_covs'], 0.9999999)
-        self.assertEqual(cfg_20221225['debug_he2_publication_relaunch']['source_publication_run_id'], 'multimodel_20221225_v8_exalm_t1_discount_grid_exact_v1_set09_exdqlm_multivar_keep')
-        self.assertEqual(cfg_20221225['debug_he2_publication_relaunch']['selected_spec_token'], 'set09')
+        self.assertEqual(
+            cfg_20221225['debug_he2_publication_relaunch']['source_publication_run_id'],
+            'multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep',
+        )
+        self.assertEqual(
+            cfg_20221225['debug_he2_publication_relaunch']['selected_spec_token'],
+            'exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner',
+        )
         self.assertEqual(cfg_20221225['fit']['parallel']['workers'], 7)
         self.assertEqual(cfg_20221225['run']['threads']['mc_cores'], 7)
 
@@ -1224,7 +1239,10 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
             frozen_rows = list(csv.DictReader(handle))
         self.assertEqual(len(frozen_rows), 1)
         frozen = frozen_rows[0]
-        self.assertEqual(frozen['selected_spec_token'], 'set09')
+        self.assertEqual(
+            frozen['selected_spec_token'],
+            'exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner',
+        )
         self.assertEqual(frozen['forecast_cov_epsilon_fit'], '365.0')
         self.assertEqual(frozen['forecast_cov_c_factor_fit'], '1.0')
         self.assertEqual(frozen['df_s1'], '0.9999')
@@ -1246,7 +1264,10 @@ class HE2PublicationRelaunchBuilderSelectionTests(unittest.TestCase):
         self.assertEqual(cfg['debug_he2_publication_relaunch']['active_quantiles'], [0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95])
         self.assertEqual([entry['name'] for entry in cfg['inputs']['fit']['covariates']], ['PPT', 'SOIL', 'PCA'])
         self.assertEqual(cfg['debug_he2_publication_relaunch']['canonical_fit_covariate_contract'], 'PPT|SOIL|PCA(alias=GDPC1)')
-        self.assertEqual(cfg['debug_he2_publication_relaunch']['selected_spec_token'], 'set09')
+        self.assertEqual(
+            cfg['debug_he2_publication_relaunch']['selected_spec_token'],
+            'exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner',
+        )
         self.assertTrue(cfg['debug_he2_publication_relaunch']['config_patch_applied'])
         self.assertEqual(cfg['inputs']['transfer_function_covariates']['base_covariates'], ['PPT', 'SOIL', 'PCA'])
         self.assertEqual(
