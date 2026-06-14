@@ -17,7 +17,7 @@ artifact.
 ## Frozen Repository Heads
 
 - workflow repo: this commit;
-- revised article repo: `fd12033`;
+- revised article repo: `38e1230`;
 - corrections repo: `7fd2fb0`.
 
 ## Authoritative Inputs And Outputs
