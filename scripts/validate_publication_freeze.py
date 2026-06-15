@@ -443,6 +443,10 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "The empirical focus is forecasting performance and uncertainty quantification",
         r"Section~\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results",
         "five-cutoff rolling-origin forecast comparison",
+        "These two uncertainty sources are related but distinct",
+        "Hydrological uncertainty arises from model structure, parameters, states, and observations",
+        "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields",
+        "local hydrometeorological covariates",
     ]
     required_corrections = [
         "best corrected Bayesian row at 12/25/2022",
@@ -454,6 +458,10 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "centering the forecasting analysis on multiple rolling-origin cutoffs",
         "supported by rolling-origin forecast evaluation and selected-model interpretation",
         "rather than treating dynamic discrepancy correction alone as the central novelty",
+        "The revised introduction now separates these concepts before introducing the Bayesian framework",
+        "hydrological uncertainty with river-system structure, parameters, states, and observations",
+        "meteorological uncertainty with precipitation and atmospheric forcing fields",
+        "using available forecast and retrospective products to produce calibrated predictive distributions",
     ]
     forbidden = [
         "best-performing model in all five cutoffs",
@@ -464,6 +472,9 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "the full model remains best across all five ablation comparisons",
         "full model remains the best ablation configuration",
         "the main contribution will be presented",
+        "does not currently distinguish meteorological and hydrological uncertainty",
+        "we will reorganize the introduction",
+        "local hydrological covariates",
     ]
     for claim in required_article:
         add(checks, "prose", f"article_required:{claim}", claim in article, claim)

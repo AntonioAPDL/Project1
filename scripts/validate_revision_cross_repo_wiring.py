@@ -116,6 +116,9 @@ FORBIDDEN_CLAIMS = [
     "raw NWS forecast product has the lowest CRPS overall",
     "raw NWS forecast product is best overall",
     "the main contribution will be presented",
+    "does not currently distinguish meteorological and hydrological uncertainty",
+    "we will reorganize the introduction",
+    "local hydrological covariates",
     "TODO[",
 ]
 REQUIRED_CLAIMS = [
@@ -124,11 +127,19 @@ REQUIRED_CLAIMS = [
     ("article", "The empirical focus is forecasting performance and uncertainty quantification"),
     ("article", "Section~\\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results"),
     ("article", "five-cutoff rolling-origin forecast comparison"),
+    ("article", "These two uncertainty sources are related but distinct"),
+    ("article", "Hydrological uncertainty arises from model structure, parameters, states, and observations"),
+    ("article", "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields"),
+    ("article", "local hydrometeorological covariates"),
     ("corrections", "separate eight-day NWS-horizon comparison"),
     ("corrections", "NWS is omitted from the 28-day table"),
     ("corrections", "centering the forecasting analysis on multiple rolling-origin cutoffs"),
     ("corrections", "supported by rolling-origin forecast evaluation and selected-model interpretation"),
     ("corrections", "rather than treating dynamic discrepancy correction alone as the central novelty"),
+    ("corrections", "The revised introduction now separates these concepts before introducing the Bayesian framework"),
+    ("corrections", "hydrological uncertainty with river-system structure, parameters, states, and observations"),
+    ("corrections", "meteorological uncertainty with precipitation and atmospheric forcing fields"),
+    ("corrections", "using available forecast and retrospective products to produce calibrated predictive distributions"),
 ]
 
 @dataclass
