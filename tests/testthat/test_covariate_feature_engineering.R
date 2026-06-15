@@ -49,6 +49,46 @@ test_that("engineered feature table builds squares interaction and rolling lags 
   expect_equal(row_t2$PPT_x_SOIL, 11 * 21)
 })
 
+test_that("zero precipitation days remain explicit transfer-covariate values", {
+  td <- withr::local_tempdir()
+  dates <- seq(as.Date("2022-01-01"), by = "day", length.out = 6)
+  ppt_path <- file.path(td, "ppt.csv")
+  soil_path <- file.path(td, "soil.csv")
+  pca_path <- file.path(td, "pca.csv")
+
+  make_cov_csv(ppt_path, dates, c(0, 0, 5, 0, 2, 0), "ppt")
+  make_cov_csv(soil_path, dates, c(4, 5, 6, 7, 8, 9), "soil")
+  make_cov_csv(pca_path, dates, c(100, 101, 102, 103, 104, 105), "pca")
+
+  feat <- unified_covfeat_build_table(
+    ppt_path = ppt_path,
+    soil_path = soil_path,
+    pca_path = pca_path,
+    lag_orders = c(1L, 2L, 3L),
+    include_squares = TRUE,
+    include_interaction = TRUE
+  )
+
+  expect_equal(feat$PPT, c(0, 0, 5, 0, 2, 0))
+  expect_equal(feat$PPT_sq, c(0, 0, 25, 0, 4, 0))
+  expect_equal(feat$PPT_x_SOIL[c(1, 2, 4, 6)], rep(0, 4))
+  expect_equal(feat$PPT_lag1[2:4], c(0, 0, 5))
+
+  feat_path <- file.path(td, "features.csv")
+  utils::write.csv(feat, feat_path, row.names = FALSE)
+  mats <- family_shared_build_feature_matrices(
+    path = feat_path,
+    history_dates = dates[1:4],
+    forecast_dates = dates[5:6],
+    fill_value = 0,
+    scale_with_history = TRUE,
+    scale_mode = "sd"
+  )
+
+  expect_equal(as.numeric(mats$history[c(1, 2, 4), "PPT"]), rep(0, 3))
+  expect_equal(as.numeric(mats$forecast[2, "PPT"]), 0)
+})
+
 test_that("feature matrices align and scale with history only", {
   td <- withr::local_tempdir()
   dates <- seq(as.Date("2022-01-01"), by = "day", length.out = 5)
