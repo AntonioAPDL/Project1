@@ -440,6 +440,9 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         r"Appendix~\ref{app:he3ablation} reports a targeted component ablation",
         r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
         "same 2022-12-25 selected exAL-M-T1 output authority used for the synthesis illustration",
+        "The empirical focus is forecasting performance and uncertainty quantification",
+        r"Section~\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results",
+        "five-cutoff rolling-origin forecast comparison",
     ]
     required_corrections = [
         "best corrected Bayesian row at 12/25/2022",
@@ -448,6 +451,9 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
         "Within this fixed ablation matrix",
         "same 2022-12-25 selected-model posterior-output authority",
+        "centering the forecasting analysis on multiple rolling-origin cutoffs",
+        "supported by rolling-origin forecast evaluation and selected-model interpretation",
+        "rather than treating dynamic discrepancy correction alone as the central novelty",
     ]
     forbidden = [
         "best-performing model in all five cutoffs",
@@ -457,6 +463,7 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "raw NWS forecast product has the lowest CRPS in the table",
         "the full model remains best across all five ablation comparisons",
         "full model remains the best ablation configuration",
+        "the main contribution will be presented",
     ]
     for claim in required_article:
         add(checks, "prose", f"article_required:{claim}", claim in article, claim)

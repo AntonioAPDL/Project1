@@ -115,13 +115,20 @@ FORBIDDEN_CLAIMS = [
     "better than \\texttt{AL-M-T1} in all five",
     "raw NWS forecast product has the lowest CRPS overall",
     "raw NWS forecast product is best overall",
+    "the main contribution will be presented",
     "TODO[",
 ]
 REQUIRED_CLAIMS = [
     ("article", "Table~\\ref{tab:benchmark_crps_models_nws_horizon}"),
     ("article", "AL-M-T1 is the best corrected Bayesian row at the December 25, 2022 cutoff"),
+    ("article", "The empirical focus is forecasting performance and uncertainty quantification"),
+    ("article", "Section~\\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results"),
+    ("article", "five-cutoff rolling-origin forecast comparison"),
     ("corrections", "separate eight-day NWS-horizon comparison"),
     ("corrections", "NWS is omitted from the 28-day table"),
+    ("corrections", "centering the forecasting analysis on multiple rolling-origin cutoffs"),
+    ("corrections", "supported by rolling-origin forecast evaluation and selected-model interpretation"),
+    ("corrections", "rather than treating dynamic discrepancy correction alone as the central novelty"),
 ]
 
 @dataclass
