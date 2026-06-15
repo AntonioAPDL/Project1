@@ -13,6 +13,15 @@ from pathlib import Path
 from typing import Iterable
 
 from multimodel_v8_lib import ROOT, load_yaml
+from forecast_design_contract import (
+    ARTICLE_FORECAST_DESIGN_DOC_REL,
+    FORBIDDEN_FORECAST_DESIGN_CLAIMS,
+    FORECAST_DESIGN_CONTRACT_REL,
+    FORECAST_DESIGN_MANIFEST_REL,
+    REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS,
+    REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS,
+    check_forecast_design_manifest,
+)
 from runtime_feasibility_contract import (
     ARTICLE_RUNTIME_DOC_REL,
     FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS,
@@ -586,6 +595,32 @@ def check_runtime_feasibility(workflow_root: Path, article_root: Path, correctio
         add(checks, "runtime_feasibility", f"corrections_forbidden:{claim}", claim not in corrections_text, claim)
 
 
+def check_forecast_design(workflow_root: Path, article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
+    manifest_path = article_root / FORECAST_DESIGN_MANIFEST_REL
+    add(checks, "forecast_design", "manifest_exists", manifest_path.exists(), FORECAST_DESIGN_MANIFEST_REL)
+    if not manifest_path.exists():
+        return
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for row in check_forecast_design_manifest(manifest):
+        add(checks, "forecast_design", row.item, row.ok, row.detail)
+
+    workflow_doc = workflow_root / FORECAST_DESIGN_CONTRACT_REL
+    article_doc = article_root / ARTICLE_FORECAST_DESIGN_DOC_REL
+    add(checks, "forecast_design", "workflow_contract_doc", workflow_doc.exists(), FORECAST_DESIGN_CONTRACT_REL)
+    add(checks, "forecast_design", "article_contract_doc", article_doc.exists(), ARTICLE_FORECAST_DESIGN_DOC_REL)
+
+    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+    for claim in REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS:
+        add(checks, "forecast_design", f"article_required:{claim}", claim in article_text, claim)
+    for claim in REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS:
+        add(checks, "forecast_design", f"corrections_required:{claim}", claim in corrections_text, claim)
+    for claim in FORBIDDEN_FORECAST_DESIGN_CLAIMS:
+        add(checks, "forecast_design", f"article_forbidden:{claim}", claim not in article_text, claim)
+        add(checks, "forecast_design", f"corrections_forbidden:{claim}", claim not in corrections_text, claim)
+
+
 def repo_metadata(repo: Path) -> dict[str, str]:
     return {
         "path": str(repo),
@@ -677,6 +712,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     check_he4_sync(article_root, corrections_root, checks)
     check_selected_figures(article_root, checks)
     check_prose(article_root, corrections_root, checks)
+    check_forecast_design(workflow_root, article_root, corrections_root, checks)
     check_runtime_feasibility(workflow_root, article_root, corrections_root, checks)
     check_software_availability(workflow_root, article_root, corrections_root, checks)
 
