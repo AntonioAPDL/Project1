@@ -497,6 +497,10 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "For reproducibility, implementation pseudocode for the VB algorithm is provided",
         "Its role is illustrative",
         "comparative forecast evaluation remains the main empirical evidence",
+        "uncertainty around fitted quantile-location curves",
+        "rather than the full forecast distribution at a single origin",
+        "full synthesized posterior predictive distribution",
+        "posterior predictive envelope can vary across the forecast window",
         "increased the risk of quantile crossing in the discrepancy states",
     ]
     required_corrections = [
@@ -556,6 +560,10 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "final forecast comparison uses CRPS as the primary full-distribution score",
         "targeted quantile check loss as the quantile-level diagnostic",
         "Posterior predictive synthesis is retained only as a concise selected-origin illustration",
+        "posterior uncertainty around fitted quantile-location or component summaries",
+        "full forecast predictive distribution at each date",
+        "representative single-cutoff posterior predictive distribution",
+        "forecast-window inputs change",
         "Quantile crossing is no longer developed as a separate procedure in the main text",
         "MCMC and VB pseudocode remains in the appendices for reproducibility",
     ]
