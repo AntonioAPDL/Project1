@@ -13,6 +13,13 @@ This runbook defines the canonical reproduction and refresh workflow for the cur
 
 The goal is to keep one clear operational path from now on.
 
+For the software availability and archival-release contract, use:
+
+- `repro/run/REVISION_SOFTWARE_REPRODUCIBILITY_CONTRACT_20260615.md`
+
+The legacy `repro/REPRODUCE_PAPER.md` is retained as historical context only
+and is not the current revised-article reproduction contract.
+
 As of the 2026-06-14 publication freeze, the article-side `generated/` and
 `DISC/` naming layers are retired. The current manuscript-local freeze surface
 is:

@@ -1,5 +1,11 @@
 # Reproduce Paper Figures and Results
 
+> Current status: legacy reproduction note. This file records an older
+> notebook-era path and is not the authoritative revised-article workflow. Use
+> `repro/run/CANONICAL_REVISED_ARTICLE_WORKFLOW.md` for the current operational
+> path and `repro/run/REVISION_SOFTWARE_REPRODUCIBILITY_CONTRACT_20260615.md`
+> for the HE-5 software availability and archival-release contract.
+
 ## Environment assumptions
 - R 4.3.x (a source tree exists at `R-4.3.1/`, but no install script is present).
 - R packages listed in `install_packages.R` (run `Rscript install_packages.R`).

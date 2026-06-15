@@ -87,6 +87,13 @@ REQUIRED_CLAIMS = [
     ("corrections", "NWS is omitted from the 28-day table"),
 ]
 
+SOFTWARE_MANIFEST_REL = "artifacts/software_availability/software_availability_manifest.json"
+SOFTWARE_CONTRACT_REL = "repro/run/REVISION_SOFTWARE_REPRODUCIBILITY_CONTRACT_20260615.md"
+ARTICLE_SOFTWARE_DOC_REL = "docs/software_availability_contract.md"
+CRAN_EXDQLM_URL = "https://CRAN.R-project.org/package=exdqlm"
+CRAN_EXDQLM_DOI_URL = "https://doi.org/10.32614/CRAN.package.exdqlm"
+PROJECT1_URL = "https://github.com/AntonioAPDL/Project1"
+
 
 @dataclass
 class CheckRow:
@@ -446,6 +453,92 @@ def audit_prose_claims(article_root: Path, corrections_root: Path) -> tuple[list
     return checks, rows
 
 
+def audit_software_availability(
+    workflow_root: Path,
+    article_root: Path,
+    corrections_root: Path,
+) -> tuple[list[CheckRow], list[dict[str, object]], list[Path]]:
+    checks: list[CheckRow] = []
+    rows: list[dict[str, object]] = []
+    sources: list[Path] = []
+    manifest_path = article_root / SOFTWARE_MANIFEST_REL
+
+    def record(item: str, ok: bool, detail: str) -> None:
+        status = "pass" if ok else "fail"
+        checks.append(CheckRow("software_availability", item, status, detail))
+        rows.append({"item": item, "status": status, "detail": detail})
+
+    record("manifest_exists", manifest_path.exists(), SOFTWARE_MANIFEST_REL)
+    if not manifest_path.exists():
+        return checks, rows, sources
+
+    sources.append(manifest_path)
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    package = data.get("public_estimation_package", {})
+    workflow = data.get("study_workflow_repository", {})
+    article_repo = data.get("revised_article_repository", {})
+    corrections_repo = data.get("corrections_repository", {})
+    archive = data.get("archive_status", {})
+    validation_policy = data.get("validation_policy", {})
+
+    record("schema_version", data.get("schema_version") == "revision_software_availability_v1", str(data.get("schema_version", "")))
+    record("cran_package_url", package.get("cran_package_url") == CRAN_EXDQLM_URL, str(package.get("cran_package_url", "")))
+    record("cran_package_doi", package.get("package_doi") == CRAN_EXDQLM_DOI_URL, str(package.get("package_doi", "")))
+    record("cran_version_recorded", package.get("cran_version_verified_for_contract") == "1.0.0", str(package.get("cran_version_verified_for_contract", "")))
+    record("workflow_public_url", workflow.get("public_url") == PROJECT1_URL, str(workflow.get("public_url", "")))
+    record("article_public_url", "Evironmetrics---REVISED-DOC-Corrected-2" in str(article_repo.get("public_url", "")), str(article_repo.get("public_url", "")))
+    record("corrections_public_url", "Corrections---Project-1" in str(corrections_repo.get("public_url", "")), str(corrections_repo.get("public_url", "")))
+    record(
+        "archive_status_pending",
+        archive.get("workflow_archive_status") == "pending_final_release" and archive.get("workflow_archive_doi") == "pending",
+        json.dumps(archive, sort_keys=True),
+    )
+    record(
+        "static_commit_policy",
+        "reason_static_commits_are_not_recorded" in validation_policy,
+        str(validation_policy.get("reason_static_commits_are_not_recorded", "")),
+    )
+
+    workflow_contract = workflow_root / SOFTWARE_CONTRACT_REL
+    article_contract = article_root / ARTICLE_SOFTWARE_DOC_REL
+    record("workflow_contract_doc_exists", workflow_contract.exists(), SOFTWARE_CONTRACT_REL)
+    record("article_contract_doc_exists", article_contract.exists(), ARTICLE_SOFTWARE_DOC_REL)
+    for path in [workflow_contract, article_contract]:
+        if path.exists():
+            sources.append(path)
+
+    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+    for path in [article_root / "wileyNJD-APA.tex", corrections_root / "main.tex"]:
+        sources.append(path)
+    required_article = [
+        r"CRAN R package \texttt{exdqlm}",
+        CRAN_EXDQLM_URL,
+        CRAN_EXDQLM_DOI_URL,
+        PROJECT1_URL,
+        "permanent archival release of the workflow repository will be created",
+        "compact provenance manifests",
+    ]
+    required_corrections = [
+        r"CRAN R package \texttt{exdqlm}",
+        CRAN_EXDQLM_URL,
+        CRAN_EXDQLM_DOI_URL,
+        PROJECT1_URL,
+        "Before final resubmission",
+        "compact provenance manifests",
+    ]
+    for claim in required_article:
+        record(f"article_required:{claim}", claim in article_text, claim)
+    for claim in required_corrections:
+        record(f"corrections_required:{claim}", claim in corrections_text, claim)
+    if archive.get("workflow_archive_doi") == "pending":
+        for claim in ["workflow repository has been archived", "workflow has been archived", "archived workflow DOI"]:
+            record(f"article_no_premature_archive_claim:{claim}", claim not in article_text, claim)
+            record(f"corrections_no_premature_archive_claim:{claim}", claim not in corrections_text, claim)
+
+    return checks, rows, sources
+
+
 def audit_he4_selection(article_root: Path, manifest: dict) -> tuple[list[CheckRow], list[Path]]:
     cfg = manifest["tables"]["tab:he4_quantile_check_loss"]
     selection_path = article_root / cfg["sources"]["he4_selection_audit_csv"]
@@ -612,6 +705,10 @@ def main(argv: Iterable[str] | None = None) -> int:
     prose_checks, prose_rows = audit_prose_claims(article_root, corrections_root)
     checks.extend(prose_checks)
 
+    software_checks, software_rows, software_sources = audit_software_availability(workflow_root, article_root, corrections_root)
+    checks.extend(software_checks)
+    source_paths.extend(software_sources)
+
     compile_checks, compile_rows, compile_sources = audit_compile_logs(article_root, corrections_root, enabled=bool(args.after_patch))
     checks.extend(compile_checks)
     source_paths.extend(compile_sources)
@@ -624,6 +721,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     write_csv(output_dir / "manifest_path_audit.csv", manifest_rows + correction_input_rows, ["kind", "label", "relative_path", "absolute_path", "exists"])
     write_csv(output_dir / "table_value_audit.csv", table_value_rows, ["table", "row_key", "column", "expected_rounded5", "observed", "abs_diff", "status"])
     write_csv(output_dir / "prose_claim_audit.csv", prose_rows, ["repo", "claim_type", "claim", "status"])
+    write_csv(output_dir / "software_availability_audit.csv", software_rows, ["item", "status", "detail"])
     write_csv(output_dir / "compile_log_audit.csv", compile_rows, ["document", "log_path", "exists", "status", "detail"])
 
     unique_sources = sorted({path.resolve() for path in source_paths if path.exists() and path.is_file()})

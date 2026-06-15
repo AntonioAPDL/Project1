@@ -55,6 +55,13 @@ SELECTED_MODEL_FIGURES = {
     "fig:80_components",
 }
 
+SOFTWARE_MANIFEST_REL = "artifacts/software_availability/software_availability_manifest.json"
+SOFTWARE_CONTRACT_REL = "repro/run/REVISION_SOFTWARE_REPRODUCIBILITY_CONTRACT_20260615.md"
+ARTICLE_SOFTWARE_DOC_REL = "docs/software_availability_contract.md"
+CRAN_EXDQLM_URL = "https://CRAN.R-project.org/package=exdqlm"
+CRAN_EXDQLM_DOI_URL = "https://doi.org/10.32614/CRAN.package.exdqlm"
+PROJECT1_URL = "https://github.com/AntonioAPDL/Project1"
+
 
 @dataclass
 class Check:
@@ -432,6 +439,109 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         add(checks, "prose", f"corrections_forbidden:{claim}", claim not in corrections, claim)
 
 
+def check_software_availability(workflow_root: Path, article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
+    manifest_path = article_root / SOFTWARE_MANIFEST_REL
+    add(checks, "software_availability", "manifest_exists", manifest_path.exists(), SOFTWARE_MANIFEST_REL)
+    if not manifest_path.exists():
+        return
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    package = manifest.get("public_estimation_package", {})
+    workflow = manifest.get("study_workflow_repository", {})
+    article_repo = manifest.get("revised_article_repository", {})
+    corrections_repo = manifest.get("corrections_repository", {})
+    archive = manifest.get("archive_status", {})
+    validation_policy = manifest.get("validation_policy", {})
+
+    add(
+        checks,
+        "software_availability",
+        "schema_version",
+        manifest.get("schema_version") == "revision_software_availability_v1",
+        str(manifest.get("schema_version", "")),
+    )
+    add(checks, "software_availability", "cran_package_url", package.get("cran_package_url") == CRAN_EXDQLM_URL, str(package.get("cran_package_url", "")))
+    add(checks, "software_availability", "cran_package_doi", package.get("package_doi") == CRAN_EXDQLM_DOI_URL, str(package.get("package_doi", "")))
+    add(checks, "software_availability", "cran_version_recorded", package.get("cran_version_verified_for_contract") == "1.0.0", str(package.get("cran_version_verified_for_contract", "")))
+    add(checks, "software_availability", "workflow_url", workflow.get("public_url") == PROJECT1_URL, str(workflow.get("public_url", "")))
+    add(
+        checks,
+        "software_availability",
+        "workflow_contract_doc",
+        (workflow_root / SOFTWARE_CONTRACT_REL).exists(),
+        SOFTWARE_CONTRACT_REL,
+    )
+    add(
+        checks,
+        "software_availability",
+        "article_contract_doc",
+        (article_root / ARTICLE_SOFTWARE_DOC_REL).exists(),
+        ARTICLE_SOFTWARE_DOC_REL,
+    )
+    add(
+        checks,
+        "software_availability",
+        "article_repo_url",
+        "Evironmetrics---REVISED-DOC-Corrected-2" in str(article_repo.get("public_url", "")),
+        str(article_repo.get("public_url", "")),
+    )
+    add(
+        checks,
+        "software_availability",
+        "corrections_repo_url",
+        "Corrections---Project-1" in str(corrections_repo.get("public_url", "")),
+        str(corrections_repo.get("public_url", "")),
+    )
+    add(
+        checks,
+        "software_availability",
+        "archive_pending_status",
+        archive.get("workflow_archive_status") == "pending_final_release" and archive.get("workflow_archive_doi") == "pending",
+        json.dumps(archive, sort_keys=True),
+    )
+    add(
+        checks,
+        "software_availability",
+        "static_commit_policy",
+        "reason_static_commits_are_not_recorded" in validation_policy,
+        str(validation_policy.get("reason_static_commits_are_not_recorded", "")),
+    )
+    remote_url = git_value(workflow_root, "remote", "get-url", "origin")
+    add(checks, "software_availability", "workflow_remote_matches_project1", "AntonioAPDL/Project1" in remote_url, remote_url)
+
+    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+    required_article = [
+        r"CRAN R package \texttt{exdqlm}",
+        CRAN_EXDQLM_URL,
+        CRAN_EXDQLM_DOI_URL,
+        PROJECT1_URL,
+        "permanent archival release of the workflow repository will be created",
+        "compact provenance manifests",
+    ]
+    required_corrections = [
+        r"CRAN R package \texttt{exdqlm}",
+        CRAN_EXDQLM_URL,
+        CRAN_EXDQLM_DOI_URL,
+        PROJECT1_URL,
+        "Before final resubmission",
+        "compact provenance manifests",
+    ]
+    for claim in required_article:
+        add(checks, "software_availability", f"article_required:{claim}", claim in article_text, claim)
+    for claim in required_corrections:
+        add(checks, "software_availability", f"corrections_required:{claim}", claim in corrections_text, claim)
+    if archive.get("workflow_archive_doi") == "pending":
+        premature_archive_claims = [
+            "workflow repository has been archived",
+            "workflow has been archived",
+            "archived workflow DOI",
+        ]
+        for claim in premature_archive_claims:
+            add(checks, "software_availability", f"article_no_premature_archive_claim:{claim}", claim not in article_text, claim)
+            add(checks, "software_availability", f"corrections_no_premature_archive_claim:{claim}", claim not in corrections_text, claim)
+
+
 def repo_metadata(repo: Path) -> dict[str, str]:
     return {
         "path": str(repo),
@@ -523,6 +633,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     check_he4_sync(article_root, corrections_root, checks)
     check_selected_figures(article_root, checks)
     check_prose(article_root, corrections_root, checks)
+    check_software_availability(workflow_root, article_root, corrections_root, checks)
 
     rows = [{"family": c.family, "item": c.item, "status": c.status, "detail": c.detail} for c in checks]
     write_csv(report_dir / "publication_freeze_validation_checks.csv", rows, ["family", "item", "status", "detail"])
