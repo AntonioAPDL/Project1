@@ -447,6 +447,11 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "relatively low-flow windows as well as winter high-flow episodes",
         "not a continuous daily hindcast over the full post-2022 period",
         "Post-cutoff USGS observations are reserved strictly for verification",
+        "time-ordered analogue of cross-validation",
+        "each fold fixes a forecast origin",
+        "scores the resulting predictive distribution against future USGS observations",
+        "feasible folds are constrained by version-consistent forecast archives",
+        "heavily overlapping forecast windows would overrepresent the same hydrological episode",
         "These two uncertainty sources are related but distinct",
         "Hydrological uncertainty arises from model structure, parameters, states, and observations",
         "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields",
@@ -478,6 +483,10 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "not presented as a continuous 2023-present hindcast",
         "representative illustration of the selected model at one forecast origin",
         "not counted as additional forecast-validation evidence",
+        "organized around forecast origins rather than a conventional random split",
+        "time-ordered analogue of cross-validation",
+        "post-cutoff USGS observations are used only for verification",
+        "heavily overlapping forecast windows overrepresent the same hydrological regime",
         "The revised introduction now separates these concepts before introducing the Bayesian framework",
         "hydrological uncertainty with river-system structure, parameters, states, and observations",
         "meteorological uncertainty with precipitation and atmospheric forcing fields",
@@ -513,6 +522,7 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "we will remove the detailed PIT development",
         "we will reduce intermediate derivational detail",
         "will be mentioned briefly as a robustness device",
+        "random K-fold cross-validation",
     ]
     for claim in required_article:
         add(checks, "prose", f"article_required:{claim}", claim in article, claim)

@@ -18,6 +18,9 @@ REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS = [
     "forecast-window precipitation and soil-moisture covariates",
     "canonical GDPC/PCA climate-index factor",
     "not treated as an operational forecast product or verification target",
+    "time-ordered analogue of cross-validation",
+    "each fold fixes a forecast origin",
+    "heavily overlapping forecast windows would overrepresent the same hydrological episode",
 ]
 
 REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS = [
@@ -27,6 +30,9 @@ REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS = [
     "canonical GDPC/PCA climate-index covariate",
     "not treated as an operational forecast product",
     "archive-feasible and version-consistent",
+    "time-ordered analogue of cross-validation",
+    "post-cutoff USGS observations are used only for verification",
+    "heavily overlapping forecast windows overrepresent the same hydrological regime",
 ]
 
 FORBIDDEN_FORECAST_DESIGN_CLAIMS = [
@@ -35,6 +41,8 @@ FORBIDDEN_FORECAST_DESIGN_CLAIMS = [
     "GDPC forecast product",
     "PCA forecast product",
     "post-cutoff USGS observations enter fitting",
+    "random K-fold cross-validation",
+    "continuous daily post-2022 hindcast",
 ]
 
 
@@ -58,6 +66,7 @@ def check_forecast_design_manifest(data: dict[str, Any]) -> list[ForecastDesignM
     cutoffs = _nested(data, "rolling_origin_design", "cutoffs") or []
     target = _nested(data, "rolling_origin_design", "held_out_target")
     fit_inputs = _nested(data, "rolling_origin_design", "fit_inputs") or []
+    fair_assessment = _nested(data, "rolling_origin_design", "fair_assessment") or {}
     forecast_products = _nested(data, "forecast_origin_inputs", "forecast_products") or {}
     local_covariates = _nested(data, "forecast_origin_inputs", "local_covariates") or {}
     gdpc = _nested(data, "forecast_origin_inputs", "gdpc_pca") or {}
@@ -76,6 +85,17 @@ def check_forecast_design_manifest(data: dict[str, Any]) -> list[ForecastDesignM
             "fit_inputs_through_cutoff",
             {"usgs_through_cutoff", "retrospective_products_through_cutoff"}.issubset(set(fit_inputs)),
             str(fit_inputs),
+        ),
+        ForecastDesignManifestCheck(
+            "fair_assessment_cross_validation_analogue",
+            fair_assessment.get("cross_validation_analogue") == "time_ordered_rolling_origin_folds"
+            and fair_assessment.get("fold_unit") == "forecast_origin_cutoff",
+            str(fair_assessment),
+        ),
+        ForecastDesignManifestCheck(
+            "no_dense_overlapping_origin_claim",
+            fair_assessment.get("dense_overlapping_origins_claimed") is False,
+            str(fair_assessment.get("dense_overlapping_origins_claimed")),
         ),
         ForecastDesignManifestCheck(
             "forecast_products_timing",
@@ -110,5 +130,10 @@ def check_forecast_design_manifest(data: dict[str, Any]) -> list[ForecastDesignM
             "gdpc_claims_policy",
             claims_policy.get("gdpc_pca_described_as_forecast_product") is False,
             str(claims_policy.get("gdpc_pca_described_as_forecast_product")),
+        ),
+        ForecastDesignManifestCheck(
+            "no_continuous_dense_hindcast_claim",
+            claims_policy.get("continuous_daily_post_2022_hindcast_claimed") is False,
+            str(claims_policy.get("continuous_daily_post_2022_hindcast_claimed")),
         ),
     ]

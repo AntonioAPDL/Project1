@@ -1,7 +1,7 @@
 # HE-6 Out-of-Sample Forecast Design Contract
 
 Date: 2026-06-15  
-Scope: Handling Editor comment HE-6, cross-repo forecast-validation wording, and publication-freeze validation.
+Scope: Handling Editor comment HE-6, Reviewer 1 Major comment R1-M5, cross-repo forecast-validation wording, and publication-freeze validation.
 
 ## Purpose
 
@@ -13,6 +13,8 @@ intended to prevent three common ambiguities:
 2. confusing forecast-origin inputs with held-out USGS verification data;
 3. describing the canonical GDPC/PCA climate factor as if it were an operational
    forecast product like NWS or GloFAS.
+4. treating the rolling-origin forecast folds as if they were a random
+   cross-validation split or a dense continuous hindcast.
 
 ## Authoritative Design
 
@@ -31,6 +33,13 @@ cutoff \(c\):
   forecast product or a verification target;
 - post-cutoff USGS observations are used only to score the forecasts and are not
   used to fit, update, or select the predictive distributions.
+
+For fair forecast assessment, the fold unit is the forecast origin. This makes
+the design the time-ordered analogue of cross-validation for the operational
+forecasting problem. A broader grid of origins could be used in future
+applications if version-consistent forecast archives are available, but the
+current publication does not claim a continuous daily post-2022 hindcast or a
+dense grid of heavily overlapping forecast windows.
 
 ## Code Evidence
 
@@ -75,4 +84,7 @@ Use "out-of-sample" only for the held-out USGS verification target. Use
 "forecast-origin bundle" or "forecast-window support covariates" for staged
 post-cutoff transfer inputs. Do not call GDPC/PCA a forecast product. Do not
 imply that post-cutoff USGS observations enter fitting, updating, model
-selection, or posterior predictive construction.
+selection, or posterior predictive construction. When discussing
+cross-validation, use rolling-origin folds or time-ordered cross-validation
+analogue language; do not describe the publication exercise as random K-fold
+cross-validation or as a continuous dense hindcast.
