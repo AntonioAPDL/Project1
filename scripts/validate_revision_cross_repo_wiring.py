@@ -15,6 +15,15 @@ from typing import Iterable
 
 import pandas as pd
 
+from runtime_feasibility_contract import (
+    ARTICLE_RUNTIME_DOC_REL,
+    FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS,
+    REQUIRED_RUNTIME_ARTICLE_CLAIMS,
+    REQUIRED_RUNTIME_CORRECTIONS_CLAIMS,
+    RUNTIME_CONTRACT_REL,
+    RUNTIME_MANIFEST_REL,
+    check_runtime_manifest,
+)
 from software_availability_contract import (
     ARTICLE_SOFTWARE_DOC_REL,
     CRAN_EXDQLM_DOI_URL,
@@ -550,6 +559,54 @@ def audit_software_availability(
     return checks, rows, sources
 
 
+def audit_runtime_feasibility(
+    workflow_root: Path,
+    article_root: Path,
+    corrections_root: Path,
+) -> tuple[list[CheckRow], list[dict[str, object]], list[Path]]:
+    checks: list[CheckRow] = []
+    rows: list[dict[str, object]] = []
+    sources: list[Path] = []
+    manifest_path = article_root / RUNTIME_MANIFEST_REL
+
+    def record(item: str, ok: bool, detail: str) -> None:
+        status = "pass" if ok else "fail"
+        checks.append(CheckRow("runtime_feasibility", item, status, detail))
+        rows.append({"item": item, "status": status, "detail": detail})
+
+    record("manifest_exists", manifest_path.exists(), RUNTIME_MANIFEST_REL)
+    if not manifest_path.exists():
+        return checks, rows, sources
+
+    sources.append(manifest_path)
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for row in check_runtime_manifest(data):
+        record(row.item, row.ok, row.detail)
+
+    workflow_doc = workflow_root / RUNTIME_CONTRACT_REL
+    article_doc = article_root / ARTICLE_RUNTIME_DOC_REL
+    record("workflow_contract_doc_exists", workflow_doc.exists(), RUNTIME_CONTRACT_REL)
+    record("article_contract_doc_exists", article_doc.exists(), ARTICLE_RUNTIME_DOC_REL)
+    for path in [workflow_doc, article_doc]:
+        if path.exists():
+            sources.append(path)
+
+    article_path = article_root / "wileyNJD-APA.tex"
+    corrections_path = corrections_root / "main.tex"
+    article_text = article_path.read_text(encoding="utf-8")
+    corrections_text = corrections_path.read_text(encoding="utf-8")
+    sources.extend([article_path, corrections_path])
+    for claim in REQUIRED_RUNTIME_ARTICLE_CLAIMS:
+        record(f"article_required:{claim}", claim in article_text, claim)
+    for claim in REQUIRED_RUNTIME_CORRECTIONS_CLAIMS:
+        record(f"corrections_required:{claim}", claim in corrections_text, claim)
+    for claim in FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS:
+        record(f"article_forbidden:{claim}", claim not in article_text, claim)
+        record(f"corrections_forbidden:{claim}", claim not in corrections_text, claim)
+
+    return checks, rows, sources
+
+
 def audit_he4_selection(article_root: Path, manifest: dict) -> tuple[list[CheckRow], list[Path]]:
     cfg = manifest["tables"]["tab:he4_quantile_check_loss"]
     selection_path = article_root / cfg["sources"]["he4_selection_audit_csv"]
@@ -720,6 +777,10 @@ def main(argv: Iterable[str] | None = None) -> int:
     checks.extend(software_checks)
     source_paths.extend(software_sources)
 
+    runtime_checks, runtime_rows, runtime_sources = audit_runtime_feasibility(workflow_root, article_root, corrections_root)
+    checks.extend(runtime_checks)
+    source_paths.extend(runtime_sources)
+
     compile_checks, compile_rows, compile_sources = audit_compile_logs(article_root, corrections_root, enabled=bool(args.after_patch))
     checks.extend(compile_checks)
     source_paths.extend(compile_sources)
@@ -733,6 +794,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     write_csv(output_dir / "table_value_audit.csv", table_value_rows, ["table", "row_key", "column", "expected_rounded5", "observed", "abs_diff", "status"])
     write_csv(output_dir / "prose_claim_audit.csv", prose_rows, ["repo", "claim_type", "claim", "status"])
     write_csv(output_dir / "software_availability_audit.csv", software_rows, ["item", "status", "detail"])
+    write_csv(output_dir / "runtime_feasibility_audit.csv", runtime_rows, ["item", "status", "detail"])
     write_csv(output_dir / "compile_log_audit.csv", compile_rows, ["document", "log_path", "exists", "status", "detail"])
 
     unique_sources = sorted({path.resolve() for path in source_paths if path.exists() and path.is_file()})

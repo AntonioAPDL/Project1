@@ -13,6 +13,15 @@ from pathlib import Path
 from typing import Iterable
 
 from multimodel_v8_lib import ROOT, load_yaml
+from runtime_feasibility_contract import (
+    ARTICLE_RUNTIME_DOC_REL,
+    FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS,
+    REQUIRED_RUNTIME_ARTICLE_CLAIMS,
+    REQUIRED_RUNTIME_CORRECTIONS_CLAIMS,
+    RUNTIME_CONTRACT_REL,
+    RUNTIME_MANIFEST_REL,
+    check_runtime_manifest,
+)
 from software_availability_contract import (
     ARTICLE_SOFTWARE_DOC_REL,
     CRAN_EXDQLM_DOI_URL,
@@ -551,6 +560,32 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
             add(checks, "software_availability", f"corrections_no_stale_pending_claim:{claim}", claim not in corrections_text, claim)
 
 
+def check_runtime_feasibility(workflow_root: Path, article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
+    manifest_path = article_root / RUNTIME_MANIFEST_REL
+    add(checks, "runtime_feasibility", "manifest_exists", manifest_path.exists(), RUNTIME_MANIFEST_REL)
+    if not manifest_path.exists():
+        return
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for row in check_runtime_manifest(manifest):
+        add(checks, "runtime_feasibility", row.item, row.ok, row.detail)
+
+    workflow_doc = workflow_root / RUNTIME_CONTRACT_REL
+    article_doc = article_root / ARTICLE_RUNTIME_DOC_REL
+    add(checks, "runtime_feasibility", "workflow_contract_doc", workflow_doc.exists(), RUNTIME_CONTRACT_REL)
+    add(checks, "runtime_feasibility", "article_contract_doc", article_doc.exists(), ARTICLE_RUNTIME_DOC_REL)
+
+    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+    for claim in REQUIRED_RUNTIME_ARTICLE_CLAIMS:
+        add(checks, "runtime_feasibility", f"article_required:{claim}", claim in article_text, claim)
+    for claim in REQUIRED_RUNTIME_CORRECTIONS_CLAIMS:
+        add(checks, "runtime_feasibility", f"corrections_required:{claim}", claim in corrections_text, claim)
+    for claim in FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS:
+        add(checks, "runtime_feasibility", f"article_forbidden:{claim}", claim not in article_text, claim)
+        add(checks, "runtime_feasibility", f"corrections_forbidden:{claim}", claim not in corrections_text, claim)
+
+
 def repo_metadata(repo: Path) -> dict[str, str]:
     return {
         "path": str(repo),
@@ -642,6 +677,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     check_he4_sync(article_root, corrections_root, checks)
     check_selected_figures(article_root, checks)
     check_prose(article_root, corrections_root, checks)
+    check_runtime_feasibility(workflow_root, article_root, corrections_root, checks)
     check_software_availability(workflow_root, article_root, corrections_root, checks)
 
     rows = [{"family": c.family, "item": c.item, "status": c.status, "detail": c.detail} for c in checks]
