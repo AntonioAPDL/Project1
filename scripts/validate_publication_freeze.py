@@ -13,6 +13,15 @@ from pathlib import Path
 from typing import Iterable
 
 from multimodel_v8_lib import ROOT, load_yaml
+from software_availability_contract import (
+    ARTICLE_SOFTWARE_DOC_REL,
+    CRAN_EXDQLM_DOI_URL,
+    CRAN_EXDQLM_URL,
+    PROJECT1_URL,
+    SOFTWARE_CONTRACT_REL,
+    SOFTWARE_MANIFEST_REL,
+    check_archive_status,
+)
 
 
 CUTOFF_ORDER = ["20210123", "20211112", "20211221", "20220511", "20221225"]
@@ -54,14 +63,6 @@ SELECTED_MODEL_FIGURES = {
     "fig:synth1",
     "fig:80_components",
 }
-
-SOFTWARE_MANIFEST_REL = "artifacts/software_availability/software_availability_manifest.json"
-SOFTWARE_CONTRACT_REL = "repro/run/REVISION_SOFTWARE_REPRODUCIBILITY_CONTRACT_20260615.md"
-ARTICLE_SOFTWARE_DOC_REL = "docs/software_availability_contract.md"
-CRAN_EXDQLM_URL = "https://CRAN.R-project.org/package=exdqlm"
-CRAN_EXDQLM_DOI_URL = "https://doi.org/10.32614/CRAN.package.exdqlm"
-PROJECT1_URL = "https://github.com/AntonioAPDL/Project1"
-
 
 @dataclass
 class Check:
@@ -492,13 +493,8 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         "Corrections---Project-1" in str(corrections_repo.get("public_url", "")),
         str(corrections_repo.get("public_url", "")),
     )
-    add(
-        checks,
-        "software_availability",
-        "archive_pending_status",
-        archive.get("workflow_archive_status") == "pending_final_release" and archive.get("workflow_archive_doi") == "pending",
-        json.dumps(archive, sort_keys=True),
-    )
+    archive_check = check_archive_status(archive)
+    add(checks, "software_availability", "archive_status_coherent", archive_check.ok, archive_check.detail)
     add(
         checks,
         "software_availability",
@@ -516,7 +512,6 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
         PROJECT1_URL,
-        "permanent archival release of the workflow repository will be created",
         "compact provenance manifests",
     ]
     required_corrections = [
@@ -524,14 +519,19 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
         PROJECT1_URL,
-        "Before final resubmission",
         "compact provenance manifests",
     ]
+    if archive_check.is_pending:
+        required_article.append("permanent archival release of the workflow repository will be created")
+        required_corrections.append("Before final resubmission")
+    elif archive_check.is_final:
+        required_article.append(archive_check.doi)
+        required_corrections.append(archive_check.doi)
     for claim in required_article:
         add(checks, "software_availability", f"article_required:{claim}", claim in article_text, claim)
     for claim in required_corrections:
         add(checks, "software_availability", f"corrections_required:{claim}", claim in corrections_text, claim)
-    if archive.get("workflow_archive_doi") == "pending":
+    if archive_check.is_pending:
         premature_archive_claims = [
             "workflow repository has been archived",
             "workflow has been archived",
@@ -540,6 +540,15 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         for claim in premature_archive_claims:
             add(checks, "software_availability", f"article_no_premature_archive_claim:{claim}", claim not in article_text, claim)
             add(checks, "software_availability", f"corrections_no_premature_archive_claim:{claim}", claim not in corrections_text, claim)
+    elif archive_check.is_final:
+        stale_pending_claims = [
+            "permanent archival release of the workflow repository will be created",
+            "Before final resubmission, we will archive",
+            "workflow archive DOI: pending",
+        ]
+        for claim in stale_pending_claims:
+            add(checks, "software_availability", f"article_no_stale_pending_claim:{claim}", claim not in article_text, claim)
+            add(checks, "software_availability", f"corrections_no_stale_pending_claim:{claim}", claim not in corrections_text, claim)
 
 
 def repo_metadata(repo: Path) -> dict[str, str]:

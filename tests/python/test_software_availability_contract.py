@@ -12,13 +12,14 @@ ARTICLE_ROOT = ROOT / "Evironmetrics---REVISED-DOC-Corrected-2"
 CORRECTIONS_ROOT = Path("/data/muscat_data/jaguir26/Corrections---Project-1")
 os.sys.path.insert(0, str(ROOT / "scripts"))
 
-from validate_publication_freeze import (  # noqa: E402
+from software_availability_contract import (  # noqa: E402
     ARTICLE_SOFTWARE_DOC_REL,
     CRAN_EXDQLM_DOI_URL,
     CRAN_EXDQLM_URL,
     PROJECT1_URL,
     SOFTWARE_CONTRACT_REL,
     SOFTWARE_MANIFEST_REL,
+    check_archive_status,
 )
 
 
@@ -35,6 +36,9 @@ class SoftwareAvailabilityContractTests(unittest.TestCase):
         self.assertEqual(manifest["archive_status"]["workflow_archive_status"], "pending_final_release")
         self.assertEqual(manifest["archive_status"]["workflow_archive_doi"], "pending")
         self.assertIn("reason_static_commits_are_not_recorded", manifest["validation_policy"])
+        archive_check = check_archive_status(manifest["archive_status"])
+        self.assertTrue(archive_check.ok)
+        self.assertTrue(archive_check.is_pending)
 
     def test_contract_docs_exist_in_correct_repositories(self) -> None:
         self.assertTrue((ROOT / SOFTWARE_CONTRACT_REL).exists())
@@ -54,6 +58,29 @@ class SoftwareAvailabilityContractTests(unittest.TestCase):
             self.assertNotIn("archived workflow DOI", text)
         self.assertIn("permanent archival release of the workflow repository will be created", article)
         self.assertIn("Before final resubmission", corrections)
+
+    def test_archive_status_helper_accepts_only_coherent_states(self) -> None:
+        pending = {
+            "workflow_archive_status": "pending_final_release",
+            "workflow_archive_doi": "pending",
+            "workflow_archive_service": "pending",
+            "workflow_archive_release_tag": "pending",
+        }
+        final = {
+            "workflow_archive_status": "archived_final_release",
+            "workflow_archive_doi": "https://doi.org/10.5281/zenodo.1234567",
+            "workflow_archive_service": "Zenodo",
+            "workflow_archive_release_tag": "v2026.06.15",
+        }
+        mixed = {
+            "workflow_archive_status": "archived_final_release",
+            "workflow_archive_doi": "pending",
+            "workflow_archive_service": "Zenodo",
+            "workflow_archive_release_tag": "v2026.06.15",
+        }
+        self.assertTrue(check_archive_status(pending).is_pending)
+        self.assertTrue(check_archive_status(final).is_final)
+        self.assertFalse(check_archive_status(mixed).ok)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,16 @@ from typing import Iterable
 
 import pandas as pd
 
+from software_availability_contract import (
+    ARTICLE_SOFTWARE_DOC_REL,
+    CRAN_EXDQLM_DOI_URL,
+    CRAN_EXDQLM_URL,
+    PROJECT1_URL,
+    SOFTWARE_CONTRACT_REL,
+    SOFTWARE_MANIFEST_REL,
+    check_archive_status,
+)
+
 
 CUTOFF_ORDER = ["20210123", "20211112", "20211221", "20220511", "20221225"]
 CUTOFF_DISPLAY = {
@@ -86,14 +96,6 @@ REQUIRED_CLAIMS = [
     ("corrections", "separate eight-day NWS-horizon comparison"),
     ("corrections", "NWS is omitted from the 28-day table"),
 ]
-
-SOFTWARE_MANIFEST_REL = "artifacts/software_availability/software_availability_manifest.json"
-SOFTWARE_CONTRACT_REL = "repro/run/REVISION_SOFTWARE_REPRODUCIBILITY_CONTRACT_20260615.md"
-ARTICLE_SOFTWARE_DOC_REL = "docs/software_availability_contract.md"
-CRAN_EXDQLM_URL = "https://CRAN.R-project.org/package=exdqlm"
-CRAN_EXDQLM_DOI_URL = "https://doi.org/10.32614/CRAN.package.exdqlm"
-PROJECT1_URL = "https://github.com/AntonioAPDL/Project1"
-
 
 @dataclass
 class CheckRow:
@@ -488,11 +490,8 @@ def audit_software_availability(
     record("workflow_public_url", workflow.get("public_url") == PROJECT1_URL, str(workflow.get("public_url", "")))
     record("article_public_url", "Evironmetrics---REVISED-DOC-Corrected-2" in str(article_repo.get("public_url", "")), str(article_repo.get("public_url", "")))
     record("corrections_public_url", "Corrections---Project-1" in str(corrections_repo.get("public_url", "")), str(corrections_repo.get("public_url", "")))
-    record(
-        "archive_status_pending",
-        archive.get("workflow_archive_status") == "pending_final_release" and archive.get("workflow_archive_doi") == "pending",
-        json.dumps(archive, sort_keys=True),
-    )
+    archive_check = check_archive_status(archive)
+    record("archive_status_coherent", archive_check.ok, archive_check.detail)
     record(
         "static_commit_policy",
         "reason_static_commits_are_not_recorded" in validation_policy,
@@ -516,7 +515,6 @@ def audit_software_availability(
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
         PROJECT1_URL,
-        "permanent archival release of the workflow repository will be created",
         "compact provenance manifests",
     ]
     required_corrections = [
@@ -524,17 +522,30 @@ def audit_software_availability(
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
         PROJECT1_URL,
-        "Before final resubmission",
         "compact provenance manifests",
     ]
+    if archive_check.is_pending:
+        required_article.append("permanent archival release of the workflow repository will be created")
+        required_corrections.append("Before final resubmission")
+    elif archive_check.is_final:
+        required_article.append(archive_check.doi)
+        required_corrections.append(archive_check.doi)
     for claim in required_article:
         record(f"article_required:{claim}", claim in article_text, claim)
     for claim in required_corrections:
         record(f"corrections_required:{claim}", claim in corrections_text, claim)
-    if archive.get("workflow_archive_doi") == "pending":
+    if archive_check.is_pending:
         for claim in ["workflow repository has been archived", "workflow has been archived", "archived workflow DOI"]:
             record(f"article_no_premature_archive_claim:{claim}", claim not in article_text, claim)
             record(f"corrections_no_premature_archive_claim:{claim}", claim not in corrections_text, claim)
+    elif archive_check.is_final:
+        for claim in [
+            "permanent archival release of the workflow repository will be created",
+            "Before final resubmission, we will archive",
+            "workflow archive DOI: pending",
+        ]:
+            record(f"article_no_stale_pending_claim:{claim}", claim not in article_text, claim)
+            record(f"corrections_no_stale_pending_claim:{claim}", claim not in corrections_text, claim)
 
     return checks, rows, sources
 
