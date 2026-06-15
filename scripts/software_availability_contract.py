@@ -9,6 +9,16 @@ from typing import Any
 SOFTWARE_MANIFEST_REL = "artifacts/software_availability/software_availability_manifest.json"
 SOFTWARE_CONTRACT_REL = "repro/run/REVISION_SOFTWARE_REPRODUCIBILITY_CONTRACT_20260615.md"
 ARTICLE_SOFTWARE_DOC_REL = "docs/software_availability_contract.md"
+WORKFLOW_README_REL = "README.md"
+WORKFLOW_CITATION_REL = "CITATION.cff"
+WORKFLOW_RELEASE_NOTES_REL = "RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md"
+WORKFLOW_ARCHIVE_READINESS_REL = "docs/workflow_archive_readiness_20260615.md"
+WORKFLOW_RELEASE_READINESS_RELS = [
+    WORKFLOW_README_REL,
+    WORKFLOW_CITATION_REL,
+    WORKFLOW_RELEASE_NOTES_REL,
+    WORKFLOW_ARCHIVE_READINESS_REL,
+]
 CRAN_EXDQLM_URL = "https://CRAN.R-project.org/package=exdqlm"
 CRAN_EXDQLM_DOI_URL = "https://doi.org/10.32614/CRAN.package.exdqlm"
 PROJECT1_URL = "https://github.com/AntonioAPDL/Project1"

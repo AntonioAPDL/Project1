@@ -36,8 +36,26 @@ Use a layered reproducibility contract:
 - Corrections HE-5 response mirrors the manuscript wording.
 - Article repo contains:
   `artifacts/software_availability/software_availability_manifest.json`
+- Workflow repo contains root public-facing release-readiness files:
+  `README.md`, `CITATION.cff`, and
+  `RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md`.
+- Workflow repo contains final archive checklist:
+  `docs/workflow_archive_readiness_20260615.md`.
 - Workflow validators check the manifest and prose.
 - Validation reports record current commit metadata at validation time.
+
+## Archive-Readiness Patch
+
+The current implementation deliberately stops at archive readiness rather than
+claiming a final archive. The root citation metadata uses
+`version: "pending-final-archive"` and does not contain a workflow DOI. The
+release notes and checklist describe the exact remaining final-freeze steps:
+confirm the license, create the release tag, archive the release, replace all
+`pending` DOI fields, and rerun every validator and compile.
+
+The root license is still an author decision. Do not infer a license from
+dependencies or from the CRAN `exdqlm` package; confirm the intended workflow
+repository license before minting the final archived release.
 
 ## Follow-Up After Final Article Freeze
 

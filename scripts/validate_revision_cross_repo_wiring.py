@@ -49,6 +49,11 @@ from software_availability_contract import (
     PROJECT1_URL,
     SOFTWARE_CONTRACT_REL,
     SOFTWARE_MANIFEST_REL,
+    WORKFLOW_ARCHIVE_READINESS_REL,
+    WORKFLOW_CITATION_REL,
+    WORKFLOW_README_REL,
+    WORKFLOW_RELEASE_NOTES_REL,
+    WORKFLOW_RELEASE_READINESS_RELS,
     check_archive_status,
 )
 
@@ -668,12 +673,24 @@ def audit_software_availability(
     corrections_repo = data.get("corrections_repository", {})
     archive = data.get("archive_status", {})
     validation_policy = data.get("validation_policy", {})
+    release_readiness_files = workflow.get("release_readiness_files", {})
 
     record("schema_version", data.get("schema_version") == "revision_software_availability_v1", str(data.get("schema_version", "")))
     record("cran_package_url", package.get("cran_package_url") == CRAN_EXDQLM_URL, str(package.get("cran_package_url", "")))
     record("cran_package_doi", package.get("package_doi") == CRAN_EXDQLM_DOI_URL, str(package.get("package_doi", "")))
     record("cran_version_recorded", package.get("cran_version_verified_for_contract") == "1.0.0", str(package.get("cran_version_verified_for_contract", "")))
     record("workflow_public_url", workflow.get("public_url") == PROJECT1_URL, str(workflow.get("public_url", "")))
+    expected_release_files = {
+        "readme": WORKFLOW_README_REL,
+        "citation": WORKFLOW_CITATION_REL,
+        "pending_release_notes": WORKFLOW_RELEASE_NOTES_REL,
+        "archive_readiness_checklist": WORKFLOW_ARCHIVE_READINESS_REL,
+    }
+    record(
+        "workflow_release_readiness_manifest",
+        release_readiness_files == expected_release_files,
+        json.dumps(release_readiness_files, sort_keys=True),
+    )
     record("article_public_url", "Evironmetrics---REVISED-DOC-Corrected-2" in str(article_repo.get("public_url", "")), str(article_repo.get("public_url", "")))
     record("corrections_public_url", "Corrections---Project-1" in str(corrections_repo.get("public_url", "")), str(corrections_repo.get("public_url", "")))
     archive_check = check_archive_status(archive)
@@ -691,6 +708,34 @@ def audit_software_availability(
     for path in [workflow_contract, article_contract]:
         if path.exists():
             sources.append(path)
+    readiness_paths = [workflow_root / rel for rel in WORKFLOW_RELEASE_READINESS_RELS]
+    for readiness_path in readiness_paths:
+        record(f"workflow_release_readiness_exists:{readiness_path.relative_to(workflow_root)}", readiness_path.exists(), str(readiness_path.relative_to(workflow_root)))
+        if readiness_path.exists():
+            sources.append(readiness_path)
+
+    readme_path = workflow_root / WORKFLOW_README_REL
+    citation_path = workflow_root / WORKFLOW_CITATION_REL
+    release_notes_path = workflow_root / WORKFLOW_RELEASE_NOTES_REL
+    checklist_path = workflow_root / WORKFLOW_ARCHIVE_READINESS_REL
+    if readme_path.exists():
+        readme_text = readme_path.read_text(encoding="utf-8")
+        record("readme_names_project1", PROJECT1_URL in readme_text, WORKFLOW_README_REL)
+        record("readme_names_cran_package", CRAN_EXDQLM_URL in readme_text, WORKFLOW_README_REL)
+        record("readme_names_contract", SOFTWARE_CONTRACT_REL in readme_text, WORKFLOW_README_REL)
+        record("readme_archive_pending", "pending final revision freeze" in readme_text, WORKFLOW_README_REL)
+    if citation_path.exists():
+        citation_text = citation_path.read_text(encoding="utf-8")
+        record("citation_pending_version", 'version: "pending-final-archive"' in citation_text, WORKFLOW_CITATION_REL)
+        record("citation_no_workflow_doi_field", "\ndoi:" not in citation_text, WORKFLOW_CITATION_REL)
+        record("citation_names_project1", PROJECT1_URL in citation_text, WORKFLOW_CITATION_REL)
+    if release_notes_path.exists():
+        release_notes_text = release_notes_path.read_text(encoding="utf-8")
+        record("release_notes_archive_pending", "pending final revision freeze" in release_notes_text, WORKFLOW_RELEASE_NOTES_REL)
+    if checklist_path.exists():
+        checklist_text = checklist_path.read_text(encoding="utf-8")
+        record("archive_checklist_license_gate", "Workflow repository license is confirmed by the authors" in checklist_text, WORKFLOW_ARCHIVE_READINESS_REL)
+        record("archive_checklist_final_doi_gate", "Final workflow release is archived with a permanent DOI" in checklist_text, WORKFLOW_ARCHIVE_READINESS_REL)
 
     article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
@@ -724,6 +769,14 @@ def audit_software_availability(
         for claim in ["workflow repository has been archived", "workflow has been archived", "archived workflow DOI"]:
             record(f"article_no_premature_archive_claim:{claim}", claim not in article_text, claim)
             record(f"corrections_no_premature_archive_claim:{claim}", claim not in corrections_text, claim)
+            for readiness_path in readiness_paths:
+                if readiness_path.exists():
+                    readiness_text = readiness_path.read_text(encoding="utf-8")
+                    record(
+                        f"workflow_no_premature_archive_claim:{readiness_path.relative_to(workflow_root)}:{claim}",
+                        claim not in readiness_text,
+                        claim,
+                    )
     elif archive_check.is_final:
         for claim in [
             "permanent archival release of the workflow repository will be created",

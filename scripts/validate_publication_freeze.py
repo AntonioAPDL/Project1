@@ -47,6 +47,11 @@ from software_availability_contract import (
     PROJECT1_URL,
     SOFTWARE_CONTRACT_REL,
     SOFTWARE_MANIFEST_REL,
+    WORKFLOW_ARCHIVE_READINESS_REL,
+    WORKFLOW_CITATION_REL,
+    WORKFLOW_README_REL,
+    WORKFLOW_RELEASE_NOTES_REL,
+    WORKFLOW_RELEASE_READINESS_RELS,
     check_archive_status,
 )
 
@@ -622,6 +627,7 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
     corrections_repo = manifest.get("corrections_repository", {})
     archive = manifest.get("archive_status", {})
     validation_policy = manifest.get("validation_policy", {})
+    release_readiness_files = workflow.get("release_readiness_files", {})
 
     add(
         checks,
@@ -634,6 +640,19 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
     add(checks, "software_availability", "cran_package_doi", package.get("package_doi") == CRAN_EXDQLM_DOI_URL, str(package.get("package_doi", "")))
     add(checks, "software_availability", "cran_version_recorded", package.get("cran_version_verified_for_contract") == "1.0.0", str(package.get("cran_version_verified_for_contract", "")))
     add(checks, "software_availability", "workflow_url", workflow.get("public_url") == PROJECT1_URL, str(workflow.get("public_url", "")))
+    expected_release_files = {
+        "readme": WORKFLOW_README_REL,
+        "citation": WORKFLOW_CITATION_REL,
+        "pending_release_notes": WORKFLOW_RELEASE_NOTES_REL,
+        "archive_readiness_checklist": WORKFLOW_ARCHIVE_READINESS_REL,
+    }
+    add(
+        checks,
+        "software_availability",
+        "workflow_release_readiness_manifest",
+        release_readiness_files == expected_release_files,
+        json.dumps(release_readiness_files, sort_keys=True),
+    )
     add(
         checks,
         "software_availability",
@@ -671,8 +690,33 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         "reason_static_commits_are_not_recorded" in validation_policy,
         str(validation_policy.get("reason_static_commits_are_not_recorded", "")),
     )
+    for rel in WORKFLOW_RELEASE_READINESS_RELS:
+        add(checks, "software_availability", f"workflow_release_readiness_exists:{rel}", (workflow_root / rel).exists(), rel)
     remote_url = git_value(workflow_root, "remote", "get-url", "origin")
     add(checks, "software_availability", "workflow_remote_matches_project1", "AntonioAPDL/Project1" in remote_url, remote_url)
+
+    readme_path = workflow_root / WORKFLOW_README_REL
+    citation_path = workflow_root / WORKFLOW_CITATION_REL
+    release_notes_path = workflow_root / WORKFLOW_RELEASE_NOTES_REL
+    checklist_path = workflow_root / WORKFLOW_ARCHIVE_READINESS_REL
+    if readme_path.exists():
+        readme_text = readme_path.read_text(encoding="utf-8")
+        add(checks, "software_availability", "readme_names_project1", PROJECT1_URL in readme_text, WORKFLOW_README_REL)
+        add(checks, "software_availability", "readme_names_cran_package", CRAN_EXDQLM_URL in readme_text, WORKFLOW_README_REL)
+        add(checks, "software_availability", "readme_names_contract", SOFTWARE_CONTRACT_REL in readme_text, WORKFLOW_README_REL)
+        add(checks, "software_availability", "readme_archive_pending", "pending final revision freeze" in readme_text, WORKFLOW_README_REL)
+    if citation_path.exists():
+        citation_text = citation_path.read_text(encoding="utf-8")
+        add(checks, "software_availability", "citation_pending_version", 'version: "pending-final-archive"' in citation_text, WORKFLOW_CITATION_REL)
+        add(checks, "software_availability", "citation_no_workflow_doi_field", "\ndoi:" not in citation_text, WORKFLOW_CITATION_REL)
+        add(checks, "software_availability", "citation_names_project1", PROJECT1_URL in citation_text, WORKFLOW_CITATION_REL)
+    if release_notes_path.exists():
+        release_notes_text = release_notes_path.read_text(encoding="utf-8")
+        add(checks, "software_availability", "release_notes_archive_pending", "pending final revision freeze" in release_notes_text, WORKFLOW_RELEASE_NOTES_REL)
+    if checklist_path.exists():
+        checklist_text = checklist_path.read_text(encoding="utf-8")
+        add(checks, "software_availability", "archive_checklist_license_gate", "Workflow repository license is confirmed by the authors" in checklist_text, WORKFLOW_ARCHIVE_READINESS_REL)
+        add(checks, "software_availability", "archive_checklist_final_doi_gate", "Final workflow release is archived with a permanent DOI" in checklist_text, WORKFLOW_ARCHIVE_READINESS_REL)
 
     article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
@@ -709,6 +753,11 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         for claim in premature_archive_claims:
             add(checks, "software_availability", f"article_no_premature_archive_claim:{claim}", claim not in article_text, claim)
             add(checks, "software_availability", f"corrections_no_premature_archive_claim:{claim}", claim not in corrections_text, claim)
+            for rel in WORKFLOW_RELEASE_READINESS_RELS:
+                readiness_path = workflow_root / rel
+                if readiness_path.exists():
+                    readiness_text = readiness_path.read_text(encoding="utf-8")
+                    add(checks, "software_availability", f"workflow_no_premature_archive_claim:{rel}:{claim}", claim not in readiness_text, claim)
     elif archive_check.is_final:
         stale_pending_claims = [
             "permanent archival release of the workflow repository will be created",

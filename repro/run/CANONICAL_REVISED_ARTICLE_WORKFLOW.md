@@ -142,14 +142,29 @@ Canonical source:
   - `artifacts/five_cutoff_main_model_synthesis/`
   - `artifacts/representative_selected_model_2022_12_25/`
 
-### B. Historical-summary support assets
+### B. Selected-output support assets
 
 Canonical source:
-- workflow-linked historical figure path
+- selected 2022-12-25 `exAL-M-T1` posterior-output authority used for the
+  representative synthesis, selected quantile-dynamic diagnostics, long-cycle
+  component diagnostics, and selected component evolution gallery.
+- article-side bundle:
+  - `artifacts/representative_selected_model_2022_12_25/`
+
+Important:
+- selected diagnostic figures must stay tied to the same posterior-output authority as the selected synthesis figures;
+- these diagnostics show fitted quantile-location/component summaries, not a
+  separate historical forecast-validation exercise.
+
+### C. Historical-only appendix reference assets
+
+Canonical source:
+- workflow-linked historical-only support path retained for appendix reference
+  material that is not the selected-output authority.
 - article-side bundle:
   - `artifacts/historical_support_from_current_models/`
 
-### C. Workflow-linked support assets
+### D. Workflow-linked support assets
 
 Canonical source:
 - corrected `v2` cutoff-specific setup/support workflow:
@@ -180,7 +195,7 @@ Archival note:
 - the older `generated/setup_support_by_cutoff/` family is superseded and
   should not be recreated as a canonical provenance path.
 
-### D. Workflow-linked appendix reference assets
+### E. Workflow-linked appendix reference assets
 
 Canonical source:
 - unified post -> figure-runner -> `40_figures.R`
@@ -190,14 +205,14 @@ Canonical source:
 This bundle is now mainly archival/supporting for workflow-linked appendix assets such as:
 - `posterior_samples_counter_valid.png`
 
-### E. HE2 benchmark table freeze
+### F. HE2 benchmark table freeze
 
 Canonical source:
 - `reports/he2_publication_manifest/he2_bayesian_publication_manifest.md`
 - article-side snapshot:
   - `artifacts/he2_publication_freeze/`
 
-### F. Historical-support contract audit
+### G. Historical-support contract audit
 
 Canonical source:
 - `reports/he2_publication_manifest/historical_support_audit_20260507/historical_support_audit.md`

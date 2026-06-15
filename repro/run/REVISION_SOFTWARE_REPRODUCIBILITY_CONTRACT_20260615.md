@@ -39,6 +39,14 @@ than the full Santa Cruz basin workflow.
   `repro/run/CANONICAL_REVISED_ARTICLE_WORKFLOW.md`
 - Environment strategy:
   `repro/ENV_LOCK_STRATEGY.md`
+- Public workflow overview:
+  `README.md`
+- Citation metadata:
+  `CITATION.cff`
+- Pending-final-archive release notes:
+  `RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md`
+- Final archive readiness checklist:
+  `docs/workflow_archive_readiness_20260615.md`
 
 The workflow repository contains the unified run entrypoint, model-family
 configuration, post-processing, table generation, figure generation, and
@@ -84,12 +92,14 @@ Before final resubmission:
 5. Run the workflow-side cross-repo wiring validator.
 6. Compile the revised article.
 7. Compile the corrections response.
-8. Confirm the workflow repository has an appropriate license and release notes.
-9. Create a GitHub release for the workflow repository.
-10. Archive that release with Zenodo, OSF, or an equivalent permanent archive.
-11. Replace the manuscript and manifest `pending` archive DOI fields with the
+8. Confirm the workflow repository has an appropriate author-approved license.
+9. Confirm root README, citation metadata, pending-final-archive release notes,
+   and archive checklist are current.
+10. Create a GitHub release for the workflow repository.
+11. Archive that release with Zenodo, OSF, or an equivalent permanent archive.
+12. Replace the manuscript and manifest `pending` archive DOI fields with the
     final DOI.
-12. Re-run all validators and compiles after the DOI update.
+13. Re-run all validators and compiles after the DOI update.
 
 ## Validation Gates
 
@@ -108,6 +118,8 @@ The following checks must remain automated:
   validation time. Static manifests should not store their own repository's
   current commit SHA, because that SHA would become stale as soon as the manifest
   is committed.
+- While the final workflow DOI is pending, root citation metadata and release
+  notes must describe the archive as pending and must not include a workflow DOI.
 
 ## Canonical Commands
 
