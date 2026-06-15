@@ -118,6 +118,7 @@ FORBIDDEN_CLAIMS = [
     "the main contribution will be presented",
     "does not currently distinguish meteorological and hydrological uncertainty",
     "we will reorganize the introduction",
+    "we will correct it",
     "local hydrological covariates",
     "current A/B/C presentation does not make the connection",
     "we will present the final forecasting specification",
@@ -150,6 +151,7 @@ REQUIRED_CLAIMS = [
     ("article", "Hydrological uncertainty arises from model structure, parameters, states, and observations"),
     ("article", "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields"),
     ("article", "local hydrometeorological covariates"),
+    ("article", "\\subsection{Extended Asymmetric Laplace Likelihood}"),
     ("article", "The benchmark variants reported in Section~\\ref{sec:forecastvalidation} are tied to this formulation"),
     ("article", "the observation likelihood gives the \\(N\\), AL, and exAL rows"),
     ("article", "the active source set gives the \\(U\\) and \\(M\\) rows"),
@@ -178,6 +180,8 @@ REQUIRED_CLAIMS = [
     ("corrections", "The revised introduction now broadens this statement"),
     ("corrections", "uses both conceptual and physically based models"),
     ("corrections", "simpler to specify, calibrate, and deploy in forecasting applications"),
+    ("corrections", "typographical error rather than intended terminology"),
+    ("corrections", "The revised manuscript no longer uses this term"),
     ("corrections", "The revised introduction now separates these concepts before introducing the Bayesian framework"),
     ("corrections", "hydrological uncertainty with river-system structure, parameters, states, and observations"),
     ("corrections", "meteorological uncertainty with precipitation and atmospheric forcing fields"),
@@ -550,6 +554,21 @@ def audit_prose_claims(article_root: Path, corrections_root: Path) -> tuple[list
             status = "fail" if present else "pass"
             rows.append({"repo": repo_name, "claim_type": "forbidden", "claim": claim, "status": status})
             checks.append(CheckRow("prose_claims", f"{repo_name}:forbidden:{claim}", status, "present" if present else "absent"))
+    article_typo_present = "flexile" in texts["article"].lower()
+    rows.append({
+        "repo": "article",
+        "claim_type": "forbidden",
+        "claim": "flexile",
+        "status": "fail" if article_typo_present else "pass",
+    })
+    checks.append(
+        CheckRow(
+            "prose_claims",
+            "article:forbidden:flexile",
+            "fail" if article_typo_present else "pass",
+            "present" if article_typo_present else "absent",
+        )
+    )
     for repo_name, claim in REQUIRED_CLAIMS:
         present = claim in texts[repo_name]
         status = "pass" if present else "fail"

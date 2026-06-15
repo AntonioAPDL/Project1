@@ -459,6 +459,7 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "Hydrological uncertainty arises from model structure, parameters, states, and observations",
         "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields",
         "local hydrometeorological covariates",
+        r"\subsection{Extended Asymmetric Laplace Likelihood}",
         r"The benchmark variants reported in Section~\ref{sec:forecastvalidation} are tied to this formulation",
         r"the observation likelihood gives the \(N\), AL, and exAL rows",
         r"the active source set gives the \(U\) and \(M\) rows",
@@ -493,6 +494,8 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "The revised introduction now broadens this statement",
         "uses both conceptual and physically based models",
         "simpler to specify, calibrate, and deploy in forecasting applications",
+        "typographical error rather than intended terminology",
+        "The revised manuscript no longer uses this term",
         "The revised introduction now separates these concepts before introducing the Bayesian framework",
         "hydrological uncertainty with river-system structure, parameters, states, and observations",
         "meteorological uncertainty with precipitation and atmospheric forcing fields",
@@ -521,6 +524,7 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "does not currently distinguish meteorological and hydrological uncertainty",
         "we will reorganize the introduction",
         "we will broaden it",
+        "we will correct it",
         "local hydrological covariates",
         "current A/B/C presentation does not make the connection",
         "we will present the final forecasting specification",
@@ -538,6 +542,7 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
     for claim in forbidden:
         add(checks, "prose", f"article_forbidden:{claim}", claim not in article, claim)
         add(checks, "prose", f"corrections_forbidden:{claim}", claim not in corrections, claim)
+    add(checks, "prose", "article_forbidden:flexile", "flexile" not in article.lower(), "flexile")
 
 
 def check_software_availability(workflow_root: Path, article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
