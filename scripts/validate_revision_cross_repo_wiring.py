@@ -119,6 +119,9 @@ FORBIDDEN_CLAIMS = [
     "does not currently distinguish meteorological and hydrological uncertainty",
     "we will reorganize the introduction",
     "local hydrological covariates",
+    "current A/B/C presentation does not make the connection",
+    "we will present the final forecasting specification",
+    "We will also revise the opening of the results section",
     "TODO[",
 ]
 REQUIRED_CLAIMS = [
@@ -131,6 +134,12 @@ REQUIRED_CLAIMS = [
     ("article", "Hydrological uncertainty arises from model structure, parameters, states, and observations"),
     ("article", "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields"),
     ("article", "local hydrometeorological covariates"),
+    ("article", "The benchmark variants reported in Section~\\ref{sec:forecastvalidation} are tied to this formulation"),
+    ("article", "the observation likelihood gives the \\(N\\), AL, and exAL rows"),
+    ("article", "the active source set gives the \\(U\\) and \\(M\\) rows"),
+    ("article", "the forecast-window treatment of the transfer block gives the \\(T0\\) and \\(T1\\) rows"),
+    ("article", "nine Bayesian variants of the common state-space framework"),
+    ("article", "Because exAL-M-T1 is the selected extended-likelihood multivariate specification"),
     ("corrections", "separate eight-day NWS-horizon comparison"),
     ("corrections", "NWS is omitted from the 28-day table"),
     ("corrections", "centering the forecasting analysis on multiple rolling-origin cutoffs"),
@@ -140,6 +149,11 @@ REQUIRED_CLAIMS = [
     ("corrections", "hydrological uncertainty with river-system structure, parameters, states, and observations"),
     ("corrections", "meteorological uncertainty with precipitation and atmospheric forcing fields"),
     ("corrections", "using available forecast and retrospective products to produce calibrated predictive distributions"),
+    ("corrections", "no longer uses the staged A/B/C presentation as the organizing device"),
+    ("corrections", "one common state-space formulation"),
+    ("corrections", "forecast-validation section maps the reported benchmark rows through the \\(L\\)-\\(S\\)-\\(T\\) labels"),
+    ("corrections", "likelihood family, source set, and forecast-window transfer treatment"),
+    ("corrections", "selected \\texttt{exAL-M-T1} specification"),
 ]
 
 @dataclass

@@ -447,6 +447,12 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "Hydrological uncertainty arises from model structure, parameters, states, and observations",
         "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields",
         "local hydrometeorological covariates",
+        r"The benchmark variants reported in Section~\ref{sec:forecastvalidation} are tied to this formulation",
+        r"the observation likelihood gives the \(N\), AL, and exAL rows",
+        r"the active source set gives the \(U\) and \(M\) rows",
+        r"the forecast-window treatment of the transfer block gives the \(T0\) and \(T1\) rows",
+        "nine Bayesian variants of the common state-space framework",
+        "Because exAL-M-T1 is the selected extended-likelihood multivariate specification",
     ]
     required_corrections = [
         "best corrected Bayesian row at 12/25/2022",
@@ -462,6 +468,11 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "hydrological uncertainty with river-system structure, parameters, states, and observations",
         "meteorological uncertainty with precipitation and atmospheric forcing fields",
         "using available forecast and retrospective products to produce calibrated predictive distributions",
+        "no longer uses the staged A/B/C presentation as the organizing device",
+        "one common state-space formulation",
+        r"forecast-validation section maps the reported benchmark rows through the \(L\)-\(S\)-\(T\) labels",
+        "likelihood family, source set, and forecast-window transfer treatment",
+        r"selected \texttt{exAL-M-T1} specification",
     ]
     forbidden = [
         "best-performing model in all five cutoffs",
@@ -475,6 +486,9 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "does not currently distinguish meteorological and hydrological uncertainty",
         "we will reorganize the introduction",
         "local hydrological covariates",
+        "current A/B/C presentation does not make the connection",
+        "we will present the final forecasting specification",
+        "We will also revise the opening of the results section",
     ]
     for claim in required_article:
         add(checks, "prose", f"article_required:{claim}", claim in article, claim)
