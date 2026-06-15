@@ -45,6 +45,11 @@ from reviewer1_overview_contract import (
     R1_OVERVIEW_CONTRACT_REL,
     check_r1_overview_text,
 )
+from reviewer1_uncertainty_contract import (
+    ARTICLE_R1_UNCERTAINTY_DOC_REL,
+    R1_UNCERTAINTY_CONTRACT_REL,
+    check_r1_uncertainty_text,
+)
 from software_availability_contract import (
     ARTICLE_SOFTWARE_DOC_REL,
     CRAN_EXDQLM_DOI_URL,
@@ -863,6 +868,18 @@ def check_reviewer1_overview(workflow_root: Path, article_root: Path, correction
         add(checks, "reviewer1_overview", row.item, row.ok, row.detail)
 
 
+def check_reviewer1_uncertainty(workflow_root: Path, article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
+    workflow_doc = workflow_root / R1_UNCERTAINTY_CONTRACT_REL
+    article_doc = article_root / ARTICLE_R1_UNCERTAINTY_DOC_REL
+    add(checks, "reviewer1_uncertainty", "workflow_contract_doc", workflow_doc.exists(), R1_UNCERTAINTY_CONTRACT_REL)
+    add(checks, "reviewer1_uncertainty", "article_contract_doc", article_doc.exists(), ARTICLE_R1_UNCERTAINTY_DOC_REL)
+
+    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+    for row in check_r1_uncertainty_text(article_text, corrections_text):
+        add(checks, "reviewer1_uncertainty", row.item, row.ok, row.detail)
+
+
 def repo_metadata(repo: Path) -> dict[str, str]:
     return {
         "path": str(repo),
@@ -957,6 +974,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     check_forecast_design(workflow_root, article_root, corrections_root, checks)
     check_latest_forecast_issue(workflow_root, article_root, corrections_root, checks)
     check_reviewer1_overview(workflow_root, article_root, corrections_root, checks)
+    check_reviewer1_uncertainty(workflow_root, article_root, corrections_root, checks)
     check_runtime_feasibility(workflow_root, article_root, corrections_root, checks)
     check_software_availability(workflow_root, article_root, corrections_root, checks)
 

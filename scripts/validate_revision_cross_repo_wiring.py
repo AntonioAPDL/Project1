@@ -47,6 +47,11 @@ from reviewer1_overview_contract import (
     R1_OVERVIEW_CONTRACT_REL,
     check_r1_overview_text,
 )
+from reviewer1_uncertainty_contract import (
+    ARTICLE_R1_UNCERTAINTY_DOC_REL,
+    R1_UNCERTAINTY_CONTRACT_REL,
+    check_r1_uncertainty_text,
+)
 from software_availability_contract import (
     ARTICLE_SOFTWARE_DOC_REL,
     CRAN_EXDQLM_DOI_URL,
@@ -684,6 +689,39 @@ def audit_reviewer1_overview(
     return checks, rows, sources
 
 
+def audit_reviewer1_uncertainty(
+    workflow_root: Path,
+    article_root: Path,
+    corrections_root: Path,
+) -> tuple[list[CheckRow], list[dict[str, object]], list[Path]]:
+    checks: list[CheckRow] = []
+    rows: list[dict[str, object]] = []
+    sources: list[Path] = []
+
+    def record(item: str, ok: bool, detail: str) -> None:
+        status = "pass" if ok else "fail"
+        checks.append(CheckRow("reviewer1_uncertainty", item, status, detail))
+        rows.append({"item": item, "status": status, "detail": detail})
+
+    workflow_doc = workflow_root / R1_UNCERTAINTY_CONTRACT_REL
+    article_doc = article_root / ARTICLE_R1_UNCERTAINTY_DOC_REL
+    record("workflow_contract_doc_exists", workflow_doc.exists(), R1_UNCERTAINTY_CONTRACT_REL)
+    record("article_contract_doc_exists", article_doc.exists(), ARTICLE_R1_UNCERTAINTY_DOC_REL)
+    for path in [workflow_doc, article_doc]:
+        if path.exists():
+            sources.append(path)
+
+    article_path = article_root / "wileyNJD-APA.tex"
+    corrections_path = corrections_root / "main.tex"
+    article_text = article_path.read_text(encoding="utf-8")
+    corrections_text = corrections_path.read_text(encoding="utf-8")
+    sources.extend([article_path, corrections_path])
+    for row in check_r1_uncertainty_text(article_text, corrections_text):
+        record(row.item, row.ok, row.detail)
+
+    return checks, rows, sources
+
+
 def audit_software_availability(
     workflow_root: Path,
     article_root: Path,
@@ -1140,6 +1178,10 @@ def main(argv: Iterable[str] | None = None) -> int:
     checks.extend(r1_overview_checks)
     source_paths.extend(r1_overview_sources)
 
+    r1_uncertainty_checks, r1_uncertainty_rows, r1_uncertainty_sources = audit_reviewer1_uncertainty(workflow_root, article_root, corrections_root)
+    checks.extend(r1_uncertainty_checks)
+    source_paths.extend(r1_uncertainty_sources)
+
     forecast_checks, forecast_rows, forecast_sources = audit_forecast_design(workflow_root, article_root, corrections_root)
     checks.extend(forecast_checks)
     source_paths.extend(forecast_sources)
@@ -1169,6 +1211,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     write_csv(output_dir / "table_value_audit.csv", table_value_rows, ["table", "row_key", "column", "expected_rounded5", "observed", "abs_diff", "status"])
     write_csv(output_dir / "prose_claim_audit.csv", prose_rows, ["repo", "claim_type", "claim", "status"])
     write_csv(output_dir / "reviewer1_overview_audit.csv", r1_overview_rows, ["item", "status", "detail"])
+    write_csv(output_dir / "reviewer1_uncertainty_audit.csv", r1_uncertainty_rows, ["item", "status", "detail"])
     write_csv(output_dir / "forecast_design_audit.csv", forecast_rows, ["item", "status", "detail"])
     write_csv(output_dir / "latest_forecast_issue_audit.csv", latest_issue_rows, ["item", "status", "detail"])
     write_csv(output_dir / "software_availability_audit.csv", software_rows, ["item", "status", "detail"])
