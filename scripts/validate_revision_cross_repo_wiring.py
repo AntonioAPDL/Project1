@@ -126,6 +126,8 @@ FORBIDDEN_CLAIMS = [
     "We agree that the current organization of Section 3 is not clear enough",
     "we will replace vague headings",
     "This will separate setup, historical behavior, and forecasting evidence more clearly",
+    "The original labeling of Tables 1 and 2 was inconsistent: the entries reported there are posterior medians",
+    "Posterior Means and 95\\% Credible Intervals for the Source-Specific",
     "local hydrological covariates",
     "current A/B/C presentation does not make the connection",
     "we will present the final forecasting specification",
@@ -185,6 +187,9 @@ REQUIRED_CLAIMS = [
     ("article", "the forecast-window treatment of the transfer block gives the \\(T0\\) and \\(T1\\) rows"),
     ("article", "nine Bayesian variants of the common state-space framework"),
     ("article", "Because exAL-M-T1 is the selected extended-likelihood multivariate specification"),
+    ("article", "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates"),
+    ("article", "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Weight Coefficients"),
+    ("article", "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters"),
     ("article", "probability integral transform (PIT) diagnostics"),
     ("article", "For reproducibility, implementation pseudocode for the VB algorithm is provided"),
     ("article", "Its role is illustrative"),
@@ -226,6 +231,9 @@ REQUIRED_CLAIMS = [
     ("corrections", "Forecast Validation Results"),
     ("corrections", "Interpretation of the Selected Specification"),
     ("corrections", "rather than as a second forecast-validation exercise"),
+    ("corrections", "representative transfer-function covariate table reports posterior means"),
+    ("corrections", "tables report posterior medians with 95\\% credible intervals"),
+    ("corrections", "table-specific export contract"),
     ("corrections", "The revised introduction now separates these concepts before introducing the Bayesian framework"),
     ("corrections", "hydrological uncertainty with river-system structure, parameters, states, and observations"),
     ("corrections", "meteorological uncertainty with precipitation and atmospheric forcing fields"),
@@ -588,8 +596,12 @@ def audit_corrections_inputs(corrections_root: Path) -> tuple[list[CheckRow], li
 def audit_prose_claims(article_root: Path, corrections_root: Path) -> tuple[list[CheckRow], list[dict[str, object]]]:
     checks: list[CheckRow] = []
     rows: list[dict[str, object]] = []
+    generated_tables = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((article_root / "tables" / "generated_tex").glob("*.tex"))
+    )
     texts = {
-        "article": (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8"),
+        "article": (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8") + "\n" + generated_tables,
         "corrections": (corrections_root / "main.tex").read_text(encoding="utf-8"),
     }
     for repo_name, text in texts.items():

@@ -22,9 +22,10 @@ mock_gamma_sigma <- function() {
 test_that("post_export_gamma_sigma_tables writes deterministic schema and ordering", {
   td <- tempfile("posterior_tables_")
   dir.create(td, recursive = TRUE, showWarnings = FALSE)
+  mock <- mock_gamma_sigma()
 
   out <- post_export_gamma_sigma_tables(
-    all_quantiles = mock_gamma_sigma(),
+    all_quantiles = mock,
     output_dir = td,
     ci_digits = 5L,
     write_tex = TRUE,
@@ -47,6 +48,14 @@ test_that("post_export_gamma_sigma_tables writes deterministic schema and orderi
   expect_equal(sort(unique(out$sigma$quantile)), c(5L, 20L, 35L, 50L, 65L, 80L, 95L))
   expect_equal(unique(out$gamma$source), c("USGS", "GLOFAS", "NWS"))
   expect_equal(unique(out$sigma$source), c("USGS", "GLOFAS", "NWS"))
+  expect_equal(
+    out$gamma$center[out$gamma$quantile == 5L & out$gamma$source == "USGS"],
+    mock$median[mock$variable == "Gamma" & mock$source == "USGS" & mock$quantile == "05th"]
+  )
+  expect_equal(
+    out$sigma$center[out$sigma$quantile == 95L & out$sigma$source == "NWS"],
+    mock$median[mock$variable == "Sigma" & mock$source == "NWS" & mock$quantile == "95th"]
+  )
 
   expect_true(all(nzchar(out$gamma$ci_str)))
   expect_true(all(nzchar(out$sigma$ci_str)))
@@ -119,6 +128,14 @@ test_that("post_export_covariate_effects_table writes expected columns and stabl
   )
   expect_equal(unique(out$table$covariate), c("Precipitation", "Soil Moisture", "PC1"))
   expect_true(all(out$table$time_index == 999L))
+  expect_equal(
+    out$table$center[out$table$covariate == "Precipitation" & out$table$quantile == 50L],
+    summary_df$Mean[summary_df$Component == 23L & summary_df$Quantile == "50th"]
+  )
+  expect_equal(
+    out$table$center[out$table$covariate == "PC1" & out$table$quantile == 95L],
+    summary_df$Mean[summary_df$Component == 25L & summary_df$Quantile == "95th"]
+  )
   expect_true(all(nzchar(out$table$ci_str)))
   expect_true(all(grepl("^-?[0-9]+\\.[0-9]{5}, -?[0-9]+\\.[0-9]{5}$", out$table$ci_str)))
   cov_tex <- readLines(file.path(td, "covariate_effects_summary.tex"), warn = FALSE)
@@ -126,6 +143,18 @@ test_that("post_export_covariate_effects_table writes expected columns and stabl
   expect_false(any(grepl("[0-9]+\\.[0-9]{6}", cov_tex)))
   expect_equal(nrow(out$manifest), 1L)
   expect_true(nzchar(out$manifest$sha256[[1L]]))
+})
+
+test_that("posterior table export README records mixed center policy", {
+  td <- tempfile("posterior_table_readme_")
+  dir.create(td, recursive = TRUE, showWarnings = FALSE)
+
+  post_write_table_exports_readme(td)
+  readme <- readLines(file.path(td, "posterior_table_exports_README.md"), warn = FALSE)
+
+  expect_true(any(grepl("gamma_summary\\.csv: gamma by source x quantile with center=posterior median", readme)))
+  expect_true(any(grepl("sigma_summary\\.csv: sigma by source x quantile with center=posterior median", readme)))
+  expect_true(any(grepl("covariate_effects_summary\\.csv: transfer-function covariate effects with center=posterior mean", readme)))
 })
 
 test_that("post_export_tables csv bytes are deterministic after stable ordering", {

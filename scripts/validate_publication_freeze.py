@@ -432,7 +432,11 @@ def check_selected_figures(article_root: Path, checks: list[Check]) -> None:
 
 
 def check_prose(article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
-    article = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    generated_tables = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((article_root / "tables" / "generated_tex").glob("*.tex"))
+    )
+    article = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8") + "\n" + generated_tables
     corrections = (corrections_root / "main.tex").read_text(encoding="utf-8")
     required_article = [
         "AL-M-T1 is the best corrected Bayesian row at 12/25/2022",
@@ -486,6 +490,9 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         r"the forecast-window treatment of the transfer block gives the \(T0\) and \(T1\) rows",
         "nine Bayesian variants of the common state-space framework",
         "Because exAL-M-T1 is the selected extended-likelihood multivariate specification",
+        "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates",
+        "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Weight Coefficients",
+        "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters",
         "probability integral transform (PIT) diagnostics",
         "For reproducibility, implementation pseudocode for the VB algorithm is provided",
         "Its role is illustrative",
@@ -533,6 +540,9 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "Forecast Validation Results",
         "Interpretation of the Selected Specification",
         "rather than as a second forecast-validation exercise",
+        "representative transfer-function covariate table reports posterior means",
+        "tables report posterior medians with 95\\% credible intervals",
+        "table-specific export contract",
         "The revised introduction now separates these concepts before introducing the Bayesian framework",
         "hydrological uncertainty with river-system structure, parameters, states, and observations",
         "meteorological uncertainty with precipitation and atmospheric forcing fields",
@@ -569,6 +579,8 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "We agree that the current organization of Section 3 is not clear enough",
         "we will replace vague headings",
         "This will separate setup, historical behavior, and forecasting evidence more clearly",
+        "The original labeling of Tables 1 and 2 was inconsistent: the entries reported there are posterior medians",
+        "Posterior Means and 95\\% Credible Intervals for the Source-Specific",
         "local hydrological covariates",
         "current A/B/C presentation does not make the connection",
         "we will present the final forecasting specification",
