@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 
@@ -10,6 +11,15 @@ LATEST_FORECAST_ISSUE_CONTRACT_REL = "docs/he7_latest_forecast_issue_contract_20
 ARTICLE_LATEST_FORECAST_ISSUE_DOC_REL = "docs/latest_forecast_issue_contract.md"
 
 LATEST_FORECAST_CUTOFFS = ["20210123", "20211112", "20211221", "20220511", "20221225"]
+
+REQUIRED_LATEST_FORECAST_CODE_EVIDENCE = {
+    "nws_extractor": "scripts/forecats_extract_nws_batch.py",
+    "glofas_extractor": "scripts/forecats_extract_glofas_batch.py",
+    "batch_driver": "scripts/forecats_batch.R",
+    "batch_config": "config/forecats_batch.site=11160500.single_retro_policy_pre1080.yaml",
+    "snapshot_stage": "R/unified/stages/stage_forecats.R",
+    "histfix_bundle_builder": "scripts/build_multimodel_v8_histfix_bundles.py",
+}
 
 REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS = [
     "using the latest forecast products issued at or before",
@@ -51,7 +61,10 @@ def _nested(data: dict[str, Any], *keys: str) -> Any:
     return cur
 
 
-def check_latest_forecast_issue_manifest(data: dict[str, Any]) -> list[LatestForecastIssueManifestCheck]:
+def check_latest_forecast_issue_manifest(
+    data: dict[str, Any],
+    workflow_root: Path | None = None,
+) -> list[LatestForecastIssueManifestCheck]:
     protocol = data.get("protocol", {})
     sources = data.get("sources", {})
     glofas = sources.get("glofas", {})
@@ -59,7 +72,7 @@ def check_latest_forecast_issue_manifest(data: dict[str, Any]) -> list[LatestFor
     claims = data.get("claims_policy", {})
     cutoffs = data.get("rolling_origin_cutoffs") or []
 
-    return [
+    checks = [
         LatestForecastIssueManifestCheck(
             "schema_version",
             data.get("schema_version") == "he7_latest_forecast_issue_v1",
@@ -107,9 +120,24 @@ def check_latest_forecast_issue_manifest(data: dict[str, Any]) -> list[LatestFor
         ),
         LatestForecastIssueManifestCheck(
             "code_evidence_paths",
-            bool(_nested(data, "code_evidence", "nws_extractor"))
-            and bool(_nested(data, "code_evidence", "glofas_extractor"))
-            and bool(_nested(data, "code_evidence", "batch_config")),
+            all(_nested(data, "code_evidence", key) == rel for key, rel in REQUIRED_LATEST_FORECAST_CODE_EVIDENCE.items()),
             str(data.get("code_evidence", {})),
         ),
     ]
+
+    if workflow_root is not None:
+        root = Path(workflow_root)
+        missing = [
+            f"{key}:{rel}"
+            for key, rel in REQUIRED_LATEST_FORECAST_CODE_EVIDENCE.items()
+            if not (root / rel).exists()
+        ]
+        checks.append(
+            LatestForecastIssueManifestCheck(
+                "code_evidence_files_exist",
+                not missing,
+                "all manifest code-evidence paths exist" if not missing else "; ".join(missing),
+            )
+        )
+
+    return checks

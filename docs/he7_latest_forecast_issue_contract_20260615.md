@@ -62,6 +62,19 @@ When the frozen runtime bundles are mounted, the optional helper
 legacy `*_weighted_daily.csv` aliases are byte-identical to the corresponding
 member-level forecast matrices for each publication cutoff.
 
+The latest local runtime alias audit was run as:
+
+```bash
+python3 scripts/audit_latest_forecast_issue_runtime_bundles.py \
+  --output-dir reports/latest_forecast_issue_runtime_bundle_audit_20260615_final
+```
+
+That audit covered the five publication cutoffs and both forecast sources
+(`5 x 2 = 10` alias checks) with zero failures. The report remains under
+`reports/` because it is runtime evidence rather than a lightweight
+manuscript-facing artifact; the tracked script and command above reproduce it
+whenever the frozen shared-input bundles are mounted.
+
 ## Non-Claims
 
 This contract does not relaunch any model, change any posterior output, or

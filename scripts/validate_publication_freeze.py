@@ -828,7 +828,7 @@ def check_latest_forecast_issue(workflow_root: Path, article_root: Path, correct
         return
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    for row in check_latest_forecast_issue_manifest(manifest):
+    for row in check_latest_forecast_issue_manifest(manifest, workflow_root=workflow_root):
         add(checks, "latest_forecast_issue", row.item, row.ok, row.detail)
 
     workflow_doc = workflow_root / LATEST_FORECAST_ISSUE_CONTRACT_REL

@@ -27,7 +27,7 @@ class HE7LatestForecastIssueContractTests(unittest.TestCase):
         manifest_path = ARTICLE_ROOT / LATEST_FORECAST_ISSUE_MANIFEST_REL
         self.assertTrue(manifest_path.exists(), f"missing latest-forecast manifest: {manifest_path}")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        failed = [row for row in check_latest_forecast_issue_manifest(manifest) if not row.ok]
+        failed = [row for row in check_latest_forecast_issue_manifest(manifest, workflow_root=ROOT) if not row.ok]
         self.assertFalse(failed, [f"{row.item}: {row.detail}" for row in failed])
 
     def test_docs_exist(self) -> None:

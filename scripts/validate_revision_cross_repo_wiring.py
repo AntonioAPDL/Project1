@@ -906,7 +906,7 @@ def audit_latest_forecast_issue(
 
     sources.append(manifest_path)
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
-    for row in check_latest_forecast_issue_manifest(data):
+    for row in check_latest_forecast_issue_manifest(data, workflow_root=workflow_root):
         record(row.item, row.ok, row.detail)
 
     workflow_doc = workflow_root / LATEST_FORECAST_ISSUE_CONTRACT_REL
