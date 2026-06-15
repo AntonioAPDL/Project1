@@ -22,6 +22,15 @@ from forecast_design_contract import (
     REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS,
     check_forecast_design_manifest,
 )
+from latest_forecast_issue_contract import (
+    ARTICLE_LATEST_FORECAST_ISSUE_DOC_REL,
+    FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS,
+    LATEST_FORECAST_ISSUE_CONTRACT_REL,
+    LATEST_FORECAST_ISSUE_MANIFEST_REL,
+    REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS,
+    REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS,
+    check_latest_forecast_issue_manifest,
+)
 from runtime_feasibility_contract import (
     ARTICLE_RUNTIME_DOC_REL,
     FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS,
@@ -621,6 +630,31 @@ def check_forecast_design(workflow_root: Path, article_root: Path, corrections_r
         add(checks, "forecast_design", f"corrections_forbidden:{claim}", claim not in corrections_text, claim)
 
 
+def check_latest_forecast_issue(workflow_root: Path, article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
+    manifest_path = article_root / LATEST_FORECAST_ISSUE_MANIFEST_REL
+    add(checks, "latest_forecast_issue", "manifest_exists", manifest_path.exists(), LATEST_FORECAST_ISSUE_MANIFEST_REL)
+    if not manifest_path.exists():
+        return
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for row in check_latest_forecast_issue_manifest(manifest):
+        add(checks, "latest_forecast_issue", row.item, row.ok, row.detail)
+
+    workflow_doc = workflow_root / LATEST_FORECAST_ISSUE_CONTRACT_REL
+    article_doc = article_root / ARTICLE_LATEST_FORECAST_ISSUE_DOC_REL
+    add(checks, "latest_forecast_issue", "workflow_contract_doc", workflow_doc.exists(), LATEST_FORECAST_ISSUE_CONTRACT_REL)
+    add(checks, "latest_forecast_issue", "article_contract_doc", article_doc.exists(), ARTICLE_LATEST_FORECAST_ISSUE_DOC_REL)
+
+    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+    for claim in REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS:
+        add(checks, "latest_forecast_issue", f"article_required:{claim}", claim in article_text, claim)
+    for claim in REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS:
+        add(checks, "latest_forecast_issue", f"corrections_required:{claim}", claim in corrections_text, claim)
+    for claim in FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS:
+        add(checks, "latest_forecast_issue", f"article_forbidden:{claim}", claim not in article_text, claim)
+
+
 def repo_metadata(repo: Path) -> dict[str, str]:
     return {
         "path": str(repo),
@@ -713,6 +747,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     check_selected_figures(article_root, checks)
     check_prose(article_root, corrections_root, checks)
     check_forecast_design(workflow_root, article_root, corrections_root, checks)
+    check_latest_forecast_issue(workflow_root, article_root, corrections_root, checks)
     check_runtime_feasibility(workflow_root, article_root, corrections_root, checks)
     check_software_availability(workflow_root, article_root, corrections_root, checks)
 

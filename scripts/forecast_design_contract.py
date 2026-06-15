@@ -83,6 +83,12 @@ def check_forecast_design_manifest(data: dict[str, Any]) -> list[ForecastDesignM
             str(forecast_products.get("timing")),
         ),
         ForecastDesignManifestCheck(
+            "forecast_products_issue_selection_manifest",
+            forecast_products.get("issue_selection_manifest")
+            == "artifacts/latest_forecast_issue/latest_forecast_issue_manifest.json",
+            str(forecast_products.get("issue_selection_manifest")),
+        ),
+        ForecastDesignManifestCheck(
             "local_forecast_window_covariates",
             local_names == ["precipitation", "soil_moisture"]
             and local_covariates.get("role") == "forecast_window_transfer_covariates",

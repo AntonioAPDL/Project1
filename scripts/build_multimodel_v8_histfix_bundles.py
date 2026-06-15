@@ -482,6 +482,19 @@ def _write_bundle(
             "glofas_members": "inputs/glofas_members.csv",
             "retros_source_lineage": "inputs/retros_source_lineage.csv",
         },
+        "forecast_issue_policy": {
+            "publication_protocol": "latest_forecast_only",
+            "cross_issue_weighting_used": False,
+            "legacy_weighted_daily_filenames_are_aliases": True,
+            "nws": {
+                "selection_rule": "latest_issue_datetime_per_target_hour_member_then_daily_mean",
+                "source_snapshot": str(nws_forecast_src),
+            },
+            "glofas": {
+                "selection_rule": "issue_date_equals_cutoff",
+                "source_snapshot": str(glofas_forecast_src),
+            },
+        },
         "histfix": {
             "purpose": "restore long-history retrospective support for the v8 corrected support-bundle campaign",
             "glofas_source_id": str(glofas_product["source_id"]),

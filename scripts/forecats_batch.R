@@ -1241,6 +1241,20 @@ render_mode <- function(cfg, cutoff_dates, batch_root, shard_tag) {
         plot_start = format(plot_start, "%Y-%m-%d"),
         plot_end = format(plot_end, "%Y-%m-%d")
       ),
+      forecast_issue_policy = list(
+        publication_protocol = "latest_forecast_only",
+        cross_issue_weighting_used = !identical(as.character(cfg$inputs$nws$weighting$scheme %||% "latest"), "latest"),
+        legacy_weighted_daily_filenames_are_aliases = identical(as.character(cfg$inputs$nws$weighting$scheme %||% "latest"), "latest"),
+        nws = list(
+          weighting_scheme = as.character(cfg$inputs$nws$weighting$scheme %||% "latest"),
+          selection_rule = "latest_issue_datetime_per_target_hour_member_then_daily_mean",
+          cache_path = file.path("forecast_cache", "nws", paste0("cutoff_date=", cutoff_str), "nws_members.csv")
+        ),
+        glofas = list(
+          selection_rule = "issue_date_equals_cutoff",
+          cache_path = file.path("forecast_cache", "glofas", paste0("issue_date=", cutoff_str), "glofas_members.csv")
+        )
+      ),
       transforms = cfg$transforms,
       paths = list(
         usgs_daily = "usgs_daily.csv",

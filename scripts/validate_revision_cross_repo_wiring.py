@@ -24,6 +24,15 @@ from forecast_design_contract import (
     REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS,
     check_forecast_design_manifest,
 )
+from latest_forecast_issue_contract import (
+    ARTICLE_LATEST_FORECAST_ISSUE_DOC_REL,
+    FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS,
+    LATEST_FORECAST_ISSUE_CONTRACT_REL,
+    LATEST_FORECAST_ISSUE_MANIFEST_REL,
+    REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS,
+    REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS,
+    check_latest_forecast_issue_manifest,
+)
 from runtime_feasibility_contract import (
     ARTICLE_RUNTIME_DOC_REL,
     FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS,
@@ -417,6 +426,11 @@ def audit_manifest_paths(article_root: Path, manifest: dict) -> tuple[list[Check
         add_row("table_tex_path", label, table["table_tex_path"])
         for source_name, source_rel in table.get("sources", {}).items():
             add_row(f"table_source:{source_name}", label, source_rel)
+    for section_name in ["runtime_benchmarks", "forecast_protocols"]:
+        for label, item in manifest.get(section_name, {}).items():
+            for key in ["manifest_path", "doc_path"]:
+                if key in item:
+                    add_row(f"{section_name}:{key}", label, item[key])
 
     for tex_path in [article_root / "wileyNJD-APA.tex"]:
         if tex_path.exists():
@@ -664,6 +678,53 @@ def audit_forecast_design(
     return checks, rows, sources
 
 
+def audit_latest_forecast_issue(
+    workflow_root: Path,
+    article_root: Path,
+    corrections_root: Path,
+) -> tuple[list[CheckRow], list[dict[str, object]], list[Path]]:
+    checks: list[CheckRow] = []
+    rows: list[dict[str, object]] = []
+    sources: list[Path] = []
+    manifest_path = article_root / LATEST_FORECAST_ISSUE_MANIFEST_REL
+
+    def record(item: str, ok: bool, detail: str) -> None:
+        status = "pass" if ok else "fail"
+        checks.append(CheckRow("latest_forecast_issue", item, status, detail))
+        rows.append({"item": item, "status": status, "detail": detail})
+
+    record("manifest_exists", manifest_path.exists(), LATEST_FORECAST_ISSUE_MANIFEST_REL)
+    if not manifest_path.exists():
+        return checks, rows, sources
+
+    sources.append(manifest_path)
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for row in check_latest_forecast_issue_manifest(data):
+        record(row.item, row.ok, row.detail)
+
+    workflow_doc = workflow_root / LATEST_FORECAST_ISSUE_CONTRACT_REL
+    article_doc = article_root / ARTICLE_LATEST_FORECAST_ISSUE_DOC_REL
+    record("workflow_contract_doc_exists", workflow_doc.exists(), LATEST_FORECAST_ISSUE_CONTRACT_REL)
+    record("article_contract_doc_exists", article_doc.exists(), ARTICLE_LATEST_FORECAST_ISSUE_DOC_REL)
+    for path in [workflow_doc, article_doc]:
+        if path.exists():
+            sources.append(path)
+
+    article_path = article_root / "wileyNJD-APA.tex"
+    corrections_path = corrections_root / "main.tex"
+    article_text = article_path.read_text(encoding="utf-8")
+    corrections_text = corrections_path.read_text(encoding="utf-8")
+    sources.extend([article_path, corrections_path])
+    for claim in REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS:
+        record(f"article_required:{claim}", claim in article_text, claim)
+    for claim in REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS:
+        record(f"corrections_required:{claim}", claim in corrections_text, claim)
+    for claim in FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS:
+        record(f"article_forbidden:{claim}", claim not in article_text, claim)
+
+    return checks, rows, sources
+
+
 def audit_he4_selection(article_root: Path, manifest: dict) -> tuple[list[CheckRow], list[Path]]:
     cfg = manifest["tables"]["tab:he4_quantile_check_loss"]
     selection_path = article_root / cfg["sources"]["he4_selection_audit_csv"]
@@ -834,6 +895,10 @@ def main(argv: Iterable[str] | None = None) -> int:
     checks.extend(forecast_checks)
     source_paths.extend(forecast_sources)
 
+    latest_issue_checks, latest_issue_rows, latest_issue_sources = audit_latest_forecast_issue(workflow_root, article_root, corrections_root)
+    checks.extend(latest_issue_checks)
+    source_paths.extend(latest_issue_sources)
+
     software_checks, software_rows, software_sources = audit_software_availability(workflow_root, article_root, corrections_root)
     checks.extend(software_checks)
     source_paths.extend(software_sources)
@@ -855,6 +920,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     write_csv(output_dir / "table_value_audit.csv", table_value_rows, ["table", "row_key", "column", "expected_rounded5", "observed", "abs_diff", "status"])
     write_csv(output_dir / "prose_claim_audit.csv", prose_rows, ["repo", "claim_type", "claim", "status"])
     write_csv(output_dir / "forecast_design_audit.csv", forecast_rows, ["item", "status", "detail"])
+    write_csv(output_dir / "latest_forecast_issue_audit.csv", latest_issue_rows, ["item", "status", "detail"])
     write_csv(output_dir / "software_availability_audit.csv", software_rows, ["item", "status", "detail"])
     write_csv(output_dir / "runtime_feasibility_audit.csv", runtime_rows, ["item", "status", "detail"])
     write_csv(output_dir / "compile_log_audit.csv", compile_rows, ["document", "log_path", "exists", "status", "detail"])

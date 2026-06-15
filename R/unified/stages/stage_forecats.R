@@ -48,7 +48,22 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
       paths = list(
         retros_daily = "inputs/retros_daily.csv",
         nws_weighted_daily = "inputs/nws_weighted_daily.csv",
-        glofas_weighted_daily = "inputs/glofas_weighted_daily.csv"
+        glofas_weighted_daily = "inputs/glofas_weighted_daily.csv",
+        nws_members = "inputs/nws_members.csv",
+        glofas_members = "inputs/glofas_members.csv"
+      ),
+      forecast_issue_policy = list(
+        publication_protocol = "latest_forecast_only",
+        cross_issue_weighting_used = FALSE,
+        legacy_weighted_daily_filenames_are_aliases = TRUE,
+        nws = list(
+          selection_rule = "latest_issue_datetime_per_target_hour_member_then_daily_mean",
+          cache_pattern = "forecast_cache/nws/cutoff_date=<cutoff>/nws_members.csv"
+        ),
+        glofas = list(
+          selection_rule = "issue_date_equals_cutoff",
+          cache_pattern = "forecast_cache/glofas/issue_date=<cutoff>/glofas_members.csv"
+        )
       ),
       transforms = cfg$transforms,
       plot = cfg$plot,
@@ -787,6 +802,8 @@ unified_stage_forecats <- function(cfg, run_root, repo_root, manifest) {
       c(
         sprintf("mode=%s", mode),
         sprintf("bundle_root=%s", bundle_root),
+        "publication_protocol=latest_forecast_only",
+        "legacy_weighted_daily_filenames_are_aliases=true",
         sprintf("nws_members_source=%s", nws_members_src),
         sprintf("glofas_members_source=%s", glofas_members_src)
       ),
