@@ -14,6 +14,8 @@ FORECAST_CUTOFFS = ["20210123", "20211112", "20211221", "20220511", "20221225"]
 REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS = [
     "Post-cutoff USGS observations are reserved strictly for verification",
     "are not used to fit or update the predictive distributions",
+    "At a cutoff \\(c\\), the model is fit using USGS observations and retrospective products available through \\(c\\)",
+    "Forecasts are then generated over the subsequent forecast window using the latest forecast products issued at or before \\(c\\)",
     "latest forecast products issued at or before",
     "forecast-window precipitation and soil-moisture covariates",
     "canonical GDPC/PCA climate-index factor",
@@ -25,6 +27,8 @@ REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS = [
 
 REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS = [
     "five rolling-origin cutoff-based forecasting folds",
+    "the model is fit using only observations and retrospective information available through \\(\\textbf{c}\\)",
+    "Forecasts are then generated over the post-cutoff forecast window using the latest forecast products issued at or before \\(\\textbf{c}\\)",
     "Post-cutoff USGS observations remain verification only",
     "forecast-window precipitation and soil-moisture covariates",
     "canonical GDPC/PCA climate-index covariate",
@@ -38,6 +42,9 @@ REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS = [
 FORBIDDEN_FORECAST_DESIGN_CLAIMS = [
     "post-cutoff USGS observations are used to fit",
     "forecast-window USGS observations are used to fit",
+    "the model is fit using only information available through \\(\\textbf{c}\\): observed discharge up to \\(\\textbf{c}\\), retrospective/historical products available at \\(\\textbf{c}\\), and forecast products issued at or before \\(\\textbf{c}\\)",
+    "the model is fit using forecast products issued at or before",
+    "forecast products issued at or before \\(\\textbf{c}\\). Post-cutoff USGS observations remain verification only",
     "GDPC forecast product",
     "PCA forecast product",
     "post-cutoff USGS observations enter fitting",

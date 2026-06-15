@@ -25,7 +25,7 @@ cutoff \(c\):
 - retrospective/historical external products are used through \(c\) to learn
   source-specific discrepancies;
 - forecast products are restricted to the latest products issued at or before
-  \(c\);
+  \(c\) and are used for forecast generation, not for fitting;
 - forecast-window precipitation and soil-moisture covariates enter as staged
   forecast-window transfer covariates from the cutoff-specific support bundle;
 - the workflow-facing `PCA` slot is the canonical GDPC1 compatibility alias and
@@ -84,7 +84,9 @@ Use "out-of-sample" only for the held-out USGS verification target. Use
 "forecast-origin bundle" or "forecast-window support covariates" for staged
 post-cutoff transfer inputs. Do not call GDPC/PCA a forecast product. Do not
 imply that post-cutoff USGS observations enter fitting, updating, model
-selection, or posterior predictive construction. When discussing
+selection, or posterior predictive construction. Do not imply that forecast
+products themselves are fit-stage inputs; they are forecast-generation inputs
+after the cutoff. When discussing
 cross-validation, use rolling-origin folds or time-ordered cross-validation
 analogue language; do not describe the publication exercise as random K-fold
 cross-validation or as a continuous dense hindcast.
