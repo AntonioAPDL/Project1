@@ -122,6 +122,10 @@ FORBIDDEN_CLAIMS = [
     "current A/B/C presentation does not make the connection",
     "we will present the final forecasting specification",
     "We will also revise the opening of the results section",
+    "we will simplify the presentation substantially",
+    "we will remove the detailed PIT development",
+    "we will reduce intermediate derivational detail",
+    "will be mentioned briefly as a robustness device",
     "TODO[",
 ]
 REQUIRED_CLAIMS = [
@@ -140,6 +144,10 @@ REQUIRED_CLAIMS = [
     ("article", "the forecast-window treatment of the transfer block gives the \\(T0\\) and \\(T1\\) rows"),
     ("article", "nine Bayesian variants of the common state-space framework"),
     ("article", "Because exAL-M-T1 is the selected extended-likelihood multivariate specification"),
+    ("article", "probability integral transform (PIT) diagnostics"),
+    ("article", "For reproducibility, implementation pseudocode for the VB algorithm is provided"),
+    ("article", "Its role is illustrative"),
+    ("article", "increased the risk of quantile crossing in the discrepancy states"),
     ("corrections", "separate eight-day NWS-horizon comparison"),
     ("corrections", "NWS is omitted from the 28-day table"),
     ("corrections", "centering the forecasting analysis on multiple rolling-origin cutoffs"),
@@ -154,6 +162,12 @@ REQUIRED_CLAIMS = [
     ("corrections", "forecast-validation section maps the reported benchmark rows through the \\(L\\)-\\(S\\)-\\(T\\) labels"),
     ("corrections", "likelihood family, source set, and forecast-window transfer treatment"),
     ("corrections", "selected \\texttt{exAL-M-T1} specification"),
+    ("corrections", "PIT-centered development has been removed from the main text"),
+    ("corrections", "final forecast comparison uses CRPS as the primary full-distribution score"),
+    ("corrections", "targeted quantile check loss as the quantile-level diagnostic"),
+    ("corrections", "Posterior predictive synthesis is retained only as a concise selected-origin illustration"),
+    ("corrections", "Quantile crossing is no longer developed as a separate procedure in the main text"),
+    ("corrections", "MCMC and VB pseudocode remains in the appendices for reproducibility"),
 ]
 
 @dataclass

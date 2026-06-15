@@ -453,6 +453,10 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         r"the forecast-window treatment of the transfer block gives the \(T0\) and \(T1\) rows",
         "nine Bayesian variants of the common state-space framework",
         "Because exAL-M-T1 is the selected extended-likelihood multivariate specification",
+        "probability integral transform (PIT) diagnostics",
+        "For reproducibility, implementation pseudocode for the VB algorithm is provided",
+        "Its role is illustrative",
+        "increased the risk of quantile crossing in the discrepancy states",
     ]
     required_corrections = [
         "best corrected Bayesian row at 12/25/2022",
@@ -473,6 +477,12 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         r"forecast-validation section maps the reported benchmark rows through the \(L\)-\(S\)-\(T\) labels",
         "likelihood family, source set, and forecast-window transfer treatment",
         r"selected \texttt{exAL-M-T1} specification",
+        "PIT-centered development has been removed from the main text",
+        "final forecast comparison uses CRPS as the primary full-distribution score",
+        "targeted quantile check loss as the quantile-level diagnostic",
+        "Posterior predictive synthesis is retained only as a concise selected-origin illustration",
+        "Quantile crossing is no longer developed as a separate procedure in the main text",
+        "MCMC and VB pseudocode remains in the appendices for reproducibility",
     ]
     forbidden = [
         "best-performing model in all five cutoffs",
@@ -489,6 +499,10 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "current A/B/C presentation does not make the connection",
         "we will present the final forecasting specification",
         "We will also revise the opening of the results section",
+        "we will simplify the presentation substantially",
+        "we will remove the detailed PIT development",
+        "we will reduce intermediate derivational detail",
+        "will be mentioned briefly as a robustness device",
     ]
     for claim in required_article:
         add(checks, "prose", f"article_required:{claim}", claim in article, claim)
