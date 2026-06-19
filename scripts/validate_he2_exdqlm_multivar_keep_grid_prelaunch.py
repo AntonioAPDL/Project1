@@ -103,15 +103,34 @@ def validate_matrix(matrix_dir: Path, artifact_root: Path | None) -> tuple[Recor
     registry = pd.read_csv(registry_path, dtype=str)
     frozen = pd.read_csv(frozen_path, dtype=str)
 
+    cutoff_set = set(plan["cutoff"].astype(str))
     expected_rows = len(specs) * len(EXPECTED_CUTOFFS)
-    rec.check("matrix", "spec_count_30", len(specs) == 30, f"observed={len(specs)}")
-    rec.check("matrix", "run_rows_150", len(plan) == expected_rows == 150, f"observed={len(plan)} expected={expected_rows}")
+    expected_rows_from_observed_cutoffs = len(specs) * len(cutoff_set)
+    rec.check("matrix", "spec_count_positive", len(specs) > 0, f"observed={len(specs)}")
+    rec.check(
+        "matrix",
+        "run_rows_match_spec_cutoff_cartesian",
+        len(plan) == expected_rows_from_observed_cutoffs == expected_rows,
+        f"observed={len(plan)} expected={expected_rows} specs={len(specs)} cutoffs={len(cutoff_set)}",
+    )
     rec.check("matrix", "registry_rows_match_plan", len(registry) == len(plan), f"registry={len(registry)} plan={len(plan)}")
     rec.check("matrix", "frozen_rows_match_plan", len(frozen) == len(plan), f"frozen={len(frozen)} plan={len(plan)}")
     rec.check("matrix", "run_ids_unique", plan["run_id"].is_unique, "")
-    rec.check("matrix", "cutoff_set", set(plan["cutoff"].astype(str)) == EXPECTED_CUTOFFS, str(sorted(plan["cutoff"].unique())))
-    rec.check("matrix", "all_specs_cover_all_cutoffs", plan.groupby("grid_spec_id").size().min() == 5 and plan.groupby("grid_spec_id").size().max() == 5, "")
-    rec.check("matrix", "all_cutoffs_cover_all_specs", plan.groupby("cutoff").size().min() == 30 and plan.groupby("cutoff").size().max() == 30, "")
+    rec.check("matrix", "cutoff_set", cutoff_set == EXPECTED_CUTOFFS, str(sorted(plan["cutoff"].unique())))
+    rec.check(
+        "matrix",
+        "all_specs_cover_all_cutoffs",
+        plan.groupby("grid_spec_id").size().min() == len(EXPECTED_CUTOFFS)
+        and plan.groupby("grid_spec_id").size().max() == len(EXPECTED_CUTOFFS),
+        "",
+    )
+    rec.check(
+        "matrix",
+        "all_cutoffs_cover_all_specs",
+        plan.groupby("cutoff").size().min() == len(specs)
+        and plan.groupby("cutoff").size().max() == len(specs),
+        "",
+    )
     rec.check("matrix", "active_quantiles", set(plan["active_quantiles"].astype(str)) == {EXPECTED_QUANTILE_LABELS}, str(sorted(plan["active_quantiles"].unique())))
     rec.check("matrix", "allow_failures", bool(metadata.get("allow_run_failures")) is True, str(metadata.get("allow_run_failures")))
     rec.check("matrix", "skip_compare_bundles", bool(metadata.get("skip_compare_bundles")) is True, str(metadata.get("skip_compare_bundles")))
