@@ -663,17 +663,22 @@ unified_render_publication_figures <- function(
           stringsAsFactors = FALSE
         )
 
-        ensemble_paths <- post_publication_resolve_ensemble_input_paths(post_root)
-        if (length(ensemble_paths) > 0L) {
+        context_paths <- post_publication_resolve_context_input_paths(post_root)
+        if (length(context_paths) > 0L) {
           ensemble_frames <- list()
-          if (!is.null(ensemble_paths$glofas_path) && file.exists(ensemble_paths$glofas_path)) {
-            ensemble_frames[[length(ensemble_frames) + 1L]] <- post_publication_read_member_forecasts(ensemble_paths$glofas_path, "GloFAS")
+          if (!is.null(context_paths$glofas_path) && file.exists(context_paths$glofas_path)) {
+            ensemble_frames[[length(ensemble_frames) + 1L]] <- post_publication_read_member_forecasts(context_paths$glofas_path, "GloFAS")
           }
-          if (!is.null(ensemble_paths$nws_path) && file.exists(ensemble_paths$nws_path)) {
-            ensemble_frames[[length(ensemble_frames) + 1L]] <- post_publication_read_member_forecasts(ensemble_paths$nws_path, "NWS")
+          if (!is.null(context_paths$nws_path) && file.exists(context_paths$nws_path)) {
+            ensemble_frames[[length(ensemble_frames) + 1L]] <- post_publication_read_member_forecasts(context_paths$nws_path, "NWS")
           }
-          if (length(ensemble_frames) > 0L) {
-            ensemble_df <- do.call(rbind, ensemble_frames)
+          retrospective_df <- if (!is.null(context_paths$retros_path) && file.exists(context_paths$retros_path)) {
+            post_publication_read_retrospectives(context_paths$retros_path)
+          } else {
+            NULL
+          }
+          if (length(ensemble_frames) > 0L || (!is.null(retrospective_df) && nrow(retrospective_df) > 0L)) {
+            ensemble_df <- if (length(ensemble_frames) > 0L) do.call(rbind, ensemble_frames) else NULL
             with_ens_png <- sub("\\.png$", "_with_raw_ensembles.png", png_path, ignore.case = TRUE)
             with_ens_pdf <- if (nzchar(pdf_path)) sub("\\.png$", "_with_raw_ensembles.pdf", png_path, ignore.case = TRUE) else ""
 
@@ -688,7 +693,8 @@ unified_render_publication_figures <- function(
               interval_low_col = "interval_low",
               interval_high_col = "interval_high",
               interval_label = "95% interval",
-              ensemble_df = ensemble_df
+              ensemble_df = ensemble_df,
+              retrospective_df = retrospective_df
             )
 
             manifest_rows_to_add[[length(manifest_rows_to_add) + 1L]] <- post_publication_manifest_row(
@@ -696,7 +702,7 @@ unified_render_publication_figures <- function(
               plot_type = "cutoff_window_posterior_samples_with_raw_ensembles",
               path = with_ens_png,
               source_run = row$source_run[[1L]],
-              note = "style=publication_focus_v2; exact_interval=95_from_cache; includes_adapter_scale_ensemble_references"
+              note = "style=publication_focus_v2; exact_interval=95_from_cache; includes_adapter_scale_retrospectives_and_ensemble_references"
             )
             if (nzchar(with_ens_pdf)) {
               manifest_rows_to_add[[length(manifest_rows_to_add) + 1L]] <- post_publication_manifest_row(
@@ -773,17 +779,22 @@ unified_render_publication_figures <- function(
         )
 
         post_root <- post_publication_find_post_root(outputs_dir)
-        ensemble_paths <- post_publication_resolve_ensemble_input_paths(post_root)
-        if (length(ensemble_paths) > 0L) {
+        context_paths <- post_publication_resolve_context_input_paths(post_root)
+        if (length(context_paths) > 0L) {
           ensemble_frames <- list()
-          if (!is.null(ensemble_paths$glofas_path) && file.exists(ensemble_paths$glofas_path)) {
-            ensemble_frames[[length(ensemble_frames) + 1L]] <- post_publication_read_member_forecasts(ensemble_paths$glofas_path, "GloFAS")
+          if (!is.null(context_paths$glofas_path) && file.exists(context_paths$glofas_path)) {
+            ensemble_frames[[length(ensemble_frames) + 1L]] <- post_publication_read_member_forecasts(context_paths$glofas_path, "GloFAS")
           }
-          if (!is.null(ensemble_paths$nws_path) && file.exists(ensemble_paths$nws_path)) {
-            ensemble_frames[[length(ensemble_frames) + 1L]] <- post_publication_read_member_forecasts(ensemble_paths$nws_path, "NWS")
+          if (!is.null(context_paths$nws_path) && file.exists(context_paths$nws_path)) {
+            ensemble_frames[[length(ensemble_frames) + 1L]] <- post_publication_read_member_forecasts(context_paths$nws_path, "NWS")
           }
-          if (length(ensemble_frames) > 0L) {
-            ensemble_df <- do.call(rbind, ensemble_frames)
+          retrospective_df <- if (!is.null(context_paths$retros_path) && file.exists(context_paths$retros_path)) {
+            post_publication_read_retrospectives(context_paths$retros_path)
+          } else {
+            NULL
+          }
+          if (length(ensemble_frames) > 0L || (!is.null(retrospective_df) && nrow(retrospective_df) > 0L)) {
+            ensemble_df <- if (length(ensemble_frames) > 0L) do.call(rbind, ensemble_frames) else NULL
             with_ens_png <- sub("\\.png$", "_with_raw_ensembles.png", png_path, ignore.case = TRUE)
             with_ens_pdf <- if (nzchar(pdf_path)) sub("\\.png$", "_with_raw_ensembles.pdf", png_path, ignore.case = TRUE) else ""
             post_publication_render_focus_predictive_plot(
@@ -796,7 +807,8 @@ unified_render_publication_figures <- function(
               interval_low_col = "q05",
               interval_high_col = "q95",
               interval_label = "90% interval",
-              ensemble_df = ensemble_df
+              ensemble_df = ensemble_df,
+              retrospective_df = retrospective_df
             )
 
             manifest_rows_to_add[[length(manifest_rows_to_add) + 1L]] <- post_publication_manifest_row(
@@ -804,7 +816,7 @@ unified_render_publication_figures <- function(
               plot_type = "cutoff_window_predictive_bands_with_raw_ensembles",
               path = with_ens_png,
               source_run = row$source_run[[1L]],
-              note = "style=publication_focus_v2; interval=90_from_quantiles; includes_adapter_scale_ensemble_references"
+              note = "style=publication_focus_v2; interval=90_from_quantiles; includes_adapter_scale_retrospectives_and_ensemble_references"
             )
             if (nzchar(with_ens_pdf)) {
               manifest_rows_to_add[[length(manifest_rows_to_add) + 1L]] <- post_publication_manifest_row(
@@ -971,6 +983,54 @@ post_publication_read_member_forecasts <- function(path, provider_label) {
   long
 }
 
+post_publication_read_retrospectives <- function(path) {
+  if (!file.exists(path)) {
+    stop(sprintf("retrospective adapter file missing: %s", path), call. = FALSE)
+  }
+  df <- utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE)
+  date_col <- intersect(c("Date", "date"), names(df))
+  if (length(date_col) == 0L) {
+    stop(sprintf("retrospective adapter file missing Date/date column: %s", path), call. = FALSE)
+  }
+  date_col <- date_col[[1L]]
+  source_cols <- setdiff(names(df), c(date_col, "target_date", "USGS", "usgs", "observed", "observed_usgs"))
+  source_cols <- source_cols[grepl("glofas|nws", source_cols, ignore.case = TRUE)]
+  if (length(source_cols) == 0L) {
+    return(data.frame(date = as.Date(character()), source = character(), provider = character(), value = numeric()))
+  }
+  dates <- as.Date(df[[date_col]])
+  rows <- lapply(source_cols, function(col) {
+    provider <- if (grepl("glofas", col, ignore.case = TRUE)) {
+      "GloFAS"
+    } else if (grepl("nws", col, ignore.case = TRUE)) {
+      "NWS"
+    } else {
+      col
+    }
+    data.frame(
+      date = dates,
+      source = as.character(col),
+      provider = provider,
+      value = suppressWarnings(as.numeric(df[[col]])),
+      stringsAsFactors = FALSE
+    )
+  })
+  long <- do.call(rbind, rows)
+  long <- long[is.finite(long$value) & !is.na(long$date), , drop = FALSE]
+  rownames(long) <- NULL
+  long
+}
+
+post_publication_resolve_context_input_paths <- function(post_root) {
+  inputs_dir <- file.path(post_root, "inputs")
+  out <- list(
+    nws_path = file.path(inputs_dir, "nws_post_adapter.csv"),
+    glofas_path = file.path(inputs_dir, "glofas_post_adapter.csv"),
+    retros_path = file.path(inputs_dir, "retros_post_adapter.csv")
+  )
+  out[vapply(out, file.exists, logical(1))]
+}
+
 post_publication_focus_caption <- function(cutoff_date) {
   paste(
     sprintf("Vertical dashed line marks the forecast origin (%s).", as.character(cutoff_date)),
@@ -1009,7 +1069,8 @@ post_publication_render_focus_predictive_plot <- function(
   interval_low_col = "q05",
   interval_high_col = "q95",
   interval_label = "90% interval",
-  ensemble_df = NULL
+  ensemble_df = NULL,
+  retrospective_df = NULL
 ) {
   quant_df <- post_publication_common_data(quant_df)
   if (!(interval_low_col %in% names(quant_df)) || !(interval_high_col %in% names(quant_df))) {
@@ -1036,6 +1097,29 @@ post_publication_render_focus_predictive_plot <- function(
   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
   y_limits <- post_publication_y_limits_for_cutoff(cutoff_date, style)
 
+  if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
+    retrospective_df$date <- as.Date(retrospective_df$date)
+    retrospective_df <- retrospective_df[
+      !is.na(retrospective_df$date) &
+        retrospective_df$date >= min(quant_df$date, na.rm = TRUE) &
+        retrospective_df$date <= cutoff_date &
+        is.finite(retrospective_df$value),
+      ,
+      drop = FALSE
+    ]
+    retrospective_df$legend_label <- ifelse(
+      retrospective_df$provider == "GloFAS",
+      "GloFAS retrospective",
+      "NWS retrospective"
+    )
+    retrospective_df <- retrospective_df[order(retrospective_df$provider, retrospective_df$source, retrospective_df$date, method = "radix"), , drop = FALSE]
+  }
+  retrospective_labels <- if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
+    unique(retrospective_df$legend_label)
+  } else {
+    character(0)
+  }
+
   hist_obs <- quant_df[quant_df$segment == "history", c("date", "observed"), drop = FALSE]
   fc_obs <- quant_df[quant_df$segment == "forecast", c("date", "observed"), drop = FALSE]
   palette <- post_publication_product_palette()
@@ -1046,6 +1130,7 @@ post_publication_render_focus_predictive_plot <- function(
     observed_fit_label,
     observed_future_label,
     model_center_label,
+    retrospective_labels,
     if (!is.null(ensemble_df) && any(ensemble_df$provider == "GloFAS")) {
       sprintf("GloFAS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider == "GloFAS"])))
     },
@@ -1058,6 +1143,9 @@ post_publication_render_focus_predictive_plot <- function(
     setNames("22", observed_future_label),
     setNames("solid", model_center_label)
   )
+  if (length(retrospective_labels) > 0L) {
+    linetype_values[retrospective_labels] <- "dotdash"
+  }
   if (!is.null(ensemble_df) && any(ensemble_df$provider == "GloFAS")) {
     glofas_label <- sprintf("GloFAS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider == "GloFAS"])))
     linetype_values[[glofas_label]] <- "solid"
@@ -1070,6 +1158,13 @@ post_publication_render_focus_predictive_plot <- function(
   flood_labels <- post_publication_flood_label_df(forecast_end)
 
   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
+    ggplot2::geom_rect(
+      data = data.frame(xmin = forecast_start, xmax = forecast_end, ymin = -Inf, ymax = Inf),
+      mapping = ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+      inherit.aes = FALSE,
+      fill = style$theme$forecast_window_fill,
+      alpha = style$theme$forecast_window_alpha
+    ) +
     ggplot2::geom_hline(
       data = post_publication_flood_stage_df(),
       mapping = ggplot2::aes(yintercept = y),
@@ -1084,6 +1179,16 @@ post_publication_render_focus_predictive_plot <- function(
       alpha = 0.42,
       color = NA
     )
+
+  if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
+    p <- p + ggplot2::geom_line(
+      data = retrospective_df,
+      mapping = ggplot2::aes(y = value, group = interaction(provider, source), color = legend_label, linetype = legend_label),
+      linewidth = 0.82,
+      alpha = 0.78,
+      lineend = "round"
+    )
+  }
 
   if (!is.null(ensemble_df) && nrow(ensemble_df) > 0L) {
     ensemble_df$legend_label <- ifelse(
@@ -1140,6 +1245,14 @@ post_publication_render_focus_predictive_plot <- function(
       size = 1.7,
       show.legend = FALSE
     ) +
+    ggplot2::geom_segment(
+      data = data.frame(date = cutoff_date),
+      mapping = ggplot2::aes(x = date, xend = date, y = -Inf, yend = Inf),
+      inherit.aes = FALSE,
+      color = style$colors$cutoff,
+      linewidth = 0.55,
+      linetype = "22"
+    ) +
     ggplot2::geom_text(
       data = flood_labels,
       mapping = ggplot2::aes(x = x, y = y, label = label),
@@ -1155,6 +1268,8 @@ post_publication_render_focus_predictive_plot <- function(
         setNames(palette[["usgs"]], observed_fit_label),
         setNames(palette[["usgs_future"]], observed_future_label),
         setNames(style$colors$median, model_center_label),
+        setNames(palette[["glofas"]], retrospective_labels[grepl("^GloFAS retrospective$", retrospective_labels)]),
+        setNames(palette[["nws"]], retrospective_labels[grepl("^NWS retrospective$", retrospective_labels)]),
         setNames(palette[["glofas"]], names(linetype_values)[grepl("^GloFAS forecast ensemble \\(", names(linetype_values))]),
         setNames(palette[["nws"]], names(linetype_values)[grepl("^NWS forecast ensemble \\(", names(linetype_values))])
       ),
@@ -1173,7 +1288,8 @@ post_publication_render_focus_predictive_plot <- function(
       title = post_publication_model_title(model_id),
       subtitle = sprintf("Forecast origin: %s", as.character(cutoff_date)),
       x = "Date",
-      y = post_publication_y_label(style)
+      y = post_publication_y_label(style),
+      caption = post_publication_focus_caption(cutoff_date)
     ) +
     ggplot2::guides(
       color = ggplot2::guide_legend(order = 1, nrow = 2, byrow = TRUE),
@@ -1262,12 +1378,8 @@ post_publication_resolve_posterior_cache_paths <- function(post_root, model_id) 
 }
 
 post_publication_resolve_ensemble_input_paths <- function(post_root) {
-  inputs_dir <- file.path(post_root, "inputs")
-  out <- list(
-    nws_path = file.path(inputs_dir, "nws_post_adapter.csv"),
-    glofas_path = file.path(inputs_dir, "glofas_post_adapter.csv")
-  )
-  out[vapply(out, file.exists, logical(1))]
+  out <- post_publication_resolve_context_input_paths(post_root)
+  out[intersect(names(out), c("nws_path", "glofas_path"))]
 }
 
 post_publication_render_focus_posterior_plot <- function(
@@ -1281,7 +1393,8 @@ post_publication_render_focus_posterior_plot <- function(
   interval_low_col = "interval_low",
   interval_high_col = "interval_high",
   interval_label = "95% interval",
-  ensemble_df = NULL
+  ensemble_df = NULL,
+  retrospective_df = NULL
 ) {
   quant_df <- post_publication_common_data(quant_df)
   if (!(interval_low_col %in% names(quant_df)) || !(interval_high_col %in% names(quant_df))) {
@@ -1314,6 +1427,29 @@ post_publication_render_focus_posterior_plot <- function(
   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
   y_limits <- post_publication_y_limits_for_cutoff(cutoff_date, style)
 
+  if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
+    retrospective_df$date <- as.Date(retrospective_df$date)
+    retrospective_df <- retrospective_df[
+      !is.na(retrospective_df$date) &
+        retrospective_df$date >= min(quant_df$date, na.rm = TRUE) &
+        retrospective_df$date <= cutoff_date &
+        is.finite(retrospective_df$value),
+      ,
+      drop = FALSE
+    ]
+    retrospective_df$legend_label <- ifelse(
+      retrospective_df$provider == "GloFAS",
+      "GloFAS retrospective",
+      "NWS retrospective"
+    )
+    retrospective_df <- retrospective_df[order(retrospective_df$provider, retrospective_df$source, retrospective_df$date, method = "radix"), , drop = FALSE]
+  }
+  retrospective_labels <- if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
+    unique(retrospective_df$legend_label)
+  } else {
+    character(0)
+  }
+
   hist_obs <- quant_df[quant_df$segment == "history", c("date", "observed"), drop = FALSE]
   fc_obs <- quant_df[quant_df$segment == "forecast", c("date", "observed"), drop = FALSE]
   palette <- post_publication_product_palette()
@@ -1324,6 +1460,7 @@ post_publication_render_focus_posterior_plot <- function(
     observed_fit_label,
     observed_future_label,
     model_center_label,
+    retrospective_labels,
     if (!is.null(ensemble_df) && any(ensemble_df$provider == "GloFAS")) {
       sprintf("GloFAS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider == "GloFAS"])))
     },
@@ -1336,6 +1473,9 @@ post_publication_render_focus_posterior_plot <- function(
     setNames("22", observed_future_label),
     setNames("solid", model_center_label)
   )
+  if (length(retrospective_labels) > 0L) {
+    linetype_values[retrospective_labels] <- "dotdash"
+  }
   if (!is.null(ensemble_df) && any(ensemble_df$provider == "GloFAS")) {
     glofas_label <- sprintf("GloFAS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider == "GloFAS"])))
     linetype_values[[glofas_label]] <- "solid"
@@ -1348,6 +1488,13 @@ post_publication_render_focus_posterior_plot <- function(
   flood_labels <- post_publication_flood_label_df(forecast_end)
 
   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
+    ggplot2::geom_rect(
+      data = data.frame(xmin = forecast_start, xmax = forecast_end, ymin = -Inf, ymax = Inf),
+      mapping = ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+      inherit.aes = FALSE,
+      fill = style$theme$forecast_window_fill,
+      alpha = style$theme$forecast_window_alpha
+    ) +
     ggplot2::geom_hline(
       data = post_publication_flood_stage_df(),
       mapping = ggplot2::aes(yintercept = y),
@@ -1372,6 +1519,16 @@ post_publication_render_focus_posterior_plot <- function(
       lineend = "round",
       color = "#B8C1CB",
       show.legend = FALSE
+    )
+  }
+
+  if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
+    p <- p + ggplot2::geom_line(
+      data = retrospective_df,
+      mapping = ggplot2::aes(y = value, group = interaction(provider, source), color = legend_label, linetype = legend_label),
+      linewidth = 0.82,
+      alpha = 0.78,
+      lineend = "round"
     )
   }
 
@@ -1430,6 +1587,14 @@ post_publication_render_focus_posterior_plot <- function(
       size = 1.7,
       show.legend = FALSE
     ) +
+    ggplot2::geom_segment(
+      data = data.frame(date = cutoff_date),
+      mapping = ggplot2::aes(x = date, xend = date, y = -Inf, yend = Inf),
+      inherit.aes = FALSE,
+      color = style$colors$cutoff,
+      linewidth = 0.55,
+      linetype = "22"
+    ) +
     ggplot2::geom_text(
       data = flood_labels,
       mapping = ggplot2::aes(x = x, y = y, label = label),
@@ -1445,6 +1610,8 @@ post_publication_render_focus_posterior_plot <- function(
         setNames(palette[["usgs"]], observed_fit_label),
         setNames(palette[["usgs_future"]], observed_future_label),
         setNames(style$colors$median, model_center_label),
+        setNames(palette[["glofas"]], retrospective_labels[grepl("^GloFAS retrospective$", retrospective_labels)]),
+        setNames(palette[["nws"]], retrospective_labels[grepl("^NWS retrospective$", retrospective_labels)]),
         setNames(palette[["glofas"]], names(linetype_values)[grepl("^GloFAS forecast ensemble \\(", names(linetype_values))]),
         setNames(palette[["nws"]], names(linetype_values)[grepl("^NWS forecast ensemble \\(", names(linetype_values))])
       ),
@@ -1463,7 +1630,8 @@ post_publication_render_focus_posterior_plot <- function(
       title = post_publication_model_title(model_id),
       subtitle = sprintf("Forecast origin: %s", as.character(cutoff_date)),
       x = "Date",
-      y = post_publication_y_label(style)
+      y = post_publication_y_label(style),
+      caption = post_publication_focus_caption(cutoff_date)
     ) +
     ggplot2::guides(
       color = ggplot2::guide_legend(

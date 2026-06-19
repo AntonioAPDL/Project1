@@ -83,12 +83,20 @@ post_publication_render_focus_posterior_plot(
   interval_low_col = "interval_low",
   interval_high_col = "interval_high",
   interval_label = "95% interval",
-  ensemble_df = NULL
+  ensemble_df = NULL,
+  retrospective_df = NULL
 )
 
 nws_df <- post_publication_read_member_forecasts(args$nws_path, "NWS/NWM")
 glofas_df <- post_publication_read_member_forecasts(args$glofas_path, "GloFAS")
 ensemble_df <- rbind(nws_df, glofas_df)
+retrospective_df <- if (!is.null(args$retros_path) && nzchar(args$retros_path)) {
+  post_publication_read_retrospectives(args$retros_path)
+} else {
+  post_root <- post_publication_find_post_root(outputs_dir)
+  context_paths <- post_publication_resolve_context_input_paths(post_root)
+  if (!is.null(context_paths$retros_path)) post_publication_read_retrospectives(context_paths$retros_path) else NULL
+}
 post_publication_render_focus_posterior_plot(
   model_id = model_id,
   quant_df = quant_focus,
@@ -100,7 +108,8 @@ post_publication_render_focus_posterior_plot(
   interval_low_col = "interval_low",
   interval_high_col = "interval_high",
   interval_label = "95% interval",
-  ensemble_df = ensemble_df
+  ensemble_df = ensemble_df,
+  retrospective_df = retrospective_df
 )
 
 add_rows <- rbind(
@@ -109,7 +118,7 @@ add_rows <- rbind(
     plot_type = "cutoff_window_posterior_samples_with_raw_ensembles",
     path = with_ens_png,
     source_run = source_run,
-    note = "style=publication_focus_v2; exact_interval=95_from_cache; includes_adapter_scale_ensemble_references"
+    note = "style=publication_focus_v2; exact_interval=95_from_cache; includes_adapter_scale_retrospectives_and_ensemble_references"
   ),
   post_publication_manifest_row(
     model_id = model_id,

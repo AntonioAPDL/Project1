@@ -62,6 +62,27 @@ write_member_adapter <- function(path, dates, prefix) {
   utils::write.csv(df, path, row.names = FALSE)
 }
 
+write_retros_adapter <- function(path) {
+  df <- data.frame(
+    Date = as.character(as.Date("2021-01-01") + 0:2),
+    USGS = c(0.50, 0.55, 0.60),
+    GloFAS = c(0.48, 0.53, 0.57),
+    NWS3.0 = c(0.46, 0.51, 0.56),
+    stringsAsFactors = FALSE
+  )
+  utils::write.csv(df, path, row.names = FALSE)
+}
+
+test_that("publication retrospective adapter reader keeps only source retrospectives", {
+  path <- tempfile(fileext = ".csv")
+  write_retros_adapter(path)
+  out <- post_publication_read_retrospectives(path)
+  expect_equal(sort(unique(out$provider)), c("GloFAS", "NWS"))
+  expect_false(any(out$source == "USGS"))
+  expect_true(all(is.finite(out$value)))
+  expect_true(all(!is.na(out$date)))
+})
+
 test_that("publication figure rewrite renders focus posterior plots with raw ensembles and predictive bands", {
   skip_if_not_installed("ggplot2")
 
@@ -107,6 +128,7 @@ test_that("publication figure rewrite renders focus posterior plots with raw ens
 
   write_member_adapter(file.path(inputs_dir, "nws_post_adapter.csv"), dates, "nws")
   write_member_adapter(file.path(inputs_dir, "glofas_post_adapter.csv"), dates, "glofas")
+  write_retros_adapter(file.path(inputs_dir, "retros_post_adapter.csv"))
 
   manifest <- data.frame(
     model_id = c(model_post, model_post, model_post, model_ndlm, model_ndlm),
@@ -157,6 +179,16 @@ test_that("publication figure rewrite renders focus posterior plots with raw ens
   expect_true(any(updated_manifest$plot_type == "cutoff_window_predictive_bands_with_raw_ensembles"))
   expect_true(any(updated_manifest$plot_type == "cutoff_window_predictive_bands_with_raw_ensembles_pdf"))
   expect_true(any(grepl("style=publication_focus_v2", updated_manifest$note[updated_manifest$plot_type == "cutoff_window_posterior_samples"], fixed = TRUE)))
+  expect_true(any(grepl(
+    "includes_adapter_scale_retrospectives_and_ensemble_references",
+    updated_manifest$note[updated_manifest$plot_type == "cutoff_window_posterior_samples_with_raw_ensembles"],
+    fixed = TRUE
+  )))
+  expect_true(any(grepl(
+    "includes_adapter_scale_retrospectives_and_ensemble_references",
+    updated_manifest$note[updated_manifest$plot_type == "cutoff_window_predictive_bands_with_raw_ensembles"],
+    fixed = TRUE
+  )))
 
   pub_manifest <- utils::read.csv(file.path(outputs_dir, "publication_figure_manifest.csv"), stringsAsFactors = FALSE, check.names = FALSE)
   expect_true(any(pub_manifest$source_plot_type == "cutoff_window_posterior_samples_focus"))

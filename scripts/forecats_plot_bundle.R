@@ -331,13 +331,38 @@ plot_forecats_bundle <- function(bundle_dir) {
   retro_labels_from_window <- unique(as.character(retros_long$source_label))
   retro_labels <- unique(c(retro_labels_from_coverage, retro_labels_from_window))
 
-  retro_color_map <- figure_retro_color_map(retro_labels)
-  color_map <- c("USGS observed" = usgs_color, retro_color_map)
-  legend_levels <- c("USGS observed", retro_labels)
-  shape_map <- figure_retro_shape_map(legend_levels)
+  observed_fit_label <- "USGS observed (pre-cutoff)"
+  observed_future_label <- "Held-out USGS verification"
+  glofas_forecast_label <- if (nrow(glofas_ens_long) > 0L) {
+    sprintf("GloFAS forecast ensemble (%d members)", length(unique(glofas_ens_long$member)))
+  } else {
+    character(0)
+  }
+  nws_forecast_label <- if (nrow(nws_ens_long) > 0L) {
+    sprintf("NWS forecast ensemble (%d members)", length(unique(nws_ens_long$member)))
+  } else {
+    character(0)
+  }
+  if (nrow(glofas_ens_long) > 0L) glofas_ens_long$legend_label <- glofas_forecast_label
+  if (nrow(nws_ens_long) > 0L) nws_ens_long$legend_label <- nws_forecast_label
 
-  usgs_before <- usgs %>% filter(obs_type == "Before") %>% mutate(Source = "USGS observed")
-  usgs_after <- usgs %>% filter(obs_type == "After") %>% mutate(Source = "USGS observed")
+  retro_color_map <- figure_retro_color_map(retro_labels)
+  color_map <- c(
+    setNames(usgs_color, observed_fit_label),
+    setNames(unname(palette[["usgs_future"]]), observed_future_label),
+    retro_color_map,
+    setNames(glofas_color, glofas_forecast_label),
+    setNames(nws_color, nws_forecast_label)
+  )
+  legend_levels <- c(observed_fit_label, observed_future_label, retro_labels, glofas_forecast_label, nws_forecast_label)
+  shape_map <- figure_retro_shape_map(legend_levels)
+  shape_map[glofas_forecast_label] <- NA_integer_
+  shape_map[nws_forecast_label] <- NA_integer_
+  linetype_map <- setNames(rep("solid", length(legend_levels)), legend_levels)
+  linetype_map[[observed_future_label]] <- "22"
+
+  usgs_before <- usgs %>% filter(obs_type == "Before") %>% mutate(Source = observed_fit_label)
+  usgs_after <- usgs %>% filter(obs_type == "After") %>% mutate(Source = observed_future_label)
 
   present_labels <- retros_long %>%
     filter(!is.na(value)) %>%
@@ -373,11 +398,23 @@ plot_forecats_bundle <- function(bundle_dir) {
   format_retro_legend <- function(lbl) wrap_legend_label(lbl, width = 34)
 
   legend_label_map <- setNames(rep("", length(legend_levels)), legend_levels)
-  legend_label_map[["USGS observed"]] <- "USGS observed"
+  legend_label_map[[observed_fit_label]] <- observed_fit_label
+  legend_label_map[[observed_future_label]] <- observed_future_label
   if (length(retro_labels) > 0) {
     legend_label_map[retro_labels] <- vapply(retro_labels, format_retro_legend, character(1))
   }
-  legend_levels_shown <- c("USGS observed", retro_labels[retro_labels %in% present_labels])
+  legend_label_map[glofas_forecast_label] <- glofas_forecast_label
+  legend_label_map[nws_forecast_label] <- nws_forecast_label
+  forecast_labels_shown <- c(
+    if (nrow(glofas_ens_long) > 0L) glofas_forecast_label,
+    if (nrow(nws_ens_long) > 0L) nws_forecast_label
+  )
+  legend_levels_shown <- c(
+    observed_fit_label,
+    if (nrow(usgs_after) > 0L) observed_future_label,
+    retro_labels[retro_labels %in% present_labels],
+    forecast_labels_shown
+  )
 
   # Optional flood thresholds (must be in discharge units, not stage).
   # Define in YAML under plot.flood_levels:
@@ -394,6 +431,13 @@ plot_forecats_bundle <- function(bundle_dir) {
   y_lab <- figure_flow_axis_label(plot_scale)
 
   p <- ggplot() +
+    geom_vline(
+      xintercept = cutoff_date,
+      color = "#6B7280",
+      linetype = "22",
+      linewidth = 0.45,
+      alpha = 0.9
+    ) +
     # Flood stage horizontal lines + labels (if configured)
     {if (!is.null(flood_df) && nrow(flood_df) > 0) geom_hline(
       data = flood_df,
@@ -432,7 +476,7 @@ plot_forecats_bundle <- function(bundle_dir) {
     # USGS before
     geom_line(
       data = usgs_before,
-      aes(x = date, y = value, color = Source),
+      aes(x = date, y = value, color = Source, linetype = Source),
       linewidth = 0.5,
       na.rm = TRUE
     ) +
@@ -445,43 +489,41 @@ plot_forecats_bundle <- function(bundle_dir) {
     # Forecast ensembles after (thin, no legend)
     geom_line(
       data = glofas_ens_long,
-      aes(x = target_date, y = value, group = member),
-      color = glofas_color,
+      aes(x = target_date, y = value, group = member, color = legend_label, linetype = legend_label),
       alpha = 0.22,
       linewidth = 0.5,
-      show.legend = FALSE,
       na.rm = TRUE
     ) +
     geom_line(
       data = nws_ens_long,
-      aes(x = target_date, y = value, group = member),
-      color = nws_color,
+      aes(x = target_date, y = value, group = member, color = legend_label, linetype = legend_label),
       alpha = 0.22,
       linewidth = 0.5,
-      show.legend = FALSE,
       na.rm = TRUE
     ) +
     # USGS after (dashed)
     geom_line(
       data = usgs_after,
-      aes(x = date, y = value),
-      color = unname(palette[["usgs_future"]]),
+      aes(x = date, y = value, color = Source, linetype = Source),
       linewidth = 0.5,
-      linetype = "dashed",
-      show.legend = FALSE,
       na.rm = TRUE
     ) +
     geom_point(
       data = usgs_after,
-      aes(x = date, y = value),
-      color = unname(palette[["usgs_future"]]),
+      aes(x = date, y = value, color = Source, shape = Source),
+      fill = "white",
       size = 1.8,
-      show.legend = FALSE,
       na.rm = TRUE
     ) +
     scale_color_manual(
       name = "Series",
       values = color_map,
+      breaks = legend_levels_shown,
+      labels = legend_label_map[legend_levels_shown]
+    ) +
+    scale_linetype_manual(
+      name = "Series",
+      values = linetype_map,
       breaks = legend_levels_shown,
       labels = legend_label_map[legend_levels_shown]
     ) +
@@ -501,7 +543,7 @@ plot_forecats_bundle <- function(bundle_dir) {
       color = guide_legend(
         override.aes = list(
           size = 2.0,
-          linetype = 1,
+          linetype = unname(linetype_map[legend_levels_shown]),
           shape = unname(shape_map[legend_levels_shown]),
           linewidth = 0.9,
           alpha = 1
@@ -509,6 +551,7 @@ plot_forecats_bundle <- function(bundle_dir) {
         ncol = 3,
         byrow = TRUE
       ),
+      linetype = "none",
       shape = "none"
     ) +
     theme_manuscript_standard(base_size = 14, title_size = 16, legend_position = "bottom") +
@@ -521,6 +564,9 @@ plot_forecats_bundle <- function(bundle_dir) {
   if (!is.null(meta$plot$markers) && length(meta$plot$markers) > 0) {
     for (m in meta$plot$markers) {
       d <- as.Date(m$date)
+      if (!is.na(d) && !is.na(cutoff_date) && d == cutoff_date) {
+        next
+      }
       p <- p +
         geom_vline(
           xintercept = d,
