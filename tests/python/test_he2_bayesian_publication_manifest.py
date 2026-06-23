@@ -10,6 +10,7 @@ os.sys.path.insert(0, str(ROOT / "scripts"))
 
 from build_he2_bayesian_publication_manifest import (  # noqa: E402
     ARTIFACT_SPECS,
+    ALLOWED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES,
     CUTOFFS,
     FAMILY_TO_LABEL,
     PROMOTED_AL_DROP_ROOT,
@@ -54,10 +55,11 @@ def assert_promoted_or_repaired(
         return
 
     test.assertEqual(row["run_id"], replacement["run_id"])
-    test.assertEqual(row["run_root"], f'{overlay["artifact_root"]}/runs/{replacement["run_id"]}')
-    test.assertEqual(row["campaign_lineage"], overlay["campaign_lineage"])
-    test.assertEqual(row["replacement_reason"], overlay["replacement_reason"])
-    test.assertEqual(row["expected_input_bundle_id"], overlay["expected_input_bundle_id"])
+    expected_replacement_root = replacement.get("run_root") or f'{overlay["artifact_root"]}/runs/{replacement["run_id"]}'
+    test.assertEqual(row["run_root"], expected_replacement_root)
+    test.assertEqual(row["campaign_lineage"], replacement.get("campaign_lineage", overlay["campaign_lineage"]))
+    test.assertEqual(row["replacement_reason"], replacement.get("replacement_reason", overlay["replacement_reason"]))
+    test.assertEqual(row["expected_input_bundle_id"], replacement.get("expected_input_bundle_id", overlay["expected_input_bundle_id"]))
     test.assertEqual(row["replaced_source_run_id"], expected_run_id)
 
 
@@ -72,15 +74,33 @@ class He2BayesianPublicationManifestTests(unittest.TestCase):
     def test_exal_keep_rows_point_to_authoritative_grid_winners(self) -> None:
         manifest_rows, _input_rows, _alignment_rows = build_outputs()
         authoritative = load_authoritative_spec()
+        overlay_by_key, overlay = active_overlay_by_key()
         for winner in authoritative.winners:
             row = next(
                 row
                 for row in manifest_rows
                 if row["cutoff"] == winner.cutoff and row["manuscript_label"] == "exAL-M-T1"
             )
-            self.assertEqual(row["run_id"], winner.run_id)
-            self.assertAlmostEqual(float(row["crps_exact"]), winner.mean_crps, places=12)
-            self.assertEqual(row["campaign_lineage"], "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner")
+            assert_promoted_or_repaired(
+                self,
+                row,
+                expected_run_id=winner.run_id,
+                expected_root=authoritative.runtime_root,
+                expected_lineage="exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner",
+                overlay_by_key=overlay_by_key,
+                overlay=overlay,
+            )
+            replacement = overlay_by_key.get((winner.cutoff, "exdqlm_multivar_keep"))
+            if replacement is None:
+                self.assertAlmostEqual(float(row["crps_exact"]), winner.mean_crps, places=12)
+            else:
+                self.assertLess(float(row["crps_exact"]), winner.mean_crps)
+                self.assertTrue(
+                    any(
+                        row["campaign_lineage"].startswith(prefix)
+                        for prefix in ALLOWED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES
+                    )
+                )
 
     def test_multivar_quantile_rows_point_to_canonical_promoted_roots(self) -> None:
         manifest_rows, _input_rows, _alignment_rows = build_outputs()

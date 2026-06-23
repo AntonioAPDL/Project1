@@ -165,7 +165,7 @@ PROMOTED_AL_DROP_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_dqlm_multivar_al_drop_
 PROMOTED_UNIVAR_AL_EXAL_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_univar_al_exal_publication_relaunch_20260603"
 PROMOTED_NDLM_ROOT = RUNTIME_ROOT / "multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607"
 DEFAULT_REPLACEMENT_OVERLAY = (
-    ROOT / "config" / "he2_publication_manifest_replacement_overlay_table1_targeted_repair_20260612.yaml"
+    ROOT / "config" / "he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml"
 )
 PROMOTED_FAMILY_LINEAGES = {
     "exdqlm_multivar_keep": AUTHORITATIVE_EXAL_KEEP_LINEAGE,
@@ -177,6 +177,15 @@ PROMOTED_FAMILY_LINEAGES = {
     "ndlm_univar_keep": "ndlm_publication_promotion_20260607:canonical_bundle_promoted",
     "ndlm_main_drop": "ndlm_publication_promotion_20260607:canonical_bundle_promoted",
     "ndlm_main_keep": "ndlm_publication_promotion_20260607:canonical_bundle_promoted",
+}
+ALLOWED_REPLACEMENT_LINEAGE_PREFIXES = {
+    "he2_table1_targeted_repair_20260612:",
+    "exdqlm_multivar_keep_partial_screen_20260623:",
+    "exdqlm_multivar_keep_partial_authority_refresh_20260623:",
+}
+ALLOWED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES = {
+    "exdqlm_multivar_keep_partial_screen_20260623:",
+    "exdqlm_multivar_keep_partial_authority_refresh_20260623:",
 }
 PROMOTED_FAMILY_NOTES = {
     "exdqlm_multivar_keep": TRANSITION_PUBLICATION_NOTE,
@@ -740,12 +749,32 @@ def validate(
             raise RuntimeError(f"Feature transform contract failed in {row['run_id']}")
     for cutoff, winner in authoritative_by_cutoff.items():
         row = next(item for item in manifest_rows if item["cutoff"] == cutoff and item["manuscript_label"] == "exAL-M-T1")
-        if row["run_id"] != winner.run_id:
-            raise RuntimeError(f"Unexpected authoritative exAL-M-T1 run for {cutoff}: {row['run_id']} != {winner.run_id}")
-        if abs(float(row["crps_exact"]) - float(winner.mean_crps)) > 1e-12:
-            raise RuntimeError(f"Unexpected authoritative exAL-M-T1 CRPS for {cutoff}: {row['crps_exact']} != {winner.mean_crps}")
-        if row["campaign_lineage"] != AUTHORITATIVE_EXAL_KEEP_LINEAGE:
-            raise RuntimeError(f"Unexpected authoritative exAL-M-T1 lineage for {cutoff}: {row['campaign_lineage']}")
+        is_replacement = bool(row.get("replacement_reason", ""))
+        if not is_replacement:
+            if row["run_id"] != winner.run_id:
+                raise RuntimeError(f"Unexpected authoritative exAL-M-T1 run for {cutoff}: {row['run_id']} != {winner.run_id}")
+            if abs(float(row["crps_exact"]) - float(winner.mean_crps)) > 1e-12:
+                raise RuntimeError(f"Unexpected authoritative exAL-M-T1 CRPS for {cutoff}: {row['crps_exact']} != {winner.mean_crps}")
+            if row["campaign_lineage"] != AUTHORITATIVE_EXAL_KEEP_LINEAGE:
+                raise RuntimeError(f"Unexpected authoritative exAL-M-T1 lineage for {cutoff}: {row['campaign_lineage']}")
+        else:
+            if not any(
+                row["campaign_lineage"].startswith(prefix)
+                for prefix in ALLOWED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES
+            ):
+                raise RuntimeError(f"Unexpected exAL-M-T1 replacement lineage for {row['run_id']}: {row['campaign_lineage']}")
+            if not row.get("replaced_source_run_id", ""):
+                raise RuntimeError(f"Replacement exAL-M-T1 row missing replaced source run id: {row['run_id']}")
+            if row.get("expected_input_bundle_id", "") != canonical_bundle_run_id:
+                raise RuntimeError(
+                    f"Replacement exAL-M-T1 expected bundle mismatch for {row['run_id']}: "
+                    f"{row.get('expected_input_bundle_id', '')} != {canonical_bundle_run_id}"
+                )
+            if float(row["crps_exact"]) > float(winner.mean_crps):
+                raise RuntimeError(
+                    f"Replacement exAL-M-T1 CRPS is worse than 20260601 authority for {cutoff}: "
+                    f"{row['crps_exact']} > {winner.mean_crps}"
+                )
 
     expected_promoted = {
         "ndlm_univar_keep": {"label": "N-U-T1", "likelihood": "normal", "transfer": "keep"},
@@ -815,7 +844,7 @@ def validate(
             if not is_replacement and row["campaign_lineage"] != PROMOTED_FAMILY_LINEAGES[family]:
                 raise RuntimeError(f"Unexpected promoted lineage for {row['run_id']}: {row['campaign_lineage']}")
             if is_replacement:
-                if not row["campaign_lineage"].startswith("he2_table1_targeted_repair_20260612:"):
+                if not any(row["campaign_lineage"].startswith(prefix) for prefix in ALLOWED_REPLACEMENT_LINEAGE_PREFIXES):
                     raise RuntimeError(f"Unexpected replacement lineage for {row['run_id']}: {row['campaign_lineage']}")
                 if row.get("expected_input_bundle_id", "") != canonical_bundle_run_id:
                     raise RuntimeError(

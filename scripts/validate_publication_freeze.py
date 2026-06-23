@@ -89,6 +89,10 @@ HE3_LABEL_BY_VARIANT = {
     "noH3": "exAL-M-T1-noH3",
 }
 TARGETED_REPAIR_LINEAGE = "he2_table1_targeted_repair_20260612:canonical_bundle_targeted_repair"
+SELECTED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES = (
+    "exdqlm_multivar_keep_partial_screen_20260623:",
+    "exdqlm_multivar_keep_partial_authority_refresh_20260623:",
+)
 AUTHORITATIVE_KEEP_LINEAGE = "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner"
 DISPLAY_DIGITS = 5
 DISPLAY_TOL = 0.5 * 10 ** (-DISPLAY_DIGITS)
@@ -213,11 +217,26 @@ def check_he2_selective_manifest(
     article_root: Path,
     checks: list[Check],
 ) -> None:
-    overlay = load_yaml(workflow_root / "config/he2_publication_manifest_replacement_overlay_table1_targeted_repair_20260612.yaml")
+    overlay = load_yaml(workflow_root / "config/he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml")
     replacements = overlay.get("replacements", [])
     overlay_keys = {(str(r["cutoff"]), str(r["manuscript_label"])) for r in replacements}
+    table1_overlay_keys = {
+        (str(r["cutoff"]), str(r["manuscript_label"]))
+        for r in replacements
+        if str(r.get("campaign_lineage", overlay.get("campaign_lineage", ""))).startswith("he2_table1_targeted_repair_20260612:")
+    }
+    selected_exal_overlay_keys = {
+        (str(r["cutoff"]), str(r["manuscript_label"]))
+        for r in replacements
+        if any(
+            str(r.get("campaign_lineage", overlay.get("campaign_lineage", ""))).startswith(prefix)
+            for prefix in SELECTED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES
+        )
+    }
     add(checks, "he2_selective", "overlay_active", bool(overlay.get("active")), "overlay active flag")
-    add(checks, "he2_selective", "overlay_replacement_count", len(replacements) == 16, f"{len(replacements)} replacements")
+    add(checks, "he2_selective", "overlay_replacement_count", len(replacements) == 19, f"{len(replacements)} replacements")
+    add(checks, "he2_selective", "overlay_table1_repair_count", len(table1_overlay_keys) == 16, f"{len(table1_overlay_keys)} Table 1 repairs")
+    add(checks, "he2_selective", "overlay_selected_exal_keep_count", len(selected_exal_overlay_keys) == 3, f"{len(selected_exal_overlay_keys)} selected exAL-M-T1 rows")
     add(
         checks,
         "he2_selective",
@@ -234,14 +253,27 @@ def check_he2_selective_manifest(
         for r in rows
         if r.get("campaign_lineage") == TARGETED_REPAIR_LINEAGE
     }
+    selected_exal = {
+        (r["cutoff"], r["manuscript_label"])
+        for r in rows
+        if any(str(r.get("campaign_lineage", "")).startswith(prefix) for prefix in SELECTED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES)
+    }
     add(checks, "he2_selective", "manifest_row_count", len(rows) == 45, f"{len(rows)} rows")
     add(checks, "he2_selective", "targeted_repair_count", len(targeted) == 16, f"{len(targeted)} targeted rows")
+    add(checks, "he2_selective", "selected_exal_keep_count", len(selected_exal) == 3, f"{len(selected_exal)} selected exAL-M-T1 rows")
     add(
         checks,
         "he2_selective",
         "targeted_rows_match_overlay",
-        targeted == overlay_keys,
-        f"manifest={len(targeted)} overlay={len(overlay_keys)}",
+        targeted == table1_overlay_keys,
+        f"manifest={len(targeted)} overlay={len(table1_overlay_keys)}",
+    )
+    add(
+        checks,
+        "he2_selective",
+        "selected_exal_rows_match_overlay",
+        selected_exal == selected_exal_overlay_keys,
+        f"manifest={len(selected_exal)} overlay={len(selected_exal_overlay_keys)}",
     )
 
     for key, expected_crps in sorted(NON_PROMOTED_WORSE_REPAIRS.items()):

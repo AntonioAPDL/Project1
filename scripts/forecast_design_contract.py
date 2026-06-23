@@ -15,7 +15,7 @@ REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS = [
     "Post-cutoff USGS observations are reserved strictly for verification",
     "are not used to fit or update the predictive distributions",
     "At a cutoff \\(c\\), the model is fit using USGS observations and retrospective products available through \\(c\\)",
-    "Forecasts are then generated over the subsequent forecast window using the latest forecast products issued at or before \\(c\\)",
+    "The forecast-window predictive distributions are then synthesized using the latest forecast products issued at or before \\(c\\)",
     "latest forecast products issued at or before",
     "forecast-window precipitation and soil-moisture covariates",
     "canonical GDPC/PCA climate-index factor",

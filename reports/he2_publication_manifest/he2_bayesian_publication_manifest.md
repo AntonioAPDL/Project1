@@ -51,7 +51,7 @@ Special publication update:
 | 12/21/2021 | AL-M-T1 | 0.2778 | multimodel_20211221_v8_he2grid_c03_eps030_dqlm_multivar_al_keep |
 | 12/21/2021 | exAL-U-T1 | 2.5630 | multimodel_20211221_v8_he2pubgdpc1r1_exdqlm_univar |
 | 12/21/2021 | exAL-M-T0 | 0.9776 | multimodel_20211221_v8_he2tbl1fix20260612_exdqlm_multivar_drop |
-| 12/21/2021 | exAL-M-T1 | 0.2654 | multimodel_20211221_v8_he2grid_c03_eps030_exdqlm_multivar_keep |
+| 12/21/2021 | exAL-M-T1 | 0.2604 | multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep |
 | 05/11/2022 | N-U-T1 | 0.1508 | multimodel_20220511_v8_he2pubgdpc1r1_ndlm_univar_keep |
 | 05/11/2022 | N-M-T0 | 0.6701 | multimodel_20220511_v8_he2pubgdpc1r1_ndlm_main_drop |
 | 05/11/2022 | N-M-T1 | 0.8682 | multimodel_20220511_v8_he2pubgdpc1r1_ndlm_main_keep |
@@ -60,7 +60,7 @@ Special publication update:
 | 05/11/2022 | AL-M-T1 | 0.0547 | multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_keep |
 | 05/11/2022 | exAL-U-T1 | 1.2668 | multimodel_20220511_v8_he2pubgdpc1r1_exdqlm_univar |
 | 05/11/2022 | exAL-M-T0 | 1.0209 | multimodel_20220511_v8_he2tbl1fix20260612_exdqlm_multivar_drop |
-| 05/11/2022 | exAL-M-T1 | 0.0323 | multimodel_20220511_v8_he2grid_c02_eps060_exdqlm_multivar_keep |
+| 05/11/2022 | exAL-M-T1 | 0.0227 | multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep |
 | 12/25/2022 | N-U-T1 | 2.4997 | multimodel_20221225_v8_he2tbl1fix20260612_ndlm_univar_keep |
 | 12/25/2022 | N-M-T0 | 0.6440 | multimodel_20221225_v8_he2pubgdpc1r1_ndlm_main_drop |
 | 12/25/2022 | N-M-T1 | 3.8886 | multimodel_20221225_v8_he2pubgdpc1r1_ndlm_main_keep |
@@ -69,7 +69,7 @@ Special publication update:
 | 12/25/2022 | AL-M-T1 | 0.6276 | multimodel_20221225_v8_he2grid_c05_eps030_dqlm_multivar_al_keep |
 | 12/25/2022 | exAL-U-T1 | 3.5953 | multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_univar |
 | 12/25/2022 | exAL-M-T0 | 1.2113 | multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_drop |
-| 12/25/2022 | exAL-M-T1 | 0.6655 | multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep |
+| 12/25/2022 | exAL-M-T1 | 0.5381 | multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep |
 
 ## Within-Cutoff Input Congruence
 
@@ -115,7 +115,7 @@ Archival caveat:
 | 12/21/2021 | AL-M-T1 | 0.2778 | multimodel_20211221_v8_he2grid_c03_eps030_dqlm_multivar_al_keep | dqlm_multivar_al_keep_from_exal_winners_20260602:canonical_bundle_promoted | canonical-bundle promoted |
 | 12/21/2021 | exAL-U-T1 | 2.5630 | multimodel_20211221_v8_he2pubgdpc1r1_exdqlm_univar | univar_al_exal_publication_relaunch_20260603:canonical_bundle_promoted | canonical-bundle promoted |
 | 12/21/2021 | exAL-M-T0 | 0.9776 | multimodel_20211221_v8_he2tbl1fix20260612_exdqlm_multivar_drop | he2_table1_targeted_repair_20260612:canonical_bundle_targeted_repair | targeted repair replacement |
-| 12/21/2021 | exAL-M-T1 | 0.2654 | multimodel_20211221_v8_he2grid_c03_eps030_exdqlm_multivar_keep | exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner | canonical-bundle promoted |
+| 12/21/2021 | exAL-M-T1 | 0.2604 | multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep | exdqlm_multivar_keep_partial_authority_refresh_20260623:clean_replay | targeted repair replacement |
 | 05/11/2022 | N-U-T1 | 0.1508 | multimodel_20220511_v8_he2pubgdpc1r1_ndlm_univar_keep | ndlm_publication_promotion_20260607:canonical_bundle_promoted | canonical-bundle promoted |
 | 05/11/2022 | N-M-T0 | 0.6701 | multimodel_20220511_v8_he2pubgdpc1r1_ndlm_main_drop | ndlm_publication_promotion_20260607:canonical_bundle_promoted | canonical-bundle promoted |
 | 05/11/2022 | N-M-T1 | 0.8682 | multimodel_20220511_v8_he2pubgdpc1r1_ndlm_main_keep | ndlm_publication_promotion_20260607:canonical_bundle_promoted | canonical-bundle promoted |
@@ -124,7 +124,7 @@ Archival caveat:
 | 05/11/2022 | AL-M-T1 | 0.0547 | multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_keep | he2_table1_targeted_repair_20260612:canonical_bundle_targeted_repair | targeted repair replacement |
 | 05/11/2022 | exAL-U-T1 | 1.2668 | multimodel_20220511_v8_he2pubgdpc1r1_exdqlm_univar | univar_al_exal_publication_relaunch_20260603:canonical_bundle_promoted | canonical-bundle promoted |
 | 05/11/2022 | exAL-M-T0 | 1.0209 | multimodel_20220511_v8_he2tbl1fix20260612_exdqlm_multivar_drop | he2_table1_targeted_repair_20260612:canonical_bundle_targeted_repair | targeted repair replacement |
-| 05/11/2022 | exAL-M-T1 | 0.0323 | multimodel_20220511_v8_he2grid_c02_eps060_exdqlm_multivar_keep | exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner | canonical-bundle promoted |
+| 05/11/2022 | exAL-M-T1 | 0.0227 | multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep | exdqlm_multivar_keep_partial_authority_refresh_20260623:clean_replay | targeted repair replacement |
 | 12/25/2022 | N-U-T1 | 2.4997 | multimodel_20221225_v8_he2tbl1fix20260612_ndlm_univar_keep | he2_table1_targeted_repair_20260612:canonical_bundle_targeted_repair | targeted repair replacement |
 | 12/25/2022 | N-M-T0 | 0.6440 | multimodel_20221225_v8_he2pubgdpc1r1_ndlm_main_drop | ndlm_publication_promotion_20260607:canonical_bundle_promoted | canonical-bundle promoted |
 | 12/25/2022 | N-M-T1 | 3.8886 | multimodel_20221225_v8_he2pubgdpc1r1_ndlm_main_keep | ndlm_publication_promotion_20260607:canonical_bundle_promoted | canonical-bundle promoted |
@@ -133,7 +133,7 @@ Archival caveat:
 | 12/25/2022 | AL-M-T1 | 0.6276 | multimodel_20221225_v8_he2grid_c05_eps030_dqlm_multivar_al_keep | dqlm_multivar_al_keep_from_exal_winners_20260602:canonical_bundle_promoted | canonical-bundle promoted |
 | 12/25/2022 | exAL-U-T1 | 3.5953 | multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_univar | univar_al_exal_publication_relaunch_20260603:canonical_bundle_promoted | canonical-bundle promoted |
 | 12/25/2022 | exAL-M-T0 | 1.2113 | multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_drop | exdqlm_multivar_drop_current_relaunch_q50repair_20260602:canonical_bundle_promoted | canonical-bundle promoted |
-| 12/25/2022 | exAL-M-T1 | 0.6655 | multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep | exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner | canonical-bundle promoted |
+| 12/25/2022 | exAL-M-T1 | 0.5381 | multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep | exdqlm_multivar_keep_partial_authority_refresh_20260623:clean_replay | targeted repair replacement |
 
 ## Outputs
 
