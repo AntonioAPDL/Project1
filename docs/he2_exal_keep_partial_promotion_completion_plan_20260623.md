@@ -4,16 +4,16 @@ Date: 2026-06-23
 
 ## Purpose
 
-This plan completes the interrupted promotion of improved HE2
-`exAL-M-T1` / `exdqlm_multivar_keep` screening specifications into the
+This plan records the completed promotion of improved HE2 `exAL-M-T1` /
+`exdqlm_multivar_keep` screening specifications into the
 publication-authoritative workflow, revised article, corrections response, and
 poster materials.
 
-The plan is intentionally conservative. The current local state contains a
-valid partial-screen overlay, but it is not yet a finished publication freeze:
-the overnight screening campaign is still running, the clean authority replay
-has not completed, the corrections response tables are stale, and poster inputs
-still reference older benchmark values.
+The implementation is intentionally conservative. The publication-facing
+authority is now a clean replay of the three selected partial-screen winners,
+not a direct dependency on the unfinished exploratory screening root. The
+remaining screening rows stay exploratory and can be resumed later under the
+same promotion gates.
 
 ## Current Evidence
 
@@ -23,9 +23,8 @@ Repository:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd`
 
-Current branch is `main`, tracking `origin/main`. Local uncommitted files
-include the partial promotion overlay, helper scripts, validators, manifest
-builder changes, and tests.
+Current branch is `main`, tracking `origin/main`. The promotion scripts,
+validators, overlay, docs, and tests are committed and pushed.
 
 Important local files:
 
@@ -58,15 +57,17 @@ Current matrix status at audit time:
 | not_started | 23 |
 | total | 315 |
 
-The screening campaign remains active, so it is not a final full-grid
-authority. A partial promotion is still valid only if explicitly documented as
-best-so-far evidence from completed rows.
+The screening campaign was paused for the authority refresh, so it is not a
+final full-grid authority. The clean replay promoted here is valid only for the
+three cutoffs where completed screening evidence improved CRPS and passed the
+clean replay gates.
 
 The screening root currently retains no heavy `.RData`/`.rda` files.
 
 ### Promoted Partial-Screen Rows
 
-The current local overlay promotes exactly three improved rows:
+The current authority overlay promotes exactly three improved rows through
+clean replay roots:
 
 | cutoff | previous authoritative run | promoted screening run | old CRPS | new CRPS |
 |---|---|---|---:|---:|
@@ -77,21 +78,29 @@ The current local overlay promotes exactly three improved rows:
 The `20210123` and `20211112` cutoffs remain on the previous authority because
 their best completed screening rows were worse at the checkpoint.
 
-### Revised Article
+### Clean Replay and Article State
 
 Repository:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2`
 
-The revised article has local uncommitted HE2 freeze/table changes. Its current
-generated article tables already show the promoted `exAL-M-T1` CRPS values:
+The clean replay root is:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623`
+
+All three clean replay rows reached fit/post/validate/report `pass`, retained
+no `.RData`/`.rda` files, and are now referenced by the current authority
+overlay.
+
+The revised article HE2 freeze, generated tables, manuscript figures, and
+poster artifacts were refreshed from that overlay. The current generated
+article tables show the promoted `exAL-M-T1` CRPS values:
 
 ```text
 exAL-M-T1 & 0.13971 & 0.04724 & 0.26045 & 0.02273 & 0.53806
 ```
 
-This is locally consistent with the partial overlay, but not yet committed or
-pushed.
+The revised article changes are committed and pushed.
 
 ### Corrections Response
 
@@ -99,15 +108,8 @@ Repository:
 
 `/data/muscat_data/jaguir26/Corrections---Project-1`
 
-The corrections repo is clean but stale. It still contains older HE2 table
-values:
-
-```text
-exAL-M-T1 & 0.13971 & 0.04724 & 0.26537 & 0.03233 & 0.66546
-```
-
-Therefore cross-repo validation is expected to fail until corrections generated
-tables are synchronized from the revised article outputs.
+The corrections generated HE2 CRPS tables were synchronized from the revised
+article outputs, committed, and pushed.
 
 ### Poster
 
@@ -115,8 +117,8 @@ Poster root:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/isba2026_poster`
 
-Poster derived CRPS inputs still contain the older `exAL-M-T1` values for the
-improved cutoffs, for example:
+Poster derived CRPS inputs and generated figures were refreshed from the clean
+authority manifest and committed with the revised article artifacts.
 
 ```text
 20211221,0.26537
@@ -527,30 +529,30 @@ Why this is optimal:
 - The publication freeze is no longer blocked by exploratory tail rows.
 - Future screening discoveries can be evaluated with the same promotion gates.
 
-## Implementation Readiness Checklist
+## Implementation Checklist
 
-- [ ] Checkpoint active screening matrix and logs.
-- [ ] Pause only `overnight_screen_20260619` processes.
-- [ ] Clean interrupted dry-run/prelaunch residue from the clean replay root.
-- [ ] Rebuild and inspect clean replay matrix.
-- [ ] Launch clean replay.
-- [ ] Confirm clean replay passes all three rows.
-- [ ] Repoint authority overlay from screening roots to clean replay roots.
-- [ ] Update validators for clean replay lineage.
-- [ ] Rebuild workflow manifest and parity gate.
-- [ ] Refresh revised article artifacts and compile.
-- [ ] Sync corrections generated tables and compile.
-- [ ] Refresh poster derived data and figures.
-- [ ] Run full cross-repo validation.
-- [ ] Clean heavy runtime objects from clean replay root.
-- [ ] Commit and push all three repos.
-- [ ] Resume unfinished screening rows.
+- [x] Checkpoint active screening matrix and logs.
+- [x] Pause only `overnight_screen_20260619` processes.
+- [x] Clean interrupted dry-run/prelaunch residue from the clean replay root.
+- [x] Rebuild and inspect clean replay matrix.
+- [x] Launch clean replay.
+- [x] Confirm clean replay passes all three rows.
+- [x] Repoint authority overlay from screening roots to clean replay roots.
+- [x] Update validators for clean replay lineage.
+- [x] Rebuild workflow manifest and parity gate.
+- [x] Refresh revised article artifacts and compile.
+- [x] Sync corrections generated tables and compile.
+- [x] Refresh poster derived data and figures.
+- [x] Run full cross-repo validation.
+- [x] Clean heavy runtime objects from clean replay root.
+- [x] Commit and push all three repos.
+- [ ] Resume unfinished exploratory screening rows.
 
 ## Recommendation
 
-Do not publish or push the current partial local state as final. It is useful
-and internally validated as a best-so-far partial-screen overlay, but the
-publication-grade authority should be the clean replay root. The clean replay
-adds little runtime cost relative to the full screening grid and gives a much
-stronger provenance story for the revised manuscript, corrections response, and
-poster.
+Use the clean replay overlay as the current publication authority. Do not treat
+the unfinished exploratory screening grid as a final full-grid optimization.
+When the remaining grid is resumed and completed, evaluate any additional
+improvements with the same gates: lower CRPS, fit/post/validate/report pass,
+canonical input-bundle consistency, required output presence, and heavy-artifact
+cleanup before any new authority overlay is proposed.

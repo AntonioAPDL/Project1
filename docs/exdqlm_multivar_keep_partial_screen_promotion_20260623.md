@@ -1,30 +1,32 @@
-# exDQLM Multivariate Keep Partial-Screen Promotion
+# exDQLM Multivariate Keep Clean-Authority Promotion
 
 Date: 2026-06-23
 
-This document records the controlled promotion plan and implementation for the
-HE2 `exAL-M-T1` / `exdqlm_multivar_keep` partial screening results from:
+This document records the controlled promotion and clean replay of selected HE2
+`exAL-M-T1` / `exdqlm_multivar_keep` screening results from:
 
 `/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_overnight_screen_20260619`
 
 ## Scope
 
-The promotion is intentionally a partial-screen overlay, not a final full-grid
-winner manifest. At the 2026-06-23 promotion checkpoint, the screening matrix
-had `207` passed rows, `73` failed rows, `4` pending rows, and `31` not-started
-rows out of `315`. The promoted rows therefore replace the current publication
-authority only for cutoffs where a completed screening row already improves
-forecast-window CRPS and passes output/completeness gates. The screening
-campaign itself remains exploratory until every row is terminal and a later
+The authority promoted here is not a final full-grid screening winner manifest.
+It is a clean replay of the three completed screening specifications that
+improved forecast-window CRPS relative to the 2026-06-01 authority. The broader
+screening campaign remains exploratory until every row is terminal and a later
 full-screen authority overlay is produced.
+
+The publication-facing authority no longer points to the exploratory screening
+root. It points to the isolated clean replay root:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623`
 
 ## Promoted Rows
 
-| cutoff | previous authoritative run | promoted partial-screen run | reason |
-|---|---|---|---|
-| `20211221` | `multimodel_20211221_v8_he2grid_c03_eps030_exdqlm_multivar_keep` | `multimodel_20211221_v8_he2grid_s02_eps030_exdqlm_multivar_keep` | lower completed CRPS |
-| `20220511` | `multimodel_20220511_v8_he2grid_c02_eps060_exdqlm_multivar_keep` | `multimodel_20220511_v8_he2grid_s06_eps001_exdqlm_multivar_keep` | lower completed CRPS |
-| `20221225` | `multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep` | `multimodel_20221225_v8_he2grid_s01_eps001_exdqlm_multivar_keep` | lower completed CRPS |
+| cutoff | previous authoritative run | selected screening run | clean authority run | reason |
+|---|---|---|---|---|
+| `20211221` | `multimodel_20211221_v8_he2grid_c03_eps030_exdqlm_multivar_keep` | `multimodel_20211221_v8_he2grid_s02_eps030_exdqlm_multivar_keep` | `multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep` | lower completed CRPS, clean replay passed |
+| `20220511` | `multimodel_20220511_v8_he2grid_c02_eps060_exdqlm_multivar_keep` | `multimodel_20220511_v8_he2grid_s06_eps001_exdqlm_multivar_keep` | `multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep` | lower completed CRPS, clean replay passed |
+| `20221225` | `multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep` | `multimodel_20221225_v8_he2grid_s01_eps001_exdqlm_multivar_keep` | `multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep` | lower completed CRPS, clean replay passed |
 
 The `20210123` and `20211112` cutoffs remain on the 2026-06-01 authority
 because the best completed partial-screen row was worse than the existing
@@ -56,7 +58,7 @@ The host-side end-to-end orchestration script is:
 This overlay combines:
 
 1. the existing 16 Table 1 targeted repairs from 2026-06-12/13, and
-2. the 3 partial-screen `exAL-M-T1` replacements listed above.
+2. the 3 clean-replayed `exAL-M-T1` replacements listed above.
 
 The previous 2026-06-01 manifest remains available as the baseline audit trail:
 
@@ -68,10 +70,8 @@ context.
 
 ## Clean Authority Rerun
 
-The partial-screen overlay can be used immediately because the promoted runs
-already passed fit/post/validate/report, improved CRPS, and retained no heavy
-`.RData` artifacts. For a cleaner long-term authority path, replay exactly the
-three promoted rows into a dedicated root:
+The clean authority rerun has completed. The replay ran exactly the three
+promoted rows into the dedicated root named above:
 
 ```bash
 cd /data/muscat_data/jaguir26/project1_ucsc_phd
@@ -87,13 +87,12 @@ python3 scripts/launch_he2_bayesian_publication_relaunch.py \
 ```
 
 This template selects only `exAL-M-T1` for `20211221`, `20220511`, and
-`20221225` from the refreshed HE2 publication manifest. It therefore inherits
-the promoted screening specifications, canonical `20260510` input bundle, full
+`20221225` from the refreshed HE2 publication manifest. It inherits the
+selected screening specifications, canonical `20260510` input bundle, full
 history start date, current patched workflow, seven quantile lanes per cutoff,
-component diagnostics, and post-stage heavy-artifact cleanup. Once those clean
-reruns finish, create a new overlay version that points to the clean authority
-root rather than the partial-screen root, rebuild the publication manifest, and
-repeat the article/corrections/poster sync gates below.
+component diagnostics, and post-stage heavy-artifact cleanup. All three clean
+replay rows reached fit/post/validate/report `pass`, and no `.RData`/`.rda`
+objects remain under the clean replay root.
 
 For the complete host-side handoff from an unrestricted shell:
 
@@ -124,16 +123,17 @@ The operational checkpoint/pause/report helper is:
 
 It checks:
 
-- exactly three partial-screen `exAL-M-T1` replacements;
+- exactly three selected `exAL-M-T1` replacements;
 - replacement cutoffs are `20211221`, `20220511`, and `20221225`;
-- each replacement run root exists under the screening campaign;
+- each replacement run root exists under the declared screening or clean replay
+  root;
 - fit, post, validate, and report stages are all `pass`;
 - required CRPS, figure, and posterior summary outputs exist;
 - no retained `.RData`, `.rda`, `.Rda`, or `.rdata` files are present in the
   promoted runs;
 - each replacement CRPS is lower than the 2026-06-01 authority;
-- the screening matrix is explicitly still incomplete, so the promotion is not
-  mislabeled as final full-grid evidence.
+- exploratory partial-screen lineage is explicitly non-final, while clean
+  replay lineage must have a complete all-pass clean replay matrix.
 
 Run:
 
@@ -219,9 +219,10 @@ pdflatex -interaction=nonstopmode -halt-on-error -jobname=output wileyNJD-APA.te
 pdflatex -interaction=nonstopmode -halt-on-error -jobname=output wileyNJD-APA.tex
 ```
 
-The publication freeze validator passes with the partial-screen overlay. The
-cross-repo validator is expected to pass after the corrections generated tables
-are refreshed with the command above.
+The publication freeze validator, cross-repo validator, revised article tests,
+revised article LaTeX/BibTeX compile, corrections `make`, and poster build
+passed after refreshing the workflow, revised article, corrections response,
+and poster artifacts from the clean-authority overlay.
 
 ## Operational Pause/Resume
 
