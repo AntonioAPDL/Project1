@@ -160,7 +160,7 @@ FORBIDDEN_CLAIMS = [
 ]
 REQUIRED_CLAIMS = [
     ("article", "Table~\\ref{tab:benchmark_crps_models_nws_horizon}"),
-    ("article", "AL-M-T1 is the best corrected Bayesian row at the December 25, 2022 cutoff"),
+    ("article", "exAL-M-T1 specification attains the lowest 28-day forecast-window CRPS in all five cutoffs"),
     ("article", "conceptual or physically based models"),
     ("article", "Conceptual formulations remain especially practical for prediction"),
     ("article", "easier to specify, calibrate, and deploy operationally"),
@@ -207,6 +207,7 @@ REQUIRED_CLAIMS = [
     ("article", "the forecast-window treatment of the transfer block gives the \\(T0\\) and \\(T1\\) rows"),
     ("article", "nine Bayesian variants of the common state-space framework"),
     ("article", "Because exAL-M-T1 is the selected extended-likelihood multivariate specification"),
+    ("article", "strongest corrected model across the five rolling-origin cutoffs"),
     ("article", "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates"),
     ("article", "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Weight Coefficients"),
     ("article", "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters"),

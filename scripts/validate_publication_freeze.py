@@ -114,6 +114,8 @@ SELECTED_MODEL_FIGURES = {
     "fig:synth1",
     "fig:80_components",
 }
+REFRESHED_SELECTED_MODEL_FIGURES = {"fig:synth1"}
+SUPPORT_DIAGNOSTIC_FIGURES = SELECTED_MODEL_FIGURES - REFRESHED_SELECTED_MODEL_FIGURES
 
 @dataclass
 class Check:
@@ -309,6 +311,12 @@ def check_he3_authoritative(
     winners = load_yaml(workflow_root / "docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml")["winners"]
     winner_by_cutoff = {str(row["cutoff"]): row for row in winners}
     add(checks, "he3_authority", "winner_cutoff_set", list(winner_by_cutoff) == CUTOFF_ORDER, ",".join(winner_by_cutoff))
+    he2_manifest_rows = read_csv(article_root / "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv")
+    he2_current_exal = {
+        row["cutoff"]: row
+        for row in he2_manifest_rows
+        if row.get("manuscript_label") == "exAL-M-T1" and row.get("family") == "exdqlm_multivar_keep"
+    }
 
     matrix_dir = he3_runtime_root / "control/he3_exdqlm_ablation_authoritative_winners_v1"
     status_rows = read_csv(matrix_dir / "matrix_status.csv")
@@ -364,9 +372,13 @@ def check_he3_authoritative(
         )
         meta_path = article_root / f"artifacts/five_cutoff_main_model_synthesis/{cutoff}_exal_m_t1/source_metadata.json"
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        add(checks, "he3_authority", f"{cutoff}:synthesis_run_id", meta.get("multivar_run_id") == winner["run_id"], meta.get("multivar_run_id", ""))
-        add(checks, "he3_authority", f"{cutoff}:synthesis_grid", meta.get("grid_spec_id") == winner["grid_spec_id"], meta.get("grid_spec_id", ""))
-        add(checks, "he3_authority", f"{cutoff}:synthesis_lineage", meta.get("source_lineage") == AUTHORITATIVE_KEEP_LINEAGE, meta.get("source_lineage", ""))
+        current = he2_current_exal.get(cutoff)
+        add(checks, "he3_authority", f"{cutoff}:synthesis_current_manifest_row", current is not None, "current HE2 exAL-M-T1 row")
+        if current is not None:
+            expected_grid = current.get("expected_input_bundle_id", "") or current.get("campaign_lineage", "")
+            add(checks, "he3_authority", f"{cutoff}:synthesis_run_id", meta.get("multivar_run_id") == current["run_id"], meta.get("multivar_run_id", ""))
+            add(checks, "he3_authority", f"{cutoff}:synthesis_grid", meta.get("grid_spec_id") == expected_grid, meta.get("grid_spec_id", ""))
+            add(checks, "he3_authority", f"{cutoff}:synthesis_lineage", meta.get("source_lineage") == current.get("campaign_lineage", ""), meta.get("source_lineage", ""))
 
     for key, runtime_row in runtime_key.items():
         article_row = article_key.get(key)
@@ -455,14 +467,23 @@ def check_selected_figures(article_root: Path, checks: list[Check]) -> None:
         add(checks, "figure_lineage", f"{label}:manifest_entry", row is not None, "manifest entry")
         if row is None:
             continue
-        add(checks, "figure_lineage", f"{label}:current_model_flag", bool(row.get("current_model_output_wired")), str(row.get("current_model_output_wired")))
+        if label in REFRESHED_SELECTED_MODEL_FIGURES:
+            add(checks, "figure_lineage", f"{label}:current_model_flag", bool(row.get("current_model_output_wired")), str(row.get("current_model_output_wired")))
+        else:
+            add(
+                checks,
+                "figure_lineage",
+                f"{label}:support_pending_refresh_flag",
+                not bool(row.get("current_model_output_wired")) and "pending_clean_replay_refresh" in str(row.get("source_class", "")),
+                f"{row.get('source_class', '')}:{row.get('current_model_output_wired')}",
+            )
         add(checks, "figure_lineage", f"{label}:source_exists", (article_root / row["source_path"]).exists(), row["source_path"])
         add(checks, "figure_lineage", f"{label}:manuscript_exists", (article_root / row["manuscript_path"]).exists(), row["manuscript_path"])
         add(
             checks,
             "figure_lineage",
             f"{label}:selected_authority_note",
-            "selected" in str(row.get("note", "")).lower() or "authoritative" in str(row.get("note", "")).lower(),
+            "selected" in str(row.get("note", "")).lower() or "authoritative" in str(row.get("note", "")).lower() or "support" in str(row.get("note", "")).lower(),
             str(row.get("note", "")),
         )
     bundle = json.loads((article_root / "artifacts/representative_selected_model_2022_12_25/bundle_metadata.json").read_text(encoding="utf-8"))
@@ -470,7 +491,7 @@ def check_selected_figures(article_root: Path, checks: list[Check]) -> None:
         checks,
         "figure_lineage",
         "representative_bundle_run",
-        bundle.get("run_id") == "multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep",
+        bundle.get("run_id") == "multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep",
         str(bundle.get("run_id", "")),
     )
     support_readme = (article_root / "artifacts/representative_selected_model_2022_12_25/authoritative_support/README.md").read_text(encoding="utf-8")
@@ -478,7 +499,7 @@ def check_selected_figures(article_root: Path, checks: list[Check]) -> None:
         checks,
         "figure_lineage",
         "support_readme_same_authority",
-        "same selected-output authority as the synthesis figure" in support_readme,
+        "has not yet been regenerated from the `2026-06-23` clean HE2 authority" in support_readme,
         "authoritative support README",
     )
 
@@ -491,11 +512,11 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
     article = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8") + "\n" + generated_tables
     corrections = (corrections_root / "main.tex").read_text(encoding="utf-8")
     required_article = [
-        "AL-M-T1 is the best corrected Bayesian row at 12/25/2022",
+        "exAL-M-T1 attains the lowest 28-day CRPS in all five rolling-origin cutoffs",
         "A separate eight-day NWS-horizon table preserves the direct operational comparison to NWS",
         r"Appendix~\ref{app:he3ablation} reports a targeted component ablation",
         r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
-        "same 2022-12-25 selected exAL-M-T1 output authority used for the synthesis illustration",
+        "selected-model support bundle for the 2022-12-25 exAL-M-T1 specification",
         "conceptual or physically based models",
         "Conceptual formulations remain especially practical for prediction",
         "easier to specify, calibrate, and deploy operationally",
@@ -542,6 +563,7 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         r"the forecast-window treatment of the transfer block gives the \(T0\) and \(T1\) rows",
         "nine Bayesian variants of the common state-space framework",
         "Because exAL-M-T1 is the selected extended-likelihood multivariate specification",
+        "strongest corrected model across the five rolling-origin cutoffs",
         "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates",
         "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Weight Coefficients",
         "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters",
@@ -556,12 +578,13 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "increased the risk of quantile crossing in the discrepancy states",
     ]
     required_corrections = [
-        "best corrected Bayesian row at 12/25/2022",
+        "exAL-M-T1} has the lowest 28-day CRPS in all five rolling-origin cutoffs",
         "separate eight-day NWS-horizon comparison",
-        "Because this is a sensitivity analysis of the selected specification rather than a primary benchmark table",
+        "Because this is a sensitivity analysis rather than a primary benchmark table",
+        "fixed to the June 1, 2026 \\texttt{exAL-M-T1} winner set",
         r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
         "Within this fixed ablation matrix",
-        "same 2022-12-25 selected-model posterior-output authority",
+        "The ablation matrix is fixed to the June 1, 2026 \\texttt{exAL-M-T1} winner set",
         "centering the forecasting analysis on multiple rolling-origin cutoffs",
         "supported by rolling-origin forecast evaluation and selected-model interpretation",
         "rather than treating dynamic discrepancy correction alone as the central novelty",

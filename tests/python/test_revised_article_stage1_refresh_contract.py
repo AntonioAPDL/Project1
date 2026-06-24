@@ -54,14 +54,14 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
     def test_manuscript_asset_manifest_points_selected_model_note_to_corrected_relaunch(self) -> None:
         payload = json.loads((ARTICLE_ROOT / 'MANUSCRIPT_ASSET_MANIFEST.json').read_text(encoding='utf-8'))
         fig = next(item for item in payload['figures'] if item['label'] == 'fig:synth1')
-        self.assertEqual(fig['source_path'], 'artifacts/representative_selected_model_2022_12_25/representative_synthesis_multivariate.png')
+        self.assertEqual(fig['source_path'], 'artifacts/representative_selected_model_2022_12_25/representative_synthesis_multivariate_with_reference_ensembles.png')
         self.assertIn('exAL-M-T1', fig['note'])
 
     def test_benchmark_table_note_and_freeze_contract_match_final_nine_family_promotion(self) -> None:
         payload = json.loads((ARTICLE_ROOT / 'MANUSCRIPT_ASSET_MANIFEST.json').read_text(encoding='utf-8'))
         note = payload['tables']['tab:benchmark_crps_models']['note']
-        self.assertIn('All nine Bayesian benchmark families', note)
-        self.assertIn('final CRPS table source', note)
+        self.assertIn('frozen HE2 publication manifest', note)
+        self.assertIn('28-day raw GloFAS row', note)
         self.assertNotIn('three NDLM', note)
         self.assertNotIn('transitional', note)
 
@@ -81,11 +81,11 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
 
     def test_generated_benchmark_table_carries_promoted_family_crps_values(self) -> None:
         rows = (ARTICLE_ROOT / 'tables' / 'generated_tex' / 'benchmark_crps_bayesian_rows.tex').read_text(encoding='utf-8')
-        self.assertIn('N-U-T1 & 0.33592 & 0.17059 & 1.19345 & 0.15077 & 2.49972', rows)
-        self.assertIn('N-M-T0 & 1.84560 & 0.38023 & 0.65964 & 0.67014 & 0.64404', rows)
-        self.assertIn('AL-M-T1 & 0.14592 & 0.05551 & 0.27775 & 0.05716 & 0.62764', rows)
-        self.assertIn('exAL-M-T0 & 1.22150 & 1.79868 & 1.08503 & 2.13102 & 1.21132', rows)
-        self.assertIn('exAL-M-T1 & \\textbf{0.13971} & \\textbf{0.04724} & \\textbf{0.26537} & \\textbf{0.03233} & 0.66546', rows)
+        self.assertIn('N-U-T1 & 0.33592 & 0.17059 & 1.19344 & 0.15077 & 2.49968', rows)
+        self.assertIn('N-M-T0 & 1.84333 & 0.38023 & 0.65964 & 0.67014 & 0.64404', rows)
+        self.assertIn('AL-M-T1 & 0.14592 & 0.05551 & 0.27775 & 0.05467 & 0.62764', rows)
+        self.assertIn('exAL-M-T0 & 0.75682 & 1.72135 & 0.97762 & 1.02087 & 1.21132', rows)
+        self.assertIn('exAL-M-T1 & \\textbf{0.13971} & \\textbf{0.04724} & \\textbf{0.26045} & \\textbf{0.02273} & \\textbf{0.53806}', rows)
 
     def test_figure_polish_audit_contract_references_cutoff_wide_synthesis_manifests(self) -> None:
         text = (ARTICLE_ROOT / 'scripts' / 'build_figure_polish_status_audit.py').read_text(encoding='utf-8')

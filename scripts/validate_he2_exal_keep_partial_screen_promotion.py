@@ -136,10 +136,30 @@ def validate(baseline_path: Path, overlay_path: Path, screen_root: Path) -> tupl
     rows: list[dict[str, str]] = []
     baseline = baseline_by_cutoff(baseline_path)
     replacements = partial_replacements(overlay_path)
+    lineage_values = {str(row.get("campaign_lineage", "")) for row in replacements}
+    clean_replay_mode = bool(lineage_values) and all(value == CLEAN_REPLAY_LINEAGE for value in lineage_values)
+    replacement_campaign_roots = {
+        Path(str(row.get("run_root", ""))).parent.parent
+        for row in replacements
+        if str(row.get("run_root", "")).strip()
+    }
+    declared_root = (
+        next(iter(replacement_campaign_roots))
+        if clean_replay_mode and len(replacement_campaign_roots) == 1
+        else screen_root
+    )
     add(checks, "overlay", "partial_replacement_count", len(replacements) == 3, f"{len(replacements)} rows")
     expected_cutoffs = {"20211221", "20220511", "20221225"}
     observed_cutoffs = {str(row.get("cutoff", "")).zfill(8) for row in replacements}
     add(checks, "overlay", "partial_replacement_cutoffs", observed_cutoffs == expected_cutoffs, "|".join(sorted(observed_cutoffs)))
+    if clean_replay_mode:
+        add(
+            checks,
+            "overlay",
+            "clean_replay_single_campaign_root",
+            len(replacement_campaign_roots) == 1,
+            "|".join(str(path) for path in sorted(replacement_campaign_roots)),
+        )
 
     for repl in replacements:
         cutoff = str(repl["cutoff"]).zfill(8)
@@ -152,7 +172,7 @@ def validate(baseline_path: Path, overlay_path: Path, screen_root: Path) -> tupl
             checks,
             scope,
             "run_under_declared_root",
-            str(run_root).startswith(str(screen_root / "runs") + "/"),
+            str(run_root).startswith(str(declared_root / "runs") + "/"),
             str(run_root),
         )
         if not run_root.exists() or base is None:
@@ -181,14 +201,13 @@ def validate(baseline_path: Path, overlay_path: Path, screen_root: Path) -> tupl
             }
         )
 
-    overall, by_case = matrix_counts(screen_root)
-    lineage_values = {str(row.get("campaign_lineage", "")) for row in replacements}
-    clean_replay_mode = bool(lineage_values) and all(value == CLEAN_REPLAY_LINEAGE for value in lineage_values)
+    overall, by_case = matrix_counts(declared_root)
     metadata = {
         "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "baseline_manifest": str(baseline_path),
         "overlay": str(overlay_path),
-        "screen_root": str(screen_root),
+        "screen_root": str(declared_root),
+        "requested_screen_root": str(screen_root),
         "screen_status_counts": overall,
         "screen_status_by_case": by_case,
         "validation_mode": "clean_replay" if clean_replay_mode else "partial_screen",

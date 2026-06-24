@@ -36,7 +36,7 @@ class PublicationFreezeValidationTests(unittest.TestCase):
             path.write_text(
                 "\\begin{tabular}{lccccc}\n"
                 "Ablation model & A & B & C & D & E \\\\\n"
-                "exAL-M-T1 (full) & \\textbf{0.13971} & 0.04724 & 0.26537 & 0.03233 & 0.66546 \\\\\n"
+                "exAL-M-T1 (full) & \\textbf{0.13971} & \\textbf{0.04724} & \\textbf{0.26045} & \\textbf{0.02273} & \\textbf{0.53806} \\\\\n"
                 "exAL-M-T1-noH3 & 1.08281 & 1.03562 & 2.68667 & 0.72940 & 4.14478 \\\\\n"
                 "\\end{tabular}\n",
                 encoding="utf-8",
