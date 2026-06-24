@@ -24,6 +24,7 @@ generated assets, and validation gates are final.
 Canonical documentation:
 
 - `repro/run/REVISION_SOFTWARE_REPRODUCIBILITY_CONTRACT_20260615.md`
+- `docs/current_authority_refresh_runbook.md`
 - `docs/software_reproducibility_release_plan_20260615.md`
 - `docs/workflow_archive_readiness_20260615.md`
 - `repro/run/CANONICAL_REVISED_ARTICLE_WORKFLOW.md`
@@ -45,12 +46,16 @@ the planned formal `renv` migration is complete.
 Core cross-repository gates from the workflow repository are:
 
 ```bash
+scripts/validate_current_authority_sync.sh
 python3 scripts/validate_publication_freeze.py
 python3 scripts/validate_revision_cross_repo_wiring.py --after-patch
 ```
 
-The revised article and corrections response have their own compile/test gates;
-see the revision software reproducibility contract for the full checklist.
+Use `scripts/validate_current_authority_sync.sh --compile` before committing a
+deliberate authority refresh that changes rendered PDFs. The revised article
+and corrections response have their own compile/test gates; see the current
+authority refresh runbook and revision software reproducibility contract for
+the full checklist.
 
 ## Legacy Figure Helper
 
