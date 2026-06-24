@@ -419,8 +419,8 @@ Actions:
 
 Why this is optimal:
 
-- The poster is currently stale even though the article tables are locally
-  updated.
+- The poster must consume the same clean-authority values as the article and
+  corrections response.
 - Rebuilding poster data from the article/workflow artifacts prevents the
   poster from becoming a separate fork of the benchmark results.
 

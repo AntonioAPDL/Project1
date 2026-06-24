@@ -175,9 +175,8 @@ python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/promote_generated_figure
   --article-root Evironmetrics---REVISED-DOC-Corrected-2
 ```
 
-The corrections-response generated HE2 tables must be synchronized from an
-unrestricted shell because the corrections repo is read-only in the managed
-Codex sandbox used for this pass:
+The corrections-response generated HE2 tables were synchronized from the
+revised article outputs with:
 
 ```bash
 cd /data/muscat_data/jaguir26/project1_ucsc_phd
@@ -186,9 +185,9 @@ python3 Evironmetrics---REVISED-DOC-Corrected-2/scripts/sync_corrections_generat
   --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1
 ```
 
-Until that command is run, `scripts/validate_revision_cross_repo_wiring.py`
-will correctly fail on the three updated `exAL-M-T1` cells in the corrections
-HE2 response table.
+The cross-repo validator passed after this sync, confirming that the workflow
+manifest, revised article tables, corrections response tables, and poster inputs
+all reference the clean-authority `exAL-M-T1` values consistently.
 
 ## Validation Results
 
