@@ -19,15 +19,20 @@ from build_he2_exdqlm_multivar_keep_grid_smoke_matrix import (  # noqa: E402
     safe_token,
 )
 from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402
-from he2_publication_relaunch_lib import ensure_dir, initialize_matrix_status, write_yaml  # noqa: E402
+from he2_publication_relaunch_lib import ensure_dir, initialize_matrix_status, load_yaml, write_yaml  # noqa: E402
 from multimodel_v8_lib import artifact_disk_free_gb, control_dir, reports_dir, runs_dir  # noqa: E402
 
 
 DEFAULT_MANIFEST = ROOT / "docs" / "exdqlm_multivar_keep_authoritative_specs_20260601.yaml"
+DEFAULT_CURRENT_AUTHORITY_OVERLAY = (
+    ROOT / "config" / "he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml"
+)
 DEFAULT_ARTIFACT_ROOT = Path(
     "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/"
     "multimodel_v8_he2_exdqlm_multivar_keep_authoritative_rdata_retention_20260610"
 )
+TARGET_FAMILY = "exdqlm_multivar_keep"
+TARGET_LABEL = "exAL-M-T1"
 
 
 def git_head() -> str:
@@ -42,6 +47,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Build an exact five-row no-cleanup matrix for the authoritative HE2 exDQLM multivar keep winners."
     )
     parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
+    parser.add_argument(
+        "--current-authority-overlay",
+        default=None,
+        help=(
+            "Optional publication replacement overlay. When supplied, exAL-M-T1 "
+            "replacement rows supersede the baseline authoritative YAML for the "
+            "affected cutoffs."
+        ),
+    )
     parser.add_argument("--source-matrix-dir", default=None)
     parser.add_argument("--artifact-root", default=str(DEFAULT_ARTIFACT_ROOT))
     parser.add_argument("--tag", default="authoritative_rdata_retained_20260610")
@@ -65,6 +79,97 @@ def _source_matrix_dir(spec, override: str | None) -> Path:
     if override:
         return resolve_path(override)
     return spec.runtime_root / "control" / "publication_relaunch_matrix"
+
+
+def _matrix_dir_from_run_root(run_root: Path) -> Path:
+    # run_root is expected to be <artifact_root>/runs/<run_id>.
+    return run_root.parent.parent / "control" / "publication_relaunch_matrix"
+
+
+def _read_source_row(source_matrix_dir: Path, run_id: str) -> pd.Series:
+    source_plan = pd.read_csv(source_matrix_dir / "matrix_plan.csv", dtype=str)
+    matches = source_plan.loc[source_plan["run_id"].astype(str) == run_id]
+    if len(matches) != 1:
+        raise SystemExit(f"Expected exactly one source row for {run_id}; observed={len(matches)}")
+    return matches.iloc[0]
+
+
+def _overlay_replacements(overlay_path: Path | None) -> dict[str, dict[str, Any]]:
+    if overlay_path is None:
+        return {}
+    payload = load_yaml(overlay_path)
+    replacements = payload.get("replacements") or []
+    if not isinstance(replacements, list):
+        raise SystemExit(f"Overlay replacements must be a list: {overlay_path}")
+    out: dict[str, dict[str, Any]] = {}
+    for row in replacements:
+        if not isinstance(row, dict):
+            continue
+        if row.get("family") != TARGET_FAMILY or row.get("manuscript_label") != TARGET_LABEL:
+            continue
+        cutoff = str(row.get("cutoff", "")).zfill(8)
+        if not cutoff or "run_id" not in row or "run_root" not in row:
+            raise SystemExit(f"Malformed exAL-M-T1 overlay replacement: {row}")
+        out[cutoff] = row
+    return out
+
+
+def _current_authority_entries(
+    *,
+    spec,
+    source_matrix_dir: Path,
+    current_authority_overlay: Path | None,
+) -> tuple[list[dict[str, Any]], list[pd.Series]]:
+    replacements = _overlay_replacements(current_authority_overlay)
+    entries: list[dict[str, Any]] = []
+    rows: list[pd.Series] = []
+    for winner in spec.winners:
+        replacement = replacements.get(winner.cutoff)
+        if replacement is None:
+            row = _read_source_row(source_matrix_dir, winner.run_id)
+            entries.append(
+                {
+                    "cutoff": winner.cutoff,
+                    "grid_spec_id": winner.grid_spec_id,
+                    "source_run_id": winner.run_id,
+                    "source_matrix_dir": source_matrix_dir,
+                    "source_runtime_root": spec.runtime_root,
+                    "mean_crps": winner.mean_crps,
+                    "median_crps": winner.median_crps,
+                    "max_crps": winner.max_crps,
+                    "runner_up_grid_spec_id": winner.runner_up_grid_spec_id,
+                    "runner_up_mean_crps": winner.runner_up_mean_crps,
+                    "authority_source": "baseline_manifest",
+                    "authority_lineage": str(spec.metadata.get("authority_scope", "canonical_grid_production")),
+                }
+            )
+            rows.append(row)
+            continue
+
+        run_root = resolve_path(str(replacement["run_root"]))
+        replacement_matrix_dir = _matrix_dir_from_run_root(run_root)
+        row = _read_source_row(replacement_matrix_dir, str(replacement["run_id"]))
+        grid_spec_id = str(row.get("grid_spec_id") or row.get("epsilon") or "current_overlay")
+        mean_crps = row.get("selected_mean_crps") or replacement.get("mean_crps") or winner.mean_crps
+        entries.append(
+            {
+                "cutoff": winner.cutoff,
+                "grid_spec_id": grid_spec_id,
+                "source_run_id": str(replacement["run_id"]),
+                "source_matrix_dir": replacement_matrix_dir,
+                "source_runtime_root": run_root.parent.parent,
+                "mean_crps": float(mean_crps),
+                "median_crps": winner.median_crps,
+                "max_crps": winner.max_crps,
+                "runner_up_grid_spec_id": winner.runner_up_grid_spec_id,
+                "runner_up_mean_crps": winner.runner_up_mean_crps,
+                "authority_source": "current_authority_overlay",
+                "authority_lineage": str(replacement.get("campaign_lineage", "")),
+                "replaced_source_run_id": str(replacement.get("replaced_source_run_id", "")),
+            }
+        )
+        rows.append(row)
+    return entries, rows
 
 
 def _copy_filtered_sidecars(source_matrix_dir: Path, matrix_dir: Path, selected_cutoffs: set[str], selected_specs: set[str]) -> None:
@@ -97,6 +202,7 @@ def _copy_filtered_sidecars(source_matrix_dir: Path, matrix_dir: Path, selected_
 def build_matrix(
     *,
     manifest_path: Path,
+    current_authority_overlay: Path | None,
     source_matrix_dir: Path | None,
     artifact_root: Path,
     tag: str,
@@ -116,14 +222,12 @@ def build_matrix(
 ) -> dict[str, Any]:
     spec = load_authoritative_spec(manifest_path)
     source_matrix_dir = _source_matrix_dir(spec, str(source_matrix_dir) if source_matrix_dir else None)
-    source_plan = pd.read_csv(source_matrix_dir / "matrix_plan.csv", dtype=str)
-    winners = spec.winners
-    selected_rows: list[pd.Series] = []
-    for winner in winners:
-        matches = source_plan.loc[source_plan["run_id"].astype(str) == winner.run_id]
-        if len(matches) != 1:
-            raise SystemExit(f"Expected exactly one source row for {winner.run_id}; observed={len(matches)}")
-        selected_rows.append(matches.iloc[0])
+    current_authority_overlay = resolve_path(current_authority_overlay) if current_authority_overlay else None
+    entries, selected_rows = _current_authority_entries(
+        spec=spec,
+        source_matrix_dir=source_matrix_dir,
+        current_authority_overlay=current_authority_overlay,
+    )
 
     matrix_dir = ensure_dir(control_dir(artifact_root) / "publication_relaunch_matrix")
     config_output_dir = ensure_dir(control_dir(artifact_root) / "generated_configs")
@@ -133,9 +237,9 @@ def build_matrix(
     head = git_head()
 
     plan_rows: list[dict[str, Any]] = []
-    if len(winners) != len(selected_rows):
-        raise SystemExit(f"winner/source row length mismatch: winners={len(winners)} selected_rows={len(selected_rows)}")
-    for order_index, (winner, row) in enumerate(zip(winners, selected_rows), start=1):
+    if len(entries) != len(selected_rows):
+        raise SystemExit(f"winner/source row length mismatch: entries={len(entries)} selected_rows={len(selected_rows)}")
+    for order_index, (entry, row) in enumerate(zip(entries, selected_rows), start=1):
         source_run_id = str(row["run_id"])
         run_id = f"{source_run_id}_{tag}"
         config_path = config_output_dir / f"{run_id}.yaml"
@@ -147,7 +251,7 @@ def build_matrix(
             config_path=config_path,
             tag=tag,
             source_run_id=source_run_id,
-            source_grid_spec_id=winner.grid_spec_id,
+            source_grid_spec_id=entry["grid_spec_id"],
             gamma_sigma_max_iter=gamma_sigma_max_iter,
             gamma_sigma_min_update_iters=gamma_sigma_min_update_iters,
             state_guard_start_iter=state_guard_start_iter,
@@ -155,12 +259,16 @@ def build_matrix(
         cfg["debug_he2_exdqlm_keep_authoritative_retained"] = {
             "tag": tag,
             "source_runtime_root": str(spec.runtime_root),
+            "source_authority_runtime_root": str(entry["source_runtime_root"]),
             "source_run_id": source_run_id,
             "source_config": str(source_config),
-            "source_matrix_dir": str(source_matrix_dir),
+            "source_matrix_dir": str(entry["source_matrix_dir"]),
             "authoritative_manifest": str(manifest_path),
-            "grid_spec_id": winner.grid_spec_id,
-            "cutoff": winner.cutoff,
+            "current_authority_overlay": str(current_authority_overlay) if current_authority_overlay else "",
+            "grid_spec_id": entry["grid_spec_id"],
+            "cutoff": entry["cutoff"],
+            "authority_source": entry["authority_source"],
+            "authority_lineage": entry["authority_lineage"],
             "retain_rdata_intent": True,
             "expected_launch_flag": "--no-cleanup",
             "code_commit": head,
@@ -174,15 +282,22 @@ def build_matrix(
                 "run_id": run_id,
                 "source_grid_run_id": source_run_id,
                 "source_grid_config_path": str(source_config),
+                "source_matrix_dir": str(entry["source_matrix_dir"]),
+                "source_runtime_root": str(entry["source_runtime_root"]),
                 "config_path": str(config_path),
                 "compare_outdir": str(reports_dir(artifact_root) / f"{run_id}_compare_not_used"),
                 "run_scope": "he2_exdqlm_multivar_keep_authoritative_rdata_retention",
                 "profile_name": tag,
-                "authoritative_mean_crps": winner.mean_crps,
-                "authoritative_median_crps": winner.median_crps,
-                "authoritative_max_crps": winner.max_crps,
-                "authoritative_runner_up_grid_spec_id": winner.runner_up_grid_spec_id,
-                "authoritative_runner_up_mean_crps": winner.runner_up_mean_crps,
+                "grid_spec_id": entry["grid_spec_id"],
+                "epsilon": entry["grid_spec_id"],
+                "authoritative_mean_crps": entry["mean_crps"],
+                "authoritative_median_crps": entry["median_crps"],
+                "authoritative_max_crps": entry["max_crps"],
+                "authoritative_runner_up_grid_spec_id": entry["runner_up_grid_spec_id"],
+                "authoritative_runner_up_mean_crps": entry["runner_up_mean_crps"],
+                "authority_source": entry["authority_source"],
+                "authority_lineage": entry["authority_lineage"],
+                "replaced_source_run_id": entry.get("replaced_source_run_id", ""),
                 "cleanup_rdata_after_post": False,
             }
         )
@@ -195,8 +310,8 @@ def build_matrix(
     _copy_filtered_sidecars(
         source_matrix_dir,
         matrix_dir,
-        {winner.cutoff for winner in winners},
-        {winner.grid_spec_id for winner in winners},
+        {entry["cutoff"] for entry in entries},
+        {entry["grid_spec_id"] for entry in entries},
     )
 
     if reset_status or not (matrix_dir / "matrix_status.csv").exists():
@@ -223,10 +338,12 @@ def build_matrix(
         "source_runtime_root": str(spec.runtime_root),
         "source_matrix_dir": str(source_matrix_dir),
         "authoritative_manifest": str(manifest_path),
+        "current_authority_overlay": str(current_authority_overlay) if current_authority_overlay else "",
         "tag": tag,
-        "cutoffs": [winner.cutoff for winner in winners],
-        "grid_spec_ids": [winner.grid_spec_id for winner in winners],
-        "exact_winner_run_ids": [winner.run_id for winner in winners],
+        "cutoffs": [entry["cutoff"] for entry in entries],
+        "grid_spec_ids": [entry["grid_spec_id"] for entry in entries],
+        "exact_winner_run_ids": [entry["source_run_id"] for entry in entries],
+        "authority_sources": [entry["authority_source"] for entry in entries],
         "cleanup_rdata_after_post": False,
         "retained_rdata_expected_after_post": True,
         "skip_compare_bundles": True,
@@ -239,7 +356,7 @@ def build_matrix(
             "state_guard_start_iter": state_guard_start_iter,
         },
         "code_commit": head,
-        "n_cutoffs": len(winners),
+        "n_cutoffs": len(entries),
         "n_run_rows": len(plan_rows),
         "n_quantile_fits": len(plan_rows) * 7,
     }
@@ -307,6 +424,7 @@ def build_matrix(
         f"- matrix_dir: `{matrix_dir}`",
         f"- source_runtime_root: `{spec.runtime_root}`",
         f"- authoritative_manifest: `{manifest_path}`",
+        f"- current_authority_overlay: `{current_authority_overlay or ''}`",
         f"- exact winner rows: `{len(plan_df)}`",
         f"- quantile fits: `{len(plan_df) * 7}`",
         f"- cleanup after post: `false`",
@@ -326,8 +444,10 @@ def build_matrix(
         "| Cutoff | Source Run | Retained Run | Spec |",
         "|---|---|---|---|",
     ]
-    for winner, row in zip(winners, plan_rows):
-        lines.append(f"| `{winner.cutoff}` | `{winner.run_id}` | `{row['run_id']}` | `{winner.grid_spec_id}` |")
+    for entry, row in zip(entries, plan_rows):
+        lines.append(
+            f"| `{entry['cutoff']}` | `{entry['source_run_id']}` | `{row['run_id']}` | `{entry['grid_spec_id']}` |"
+        )
     (matrix_dir / "RETAINED_RDATA_SCOPE.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     return metadata
@@ -337,6 +457,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     metadata = build_matrix(
         manifest_path=resolve_path(args.manifest),
+        current_authority_overlay=resolve_path(args.current_authority_overlay)
+        if args.current_authority_overlay
+        else None,
         source_matrix_dir=resolve_path(args.source_matrix_dir) if args.source_matrix_dir else None,
         artifact_root=resolve_path(args.artifact_root),
         tag=safe_token(args.tag),

@@ -207,3 +207,42 @@ Do not update the production-authoritative YAML to point at this retained root
 unless we explicitly decide the retained rerun should replace the completed
 cleanup-enabled grid as the publication lineage. The default intent is support
 and plotting, not changing the selected model.
+
+## 2026-06-23 Current-Authority Retained Rerun
+
+The 2026-06-23 publication authority is no longer identical to the
+2026-06-01 YAML alone. The current authority is the baseline YAML plus
+[`config/he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml`](../config/he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml):
+
+| Cutoff | Current authoritative source | Reason |
+|---|---|---|
+| `20210123` | `multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep` | 2026-06-01 YAML row remains best |
+| `20211112` | `multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep` | 2026-06-01 YAML row remains best |
+| `20211221` | `multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep` | clean replay of partial-screen winner |
+| `20220511` | `multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep` | clean replay of partial-screen winner |
+| `20221225` | `multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep` | clean replay of partial-screen winner |
+
+For figure polishing, rerun this exact current-authority set under a new isolated
+retained-state root:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_authoritative_rdata_retention_current_20260623`
+
+Use the same retained-matrix builder with the current overlay enabled:
+
+```bash
+python3 scripts/build_he2_exdqlm_multivar_keep_authoritative_retained_matrix.py \
+  --manifest docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml \
+  --current-authority-overlay config/he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml \
+  --artifact-root /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_authoritative_rdata_retention_current_20260623 \
+  --tag authoritative_rdata_retained_current_20260623 \
+  --ordinary-max-concurrent 2 \
+  --heavy-cutoff-max-concurrent 1 \
+  --launch-free-gb 280 \
+  --heavy-free-gb 300 \
+  --reset-status
+```
+
+Launch through the generated queue command with `--no-cleanup`. With
+`ordinary_max_concurrent=2`, the five rows run as a conservative 2 + 2 + 1
+schedule, retaining the 35 per-quantile `.RData` objects needed for downstream
+component and synthesis figure work.
