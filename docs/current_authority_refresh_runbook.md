@@ -138,9 +138,11 @@ refreshed unless their full-history support replay has actually been rebuilt.
 ## Full-History Support Diagnostics
 
 The dry/wet and 80-month component diagnostics have a different provenance role
-from the HE2 benchmark table. If a new authority changes the representative
-selected model and you want those diagnostics to be current too, first run a
-clean full-history selected-model support replay, then update:
+from the HE2 benchmark table. They must be current relative to the representative
+selected-output authority used for the synthesis figure, while remaining
+documented as interpretation diagnostics rather than forecast-validation
+evidence. If a new authority changes the representative selected model, refresh
+the selected-model support bundle and then update:
 
 - article `config/runtime_bindings.json`
 - `artifacts/representative_selected_model_2022_12_25/authoritative_support/`
@@ -148,9 +150,9 @@ clean full-history selected-model support replay, then update:
 - `docs/exal_m_t1_artifact_run_map.md`
 - `docs/figure_table_provenance.md`
 
-If the support replay is not done, the correct documented state is
-`selected_model_support_pending_clean_replay_refresh`; do not describe those
-diagnostics as refreshed HE2 forecast evidence.
+The correct documented state for the current manuscript pass is
+`current_selected_model_representative`; do not describe those diagnostics as
+refreshed HE2 forecast evidence.
 
 ## Corrections Response Sync
 

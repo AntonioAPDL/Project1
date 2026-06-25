@@ -114,8 +114,7 @@ SELECTED_MODEL_FIGURES = {
     "fig:synth1",
     "fig:80_components",
 }
-REFRESHED_SELECTED_MODEL_FIGURES = {"fig:synth1"}
-SUPPORT_DIAGNOSTIC_FIGURES = SELECTED_MODEL_FIGURES - REFRESHED_SELECTED_MODEL_FIGURES
+SELECTED_MODEL_SOURCE_CLASS = "current_selected_model_representative"
 RETAINED_CURRENT_RDATA_SUFFIX = "_authoritative_rdata_retained_current_20260623"
 
 @dataclass
@@ -498,16 +497,20 @@ def check_selected_figures(article_root: Path, checks: list[Check]) -> None:
         add(checks, "figure_lineage", f"{label}:manifest_entry", row is not None, "manifest entry")
         if row is None:
             continue
-        if label in REFRESHED_SELECTED_MODEL_FIGURES:
-            add(checks, "figure_lineage", f"{label}:current_model_flag", bool(row.get("current_model_output_wired")), str(row.get("current_model_output_wired")))
-        else:
-            add(
-                checks,
-                "figure_lineage",
-                f"{label}:support_pending_refresh_flag",
-                not bool(row.get("current_model_output_wired")) and "pending_clean_replay_refresh" in str(row.get("source_class", "")),
-                f"{row.get('source_class', '')}:{row.get('current_model_output_wired')}",
-            )
+        add(
+            checks,
+            "figure_lineage",
+            f"{label}:current_model_flag",
+            bool(row.get("current_model_output_wired")),
+            str(row.get("current_model_output_wired")),
+        )
+        add(
+            checks,
+            "figure_lineage",
+            f"{label}:source_class",
+            row.get("source_class") == SELECTED_MODEL_SOURCE_CLASS,
+            str(row.get("source_class", "")),
+        )
         add(checks, "figure_lineage", f"{label}:source_exists", (article_root / row["source_path"]).exists(), row["source_path"])
         add(checks, "figure_lineage", f"{label}:manuscript_exists", (article_root / row["manuscript_path"]).exists(), row["manuscript_path"])
         add(
@@ -537,7 +540,7 @@ def check_selected_figures(article_root: Path, checks: list[Check]) -> None:
         checks,
         "figure_lineage",
         "support_readme_same_authority",
-        "has not yet been regenerated from the `2026-06-23` clean HE2 authority" in support_readme,
+        "same current `2022-12-25` selected `exAL-M-T1` output authority" in support_readme,
         "authoritative support README",
     )
 
