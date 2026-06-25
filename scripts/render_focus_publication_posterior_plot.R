@@ -82,7 +82,7 @@ post_publication_render_focus_posterior_plot(
   source_run = source_run,
   interval_low_col = "interval_low",
   interval_high_col = "interval_high",
-  interval_label = "95% interval",
+  interval_label = "95% synthesis credible interval",
   ensemble_df = NULL,
   retrospective_df = NULL
 )
@@ -107,7 +107,7 @@ post_publication_render_focus_posterior_plot(
   source_run = source_run,
   interval_low_col = "interval_low",
   interval_high_col = "interval_high",
-  interval_label = "95% interval",
+  interval_label = "95% synthesis credible interval",
   ensemble_df = ensemble_df,
   retrospective_df = retrospective_df
 )

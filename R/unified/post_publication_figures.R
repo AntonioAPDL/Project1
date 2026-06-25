@@ -160,8 +160,8 @@ post_publication_model_title <- function(model_id, wrap_width = 56L) {
     dqlm_multivar_al_synth_drop = "Multivariate DQLM via AL Forecast Synthesis",
     dqlm_multivar_al_synth_keep = "Multivariate DQLM via AL Forecast Synthesis",
     exdqlm_univar_synth = "Univariate exDQLM via exAL Forecast Synthesis",
-    exdqlm_multivar_synth_drop = "Multivariate exDQLM via exAL Forecast Synthesis",
-    exdqlm_multivar_synth_keep = "Multivariate exDQLM via exAL Forecast Synthesis"
+    exdqlm_multivar_synth_drop = "exDQLM - Synthesis",
+    exdqlm_multivar_synth_keep = "exDQLM - Synthesis"
   )
   label <- unname(title_map[[as.character(model_id)]]) %||% post_publication_pretty_model_id(model_id)
   wrapped <- strwrap(label, width = as.integer(wrap_width))
@@ -226,9 +226,13 @@ post_publication_common_data <- function(quant_df) {
 }
 
 post_publication_caption <- function(cutoff_date, source_run, has_draws) {
+  forecast_start <- as.Date(cutoff_date) + 1L
   parts <- c(
-    sprintf("Vertical dashed line marks the cutoff date (%s).", as.character(cutoff_date)),
-    "Shaded region denotes the forecast window.",
+    sprintf(
+      "Vertical dashed line marks the first forecast date (%s; cutoff %s).",
+      as.character(forecast_start),
+      as.character(as.Date(cutoff_date))
+    ),
     if (isTRUE(has_draws)) "Posterior draws use a deterministic saved subset." else "Bands are rendered from saved post-stage quantile contracts."
   )
   paste(parts[nzchar(parts)], collapse = " ")
@@ -301,20 +305,9 @@ post_publication_render_posterior_plot <- function(model_id, quant_df, sample_df
   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
   forecast_end <- max(quant_df$date, na.rm = TRUE)
   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
+  cutoff_line_date <- forecast_start
 
   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
-    ggplot2::geom_rect(
-      data = data.frame(
-        xmin = forecast_start,
-        xmax = forecast_end,
-        ymin = -Inf,
-        ymax = Inf
-      ),
-      mapping = ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-      inherit.aes = FALSE,
-      fill = style$theme$forecast_window_fill,
-      alpha = style$theme$forecast_window_alpha
-    ) +
     ggplot2::geom_ribbon(
       ggplot2::aes(ymin = .data[[outer_low]], ymax = .data[[outer_high]], fill = "90% interval"),
       alpha = 0.45,
@@ -351,7 +344,7 @@ post_publication_render_posterior_plot <- function(model_id, quant_df, sample_df
       lineend = "round"
     ) +
     ggplot2::geom_segment(
-      data = data.frame(date = cutoff_date),
+      data = data.frame(date = cutoff_line_date),
       mapping = ggplot2::aes(x = date, xend = date, y = -Inf, yend = Inf),
       inherit.aes = FALSE,
       color = style$colors$cutoff,
@@ -400,20 +393,9 @@ post_publication_render_predictive_plot <- function(model_id, quant_df, png_path
   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
   forecast_end <- max(quant_df$date, na.rm = TRUE)
   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
+  cutoff_line_date <- forecast_start
 
   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
-    ggplot2::geom_rect(
-      data = data.frame(
-        xmin = forecast_start,
-        xmax = forecast_end,
-        ymin = -Inf,
-        ymax = Inf
-      ),
-      mapping = ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-      inherit.aes = FALSE,
-      fill = style$theme$forecast_window_fill,
-      alpha = style$theme$forecast_window_alpha
-    ) +
     ggplot2::geom_ribbon(
       ggplot2::aes(ymin = .data[[outer_low]], ymax = .data[[outer_high]], fill = "90% interval"),
       alpha = 0.45,
@@ -440,7 +422,7 @@ post_publication_render_predictive_plot <- function(model_id, quant_df, png_path
       lineend = "round"
     ) +
     ggplot2::geom_segment(
-      data = data.frame(date = cutoff_date),
+      data = data.frame(date = cutoff_line_date),
       mapping = ggplot2::aes(x = date, xend = date, y = -Inf, yend = Inf),
       inherit.aes = FALSE,
       color = style$colors$cutoff,
@@ -625,7 +607,7 @@ unified_render_publication_figures <- function(
           source_run = row$source_run[[1L]],
           interval_low_col = "interval_low",
           interval_high_col = "interval_high",
-          interval_label = "95% interval",
+          interval_label = "95% synthesis credible interval",
           ensemble_df = NULL
         )
 
@@ -692,7 +674,7 @@ unified_render_publication_figures <- function(
               source_run = row$source_run[[1L]],
               interval_low_col = "interval_low",
               interval_high_col = "interval_high",
-              interval_label = "95% interval",
+              interval_label = "95% synthesis credible interval",
               ensemble_df = ensemble_df,
               retrospective_df = retrospective_df
             )
@@ -1031,10 +1013,19 @@ post_publication_resolve_context_input_paths <- function(post_root) {
   out[vapply(out, file.exists, logical(1))]
 }
 
-post_publication_focus_caption <- function(cutoff_date) {
-  paste(
-    sprintf("Vertical dashed line marks the forecast origin (%s).", as.character(cutoff_date)),
-    "Shaded region denotes the forecast window."
+post_publication_focus_caption <- function(cutoff_date, forecast_start = as.Date(cutoff_date) + 1L) {
+  sprintf(
+    "Vertical dashed line marks the first forecast date (%s; cutoff %s).",
+    as.character(as.Date(forecast_start)),
+    as.character(as.Date(cutoff_date))
+  )
+}
+
+post_publication_focus_subtitle <- function(cutoff_date, forecast_start = as.Date(cutoff_date) + 1L) {
+  sprintf(
+    "Cutoff: %s | first forecast date: %s",
+    as.character(as.Date(cutoff_date)),
+    as.character(as.Date(forecast_start))
   )
 }
 
@@ -1095,6 +1086,7 @@ post_publication_render_focus_predictive_plot <- function(
   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
   forecast_end <- max(quant_df$date, na.rm = TRUE)
   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
+  cutoff_line_date <- forecast_start
   y_limits <- post_publication_y_limits_for_cutoff(cutoff_date, style)
 
   if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
@@ -1125,7 +1117,7 @@ post_publication_render_focus_predictive_plot <- function(
   palette <- post_publication_product_palette()
   observed_fit_label <- "USGS observations"
   observed_future_label <- "Held-out USGS"
-  model_center_label <- "Synthesized predictive mean"
+  model_center_label <- "exDQLM - Synthesis"
   color_breaks <- c(
     observed_fit_label,
     observed_future_label,
@@ -1158,13 +1150,6 @@ post_publication_render_focus_predictive_plot <- function(
   flood_labels <- post_publication_flood_label_df(forecast_end)
 
   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
-    ggplot2::geom_rect(
-      data = data.frame(xmin = forecast_start, xmax = forecast_end, ymin = -Inf, ymax = Inf),
-      mapping = ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-      inherit.aes = FALSE,
-      fill = style$theme$forecast_window_fill,
-      alpha = style$theme$forecast_window_alpha
-    ) +
     ggplot2::geom_hline(
       data = post_publication_flood_stage_df(),
       mapping = ggplot2::aes(yintercept = y),
@@ -1246,7 +1231,7 @@ post_publication_render_focus_predictive_plot <- function(
       show.legend = FALSE
     ) +
     ggplot2::geom_segment(
-      data = data.frame(date = cutoff_date),
+      data = data.frame(date = cutoff_line_date),
       mapping = ggplot2::aes(x = date, xend = date, y = -Inf, yend = Inf),
       inherit.aes = FALSE,
       color = style$colors$cutoff,
@@ -1286,10 +1271,10 @@ post_publication_render_focus_predictive_plot <- function(
     ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
     ggplot2::labs(
       title = post_publication_model_title(model_id),
-      subtitle = sprintf("Forecast origin: %s", as.character(cutoff_date)),
+      subtitle = post_publication_focus_subtitle(cutoff_date, forecast_start),
       x = "Date",
       y = post_publication_y_label(style),
-      caption = post_publication_focus_caption(cutoff_date)
+      caption = post_publication_focus_caption(cutoff_date, forecast_start)
     ) +
     ggplot2::guides(
       color = ggplot2::guide_legend(order = 1, nrow = 2, byrow = TRUE),
@@ -1392,7 +1377,7 @@ post_publication_render_focus_posterior_plot <- function(
   source_run = "",
   interval_low_col = "interval_low",
   interval_high_col = "interval_high",
-  interval_label = "95% interval",
+  interval_label = "95% synthesis credible interval",
   ensemble_df = NULL,
   retrospective_df = NULL
 ) {
@@ -1425,6 +1410,7 @@ post_publication_render_focus_posterior_plot <- function(
   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
   forecast_end <- max(quant_df$date, na.rm = TRUE)
   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
+  cutoff_line_date <- forecast_start
   y_limits <- post_publication_y_limits_for_cutoff(cutoff_date, style)
 
   if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
@@ -1455,7 +1441,7 @@ post_publication_render_focus_posterior_plot <- function(
   palette <- post_publication_product_palette()
   observed_fit_label <- "USGS observations"
   observed_future_label <- "Held-out USGS"
-  model_center_label <- "Synthesized posterior mean"
+  model_center_label <- "exDQLM - Synthesis"
   color_breaks <- c(
     observed_fit_label,
     observed_future_label,
@@ -1488,13 +1474,6 @@ post_publication_render_focus_posterior_plot <- function(
   flood_labels <- post_publication_flood_label_df(forecast_end)
 
   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
-    ggplot2::geom_rect(
-      data = data.frame(xmin = forecast_start, xmax = forecast_end, ymin = -Inf, ymax = Inf),
-      mapping = ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-      inherit.aes = FALSE,
-      fill = style$theme$forecast_window_fill,
-      alpha = style$theme$forecast_window_alpha
-    ) +
     ggplot2::geom_hline(
       data = post_publication_flood_stage_df(),
       mapping = ggplot2::aes(yintercept = y),
@@ -1588,7 +1567,7 @@ post_publication_render_focus_posterior_plot <- function(
       show.legend = FALSE
     ) +
     ggplot2::geom_segment(
-      data = data.frame(date = cutoff_date),
+      data = data.frame(date = cutoff_line_date),
       mapping = ggplot2::aes(x = date, xend = date, y = -Inf, yend = Inf),
       inherit.aes = FALSE,
       color = style$colors$cutoff,
@@ -1628,10 +1607,10 @@ post_publication_render_focus_posterior_plot <- function(
     ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
     ggplot2::labs(
       title = post_publication_model_title(model_id),
-      subtitle = sprintf("Forecast origin: %s", as.character(cutoff_date)),
+      subtitle = post_publication_focus_subtitle(cutoff_date, forecast_start),
       x = "Date",
       y = post_publication_y_label(style),
-      caption = post_publication_focus_caption(cutoff_date)
+      caption = post_publication_focus_caption(cutoff_date, forecast_start)
     ) +
     ggplot2::guides(
       color = ggplot2::guide_legend(
