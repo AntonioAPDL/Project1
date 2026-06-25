@@ -25,6 +25,8 @@ EXPECTED_DISCOUNT_CASES = 48
 EXPECTED_EPSILONS = {1.0, 30.0, 60.0, 90.0, 180.0, 365.0}
 FLOAT_FIELDS = ["df_t", "df_s1", "df_s2", "df_s67", "df_discrep", "lambda", "df_trans", "df_covs"]
 TARGET_LANE = "ndlm_main_keep"
+DATE_COLUMNS = ["target_date", "date", "Date", "timestamp", "time"]
+USGS_FLOW_COLUMNS = ["discharge_cms", "discharge_cfs", "X_00060_00003", "USGS", "usgs", "flow", "data0"]
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -59,6 +61,68 @@ def sha256_file(path: Path, cache: dict[str, str]) -> str:
             h.update(chunk)
     cache[key] = h.hexdigest()
     return cache[key]
+
+
+def read_csv_cached(path: Path, cache: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    key = str(path)
+    if key not in cache:
+        cache[key] = pd.read_csv(path)
+    return cache[key]
+
+
+def detect_date_series(df: pd.DataFrame) -> pd.Series:
+    for col in DATE_COLUMNS:
+        if col in df.columns:
+            return pd.to_datetime(df[col], errors="coerce")
+    for col in df.columns:
+        if "date" in str(col).lower():
+            return pd.to_datetime(df[col], errors="coerce")
+    return pd.Series(pd.NaT, index=df.index)
+
+
+def finite_usgs_flow_mask(df: pd.DataFrame) -> pd.Series:
+    for col in USGS_FLOW_COLUMNS:
+        if col in df.columns:
+            vals = pd.to_numeric(df[col], errors="coerce")
+            if vals.notna().sum() >= 5:
+                return vals.notna()
+    numeric_cols = []
+    for col in df.columns:
+        if col in DATE_COLUMNS or "date" in str(col).lower():
+            continue
+        vals = pd.to_numeric(df[col], errors="coerce")
+        if vals.notna().sum() >= 5:
+            numeric_cols.append(col)
+    if numeric_cols:
+        return pd.to_numeric(df[numeric_cols[0]], errors="coerce").notna()
+    return pd.Series(False, index=df.index)
+
+
+def date_window_info(path: Path, start: pd.Timestamp, cache: dict[str, pd.DataFrame]) -> dict[str, Any]:
+    df = read_csv_cached(path, cache)
+    dates = detect_date_series(df)
+    ok = dates.notna() & (dates >= start)
+    return {
+        "rows_at_or_after_start": int(ok.sum()),
+        "min_date": str(dates.min().date()) if dates.notna().any() else "",
+        "max_date": str(dates.max().date()) if dates.notna().any() else "",
+        "max_timestamp": dates.max() if dates.notna().any() else pd.NaT,
+    }
+
+
+def usgs_truth_window_info(path: Path, start: pd.Timestamp, end: pd.Timestamp, cache: dict[str, pd.DataFrame]) -> dict[str, Any]:
+    df = read_csv_cached(path, cache)
+    dates = detect_date_series(df)
+    finite_flow = finite_usgs_flow_mask(df)
+    in_window = dates.notna() & finite_flow & (dates >= start) & (dates <= end)
+    after_start = dates.notna() & finite_flow & (dates >= start)
+    return {
+        "finite_rows_in_forecast_window": int(in_window.sum()),
+        "finite_rows_at_or_after_start": int(after_start.sum()),
+        "min_date": str(dates.min().date()) if dates.notna().any() else "",
+        "max_date": str(dates.max().date()) if dates.notna().any() else "",
+        "max_timestamp": dates.max() if dates.notna().any() else pd.NaT,
+    }
 
 
 class Recorder:
@@ -121,6 +185,7 @@ def validate(matrix_dir: Path, artifact_root: Path, *, allow_existing_runs: bool
 
     specs_by_id = specs.set_index("grid_spec_id", drop=False) if "grid_spec_id" in specs else pd.DataFrame()
     hash_cache: dict[str, str] = {}
+    csv_cache: dict[str, pd.DataFrame] = {}
     input_hash_by_path = {
         str(row["path"]): str(row["sha256"])
         for _, row in input_manifest.iterrows()
@@ -171,6 +236,33 @@ def validate(matrix_dir: Path, artifact_root: Path, *, allow_existing_runs: bool
             rec.check(scope, f"input_exists:{path.name}", path.exists(), path)
             if path.exists() and str(path) in input_hash_by_path:
                 rec.check(scope, f"input_hash:{path.name}", sha256_file(path, hash_cache) == input_hash_by_path[str(path)], path)
+
+        cutoff_date = pd.to_datetime(nested(cfg, ["dates", "cutoff_date"], ""), errors="coerce")
+        forecast_start = cutoff_date + pd.Timedelta(days=1) if not pd.isna(cutoff_date) else pd.NaT
+        usgs_path = Path(str(nested(cfg, ["inputs", "fit", "usgs_cache_path"], "")))
+        glofas_path = Path(str(nested(cfg, ["inputs", "fit", "glofas_forecast_path"], "")))
+        if not pd.isna(forecast_start) and usgs_path.exists() and glofas_path.exists():
+            try:
+                fc_info = date_window_info(glofas_path, forecast_start, csv_cache)
+                forecast_rows = int(fc_info["rows_at_or_after_start"])
+                forecast_end = fc_info["max_timestamp"]
+                rec.check(scope, "glofas_forecast_window_nonempty", forecast_rows > 0, fc_info)
+                if forecast_rows > 0 and not pd.isna(forecast_end):
+                    truth_info = usgs_truth_window_info(usgs_path, forecast_start, forecast_end, csv_cache)
+                    rec.check(
+                        scope,
+                        "usgs_truth_extends_through_forecast_window",
+                        truth_info["max_timestamp"] >= forecast_end,
+                        f"truth={truth_info} forecast={fc_info}",
+                    )
+                    rec.check(
+                        scope,
+                        "usgs_truth_rows_cover_glofas_horizon",
+                        int(truth_info["finite_rows_in_forecast_window"]) >= forecast_rows,
+                        f"truth={truth_info} forecast_rows={forecast_rows}",
+                    )
+            except Exception as exc:
+                rec.check(scope, "post_truth_window_check_readable", False, repr(exc))
 
     summary = {
         "validated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

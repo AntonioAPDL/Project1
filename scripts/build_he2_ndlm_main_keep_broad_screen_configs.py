@@ -59,8 +59,8 @@ INPUT_SNAPSHOT_MAP = {
     "retros": ("inputs", "fit", "retros_path", "inputs/shared/retros/retros.csv"),
     "nws_forecast": ("inputs", "fit", "nws_forecast_path", "inputs/shared/forecasts/nws_forecast.csv"),
     "glofas_forecast": ("inputs", "fit", "glofas_forecast_path", "inputs/shared/forecasts/glofas_forecast.csv"),
-    "usgs_daily": ("inputs", "fit", "usgs_cache_path", "inputs/shared/usgs/usgs_daily.csv"),
 }
+USGS_SOURCE_SNAPSHOT_REL = "inputs/shared/usgs/usgs_daily.csv"
 COVARIATE_SNAPSHOT_MAP = [
     ("PPT", "inputs/shared/covariates/cov_01_PPT.csv"),
     ("SOIL", "inputs/shared/covariates/cov_02_SOIL.csv"),
@@ -191,7 +191,12 @@ def load_authority_rows(authority_rows: Path) -> pd.DataFrame:
     return subset.set_index("cutoff", drop=False).loc[EXPECTED_CUTOFFS].reset_index(drop=True)
 
 
-def rewrite_inputs_to_source_snapshots(cfg: dict[str, Any], source_run_root: Path) -> list[dict[str, Any]]:
+def rewrite_inputs_to_source_snapshots(
+    cfg: dict[str, Any],
+    source_run_root: Path,
+    *,
+    source_cfg: dict[str, Any],
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for artifact, path_key1, path_key2, path_key3, rel in [
         (name, key1, key2, key3, rel)
@@ -210,6 +215,38 @@ def rewrite_inputs_to_source_snapshots(cfg: dict[str, Any], source_run_root: Pat
                 "size_bytes": source_path.stat().st_size,
             }
         )
+
+    source_usgs_snapshot = source_run_root / USGS_SOURCE_SNAPSHOT_REL
+    if source_usgs_snapshot.exists():
+        rows.append(
+            {
+                "artifact": "usgs_daily_source_cutoff_snapshot_audit_only",
+                "path": str(source_usgs_snapshot),
+                "relative_path": USGS_SOURCE_SNAPSHOT_REL,
+                "sha256": sha256_file(source_usgs_snapshot),
+                "size_bytes": source_usgs_snapshot.stat().st_size,
+                "role": "audit_only_not_post_truth",
+            }
+        )
+
+    full_usgs_cache_raw = nested(source_cfg, ["inputs", "fit", "usgs_cache_path"], "")
+    full_usgs_cache = Path(str(full_usgs_cache_raw)).expanduser()
+    if not full_usgs_cache.exists():
+        raise FileNotFoundError(
+            "Missing full USGS cache from source resolved config. "
+            f"inputs.fit.usgs_cache_path={full_usgs_cache_raw!r}"
+        )
+    set_nested(cfg, ["inputs", "fit", "usgs_cache_path"], str(full_usgs_cache))
+    rows.append(
+        {
+            "artifact": "usgs_daily_full_truth_cache",
+            "path": str(full_usgs_cache),
+            "relative_path": "",
+            "sha256": sha256_file(full_usgs_cache),
+            "size_bytes": full_usgs_cache.stat().st_size,
+            "role": "post_truth_and_shared_usgs_cache",
+        }
+    )
 
     covariates: list[dict[str, str]] = []
     for name, rel in COVARIATE_SNAPSHOT_MAP:
@@ -302,7 +339,7 @@ def mutate_config(
     set_nested(cfg, ["post", "smoke_fast"], True)
     set_nested(cfg, ["post", "force_isolation_smoke_fast"], True)
 
-    input_rows = rewrite_inputs_to_source_snapshots(cfg, source_run_root)
+    input_rows = rewrite_inputs_to_source_snapshots(cfg, source_run_root, source_cfg=source_cfg)
     cfg["debug_he2_ndlm_main_keep_broad_screen"] = {
         "campaign_id": "he2_ndlm_main_keep_broad_screen_20260625",
         "grid_spec_id": grid_spec_id,

@@ -4,6 +4,7 @@ import csv
 import subprocess
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import yaml
@@ -27,14 +28,35 @@ def write_yaml(path: Path, payload: dict) -> None:
         yaml.safe_dump(payload, handle, sort_keys=False)
 
 
+def ymd(cutoff: str) -> str:
+    return f"{cutoff[:4]}-{cutoff[4:6]}-{cutoff[6:8]}"
+
+
+def future_dates(cutoff: str, n: int = 3) -> list[str]:
+    start = datetime.strptime(ymd(cutoff), "%Y-%m-%d") + timedelta(days=1)
+    return [(start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(n)]
+
+
+def write_full_usgs_truth(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    dates = ["1987-05-29", "1987-05-30", "1987-05-31", "1987-06-01", "1987-06-02"]
+    for cutoff in ["20210123", "20211112", "20211221", "20220511", "20221225"]:
+        dates.extend(future_dates(cutoff, n=5))
+    rows = ["date,discharge_cms,discharge_cfs,qualifiers"]
+    for i, date in enumerate(sorted(set(dates)), start=1):
+        rows.append(f"{date},{1.0 + i / 100.0},{35.0 + i},A")
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
 def make_source_run(root: Path, cutoff: str) -> tuple[Path, Path]:
     run_root = root / f"source_{cutoff}"
+    fdates = future_dates(cutoff, n=3)
     for rel, text in {
         "inputs/shared/parameters/parameters.txt": "site=11160500\n",
         "inputs/shared/retros/retros.csv": "date,usgs,nws,glofas\n1987-05-29,1,1,1\n",
-        "inputs/shared/forecasts/nws_forecast.csv": "date,q50\n2021-01-24,1\n",
-        "inputs/shared/forecasts/glofas_forecast.csv": "date,m01\n2021-01-24,1\n",
-        "inputs/shared/usgs/usgs_daily.csv": "date,flow\n1987-05-29,1\n",
+        "inputs/shared/forecasts/nws_forecast.csv": "date,q50\n" + "\n".join(f"{date},1" for date in fdates) + "\n",
+        "inputs/shared/forecasts/glofas_forecast.csv": "date,m01\n" + "\n".join(f"{date},1" for date in fdates) + "\n",
+        "inputs/shared/usgs/usgs_daily.csv": f"date,flow\n1987-05-29,1\n{ymd(cutoff)},1\n",
         "inputs/shared/covariates/cov_01_PPT.csv": "date,value\n1987-05-29,1\n",
         "inputs/shared/covariates/cov_02_SOIL.csv": "date,value\n1987-05-29,1\n",
         "inputs/shared/covariates/cov_03_PCA.csv": "date,value\n1987-05-29,1\n",
@@ -42,6 +64,9 @@ def make_source_run(root: Path, cutoff: str) -> tuple[Path, Path]:
         path = run_root / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
+    full_usgs_truth = root / "full_usgs_truth.csv"
+    if not full_usgs_truth.exists():
+        write_full_usgs_truth(full_usgs_truth)
     cfg = {
         "run": {
             "run_id": f"source_{cutoff}",
@@ -75,7 +100,7 @@ def make_source_run(root: Path, cutoff: str) -> tuple[Path, Path]:
         },
         "fit": {"parallel": {"workers": 1}, "ndlm_main": {"gamma_sigma": {"min_total_iters": 20, "max_iter": 100}}},
         "inputs": {
-            "fit": {"covariates": []},
+            "fit": {"usgs_cache_path": str(full_usgs_truth), "covariates": []},
             "shared": {"prefer_forecats_snapshot": False},
             "transfer_function_covariates": {
                 "base_covariates": ["PPT", "SOIL", "PCA"],
@@ -150,6 +175,7 @@ class He2NdlmMainKeepBroadScreenTests(unittest.TestCase):
             self.assertEqual(sample_cfg["fit"]["ndlm_main"]["gamma_sigma"]["max_iter"], 100)
             self.assertEqual(sample_cfg["run"]["threads"]["mc_cores"], 1)
             self.assertEqual(sample_cfg["models"]["ndlm_main"]["prior"]["forecast_cov"]["epsilon"], 1.0)
+            self.assertEqual(Path(sample_cfg["inputs"]["fit"]["usgs_cache_path"]).name, "full_usgs_truth.csv")
 
             validate = subprocess.run(
                 [
@@ -170,6 +196,78 @@ class He2NdlmMainKeepBroadScreenTests(unittest.TestCase):
             self.assertEqual(metadata["queue"]["ordinary_max_concurrent"], 3)
             self.assertEqual(metadata["queue"]["heavy_cutoff_max_concurrent"], 1)
             self.assertTrue(metadata["queue"]["cleanup_rdata_after_post"])
+
+    def test_validator_rejects_cutoff_truncated_usgs_truth(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="nmt1_broad_screen_bad_truth_") as tmpdir:
+            tmp = Path(tmpdir)
+            source_root = tmp / "sources"
+            rows: list[dict[str, str]] = []
+            for cutoff in ["20210123", "20211112", "20211221", "20220511", "20221225"]:
+                run_root, config_path = make_source_run(source_root, cutoff)
+                rows.append(
+                    {
+                        "authority_class": "article_crps_table",
+                        "cutoff": cutoff,
+                        "row_label": "N-M-T1",
+                        "source_class": "ndlm_main_keep",
+                        "mean_crps": "1.0",
+                        "resolved_config": str(config_path),
+                        "run_root": str(run_root),
+                        "run_id": f"source_{cutoff}",
+                    }
+                )
+            authority = tmp / "authority_rows.csv"
+            write_csv(authority, rows)
+            artifact_root = tmp / "artifact_root"
+            matrix_dir = artifact_root / "control" / "matrix"
+            config_dir = artifact_root / "control" / "configs"
+
+            build = subprocess.run(
+                [
+                    "python3",
+                    str(BUILDER),
+                    "--authority-rows",
+                    str(authority),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--matrix-dir",
+                    str(matrix_dir),
+                    "--config-output-dir",
+                    str(config_dir),
+                    "--reset-status",
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(build.returncode, 0, msg=f"STDOUT:\n{build.stdout}\nSTDERR:\n{build.stderr}")
+
+            with (matrix_dir / "matrix_plan.csv").open("r", encoding="utf-8") as handle:
+                first = next(csv.DictReader(handle))
+            cfg_path = Path(first["config_path"])
+            cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+            cutoff_snapshot = Path(cfg["debug_he2_ndlm_main_keep_broad_screen"]["source_run_root"]) / "inputs/shared/usgs/usgs_daily.csv"
+            cfg["inputs"]["fit"]["usgs_cache_path"] = str(cutoff_snapshot)
+            write_yaml(cfg_path, cfg)
+
+            validate = subprocess.run(
+                [
+                    "python3",
+                    str(VALIDATOR),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--matrix-dir",
+                    str(matrix_dir),
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertNotEqual(validate.returncode, 0, msg=f"STDOUT:\n{validate.stdout}\nSTDERR:\n{validate.stderr}")
+            checks = (matrix_dir / "prelaunch_validation_checks.csv").read_text(encoding="utf-8")
+            self.assertIn("usgs_truth_extends_through_forecast_window", checks)
 
 
 if __name__ == "__main__":

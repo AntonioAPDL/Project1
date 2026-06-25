@@ -17,8 +17,20 @@ The source inputs are the run-local shared snapshots audited by
 `reports/nmt1_static_parity_audit_20260625/authority_rows.csv`
 
 The broad-screen builder rewrites generated configs to those frozen source
-snapshots for parameters, retrospectives, USGS, NWS, GloFAS, PPT, SOIL, and PCA
-inputs.
+snapshots for parameters, retrospectives, NWS, GloFAS, PPT, SOIL, and PCA
+inputs. USGS has a deliberately different contract:
+
+- the cutoff-truncated run-local `inputs/shared/usgs/usgs_daily.csv` is retained
+  in the manifest as an audit snapshot only;
+- `inputs.fit.usgs_cache_path` is preserved from the source resolved config and
+  must point to the full recovered USGS daily cache used by post-stage truth and
+  forecast-window CRPS.
+
+This distinction is launch blocking. A previous first launch failed because the
+screen builder incorrectly rewrote `inputs.fit.usgs_cache_path` to the
+cutoff-truncated run-local snapshot. The fit stage was numerically healthy, but
+`40_figures_ndlm_only.R` correctly stopped in post with
+`no realized USGS rows at/after <cutoff + 1>`.
 
 ## Grid
 
@@ -58,6 +70,13 @@ python3 scripts/build_he2_ndlm_main_keep_broad_screen_configs.py --reset-status
 
 python3 scripts/validate_he2_ndlm_main_keep_broad_screen_prelaunch.py
 ```
+
+The validator checks the matrix size, one-core concurrency, harmonic convention,
+discount/epsilon grid, frozen input hashes, and the post truth contract. For
+each cutoff/spec it reads the configured GloFAS forecast dates and requires
+finite USGS truth rows in `inputs.fit.usgs_cache_path` through the full forecast
+window. This is intended to catch cutoff-truncated USGS truth wiring before any
+model run is launched.
 
 Default runtime root:
 
