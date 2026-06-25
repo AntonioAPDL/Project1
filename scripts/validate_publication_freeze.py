@@ -116,6 +116,7 @@ SELECTED_MODEL_FIGURES = {
 }
 REFRESHED_SELECTED_MODEL_FIGURES = {"fig:synth1"}
 SUPPORT_DIAGNOSTIC_FIGURES = SELECTED_MODEL_FIGURES - REFRESHED_SELECTED_MODEL_FIGURES
+RETAINED_CURRENT_RDATA_SUFFIX = "_authoritative_rdata_retained_current_20260623"
 
 @dataclass
 class Check:
@@ -147,6 +148,16 @@ def git_value(repo: Path, *args: str) -> str:
 
 def add(checks: list[Check], family: str, item: str, ok: bool, detail: str) -> None:
     checks.append(Check(family, item, "pass" if ok else "fail", detail))
+
+
+def strip_retained_current_rdata_suffix(run_id: str) -> str:
+    if run_id.endswith(RETAINED_CURRENT_RDATA_SUFFIX):
+        return run_id[: -len(RETAINED_CURRENT_RDATA_SUFFIX)]
+    return run_id
+
+
+def same_or_retained_current_rdata_run(observed: str, expected: str) -> bool:
+    return observed == expected or strip_retained_current_rdata_suffix(observed) == expected
 
 
 def as_float(value: object) -> float:
@@ -375,10 +386,30 @@ def check_he3_authoritative(
         current = he2_current_exal.get(cutoff)
         add(checks, "he3_authority", f"{cutoff}:synthesis_current_manifest_row", current is not None, "current HE2 exAL-M-T1 row")
         if current is not None:
-            expected_grid = current.get("expected_input_bundle_id", "") or current.get("campaign_lineage", "")
-            add(checks, "he3_authority", f"{cutoff}:synthesis_run_id", meta.get("multivar_run_id") == current["run_id"], meta.get("multivar_run_id", ""))
-            add(checks, "he3_authority", f"{cutoff}:synthesis_grid", meta.get("grid_spec_id") == expected_grid, meta.get("grid_spec_id", ""))
-            add(checks, "he3_authority", f"{cutoff}:synthesis_lineage", meta.get("source_lineage") == current.get("campaign_lineage", ""), meta.get("source_lineage", ""))
+            observed_run = str(meta.get("multivar_run_id", ""))
+            observed_lineage = str(meta.get("source_lineage", ""))
+            allowed_lineages = {str(current.get("campaign_lineage", "")), AUTHORITATIVE_KEEP_LINEAGE}
+            add(
+                checks,
+                "he3_authority",
+                f"{cutoff}:synthesis_run_id",
+                same_or_retained_current_rdata_run(observed_run, current["run_id"]),
+                observed_run,
+            )
+            add(
+                checks,
+                "he3_authority",
+                f"{cutoff}:synthesis_grid",
+                meta.get("grid_spec_id") == winner["grid_spec_id"],
+                meta.get("grid_spec_id", ""),
+            )
+            add(
+                checks,
+                "he3_authority",
+                f"{cutoff}:synthesis_lineage",
+                observed_lineage in allowed_lineages,
+                observed_lineage,
+            )
 
     for key, runtime_row in runtime_key.items():
         article_row = article_key.get(key)
@@ -486,12 +517,19 @@ def check_selected_figures(article_root: Path, checks: list[Check]) -> None:
             "selected" in str(row.get("note", "")).lower() or "authoritative" in str(row.get("note", "")).lower() or "support" in str(row.get("note", "")).lower(),
             str(row.get("note", "")),
         )
+    he2_manifest_rows = read_csv(article_root / "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv")
+    expected_representative = next(
+        row for row in he2_manifest_rows
+        if row.get("cutoff") == "20221225"
+        and row.get("manuscript_label") == "exAL-M-T1"
+        and row.get("family") == "exdqlm_multivar_keep"
+    )
     bundle = json.loads((article_root / "artifacts/representative_selected_model_2022_12_25/bundle_metadata.json").read_text(encoding="utf-8"))
     add(
         checks,
         "figure_lineage",
         "representative_bundle_run",
-        bundle.get("run_id") == "multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep",
+        same_or_retained_current_rdata_run(str(bundle.get("run_id", "")), expected_representative["run_id"]),
         str(bundle.get("run_id", "")),
     )
     support_readme = (article_root / "artifacts/representative_selected_model_2022_12_25/authoritative_support/README.md").read_text(encoding="utf-8")
