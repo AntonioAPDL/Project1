@@ -243,6 +243,56 @@ Additional config audit:
 - 0 missing `state_norm_ratio_ref_floor` in the resolved fit config;
 - 0 missing `state_norm_ratio_ref_floor` in HE3 metadata.
 
+## Proof Relaunch After Median Blend
+
+After the floor-only relaunch isolated the remaining q50 transition issue, the
+failed `2021-12-21/noTF` row was archived and relaunched from the promoted
+template at commit `35fc2f53a9f70a8d89ba4e346928dc7f61e4eca0`:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625/runs/multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep_he3_noTF`
+
+The q50 policy log confirmed the active repaired settings:
+
+```text
+state_norm_abs_cap_scale=per_time
+state_norm_ratio_ref_floor=0.1
+state_blend_alpha=0.5
+cov_blend_alpha=0.5
+state_norm_max_ratio=25
+```
+
+The run completed fit, sampling, post, validate, and report stages. The final
+fit diagnostics were:
+
+| Quantile | Iter | Gamma/sigma updates | Guard events | `E[sigma]` | `E[gamma]` | `state_norm_sq / T` | Sampling |
+|---|---:|---:|---:|---:|---:|---:|---|
+| q05 | 120 | 110 | 0 | 0.0933617 | -0.0555599 | 548.13 | finished |
+| q20 | 120 | 110 | 0 | 0.0131316 | -0.284398 | 4.85 | finished |
+| q35 | 120 | 110 | 0 | 0.0132096 | -0.594256 | 5.11 | finished |
+| q50 | 120 | 110 | 0 | 0.0753891 | 1.03006 | 189.93 | finished |
+| q65 | 120 | 110 | 0 | 0.0161238 | 0.591983 | 16.36 | finished |
+| q80 | 120 | 110 | 0 | 0.0162 | 0.283607 | 22.69 | finished |
+| q95 | 120 | 110 | 0 | 0.0928577 | 0.0555721 | 600.21 | finished |
+
+This is the direct runtime confirmation that the current failure was not caused
+by non-finite pseudo-data or a Kalman/RTS crash. The repaired q50 lane moved
+through the previously failing terminal-sampling gate with 110 accepted
+gamma/sigma updates and zero state-guard events. Post-stage cleanup removed the
+seven temporary fit `.RData` files (`remaining=0`), preserving the intended HE3
+disk contract.
+
+The matrix validator subsequently reported:
+
+```text
+total rows: 30
+launch rows: 25
+reused rows: 5
+findings: 0
+```
+
+The repaired row is now `pass/report`. The only remaining HE3 current-authority
+rows are not-started rows for later queue continuation, not failed rows.
+
 ## Recovery Procedure
 
 1. Regenerate the HE3 matrix/configs from the patched current-authority template.
@@ -250,8 +300,10 @@ Additional config audit:
 3. Archive the failed `2021-12-21/noTF` run directory under
    `failed_evidence/`.
 4. Relaunch only the archived failed row first.
-5. If it passes, resume the queue for the remaining not-started rows.
-6. After all 30 rows pass, run the standard HE3 completion hooks:
+5. Confirm the repaired row passes through fit, sampling, post, validate, and
+   report with zero guard events in q50.
+6. Resume the queue for the remaining not-started rows.
+7. After all 30 rows pass, run the standard HE3 completion hooks:
    - `scripts/build_he3_exdqlm_ablation_summary.py`;
    - `scripts/audit_he3_exdqlm_ablation.py`;
    - `scripts/sync_he3_ablation_article_tables.py`;

@@ -81,6 +81,15 @@ remain unchanged. See
 `docs/he3_current_authority_noTF_guard_loop_audit_20260626.md` for the 2021-12-21
 noTF/q50 evidence that motivated this current-authority template repair.
 
+The targeted proof relaunch of `2021-12-21/noTF` after adding the median-only
+blend completed fit, sampling, post, validate, and report at commit
+`35fc2f53a9f70a8d89ba4e346928dc7f61e4eca0`. All seven quantile lanes reached
+120 VB iterations with 110 gamma/sigma updates, zero state-guard events, and
+successful sampling; q50 ended with `state_norm_sq / T = 189.93`. Post-stage
+cleanup removed the retained fit `.RData` files. The row is now `pass/report`;
+remaining HE3 current-authority rows are not-started queue rows rather than
+failed rows.
+
 The production queue uses `scripts/run_unified_with_cleanup.sh`, which sets
 `CLEANUP_RDATA_AFTER_POST=1`. Generated HE3 launch configs also record
 `he3_ablation.cleanup_rdata_after_post: true`; validation now fails if that metadata is absent.
