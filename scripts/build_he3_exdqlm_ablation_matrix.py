@@ -89,6 +89,30 @@ def resolve_source_contract(
     source_full_crps = float(target_row["forecast_window_crps"])
     source_label = best_epsilon_label
 
+    direct_source_keys = {
+        "source_label",
+        "source_run_id",
+        "source_run_dir",
+        "source_config_path",
+        "source_full_crps",
+    }
+    if any(key in target_row.index and pd.notna(target_row.get(key)) for key in direct_source_keys):
+        source_label = str(
+            target_row.get("source_label")
+            or target_row.get("best_epsilon_label")
+            or source_label
+        ).strip()
+        if "source_run_dir" in target_row.index and pd.notna(target_row.get("source_run_dir")):
+            source_run_root = Path(str(target_row["source_run_dir"])).resolve()
+        if "source_config_path" in target_row.index and pd.notna(target_row.get("source_config_path")):
+            source_cfg_path = Path(str(target_row["source_config_path"])).resolve()
+        if "source_run_id" in target_row.index and pd.notna(target_row.get("source_run_id")):
+            source_run_name = str(target_row["source_run_id"]).strip()
+        elif source_run_root.name:
+            source_run_name = source_run_root.name
+        if "source_full_crps" in target_row.index and pd.notna(target_row.get("source_full_crps")):
+            source_full_crps = float(target_row["source_full_crps"])
+
     if source_override:
         source_label = str(
             source_override.get("source_label")
@@ -142,6 +166,7 @@ def build_launch_config(
     best_epsilon_label: str,
     best_crps: float,
     source_run_name: str,
+    gamma_sigma_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     cfg = reset_run_metadata(source_cfg)
     cfg.setdefault("run", {})
@@ -182,6 +207,11 @@ def build_launch_config(
     cfg["fit"].setdefault("warm_start", {})
     cfg["fit"]["warm_start"]["enabled"] = False
     cfg["fit"].setdefault("exdqlm_multivar", {})
+    if gamma_sigma_overrides:
+        cfg["fit"]["exdqlm_multivar"]["gamma_sigma"] = deep_merge(
+            cfg["fit"]["exdqlm_multivar"].get("gamma_sigma", {}),
+            gamma_sigma_overrides,
+        )
     cfg["fit"]["exdqlm_multivar"].setdefault("legacy", {})
     cfg["fit"]["exdqlm_multivar"]["legacy"]["use_covariates"] = bool(variant.use_covariates)
     if variant.forecast_health_overrides:
@@ -204,6 +234,8 @@ def build_launch_config(
         "use_covariates": bool(variant.use_covariates),
         "forecast_transfer_mode": variant.forecast_transfer_mode,
         "forecast_health_overrides": copy.deepcopy(variant.forecast_health_overrides),
+        "gamma_sigma_overrides": copy.deepcopy(gamma_sigma_overrides or {}),
+        "cleanup_rdata_after_post": True,
         "target_model_id": variant.target_model_id,
     }
     return cfg
@@ -248,6 +280,15 @@ def main() -> int:
     if targets.empty:
         raise ValueError("No HE3 source targets remain after applying source.cutoff_filter.")
     fit_workers = int(template_cfg.get("fit_parallel", {}).get("workers", 7))
+    gamma_sigma_overrides = (
+        template_cfg.get("fit_policy", {})
+        .get("exdqlm_multivar", {})
+        .get("gamma_sigma_overrides", {})
+    )
+    if gamma_sigma_overrides is None:
+        gamma_sigma_overrides = {}
+    if not isinstance(gamma_sigma_overrides, dict):
+        raise ValueError("fit_policy.exdqlm_multivar.gamma_sigma_overrides must be a mapping when provided.")
     pilot_sequence = [str(x) for x in template_cfg.get("pilot_sequence", [])]
 
     rows: list[dict[str, Any]] = []
@@ -289,6 +330,7 @@ def main() -> int:
                     best_epsilon_label=best_epsilon_label,
                     best_crps=source_full_crps,
                     source_run_name=source_run_name,
+                    gamma_sigma_overrides=gamma_sigma_overrides,
                 )
                 cfg_path = config_output_dir / f"{plan_run_id}.yaml"
                 dump_yaml(cfg_path, cfg)
@@ -353,6 +395,7 @@ def main() -> int:
         "variant_forecast_health_overrides": {
             variant.key: variant.forecast_health_overrides for variant in variant_specs
         },
+        "gamma_sigma_overrides": gamma_sigma_overrides,
         "article_sync": template_cfg.get("article_sync", {}),
     }
     dump_yaml(matrix_dir / "matrix_metadata.yaml", metadata)

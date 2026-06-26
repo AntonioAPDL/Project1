@@ -25,7 +25,6 @@ DEFAULT_STRUCTURE = {
 
 SCIENTIFIC_INVARIANT_PATHS: list[tuple[str, ...]] = [
     ("models", "exdqlm_multivar", "state_evolution"),
-    ("fit", "exdqlm_multivar", "gamma_sigma"),
     ("fit", "exdqlm_multivar", "legacy", "lam1"),
     ("fit", "exdqlm_multivar", "legacy", "lam2"),
     ("fit", "exdqlm_multivar", "legacy", "n_samp"),
@@ -297,6 +296,21 @@ def compare_forecast_health(
     return not mismatches, mismatches
 
 
+def compare_gamma_sigma(
+    source_cfg: dict[str, Any],
+    ablation_cfg: dict[str, Any],
+) -> tuple[bool, list[str]]:
+    source_gamma = get_in(source_cfg, ("fit", "exdqlm_multivar", "gamma_sigma"), {}) or {}
+    ablation_gamma = get_in(ablation_cfg, ("fit", "exdqlm_multivar", "gamma_sigma"), {}) or {}
+    overrides = get_in(ablation_cfg, ("he3_ablation", "gamma_sigma_overrides"), {}) or {}
+    if not isinstance(overrides, dict):
+        return False, ["fit.exdqlm_multivar.gamma_sigma:override_not_mapping"]
+    expected_gamma = deep_merge(source_gamma, overrides)
+    if ablation_gamma != expected_gamma:
+        return False, ["fit.exdqlm_multivar.gamma_sigma"]
+    return True, []
+
+
 def target_model_present(run_dir: Path, target_model_id: str) -> tuple[bool, float | None]:
     summary_csv = crps_summary_path(run_dir)
     if not summary_csv.exists():
@@ -431,8 +445,10 @@ def main() -> int:
             ablation_cfg,
             str(row["variant"]),
         )
-        scientific_ok = scientific_ok and forecast_health_ok
+        gamma_sigma_ok, gamma_sigma_mismatches = compare_gamma_sigma(source_cfg, ablation_cfg)
+        scientific_ok = scientific_ok and forecast_health_ok and gamma_sigma_ok
         scientific_mismatches.extend(forecast_health_mismatches)
+        scientific_mismatches.extend(gamma_sigma_mismatches)
         execution_ok, execution_mismatches = compare_paths(source_cfg, ablation_cfg, EXECUTION_PATHS)
         runtime_hashes_ok, runtime_mismatches, runtime_details = compare_runtime_inputs(source_run_dir, run_dir)
         for detail in runtime_details:

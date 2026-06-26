@@ -190,6 +190,18 @@ class He3ToolingTests(unittest.TestCase):
                 "poll_seconds": 60,
             },
             "fit_parallel": {"workers": 7},
+            "fit_policy": {
+                "exdqlm_multivar": {
+                    "gamma_sigma_overrides": {
+                        "stabilization": {
+                            "state_guard_enabled": True,
+                            "state_guard_start_iter": 20,
+                            "state_guard_refreeze_iters": 20,
+                            "state_hold_after_guard_iters": 20,
+                        }
+                    }
+                }
+            },
             "pilot_sequence": ["20211112", "20221225"],
             "variants": {
                 "full": {
@@ -320,6 +332,11 @@ class He3ToolingTests(unittest.TestCase):
         self.assertEqual(cfg["models"]["exdqlm_multivar"]["structure"]["enabled_harmonic_indices"], [1, 2, 3])
         self.assertFalse(cfg["fit"]["exdqlm_multivar"]["forecast_health"]["fail_fast"])
         self.assertEqual(cfg["he3_ablation"]["forecast_health_overrides"], {"fail_fast": False})
+        self.assertTrue(cfg["he3_ablation"]["cleanup_rdata_after_post"])
+        self.assertEqual(
+            cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]["stabilization"]["state_guard_start_iter"],
+            20,
+        )
 
         no_h1 = plan[(plan["cutoff"] == "20210123") & (plan["variant"] == "noH1")].iloc[0]
         no_h1_cfg = yaml.safe_load(Path(no_h1["config_path"]).read_text(encoding="utf-8"))
@@ -410,6 +427,75 @@ class He3ToolingTests(unittest.TestCase):
         self.assertEqual(len(status), 6)
         self.assertTrue((status[status["launch_mode"] == "reuse_reference"]["status"] == "pass").all())
         self.assertTrue((status[status["launch_mode"] == "launch"]["status"] == "not_started").all())
+
+    def test_build_and_validate_direct_source_rows_from_publication_manifest(self) -> None:
+        direct_template_path = self.td / "he3_direct_sources.template.yaml"
+        direct_cfg = yaml.safe_load(self.template_path.read_text(encoding="utf-8"))
+        direct_cfg["campaign"]["campaign_id"] = "he3_direct_sources_test"
+        direct_cfg["campaign"]["study_id"] = "he3_direct_sources_test_v1"
+        direct_cfg["campaign"]["artifact_root"] = str(self.td / "direct_artifacts")
+        direct_cfg["campaign"]["matrix_dir"] = str(self.td / "direct_artifacts" / "control" / "he3_direct")
+        direct_cfg["campaign"]["config_output_dir"] = str(self.td / "direct_configs")
+        direct_cfg["source"]["cutoff_filter"] = ["20211221"]
+
+        direct_run_id = "multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep"
+        direct_run_dir = self.runtime_root / "partial_authority" / "runs" / direct_run_id
+        direct_run_dir.mkdir(parents=True, exist_ok=True)
+        direct_cfg_path = direct_run_dir / "resolved_config.yaml"
+        source_cfg = base_source_config("20211221", "he2partial20260623")
+        source_cfg["run"]["run_id"] = direct_run_id
+        source_cfg["run"]["run_root"] = str(direct_run_dir.parent)
+        source_cfg["models"]["exdqlm_multivar"]["state_evolution"]["df_s1"] = 0.99995
+        direct_cfg_path.write_text(yaml.safe_dump(source_cfg, sort_keys=False), encoding="utf-8")
+        tables_dir = direct_run_dir / "post" / "outputs" / direct_run_id / "tables"
+        tables_dir.mkdir(parents=True, exist_ok=True)
+        (direct_run_dir / "run_manifest.yaml").write_text(
+            yaml.safe_dump({"stages": {"report": {"status": "pass"}}}, sort_keys=False),
+            encoding="utf-8",
+        )
+        pd.DataFrame(
+            [{"model_id": "exdqlm_multivar_synth_keep", "mean_crps": 0.2604466008954305}]
+        ).to_csv(tables_dir / "crps_forecast_summary.csv", index=False)
+
+        best = pd.read_csv(self.best_csv)
+        best.loc[best["cutoff"].astype(str) == "20211221", "best_epsilon_label"] = "he2partial20260623"
+        best.loc[best["cutoff"].astype(str) == "20211221", "forecast_window_crps"] = 0.2604466008954305
+        best.loc[best["cutoff"].astype(str) == "20211221", "source_label"] = "he2partial20260623"
+        best.loc[best["cutoff"].astype(str) == "20211221", "source_run_id"] = direct_run_id
+        best.loc[best["cutoff"].astype(str) == "20211221", "source_run_dir"] = str(direct_run_dir)
+        best.loc[best["cutoff"].astype(str) == "20211221", "source_config_path"] = str(direct_cfg_path)
+        best.loc[best["cutoff"].astype(str) == "20211221", "source_full_crps"] = 0.2604466008954305
+        best.to_csv(self.best_csv, index=False)
+        direct_cfg["source"]["best_by_cutoff_csv"] = str(self.best_csv)
+        with direct_template_path.open("w", encoding="utf-8") as handle:
+            yaml.safe_dump(direct_cfg, handle, sort_keys=False)
+
+        self.run_script(
+            "python3",
+            "scripts/build_he3_exdqlm_ablation_matrix.py",
+            "--template",
+            str(direct_template_path),
+        )
+        matrix_dir = Path(direct_cfg["campaign"]["matrix_dir"])
+        plan = pd.read_csv(matrix_dir / "matrix_plan.csv")
+        self.assertEqual(plan["cutoff"].astype(str).str.zfill(8).nunique(), 1)
+        self.assertEqual(set(plan["source_run_id"]), {direct_run_id})
+        self.assertEqual(set(plan["epsilon"]), {"he2partial20260623"})
+        no_h1 = plan[plan["variant"] == "noH1"].iloc[0]
+        cfg = yaml.safe_load(Path(no_h1["config_path"]).read_text(encoding="utf-8"))
+        self.assertEqual(cfg["models"]["exdqlm_multivar"]["state_evolution"]["df_s1"], 0.99995)
+        self.assertEqual(
+            cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]["stabilization"]["state_guard_start_iter"],
+            20,
+        )
+        self.run_script(
+            "python3",
+            "scripts/validate_he3_exdqlm_ablation.py",
+            "--matrix-dir",
+            str(matrix_dir),
+            "--template",
+            str(direct_template_path),
+        )
 
     def test_no_trend_block_diag_helper_accepts_vector_ff(self) -> None:
         r_code = r"""
@@ -621,17 +707,33 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
 
         variants = ["full", "noTrend", "noTF", "noH1", "noH2", "noH3"]
         rows = []
+        he3_runs_root = self.td / "sync_he3_runs"
         for cutoff_idx, (cutoff, _epsilon, _crps) in enumerate(CUTOFFS):
             for variant_idx, variant in enumerate(variants):
+                run_id = f"sync_{cutoff}_{variant}"
+                run_dir = he3_runs_root / run_id
+                target_model_id = "exdqlm_multivar_synth_drop" if variant == "noTF" else "exdqlm_multivar_synth_keep"
+                tables_dir = run_dir / "post" / "outputs" / run_id / "tables"
+                tables_dir.mkdir(parents=True, exist_ok=True)
+                mean_value = 0.10 + cutoff_idx / 10.0 + variant_idx / 100.0
+                pd.DataFrame(
+                    [
+                        {"lead_day": lead, "model_id": target_model_id, "crps": mean_value}
+                        for lead in range(1, 29)
+                    ]
+                ).to_csv(tables_dir / "crps_forecast_per_time.csv", index=False)
                 rows.append(
                     {
                         "cutoff": cutoff,
                         "cutoff_display": f"display-{cutoff}",
                         "variant": variant,
                         "manuscript_label": variant,
-                        "mean_crps": 0.10 + cutoff_idx / 10.0 + variant_idx / 100.0,
+                        "mean_crps": mean_value,
                         "status": "pass",
                         "best_epsilon_label": "cXX_epsYYY",
+                        "target_model_id": target_model_id,
+                        "resolved_run_id": run_id,
+                        "resolved_run_dir": str(run_dir),
                     }
                 )
         pd.DataFrame(rows).to_csv(report_dir / "he3_ablation_long.csv", index=False)
@@ -662,6 +764,16 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
                     {"model_id": "nws_nwm_ensemble", "mean_crps": 1.2},
                 ]
             ).to_csv(table_dir / "crps_forecast_summary.csv", index=False)
+            pd.DataFrame(
+                [
+                    {"lead_day": lead, "model_id": "glofas_ensemble", "crps": 1.1}
+                    for lead in range(1, 29)
+                ]
+                + [
+                    {"lead_day": lead, "model_id": "nws_nwm_ensemble", "crps": 1.2}
+                    for lead in range(1, 9)
+                ]
+            ).to_csv(table_dir / "crps_forecast_per_time.csv", index=False)
         (article_root / "tables" / "generated_tex").mkdir(parents=True, exist_ok=True)
         (article_root / "tables" / "generated_tex" / "manifest.csv").write_text(
             "table_label,row_label,source_class,source_note\n",
@@ -715,11 +827,13 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
         manifest = json.loads((article_root / "MANUSCRIPT_ASSET_MANIFEST.json").read_text(encoding="utf-8"))
         self.assertIn("tab:he3_ablation_crps", manifest["tables"])
         corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
-        self.assertIn("RAW-GLOFAS", corrections_text)
+        self.assertIn(r"\input{tables/generated_tex/he3_ablation_crps_response_table.tex}", corrections_text)
+        self.assertIn(r"\input{tables/generated_tex/he3_ablation_crps_nws_horizon_response_table.tex}", corrections_text)
         self.assertNotIn("Ablation model & old", corrections_text)
         corrections_table = (
             corrections_root / "tables" / "generated_tex" / "he3_ablation_crps_response_table.tex"
         ).read_text(encoding="utf-8")
+        self.assertIn("RAW-GLOFAS", corrections_table)
         self.assertIn("\\textbf{0.10000}", corrections_table)
         self.assertNotIn("0.1000 &", corrections_table)
 

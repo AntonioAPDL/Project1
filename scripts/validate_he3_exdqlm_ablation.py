@@ -36,6 +36,15 @@ def expected_state_dim(include_trend: bool, enabled_harmonic_indices: list[int])
     return (1 if include_trend else 0) + 2 * len(enabled_harmonic_indices)
 
 
+def nested_get(payload: dict[str, Any], keys: list[str], default: Any = None) -> Any:
+    value: Any = payload
+    for key in keys:
+        if not isinstance(value, dict) or key not in value:
+            return default
+        value = value[key]
+    return value
+
+
 def run_structure_smoke(plan: pd.DataFrame) -> list[dict[str, Any]]:
     distinct = (
         plan.loc[:, ["variant", "include_trend", "enabled_harmonic_indices"]]
@@ -195,12 +204,41 @@ def main() -> int:
         expected_override = variant_spec.forecast_health_overrides
         if actual_override != expected_override:
             findings.append(f"forecast_health_overrides metadata mismatch in {cfg_path}")
+        if not bool(he3_meta.get("cleanup_rdata_after_post", False)):
+            findings.append(f"cleanup_rdata_after_post metadata is not true in {cfg_path}")
+        actual_gamma_overrides = he3_meta.get("gamma_sigma_overrides", {}) if isinstance(he3_meta, dict) else {}
+        expected_gamma_overrides = (
+            template.get("fit_policy", {})
+            .get("exdqlm_multivar", {})
+            .get("gamma_sigma_overrides", {})
+        ) or {}
+        if actual_gamma_overrides != expected_gamma_overrides:
+            findings.append(f"gamma_sigma_overrides metadata mismatch in {cfg_path}")
         source_cfg = load_yaml(Path(str(row["source_config_path"])))
         source_health = source_cfg.get("fit", {}).get("exdqlm_multivar", {}).get("forecast_health", {}) or {}
         expected_health = deep_merge(source_health, expected_override)
         actual_health = fit_cfg.get("exdqlm_multivar", {}).get("forecast_health", {}) or {}
         if actual_health != expected_health:
             findings.append(f"forecast_health resolved config mismatch in {cfg_path}")
+        gamma_sigma = fit_cfg.get("exdqlm_multivar", {}).get("gamma_sigma", {}) or {}
+        max_iter = nested_get(gamma_sigma, ["max_iter"])
+        state_guard_enabled = nested_get(gamma_sigma, ["stabilization", "state_guard_enabled"], True)
+        state_guard_start_iter = nested_get(gamma_sigma, ["stabilization", "state_guard_start_iter"])
+        try:
+            max_iter_int = int(max_iter)
+        except (TypeError, ValueError):
+            max_iter_int = None
+        try:
+            state_guard_start_int = int(state_guard_start_iter)
+        except (TypeError, ValueError):
+            state_guard_start_int = None
+        if state_guard_enabled is not False:
+            if state_guard_start_int is None:
+                findings.append(f"state_guard_start_iter missing in {cfg_path}")
+            elif max_iter_int is not None and state_guard_start_int >= max_iter_int:
+                findings.append(
+                    f"state_guard_start_iter={state_guard_start_int} is outside max_iter={max_iter_int} in {cfg_path}"
+                )
 
     smoke_rows = run_structure_smoke(plan)
     for row in smoke_rows:
