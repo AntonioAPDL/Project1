@@ -333,3 +333,69 @@ support needed for plotting, then clean the posterior objects.
 For the univariate reference synthesis, run only the `2022-12-25 exdqlm_univar`
 case first. Expand to all five cutoffs only if the table/CRPS authority requires
 it.
+
+## Implementation Log
+
+### 2026-06-26 selected-support refresh
+
+The selected multivariate support path was implemented without launching a new
+model run.
+
+Reason:
+
+- The revised article binding already pointed to a compact selected-support root
+  with all required support files.
+- The compact root contained no retained `.RData`, so a new retained replay was
+  unnecessary for the Figure A1 / dry-wet selected-diagnostic refresh.
+
+Source support used:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260625_seasonal_only_current_components/runs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep_authoritative_support_seasonal_only_20260625/post/outputs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep_authoritative_support_seasonal_only_20260625`
+
+Support evidence:
+
+- `authoritative_usgs_quantile_dynamics_summary.csv` present.
+- `authoritative_component_summary.csv` present.
+- `authoritative_selected_support_manifest.json` present.
+- `authoritative_selected_support_lineage.csv` present.
+- selected-support retained `.RData`: `0` files.
+
+Article-side implementation:
+
+- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_authoritative_selected_model_support_figures.py`
+  refreshed the selected-model support artifacts.
+- `Evironmetrics---REVISED-DOC-Corrected-2/scripts/render_authoritative_selected_model_support_figures.R`
+  was hardened so render metadata no longer records temporary staging paths or
+  per-render timestamps.
+- `Evironmetrics---REVISED-DOC-Corrected-2/tests/test_article_a1_and_table_contracts.py`
+  now checks the deterministic metadata contract.
+
+Determinism check:
+
+- The selected-support refresh was run twice.
+- The full `git diff` SHA-256 before and after the second refresh was identical:
+  `c49eec1e5f98679fd7774006bd43de0dc0a7914965b5a41fc3d97cc588ae1797`.
+
+Validation:
+
+- `python3 -m py_compile scripts/build_he2_selected_output_support_replay_config.py scripts/launch_he2_selected_output_support_replay.py scripts/validate_revision_cross_repo_wiring.py`
+- `python3 -m py_compile scripts/validate_publication_freeze.py scripts/validate_revision_cross_repo_wiring.py`
+- `python3 -m py_compile scripts/build_he2_exdqlm_univar_shared_relaunch_validation_status.py`
+- revised article:
+  `python3 -m unittest discover -s tests -v`
+- revised article:
+  `python3 scripts/validate_authoritative_output_lineage.py --article-root . --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1`
+- revised article:
+  `python3 scripts/validate_manuscript_figure_paths.py --article-root .`
+- workflow cross-repo:
+  `python3 scripts/validate_revision_cross_repo_wiring.py --workflow-root /data/muscat_data/jaguir26/project1_ucsc_phd --article-root /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2 --corrections-root /data/muscat_data/jaguir26/Corrections---Project-1 --after-patch --strict --output-dir reports/revision_cross_repo_validation_20260626_selected_support_refresh_final`
+- corrections response:
+  `make`
+- revised article compile:
+  `pdflatex`, `bibtex`, `pdflatex`, `pdflatex` on `wileyNJD-APA.tex`.
+
+Compile result:
+
+- `output.pdf` built successfully with 28 pages.
+- Only ordinary LaTeX warnings/overfull boxes were observed; no fatal compile
+  errors occurred.
