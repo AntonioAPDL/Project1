@@ -159,7 +159,7 @@ post_publication_model_title <- function(model_id, wrap_width = 56L) {
     dqlm_univar_al_synth = "Univariate DQLM via AL Forecast Synthesis",
     dqlm_multivar_al_synth_drop = "Multivariate DQLM via AL Forecast Synthesis",
     dqlm_multivar_al_synth_keep = "Multivariate DQLM via AL Forecast Synthesis",
-    exdqlm_univar_synth = "Univariate exDQLM via exAL Forecast Synthesis",
+    exdqlm_univar_synth = "exDQLM - Synthesis",
     exdqlm_multivar_synth_drop = "exDQLM - Synthesis",
     exdqlm_multivar_synth_keep = "exDQLM - Synthesis"
   )

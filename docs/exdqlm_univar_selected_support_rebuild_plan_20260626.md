@@ -336,6 +336,38 @@ it.
 
 ## Implementation Log
 
+### 2026-06-26 univariate synthesis style refresh
+
+The univariate `exdqlm_univar` synthesis figures are a reference-synthesis
+family and should use the same publication-focus visual contract as the
+multivariate `exdqlm_multivar_keep` synthesis figures.
+
+This refresh does not require a model relaunch. The current publication
+univariate outputs already exist for all five cutoffs under:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_publication_relaunch_20260603`
+
+Implementation contract:
+
+- Re-render the five `exdqlm_univar` cutoff-window synthesis figures from the
+  existing post-stage caches.
+- Use the shared `publication_focus_v2` renderer so the univariate figures share
+  the multivariate synthesis conventions: fixed y limits, held-out USGS
+  labeling, dashed cutoff marker at the first forecast date, flood-stage
+  reference lines, compact bottom legend, and no forecast-window shading.
+- Use the common model-center label `exDQLM - Synthesis`.
+- Rewire the revised article's `univar_runtime_root` binding from the stale
+  May 2026 root to the June 3 publication relaunch root before refreshing
+  article-side figure copies.
+
+Required validation after rendering:
+
+- Confirm all five runtime output roots have refreshed PNG/PDF synthesis
+  figures and updated `publication_figure_manifest.csv` files.
+- Refresh the revised article's cutoff reference-synthesis family and the
+  representative `reference_synthesis_univariate.png`.
+- Validate article figure paths and cross-repo lineage before committing.
+
 ### 2026-06-26 selected-support refresh
 
 The selected multivariate support path was implemented without launching a new
