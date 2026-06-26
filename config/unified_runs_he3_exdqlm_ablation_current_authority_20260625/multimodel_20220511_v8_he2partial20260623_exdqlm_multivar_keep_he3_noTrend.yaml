@@ -326,8 +326,8 @@ fit:
         state_norm_abs_cap_scale: per_time
         median_state_guard_refreeze_iters: 10
         median_state_hold_after_guard_iters: 0
-        median_state_blend_alpha: 1.0
-        median_cov_blend_alpha: 1.0
+        median_state_blend_alpha: 0.5
+        median_cov_blend_alpha: 0.5
         state_guard_enabled: true
         state_norm_max_ratio: 25
         state_norm_abs_cap: 1.0e6
@@ -653,5 +653,7 @@ he3_ablation:
       state_norm_abs_cap: 1.0e6
       state_norm_abs_cap_scale: per_time
       state_norm_ratio_ref_floor: 0.1
+      median_state_blend_alpha: 0.5
+      median_cov_blend_alpha: 0.5
   cleanup_rdata_after_post: true
   target_model_id: exdqlm_multivar_synth_keep

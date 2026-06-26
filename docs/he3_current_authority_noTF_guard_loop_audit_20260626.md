@@ -28,6 +28,8 @@ DISC-W guard helper:
 ```yaml
 state_norm_abs_cap_scale: per_time
 state_norm_ratio_ref_floor: 0.1
+median_state_blend_alpha: 0.5
+median_cov_blend_alpha: 0.5
 ```
 
 This is a root-cause fix for the false-positive relative ratio, not a loosening
@@ -90,6 +92,46 @@ With the intended floor:
 
 Therefore the failed q50 proposal is bounded under the hard cap and would not
 trip the relative guard once the near-zero denominator is regularized.
+
+## Post-Floor Relaunch Evidence
+
+The first clean relaunch after adding only `state_norm_ratio_ref_floor = 0.1`
+was archived here:
+
+`/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625/failed_evidence/state_guard_floor_only_borderline_20260626T184104Z/multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep_he3_noTF`
+
+That run proved the floor was exported and active:
+
+```text
+state_norm_abs_cap_scale=per_time state_norm_ratio_ref_floor=0.1
+```
+
+It also exposed the remaining q50/noTF geometry. After the initial hard
+absolute-cap recovery, q50 accumulated accepted updates, but then repeatedly
+re-entered a borderline relative guard:
+
+```text
+state_growth_effective_ratio=25.73363 exceeds max_ratio=25
+raw_state_growth_ratio=25.73363
+ref_floor_total=1262.6
+```
+
+This is only about 2.9% above the configured max ratio, with the accepted
+recovery state remaining small (`state_norm_sq / T = 1.4381`). The correct
+repair is therefore not to raise `state_norm_max_ratio`; it is to damp the
+median state/covariance transition so the q50 zero-gamma recovery does not jump
+back into the same boundary condition.
+
+The promoted second-stage policy uses the median-only controls already supported
+by the legacy entrypoints and used in prior q50 proof configurations:
+
+```yaml
+median_state_blend_alpha: 0.5
+median_cov_blend_alpha: 0.5
+```
+
+These keys affect only the median quantile lane. They leave q05, q20, q35, q65,
+q80, and q95 on the existing undamped update path.
 
 ## Code Contract
 
@@ -155,6 +197,8 @@ fit_policy:
         state_norm_abs_cap: 1.0e6
         state_norm_abs_cap_scale: per_time
         state_norm_ratio_ref_floor: 0.1
+        median_state_blend_alpha: 0.5
+        median_cov_blend_alpha: 0.5
 ```
 
 The generated HE3 configs inherit the same policy in:

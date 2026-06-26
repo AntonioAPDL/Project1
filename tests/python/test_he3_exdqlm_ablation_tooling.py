@@ -202,6 +202,8 @@ class He3ToolingTests(unittest.TestCase):
                             "state_norm_abs_cap": 1.0e6,
                             "state_norm_abs_cap_scale": "per_time",
                             "state_norm_ratio_ref_floor": 0.1,
+                            "median_state_blend_alpha": 0.5,
+                            "median_cov_blend_alpha": 0.5,
                         }
                     }
                 }
@@ -348,6 +350,14 @@ class He3ToolingTests(unittest.TestCase):
         self.assertEqual(
             cfg["he3_ablation"]["gamma_sigma_overrides"]["stabilization"]["state_norm_ratio_ref_floor"],
             0.1,
+        )
+        self.assertEqual(
+            cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]["stabilization"]["median_state_blend_alpha"],
+            0.5,
+        )
+        self.assertEqual(
+            cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]["stabilization"]["median_cov_blend_alpha"],
+            0.5,
         )
 
         no_h1 = plan[(plan["cutoff"] == "20210123") & (plan["variant"] == "noH1")].iloc[0]
@@ -503,6 +513,10 @@ class He3ToolingTests(unittest.TestCase):
         self.assertEqual(
             cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]["stabilization"]["state_norm_ratio_ref_floor"],
             0.1,
+        )
+        self.assertEqual(
+            cfg["fit"]["exdqlm_multivar"]["gamma_sigma"]["stabilization"]["median_state_blend_alpha"],
+            0.5,
         )
         self.run_script(
             "python3",
