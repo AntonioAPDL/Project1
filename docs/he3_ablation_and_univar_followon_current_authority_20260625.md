@@ -1,14 +1,13 @@
-# HE3 Ablation and Univariate exDQLM Follow-On Current-Authority Plan
+# HE3 Ablation and Follow-On Figure/Univariate Current-Authority Plan
 
 Timestamp: 2026-06-25.
 
 This note freezes the implementation plan and launch evidence for the current-authority HE3
-ablation refresh and the deferred univariate exDQLM figure rerun. It follows the user's
+ablation refresh and the deferred figure/univariate follow-on work. It follows the user's
 instruction to assume the recent article visual review is acceptable, skip any publication
 archive DOI step unless a final DOI exists, remove retained multivariate keep `.RData`, run the
-HE3 ablation with no `.RData` retention, and only after HE3 schedule the univariate exDQLM
-rerun needed to rebuild Figure A1 support. The requested fifth item is intentionally out of
-scope here.
+HE3 ablation with no `.RData` retention, and only after HE3 schedule any required follow-on
+reruns. The requested fifth item is intentionally out of scope here.
 
 ## Completed Disk Cleanup
 
@@ -120,16 +119,22 @@ After all 30 HE3 rows pass:
    - article and corrections HE3 generated tables are synced.
 3. Run article/corrections validation and compilation gates before promoting the HE3 table update.
 
-## Deferred Univariate exDQLM Figure Rerun
+## Deferred Follow-On Reruns
 
-The univariate exDQLM rerun needed to rebuild Figure A1 should be launched only after HE3 is
-complete and cleaned. The table-oriented univariate rerun should continue to clean `.RData` after
-post, but the Figure A1 representative support rerun may retain `.RData` narrowly for the model
-and cutoff needed to regenerate the seasonal-only component figure. Once Figure A1 is regenerated,
-validated, and promoted, the retained univariate `.RData` should be removed unless another
-diagnostic explicitly requires it.
+The current revised-article Figure A1 contract is **not** a univariate exDQLM contract. It is the
+representative 2022-12-25 `exAL-M-T1` selected-output support figure, rendered from the
+multivariate selected-model raw retained state component 6, as documented in
+`docs/figure_a1_component_and_table_precision_contract_20260610.md`. Therefore, if Figure A1
+requires another retained-state rebuild after HE3, the correct follow-on is a narrowly retained
+representative multivariate selected-output support replay, not a univariate relaunch.
 
-The existing univariate tooling to inspect before that follow-on is:
+The univariate `exdqlm_univar` follow-on remains a separate publication-table/reference-synthesis
+workflow refresh. It should be launched only after HE3 is complete and cleaned, and its
+table-oriented all-cutoff relaunch should continue to clean `.RData` after post. Retain univariate
+`.RData` only if a specific univariate diagnostic explicitly requires it, and remove it after the
+diagnostic artifact is regenerated and validated.
+
+The existing univariate tooling to inspect before any univariate follow-on is:
 
 - `scripts/build_he2_exdqlm_univar_shared_relaunch_plan.py`
 - `config/he2_bayesian_publication_relaunch_exdqlm_univar_all_cutoffs_sharedspec_20260516.template.yaml`
