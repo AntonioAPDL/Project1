@@ -28,8 +28,6 @@ output_dir <- normalizePath(opt[["output-dir"]], mustWork = FALSE)
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 required_support_files <- c(
-  "authoritative_usgs_quantile_dynamics_summary.csv",
-  "authoritative_usgs_quantile_dynamics_summary.rds",
   "authoritative_selected_support_lineage.csv"
 )
 for (name in required_support_files) {
@@ -42,12 +40,24 @@ source_component_path <- file.path(source_support_dir, "authoritative_component_
 if (!file.exists(source_component_path)) {
   stop(sprintf("Missing source component support CSV: %s", source_component_path), call. = FALSE)
 }
+source_dynamics_path <- file.path(source_support_dir, "authoritative_usgs_quantile_dynamics_summary.csv")
+if (!file.exists(source_dynamics_path)) {
+  stop(sprintf("Missing source dynamics support CSV: %s", source_dynamics_path), call. = FALSE)
+}
 source_component <- utils::read.csv(source_component_path, stringsAsFactors = FALSE, check.names = FALSE)
+source_dynamics <- utils::read.csv(source_dynamics_path, stringsAsFactors = FALSE, check.names = FALSE)
 dates_df <- unique(source_component[, c("time_index", "date"), drop = FALSE])
 dates_df <- dates_df[order(dates_df$time_index), , drop = FALSE]
 dates <- suppressWarnings(as.Date(dates_df$date))
 if (length(dates) == 0L || all(is.na(dates))) {
   stop("Unable to recover support dates from source component CSV.", call. = FALSE)
+}
+observed_usgs <- rep(NA_real_, length(dates))
+if (all(c("time_index", "quantile", "observed_usgs") %in% names(source_dynamics))) {
+  source_obs <- source_dynamics[source_dynamics$quantile == "q50", c("time_index", "observed_usgs"), drop = FALSE]
+  source_obs <- source_obs[!duplicated(source_obs$time_index), , drop = FALSE]
+  idx <- match(seq_along(dates), source_obs$time_index)
+  observed_usgs <- suppressWarnings(as.numeric(source_obs$observed_usgs[idx]))
 }
 
 safe_row_quantiles <- function(mat, probs = c(0.025, 0.5, 0.975)) {
@@ -104,6 +114,36 @@ component_summary_row <- function(mat, dates, label, probability, component, com
   )
 }
 
+dynamics_summary_row <- function(theta_obj, dates, observed_usgs, label, probability, source_object, probs = c(0.025, 0.5, 0.975)) {
+  if (!is.list(theta_obj) || !is.matrix(theta_obj$exps) || !is.matrix(theta_obj$exps2)) {
+    stop(sprintf("`%s` does not contain matrix exps/exps2 fields.", source_object), call. = FALSE)
+  }
+  n_time <- min(length(dates), ncol(theta_obj$exps), ncol(theta_obj$exps2))
+  if (!is.finite(n_time) || n_time < 1L) {
+    stop(sprintf("Unable to infer dynamics length for `%s`.", source_object), call. = FALSE)
+  }
+  mu <- as.numeric(theta_obj$exps[1L, seq_len(n_time)])
+  second <- as.numeric(theta_obj$exps2[1L, seq_len(n_time)])
+  var <- pmax(second - mu^2, 0)
+  sd <- sqrt(var)
+  qs <- stats::qnorm(rep(probs, each = n_time), mean = rep(mu, times = length(probs)), sd = rep(sd, times = length(probs)))
+  qmat <- matrix(qs, nrow = length(probs), byrow = TRUE)
+  data.frame(
+    date = dates[seq_len(n_time)],
+    time_index = seq_len(n_time),
+    quantile = label,
+    probability = probability,
+    mu_usgs = mu,
+    sd_usgs = sd,
+    lower_025 = as.numeric(qmat[1L, ]),
+    median_500 = as.numeric(qmat[2L, ]),
+    upper_975 = as.numeric(qmat[3L, ]),
+    observed_usgs = observed_usgs[seq_len(n_time)],
+    source_object = source_object,
+    stringsAsFactors = FALSE
+  )
+}
+
 quantile_specs <- data.frame(
   suffix = c("5", "50", "95"),
   dir_label = c("05", "50", "95"),
@@ -129,6 +169,19 @@ rebuild_one_quantile <- function(spec) {
     stop(sprintf("Missing `%s` in %s", obj_name, rdata_path), call. = FALSE)
   }
   obj <- get(obj_name, envir = e, inherits = FALSE)
+  theta_obj_name <- sprintf("new.theta.out_%s_exAL_synth_DISC", spec$suffix)
+  if (!exists(theta_obj_name, envir = e, inherits = FALSE)) {
+    stop(sprintf("Missing `%s` in %s", theta_obj_name, rdata_path), call. = FALSE)
+  }
+  theta_obj <- get(theta_obj_name, envir = e, inherits = FALSE)
+  dynamics <- dynamics_summary_row(
+    theta_obj = theta_obj,
+    dates = dates,
+    observed_usgs = observed_usgs,
+    label = spec$label,
+    probability = spec$probability,
+    source_object = theta_obj_name
+  )
   arr <- if (is.list(obj) && is.array(obj$samp_theta)) obj$samp_theta else if (is.array(obj)) obj else NULL
   if (is.null(arr)) stop(sprintf("`%s` is not a recognized posterior theta sample object.", obj_name), call. = FALSE)
   n_time <- length(dates)
@@ -182,23 +235,33 @@ rebuild_one_quantile <- function(spec) {
   legacy$median_500 <- legacy$median_500 + trend_shift
   legacy$upper_975 <- legacy$upper_975 + trend_shift
   rows[[n_component + 3L]] <- legacy
-  rm(e, obj, arr, trend_mat, component6_mat)
+  rm(e, obj, theta_obj, arr, trend_mat, component6_mat)
   invisible(gc())
-  do.call(rbind, rows)
+  list(component = do.call(rbind, rows), dynamics = dynamics)
 }
 
-component_rows <- lapply(seq_len(nrow(quantile_specs)), function(i) rebuild_one_quantile(quantile_specs[i, , drop = FALSE]))
-component_summary <- do.call(rbind, component_rows)
+rebuilt_rows <- lapply(seq_len(nrow(quantile_specs)), function(i) rebuild_one_quantile(quantile_specs[i, , drop = FALSE]))
+component_summary <- do.call(rbind, lapply(rebuilt_rows, `[[`, "component"))
+dynamics_summary <- do.call(rbind, lapply(rebuilt_rows, `[[`, "dynamics"))
 component_csv <- file.path(output_dir, "authoritative_component_summary.csv")
 component_rds <- file.path(output_dir, "authoritative_component_summary.rds")
+dynamics_csv <- file.path(output_dir, "authoritative_usgs_quantile_dynamics_summary.csv")
+dynamics_rds <- file.path(output_dir, "authoritative_usgs_quantile_dynamics_summary.rds")
 utils::write.csv(component_summary, component_csv, row.names = FALSE)
 saveRDS(component_summary, component_rds)
+utils::write.csv(dynamics_summary, dynamics_csv, row.names = FALSE)
+saveRDS(dynamics_summary, dynamics_rds)
 
 manifest_src <- file.path(source_support_dir, "authoritative_selected_support_manifest.json")
 manifest_out <- file.path(output_dir, "authoritative_selected_support_manifest.json")
 if (file.exists(manifest_src) && requireNamespace("jsonlite", quietly = TRUE)) {
   manifest <- jsonlite::read_json(manifest_src, simplifyVector = FALSE)
+  manifest$run_id <- basename(fit_run_root)
+  manifest$run_root <- fit_run_root
+  manifest$source_support_run_id <- basename(source_support_dir)
+  manifest$source_support_dir_for_dates_and_observed_usgs <- source_support_dir
   manifest$component_rows <- nrow(component_summary)
+  manifest$dynamics_rows <- nrow(dynamics_summary)
   manifest$component_contracts <- sort(unique(component_summary$component_contract))
   manifest$component_rebuild <- list(
     rebuilt_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
@@ -208,6 +271,13 @@ if (file.exists(manifest_src) && requireNamespace("jsonlite", quietly = TRUE)) {
       "component_6_plus_trend_component_1_samplewise",
       "component_6_minus_trend_component_1_samplewise"
     )
+  )
+  manifest$dynamics_rebuild <- list(
+    rebuilt_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+    source_support_dir_for_dates_and_observed_usgs = source_support_dir,
+    fit_run_root = fit_run_root,
+    state_summary_object = "new.theta.out_*_exAL_synth_DISC",
+    usgs_location_source = "row 1 of exps/exps2"
   )
   jsonlite::write_json(manifest, manifest_out, auto_unbox = TRUE, pretty = TRUE)
 } else if (file.exists(manifest_src)) {
@@ -224,7 +294,7 @@ status <- data.frame(
   ),
   status = "pass",
   rows = c(
-    nrow(utils::read.csv(file.path(output_dir, "authoritative_usgs_quantile_dynamics_summary.csv"))),
+    nrow(dynamics_summary),
     nrow(component_summary),
     1L
   ),
@@ -234,9 +304,9 @@ status <- data.frame(
     manifest_out
   ),
   detail = c(
-    "copied from source selected-support root",
+    "rebuilt from retained RData new.theta.out exps/exps2; dates and observed USGS copied from source support",
     "rebuilt from retained RData with samplewise component-6-plus/minus-trend contracts",
-    "copied and updated with component rebuild metadata"
+    "copied and updated with dynamics/component rebuild metadata"
   ),
   stringsAsFactors = FALSE
 )

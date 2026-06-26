@@ -2113,7 +2113,7 @@ write_authoritative_component_analysis_readme <- function(out_dir, manifest) {
       "Included contracts:",
       "",
       "- `raw_state_component` for every retained state component present in the support CSV.",
-      "- `component_6_plus_trend_component_1_samplewise`, the audited Figure A1 construction.",
+      "- `component_6_plus_trend_component_1_samplewise`, the samplewise 80-month component plus trend diagnostic.",
       "- `component_6_minus_trend_component_1_samplewise`, the samplewise 80-month component minus trend diagnostic.",
       "",
       "The older `component_6_shifted_by_posterior_mean_trend_component_1` diagnostic rows are intentionally excluded from the automatic gallery.",

@@ -33,20 +33,18 @@ the figure remains reproducible and auditable.
 
 Required internal contract:
 
-`component_6_plus_trend_component_1_samplewise`
+`raw_state_component`, with `component = 6`
 
-This means posterior samples are combined as:
-
-`theta[1, t, sample] + theta[6, t, sample]`
-
-and only then summarized into the displayed posterior median and 95% interval.
-This replaces the weaker legacy display helper:
+This means Figure A1 is rendered from the retained 80-month seasonal state
+coordinate alone, summarized into the displayed posterior median and 95% interval.
+The following composite diagnostics may remain available in compact support files
+and analysis-only galleries, but they are not the manuscript Figure A1 contract:
 
 `component_6_shifted_by_posterior_mean_trend_component_1`
 
-which shifted the component-6 posterior interval by the posterior mean trend.
-The legacy row family may remain in compact support files for diagnostic
-comparison, but Figure A1 must use the samplewise composite contract.
+`component_6_plus_trend_component_1_samplewise`
+
+`component_6_minus_trend_component_1_samplewise`
 
 ## Dry/Wet Overlay Contract
 
@@ -62,8 +60,8 @@ The article renderer writes these periods to:
 `artifacts/representative_selected_model_2022_12_25/authoritative_support/figures/render_metadata.json`
 
 The metadata is part of the validation surface. Future Figure A1 refreshes should
-fail validation if the samplewise component contract or dry/wet period metadata
-is missing.
+fail validation if the raw component-6 contract or dry/wet period metadata is
+missing.
 
 ## Analysis-Only Component Gallery Contract
 
@@ -85,8 +83,10 @@ Included component contracts:
 
 - `raw_state_component` for every retained state component present in
   `authoritative_component_summary.csv`.
-- `component_6_plus_trend_component_1_samplewise`, matching Figure A1's audited
-  samplewise construction.
+- `component_6_plus_trend_component_1_samplewise`, retained as an analysis-only
+  samplewise component-plus-trend diagnostic.
+- `component_6_minus_trend_component_1_samplewise`, retained as an analysis-only
+  samplewise component-minus-trend diagnostic.
 
 Intentionally excluded from the automatic gallery:
 

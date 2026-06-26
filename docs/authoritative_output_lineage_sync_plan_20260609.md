@@ -106,11 +106,10 @@ article-facing promotion lock for the representative figures/tables.
 
 `docs/figure_a1_component_and_table_precision_contract_20260610.md`
 
-This addendum locks the Figure A1 internal rendering contract to the samplewise
-`component_6_plus_trend_component_1_samplewise` construction, keeps the
-article-facing wording as the 80-month seasonal component, restores the dry/wet
-period overlays, and standardizes publication-facing generated TeX tables to
-fixed five-decimal display.
+This addendum now locks the Figure A1 internal rendering contract to raw retained
+state component 6, keeps the article-facing wording as the 80-month seasonal
+component, restores the dry/wet period overlays, and standardizes
+publication-facing generated TeX tables to fixed five-decimal display.
 
 Implemented workflow-side validation gate:
 

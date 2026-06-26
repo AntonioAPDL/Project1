@@ -324,6 +324,17 @@ def json_compact(obj: Any) -> str:
     return json.dumps(obj, sort_keys=True, separators=(",", ":"))
 
 
+def model_prior_payload(cfg: dict[str, Any], model_key: str) -> dict[str, Any]:
+    """Expose the fitted prior knobs that are otherwise nested under legacy fit config."""
+    model_cfg = (cfg.get("models") or {}).get(model_key) or {}
+    payload: dict[str, Any] = dict(model_cfg.get("prior") or {})
+    legacy = ((cfg.get("fit") or {}).get(model_key) or {}).get("legacy") or {}
+    forecast_cov = legacy.get("forecast_cov")
+    if isinstance(forecast_cov, dict) and forecast_cov:
+        payload["forecast_cov"] = forecast_cov
+    return payload
+
+
 def as_existing_path(value: object) -> Path | None:
     text = str(value or "").strip()
     if not text:
@@ -665,7 +676,7 @@ def build_outputs() -> tuple[list[dict[str, str]], list[dict[str, str]], list[di
                 "include_interaction": str(bool(covfeat.get("include_interaction", False))),
                 "covariate_features_json": json_compact(covfeat),
                 "state_evolution_json": json_compact(model_cfg.get("state_evolution") or {}),
-                "prior_json": json_compact(model_cfg.get("prior") or {}),
+                "prior_json": json_compact(model_prior_payload(cfg, FAMILY_TO_MODEL_KEY[row["family"]])),
                 "seasonality_json": json_compact(model_cfg.get("seasonality") or {}),
                 "within_cutoff_shared_inputs_aligned": "",
             }
@@ -775,6 +786,12 @@ def validate(
                     f"Replacement exAL-M-T1 CRPS is worse than 20260601 authority for {cutoff}: "
                     f"{row['crps_exact']} > {winner.mean_crps}"
                 )
+        prior = json.loads(row["prior_json"] or "{}")
+        forecast_cov = prior.get("forecast_cov") or {}
+        if "epsilon" not in forecast_cov or "c_factor" not in forecast_cov:
+            raise RuntimeError(f"Authoritative exAL-M-T1 row is missing forecast_cov prior fields: {row['run_id']}")
+        if abs(float(forecast_cov["c_factor"]) - 1.0) > 1e-12:
+            raise RuntimeError(f"Unexpected exAL-M-T1 c_factor for {cutoff}: {forecast_cov['c_factor']}")
 
     expected_promoted = {
         "ndlm_univar_keep": {"label": "N-U-T1", "likelihood": "normal", "transfer": "keep"},

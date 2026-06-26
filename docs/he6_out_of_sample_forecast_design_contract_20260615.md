@@ -11,7 +11,7 @@ intended to prevent three common ambiguities:
 
 1. treating the forecast validation as in-sample;
 2. confusing forecast-origin inputs with held-out USGS verification data;
-3. describing the canonical GDPC/PCA climate factor as if it were an operational
+3. describing the canonical GDPC climate factor as if it were an operational
    forecast product like NWS or GloFAS.
 4. treating the rolling-origin forecast folds as if they were a random
    cross-validation split or a dense continuous hindcast.
@@ -82,11 +82,12 @@ The following checks enforce this contract:
 
 Use "out-of-sample" only for the held-out USGS verification target. Use
 "forecast-origin bundle" or "forecast-window support covariates" for staged
-post-cutoff transfer inputs. Do not call GDPC/PCA a forecast product. Do not
-imply that post-cutoff USGS observations enter fitting, updating, model
-selection, or posterior predictive construction. Do not imply that forecast
-products themselves are fit-stage inputs; they are forecast-generation inputs
-after the cutoff. When discussing
-cross-validation, use rolling-origin folds or time-ordered cross-validation
-analogue language; do not describe the publication exercise as random K-fold
-cross-validation or as a continuous dense hindcast.
+post-cutoff transfer inputs. Reader-facing prose should call the climate-index
+covariate the canonical GDPC factor; the historical `PCA` slot name is only a
+workflow compatibility alias. Do not call GDPC a forecast product. Do not imply
+that post-cutoff USGS observations enter fitting, updating, model selection, or
+posterior predictive construction. Do not imply that forecast products
+themselves are fit-stage inputs; they are forecast-generation inputs after the
+cutoff. When discussing cross-validation, use rolling-origin folds or
+time-ordered cross-validation analogue language; do not describe the publication
+exercise as random K-fold cross-validation or as a continuous dense hindcast.

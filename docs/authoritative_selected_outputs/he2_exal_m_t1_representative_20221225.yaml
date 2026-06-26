@@ -63,5 +63,5 @@ authority:
     forbidden_representative_source_families:
       - "historical_support_from_current_models"
   current_gap:
-    status: "clean_full_history_support_pending"
-    detail: "Synthesis, posterior tables, source summaries, and covariate summaries are promoted from the clean 2026-06-23 authority. Dry/wet fitted-quantile diagnostics and 80-month component diagnostics still require a clean full-history selected-output support replay before they can be relabeled as current-authority support."
+    status: "compact_support_rebuilt_from_retained_rdata"
+    detail: "Synthesis, posterior tables, source summaries, and covariate summaries are promoted from the clean 2026-06-23 authority. Dry/wet fitted-quantile diagnostics and the 80-month component diagnostic are now rendered from compact support rebuilt from retained current 2026-06-23 selected-model RData; the previous compact support root is used only to recover dates and observed USGS plotting values."
