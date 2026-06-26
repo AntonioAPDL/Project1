@@ -305,6 +305,8 @@ fit:
         state_hold_after_guard_iters: 20
         state_blend_alpha: 1.0
         cov_blend_alpha: 1.0
+        state_norm_abs_cap_scale: per_time
+        state_norm_ratio_ref_floor: 0.1
     latent_ablation:
       mode: cap_e_inv_u
       e_inv_u_cap: 5000
@@ -745,5 +747,7 @@ he3_ablation:
       state_hold_after_guard_iters: 20
       state_norm_max_ratio: 25
       state_norm_abs_cap: 1.0e6
+      state_norm_abs_cap_scale: per_time
+      state_norm_ratio_ref_floor: 0.1
   cleanup_rdata_after_post: true
   target_model_id: exdqlm_multivar_synth_drop

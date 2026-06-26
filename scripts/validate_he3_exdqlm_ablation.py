@@ -45,6 +45,55 @@ def nested_get(payload: dict[str, Any], keys: list[str], default: Any = None) ->
     return value
 
 
+def as_finite_float(value: Any) -> float | None:
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not pd.notna(out):
+        return None
+    return out
+
+
+def state_guard_regularization_findings(gamma_sigma: dict[str, Any], cfg_path: Path) -> list[str]:
+    """Validate the HE3 state-growth guard policy for long-history fits.
+
+    The relative state-growth guard is useful only when the previous accepted
+    state norm defines a meaningful denominator. Current HE3 configs therefore
+    require a positive scale-aware denominator floor whenever that ratio guard is
+    active during the VB fit. The finite guard and absolute cap remain separate
+    hard safety checks in the R fit helper.
+    """
+    findings: list[str] = []
+    stabilization = gamma_sigma.get("stabilization", {}) if isinstance(gamma_sigma, dict) else {}
+    if not isinstance(stabilization, dict):
+        return [f"gamma_sigma.stabilization is not a mapping in {cfg_path}"]
+
+    state_guard_enabled = stabilization.get("state_guard_enabled", True)
+    if state_guard_enabled is False:
+        return findings
+
+    max_iter = as_finite_float(gamma_sigma.get("max_iter"))
+    start_iter = as_finite_float(stabilization.get("state_guard_start_iter"))
+    max_ratio = as_finite_float(stabilization.get("state_norm_max_ratio"))
+    if max_iter is None or start_iter is None or max_ratio is None:
+        return findings
+    if start_iter >= max_iter:
+        return findings
+
+    abs_cap_scale = str(stabilization.get("state_norm_abs_cap_scale", "")).strip().lower()
+    if abs_cap_scale not in {"per_time", "total"}:
+        findings.append(f"state_norm_abs_cap_scale must be per_time or total in {cfg_path}")
+
+    ref_floor = as_finite_float(stabilization.get("state_norm_ratio_ref_floor"))
+    if ref_floor is None or ref_floor <= 0:
+        findings.append(
+            "state_norm_ratio_ref_floor must be positive when HE3 state-growth "
+            f"ratio guard is active in {cfg_path}"
+        )
+    return findings
+
+
 def run_structure_smoke(plan: pd.DataFrame) -> list[dict[str, Any]]:
     distinct = (
         plan.loc[:, ["variant", "include_trend", "enabled_harmonic_indices"]]
@@ -239,6 +288,7 @@ def main() -> int:
                 findings.append(
                     f"state_guard_start_iter={state_guard_start_int} is outside max_iter={max_iter_int} in {cfg_path}"
                 )
+        findings.extend(state_guard_regularization_findings(gamma_sigma, cfg_path))
 
     smoke_rows = run_structure_smoke(plan)
     for row in smoke_rows:

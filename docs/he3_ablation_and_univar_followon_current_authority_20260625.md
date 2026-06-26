@@ -67,6 +67,15 @@ explicitly overrides the generated HE3 gamma/sigma policy to:
 - `state_hold_after_guard_iters: 20`
 - `state_norm_max_ratio: 25`
 - `state_norm_abs_cap: 1.0e6`
+- `state_norm_abs_cap_scale: per_time`
+- `state_norm_ratio_ref_floor: 0.1`
+
+The reference floor is required because the relative state-growth guard is a
+ratio diagnostic; when the previous accepted state norm is near zero, an
+otherwise bounded long-history state can produce a meaningless ratio-only
+failure. The hard finite guard and absolute cap remain unchanged. See
+`docs/he3_current_authority_noTF_guard_loop_audit_20260626.md` for the 2021-12-21
+noTF/q50 evidence that motivated this current-authority template repair.
 
 The production queue uses `scripts/run_unified_with_cleanup.sh`, which sets
 `CLEANUP_RDATA_AFTER_POST=1`. Generated HE3 launch configs also record
