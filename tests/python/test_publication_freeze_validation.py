@@ -11,10 +11,13 @@ ROOT = Path(__file__).resolve().parents[2]
 os.sys.path.insert(0, str(ROOT / "scripts"))
 
 from validate_publication_freeze import (  # noqa: E402
+    HE3_CURRENT_RUNTIME_ROOT,
     HE3_LABEL_BY_VARIANT,
     HE3_VARIANTS,
     NON_PROMOTED_WORSE_REPAIRS,
+    load_he3_source_authority,
     parse_flat_tex,
+    resolve_he3_matrix_dir,
     same_display,
 )
 
@@ -48,6 +51,21 @@ class PublicationFreezeValidationTests(unittest.TestCase):
     def test_same_display_uses_five_decimal_rounding(self) -> None:
         self.assertTrue(same_display(0.1397088548478634, 0.13971))
         self.assertFalse(same_display(0.1397088548478634, 0.13980))
+
+    def test_current_he3_source_authority_uses_refreshed_table(self) -> None:
+        authority = load_he3_source_authority(ROOT)
+        self.assertEqual(set(authority), {"20210123", "20211112", "20211221", "20220511", "20221225"})
+        self.assertEqual(authority["20211221"]["run_id"], "multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep")
+        self.assertEqual(authority["20211221"]["he3_source_label"], "he2partial20260623")
+        self.assertEqual(authority["20211221"]["synthesis_grid_spec_id"], "c03_eps030")
+        self.assertEqual(float(authority["20211221"]["c_factor"]), 1.0)
+        self.assertEqual(float(authority["20220511"]["epsilon"]), 1.0)
+
+    def test_current_he3_matrix_dir_is_resolved(self) -> None:
+        matrix_dir = resolve_he3_matrix_dir(HE3_CURRENT_RUNTIME_ROOT)
+        self.assertEqual(matrix_dir.name, "he3_exdqlm_ablation_current_authority_v1")
+        self.assertTrue((matrix_dir / "matrix_status.csv").exists())
+        self.assertTrue((matrix_dir / "selection_manifest.csv").exists())
 
 
 if __name__ == "__main__":

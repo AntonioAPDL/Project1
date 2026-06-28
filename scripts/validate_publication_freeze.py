@@ -94,6 +94,8 @@ SELECTED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES = (
     "exdqlm_multivar_keep_partial_authority_refresh_20260623:",
 )
 AUTHORITATIVE_KEEP_LINEAGE = "exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner"
+HE3_CURRENT_SOURCE_TABLE_REL = Path("config/he3_exdqlm_ablation_current_authority_20260625_best_by_cutoff_long.csv")
+HE3_CURRENT_RUNTIME_ROOT = ROOT.parent / "project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625"
 DISPLAY_DIGITS = 5
 DISPLAY_TOL = 0.5 * 10 ** (-DISPLAY_DIGITS)
 
@@ -163,6 +165,15 @@ def as_float(value: object) -> float:
     return float(str(value).strip())
 
 
+def parse_json_field(value: str | None) -> dict[str, object]:
+    if not value:
+        return {}
+    parsed = json.loads(value)
+    if not isinstance(parsed, dict):
+        return {}
+    return parsed
+
+
 def same_display(expected: float, observed: float) -> bool:
     return abs(round(expected, DISPLAY_DIGITS) - observed) <= DISPLAY_TOL
 
@@ -221,6 +232,54 @@ def keyed(rows: list[dict[str, str]], *cols: str) -> dict[tuple[str, ...], dict[
     for row in rows:
         out[tuple(str(row[col]).strip() for col in cols)] = row
     return out
+
+
+def load_he3_source_authority(workflow_root: Path) -> dict[str, dict[str, object]]:
+    legacy_winners = load_yaml(workflow_root / "docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml")["winners"]
+    legacy_by_cutoff = {str(row["cutoff"]): row for row in legacy_winners}
+    source_table = workflow_root / HE3_CURRENT_SOURCE_TABLE_REL
+    if not source_table.exists():
+        return {
+            cutoff: {
+                "run_id": row["run_id"],
+                "mean_crps": float(row["mean_crps"]),
+                "he3_source_label": row["grid_spec_id"],
+                "synthesis_grid_spec_id": row["grid_spec_id"],
+                "c_factor": float(row["c_factor"]),
+                "epsilon": float(row["epsilon_value"]),
+            }
+            for cutoff, row in legacy_by_cutoff.items()
+        }
+
+    rows = read_csv(source_table)
+    out: dict[str, dict[str, object]] = {}
+    for row in rows:
+        if row.get("model_variant") != "exdqlm_multivar_keep":
+            continue
+        if str(row.get("rank_within_cutoff", "")).strip() != "1":
+            continue
+        cutoff = str(row["cutoff"])
+        legacy = legacy_by_cutoff.get(cutoff, {})
+        out[cutoff] = {
+            "run_id": row["source_run_id"],
+            "mean_crps": float(row["forecast_window_crps"]),
+            "he3_source_label": row["best_epsilon_label"],
+            "synthesis_grid_spec_id": legacy.get("grid_spec_id", row["best_epsilon_label"]),
+            "c_factor": float(row["best_c_factor"]),
+            "epsilon": float(row["best_epsilon_value"]),
+        }
+    return out
+
+
+def resolve_he3_matrix_dir(he3_runtime_root: Path) -> Path:
+    candidates = [
+        he3_runtime_root / "control/he3_exdqlm_ablation_current_authority_v1",
+        he3_runtime_root / "control/he3_exdqlm_ablation_authoritative_winners_v1",
+    ]
+    for candidate in candidates:
+        if (candidate / "matrix_status.csv").exists() and (candidate / "selection_manifest.csv").exists():
+            return candidate
+    return candidates[0]
 
 
 def check_he2_selective_manifest(
@@ -318,8 +377,7 @@ def check_he3_authoritative(
     he3_runtime_root: Path,
     checks: list[Check],
 ) -> None:
-    winners = load_yaml(workflow_root / "docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml")["winners"]
-    winner_by_cutoff = {str(row["cutoff"]): row for row in winners}
+    winner_by_cutoff = load_he3_source_authority(workflow_root)
     add(checks, "he3_authority", "winner_cutoff_set", list(winner_by_cutoff) == CUTOFF_ORDER, ",".join(winner_by_cutoff))
     he2_manifest_rows = read_csv(article_root / "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv")
     he2_current_exal = {
@@ -328,7 +386,8 @@ def check_he3_authoritative(
         if row.get("manuscript_label") == "exAL-M-T1" and row.get("family") == "exdqlm_multivar_keep"
     }
 
-    matrix_dir = he3_runtime_root / "control/he3_exdqlm_ablation_authoritative_winners_v1"
+    matrix_dir = resolve_he3_matrix_dir(he3_runtime_root)
+    add(checks, "he3_authority", "matrix_dir_exists", matrix_dir.exists(), str(matrix_dir))
     status_rows = read_csv(matrix_dir / "matrix_status.csv")
     selection_rows = read_csv(matrix_dir / "selection_manifest.csv")
     status_counts: dict[str, int] = {}
@@ -370,14 +429,14 @@ def check_he3_authoritative(
             checks,
             "he3_authority",
             f"{cutoff}:full_grid_spec",
-            full_sel is not None and full_sel.get("best_epsilon_label") == winner["grid_spec_id"],
+            full_sel is not None and full_sel.get("best_epsilon_label") == winner["he3_source_label"],
             full_sel.get("best_epsilon_label", "missing") if full_sel else "missing",
         )
         add(
             checks,
             "he3_authority",
             f"{cutoff}:full_crps_matches_winner",
-            full_row is not None and abs(as_float(full_row["mean_crps"]) - as_float(winner["mean_crps"])) <= 1e-12,
+            full_row is not None and abs(as_float(full_row["mean_crps"]) - float(winner["mean_crps"])) <= 1e-12,
             f"{label} full={as_float(full_row['mean_crps']):.12f}" if full_row else "missing",
         )
         meta_path = article_root / f"artifacts/five_cutoff_main_model_synthesis/{cutoff}_exal_m_t1/source_metadata.json"
@@ -399,7 +458,7 @@ def check_he3_authoritative(
                 checks,
                 "he3_authority",
                 f"{cutoff}:synthesis_grid",
-                meta.get("grid_spec_id") == winner["grid_spec_id"],
+                meta.get("grid_spec_id") == winner["synthesis_grid_spec_id"],
                 meta.get("grid_spec_id", ""),
             )
             add(
@@ -543,6 +602,57 @@ def check_selected_figures(article_root: Path, checks: list[Check]) -> None:
         "same current `2022-12-25` selected `exAL-M-T1` output authority" in support_readme,
         "authoritative support README",
     )
+
+
+def check_prior_claim_contract(article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
+    manifest_path = article_root / "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv"
+    rows = [
+        row for row in read_csv(manifest_path)
+        if row.get("manuscript_label") == "exAL-M-T1"
+        and row.get("family") == "exdqlm_multivar_keep"
+    ]
+    add(checks, "prior_claims", "selected_exal_row_count", len(rows) == 5, f"{len(rows)} rows")
+    epsilon_values: list[float] = []
+    for row in rows:
+        prior = parse_json_field(row.get("prior_json"))
+        forecast_cov = prior.get("forecast_cov", {}) if isinstance(prior.get("forecast_cov"), dict) else {}
+        run_id = row.get("run_id", "")
+        has_epsilon = "epsilon" in forecast_cov
+        has_c_factor = "c_factor" in forecast_cov
+        add(checks, "prior_claims", f"{row.get('cutoff')}:forecast_cov_has_epsilon", has_epsilon, run_id)
+        add(checks, "prior_claims", f"{row.get('cutoff')}:forecast_cov_has_c_factor", has_c_factor, run_id)
+        if has_epsilon:
+            try:
+                epsilon_values.append(float(forecast_cov["epsilon"]))
+                add(checks, "prior_claims", f"{row.get('cutoff')}:epsilon_positive", float(forecast_cov["epsilon"]) > 0, str(forecast_cov["epsilon"]))
+            except (TypeError, ValueError):
+                add(checks, "prior_claims", f"{row.get('cutoff')}:epsilon_parseable", False, str(forecast_cov.get("epsilon")))
+        if has_c_factor:
+            try:
+                add(checks, "prior_claims", f"{row.get('cutoff')}:c_factor_is_one", abs(float(forecast_cov["c_factor"]) - 1.0) <= 1e-12, str(forecast_cov["c_factor"]))
+            except (TypeError, ValueError):
+                add(checks, "prior_claims", f"{row.get('cutoff')}:c_factor_parseable", False, str(forecast_cov.get("c_factor")))
+
+    add(
+        checks,
+        "prior_claims",
+        "epsilon_values_manifest_backed",
+        len(epsilon_values) == len(rows),
+        ",".join(f"{value:g}" for value in epsilon_values),
+    )
+
+    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+    stale_c_patterns = [
+        r"c\s*=\s*10\^2",
+        r"c\s*=\s*10\^\{2\}",
+        r"c\s*=\s*10\$\^\{2\}\$",
+    ]
+    for pattern in stale_c_patterns:
+        add(checks, "prior_claims", f"article_forbidden:{pattern}", re.search(pattern, article_text) is None, pattern)
+        add(checks, "prior_claims", f"corrections_forbidden:{pattern}", re.search(pattern, corrections_text) is None, pattern)
+    add(checks, "prior_claims", "article_states_c_equals_one", r"\(c=1\)" in article_text, r"\(c=1\)")
+    add(checks, "prior_claims", "article_states_cutoff_specific_epsilon", "cutoff-specific" in article_text and "epsilon" in article_text, "cutoff-specific epsilon wording")
 
 
 def check_prose(article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
@@ -1046,7 +1156,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     ap.add_argument(
         "--he3-runtime-root",
         type=Path,
-        default=ROOT.parent / "project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_authoritative_winners_20260608",
+        default=HE3_CURRENT_RUNTIME_ROOT,
     )
     ap.add_argument("--report-dir", type=Path, default=ROOT / "reports/publication_freeze_validation_20260614")
     ap.add_argument("--require-clean", action="store_true")
@@ -1087,6 +1197,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     )
     check_he4_sync(article_root, corrections_root, checks)
     check_selected_figures(article_root, checks)
+    check_prior_claim_contract(article_root, corrections_root, checks)
     check_prose(article_root, corrections_root, checks)
     check_forecast_design(workflow_root, article_root, corrections_root, checks)
     check_latest_forecast_issue(workflow_root, article_root, corrections_root, checks)
