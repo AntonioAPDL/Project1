@@ -258,3 +258,46 @@ The recommended first grid is Stage A above. It is large enough to test the most
 plausible reason the current univariate row is weak, but small enough to finish
 and interpret without creating another unwieldy production campaign.
 
+## Approved 2026-06-28 Screen
+
+The user-approved screen replaces Stage A with five explicit state-evolution
+specifications. It remains a univariate exDQLM screen: no `df_discrep`,
+`epsilon`, or `c_factor` are introduced.
+
+| spec | df_t | df_s1 | df_s2 | df_s67 | lambda | df_trans | df_covs |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `u01` | 0.99999 | 0.99999 | 0.99999 | 0.99999 | 0.97 | 0.9999999 | 0.9999999 |
+| `u02` | 0.99999 | 0.99995 | 0.99995 | 0.99999 | 0.97 | 0.9999999 | 0.9999999 |
+| `u03` | 0.99999 | 0.99995 | 0.99995 | 0.99995 | 0.97 | 0.9999999 | 0.9999999 |
+| `u04` | 0.99999 | 0.9995 | 0.9995 | 0.9999 | 0.97 | 0.9999999 | 0.9999999 |
+| `u05` | 0.99999 | 0.9995 | 0.9995 | 0.9999 | 0.97 | 0.99999 | 0.9999999 |
+
+Planned run size:
+
+- five specifications;
+- five cutoffs;
+- 25 row-level runs;
+- seven quantile fits per row;
+- 175 total quantile fits.
+
+Concurrency:
+
+- `ordinary_max_concurrent = 4`;
+- `fit.parallel.workers = 7`;
+- maximum active quantile workers: `28`.
+
+Cleanup:
+
+- clean `.RData`/`.rda`/`.rds` files under the isolated screen root before
+  launch;
+- run the queue with cleanup enabled so full posterior files are removed after
+  post;
+- keep compact CRPS, logs, figures, manifests, and status summaries.
+
+Tracked implementation files:
+
+- `config/he2_bayesian_publication_relaunch_exdqlm_univar_discount_screen_20260628.template.yaml`
+- `scripts/build_he2_exdqlm_univar_discount_screen_configs.py`
+- `scripts/validate_he2_exdqlm_univar_discount_screen_prelaunch.py`
+- `scripts/summarize_he2_exdqlm_univar_discount_screen.py`
+

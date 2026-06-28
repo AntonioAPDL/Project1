@@ -1,0 +1,95 @@
+campaign:
+  campaign_id: he2_exdqlm_univar_discount_screen_20260628
+  campaign_spec_id: he2univscr20260628
+  artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_discount_screen_20260628
+  matrix_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_discount_screen_20260628/control/univar_discount_screen
+  config_output_dir: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_univar_discount_screen_20260628/control/generated_configs
+  cutoffs:
+    - '20210123'
+    - '20211112'
+    - '20211221'
+    - '20220511'
+    - '20221225'
+  family: exdqlm_univar
+  manuscript_label: exAL-U-T1
+
+source:
+  publication_manifest: reports/he2_publication_manifest/he2_bayesian_publication_manifest.csv
+
+bundles:
+  artifact_root: /data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_publication_shared_inputs_20260510
+  bundle_run_id: 20260510_publication_shared_r01
+  data_start: '1987-05-29'
+
+resources:
+  fit_parallel_workers: 7
+  mc_cores: 7
+
+queue:
+  ordinary_max_concurrent: 4
+  pause_free_gb: 25
+  launch_free_gb: 35
+  heavy_free_gb: 35
+  heavy_cutoff_max_concurrent: 4
+  heavy_cutoff_blocks_ordinary: false
+  poll_seconds: 60
+  continue_on_fail: true
+  skip_compares: true
+
+fit:
+  gamma_sigma:
+    warmup_freeze_iters: 5
+    min_update_iters: 50
+    min_total_iters: 50
+    max_iter: 100
+
+cleanup:
+  cleanup_rdata_after_post: true
+  cleanup_rdata_before_launch: true
+
+screen_specs:
+  - spec_id: u01_t99999_s99999_s6799999_trans9999999_cov9999999
+    short_label: u01
+    df_t: 0.99999
+    df_s1: 0.99999
+    df_s2: 0.99999
+    df_s67: 0.99999
+    lambda: 0.97
+    df_trans: 0.9999999
+    df_covs: 0.9999999
+  - spec_id: u02_t99999_s99995_s6799999_trans9999999_cov9999999
+    short_label: u02
+    df_t: 0.99999
+    df_s1: 0.99995
+    df_s2: 0.99995
+    df_s67: 0.99999
+    lambda: 0.97
+    df_trans: 0.9999999
+    df_covs: 0.9999999
+  - spec_id: u03_t99999_s99995_s6799995_trans9999999_cov9999999
+    short_label: u03
+    df_t: 0.99999
+    df_s1: 0.99995
+    df_s2: 0.99995
+    df_s67: 0.99995
+    lambda: 0.97
+    df_trans: 0.9999999
+    df_covs: 0.9999999
+  - spec_id: u04_t99999_s9995_s679999_trans9999999_cov9999999
+    short_label: u04
+    df_t: 0.99999
+    df_s1: 0.9995
+    df_s2: 0.9995
+    df_s67: 0.9999
+    lambda: 0.97
+    df_trans: 0.9999999
+    df_covs: 0.9999999
+  - spec_id: u05_t99999_s9995_s679999_trans99999_cov9999999
+    short_label: u05
+    df_t: 0.99999
+    df_s1: 0.9995
+    df_s2: 0.9995
+    df_s67: 0.9999
+    lambda: 0.97
+    df_trans: 0.99999
+    df_covs: 0.9999999
