@@ -186,7 +186,7 @@ resolve_future_truth <- function(horizon) {
   start_date <- infer_start_from_forecasts()
   target_dates <- seq.Date(start_date, by = "day", length.out = h)
 
-  # Match NDLM forecast-window diagnostics: USGS realized future on log(log1p(cms)).
+  # Current publication univariate diagnostics stay on log1p(cms).
   if (exists("San_Lorenzo_Daily_USGS_R", inherits = TRUE) &&
       is.data.frame(San_Lorenzo_Daily_USGS_R) &&
       "data0" %in% names(San_Lorenzo_Daily_USGS_R)) {
@@ -206,7 +206,7 @@ resolve_future_truth <- function(horizon) {
       idx_map <- match(target_dates, date_col[ok])
       valid <- !is.na(idx_map)
       if (any(valid)) {
-        truth[valid] <- log(flow_log1p[ok][idx_map[valid]])
+        truth[valid] <- flow_log1p[ok][idx_map[valid]]
       }
     }
   }
@@ -1965,13 +1965,13 @@ profile_section("figures_smoke_fast.univar_fit_mu_vs_obs", {
   }
   idx <- seq_len(fit_len)
 
-  out_file <- file.path(OUT_DIR, "univar_fit_mu_vs_observed_loglog.png")
+  out_file <- file.path(OUT_DIR, "univar_fit_mu_vs_observed_log1p.png")
   png(out_file, width = 2800, height = 1400, res = 300)
   on.exit(dev.off(), add = TRUE)
   y_min <- min(obs[idx], unlist(lapply(exps_by_q, function(v) v[idx])), na.rm = TRUE)
   y_max <- max(obs[idx], unlist(lapply(exps_by_q, function(v) v[idx])), na.rm = TRUE)
   plot(idx, obs[idx], type = "p", pch = 16, cex = 0.35, col = "gray20",
-       xlab = "Time index", ylab = "log(log(flow + 1))",
+       xlab = "Time index", ylab = "log(1 + flow)",
        main = "Univariate exDQLM expected location vs observed (in-sample)",
        ylim = c(y_min, y_max))
   for (q in names(exps_by_q)) {
@@ -1987,13 +1987,13 @@ profile_section("figures_smoke_fast.univar_fit_mu_vs_obs", {
 
   recent_n <- min(900L, fit_len)
   idx_recent <- seq.int(fit_len - recent_n + 1L, fit_len)
-  out_file_recent <- file.path(OUT_DIR, "univar_fit_mu_vs_observed_recent_loglog.png")
+  out_file_recent <- file.path(OUT_DIR, "univar_fit_mu_vs_observed_recent_log1p.png")
   png(out_file_recent, width = 2800, height = 1400, res = 300)
   on.exit(dev.off(), add = TRUE)
   y_min_r <- min(obs[idx_recent], unlist(lapply(exps_by_q, function(v) v[idx_recent])), na.rm = TRUE)
   y_max_r <- max(obs[idx_recent], unlist(lapply(exps_by_q, function(v) v[idx_recent])), na.rm = TRUE)
   plot(idx_recent, obs[idx_recent], type = "p", pch = 16, cex = 0.55, col = "gray20",
-       xlab = "Time index", ylab = "log(log(flow + 1))",
+       xlab = "Time index", ylab = "log(1 + flow)",
        main = sprintf("Univariate exDQLM expected location vs observed (recent %d points)", recent_n),
        ylim = c(y_min_r, y_max_r))
   for (q in names(exps_by_q)) {
@@ -2075,7 +2075,7 @@ profile_section("figures_smoke_fast.univar_forecast_window", {
   y_min <- min(c(loc_q05, loc_q50, loc_q95, truth), na.rm = TRUE)
   y_max <- max(c(loc_q05, loc_q50, loc_q95, truth), na.rm = TRUE)
   plot(x_idx, loc_q50[2, ], type = "l", lwd = 2.2, col = "#1b7837",
-       xlab = "Forecast day", ylab = "log(log(flow + 1))",
+       xlab = "Forecast day", ylab = "log(1 + flow)",
        main = "Univariate exDQLM forecast-window location vs future USGS",
        ylim = c(y_min, y_max))
   lines(x_idx, loc_q50[1, ], lty = 2, lwd = 1.2, col = "#1b7837")
@@ -2105,7 +2105,7 @@ profile_section("figures_smoke_fast.univar_forecast_window", {
     y_min2 <- min(c(pred_q50, truth), na.rm = TRUE)
     y_max2 <- max(c(pred_q50, truth), na.rm = TRUE)
     plot(x_idx, pred_q50[2, ], type = "l", lwd = 2.1, col = "#1b7837",
-         xlab = "Forecast day", ylab = "log(log(flow + 1))",
+         xlab = "Forecast day", ylab = "log(1 + flow)",
          main = "Univariate exDQLM predictive q=50 vs future USGS",
          ylim = c(y_min2, y_max2))
     lines(x_idx, pred_q50[1, ], lty = 2, lwd = 1.2, col = "#1b7837")
@@ -2137,7 +2137,7 @@ profile_section("figures_smoke_fast.univar_forecast_window", {
     y_min3 <- min(c(loc_q50, glofas_mean, nws_mean, truth), na.rm = TRUE)
     y_max3 <- max(c(loc_q50, glofas_mean, nws_mean, truth), na.rm = TRUE)
     plot(x_idx, loc_q50[2, ], type = "l", lwd = 2.4, col = "#1b7837",
-         xlab = "Forecast day", ylab = "log(log(flow + 1))",
+         xlab = "Forecast day", ylab = "log(1 + flow)",
          main = "Forecast window: univariate exDQLM vs ensemble means",
          ylim = c(y_min3, y_max3))
     lines(x_idx, loc_q50[1, ], lty = 2, lwd = 1.1, col = "#1b7837")
@@ -2166,7 +2166,7 @@ profile_section("figures_smoke_fast.univar_forecast_window", {
     y_min4 <- min(c(glofas, nws, loc_q50[2, ], truth), na.rm = TRUE)
     y_max4 <- max(c(glofas, nws, loc_q50[2, ], truth), na.rm = TRUE)
     plot(x_idx, loc_q50[2, ], type = "l", lwd = 2.6, col = "#1b7837",
-         xlab = "Forecast day", ylab = "log(log(flow + 1))",
+         xlab = "Forecast day", ylab = "log(1 + flow)",
          main = "Forecast window: ensemble members + univariate median + future USGS",
          ylim = c(y_min4, y_max4))
     if (ncol(glofas) > 0L) {

@@ -45,6 +45,21 @@ shared_helpers_path <- file.path(getwd(), "R", "unified", "families", "shared_in
 if (file.exists(shared_helpers_path)) {
   source(shared_helpers_path)
 }
+
+univar_scale_contract_path <- file.path(getwd(), "R", "unified", "univar_legacy_scale_contract.R")
+if (file.exists(univar_scale_contract_path)) {
+  source(univar_scale_contract_path)
+}
+if (!exists("univar_legacy_resolve_scale_contract", mode = "function")) {
+  stop("Legacy univariate scale-contract bridge is unavailable.", call. = FALSE)
+}
+UNIV_LEGACY_SCALE_CONTRACT <- univar_legacy_resolve_scale_contract()
+message(sprintf(
+  "UNIV legacy scale contract: fit_input=%s; fit_internal=%s; transform_policy=%s",
+  UNIV_LEGACY_SCALE_CONTRACT$legacy_fit_input_scale,
+  UNIV_LEGACY_SCALE_CONTRACT$analysis_scale_fit_internal,
+  UNIV_LEGACY_SCALE_CONTRACT$transform_policy
+))
  
 n.samp <- 2000
 cut <- 1
@@ -977,7 +992,11 @@ nws_forecast <- read.csv(resolve_shared_input_path(
   label = "UNIV NWS forecast CSV",
   shared_root = UNIV_SHARED_INPUT_ROOT
 ))
-nws_forecast[,-1] <- log(nws_forecast[,-1])
+nws_forecast <- univar_legacy_transform_flow_frame_cols(
+  nws_forecast,
+  context_label = "nws_forecast",
+  scale_contract = UNIV_LEGACY_SCALE_CONTRACT
+)
 num_ens_nws <- dim(nws_forecast)[2]-1
 
 glofas_forecast <- read.csv(resolve_shared_input_path(
@@ -993,7 +1012,11 @@ glofas_forecast <- glofas_forecast[glofas_forecast$target_date >= run_dates$fore
 if (!nrow(glofas_forecast)) {
   stop("UNIV GloFAS forecast has no rows at/after forecast start date.", call. = FALSE)
 }
-glofas_forecast[,-1] <- log(glofas_forecast[,-1])
+glofas_forecast <- univar_legacy_transform_flow_frame_cols(
+  glofas_forecast,
+  context_label = "glofas_forecast",
+  scale_contract = UNIV_LEGACY_SCALE_CONTRACT
+)
 
 num_ens_glofas <- dim(glofas_forecast)[2]-1
 
@@ -1116,7 +1139,11 @@ timestamps <- as.Date(streamflow_data$Date)
 Y_usgs <- data.frame(time = timestamps, time_series_matrix)
 all_data <- merge(X, Y_usgs, by = "time")
 Y <- t(as.matrix(all_data[, c('USGS')]))
-Y <- log(Y) #log-log, since already logged
+Y[] <- univar_legacy_transform_flow_values_to_internal_scale(
+  Y,
+  context_label = "retros_response_usgs",
+  scale_contract = UNIV_LEGACY_SCALE_CONTRACT
+)
 TT <- dim(Y)[2]
 J <- dim(Y)[1] - 1
 timestamps <- all_data[, 'time']

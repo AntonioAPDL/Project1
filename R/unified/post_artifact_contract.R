@@ -372,6 +372,8 @@ unified_post_contract_check <- function(
       }
 
       legacy_univar_fit_figures_present <- has_any_output_file(c(
+        "univar_fit_mu_vs_observed_log1p.png",
+        "univar_fit_mu_vs_observed_recent_log1p.png",
         "univar_fit_mu_vs_observed_loglog.png",
         "univar_fit_mu_vs_observed_recent_loglog.png"
       ))

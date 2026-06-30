@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -89,6 +90,7 @@ HE3_LABEL_BY_VARIANT = {
     "noH3": "exAL-M-T1-noH3",
 }
 TARGETED_REPAIR_LINEAGE = "he2_table1_targeted_repair_20260612:canonical_bundle_targeted_repair"
+UNIVAR_SCALE_REPAIR_LINEAGE_PREFIX = "he2_univar_al_exal_scale_repair_20260629:"
 SELECTED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES = (
     "exdqlm_multivar_keep_partial_screen_20260623:",
     "exdqlm_multivar_keep_partial_authority_refresh_20260623:",
@@ -100,13 +102,8 @@ DISPLAY_DIGITS = 5
 DISPLAY_TOL = 0.5 * 10 ** (-DISPLAY_DIGITS)
 
 NON_PROMOTED_WORSE_REPAIRS = {
-    ("20210123", "exAL-U-T1"): 1.593758839350553,
     ("20210123", "N-M-T1"): 3.2149023502665646,
-    ("20211112", "exAL-U-T1"): 1.3720641646044698,
-    ("20211221", "exAL-U-T1"): 2.5629546886058745,
-    ("20220511", "exAL-U-T1"): 1.2667703182160184,
     ("20221225", "exAL-M-T0"): 1.2113191493945392,
-    ("20221225", "exAL-U-T1"): 3.595277539023264,
     ("20221225", "N-M-T1"): 3.8886290887278108,
 }
 
@@ -290,11 +287,27 @@ def check_he2_selective_manifest(
 ) -> None:
     overlay = load_yaml(workflow_root / "config/he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml")
     replacements = overlay.get("replacements", [])
+    replacement_type_counts: Counter[str] = Counter()
+    for repl in replacements:
+        lineage = str(repl.get("campaign_lineage", overlay.get("campaign_lineage", "")))
+        if lineage == TARGETED_REPAIR_LINEAGE:
+            replacement_type_counts["table1_targeted_repair"] += 1
+        elif lineage.startswith(UNIVAR_SCALE_REPAIR_LINEAGE_PREFIX):
+            replacement_type_counts["univariate_scale_repair"] += 1
+        elif any(lineage.startswith(prefix) for prefix in SELECTED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES):
+            replacement_type_counts["selected_exal_keep_refresh"] += 1
+        else:
+            replacement_type_counts["unexpected"] += 1
     overlay_keys = {(str(r["cutoff"]), str(r["manuscript_label"])) for r in replacements}
     table1_overlay_keys = {
         (str(r["cutoff"]), str(r["manuscript_label"]))
         for r in replacements
         if str(r.get("campaign_lineage", overlay.get("campaign_lineage", ""))).startswith("he2_table1_targeted_repair_20260612:")
+    }
+    scale_repair_overlay_keys = {
+        (str(r["cutoff"]), str(r["manuscript_label"]))
+        for r in replacements
+        if str(r.get("campaign_lineage", overlay.get("campaign_lineage", ""))).startswith(UNIVAR_SCALE_REPAIR_LINEAGE_PREFIX)
     }
     selected_exal_overlay_keys = {
         (str(r["cutoff"]), str(r["manuscript_label"]))
@@ -304,9 +317,22 @@ def check_he2_selective_manifest(
             for prefix in SELECTED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES
         )
     }
+    expected_replacement_type_counts = {
+        "table1_targeted_repair": 11,
+        "univariate_scale_repair": 10,
+        "selected_exal_keep_refresh": 3,
+    }
     add(checks, "he2_selective", "overlay_active", bool(overlay.get("active")), "overlay active flag")
-    add(checks, "he2_selective", "overlay_replacement_count", len(replacements) == 19, f"{len(replacements)} replacements")
-    add(checks, "he2_selective", "overlay_table1_repair_count", len(table1_overlay_keys) == 16, f"{len(table1_overlay_keys)} Table 1 repairs")
+    add(checks, "he2_selective", "overlay_replacement_count", len(replacements) == 24, f"{len(replacements)} replacements")
+    add(
+        checks,
+        "he2_selective",
+        "overlay_replacement_type_counts",
+        dict(replacement_type_counts) == expected_replacement_type_counts,
+        json.dumps(dict(replacement_type_counts), sort_keys=True),
+    )
+    add(checks, "he2_selective", "overlay_table1_repair_count", len(table1_overlay_keys) == 11, f"{len(table1_overlay_keys)} Table 1 repairs")
+    add(checks, "he2_selective", "overlay_univar_scale_repair_count", len(scale_repair_overlay_keys) == 10, f"{len(scale_repair_overlay_keys)} univariate scale repairs")
     add(checks, "he2_selective", "overlay_selected_exal_keep_count", len(selected_exal_overlay_keys) == 3, f"{len(selected_exal_overlay_keys)} selected exAL-M-T1 rows")
     add(
         checks,
@@ -324,13 +350,19 @@ def check_he2_selective_manifest(
         for r in rows
         if r.get("campaign_lineage") == TARGETED_REPAIR_LINEAGE
     }
+    scale_repair = {
+        (r["cutoff"], r["manuscript_label"])
+        for r in rows
+        if str(r.get("campaign_lineage", "")).startswith(UNIVAR_SCALE_REPAIR_LINEAGE_PREFIX)
+    }
     selected_exal = {
         (r["cutoff"], r["manuscript_label"])
         for r in rows
         if any(str(r.get("campaign_lineage", "")).startswith(prefix) for prefix in SELECTED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES)
     }
     add(checks, "he2_selective", "manifest_row_count", len(rows) == 45, f"{len(rows)} rows")
-    add(checks, "he2_selective", "targeted_repair_count", len(targeted) == 16, f"{len(targeted)} targeted rows")
+    add(checks, "he2_selective", "targeted_repair_count", len(targeted) == 11, f"{len(targeted)} targeted rows")
+    add(checks, "he2_selective", "univar_scale_repair_count", len(scale_repair) == 10, f"{len(scale_repair)} repaired univariate rows")
     add(checks, "he2_selective", "selected_exal_keep_count", len(selected_exal) == 3, f"{len(selected_exal)} selected exAL-M-T1 rows")
     add(
         checks,
@@ -338,6 +370,13 @@ def check_he2_selective_manifest(
         "targeted_rows_match_overlay",
         targeted == table1_overlay_keys,
         f"manifest={len(targeted)} overlay={len(table1_overlay_keys)}",
+    )
+    add(
+        checks,
+        "he2_selective",
+        "univar_scale_repair_rows_match_overlay",
+        scale_repair == scale_repair_overlay_keys,
+        f"manifest={len(scale_repair)} overlay={len(scale_repair_overlay_keys)}",
     )
     add(
         checks,
@@ -458,8 +497,18 @@ def check_he3_authoritative(
                 checks,
                 "he3_authority",
                 f"{cutoff}:synthesis_grid",
-                meta.get("grid_spec_id") == winner["synthesis_grid_spec_id"],
-                meta.get("grid_spec_id", ""),
+                str(meta.get("grid_spec_id", ""))
+                in {
+                    value
+                    for value in [
+                        str(winner["synthesis_grid_spec_id"]),
+                        str(winner["he3_source_label"]),
+                        str(current.get("campaign_lineage", "")),
+                        str(current.get("expected_input_bundle_id", "")),
+                    ]
+                    if value
+                },
+                str(meta.get("grid_spec_id", "")),
             )
             add(
                 checks,

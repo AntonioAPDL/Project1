@@ -1835,6 +1835,13 @@ unified_stage_fit <- function(cfg, run_root, repo_root, manifest) {
       UNIV_RETROS_CSV = source_retros,
       UNIV_NWS_FORECAST_CSV = source_nws,
       UNIV_GLOFAS_FORECAST_CSV = source_glofas,
+      UNIFIED_LEGACY_FIT_INPUT_SCALE = as.character(cfg$scale_contract$legacy_fit_input_scale),
+      UNIFIED_ANALYSIS_SCALE_FIT_INTERNAL = as.character(cfg$scale_contract$analysis_scale_fit_internal),
+      UNIFIED_TRANSFORM_POLICY = as.character(unified_get(
+        cfg,
+        c("scale_contract", "transform_policy"),
+        default = ""
+      )),
       UNIFIED_COVARIATE_FEATURES_CSV = shared_feature_csv,
       UNIV_COVARIATES_DIR = shared_paths$covariates_dir,
       UNIV_COV1_ELI_CSV = shared_cov_paths$eli,

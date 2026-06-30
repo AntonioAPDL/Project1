@@ -52,6 +52,26 @@ class TestLog1pTransformPolicy(unittest.TestCase):
         self.assertNotIn("Y <- log(Y)", retro_builder)
         self.assertIn("shared retrospective contract is already log1p(cms)", retro_builder)
 
+    def test_legacy_univariate_bridge_uses_explicit_scale_contract(self) -> None:
+        runner = (PROJECT_ROOT / "OptimalModelSLexAL.r").read_text(encoding="utf-8")
+        self.assertNotIn("nws_forecast[,-1] <- log(nws_forecast[,-1])", runner)
+        self.assertNotIn("glofas_forecast[,-1] <- log(glofas_forecast[,-1])", runner)
+        self.assertNotIn("Y <- log(Y)", runner)
+        self.assertIn("univar_legacy_resolve_scale_contract", runner)
+        self.assertIn("univar_legacy_transform_flow_frame_cols", runner)
+        self.assertIn("univar_legacy_transform_flow_values_to_internal_scale", runner)
+
+    def test_univariate_fit_diagnostics_are_named_and_labeled_log1p(self) -> None:
+        figures = (PROJECT_ROOT / "R" / "environmetrics" / "40_figures_smoke_fast.R").read_text(encoding="utf-8")
+        self.assertIn("univar_fit_mu_vs_observed_log1p.png", figures)
+        self.assertIn("univar_fit_mu_vs_observed_recent_log1p.png", figures)
+        self.assertIn('ylab = "log(1 + flow)"', figures)
+        self.assertIn("truth[valid] <- flow_log1p[ok][idx_map[valid]]", figures)
+        self.assertNotIn("univar_fit_mu_vs_observed_loglog.png", figures)
+        self.assertNotIn("univar_fit_mu_vs_observed_recent_loglog.png", figures)
+        self.assertNotIn('ylab = "log(log(flow + 1))"', figures)
+        self.assertNotIn("truth[valid] <- log(flow_log1p[ok][idx_map[valid]])", figures)
+
     def test_loglog1p_is_diagnostic_only_near_zero(self) -> None:
         # Exact-zero retrospectives are valid under log1p_cms but invalid under
         # log(log1p(cms)); this is why the repair target remains log1p_cms.

@@ -380,8 +380,8 @@ test_that("univar-only post contract accepts isolated univariate diagnostics and
   tables_dir <- file.path(outputs_dir, "tables")
   dir.create(tables_dir, recursive = TRUE, showWarnings = FALSE)
 
-  create_dummy_png(file.path(outputs_dir, "univar_fit_mu_vs_observed_loglog.png"))
-  create_dummy_png(file.path(outputs_dir, "univar_fit_mu_vs_observed_recent_loglog.png"))
+  create_dummy_png(file.path(outputs_dir, "univar_fit_mu_vs_observed_log1p.png"))
+  create_dummy_png(file.path(outputs_dir, "univar_fit_mu_vs_observed_recent_log1p.png"))
   create_dummy_png(file.path(outputs_dir, "univar_forecast_window_mu_vs_future_usgs.png"))
   create_dummy_png(file.path(outputs_dir, "univar_forecast_window_predictive_q50_vs_future_usgs.png"))
   create_dummy_png(file.path(outputs_dir, "univar_forecast_window_univar_vs_ensembles.png"))

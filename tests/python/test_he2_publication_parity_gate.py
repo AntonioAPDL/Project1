@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 os.sys.path.insert(0, str(ROOT / "scripts"))
 
+from build_he2_bayesian_publication_manifest import ALLOWED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES  # noqa: E402
 from build_he2_publication_parity_gate import CANONICAL_LINEAGE, PROMOTED_LABEL, PROMOTED_LABELS, build_gate  # noqa: E402
 from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402
 
@@ -25,7 +26,7 @@ class He2PublicationParityGateTests(unittest.TestCase):
         self.assertTrue(summary["final_9_model_benchmark_ready"])
         self.assertEqual(summary["pending_labels"], [])
 
-    def test_promoted_rows_match_authoritative_yaml(self) -> None:
+    def test_promoted_exal_keep_rows_match_authority_or_allowed_replacement(self) -> None:
         rows, _summary = build_gate()
         authoritative = load_authoritative_spec()
         by_cutoff = authoritative.winner_by_cutoff()
@@ -33,10 +34,19 @@ class He2PublicationParityGateTests(unittest.TestCase):
         self.assertEqual(len(promoted), 5)
         for row in promoted:
             winner = by_cutoff[row["cutoff"]]
-            self.assertEqual(row["current_run_id"], winner.run_id)
-            self.assertEqual(row["current_campaign_lineage"], CANONICAL_LINEAGE)
+            lineage = row["current_campaign_lineage"]
+            if lineage == CANONICAL_LINEAGE:
+                self.assertEqual(row["current_run_id"], winner.run_id)
+            else:
+                self.assertTrue(
+                    any(lineage.startswith(prefix) for prefix in ALLOWED_EXAL_KEEP_REPLACEMENT_LINEAGE_PREFIXES),
+                    msg=f"unexpected replacement lineage for {row['cutoff']}: {lineage}",
+                )
+                self.assertNotEqual(row["current_run_id"], "")
             self.assertEqual(row["target_status"], "authoritative_promoted")
             self.assertEqual(row["required_action"], "none")
+            self.assertEqual(row["current_score_scale"], "log_cms_plus1")
+            self.assertEqual(row["current_within_cutoff_shared_inputs_aligned"], "True")
 
     def test_no_rows_remain_pending_after_full_promotion(self) -> None:
         rows, summary = build_gate()

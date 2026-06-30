@@ -19,6 +19,11 @@ from he2_publication_relaunch_lib import canonical_shared_paths, model_class, pa
 
 ROOT = Path(__file__).resolve().parents[1]
 RDATA_SUFFIXES = {'.rdata', '.rda', '.rds'}
+FORBIDDEN_LEGACY_UNIVAR_TRANSFORMS = (
+    'nws_forecast[,-1] <- log(nws_forecast[,-1])',
+    'glofas_forecast[,-1] <- log(glofas_forecast[,-1])',
+    'Y <- log(Y)',
+)
 
 
 def run(cmd: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -271,6 +276,89 @@ def _prune_r_artifacts(root: Path) -> dict[str, int]:
     return {'removed_files': removed_files, 'removed_bytes': removed_bytes}
 
 
+def _validate_legacy_univar_scale_source_contract() -> dict[str, Any]:
+    runner_path = ROOT / 'OptimalModelSLexAL.r'
+    helper_path = ROOT / 'R' / 'unified' / 'univar_legacy_scale_contract.R'
+    stage_fit_path = ROOT / 'R' / 'unified' / 'stages' / 'stage_fit.R'
+    post_figures_path = ROOT / 'R' / 'unified' / 'post_publication_figures.R'
+
+    assert_true(runner_path.exists(), f'missing legacy univariate runner: {runner_path}')
+    assert_true(helper_path.exists(), f'missing legacy univariate scale helper: {helper_path}')
+
+    runner_text = runner_path.read_text(encoding='utf-8')
+    helper_text = helper_path.read_text(encoding='utf-8')
+    stage_fit_text = stage_fit_path.read_text(encoding='utf-8')
+    post_figures_text = post_figures_path.read_text(encoding='utf-8')
+
+    for needle in FORBIDDEN_LEGACY_UNIVAR_TRANSFORMS:
+        assert_true(needle not in runner_text, f'legacy univariate runner still contains forbidden transform: {needle}')
+
+    for needle in (
+        'univar_legacy_resolve_scale_contract',
+        'univar_legacy_transform_flow_frame_cols',
+        'univar_legacy_transform_flow_values_to_internal_scale',
+    ):
+        assert_true(needle in runner_text, f'legacy univariate runner does not use scale bridge symbol: {needle}')
+        assert_true(needle in helper_text, f'legacy univariate scale helper missing symbol: {needle}')
+
+    assert_true(
+        stage_fit_text.count('UNIFIED_LEGACY_FIT_INPUT_SCALE = as.character(cfg$scale_contract$legacy_fit_input_scale)') >= 2,
+        'stage_fit.R must export UNIFIED_LEGACY_FIT_INPUT_SCALE to multivariate and univariate subprocesses',
+    )
+    assert_true(
+        stage_fit_text.count('UNIFIED_ANALYSIS_SCALE_FIT_INTERNAL = as.character(cfg$scale_contract$analysis_scale_fit_internal)') >= 2,
+        'stage_fit.R must export UNIFIED_ANALYSIS_SCALE_FIT_INTERNAL to multivariate and univariate subprocesses',
+    )
+    assert_true(
+        stage_fit_text.count('UNIFIED_TRANSFORM_POLICY = as.character(unified_get(') >= 2,
+        'stage_fit.R must export UNIFIED_TRANSFORM_POLICY to multivariate and univariate subprocesses',
+    )
+    assert_true(
+        'log1p_cms = bquote(River~flow~"["*log(1 + x)*";"' in post_figures_text,
+        'publication figure axis label must expose log(1 + x) for log1p_cms',
+    )
+    assert_true(
+        'log_log1p_cms = stop("post publication figures must stay on log1p_cms' in post_figures_text,
+        'publication figures must reject log_log1p_cms',
+    )
+    return {
+        'runner': str(runner_path),
+        'helper': str(helper_path),
+        'stage_fit': str(stage_fit_path),
+        'post_publication_figures': str(post_figures_path),
+        'status': 'passed',
+    }
+
+
+def _validate_generated_config_scale_contract(payload: dict[str, Any], path: Path) -> None:
+    scale = payload.get('scale_contract') if isinstance(payload.get('scale_contract'), dict) else {}
+    expected = {
+        'legacy_fit_input_scale': 'log1p_cms',
+        'legacy_post_input_scale': 'log1p_cms',
+        'analysis_scale_fit_internal': 'log1p_cms',
+        'analysis_scale_post_internal': 'log1p_cms',
+        'transform_policy': 'log1p_only',
+    }
+    for key, expected_value in expected.items():
+        actual = scale.get(key)
+        assert_true(
+            actual == expected_value,
+            f'{path.name}: scale_contract.{key} expected {expected_value}, got {actual}',
+        )
+
+    models = payload.get('models') if isinstance(payload.get('models'), dict) else {}
+    if bool(models.get('run_exdqlm_univar')):
+        univar_model = models.get('exdqlm_univar') if isinstance(models.get('exdqlm_univar'), dict) else {}
+        assert_true(
+            univar_model.get('implementation_mode') == 'legacy_bridge',
+            f'{path.name}: exdqlm_univar publication relaunch must use legacy_bridge until intentionally migrated',
+        )
+        assert_true(
+            str(univar_model.get('likelihood_mode', '')).lower() in {'al', 'exal'},
+            f'{path.name}: exdqlm_univar likelihood_mode must be al or exal',
+        )
+
+
 def _normalize_quantile_smoke_cases(
     validation_cfg: dict[str, Any],
     *,
@@ -377,6 +465,7 @@ def main() -> int:
         'checks': {},
         'smoke_runs': [],
     }
+    summary['checks']['legacy_univar_scale_source_contract'] = _validate_legacy_univar_scale_source_contract()
 
     bundle_build = _bundle_build(config_path)
     (outdir / 'bundle_build.stdout.log').write_text(bundle_build.stdout, encoding='utf-8')
@@ -431,10 +520,12 @@ def main() -> int:
     by_cutoff: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for path in expected_config_paths:
         payload = load_yaml(path)
+        _validate_generated_config_scale_contract(payload, path)
         cutoff = str(payload['dates']['cutoff_date']).replace('-', '')
         by_cutoff[cutoff].append({'path': path, 'payload': payload})
         names = [row['name'] for row in payload['inputs']['fit']['covariates']]
         assert_true(names == ['PPT', 'SOIL', 'PCA'], f'{path.name}: covariates mismatch {names}')
+    summary['checks']['generated_config_scale_contract'] = 'passed'
 
     for cutoff in selected_cutoffs:
         rows = by_cutoff[cutoff]

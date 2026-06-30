@@ -1,0 +1,101 @@
+selection:
+  cutoffs:
+    - '20210123'
+    - '20211112'
+    - '20211221'
+    - '20220511'
+    - '20221225'
+  families:
+    - exdqlm_univar
+    - dqlm_univar_al
+  model_classes:
+    - quantile_univariate
+resources:
+  fit_parallel_workers: 7
+  mc_cores: 7
+queue:
+  ordinary_max_concurrent: 4
+  heavy_cutoff_max_concurrent: 4
+  heavy_cutoff_blocks_ordinary: false
+  pause_free_gb: 25
+  launch_free_gb: 35
+  heavy_free_gb: 35
+  poll_seconds: 30
+overrides:
+  row_config_patches:
+    - family: exdqlm_univar
+      manuscript_label: exAL-U-T1
+      config_patch:
+        run:
+          threads:
+            omp: 1
+            openblas: 1
+            mkl: 1
+            veclib: 1
+            numexpr: 1
+        models:
+          exdqlm_univar:
+            state_evolution:
+              df_t: 0.99999999
+              df_s1: 0.99999
+              df_s2: 0.99999
+              df_s67: 0.99999
+              lambda: 0.97
+              df_trans: 0.9999999
+              df_covs: 0.9999999
+            likelihood_mode: exal
+            implementation_mode: legacy_bridge
+        scale_contract:
+          legacy_fit_input_scale: log1p_cms
+          legacy_post_input_scale: log1p_cms
+          analysis_scale_fit_internal: log1p_cms
+          analysis_scale_post_internal: log1p_cms
+          transform_policy: log1p_only
+    - family: dqlm_univar_al
+      manuscript_label: AL-U-T1
+      config_patch:
+        run:
+          threads:
+            omp: 1
+            openblas: 1
+            mkl: 1
+            veclib: 1
+            numexpr: 1
+        models:
+          exdqlm_univar:
+            state_evolution:
+              df_t: 0.99999999
+              df_s1: 0.99999
+              df_s2: 0.99999
+              df_s67: 0.99999
+              lambda: 0.97
+              df_trans: 0.9999999
+              df_covs: 0.9999999
+            likelihood_mode: al
+            implementation_mode: legacy_bridge
+        scale_contract:
+          legacy_fit_input_scale: log1p_cms
+          legacy_post_input_scale: log1p_cms
+          analysis_scale_fit_internal: log1p_cms
+          analysis_scale_post_internal: log1p_cms
+          transform_policy: log1p_only
+    - cutoff: '20210123'
+      config_patch:
+        run:
+          seed: 20210123
+    - cutoff: '20211112'
+      config_patch:
+        run:
+          seed: 20211112
+    - cutoff: '20211221'
+      config_patch:
+        run:
+          seed: 20211221
+    - cutoff: '20220511'
+      config_patch:
+        run:
+          seed: 20220511
+    - cutoff: '20221225'
+      config_patch:
+        run:
+          seed: 20221225

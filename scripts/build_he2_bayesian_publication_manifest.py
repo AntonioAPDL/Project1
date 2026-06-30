@@ -180,6 +180,7 @@ PROMOTED_FAMILY_LINEAGES = {
 }
 ALLOWED_REPLACEMENT_LINEAGE_PREFIXES = {
     "he2_table1_targeted_repair_20260612:",
+    "he2_univar_al_exal_scale_repair_20260629:",
     "exdqlm_multivar_keep_partial_screen_20260623:",
     "exdqlm_multivar_keep_partial_authority_refresh_20260623:",
 }

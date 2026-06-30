@@ -311,6 +311,8 @@ def _build_run_config(
     _set_nested(cfg, ['scale_contract', 'legacy_post_input_scale'], 'log1p_cms')
     _set_nested(cfg, ['scale_contract', 'analysis_scale_fit_internal'], 'log1p_cms')
     _set_nested(cfg, ['scale_contract', 'analysis_scale_post_internal'], 'log1p_cms')
+    _set_nested(cfg, ['scale_contract', 'transform_policy'], 'log1p_only')
+    _set_nested(cfg, ['scale_contract', 'transform_policy'], 'log1p_only')
     _set_nested(
         cfg,
         ['inputs', 'fit', 'covariates'],
@@ -453,6 +455,7 @@ def _extract_spec_row(plan_row: dict[str, Any], source_row: dict[str, str], cfg:
         'legacy_post_input_scale': scale_contract.get('legacy_post_input_scale', ''),
         'analysis_scale_fit_internal': scale_contract.get('analysis_scale_fit_internal', ''),
         'analysis_scale_post_internal': scale_contract.get('analysis_scale_post_internal', ''),
+        'transform_policy': scale_contract.get('transform_policy', ''),
         'active_quantiles': '|'.join(render_quantile_label(q) for q in active_quantiles),
         'active_quantile_count': len(active_quantiles),
         'full_quantiles': '|'.join(render_quantile_label(q) for q in debug.get('full_quantiles', active_quantiles)),

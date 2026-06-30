@@ -964,14 +964,14 @@ plot(principal_components_df$time,principal_components_df$Static_PCA, type = 'li
 # ####################################### Forecasts ######################################### 
 # ###########################################################################################
 # nws_forecast <- read.csv('/data/muscat_data/jaguir26/project1_ucsc_phd/nws_forecast.csv')
-# nws_forecast[,-1] <- log(nws_forecast[,-1])
+# OBSOLETE: legacy log-log forecast transform removed; use the scale-contract bridge.
 # num_ens_nws <- dim(nws_forecast)[2]-1
 
 # glofas_forecast <- read.csv('/data/muscat_data/jaguir26/project1_ucsc_phd/weighted_time_series.csv')
 # glofas_forecast$target_date <- as.Date(glofas_forecast$target_date)
 # specific_date <- as.Date("2022-12-26")
 # glofas_forecast <- glofas_forecast[glofas_forecast$target_date >= specific_date, ]
-# glofas_forecast[,-1] <- log(glofas_forecast[,-1])
+# OBSOLETE: legacy log-log forecast transform removed; use the scale-contract bridge.
 
 # num_ens_glofas <- dim(glofas_forecast)[2]-1
 
@@ -1053,7 +1053,7 @@ plot(principal_components_df$time,principal_components_df$Static_PCA, type = 'li
 # Y_usgs <- data.frame(time = timestamps, time_series_matrix)
 # all_data <- merge(X, Y_usgs, by = "time")
 # Y <- t(as.matrix(all_data[, c('USGS', 'GloFAS', 'NWS3.0')]))
-# Y <- log(Y) #log-log, since already logged
+# OBSOLETE: legacy log-log response transform removed; use the scale-contract bridge.
 # TT <- dim(Y)[2]
 # J <- dim(Y)[1] - 1
 # timestamps <- all_data[, 'time']

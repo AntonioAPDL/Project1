@@ -28,9 +28,17 @@ class EnvironmetricsScaleContractSourceContractTests(unittest.TestCase):
 
     def test_stage_fit_exports_scale_contract_env_vars(self) -> None:
         text = STAGE_FIT_SOURCE.read_text(encoding="utf-8")
-        self.assertIn('UNIFIED_LEGACY_FIT_INPUT_SCALE = as.character(cfg$scale_contract$legacy_fit_input_scale)', text)
-        self.assertIn('UNIFIED_ANALYSIS_SCALE_FIT_INTERNAL = as.character(cfg$scale_contract$analysis_scale_fit_internal)', text)
+        self.assertGreaterEqual(
+            text.count('UNIFIED_LEGACY_FIT_INPUT_SCALE = as.character(cfg$scale_contract$legacy_fit_input_scale)'),
+            2,
+        )
+        self.assertGreaterEqual(
+            text.count('UNIFIED_ANALYSIS_SCALE_FIT_INTERNAL = as.character(cfg$scale_contract$analysis_scale_fit_internal)'),
+            2,
+        )
         self.assertIn('UNIFIED_TRANSFORM_POLICY = as.character(unified_get(', text)
+        self.assertIn('UNIV_NWS_FORECAST_CSV = source_nws', text)
+        self.assertIn('UNIV_GLOFAS_FORECAST_CSV = source_glofas', text)
 
     def test_stage_post_exports_fit_and_post_scale_contract_env_vars(self) -> None:
         text = STAGE_POST_SOURCE.read_text(encoding="utf-8")
