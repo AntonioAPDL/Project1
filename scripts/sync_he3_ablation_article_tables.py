@@ -227,31 +227,39 @@ def render_main_table(
     *,
     table_label: str,
     caption: str,
-    note: str,
+    note: str | None = None,
 ) -> str:
-    return "\n".join(
+    lines = [
+        r"\begin{table*}[htbp]",
+        r"\centering",
+        r"\renewcommand{\arraystretch}{1.08}",
+        r"\begin{threeparttable}",
+        rf"\caption{{{caption}}}",
+        rf"\label{{{table_label}}}",
+        r"\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} >{\ttfamily}l r r r r r}",
+        r"\toprule",
+        r"Ablation model & 01/23/2021 & 11/12/2021 & 12/21/2021 & 05/11/2022 & 12/25/2022 \\",
+        r"\midrule",
+        *body_lines,
+        r"\bottomrule",
+        r"\end{tabular*}",
+    ]
+    if note:
+        lines.extend(
+            [
+                r"\begin{tablenotes}",
+                rf"\item \textit{{Note:}} {note}",
+                r"\end{tablenotes}",
+            ]
+        )
+    lines.extend(
         [
-            r"\begin{table*}[htbp]",
-            r"\centering",
-            r"\renewcommand{\arraystretch}{1.08}",
-            r"\begin{threeparttable}",
-            rf"\caption{{{caption}}}",
-            rf"\label{{{table_label}}}",
-            r"\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} >{\ttfamily}l r r r r r}",
-            r"\toprule",
-            r"Ablation model & 01/23/2021 & 11/12/2021 & 12/21/2021 & 05/11/2022 & 12/25/2022 \\",
-            r"\midrule",
-            *body_lines,
-            r"\bottomrule",
-            r"\end{tabular*}",
-            r"\begin{tablenotes}",
-            rf"\item \textit{{Note:}} {note}",
-            r"\end{tablenotes}",
             r"\end{threeparttable}",
             r"\end{table*}",
             "",
         ]
     )
+    return "\n".join(lines)
 
 
 def render_corrections_block(body_lines: list[str]) -> str:
@@ -487,14 +495,6 @@ def main() -> int:
             r"Entries are mean forecast-window CRPS; lower values are better, and bold marks "
             r"the best ablation-row value within each cutoff."
         ),
-        note=(
-            r"Each ablation inherits the cutoff-specific winning \texttt{exAL-M-T1} input bundle, "
-            r"preprocessing, likelihood, and selected winner hyperparameters, changing only the named "
-            r"structural component. \texttt{RAW-GLOFAS} is shown as the 28-day raw reference; "
-            r"\texttt{RAW-NWS} is omitted because the archived NWS forecasts provide eight valid daily "
-            r"leads for these origins. \texttt{noH3} removes the third retained seasonal harmonic pair, "
-            r"where the third harmonic is the noninteger frequency \(1/6.8068493\)."
-        ),
     )
 
     nws_raw_values, nws_raw_source_rows = load_raw_values(
@@ -516,11 +516,6 @@ def main() -> int:
         caption=(
             r"Targeted ablation CRPS over the common eight-day NWS forecast horizon. "
             r"Lower values are better, and bold marks the best ablation-row value within each cutoff."
-        ),
-        note=(
-            r"This table restricts the full model, ablation variants, \texttt{RAW-GLOFAS}, and "
-            r"\texttt{RAW-NWS} to forecast leads 1--8, making it the horizon-compatible ablation "
-            r"reference for NWS."
         ),
     )
     horizon_source_rows = long_raw_source_rows + long_source_rows + nws_raw_source_rows + nws_source_rows
