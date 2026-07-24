@@ -29,12 +29,12 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
         item_id="R1-M2",
         required_article=(
             "single state-space model",
-            r"The benchmark variants reported in Section~\ref{sec:forecastvalidation} are tied to this formulation",
-            r"the observation likelihood gives the \(N\), AL, and exAL rows",
-            r"the active source set gives the \(U\) and \(M\) rows",
-            r"the forecast-window treatment of the transfer block gives the \(T0\) and \(T1\) rows",
+            "The benchmark variants reported in Section~\\ref{sec:forecastvalidation} are restrictions of this formulation",
+            r"\(L\in\{\mathrm{N},\mathrm{AL},\mathrm{exAL}\}\) denotes a Gaussian, asymmetric Laplace, or extended asymmetric Laplace observation likelihood",
+            r"\(S\in\{\mathrm{U},\mathrm{M}\}\) indicates whether the synthesis is univariate or multivariate",
+            r"\(T\in\{\mathrm{T0},\mathrm{T1}\}\) indicates whether the transfer component is suppressed or retained during the forecast window",
             "nine Bayesian variants of the common state-space framework",
-            "Because exAL-M-T1 is the selected extended-likelihood multivariate specification",
+            "We focus on exAL-M-T1 because it has the lowest 28-day forecast-window CRPS",
         ),
         required_corrections=(
             "no longer uses the staged A/B/C presentation as the organizing device",
@@ -52,10 +52,10 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
     Reviewer1RemainingSpec(
         item_id="R1-M3",
         required_article=(
-            "probability integral transform (PIT) diagnostics",
+            "CRPS is negatively oriented",
             "For reproducibility, implementation pseudocode for the VB algorithm is provided",
-            "Its role is illustrative",
-            "risk of quantile crossing",
+            "Table~\\ref{tab:he4_quantile_check_loss} complements the CRPS comparisons with quantile check loss",
+            "quantile-specific posterior predictions into a single predictive distribution",
         ),
         required_corrections=(
             "PIT-centered development has been removed from the main text",
@@ -84,10 +84,10 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
             "relatively low-flow windows as well as winter high-flow episodes",
             "not a continuous daily hindcast over the full post-2022 period",
             "Post-cutoff USGS observations are reserved strictly for verification",
-            "Forecast skill is evaluated from the resulting posterior predictive distributions by the mean continuous ranked probability score",
-            "targeted quantile diagnostics",
-            "Its role is illustrative",
-            "comparative forecast evaluation remains the main empirical evidence",
+            "we use the Continuous Ranked Probability Score (CRPS)",
+            "quantile check loss",
+            "interpretation diagnostics, not as additional forecast-validation evidence",
+            "The selected exAL-M-T1 specification attains the lowest 28-day forecast-window CRPS in all five cutoffs",
         ),
         required_corrections=(
             "forecasting evaluation is expanded to five rolling-origin out-of-sample cutoffs",
@@ -141,10 +141,10 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
     Reviewer1RemainingSpec(
         item_id="R1-m3",
         required_article=(
-            "reanalysis-based model inputs",
-            "rather than direct observations or uncertainty-free measurements",
-            "ERA5/ERA5-Land variables may include short forecast components",
-            "not verification observations",
+            "local soil moisture from ECMWF ERA5-Land",
+            "historical gridded covariates extracted at the Big Trees location",
+            "forecast-window values are staged from the same forecast-origin bundle",
+            "The GDPC factor is treated as a climate-index covariate, not as an operational forecast product or verification target",
         ),
         required_corrections=(
             "reanalysis-based model products rather than direct observations or uncertainty-free measurements",
@@ -175,10 +175,10 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
     Reviewer1RemainingSpec(
         item_id="R1-m5",
         required_article=(
-            "Precipitation is not modeled through a separate censoring",
-            "zero-inflation, or occurrence/intensity layer",
-            "dry days are retained in the supplied covariate path",
-            "deterministic engineered terms",
+            "The transfer component takes three inputs",
+            "local precipitation from the PRISM Climate Group",
+            "local soil moisture from ECMWF ERA5-Land",
+            "These forecast-window covariates enter as deterministic summaries in the present implementation",
         ),
         required_corrections=(
             "now states explicitly that precipitation is not handled through censoring",
@@ -191,8 +191,8 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
         item_id="R1-m6",
         required_article=(
             "using the latest forecast products issued at or before",
-            "older forecast issuances are not averaged into the publication forecast matrices",
-            "compatibility aliases only",
+            "aggregates the latest available forecast issuances to daily member matrices",
+            "Post-cutoff USGS observations are reserved strictly for verification",
         ),
         required_corrections=(
             "we no longer combine older forecast issuances for the target time",
@@ -206,8 +206,8 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
         required_article=(
             r"\section{FORECAST VALIDATION RESULTS}",
             r"\section{INTERPRETATION OF THE SELECTED SPECIFICATION}",
-            "not as a second forecast-validation exercise",
-            "not as additional rolling-origin evidence",
+            "interpretation diagnostics, not as additional forecast-validation evidence",
+            "retrospective component diagnostic rather than an additional forecast-validation summary",
         ),
         required_corrections=(
             "no longer uses the vague ``General Results'' organization",
@@ -222,7 +222,7 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
         item_id="R1-m8",
         required_article=(
             "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates",
-            "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Weight Coefficients",
+            "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Skewness Parameters",
             "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters",
         ),
         required_corrections=(

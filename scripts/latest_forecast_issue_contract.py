@@ -23,10 +23,8 @@ REQUIRED_LATEST_FORECAST_CODE_EVIDENCE = {
 
 REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS = [
     "using the latest forecast products issued at or before",
-    "the forecast matrix is the daily issue associated with the cutoff",
-    "retain the most recent available issuance for each target time and ensemble member",
-    "older forecast issuances are not averaged into the publication forecast matrices",
-    "compatibility aliases only",
+    "aggregates the latest available forecast issuances to daily member matrices",
+    "Post-cutoff USGS observations are reserved strictly for verification",
 ]
 
 REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS = [

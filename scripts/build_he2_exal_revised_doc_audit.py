@@ -69,7 +69,7 @@ FAMILIES = [
         synthesis_model_id='exdqlm_univar_synth',
         transfer_mode='NA',
         figure_status='reference_synthesis_family_refreshed',
-        figure_note='The historical-only reference synthesis figure is refreshed from the corrected exAL univar output bundle.',
+        figure_note='The univariate transfer-active reference synthesis figure is refreshed from the corrected exAL univar output bundle.',
     ),
 ]
 

@@ -13,7 +13,7 @@ REQUIRED_R1_OVERVIEW_ARTICLE_CLAIMS = [
     r"Section~\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results",
     r"\section{FORECAST VALIDATION RESULTS}",
     r"\section{INTERPRETATION OF THE SELECTED SPECIFICATION}",
-    "comparative forecast evaluation remains the main empirical evidence",
+    "The selected exAL-M-T1 specification attains the lowest 28-day forecast-window CRPS in all five cutoffs",
     "five-cutoff rolling-origin forecast comparison",
     "supporting interpretation for the selected specification",
 ]

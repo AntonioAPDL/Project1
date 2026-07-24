@@ -598,6 +598,15 @@ def check_he4_sync(article_root: Path, corrections_root: Path, checks: list[Chec
 
 
 def check_selected_figures(article_root: Path, checks: list[Check]) -> None:
+    def rel_exists(rel: str) -> bool:
+        path = article_root / rel
+        if path.exists():
+            return True
+        parts = Path(rel).parts
+        if parts and parts[0] == "figures":
+            return (article_root / "Figures" / Path(*parts[1:])).exists()
+        return False
+
     manifest = json.loads((article_root / "MANUSCRIPT_ASSET_MANIFEST.json").read_text(encoding="utf-8"))
     figures = {row["label"]: row for row in manifest.get("figures", [])}
     for label in SELECTED_MODEL_FIGURES:
@@ -619,8 +628,8 @@ def check_selected_figures(article_root: Path, checks: list[Check]) -> None:
             row.get("source_class") == SELECTED_MODEL_SOURCE_CLASS,
             str(row.get("source_class", "")),
         )
-        add(checks, "figure_lineage", f"{label}:source_exists", (article_root / row["source_path"]).exists(), row["source_path"])
-        add(checks, "figure_lineage", f"{label}:manuscript_exists", (article_root / row["manuscript_path"]).exists(), row["manuscript_path"])
+        add(checks, "figure_lineage", f"{label}:source_exists", rel_exists(row["source_path"]), row["source_path"])
+        add(checks, "figure_lineage", f"{label}:manuscript_exists", rel_exists(row["manuscript_path"]), row["manuscript_path"])
         add(
             checks,
             "figure_lineage",
@@ -700,8 +709,20 @@ def check_prior_claim_contract(article_root: Path, corrections_root: Path, check
     for pattern in stale_c_patterns:
         add(checks, "prior_claims", f"article_forbidden:{pattern}", re.search(pattern, article_text) is None, pattern)
         add(checks, "prior_claims", f"corrections_forbidden:{pattern}", re.search(pattern, corrections_text) is None, pattern)
-    add(checks, "prior_claims", "article_states_c_equals_one", r"\(c=1\)" in article_text, r"\(c=1\)")
-    add(checks, "prior_claims", "article_states_cutoff_specific_epsilon", "cutoff-specific" in article_text and "epsilon" in article_text, "cutoff-specific epsilon wording")
+    add(
+        checks,
+        "prior_claims",
+        "article_explains_c_scale",
+        "The scalar \\(c\\) controls the scale of the carried-forward covariance anchor" in article_text,
+        "conceptual c-scale wording",
+    )
+    add(
+        checks,
+        "prior_claims",
+        "article_explains_epsilon_strength",
+        "\\(\\epsilon\\) controls how strongly that anchor is retained" in article_text,
+        "conceptual epsilon-strength wording",
+    )
 
 
 def check_prose(article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
@@ -712,11 +733,11 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
     article = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8") + "\n" + generated_tables
     corrections = (corrections_root / "main.tex").read_text(encoding="utf-8")
     required_article = [
-        "exAL-M-T1 attains the lowest 28-day CRPS in all five rolling-origin cutoffs",
+        "The exAL-M-T1 specification attains the lowest 28-day CRPS at all five rolling-origin cutoffs",
         "A separate eight-day NWS-horizon table preserves the direct operational comparison to NWS",
         r"Appendix~\ref{app:he3ablation} reports a targeted component ablation",
         r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
-        "selected-model support bundle for the 2022-12-25 exAL-M-T1 specification",
+        "representative selected-model illustration",
         "conceptual or physically based models",
         "Conceptual formulations remain especially practical for prediction",
         "easier to specify, calibrate, and deploy operationally",
@@ -725,8 +746,8 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         r"\section{FORECAST VALIDATION RESULTS}",
         r"\section{INTERPRETATION OF THE SELECTED SPECIFICATION}",
         "five-cutoff rolling-origin forecast comparison",
-        "not as a second forecast-validation exercise",
-        "not as additional rolling-origin evidence",
+        "interpretation diagnostics, not as additional forecast-validation evidence",
+        "retrospective component diagnostic rather than an additional forecast-validation summary",
         "five rolling-origin cutoff dates that span contrasting hydrological conditions",
         "relatively low-flow windows as well as winter high-flow episodes",
         "not a continuous daily hindcast over the full post-2022 period",
@@ -736,14 +757,13 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "scores the resulting predictive distribution against future USGS observations",
         "feasible folds are constrained by version-consistent forecast archives",
         "heavily overlapping forecast windows would overrepresent the same hydrological episode",
-        "These two uncertainty sources are related but distinct",
-        "Hydrological uncertainty arises from model structure, parameters, states, and observations",
-        "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields",
-        "local hydrometeorological covariates",
-        "reanalysis-based model inputs",
-        "rather than direct observations or uncertainty-free measurements",
-        "ERA5/ERA5-Land variables may include short forecast components",
-        "not verification observations",
+        "The corresponding uncertainties are related but conceptually distinct",
+        "hydrological uncertainty stems from the representation of the river system",
+        "meteorological uncertainty arises from imperfect forecasts of precipitation and other atmospheric forcing variables",
+        "local precipitation from the PRISM Climate Group",
+        "local soil moisture from ECMWF ERA5-Land",
+        "historical gridded covariates extracted at the Big Trees location",
+        "The GDPC factor is treated as a climate-index covariate, not as an operational forecast product or verification target",
         r"\section{APPLICATION DATA AND FORECASTING DESIGN}",
         r"\subsection{Study Setting and Observations}",
         "Our target series is",
@@ -752,39 +772,36 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "Each source plays a different role",
         "retrospective products are used to learn source-specific discrepancies",
         "relative to the USGS target series",
-        "Precipitation is not modeled through a separate censoring",
-        "zero-inflation, or occurrence/intensity layer",
-        "dry days are retained in the supplied covariate path",
-        "deterministic engineered terms",
+        "The transfer component takes three inputs",
+        "These forecast-window covariates enter as deterministic summaries in the present implementation",
         r"\subsection{Extended Asymmetric Laplace Likelihood}",
-        r"The benchmark variants reported in Section~\ref{sec:forecastvalidation} are tied to this formulation",
-        r"the observation likelihood gives the \(N\), AL, and exAL rows",
-        r"the active source set gives the \(U\) and \(M\) rows",
-        r"the forecast-window treatment of the transfer block gives the \(T0\) and \(T1\) rows",
+        r"The benchmark variants reported in Section~\ref{sec:forecastvalidation} are restrictions of this formulation",
+        r"\(L\in\{\mathrm{N},\mathrm{AL},\mathrm{exAL}\}\) denotes a Gaussian, asymmetric Laplace, or extended asymmetric Laplace observation likelihood",
+        r"\(S\in\{\mathrm{U},\mathrm{M}\}\) indicates whether the synthesis is univariate or multivariate",
+        r"\(T\in\{\mathrm{T0},\mathrm{T1}\}\) indicates whether the transfer component is suppressed or retained during the forecast window",
         "nine Bayesian variants of the common state-space framework",
-        "Because exAL-M-T1 is the selected extended-likelihood multivariate specification",
-        "strongest corrected model across the five rolling-origin cutoffs",
+        "We focus on exAL-M-T1 because it has the lowest 28-day forecast-window CRPS",
+        "provide the strongest corrected forecasts overall",
         "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates",
-        "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Weight Coefficients",
+        "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Skewness Parameters",
         "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters",
-        "probability integral transform (PIT) diagnostics",
+        "CRPS is negatively oriented",
         "For reproducibility, implementation pseudocode for the VB algorithm is provided",
-        "Its role is illustrative",
-        "comparative forecast evaluation remains the main empirical evidence",
+        "Table~\\ref{tab:he4_quantile_check_loss} complements the CRPS comparisons with quantile check loss",
         "uncertainty around fitted quantile-location curves",
         "rather than the full forecast distribution at a single origin",
         "full synthesized posterior predictive distribution",
         "posterior predictive envelope can vary across the forecast window",
-        "increased the risk of quantile crossing in the discrepancy states",
+        "quantile-specific posterior predictions into a single predictive distribution",
     ]
     required_corrections = [
         "exAL-M-T1} has the lowest 28-day CRPS in all five rolling-origin cutoffs",
         "separate eight-day NWS-horizon comparison",
         "Because this is a sensitivity analysis rather than a primary benchmark table",
-        "fixed to the June 1, 2026 \\texttt{exAL-M-T1} winner set",
+        "synchronized with the current \\texttt{exAL-M-T1} authority recorded in the revised-article manifests",
         r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
         "Within this fixed ablation matrix",
-        "The ablation matrix is fixed to the June 1, 2026 \\texttt{exAL-M-T1} winner set",
+        "the refreshed HE-2 table remains the current authority for the main forecast-comparison claim",
         "centering the forecasting analysis on multiple rolling-origin cutoffs",
         "supported by rolling-origin forecast evaluation and selected-model interpretation",
         "rather than treating dynamic discrepancy correction alone as the central novelty",

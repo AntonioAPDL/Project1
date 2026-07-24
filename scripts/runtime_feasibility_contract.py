@@ -20,11 +20,9 @@ TOTAL_RUNTIME_COLUMNS = ["runtime_sec_total", "runtime_sec"]
 MOSTLY_MISSING_DECOMPOSITION_COLUMNS = ["runtime_sec_fit", "runtime_sec_forecast"]
 
 REQUIRED_RUNTIME_ARTICLE_CLAIMS = [
-    "about two hours end-to-end",
-    r"\texttt{runtime\_sec\_total}",
-    r"\texttt{runtime\_sec}",
-    "hardware- and implementation-dependent",
-    "daily refitting",
+    "seven quantile-specific models used in the application to be fitted in parallel",
+    "can be refit on operational time scales",
+    "once observations, retrospective products, forecast products, and forecast covariates have been staged",
 ]
 
 REQUIRED_RUNTIME_CORRECTIONS_CLAIMS = [

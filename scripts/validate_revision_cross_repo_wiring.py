@@ -209,7 +209,7 @@ REQUIRED_CLAIMS = [
     ("article", "Because exAL-M-T1 is the selected extended-likelihood multivariate specification"),
     ("article", "strongest corrected model across the five rolling-origin cutoffs"),
     ("article", "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates"),
-    ("article", "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Weight Coefficients"),
+    ("article", "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Skewness Parameters"),
     ("article", "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters"),
     ("article", "probability integral transform (PIT) diagnostics"),
     ("article", "For reproducibility, implementation pseudocode for the VB algorithm is provided"),
