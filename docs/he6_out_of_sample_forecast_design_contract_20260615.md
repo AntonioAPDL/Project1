@@ -39,7 +39,14 @@ the design the time-ordered analogue of cross-validation for the operational
 forecasting problem. A broader grid of origins could be used in future
 applications if version-consistent forecast archives are available, but the
 current publication does not claim a continuous daily post-2022 hindcast or a
-dense grid of heavily overlapping forecast windows.
+dense grid of heavily overlapping forecast windows. Constructing each retained
+origin requires recovering a version-consistent bundle of observations,
+retrospective products, forecast products, and forecast-window covariates from
+large evolving gridded archives. Because each origin then requires seven
+quantile-specific model fits followed by posterior predictive synthesis, a
+dense origin grid would require a substantially larger data-ingestion and
+computational campaign while repeatedly scoring highly overlapping hydrological
+episodes.
 
 ## Code Evidence
 

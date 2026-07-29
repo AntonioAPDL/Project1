@@ -36,7 +36,7 @@ REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS = [
     "archive-feasible and version-consistent",
     "time-ordered analogue of cross-validation",
     "post-cutoff USGS observations are used only for verification",
-    "heavily overlapping forecast windows overrepresent the same hydrological regime",
+    "avoid dense overlapping windows that would repeatedly score the same hydrological regime",
 ]
 
 FORBIDDEN_FORECAST_DESIGN_CLAIMS = [

@@ -8,10 +8,10 @@ R1_UNCERTAINTY_CONTRACT_REL = "docs/r1_m1_uncertainty_framing_contract_20260615.
 ARTICLE_R1_UNCERTAINTY_DOC_REL = "docs/reviewer1_uncertainty_framing_contract.md"
 
 REQUIRED_R1_UNCERTAINTY_ARTICLE_CLAIMS = [
-    "The corresponding uncertainties are related but conceptually distinct",
-    "hydrological uncertainty stems from the representation of the river system",
-    "meteorological uncertainty arises from imperfect forecasts of precipitation and other atmospheric forcing variables",
-    "preserve the distinction between these two sources of uncertainty",
+    "These two uncertainty sources are related but distinct",
+    "Hydrological uncertainty arises from model structure, parameters, states, and observations",
+    "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields",
+    "A useful statistical forecasting framework should keep these roles clear",
     "local precipitation from the PRISM Climate Group",
     "soil moisture from ECMWF ERA5-Land",
 ]
