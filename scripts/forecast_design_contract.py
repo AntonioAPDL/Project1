@@ -20,23 +20,28 @@ REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS = [
     "forecast-window precipitation and soil-moisture covariates",
     "canonical GDPC climate-index factor",
     "not treated as an operational forecast product or verification target",
-    "time-ordered analogue of cross-validation",
-    "each fold fixes a forecast origin",
-    "heavily overlapping forecast windows would overrepresent the same hydrological episode",
+    "five cutoff-specific, version-consistent staged datasets",
+    "uses only information available at that origin to fit seven quantile-specific models",
+    "scores that distribution against future USGS observations held out over the forecast window",
+    "archive-feasible, version-consistent origins that span contrasting hydrological settings",
+    "avoid dense overlaps that would overrepresent the same episode",
 ]
 
 REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS = [
-    "five rolling-origin cutoff-based forecasting folds",
-    "the model is fit using only observations and retrospective information available through \\(\\textbf{c}\\)",
+    "five cutoff-specific, rolling-origin forecast-window evaluations",
+    "The model is fit using only observations and retrospective information available through \\(\\textbf{c}\\)",
     "Forecasts are then generated over the post-cutoff forecast window using the latest forecast products issued at or before \\(\\textbf{c}\\)",
+    "seven quantile-specific fits at each cutoff",
     "Post-cutoff USGS observations remain verification only",
     "forecast-window precipitation and soil-moisture covariates",
     "canonical GDPC climate-index covariate",
     "not treated as an operational forecast product",
     "archive-feasible and version-consistent",
-    "time-ordered analogue of cross-validation",
+    "five cutoff-specific forecast-window evaluations",
     "post-cutoff USGS observations are used only for verification",
     "avoid dense overlapping windows that would repeatedly score the same hydrological regime",
+    "pre-cutoff observational window",
+    "fixed calibrated specification",
 ]
 
 FORBIDDEN_FORECAST_DESIGN_CLAIMS = [

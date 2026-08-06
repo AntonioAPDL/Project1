@@ -8,7 +8,8 @@ implemented in the revised manuscript and response letter:
 - R1-M3: mathematical detail, PIT material, synthesis, and quantile crossing
   streamlined.
 - R1-M4: forecast evidence expanded beyond the original single event.
-- R1-M5: fair forecast assessment described as rolling-origin validation.
+- R1-M5: fair forecast assessment described as cutoff-specific rolling-origin
+  forecast-window evaluation.
 - R1-m1 to R1-m9: minor wording, data-role, forecast-protocol,
   figure-explanation, and table-caption corrections.
 
@@ -24,7 +25,7 @@ tables, or figure provenance are refreshed.
 | R1-M2 | The main manuscript uses one common state-space framework and maps benchmark rows through likelihood, source-set, and transfer-treatment labels rather than the old staged A/B/C organization. |
 | R1-M3 | The main text uses CRPS and targeted quantile check loss for validation, keeps posterior predictive synthesis illustrative, and leaves implementation-level MCMC/VB details in appendices. |
 | R1-M4 | Forecast validation is based on five rolling-origin cutoffs with held-out USGS observations and is not represented as a continuous post-2022 hindcast. |
-| R1-M5 | The evaluation is described as a time-ordered analogue of cross-validation: each fold fixes a forecast origin, uses only available information, and verifies against future USGS observations. |
+| R1-M5 | The evaluation is described as five cutoff-specific rolling-origin forecast-window evaluations: each cutoff defines a version-consistent staged dataset, uses only available information to fit seven quantile-specific models and synthesize the posterior predictive distribution, and verifies against held-out future USGS observations. |
 | R1-m1 | The introduction acknowledges both conceptual and physically based hydrological models and motivates conceptual models as operationally practical. |
 | R1-m2 | The old "flexile" typo is absent from the revised article. |
 | R1-m3 | ERA5/ERA5-Land inputs are described as reanalysis-based model products, not uncertainty-free direct observations. |

@@ -37,9 +37,9 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
             "We focus on exAL-M-T1 because it has the lowest 28-day forecast-window CRPS",
         ),
         required_corrections=(
-            "no longer uses the staged A/B/C presentation as the organizing device",
-            "one common state-space formulation",
-            r"forecast-validation section maps the reported benchmark rows through the \(L\)-\(S\)-\(T\) labels",
+            "no longer organizes the methodology around models A, B, and C",
+            "presents a common state-space formulation",
+            r"Section 4 identifies the models in terms of \(L\)-\(S\)-\(T\) labels",
             "likelihood family, source set, and forecast-window transfer treatment",
             r"selected \texttt{exAL-M-T1} specification",
         ),
@@ -63,7 +63,7 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
             "targeted quantile check loss as the quantile-level diagnostic",
             "retained a compact posterior predictive synthesis subsection",
             "Quantile crossing is no longer developed as a separate procedure in the main text",
-            "MCMC and VB pseudocode remains in the appendices for reproducibility",
+            "Details about the MCMC and VB algorithms are provided in the Appendix",
         ),
         forbidden_article=(
             "PITs are described in detail",
@@ -80,7 +80,7 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
     Reviewer1RemainingSpec(
         item_id="R1-M4",
         required_article=(
-            "five rolling-origin cutoff dates that span contrasting hydrological conditions",
+            "five cutoff-specific, version-consistent staged datasets that span contrasting hydrological conditions",
             "relatively low-flow windows as well as winter high-flow episodes",
             "not a continuous daily hindcast over the full post-2022 period",
             "Post-cutoff USGS observations are reserved strictly for verification",
@@ -101,18 +101,19 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
     Reviewer1RemainingSpec(
         item_id="R1-M5",
         required_article=(
-            "time-ordered analogue of cross-validation",
-            "each fold fixes a forecast origin",
-            "uses only information available at that origin",
-            "scores the resulting predictive distribution against future USGS observations",
-            "feasible folds are constrained by version-consistent forecast archives",
-            "heavily overlapping forecast windows would overrepresent the same hydrological episode",
+            "five cutoff-specific, version-consistent staged datasets",
+            "uses only information available at that origin to fit seven quantile-specific models",
+            "scores that distribution against future USGS observations held out over the forecast window",
+            "archive-feasible, version-consistent origins that span contrasting hydrological settings",
+            "avoid dense overlaps that would overrepresent the same episode",
         ),
         required_corrections=(
             "organized around forecast origins rather than a conventional random split",
-            "time-ordered analogue of cross-validation",
+            "five cutoff-specific forecast-window evaluations",
             "post-cutoff USGS observations are used only for verification",
             "avoid dense overlapping windows that would repeatedly score the same hydrological regime",
+            "pre-cutoff observational window",
+            "fixed calibrated specification",
         ),
         forbidden_article=("random K-fold cross-validation",),
     ),
@@ -143,7 +144,7 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
         required_article=(
             "local soil moisture from ECMWF ERA5-Land",
             "historical gridded covariates extracted at the Big Trees location",
-            "forecast-window values are staged from the same forecast-origin bundle",
+            "forecast-window precipitation and soil-moisture covariates from the same staged origin bundle",
             "The GDPC factor is treated as a climate-index covariate, not as an operational forecast product or verification target",
         ),
         required_corrections=(
@@ -195,7 +196,7 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
             "Post-cutoff USGS observations are reserved strictly for verification",
         ),
         required_corrections=(
-            "we no longer combine older forecast issuances for the target time",
+            "using forecast issued at earlier times may reduce forecast performance",
             "use only the most recent forecast ensemble available",
             "latest-forecast-only protocol",
         ),

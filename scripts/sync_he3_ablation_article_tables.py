@@ -495,6 +495,7 @@ def main() -> int:
             r"Entries are mean forecast-window CRPS; lower values are better, and bold marks "
             r"the best ablation-row value within each cutoff."
         ),
+        note=r"The \texttt{noH3} row removes the retained noninteger seasonal harmonic with frequency \(1/6.8068493\).",
     )
 
     nws_raw_values, nws_raw_source_rows = load_raw_values(
@@ -517,6 +518,7 @@ def main() -> int:
             r"Targeted ablation CRPS over the common eight-day NWS forecast horizon. "
             r"Lower values are better, and bold marks the best ablation-row value within each cutoff."
         ),
+        note=r"This table restricts every row to forecast leads 1--8, the common daily horizon available for the NWS comparison.",
     )
     horizon_source_rows = long_raw_source_rows + long_source_rows + nws_raw_source_rows + nws_source_rows
     corrections_block = render_corrections_block(long_body_lines)
