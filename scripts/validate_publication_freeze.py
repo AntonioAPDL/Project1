@@ -735,7 +735,7 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
     required_article = [
         "The exAL-M-T1 specification attains the lowest 28-day CRPS at all five rolling-origin cutoffs",
         "A separate eight-day NWS-horizon table preserves the direct operational comparison to NWS",
-        r"Appendix~\ref{app:he3ablation} reports a targeted component ablation",
+        r"Appendix~\ref{app:he3ablation} reports a component-removal sensitivity analysis",
         r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
         "representative selected-model illustration",
         "conceptual or physically based models",
@@ -797,10 +797,10 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
     required_corrections = [
         "exAL-M-T1} has the lowest 28-day CRPS in all five rolling-origin cutoffs",
         "separate eight-day NWS-horizon comparison",
-        "Because this is a sensitivity analysis rather than a primary benchmark table",
+        "Because this is a sensitivity analysis rather than a primary benchmark comparison",
         "synchronized with the current \\texttt{exAL-M-T1} authority recorded in the revised-article manifests",
         r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
-        "Within this fixed ablation matrix",
+        "Within this fixed sensitivity design",
         "the refreshed HE-2 table remains the current authority for the main forecast-comparison claim",
         "centering the forecasting analysis on multiple rolling-origin cutoffs",
         "supported by rolling-origin forecast evaluation and selected-model interpretation",

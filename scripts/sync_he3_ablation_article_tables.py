@@ -51,7 +51,7 @@ ARTICLE_ARTIFACT_DIR = Path("artifacts") / "he3_exdqlm_ablation_authoritative"
 TABLE_LABEL = "tab:he3_ablation_crps"
 NWS_HORIZON_TABLE_LABEL = "tab:he3_ablation_crps_nws_horizon"
 TABLE_NOTE = (
-    "Generated from the authoritative HE3 exDQLM multivariate ablation matrix anchored to the "
+    "Generated from the authoritative HE3 exDQLM multivariate component-removal sensitivity matrix anchored to the "
     "20260601 exAL-M-T1 winner manifest; raw forecast references are recomputed from the "
     "article-side five-cutoff per-time CRPS validation source freeze."
 )
@@ -59,7 +59,7 @@ DISPLAY_DIGITS = 5
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Sync completed HE3 ablation tables into the article repos.")
+    parser = argparse.ArgumentParser(description="Sync completed HE3 component-removal sensitivity tables into the article repos.")
     parser.add_argument("--matrix-dir", type=Path, required=True)
     parser.add_argument("--article-root", type=Path, default=ROOT / "Evironmetrics---REVISED-DOC-Corrected-2")
     parser.add_argument("--corrections-root", type=Path, default=ROOT.parent / "Corrections---Project-1")
@@ -238,7 +238,7 @@ def render_main_table(
         rf"\label{{{table_label}}}",
         r"\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} >{\ttfamily}l r r r r r}",
         r"\toprule",
-        r"Ablation model & 01/23/2021 & 11/12/2021 & 12/21/2021 & 05/11/2022 & 12/25/2022 \\",
+        r"Model & 01/23/2021 & 11/12/2021 & 12/21/2021 & 05/11/2022 & 12/25/2022 \\",
         r"\midrule",
         *body_lines,
         r"\bottomrule",
@@ -270,7 +270,7 @@ def render_corrections_block(body_lines: list[str]) -> str:
             r"\setlength{\tabcolsep}{4pt}",
             r"\begin{tabular}{>{\ttfamily}l c c c c c}",
             r"\toprule",
-            r"Ablation model & 01/23/2021 & 11/12/2021 & 12/21/2021 & 05/11/2022 & 12/25/2022 \\",
+            r"Model & 01/23/2021 & 11/12/2021 & 12/21/2021 & 05/11/2022 & 12/25/2022 \\",
             r"\midrule",
             *body_lines,
             r"\bottomrule",
@@ -374,7 +374,7 @@ def write_article_outputs(
         payload = json.loads(manifest_json.read_text(encoding="utf-8"))
         payload.setdefault("tables", {})[TABLE_LABEL] = {
             "label": TABLE_LABEL,
-            "role": "Selected-model 28-day ablation CRPS table",
+            "role": "Selected-model 28-day component-removal sensitivity CRPS table",
             "table_tex_path": str(ARTICLE_TABLE_DIR / "he3_ablation_crps_main_table.tex"),
             "source_class": "he3_authoritative_ablation",
             "sources": {
@@ -387,7 +387,7 @@ def write_article_outputs(
                 "he3_ablation_horizon_summary_csv": str(ARTICLE_TABLE_DIR / "he3_ablation_crps_horizon_summary.csv"),
             },
             "note": (
-                "Generated from the authoritative HE3 exDQLM multivariate ablation matrix anchored to "
+                "Generated from the authoritative HE3 exDQLM multivariate component-removal sensitivity matrix anchored to "
                 "the 20260601 exAL-M-T1 winner manifest. This 28-day table includes RAW-GLOFAS as "
                 "the horizon-compatible raw reference and omits RAW-NWS because NWS has eight valid "
                 "daily leads for these origins."
@@ -395,7 +395,7 @@ def write_article_outputs(
         }
         payload.setdefault("tables", {})[NWS_HORIZON_TABLE_LABEL] = {
             "label": NWS_HORIZON_TABLE_LABEL,
-            "role": "Selected-model common eight-day NWS-horizon ablation CRPS table",
+            "role": "Selected-model common eight-day NWS-horizon component-removal sensitivity CRPS table",
             "table_tex_path": str(ARTICLE_TABLE_DIR / "he3_ablation_crps_nws_horizon_table.tex"),
             "source_class": "he3_authoritative_ablation",
             "sources": {
@@ -408,9 +408,9 @@ def write_article_outputs(
                 "he3_ablation_horizon_summary_csv": str(ARTICLE_TABLE_DIR / "he3_ablation_crps_horizon_summary.csv"),
             },
             "note": (
-                "Generated from the same authoritative HE3 ablation sources as the 28-day table, but "
+                "Generated from the same authoritative HE3 component-removal sensitivity sources as the 28-day table, but "
                 "every row is restricted to leads 1--8 so RAW-NWS, RAW-GLOFAS, the full model, and "
-                "the ablation variants are compared on a common horizon."
+                "the reduced variants are compared on a common horizon."
             ),
         }
         manifest_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -491,9 +491,9 @@ def main() -> int:
         long_body_lines,
         table_label=TABLE_LABEL,
         caption=(
-            r"Targeted 28-day ablation of the selected \texttt{exAL-M-T1} specification. "
-            r"Entries are mean forecast-window CRPS; lower values are better, and bold marks "
-            r"the best ablation-row value within each cutoff."
+            r"Component-removal sensitivity analysis for 28-day forecast-window CRPS under the selected "
+            r"\texttt{exAL-M-T1} specification. Lower values are better, and bold marks "
+            r"the best value among the full reference and reduced models within each cutoff."
         ),
         note=r"The \texttt{noH3} row removes the retained noninteger seasonal harmonic with frequency \(1/6.8068493\).",
     )
@@ -515,8 +515,8 @@ def main() -> int:
         nws_body_lines,
         table_label=NWS_HORIZON_TABLE_LABEL,
         caption=(
-            r"Targeted ablation CRPS over the common eight-day NWS forecast horizon. "
-            r"Lower values are better, and bold marks the best ablation-row value within each cutoff."
+            r"Component-removal sensitivity analysis over the common eight-day NWS forecast horizon. "
+            r"Lower values are better, and bold marks the best value among the full reference and reduced models within each cutoff."
         ),
         note=r"This table restricts every row to forecast leads 1--8, the common daily horizon available for the NWS comparison.",
     )
