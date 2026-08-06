@@ -137,9 +137,9 @@ inputs:
 plot:
   title: Observed and Retrospective River Flow\nwith GloFAS and NWS Forecast Ensembles
   flood_levels:
-  - label: Major Flooding
-    value: 15000
+  - label: Major reference
+    value: 14895.73
     unit: cfs
-  - label: Minor Flooding
-    value: 6750
+  - label: Minor reference
+    value: 7402.38
     unit: cfs

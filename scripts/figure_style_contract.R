@@ -57,13 +57,32 @@ figure_transform_flow <- function(x_cms, plot_scale) {
   stop(sprintf("Unknown plot scale: %s", plot_scale), call. = FALSE)
 }
 
-figure_flood_stage_df <- function(plot_scale = "log1p_cms") {
-  flood_cfs <- c(15000, 6750)
-  flood_cms <- flood_cfs * 0.028316846592
-  data.frame(
-    label = c("Major Flooding", "Minor Flooding"),
-    y = figure_transform_flow(flood_cms, plot_scale),
+figure_current_rating_stage_reference_df <- function(
+  plot_scale = "log1p_cms",
+  levels = c("major", "minor")
+) {
+  cfs_to_cms <- 0.028316846592
+  refs <- data.frame(
+    reference_level = c("action_monitor", "minor", "moderate", "major"),
+    label = c("Action reference", "Minor reference", "Moderate reference", "Major reference"),
+    stage_ft = c(14.00, 16.50, 19.50, 21.76),
+    discharge_cfs = c(4864.84, 7402.38, 11302.95, 14895.73),
+    source = "NWS BTEC1 stages converted with USGS 11160500 rating 40.0",
+    interpretation = "current-rating operational discharge reference, not historical flood-stage classification",
     stringsAsFactors = FALSE
+  )
+  refs$discharge_cms <- refs$discharge_cfs * cfs_to_cms
+  order_key <- match(tolower(levels), refs$reference_level)
+  order_key <- order_key[is.finite(order_key)]
+  refs <- refs[order_key, , drop = FALSE]
+  refs$y <- figure_transform_flow(refs$discharge_cms, plot_scale)
+  refs
+}
+
+figure_flood_stage_df <- function(plot_scale = "log1p_cms") {
+  figure_current_rating_stage_reference_df(
+    plot_scale = plot_scale,
+    levels = c("major", "minor")
   )
 }
 

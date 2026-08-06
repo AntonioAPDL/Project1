@@ -113,16 +113,15 @@ inputs:
 
 plot:
   title: "Observed and Retrospective River Flow\nwith GloFAS and NWS Forecast Ensembles"
-  # Flood thresholds (discharge) drawn as horizontal dashed lines.
-  # Values can be given in cfs (recommended) or cms, and will be converted/translated
-  # to the configured plot_scale.
-  # NOTE: These are *flow* thresholds, not stage heights.
+  # Current-rating NWS stage-category discharge references drawn as horizontal dashed lines.
+  # Values are discharge equivalents from USGS 11160500 rating 40.0 and are
+  # operational magnitude references, not historical flood-stage classifications.
   flood_levels:
-    - label: "Major Flooding"
-      value: 15000
+    - label: "Major reference"
+      value: 14895.73
       unit: "cfs"
-    - label: "Minor Flooding"
-      value: 6750
+    - label: "Minor reference"
+      value: 7402.38
       unit: "cfs"
   # Optional vertical markers (dates in YYYY-MM-DD).
   markers:

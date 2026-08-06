@@ -270,6 +270,22 @@ def build_scale_contract(entry: dict, bundle_meta: dict, display_plot_scale: str
                 'storage_scale': 'raw_cms',
             },
         },
+        'current_rating_stage_references': {
+            'interpretation': (
+                'Approximate current-rating discharge equivalents of current NWS BTEC1 stage categories, '
+                'computed from USGS 11160500 rating 40.0. These are operational magnitude references, '
+                'not historical flood-stage classifications of daily-mean observations.'
+            ),
+            'rating_url': 'https://waterdata.usgs.gov/nwisweb/get_ratings?file_type=exsa&site_no=11160500',
+            'nws_stage_url': 'https://www.cnrfc.noaa.gov/obsRiver_hc.php?id=BTEC1',
+            'rating_id': '40.0',
+            'rating_effective_begin': '2025-11-13 13:15 PST',
+            'cfs_to_cms': 0.028316846592,
+            'plotted_levels': [
+                {'label': 'Minor reference', 'stage_ft': 16.50, 'discharge_cfs': 7402.38, 'log1p_cms': 5.350017858},
+                {'label': 'Major reference', 'stage_ft': 21.76, 'discharge_cfs': 14895.73, 'log1p_cms': 6.046899494},
+            ],
+        },
     }
     if entry['bundle_class'] == 'histfix_long_history_bundle':
         contract['figure_inputs']['retrospective_history'] = {

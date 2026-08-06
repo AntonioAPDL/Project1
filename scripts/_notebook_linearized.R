@@ -2642,9 +2642,9 @@ lines(1:length(idx), result[3,idx], col = 'blue', lty = 2, lwd = 0.5)
 # lines(1:length(idx), result[2,idx] + sd_ndlm * qnorm(0.5), col = 'darkorange', lwd = 0.5)
 # lines(1:length(idx), result[3,idx] + sd_ndlm * qnorm(0.5), col = 'orange', lty = 2, lwd = 0.5)
 
-# Adding flood levels (horizontal dashed lines) with labels
-lev_flood <- c(21.76, 19.5, 16.5, 14) 
-flood_labels <- c("Major Flooding", "Moderate Flooding", "Minor Flooding", "Action")
+# Adding current-rating discharge-reference levels (horizontal dashed lines) with labels
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
+flood_labels <- c("Major reference", "Moderate reference", "Minor reference", "Action reference")
 log_flood_levels <- log(lev_flood + 1)
 for (i in seq_along(log_flood_levels)) {
   abline(h = log_flood_levels[i], lwd = 1, lty = 2, col = "darkgray")
@@ -2882,9 +2882,9 @@ lines(1:length(idx), result[3,idx], col = 'blue', lty = 2, lwd = 0.5)
 # lines(1:length(idx), result[2,idx] + sd_ndlm * qnorm(0.5), col = 'darkorange', lwd = 0.5)
 # lines(1:length(idx), result[3,idx] + sd_ndlm * qnorm(0.5), col = 'orange', lty = 2, lwd = 0.5)
 
-# Adding flood levels (horizontal dashed lines) with labels
-lev_flood <- c(21.76, 19.5, 16.5, 14) 
-flood_labels <- c("Major Flooding", "Moderate Flooding", "Minor Flooding", "Action")
+# Adding current-rating discharge-reference levels (horizontal dashed lines) with labels
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
+flood_labels <- c("Major reference", "Moderate reference", "Minor reference", "Action reference")
 log_flood_levels <- log(lev_flood + 1)
 for (i in seq_along(log_flood_levels)) {
   abline(h = log_flood_levels[i], lwd = 1, lty = 2, col = "darkgray")
@@ -3096,8 +3096,8 @@ for (i in 1:length(percs)) {
     lines(idx_f, result[3,], col = 'orange', lty = 2, lwd = 1)
 }
 
-lev_flood <- c(21.76, 19.5, 16.5, 14) 
-flood_labels <- c("Major Flooding", "Moderate Flooding", "Minor Flooding", "Action")
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
+flood_labels <- c("Major reference", "Moderate reference", "Minor reference", "Action reference")
 log_flood_levels <- log(lev_flood + 1)
 for (i in seq_along(log_flood_levels)) {
   abline(h = log_flood_levels[i], lwd = 1, lty = 2, col = "darkgray")
@@ -3305,8 +3305,8 @@ for (i in 1:length(percs)) {
     lines(idx_f, result[3,], col = 'orange', lty = 2, lwd = 1)
 }
 
-lev_flood <- c(21.76, 19.5, 16.5, 14) 
-flood_labels <- c("Major Flooding", "Moderate Flooding", "Minor Flooding", "Action")
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
+flood_labels <- c("Major reference", "Moderate reference", "Minor reference", "Action reference")
 log_flood_levels <- log(lev_flood + 1)
 for (i in seq_along(log_flood_levels)) {
   abline(h = log_flood_levels[i], lwd = 1, lty = 2, col = "darkgray")
@@ -3420,9 +3420,9 @@ lines(1:length(idx), result[1,idx] + sd_ndlm * qnorm(0.95), col = 'orange', lty 
 lines(1:length(idx), result[2,idx] + sd_ndlm * qnorm(0.95), col = 'darkorange', lwd = 0.5)
 lines(1:length(idx), result[3,idx] + sd_ndlm * qnorm(0.95), col = 'orange', lty = 2, lwd = 0.5)
 
-# Adding flood levels (horizontal dashed lines) with labels
-lev_flood <- c(21.76, 19.5, 16.5, 14) 
-flood_labels <- c("Major Flooding", "Moderate Flooding", "Minor Flooding", "Action")
+# Adding current-rating discharge-reference levels (horizontal dashed lines) with labels
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
+flood_labels <- c("Major reference", "Moderate reference", "Minor reference", "Action reference")
 log_flood_levels <- log(lev_flood + 1)
 for (i in seq_along(log_flood_levels)) {
   abline(h = log_flood_levels[i], lwd = 1, lty = 2, col = "darkgray")
@@ -3537,9 +3537,9 @@ lines(1:length(idx), result[1,idx] + sd_ndlm * qnorm(0.5), col = 'orange', lty =
 lines(1:length(idx), result[2,idx] + sd_ndlm * qnorm(0.5), col = 'darkorange', lwd = 0.5)
 lines(1:length(idx), result[3,idx] + sd_ndlm * qnorm(0.5), col = 'orange', lty = 2, lwd = 0.5)
 
-# Adding flood levels (horizontal dashed lines) with labels
-lev_flood <- c(21.76, 19.5, 16.5, 14) 
-flood_labels <- c("Major Flooding", "Moderate Flooding", "Minor Flooding", "Action")
+# Adding current-rating discharge-reference levels (horizontal dashed lines) with labels
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
+flood_labels <- c("Major reference", "Moderate reference", "Minor reference", "Action reference")
 log_flood_levels <- log(lev_flood + 1)
 for (i in seq_along(log_flood_levels)) {
   abline(h = log_flood_levels[i], lwd = 1, lty = 2, col = "darkgray")
@@ -3649,9 +3649,9 @@ lines(1:length(idx), result[1,idx] + sd_ndlm * qnorm(0.05), col = 'orange', lty 
 lines(1:length(idx), result[2,idx] + sd_ndlm * qnorm(0.05), col = 'darkorange', lwd = 0.5)
 lines(1:length(idx), result[3,idx] + sd_ndlm * qnorm(0.05), col = 'orange', lty = 2, lwd = 0.5)
 
-# Adding flood levels (horizontal dashed lines) with labels
-lev_flood <- c(21.76, 19.5, 16.5, 14) 
-flood_labels <- c("Major Flooding", "Moderate Flooding", "Minor Flooding", "Action")
+# Adding current-rating discharge-reference levels (horizontal dashed lines) with labels
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
+flood_labels <- c("Major reference", "Moderate reference", "Minor reference", "Action reference")
 log_flood_levels <- log(lev_flood + 1)
 for (i in seq_along(log_flood_levels)) {
   abline(h = log_flood_levels[i], lwd = 1, lty = 2, col = "darkgray")
@@ -3916,7 +3916,7 @@ lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 
-lev_flood <- c(21.76,19.5,16.5,14) 
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
 abline(h=log(lev_flood+1), lwd=0.5, lty = 2)
 ######################################################################################
 # NDLM
@@ -4019,7 +4019,7 @@ lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 
-lev_flood <- c(21.76,19.5,16.5,14) 
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
 abline(h=log(lev_flood+1), lwd=0.5, lty = 2)
 ######################################################################################
 # NDLM
@@ -4091,7 +4091,7 @@ lines(idx, result[2,idx],col = 'darkorange', lwd=0.5)
 lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
 
 
-lev_flood <- c(21.76,19.5,16.5,14) 
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
 abline(h=log(lev_flood+1), lwd=0.5, lty = 2)
 ######################################################################################
 # NDLM
@@ -4160,7 +4160,7 @@ lines(idx, result[3,idx],col = 'blue', lty = 2, lwd=0.5)
 ######################################################################################
 
 
-lev_flood <- c(21.76,19.5,16.5,14) 
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
 abline(h=log(lev_flood+1), lwd=0.5, lty = 2)
 ######################################################################################
 # NDLM
@@ -4234,7 +4234,7 @@ lines(idx, result[2,idx],col = 'darkorange', lwd=0.5)
 lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
 
 
-lev_flood <- c(21.76,19.5,16.5,14) 
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
 abline(h=log(lev_flood+1), lwd=0.5, lty = 2)
 ######################################################################################
 
@@ -4302,7 +4302,7 @@ lines(idx, result[2,idx],col = 'darkorange', lwd=0.5)
 lines(idx, result[3,idx],col = 'orange', lty = 2, lwd=0.5)
 
 
-lev_flood <- c(21.76,19.5,16.5,14) 
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
 abline(h=log(lev_flood+1), lwd=0.5, lty = 2)
 ######################################################################################
 
@@ -4418,7 +4418,7 @@ lines(idx, result[2,idx],col = 'purple', lwd=0.5)
 lines(idx, result[3,idx],col = 'purple', lty = 2, lwd=0.5)
 ######################################################################################
 
-lev_flood <- c(21.76,19.5,16.5,14) 
+lev_flood <- c(14895.73, 11302.95, 7402.38, 4864.84) * CFSToCMS_CONVERSION_FACTOR
 abline(h=log(lev_flood+1), lwd=0.5, lty = 2)
 
 selected_dates <- dates_ts_usgs[idx] 
@@ -6405,10 +6405,10 @@ flow_data <- data.frame(Date = timestamps, Flow = Y[1,])
 
 #### CELL 111 ####
 
-# Flood stage values in feet
-flood_stages_ft <- c(21.76, 16.5)^3
+# Current-rating NWS stage-category discharge references in cfs
+flood_stages_cfs <- c(14895.73, 7402.38)
 # Convert to centimeters
-flood_stages_cm <- flood_stages_ft*CFSToCMS_CONVERSION_FACTOR 
+flood_stages_cm <- flood_stages_cfs * CFSToCMS_CONVERSION_FACTOR
 # Apply log(log(x + 1)) transformation
 flood_stages_trans <- log(log(flood_stages_cm + 1))
 
@@ -6424,8 +6424,8 @@ event_color <- "#D95F02" # Orange for vertical lines & labels
 
 # Calculate y position (10% above the observed max value for clarity)
 label_y <- max(flow_data$Flow, na.rm = TRUE) + 0.1 * diff(range(flow_data$Flow, na.rm = TRUE))
-# Flood stage labels for annotation
-flood_stage_labels <- c("Major Flooding", "Minor Flooding")
+# Flood-reference labels for annotation
+flood_stage_labels <- c("Major reference", "Minor reference")
 
 # --- Your existing plotting code with new additions ---
 p <- ggplot(flow_data, aes(x = Date, y = Flow)) +
@@ -6442,14 +6442,14 @@ p <- ggplot(flow_data, aes(x = Date, y = Flow)) +
     vjust = 0,
     hjust = 2
   ) +
-  # Add flood stage horizontal lines
+  # Add current-rating discharge-reference horizontal lines
   geom_hline(
     yintercept = flood_stages_trans,
     linetype = c("dashed", "dashed"),
     color = c("gray", "gray"),
     linewidth = 0.8
   ) +
-  # Label the flood stages at the rightmost end of the plot
+  # Label the discharge references at the rightmost end of the plot
   annotate(
     "text",
     x = max(flow_data$Date),
@@ -6489,7 +6489,7 @@ save_plot(
 
 
 # \caption{
-# Daily log-log water flow (in cm$^3$/s) of the San Lorenzo River at the Big Trees USGS station from May 29, 1987 to December 25, 2022. The green curve shows the transformed daily flow. Vertical dashed lines and numbered labels mark key flood-related events: (1) February 1998 flood; (2) levee and floodwall reconstruction (2004); (3) February 2017 flood; (4) January 2023 flood. Horizontal dashed lines indicate official flood stages for the river, with the upper line corresponding to "Major Flooding" (21.76~ft, 663~cm) and the lower line to "Minor Flooding" (16.5~ft, 503~cm), both converted and displayed on the $\log(\log(x+1))$ scale. See the main text for further discussion of each event and flood stage threshold.
+# Daily log-log water flow (in cm$^3$/s) of the San Lorenzo River at the Big Trees USGS station from May 29, 1987 to December 25, 2022. The green curve shows the transformed daily flow. Vertical dashed lines and numbered labels mark key flood-related events: (1) February 1998 flood; (2) levee and floodwall reconstruction (2004); (3) February 2017 flood; (4) January 2023 flood. Horizontal dashed lines indicate current-rating discharge-reference levels for the river, with the upper line corresponding to the current-rating major reference and the lower line to the current-rating minor reference; both are displayed on the legacy transformed scale. See the main text for further discussion of each event and discharge-reference level.
 # }
 
 
@@ -6731,7 +6731,7 @@ p <- ggplot() +
   ) +
 
   # USGS before
-    # Add flood stage horizontal lines
+    # Add current-rating discharge-reference horizontal lines
   geom_hline(
     yintercept = flood_stages_trans,
     linetype = c("dashed", "dashed"),
@@ -7071,10 +7071,10 @@ library(tidyr)
 library(ggplot2)
 
 # -- 1. Prepare Data --
-# Flood stage values in feet
-flood_stages_ft <- c(21.76, 16.5)^3
+# Current-rating NWS stage-category discharge references in cfs
+flood_stages_cfs <- c(14895.73, 7402.38)
 # Convert to centimeters
-flood_stages_cm <- flood_stages_ft*CFSToCMS_CONVERSION_FACTOR 
+flood_stages_cm <- flood_stages_cfs * CFSToCMS_CONVERSION_FACTOR
 # Apply log(log(x + 1)) transformation
 flood_stages_trans <- log(log(flood_stages_cm + 1))
 
@@ -7123,7 +7123,7 @@ obs_df <- data.frame(
 
 flood_lines <- data.frame(
   y = flood_stages_trans,
-  Stage = paste0(lev_flood, " ft")
+  Stage = flood_stage_labels
 )
 
 alpha_val <- 0.11
@@ -7237,10 +7237,10 @@ library(tidyr)
 library(ggplot2)
 
 # -- 1. Prepare Data --
-# Flood stage values in feet
-flood_stages_ft <- c(21.76, 16.5)^3
+# Current-rating NWS stage-category discharge references in cfs
+flood_stages_cfs <- c(14895.73, 7402.38)
 # Convert to centimeters
-flood_stages_cm <- flood_stages_ft*CFSToCMS_CONVERSION_FACTOR 
+flood_stages_cm <- flood_stages_cfs * CFSToCMS_CONVERSION_FACTOR
 # Apply log(log(x + 1)) transformation
 flood_stages_trans <- log(log(flood_stages_cm + 1))
 
@@ -7289,7 +7289,7 @@ obs_df <- data.frame(
 
 flood_lines <- data.frame(
   y = flood_stages_trans,
-  Stage = paste0(lev_flood, " ft")
+  Stage = flood_stage_labels
 )
 
 alpha_val <- 0.11
@@ -7403,10 +7403,10 @@ library(tidyr)
 library(ggplot2)
 
 # -- 1. Prepare Data --
-# Flood stage values in feet
-flood_stages_ft <- c(21.76, 16.5)^3
+# Current-rating NWS stage-category discharge references in cfs
+flood_stages_cfs <- c(14895.73, 7402.38)
 # Convert to centimeters
-flood_stages_cm <- flood_stages_ft*CFSToCMS_CONVERSION_FACTOR 
+flood_stages_cm <- flood_stages_cfs * CFSToCMS_CONVERSION_FACTOR
 # Apply log(log(x + 1)) transformation
 flood_stages_trans <- log(log(flood_stages_cm + 1))
 
@@ -7462,7 +7462,7 @@ obs_df3 <- data.frame(
 )
 flood_lines <- data.frame(
   y = flood_stages_trans,
-  Stage = paste0(lev_flood, " ft")
+  Stage = flood_stage_labels
 )
 
 alpha_val <- 0.11

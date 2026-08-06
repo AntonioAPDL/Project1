@@ -154,11 +154,11 @@ inputs:
 
 plot:
   title: "Observed and Retrospective River Flow\\nwith GloFAS and NWS Forecast Ensembles"
-  # Optional flood levels (these default for 11160500 if omitted).
+  # Optional current-rating discharge references (defaults for 11160500 if omitted).
   flood_levels:
-    - label: "Major Flooding"
-      value: 15000
+    - label: "Major reference"
+      value: 14895.73
       unit: "cfs"
-    - label: "Minor Flooding"
-      value: 6750
+    - label: "Minor reference"
+      value: 7402.38
       unit: "cfs"

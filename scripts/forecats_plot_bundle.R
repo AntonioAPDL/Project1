@@ -416,11 +416,9 @@ plot_forecats_bundle <- function(bundle_dir) {
     forecast_labels_shown
   )
 
-  # Optional flood thresholds (must be in discharge units, not stage).
-  # Define in YAML under plot.flood_levels:
-  #   - label: "Major Flooding"
-  #     value: 15000
-  #     unit: "cfs"   # or "cms"
+  # Current-rating NWS stage-category references.
+  # Values are discharge equivalents from USGS 11160500 rating 40.0,
+  # not historical flood-stage classifications for daily-mean flow.
   all_vals <- c(usgs$value, retros_long$value, glofas_ens_long$value, nws_ens_long$value)
   flood_df <- figure_flood_label_df(plot_scale = plot_scale, values = all_vals)
   flood_style <- figure_flood_stage_style()
