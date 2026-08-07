@@ -29,7 +29,6 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
         item_id="R1-M2",
         required_article=(
             "single state-space model",
-            "The benchmark variants reported in Section~\\ref{sec:forecastvalidation} are tied to this formulation",
             r"\(L\in\{\mathrm{N},\mathrm{AL},\mathrm{exAL}\}\) denotes a Gaussian, asymmetric Laplace, or extended asymmetric Laplace observation likelihood",
             r"\(S\in\{\mathrm{U},\mathrm{M}\}\) indicates whether the synthesis is univariate or multivariate",
             r"\(T\in\{\mathrm{T0},\mathrm{T1}\}\) indicates whether the transfer component is suppressed or retained during the forecast window",
@@ -86,7 +85,7 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
             "Post-cutoff USGS observations are reserved strictly for verification",
             "we use the Continuous Ranked Probability Score (CRPS)",
             "quantile check loss",
-            "interpretation diagnostics, not as additional forecast-validation evidence",
+            "These figures are interpretation diagnostics",
             "The selected exAL-M-T1 specification attains the lowest 28-day forecast-window CRPS in all five cutoffs",
         ),
         required_corrections=(
@@ -192,7 +191,7 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
         item_id="R1-m6",
         required_article=(
             "using the latest forecast products issued at or before",
-            "aggregates the latest available forecast issuances to daily member matrices",
+            "aggregates the latest available forecast issuances to daily member-specific forecast matrices",
             "Post-cutoff USGS observations are reserved strictly for verification",
         ),
         required_corrections=(
@@ -207,8 +206,8 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
         required_article=(
             r"\section{FORECAST VALIDATION RESULTS}",
             r"\section{INTERPRETATION OF THE SELECTED SPECIFICATION}",
-            "interpretation diagnostics, not as additional forecast-validation evidence",
-            "retrospective component diagnostic rather than an additional forecast-validation summary",
+            "These figures are interpretation diagnostics",
+            "decomposes fitted historical quantile behavior across contrasting regimes",
         ),
         required_corrections=(
             "no longer uses the vague ``General Results'' organization",
@@ -237,8 +236,8 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
         item_id="R1-m9",
         required_article=(
             "uncertainty around fitted quantile-location curves",
-            "rather than the full forecast distribution at a single origin",
-            "full synthesized posterior predictive distribution",
+            "synthesized posterior predictive distribution",
+            "fitted quantile-specific forecasts combine into one predictive distribution",
             "posterior predictive envelope can vary across the forecast window",
         ),
         required_corrections=(

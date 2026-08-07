@@ -23,7 +23,7 @@ REQUIRED_LATEST_FORECAST_CODE_EVIDENCE = {
 
 REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS = [
     "using the latest forecast products issued at or before",
-    "aggregates the latest available forecast issuances to daily member matrices",
+    "aggregates the latest available forecast issuances to daily member-specific forecast matrices",
     "Post-cutoff USGS observations are reserved strictly for verification",
 ]
 
