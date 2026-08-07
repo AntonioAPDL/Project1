@@ -30,7 +30,7 @@ REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS = [
 REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS = [
     "latest available forecast ensemble",
     "rather than combining earlier issuances",
-    "using forecast issued at earlier times may reduce forecast performance",
+    "using forecasts issued at earlier times may reduce forecast performance",
     "workflow compatibility aliases",
     "not active cross-issue weighting",
 ]

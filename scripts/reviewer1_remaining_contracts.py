@@ -196,7 +196,7 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
             "Post-cutoff USGS observations are reserved strictly for verification",
         ),
         required_corrections=(
-            "using forecast issued at earlier times may reduce forecast performance",
+            "using forecasts issued at earlier times may reduce forecast performance",
             "use only the most recent forecast ensemble available",
             "latest-forecast-only protocol",
         ),
