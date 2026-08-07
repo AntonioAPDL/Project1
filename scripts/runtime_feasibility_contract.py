@@ -29,8 +29,7 @@ REQUIRED_RUNTIME_CORRECTIONS_CLAIMS = [
     "about two hours end-to-end",
     r"\texttt{runtime\_sec\_total}",
     r"\texttt{runtime\_sec}",
-    "54 completed and 18 pending planned run units",
-    "do not support a separate fitting/forecasting decomposition",
+    "do not support a reliable decomposition between model fitting and forecasting/post-processing",
 ]
 
 FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS = [

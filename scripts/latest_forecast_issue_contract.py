@@ -31,8 +31,8 @@ REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS = [
     "latest available forecast ensemble",
     "rather than combining earlier issuances",
     "using forecasts issued at earlier times may reduce forecast performance",
-    "workflow compatibility aliases",
-    "not active cross-issue weighting",
+    "reported publication matrices do not average older issuances",
+    "historical workflow file names retain older descriptive labels",
 ]
 
 FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS = [
