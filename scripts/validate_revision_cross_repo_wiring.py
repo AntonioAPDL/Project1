@@ -207,7 +207,7 @@ REQUIRED_CLAIMS = [
     ("article", "the forecast-window treatment of the transfer block gives the \\(T0\\) and \\(T1\\) rows"),
     ("article", "nine Bayesian variants of the common state-space framework"),
     ("article", "Because exAL-M-T1 is the selected extended-likelihood multivariate specification"),
-    ("article", "provide the strongest corrected forecasts overall"),
+    ("article", "provide the strongest performance in the 28-day synthesis comparison"),
     ("article", "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates"),
     ("article", "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Skewness Parameters"),
     ("article", "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters"),

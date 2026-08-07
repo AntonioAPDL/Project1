@@ -781,7 +781,7 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         r"\(T\in\{\mathrm{T0},\mathrm{T1}\}\) indicates whether the transfer component is suppressed or retained during the forecast window",
         "nine Bayesian variants of the common state-space framework",
         "We focus on exAL-M-T1 because it has the lowest 28-day forecast-window CRPS",
-        "provide the strongest corrected forecasts overall",
+        "provide the strongest performance in the 28-day synthesis comparison",
         "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates",
         "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Skewness Parameters",
         "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters",
