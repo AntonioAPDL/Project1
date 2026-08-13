@@ -13,6 +13,7 @@ import argparse
 import csv
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import textwrap
@@ -64,21 +65,11 @@ TEXT_FILENAMES = {"Makefile", "LICENSE", ".gitignore"}
 WORKFLOW_DOCS = [
     "README.md",
     "CITATION.cff",
-    "docs/current_authority_refresh_runbook.md",
     "docs/software_reproducibility_release_plan_20260615.md",
     "docs/workflow_archive_readiness_20260615.md",
     "docs/he6_out_of_sample_forecast_design_contract_20260615.md",
     "docs/he7_latest_forecast_issue_contract_20260615.md",
-    "docs/canonical_gdpc_subset6_noi_soi_espi_pna_whwp_amo_20260527.md",
     "docs/publication_freeze_validation_20260614.md",
-    "repro/GLOFAS_HARMONIZATION_QA_SPEC.md",
-    "repro/GLOFAS_OPERATIONAL_MEDIUMRANGE_WORKFLOW_RUNBOOK.md",
-    "repro/NWS_NWM_GLOFAS_DATA_AUDIT_PLAN.md",
-    "repro/NWM_RETROSPECTIVE_EXTRACTION_WORKSTREAM_TRACKER.md",
-    "repro/GEFS_NWM_FORECAST_AUDIT_TRACKER.md",
-    "repro/run/CANONICAL_GDPC_IMPLEMENTATION_TRACKER_20260509.md",
-    "repro/run/CANONICAL_GDPC_MASTER_COVARIATE_REPORT_20260509.md",
-    "repro/run/CANONICAL_GDPC_MASTER_PIPELINE_RUNBOOK_20260509.md",
     "repro/run/REVISION_SOFTWARE_REPRODUCIBILITY_CONTRACT_20260615.md",
 ]
 
@@ -94,7 +85,6 @@ ARTICLE_DOCS = [
 ]
 
 CONFIG_FILES = [
-    "config/unified_run.template.yaml",
     "config/post_publication_figures.yaml",
     "config/he2_bayesian_publication_relaunch_20260510.template.yaml",
     "config/he2_bayesian_publication_relaunch_table1_targeted_repair_20260612.template.yaml",
@@ -102,7 +92,6 @@ CONFIG_FILES = [
     "config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_partial_authority_refresh_20260623.template.yaml",
     "config/he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml",
     "config/he2_publication_manifest_replacement_overlay_table1_targeted_repair_20260612.yaml",
-    "config/he2_grid_specs/exdqlm_multivar_keep_epsilon_discount_grid_20260524.csv",
     "docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml",
     "docs/authoritative_selected_outputs/he2_exal_m_t1_representative_20221225.yaml",
 ]
@@ -150,6 +139,48 @@ ARTICLE_ARTIFACT_DIRS = [
     "artifacts/runtime_benchmark",
     "artifacts/software_availability",
 ]
+
+FORECAST_COVARIATE_PUBLIC_NOTE = {
+    "public_scope": (
+        "Forecast-window precipitation and shallow soil-water covariates are "
+        "included as deterministic, model-ready summaries derived from "
+        "post-processed GEFS forecast products. Raw GEFS retrieval, recovery, "
+        "and intermediate covariate-construction details are not bundled in "
+        "this public reproducibility repository."
+    )
+}
+
+REDACTED_JSON_KEYS = {
+    "handoff_root",
+    "summary_path",
+    "summary_sha256",
+    "manifest_summary_sha256",
+    "manifest_summary_sha_match",
+    "current",
+    "summary",
+    "canonical",
+    "validation",
+    "compare_report_path",
+}
+
+REDACTED_JSON_KEY_FRAGMENTS = (
+    "noisy_blend",
+    "observed_blend",
+    "tail_blend",
+    "noise_seed",
+    "noise_sd",
+    "noise_distribution",
+    "observed_weight",
+    "observed_zero_stay",
+)
+
+PUBLIC_TEXT_NORMALIZATIONS = (
+    ("histfix", "long_history_support"),
+    ("Histfix", "Long-history support"),
+    ("HISTFIX", "LONG_HISTORY_SUPPORT"),
+    ("legacy_log_ready_repairs", "log_scale_support_checks"),
+    ("selected_window_splice", "selected_window_alignment"),
+)
 
 
 @dataclass(frozen=True)
@@ -212,6 +243,245 @@ def sanitize_public_text_file(path: Path, replacements: tuple[tuple[str, str], .
         path.write_text(text, encoding="utf-8")
 
 
+def apply_replacements(text: str, replacements: tuple[tuple[str, str], ...]) -> str:
+    for old, new in replacements:
+        text = text.replace(old, new)
+    return text
+
+
+def compact_placeholder_paths(text: str) -> str:
+    """Remove machine/run-specific path tails after public placeholders."""
+
+    patterns = (
+        (r"SOURCE_RUNTIME_ROOT/[^\s,\"'\]\)]+", "SOURCE_RUNTIME_REFERENCE"),
+        (r"SOURCE_WORKFLOW_ROOT/[^\s,\"'\]\)]+", "SOURCE_WORKFLOW_REFERENCE"),
+        (r"SOURCE_ARTICLE_ROOT/[^\s,\"'\]\)]+", "SOURCE_ARTICLE_REFERENCE"),
+        (r"SOURCE_CORRECTIONS_ROOT/[^\s,\"'\]\)]+", "SOURCE_CORRECTIONS_REFERENCE"),
+        (r"STAGED_INPUT_BUNDLE_ROOT/[^\s,\"'\]\)]+", "STAGED_INPUT_REFERENCE"),
+        (r"LEGACY_EXAL_INPUT_ROOT/[^\s,\"'\]\)]+", "LEGACY_EXAL_INPUT_REFERENCE"),
+        (r"LEGACY_PROJECT_ROOT/[^\s,\"'\]\)]+", "LEGACY_PROJECT_REFERENCE"),
+        (r"LOCAL_RCPP_LIB_ROOT/[^\s,\"'\]\)]+", "LOCAL_RCPP_LIB_REFERENCE"),
+        (r"EXTERNAL_RUNTIME_SOURCE_ROOT/[^\s,\"'\]\)]+", "EXTERNAL_RUNTIME_SOURCE_REFERENCE"),
+    )
+    for pattern, replacement in patterns:
+        text = re.sub(pattern, replacement, text)
+    return text
+
+
+def redact_json_for_public(obj):
+    if isinstance(obj, dict):
+        redacted = {}
+        for key, value in obj.items():
+            lower_key = key.lower()
+            public_key = apply_replacements(key, PUBLIC_TEXT_NORMALIZATIONS)
+            if lower_key == "deterministic_climate":
+                redacted[public_key] = FORECAST_COVARIATE_PUBLIC_NOTE
+                continue
+            if key in REDACTED_JSON_KEYS:
+                continue
+            if any(fragment in lower_key for fragment in REDACTED_JSON_KEY_FRAGMENTS):
+                continue
+            redacted[public_key] = redact_json_for_public(value)
+        return redacted
+    if isinstance(obj, list):
+        return [redact_json_for_public(value) for value in obj]
+    if isinstance(obj, str):
+        return apply_replacements(compact_placeholder_paths(obj), PUBLIC_TEXT_NORMALIZATIONS)
+    return obj
+
+
+def redact_csv_for_public(path: Path) -> bool:
+    try:
+        with path.open(newline="", encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            if reader.fieldnames is None:
+                return False
+            rows = list(reader)
+    except (csv.Error, UnicodeDecodeError):
+        return False
+
+    changed = False
+    fieldnames = list(reader.fieldnames)
+    note_json = json.dumps(FORECAST_COVARIATE_PUBLIC_NOTE, sort_keys=True)
+    for row in rows:
+        for key, value in list(row.items()):
+            if value is None:
+                continue
+            lower_key = key.lower()
+            lower_value = value.lower()
+            new_value = value
+            if lower_key == "deterministic_climate_json":
+                new_value = note_json
+            elif lower_key == "source_zip":
+                new_value = "SOURCE_ARCHIVE_SHARD_REFERENCE"
+            elif "handoff_forecasts" in lower_value or "source_native_tranche" in lower_value:
+                new_value = "SOURCE_ARCHIVE_REFERENCE"
+            else:
+                new_value = compact_placeholder_paths(value)
+            if new_value != value:
+                row[key] = new_value
+                changed = True
+
+    if changed:
+        with path.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+    return changed
+
+
+def curate_public_metadata(roots: Roots, replacements: tuple[tuple[str, str], ...]) -> None:
+    for path in sorted(roots.destination.rglob("*")):
+        if not path.is_file() or ".git" in path.parts:
+            continue
+        if path.suffix == ".json":
+            try:
+                obj = json.loads(path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                obj = None
+            if obj is not None:
+                redacted = redact_json_for_public(obj)
+                path.write_text(json.dumps(redacted, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+                continue
+        if path.suffix == ".csv":
+            redact_csv_for_public(path)
+        if is_text_like(path):
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            updated = compact_placeholder_paths(apply_replacements(text, replacements))
+            updated = apply_replacements(updated, PUBLIC_TEXT_NORMALIZATIONS)
+            if updated != text:
+                path.write_text(updated, encoding="utf-8")
+
+
+def count_csv_rows_and_columns(path: Path) -> tuple[int, int, str | None, str | None]:
+    with path.open(newline="", encoding="utf-8") as fh:
+        reader = csv.reader(fh)
+        header = next(reader)
+        first = None
+        last = None
+        rows = 0
+        for row in reader:
+            if not row:
+                continue
+            rows += 1
+            if first is None:
+                first = row[0]
+            last = row[0]
+    return rows, len(header), first, last
+
+
+def write_compact_origin_metadata(roots: Roots) -> None:
+    origins = roots.destination / "data/staged/forecast_origins"
+    for origin_dir in sorted(origins.glob("cutoff_*")):
+        if not origin_dir.is_dir():
+            continue
+        cutoff = origin_dir.name.removeprefix("cutoff_")
+        cutoff_date = cutoff.replace("_", "-")
+        retros_rows, retros_cols, retros_start, retros_end = count_csv_rows_and_columns(
+            origin_dir / "retrospective_products_daily.csv"
+        )
+        glofas_rows, glofas_cols, _, _ = count_csv_rows_and_columns(origin_dir / "glofas_ensemble_forecast_daily.csv")
+        nws_rows, nws_cols, _, _ = count_csv_rows_and_columns(origin_dir / "nws_ensemble_forecast_daily.csv")
+        glofas_members = max(glofas_cols - 1, 0)
+        nws_members = max(nws_cols - 1, 0)
+
+        write_text(
+            origin_dir / "origin_metadata.yaml",
+            f"""
+            schema_version: public_forecast_origin_bundle_v1
+            cutoff: "{cutoff.replace("_", "")}"
+            cutoff_date: "{cutoff_date}"
+            site:
+              usgs_site: "11160500"
+              river: "San Lorenzo River"
+              gauge: "Big Trees"
+              latitude: 37.0443931
+              longitude: -122.072464
+            files:
+              retrospective_products_daily: "retrospective_products_daily.csv"
+              retrospective_source_lineage: "retrospective_source_lineage.csv"
+              glofas_ensemble_forecast_daily: "glofas_ensemble_forecast_daily.csv"
+              nws_ensemble_forecast_daily: "nws_ensemble_forecast_daily.csv"
+              bundle_health: "bundle_health.json"
+            retrospective_products:
+              role: "pre-cutoff observations and aligned hydrologic product inputs"
+              rows: {retros_rows}
+              start_date: "{retros_start}"
+              end_date: "{retros_end}"
+              product_families:
+                glofas_ecmwf: "ECMWF/GloFAS retrospective hydrologic product input"
+                noaa_nws_nwm: "NOAA/NWS/National Water Model retrospective hydrologic product input"
+            forecast_products:
+              role: "issued ensemble forecasts available at the cutoff"
+              glofas_ecmwf:
+                members: {glofas_members}
+                forecast_rows: {glofas_rows}
+                issue_policy: "forecast issued at the cutoff; daily member matrix"
+              noaa_nws_nwm:
+                members: {nws_members}
+                forecast_rows: {nws_rows}
+                issue_policy: "latest available forecast issue at the cutoff; daily member matrix"
+            exogenous_covariates:
+              historical_inputs:
+                - "local precipitation"
+                - "local shallow soil-water"
+                - "GDPC climate-index summary"
+              forecast_window_inputs: "deterministic model-ready summaries derived from post-processed GEFS forecast products"
+            public_scope_note: "This public bundle starts from model-ready inputs and compact versioning metadata; raw archive retrieval, recovery, and covariate-construction workflows are not bundled."
+            """,
+        )
+
+        health = {
+            "schema_version": "public_forecast_origin_health_v1",
+            "status": "model_ready_public_bundle",
+            "cutoff": cutoff.replace("_", ""),
+            "cutoff_date": cutoff_date,
+            "retrospective_window": {
+                "start_date": retros_start,
+                "end_date": retros_end,
+                "rows": retros_rows,
+            },
+            "forecast_rows": {
+                "glofas_ecmwf": glofas_rows,
+                "noaa_nws_nwm": nws_rows,
+            },
+            "forecast_member_counts": {
+                "glofas_ecmwf": glofas_members,
+                "noaa_nws_nwm": nws_members,
+            },
+            "storage_scales": {
+                "retrospective_products_daily": "log1p_cms",
+                "glofas_ensemble_forecast_daily": "raw_cms",
+                "nws_ensemble_forecast_daily": "raw_cms",
+            },
+            "public_scope_note": (
+                "Numerical model inputs are included. Raw retrieval, recovery, "
+                "and intermediate covariate-construction metadata are excluded "
+                "from the public release."
+            ),
+        }
+        (origin_dir / "bundle_health.json").write_text(
+            json.dumps(health, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+
+def refresh_row_hashes(roots: Roots, rows: list[dict[str, str]], replacements: tuple[tuple[str, str], ...]) -> None:
+    refreshed = []
+    for row in rows:
+        updated = dict(row)
+        public_path = Path(updated["public_path"])
+        if public_path.exists():
+            updated["bytes"] = str(public_path.stat().st_size)
+            updated["sha256"] = sha256(public_path)
+        updated["source_path"] = compact_placeholder_paths(apply_replacements(updated["source_path"], replacements))
+        refreshed.append(updated)
+    rows[:] = refreshed
+
+
 def copy_file(
     src: Path,
     dst: Path,
@@ -254,6 +524,41 @@ def copy_tree(
             continue
         target = dst / path.relative_to(src)
         copy_file(path, target, role, rows, replacements)
+
+
+def remove_exported_file(roots: Roots, rows: list[dict[str, str]], relpath: str) -> None:
+    path = roots.destination / relpath
+    if path.exists():
+        path.unlink()
+    rows[:] = [
+        row
+        for row in rows
+        if Path(row["public_path"]).resolve() != path.resolve()
+    ]
+
+
+def write_public_deterministic_covariate_stub(roots: Roots) -> None:
+    write_text(
+        roots.destination / "R/unified/deterministic_climate_covariates.R",
+        """
+        # Public reproducibility stub.
+        #
+        # The public repository starts from model-ready staged covariates. Raw
+        # GEFS/NWM retrieval and intermediate forecast-covariate construction
+        # are intentionally outside this release.
+
+        unified_materialize_deterministic_climate_covariates <- function(cfg, shared_paths, cov_path_map, repo_root) {
+          stop(
+            paste(
+              "Raw forecast-covariate materialization is not bundled in the public reproducibility release.",
+              "Use the model-ready staged covariates under data/staged/covariates and the cutoff-specific",
+              "forecast-origin bundles under data/staged/forecast_origins."
+            ),
+            call. = FALSE
+          )
+        }
+        """,
+    )
 
 
 def reset_destination(path: Path, replace: bool) -> None:
@@ -376,9 +681,10 @@ def generate_public_docs(roots: Roots) -> None:
         The repository is intentionally narrower than the live research
         workspace. It contains compact staged inputs, current manuscript-facing
         outputs, provenance, and the selected workflow code needed to inspect
-        or rerun the reported case-study analysis. It does not contain raw
-        climate-center archives, active runtime campaigns, local notebooks,
-        poster drafts, or generated screening/audit outputs.
+        or rerun the reported case-study analysis from model-ready inputs. It
+        does not contain raw climate-center archives, raw covariate-retrieval
+        workflows, active runtime campaigns, local notebooks, poster drafts, or
+        generated screening/audit outputs.
 
         ## Quick Validation
 
@@ -395,9 +701,10 @@ def generate_public_docs(roots: Roots) -> None:
            manuscript-facing tables, figures, hashes, and provenance from the
            compact staged outputs in `outputs/expected/`.
         2. **Selected-model rerun support.** Use the selected R workflow,
-           configuration files, and staged input bundles in `data/staged/` to
-           rerun the reported exDQLM/DQLM case-study fits. This requires the
-           public CRAN package `exdqlm` and sufficient local compute.
+           configuration files, and model-ready staged input bundles in
+           `data/staged/` to rerun the reported exDQLM/DQLM case-study fits.
+           This requires the public CRAN package `exdqlm` and sufficient local
+           compute.
         3. **Raw archive reconstruction.** Not bundled. Reconstructing a new
            retrospective validation archive requires agency-specific historical
            products, version matching, spatial extraction, forecast-window
@@ -408,7 +715,7 @@ def generate_public_docs(roots: Roots) -> None:
         - `R/`: selected model, post-processing, and figure-generation code.
         - `scripts/`: orchestration, manifest, and validation scripts.
         - `config/`: selected publication and authority configuration files.
-        - `data/staged/`: compact staged inputs used by the five cutoff cases.
+        - `data/staged/`: compact model-ready inputs used by the five cutoff cases.
         - `outputs/expected/`: current manuscript-facing expected outputs and
           compact artifact bundles.
         - `figures/`: frozen manuscript figure files.
@@ -455,9 +762,10 @@ def generate_public_docs(roots: Roots) -> None:
         - `EXTERNAL_RUNTIME_SOURCE_ROOT`: external local runtime source tree used
           in legacy provenance notes.
 
-        Exact source paths and export-time commits are preserved only in
+        Export-time commits and source roles are preserved in
         `provenance/source_file_crosswalk.csv` and
-        `provenance/runtime_source_crosswalk.csv`.
+        `provenance/runtime_source_crosswalk.csv`; machine-specific paths are
+        replaced by public placeholders.
 
         ## License Status
 
@@ -564,8 +872,9 @@ def generate_public_docs(roots: Roots) -> None:
         # Staged Data
 
         `data/staged/` contains compact, cutoff-specific inputs used by the
-        publication workflow. Filenames are intentionally descriptive; original
-        source paths and hashes are recorded in
+        publication workflow. These are model-ready inputs, not raw
+        climate-center retrieval archives. Filenames are intentionally
+        descriptive; source roles and hashes are recorded in
         `provenance/source_file_crosswalk.csv`.
 
         The five forecast-origin folders are:
@@ -578,6 +887,104 @@ def generate_public_docs(roots: Roots) -> None:
 
         Each contains retrospective products, issued GloFAS and NWS ensemble
         forecast matrices, source-lineage metadata, and bundle health metadata.
+        """,
+    )
+
+    write_text(
+        roots.destination / "provenance/model_inputs_by_cutoff.md",
+        """
+        # Model Inputs by Forecast Origin
+
+        The public data bundle starts from model-ready inputs for the five
+        forecast origins used in the manuscript:
+
+        - `cutoff_2021_01_23`
+        - `cutoff_2021_11_12`
+        - `cutoff_2021_12_21`
+        - `cutoff_2022_05_11`
+        - `cutoff_2022_12_25`
+
+        Each folder under `data/staged/forecast_origins/` contains:
+
+        - `retrospective_products_daily.csv`: USGS observations and aligned
+          retrospective hydrologic product inputs available before the cutoff.
+        - `glofas_ensemble_forecast_daily.csv`: GloFAS ensemble forecast matrix
+          issued at the cutoff.
+        - `nws_ensemble_forecast_daily.csv`: NWS/NWM ensemble forecast matrix
+          issued at the cutoff.
+        - `retrospective_source_lineage.csv`: compact source labels for the
+          retrospective products.
+        - `origin_metadata.yaml` and `bundle_health.json`: compact checks and
+          metadata for the staged origin bundle.
+
+        Shared covariates live under `data/staged/covariates/`:
+
+        - `local_precipitation_daily.csv`
+        - `local_shallow_soil_water_daily.csv`
+        - `gdpc_climate_index_pc1_daily.csv`
+
+        The forecast-window precipitation and shallow soil-water covariates are
+        included as deterministic, model-ready summaries derived from
+        post-processed GEFS forecast products. The public repository does not
+        bundle raw GEFS retrievals or intermediate covariate-construction
+        workflows. The GDPC series is a climate-index summary covariate, not an
+        operational forecast product.
+        """,
+    )
+
+    write_text(
+        roots.destination / "provenance/climate_product_versioning.md",
+        """
+        # Climate Product Versioning and Public Scope
+
+        The validation study uses forecast-origin bundles that align four
+        information streams at each cutoff:
+
+        - USGS observed daily river flow for the San Lorenzo River at Big Trees.
+        - ECMWF/GloFAS retrospective hydrologic products before the cutoff and
+          issued GloFAS ensemble forecasts after the cutoff.
+        - NOAA/NWS/National Water Model retrospective hydrologic products before
+          the cutoff and issued NWS ensemble forecasts after the cutoff.
+        - Exogenous covariates: local precipitation, local shallow soil-water,
+          and a GDPC climate-index summary.
+
+        The public repository includes the staged inputs used by the manuscript.
+        It does not attempt to reproduce the raw historical archive recovery.
+        That reconstruction requires product-version matching, spatial
+        extraction rules, source-specific forecast horizons, and cutoff-specific
+        issued forecast bundles for each climate-center product family.
+
+        This versioning detail is most important for the hydrologic product
+        families. GloFAS/ECMWF and NWS/NWM each contribute retrospective
+        information and issued forecast information, and those products differ
+        in version history, spatial support, ensemble structure, update cycle,
+        and forecast horizon. The model inputs exported here are the aligned
+        result of that recovery and harmonization step.
+        """,
+    )
+
+    write_text(
+        roots.destination / "provenance/public_release_hygiene.md",
+        """
+        # Public Release Hygiene
+
+        This export is allowlist-based. It excludes raw archives, active
+        runtime outputs, local planning notes, poster materials, large binary
+        model objects, and internal recovery trackers. It also redacts
+        machine-specific path tails and low-level covariate-construction
+        metadata that are not required for reproducing the reported model fits
+        from the staged inputs.
+
+        The validation gate is:
+
+        ```bash
+        make validate
+        ```
+
+        The gate checks required files, hashes, forbidden heavy formats, stale
+        repository URLs, local absolute paths, internal drafting/tooling
+        markers, excluded workflow trackers, and low-level public metadata
+        fields that should not appear in the release.
         """,
     )
 
@@ -729,6 +1136,9 @@ def generate_validation_scripts(root: Path) -> None:
             "tables/generated_tex/benchmark_crps_main_table.tex",
             "figures/manuscript_context/site_context_usgs.png",
             "outputs/expected/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv",
+            "provenance/model_inputs_by_cutoff.md",
+            "provenance/climate_product_versioning.md",
+            "provenance/public_release_hygiene.md",
             "provenance/source_file_crosswalk.csv",
             "provenance/runtime_source_crosswalk.csv",
             "data/SHA256SUMS.txt",
@@ -752,18 +1162,62 @@ def generate_validation_scripts(root: Path) -> None:
             ".yml",
         }
         TEXT_FILENAMES = {"Makefile", "LICENSE", ".gitignore"}
-        ALLOWED_LOCAL_PATH_FILES = {
-            "provenance/source_file_crosswalk.csv",
-            "provenance/runtime_source_crosswalk.csv",
-        }
         LOCAL_PATH_MARKERS = ("/" + "data/muscat_data/", "/" + "data/jaguir26/")
         STALE_TEXT_MARKERS = (
             "https://github.com/AntonioAPDL/" + "Project1",
             "PROJECT1" + "_URL",
             "chat" + "gpt",
             "co" + "dex",
+            "open" + "ai",
+            "cl" + "aude",
+            "gem" + "ini",
+            "co" + "pilot",
+            "large " + "language " + "model",
+            "language " + "model",
+            "l" + "lm",
             "ai" + "-generated",
+            "ai" + " generated",
             "ai " + "wording",
+            "prompt " + "for",
+        )
+        FORBIDDEN_PUBLIC_PATHS = {
+            "config/publication/unified_run.template.yaml",
+            "config/publication/exdqlm_multivar_keep_epsilon_discount_grid_20260524.csv",
+            "provenance/workflow/docs/current_authority_refresh_runbook.md",
+            "provenance/workflow/docs/canonical_gdpc_subset6_noi_soi_espi_pna_whwp_amo_20260527.md",
+            "provenance/workflow/repro/GLOFAS_HARMONIZATION_QA_SPEC.md",
+            "provenance/workflow/repro/GLOFAS_OPERATIONAL_MEDIUMRANGE_WORKFLOW_RUNBOOK.md",
+            "provenance/workflow/repro/NWS_NWM_GLOFAS_DATA_AUDIT_PLAN.md",
+            "provenance/workflow/repro/NWM_RETROSPECTIVE_EXTRACTION_WORKSTREAM_TRACKER.md",
+            "provenance/workflow/repro/GEFS_NWM_FORECAST_AUDIT_TRACKER.md",
+            "provenance/workflow/repro/run/CANONICAL_GDPC_IMPLEMENTATION_TRACKER_20260509.md",
+            "provenance/workflow/repro/run/CANONICAL_GDPC_MASTER_COVARIATE_REPORT_20260509.md",
+            "provenance/workflow/repro/run/CANONICAL_GDPC_MASTER_PIPELINE_RUNBOOK_20260509.md",
+        }
+        PUBLIC_METADATA_PREFIXES = (
+            "README.md",
+            "CITATION.cff",
+            "LICENSE",
+            "Makefile",
+            "config/",
+            "data/",
+            "manuscript/",
+            "outputs/",
+            "provenance/",
+            "tables/",
+        )
+        INTERNAL_COVARIATE_MARKERS = (
+            "noisy" + "_blend",
+            "observed" + "_blend",
+            "tail" + "_blend",
+            "handoff" + "_forecasts",
+            "source" + "_native_tranche",
+            "deterministic" + "_climate_blend",
+            "GEFS" + "_NWM_FORECAST_AUDIT_TRACKER",
+            "CANONICAL" + "_GDPC_MASTER_PIPELINE",
+            "hist" + "fix",
+            "legacy" + "_log_ready",
+            "selected" + "_window_splice",
         )
 
 
@@ -784,6 +1238,9 @@ def generate_validation_scripts(root: Path) -> None:
             for rel in REQUIRED:
                 if not (ROOT / rel).exists():
                     errors.append(f"missing required file: {rel}")
+            for rel in FORBIDDEN_PUBLIC_PATHS:
+                if (ROOT / rel).exists():
+                    errors.append(f"forbidden internal export file: {rel}")
 
             for path in ROOT.rglob("*"):
                 if not path.is_file() or ".git" in path.parts:
@@ -799,11 +1256,15 @@ def generate_validation_scripts(root: Path) -> None:
                     except UnicodeDecodeError:
                         continue
                     lower_text = text.lower()
-                    if rel not in ALLOWED_LOCAL_PATH_FILES and any(marker in text for marker in LOCAL_PATH_MARKERS):
+                    if any(marker in text for marker in LOCAL_PATH_MARKERS):
                         errors.append(f"local absolute path outside provenance crosswalk: {rel}")
                     for marker in STALE_TEXT_MARKERS:
                         if marker.lower() in lower_text:
                             errors.append(f"stale/internal marker {marker!r} in {rel}")
+                    if rel.startswith(PUBLIC_METADATA_PREFIXES):
+                        for marker in INTERNAL_COVARIATE_MARKERS:
+                            if marker.lower() in lower_text:
+                                errors.append(f"internal covariate-construction marker {marker!r} in {rel}")
 
             manifest = ROOT / "data/SHA256SUMS.txt"
             if manifest.exists():
@@ -871,6 +1332,7 @@ def generate_validation_scripts(root: Path) -> None:
 
 
 def write_crosswalks(roots: Roots, rows: list[dict[str, str]]) -> None:
+    replacements = local_path_replacements(roots)
     crosswalk = roots.destination / "provenance/source_file_crosswalk.csv"
     crosswalk.parent.mkdir(parents=True, exist_ok=True)
     normalized_rows = []
@@ -881,6 +1343,7 @@ def write_crosswalks(roots: Roots, rows: list[dict[str, str]]) -> None:
             normalized["public_path"] = public_path.relative_to(roots.destination).as_posix()
         except ValueError:
             normalized["public_path"] = public_path.as_posix()
+        normalized["source_path"] = compact_placeholder_paths(apply_replacements(normalized["source_path"], replacements))
         normalized_rows.append(normalized)
     with crosswalk.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=["role", "public_path", "source_path", "bytes", "sha256"])
@@ -894,7 +1357,7 @@ def write_crosswalks(roots: Roots, rows: list[dict[str, str]]) -> None:
         writer.writerow(
             {
                 "role": "workflow_source",
-                "path": roots.workflow.as_posix(),
+                "path": "SOURCE_WORKFLOW_ROOT",
                 "git_head": git_commit(roots.workflow),
                 "remote": git_remote(roots.workflow),
             }
@@ -902,7 +1365,7 @@ def write_crosswalks(roots: Roots, rows: list[dict[str, str]]) -> None:
         writer.writerow(
             {
                 "role": "article_source",
-                "path": roots.article.as_posix(),
+                "path": "SOURCE_ARTICLE_ROOT",
                 "git_head": git_commit(roots.article),
                 "remote": git_remote(roots.article),
             }
@@ -910,7 +1373,7 @@ def write_crosswalks(roots: Roots, rows: list[dict[str, str]]) -> None:
         writer.writerow(
             {
                 "role": "runtime_shared_input_bundle",
-                "path": (roots.runtime / SHARED_INPUT_BUNDLE).as_posix(),
+                "path": "STAGED_INPUT_BUNDLE_ROOT",
                 "git_head": "not_a_git_repository",
                 "remote": "local_runtime_bundle",
             }
@@ -933,6 +1396,8 @@ def export_public_repo(roots: Roots) -> None:
     copy_tree(roots.workflow / "R/environmetrics", roots.destination / "R/environmetrics", "workflow_r_code", rows, replacements)
     copy_tree(roots.workflow / "R/unified", roots.destination / "R/unified", "workflow_r_code", rows, replacements)
     copy_file(roots.workflow / "R/environmetrics_utils.R", roots.destination / "R/environmetrics_utils.R", "workflow_r_code", rows, replacements)
+    remove_exported_file(roots, rows, "R/unified/deterministic_climate_blend.R")
+    write_public_deterministic_covariate_stub(roots)
 
     for item in CONFIG_FILES:
         src = roots.workflow / item
@@ -965,6 +1430,9 @@ def export_public_repo(roots: Roots) -> None:
         copy_tree(roots.article / item, roots.destination / "outputs/expected" / item, "article_expected_output", rows, replacements)
 
     export_data_bundle(roots, rows, replacements)
+    curate_public_metadata(roots, replacements)
+    write_compact_origin_metadata(roots)
+    refresh_row_hashes(roots, rows, replacements)
     write_crosswalks(roots, rows)
 
 
