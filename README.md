@@ -37,10 +37,12 @@ Canonical documentation:
 Large runtime outputs, raw forecast archives, `.RData` objects, generated
 reports, and basin-specific local data products are intentionally not tracked in
 this repository. Applying the workflow to another basin requires staging the
-corresponding observations, forecast products, and covariates. Reproducing the
-retrospective validation design additionally requires constructing a
-version-consistent archive of observations, retrospective products, forecast
-products, and covariates.
+corresponding observations, current forecast products, and covariates.
+Reproducing the retrospective validation design additionally requires
+constructing a basin-specific, version-consistent archive that aligns
+historical observations, retrospective products, issued forecast products,
+forecast-window covariates, product versions, spatial extraction rules, and
+source-specific forecast horizons.
 
 Run-scoped environment captures are the active reproducibility mechanism until
 the planned formal `renv` migration is complete.

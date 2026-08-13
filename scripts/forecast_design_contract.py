@@ -24,6 +24,9 @@ REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS = [
     "uses only information available at that origin to fit seven quantile-specific models",
     "scores that distribution against future USGS observations held out over the forecast window",
     "archive-feasible, version-consistent origins that span contrasting hydrological settings",
+    "This archive-reconstruction step is the main practical constraint on a denser rolling-origin design",
+    "different release histories, product versions, update frequencies, horizons, ensemble-member structures, spatial supports, and access interfaces",
+    "data recovery, version matching, spatial extraction, covariate staging, and computation",
     "avoid dense overlaps that would overrepresent the same episode",
 ]
 
@@ -39,7 +42,9 @@ REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS = [
     "archive-feasible and version-consistent",
     "five cutoff-specific forecast-window evaluations",
     "post-cutoff USGS observations are used only for verification",
-    "avoid dense overlapping windows that would repeatedly score the same hydrological regime",
+    "A new fold is not obtained by shifting an index in a fixed rectangular dataset",
+    "archive-reconstruction campaign",
+    "rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode",
     "pre-cutoff observational window",
     "fixed calibrated specification",
 ]
@@ -108,6 +113,25 @@ def check_forecast_design_manifest(data: dict[str, Any]) -> list[ForecastDesignM
             "no_dense_overlapping_origin_claim",
             fair_assessment.get("dense_overlapping_origins_claimed") is False,
             str(fair_assessment.get("dense_overlapping_origins_claimed")),
+        ),
+        ForecastDesignManifestCheck(
+            "fold_construction_records_archive_reconstruction",
+            "reconstructing a version-consistent bundle" in str(fair_assessment.get("fold_construction_note", ""))
+            and "issued forecast products" in str(fair_assessment.get("fold_construction_note", "")),
+            str(fair_assessment.get("fold_construction_note", "")),
+        ),
+        ForecastDesignManifestCheck(
+            "source_complexity_records_versioning_and_access",
+            "product version" in str(fair_assessment.get("source_complexity_note", ""))
+            and "access interface" in str(fair_assessment.get("source_complexity_note", "")),
+            str(fair_assessment.get("source_complexity_note", "")),
+        ),
+        ForecastDesignManifestCheck(
+            "dense_origin_resource_note",
+            "data recovery" in str(fair_assessment.get("computational_resource_note", ""))
+            and "version matching" in str(fair_assessment.get("computational_resource_note", ""))
+            and "posterior predictive synthesis" in str(fair_assessment.get("computational_resource_note", "")),
+            str(fair_assessment.get("computational_resource_note", "")),
         ),
         ForecastDesignManifestCheck(
             "forecast_products_timing",
