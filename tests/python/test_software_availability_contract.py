@@ -21,7 +21,7 @@ from software_availability_contract import (  # noqa: E402
     EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
     EXDQLM_SOFTWARE_PAPER_DOI_URL,
     EXDQLM_SOFTWARE_PAPER_URL,
-    PROJECT1_URL,
+    PUBLIC_REPRO_URL,
     SOFTWARE_CONTRACT_REL,
     SOFTWARE_MANIFEST_REL,
     WORKFLOW_ARCHIVE_READINESS_REL,
@@ -46,7 +46,7 @@ class SoftwareAvailabilityContractTests(unittest.TestCase):
         self.assertEqual(manifest["public_estimation_package"]["software_paper_arxiv_url"], EXDQLM_SOFTWARE_PAPER_URL)
         self.assertEqual(manifest["public_estimation_package"]["software_paper_arxiv_doi"], EXDQLM_SOFTWARE_PAPER_DOI_URL)
         self.assertEqual(manifest["public_estimation_package"]["software_paper_bibtex_key"], EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY)
-        self.assertEqual(manifest["study_workflow_repository"]["public_url"], PROJECT1_URL)
+        self.assertEqual(manifest["study_workflow_repository"]["public_url"], PUBLIC_REPRO_URL)
         self.assertEqual(
             manifest["study_workflow_repository"]["release_readiness_files"],
             {
@@ -72,7 +72,7 @@ class SoftwareAvailabilityContractTests(unittest.TestCase):
 
     def test_workflow_archive_readiness_files_do_not_overclaim(self) -> None:
         texts = {rel: (ROOT / rel).read_text(encoding="utf-8") for rel in WORKFLOW_RELEASE_READINESS_RELS}
-        self.assertIn(PROJECT1_URL, texts[WORKFLOW_README_REL])
+        self.assertIn(PUBLIC_REPRO_URL, texts[WORKFLOW_README_REL])
         self.assertIn(CRAN_EXDQLM_URL, texts[WORKFLOW_README_REL])
         self.assertIn("pending final revision freeze", texts[WORKFLOW_README_REL])
         self.assertIn(SOFTWARE_CONTRACT_REL, texts[WORKFLOW_README_REL])
@@ -93,7 +93,7 @@ class SoftwareAvailabilityContractTests(unittest.TestCase):
             self.assertIn(f"version {CRAN_EXDQLM_VERSION}", text)
             self.assertIn(CRAN_EXDQLM_URL, text)
             self.assertIn(CRAN_EXDQLM_DOI_URL, text)
-            self.assertIn(PROJECT1_URL, text)
+            self.assertIn(PUBLIC_REPRO_URL, text)
             self.assertIn("compact provenance manifests", text)
             self.assertNotIn("workflow repository has been archived", text)
             self.assertNotIn("archived workflow DOI", text)

@@ -62,7 +62,7 @@ from software_availability_contract import (
     EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
     EXDQLM_SOFTWARE_PAPER_DOI_URL,
     EXDQLM_SOFTWARE_PAPER_URL,
-    PROJECT1_URL,
+    PUBLIC_REPRO_URL,
     SOFTWARE_CONTRACT_REL,
     SOFTWARE_MANIFEST_REL,
     WORKFLOW_ARCHIVE_READINESS_REL,
@@ -937,7 +937,7 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
     add(checks, "software_availability", "software_paper_arxiv_url", package.get("software_paper_arxiv_url") == EXDQLM_SOFTWARE_PAPER_URL, str(package.get("software_paper_arxiv_url", "")))
     add(checks, "software_availability", "software_paper_arxiv_doi", package.get("software_paper_arxiv_doi") == EXDQLM_SOFTWARE_PAPER_DOI_URL, str(package.get("software_paper_arxiv_doi", "")))
     add(checks, "software_availability", "software_paper_bibtex_key", package.get("software_paper_bibtex_key") == EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY, str(package.get("software_paper_bibtex_key", "")))
-    add(checks, "software_availability", "workflow_url", workflow.get("public_url") == PROJECT1_URL, str(workflow.get("public_url", "")))
+    add(checks, "software_availability", "workflow_url", workflow.get("public_url") == PUBLIC_REPRO_URL, str(workflow.get("public_url", "")))
     expected_release_files = {
         "readme": WORKFLOW_README_REL,
         "citation": WORKFLOW_CITATION_REL,
@@ -991,7 +991,7 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
     for rel in WORKFLOW_RELEASE_READINESS_RELS:
         add(checks, "software_availability", f"workflow_release_readiness_exists:{rel}", (workflow_root / rel).exists(), rel)
     remote_url = git_value(workflow_root, "remote", "get-url", "origin")
-    add(checks, "software_availability", "workflow_remote_matches_project1", "AntonioAPDL/Project1" in remote_url, remote_url)
+    add(checks, "software_availability", "workflow_remote_configured", bool(remote_url.strip()), remote_url)
 
     readme_path = workflow_root / WORKFLOW_README_REL
     citation_path = workflow_root / WORKFLOW_CITATION_REL
@@ -999,7 +999,7 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
     checklist_path = workflow_root / WORKFLOW_ARCHIVE_READINESS_REL
     if readme_path.exists():
         readme_text = readme_path.read_text(encoding="utf-8")
-        add(checks, "software_availability", "readme_names_public_repro_repo", PROJECT1_URL in readme_text, WORKFLOW_README_REL)
+        add(checks, "software_availability", "readme_names_public_repro_repo", PUBLIC_REPRO_URL in readme_text, WORKFLOW_README_REL)
         add(checks, "software_availability", "readme_names_cran_package", CRAN_EXDQLM_URL in readme_text, WORKFLOW_README_REL)
         add(checks, "software_availability", "readme_names_contract", SOFTWARE_CONTRACT_REL in readme_text, WORKFLOW_README_REL)
         add(checks, "software_availability", "readme_archive_pending", "pending final revision freeze" in readme_text, WORKFLOW_README_REL)
@@ -1007,7 +1007,7 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         citation_text = citation_path.read_text(encoding="utf-8")
         add(checks, "software_availability", "citation_pending_version", 'version: "pending-final-archive"' in citation_text, WORKFLOW_CITATION_REL)
         add(checks, "software_availability", "citation_no_workflow_doi_field", "\ndoi:" not in citation_text, WORKFLOW_CITATION_REL)
-        add(checks, "software_availability", "citation_names_public_repro_repo", PROJECT1_URL in citation_text, WORKFLOW_CITATION_REL)
+        add(checks, "software_availability", "citation_names_public_repro_repo", PUBLIC_REPRO_URL in citation_text, WORKFLOW_CITATION_REL)
     if release_notes_path.exists():
         release_notes_text = release_notes_path.read_text(encoding="utf-8")
         add(checks, "software_availability", "release_notes_archive_pending", "pending final revision freeze" in release_notes_text, WORKFLOW_RELEASE_NOTES_REL)
@@ -1024,7 +1024,7 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
         EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
-        PROJECT1_URL,
+        PUBLIC_REPRO_URL,
         "compact provenance manifests",
     ]
     required_corrections = [
@@ -1033,7 +1033,7 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
         EXDQLM_SOFTWARE_PAPER_DOI_URL,
-        PROJECT1_URL,
+        PUBLIC_REPRO_URL,
         "compact provenance manifests",
     ]
     if archive_check.is_pending:

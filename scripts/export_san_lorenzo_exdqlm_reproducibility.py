@@ -41,6 +41,26 @@ FORBIDDEN_SUFFIXES = {
     ".hdf5",
 }
 
+TEXT_SUFFIXES = {
+    ".R",
+    ".Rmd",
+    ".bib",
+    ".bst",
+    ".cff",
+    ".cls",
+    ".csv",
+    ".json",
+    ".md",
+    ".py",
+    ".sh",
+    ".sty",
+    ".tex",
+    ".txt",
+    ".yaml",
+    ".yml",
+}
+TEXT_FILENAMES = {"Makefile", "LICENSE", ".gitignore"}
+
 WORKFLOW_DOCS = [
     "README.md",
     "CITATION.cff",
@@ -157,13 +177,56 @@ def write_text(path: Path, text: str) -> None:
     path.write_text(textwrap.dedent(text).lstrip(), encoding="utf-8")
 
 
-def copy_file(src: Path, dst: Path, role: str, rows: list[dict[str, str]]) -> None:
+def local_path_replacements(roots: Roots) -> tuple[tuple[str, str], ...]:
+    return (
+        ("https://github.com/AntonioAPDL/" + "Project1", PUBLIC_URL),
+        ((roots.runtime / SHARED_INPUT_BUNDLE).as_posix(), "STAGED_INPUT_BUNDLE_ROOT"),
+        (roots.article.as_posix(), "SOURCE_ARTICLE_ROOT"),
+        (roots.runtime.as_posix(), "SOURCE_RUNTIME_ROOT"),
+        (roots.workflow.as_posix(), "SOURCE_WORKFLOW_ROOT"),
+        (roots.destination.as_posix(), "PUBLIC_REPRO_ROOT"),
+        ("/data/muscat_data/jaguir26/Corrections---Project-1", "SOURCE_CORRECTIONS_ROOT"),
+        ("/data/muscat_data/jaguir26/projects/Project/Input/exAL", "LEGACY_EXAL_INPUT_ROOT"),
+        ("/data/muscat_data/jaguir26/projects/Project", "LEGACY_PROJECT_ROOT"),
+        ("/data/muscat_data/jaguir26/libs", "LOCAL_RCPP_LIB_ROOT"),
+        ("/data/jaguir26/local/src", "EXTERNAL_RUNTIME_SOURCE_ROOT"),
+        ("Owner: Codex + Antonio", "Owner: Antonio"),
+    )
+
+
+def is_text_like(path: Path) -> bool:
+    return path.suffix in TEXT_SUFFIXES or path.name in TEXT_FILENAMES
+
+
+def sanitize_public_text_file(path: Path, replacements: tuple[tuple[str, str], ...]) -> None:
+    if not is_text_like(path):
+        return
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return
+    original = text
+    for old, new in replacements:
+        text = text.replace(old, new)
+    if text != original:
+        path.write_text(text, encoding="utf-8")
+
+
+def copy_file(
+    src: Path,
+    dst: Path,
+    role: str,
+    rows: list[dict[str, str]],
+    replacements: tuple[tuple[str, str], ...] | None = None,
+) -> None:
     if not src.exists():
         return
     if src.suffix in FORBIDDEN_SUFFIXES:
         raise RuntimeError(f"Refusing to copy forbidden file type: {src}")
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
+    if replacements is not None:
+        sanitize_public_text_file(dst, replacements)
     rows.append(
         {
             "role": role,
@@ -175,7 +238,13 @@ def copy_file(src: Path, dst: Path, role: str, rows: list[dict[str, str]]) -> No
     )
 
 
-def copy_tree(src: Path, dst: Path, role: str, rows: list[dict[str, str]]) -> None:
+def copy_tree(
+    src: Path,
+    dst: Path,
+    role: str,
+    rows: list[dict[str, str]],
+    replacements: tuple[tuple[str, str], ...] | None = None,
+) -> None:
     if not src.exists():
         return
     for path in sorted(src.rglob("*")):
@@ -184,7 +253,7 @@ def copy_tree(src: Path, dst: Path, role: str, rows: list[dict[str, str]]) -> No
         if "__pycache__" in path.parts or ".git" in path.parts:
             continue
         target = dst / path.relative_to(src)
-        copy_file(path, target, role, rows)
+        copy_file(path, target, role, rows, replacements)
 
 
 def reset_destination(path: Path, replace: bool) -> None:
@@ -214,7 +283,7 @@ def git_remote(root: Path) -> str:
         return "unknown"
 
 
-def export_data_bundle(roots: Roots, rows: list[dict[str, str]]) -> None:
+def export_data_bundle(roots: Roots, rows: list[dict[str, str]], replacements: tuple[tuple[str, str], ...]) -> None:
     bundle = roots.runtime / SHARED_INPUT_BUNDLE
     if not bundle.exists():
         raise RuntimeError(f"Missing shared input bundle: {bundle}")
@@ -230,7 +299,13 @@ def export_data_bundle(roots: Roots, rows: list[dict[str, str]]) -> None:
         "nws_retro_v30_daily.csv": "nws_nwm_retrospective_v30_daily.csv",
     }
     for old, new in source_map.items():
-        copy_file(bundle / "source_series" / old, roots.destination / "data/staged/source_series" / new, "staged_source_series", rows)
+        copy_file(
+            bundle / "source_series" / old,
+            roots.destination / "data/staged/source_series" / new,
+            "staged_source_series",
+            rows,
+            replacements,
+        )
 
     cov_map = {
         "cov_01_ELI.csv": "eli_climate_index_daily.csv",
@@ -240,11 +315,35 @@ def export_data_bundle(roots: Roots, rows: list[dict[str, str]]) -> None:
         "cov_05_PCA.csv": "gdpc_climate_index_pc1_daily.csv",
     }
     for old, new in cov_map.items():
-        copy_file(bundle / "supporting_inputs/covariates" / old, roots.destination / "data/staged/covariates" / new, "staged_covariates", rows)
+        copy_file(
+            bundle / "supporting_inputs/covariates" / old,
+            roots.destination / "data/staged/covariates" / new,
+            "staged_covariates",
+            rows,
+            replacements,
+        )
 
-    copy_file(bundle / "supporting_inputs/parameters/parameters.txt", roots.destination / "data/staged/model_parameters/parameters.txt", "staged_parameters", rows)
-    copy_file(bundle / "supporting_inputs/support_manifest.json", roots.destination / "data/staged/support_manifest.json", "staged_support_manifest", rows)
-    copy_file(bundle / "stable_inputs/histfix_bundle_summary.csv", roots.destination / "data/staged/forecast_origins/forecast_origin_bundle_summary.csv", "staged_forecast_origin_summary", rows)
+    copy_file(
+        bundle / "supporting_inputs/parameters/parameters.txt",
+        roots.destination / "data/staged/model_parameters/parameters.txt",
+        "staged_parameters",
+        rows,
+        replacements,
+    )
+    copy_file(
+        bundle / "supporting_inputs/support_manifest.json",
+        roots.destination / "data/staged/support_manifest.json",
+        "staged_support_manifest",
+        rows,
+        replacements,
+    )
+    copy_file(
+        bundle / "stable_inputs/histfix_bundle_summary.csv",
+        roots.destination / "data/staged/forecast_origins/forecast_origin_bundle_summary.csv",
+        "staged_forecast_origin_summary",
+        rows,
+        replacements,
+    )
 
     for origin in sorted((bundle / "stable_inputs/site=11160500").glob("cutoff_date=*/run_id=*")):
         if not origin.is_dir():
@@ -261,7 +360,7 @@ def export_data_bundle(roots: Roots, rows: list[dict[str, str]]) -> None:
             "bundle_health.json": "bundle_health.json",
         }
         for old, new in file_map.items():
-            copy_file(origin / old, origin_dst / new, "staged_forecast_origin_bundle", rows)
+            copy_file(origin / old, origin_dst / new, "staged_forecast_origin_bundle", rows, replacements)
 
 
 def generate_public_docs(roots: Roots) -> None:
@@ -333,6 +432,32 @@ def generate_public_docs(roots: Roots) -> None:
         ## Repository URL
 
         {PUBLIC_URL}
+
+        ## Source-Path Placeholders
+
+        Copied text artifacts replace local machine paths with stable
+        placeholders so the public tree can be read outside the original
+        workspace:
+
+        - `SOURCE_WORKFLOW_ROOT`: private live workflow repository used for export.
+        - `SOURCE_ARTICLE_ROOT`: private revised manuscript repository used for export.
+        - `SOURCE_CORRECTIONS_ROOT`: private response-letter repository used
+          for cross-repo validation.
+        - `SOURCE_RUNTIME_ROOT`: private runtime root used for staged artifacts.
+        - `STAGED_INPUT_BUNDLE_ROOT`: private staged-input bundle used for export.
+        - `PUBLIC_REPRO_ROOT`: local checkout of this public reproducibility repo.
+        - `LEGACY_EXAL_INPUT_ROOT`: legacy local input root referenced by older
+          workflow scripts.
+        - `LEGACY_PROJECT_ROOT`: legacy local project root referenced by older
+          workflow scripts.
+        - `LOCAL_RCPP_LIB_ROOT`: local compiled-library root referenced by
+          commented Rcpp setup notes.
+        - `EXTERNAL_RUNTIME_SOURCE_ROOT`: external local runtime source tree used
+          in legacy provenance notes.
+
+        Exact source paths and export-time commits are preserved only in
+        `provenance/source_file_crosswalk.csv` and
+        `provenance/runtime_source_crosswalk.csv`.
 
         ## License Status
 
@@ -608,6 +733,38 @@ def generate_validation_scripts(root: Path) -> None:
             "provenance/runtime_source_crosswalk.csv",
             "data/SHA256SUMS.txt",
         ]
+        TEXT_SUFFIXES = {
+            ".R",
+            ".Rmd",
+            ".bib",
+            ".bst",
+            ".cff",
+            ".cls",
+            ".csv",
+            ".json",
+            ".md",
+            ".py",
+            ".sh",
+            ".sty",
+            ".tex",
+            ".txt",
+            ".yaml",
+            ".yml",
+        }
+        TEXT_FILENAMES = {"Makefile", "LICENSE", ".gitignore"}
+        ALLOWED_LOCAL_PATH_FILES = {
+            "provenance/source_file_crosswalk.csv",
+            "provenance/runtime_source_crosswalk.csv",
+        }
+        LOCAL_PATH_MARKERS = ("/" + "data/muscat_data/", "/" + "data/jaguir26/")
+        STALE_TEXT_MARKERS = (
+            "https://github.com/AntonioAPDL/" + "Project1",
+            "PROJECT1" + "_URL",
+            "chat" + "gpt",
+            "co" + "dex",
+            "ai" + "-generated",
+            "ai " + "wording",
+        )
 
 
         def sha256(path: Path) -> str:
@@ -616,6 +773,10 @@ def generate_validation_scripts(root: Path) -> None:
                 for chunk in iter(lambda: fh.read(1024 * 1024), b""):
                     h.update(chunk)
             return h.hexdigest()
+
+
+        def is_text_like(path: Path) -> bool:
+            return path.suffix in TEXT_SUFFIXES or path.name in TEXT_FILENAMES
 
 
         def main() -> int:
@@ -627,10 +788,22 @@ def generate_validation_scripts(root: Path) -> None:
             for path in ROOT.rglob("*"):
                 if not path.is_file() or ".git" in path.parts:
                     continue
+                rel = path.relative_to(ROOT).as_posix()
                 if path.suffix in FORBIDDEN_SUFFIXES:
-                    errors.append(f"forbidden heavy/runtime file type: {path.relative_to(ROOT)}")
+                    errors.append(f"forbidden heavy/runtime file type: {rel}")
                 if path.stat().st_size > 100 * 1024 * 1024:
-                    errors.append(f"oversized file >100MB: {path.relative_to(ROOT)}")
+                    errors.append(f"oversized file >100MB: {rel}")
+                if is_text_like(path):
+                    try:
+                        text = path.read_text(encoding="utf-8")
+                    except UnicodeDecodeError:
+                        continue
+                    lower_text = text.lower()
+                    if rel not in ALLOWED_LOCAL_PATH_FILES and any(marker in text for marker in LOCAL_PATH_MARKERS):
+                        errors.append(f"local absolute path outside provenance crosswalk: {rel}")
+                    for marker in STALE_TEXT_MARKERS:
+                        if marker.lower() in lower_text:
+                            errors.append(f"stale/internal marker {marker!r} in {rel}")
 
             manifest = ROOT / "data/SHA256SUMS.txt"
             if manifest.exists():
@@ -755,10 +928,11 @@ def export_public_repo(roots: Roots) -> None:
     reset_destination(roots.destination, replace=True)
     generate_public_docs(roots)
     generate_validation_scripts(roots.destination)
+    replacements = local_path_replacements(roots)
 
-    copy_tree(roots.workflow / "R/environmetrics", roots.destination / "R/environmetrics", "workflow_r_code", rows)
-    copy_tree(roots.workflow / "R/unified", roots.destination / "R/unified", "workflow_r_code", rows)
-    copy_file(roots.workflow / "R/environmetrics_utils.R", roots.destination / "R/environmetrics_utils.R", "workflow_r_code", rows)
+    copy_tree(roots.workflow / "R/environmetrics", roots.destination / "R/environmetrics", "workflow_r_code", rows, replacements)
+    copy_tree(roots.workflow / "R/unified", roots.destination / "R/unified", "workflow_r_code", rows, replacements)
+    copy_file(roots.workflow / "R/environmetrics_utils.R", roots.destination / "R/environmetrics_utils.R", "workflow_r_code", rows, replacements)
 
     for item in CONFIG_FILES:
         src = roots.workflow / item
@@ -766,31 +940,31 @@ def export_public_repo(roots: Roots) -> None:
             dst = roots.destination / "config/publication" / Path(item).name
         else:
             dst = roots.destination / "config/authority" / Path(item).name
-        copy_file(src, dst, "workflow_config", rows)
+        copy_file(src, dst, "workflow_config", rows, replacements)
 
     for item in SCRIPT_FILES:
-        copy_file(roots.workflow / item, roots.destination / item, "workflow_script", rows)
+        copy_file(roots.workflow / item, roots.destination / item, "workflow_script", rows, replacements)
 
     for item in TEST_FILES:
-        copy_file(roots.workflow / item, roots.destination / item, "workflow_test", rows)
+        copy_file(roots.workflow / item, roots.destination / item, "workflow_test", rows, replacements)
 
     for item in WORKFLOW_DOCS:
-        copy_file(roots.workflow / item, roots.destination / "provenance/workflow" / item, "workflow_provenance", rows)
+        copy_file(roots.workflow / item, roots.destination / "provenance/workflow" / item, "workflow_provenance", rows, replacements)
 
     for item in ARTICLE_DOCS:
         target_dir = "manuscript" if item in {"README.md", "MANUSCRIPT_ASSET_MANIFEST.json"} else "provenance/article"
-        copy_file(roots.article / item, roots.destination / target_dir / item, "article_provenance", rows)
+        copy_file(roots.article / item, roots.destination / target_dir / item, "article_provenance", rows, replacements)
 
-    copy_tree(roots.article / "Figures/manuscript", roots.destination / "figures/manuscript_context", "article_figure", rows)
-    copy_tree(roots.article / "Figures/multivariate_synthesis_by_cutoff", roots.destination / "figures/multivariate_synthesis_by_cutoff", "article_figure", rows)
-    copy_tree(roots.article / "Figures/reference_synthesis_by_cutoff", roots.destination / "figures/reference_synthesis_by_cutoff", "article_figure", rows)
-    copy_tree(roots.article / "Figures/appendix_cutoff_panels", roots.destination / "figures/appendix_cutoff_panels", "article_figure", rows)
-    copy_tree(roots.article / "tables/generated_tex", roots.destination / "tables/generated_tex", "article_table", rows)
+    copy_tree(roots.article / "Figures/manuscript", roots.destination / "figures/manuscript_context", "article_figure", rows, replacements)
+    copy_tree(roots.article / "Figures/multivariate_synthesis_by_cutoff", roots.destination / "figures/multivariate_synthesis_by_cutoff", "article_figure", rows, replacements)
+    copy_tree(roots.article / "Figures/reference_synthesis_by_cutoff", roots.destination / "figures/reference_synthesis_by_cutoff", "article_figure", rows, replacements)
+    copy_tree(roots.article / "Figures/appendix_cutoff_panels", roots.destination / "figures/appendix_cutoff_panels", "article_figure", rows, replacements)
+    copy_tree(roots.article / "tables/generated_tex", roots.destination / "tables/generated_tex", "article_table", rows, replacements)
 
     for item in ARTICLE_ARTIFACT_DIRS:
-        copy_tree(roots.article / item, roots.destination / "outputs/expected" / item, "article_expected_output", rows)
+        copy_tree(roots.article / item, roots.destination / "outputs/expected" / item, "article_expected_output", rows, replacements)
 
-    export_data_bundle(roots, rows)
+    export_data_bundle(roots, rows, replacements)
     write_crosswalks(roots, rows)
 
 

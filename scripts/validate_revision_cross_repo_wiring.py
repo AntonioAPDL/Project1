@@ -63,7 +63,7 @@ from software_availability_contract import (
     EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
     EXDQLM_SOFTWARE_PAPER_DOI_URL,
     EXDQLM_SOFTWARE_PAPER_URL,
-    PROJECT1_URL,
+    PUBLIC_REPRO_URL,
     SOFTWARE_CONTRACT_REL,
     SOFTWARE_MANIFEST_REL,
     WORKFLOW_ARCHIVE_READINESS_REL,
@@ -801,7 +801,7 @@ def audit_software_availability(
     record("software_paper_arxiv_url", package.get("software_paper_arxiv_url") == EXDQLM_SOFTWARE_PAPER_URL, str(package.get("software_paper_arxiv_url", "")))
     record("software_paper_arxiv_doi", package.get("software_paper_arxiv_doi") == EXDQLM_SOFTWARE_PAPER_DOI_URL, str(package.get("software_paper_arxiv_doi", "")))
     record("software_paper_bibtex_key", package.get("software_paper_bibtex_key") == EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY, str(package.get("software_paper_bibtex_key", "")))
-    record("workflow_public_url", workflow.get("public_url") == PROJECT1_URL, str(workflow.get("public_url", "")))
+    record("workflow_public_url", workflow.get("public_url") == PUBLIC_REPRO_URL, str(workflow.get("public_url", "")))
     expected_release_files = {
         "readme": WORKFLOW_README_REL,
         "citation": WORKFLOW_CITATION_REL,
@@ -842,7 +842,7 @@ def audit_software_availability(
     checklist_path = workflow_root / WORKFLOW_ARCHIVE_READINESS_REL
     if readme_path.exists():
         readme_text = readme_path.read_text(encoding="utf-8")
-        record("readme_names_public_repro_repo", PROJECT1_URL in readme_text, WORKFLOW_README_REL)
+        record("readme_names_public_repro_repo", PUBLIC_REPRO_URL in readme_text, WORKFLOW_README_REL)
         record("readme_names_cran_package", CRAN_EXDQLM_URL in readme_text, WORKFLOW_README_REL)
         record("readme_names_contract", SOFTWARE_CONTRACT_REL in readme_text, WORKFLOW_README_REL)
         record("readme_archive_pending", "pending final revision freeze" in readme_text, WORKFLOW_README_REL)
@@ -850,7 +850,7 @@ def audit_software_availability(
         citation_text = citation_path.read_text(encoding="utf-8")
         record("citation_pending_version", 'version: "pending-final-archive"' in citation_text, WORKFLOW_CITATION_REL)
         record("citation_no_workflow_doi_field", "\ndoi:" not in citation_text, WORKFLOW_CITATION_REL)
-        record("citation_names_public_repro_repo", PROJECT1_URL in citation_text, WORKFLOW_CITATION_REL)
+        record("citation_names_public_repro_repo", PUBLIC_REPRO_URL in citation_text, WORKFLOW_CITATION_REL)
     if release_notes_path.exists():
         release_notes_text = release_notes_path.read_text(encoding="utf-8")
         record("release_notes_archive_pending", "pending final revision freeze" in release_notes_text, WORKFLOW_RELEASE_NOTES_REL)
@@ -869,7 +869,7 @@ def audit_software_availability(
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
         EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
-        PROJECT1_URL,
+        PUBLIC_REPRO_URL,
         "compact provenance manifests",
     ]
     required_corrections = [
@@ -878,7 +878,7 @@ def audit_software_availability(
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
         EXDQLM_SOFTWARE_PAPER_DOI_URL,
-        PROJECT1_URL,
+        PUBLIC_REPRO_URL,
         "compact provenance manifests",
     ]
     if archive_check.is_pending:
