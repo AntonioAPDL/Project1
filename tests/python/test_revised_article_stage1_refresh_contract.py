@@ -36,7 +36,7 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
         )
         self.assertEqual(
             bindings['exal_m_t1']['selected_support_output_root'],
-            '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260612_minus_trend/runs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_samplewise_a1_minus_trend_20260612/post/outputs/multimodel_20221225_v8_he2grid_c05_eps030_exdqlm_multivar_keep_authoritative_support_samplewise_a1_minus_trend_20260612',
+            '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_selected_output_support_20260625_seasonal_only_current_components/runs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep_authoritative_support_seasonal_only_20260625/post/outputs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep_authoritative_support_seasonal_only_20260625',
         )
         self.assertIn('--univar-runtime-root', text)
         self.assertIn('--multivar-support-run-root', text)
@@ -54,7 +54,7 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
     def test_manuscript_asset_manifest_points_selected_model_note_to_corrected_relaunch(self) -> None:
         payload = json.loads((ARTICLE_ROOT / 'MANUSCRIPT_ASSET_MANIFEST.json').read_text(encoding='utf-8'))
         fig = next(item for item in payload['figures'] if item['label'] == 'fig:synth1')
-        self.assertEqual(fig['source_path'], 'artifacts/representative_selected_model_2022_12_25/representative_synthesis_multivariate_with_reference_ensembles.png')
+        self.assertEqual(fig['source_path'], 'artifacts/five_cutoff_main_model_synthesis/20221225_exal_m_t1/exdqlm_multivar_synth_keep_cutoff_window_posterior_samples_with_raw_ensembles.png')
         self.assertIn('exAL-M-T1', fig['note'])
 
     def test_benchmark_table_note_and_freeze_contract_match_final_nine_family_promotion(self) -> None:
@@ -89,8 +89,8 @@ class RevisedArticleStage1RefreshContractTests(unittest.TestCase):
 
     def test_figure_polish_audit_contract_references_cutoff_wide_synthesis_manifests(self) -> None:
         text = (ARTICLE_ROOT / 'scripts' / 'build_figure_polish_status_audit.py').read_text(encoding='utf-8')
-        self.assertIn('figures/multivariate_synthesis_by_cutoff/manifest.csv', text)
-        self.assertIn('figures/reference_synthesis_by_cutoff/manifest.csv', text)
+        self.assertIn('Figures/multivariate_synthesis_by_cutoff/manifest.csv', text)
+        self.assertIn('Figures/reference_synthesis_by_cutoff/manifest.csv', text)
 
     def test_historical_support_refresh_supports_retained_support_contract(self) -> None:
         text = (ARTICLE_ROOT / 'scripts' / 'refresh_current_model_output_support_figures.py').read_text(encoding='utf-8')

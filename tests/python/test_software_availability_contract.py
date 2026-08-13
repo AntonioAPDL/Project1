@@ -52,8 +52,8 @@ class SoftwareAvailabilityContractTests(unittest.TestCase):
             {
                 "readme": WORKFLOW_README_REL,
                 "citation": WORKFLOW_CITATION_REL,
-                "pending_release_notes": WORKFLOW_RELEASE_NOTES_REL,
-                "archive_readiness_checklist": WORKFLOW_ARCHIVE_READINESS_REL,
+                "license_notice": "LICENSE",
+                "validation_script": "scripts/validate_public_repository.py",
             },
         )
         self.assertEqual(manifest["archive_status"]["workflow_archive_status"], "pending_final_release")
@@ -99,8 +99,8 @@ class SoftwareAvailabilityContractTests(unittest.TestCase):
             self.assertNotIn("archived workflow DOI", text)
         self.assertIn(EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY, article)
         self.assertIn(EXDQLM_SOFTWARE_PAPER_DOI_URL, corrections)
-        self.assertIn("permanent archival release of the workflow repository will be created", article)
-        self.assertIn("Before final resubmission", corrections)
+        self.assertIn("clean reproducibility repository for this study", article)
+        self.assertIn("A permanent archive DOI will be minted from the final clean reproducibility release", corrections)
 
     def test_canonical_runbook_keeps_selected_diagnostics_tied_to_selected_output(self) -> None:
         runbook = (ROOT / "repro" / "run" / "CANONICAL_REVISED_ARTICLE_WORKFLOW.md").read_text(encoding="utf-8")

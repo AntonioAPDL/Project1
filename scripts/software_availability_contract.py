@@ -26,7 +26,7 @@ CRAN_EXDQLM_PUBLICATION_DATE = "2026-07-09"
 EXDQLM_SOFTWARE_PAPER_URL = "https://arxiv.org/abs/2607.22760"
 EXDQLM_SOFTWARE_PAPER_DOI_URL = "https://doi.org/10.48550/arXiv.2607.22760"
 EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY = "deleon2026exdqlm"
-PROJECT1_URL = "https://github.com/AntonioAPDL/Project1"
+PROJECT1_URL = "https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility"
 
 PENDING_ARCHIVE_STATUS = "pending_final_release"
 FINAL_ARCHIVE_STATUS = "archived_final_release"

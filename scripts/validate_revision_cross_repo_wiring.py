@@ -43,17 +43,14 @@ from runtime_feasibility_contract import (
     check_runtime_manifest,
 )
 from reviewer1_overview_contract import (
-    ARTICLE_R1_OVERVIEW_DOC_REL,
     R1_OVERVIEW_CONTRACT_REL,
     check_r1_overview_text,
 )
 from reviewer1_uncertainty_contract import (
-    ARTICLE_R1_UNCERTAINTY_DOC_REL,
     R1_UNCERTAINTY_CONTRACT_REL,
     check_r1_uncertainty_text,
 )
 from reviewer1_remaining_contracts import (
-    ARTICLE_R1_REMAINING_DOC_REL,
     R1_REMAINING_CONTRACT_REL,
     check_reviewer1_remaining_text,
 )
@@ -687,10 +684,8 @@ def audit_reviewer1_overview(
         rows.append({"item": item, "status": status, "detail": detail})
 
     workflow_doc = workflow_root / R1_OVERVIEW_CONTRACT_REL
-    article_doc = article_root / ARTICLE_R1_OVERVIEW_DOC_REL
     record("workflow_contract_doc_exists", workflow_doc.exists(), R1_OVERVIEW_CONTRACT_REL)
-    record("article_contract_doc_exists", article_doc.exists(), ARTICLE_R1_OVERVIEW_DOC_REL)
-    for path in [workflow_doc, article_doc]:
+    for path in [workflow_doc]:
         if path.exists():
             sources.append(path)
 
@@ -720,10 +715,8 @@ def audit_reviewer1_uncertainty(
         rows.append({"item": item, "status": status, "detail": detail})
 
     workflow_doc = workflow_root / R1_UNCERTAINTY_CONTRACT_REL
-    article_doc = article_root / ARTICLE_R1_UNCERTAINTY_DOC_REL
     record("workflow_contract_doc_exists", workflow_doc.exists(), R1_UNCERTAINTY_CONTRACT_REL)
-    record("article_contract_doc_exists", article_doc.exists(), ARTICLE_R1_UNCERTAINTY_DOC_REL)
-    for path in [workflow_doc, article_doc]:
+    for path in [workflow_doc]:
         if path.exists():
             sources.append(path)
 
@@ -753,10 +746,8 @@ def audit_reviewer1_remaining(
         rows.append({"item": item, "status": status, "detail": detail})
 
     workflow_doc = workflow_root / R1_REMAINING_CONTRACT_REL
-    article_doc = article_root / ARTICLE_R1_REMAINING_DOC_REL
     record("workflow_contract_doc_exists", workflow_doc.exists(), R1_REMAINING_CONTRACT_REL)
-    record("article_contract_doc_exists", article_doc.exists(), ARTICLE_R1_REMAINING_DOC_REL)
-    for path in [workflow_doc, article_doc]:
+    for path in [workflow_doc]:
         if path.exists():
             sources.append(path)
 
@@ -814,8 +805,8 @@ def audit_software_availability(
     expected_release_files = {
         "readme": WORKFLOW_README_REL,
         "citation": WORKFLOW_CITATION_REL,
-        "pending_release_notes": WORKFLOW_RELEASE_NOTES_REL,
-        "archive_readiness_checklist": WORKFLOW_ARCHIVE_READINESS_REL,
+        "license_notice": "LICENSE",
+        "validation_script": "scripts/validate_public_repository.py",
     }
     record(
         "workflow_release_readiness_manifest",
@@ -851,7 +842,7 @@ def audit_software_availability(
     checklist_path = workflow_root / WORKFLOW_ARCHIVE_READINESS_REL
     if readme_path.exists():
         readme_text = readme_path.read_text(encoding="utf-8")
-        record("readme_names_project1", PROJECT1_URL in readme_text, WORKFLOW_README_REL)
+        record("readme_names_public_repro_repo", PROJECT1_URL in readme_text, WORKFLOW_README_REL)
         record("readme_names_cran_package", CRAN_EXDQLM_URL in readme_text, WORKFLOW_README_REL)
         record("readme_names_contract", SOFTWARE_CONTRACT_REL in readme_text, WORKFLOW_README_REL)
         record("readme_archive_pending", "pending final revision freeze" in readme_text, WORKFLOW_README_REL)
@@ -859,7 +850,7 @@ def audit_software_availability(
         citation_text = citation_path.read_text(encoding="utf-8")
         record("citation_pending_version", 'version: "pending-final-archive"' in citation_text, WORKFLOW_CITATION_REL)
         record("citation_no_workflow_doi_field", "\ndoi:" not in citation_text, WORKFLOW_CITATION_REL)
-        record("citation_names_project1", PROJECT1_URL in citation_text, WORKFLOW_CITATION_REL)
+        record("citation_names_public_repro_repo", PROJECT1_URL in citation_text, WORKFLOW_CITATION_REL)
     if release_notes_path.exists():
         release_notes_text = release_notes_path.read_text(encoding="utf-8")
         record("release_notes_archive_pending", "pending final revision freeze" in release_notes_text, WORKFLOW_RELEASE_NOTES_REL)
@@ -891,8 +882,8 @@ def audit_software_availability(
         "compact provenance manifests",
     ]
     if archive_check.is_pending:
-        required_article.append("permanent archival release of the workflow repository will be created")
-        required_corrections.append("Before final resubmission")
+        required_article.append("clean reproducibility repository for this study")
+        required_corrections.append("A permanent archive DOI will be minted from the final clean reproducibility release")
     elif archive_check.is_final:
         required_article.append(archive_check.doi)
         required_corrections.append(archive_check.doi)
@@ -914,8 +905,7 @@ def audit_software_availability(
                     )
     elif archive_check.is_final:
         for claim in [
-            "permanent archival release of the workflow repository will be created",
-            "Before final resubmission, we will archive",
+            "A permanent archive DOI will be minted from the final clean reproducibility release",
             "workflow archive DOI: pending",
         ]:
             record(f"article_no_stale_pending_claim:{claim}", claim not in article_text, claim)
