@@ -20,8 +20,8 @@ claiming that a final archive already exists.
 ## Readiness Items
 
 - [x] Public workflow repository is identified in the manuscript and response.
-- [x] CRAN package URL and CRAN package DOI are identified in the manuscript and
-  response.
+- [x] CRAN package URL, CRAN package DOI, and arXiv software paper are
+  identified in the manuscript and response.
 - [x] Article-side software availability manifest records the package,
   workflow repository, article repository, corrections repository, and archive
   status.

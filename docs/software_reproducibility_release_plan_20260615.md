@@ -11,7 +11,8 @@ full contract lives in:
 
 Use a layered reproducibility contract:
 
-1. CRAN `exdqlm` is the public reusable estimation package.
+1. CRAN `exdqlm` version 1.1.0 is the public reusable estimation package, with
+   the accompanying software paper at `https://arxiv.org/abs/2607.22760`.
 2. GitHub `AntonioAPDL/Project1` is the public study-specific workflow.
 3. The revised article repository is the publication freeze of figures, tables,
    generated TeX fragments, and compact provenance manifests.
@@ -26,13 +27,14 @@ Use a layered reproducibility contract:
   runtime configuration, post-stage generation, and validator logic.
 - The old `repro/REPRODUCE_PAPER.md` is a legacy record and should not be used
   as the current reproduction contract.
-- The package-level method is already public through CRAN. The workflow-level
-  DOI should freeze the final workflow state, not an intermediate patch set.
+- The package-level method is already public through CRAN and the accompanying
+  arXiv software paper. The workflow-level DOI should freeze the final workflow
+  state, not an intermediate patch set.
 
 ## Required Implementation State
 
-- Manuscript `Code availability` text names the CRAN package, package DOI, and
-  workflow repository.
+- Manuscript `Code availability` text names the CRAN package, package DOI,
+  arXiv software paper, and workflow repository.
 - Corrections HE-5 response mirrors the manuscript wording.
 - Article repo contains:
   `artifacts/software_availability/software_availability_manifest.json`

@@ -21,6 +21,11 @@ WORKFLOW_RELEASE_READINESS_RELS = [
 ]
 CRAN_EXDQLM_URL = "https://CRAN.R-project.org/package=exdqlm"
 CRAN_EXDQLM_DOI_URL = "https://doi.org/10.32614/CRAN.package.exdqlm"
+CRAN_EXDQLM_VERSION = "1.1.0"
+CRAN_EXDQLM_PUBLICATION_DATE = "2026-07-09"
+EXDQLM_SOFTWARE_PAPER_URL = "https://arxiv.org/abs/2607.22760"
+EXDQLM_SOFTWARE_PAPER_DOI_URL = "https://doi.org/10.48550/arXiv.2607.22760"
+EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY = "deleon2026exdqlm"
 PROJECT1_URL = "https://github.com/AntonioAPDL/Project1"
 
 PENDING_ARCHIVE_STATUS = "pending_final_release"

@@ -24,8 +24,10 @@ The generation workflow and model orchestration remain in this repository.
 - Public package page: `https://CRAN.R-project.org/package=exdqlm`
 - Package DOI: `https://doi.org/10.32614/CRAN.package.exdqlm`
 - Public source repository: `https://github.com/AntonioAPDL/exdqlm`
-- Verified current CRAN version for this contract: `1.0.0`
-- Verified CRAN publication date for this contract: `2026-06-04`
+- Verified current CRAN version for this contract: `1.1.0`
+- Verified CRAN publication date for this contract: `2026-07-09`
+- Software paper: `https://arxiv.org/abs/2607.22760`
+- Software paper DOI: `https://doi.org/10.48550/arXiv.2607.22760`
 
 This package is the reusable estimation layer for exDQLM/exAL model fitting.
 It is the right public citation for readers who want the general method rather

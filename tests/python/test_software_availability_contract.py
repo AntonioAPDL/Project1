@@ -15,7 +15,12 @@ os.sys.path.insert(0, str(ROOT / "scripts"))
 from software_availability_contract import (  # noqa: E402
     ARTICLE_SOFTWARE_DOC_REL,
     CRAN_EXDQLM_DOI_URL,
+    CRAN_EXDQLM_PUBLICATION_DATE,
     CRAN_EXDQLM_URL,
+    CRAN_EXDQLM_VERSION,
+    EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
+    EXDQLM_SOFTWARE_PAPER_DOI_URL,
+    EXDQLM_SOFTWARE_PAPER_URL,
     PROJECT1_URL,
     SOFTWARE_CONTRACT_REL,
     SOFTWARE_MANIFEST_REL,
@@ -36,7 +41,11 @@ class SoftwareAvailabilityContractTests(unittest.TestCase):
         self.assertEqual(manifest["schema_version"], "revision_software_availability_v1")
         self.assertEqual(manifest["public_estimation_package"]["cran_package_url"], CRAN_EXDQLM_URL)
         self.assertEqual(manifest["public_estimation_package"]["package_doi"], CRAN_EXDQLM_DOI_URL)
-        self.assertEqual(manifest["public_estimation_package"]["cran_version_verified_for_contract"], "1.0.0")
+        self.assertEqual(manifest["public_estimation_package"]["cran_version_verified_for_contract"], CRAN_EXDQLM_VERSION)
+        self.assertEqual(manifest["public_estimation_package"]["cran_publication_date_verified_for_contract"], CRAN_EXDQLM_PUBLICATION_DATE)
+        self.assertEqual(manifest["public_estimation_package"]["software_paper_arxiv_url"], EXDQLM_SOFTWARE_PAPER_URL)
+        self.assertEqual(manifest["public_estimation_package"]["software_paper_arxiv_doi"], EXDQLM_SOFTWARE_PAPER_DOI_URL)
+        self.assertEqual(manifest["public_estimation_package"]["software_paper_bibtex_key"], EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY)
         self.assertEqual(manifest["study_workflow_repository"]["public_url"], PROJECT1_URL)
         self.assertEqual(
             manifest["study_workflow_repository"]["release_readiness_files"],
@@ -81,12 +90,15 @@ class SoftwareAvailabilityContractTests(unittest.TestCase):
         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
         for text in [article, corrections]:
             self.assertIn(r"CRAN R package \texttt{exdqlm}", text)
+            self.assertIn(f"version {CRAN_EXDQLM_VERSION}", text)
             self.assertIn(CRAN_EXDQLM_URL, text)
             self.assertIn(CRAN_EXDQLM_DOI_URL, text)
             self.assertIn(PROJECT1_URL, text)
             self.assertIn("compact provenance manifests", text)
             self.assertNotIn("workflow repository has been archived", text)
             self.assertNotIn("archived workflow DOI", text)
+        self.assertIn(EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY, article)
+        self.assertIn(EXDQLM_SOFTWARE_PAPER_DOI_URL, corrections)
         self.assertIn("permanent archival release of the workflow repository will be created", article)
         self.assertIn("Before final resubmission", corrections)
 

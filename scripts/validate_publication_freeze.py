@@ -59,7 +59,12 @@ from reviewer1_remaining_contracts import (
 from software_availability_contract import (
     ARTICLE_SOFTWARE_DOC_REL,
     CRAN_EXDQLM_DOI_URL,
+    CRAN_EXDQLM_PUBLICATION_DATE,
     CRAN_EXDQLM_URL,
+    CRAN_EXDQLM_VERSION,
+    EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
+    EXDQLM_SOFTWARE_PAPER_DOI_URL,
+    EXDQLM_SOFTWARE_PAPER_URL,
     PROJECT1_URL,
     SOFTWARE_CONTRACT_REL,
     SOFTWARE_MANIFEST_REL,
@@ -927,7 +932,11 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
     )
     add(checks, "software_availability", "cran_package_url", package.get("cran_package_url") == CRAN_EXDQLM_URL, str(package.get("cran_package_url", "")))
     add(checks, "software_availability", "cran_package_doi", package.get("package_doi") == CRAN_EXDQLM_DOI_URL, str(package.get("package_doi", "")))
-    add(checks, "software_availability", "cran_version_recorded", package.get("cran_version_verified_for_contract") == "1.0.0", str(package.get("cran_version_verified_for_contract", "")))
+    add(checks, "software_availability", "cran_version_recorded", package.get("cran_version_verified_for_contract") == CRAN_EXDQLM_VERSION, str(package.get("cran_version_verified_for_contract", "")))
+    add(checks, "software_availability", "cran_publication_date_recorded", package.get("cran_publication_date_verified_for_contract") == CRAN_EXDQLM_PUBLICATION_DATE, str(package.get("cran_publication_date_verified_for_contract", "")))
+    add(checks, "software_availability", "software_paper_arxiv_url", package.get("software_paper_arxiv_url") == EXDQLM_SOFTWARE_PAPER_URL, str(package.get("software_paper_arxiv_url", "")))
+    add(checks, "software_availability", "software_paper_arxiv_doi", package.get("software_paper_arxiv_doi") == EXDQLM_SOFTWARE_PAPER_DOI_URL, str(package.get("software_paper_arxiv_doi", "")))
+    add(checks, "software_availability", "software_paper_bibtex_key", package.get("software_paper_bibtex_key") == EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY, str(package.get("software_paper_bibtex_key", "")))
     add(checks, "software_availability", "workflow_url", workflow.get("public_url") == PROJECT1_URL, str(workflow.get("public_url", "")))
     expected_release_files = {
         "readme": WORKFLOW_README_REL,
@@ -1011,15 +1020,19 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
     required_article = [
         r"CRAN R package \texttt{exdqlm}",
+        f"version {CRAN_EXDQLM_VERSION}",
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
+        EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
         PROJECT1_URL,
         "compact provenance manifests",
     ]
     required_corrections = [
         r"CRAN R package \texttt{exdqlm}",
+        f"version {CRAN_EXDQLM_VERSION}",
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
+        EXDQLM_SOFTWARE_PAPER_DOI_URL,
         PROJECT1_URL,
         "compact provenance manifests",
     ]

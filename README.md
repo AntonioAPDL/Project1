@@ -10,8 +10,10 @@ and cross-repository validation checks.
 
 The current revision uses a three-layer software and reproducibility contract:
 
-1. Reusable estimation routines are provided by the CRAN R package `exdqlm`:
-   `https://CRAN.R-project.org/package=exdqlm`.
+1. Reusable estimation routines are provided by the CRAN R package `exdqlm`
+   version 1.1.0: `https://CRAN.R-project.org/package=exdqlm`. The package
+   methods and software interface are described in the accompanying arXiv paper:
+   `https://arxiv.org/abs/2607.22760`.
 2. This repository, `https://github.com/AntonioAPDL/Project1`, contains the
    study-specific workflow, orchestration, post-processing, and validators.
 3. The revised article repository freezes manuscript-facing figures, tables,
@@ -34,7 +36,9 @@ Canonical documentation:
 
 Large runtime outputs, raw forecast archives, `.RData` objects, generated
 reports, and basin-specific local data products are intentionally not tracked in
-this repository. Applying the workflow to another basin requires constructing a
+this repository. Applying the workflow to another basin requires staging the
+corresponding observations, forecast products, and covariates. Reproducing the
+retrospective validation design additionally requires constructing a
 version-consistent archive of observations, retrospective products, forecast
 products, and covariates.
 
