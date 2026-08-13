@@ -60,6 +60,7 @@ TEXT_SUFFIXES = {
     ".yml",
 }
 TEXT_FILENAMES = {"Makefile", "LICENSE", ".gitignore"}
+MARKER_SCAN_SKIP_SUFFIXES = {".bst", ".cls", ".sty"}
 
 ARTICLE_FORBIDDEN_TRACKED_PREFIXES = (
     "isba2026_poster/",
@@ -198,7 +199,7 @@ def tracked_files(repo: Path) -> list[str]:
 
 def text_for_tracked_file(repo: Path, tracked: str) -> str | None:
     path = repo / tracked
-    if not path.is_file() or not is_text_like(path):
+    if not path.is_file() or not is_text_like(path) or path.suffix in MARKER_SCAN_SKIP_SUFFIXES:
         return None
     try:
         return path.read_text(encoding="utf-8")
@@ -282,16 +283,23 @@ def check_public_local_paths(state: AuditState, repo: Path) -> None:
 def check_latex_assets(state: AuditState, label: str, repo: Path, tex_files: list[str]) -> None:
     missing: list[str] = []
     include_graphics = re.compile(r"\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}", re.DOTALL)
+    graphicspath_re = re.compile(r"\\graphicspath\{((?:\s*\{[^}]+\})+)\}", re.DOTALL)
     input_re = re.compile(r"\\input\{([^}]+)\}")
     graphic_extensions = ("", ".pdf", ".png", ".jpg", ".jpeg", ".eps")
     for tex in tex_files:
         tex_path = repo / tex
         text = tex_path.read_text(encoding="utf-8")
+        graphic_paths = [Path("")]
+        for block in graphicspath_re.findall(text):
+            graphic_paths.extend(Path(item.strip()) for item in re.findall(r"\{([^}]+)\}", block))
         for raw in include_graphics.findall(text):
             target = raw.strip()
             if "\\" in target:
                 continue
-            candidates = [repo / target if ext == "" else repo / f"{target}{ext}" for ext in graphic_extensions]
+            candidates = []
+            for prefix in graphic_paths:
+                for ext in graphic_extensions:
+                    candidates.append(repo / prefix / target if ext == "" else repo / prefix / f"{target}{ext}")
             if not any(candidate.exists() for candidate in candidates):
                 missing.append(f"{tex}: includegraphics {target}")
         for raw in input_re.findall(text):
@@ -347,6 +355,13 @@ def optional_pdfinfo(state: AuditState) -> None:
         return
     run_command(state, "pdfinfo_article_audit_pdf", ["pdfinfo", "audit_wileyNJD-APA.pdf"], ARTICLE_ROOT, timeout=30)
     run_command(state, "pdfinfo_corrections_pdf", ["pdfinfo", "main.pdf"], CORRECTIONS_ROOT, timeout=30)
+
+
+def cleanup_article_audit_outputs(job: str = "audit_wileyNJD-APA") -> None:
+    for suffix in (".aux", ".bbl", ".blg", ".log", ".out", ".pag", ".pdf"):
+        path = ARTICLE_ROOT / f"{job}{suffix}"
+        if path.exists():
+            path.unlink()
 
 
 def run_existing_validators(state: AuditState) -> None:
@@ -473,6 +488,7 @@ def main() -> int:
     compile_article(state)
     compile_corrections(state)
     optional_pdfinfo(state)
+    cleanup_article_audit_outputs()
     run_existing_validators(state)
 
     for label, repo in repos.items():
