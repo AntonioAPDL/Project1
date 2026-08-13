@@ -283,7 +283,7 @@ def check_public_local_paths(state: AuditState, repo: Path) -> None:
 def check_latex_assets(state: AuditState, label: str, repo: Path, tex_files: list[str]) -> None:
     missing: list[str] = []
     include_graphics = re.compile(r"\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}", re.DOTALL)
-    graphicspath_re = re.compile(r"\\graphicspath\{((?:\s*\{[^}]+\})+)\}", re.DOTALL)
+    graphicspath_re = re.compile(r"\\graphicspath\{((?:\s*\{[^}]+\})+)\s*\}", re.DOTALL)
     input_re = re.compile(r"\\input\{([^}]+)\}")
     graphic_extensions = ("", ".pdf", ".png", ".jpg", ".jpeg", ".eps")
     for tex in tex_files:
