@@ -20,6 +20,8 @@ import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
+import yaml
+
 
 REPO_NAME = "san-lorenzo-exdqlm-reproducibility"
 PUBLIC_URL = f"https://github.com/AntonioAPDL/{REPO_NAME}"
@@ -50,6 +52,8 @@ TEXT_SUFFIXES = {
     ".cff",
     ".cls",
     ".csv",
+    ".html",
+    ".htm",
     ".json",
     ".md",
     ".py",
@@ -86,38 +90,15 @@ ARTICLE_DOCS = [
 
 CONFIG_FILES = [
     "config/post_publication_figures.yaml",
-    "config/he2_bayesian_publication_relaunch_20260510.template.yaml",
-    "config/he2_bayesian_publication_relaunch_table1_targeted_repair_20260612.template.yaml",
-    "config/he2_bayesian_publication_relaunch_univar_al_exal_scale_repair_20260629.template.yaml",
-    "config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_partial_authority_refresh_20260623.template.yaml",
-    "config/he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml",
-    "config/he2_publication_manifest_replacement_overlay_table1_targeted_repair_20260612.yaml",
-    "docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml",
-    "docs/authoritative_selected_outputs/he2_exal_m_t1_representative_20221225.yaml",
 ]
 
 SCRIPT_FILES = [
     "scripts/unified_run.R",
     "scripts/run_environmetrics_figures.R",
     "scripts/make_environmetrics_figures.R",
-    "scripts/build_he2_bayesian_publication_manifest.py",
-    "scripts/build_he2_publication_parity_gate.py",
-    "scripts/build_he4_quantile_check_loss_tables.py",
-    "scripts/he2_exdqlm_keep_authoritative.py",
-    "scripts/he2_publication_relaunch_lib.py",
-    "scripts/validate_current_authority_sync.sh",
-    "scripts/validate_publication_freeze.py",
-    "scripts/validate_revision_cross_repo_wiring.py",
-    "scripts/validate_he2_selected_output_authority.py",
 ]
 
 TEST_FILES = [
-    "tests/python/test_software_availability_contract.py",
-    "tests/python/test_he2_bayesian_publication_manifest.py",
-    "tests/python/test_he2_publication_parity_gate.py",
-    "tests/python/test_he2_selected_output_authority.py",
-    "tests/python/test_he4_quantile_check_loss_tables.py",
-    "tests/python/test_publication_freeze_validation.py",
     "tests/testthat/test_post_crps_tables.R",
     "tests/testthat/test_post_posterior_table_exports.R",
     "tests/testthat/test_post_quantile_synthesis_rearrangement.R",
@@ -129,7 +110,6 @@ ARTICLE_ARTIFACT_DIRS = [
     "artifacts/five_cutoff_reference_synthesis",
     "artifacts/five_cutoff_setup_support",
     "artifacts/forecast_design",
-    "artifacts/he2_historical_support_audit",
     "artifacts/he2_publication_freeze",
     "artifacts/he3_exdqlm_ablation_authoritative",
     "artifacts/he4_quantile_check_loss_current_publication",
@@ -180,6 +160,66 @@ PUBLIC_TEXT_NORMALIZATIONS = (
     ("HISTFIX", "LONG_HISTORY_SUPPORT"),
     ("legacy_log_ready_repairs", "log_scale_support_checks"),
     ("selected_window_splice", "selected_window_alignment"),
+    ("best_epsilon_label", "forecast_covariance_prior_label"),
+    ("best_epsilon_value", "forecast_covariance_prior_weight"),
+    ("selected_epsilon_label", "forecast_covariance_prior_label"),
+    ("selected_epsilon", "forecast_covariance_prior_weight"),
+    ("provenance_selected_epsilon", "provenance_forecast_covariance_prior_weight"),
+    ("source_epsilon_label", "source_forecast_covariance_prior_label"),
+    ("matrix_epsilon", "source_forecast_covariance_prior_setting"),
+    ("runner_up_grid_spec_id", "comparison_profile_id"),
+    ("runner_up_mean_crps", "comparison_mean_crps"),
+    ("winner_runner_abs_diff", "comparison_abs_diff"),
+    ("epsilon/discount screening checkpoint", "selected-output refresh"),
+    ("epsilon_discount_grid", "selected_specifications"),
+    ("discount_grid", "selected_specifications"),
+    ("canonical-grid", "selected-output"),
+    ("canonical_grid", "selected_output"),
+    ("partial-screen", "selected-output"),
+    ("partial_screen", "selected_output"),
+    ("clean_screen_replay", "selected_output_replay"),
+    ("clean screen replay", "selected-output replay"),
+    ("screening checkpoint", "selected-output checkpoint"),
+    ("screening", "internal exploratory"),
+    ("generated screening/audit outputs", "internal exploratory outputs"),
+    ("blended-covariate", "forecast-covariate"),
+    ("blended covariate", "forecast-covariate"),
+    ("blended_covariate", "forecast_covariate"),
+    ("blending internals", "forecast-covariate internals"),
+    ("blending", "forecast-covariate construction"),
+)
+
+PUBLIC_CSV_FIELD_RENAMES = {
+    "grid_spec_id": "selected_profile_id",
+    "synthesis_grid_spec_id": "synthesis_selected_profile_id",
+    "discount_case_id": "state_evolution_profile_id",
+    "epsilon_label": "forecast_covariance_prior_label",
+    "epsilon_value": "forecast_covariance_prior_weight",
+    "best_epsilon_label": "forecast_covariance_prior_label",
+    "best_epsilon_value": "forecast_covariance_prior_weight",
+    "selected_epsilon": "forecast_covariance_prior_weight",
+    "selected_epsilon_label": "forecast_covariance_prior_label",
+    "provenance_selected_epsilon": "provenance_forecast_covariance_prior_weight",
+    "provenance_selected_source_run": "provenance_selected_output",
+    "provenance_selected_source_run_id": "provenance_selected_output_id",
+    "source_epsilon_label": "source_forecast_covariance_prior_label",
+    "matrix_epsilon": "source_forecast_covariance_prior_setting",
+    "runner_up_grid_spec_id": "comparison_profile_id",
+    "runner_up_mean_crps": "comparison_mean_crps",
+    "winner_runner_abs_diff": "comparison_abs_diff",
+}
+
+PUBLIC_METADATA_PREFIXES_FOR_EXPORT = (
+    "README.md",
+    "CITATION.cff",
+    "LICENSE",
+    "Makefile",
+    "config/",
+    "data/",
+    "manuscript/",
+    "outputs/",
+    "provenance/",
+    "tables/",
 )
 
 
@@ -249,6 +289,54 @@ def apply_replacements(text: str, replacements: tuple[tuple[str, str], ...]) -> 
     return text
 
 
+def sanitize_public_field_name(name: str) -> str:
+    return PUBLIC_CSV_FIELD_RENAMES.get(
+        apply_replacements(name, PUBLIC_TEXT_NORMALIZATIONS),
+        apply_replacements(name, PUBLIC_TEXT_NORMALIZATIONS),
+    )
+
+
+def sanitize_public_lineage_text(text: str) -> str:
+    """Neutralize private campaign labels while preserving scientific values."""
+
+    text = apply_replacements(text, PUBLIC_TEXT_NORMALIZATIONS)
+    regex_replacements = (
+        (
+            r"multimodel_(\d{8})_v8_he2grid_c\d{2}_eps\d{3}_([A-Za-z0-9_]+)",
+            r"selected_model_\1_\2",
+        ),
+        (
+            r"multimodel_(\d{8})_v8_c\d{2}_eps\d{3}_([A-Za-z0-9_]+)",
+            r"selected_model_\1_\2",
+        ),
+        (
+            r"multimodel_(\d{8})_v8_exalm_t1_discount_grid_exact_v1_set\d+_([A-Za-z0-9_]+)",
+            r"selected_model_\1_\2",
+        ),
+        (
+            r"multimodel_(\d{8})_v8_eps\d+(?:cf\d+)?_([A-Za-z0-9_]+)",
+            r"selected_model_\1_\2",
+        ),
+        (
+            r"multimodel_(\d{8})_v8_he2partial20260623_([A-Za-z0-9_]+)",
+            r"selected_model_\1_\2",
+        ),
+        (r"\bc\d{2}_eps\d{3}\b", "selected_profile"),
+        (r"\beps\d+(?:cf\d+)?\b", "forecast_covariance_prior"),
+        (
+            r"\bexalm_t1_discount_grid_exact_20260424:set09_override\b",
+            "exal_m_t1_selected_output_reference",
+        ),
+        (
+            r"\bfeaturecov_cf1_eps_sweep_20260416\b",
+            "featurecov_selected_output_reference",
+        ),
+    )
+    for pattern, replacement in regex_replacements:
+        text = re.sub(pattern, replacement, text)
+    return text
+
+
 def compact_placeholder_paths(text: str) -> str:
     """Remove machine/run-specific path tails after public placeholders."""
 
@@ -273,7 +361,7 @@ def redact_json_for_public(obj):
         redacted = {}
         for key, value in obj.items():
             lower_key = key.lower()
-            public_key = apply_replacements(key, PUBLIC_TEXT_NORMALIZATIONS)
+            public_key = sanitize_public_field_name(key)
             if lower_key == "deterministic_climate":
                 redacted[public_key] = FORECAST_COVARIATE_PUBLIC_NOTE
                 continue
@@ -286,7 +374,9 @@ def redact_json_for_public(obj):
     if isinstance(obj, list):
         return [redact_json_for_public(value) for value in obj]
     if isinstance(obj, str):
-        return apply_replacements(compact_placeholder_paths(obj), PUBLIC_TEXT_NORMALIZATIONS)
+        return sanitize_public_lineage_text(
+            apply_replacements(compact_placeholder_paths(obj), PUBLIC_TEXT_NORMALIZATIONS)
+        )
     return obj
 
 
@@ -301,11 +391,15 @@ def redact_csv_for_public(path: Path) -> bool:
         return False
 
     changed = False
-    fieldnames = list(reader.fieldnames)
+    fieldnames = [sanitize_public_field_name(name) for name in reader.fieldnames]
     note_json = json.dumps(FORECAST_COVARIATE_PUBLIC_NOTE, sort_keys=True)
+    sanitized_rows = []
     for row in rows:
+        sanitized_row = {}
         for key, value in list(row.items()):
+            public_key = sanitize_public_field_name(key)
             if value is None:
+                sanitized_row[public_key] = value
                 continue
             lower_key = key.lower()
             lower_value = value.lower()
@@ -318,15 +412,19 @@ def redact_csv_for_public(path: Path) -> bool:
                 new_value = "SOURCE_ARCHIVE_REFERENCE"
             else:
                 new_value = compact_placeholder_paths(value)
+            new_value = sanitize_public_lineage_text(new_value)
             if new_value != value:
-                row[key] = new_value
                 changed = True
+            sanitized_row[public_key] = new_value
+            if public_key != key:
+                changed = True
+        sanitized_rows.append(sanitized_row)
 
     if changed:
         with path.open("w", newline="", encoding="utf-8") as fh:
-            writer = csv.DictWriter(fh, fieldnames=fieldnames)
+            writer = csv.DictWriter(fh, fieldnames=fieldnames, lineterminator="\n")
             writer.writeheader()
-            writer.writerows(rows)
+            writer.writerows(sanitized_rows)
     return changed
 
 
@@ -334,6 +432,7 @@ def curate_public_metadata(roots: Roots, replacements: tuple[tuple[str, str], ..
     for path in sorted(roots.destination.rglob("*")):
         if not path.is_file() or ".git" in path.parts:
             continue
+        relpath = path.relative_to(roots.destination).as_posix()
         if path.suffix == ".json":
             try:
                 obj = json.loads(path.read_text(encoding="utf-8"))
@@ -351,7 +450,10 @@ def curate_public_metadata(roots: Roots, replacements: tuple[tuple[str, str], ..
             except UnicodeDecodeError:
                 continue
             updated = compact_placeholder_paths(apply_replacements(text, replacements))
-            updated = apply_replacements(updated, PUBLIC_TEXT_NORMALIZATIONS)
+            if relpath.startswith(PUBLIC_METADATA_PREFIXES_FOR_EXPORT):
+                updated = sanitize_public_lineage_text(updated)
+            else:
+                updated = apply_replacements(updated, PUBLIC_TEXT_NORMALIZATIONS)
             if updated != text:
                 path.write_text(updated, encoding="utf-8")
 
@@ -561,6 +663,122 @@ def write_public_deterministic_covariate_stub(roots: Roots) -> None:
     )
 
 
+def write_public_selected_model_specs(roots: Roots) -> None:
+    """Write neutral selected-model specifications for public inspection."""
+
+    authority_path = roots.workflow / "docs/exdqlm_multivar_keep_authoritative_specs_20260601.yaml"
+    authority = yaml.safe_load(authority_path.read_text(encoding="utf-8"))
+    by_cutoff = {str(row["cutoff"]): dict(row) for row in authority.get("winners", [])}
+
+    partial_root = (
+        roots.runtime
+        / "multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623"
+        / "runs"
+    )
+    for cutoff in ("20211221", "20220511", "20221225"):
+        resolved = partial_root / f"multimodel_{cutoff}_v8_he2partial20260623_exdqlm_multivar_keep" / "resolved_config.yaml"
+        if not resolved.exists() or cutoff not in by_cutoff:
+            continue
+        cfg = yaml.safe_load(resolved.read_text(encoding="utf-8"))
+        state = cfg.get("models", {}).get("exdqlm_multivar", {}).get("state_evolution", {})
+        forecast_cov = (
+            cfg.get("fit", {})
+            .get("exdqlm_multivar", {})
+            .get("legacy", {})
+            .get("forecast_cov", {})
+        )
+        by_cutoff[cutoff].update(
+            {
+                "forecast_covariance_prior_weight": forecast_cov.get("epsilon"),
+                "c_factor": forecast_cov.get("c_factor", by_cutoff[cutoff].get("c_factor")),
+                "df_t": state.get("df_t", by_cutoff[cutoff].get("df_t")),
+                "df_s1": state.get("df_s1", by_cutoff[cutoff].get("df_s1")),
+                "df_s2": state.get("df_s2", by_cutoff[cutoff].get("df_s2")),
+                "df_s67": state.get("df_s67", by_cutoff[cutoff].get("df_s67")),
+                "df_discrep": state.get("df_discrep", by_cutoff[cutoff].get("df_discrep")),
+                "lambda": state.get("lambda", by_cutoff[cutoff].get("lambda")),
+                "df_trans": state.get("df_trans", by_cutoff[cutoff].get("df_trans")),
+                "df_covs": state.get("df_covs", by_cutoff[cutoff].get("df_covs")),
+            }
+        )
+
+    manifest_path = roots.article / "artifacts/five_cutoff_crps_validation_sources/manifest.csv"
+    crps_by_cutoff: dict[str, dict[str, str]] = {}
+    if manifest_path.exists():
+        with manifest_path.open(newline="", encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                crps_by_cutoff[row["cutoff"].replace("-", "")] = row
+
+    selected_cutoffs = []
+    for cutoff in ("20210123", "20211112", "20211221", "20220511", "20221225"):
+        row = by_cutoff.get(cutoff, {})
+        crps_row = crps_by_cutoff.get(cutoff, {})
+        selected_cutoffs.append(
+            {
+                "cutoff": cutoff,
+                "cutoff_date": f"{cutoff[:4]}-{cutoff[4:6]}-{cutoff[6:]}",
+                "selected_output_id": f"selected_exdqlm_multivariate_keep_{cutoff}",
+                "model_family": "exdqlm_multivar_keep",
+                "manuscript_label": "exAL-M-T1",
+                "forecast_covariance_prior": {
+                    "c_factor": row.get("c_factor", 1.0),
+                    "prior_weight": row.get(
+                        "forecast_covariance_prior_weight",
+                        row.get("epsilon_value"),
+                    ),
+                },
+                "state_evolution": {
+                    "df_t": row.get("df_t"),
+                    "df_s1": row.get("df_s1"),
+                    "df_s2": row.get("df_s2"),
+                    "df_s67": row.get("df_s67"),
+                    "df_discrep": row.get("df_discrep"),
+                    "lambda": row.get("lambda", 0.97),
+                    "df_trans": row.get("df_trans"),
+                    "df_covs": row.get("df_covs"),
+                },
+                "forecast_window_mean_crps": crps_row.get("replay_mean_crps", row.get("mean_crps")),
+                "score_scale": "log_cms_plus1",
+            }
+        )
+
+    spec = {
+        "schema_version": "public_selected_model_specifications_v1",
+        "scope": "selected manuscript-facing exDQLM multivariate keep outputs",
+        "note": (
+            "This public file records the selected settings needed to interpret "
+            "and rerun the reported exAL-M-T1 case-study outputs from staged "
+            "inputs. Internal exploratory campaign labels are not part of the "
+            "public release."
+        ),
+        "shared_inputs": {
+            "site": "USGS 11160500 San Lorenzo River at Big Trees",
+            "data_start": authority.get("metadata", {}).get("data_start", "1987-05-29"),
+            "active_quantiles": ["0.05", "0.20", "0.35", "0.50", "0.65", "0.80", "0.95"],
+            "input_bundle_contract": "PPT|SOIL|GDPC1",
+        },
+        "selected_cutoffs": selected_cutoffs,
+    }
+
+    out_dir = roots.destination / "config/selected_model_specifications"
+    write_text(
+        out_dir / "README.md",
+        """
+        # Selected Model Specifications
+
+        These files describe the selected manuscript-facing model
+        specifications in public, readable terms. They intentionally omit
+        private exploratory campaign names and run-root labels. Numerical
+        scores, cutoffs, prior weights, discount factors, staged inputs, and
+        expected manuscript outputs remain available for verification.
+        """,
+    )
+    (out_dir / "exdqlm_multivariate_keep_selected_outputs.yaml").write_text(
+        yaml.safe_dump(spec, sort_keys=False, allow_unicode=False),
+        encoding="utf-8",
+    )
+
+
 def reset_destination(path: Path, replace: bool) -> None:
     if path.exists() and not replace:
         raise SystemExit(f"Destination exists. Re-run with --replace to refresh: {path}")
@@ -684,7 +902,7 @@ def generate_public_docs(roots: Roots) -> None:
         or rerun the reported case-study analysis from model-ready inputs. It
         does not contain raw climate-center archives, raw covariate-retrieval
         workflows, active runtime campaigns, local notebooks, poster drafts, or
-        generated screening/audit outputs.
+        internal exploratory outputs.
 
         ## Quick Validation
 
@@ -714,7 +932,7 @@ def generate_public_docs(roots: Roots) -> None:
 
         - `R/`: selected model, post-processing, and figure-generation code.
         - `scripts/`: orchestration, manifest, and validation scripts.
-        - `config/`: selected publication and authority configuration files.
+        - `config/`: selected public model-specification files.
         - `data/staged/`: compact model-ready inputs used by the five cutoff cases.
         - `outputs/expected/`: current manuscript-facing expected outputs and
           compact artifact bundles.
@@ -1053,9 +1271,9 @@ def generate_public_docs(roots: Roots) -> None:
         """
         # Configuration
 
-        This directory contains selected publication-authority configuration
-        files and manifests. Legacy exploratory grids and screening configs are
-        not exported.
+        This directory contains selected public model-specification files and
+        manuscript support configuration. Internal exploratory campaign
+        configs are not exported.
         """,
     )
 
@@ -1133,6 +1351,7 @@ def generate_validation_scripts(root: Path) -> None:
             "data/staged/covariates/local_precipitation_daily.csv",
             "data/staged/covariates/local_shallow_soil_water_daily.csv",
             "data/staged/covariates/gdpc_climate_index_pc1_daily.csv",
+            "config/selected_model_specifications/exdqlm_multivariate_keep_selected_outputs.yaml",
             "tables/generated_tex/benchmark_crps_main_table.tex",
             "figures/manuscript_context/site_context_usgs.png",
             "outputs/expected/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv",
@@ -1151,6 +1370,8 @@ def generate_validation_scripts(root: Path) -> None:
             ".cff",
             ".cls",
             ".csv",
+            ".html",
+            ".htm",
             ".json",
             ".md",
             ".py",
@@ -1182,7 +1403,16 @@ def generate_validation_scripts(root: Path) -> None:
         )
         FORBIDDEN_PUBLIC_PATHS = {
             "config/publication/unified_run.template.yaml",
+            "config/publication/he2_bayesian_publication_relaunch_20260510.template.yaml",
+            "config/publication/he2_bayesian_publication_relaunch_table1_targeted_repair_20260612.template.yaml",
+            "config/publication/he2_bayesian_publication_relaunch_univar_al_exal_scale_repair_20260629.template.yaml",
+            "config/publication/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_partial_authority_refresh_20260623.template.yaml",
+            "config/publication/he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml",
+            "config/publication/he2_publication_manifest_replacement_overlay_table1_targeted_repair_20260612.yaml",
+            "config/authority/exdqlm_multivar_keep_authoritative_specs_20260601.yaml",
+            "config/authority/he2_exal_m_t1_representative_20221225.yaml",
             "config/publication/exdqlm_multivar_keep_epsilon_discount_grid_20260524.csv",
+            "outputs/expected/artifacts/he2_historical_support_audit",
             "provenance/workflow/docs/current_authority_refresh_runbook.md",
             "provenance/workflow/docs/canonical_gdpc_subset6_noi_soi_espi_pna_whwp_amo_20260527.md",
             "provenance/workflow/repro/GLOFAS_HARMONIZATION_QA_SPEC.md",
@@ -1218,6 +1448,28 @@ def generate_validation_scripts(root: Path) -> None:
             "hist" + "fix",
             "legacy" + "_log_ready",
             "selected" + "_window_splice",
+        )
+        INTERNAL_SELECTION_MARKERS = (
+            "he2" + "grid",
+            "eps" + "001",
+            "eps" + "030",
+            "eps" + "060",
+            "eps" + "090",
+            "eps" + "180",
+            "eps" + "360",
+            "eps" + "365",
+            "discount" + "_grid",
+            "epsilon" + "_discount",
+            "canonical" + "_grid",
+            "canonical-" + "grid",
+            "partial" + "_screen",
+            "partial-" + "screen",
+            "best" + "_epsilon",
+            "selected" + "_epsilon",
+            "source" + "_epsilon",
+            "matrix" + "_epsilon",
+            "runner" + "_up",
+            "screen" + "ing",
         )
 
 
@@ -1265,6 +1517,9 @@ def generate_validation_scripts(root: Path) -> None:
                         for marker in INTERNAL_COVARIATE_MARKERS:
                             if marker.lower() in lower_text:
                                 errors.append(f"internal covariate-construction marker {marker!r} in {rel}")
+                        for marker in INTERNAL_SELECTION_MARKERS:
+                            if marker.lower() in lower_text:
+                                errors.append(f"internal model-selection lineage marker {marker!r} in {rel}")
 
             manifest = ROOT / "data/SHA256SUMS.txt"
             if manifest.exists():
@@ -1343,16 +1598,23 @@ def write_crosswalks(roots: Roots, rows: list[dict[str, str]]) -> None:
             normalized["public_path"] = public_path.relative_to(roots.destination).as_posix()
         except ValueError:
             normalized["public_path"] = public_path.as_posix()
-        normalized["source_path"] = compact_placeholder_paths(apply_replacements(normalized["source_path"], replacements))
+        normalized["public_path"] = sanitize_public_lineage_text(normalized["public_path"])
+        normalized["source_path"] = sanitize_public_lineage_text(
+            compact_placeholder_paths(apply_replacements(normalized["source_path"], replacements))
+        )
         normalized_rows.append(normalized)
     with crosswalk.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=["role", "public_path", "source_path", "bytes", "sha256"])
+        writer = csv.DictWriter(
+            fh,
+            fieldnames=["role", "public_path", "source_path", "bytes", "sha256"],
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(normalized_rows)
 
     runtime_crosswalk = roots.destination / "provenance/runtime_source_crosswalk.csv"
     with runtime_crosswalk.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=["role", "path", "git_head", "remote"])
+        writer = csv.DictWriter(fh, fieldnames=["role", "path", "git_head", "remote"], lineterminator="\n")
         writer.writeheader()
         writer.writerow(
             {
@@ -1406,6 +1668,7 @@ def export_public_repo(roots: Roots) -> None:
         else:
             dst = roots.destination / "config/authority" / Path(item).name
         copy_file(src, dst, "workflow_config", rows, replacements)
+    write_public_selected_model_specs(roots)
 
     for item in SCRIPT_FILES:
         copy_file(roots.workflow / item, roots.destination / item, "workflow_script", rows, replacements)
