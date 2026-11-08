@@ -1,0 +1,33 @@
+{
+  "original_active_labels": 45,
+  "revised_active_labels": 54,
+  "lost_active_labels": [],
+  "added_labels": [
+    "app:augmentation",
+    "app:forecastcovariance",
+    "app:stateconstruction",
+    "app:vblad",
+    "sec:evaluation",
+    "sec:introduction",
+    "subsec:comparisonspecifications",
+    "subsec:quantileresults",
+    "tab:informationroles"
+  ],
+  "duplicate_labels": [],
+  "all_13_figure_identities_preserved": true,
+  "all_generated_table_input_identities_preserved": true,
+  "source_scientific_sections": [
+    "INTRODUCTION",
+    "FORECASTING SETTING AND DATA",
+    "BAYESIAN CORRECTION AND PREDICTIVE SYNTHESIS",
+    "APPLICATION SPECIFICATION AND EVALUATION",
+    "RESULTS",
+    "DISCUSSION AND CONCLUSIONS"
+  ],
+  "original_words_before_ack": 7598,
+  "revised_words_before_ack": 6046,
+  "final_tex_sha256": "8d3a5bb5991fb1120b3ae465b702ac642f6e129d1d1d4b9e45c571434b7a38f1",
+  "final_bib_sha256": "3a74778d36feec5d254d59cc23667525a2046c25fb35171e946977fd44491629",
+  "final_active_labels": 54,
+  "final_lost_labels": []
+}

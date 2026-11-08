@@ -1,0 +1,108 @@
+Comment-1 contract and case-policy implementation
+November 7, 2026 America/Los_Angeles
+
+Scope
+
+Implemented in isolated workflow/article worktrees only. No research process,
+fit, source-data file, predictive cache, generated numeric table, selected run,
+public repository, or historical response was changed by this subtask.
+
+Canonical figure policy
+
+Figures/ is canonical, matching MANUSCRIPT_ASSET_MANIFEST.json and ArticleRepoLayout.
+The historical sync_legacy_uppercase_figures.py filename is retained for callers,
+but now copies from canonical Figures/ to optional figures/ compatibility copies.
+It never removes a directory or unmanaged asset. --relative-path may be repeated
+for a bounded refresh; full-tree refresh first requires all five current families.
+Sources and destinations are validated before writes, including symlink/escape
+checks for image and metadata targets. Manifests record source/target/hash/bytes.
+
+An additional wiring defect was found and corrected: refresh_cutoff_synthesis_families
+passed its uppercase canonical directory as the lowercase mirror target and then
+cleared that target. Both call sites now use compatibility_figures_dir; the helper
+rejects self-copy, unexpected destination roots and symlinks, and preserves
+unmanaged files. No broad refresh was run. The figure agent subsequently added
+separate bounded presentation hooks to this same script, preserving this repair.
+
+README and generated README source now declare the same canonical direction.
+Figures/README identifies the old uppercase mirror_manifest as historical.
+The manuscript/source filenames, stable figure labels and asset selection remain.
+
+Current article contract migration
+
+A pure article-side manuscript_text_contract.py supplies active-LaTeX handling,
+scientific concept checks, stable label/order checks, and bibliography URL
+resolution. The workflow loads it via current_article_contract.py. Comments cannot
+satisfy requirements; a URL in an uncited bibliography entry cannot satisfy a
+software availability link. A cited entry resolves a URL without requiring the
+same literal URL to clutter the manuscript prose.
+
+Current article gates now protect the six-section order, data/model/evaluation
+separation, illustration-before-interpretation, appendix matrix/augmentation,
+scientific concepts and the actual numerical/manifest checks. They do not require
+the previous rejected prose, internal runtime keys or obsolete section headings.
+The runtime checks retain parallel seven-quantile fitting, approximate combined
+two-hour timing, staged-input scope, 64 cores/503 GiB and hardware/implementation
+context. Existing exclusions of unsupported timing decompositions remain.
+
+The scope was extended from the initial two reviewer modules/runtime gate to the
+remaining-item, forecast-design, latest-issue and two cross-repository validators,
+because they duplicated the same current-article sentences. This is a necessary
+wiring repair for the authorized rewrite. All historical response literal
+requirements in the eight affected modules were compared as parsed Python values
+against HEAD and are identical. Their actual response file remains unchanged.
+No numeric/source/hash branch was weakened or removed.
+
+The narrow selected-support metadata test now accepts the prior full-render v2
+metadata plus the explicit component-only v3 revision, or a future complete v3
+render. It checks the corrected label, derived daily period and calendar-year
+conversion. The underlying component identity and numerical summaries retain
+their original assertions.
+
+Files owned by this subtask
+
+Workflow:
+scripts/current_article_contract.py (new)
+scripts/reviewer1_overview_contract.py
+scripts/reviewer1_uncertainty_contract.py
+scripts/reviewer1_remaining_contracts.py
+scripts/runtime_feasibility_contract.py
+scripts/forecast_design_contract.py
+scripts/latest_forecast_issue_contract.py
+scripts/validate_publication_freeze.py
+scripts/validate_revision_cross_repo_wiring.py
+tests/python/test_article_legacy_uppercase_figures_sync.py
+tests/python/test_he1_runtime_contract.py
+tests/python/test_he6_forecast_design_contract.py
+tests/python/test_he7_latest_forecast_issue_contract.py
+
+Article:
+scripts/manuscript_text_contract.py (new)
+scripts/article_repo_layout.py
+scripts/sync_legacy_uppercase_figures.py
+scripts/refresh_cutoff_synthesis_families.py (case helper; figure agent adds hooks)
+scripts/build_generated_asset_index.py
+README.md
+Figures/README.md
+docs/reviewer1_overview_forecasting_emphasis_contract.md (new; missing baseline doc)
+docs/reviewer1_uncertainty_framing_contract.md (new; missing baseline doc)
+docs/reviewer1_remaining_contracts.md (new; broader check exposed missing doc)
+tests/test_article_a1_and_table_contracts.py
+tests/test_manuscript_text_contract.py (new)
+
+Validation
+
+Nine targeted unittest discovery suites pass: 55 tests total. Initial 54-test
+summary was captured before the final additional symlink-metadata test; its
+seven-test case-policy suite passed afterward. Other suites: overview2,
+uncertainty2, runtime3, forecastdesign3, latestissue4, remaining3, article29,
+active-LaTeX/citedURL2. Commands/logs: contract_test_summary.json and test_*.log
+in this isolated implementation directory. No broad scientific workload launched.
+
+Nine narrow publication-freeze function groups pass531checks: prose, prior claim
+contract, runtime, forecast design, latest issue, reviewer overview/uncertainty/
+remaining, and software. See contract_validator_narrow_checks.json.
+
+Historical response requirements comparison: historical_response_contract_preservation.json.
+Compilation/figure rendering and full numerical authority verification are owned
+by the parent integration stage; this note does not claim those separate checks.

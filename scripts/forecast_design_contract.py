@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from current_article_contract import scientific_checks
 from typing import Any
 
 
@@ -10,25 +12,6 @@ FORECAST_DESIGN_CONTRACT_REL = "docs/he6_out_of_sample_forecast_design_contract_
 ARTICLE_FORECAST_DESIGN_DOC_REL = "docs/forecast_design_contract.md"
 
 FORECAST_CUTOFFS = ["20210123", "20211112", "20211221", "20220511", "20221225"]
-
-REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS = [
-    "Post-cutoff USGS observations are reserved strictly for verification",
-    "are not used to fit or update the predictive distributions",
-    "At a cutoff \\(c\\), the model is fit using USGS observations and retrospective products available through \\(c\\)",
-    "The forecast-window predictive distributions are then synthesized using the latest forecast products issued at or before \\(c\\)",
-    "latest forecast products issued at or before",
-    "forecast-window precipitation and soil-moisture covariates",
-    "canonical GDPC climate-index factor",
-    "not treated as an operational forecast product or verification target",
-    "five cutoff-specific, version-consistent staged datasets",
-    "uses only information available at that origin to fit seven quantile-specific models",
-    "scores that distribution against future USGS observations held out over the forecast window",
-    "archive-feasible, version-consistent origins that span contrasting hydrological settings",
-    "This archive-reconstruction step is the main practical constraint on a denser rolling-origin design",
-    "different release histories, product versions, update frequencies, horizons, ensemble-member structures, spatial supports, and access interfaces",
-    "data recovery, version matching, spatial extraction, covariate staging, and computation",
-    "avoid dense overlaps that would overrepresent the same episode",
-]
 
 REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS = [
     "five cutoff-specific, rolling-origin forecast-window evaluations",
@@ -173,3 +156,7 @@ def check_forecast_design_manifest(data: dict[str, Any]) -> list[ForecastDesignM
             str(claims_policy.get("continuous_daily_post_2022_hindcast_claimed")),
         ),
     ]
+
+
+def check_forecast_design_article_text(article_text: str) -> list[ForecastDesignManifestCheck]:
+    return [ForecastDesignManifestCheck(item, ok, detail) for item, ok, detail in scientific_checks(article_text, ['origin_design', 'verification', 'archive_work', 'climate_covariates', 'transfer_inputs'])]

@@ -296,3 +296,8 @@ flowMC_old/
 # Never commit server credential notebooks
 /servers_info.ipynb
 /scratch/servers_info.ipynb
+
+# Reviewed comment-1 editorial evidence: small checklists, build logs and proofs.
+# Keep this bounded audit package together; general data/output rules still apply.
+!/docs/environmetrics_comment1_plan_20261107/
+!/docs/environmetrics_comment1_plan_20261107/**

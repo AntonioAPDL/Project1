@@ -63,13 +63,14 @@ Use the following contract:
 
 1. Report a representative single-site end-to-end wall-clock runtime of about two
    hours.
-2. State that the benchmark used the total runtime columns
-   `runtime_sec_total` / `runtime_sec`.
+2. Cite the estimation software beside the runtime description. Keep the total
+   runtime field names in the compact manifest, technical source record and
+   historical response; the main article does not need internal field names.
 3. State the hardware context: production Linux server, `64` cores, and roughly
    `503` GiB RAM.
 4. State that seven quantile-specific fits can be dispatched in parallel.
-5. State that daily refitting is operationally feasible at this single-site
-   scale once the input archive is staged.
+5. State that the timing applies after model-ready observations, products and
+   covariates have been prepared for the single-site workload.
 6. Qualify the benchmark as hardware- and implementation-dependent.
 7. Do not report a 100-minute fitting / 20-minute post-processing decomposition
    unless a future runtime source has populated component timing fields.
@@ -86,3 +87,7 @@ The workflow validator now checks this contract through:
 The article-side tests also verify that the runtime manifest and manuscript
 wording remain synchronized.
 
+
+Editorial validation update, November 7, 2026: current-article gates check the
+scientific timing context and software citation without requiring the old runtime
+keys in prose. Previous-response requirements and timing-source fields are retained.

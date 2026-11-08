@@ -1,0 +1,136 @@
+{
+  "scope": "Comment 1 presentation implementation wiring; read-only checks; current published results held fixed",
+  "figure_tree": {
+    "lower_files": 14,
+    "upper_files": 48,
+    "missing_canonical_dirs_for_existing_sync": [
+      "multivariate_synthesis_by_cutoff",
+      "reference_synthesis_by_cutoff"
+    ],
+    "upper_only": [
+      "README.md",
+      "manuscript/covariate_context_precip_soil_gdpc.png",
+      "manuscript/forecast_products_context.png",
+      "manuscript/historical_component_80month.png",
+      "manuscript/historical_summary_dry_period.png",
+      "manuscript/historical_summary_wet_period.png",
+      "manuscript/reference_synthesis_univariate.png",
+      "manuscript/retrospective_products_context.png",
+      "manuscript/site_context_usgs.png",
+      "mirror_manifest.csv",
+      "multivariate_synthesis_by_cutoff/README.md",
+      "multivariate_synthesis_by_cutoff/cutoff_2021_01_23_multivariate_synthesis.png",
+      "multivariate_synthesis_by_cutoff/cutoff_2021_01_23_multivariate_synthesis_with_reference_ensembles.png",
+      "multivariate_synthesis_by_cutoff/cutoff_2021_11_12_multivariate_synthesis.png",
+      "multivariate_synthesis_by_cutoff/cutoff_2021_11_12_multivariate_synthesis_with_reference_ensembles.png",
+      "multivariate_synthesis_by_cutoff/cutoff_2021_12_21_multivariate_synthesis.png",
+      "multivariate_synthesis_by_cutoff/cutoff_2021_12_21_multivariate_synthesis_with_reference_ensembles.png",
+      "multivariate_synthesis_by_cutoff/cutoff_2022_05_11_multivariate_synthesis.png",
+      "multivariate_synthesis_by_cutoff/cutoff_2022_05_11_multivariate_synthesis_with_reference_ensembles.png",
+      "multivariate_synthesis_by_cutoff/cutoff_2022_12_25_multivariate_synthesis.png",
+      "multivariate_synthesis_by_cutoff/cutoff_2022_12_25_multivariate_synthesis_with_reference_ensembles.png",
+      "multivariate_synthesis_by_cutoff/manifest.csv",
+      "reference_synthesis_by_cutoff/README.md",
+      "reference_synthesis_by_cutoff/cutoff_2021_01_23_reference_synthesis.png",
+      "reference_synthesis_by_cutoff/cutoff_2021_01_23_reference_synthesis_with_reference_ensembles.png",
+      "reference_synthesis_by_cutoff/cutoff_2021_11_12_reference_synthesis.png",
+      "reference_synthesis_by_cutoff/cutoff_2021_11_12_reference_synthesis_with_reference_ensembles.png",
+      "reference_synthesis_by_cutoff/cutoff_2021_12_21_reference_synthesis.png",
+      "reference_synthesis_by_cutoff/cutoff_2021_12_21_reference_synthesis_with_reference_ensembles.png",
+      "reference_synthesis_by_cutoff/cutoff_2022_05_11_reference_synthesis.png",
+      "reference_synthesis_by_cutoff/cutoff_2022_05_11_reference_synthesis_with_reference_ensembles.png",
+      "reference_synthesis_by_cutoff/cutoff_2022_12_25_reference_synthesis.png",
+      "reference_synthesis_by_cutoff/cutoff_2022_12_25_reference_synthesis_with_reference_ensembles.png",
+      "reference_synthesis_by_cutoff/manifest.csv"
+    ],
+    "lower_only": []
+  },
+  "findings": [
+    {
+      "id": "W1",
+      "severity": "implementation prerequisite",
+      "summary": "Case contract contradicts current authoritative manifest/layout; existing lowercase-to-uppercase sync cannot safely run.",
+      "refs": [
+        "Evironmetrics---REVISED-DOC-Corrected-2/scripts/article_repo_layout.py:102",
+        "Evironmetrics---REVISED-DOC-Corrected-2/MANUSCRIPT_ASSET_MANIFEST.json:5",
+        "Evironmetrics---REVISED-DOC-Corrected-2/scripts/sync_legacy_uppercase_figures.py:33",
+        "Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex:13"
+      ]
+    },
+    {
+      "id": "W2",
+      "severity": "render isolation prerequisite",
+      "summary": "Renderer manifest paths are absolute; --rewrite-canonical FALSE still mutates source output style/manifests. Require staged copy and explicit path rebasing.",
+      "refs": [
+        "scripts/render_publication_post_figures.R:35",
+        "R/unified/post_publication_figures.R:540",
+        "R/unified/post_publication_figures.R:558",
+        "R/unified/post_publication_figures.R:846",
+        "R/unified/post_publication_figures.R:851"
+      ]
+    },
+    {
+      "id": "W3",
+      "severity": "scope control",
+      "summary": "Do not run broad article refresh for comment 1; it can rebuild historical support, tables, publication freeze, setup assets, cleanup, and poster.",
+      "refs": [
+        "Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_all_generated_assets.py:110",
+        "Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_cutoff_synthesis_families.py:471"
+      ]
+    },
+    {
+      "id": "W4",
+      "severity": "authority preservation",
+      "summary": "Resolve selected multivariate paths from frozen HE2 manifest with no runtime-root override; explicit runtime_root bypasses freeze and falls back to older winner YAML.",
+      "refs": [
+        "Evironmetrics---REVISED-DOC-Corrected-2/scripts/exal_m_t1_authoritative.py:47",
+        "Evironmetrics---REVISED-DOC-Corrected-2/scripts/exal_m_t1_authoritative.py:84",
+        "Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_cutoff_synthesis_families.py:345"
+      ]
+    },
+    {
+      "id": "W5",
+      "severity": "narrow regeneration",
+      "summary": "All ten selected multivariate/univariate outputs have required compact matrices/quantile CSVs/sample CSVs/adapters; presentation render requires no fit objects. Six displayed synthesis panels suffice initially; family refresh currently reads ten runs.",
+      "refs": [
+        "/tmp/comment1_wiring_audit_inventory.json",
+        "R/unified/post_publication_figures.R:865",
+        "R/unified/post_publication_figures.R:913"
+      ]
+    },
+    {
+      "id": "W6",
+      "severity": "context provenance",
+      "summary": "Use explicit 20260516 v2 context config and isolated output root, not renderer default 20260507; source current figure from existing staged data.",
+      "refs": [
+        "scripts/render_exal_m_t1_setup_support_by_cutoff_v2.py:373",
+        "config/exal_m_t1_setup_support_by_cutoff_v2_20260516.json",
+        "Evironmetrics---REVISED-DOC-Corrected-2/config/runtime_bindings.json:9"
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "command": [
+        "python3",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/validate_manuscript_figure_paths.py"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_article_legacy_uppercase_figures_sync.py"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 1
+    }
+  ]
+}

@@ -331,15 +331,15 @@ plot_forecats_bundle <- function(bundle_dir) {
   retro_labels_from_window <- unique(as.character(retros_long$source_label))
   retro_labels <- unique(c(retro_labels_from_coverage, retro_labels_from_window))
 
-  observed_fit_label <- "USGS observed (pre-cutoff)"
-  observed_future_label <- "Held-out USGS verification"
+  observed_fit_label <- "USGS history"
+  observed_future_label <- "USGS verification"
   glofas_forecast_label <- if (nrow(glofas_ens_long) > 0L) {
-    sprintf("GloFAS forecast ensemble (%d members)", length(unique(glofas_ens_long$member)))
+    "GloFAS ensemble"
   } else {
     character(0)
   }
   nws_forecast_label <- if (nrow(nws_ens_long) > 0L) {
-    sprintf("NWS forecast ensemble (%d members)", length(unique(nws_ens_long$member)))
+    "NWM ensemble"
   } else {
     character(0)
   }
@@ -360,6 +360,10 @@ plot_forecats_bundle <- function(bundle_dir) {
   shape_map[nws_forecast_label] <- NA_integer_
   linetype_map <- setNames(rep("solid", length(legend_levels)), legend_levels)
   linetype_map[[observed_future_label]] <- "22"
+  shape_map[[observed_future_label]] <- 21L
+  linetype_map[retro_labels[grepl("^GloFAS", retro_labels)]] <- "dotdash"
+  linetype_map[retro_labels[grepl("^NWS", retro_labels)]] <- "longdash"
+  linetype_map[nws_forecast_label] <- "dotted"
 
   usgs_before <- usgs %>% filter(obs_type == "Before") %>% mutate(Source = observed_fit_label)
   usgs_after <- usgs %>% filter(obs_type == "After") %>% mutate(Source = observed_future_label)
@@ -405,6 +409,8 @@ plot_forecats_bundle <- function(bundle_dir) {
   }
   legend_label_map[glofas_forecast_label] <- glofas_forecast_label
   legend_label_map[nws_forecast_label] <- nws_forecast_label
+  legend_label_map <- gsub("NWS", "NWM", legend_label_map)
+  legend_label_map <- gsub("GloFAS historical", "GloFAS retrospective", legend_label_map)
   forecast_labels_shown <- c(
     if (nrow(glofas_ens_long) > 0L) glofas_forecast_label,
     if (nrow(nws_ens_long) > 0L) nws_forecast_label
@@ -422,6 +428,7 @@ plot_forecats_bundle <- function(bundle_dir) {
   all_vals <- c(usgs$value, retros_long$value, glofas_ens_long$value, nws_ens_long$value)
   flood_df <- figure_flood_label_df(plot_scale = plot_scale, values = all_vals)
   flood_style <- figure_flood_stage_style()
+  flood_df$label <- ifelse(flood_df$reference_level == "minor", "Lower flow reference", "Upper flow reference")
 
   # -------------------------
   # Plot
@@ -453,14 +460,13 @@ plot_forecats_bundle <- function(bundle_dir) {
       vjust = 0.5,
       color = flood_style$label_color,
       fontface = flood_style$label_face,
-      size = flood_style$label_size
+      size = 2.9
     )} +
     # Retrospective/historical/reanalysis before cutoff.
     geom_line(
       data = retros_long,
-      aes(x = date, y = value, color = source_label, group = source_id),
-      linewidth = 0.7,
-      linetype = "solid",
+      aes(x = date, y = value, color = source_label, linetype = source_label, group = source_id),
+      linewidth = 0.5,
       alpha = 0.85,
       na.rm = TRUE
     ) +
@@ -531,9 +537,10 @@ plot_forecats_bundle <- function(bundle_dir) {
       breaks = legend_levels_shown,
       labels = legend_label_map[legend_levels_shown]
     ) +
-    scale_x_date(breaks = scales::pretty_breaks(6), date_labels = figure_date_label_format(c(plot_start, plot_end))) +
+    scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d") +
     labs(
-      title = plot_title,
+      title = "Hydrologic products and observed discharge",
+      subtitle = sprintf("Forecast origin: %s | first forecast: %s", cutoff_date, forecast_start),
       x = "Date",
       y = y_lab
     ) +
@@ -546,16 +553,21 @@ plot_forecats_bundle <- function(bundle_dir) {
           linewidth = 0.9,
           alpha = 1
         ),
-        ncol = 3,
+        ncol = 2,
         byrow = TRUE
       ),
       linetype = "none",
       shape = "none"
     ) +
-    theme_manuscript_standard(base_size = 14, title_size = 16, legend_position = "bottom") +
+    theme_manuscript_standard(base_size = 10, title_size = 11, legend_position = "bottom") +
     theme(
-      legend.title = element_text(face = "bold"),
-      legend.text = element_text(size = 8.8)
+      legend.title = element_blank(),
+      plot.subtitle = element_text(size = 8.5),
+      axis.text = element_text(size = 8.5),
+      legend.text = element_text(size = 8.5),
+      legend.key.width = grid::unit(25, "pt"),
+      legend.key.height = grid::unit(9, "pt"),
+      plot.margin = margin(6, 7, 4, 5)
     )
 
   # Optional markers
@@ -590,7 +602,8 @@ plot_forecats_bundle <- function(bundle_dir) {
   }
 
   out_path <- file.path(figures_dir, "forecats.png")
-  ggsave(filename = out_path, plot = p, width = 12, height = 6, units = "in", dpi = 300)
+  ggsave(filename = out_path, plot = p, width = 6.23, height = 4.4, units = "in", dpi = 320)
+  ggsave(filename = sub("\\.png$", ".pdf", out_path), plot = p, width = 6.23, height = 4.4, units = "in", device = grDevices::pdf)
   message("Wrote: ", out_path)
   invisible(out_path)
 }

@@ -1,0 +1,151 @@
+Comment 1 revision: completed implementation and audit
+
+Final release addendum: ../final_review/RELEASE_REVIEW.txt supersedes this
+implementation-stage PDF/source-hash snapshot and working-tree status.
+November 7, 2026, America/Los_Angeles
+
+The readability criticism is substantially justified. Its six specific examples
+were traceable to the source, rendered figures or Wiley typesetting. The strongest
+issue was the reading order: readers encountered machinery before the information
+roles, competing specifications appeared in results, and historical interpretation
+preceded the delivered forecast. The revision addresses all six examples and the
+broader structure concern. This report concerns major comment 1.
+
+The implemented article is in the current working repository:
+  Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex
+  Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.bib
+  Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.pdf
+
+The PDF is 33 pages. Its input hashes match the delivered manuscript, bibliography,
+class, table includes and thirteen figures. completion_summary.json records its
+SHA-256 and the final verification counts. Changes remain available for review in
+the working trees; numerical results and selected publication identities are fixed.
+
+What changed and why
+
+The six sections now follow problem, data, model/computation, application and
+evaluation, results, discussion. The opening explains hydrological and
+meteorological uncertainty before connecting them to available information.
+The data section distinguishes USGS target observations, retrospective source
+channels, forecast ensembles and transfer covariates in one compact role table.
+It states units, transformation, extraction/alignment and relevant product versions.
+
+One scientific state-space formulation carries the main explanation. The stacked
+state, dimensions and channel set needed by the priors remain in the main text;
+full selector matrices, augmentation, covariance algebra and algorithms are linked
+in appendices. The actual VB procedure leads the computation section. Software is
+cited beside the combined timing/hardware description, replacing internal runtime
+keys. The twelve transfer predictors, their scaling and the 34-state dimension
+are explicit. Daily angular frequencies and the slow component's calendar units
+are corrected in prose and in the component figure title, without changing fits.
+
+Predictive synthesis explains anchor ordering, distributional shifts, blending
+adjusted quantile functions, tail construction, rearrangement and random inverse-
+CDF sampling. CRPS quadrature is described separately. Local notation collisions
+and verified appendix transcription errors are repaired. The long-cycle caption
+identifies posterior medians, matching the summary actually drawn.
+
+The forecast illustration now precedes comparisons and supporting historical
+interpretation. The reference specification is introduced before its illustration.
+All original evidence is retained. The main model is readable before the technical
+appendix is needed; all 45 original active labels are preserved.
+
+Claim-specific citations replace the generic nine-reference cluster. Product
+citations accompany the data descriptions. Verified bibliography repairs include
+ERA5-Land/GloFAS sources, Duan's publication year, Cosgrove and Demargne author
+lists, Demargne's final issue metadata, Barlow's author order, and name accents.
+The source-specific verification notes and primary URLs are in evidence/
+article_revision_notes.txt; publisher metadata for the two long author lists is
+retained alongside it.
+
+Seven context/synthesis panels were regenerated from copied publication inputs.
+Their keys reproduce actual markers and line patterns, distinguish providers and
+information roles in grayscale, and remain legible at the inclusion width.
+The line is the predictive mean on the log1p scale; the ribbon is the pointwise
+central 95% predictive interval from the unchanged complete predictive matrices.
+Ten existing displayed sample traces are correctly identified. The origin marks T
+and the first forecast is T+1. The final review also corrected a clipped January
+date label and regenerated the family together. The separate component-title
+render used compact summaries, giving eight changed manuscript figures overall.
+
+UTF-8 input, unpadded figure/table counter definitions and disabled decimal digit
+grouping fix the demonstrated typographical defects. The original five-decimal
+table precision is retained. Caption spacing is controlled separately. The Wiley
+class is unchanged. A placeholder unpublished 'How to cite' block is suppressed
+in the manuscript, and hyperlink borders are hidden. Abstract/main abbreviations
+and later local acronyms are defined consistently.
+
+Regeneration and documentation
+
+Figures/ is the canonical tree. The compatibility copier now preserves unmanaged
+files and rejects destructive self-copy, escaping paths and symlinks. A related
+refresh call that passed the canonical tree as its own mirror target is repaired.
+
+Existing refreshes copy saved runtime images. A bounded presentation registry
+therefore preserves reviewed images/style/metadata only when selected identities
+and numerical input hashes still match. Its 105 restoration targets are checked
+before copying, including 67 external source inputs and twelve local numerical
+CSVs. Frozen snapshot/input checks also precede rendering and promotion. Exact
+executed renderer sources, commands, styles and display-specific guide levels are
+retained in the article's artifacts/comment1_figure_revision/ directory.
+
+Current-article checks now use active LaTeX, scientific concepts, stable labels and
+actually cited URL targets. They no longer require rejected sentences or internal
+runtime keys. Duplicate constraints in related validators and four active workflow
+contract documents are aligned. Historical response requirements remain unchanged.
+The earlier response and public reproduction repositories were not edited.
+
+Verification completed
+
+  61 targeted Python tests passed, including six render/restoration guard tests.
+  48 R figure assertions passed, with no failures or warnings.
+  684 publication-freeze checks passed.
+  564 strict cross-repository checks passed.
+  All thirteen manuscript figure includes resolve to the canonical tree.
+  Dedicated output-lineage and presentation-registry checks passed.
+  All 188 originally protected files retain their baseline hashes.
+  Ten selected run identities are unchanged.
+  All 100 numeric rows / 587 extracted numbers across twelve generated table
+  fragments are unchanged. Six plot-summary contracts also match earlier proofs.
+  LaTeX labels stabilize; citations and references resolve; BibTeX has no warnings.
+  Delivered PDF inputs are byte-checked against the final build manifest.
+
+The complete layout was inspected across all pages; main/reference synthesis
+figures, final-size keys, decimal tables, accents and bibliography were inspected
+in detail. Grayscale proofs were checked. One abstract-related horizontal-box
+warning and one inherited vertical-box warning remain in the vendor title layout;
+they cause no visible text overflow in the reviewed PDF. The earlier baseline
+had three horizontal and one vertical warnings. These are recorded in the log.
+
+There was no Project1 R worker at the integration recheck; six unrelated R workers
+were observed. No research process was stopped, restarted or redirected. Curated
+presentation inputs were used throughout; no new model fit was launched.
+
+Evidence limits are explicit. model_description_evidence.json records the saved
+configuration and historical/current constructor agreement, without claiming a
+recovered saved transition matrix or an unavailable spectral peak diagnostic.
+article_revision_notes.txt distinguishes inspected current package source from
+unavailable exact archived execution sources. This editorial work does not claim
+complete numerical algorithm validation beyond the stated invariants and checks.
+
+Review and reproduce
+
+Read execution_plan_and_outcome.txt for stage-by-stage choices. clause_checklist.csv
+maps each reviewer example to current labels/pages. departures.csv explains the
+additional bounded repairs. readiness/implementation_tasks.csv closes every task.
+manuscript_source.diff and the two support-source diffs provide text review;
+promotion_manifest.json inventories changed assets with before/after hashes.
+validation/ and evidence/ contain executed results and command records.
+
+From the workflow root, rerun the bounded checks in a fresh output directory:
+  python3 -B docs/environmetrics_comment1_plan_20261107/implementation/run_checks.py \
+    --report-dir /tmp/NEW_comment1_checks
+
+Build another PDF without changing article sources:
+  python3 -B Evironmetrics---REVISED-DOC-Corrected-2/scripts/build_manuscript_review.py \
+    --output-dir /tmp/NEW_comment1_build --jobname manuscript_review
+
+The check suite uses the companion repositories and frozen local runtime inputs.
+The PDF build uses the article source, included tables and images. Fresh proof
+rendering commands and input dependencies are documented in evidence/
+figure_revision_notes.txt. Toolchain versions are recorded in toolchain.json.

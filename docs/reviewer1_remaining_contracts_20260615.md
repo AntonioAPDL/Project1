@@ -32,7 +32,7 @@ tables, or figure provenance are refreshed.
 | R1-m4 | The application section introduces the USGS target and separates observations, retrospective products, forecast covariates, and operational forecasts. |
 | R1-m5 | Precipitation is not treated with a separate censoring, zero-inflation, or occurrence/intensity model; zero days are retained in the supplied covariate path. |
 | R1-m6 | The latest-forecast-only protocol is used and older forecast issuances are not averaged into publication forecast matrices. |
-| R1-m7 | Forecast validation and selected-model interpretation are separate sections; diagnostic figures are not additional validation evidence. |
+| R1-m7 | Forecast comparisons and selected-model interpretation occupy distinct Results subsections; the predictive illustration precedes interpretation. |
 | R1-m8 | Transfer-function covariate summaries report posterior means, while source-specific gamma and sigma tables report posterior medians. |
 | R1-m9 | Diagnostic fitted-location/component bands are distinguished from full posterior predictive synthesis envelopes. |
 
@@ -53,8 +53,10 @@ The article-side companion note is
 
 ## Review Rule
 
-If future calibration or manuscript editing changes any of the affected
-sections, regenerate the relevant tables/figures first, then re-run the
-publication-freeze and cross-repo validators before editing the corrections
-response. This keeps the response letter, revised article, and workflow
-provenance synchronized.
+For current editorial changes, preserve the numerical source/selection contract
+and regenerate only affected presentation assets. Re-run the relevant current-
+article checks and publication/cross-repository validators. The previous response
+is a historical record; a new response is a separate writing task. Current prose
+gates use scientific concepts and stable labels, without requiring obsolete
+sentences, internal runtime keys or old section titles. See the implemented plan
+in docs/environmetrics_comment1_plan_20261107/implementation/.

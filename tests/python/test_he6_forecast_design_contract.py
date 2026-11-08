@@ -16,7 +16,7 @@ from forecast_design_contract import (  # noqa: E402
     FORBIDDEN_FORECAST_DESIGN_CLAIMS,
     FORECAST_DESIGN_CONTRACT_REL,
     FORECAST_DESIGN_MANIFEST_REL,
-    REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS,
+    check_forecast_design_article_text,
     REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS,
     check_forecast_design_manifest,
 )
@@ -38,8 +38,8 @@ class HE6ForecastDesignContractTests(unittest.TestCase):
     def test_article_and_corrections_share_forecast_design_claims(self) -> None:
         article = (ARTICLE_ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
-        for claim in REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS:
-            self.assertIn(claim, article)
+        failed = [row for row in check_forecast_design_article_text(article) if not row.ok]
+        self.assertFalse(failed, [f"{row.item}: {row.detail}" for row in failed])
         for claim in REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS:
             self.assertIn(claim, corrections)
         for claim in FORBIDDEN_FORECAST_DESIGN_CLAIMS:

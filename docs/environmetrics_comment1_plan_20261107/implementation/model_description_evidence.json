@@ -1,0 +1,84 @@
+{
+  "scope": "Dimensional verification of the unchanged publication-model description. No model or numerical output was changed.",
+  "run_id": "multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep",
+  "recorded_run_commit": "7772e0de426010ffe329ad4b129eb078763d9818",
+  "sources": [
+    {
+      "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/R/unified/families/exdqlm_multivar_structure.R",
+      "sha256": "0af8749309129b0a52ab4b49cfd83889d87d70cc68d3105ca09cab54ec45e2f4"
+    },
+    {
+      "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/R/environmetrics/20_model_setup.R",
+      "sha256": "b4cc7af735e3111906f17b43903611d6bec6cc252b63e6469944b9aeb8e86d70"
+    },
+    {
+      "path": "/data/muscat_data/jaguir26/exdqlm/R/seasMod.R",
+      "sha256": "0201e1942f88d356c21ab5e2b9ee21cef112df6511b62c8111cee3352556318d"
+    },
+    {
+      "path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep/resolved_config.yaml",
+      "sha256": "9d0c4319cb5558fd09f13a149894af53f2b7f3a8d35f71ba4c6b1c956f4a5e26"
+    },
+    {
+      "path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep/run_manifest.yaml",
+      "sha256": "91f3562f7d6d5f8ce9633e8f07a4885df429d53c84e941f567b87fc4402b04df"
+    },
+    {
+      "path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep/fit/exdqlm_multivar/keep/q=50/outputs/diagnostics/transfer_design/transfer_feature_metadata.csv",
+      "sha256": "0430e1b99de40a3dc956c3aa2badc2d7ab671a44b64643583ce6c0d1b7c7059a"
+    }
+  ],
+  "historical_constructor_comparison": {
+    "R/environmetrics/20_model_setup.R": {
+      "recorded_commit_sha256": "b4cc7af735e3111906f17b43903611d6bec6cc252b63e6469944b9aeb8e86d70",
+      "current_sha256": "b4cc7af735e3111906f17b43903611d6bec6cc252b63e6469944b9aeb8e86d70",
+      "same_source_at_recorded_commit": true
+    },
+    "R/unified/families/exdqlm_multivar_structure.R": {
+      "recorded_commit_sha256": "0af8749309129b0a52ab4b49cfd83889d87d70cc68d3105ca09cab54ec45e2f4",
+      "current_sha256": "0af8749309129b0a52ab4b49cfd83889d87d70cc68d3105ca09cab54ec45e2f4",
+      "same_source_at_recorded_commit": true
+    }
+  },
+  "daily_base_period": 363.5854,
+  "harmonic_multipliers": [
+    1.0,
+    2.0,
+    0.14691084757818865
+  ],
+  "daily_radian_frequencies": [
+    0.01728118155233842,
+    0.03456236310467684,
+    0.0025387930290065954
+  ],
+  "period_days": [
+    363.5854,
+    181.7927,
+    2474.87102548022
+  ],
+  "long_period_calendar_years": 6.775966722055127,
+  "long_period_calendar_months": 81.31160066466153,
+  "structural_dimension": 7,
+  "transfer_feature_names": [
+    "PPT",
+    "SOIL",
+    "PCA",
+    "PPT_sq",
+    "SOIL_sq",
+    "PPT_x_SOIL",
+    "PPT_lag1",
+    "PPT_lag2",
+    "PPT_lag3",
+    "SOIL_lag1",
+    "SOIL_lag2",
+    "SOIL_lag3"
+  ],
+  "transfer_predictor_count": 12,
+  "transfer_predictors_plus_intercept": 13,
+  "full_three_channel_state_dimension": 34,
+  "limitations": [
+    "The selected run configuration retains structural inclusion flags, not a standalone saved transition matrix.",
+    "The recorded run commit and current constructor agree on daily frequencies. The run manifest records a dirty checkout; this check does not reconstruct an unavailable exact runtime source snapshot.",
+    "Exploratory spectral code is available but its peak outputs were not saved. No stronger physical or formal period-selection claim is made."
+  ]
+}

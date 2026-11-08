@@ -109,5 +109,6 @@ stage_forecats_bundle(
 )
 plot_forecats_bundle(stage_dir)
 file.copy(file.path(stage_dir, "figures", "forecats.png"), file.path(out_dir, "forecats.png"), overwrite = TRUE)
+file.copy(file.path(stage_dir, "figures", "forecats.pdf"), file.path(out_dir, "forecats.pdf"), overwrite = TRUE)
 
 cat(sprintf("Rendered v2 setup/support figures for cutoff %s into %s\n", format(cutoff_date, "%Y-%m-%d"), out_dir))

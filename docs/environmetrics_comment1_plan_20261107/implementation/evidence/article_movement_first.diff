@@ -1,0 +1,326 @@
+--- baseline.tex
++++ movement_first.tex
+@@ -93,6 +93,53 @@
+ \end{figure*}
+ 
+ The remainder of the paper is organized as follows. Section~\ref{sec:methodology} presents the modeling framework and inference strategy. Section~\ref{sec:data} describes the San Lorenzo River application, the data sources, and the rolling-origin forecasting design. Section~\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results, and Section~\ref{sec:interpretation} presents supporting interpretation for the selected specification. Section~\ref{sec5} discusses conclusions and further work.
++
++\section{FORECASTING THE SAN LORENZO RIVER FLOW}
++%\section{APPLICATION DATA AND FORECASTING DESIGN}
++\label{sec:data}
++
++\subsection{Study Setting and Observations}
++
++Our target series is the average daily natural water flow of the San Lorenzo River at the Big Trees U.S. Geological Survey (USGS) gauging station in Santa Cruz, California (Figure \ref{fig:sanlorenzo}). The raw USGS discharge record is reported in cubic feet per second; we convert it to m$^3$/s before applying the $\log(1+x)$ transformation used in the figures and model inputs. The Big Trees location is characterized by minimal human intervention, so the recorded flow closely reflects natural river dynamics. Over the study window used in this article, the daily series covers May 29, 1987, through December 25, 2022, and contains 12,995 observations.
++The San Lorenzo River is a major water resource for the Santa Cruz area and is relevant to both flood response and longer-term water-supply planning. The record includes high-flow episodes as well as prolonged dry conditions. The analysis and forecasting of lower quantiles are therefore relevant for drought conditions, whereas upper quantiles are relevant for flood risk.
++
++\begin{figure}[htbp]
++\centering
++\includegraphics[width=450pt]{site_context_usgs.png}
++\caption{
++Observed USGS daily water flow on the $\log(1 + x)$ scale, with $x$ measured in m$^3$/s, May 29, 1987 through December 25, 2022. Horizontal dashed lines show approximate current-rating discharge equivalents of the current NWS minor and major stage categories at BTEC1/USGS 11160500, computed from USGS stage-discharge rating 40.0 and transformed to the plotting scale \citep{cnrfc_btec1, usgs_11160500_rating40}. They are operational magnitude references for the discharge scale, not historical flood-stage classifications of daily-mean observations.
++}
++\label{fig:sanlorenzo}
++\end{figure}
++
++We combine the USGS observations with three additional information sources: forecast covariates, retrospective products, and forecast products. Each source plays a different role. The covariates enter the transfer component of the latent process, the retrospective products are used to learn source-specific discrepancies over the pre-cutoff observation window, and the forecast products inform the post-cutoff predictive distributions.
++
++\subsection{External Data Sources and Forecast Covariates}
++
++The transfer component takes three inputs: local precipitation from the PRISM Climate Group \citep{prism}, local soil moisture from ECMWF ERA5-Land \citep{ecmwf}, and a low-dimensional summary of broader climate conditions. Pre-cutoff precipitation and soil moisture are historical gridded covariates extracted at the Big Trees location. After the cutoff, the forecast-window precipitation and soil-moisture covariates are based on Global Ensemble Forecast System (GEFS) precipitation and shallow soil-water forecasts staged in the cutoff-specific origin bundle. These local hydrometeorological covariates enter as deterministic summaries in the present implementation. Precipitation is not modeled through a separate censoring, zero-inflation, or occurrence/intensity layer; dry days are retained in the supplied covariate path, and precipitation contributes through external transfer covariates and deterministic engineered terms. The ERA5-Land soil-moisture series is one of the reanalysis-based model inputs rather than direct observations or uncertainty-free measurements. ERA5/ERA5-Land variables may include short forecast components, but in this analysis they are covariates, not verification observations.
++
++The broader climate summary is constructed from monthly climate and environmental indices from \citet{noaa_climate_indices}, including solar flux, Niño 1+2, the Oceanic Niño Index (ONI), the Southern Oscillation Index (SOI), the Western Hemisphere Warm Pool (WHWP), the Global Mean Temperature (GMT), the Northern Oscillation Index (NOI), the Atlantic Multidecadal Oscillation (AMO), and the Tropical South (TSA) and North Atlantic (TNA) indices. These series are interpolated to daily resolution to align with the hydrological data. We summarize the standardized index matrix with the first generalized dynamic principal component (GDPC) \citep{JSSv092c02}, which explains 44.07\% of the total variability. The GDPC factor is treated as a climate-index covariate, not as an operational forecast product or verification target. Figure~\ref{fig:covariates} shows these three explanatory series.
++
++\begin{figure*}[hbt!]
++\centering
++\centerline{\includegraphics[width=450pt]{covariate_context_precip_soil_gdpc.png}}
++\caption{
++Historical daily precipitation [mm], soil moisture [m$^3$/m$^3$], and first GDPC score over May 29, 1987 through December 25, 2022.}
++\label{fig:covariates}
++\end{figure*}
++
++The external product families come from two agencies: GloFAS, operated by ECMWF, and NWS/National Water Model products from NOAA \citep{cosgrove2024noaa}. Each agency contributes both retrospective information and operational forecast information. The retrospective products are useful because they provide historically aligned external series that can be compared against the target observations before the cutoff, allowing the model to learn source-specific discrepancy patterns before those same sources enter the forecast window. The retrospective products enter the pre-cutoff observation window and are used to learn source-specific discrepancies relative to the USGS target series. Figure~\ref{fig:retrospectives} shows the corresponding retrospective series over the available pre-cutoff support window for the December 25, 2022 cutoff.
++
++These products also differ in spatial support. For gridded covariates and GloFAS discharge fields, the workflow extracts the cell or nearest valid river cell associated with the Big Trees gauge coordinates. For NWM streamflow, the workflow uses the corresponding model-output point or reach series and aggregates the latest available forecast issuances to daily member-specific forecast matrices. The PRISM precipitation path uses the 4 km product, while ERA5-Land soil moisture is extracted from its 0.1-degree gridded product. The GloFAS retrospective series are version-specific over the study period, and the reproducible archive records the exact retrospective version and extraction policy used for each cutoff.
++
++The operational forecast products are used only after a cutoff date. The NWS ensemble has 7 members: 6 members provide medium-range forecasts up to 8.5 days, and one control member extends to 10 days. The GloFAS ensemble contains 51 members, all providing medium-range forecasts for up to 28 days. These products therefore differ not only in source but also in forecast horizon and operational update pattern, which is why the forecast window must be modeled source by source rather than as a single homogeneous input stream.
++
++\begin{figure*}[hbt!]
++\centering
++\centerline{\includegraphics[width=450pt]{retrospective_products_context.png}}
++\caption{Selected GloFAS and NWS retrospective product series over the available pre-cutoff support window for the December 25, 2022 cutoff, May 29, 1987 through December 25, 2022. Displayed flow values use the $\log(1+x)$ scale with $x$ in m$^3$/s.}
++\label{fig:retrospectives}
++\end{figure*}
+ 
+ \section{METHODOLOGY}
+ \label{sec:methodology}
+@@ -152,61 +199,6 @@
+ 
+ The first two observation equations correspond to the pre-cutoff observation window, where the available channels are the observed USGS flow and the retrospective products. The third observation equation corresponds to the forecast window, where issued forecast products enter through the same source-specific discrepancy structure. The state-evolution equations define the roles of the dynamic components: \(\boldsymbol{\theta}_t\) carries the river-flow level and seasonal structure, \(\boldsymbol{\delta}_t^j\) captures systematic source-specific departures from the observations, and the transfer component maps exogenous covariates into the quantile process through \(\zeta_t\) and \(\boldsymbol{\psi}_t\).
+ 
+-Define
+-\[
+-\boldsymbol{\omega}_t' = [\zeta_t,\ \boldsymbol{\psi}_t'], \qquad
+-\boldsymbol{\eta}_t' = [\boldsymbol{\theta}_t',\ (\boldsymbol{\delta}_t^1)',\ \ldots,\ (\boldsymbol{\delta}_t^J)',\ \boldsymbol{\omega}_t'],
+-\]
+-where \(\boldsymbol{\omega}_t \in \mathbb{R}^{m+1}\) and \(\boldsymbol{\eta}_t \in \mathbb{R}^{q}\), with \(q = (J+1)p + m + 1\). The transfer update can be written as
+-\[
+-\mathbf{G}^{\text{trans}}_t =
+-\begin{bmatrix}
+-\lambda & \mathbf{x}_t' \\
+-\mathbf{0}_m & \mathbf{I}_m
+-\end{bmatrix}.
+-\]
+-Let \(\mathcal{J}_0=\{0\}\cup\mathcal{J}\), where \(s=0\) denotes the USGS observation channel and \(s\in\mathcal{J}\) denotes an external product family. Let \(y_t^0 \equiv y_t^o\) denote the observation channel and \(y_t^s \equiv z_t^s\), \(s\in\mathcal{J}\), denote the retrospective-product channels. The corresponding compact form is:
+-\begin{alignat}{3}
+-\text{Pre-cutoff observations:}\quad&
+-y_t^s \mid \boldsymbol{\eta}_t, \sigma^s, \gamma^s
+-&\sim{}& \text{exAL}_{p_0}\!\left(\mathbf{h}_{t,s}' \boldsymbol{\eta}_t, \sigma^s, \gamma^s\right),
+-&\qquad& 1 \le t \le T,\ s \in \mathcal{J}_0, \label{eq:compact_est_obs}
+-\\
+-\text{Pre-cutoff state evolution:}\quad&
+-\boldsymbol{\eta}_t \mid \boldsymbol{\eta}_{t-1}
+-&\sim{}& \mathcal{N}\!\left(\boldsymbol{D}_t \boldsymbol{\eta}_{t-1}, \boldsymbol{\Lambda}_t\right),
+-&\qquad& 1 \le t \le T, \label{eq:compact_est_state}
+-\\
+-\text{Forecast observations:}\quad&
+-y_T^{j,i}(k) \mid \boldsymbol{\eta}_{T+k}, \sigma^j, \gamma^j
+-&\sim{}& \text{exAL}_{p_0}\!\left(\mathbf{e}_{T+k,j}' \boldsymbol{\eta}_{T+k}, \sigma^j, \gamma^j\right),
+-&\qquad& j \in \mathcal{J},\ i \in \mathcal{I}_j,\ k \in \mathcal{K}_j, \label{eq:compact_fc_obs}
+-\\
+-\text{Forecast state evolution:}\quad&
+-\boldsymbol{\eta}_{T+k} \mid \boldsymbol{\eta}_{T+k-1}
+-&\sim{}& \mathcal{N}\!\left(\boldsymbol{M}_{T+k} \boldsymbol{\eta}_{T+k-1}, \mathbf{W}_{T+k}\right),
+-&\qquad& 1 \le k \le K_{\max}. \label{eq:compact_fc_state}
+-\end{alignat}
+-
+-Here
+-\[
+-\big(\mathbf{F}_t^{\text{trans}}\big)' = [1,\ \mathbf{0}_m'], \qquad
+-\mathbf{h}_{t,0}' =
+-\big[\mathbf{F}_t',\ \mathbf{0}_{pJ}',\ \big(\mathbf{F}_t^{\text{trans}}\big)'\big],
+-\qquad
+-\mathbf{h}_{t,j}' =
+-\big[\mathbf{F}_t',\ \mathbf{0}_{p(j-1)}',\ \mathbf{F}_t',\ \mathbf{0}_{p(J-j)}',\ \big(\mathbf{F}_t^{\text{trans}}\big)'\big],
+-\quad j \in \mathcal{J},
+-\]
+-with \(\mathbf{F}_t^{\text{trans}} \in \mathbb{R}^{m+1}\), \(\mathbf{h}_{t,0}, \mathbf{h}_{t,j} \in \mathbb{R}^{q}\), and
+-\[
+-\boldsymbol{D}_t = \text{BlockDiag}\!\left(\mathbf{G}_t,\ \underbrace{\mathbf{G}_t,\ldots,\mathbf{G}_t}_{J\ \text{discrepancy blocks}},\ \mathbf{G}^{\text{trans}}_t\right), \qquad
+-\boldsymbol{\Lambda}_t = \text{BlockDiag}\!\left(\mathbf{W}^{\theta}_t,\ \underbrace{\mathbf{W}^{\delta^1}_t,\ldots,\mathbf{W}^{\delta^J}_t}_{J\ \text{source-specific discrepancy blocks}},\ \text{BlockDiag}\!\left(w_t^{\zeta}, \mathbf{W}^{\psi}_t\right)\right),
+-\]
+-where \(\boldsymbol{D}_t, \boldsymbol{\Lambda}_t \in \mathbb{R}^{q\times q}\) and \(\sigma^s \in \mathbb{R}_+\), \(\gamma^s \in \mathbb{R}\) denote the channel-specific scale and skewness parameters for \(s \in \mathcal{J}_0\). Thus, \(\mathbf{h}_{t,0}' \boldsymbol{\eta}_t = \mathbf{F}_t' \boldsymbol{\theta}_t + \zeta_t\) and \(\mathbf{h}_{t,j}' \boldsymbol{\eta}_t = \mathbf{F}_t'(\boldsymbol{\theta}_t + \boldsymbol{\delta}_t^j) + \zeta_t\). For the forecast window, \(\mathbf{e}_{T+k,j}\) is the analogue of \(\mathbf{h}_{t,j}\): it extracts the latent trend-and-seasonal block, the discrepancy block for source \(j\), and the transfer block. The matrices \(\boldsymbol{M}_{T+k}\) and \(\mathbf{W}_{T+k}\) preserve the same block ordering while propagating the active forecast-window state.
+-
+-This compact representation highlights the conditionally Gaussian state-space structure induced by the stochastic representation in Subsection~\ref{subsec:exal}. The observation equations are conditionally Gaussian given the latent augmentation variables, and the state evolution remains Gaussian. The model can therefore be handled with standard state-space methods, including filtering, smoothing, and sampling recursions.
+-
+ \subsection{Prior Specification and Discounting}
+ \label{subsec:prioranddisc}
+ To complete the model we specify prior distributions for the initial states, the scale, and skewness parameters.
+@@ -267,73 +259,8 @@
+ \]
+ The sample \(\{z_t^{(r)}:r=1,\ldots,R\}\) is the per-time marginal predictive distribution used for the displayed synthesis bands, posterior predictive quantiles, and CRPS calculations.
+ 
+-\subsection{Predictive Scoring by CRPS}
+-\label{subsec:modelselection}
+-
+-For predictive scoring, we use the Continuous Ranked Probability Score (CRPS) \citep{gneiting2007strictly} as the primary score for forecast-window predictive distributions and, separately, as a preliminary calibration criterion for selected specification choices. The CRPS is negatively oriented, so smaller values are better, and it is a proper score for predictive distributions that rewards both calibration and sharpness.
+-
+-For a predictive distribution \(G\) with quantile function \(Q_G\) and an observation \(y\), the CRPS is defined as
+-\[
+-\text{CRPS}(y, G) = 2 \int_0^1 \rho_u\!\left(y - Q_G(u)\right)\, du,
+-\qquad
+-\rho_u(v) = v\big(u - \mathbf{1}\{v<0\}\big),
+-\]
+-where \(\rho_u\) is the quantile score, or check loss. Thus, the CRPS is a natural score in the context of quantile estimation. For a generic empirical predictive distribution represented by sample values \(z_t^{(1)},\ldots,z_t^{(S)}\), we approximate the integral by evaluating the empirical quantile function on the grid \(u_s=s/(S+1)\), \(s=1,\ldots,S\). Let \(z_{t,(1)} \leq \cdots \leq z_{t,(S)}\) be the corresponding ordered sample values. Then
+-\[
+-\widehat{\mathrm{CRPS}}(y_t,G_t)
+-= \frac{2}{S}\sum_{s=1}^S
+-\rho_{u_s}\!\left(y_t-z_{t,(s)}\right).
+-\]
+-The same calculation is used for synthesized posterior predictive samples and for raw forecast ensembles, with \(S\) equal to the number of available sample draws or ensemble members at that lead. If the predictive distribution is a point mass at \(x\), the CRPS reduces to \(|y-x|\); averaging this quantity across forecast cases gives the mean absolute error. CRPS is also used in the preliminary pre-cutoff calibration of the transfer-persistence parameter \(\lambda\), as described in Subsection~\ref{subsec:specification}.
+-
+-
+-\section{FORECASTING THE SAN LORENZO RIVER FLOW}
+-%\section{APPLICATION DATA AND FORECASTING DESIGN}
+-\label{sec:data}
+-
+-\subsection{Study Setting and Observations}
+-
+-Our target series is the average daily natural water flow of the San Lorenzo River at the Big Trees U.S. Geological Survey (USGS) gauging station in Santa Cruz, California (Figure \ref{fig:sanlorenzo}). The raw USGS discharge record is reported in cubic feet per second; we convert it to m$^3$/s before applying the $\log(1+x)$ transformation used in the figures and model inputs. The Big Trees location is characterized by minimal human intervention, so the recorded flow closely reflects natural river dynamics. Over the study window used in this article, the daily series covers May 29, 1987, through December 25, 2022, and contains 12,995 observations.
+-The San Lorenzo River is a major water resource for the Santa Cruz area and is relevant to both flood response and longer-term water-supply planning. The record includes high-flow episodes as well as prolonged dry conditions. The analysis and forecasting of lower quantiles are therefore relevant for drought conditions, whereas upper quantiles are relevant for flood risk.
+-
+-\begin{figure}[htbp]
+-\centering
+-\includegraphics[width=450pt]{site_context_usgs.png}
+-\caption{
+-Observed USGS daily water flow on the $\log(1 + x)$ scale, with $x$ measured in m$^3$/s, May 29, 1987 through December 25, 2022. Horizontal dashed lines show approximate current-rating discharge equivalents of the current NWS minor and major stage categories at BTEC1/USGS 11160500, computed from USGS stage-discharge rating 40.0 and transformed to the plotting scale \citep{cnrfc_btec1, usgs_11160500_rating40}. They are operational magnitude references for the discharge scale, not historical flood-stage classifications of daily-mean observations.
+-}
+-\label{fig:sanlorenzo}
+-\end{figure}
+-
+-We combine the USGS observations with three additional information sources: forecast covariates, retrospective products, and forecast products. Each source plays a different role. The covariates enter the transfer component of the latent process, the retrospective products are used to learn source-specific discrepancies over the pre-cutoff observation window, and the forecast products inform the post-cutoff predictive distributions.
+-
+-\subsection{External Data Sources and Forecast Covariates}
+-
+-The transfer component takes three inputs: local precipitation from the PRISM Climate Group \citep{prism}, local soil moisture from ECMWF ERA5-Land \citep{ecmwf}, and a low-dimensional summary of broader climate conditions. Pre-cutoff precipitation and soil moisture are historical gridded covariates extracted at the Big Trees location. After the cutoff, the forecast-window precipitation and soil-moisture covariates are based on Global Ensemble Forecast System (GEFS) precipitation and shallow soil-water forecasts staged in the cutoff-specific origin bundle. These local hydrometeorological covariates enter as deterministic summaries in the present implementation. Precipitation is not modeled through a separate censoring, zero-inflation, or occurrence/intensity layer; dry days are retained in the supplied covariate path, and precipitation contributes through external transfer covariates and deterministic engineered terms. The ERA5-Land soil-moisture series is one of the reanalysis-based model inputs rather than direct observations or uncertainty-free measurements. ERA5/ERA5-Land variables may include short forecast components, but in this analysis they are covariates, not verification observations.
+-
+-The broader climate summary is constructed from monthly climate and environmental indices from \citet{noaa_climate_indices}, including solar flux, Niño 1+2, the Oceanic Niño Index (ONI), the Southern Oscillation Index (SOI), the Western Hemisphere Warm Pool (WHWP), the Global Mean Temperature (GMT), the Northern Oscillation Index (NOI), the Atlantic Multidecadal Oscillation (AMO), and the Tropical South (TSA) and North Atlantic (TNA) indices. These series are interpolated to daily resolution to align with the hydrological data. We summarize the standardized index matrix with the first generalized dynamic principal component (GDPC) \citep{JSSv092c02}, which explains 44.07\% of the total variability. The GDPC factor is treated as a climate-index covariate, not as an operational forecast product or verification target. Figure~\ref{fig:covariates} shows these three explanatory series.
+-
+-\begin{figure*}[hbt!]
+-\centering
+-\centerline{\includegraphics[width=450pt]{covariate_context_precip_soil_gdpc.png}}
+-\caption{
+-Historical daily precipitation [mm], soil moisture [m$^3$/m$^3$], and first GDPC score over May 29, 1987 through December 25, 2022.}
+-\label{fig:covariates}
+-\end{figure*}
+-
+-The external product families come from two agencies: GloFAS, operated by ECMWF, and NWS/National Water Model products from NOAA \citep{cosgrove2024noaa}. Each agency contributes both retrospective information and operational forecast information. The retrospective products are useful because they provide historically aligned external series that can be compared against the target observations before the cutoff, allowing the model to learn source-specific discrepancy patterns before those same sources enter the forecast window. The retrospective products enter the pre-cutoff observation window and are used to learn source-specific discrepancies relative to the USGS target series. Figure~\ref{fig:retrospectives} shows the corresponding retrospective series over the available pre-cutoff support window for the December 25, 2022 cutoff.
+-
+-These products also differ in spatial support. For gridded covariates and GloFAS discharge fields, the workflow extracts the cell or nearest valid river cell associated with the Big Trees gauge coordinates. For NWM streamflow, the workflow uses the corresponding model-output point or reach series and aggregates the latest available forecast issuances to daily member-specific forecast matrices. The PRISM precipitation path uses the 4 km product, while ERA5-Land soil moisture is extracted from its 0.1-degree gridded product. The GloFAS retrospective series are version-specific over the study period, and the reproducible archive records the exact retrospective version and extraction policy used for each cutoff.
+-
+-The operational forecast products are used only after a cutoff date. The NWS ensemble has 7 members: 6 members provide medium-range forecasts up to 8.5 days, and one control member extends to 10 days. The GloFAS ensemble contains 51 members, all providing medium-range forecasts for up to 28 days. These products therefore differ not only in source but also in forecast horizon and operational update pattern, which is why the forecast window must be modeled source by source rather than as a single homogeneous input stream.
+-
+-\begin{figure*}[hbt!]
+-\centering
+-\centerline{\includegraphics[width=450pt]{retrospective_products_context.png}}
+-\caption{Selected GloFAS and NWS retrospective product series over the available pre-cutoff support window for the December 25, 2022 cutoff, May 29, 1987 through December 25, 2022. Displayed flow values use the $\log(1+x)$ scale with $x$ in m$^3$/s.}
+-\label{fig:retrospectives}
+-\end{figure*}
+-
++\section{APPLICATION SPECIFICATION AND EVALUATION}
++\label{sec:evaluation}
+ \subsection{Model Specification}
+ %\subsection{Application-Specific Model Specification}
+ \label{subsec:specification}
+@@ -386,9 +313,44 @@
+ At a cutoff \(c\), the model is fit using USGS observations and retrospective products available through \(c\). The forecast-window predictive distributions are then synthesized using the latest forecast products issued at or before \(c\), the forecast-window precipitation and soil-moisture covariates from the same staged origin bundle, and the canonical GDPC climate-index factor sliced consistently to that bundle. The local forecast-window covariates are GEFS ensemble-based precipitation and shallow soil-water covariates reduced to deterministic summaries before entering the transfer component. The GDPC factor is not treated as an operational forecast product or verification target. Post-cutoff USGS observations are reserved strictly for verification and are not used to fit or update the predictive distributions.
+ 
+ GloFAS issues forecast products daily, whereas NWS issues them hourly. For GloFAS, the forecast matrix is the daily issue associated with the cutoff. For NWS, we first restrict to issuances available by the cutoff, retain the most recent available issuance for each target time and ensemble member, and then aggregate the retained hourly values to daily resolution. Thus older forecast issuances are not averaged into the publication forecast matrices; any older retained labels are kept only for workflow file-name compatibility. Figure~\ref{fig:ensembles} illustrates the resulting information structure for the representative cutoff on December 25, 2022 in a compact forecast-context display that spans 28 days before and 28 days after the cutoff. The GloFAS forecast window extends from December 26, 2022 to January 22, 2023, whereas the NWS forecast window extends from December 26, 2022 to January 2, 2023.
++\subsection{Predictive Scoring by CRPS}
++\label{subsec:modelselection}
++
++For predictive scoring, we use the Continuous Ranked Probability Score (CRPS) \citep{gneiting2007strictly} as the primary score for forecast-window predictive distributions and, separately, as a preliminary calibration criterion for selected specification choices. The CRPS is negatively oriented, so smaller values are better, and it is a proper score for predictive distributions that rewards both calibration and sharpness.
++
++For a predictive distribution \(G\) with quantile function \(Q_G\) and an observation \(y\), the CRPS is defined as
++\[
++\text{CRPS}(y, G) = 2 \int_0^1 \rho_u\!\left(y - Q_G(u)\right)\, du,
++\qquad
++\rho_u(v) = v\big(u - \mathbf{1}\{v<0\}\big),
++\]
++where \(\rho_u\) is the quantile score, or check loss. Thus, the CRPS is a natural score in the context of quantile estimation. For a generic empirical predictive distribution represented by sample values \(z_t^{(1)},\ldots,z_t^{(S)}\), we approximate the integral by evaluating the empirical quantile function on the grid \(u_s=s/(S+1)\), \(s=1,\ldots,S\). Let \(z_{t,(1)} \leq \cdots \leq z_{t,(S)}\) be the corresponding ordered sample values. Then
++\[
++\widehat{\mathrm{CRPS}}(y_t,G_t)
++= \frac{2}{S}\sum_{s=1}^S
++\rho_{u_s}\!\left(y_t-z_{t,(s)}\right).
++\]
++The same calculation is used for synthesized posterior predictive samples and for raw forecast ensembles, with \(S\) equal to the number of available sample draws or ensemble members at that lead. If the predictive distribution is a point mass at \(x\), the CRPS reduces to \(|y-x|\); averaging this quantity across forecast cases gives the mean absolute error. CRPS is also used in the preliminary pre-cutoff calibration of the transfer-persistence parameter \(\lambda\), as described in Subsection~\ref{subsec:specification}.
++
++
+ \section{FORECAST VALIDATION RESULTS}
+ \label{sec:forecastvalidation}
+ 
++\subsection{Predictive Synthesis Illustration}
++\label{subsec:synthillustration}
++
++The posterior bands in Figures~\ref{fig:dry_quantile} and \ref{fig:rainy_quantile} summarize uncertainty around fitted quantile-location curves. Figure~\ref{fig:synth1} instead shows the synthesized posterior predictive distribution for the December 25, 2022 cutoff, after combining the quantile-specific forecasts, source corrections, and forecast-window inputs. It illustrates how the fitted quantile-specific forecasts combine into one predictive distribution for a given forecast origin.
++
++\begin{figure}[htbp]
++\centering
++\includegraphics[width=450pt]{cutoff_2022_12_25_multivariate_synthesis_with_reference_ensembles.png}
++\caption{
++Synthesized posterior predictive distribution for river flow on the $\log(1+x)$ scale, with $x$ measured in m$^3$/s, at the December 25, 2022 forecast origin under the exAL-M-T1 model. Observed USGS measurements before the origin are shown in green, and held-out USGS verification after the origin is shown in red. The pink band is the central 95\% posterior predictive credible band from the synthesized distribution, and the dark center line summarizes the corresponding synthesized center. Thin overlaid lines correspond to displayed forecast quantiles at levels 0.05, 0.20, 0.35, 0.50, 0.65, 0.80, and 0.95. The raw retrospective and forecast products used at this cutoff are shown for context.
++}
++\label{fig:synth1}
++\end{figure}
++Because exAL-M-T1 is the selected extended-likelihood multivariate specification, Figure~\ref{fig:synth1} is the main predictive-synthesis illustration. The synthesized predictive distribution combines observed USGS measurements before the cutoff with the retrospective and forecast products available at that origin. The upper quantiles rise sharply after December 25, 2022 and reach levels comparable to the current-rating major-stage discharge reference, reflecting the high-flow risk in this forecast window. Unlike the fitted historical quantile-location summaries, the posterior predictive envelope can vary across the forecast window as the source-specific corrections and forecast-window covariates change. Appendix Figure~\ref{fig:synth2} reports a univariate transfer-active reference that excludes retrospective-product and forecast-product source channels, while Appendix Figures~\ref{fig:synthsupport_20210123}, \ref{fig:synthsupport_20211112}, \ref{fig:synthsupport_20211221}, and \ref{fig:synthsupport_20220511} report the remaining cutoff-specific multivariate synthesis panels.
++
+ \subsection{Comparative Forecast Performance}
+ \label{subsec:benchmarkresults}
+ 
+@@ -465,21 +427,6 @@
+ 
+ \clearpage
+ 
+-\subsection{Predictive Synthesis Illustration}
+-\label{subsec:synthillustration}
+-
+-The posterior bands in Figures~\ref{fig:dry_quantile} and \ref{fig:rainy_quantile} summarize uncertainty around fitted quantile-location curves. Figure~\ref{fig:synth1} instead shows the synthesized posterior predictive distribution for the December 25, 2022 cutoff, after combining the quantile-specific forecasts, source corrections, and forecast-window inputs. It illustrates how the fitted quantile-specific forecasts combine into one predictive distribution for a given forecast origin.
+-
+-\begin{figure}[htbp]
+-\centering
+-\includegraphics[width=450pt]{cutoff_2022_12_25_multivariate_synthesis_with_reference_ensembles.png}
+-\caption{
+-Synthesized posterior predictive distribution for river flow on the $\log(1+x)$ scale, with $x$ measured in m$^3$/s, at the December 25, 2022 forecast origin under the exAL-M-T1 model. Observed USGS measurements before the origin are shown in green, and held-out USGS verification after the origin is shown in red. The pink band is the central 95\% posterior predictive credible band from the synthesized distribution, and the dark center line summarizes the corresponding synthesized center. Thin overlaid lines correspond to displayed forecast quantiles at levels 0.05, 0.20, 0.35, 0.50, 0.65, 0.80, and 0.95. The raw retrospective and forecast products used at this cutoff are shown for context.
+-}
+-\label{fig:synth1}
+-\end{figure}
+-Because exAL-M-T1 is the selected extended-likelihood multivariate specification, Figure~\ref{fig:synth1} is the main predictive-synthesis illustration. The synthesized predictive distribution combines observed USGS measurements before the cutoff with the retrospective and forecast products available at that origin. The upper quantiles rise sharply after December 25, 2022 and reach levels comparable to the current-rating major-stage discharge reference, reflecting the high-flow risk in this forecast window. Unlike the fitted historical quantile-location summaries, the posterior predictive envelope can vary across the forecast window as the source-specific corrections and forecast-window covariates change. Appendix Figure~\ref{fig:synth2} reports a univariate transfer-active reference that excludes retrospective-product and forecast-product source channels, while Appendix Figures~\ref{fig:synthsupport_20210123}, \ref{fig:synthsupport_20211112}, \ref{fig:synthsupport_20211221}, and \ref{fig:synthsupport_20220511} report the remaining cutoff-specific multivariate synthesis panels.
+-
+ \section{Conclusions}
+ \label{sec5}
+ 
+@@ -528,6 +475,64 @@
+ 
+ 
+ \appendix
++\section{Compact State-Space Construction}
++\label{app:stateconstruction}
++Define
++\[
++\boldsymbol{\omega}_t' = [\zeta_t,\ \boldsymbol{\psi}_t'], \qquad
++\boldsymbol{\eta}_t' = [\boldsymbol{\theta}_t',\ (\boldsymbol{\delta}_t^1)',\ \ldots,\ (\boldsymbol{\delta}_t^J)',\ \boldsymbol{\omega}_t'],
++\]
++where \(\boldsymbol{\omega}_t \in \mathbb{R}^{m+1}\) and \(\boldsymbol{\eta}_t \in \mathbb{R}^{q}\), with \(q = (J+1)p + m + 1\). The transfer update can be written as
++\[
++\mathbf{G}^{\text{trans}}_t =
++\begin{bmatrix}
++\lambda & \mathbf{x}_t' \\
++\mathbf{0}_m & \mathbf{I}_m
++\end{bmatrix}.
++\]
++Let \(\mathcal{J}_0=\{0\}\cup\mathcal{J}\), where \(s=0\) denotes the USGS observation channel and \(s\in\mathcal{J}\) denotes an external product family. Let \(y_t^0 \equiv y_t^o\) denote the observation channel and \(y_t^s \equiv z_t^s\), \(s\in\mathcal{J}\), denote the retrospective-product channels. The corresponding compact form is:
++\begin{alignat}{3}
++\text{Pre-cutoff observations:}\quad&
++y_t^s \mid \boldsymbol{\eta}_t, \sigma^s, \gamma^s
++&\sim{}& \text{exAL}_{p_0}\!\left(\mathbf{h}_{t,s}' \boldsymbol{\eta}_t, \sigma^s, \gamma^s\right),
++&\qquad& 1 \le t \le T,\ s \in \mathcal{J}_0, \label{eq:compact_est_obs}
++\\
++\text{Pre-cutoff state evolution:}\quad&
++\boldsymbol{\eta}_t \mid \boldsymbol{\eta}_{t-1}
++&\sim{}& \mathcal{N}\!\left(\boldsymbol{D}_t \boldsymbol{\eta}_{t-1}, \boldsymbol{\Lambda}_t\right),
++&\qquad& 1 \le t \le T, \label{eq:compact_est_state}
++\\
++\text{Forecast observations:}\quad&
++y_T^{j,i}(k) \mid \boldsymbol{\eta}_{T+k}, \sigma^j, \gamma^j
++&\sim{}& \text{exAL}_{p_0}\!\left(\mathbf{e}_{T+k,j}' \boldsymbol{\eta}_{T+k}, \sigma^j, \gamma^j\right),
++&\qquad& j \in \mathcal{J},\ i \in \mathcal{I}_j,\ k \in \mathcal{K}_j, \label{eq:compact_fc_obs}
++\\
++\text{Forecast state evolution:}\quad&
++\boldsymbol{\eta}_{T+k} \mid \boldsymbol{\eta}_{T+k-1}
++&\sim{}& \mathcal{N}\!\left(\boldsymbol{M}_{T+k} \boldsymbol{\eta}_{T+k-1}, \mathbf{W}_{T+k}\right),
++&\qquad& 1 \le k \le K_{\max}. \label{eq:compact_fc_state}
++\end{alignat}
++
++Here
++\[
++\big(\mathbf{F}_t^{\text{trans}}\big)' = [1,\ \mathbf{0}_m'], \qquad
++\mathbf{h}_{t,0}' =
++\big[\mathbf{F}_t',\ \mathbf{0}_{pJ}',\ \big(\mathbf{F}_t^{\text{trans}}\big)'\big],
++\qquad
++\mathbf{h}_{t,j}' =
++\big[\mathbf{F}_t',\ \mathbf{0}_{p(j-1)}',\ \mathbf{F}_t',\ \mathbf{0}_{p(J-j)}',\ \big(\mathbf{F}_t^{\text{trans}}\big)'\big],
++\quad j \in \mathcal{J},
++\]
++with \(\mathbf{F}_t^{\text{trans}} \in \mathbb{R}^{m+1}\), \(\mathbf{h}_{t,0}, \mathbf{h}_{t,j} \in \mathbb{R}^{q}\), and
++\[
++\boldsymbol{D}_t = \text{BlockDiag}\!\left(\mathbf{G}_t,\ \underbrace{\mathbf{G}_t,\ldots,\mathbf{G}_t}_{J\ \text{discrepancy blocks}},\ \mathbf{G}^{\text{trans}}_t\right), \qquad
++\boldsymbol{\Lambda}_t = \text{BlockDiag}\!\left(\mathbf{W}^{\theta}_t,\ \underbrace{\mathbf{W}^{\delta^1}_t,\ldots,\mathbf{W}^{\delta^J}_t}_{J\ \text{source-specific discrepancy blocks}},\ \text{BlockDiag}\!\left(w_t^{\zeta}, \mathbf{W}^{\psi}_t\right)\right),
++\]
++where \(\boldsymbol{D}_t, \boldsymbol{\Lambda}_t \in \mathbb{R}^{q\times q}\) and \(\sigma^s \in \mathbb{R}_+\), \(\gamma^s \in \mathbb{R}\) denote the channel-specific scale and skewness parameters for \(s \in \mathcal{J}_0\). Thus, \(\mathbf{h}_{t,0}' \boldsymbol{\eta}_t = \mathbf{F}_t' \boldsymbol{\theta}_t + \zeta_t\) and \(\mathbf{h}_{t,j}' \boldsymbol{\eta}_t = \mathbf{F}_t'(\boldsymbol{\theta}_t + \boldsymbol{\delta}_t^j) + \zeta_t\). For the forecast window, \(\mathbf{e}_{T+k,j}\) is the analogue of \(\mathbf{h}_{t,j}\): it extracts the latent trend-and-seasonal block, the discrepancy block for source \(j\), and the transfer block. The matrices \(\boldsymbol{M}_{T+k}\) and \(\mathbf{W}_{T+k}\) preserve the same block ordering while propagating the active forecast-window state.
++
++This compact representation highlights the conditionally Gaussian state-space structure induced by the stochastic representation in Subsection~\ref{subsec:exal}. The observation equations are conditionally Gaussian given the latent augmentation variables, and the state evolution remains Gaussian. The model can therefore be handled with standard state-space methods, including filtering, smoothing, and sampling recursions.
++
++
+ 
+ \section{Supplementary Parameter Summaries and Illustrations}
+ \label{app:extras}

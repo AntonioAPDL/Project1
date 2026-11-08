@@ -16,7 +16,7 @@ from latest_forecast_issue_contract import (  # noqa: E402
     FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS,
     LATEST_FORECAST_ISSUE_CONTRACT_REL,
     LATEST_FORECAST_ISSUE_MANIFEST_REL,
-    REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS,
+    check_latest_forecast_article_text,
     REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS,
     check_latest_forecast_issue_manifest,
 )
@@ -37,8 +37,8 @@ class HE7LatestForecastIssueContractTests(unittest.TestCase):
     def test_article_and_corrections_share_latest_only_claims(self) -> None:
         article = (ARTICLE_ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
-        for claim in REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS:
-            self.assertIn(claim, article)
+        failed = [row for row in check_latest_forecast_article_text(article) if not row.ok]
+        self.assertFalse(failed, [f"{row.item}: {row.detail}" for row in failed])
         for claim in REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS:
             self.assertIn(claim, corrections)
         for claim in FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS:

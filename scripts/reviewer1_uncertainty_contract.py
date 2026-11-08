@@ -3,18 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from current_article_contract import active_tex, has_concepts
+
 
 R1_UNCERTAINTY_CONTRACT_REL = "docs/r1_m1_uncertainty_framing_contract_20260615.md"
 ARTICLE_R1_UNCERTAINTY_DOC_REL = "docs/reviewer1_uncertainty_framing_contract.md"
-
-REQUIRED_R1_UNCERTAINTY_ARTICLE_CLAIMS = [
-    "These two uncertainty sources are related but distinct",
-    "Hydrological uncertainty arises from model structure, parameters, states, and observations",
-    "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields",
-    "A useful statistical forecasting framework should keep these roles clear",
-    "local precipitation from the PRISM Climate Group",
-    "soil moisture from ECMWF ERA5-Land",
-]
 
 REQUIRED_R1_UNCERTAINTY_CORRECTIONS_CLAIMS = [
     "The revised introduction now separates these concepts before introducing the Bayesian framework",
@@ -50,14 +43,15 @@ class R1UncertaintyCheck:
 
 def check_r1_uncertainty_text(article_text: str, corrections_text: str) -> list[R1UncertaintyCheck]:
     checks: list[R1UncertaintyCheck] = []
-    for claim in REQUIRED_R1_UNCERTAINTY_ARTICLE_CLAIMS:
-        checks.append(
-            R1UncertaintyCheck(
-                item=f"article_required:{claim}",
-                ok=claim in article_text,
-                detail=claim,
-            )
-        )
+    article_text = active_tex(article_text)
+    scientific_concepts = {
+        'hydrological_uncertainty': (r'hydrolog\w* uncertainty', r'structur', r'parameters?', r'states?', r'observations?'),
+        'meteorological_uncertainty': (r'meteorolog\w* uncertainty', r'precipitation', r'forc'),
+        'precipitation_source': (r'precipitation', r'PRISM'),
+        'soil_moisture_source': (r'soil moisture', r'ERA5.Land'),
+    }
+    for name, patterns in scientific_concepts.items():
+        checks.append(R1UncertaintyCheck(name, has_concepts(article_text, *patterns), ', '.join(patterns)))
     for claim in REQUIRED_R1_UNCERTAINTY_CORRECTIONS_CLAIMS:
         checks.append(
             R1UncertaintyCheck(

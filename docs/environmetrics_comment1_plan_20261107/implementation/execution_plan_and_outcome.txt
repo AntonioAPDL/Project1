@@ -1,0 +1,147 @@
+Comment 1: execution plan and decision record
+
+Authority and scope
+
+The user authorized implementation of the previously prepared plan, after a fresh
+audit. The work addresses the structure, exposition, notation, citations, figures,
+acronyms and typography in major comment 1. Current publication results are the
+numerical authority. The numbered task register and final completion report record
+the executed checks and delivery status. This file explains the implementation
+choices; it does not substitute successful compilation for editorial judgment.
+
+1. Isolate and establish the comparison
+
+Created independent workflow and article worktrees, pinned to 2d97f548 and
+1272bfc1, under /tmp/environmetrics_comment1_implementation_20261107. The nested
+article was isolated separately. The original current files were left available
+as read-only numerical and source references during authoring. Existing research
+processes were not stopped or redirected. Original response and public reproduction
+repositories remained historical/external dependencies of the checks.
+
+This was preferable to authoring in the live workflow: renderers write outputs,
+manifests and style snapshots, and an independently versioned nested repository is
+not isolated by a parent worktree alone. Curated post-processing inputs, not full
+runtime archives or fit objects, were sufficient for the synthesis figures.
+
+2. Repair dependencies before moving and rewriting
+
+The six-section order is Introduction; Forecasting setting and data; Bayesian
+correction and predictive synthesis; Application specification and evaluation;
+Results; Discussion and conclusions. A movement-first source snapshot precedes the
+prose rewrite. State dimension q, stacked state eta and channel set J0 remain
+before their prior distributions. Selector matrices and augmentation details move
+to the technical appendix, using stable labels. The existing supporting appendix
+stays first so its A1--A5 figure identities remain intact.
+
+Keeping a small definition bridge was necessary: moving the whole compact-model
+block would have left the main-text priors undefined. A wholesale symbolic rewrite
+was unnecessary. Only genuine symbol collisions and dimensional descriptions were
+changed. The mathematical model and reported numerical outputs remain fixed.
+
+3. Explain the actual scientific and computational workflow
+
+The opening now connects decisions, uncertainty and information roles explicitly.
+A compact source-role table separates target observations, retrospective products,
+forecast products and transfer covariates. Sources, units, spatial extraction,
+daily alignment and product distinctions are stated before the mathematics.
+
+The main model explains the shared quantile, source discrepancies and transfer
+adjustment. Computation leads with the VB method used in the reported fits and
+explains its state, augmentation and joint scale/skewness updates. The package is
+cited beside the computation and timing description; internal runtime field names
+are removed from the scientific narrative. Combined timing and hardware context
+remain explicit. Main-text contributions follow correction, synthesis, computation.
+
+The model-description audit confirmed twelve engineered transfer predictors,
+historical-SD scaling without centering, and 34 full latent states. It also traced
+the seasonal constructor's daily frequency conversion. The slow rotation is
+2474.871 days, approximately 6.78 calendar years. The prose and embedded component
+title now use those units. No fitted rotation was changed. Source and verification
+limits are recorded in model_description_evidence.json.
+
+The synthesis explanation now distinguishes adjusted predictive quantile functions
+from their quantile anchors, the extreme-fit tail rule, monotone rearrangement,
+random inverse-CDF sampling and the separate deterministic CRPS quadrature grid.
+Predictive sample traces are identified as marginal-in-time samples. Narrow,
+verified transcription repairs correct appendix observation-covariance dimensions,
+a missing reciprocal and the VB precision-weighted offset. These are manuscript
+formula repairs; inference code and numerical outputs were not modified.
+
+4. Verify citations and typography where the defects occur
+
+Claim-specific combination references replace the nine-reference generic Bayesian
+sentence. Data/product references sit beside their uses. Used bibliography entries
+were checked against primary papers and publisher metadata, including ERA5-Land,
+GloFAS, NWM, ensemble prediction, forecast combination and isotonic regression.
+Citation keys remain stable. Full author-list corrections avoid a literal 'others'
+in the printed bibliography. The detailed source URLs and metadata are retained in
+article_revision_notes.txt and its evidence files.
+
+The proven fixes are applied in the manuscript: explicit UTF-8 input, counter
+definitions without embedded padding, separate caption-label spacing, and siunitx
+digit grouping disabled. Numerical precision is preserved. Abbreviations are
+defined independently where needed in abstract and main text; local technical
+abbreviations are defined at use. The unchanged Wiley class is retained. A
+placeholder 'How to cite' block claiming an unpublished volume/pages is suppressed
+at the manuscript layer; functional hyperlinks remain, with visible borders hidden.
+
+5. Render and inspect, preserving the numerical display definitions
+
+One style is used for five multivariate synthesis panels, the representative
+univariate reference and the forecast context. Legends reproduce actual line
+types and markers; providers and information roles can be distinguished without
+color. Fonts are sized for approximately 450-point article inclusion. The origin
+line marks T and the first forecast target is T+1. The model line is the mean on
+the log1p scale and the ribbon uses the exact 2.5%/97.5% saved predictive endpoints.
+The ten existing displayed sample traces are retained and identified correctly.
+
+The complete-PDF review justified two further bounded changes. The long-cycle
+title needed its calendar-year units repaired; it was regenerated from compact
+posterior summaries without loading fits. Its caption now identifies posterior
+medians, matching the summary column actually plotted. One January panel had an
+out-of-range tick label clipped at the right edge; date ticks are now bounded to
+the actual display range and the family is regenerated together.
+
+Existing flow-reference levels differ between context and synthesis displays.
+They are preserved and documented by display, with consistent neutral guide labels.
+The synthesis caption gives its discharge references explicitly. The revision does
+not assert that different historical reference discharges are identical.
+
+The predictive illustration precedes comparative and historical interpretation.
+Historical panels remain available in their existing main-text roles. The reading
+pass did not require deleting evidence or removing sample traces. Larger readable
+legends occupy more page space; a lower page count was not an acceptance criterion.
+
+6. Protect regeneration and repair the relevant checks
+
+Figures/ is canonical. Compatibility copying runs in the other direction and
+preserves unmanaged files. A discovered self-copy/deletion path is repaired, and
+path/symlink guards are tested. Broad refresh and cleanup were unnecessary here.
+
+Existing refreshes copy saved runtime images and would otherwise undo presentation
+changes. A bounded, checksummed presentation registry restores reviewed assets only
+when selected run IDs and all declared numerical input hashes still agree. Changed
+inputs, selection, snapshot or archived assets fail before restoration. The render
+helper also checks available frozen input hashes before writing a new proof.
+The registry and exact executed renderer sources accompany the article assets.
+
+Current-article gates are migrated to active LaTeX structure, scientific concepts
+and resolved cited URLs. This includes duplicated checks in related validators;
+otherwise those checks would demand reinstating rejected prose. Commented text
+cannot satisfy a gate. Historical response requirements, numerical table assertions
+and source/selection checks are retained. Temporary-tree negative tests exercise
+the new copying and restoration behavior.
+
+7. Build, compare, read and deliver
+
+The build script runs LaTeX from the article directory and BibTeX from a fresh
+separate output directory, iterates until labels stabilize, extracts PDF text and
+records hashes of source, table and included-image inputs. It rejects unresolved
+references/citations and checks that inputs remained unchanged during the build.
+
+Acceptance also requires protected baseline hashes, selected identities, all 100
+numeric rows (587 extracted numbers) across twelve generated fragments, resolved
+figure paths, publication-freeze and cross-repository validation, targeted tests,
+and full-PDF visual/text reading. The final completion report supplies the actual
+counts, remaining layout warnings, promoted file inventory and reproducible commands.
+No commitment to a journal outcome is implied by completion of this editorial task.

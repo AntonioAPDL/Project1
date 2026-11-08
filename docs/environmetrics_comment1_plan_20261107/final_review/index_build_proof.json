@@ -1,0 +1,14 @@
+{
+  "method": "git checkout-index --all into a new /tmp directory, followed by the article build helper",
+  "staged_article_files": 587,
+  "included_figures": 13,
+  "registry_targets_validated": 105,
+  "build_inputs": 37,
+  "all_build_input_hashes_equal": true,
+  "extracted_pdf_text_sha256_equal": true,
+  "source_pdf_sha256": "6accb6eafa570c6611e328eac90f82ac3fe6f9273c17e805fdd691b7ac9188ec",
+  "staged_copy_pdf_sha256": "4188717aa83c332f29f0ea6267e145349a4e32d2a2d0f8ac154a06a8887ccd4d",
+  "note": "PDF bytes may differ due to build metadata; source hashes, extracted text and resolved labels agree. No runtime data are required to compile the article.",
+  "auxiliary_labels_sha256_equal": true,
+  "auxiliary_labels_sha256": "94502454532b99696ad96f79a166441eacbd6dfe30fd8abb4ecb179b64fd382d"
+}

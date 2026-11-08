@@ -14,7 +14,7 @@ os.sys.path.insert(0, str(ROOT / "scripts"))
 from runtime_feasibility_contract import (  # noqa: E402
     ARTICLE_RUNTIME_DOC_REL,
     FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS,
-    REQUIRED_RUNTIME_ARTICLE_CLAIMS,
+    check_runtime_article_text,
     REQUIRED_RUNTIME_CORRECTIONS_CLAIMS,
     RUNTIME_CONTRACT_REL,
     RUNTIME_MANIFEST_REL,
@@ -39,8 +39,8 @@ class HE1RuntimeContractTests(unittest.TestCase):
     def test_article_and_corrections_share_runtime_claims(self) -> None:
         article = (ARTICLE_ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
-        for claim in REQUIRED_RUNTIME_ARTICLE_CLAIMS:
-            self.assertIn(claim, article)
+        failed = [row for row in check_runtime_article_text(article) if not row.ok]
+        self.assertFalse(failed, [f"{row.item}: {row.detail}" for row in failed])
         for claim in REQUIRED_RUNTIME_CORRECTIONS_CLAIMS:
             self.assertIn(claim, corrections)
         for claim in FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS:

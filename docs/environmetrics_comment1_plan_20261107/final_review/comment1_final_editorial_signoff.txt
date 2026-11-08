@@ -1,0 +1,13 @@
+Independent final editorial signoff — referee major comment 1 only
+
+Decision: APPROVED for release, subject to the parent process completing its final PDF compilation and invariant checks. No remaining structure/readability blocker was identified.
+
+Evidence reviewed: complete active manuscript source; current 33-page PDF before the five final wording/notation repairs; referee major comment 1; implementation clause checklist; generated table wrappers; final landed source repairs.
+
+The six-section sequence is coherent: motivation and contributions; forecasting setting/data roles; scientific model, inference and synthesis; application settings/evaluation; forecast illustration and comparisons followed by supporting interpretation; discussion. Data roles precede model machinery, the slow-period rationale and actual daily units are adjacent, and technical distribution/algorithm detail is supported in appendices. The early origin diagram and results-first predictive illustration support comprehension. No additional section or figure moves are needed for comment 1.
+
+Confirmed final repairs: CRPS expanded on first use in main narrative; the first reference to the selected model uses descriptive terms before the L-S-T labels are introduced; duplicate conditional-Gaussian prose removed; the Algorithm 2 gamma vector is now defined; Table 4 note removes internal workflow terminology and uses the same log(1+x) discharge notation in both generator and generated wrapper.
+
+This signoff evaluates comment-1 presentation and readability only. No source edits were made by this independent reviewer.
+
+Source SHA256: 4a5d4cf3ac65e8d9453b653358958b07a3ba46b8bb63280a0ee028c128248c5a

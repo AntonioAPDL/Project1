@@ -1,0 +1,19 @@
+id,stage,task,status,depends_on,future_mutation_scope,acceptance
+C1-00,0,Baseline capture,COMPLETE,,readiness/*,"Time-stamped source/data hashes, worker observations and named baseline failures."
+C1-01,1,Create paired isolated worktrees,COMPLETE,C1-00,workflow and independent article repository,Pinned commits and prospective writes confined to review root.
+C1-02,1,Align figure path and mirror policy,COMPLETE,C1-01,article_repo_layout.py;sync_legacy_uppercase_figures.py;mirror tests,Uppercase canonical preserved; no whole-tree destructive sync or shadow includes.
+C1-03,1,Resolve current-article test contract drift,COMPLETE,C1-01,overview/uncertainty gates;article software/runtime assertions,Five baseline failures have limited dispositions; historical response unchanged.
+C1-04,2,Verify dependency and terminology sheet,COMPLETE,C1-01,paragraph_move_map.csv;main priors and appendix notation,Minimum state/channel definitions remain available at every use.
+C1-05,2,Move existing content into six-section skeleton,COMPLETE,C1-04,wileyNJD-APA.tex,"Movement-first diff preserves equations, stable labels and current results."
+C1-06,3,Rewrite narrative and actual inference overview,COMPLETE,C1-05,abstract;introduction;model;VB;discussion,Clear target and information roles; model-specific computation; no workflow jargon needed.
+C1-07,3,Audit claim/citation and acronym use,COMPLETE,C1-05,wileyNJD-APA.tex;wileyNJD-APA.bib,Nearby relevant sources and verified metadata; independent abstract/main definitions.
+C1-08,3-4,Reconcile notation and period units,COMPLETE,C1-04,prior/model/algorithm notation;component descriptions,Only real collisions changed; units checked against saved specification; matrices unchanged.
+C1-09,4,Apply proven typography fixes,COMPLETE,C1-05,manuscript preamble and appendix counters,Accents and unpadded references; same five-decimal table values; class unchanged.
+C1-10,5,Prepare curated post-only proof copies,COMPLETE,C1-01;C1-02,selected run outputs;post/cache;post/inputs,Mutable manifest paths rebased; no authoritative directory is a write destination.
+C1-11,5,Correct actual focus legend/style controls,COMPLETE,C1-10,post_publication_figures.R;post_publication_figures.yaml,Keys match lines/markers; effective sample flag; truthful dynamic style metadata.
+C1-12,5,Review representative multivariate/univariate proofs,COMPLETE,C1-11,isolated proof outputs and captions,Exact cache mean/endpoints; clear grayscale; final-size labels; documented overlay choice.
+C1-13,6,Render displayed synthesis family and context,COMPLETE,C1-12,five multivariate panels;representative univariate;May16 context config,Seven intended figures rendered sequentially from current selected source artifacts.
+C1-14,6,Integrate allowlisted article assets,COMPLETE,C1-13,article Figures/ and artifact manifests;univar-only support copy,Correct selected lineage and case policy; untouched numerical inputs and unrelated assets.
+C1-15,7,Update remaining current-article prose gates,COMPLETE,C1-06;C1-07;C1-09,validate_publication_freeze.py;article tests;reviewer modules,All duplicated current-article constraints match the approved organization without sentence locks.
+C1-16,7,"Compile, compare and read complete PDF",COMPLETE,C1-14;C1-15,isolated build;invariant reports;reader checklist,Stable labels; resolved citations; preserved protected hashes and generated table numbers; human review.
+C1-17,7,Deliver reviewable change package,COMPLETE,C1-16,TeX diff;PDF;comment1 checklist;departure log,"All comment1 clauses mapped; no unstated jobs, unrelated refreshes or publication steps."

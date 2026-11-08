@@ -1,0 +1,20 @@
+{
+  "returncode": 0,
+  "aux_stable": true,
+  "aux_before": "643aaf2187443bfb1863f28e59ad0d1fa1d5744840092f11be22fd5d9ba85035",
+  "aux_after": "643aaf2187443bfb1863f28e59ad0d1fa1d5744840092f11be22fd5d9ba85035",
+  "undefined_references": false,
+  "undefined_citations": 0,
+  "needs_rerun": false,
+  "overfull_hboxes": 3,
+  "overfull_vboxes": 1,
+  "missing_glyph_warnings": 0,
+  "pdf": "/tmp/environmetrics_comment1_baseline_20261107/comment1_baseline.pdf",
+  "source_unchanged": true,
+  "isolation_note": "LaTeX from article cwd with separate output-directory; BibTeX from build cwd with explicit BIBINPUTS and BSTINPUTS.",
+  "pdf_pages": 30,
+  "reference_pdf": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.pdf",
+  "layout_text_equal_to_reference": true,
+  "layout_text_sha256": "0dff7b6a1a72a8b73d50804dcdf4c03f4d0a23658515fa79b45975299fcb7092",
+  "pdf_sha256": "ecc4012c3a396b92899c3cbe500dfe3454611983ee912439c104f416c3b22e6f"
+}

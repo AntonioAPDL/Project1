@@ -1,0 +1,8 @@
+{
+  "file": "scripts/validate_publication_freeze.py",
+  "change": "Removed two trailing spaces; Python AST identical.",
+  "tested_source_sha256": "73c8eb9712e8ebdc40ff4830ff09236bf87d51b9fd5ba71c3f53bf1f59961802",
+  "final_source_sha256": "b3d3cab9af9347fc2d3d9a2abcb3e5c1e56206248718dc182fedb21e7fb23c48",
+  "semantic_ast_sha256": "d54d8d2d6a55aee3889d3ee9e65c1a5550e2836a3b66fa38359dc26a65974a87",
+  "ast_unchanged": true
+}

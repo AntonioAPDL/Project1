@@ -3,20 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from current_article_contract import active_tex, has_concepts, has_label, structure_checks
+
 
 R1_OVERVIEW_CONTRACT_REL = "docs/r1_overview_forecasting_emphasis_contract_20260615.md"
 ARTICLE_R1_OVERVIEW_DOC_REL = "docs/reviewer1_overview_forecasting_emphasis_contract.md"
-
-REQUIRED_R1_OVERVIEW_ARTICLE_CLAIMS = [
-    "The empirical focus is forecasting performance and uncertainty quantification",
-    "rather than only historical fit or methodological development in isolation",
-    r"Section~\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results",
-    r"\section{FORECAST VALIDATION RESULTS}",
-    r"\section{INTERPRETATION OF THE SELECTED SPECIFICATION}",
-    "The selected exAL-M-T1 specification attains the lowest 28-day forecast-window CRPS in all five cutoffs",
-    "five-cutoff rolling-origin forecast comparison",
-    "supporting interpretation for the selected specification",
-]
 
 REQUIRED_R1_OVERVIEW_CORRECTIONS_CLAIMS = [
     "centering the forecasting analysis on multiple rolling-origin cutoffs",
@@ -53,14 +44,9 @@ class R1OverviewCheck:
 
 def check_r1_overview_text(article_text: str, corrections_text: str) -> list[R1OverviewCheck]:
     checks: list[R1OverviewCheck] = []
-    for claim in REQUIRED_R1_OVERVIEW_ARTICLE_CLAIMS:
-        checks.append(
-            R1OverviewCheck(
-                item=f"article_required:{claim}",
-                ok=claim in article_text,
-                detail=claim,
-            )
-        )
+    article_text = active_tex(article_text)
+    checks.extend(R1OverviewCheck(item, ok, detail) for item, ok, detail in structure_checks(article_text))
+    checks.append(R1OverviewCheck('forecasting_focus', has_concepts(article_text, r'forecast', r'uncertainty', r'CRPS', r'quantile'), 'forecasting and uncertainty assessed by distributional/quantile scores'))
     for claim in REQUIRED_R1_OVERVIEW_CORRECTIONS_CLAIMS:
         checks.append(
             R1OverviewCheck(

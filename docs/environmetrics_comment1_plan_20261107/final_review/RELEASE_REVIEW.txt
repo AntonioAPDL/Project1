@@ -1,0 +1,119 @@
+Final double-check of referee major comment 1
+November 7, 2026 -- America/Los_Angeles
+
+Decision: ready to update Overleaf and move to the next referee point. Independent
+editorial and source-wiring reviews found no remaining structural/readability
+blocker within comment 1. This is an author-side verification, not a prediction
+of an editor's or referee's acceptance. The current numerical results remain the
+authority.
+
+Scope and final repairs
+
+The six-section organization is retained: introduction; forecasting setting and
+data; Bayesian correction and predictive synthesis; application specification and
+evaluation; results; discussion. It gives readers the information roles before
+the model, the fitted procedure before its results, and the forecast illustration
+before supporting historical interpretation. Detailed algebra and algorithms are
+linked through stable appendix labels. Further section or figure moves would add
+churn without addressing a demonstrated remaining comment-1 defect.
+
+The final pass made these bounded improvements:
+- Expanded CRPS at its first use in the main text and used the acronym thereafter.
+- Replaced the one model label used before its key with a descriptive reference.
+- Removed a repeated conditional-Gaussian sentence in the state appendix.
+- Defined the FFBS skewness vector beside the other channel-ordered vectors.
+- Replaced internal workflow terminology in the check-loss table note with the
+  common log(1+x) notation and discharge units; changed the generator and include
+  together, preserving every table value.
+- Aligned current provenance documents and the asset manifest with Results and
+  appendix roles, using stable labels instead of stale figure/table numbers.
+- Anchored the root lowercase figure-mirror ignore rule so six required nested
+  registry archives are included in Git. Kept the bounded workflow evidence
+  package together, including checklist CSVs, logs and final snapshots.
+
+Coverage of every example in comment 1
+
+C1-a: The opening now explains uncertainty sources before linking them to data.
+Reader-facing software and computation prose replaces internal runtime fields.
+The main narrative no longer depends on earlier referee correspondence.
+C1-b: Data roles and essential model definitions precede use. The slow component's
+motivation and daily/calendar units are given together; skewness-bound algebra
+is in the technical appendix. Formal model labels follow their explanatory key.
+C1-c: Claim-specific background and adjacent source/method citations replace the
+imbalanced generic cluster. Used bibliography metadata and author names were
+verified in the preceding implementation; final BibTeX resolves without warnings.
+C1-d: Context and synthesis figures carry matching marker/line-pattern keys, with
+consistent styles and article-size/grayscale review. Numeric summaries and the
+saved displayed sample traces are preserved.
+C1-e: Figure/table counter padding, decimal grouping, accents, punctuation and
+caption semantics were checked in the actual Wiley PDF. All numerical table
+entries retain their original precision and values.
+C1-f: Abstract and main-text abbreviation introductions are consistent; CRPS first
+use was caught and repaired in this independent pass. Local appendix notation is
+explicit. The clause checklist also maps the broader structural concern to source
+labels and final PDF pages.
+
+Verification on final sources
+
+61 targeted Python tests and 48 R assertions passed without failures/warnings.
+684 publication-freeze checks and 564 strict cross-repository checks passed.
+All 105 presentation-registry targets and all 13 manuscript images resolve and
+validate. The 188 originally protected files, ten selected run identities, and
+100 table rows / 587 extracted numeric entries are unchanged. The expanded
+post-build capture protects 200 files; its comparison to the original baseline
+has no protected or numeric changes. No fitting job or broad refresh was launched.
+
+The final live PDF is 33 pages, built with four LaTeX passes, stable labels, zero
+unresolved citations/references and zero BibTeX warnings. Its SHA-256 is:
+6accb6eafa570c6611e328eac90f82ac3fe6f9273c17e805fdd691b7ac9188ec
+It is available locally at Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.pdf.
+The final affected pages (9, 10, 14, 26 and 29) were visually rechecked; the complete
+layout and figure family were inspected during the preceding implementation.
+One title/abstract horizontal-box and one inherited vertical-box warning remain;
+no visible overflow was found. These are recorded in the build log.
+
+Overleaf package proof
+
+The exact article Git index (587 files) was materialized into a new directory and
+compiled there. It contains every required figure and registry archive. All 37
+build-input hashes, PDF extracted text and the complete auxiliary-label file
+match the reviewed live build. The isolated copy compiles to 33 pages with the
+same clean citation/reference results, without runtime or workflow data. PDF
+bytes differ due to build metadata; the input/text/label comparison is exact.
+The ignored main PDF is a local review output; Overleaf compiles the committed
+main.tex wrapper or wileyNJD-APA.tex source.
+
+Source and repository handoff
+
+Article revision: dd7855dfe821074ba526308d6a4891ee2b269a7d
+This revision was committed on revision/comment1-readability-20261107 and merged
+into main by fast-forward. The workflow commit includes this release record,
+final source inventory, executable checks and independent signoffs. Remote push
+confirmation is reported separately after verifying origin/main in both repos.
+The earlier response and public reproducibility repositories remain unchanged.
+The separate general rejection-audit working directory is outside this release.
+
+Evidence and reproducibility
+
+source_inventory.json inventories the 250 changed article files and 29 changed
+workflow source files. Earlier integration manifests are retained as dated
+history, not as the final source inventory. checks/ holds executed commands,
+logs, numerical comparison, lineage, registry and cross-repository results.
+build/ holds live/index build summaries and resolved auxiliary/bibliography logs.
+index_build_proof.json gives the exact staged-copy comparison. Independent
+editorial/wiring signoffs and the documentation repair note are alongside this
+report. implementation/clause_checklist.csv uses final auxiliary-page locations.
+
+Repeat checks from the workflow root in a fresh output directory:
+  python3 -B docs/environmetrics_comment1_plan_20261107/implementation/run_checks.py \
+    --report-dir /tmp/NEW_comment1_checks
+Build from the article repository in a fresh output directory:
+  python3 -B scripts/build_manuscript_review.py \
+    --output-dir /tmp/NEW_article_review --jobname manuscript_review
+The checks require companion repositories/frozen local inputs. The article build
+requires the committed article source and its included assets, plus TeX tools.
+
+Packaging note: documentation CSV line endings are normalized to LF. Raw LaTeX
+logs/auxiliary files and captured historical diffs retain their exact whitespace
+through narrowly scoped Git attributes; authored source and documentation still
+receive the standard whitespace check.

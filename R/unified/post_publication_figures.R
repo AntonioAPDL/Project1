@@ -82,7 +82,7 @@ post_publication_product_palette <- function() {
 post_publication_flood_stage_df <- function() {
   data.frame(
     stage = c("minor", "major"),
-    label = c("Minor Flooding", "Major Flooding"),
+    label = c("Lower flow reference", "Upper flow reference"),
     y = c(5.20948615, 6.06378521),
     stringsAsFactors = FALSE
   )
@@ -305,7 +305,7 @@ post_publication_render_posterior_plot <- function(model_id, quant_df, sample_df
   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
   forecast_end <- max(quant_df$date, na.rm = TRUE)
   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
-  cutoff_line_date <- forecast_start
+  cutoff_line_date <- cutoff_date
 
   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
     ggplot2::geom_ribbon(
@@ -393,7 +393,7 @@ post_publication_render_predictive_plot <- function(model_id, quant_df, png_path
   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
   forecast_end <- max(quant_df$date, na.rm = TRUE)
   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
-  cutoff_line_date <- forecast_start
+  cutoff_line_date <- cutoff_date
 
   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
     ggplot2::geom_ribbon(
@@ -607,7 +607,7 @@ unified_render_publication_figures <- function(
           source_run = row$source_run[[1L]],
           interval_low_col = "interval_low",
           interval_high_col = "interval_high",
-          interval_label = "95% synthesis credible interval",
+          interval_label = "Pointwise central 95% predictive interval",
           ensemble_df = NULL
         )
 
@@ -616,7 +616,7 @@ unified_render_publication_figures <- function(
           plot_type = plot_type,
           path = row$path[[1L]],
           source_run = row$source_run[[1L]],
-          note = "style=publication_focus_v2; exact_interval=95_from_cache; observed_split=fit_vs_heldout"
+          note = sprintf("style=%s; exact_interval=95_from_cache; observed_split=fit_vs_heldout", style$version)
         )
 
         if (nzchar(pdf_path)) {
@@ -625,7 +625,7 @@ unified_render_publication_figures <- function(
             plot_type = "cutoff_window_posterior_samples_pdf",
             path = pdf_path,
             source_run = row$source_run[[1L]],
-            note = "paired_with=cutoff_window_posterior_samples; style=publication_focus_v2"
+            note = sprintf("paired_with=cutoff_window_posterior_samples; style=%s", style$version)
           )
         }
 
@@ -636,7 +636,7 @@ unified_render_publication_figures <- function(
           pdf_path = if (nzchar(pdf_path)) normalizePath(pdf_path, mustWork = FALSE) else "",
           quantiles_path = normalizePath(quant_row$path[[1L]], mustWork = FALSE),
           sample_subset_path = if (nrow(sample_row) > 0L) normalizePath(sample_row$path[[1L]], mustWork = FALSE) else "",
-          style_version = "publication_focus_v2",
+          style_version = style$version,
           style_source_path = as.character(style$style_source_path %||% ""),
           style_snapshot_path = as.character(style_snapshot_path %||% ""),
           rewritten_canonical_png = isTRUE(rewrite_canonical_png),
@@ -674,7 +674,7 @@ unified_render_publication_figures <- function(
               source_run = row$source_run[[1L]],
               interval_low_col = "interval_low",
               interval_high_col = "interval_high",
-              interval_label = "95% synthesis credible interval",
+              interval_label = "Pointwise central 95% predictive interval",
               ensemble_df = ensemble_df,
               retrospective_df = retrospective_df
             )
@@ -684,7 +684,7 @@ unified_render_publication_figures <- function(
               plot_type = "cutoff_window_posterior_samples_with_raw_ensembles",
               path = with_ens_png,
               source_run = row$source_run[[1L]],
-              note = "style=publication_focus_v2; exact_interval=95_from_cache; includes_adapter_scale_retrospectives_and_ensemble_references"
+              note = sprintf("style=%s; exact_interval=95_from_cache; includes_adapter_scale_retrospectives_and_ensemble_references", style$version)
             )
             if (nzchar(with_ens_pdf)) {
               manifest_rows_to_add[[length(manifest_rows_to_add) + 1L]] <- post_publication_manifest_row(
@@ -692,7 +692,7 @@ unified_render_publication_figures <- function(
                 plot_type = "cutoff_window_posterior_samples_with_raw_ensembles_pdf",
                 path = with_ens_pdf,
                 source_run = row$source_run[[1L]],
-                note = "paired_with=cutoff_window_posterior_samples_with_raw_ensembles; style=publication_focus_v2"
+                note = sprintf("paired_with=cutoff_window_posterior_samples_with_raw_ensembles; style=%s", style$version)
               )
             }
 
@@ -703,7 +703,7 @@ unified_render_publication_figures <- function(
               pdf_path = if (nzchar(with_ens_pdf)) normalizePath(with_ens_pdf, mustWork = FALSE) else "",
               quantiles_path = normalizePath(quant_row$path[[1L]], mustWork = FALSE),
               sample_subset_path = if (nrow(sample_row) > 0L) normalizePath(sample_row$path[[1L]], mustWork = FALSE) else "",
-              style_version = "publication_focus_v2",
+              style_version = style$version,
               style_source_path = as.character(style$style_source_path %||% ""),
               style_snapshot_path = as.character(style_snapshot_path %||% ""),
               rewritten_canonical_png = FALSE,
@@ -731,7 +731,7 @@ unified_render_publication_figures <- function(
           plot_type = plot_type,
           path = row$path[[1L]],
           source_run = row$source_run[[1L]],
-          note = "style=publication_focus_v2; interval=90_from_quantiles; observed_split=fit_vs_heldout"
+          note = sprintf("style=%s; interval=90_from_quantiles; observed_split=fit_vs_heldout", style$version)
         )
 
         if (nzchar(pdf_path)) {
@@ -740,7 +740,7 @@ unified_render_publication_figures <- function(
             plot_type = paste0(plot_type, "_pdf"),
             path = pdf_path,
             source_run = row$source_run[[1L]],
-            note = sprintf("paired_with=%s; style=publication_focus_v2", plot_type)
+            note = sprintf("paired_with=%s; style=%s", plot_type, style$version)
           )
         }
 
@@ -751,7 +751,7 @@ unified_render_publication_figures <- function(
           pdf_path = if (nzchar(pdf_path)) normalizePath(pdf_path, mustWork = FALSE) else "",
           quantiles_path = normalizePath(quant_row$path[[1L]], mustWork = FALSE),
           sample_subset_path = if (nrow(sample_row) > 0L) normalizePath(sample_row$path[[1L]], mustWork = FALSE) else "",
-          style_version = "publication_focus_v2",
+          style_version = style$version,
           style_source_path = as.character(style$style_source_path %||% ""),
           style_snapshot_path = as.character(style_snapshot_path %||% ""),
           rewritten_canonical_png = isTRUE(rewrite_canonical_png),
@@ -798,7 +798,7 @@ unified_render_publication_figures <- function(
               plot_type = "cutoff_window_predictive_bands_with_raw_ensembles",
               path = with_ens_png,
               source_run = row$source_run[[1L]],
-              note = "style=publication_focus_v2; interval=90_from_quantiles; includes_adapter_scale_retrospectives_and_ensemble_references"
+              note = sprintf("style=%s; interval=90_from_quantiles; includes_adapter_scale_retrospectives_and_ensemble_references", style$version)
             )
             if (nzchar(with_ens_pdf)) {
               manifest_rows_to_add[[length(manifest_rows_to_add) + 1L]] <- post_publication_manifest_row(
@@ -806,7 +806,7 @@ unified_render_publication_figures <- function(
                 plot_type = "cutoff_window_predictive_bands_with_raw_ensembles_pdf",
                 path = with_ens_pdf,
                 source_run = row$source_run[[1L]],
-                note = "paired_with=cutoff_window_predictive_bands_with_raw_ensembles; style=publication_focus_v2"
+                note = sprintf("paired_with=cutoff_window_predictive_bands_with_raw_ensembles; style=%s", style$version)
               )
             }
 
@@ -817,7 +817,7 @@ unified_render_publication_figures <- function(
               pdf_path = if (nzchar(with_ens_pdf)) normalizePath(with_ens_pdf, mustWork = FALSE) else "",
               quantiles_path = normalizePath(quant_row$path[[1L]], mustWork = FALSE),
               sample_subset_path = "",
-              style_version = "publication_focus_v2",
+              style_version = style$version,
               style_source_path = as.character(style$style_source_path %||% ""),
               style_snapshot_path = as.character(style_snapshot_path %||% ""),
               rewritten_canonical_png = FALSE,
@@ -1013,17 +1013,25 @@ post_publication_resolve_context_input_paths <- function(post_root) {
   out[vapply(out, file.exists, logical(1))]
 }
 
+# Explicit interior breaks prevent the automatic calendar grid from drawing an
+# extra date beyond the observed/cache window and clipping its label at the edge.
+post_publication_focus_date_breaks <- function(dates) {
+  limits <- range(as.Date(dates), na.rm = TRUE)
+  if (as.integer(diff(limits)) < 2L) return(unique(limits))
+  seq(limits[[1L]] + 1L, limits[[2L]] - 1L, by = "2 weeks")
+}
+
 post_publication_focus_caption <- function(cutoff_date, forecast_start = as.Date(cutoff_date) + 1L) {
   sprintf(
-    "Vertical dashed line marks the first forecast date (%s; cutoff %s).",
-    as.character(as.Date(forecast_start)),
-    as.character(as.Date(cutoff_date))
+    "Dashed line: forecast origin (%s); first forecast: %s.",
+    as.character(as.Date(cutoff_date)),
+    as.character(as.Date(forecast_start))
   )
 }
 
 post_publication_focus_subtitle <- function(cutoff_date, forecast_start = as.Date(cutoff_date) + 1L) {
   sprintf(
-    "Cutoff: %s | first forecast date: %s",
+    "Forecast origin: %s | first forecast: %s",
     as.character(as.Date(cutoff_date)),
     as.character(as.Date(forecast_start))
   )
@@ -1086,7 +1094,7 @@ post_publication_render_focus_predictive_plot <- function(
   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
   forecast_end <- max(quant_df$date, na.rm = TRUE)
   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
-  cutoff_line_date <- forecast_start
+  cutoff_line_date <- cutoff_date
   y_limits <- post_publication_y_limits_for_cutoff(cutoff_date, style)
 
   if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
@@ -1368,277 +1376,130 @@ post_publication_resolve_ensemble_input_paths <- function(post_root) {
 }
 
 post_publication_render_focus_posterior_plot <- function(
-  model_id,
-  quant_df,
-  sample_df,
-  png_path,
-  pdf_path,
-  style,
-  source_run = "",
-  interval_low_col = "interval_low",
-  interval_high_col = "interval_high",
-  interval_label = "95% synthesis credible interval",
-  ensemble_df = NULL,
-  retrospective_df = NULL
+  model_id, quant_df, sample_df, png_path, pdf_path, style, source_run = "",
+  interval_low_col = "interval_low", interval_high_col = "interval_high",
+  interval_label = "Pointwise central 95% predictive interval",
+  ensemble_df = NULL, retrospective_df = NULL
 ) {
   quant_df <- post_publication_common_data(quant_df)
   if (!(interval_low_col %in% names(quant_df)) || !(interval_high_col %in% names(quant_df))) {
     stop(sprintf("focus plot requires interval columns %s and %s", interval_low_col, interval_high_col), call. = FALSE)
   }
-
-  sample_df <- if (!is.null(sample_df)) sample_df else data.frame()
-  if (nrow(sample_df) > 0L) {
-    sample_df$date <- as.Date(sample_df$date)
-    sample_df <- sample_df[order(sample_df$segment, sample_df$sample_index, sample_df$date, method = "radix"), , drop = FALSE]
-    sample_df <- post_publication_sample_subset(sample_df, cap = 10L)
+  # These columns are calculated from the complete saved predictive matrices by
+  # post_publication_apply_exact_cache_interval/mean; display paths never enter
+  # their calculation. The mean is E[log(1 + Q)], not log(1 + E[Q]).
+  if (!("model_mean" %in% names(quant_df))) {
+    stop("focus posterior plot requires exact cache-derived model_mean; a median cannot be labeled as a predictive mean.", call. = FALSE)
   }
-  if (!is.null(ensemble_df) && nrow(ensemble_df) > 0L) {
-    ensemble_df$date <- as.Date(ensemble_df$date)
-    ensemble_df <- ensemble_df[order(ensemble_df$provider, ensemble_df$member, ensemble_df$date, method = "radix"), , drop = FALSE]
-  }
-
-  center_col <- if ("model_mean" %in% names(quant_df)) {
-    "model_mean"
-  } else if ("q50" %in% names(quant_df)) {
-    "q50"
-  } else {
-    names(quant_df)[grepl("^q", names(quant_df))][ceiling(sum(grepl("^q", names(quant_df))) / 2)]
-  }
-
+  center_col <- "model_mean"
   has_history <- any(quant_df$segment == "history", na.rm = TRUE)
   has_forecast <- any(quant_df$segment == "forecast", na.rm = TRUE)
   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
+  forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date + 1L
   forecast_end <- max(quant_df$date, na.rm = TRUE)
-  forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
-  cutoff_line_date <- forecast_start
   y_limits <- post_publication_y_limits_for_cutoff(cutoff_date, style)
-
+  sample_df <- if (!is.null(sample_df)) sample_df else data.frame()
+  if (isTRUE(style$posterior$render_sample_paths) && nrow(sample_df) > 0L) {
+    sample_df$date <- as.Date(sample_df$date)
+    sample_df <- sample_df[order(sample_df$segment, sample_df$sample_index, sample_df$date, method = "radix"), , drop = FALSE]
+    sample_df <- post_publication_sample_subset(sample_df, cap = as.integer(style$posterior$sample_path_cap %||% 10L))
+  } else {
+    sample_df <- data.frame()
+  }
+  if (!is.null(ensemble_df) && nrow(ensemble_df) > 0L) {
+    ensemble_df$date <- as.Date(ensemble_df$date)
+    ensemble_df$legend_label <- ifelse(ensemble_df$provider == "GloFAS", "GloFAS ensemble", "NWM ensemble")
+    ensemble_df <- ensemble_df[order(ensemble_df$provider, ensemble_df$member, ensemble_df$date, method = "radix"), , drop = FALSE]
+  }
   if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
     retrospective_df$date <- as.Date(retrospective_df$date)
     retrospective_df <- retrospective_df[
-      !is.na(retrospective_df$date) &
-        retrospective_df$date >= min(quant_df$date, na.rm = TRUE) &
-        retrospective_df$date <= cutoff_date &
-        is.finite(retrospective_df$value),
-      ,
-      drop = FALSE
-    ]
-    retrospective_df$legend_label <- ifelse(
-      retrospective_df$provider == "GloFAS",
-      "GloFAS retrospective",
-      "NWS retrospective"
-    )
+      !is.na(retrospective_df$date) & retrospective_df$date >= min(quant_df$date, na.rm = TRUE) &
+        retrospective_df$date <= cutoff_date & is.finite(retrospective_df$value), , drop = FALSE]
+    retrospective_df$legend_label <- ifelse(retrospective_df$provider == "GloFAS", "GloFAS retrospective", "NWM retrospective")
     retrospective_df <- retrospective_df[order(retrospective_df$provider, retrospective_df$source, retrospective_df$date, method = "radix"), , drop = FALSE]
   }
-  retrospective_labels <- if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
-    unique(retrospective_df$legend_label)
-  } else {
-    character(0)
-  }
-
   hist_obs <- quant_df[quant_df$segment == "history", c("date", "observed"), drop = FALSE]
   fc_obs <- quant_df[quant_df$segment == "forecast", c("date", "observed"), drop = FALSE]
+  observed_fit_label <- "USGS history"
+  observed_future_label <- "USGS verification"
+  model_center_label <- "Predictive mean (log scale)"
+  sample_label <- "Predictive sample paths"
   palette <- post_publication_product_palette()
-  observed_fit_label <- "USGS observations"
-  observed_future_label <- "Held-out USGS"
-  model_center_label <- "exDQLM - Synthesis"
-  color_breaks <- c(
-    observed_fit_label,
-    observed_future_label,
-    model_center_label,
-    retrospective_labels,
-    if (!is.null(ensemble_df) && any(ensemble_df$provider == "GloFAS")) {
-      sprintf("GloFAS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider == "GloFAS"])))
-    },
-    if (!is.null(ensemble_df) && any(ensemble_df$provider != "GloFAS")) {
-      sprintf("NWS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider != "GloFAS"])))
-    }
-  )
-  linetype_values <- c(
-    setNames("solid", observed_fit_label),
-    setNames("22", observed_future_label),
-    setNames("solid", model_center_label)
-  )
-  if (length(retrospective_labels) > 0L) {
-    linetype_values[retrospective_labels] <- "dotdash"
-  }
-  if (!is.null(ensemble_df) && any(ensemble_df$provider == "GloFAS")) {
-    glofas_label <- sprintf("GloFAS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider == "GloFAS"])))
-    linetype_values[[glofas_label]] <- "solid"
-  }
-  if (!is.null(ensemble_df) && any(ensemble_df$provider != "GloFAS")) {
-    nws_label <- sprintf("NWS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider != "GloFAS"])))
-    linetype_values[[nws_label]] <- "solid"
-  }
-
-  flood_labels <- post_publication_flood_label_df(forecast_end)
-
+  color_values <- c(
+    setNames(palette[["usgs"]], observed_fit_label), setNames(palette[["usgs_future"]], observed_future_label),
+    setNames(style$colors$median, model_center_label),
+    "GloFAS retrospective" = palette[["glofas"]], "NWM retrospective" = palette[["nws"]],
+    "GloFAS ensemble" = palette[["glofas"]], "NWM ensemble" = palette[["nws"]],
+    setNames("#87929E", sample_label))
+  # Provider and role both remain identifiable when printed without color.
+  linetype_values <- c("solid", "22", "solid", "dotdash", "longdash", "solid", "dotted", "solid")
+  names(linetype_values) <- names(color_values)
+  shape_values <- setNames(c(16, 21, NA, 15, 17, NA, NA, NA), names(color_values))
+  retrospective_labels <- if (!is.null(retrospective_df) && nrow(retrospective_df)) unique(retrospective_df$legend_label) else character()
+  ensemble_labels <- if (!is.null(ensemble_df) && nrow(ensemble_df)) unique(ensemble_df$legend_label) else character()
+  color_breaks <- c(observed_fit_label, observed_future_label, model_center_label,
+                    retrospective_labels, ensemble_labels, if (nrow(sample_df)) sample_label)
+  color_breaks <- unique(color_breaks)
   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
-    ggplot2::geom_hline(
-      data = post_publication_flood_stage_df(),
-      mapping = ggplot2::aes(yintercept = y),
-      inherit.aes = FALSE,
-      color = "#5B677A",
-      linewidth = 0.55,
-      linetype = "22",
-      alpha = 0.95
-    ) +
-    ggplot2::geom_ribbon(
-      ggplot2::aes(ymin = .data[[interval_low_col]], ymax = .data[[interval_high_col]], fill = interval_label),
-      alpha = 0.42,
-      color = NA
-    )
-
-  if (nrow(sample_df) > 0L) {
-    p <- p + ggplot2::geom_line(
-      data = sample_df,
-      mapping = ggplot2::aes(y = value, group = interaction(segment, sample_index)),
-      linewidth = 0.30,
-      alpha = 0.10,
-      lineend = "round",
-      color = "#B8C1CB",
-      show.legend = FALSE
-    )
+    ggplot2::geom_hline(data = post_publication_flood_stage_df(), ggplot2::aes(yintercept = y),
+      inherit.aes = FALSE, color = "#5B677A", linewidth = 0.35, linetype = "22") +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = .data[[interval_low_col]], ymax = .data[[interval_high_col]], fill = interval_label),
+      alpha = 0.42, color = NA)
+  if (nrow(sample_df)) {
+    p <- p + ggplot2::geom_line(data = sample_df,
+      ggplot2::aes(y = value, group = interaction(segment, sample_index), color = sample_label),
+      linewidth = style$posterior$sample_line_width %||% 0.25,
+      alpha = style$posterior$sample_line_alpha %||% 0.10, lineend = "round")
   }
-
-  if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
-    p <- p + ggplot2::geom_line(
-      data = retrospective_df,
-      mapping = ggplot2::aes(y = value, group = interaction(provider, source), color = legend_label, linetype = legend_label),
-      linewidth = 0.82,
-      alpha = 0.78,
-      lineend = "round"
-    )
+  if (!is.null(retrospective_df) && nrow(retrospective_df)) {
+    p <- p + ggplot2::geom_line(data = retrospective_df,
+      ggplot2::aes(y = value, group = interaction(provider, source), color = legend_label, linetype = legend_label),
+      linewidth = 0.50, alpha = 0.85, lineend = "round")
+    # Sparse markers supplement the different dash patterns, without obscuring
+    # daily values. Lines still use every original date and value.
+    marker_df <- retrospective_df[as.integer(retrospective_df$date - min(quant_df$date)) %% 7L == 0L, , drop = FALSE]
+    p <- p + ggplot2::geom_point(data = marker_df,
+      ggplot2::aes(y = value, color = legend_label, shape = legend_label), size = 1.5, show.legend = TRUE)
   }
-
-  if (!is.null(ensemble_df) && nrow(ensemble_df) > 0L) {
-    ensemble_df$legend_label <- ifelse(
-      ensemble_df$provider == "GloFAS",
-      sprintf("GloFAS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider == "GloFAS"]))),
-      sprintf("NWS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider != "GloFAS"])))
-    )
-    p <- p + ggplot2::geom_line(
-      data = ensemble_df,
-      mapping = ggplot2::aes(y = value, group = interaction(provider, member), color = legend_label, linetype = legend_label),
-      linewidth = 0.62,
-      alpha = 0.24,
-      lineend = "round"
-    )
+  if (!is.null(ensemble_df) && nrow(ensemble_df)) {
+    p <- p + ggplot2::geom_line(data = ensemble_df,
+      ggplot2::aes(y = value, group = interaction(provider, member), color = legend_label, linetype = legend_label),
+      linewidth = 0.35, alpha = 0.28, lineend = "round")
   }
-
   p <- p +
-    ggplot2::geom_line(
-      ggplot2::aes(y = .data[[center_col]], color = model_center_label, linetype = model_center_label),
-      linewidth = 1.10,
-      lineend = "round"
-    ) +
-    ggplot2::geom_line(
-      data = hist_obs,
-      mapping = ggplot2::aes(y = observed, color = observed_fit_label, linetype = observed_fit_label),
-      linewidth = 0.95,
-      lineend = "round"
-    ) +
-    ggplot2::geom_point(
-      data = hist_obs,
-      mapping = ggplot2::aes(x = date, y = observed),
-      inherit.aes = FALSE,
-      color = palette[["usgs"]],
-      fill = palette[["usgs"]],
-      shape = 16,
-      size = 1.5,
-      alpha = 0.95,
-      show.legend = FALSE
-    ) +
-    ggplot2::geom_line(
-      data = fc_obs,
-      mapping = ggplot2::aes(y = observed, color = observed_future_label, linetype = observed_future_label),
-      linewidth = 0.95,
-      lineend = "round"
-    ) +
-    ggplot2::geom_point(
-      data = fc_obs,
-      mapping = ggplot2::aes(x = date, y = observed),
-      inherit.aes = FALSE,
-      color = palette[["usgs_future"]],
-      fill = "white",
-      shape = 21,
-      stroke = 0.55,
-      size = 1.7,
-      show.legend = FALSE
-    ) +
-    ggplot2::geom_segment(
-      data = data.frame(date = cutoff_line_date),
-      mapping = ggplot2::aes(x = date, xend = date, y = -Inf, yend = Inf),
-      inherit.aes = FALSE,
-      color = style$colors$cutoff,
-      linewidth = 0.55,
-      linetype = "22"
-    ) +
-    ggplot2::geom_text(
-      data = flood_labels,
-      mapping = ggplot2::aes(x = x, y = y, label = label),
-      inherit.aes = FALSE,
-      hjust = 1.02,
-      vjust = -0.15,
-      size = 4.2,
-      color = "#4A5568",
-      fontface = "italic"
-    ) +
-    ggplot2::scale_color_manual(
-      values = c(
-        setNames(palette[["usgs"]], observed_fit_label),
-        setNames(palette[["usgs_future"]], observed_future_label),
-        setNames(style$colors$median, model_center_label),
-        setNames(palette[["glofas"]], retrospective_labels[grepl("^GloFAS retrospective$", retrospective_labels)]),
-        setNames(palette[["nws"]], retrospective_labels[grepl("^NWS retrospective$", retrospective_labels)]),
-        setNames(palette[["glofas"]], names(linetype_values)[grepl("^GloFAS forecast ensemble \\(", names(linetype_values))]),
-        setNames(palette[["nws"]], names(linetype_values)[grepl("^NWS forecast ensemble \\(", names(linetype_values))])
-      ),
-      breaks = color_breaks
-    ) +
-    ggplot2::scale_linetype_manual(
-      values = linetype_values,
-      breaks = intersect(color_breaks, names(linetype_values))
-    ) +
-    ggplot2::scale_fill_manual(
-      values = setNames(style$colors$interval_outer, interval_label),
-      breaks = interval_label
-    ) +
-    ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
-    ggplot2::labs(
-      title = post_publication_model_title(model_id),
-      subtitle = post_publication_focus_subtitle(cutoff_date, forecast_start),
-      x = "Date",
-      y = post_publication_y_label(style),
-      caption = post_publication_focus_caption(cutoff_date, forecast_start)
-    ) +
-    ggplot2::guides(
-      color = ggplot2::guide_legend(
-        order = 1,
-        nrow = 2,
-        byrow = TRUE
-      ),
-      linetype = "none",
-      fill = ggplot2::guide_legend(order = 2, nrow = 1)
-    ) +
+    ggplot2::geom_line(ggplot2::aes(y = .data[[center_col]], color = model_center_label, linetype = model_center_label), linewidth = 0.90) +
+    ggplot2::geom_line(data = hist_obs, ggplot2::aes(y = observed, color = observed_fit_label, linetype = observed_fit_label), linewidth = 0.6) +
+    ggplot2::geom_point(data = hist_obs, ggplot2::aes(y = observed, color = observed_fit_label, shape = observed_fit_label), size = 1.3, show.legend = TRUE) +
+    ggplot2::geom_line(data = fc_obs, ggplot2::aes(y = observed, color = observed_future_label, linetype = observed_future_label), linewidth = 0.6) +
+    ggplot2::geom_point(data = fc_obs, ggplot2::aes(y = observed, color = observed_future_label, shape = observed_future_label), fill = "white", stroke = 0.4, size = 1.5, show.legend = TRUE) +
+    ggplot2::geom_vline(xintercept = cutoff_date, color = style$colors$cutoff, linewidth = 0.4, linetype = "22") +
+    ggplot2::geom_text(data = post_publication_flood_label_df(forecast_end),
+      ggplot2::aes(x = x, y = y, label = label), inherit.aes = FALSE,
+      hjust = 1.02, vjust = -0.3, size = 2.9, color = "#4A5568", fontface = "italic") +
+    ggplot2::scale_color_manual(name = NULL, values = color_values, breaks = color_breaks) +
+    ggplot2::scale_linetype_manual(name = NULL, values = linetype_values, breaks = color_breaks) +
+    ggplot2::scale_shape_manual(name = NULL, values = shape_values, breaks = color_breaks) +
+    ggplot2::scale_fill_manual(name = NULL, values = setNames(style$colors$interval_outer, interval_label), breaks = interval_label) +
+    ggplot2::scale_x_date(breaks = post_publication_focus_date_breaks(quant_df$date), date_labels = "%b %d") +
+    ggplot2::labs(title = post_publication_model_title(model_id),
+      subtitle = post_publication_focus_subtitle(cutoff_date, forecast_start), x = "Date", y = post_publication_y_label(style),
+      caption = post_publication_focus_caption(cutoff_date, forecast_start)) +
+    ggplot2::guides(color = ggplot2::guide_legend(order = 1, ncol = 2, byrow = TRUE,
+      override.aes = list(alpha = 1, linetype = unname(linetype_values[color_breaks]),
+        shape = unname(shape_values[color_breaks]),
+        linewidth = ifelse(color_breaks == model_center_label, 0.9, 0.5), size = 1.6)),
+      linetype = "none", shape = "none", fill = ggplot2::guide_legend(order = 2, nrow = 1, override.aes = list(shape = NA, color = NA, linetype = 0))) +
     post_publication_base_theme(style) +
-    ggplot2::theme(
-      legend.position = "bottom",
-      legend.direction = "horizontal",
-      legend.box = "vertical",
-      legend.justification = "center",
-      legend.text = ggplot2::element_text(size = 10.8, color = "#243B53"),
-      legend.margin = ggplot2::margin(t = 2, r = 0, b = 0, l = 0),
-      legend.spacing.x = grid::unit(8, "pt"),
-      legend.key.width = grid::unit(20, "pt"),
-      legend.key.height = grid::unit(10, "pt"),
-      plot.margin = ggplot2::margin(10, 10, 8, 10)
-    )
-
-  if (!is.null(y_limits)) {
-    p <- p + ggplot2::coord_cartesian(ylim = y_limits)
-  }
-
+    ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal", legend.box = "vertical",
+      legend.justification = "center", legend.text = ggplot2::element_text(size = 8.5, color = "#243B53"),
+      axis.text = ggplot2::element_text(size = 8.5),
+      legend.margin = ggplot2::margin(t = 1, r = 0, b = 0, l = 0),
+      legend.spacing.x = grid::unit(6, "pt"), legend.key.width = grid::unit(25, "pt"),
+      legend.key.height = grid::unit(9, "pt"), plot.margin = ggplot2::margin(6, 7, 4, 5))
+  if (!is.null(y_limits)) p <- p + ggplot2::coord_cartesian(ylim = y_limits)
   post_publication_save_plot(p, png_path = png_path, pdf_path = pdf_path, style = style)
-  invisible(list(cutoff_date = cutoff_date))
+  invisible(list(cutoff_date = cutoff_date, forecast_start = forecast_start,
+    sample_path_count = if (nrow(sample_df)) length(unique(sample_df$sample_index)) else 0L,
+    plot = p))
 }

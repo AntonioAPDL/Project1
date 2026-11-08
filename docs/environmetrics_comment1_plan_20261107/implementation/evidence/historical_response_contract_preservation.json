@@ -1,0 +1,34 @@
+[
+  {
+    "path": "scripts/reviewer1_overview_contract.py",
+    "historical_response_requirement_literals_unchanged": true
+  },
+  {
+    "path": "scripts/reviewer1_uncertainty_contract.py",
+    "historical_response_requirement_literals_unchanged": true
+  },
+  {
+    "path": "scripts/runtime_feasibility_contract.py",
+    "historical_response_requirement_literals_unchanged": true
+  },
+  {
+    "path": "scripts/forecast_design_contract.py",
+    "historical_response_requirement_literals_unchanged": true
+  },
+  {
+    "path": "scripts/latest_forecast_issue_contract.py",
+    "historical_response_requirement_literals_unchanged": true
+  },
+  {
+    "path": "scripts/reviewer1_remaining_contracts.py",
+    "historical_response_requirement_literals_unchanged": true
+  },
+  {
+    "path": "scripts/validate_publication_freeze.py",
+    "historical_response_requirement_literals_unchanged": true
+  },
+  {
+    "path": "scripts/validate_revision_cross_repo_wiring.py",
+    "historical_response_requirement_literals_unchanged": true
+  }
+]

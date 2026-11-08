@@ -372,6 +372,8 @@ def main() -> None:
     parser.add_argument('--project-root', type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument('--config', type=Path, default=Path(__file__).resolve().parents[1] / 'config' / 'exal_m_t1_setup_support_by_cutoff_v2_20260507.json')
     parser.add_argument('--output-root', type=Path, default=None)
+    parser.add_argument('--canonical-gdpc-factor', type=Path, default=None, help='Explicit existing read-only factor for isolated rendering.')
+    parser.add_argument('--canonical-gdpc-metadata', type=Path, default=None, help='Explicit matching factor metadata for isolated rendering.')
     parser.add_argument('--slugs', nargs='*', default=None)
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('--skip-review', action='store_true')
@@ -386,8 +388,8 @@ def main() -> None:
     forecast_plot_pre_days = int(config.get('forecast_plot_pre_days', 28))
     forecast_plot_post_days = int(config.get('forecast_plot_post_days', 28))
     display_plot_scale = str(config.get('flow_figure_display_scale', 'log1p_cms'))
-    gdpc_factor_path = canonical_gdpc_factor_csv()
-    gdpc_metadata_path = canonical_gdpc_metadata_json()
+    gdpc_factor_path = args.canonical_gdpc_factor.resolve() if args.canonical_gdpc_factor else canonical_gdpc_factor_csv()
+    gdpc_metadata_path = args.canonical_gdpc_metadata.resolve() if args.canonical_gdpc_metadata else canonical_gdpc_metadata_json()
 
     if args.clean and output_root.exists() and not wanted:
         shutil.rmtree(output_root)

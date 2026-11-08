@@ -1,0 +1,295 @@
+Historical prepared plan -- implemented in the current repositories.
+For the completed state, see implementation/COMPLETION_REPORT.txt and the closed
+readiness/implementation_tasks.csv register. The planning-time statuses below are
+retained as the dated preparation record.
+
+Reviewer comment 1: verified implementation plan
+Prepared November 7, 2026, America/Los_Angeles
+
+Status and scope
+
+Preparation is complete. Manuscript and renderer implementation has not begun.
+This plan concerns the readability, structure, notation, references, figures and
+typesetting issues in referee comment 1. Current publication results, selected
+run identities and numerical artifacts are authoritative throughout this work.
+
+This document supersedes the execution sequence in analysis_and_plan.txt. The
+previous investigation and typography proofs are retained. Decisions below explain
+where the plan is retained, narrowed or changed. The recommended route is based
+on verified dependencies and limited changes; it is not a claim that every possible
+alternative has been proven inferior.
+
+Current state verified
+
+Workflow HEAD: 2d97f548; article HEAD: 1272bfc1.
+The manuscript is a separate nested Git repository. The previous response and
+public reproduction repositories are separate repositories as well. Their exact
+commits and status are frozen in readiness/baseline_snapshot.json.
+
+At November 7, 2026, 20:39:50 PST, there was no actual Project1 fitting worker or
+queue. Two old Bash monitors remained; their matrix already showed all five rows
+closed/report/pass. Their presence and recent matrix timestamp do not establish
+live fitting. Six real R fitting processes belonged to a separate project.
+The machine had 64 logical CPUs, about 476 GiB available RAM and 65 GiB free disk.
+No research job was started, stopped or modified. These are snapshot facts, not a claim
+about future job state. Recheck relevant workers immediately before shared-source
+integration or publication-asset promotion.
+
+Editorial work can proceed in isolated drafts without waiting for unrelated fits.
+Later processes can source workflow modules from disk when their stages begin;
+therefore shared-source editing still requires care even when an earlier fit has
+already loaded some functions. Isolation is the default route for this revision.
+
+The readiness capture inventories 298 files, with 188 protected source-data/cache
+files, ten selected synthesis runs and thirteen manuscript figure includes.
+All inventoried files exist; all thirteen includes resolve to uppercase Figures/.
+The selected compact predictive caches total about 9.8 MiB. A full runtime-tree
+copy or restoration of heavy fit objects is unnecessary for the planned figures.
+
+Narrow baseline checks executed: 38 tests, 33 passed and five existing failures.
+The failures are two missing article-document paths, one literal manuscript-link
+assertion and two obsolete figure-mirror assertions. These are recorded by name
+and command in readiness/baseline_checks.json. They must not be reported as new
+regressions after the editorial work. The runtime-contract tests passed, and the
+two existing prose-content assertions also passed; it was their document-existence
+assertions that failed.
+
+A fresh full baseline PDF built successfully in an isolated output directory:
+30 pages, no unresolved citations or references, no BibTeX warnings and stable
+auxiliary labels on the final pass. Existing layout warnings remain three overfull
+horizontal boxes and one overfull vertical box. A successful baseline build does
+not mean the known typographical appearance has already been repaired.
+
+Main refinements to the previous plan
+
+1. Retain the six-section architecture and one readable main-text model, but repair
+   its dependency graph before moving blocks. Priors still need the channel set,
+   stacked state and dimensions currently defined in the compact model passage.
+   Keep those minimal definitions in the main text, or express priors componentwise.
+   Moving the entire block without this bridge would create undefined symbols.
+
+2. Add a preparation/isolation stage before rewriting. A parent workflow worktree
+   does not isolate its independently versioned article directory. Future work
+   requires two pinned worktrees or equivalent independent copies.
+
+3. Retain uppercase Figures/ as the current canonical asset tree. The manifest,
+   current layout and all thirteen resolved includes agree on this. An older
+   synchronization helper assumes lowercase is canonical. The lowercase tree is
+   incomplete: fourteen files versus forty-eight uppercase, with both synthesis
+   families absent. Existing guards currently stop the old mirror command before
+   deletion. Resolve the direction and its tests before any asset synchronization.
+   A directory migration would add scope without helping the referee concern.
+
+4. Replace the broad refresh/promotion advice with narrow, staged operations.
+   refresh_all_generated_assets.py can touch tables, freeze snapshots, supporting
+   bundles, cleanup and poster assets. The standalone publication renderer writes
+   images, manifests and style snapshots into the supplied outputs directory.
+   --rewrite-canonical FALSE does not make that directory read-only. Proofs must
+   use curated copies and rebased mutable paths. Do not run these commands against
+   the authoritative source directories during drafting.
+
+5. Narrow notation edits to genuine collisions and definition errors. A wholesale
+   symbolic renaming would increase the review surface. Keep stable LaTeX labels
+   and source filenames even when displayed section/figure numbers change.
+
+6. Make sample-path removal a proof-based display decision, not a prerequisite.
+   The reviewer requires distinguishable lines and accurate captions. First retain
+   existing paths and identify them correctly as predictive samples. Compare a
+   simplified proof if necessary for final-size legibility. If a simplified main
+   figure is chosen, retain the complete display in supporting material.
+
+7. Treat historical-panel relocation as a second editorial decision. First move
+   the predictive illustration ahead of the historical material. Preserve all
+   panels and stable labels. Move historical displays to the appendix only where
+   the complete revised reading pass shows that doing so improves the argument.
+
+8. Correct the scope of the runtime-test diagnosis. The article test itself requires
+   runtime field names in the main manuscript. The runtime contract module requires
+   those fields in the historical response text, not its main-article claim list.
+   Preserve the earlier response as history. Update current-article gates without
+   gratuitously changing historical response requirements.
+
+Detailed retain/amend/reject decisions are in readiness/decisions.csv.
+
+Recommended final architecture
+
+1. Introduction: task and uncertainty; information roles; focused background;
+   scientific contributions; application and roadmap.
+2. Forecasting setting and data: a short target/source-role description, units,
+   extraction/alignment and forecast-origin context. Detailed inventories belong
+   in support, not in a long new opening section.
+3. Bayesian correction and predictive synthesis: brief likelihood interpretation;
+   one scientific state-space formulation; concise prior structure; actual VB
+   workflow; predictive synthesis across fitted quantiles.
+4. Application specification and evaluation methods: component motivations and
+   features, numerical settings, origins/horizons, comparison variants and scores.
+5. Results: an explicitly illustrative reference forecast, comparisons, quantile
+   results and supporting interpretation. Introduce the reference specification
+   before displaying it. Preserve authoritative numerical conclusions.
+6. Discussion and conclusions: connect the task and presented evidence, clarify
+   practical interpretation, and avoid repeating coefficients and captions.
+
+Appendices hold full matrix construction, augmentation and detailed algorithms,
+plus supporting panels and summaries as needed. The move map preserves current
+labels and lists the notation dependencies of each technical relocation.
+
+Execution sequence after acceptance
+
+Stage 0: frozen baseline and readiness record -- COMPLETED in this pass.
+   Retain the current article/PDF reference, authoritative selection identities,
+   hashes, exact source roots and existing failure record. This package supplies
+   the baseline. Its read-only auditor can recapture or compare it later.
+   Exit condition: protected sources are available and stable; any existing check
+   failures are explicitly separated from future regressions.
+
+Stage 1: isolated authoring and narrowly scoped contract repairs -- PLANNED.
+   Create separate workflow and article worktrees pinned to the captured commits.
+   Keep the article worktree under the review workflow path only if the nesting
+   and runtime binding overlay are explicit. Leave response/public repositories
+   unchanged unless a later approved task requires their update.
+   Use an allowlist of presentation/source changes. Record read-only authoritative
+   input roots separately from staged output roots. Confirm every prospective
+   write target resolves within the review workspace.
+   Align the uppercase/lowercase contract and replace missing-document/literal-link
+   assertions with checks of current documented locations and resolved citation
+   targets. Preserve real data/hash assertions and historical response checks.
+   Exit condition: an isolated compilation and proof-render route is verified,
+   and each existing failure has a specific limited disposition.
+
+Stage 2: dependency sheet and mechanical structure move -- PLANNED.
+   Finalize the move map and terminology register. Keep the minimum definitions
+   needed by main-text priors; link full selector and matrix algebra to its new
+   appendix location. Move score/variant definitions before results and the
+   predictive illustration ahead of historical diagnostics. Make a movement-first
+   diff before rewriting the surrounding prose so the changes are reviewable.
+   Exit condition: no symbol or reference is orphaned; one main-text model carries
+   the scientific explanation; all original evidence remains accounted for.
+
+Stage 3: scientific exposition, notation and citations -- PLANNED.
+   Rewrite the opening and transitions as a connected argument. Lead computation
+   with the fitting method actually reported and explain its model-specific steps.
+   Replace repository jargon with scientific descriptions. Define abbreviations
+   independently in abstract/main text and consistently thereafter. Correct only
+   actual symbol collisions, keeping a cross-document rename map.
+   Reassign the nine-reference generic sentence to specific supported claims.
+   Verify metadata before each bibliography correction. Keep useful references
+   with a documented purpose; do not impose a numerical citation quota.
+   Introduce the multi-year component's rationale beside its definition. Existing
+   notebooks contain exploratory spectral code but no saved peak outputs. Describe
+   that evidence conservatively unless the original numerical diagnostic is found.
+   Exit condition: claim/citation and definition/use registers are complete, with
+   unresolved factual wording identified explicitly rather than filled by inference.
+
+Stage 4: typography and numerical-description consistency -- PLANNED.
+   Apply the already proven UTF-8, number-label and siunitx grouping fixes at the
+   manuscript layer, preserving the vendor class and numerical precision. Handle
+   both main-text and appendix counters. Keep caption spacing separate from
+   reference numbers. Hiding hyperlink borders is optional, not a completion gate.
+   Verify printed rotation units against the saved specification before changing
+   wording. The current constructor computes w=2*pi*h/363.5854; the multiplier
+   1/6.8068493 is not itself a calendar-year period. The constructor implies
+   2474.871 days for that component. Verify the active saved specification before
+   selecting the final rounded description; preserve the fitted transition matrix.
+   Exit condition: accents, table values and references display correctly, and
+   period/dimension descriptions use units consistent with the authoritative model.
+
+Stage 5: isolated figure proofs -- PLANNED.
+   Start with one December 2022 multivariate plot and the univariate reference.
+   Preserve exact cache-derived mean and 2.5%/97.5% endpoints. Name the mean on
+   the log1p scale, and the ribbon a pointwise central 95% predictive interval.
+   Merge color/linetype/marker keys so the legend reproduces the actual marks;
+   distinguish both external sources in grayscale. Use one origin convention and
+   short source/reference labels. Inspect at the actual inclusion width: labels
+   and legend entries should be readable at about 8pt or larger.
+   Correct captions that call sample paths seven quantile curves. First proof the
+   complete display; optionally compare a simpler panel. Do not silently discard
+   numerical content or change interval definitions for visual convenience.
+   The focus renderer currently ignores general sample-path style flags and caps
+   paths locally. Any future display control must actually reach that renderer.
+   Style version identifiers are hardcoded at several manifest call sites; derive
+   them from the selected style so the audit record describes the image correctly.
+   Exit condition: two inspected proofs, a documented display choice, unchanged
+   numerical matrices/endpoints, and accurate provenance for the rendered style.
+
+Stage 6: bounded family rendering and article integration -- PLANNED.
+   Regenerate the five displayed multivariate panels and the representative
+   univariate panel. Update the context figure through its current explicit May 16
+   configuration and isolated destination. Avoid defaults naming an older config.
+   A second pass over undisplayed companion panels is optional and must be listed
+   explicitly; the existing family refresh reads ten runs even when six panels are
+   the publication target. Do not launch it blindly for a six-panel task.
+   Use the frozen article selection, without a runtime-root override that bypasses
+   that selection. Carry original run IDs through proof manifests. Keep context
+   adapters, model summaries and all underlying numbers unchanged.
+   Promote only the allowlisted article assets through the corrected case policy.
+   The appendix reference requires the specific univariate-only support-copy path;
+   it does not require rebuilding the multivariate support replay.
+   Exit condition: every changed image has a source, style and destination record;
+   all manuscript includes resolve to the intended authoritative family.
+
+Stage 7: integrated checks, complete reading pass and reviewable delivery -- PLANNED.
+   Update every relevant current-article prose gate together, including duplicate
+   checks in the publication-freeze validator and article tests. Do not preserve
+   rejected sentences in comments merely to satisfy substring tests. Prefer stable
+   labels, resolved sources and quantitative invariants; editorial meaning still
+   requires a human reading pass.
+   Rebuild in a separate output directory until auxiliary labels stabilize. Verify
+   citation resolution, final-size color/grayscale figures, captions and section
+   order. Compare the protected snapshot, selected identities and 100 numeric table
+   rows recorded across twelve generated fragments. Distinguish allowed layout
+   changes from numerical changes.
+   Deliver a TeX/source diff, PDF, clause-to-location checklist, departure log and
+   the final invariant/check reports. Recheck actual relevant processes immediately
+   before any shared-source integration. Commit/push/public export is a separate
+   subsequent action; it is not performed by this preparation package.
+
+Safe operations and command constraints
+
+The preparation auditor is executable now. It writes one requested new JSON file
+under /tmp or this readiness directory, refuses overwrites, hashes narrow selected
+inputs, and performs no rendering, fitting, refresh, network or Git write action.
+Use the command in README.txt. Its source/workflow logical identities support
+comparisons across separate worktree paths; explicit response/public roots can be
+supplied when those repositories remain outside the review workspace.
+
+Future render commands are conditional on completing staged-path verification.
+scripts/render_publication_post_figures.R --run-dir takes the directory containing
+figure_manifest.csv, not a top-level model run. Its default rewrites source PNGs.
+The lower-level focus renderer also writes style/manifests and is not a read-only
+probe. Copy/rebase mutable manifest paths, stage post/cache and post/inputs, and run
+from the isolated workflow so it loads the edited helper rather than live code.
+Never symlink a mutable manifest/output directory back into an authoritative run.
+
+For the context renderer, verified flags are --project-root, --config, --output-root
+and --slugs. Use config/exal_m_t1_setup_support_by_cutoff_v2_20260516.json, an isolated
+output root and one representative slug first. --clean is unnecessary for a fresh
+proof directory. The specific univariate support helper has --univar-only and
+--article-root/--workflow-root arguments; it is still a mutation and should operate
+on the staged article only.
+
+The broad sync shell wrapper describes its default as non-mutating but invokes
+validators that write reports. Therefore it is an integration-stage tool with
+explicit report destinations or isolated copies, not the initial read-only audit.
+Use narrow checks first. No broad refresh, cleanup, historical replay or poster
+update is necessary to address comment 1.
+
+The fresh build also verified a local toolchain detail: use the article directory
+for LaTeX so the real installed siunitx is loaded rather than the workflow-root
+fallback. With output under /tmp, BibTeX must run from that build directory with
+BIBINPUTS and BSTINPUTS pointing to the article source. Passing an absolute /tmp
+basename to BibTeX from the article directory is rejected by openout_any=p.
+Keep this execution pattern in the future isolated build recipe.
+
+Efficiency and acceptance
+
+Run one proof render at a time with modest thread use. Hash/copy only the selected
+compact artifacts; do not copy the runtime archive or load full fit objects. The
+baseline audit hashed about 61 MiB and required no model execution. Use a small
+review-space budget and recheck free disk before each family render.
+
+Each stage exits on concrete evidence, not on a claim that the manuscript is
+"optimal" or on a successful compile alone. Completion requires a coherent reading
+order, motivated definitions, accurate citations/notation, accessible figures,
+correct typography, preserved numerical authority and a full human PDF review.
+The machine-readable task and decision registers identify the dependencies and
+allowed deviations. All substantive work remains PLANNED in this package.

@@ -178,7 +178,10 @@ test_that("publication figure rewrite renders focus posterior plots with raw ens
   expect_true(any(updated_manifest$plot_type == "cutoff_window_predictive_bands_pdf"))
   expect_true(any(updated_manifest$plot_type == "cutoff_window_predictive_bands_with_raw_ensembles"))
   expect_true(any(updated_manifest$plot_type == "cutoff_window_predictive_bands_with_raw_ensembles_pdf"))
-  expect_true(any(grepl("style=publication_focus_v2", updated_manifest$note[updated_manifest$plot_type == "cutoff_window_posterior_samples"], fixed = TRUE)))
+  selected_style <- post_publication_load_style(repo_root, file.path(repo_root, "config", "post_publication_figures.yaml"))
+  expect_true(any(grepl(paste0("style=", selected_style$version), updated_manifest$note[updated_manifest$plot_type == "cutoff_window_posterior_samples"], fixed = TRUE)))
+  pub_manifest <- utils::read.csv(file.path(outputs_dir, "publication_figure_manifest.csv"), stringsAsFactors = FALSE)
+  expect_equal(unique(pub_manifest$style_version), selected_style$version)
   expect_true(any(grepl(
     "includes_adapter_scale_retrospectives_and_ensemble_references",
     updated_manifest$note[updated_manifest$plot_type == "cutoff_window_posterior_samples_with_raw_ensembles"],
@@ -195,4 +198,45 @@ test_that("publication figure rewrite renders focus posterior plots with raw ens
   expect_true(any(pub_manifest$source_plot_type == "cutoff_window_posterior_samples_with_raw_ensembles"))
   expect_true(any(pub_manifest$source_plot_type == "cutoff_window_predictive_bands_focus"))
   expect_true(any(pub_manifest$source_plot_type == "cutoff_window_predictive_bands_with_raw_ensembles"))
+})
+
+test_that("focus display controls preserve complete-cache summaries and require the named mean", {
+  repo_root <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
+  style <- post_publication_load_style(repo_root, file.path(repo_root, "config", "post_publication_figures.yaml"))
+  q <- make_quant_df("exdqlm_univar_synth")
+  samples <- make_sample_df("exdqlm_univar_synth")
+  expect_error(post_publication_render_focus_posterior_plot("exdqlm_univar_synth", q, samples,
+    tempfile(fileext = ".png"), "", style, interval_low_col = "q05", interval_high_col = "q95"),
+    "requires exact cache-derived model_mean")
+  hist <- matrix(seq(0.01, 1.2, length.out = 120), ncol = 3)
+  future <- hist + 1
+  h <- tempfile(fileext = ".rds"); f <- tempfile(fileext = ".rds")
+  saveRDS(hist, h); saveRDS(future, f)
+  q <- post_publication_apply_exact_cache_interval(q, h, f)
+  q <- post_publication_apply_exact_cache_mean(q, h, f)
+  expect_equal(q$model_mean, c(colMeans(hist), colMeans(future)))
+  expected <- apply(cbind(hist, future), 2, stats::quantile, probs = c(0.025, 0.975), type = 8, names = FALSE)
+  expect_equal(q$interval_low, as.numeric(expected[1, ]))
+  expect_equal(q$interval_high, as.numeric(expected[2, ]))
+  before <- q
+  style$posterior$sample_path_cap <- 2L
+  enabled <- post_publication_render_focus_posterior_plot("exdqlm_univar_synth", q, samples,
+    tempfile(fileext = ".png"), "", style)
+  expect_equal(enabled$sample_path_count, 2L)
+  expect_equal(enabled$cutoff_date, as.Date("2021-01-03"))
+  expect_equal(enabled$forecast_start, as.Date("2021-01-04"))
+  style$posterior$render_sample_paths <- FALSE
+  disabled <- post_publication_render_focus_posterior_plot("exdqlm_univar_synth", q, samples,
+    tempfile(fileext = ".png"), "", style)
+  expect_equal(disabled$sample_path_count, 0L)
+  expect_identical(q, before)
+})
+
+
+test_that("focus date labels stay inside the saved window", {
+  dates <- seq(as.Date("2021-01-05"), as.Date("2021-02-20"), by = "day")
+  breaks <- post_publication_focus_date_breaks(dates)
+  expect_true(all(breaks > min(dates) & breaks < max(dates)))
+  expect_false(as.Date("2021-02-22") %in% breaks)
+  expect_equal(diff(breaks), structure(rep(14, 3), class = "difftime", units = "days"))
 })

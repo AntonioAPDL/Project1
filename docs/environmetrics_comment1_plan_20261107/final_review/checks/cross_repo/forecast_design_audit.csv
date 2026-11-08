@@ -1,0 +1,61 @@
+item,status,detail
+manifest_exists,pass,artifacts/forecast_design/forecast_design_manifest.json
+schema_version,pass,he6_forecast_design_v1
+cutoff_count,pass,"['20210123', '20211112', '20211221', '20220511', '20221225']"
+held_out_target,pass,post_cutoff_usgs_only
+fit_inputs_through_cutoff,pass,"['usgs_through_cutoff', 'retrospective_products_through_cutoff']"
+fair_assessment_cross_validation_analogue,pass,"{'cross_validation_analogue': 'time_ordered_rolling_origin_folds', 'fold_unit': 'forecast_origin_cutoff', 'dense_overlapping_origins_claimed': False, 'dense_origin_policy': 'not_used_because_archive_version_constraints_and_overlapping_windows_can_overrepresent_the_same_hydrological_episode', 'fold_construction_note': 'each retained origin requires reconstructing a version-consistent bundle of observations, retrospective products, issued forecast products, and forecast-window covariates from evolving operational archives', 'computational_resource_note': 'a denser origin grid would require substantially more data recovery, version matching, spatial extraction, covariate staging, model fitting, and posterior predictive synthesis', 'origin_selection_rationale': 'archive-feasible version-consistent origins spanning contrasting hydrological settings without repeatedly evaluating similar forecast windows', 'source_complexity_note': 'forecast-validation inputs differ by release history, product version, update frequency, forecast horizon, ensemble-member structure, spatial support, and access interface'}"
+no_dense_overlapping_origin_claim,pass,False
+fold_construction_records_archive_reconstruction,pass,"each retained origin requires reconstructing a version-consistent bundle of observations, retrospective products, issued forecast products, and forecast-window covariates from evolving operational archives"
+source_complexity_records_versioning_and_access,pass,"forecast-validation inputs differ by release history, product version, update frequency, forecast horizon, ensemble-member structure, spatial support, and access interface"
+dense_origin_resource_note,pass,"a denser origin grid would require substantially more data recovery, version matching, spatial extraction, covariate staging, model fitting, and posterior predictive synthesis"
+forecast_products_timing,pass,latest_issued_at_or_before_cutoff
+forecast_products_issue_selection_manifest,pass,artifacts/latest_forecast_issue/latest_forecast_issue_manifest.json
+local_forecast_window_covariates,pass,"names=['precipitation', 'soil_moisture'], role=forecast_window_transfer_covariates"
+gdpc_not_forecast_product,pass,"{'workflow_slot': 'PCA', 'canonical_name': 'GDPC1', 'role': 'deterministic_climate_index_covariate', 'operational_forecast_product': False, 'verification_target': False, 'source_policy': 'canonical_master_factor_sliced_to_cutoff_specific_bundle'}"
+no_usgs_leakage_policy,pass,False
+gdpc_claims_policy,pass,False
+no_continuous_dense_hindcast_claim,pass,False
+workflow_contract_doc_exists,pass,docs/he6_out_of_sample_forecast_design_contract_20260615.md
+article_contract_doc_exists,pass,docs/forecast_design_contract.md
+origin_design,pass,"five, rolling.origin|forecast origins?, low.flow, high.flow|winter, version, archiv"
+verification,pass,"USGS, verification, forecast (?:window|horizon)|forecast.window"
+archive_work,pass,"archiv, version, spatial, covariate, overlap"
+climate_covariates,pass,"ERA5.Land, PRISM, climate.index, GDPC|generalized dynamic principal component, Big Trees"
+transfer_inputs,pass,"precipitation, soil moisture|soil.moisture, climate.index, transfer"
+"corrections_required:five cutoff-specific, rolling-origin forecast-window evaluations",pass,"five cutoff-specific, rolling-origin forecast-window evaluations"
+corrections_required:The model is fit using only observations and retrospective information available through \(\textbf{c}\),pass,The model is fit using only observations and retrospective information available through \(\textbf{c}\)
+corrections_required:Forecasts are then generated over the post-cutoff forecast window using the latest forecast products issued at or before \(\textbf{c}\),pass,Forecasts are then generated over the post-cutoff forecast window using the latest forecast products issued at or before \(\textbf{c}\)
+corrections_required:seven quantile-specific fits at each cutoff,pass,seven quantile-specific fits at each cutoff
+corrections_required:Post-cutoff USGS observations remain verification only,pass,Post-cutoff USGS observations remain verification only
+corrections_required:forecast-window precipitation and soil-moisture covariates,pass,forecast-window precipitation and soil-moisture covariates
+corrections_required:canonical GDPC climate-index covariate,pass,canonical GDPC climate-index covariate
+corrections_required:not treated as an operational forecast product,pass,not treated as an operational forecast product
+corrections_required:archive-feasible and version-consistent,pass,archive-feasible and version-consistent
+corrections_required:five cutoff-specific forecast-window evaluations,pass,five cutoff-specific forecast-window evaluations
+corrections_required:post-cutoff USGS observations are used only for verification,pass,post-cutoff USGS observations are used only for verification
+corrections_required:A new fold is not obtained by shifting an index in a fixed rectangular dataset,pass,A new fold is not obtained by shifting an index in a fixed rectangular dataset
+corrections_required:archive-reconstruction campaign,pass,archive-reconstruction campaign
+corrections_required:rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode,pass,rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode
+corrections_required:pre-cutoff observational window,pass,pre-cutoff observational window
+corrections_required:fixed calibrated specification,pass,fixed calibrated specification
+article_forbidden:post-cutoff USGS observations are used to fit,pass,post-cutoff USGS observations are used to fit
+corrections_forbidden:post-cutoff USGS observations are used to fit,pass,post-cutoff USGS observations are used to fit
+article_forbidden:forecast-window USGS observations are used to fit,pass,forecast-window USGS observations are used to fit
+corrections_forbidden:forecast-window USGS observations are used to fit,pass,forecast-window USGS observations are used to fit
+"article_forbidden:the model is fit using only information available through \(\textbf{c}\): observed discharge up to \(\textbf{c}\), retrospective/historical products available at \(\textbf{c}\), and forecast products issued at or before \(\textbf{c}\)",pass,"the model is fit using only information available through \(\textbf{c}\): observed discharge up to \(\textbf{c}\), retrospective/historical products available at \(\textbf{c}\), and forecast products issued at or before \(\textbf{c}\)"
+"corrections_forbidden:the model is fit using only information available through \(\textbf{c}\): observed discharge up to \(\textbf{c}\), retrospective/historical products available at \(\textbf{c}\), and forecast products issued at or before \(\textbf{c}\)",pass,"the model is fit using only information available through \(\textbf{c}\): observed discharge up to \(\textbf{c}\), retrospective/historical products available at \(\textbf{c}\), and forecast products issued at or before \(\textbf{c}\)"
+article_forbidden:the model is fit using forecast products issued at or before,pass,the model is fit using forecast products issued at or before
+corrections_forbidden:the model is fit using forecast products issued at or before,pass,the model is fit using forecast products issued at or before
+article_forbidden:forecast products issued at or before \(\textbf{c}\). Post-cutoff USGS observations remain verification only,pass,forecast products issued at or before \(\textbf{c}\). Post-cutoff USGS observations remain verification only
+corrections_forbidden:forecast products issued at or before \(\textbf{c}\). Post-cutoff USGS observations remain verification only,pass,forecast products issued at or before \(\textbf{c}\). Post-cutoff USGS observations remain verification only
+article_forbidden:GDPC forecast product,pass,GDPC forecast product
+corrections_forbidden:GDPC forecast product,pass,GDPC forecast product
+article_forbidden:PCA forecast product,pass,PCA forecast product
+corrections_forbidden:PCA forecast product,pass,PCA forecast product
+article_forbidden:post-cutoff USGS observations enter fitting,pass,post-cutoff USGS observations enter fitting
+corrections_forbidden:post-cutoff USGS observations enter fitting,pass,post-cutoff USGS observations enter fitting
+article_forbidden:random K-fold cross-validation,pass,random K-fold cross-validation
+corrections_forbidden:random K-fold cross-validation,pass,random K-fold cross-validation
+article_forbidden:continuous daily post-2022 hindcast,pass,continuous daily post-2022 hindcast
+corrections_forbidden:continuous daily post-2022 hindcast,pass,continuous daily post-2022 hindcast

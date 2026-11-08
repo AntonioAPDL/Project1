@@ -1,0 +1,122 @@
+repo,claim_type,claim,status
+article,forbidden,lowest forecast-window CRPS in every case,pass
+article,forbidden,best-performing model in all five cutoffs,pass
+article,forbidden,outperforms the best raw forecast baseline across the panel,pass
+article,forbidden,lower forecast-window CRPS than \texttt{AL-M-T1} at all five,pass
+article,forbidden,better than \texttt{AL-M-T1} in all five,pass
+article,forbidden,raw NWS forecast product has the lowest CRPS overall,pass
+article,forbidden,raw NWS forecast product is best overall,pass
+article,forbidden,the main contribution will be presented,pass
+article,forbidden,does not currently distinguish meteorological and hydrological uncertainty,pass
+article,forbidden,we will reorganize the introduction,pass
+article,forbidden,we will correct it,pass
+article,forbidden,we will replace the deterministic language,pass
+article,forbidden,we will state earlier and more explicitly,pass
+article,forbidden,we will reorganize the application material,pass
+article,forbidden,We will make this explicit in the revised manuscript,pass
+article,forbidden,We agree that the current organization of Section 3 is not clear enough,pass
+article,forbidden,we will replace vague headings,pass
+article,forbidden,"This will separate setup, historical behavior, and forecasting evidence more clearly",pass
+article,forbidden,The original labeling of Tables 1 and 2 was inconsistent: the entries reported there are posterior medians,pass
+article,forbidden,Posterior Means and 95\% Credible Intervals for the Source-Specific,pass
+article,forbidden,local hydrological covariates,pass
+article,forbidden,current A/B/C presentation does not make the connection,pass
+article,forbidden,we will present the final forecasting specification,pass
+article,forbidden,We will also revise the opening of the results section,pass
+article,forbidden,we will simplify the presentation substantially,pass
+article,forbidden,we will remove the detailed PIT development,pass
+article,forbidden,we will reduce intermediate derivational detail,pass
+article,forbidden,will be mentioned briefly as a robustness device,pass
+article,forbidden,TODO[,pass
+corrections,forbidden,lowest forecast-window CRPS in every case,pass
+corrections,forbidden,best-performing model in all five cutoffs,pass
+corrections,forbidden,outperforms the best raw forecast baseline across the panel,pass
+corrections,forbidden,lower forecast-window CRPS than \texttt{AL-M-T1} at all five,pass
+corrections,forbidden,better than \texttt{AL-M-T1} in all five,pass
+corrections,forbidden,raw NWS forecast product has the lowest CRPS overall,pass
+corrections,forbidden,raw NWS forecast product is best overall,pass
+corrections,forbidden,the main contribution will be presented,pass
+corrections,forbidden,does not currently distinguish meteorological and hydrological uncertainty,pass
+corrections,forbidden,we will reorganize the introduction,pass
+corrections,forbidden,we will correct it,pass
+corrections,forbidden,we will replace the deterministic language,pass
+corrections,forbidden,we will state earlier and more explicitly,pass
+corrections,forbidden,we will reorganize the application material,pass
+corrections,forbidden,We will make this explicit in the revised manuscript,pass
+corrections,forbidden,We agree that the current organization of Section 3 is not clear enough,pass
+corrections,forbidden,we will replace vague headings,pass
+corrections,forbidden,"This will separate setup, historical behavior, and forecasting evidence more clearly",pass
+corrections,forbidden,The original labeling of Tables 1 and 2 was inconsistent: the entries reported there are posterior medians,pass
+corrections,forbidden,Posterior Means and 95\% Credible Intervals for the Source-Specific,pass
+corrections,forbidden,local hydrological covariates,pass
+corrections,forbidden,current A/B/C presentation does not make the connection,pass
+corrections,forbidden,we will present the final forecasting specification,pass
+corrections,forbidden,We will also revise the opening of the results section,pass
+corrections,forbidden,we will simplify the presentation substantially,pass
+corrections,forbidden,we will remove the detailed PIT development,pass
+corrections,forbidden,we will reduce intermediate derivational detail,pass
+corrections,forbidden,will be mentioned briefly as a robustness device,pass
+corrections,forbidden,TODO[,pass
+article,forbidden,flexile,pass
+corrections,required,separate eight-day NWS-horizon comparison,pass
+corrections,required,NWS is omitted from the 28-day table,pass
+corrections,required,centering the forecasting analysis on multiple rolling-origin cutoffs,pass
+corrections,required,supported by rolling-origin forecast evaluation and selected-model interpretation,pass
+corrections,required,rather than treating dynamic discrepancy correction alone as the central novelty,pass
+corrections,required,forecasting evaluation is expanded to five rolling-origin out-of-sample cutoffs,pass
+corrections,required,evidence is no longer tied to a single moderate-flood episode,pass
+corrections,required,not presented as a continuous 2023-present hindcast,pass
+corrections,required,representative selected-model illustration at one forecast origin,pass
+corrections,required,validation evidence is the multi-cutoff CRPS and check-loss tables,pass
+corrections,required,selected-model diagnostics,pass
+corrections,required,organized around forecast origins rather than a conventional random split,pass
+corrections,required,five cutoff-specific forecast-window evaluations,pass
+corrections,required,post-cutoff USGS observations are used only for verification,pass
+corrections,required,archive reconstruction step before any model can be fit,pass
+corrections,required,rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode,pass
+corrections,required,pre-cutoff observational window,pass
+corrections,required,fixed calibrated specification,pass
+corrections,required,The revised introduction now broadens this statement,pass
+corrections,required,uses both conceptual and physically based models,pass
+corrections,required,"simpler to specify, calibrate, and deploy in forecasting applications",pass
+corrections,required,typographical error rather than intended terminology,pass
+corrections,required,The revised manuscript no longer uses this term,pass
+corrections,required,reanalysis-based model products rather than direct observations or uncertainty-free measurements,pass
+corrections,required,ERA5/ERA5-Land variables may include short forecast components,pass
+corrections,required,precipitation is from PRISM and ERA5-Land enters as the soil-moisture covariate,pass
+corrections,required,external covariates rather than verification observations,pass
+corrections,required,now separates the general methodology from the application data and forecasting design,pass
+corrections,required,USGS daily flow series as the observed target,pass
+corrections,required,"distinguishes forecast covariates, retrospective products, and operational forecast products",pass
+corrections,required,external historical inputs used to learn source-specific discrepancies relative to the USGS target,pass
+corrections,required,now states explicitly that precipitation is not handled through censoring,pass
+corrections,required,"zero-inflation, or a separate occurrence/intensity model",pass
+corrections,required,zero-precipitation days are retained in the supplied covariate path,pass
+corrections,required,precipitation intermittency enters through the transfer component,pass
+corrections,required,no longer uses the vague ``General Results'' organization,pass
+corrections,required,separates the material by inferential role,pass
+corrections,required,Forecast Validation Results,pass
+corrections,required,Interpretation of the Selected Specification,pass
+corrections,required,selected-model diagnostics are separated from the forecast-validation tables,pass
+corrections,required,representative transfer-function covariate table reports posterior means,pass
+corrections,required,tables report posterior medians with 95\% credible intervals,pass
+corrections,required,table-specific export contract,pass
+corrections,required,The revised introduction now separates these concepts before introducing the Bayesian framework,pass
+corrections,required,"hydrological uncertainty with river-system structure, parameters, states, and observations",pass
+corrections,required,meteorological uncertainty with precipitation and atmospheric forcing fields,pass
+corrections,required,using available forecast and retrospective products to produce calibrated predictive distributions,pass
+corrections,required,"no longer organizes the methodology around models A, B, and C",pass
+corrections,required,presents a common state-space formulation,pass
+corrections,required,Section 4 identifies the models in terms of \(L\)-\(S\)-\(T\) labels,pass
+corrections,required,"likelihood family, source set, and forecast-window transfer treatment",pass
+corrections,required,selected \texttt{exAL-M-T1} specification,pass
+corrections,required,PIT-centered development has been removed from the main text,pass
+corrections,required,final forecast comparison uses CRPS as the primary full-distribution score,pass
+corrections,required,targeted quantile check loss as the quantile-level diagnostic,pass
+corrections,required,retained a compact posterior predictive synthesis subsection,pass
+corrections,required,posterior uncertainty around fitted quantile-location or component summaries,pass
+corrections,required,full forecast predictive distribution at each date,pass
+corrections,required,representative single-cutoff posterior predictive distribution,pass
+corrections,required,forecast-window inputs change,pass
+corrections,required,Quantile crossing is no longer developed as a separate procedure in the main text,pass
+corrections,required,Details about the MCMC and VB algorithms are provided in the Appendix,pass

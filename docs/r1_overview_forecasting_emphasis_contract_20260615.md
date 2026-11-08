@@ -1,6 +1,7 @@
 # R1-O Forecasting-Emphasis Contract
 
-Status: active response/revised-article contract, June 15, 2026.
+Status: active contract; current-article editorial checks updated November 7, 2026.
+The earlier response remains a historical record.
 
 This document records the contract for Reviewer 1's overview comment. The
 comment accepted the modeling contribution but argued that the original
@@ -34,11 +35,12 @@ The contract is enforced by:
 - the revised-article test
   `tests/test_article_a1_and_table_contracts.py`.
 
-The validators require the revised article to retain the `Forecast Validation
-Results` and `Interpretation of the Selected Specification` section structure.
-They also forbid stale main-article framing such as `General Results`, staged
-`Model A/B/C` language, or language implying that forecast validation remains
-absent.
+Current-article validators protect the six-section order through stable labels:
+introduction, data, methodology, application/evaluation, results, discussion.
+The predictive illustration precedes the supporting interpretation within Results.
+Scientific concepts and active LaTeX are checked without locking a sentence or
+obsolete section title. Staged `Model A/B/C` language and claims that the existing
+forecast evidence is absent remain excluded. Historical response checks are unchanged.
 
 ## Non-Claims
 

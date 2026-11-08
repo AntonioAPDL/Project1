@@ -1,0 +1,1402 @@
+--- a/README.md
++++ b/README.md
+@@ -5,10 +5,12 @@
+ ## Where to look first
+ 
+ - `wileyNJD-APA.tex`: manuscript source used by Overleaf
++- `wileyNJD-APA.pdf`: current locally built review PDF
++- `docs/comment1_revision.txt`: implemented comment-1 changes and review/build entrypoints
+ - `Figures/manuscript/`: the exact figure files used by the manuscript
+-- `Figures/forecast_context_by_cutoff/`: cutoff-wide copies of the Figure 4 forecast-context view for all five cutoffs
++- `Figures/forecast_context_by_cutoff/`: cutoff-wide copies of the forecast-context view for all five cutoffs
+ - `Figures/multivariate_synthesis_by_cutoff/`: cutoff-wide selected-model synthesis family, including the supplementary overlay panels
+-- `Figures/reference_synthesis_by_cutoff/`: Figure A2-style reference-synthesis family for all five cutoffs
++- `Figures/reference_synthesis_by_cutoff/`: univariate reference-synthesis family for all five cutoffs
+ - `tables/generated_tex/`: the exact generated table blocks included by the manuscript
+ - `docs/figure_table_provenance.md`: figure/table provenance summary
+ - `artifacts/software_availability/software_availability_manifest.json`: compact HE-5 software availability and archive-status manifest
+@@ -39,10 +41,12 @@
+ python3 scripts/refresh_all_generated_assets.py
+ ```
+ 
+-The refresh path now includes a figure-path validation step. The manuscript keeps
+-the lowercase `figures/` tree as canonical, while `wileyNJD-APA.tex` also
+-accepts the legacy uppercase `Figures/` tree as a compile-time fallback for
+-Overleaf Git-sync compatibility.
++The refresh path includes a figure-path validation step. The canonical manuscript
++assets are in uppercase `Figures/`, matching `MANUSCRIPT_ASSET_MANIFEST.json`.
++Lowercase `figures/` is an optional compatibility copy. The historically named
++`scripts/sync_legacy_uppercase_figures.py` copies only from `Figures/` to
++`figures/`, preserves unmanaged files, and supports bounded `--relative-path`
++updates. It never writes to the canonical tree.
+ 
+ For a benchmark-only authority refresh, prefer the narrower sequence in the
+ workflow runbook: refresh the HE2 manifest snapshot, selected-model bundles,
+@@ -79,8 +83,16 @@
+ ## Standard compile command
+ 
+ ```bash
+-pdflatex -interaction=nonstopmode -halt-on-error -jobname=output wileyNJD-APA.tex
+-bibtex output
+-pdflatex -interaction=nonstopmode -halt-on-error -jobname=output wileyNJD-APA.tex
+-pdflatex -interaction=nonstopmode -halt-on-error -jobname=output wileyNJD-APA.tex
++python3 -B scripts/build_manuscript_review.py \
++  --output-dir /tmp/NEW_article_review --jobname manuscript_review
+ ```
++
++Choose a new output directory for each build. The helper records source, table
++and included-image hashes, LaTeX/BibTeX commands, label stability and PDF checks.
++It builds from the article directory and keeps temporary files in the requested
++output directory. `main.tex` is a wrapper for the same manuscript source.
++
++The reviewed presentation assets are preserved by the checksummed registry in
++`artifacts/comment1_figure_revision/`. Check it with
++`python3 -B scripts/comment1_figure_revision.py --check`. A new numerical source
++or selected-run identity requires a new inspected presentation revision.
+--- a/docs/reviewer1_overview_forecasting_emphasis_contract.md
++++ b/docs/reviewer1_overview_forecasting_emphasis_contract.md
+@@ -0,0 +1,22 @@
++# Current manuscript structure and forecasting emphasis
++
++The November 2026 comment-1 revision uses six main sections: introduction;
++forecasting setting and data; Bayesian correction and predictive synthesis;
++application specification and evaluation; results; discussion and conclusions.
++The stable labels are `sec:introduction`, `sec:data`, `sec:methodology`,
++`sec:evaluation`, `sec:forecastvalidation`, and `sec5`.
++
++Data roles are established before the model. Scoring methods and comparison
++variants precede results. The illustrative predictive synthesis precedes the
++supporting historical interpretation. Full matrix construction and augmentation
++are in appendices; all existing numerical results remain authoritative.
++
++`scripts/manuscript_text_contract.py` checks active LaTeX labels and scientific
++concepts without requiring a specific sentence. Comments cannot satisfy the
++checks. Quantitative provenance, source selection, table values, and forecast
++horizons are checked separately by the numerical/asset validators. Automated
++checks do not establish prose quality; the compiled manuscript requires a
++complete reading pass.
++
++The earlier response to reviewers is retained as a historical document. Its
++exact text requirements are independent of the current article's wording.
+--- a/docs/reviewer1_remaining_contracts.md
++++ b/docs/reviewer1_remaining_contracts.md
+@@ -0,0 +1,21 @@
++# Continuity of earlier reviewer items
++
++The November 2026 comment-1 revision changes exposition and figure style while
++retaining all existing publication results. Earlier response text is historical
++and remains unchanged.
++
++The current article keeps the common state-space model, likelihood/source/transfer
++variant labels, separate source roles, five forecast origins, 28-day and eight-day
++comparisons, distributional and quantile scores, and distinct fitted-summary and
++predictive intervals. Generated table estimands, selected run identities, source
++hashes, and numerical contents retain their existing validators.
++
++Current scientific-content checks are in `scripts/manuscript_text_contract.py`;
++the workflow imports those pure utilities through `current_article_contract.py`.
++They check active LaTeX concepts, references and section order. Old exact sentence
++requirements are retained only for the prior-round response. A changed sentence
++is not evidence that the corresponding scientific requirement was removed.
++
++The six-section structure supersedes the earlier wording that forecast validation
++and historical interpretation must be separate top-level sections: they are now
++separate labeled subsections of Results, with the forecast illustration first.
+--- a/docs/reviewer1_uncertainty_framing_contract.md
++++ b/docs/reviewer1_uncertainty_framing_contract.md
+@@ -0,0 +1,15 @@
++# Uncertainty terminology in the current article
++
++The introduction distinguishes hydrological uncertainty (structure, parameters,
++states, observations) from meteorological uncertainty (precipitation and related
++forcing). The data section identifies the USGS discharge target, retrospective
++products, forecast products, and precipitation/soil-moisture/climate covariates.
++Source descriptions cite PRISM and ERA5-Land beside their application roles.
++
++The article distinguishes posterior credible intervals for fitted quantile or
++state summaries from pointwise central 95% predictive intervals for synthesized
++future discharge. A predictive mean is described on the modeled log1p scale.
++
++Workflow overview and uncertainty checks use active LaTeX and concept checks,
++not exact sentences. Numerical manifests and source selections retain their
++separate checks. Prior-round response text is preserved as history.
+--- a/scripts/article_repo_layout.py
++++ b/scripts/article_repo_layout.py
+@@ -101,6 +101,10 @@
+     @property
+     def figures_dir(self) -> Path:
+         return self.root / 'Figures'
++
++    @property
++    def compatibility_figures_dir(self) -> Path:
++        return self.root / 'figures'
+ 
+     @property
+     def publication_figures_dir(self) -> Path:
+--- a/scripts/build_generated_asset_index.py
++++ b/scripts/build_generated_asset_index.py
+@@ -158,9 +158,10 @@
+         '## Standard refresh command\n\n'
+         '```bash\npython3 scripts/refresh_all_generated_assets.py\n```\n\n'
+         'The refresh path now includes a figure-path validation step. The manuscript keeps\n'
+-        'the lowercase `figures/` tree as canonical, while `wileyNJD-APA.tex` also\n'
+-        'accepts the legacy uppercase `Figures/` tree as a compile-time fallback for\n'
+-        'Overleaf Git-sync compatibility.\n\n'
++        'uppercase `Figures/` as canonical, matching `MANUSCRIPT_ASSET_MANIFEST.json`.\n'
++        'Lowercase `figures/` is an optional compatibility copy, refreshed only from\n'
++        '`Figures/` by the historically named `sync_legacy_uppercase_figures.py`.\n'
++        'The helper preserves unmanaged files and supports bounded updates.\n\n'
+         'For a benchmark-only authority refresh, prefer the narrower sequence in the\n'
+         'workflow runbook: refresh the HE2 manifest snapshot, selected-model bundles,\n'
+         'cutoff synthesis families, generated table includes, and corrections response\n'
+--- a/scripts/build_manuscript_review.py
++++ b/scripts/build_manuscript_review.py
+@@ -0,0 +1,125 @@
++#!/usr/bin/env python3
++"""Build the article in a separate directory and record the resolved PDF checks.
++
++No source files or existing review directories are overwritten. Run LaTeX from the
++article directory (so local packages resolve correctly) and BibTeX from the build
++directory (required by TeX's restricted output policy).
++"""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import os
++from pathlib import Path
++import re
++import subprocess
++import sys
++
++from validate_manuscript_figure_paths import (
++    parse_graphicspath, parse_includegraphics, resolve_include,
++)
++
++
++def sha256(path: Path) -> str:
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def build(article: Path, output: Path, job: str) -> dict:
++    if not re.fullmatch(r"[A-Za-z0-9_-]+", job):
++        raise ValueError("Job name may contain letters, digits, underscores and hyphens")
++    if output.exists():
++        raise ValueError("Output directory already exists; choose a fresh review directory")
++    sources = [article / name for name in (
++        "wileyNJD-APA.tex", "wileyNJD-APA.bib", "WileyNJD-v2.cls", "WileyNJD-APA.bst"
++    )]
++    sources.extend(sorted((article / "tables/generated_tex").glob("*.tex")))
++    tex_path = article / "wileyNJD-APA.tex"
++    tex = tex_path.read_text(encoding="utf-8")
++    search = parse_graphicspath(tex)
++    for ref in parse_includegraphics(tex):
++        image_path = resolve_include(article, tex_path, search, ref)
++        if image_path is None:
++            raise ValueError(f"Unresolved manuscript figure: {ref}")
++        sources.append(image_path)
++    sources = sorted(set(sources))
++    before = {str(p.relative_to(article)): sha256(p) for p in sources}
++    output.mkdir(parents=True)
++    env = os.environ.copy()
++    for key in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
++        env[key] = "1"
++    commands = []
++
++    def run(argv: list[str], cwd: Path, log_name: str) -> str:
++        commands.append({"argv": argv, "cwd": str(cwd), "log": log_name})
++        proc = subprocess.run(argv, cwd=cwd, env=env, text=True,
++                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
++        (output / log_name).write_text(proc.stdout, encoding="utf-8")
++        if proc.returncode:
++            raise RuntimeError(f"Command failed ({proc.returncode}); see {output / log_name}")
++        return proc.stdout
++
++    latex = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", f"-jobname={job}",
++             f"-output-directory={output}", "wileyNJD-APA.tex"]
++    run(latex, article, "latex-pass-1.stdout.txt")
++    env["BIBINPUTS"] = str(article) + os.pathsep + env.get("BIBINPUTS", "")
++    env["BSTINPUTS"] = str(article) + os.pathsep + env.get("BSTINPUTS", "")
++    bib = run(["bibtex", job], output, "bibtex.stdout.txt")
++    previous = sha256(output / f"{job}.aux")
++    stable = False
++    for number in range(2, 7):
++        run(latex, article, f"latex-pass-{number}.stdout.txt")
++        current = sha256(output / f"{job}.aux")
++        if current == previous:
++            stable = True
++            break
++        previous = current
++    log = (output / f"{job}.log").read_text(encoding="utf-8", errors="replace")
++    unresolved = re.findall(r"(?:Citation|Reference) [`'][^\n]*undefined|"
++                            r"There were undefined (?:references|citations)", log)
++    pdf = output / f"{job}.pdf"
++    info = run(["pdfinfo", str(pdf)], output, "pdfinfo.txt")
++    run(["pdftotext", "-layout", str(pdf), str(output / f"{job}.txt")],
++        output, "pdftotext.stdout.txt")
++    after = {str(p.relative_to(article)): sha256(p) for p in sources}
++    report = {
++        "article_root": str(article), "output_directory": str(output),
++        "pdf": str(pdf), "pdf_sha256": sha256(pdf),
++        "text_sha256": sha256(output / f"{job}.txt"),
++        "pages": int(re.search(r"^Pages:\s+(\d+)", info, re.M).group(1)),
++        "latex_passes": number, "auxiliary_labels_stable": stable,
++        "unresolved_citations_or_references": unresolved,
++        "bibtex_warnings": [line for line in bib.splitlines() if "Warning--" in line],
++        "overfull_horizontal_boxes": len(re.findall(r"Overfull \\hbox", log)),
++        "overfull_vertical_boxes": len(re.findall(r"Overfull \\vbox", log)),
++        "sources_unchanged_during_build": before == after,
++        "source_hashes": after, "commands": commands,
++    }
++    report["passed"] = (stable and not unresolved and not report["bibtex_warnings"]
++                        and before == after)
++    (output / "build_summary.json").write_text(json.dumps(report, indent=2) + "\n")
++    return report
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--article-root", type=Path, default=Path(__file__).resolve().parents[1])
++    parser.add_argument("--output-dir", type=Path, required=True)
++    parser.add_argument("--jobname", default="comment1_review")
++    args = parser.parse_args()
++    try:
++        report = build(args.article_root.resolve(), args.output_dir.resolve(), args.jobname)
++    except (OSError, ValueError, RuntimeError) as exc:
++        print(str(exc), file=sys.stderr)
++        return 1
++    print(json.dumps({k: report[k] for k in (
++        "pdf", "pages", "latex_passes", "auxiliary_labels_stable",
++        "unresolved_citations_or_references", "bibtex_warnings",
++        "overfull_horizontal_boxes", "overfull_vertical_boxes", "passed"
++    )}, indent=2))
++    return 0 if report["passed"] else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+--- a/scripts/comment1_figure_revision.py
++++ b/scripts/comment1_figure_revision.py
+@@ -0,0 +1,95 @@
++#!/usr/bin/env python3
++"""Preserve reviewed presentation assets across refreshes of frozen run outputs.
++
++Numerical caches/CSVs and frozen selected run IDs must still match the revision.
++All checks finish before any restoration. A changed or missing source requires a
++new render/review; this module never substitutes the previous run's pictures.
++"""
++from __future__ import annotations
++import argparse
++import csv
++import hashlib
++import json
++import os
++from pathlib import Path
++import shutil
++import tempfile
++
++REGISTRY = Path('artifacts/comment1_figure_revision/registry.json')
++
++
++def sha256(path: Path) -> str:
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def contained(root: Path, relative: str) -> Path:
++    path = root / relative
++    if not path.resolve().is_relative_to(root.resolve()):
++        raise ValueError(f'Presentation path escapes article root: {relative}')
++    return path
++
++
++def verify_comment1_figure_revision(article_root: Path) -> dict | None:
++    path = article_root / REGISTRY
++    if not path.exists():
++        return None
++    registry = json.loads(path.read_text())
++    freeze = article_root / 'artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv'
++    with freeze.open(newline='') as f:
++        selected = {(r['cutoff'].replace('-', ''), r['manuscript_label']): r.get('artifact_run_id') or r['run_id'] for r in csv.DictReader(f)}
++    for row in registry['selected_runs']:
++        key = (row['cutoff'], row['label'])
++        if selected.get(key) != row['run_id']:
++            raise ValueError(f'Presentation revision does not match current selected run: {key}')
++    for row in registry['numeric_inputs']:
++        source = Path(row['source'])
++        if not source.is_file() or sha256(source) != row['sha256']:
++            raise ValueError(f'Presentation revision input changed or is missing: {source}')
++    for row in registry.get('article_numeric_inputs', []):
++        source = contained(article_root, row['path'])
++        if not source.is_file() or sha256(source) != row['sha256']:
++            raise ValueError(f'Article numerical input changed or is missing: {source}')
++    for row in registry['restore']:
++        source = contained(article_root / REGISTRY.parent, row['stored'])
++        target = contained(article_root, row['target'])
++        if source.is_symlink() or not source.is_file() or sha256(source) != row['sha256']:
++            raise ValueError(f'Reviewed presentation archive changed: {source}')
++        if target.is_symlink():
++            raise ValueError(f'Refusing symlink presentation target: {target}')
++    return registry
++
++
++def reapply_comment1_figure_revision(article_root: Path) -> int:
++    registry = verify_comment1_figure_revision(article_root)
++    if registry is None:
++        return 0
++    for row in registry['restore']:
++        source = contained(article_root / REGISTRY.parent, row['stored'])
++        target = contained(article_root, row['target'])
++        target.parent.mkdir(parents=True, exist_ok=True)
++        fd, temp = tempfile.mkstemp(prefix='.comment1-', dir=target.parent)
++        os.close(fd)
++        try:
++            shutil.copy2(source, temp)
++            os.replace(temp, target)
++        finally:
++            if os.path.exists(temp):
++                os.unlink(temp)
++    return len(registry['restore'])
++
++
++def main() -> None:
++    p = argparse.ArgumentParser(description=__doc__)
++    p.add_argument('--article-root', type=Path, default=Path(__file__).resolve().parents[1])
++    p.add_argument('--check', action='store_true')
++    args = p.parse_args()
++    root = args.article_root.resolve()
++    if args.check:
++        registry = verify_comment1_figure_revision(root)
++        print('No presentation revision registered.' if registry is None else f'Presentation revision validated: {len(registry["restore"])} assets/metadata files.')
++    else:
++        print(f'Reapplied {reapply_comment1_figure_revision(root)} reviewed presentation assets/metadata files.')
++
++
++if __name__ == '__main__':
++    main()
+--- a/scripts/manuscript_text_contract.py
++++ b/scripts/manuscript_text_contract.py
+@@ -0,0 +1,89 @@
++"""Small checks for active LaTeX structure and scientific concepts.
++
++These checks guard omissions and broken wiring. They intentionally do not judge
++writing quality or require a particular sentence; that requires a reading pass.
++"""
++from __future__ import annotations
++
++import re
++
++
++def active_tex(text: str) -> str:
++    """Remove LaTeX comments so retired material cannot satisfy a check."""
++    return '\n'.join(re.sub(r'(?<!\\)%.*$', '', line) for line in text.splitlines())
++
++
++def normalized_text(text: str) -> str:
++    text = active_tex(text).replace('~', ' ')
++    text = re.sub(r'\\(?:texttt|textbf|emph|mathrm|textrm)\{([^{}]*)\}', r'\1', text)
++    return re.sub(r'\s+', ' ', text).lower()
++
++
++def has_concepts(text: str, *patterns: str) -> bool:
++    text = normalized_text(text)
++    return all(re.search(pattern, text, re.I) is not None for pattern in patterns)
++
++
++def has_label(text: str, label: str) -> bool:
++    return re.search(r'\\label\s*\{' + re.escape(label) + r'\}', active_tex(text)) is not None
++
++
++def in_order(text: str, *needles: str) -> bool:
++    text = active_tex(text)
++    positions = [text.find(needle) for needle in needles]
++    return all(p >= 0 for p in positions) and positions == sorted(positions) and len(set(positions)) == len(positions)
++
++
++def cited_url(article_text: str, bib_text: str, url: str) -> bool:
++    """Accept direct URLs or a used bibliography entry resolving to the URL."""
++    article = active_tex(article_text)
++    if url in article:
++        return True
++    cited = {key.strip() for group in re.findall(r'\\cite\w*\*?(?:\[[^\]]*\])*\{([^}]+)\}', article)
++             for key in group.split(',')}
++    entries = re.split(r'(?m)^\s*@', bib_text)
++    for entry in entries:
++        match = re.match(r'\w+\s*\{\s*([^,\s]+)', entry)
++        if match and match.group(1) in cited and url in entry:
++            return True
++    return False
++
++
++def structure_checks(article: str) -> list[tuple[str, bool, str]]:
++    labels = ['sec:introduction', 'sec:data', 'sec:methodology', 'sec:evaluation', 'sec:forecastvalidation', 'sec5']
++    checks = [('label:' + label, has_label(article, label), label) for label in labels]
++    checks += [
++        ('six_section_order', in_order(article, *(r'\label{' + label + '}' for label in labels)), 'introduction/data/method/evaluation/results/discussion'),
++        ('scoring_before_results', in_order(article, r'\label{sec:evaluation}', r'\label{sec:forecastvalidation}'), 'evaluation precedes results'),
++        ('illustration_before_interpretation', in_order(article, r'\label{subsec:synthillustration}', r'\label{sec:interpretation}'), 'forecast illustration precedes historical interpretation'),
++        ('appendix_matrix', in_order(article, r'\appendix', r'\label{app:stateconstruction}'), 'full matrix construction in appendix'),
++        ('appendix_augmentation', in_order(article, r'\appendix', r'\label{app:augmentation}'), 'likelihood augmentation in appendix'),
++        ('forecast_evidence', has_concepts(article, r'five', r'rolling.origin|forecast origins?', r'CRPS', r'quantile', r'illustrat'), 'five origins, distributional/quantile scores, illustrative forecast'),
++    ]
++    return checks
++
++
++SCIENTIFIC_CONCEPTS = {
++    'variants': (r'Gaussian', r'asymmetric Laplace', r'univariate', r'multivariate', r'transfer', r'nine', r'exAL.M.T1'),
++    'scores': (r'CRPS', r'negatively oriented|lower.{0,70}better|smaller.{0,70}better', r'quantile', r'check loss'),
++    'synthesis': (r'quantile.specific', r'predictive distribution', r'interpolat', r'point mass'),
++    'origin_design': (r'five', r'rolling.origin|forecast origins?', r'low.flow', r'high.flow|winter', r'version', r'archiv'),
++    'verification': (r'USGS', r'verification', r'forecast (?:window|horizon)|forecast.window'),
++    'archive_work': (r'archiv', r'version', r'spatial', r'covariate', r'overlap'),
++    'physical_models': (r'conceptual', r'physically based', r'calibrat', r'practical|operational'),
++    'likelihood': (r'extended asymmetric laplace', r'quantile', r'scale', r'skewness'),
++    'climate_covariates': (r'ERA5.Land', r'PRISM', r'climate.index', r'GDPC|generalized dynamic principal component', r'Big Trees'),
++    'data_roles': (r'USGS', r'target', r'retrospective', r'discrepanc', r'forecast product', r'covariate'),
++    'transfer_inputs': (r'precipitation', r'soil moisture|soil.moisture', r'climate.index', r'transfer'),
++    'latest_issue': (r'latest|most recent', r'issu', r'daily', r'member', r'GloFAS', r'NWS'),
++    'historical_interpretation': (r'historical', r'interpret', r'quantile', r'contrasting|dry|wet'),
++    'table_estimands': (r'posterior means', r'posterior medians', r'credible intervals', r'skewness', r'scale parameters'),
++    'uncertainty_estimands': (r'fitted quantile|quantile.location', r'credible', r'predictive distribution', r'predictive interval|predictive envelope'),
++    'runtime': (r'(?:about|approximately|roughly) two hours', r'64', r'503', r'parallel', r'stag', r'hardware', r'implementation'),
++    'prior_weighting': (r'epsilon', r'anchor', r'scale', r'covariance', r'carries|carried|carry'),
++}
++
++
++def scientific_checks(article: str, names: list[str] | None = None) -> list[tuple[str, bool, str]]:
++    return [(name, has_concepts(article, *SCIENTIFIC_CONCEPTS[name]), ', '.join(SCIENTIFIC_CONCEPTS[name]))
++            for name in (names if names is not None else SCIENTIFIC_CONCEPTS)]
+--- a/scripts/refresh_all_generated_assets.py
++++ b/scripts/refresh_all_generated_assets.py
+@@ -7,6 +7,7 @@
+ import sys
+ from pathlib import Path
+ 
++from comment1_figure_revision import reapply_comment1_figure_revision, verify_comment1_figure_revision
+ from article_runtime_bindings import binding_as_optional_path, binding_as_path, load_runtime_bindings
+ 
+ def run(cmd: list[str]) -> None:
+@@ -78,6 +79,7 @@
+     args = parser.parse_args()
+ 
+     article_root = args.article_root.resolve()
++    verify_comment1_figure_revision(article_root)
+     bindings = load_runtime_bindings(article_root)
+     workflow_root = args.workflow_root.resolve() if args.workflow_root is not None else binding_as_path(bindings, 'workflow_root')
+     runtime_root = args.runtime_root.resolve() if args.runtime_root is not None else binding_as_path(bindings, 'exal_m_t1', 'keep_runtime_root')
+@@ -167,6 +169,7 @@
+     run([py, str(article_root / 'scripts' / 'build_generated_table_includes.py'), '--article-root', str(article_root)])
+     run([py, str(article_root / 'scripts' / 'promote_generated_figures_to_disc.py'), '--article-root', str(article_root)])
+     run([py, str(article_root / 'scripts' / 'sync_legacy_uppercase_figures.py'), '--article-root', str(article_root)])
++    reapply_comment1_figure_revision(article_root)
+     run([py, str(article_root / 'scripts' / 'build_article_asset_review_report.py'), '--article-root', str(article_root)])
+     run([py, str(article_root / 'scripts' / 'build_figure_polish_status_audit.py'), '--article-root', str(article_root)])
+     run([py, str(article_root / 'scripts' / 'build_article_figure_lineage_audit.py'), '--article-root', str(article_root)])
+--- a/scripts/refresh_authoritative_selected_model_support_figures.py
++++ b/scripts/refresh_authoritative_selected_model_support_figures.py
+@@ -13,6 +13,7 @@
+ import yaml
+ 
+ from article_asset_manifest import load_manifest, manifest_path
++from comment1_figure_revision import reapply_comment1_figure_revision, verify_comment1_figure_revision
+ from article_repo_layout import build_layout
+ from article_runtime_bindings import binding_as_optional_path, load_runtime_bindings
+ 
+@@ -158,7 +159,7 @@
+         "This bundle contains compact posterior support artifacts and rendered figures for the representative "
+         "`2022-12-25 exAL-M-T1` selected model. These figures are sourced from the same selected-output authority "
+         "as the synthesis figure. Figure A1 is article-labeled as the long-cycle seasonal component, with period "
+-        "approximately 6.81 years, or about 82 months, and is rendered "
++        "approximately 6.78 calendar years (2474.871 days), and is rendered "
+         "from raw state component 6 only with dry/wet period overlays. The `analysis_figures/component_evolution/` subfolder is an analysis-only component "
+         "gallery rendered from the same support CSVs; it is checksummed here but intentionally not registered as "
+         "a manuscript figure family. It also includes samplewise component-6-plus-trend and component-6-minus-trend diagnostics when "
+@@ -189,6 +190,7 @@
+     args = parser.parse_args()
+ 
+     article_root = args.article_root.resolve()
++    verify_comment1_figure_revision(article_root)
+     workflow_root = args.workflow_root.resolve()
+     authority_path = (
+         args.authority.resolve()
+@@ -235,6 +237,7 @@
+         )
+     write_bundle_docs(bundle_root, support_dir, support_rows, authority_payload)
+     update_manifest(article_root, figures_dir)
++    reapply_comment1_figure_revision(article_root)
+     print("Refreshed authoritative selected-model support figures successfully.")
+ 
+ 
+--- a/scripts/refresh_current_model_output_support_figures.py
++++ b/scripts/refresh_current_model_output_support_figures.py
+@@ -10,6 +10,7 @@
+ from pathlib import Path
+ 
+ from article_runtime_bindings import binding_as_path, load_runtime_bindings
++from comment1_figure_revision import reapply_comment1_figure_revision, verify_comment1_figure_revision
+ from article_repo_layout import build_layout
+ from exal_m_t1_authoritative import load_authoritative_five_run_specs
+ 
+@@ -344,6 +345,7 @@
+     args = parser.parse_args()
+ 
+     article_root = args.article_root.resolve()
++    verify_comment1_figure_revision(article_root)
+     bindings = load_runtime_bindings(article_root)
+     workflow_root = args.workflow_root.resolve() if args.workflow_root is not None else binding_as_path(bindings, "workflow_root")
+     multivar_runtime_root = (
+@@ -390,6 +392,7 @@
+                 layout.publication_figures_dir / "manuscript" / filename,
+             ],
+         )
++        reapply_comment1_figure_revision(article_root)
+         print("Refreshed current-model univariate reference synthesis successfully.")
+         return
+ 
+@@ -446,6 +449,7 @@
+             "source": flow_scale_source,
+         },
+     )
++    reapply_comment1_figure_revision(article_root)
+     print("Refreshed current-model output support figures successfully.")
+ 
+ 
+--- a/scripts/refresh_cutoff_synthesis_families.py
++++ b/scripts/refresh_cutoff_synthesis_families.py
+@@ -10,6 +10,7 @@
+ 
+ from article_runtime_bindings import binding_as_path, load_runtime_bindings
+ from exal_m_t1_authoritative import load_authoritative_five_run_specs
++from comment1_figure_revision import reapply_comment1_figure_revision, verify_comment1_figure_revision
+ from article_repo_layout import (
+     CUTOFF_MULTIVARIATE_SYNTHESIS_FILENAMES,
+     CUTOFF_MULTIVARIATE_SYNTHESIS_OVERLAY_FILENAMES,
+@@ -83,16 +84,19 @@
+     lowercase_dir: Path,
+     manifest_rows: list[dict[str, str | int]],
+ ) -> None:
+-    if lowercase_dir.exists():
+-        for child in lowercase_dir.iterdir():
+-            if child.is_file() or child.is_symlink():
+-                child.unlink()
+-            else:
+-                shutil.rmtree(child)
++    expected = article_root.resolve() / 'figures' / uppercase_dir.name
++    if lowercase_dir.resolve() != expected or uppercase_dir.resolve() == lowercase_dir.resolve():
++        raise ValueError('Compatibility target must be figures/<family>, distinct from canonical Figures/<family>')
++    if uppercase_dir.is_symlink() or lowercase_dir.is_symlink():
++        raise ValueError('Figure family roots must not be symlinks')
++    if (lowercase_dir / 'manifest.csv').is_symlink():
++        raise ValueError('Compatibility manifest must not be a symlink')
+     lowercase_dir.mkdir(parents=True, exist_ok=True)
+-
+     for src in sorted(path for path in uppercase_dir.iterdir() if path.is_file() and path.name != 'manifest.csv'):
+-        copy_tree_file(src, lowercase_dir / src.name)
++        dst = lowercase_dir / src.name
++        if dst.is_symlink():
++            raise ValueError(f'Compatibility target must not be a symlink: {dst}')
++        copy_tree_file(src, dst)
+ 
+     lower_rows: list[dict[str, str | int]] = []
+     for row in manifest_rows:
+@@ -325,6 +329,7 @@
+     args = parser.parse_args()
+ 
+     article_root = args.article_root.resolve()
++    verify_comment1_figure_revision(article_root)
+     bindings = load_runtime_bindings(article_root)
+     multivar_runtime_root = (
+         args.multivar_runtime_root.resolve()
+@@ -456,16 +461,17 @@
+         title='Reference Synthesis By Cutoff',
+         family_description='Advisor-facing copies of the Figure A2-style reference synthesis family for all five cutoffs, including overlay companions with raw/reference ensembles.',
+     )
++    reapply_comment1_figure_revision(article_root)
+     mirror_figure_family_to_lowercase(
+         article_root=article_root,
+         uppercase_dir=layout.cutoff_multivariate_synthesis_dir,
+-        lowercase_dir=layout.figures_dir / 'multivariate_synthesis_by_cutoff',
++        lowercase_dir=layout.compatibility_figures_dir / 'multivariate_synthesis_by_cutoff',
+         manifest_rows=multivar_figure_rows,
+     )
+     mirror_figure_family_to_lowercase(
+         article_root=article_root,
+         uppercase_dir=layout.cutoff_reference_synthesis_dir,
+-        lowercase_dir=layout.figures_dir / 'reference_synthesis_by_cutoff',
++        lowercase_dir=layout.compatibility_figures_dir / 'reference_synthesis_by_cutoff',
+         manifest_rows=reference_figure_rows,
+     )
+     refresh_poster_frozen_synthesis(
+--- a/scripts/refresh_setup_support_by_cutoff_v2.py
++++ b/scripts/refresh_setup_support_by_cutoff_v2.py
+@@ -6,6 +6,7 @@
+ from pathlib import Path
+ 
+ from article_runtime_bindings import binding_as_path, load_runtime_bindings
++from comment1_figure_revision import reapply_comment1_figure_revision, verify_comment1_figure_revision
+ from article_repo_layout import build_layout
+ 
+ 
+@@ -22,6 +23,7 @@
+     args = parser.parse_args()
+ 
+     article_root = args.article_root.resolve()
++    verify_comment1_figure_revision(article_root)
+     bindings = load_runtime_bindings(article_root)
+     runtime_root = (
+         args.workflow_runtime_root.resolve()
+@@ -35,6 +37,7 @@
+     layout.ensure_base_dirs()
+     dest_root = layout.five_cutoff_setup_support_dir
+     copy_tree(runtime_root, dest_root)
++    reapply_comment1_figure_revision(article_root)
+     print(f'Refreshed five-cutoff setup/support bundle into {dest_root}')
+ 
+ 
+--- a/scripts/render_authoritative_selected_model_support_figures.R
++++ b/scripts/render_authoritative_selected_model_support_figures.R
+@@ -124,6 +124,11 @@
+   support_manifest[["generated_at_utc"]]
+ )
+ 
++component_only <- identical(tolower(opt[["component-only"]]), "true")
++LONG_CYCLE_PERIOD_DAYS <- 363.5854 * 6.8068493
++LONG_CYCLE_PERIOD_YEARS <- LONG_CYCLE_PERIOD_DAYS / 365.2425
++LONG_CYCLE_DISPLAY_LABEL <- sprintf("long-cycle seasonal component only (about %.2f years)", LONG_CYCLE_PERIOD_YEARS)
++
+ FIGURE_A1_COMPONENT <- 6L
+ FIGURE_A1_COMPONENT_CONTRACT <- "raw_state_component"
+ COMPONENT_6_PLUS_TREND_CONTRACT <- "component_6_plus_trend_component_1_samplewise"
+@@ -142,7 +147,7 @@
+   component <- as.integer(component)
+   contract <- as.character(contract)
+   if (component == FIGURE_A1_COMPONENT && identical(contract, FIGURE_A1_COMPONENT_CONTRACT)) {
+-    return("Long-cycle seasonal component (about 82 months)")
++    return(sprintf("Long-cycle seasonal component (about %.2f years)", LONG_CYCLE_PERIOD_YEARS))
+   }
+   if (identical(contract, COMPONENT_6_PLUS_TREND_CONTRACT)) {
+     return("Component 6 plus trend component 1 (samplewise)")
+@@ -380,7 +385,7 @@
+     coord_cartesian(ylim = ylim) +
+     scale_x_date(date_breaks = "24 months", date_labels = "%Y-%m") +
+     labs(
+-      title = "Long-cycle seasonal component (about 82 months): selected 2022-12-25 model",
++      title = sprintf("Long-cycle seasonal component (about %.2f years)", LONG_CYCLE_PERIOD_YEARS),
+       x = NULL,
+       y = component_analysis_axis_label(FIGURE_A1_COMPONENT_CONTRACT)
+     ) +
+@@ -533,33 +538,35 @@
+   manifest
+ }
+ 
+-render_quantile_window(
+-  "2012-01-01",
+-  "2016-12-31",
+-  "Selected-model Quantile Dynamics: 2012-2016",
+-  file.path(out_dir, "selected_model_quantile_dry_period.png"),
+-  ylim = c(0, 7)
+-)
+-render_quantile_window(
+-  "2017-01-01",
+-  "2019-12-31",
+-  "Selected-model Quantile Dynamics: 2017-2019",
+-  file.path(out_dir, "selected_model_quantile_wet_period.png"),
+-  ylim = c(0, 7)
+-)
++if (!component_only) {
++  render_quantile_window(
++    "2012-01-01", "2016-12-31", "Selected-model Quantile Dynamics: 2012-2016",
++    file.path(out_dir, "selected_model_quantile_dry_period.png"), ylim = c(0, 7)
++  )
++  render_quantile_window(
++    "2017-01-01", "2019-12-31", "Selected-model Quantile Dynamics: 2017-2019",
++    file.path(out_dir, "selected_model_quantile_wet_period.png"), ylim = c(0, 7)
++  )
++}
+ render_component_80month(file.path(out_dir, "selected_model_component_80month.png"))
+-analysis_dir <- file.path(dirname(out_dir), "analysis_figures", "component_evolution")
+-component_analysis_manifest <- render_component_analysis_gallery(analysis_dir)
++component_analysis_manifest <- data.frame(filename = character())
++if (!component_only) {
++  analysis_dir <- file.path(dirname(out_dir), "analysis_figures", "component_evolution")
++  component_analysis_manifest <- render_component_analysis_gallery(analysis_dir)
++}
+ 
+ meta <- list(
+   support_dir = metadata_support_dir,
+   output_dir = out_dir,
+   display_flow_scale = display_flow_scale,
+-  render_contract_version = "authoritative_selected_model_support_figures_v2",
++  render_contract_version = "authoritative_selected_model_support_figures_v3",
++  component_only = component_only,
++  long_cycle_period_days = LONG_CYCLE_PERIOD_DAYS,
++  long_cycle_period_years = LONG_CYCLE_PERIOD_YEARS,
+   source_support_generated_at_utc = source_support_generated_at_utc,
+   figure_a1_component = FIGURE_A1_COMPONENT,
+   figure_a1_component_contract = FIGURE_A1_COMPONENT_CONTRACT,
+-  figure_a1_article_display_label = "long-cycle seasonal component only (about 82 months)",
++  figure_a1_article_display_label = LONG_CYCLE_DISPLAY_LABEL,
+   hydrologic_regime_periods = lapply(seq_len(nrow(hydrologic_regime_periods())), function(i) {
+     row <- hydrologic_regime_periods()[i, , drop = FALSE]
+     list(
+@@ -569,7 +576,7 @@
+       fill = row$fill[[1L]]
+     )
+   }),
+-  rendered_files = c(
++  rendered_files = if (component_only) "selected_model_component_80month.png" else c(
+     "selected_model_quantile_dry_period.png",
+     "selected_model_quantile_wet_period.png",
+     "selected_model_component_80month.png"
+--- a/scripts/sync_legacy_uppercase_figures.py
++++ b/scripts/sync_legacy_uppercase_figures.py
+@@ -1,4 +1,10 @@
+ #!/usr/bin/env python3
++"""Copy canonical Figures/ assets to the optional lowercase compatibility tree.
++
++The historical filename is retained for existing callers. Never deletes a tree:
++only explicitly selected files (or the complete validated canonical inventory)
++are replaced in figures/. Figures/ is always read-only to this helper.
++"""
+ from __future__ import annotations
+ 
+ import argparse
+@@ -8,12 +14,10 @@
+ from pathlib import Path
+ 
+ REQUIRED_CANONICAL_DIRS = [
+-    'manuscript',
+-    'appendix_cutoff_panels',
+-    'forecast_context_by_cutoff',
+-    'multivariate_synthesis_by_cutoff',
+-    'reference_synthesis_by_cutoff',
++    'manuscript', 'appendix_cutoff_panels', 'forecast_context_by_cutoff',
++    'multivariate_synthesis_by_cutoff', 'reference_synthesis_by_cutoff',
+ ]
++METADATA_NAMES = {'README.md', 'mirror_manifest.csv'}
+ 
+ 
+ def sha256(path: Path) -> str:
+@@ -21,63 +25,82 @@
+ 
+ 
+ def validate_canonical_tree(src_root: Path) -> None:
+-    missing = [rel for rel in REQUIRED_CANONICAL_DIRS if not (src_root / rel).exists()]
++    missing = [rel for rel in REQUIRED_CANONICAL_DIRS if not (src_root / rel).is_dir()]
+     if missing:
+-        joined = ', '.join(missing)
+         raise FileNotFoundError(
+-            f'Cannot mirror incomplete canonical figures tree. Missing lowercase directories under {src_root}: {joined}'
++            f'Cannot mirror incomplete canonical Figures tree under {src_root}: {", ".join(missing)}'
+         )
+ 
+ 
+-def main() -> None:
+-    parser = argparse.ArgumentParser(description='Mirror canonical lowercase figures/ into the legacy uppercase Figures/ fallback tree.')
+-    parser.add_argument('--article-root', type=Path, default=Path(__file__).resolve().parents[1])
+-    args = parser.parse_args()
+-
+-    article_root = args.article_root.resolve()
+-    src_root = article_root / 'figures'
+-    dst_root = article_root / 'Figures'
+-    if not src_root.exists():
++def mirror_figures(article_root: Path, relative_paths: list[str] | None = None) -> list[dict[str, str | int]]:
++    article_root = article_root.resolve()
++    src_root = article_root / 'Figures'
++    dst_root = article_root / 'figures'
++    if src_root.is_symlink() or dst_root.is_symlink():
++        raise ValueError('Figure roots must be real directories, not symlinks')
++    if src_root.resolve() == dst_root.resolve():
++        raise ValueError('Canonical and compatibility figure roots must differ')
++    if not src_root.is_dir():
+         raise FileNotFoundError(f'Missing canonical figures root: {src_root}')
+-    validate_canonical_tree(src_root)
+-
+-    if dst_root.exists():
+-        for child in dst_root.iterdir():
+-            if child.is_file() or child.is_symlink():
+-                child.unlink()
+-            else:
+-                shutil.rmtree(child)
++    if relative_paths is None:
++        validate_canonical_tree(src_root)
++        paths = sorted(p.relative_to(src_root) for p in src_root.rglob('*')
++                       if p.is_file() and p.relative_to(src_root).as_posix() not in METADATA_NAMES)
++    else:
++        paths = sorted({Path(rel) for rel in relative_paths})
++    # Metadata is also a write target: a symlink here could redirect a mirror
++    # manifest or README into the canonical tree.
++    for name in METADATA_NAMES:
++        metadata_target = dst_root / name
++        if metadata_target.is_symlink() or not metadata_target.resolve().is_relative_to(dst_root.resolve()):
++            raise ValueError(f'Compatibility metadata target escapes figures/: {metadata_target}')
++    # Validate the entire requested batch before writing any file.
++    for rel in paths:
++        if rel.is_absolute() or '..' in rel.parts or rel.as_posix() in METADATA_NAMES:
++            raise ValueError(f'Invalid compatibility mirror path: {rel}')
++        src, dst = src_root / rel, dst_root / rel
++        if not src.is_file() or src.is_symlink() or not src.resolve().is_relative_to(src_root.resolve()):
++            raise ValueError(f'Invalid canonical source: {src}')
++        if dst.is_symlink() or not dst.resolve().is_relative_to(dst_root.resolve()):
++            raise ValueError(f'Compatibility target escapes figures/: {dst}')
+     dst_root.mkdir(parents=True, exist_ok=True)
+-
+     rows: list[dict[str, str | int]] = []
+-    for src in sorted(p for p in src_root.rglob('*') if p.is_file()):
+-        rel = src.relative_to(src_root)
+-        dst = dst_root / rel
++    for rel in paths:
++        src, dst = src_root / rel, dst_root / rel
+         dst.parent.mkdir(parents=True, exist_ok=True)
+         shutil.copy2(src, dst)
+-        rows.append({
+-            'relative_path': str(rel),
+-            'lowercase_source': str(src.relative_to(article_root)),
+-            'uppercase_target': str(dst.relative_to(article_root)),
+-            'sha256': sha256(dst),
+-            'bytes': dst.stat().st_size,
+-        })
++        rows.append({'relative_path': rel.as_posix(),
++                     'canonical_source': (Path('Figures') / rel).as_posix(),
++                     'compatibility_target': (Path('figures') / rel).as_posix(),
++                     'sha256': sha256(dst), 'bytes': dst.stat().st_size})
++    # A bounded refresh retains the manifest rows for other previously mirrored assets.
++    manifest = dst_root / 'mirror_manifest.csv'
++    previous: dict[str, dict[str, str | int]] = {}
++    if relative_paths is not None and manifest.exists():
++        with manifest.open(newline='', encoding='utf-8') as handle:
++            previous = {r['relative_path']: r for r in csv.DictReader(handle)}
++    previous.update({str(r['relative_path']): r for r in rows})
++    fields = ['relative_path', 'canonical_source', 'compatibility_target', 'sha256', 'bytes']
++    with manifest.open('w', encoding='utf-8', newline='') as handle:
++        writer = csv.DictWriter(handle, fieldnames=fields, lineterminator='\n')
++        writer.writeheader()
++        writer.writerows(previous[key] for key in sorted(previous))
++    (dst_root / 'README.md').write_text(
++        '# Lowercase Figure Compatibility Copies\n\n'
++        'Canonical manuscript assets are in `Figures/`. These optional copies are\n'
++        'refreshed one way by `scripts/sync_legacy_uppercase_figures.py`. Unmanaged\n'
++        'files are preserved; only files listed in `mirror_manifest.csv` are managed.\n',
++        encoding='utf-8')
++    return rows
+ 
+-    (dst_root / 'README.md').write_text(
+-        '# Legacy Uppercase Figures Mirror\n\n'
+-        'This tree mirrors the canonical lowercase `figures/` directory for legacy tooling and compile-time fallback paths.\n\n'
+-        'Authoritative refresh path:\n'
+-        '- `scripts/refresh_all_generated_assets.py`\n'
+-        '- `scripts/sync_legacy_uppercase_figures.py`\n',
+-        encoding='utf-8',
+-    )
+ 
+-    with (dst_root / 'mirror_manifest.csv').open('w', encoding='utf-8', newline='') as handle:
+-        writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()), lineterminator='\n')
+-        writer.writeheader()
+-        writer.writerows(rows)
+-
+-    print(f'Mirrored {len(rows)} figure files from {src_root} into {dst_root}')
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--article-root', type=Path, default=Path(__file__).resolve().parents[1])
++    parser.add_argument('--relative-path', action='append', help='Canonical relative file to copy; repeat for a bounded refresh')
++    args = parser.parse_args()
++    rows = mirror_figures(args.article_root, args.relative_path)
++    print(f'Mirrored {len(rows)} canonical Figures/ assets into optional figures/ compatibility copies')
+ 
+ 
+ if __name__ == '__main__':
+--- a/tests/test_article_a1_and_table_contracts.py
++++ b/tests/test_article_a1_and_table_contracts.py
+@@ -5,10 +5,13 @@
+ import json
+ import re
+ import unittest
++import sys
+ from pathlib import Path
+ 
+ 
+ ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT / "scripts"))
++from manuscript_text_contract import active_tex, cited_url, has_concepts, has_label, in_order, scientific_checks, structure_checks
+ 
+ 
+ def sha256(path: Path) -> str:
+@@ -16,6 +19,16 @@
+ 
+ 
+ class ArticleA1AndTableContractTests(unittest.TestCase):
++    def article_text(self) -> str:
++        return active_tex((ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8"))
++
++    def assertConcepts(self, article: str, *patterns: str) -> None:
++        self.assertTrue(has_concepts(article, *patterns), f"Missing scientific concepts: {patterns}")
++
++    def assertScientificChecks(self, article: str, names: list[str]) -> None:
++        failed = [name for name, ok, _ in scientific_checks(article, names) if not ok]
++        self.assertFalse(failed, failed)
++
+     def test_software_availability_manifest_and_text_are_wired(self) -> None:
+         manifest_path = ROOT / "artifacts" / "software_availability" / "software_availability_manifest.json"
+         self.assertTrue(manifest_path.exists(), f"missing software availability manifest: {manifest_path}")
+@@ -51,8 +64,8 @@
+         self.assertIn(r"CRAN R package \texttt{exdqlm}", article)
+         self.assertIn("https://CRAN.R-project.org/package=exdqlm", article)
+         self.assertIn("https://doi.org/10.32614/CRAN.package.exdqlm", article)
+-        self.assertIn("https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility", article)
+-        self.assertIn("clean reproducibility repository for this study", article)
++        self.assertTrue(cited_url(article, (ROOT / "wileyNJD-APA.bib").read_text(encoding="utf-8"), "https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility"))
++        self.assertConcepts(article, r'reproducibility repository', r'staged inputs', r'provenance manifests')
+         self.assertNotIn("workflow repository has been archived", article)
+ 
+     def test_runtime_benchmark_manifest_and_text_are_wired(self) -> None:
+@@ -76,9 +89,9 @@
+ 
+         article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+         self.assertIn("about two hours end-to-end", article)
+-        self.assertIn(r"\texttt{runtime\_sec\_total}", article)
+-        self.assertIn(r"\texttt{runtime\_sec}", article)
+-        self.assertIn("hardware- and implementation-dependent", article)
++        self.assertScientificChecks(article, ["runtime"])
++        self.assertNotIn(r"\texttt{runtime\_sec", article)
++        self.assertConcepts(article, r'hardware', r'implementation', r'depends|dependent')
+         self.assertNotIn("100 minutes for fitting", article)
+         self.assertNotIn("20 minutes for post-processing", article)
+ 
+@@ -134,19 +147,9 @@
+ 
+         self.assertTrue((ROOT / "docs" / "forecast_design_contract.md").exists())
+         article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn("forecast-window precipitation and soil-moisture covariates", article)
+-        self.assertIn("Precipitation is not modeled through a separate censoring", article)
+-        self.assertIn("zero-inflation, or occurrence/intensity layer", article)
+-        self.assertIn("dry days are retained in the supplied covariate path", article)
+-        self.assertIn("deterministic engineered terms", article)
+-        self.assertIn("the model is fit using USGS observations and retrospective products available through", article)
+-        self.assertIn("The forecast-window predictive distributions are then synthesized using the latest forecast products", article)
+-        self.assertIn("canonical GDPC climate-index factor", article)
+-        self.assertIn("Post-cutoff USGS observations are reserved strictly for verification", article)
+-        self.assertIn("not treated as an operational forecast product or verification target", article)
++        self.assertScientificChecks(article, ['transfer_inputs', 'climate_covariates', 'verification', 'data_roles', 'origin_design'])
++        self.assertConcepts(article, r'precipitation', r'dry days', r'no separate precipitation occurrence or intensity model', r'deterministic', r'nonlinear')
+         self.assertNotIn("GDPC forecast product", article)
+-        self.assertNotIn("GDPC/PCA climate-index factor", article)
+-        self.assertNotIn("the model is fit using forecast products issued at or before", article)
+ 
+     def test_selected_prior_and_discount_text_are_manifest_backed(self) -> None:
+         manifest_path = ROOT / "artifacts" / "he2_publication_freeze" / "he2_bayesian_publication_manifest.csv"
+@@ -167,16 +170,14 @@
+             self.assertEqual(float(forecast_cov.get("c_factor")), 1.0)
+ 
+         article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn(r"\lambda=0.97", article)
+-        self.assertIn(r"\(c=1\)", article)
+-        self.assertIn("pre-cutoff observational window", article)
+-        self.assertIn("fixed calibrated specification", article)
+-        self.assertIn(r"\(\epsilon=1\)", article)
+-        self.assertIn("controls the prior weight assigned to the covariance structure learned before the cutoff", article)
++        self.assertRegex(article, r"\\lambda\s*=\s*0\.97")
++        self.assertRegex(article, r"(?<![A-Za-z])c\s*=\s*1")
++        self.assertRegex(article, r"\\epsilon\s*=\s*1")
++        self.assertScientificChecks(article, ['prior_weighting'])
++        self.assertConcepts(article, r'pre.cutoff observational window', r'held fixed|fixed persistence')
+         self.assertNotIn("c = 10^2", article)
+         self.assertNotIn("epsilon = T", article)
+         self.assertNotIn(r"\lambda=0.8995", article)
+-        self.assertNotIn("forecast-window CRPS for the synthesized predictive distribution", article)
+ 
+     def test_latest_forecast_issue_manifest_and_text_are_wired(self) -> None:
+         manifest_path = ROOT / "artifacts" / "latest_forecast_issue" / "latest_forecast_issue_manifest.json"
+@@ -199,87 +200,44 @@
+ 
+         self.assertTrue((ROOT / "docs" / "latest_forecast_issue_contract.md").exists())
+         article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn("using the latest forecast products issued at or before", article)
+-        self.assertIn("GloFAS issues forecast products daily, whereas NWS issues them hourly", article)
+-        self.assertIn("For GloFAS, the forecast matrix is the daily issue associated with the cutoff", article)
+-        self.assertIn("For NWS, we first restrict to issuances available by the cutoff", article)
+-        self.assertIn("retain the most recent available issuance for each target time and ensemble member", article)
+-        self.assertIn("older forecast issuances are not averaged into the publication forecast matrices", article)
+-        self.assertIn("kept only for workflow file-name compatibility", article)
++        self.assertScientificChecks(article, ['latest_issue', 'verification'])
++        self.assertConcepts(article, r'GloFAS issues daily forecasts|GloFAS.{0,30}daily', r'hourly NWS|NWS.{0,30}hourly', r'latest available issuance', r'target time and member', r'aggregat')
+         self.assertNotIn("weighted combination of prior forecasts", article)
+ 
+     def test_reviewer1_overview_forecasting_emphasis_is_wired(self) -> None:
+-        article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn("The empirical focus is forecasting performance and uncertainty quantification", article)
+-        self.assertIn("rather than only historical fit or methodological development in isolation", article)
+-        self.assertIn(r"Section~\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results", article)
+-        self.assertIn(r"\section{FORECAST VALIDATION RESULTS}", article)
+-        self.assertIn(r"\section{INTERPRETATION OF THE SELECTED SPECIFICATION}", article)
+-        self.assertIn("five-cutoff rolling-origin forecast comparison", article)
+-        self.assertIn("supporting interpretation for the selected specification", article)
+-        self.assertIn("comparative forecast evaluation remains the main empirical evidence", article)
+-        self.assertIn("These figures are interpretation diagnostics", article)
+-        self.assertIn("It illustrates how the fitted quantile-specific forecasts combine into one predictive distribution", article)
+-        self.assertNotIn("General Results", article)
+-        self.assertNotIn("Model A", article)
+-        self.assertNotIn("Model B", article)
+-        self.assertNotIn("Model C", article)
+-        self.assertNotIn("forecasting component is limited", article)
++        article = self.article_text()
++        self.assertFalse([name for name, ok, _ in structure_checks(article) if not ok])
++        self.assertConcepts(article, r'forecast', r'uncertainty', r'five', r'CRPS', r'quantile', r'illustrat')
++        for retired in ["General Results", "Model A", "Model B", "Model C", "forecasting component is limited"]:
++            self.assertNotIn(retired, article)
+ 
+     def test_reviewer1_conceptual_model_practicality_is_wired(self) -> None:
+-        article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn("conceptual or physically based models", article)
+-        self.assertIn("Conceptual formulations remain especially practical for prediction", article)
+-        self.assertIn("easier to specify, calibrate, and deploy operationally", article)
+-        self.assertNotIn("Hydrological predictions are often produced using physical models", article)
++        self.assertScientificChecks(self.article_text(), ['physical_models'])
+ 
+     def test_reviewer1_flexile_typo_is_absent_from_article(self) -> None:
+-        article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn(r"\subsection{Extended Asymmetric Laplace Likelihood}", article)
++        article = self.article_text()
++        self.assertScientificChecks(article, ['likelihood'])
+         self.assertNotIn("flexile", article.lower())
+ 
+     def test_reviewer1_expanded_forecast_evidence_is_wired(self) -> None:
+-        article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn("five cutoff-specific, version-consistent staged datasets that span contrasting hydrological conditions", article)
+-        self.assertIn("relatively low-flow windows as well as winter high-flow episodes", article)
+-        self.assertIn("not a continuous daily hindcast over the full post-2022 period", article)
+-        self.assertIn("Post-cutoff USGS observations are reserved strictly for verification", article)
+-        self.assertIn("Forecast skill is evaluated from the resulting posterior predictive distributions by the mean continuous ranked probability score", article)
+-        self.assertIn("targeted quantile diagnostics", article)
+-        self.assertIn("Its role is illustrative", article)
+-        self.assertIn("comparative forecast evaluation remains the main empirical evidence", article)
+-        self.assertNotIn("only one short forecast has been evaluated", article)
++        article = self.article_text()
++        self.assertScientificChecks(article, ['origin_design', 'verification', 'scores'])
++        for label in ['sec:forecastvalidation', 'subsec:synthillustration', 'sec:interpretation']:
++            self.assertTrue(has_label(article, label), label)
++        for table in ['benchmark_crps_main_table.tex', 'benchmark_crps_nws_horizon_table.tex', 'he4_quantile_check_loss_main_table.tex']:
++            self.assertIn(r'\input{tables/generated_tex/' + table + '}', article)
+ 
+     def test_reviewer1_fair_forecast_assessment_is_wired(self) -> None:
+-        article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn("five cutoff-specific, version-consistent staged datasets", article)
+-        self.assertIn("uses only information available at that origin to fit seven quantile-specific models", article)
+-        self.assertNotIn("time-ordered analogue of cross-validation", article)
+-        self.assertIn("uses only information available at that origin", article)
+-        self.assertIn("scores that distribution against future USGS observations held out over the forecast window", article)
+-        self.assertIn("Constructing one staged dataset requires more than shifting the cutoff date", article)
+-        self.assertIn("archive-feasible, version-consistent origins that span contrasting hydrological settings", article)
+-        self.assertIn("avoid dense overlaps that would overrepresent the same episode", article)
++        article = self.article_text()
++        self.assertScientificChecks(article, ['origin_design', 'verification', 'archive_work'])
+         self.assertNotIn("random K-fold cross-validation", article)
+ 
+     def test_reviewer1_uncertainty_sources_are_distinguished(self) -> None:
+-        article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn("These two uncertainty sources are related but distinct", article)
+-        self.assertIn(
+-            "Hydrological uncertainty arises from model structure, parameters, states, and observations",
+-            article,
+-        )
+-        self.assertIn(
+-            "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields",
+-            article,
+-        )
+-        self.assertIn("A useful statistical forecasting framework should keep these roles clear", article)
+-        self.assertIn("local hydrometeorological covariates", article)
+-        self.assertIn("precipitation from the PRISM Climate Group", article)
+-        self.assertIn("soil moisture from ECMWF ERA5-Land", article)
++        article = self.article_text()
++        self.assertConcepts(article, r'hydrolog\w* uncertainty', r'structur', r'parameters?', r'states?', r'observations?')
++        self.assertConcepts(article, r'meteorolog\w* uncertainty', r'precipitation', r'forc')
++        self.assertScientificChecks(article, ['climate_covariates', 'data_roles'])
+         self.assertNotIn("local hydrological covariates", article)
+-        self.assertNotIn("does not currently distinguish meteorological and hydrological uncertainty", article)
+-        self.assertNotIn("meteorological and hydrological concepts are mixed", article)
+ 
+     def test_submission_repo_points_to_clean_reproducibility_bundle(self) -> None:
+         readme = (ROOT / "README.md").read_text(encoding="utf-8")
+@@ -288,35 +246,21 @@
+         self.assertIn("san-lorenzo-exdqlm-reproducibility", contract)
+ 
+     def test_reviewer1_era5_reanalysis_uncertainty_is_wired(self) -> None:
+-        article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn("reanalysis-based model inputs", article)
+-        self.assertIn("rather than direct observations or uncertainty-free measurements", article)
+-        self.assertIn("ERA5/ERA5-Land variables may include short forecast components", article)
+-        self.assertIn("not verification observations", article)
++        article = self.article_text()
++        self.assertConcepts(article, r'ERA5.Land', r'reanalysis', r'covariate', r'verification')
+ 
+     def test_reviewer1_usgs_target_and_data_roles_are_wired(self) -> None:
+-        article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn(r"\section{APPLICATION DATA AND FORECASTING DESIGN}", article)
+-        self.assertIn(r"\subsection{Study Setting and Observations}", article)
+-        self.assertIn("Our target series is", article)
+-        self.assertIn("USGS target series", article)
+-        self.assertIn("three additional information sources", article)
+-        self.assertIn("Each source plays a different role", article)
+-        self.assertIn("retrospective products are used to learn source-specific discrepancies", article)
+-        self.assertIn("relative to the USGS target series", article)
++        article = self.article_text()
++        self.assertTrue(has_label(article, 'sec:data'))
++        self.assertTrue(in_order(article, r'\label{sec:data}', r'\label{sec:methodology}'))
++        self.assertScientificChecks(article, ['data_roles'])
+ 
+     def test_reviewer1_model_formulation_links_to_results(self) -> None:
+-        article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn("single state-space model", article)
+-        self.assertIn(r"where \(L\in\{\mathrm{N},\mathrm{AL},\mathrm{exAL}\}\)", article)
+-        self.assertIn(r"\(S\in\{\mathrm{U},\mathrm{M}\}\)", article)
+-        self.assertIn(r"\(T\in\{\mathrm{T0},\mathrm{T1}\}\)", article)
+-        self.assertIn("nine Bayesian variants of the common state-space framework", article)
+-        self.assertIn("Because exAL-M-T1 is the selected extended-likelihood multivariate specification", article)
+-        self.assertNotIn("Model A", article)
+-        self.assertNotIn("Model B", article)
+-        self.assertNotIn("Model C", article)
+-        self.assertNotIn("General Results", article)
++        article = self.article_text()
++        self.assertScientificChecks(article, ['variants'])
++        self.assertTrue(in_order(article, r'\label{sec:methodology}', r'\label{sec:evaluation}', r'\label{sec:forecastvalidation}'))
++        for retired in ["Model A", "Model B", "Model C", "General Results"]:
++            self.assertNotIn(retired, article)
+ 
+     def test_figure_a1_renderer_uses_samplewise_component_contract(self) -> None:
+         script = ROOT / "scripts" / "render_authoritative_selected_model_support_figures.R"
+@@ -365,9 +309,15 @@
+         )
+         self.assertEqual(
+             meta.get("figure_a1_article_display_label"),
+-            "long-cycle seasonal component only (about 82 months)",
+-        )
+-        self.assertEqual(meta.get("render_contract_version"), "authoritative_selected_model_support_figures_v2")
++            "long-cycle seasonal component only (about 6.78 years)",
++        )
++        self.assertIn(meta.get("render_contract_version"), ["authoritative_selected_model_support_figures_v2", "authoritative_selected_model_support_figures_v3"])
++        self.assertAlmostEqual(meta.get("long_cycle_period_days"), 363.5854 * 6.8068493, places=3)
++        self.assertAlmostEqual(meta.get("long_cycle_period_years"), meta["long_cycle_period_days"] / 365.2425, places=3)
++        if meta.get("render_contract_version").endswith("_v2"):
++            revision = meta.get("component_label_revision", {})
++            self.assertTrue(revision.get("component_only"))
++            self.assertEqual(revision.get("renderer_contract"), "authoritative_selected_model_support_figures_v3")
+         self.assertIn("source_support_generated_at_utc", meta)
+         self.assertNotIn("render_staging_support_dir", meta)
+         self.assertNotIn("generated_at_utc", meta)
+@@ -443,12 +393,8 @@
+ 
+     def test_reviewer1_figure_variance_explanation_and_lineage_are_wired(self) -> None:
+         article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn("uncertainty around fitted quantile-location curves", article)
+-        self.assertIn("synthesized posterior predictive distribution", article)
+-        self.assertIn("fitted quantile-specific forecasts combine into one predictive distribution", article)
+-        self.assertIn("posterior predictive envelope can vary across the forecast window", article)
+-        self.assertIn("approximately 6.81 years, or about 82 months", article)
+-        self.assertNotIn("approximately 81-month", article)
++        self.assertScientificChecks(article, ['uncertainty_estimands', 'synthesis'])
++        self.assertConcepts(article, r'1/6.8068493', r'363.5854', r'2[,.]?474.871|2474.87')
+ 
+         manifest = json.loads((ROOT / "MANUSCRIPT_ASSET_MANIFEST.json").read_text(encoding="utf-8"))
+         by_label = {row["label"]: row for row in manifest["figures"]}
+@@ -496,7 +442,7 @@
+ 
+     def test_cutoff_appendix_uses_multivariate_synthesis_overlays(self) -> None:
+         article = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-        self.assertIn("{figures/multivariate_synthesis_by_cutoff/}", article)
++        self.assertIn("{Figures/multivariate_synthesis_by_cutoff/}", article)
+         self.assertIn("Additional Cutoff-Specific Predictive Synthesis Panels", article)
+         for name in [
+             "cutoff_2021_01_23_multivariate_synthesis_with_reference_ensembles.png",
+@@ -632,46 +578,15 @@
+         self.assertIn("tab:he3_ablation_crps_nws_horizon,RAW-NWS,20210123,8", source_text)
+ 
+     def test_reviewer1_math_detail_is_streamlined(self) -> None:
+-        article_text = (ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+-
+-        self.assertNotIn("probability integral transform", article_text)
+-        self.assertNotIn("PIT", article_text)
+-        self.assertIn(
+-            "For reproducibility, implementation pseudocode for the VB algorithm is provided",
+-            article_text,
+-        )
+-        self.assertIn("It illustrates how the fitted quantile-specific forecasts combine into one predictive distribution", article_text)
+-        self.assertIn("risk of quantile crossing", article_text)
+-        self.assertIn("Posterior Predictive Synthesis Across Quantiles", article_text)
+-        self.assertIn("Predictive Scoring by CRPS", article_text)
+-        self.assertIn("primary score for forecast-window predictive distributions", article_text)
+-        self.assertIn("generic empirical predictive distribution", article_text)
+-        self.assertIn("provide the strongest performance in the 28-day synthesis comparison", article_text)
+-        self.assertIn("dynamic decomposition into source-specific corrections, trend, seasonal structure, and transfer effects", article_text)
+-        self.assertIn("The five-cutoff evaluation is not a dense continuous hindcast", article_text)
+-        self.assertIn("isotonic regression", article_text)
+-        self.assertIn("monotone rearrangement", article_text)
+-        self.assertIn(r"u_s=s/(S+1)", article_text)
+-        self.assertIn("point mass", article_text)
+-        self.assertNotIn("deterministic forecast", article_text)
+-        self.assertNotIn(r"{\mathbb E}_G|Y - y|", article_text)
+-        self.assertNotIn("empirical CRPS estimator", article_text)
+-        self.assertEqual(article_text.count("quantile crossing"), 1)
+-        self.assertLess(
+-            article_text.index(r"\appendix"),
+-            article_text.index(r"\section{Markov Chain Monte Carlo Algorithms}"),
+-        )
+-        self.assertLess(
+-            article_text.index(r"\appendix"),
+-            article_text.index(r"\section{Variational Bayes Algorithms}"),
+-        )
+-        for forbidden in [
+-            "PITs are described in detail",
+-            "two-step method",
+-            "resolve quantile crossing",
+-            "Posterior Predictive Synthesis part",
+-        ]:
+-            self.assertNotIn(forbidden, article_text)
++        article = self.article_text()
++        self.assertScientificChecks(article, ['synthesis', 'scores', 'uncertainty_estimands'])
++        for label in ['subsec:quantilesynthesis', 'app:stateconstruction', 'app:augmentation']:
++            self.assertTrue(has_label(article, label), label)
++        for technical in [r'\label{app:stateconstruction}', r'\label{app:augmentation}', r'\section{Markov Chain Monte Carlo Algorithms}', r'\section{Variational Bayes Algorithms}']:
++            self.assertTrue(in_order(article, r'\appendix', technical), technical)
++        self.assertConcepts(article, r'isotonic regression', r'monotone rearrangement', r'u_s=s/\(S\+1\)', r'point mass')
++        for forbidden in ['probability integral transform', 'PITs are described in detail', 'two-step method', 'resolve quantile crossing']:
++            self.assertNotIn(forbidden, article)
+ 
+     def test_generated_table_decimal_cells_have_five_places(self) -> None:
+         table_dir = ROOT / "tables" / "generated_tex"
+--- a/tests/test_comment1_figure_revision.py
++++ b/tests/test_comment1_figure_revision.py
+@@ -0,0 +1,76 @@
++from __future__ import annotations
++import csv
++import importlib.util
++import json
++from pathlib import Path
++import tempfile
++import unittest
++
++MODULE_PATH = Path(__file__).resolve().parents[1] / 'scripts/comment1_figure_revision.py'
++SPEC = importlib.util.spec_from_file_location('comment1_figure_revision', MODULE_PATH)
++assert SPEC and SPEC.loader
++revision = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(revision)
++
++
++class PresentationRevisionTests(unittest.TestCase):
++    def setUp(self):
++        self.tmp = tempfile.TemporaryDirectory()
++        self.addCleanup(self.tmp.cleanup)
++        self.root = Path(self.tmp.name)
++        freeze = self.root / 'artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv'
++        freeze.parent.mkdir(parents=True)
++        with freeze.open('w', newline='') as f:
++            w = csv.DictWriter(f, fieldnames=['cutoff', 'manuscript_label', 'run_id', 'artifact_run_id'])
++            w.writeheader()
++            w.writerow(dict(cutoff='20221225', manuscript_label='exAL-M-T1', run_id='frozen-run', artifact_run_id='frozen-run'))
++        self.numeric = self.root / 'saved_predictive_cache.rds'
++        self.numeric.write_bytes(b'unchanged predictive draws')
++        self.registry_root = self.root / revision.REGISTRY.parent
++        stored = self.registry_root / 'files/Figures/proof.png'
++        stored.parent.mkdir(parents=True)
++        stored.write_bytes(b'reviewed display')
++        self.target = self.root / 'Figures/proof.png'
++        self.target.parent.mkdir()
++        self.target.write_bytes(b'older runtime display')
++        self.registry = dict(selected_runs=[dict(cutoff='20221225', label='exAL-M-T1', run_id='frozen-run')],
++                             numeric_inputs=[dict(source=str(self.numeric), sha256=revision.sha256(self.numeric))],
++                             restore=[dict(target='Figures/proof.png', stored='files/Figures/proof.png', sha256=revision.sha256(stored))])
++        self.save()
++
++    def save(self):
++        (self.root / revision.REGISTRY).write_text(json.dumps(self.registry))
++
++    def test_reapplies_reviewed_display_without_altering_numeric_input(self):
++        before = self.numeric.read_bytes()
++        self.assertEqual(revision.reapply_comment1_figure_revision(self.root), 1)
++        self.assertEqual(self.target.read_bytes(), b'reviewed display')
++        self.assertEqual(self.numeric.read_bytes(), before)
++
++    def test_refuses_changed_input_before_copying_any_display(self):
++        self.numeric.write_bytes(b'new results')
++        with self.assertRaisesRegex(ValueError, 'input changed'):
++            revision.reapply_comment1_figure_revision(self.root)
++        self.assertEqual(self.target.read_bytes(), b'older runtime display')
++
++    def test_refuses_corrupted_archive_before_copying_any_display(self):
++        (self.registry_root / 'files/Figures/proof.png').write_bytes(b'unreviewed display')
++        with self.assertRaisesRegex(ValueError, 'archive changed'):
++            revision.reapply_comment1_figure_revision(self.root)
++        self.assertEqual(self.target.read_bytes(), b'older runtime display')
++
++    def test_refuses_new_selection_or_untrusted_archive(self):
++        self.registry['selected_runs'][0]['run_id'] = 'different-run'
++        self.save()
++        with self.assertRaisesRegex(ValueError, 'selected run'):
++            revision.reapply_comment1_figure_revision(self.root)
++        self.registry['selected_runs'][0]['run_id'] = 'frozen-run'
++        self.registry['restore'][0]['target'] = '../escaped.png'
++        self.save()
++        with self.assertRaisesRegex(ValueError, 'escapes article root'):
++            revision.reapply_comment1_figure_revision(self.root)
++        self.assertEqual(self.target.read_bytes(), b'older runtime display')
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- a/tests/test_manuscript_text_contract.py
++++ b/tests/test_manuscript_text_contract.py
+@@ -0,0 +1,27 @@
++from __future__ import annotations
++
++import sys
++import unittest
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
++from manuscript_text_contract import active_tex, cited_url, has_concepts, has_label
++
++
++class ManuscriptTextContractTests(unittest.TestCase):
++    def test_comments_cannot_satisfy_a_scientific_or_label_check(self) -> None:
++        text = 'Active forecast discussion. % CRPS\n% \\label{sec:data}'
++        self.assertFalse(has_concepts(text, 'CRPS'))
++        self.assertFalse(has_label(text, 'sec:data'))
++        self.assertIn(r'95\% predictive', active_tex(r'95\% predictive % stale'))
++
++    def test_repository_url_must_be_direct_or_in_a_cited_entry(self) -> None:
++        url = 'https://example.org/software'
++        bib = '@misc{used,\nurl={' + url + '}\n}\n@misc{unused,\nurl={https://example.org/unused}\n}'
++        self.assertTrue(cited_url(r'Workflow \citep{used}.', bib, url))
++        self.assertFalse(cited_url('% \\citep{used}', bib, url))
++        self.assertFalse(cited_url(r'Workflow \citep{unused}.', bib, url))
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- a/docs/comment1_revision.txt
++++ b/docs/comment1_revision.txt
+@@ -0,0 +1,25 @@
++Comment 1 editorial revision -- November 7, 2026
++
++Current review source: wileyNJD-APA.tex; local PDF: wileyNJD-APA.pdf.
++The six main sections now proceed from the forecasting problem and data roles
++to model, computation, application/evaluation, results, and discussion. The main
++text retains the definitions needed by priors; full selector/augmentation algebra
++and algorithms are linked through stable appendix labels.
++
++The revision clarifies the twelve transfer predictors, scaling and state
++dimensions, daily rotation units, actual VB workflow and predictive synthesis.
++It repairs citations, abbreviations, accents, reference padding and decimal
++grouping. Seven context/synthesis panels use matching line/marker keys at article
++size; the long-cycle title/caption is corrected. Numerical results, fitted models,
++selected run identities and generated table numbers remain the authority.
++
++Build a fresh review with scripts/build_manuscript_review.py; see README.md.
++The figure registry verifies source hashes and selected identities before
++restoring reviewed presentation assets. Its source/command/style provenance is
++in artifacts/comment1_figure_revision/. Source-data changes require renewed
++rendering and review. The canonical image tree is uppercase Figures/.
++
++The full audit, accepted implementation plan, clause-to-location checklist,
++source diffs, completion report and repeated-check script are in the companion
++workflow repository at docs/environmetrics_comment1_plan_20261107/.
++This revision completes the work scoped to major comment 1.

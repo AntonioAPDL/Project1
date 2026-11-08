@@ -1,0 +1,31 @@
+Typography probe                                                                          1
+
+
+1       TYPOGRAPHY PROBE
+                                                        −0.00198   [−0.00202, −0.00193]
+Accents: El Niño; Peña. Inline reference: (Figure 1).
+                                                         0.08632   [0.08044, 0.09208]
+
+
+
+
+                                              FIGURE 1      Main figure caption.
+
+
+
+
+    How to cite this article:
+
+
+
+APPENDIX
+
+A APPENDIX PROBE
+
+Inline reference: (Figure A1).
+
+
+
+
+                                           FIGURE A1       Appendix figure caption.
+

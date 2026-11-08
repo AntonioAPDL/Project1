@@ -1,0 +1,18 @@
+id,baseline_lines,destination,action,dependency
+M01,76-84;95,1 Introduction,Rewrite connected problem/background/contribution/roadmap,Keep current contributions and evidence scope.
+M02,296-308;312-328,2 Setting and data,Move concise target/source roles before methodology,Detailed source inventory in supporting material.
+M03,86-93;388,2 Forecast context,Move context figure and origin definition,Preserve fig:ensembles label and source identity.
+M04,105,3.1 Likelihood;technical appendix,Keep quantile/scale/skew/domain summary;move full augmentation,A/B/C definitions must remain linked to every algorithm use.
+M05,111-153,3.2 Scientific model,Retain expanded scientific formulation with role explanations,One scientific model presentation in main text.
+M06,155-208,Minimal bridge in 3;full appendix,Retain J0/eta/q dependencies;move block/selector expansion,Prior and algorithm references must resolve after move.
+M07,210-230,3.3 Priors/adaptation,Condense exposition;retain mathematical meaning,Do not orphan compact-state definitions or change numerical settings.
+M08,234-246,3.4 Computation;reproducibility support,Lead reported VB;move generic derivation/history and internal field names,"Preserve accurate timing scope, hardware and software referent."
+M09,251-268,3.5 Quantile synthesis,Clarify distinct synthesis stage and target-grid notation,Keep procedure and numerical summaries unchanged.
+M10,341-378,4.1-4.2 Specification,Motivation before components;explicit features and units,Verify actual saved period before selecting rounded prose.
+M11,382-388;395-397,4.3 Evaluation layout,Define origins/horizons/variants/quantiles before results,Keep current authoritative design/results and labels.
+M12,273-287,4.4 Scores,Move score definitions after forecast output and design,Scoring computation unchanged.
+M13,471-481,5.1 Illustration,Bring predictive output forward and name actual visible statistics,Introduce reference specification before its figure.
+M14,399-414,5.2-5.3 Comparative results,Retain quantitative comparisons and targeted results,All current published numerical values authoritative.
+M15,428-464,5.4 Supporting interpretation,Follow forecast evidence;assess optional later appendix moves,Retain all panels/data/stable labels.
+M16,486-492,6 Discussion/conclusions,Condense repetitions and connect argument,No expansion of scientific conclusions.
+M17,532-817,Technical/support appendices,Integrate relocated definitions;update references and notation,"Track displayed numbering by stable labels, not file renaming."

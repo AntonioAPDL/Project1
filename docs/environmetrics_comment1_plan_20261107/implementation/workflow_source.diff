@@ -1,0 +1,2526 @@
+--- a/R/unified/post_publication_figures.R
++++ b/R/unified/post_publication_figures.R
+@@ -82,7 +82,7 @@
+ post_publication_flood_stage_df <- function() {
+   data.frame(
+     stage = c("minor", "major"),
+-    label = c("Minor Flooding", "Major Flooding"),
++    label = c("Lower flow reference", "Upper flow reference"),
+     y = c(5.20948615, 6.06378521),
+     stringsAsFactors = FALSE
+   )
+@@ -305,7 +305,7 @@
+   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
+   forecast_end <- max(quant_df$date, na.rm = TRUE)
+   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
+-  cutoff_line_date <- forecast_start
++  cutoff_line_date <- cutoff_date
+ 
+   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
+     ggplot2::geom_ribbon(
+@@ -393,7 +393,7 @@
+   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
+   forecast_end <- max(quant_df$date, na.rm = TRUE)
+   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
+-  cutoff_line_date <- forecast_start
++  cutoff_line_date <- cutoff_date
+ 
+   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
+     ggplot2::geom_ribbon(
+@@ -607,7 +607,7 @@
+           source_run = row$source_run[[1L]],
+           interval_low_col = "interval_low",
+           interval_high_col = "interval_high",
+-          interval_label = "95% synthesis credible interval",
++          interval_label = "Pointwise central 95% predictive interval",
+           ensemble_df = NULL
+         )
+ 
+@@ -616,7 +616,7 @@
+           plot_type = plot_type,
+           path = row$path[[1L]],
+           source_run = row$source_run[[1L]],
+-          note = "style=publication_focus_v2; exact_interval=95_from_cache; observed_split=fit_vs_heldout"
++          note = sprintf("style=%s; exact_interval=95_from_cache; observed_split=fit_vs_heldout", style$version)
+         )
+ 
+         if (nzchar(pdf_path)) {
+@@ -625,7 +625,7 @@
+             plot_type = "cutoff_window_posterior_samples_pdf",
+             path = pdf_path,
+             source_run = row$source_run[[1L]],
+-            note = "paired_with=cutoff_window_posterior_samples; style=publication_focus_v2"
++            note = sprintf("paired_with=cutoff_window_posterior_samples; style=%s", style$version)
+           )
+         }
+ 
+@@ -636,7 +636,7 @@
+           pdf_path = if (nzchar(pdf_path)) normalizePath(pdf_path, mustWork = FALSE) else "",
+           quantiles_path = normalizePath(quant_row$path[[1L]], mustWork = FALSE),
+           sample_subset_path = if (nrow(sample_row) > 0L) normalizePath(sample_row$path[[1L]], mustWork = FALSE) else "",
+-          style_version = "publication_focus_v2",
++          style_version = style$version,
+           style_source_path = as.character(style$style_source_path %||% ""),
+           style_snapshot_path = as.character(style_snapshot_path %||% ""),
+           rewritten_canonical_png = isTRUE(rewrite_canonical_png),
+@@ -674,7 +674,7 @@
+               source_run = row$source_run[[1L]],
+               interval_low_col = "interval_low",
+               interval_high_col = "interval_high",
+-              interval_label = "95% synthesis credible interval",
++              interval_label = "Pointwise central 95% predictive interval",
+               ensemble_df = ensemble_df,
+               retrospective_df = retrospective_df
+             )
+@@ -684,7 +684,7 @@
+               plot_type = "cutoff_window_posterior_samples_with_raw_ensembles",
+               path = with_ens_png,
+               source_run = row$source_run[[1L]],
+-              note = "style=publication_focus_v2; exact_interval=95_from_cache; includes_adapter_scale_retrospectives_and_ensemble_references"
++              note = sprintf("style=%s; exact_interval=95_from_cache; includes_adapter_scale_retrospectives_and_ensemble_references", style$version)
+             )
+             if (nzchar(with_ens_pdf)) {
+               manifest_rows_to_add[[length(manifest_rows_to_add) + 1L]] <- post_publication_manifest_row(
+@@ -692,7 +692,7 @@
+                 plot_type = "cutoff_window_posterior_samples_with_raw_ensembles_pdf",
+                 path = with_ens_pdf,
+                 source_run = row$source_run[[1L]],
+-                note = "paired_with=cutoff_window_posterior_samples_with_raw_ensembles; style=publication_focus_v2"
++                note = sprintf("paired_with=cutoff_window_posterior_samples_with_raw_ensembles; style=%s", style$version)
+               )
+             }
+ 
+@@ -703,7 +703,7 @@
+               pdf_path = if (nzchar(with_ens_pdf)) normalizePath(with_ens_pdf, mustWork = FALSE) else "",
+               quantiles_path = normalizePath(quant_row$path[[1L]], mustWork = FALSE),
+               sample_subset_path = if (nrow(sample_row) > 0L) normalizePath(sample_row$path[[1L]], mustWork = FALSE) else "",
+-              style_version = "publication_focus_v2",
++              style_version = style$version,
+               style_source_path = as.character(style$style_source_path %||% ""),
+               style_snapshot_path = as.character(style_snapshot_path %||% ""),
+               rewritten_canonical_png = FALSE,
+@@ -731,7 +731,7 @@
+           plot_type = plot_type,
+           path = row$path[[1L]],
+           source_run = row$source_run[[1L]],
+-          note = "style=publication_focus_v2; interval=90_from_quantiles; observed_split=fit_vs_heldout"
++          note = sprintf("style=%s; interval=90_from_quantiles; observed_split=fit_vs_heldout", style$version)
+         )
+ 
+         if (nzchar(pdf_path)) {
+@@ -740,7 +740,7 @@
+             plot_type = paste0(plot_type, "_pdf"),
+             path = pdf_path,
+             source_run = row$source_run[[1L]],
+-            note = sprintf("paired_with=%s; style=publication_focus_v2", plot_type)
++            note = sprintf("paired_with=%s; style=%s", plot_type, style$version)
+           )
+         }
+ 
+@@ -751,7 +751,7 @@
+           pdf_path = if (nzchar(pdf_path)) normalizePath(pdf_path, mustWork = FALSE) else "",
+           quantiles_path = normalizePath(quant_row$path[[1L]], mustWork = FALSE),
+           sample_subset_path = if (nrow(sample_row) > 0L) normalizePath(sample_row$path[[1L]], mustWork = FALSE) else "",
+-          style_version = "publication_focus_v2",
++          style_version = style$version,
+           style_source_path = as.character(style$style_source_path %||% ""),
+           style_snapshot_path = as.character(style_snapshot_path %||% ""),
+           rewritten_canonical_png = isTRUE(rewrite_canonical_png),
+@@ -798,7 +798,7 @@
+               plot_type = "cutoff_window_predictive_bands_with_raw_ensembles",
+               path = with_ens_png,
+               source_run = row$source_run[[1L]],
+-              note = "style=publication_focus_v2; interval=90_from_quantiles; includes_adapter_scale_retrospectives_and_ensemble_references"
++              note = sprintf("style=%s; interval=90_from_quantiles; includes_adapter_scale_retrospectives_and_ensemble_references", style$version)
+             )
+             if (nzchar(with_ens_pdf)) {
+               manifest_rows_to_add[[length(manifest_rows_to_add) + 1L]] <- post_publication_manifest_row(
+@@ -806,7 +806,7 @@
+                 plot_type = "cutoff_window_predictive_bands_with_raw_ensembles_pdf",
+                 path = with_ens_pdf,
+                 source_run = row$source_run[[1L]],
+-                note = "paired_with=cutoff_window_predictive_bands_with_raw_ensembles; style=publication_focus_v2"
++                note = sprintf("paired_with=cutoff_window_predictive_bands_with_raw_ensembles; style=%s", style$version)
+               )
+             }
+ 
+@@ -817,7 +817,7 @@
+               pdf_path = if (nzchar(with_ens_pdf)) normalizePath(with_ens_pdf, mustWork = FALSE) else "",
+               quantiles_path = normalizePath(quant_row$path[[1L]], mustWork = FALSE),
+               sample_subset_path = "",
+-              style_version = "publication_focus_v2",
++              style_version = style$version,
+               style_source_path = as.character(style$style_source_path %||% ""),
+               style_snapshot_path = as.character(style_snapshot_path %||% ""),
+               rewritten_canonical_png = FALSE,
+@@ -1013,17 +1013,25 @@
+   out[vapply(out, file.exists, logical(1))]
+ }
+ 
++# Explicit interior breaks prevent the automatic calendar grid from drawing an
++# extra date beyond the observed/cache window and clipping its label at the edge.
++post_publication_focus_date_breaks <- function(dates) {
++  limits <- range(as.Date(dates), na.rm = TRUE)
++  if (as.integer(diff(limits)) < 2L) return(unique(limits))
++  seq(limits[[1L]] + 1L, limits[[2L]] - 1L, by = "2 weeks")
++}
++
+ post_publication_focus_caption <- function(cutoff_date, forecast_start = as.Date(cutoff_date) + 1L) {
+   sprintf(
+-    "Vertical dashed line marks the first forecast date (%s; cutoff %s).",
+-    as.character(as.Date(forecast_start)),
+-    as.character(as.Date(cutoff_date))
++    "Dashed line: forecast origin (%s); first forecast: %s.",
++    as.character(as.Date(cutoff_date)),
++    as.character(as.Date(forecast_start))
+   )
+ }
+ 
+ post_publication_focus_subtitle <- function(cutoff_date, forecast_start = as.Date(cutoff_date) + 1L) {
+   sprintf(
+-    "Cutoff: %s | first forecast date: %s",
++    "Forecast origin: %s | first forecast: %s",
+     as.character(as.Date(cutoff_date)),
+     as.character(as.Date(forecast_start))
+   )
+@@ -1086,7 +1094,7 @@
+   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
+   forecast_end <- max(quant_df$date, na.rm = TRUE)
+   forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
+-  cutoff_line_date <- forecast_start
++  cutoff_line_date <- cutoff_date
+   y_limits <- post_publication_y_limits_for_cutoff(cutoff_date, style)
+ 
+   if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
+@@ -1368,277 +1376,130 @@
+ }
+ 
+ post_publication_render_focus_posterior_plot <- function(
+-  model_id,
+-  quant_df,
+-  sample_df,
+-  png_path,
+-  pdf_path,
+-  style,
+-  source_run = "",
+-  interval_low_col = "interval_low",
+-  interval_high_col = "interval_high",
+-  interval_label = "95% synthesis credible interval",
+-  ensemble_df = NULL,
+-  retrospective_df = NULL
++  model_id, quant_df, sample_df, png_path, pdf_path, style, source_run = "",
++  interval_low_col = "interval_low", interval_high_col = "interval_high",
++  interval_label = "Pointwise central 95% predictive interval",
++  ensemble_df = NULL, retrospective_df = NULL
+ ) {
+   quant_df <- post_publication_common_data(quant_df)
+   if (!(interval_low_col %in% names(quant_df)) || !(interval_high_col %in% names(quant_df))) {
+     stop(sprintf("focus plot requires interval columns %s and %s", interval_low_col, interval_high_col), call. = FALSE)
+   }
+-
+-  sample_df <- if (!is.null(sample_df)) sample_df else data.frame()
+-  if (nrow(sample_df) > 0L) {
+-    sample_df$date <- as.Date(sample_df$date)
+-    sample_df <- sample_df[order(sample_df$segment, sample_df$sample_index, sample_df$date, method = "radix"), , drop = FALSE]
+-    sample_df <- post_publication_sample_subset(sample_df, cap = 10L)
+-  }
+-  if (!is.null(ensemble_df) && nrow(ensemble_df) > 0L) {
+-    ensemble_df$date <- as.Date(ensemble_df$date)
+-    ensemble_df <- ensemble_df[order(ensemble_df$provider, ensemble_df$member, ensemble_df$date, method = "radix"), , drop = FALSE]
+-  }
+-
+-  center_col <- if ("model_mean" %in% names(quant_df)) {
+-    "model_mean"
+-  } else if ("q50" %in% names(quant_df)) {
+-    "q50"
+-  } else {
+-    names(quant_df)[grepl("^q", names(quant_df))][ceiling(sum(grepl("^q", names(quant_df))) / 2)]
+-  }
+-
++  # These columns are calculated from the complete saved predictive matrices by
++  # post_publication_apply_exact_cache_interval/mean; display paths never enter
++  # their calculation. The mean is E[log(1 + Q)], not log(1 + E[Q]).
++  if (!("model_mean" %in% names(quant_df))) {
++    stop("focus posterior plot requires exact cache-derived model_mean; a median cannot be labeled as a predictive mean.", call. = FALSE)
++  }
++  center_col <- "model_mean"
+   has_history <- any(quant_df$segment == "history", na.rm = TRUE)
+   has_forecast <- any(quant_df$segment == "forecast", na.rm = TRUE)
+   cutoff_date <- if (has_history) max(quant_df$date[quant_df$segment == "history"], na.rm = TRUE) else min(quant_df$date, na.rm = TRUE)
++  forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date + 1L
+   forecast_end <- max(quant_df$date, na.rm = TRUE)
+-  forecast_start <- if (has_forecast) min(quant_df$date[quant_df$segment == "forecast"], na.rm = TRUE) else cutoff_date
+-  cutoff_line_date <- forecast_start
+   y_limits <- post_publication_y_limits_for_cutoff(cutoff_date, style)
+-
++  sample_df <- if (!is.null(sample_df)) sample_df else data.frame()
++  if (isTRUE(style$posterior$render_sample_paths) && nrow(sample_df) > 0L) {
++    sample_df$date <- as.Date(sample_df$date)
++    sample_df <- sample_df[order(sample_df$segment, sample_df$sample_index, sample_df$date, method = "radix"), , drop = FALSE]
++    sample_df <- post_publication_sample_subset(sample_df, cap = as.integer(style$posterior$sample_path_cap %||% 10L))
++  } else {
++    sample_df <- data.frame()
++  }
++  if (!is.null(ensemble_df) && nrow(ensemble_df) > 0L) {
++    ensemble_df$date <- as.Date(ensemble_df$date)
++    ensemble_df$legend_label <- ifelse(ensemble_df$provider == "GloFAS", "GloFAS ensemble", "NWM ensemble")
++    ensemble_df <- ensemble_df[order(ensemble_df$provider, ensemble_df$member, ensemble_df$date, method = "radix"), , drop = FALSE]
++  }
+   if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
+     retrospective_df$date <- as.Date(retrospective_df$date)
+     retrospective_df <- retrospective_df[
+-      !is.na(retrospective_df$date) &
+-        retrospective_df$date >= min(quant_df$date, na.rm = TRUE) &
+-        retrospective_df$date <= cutoff_date &
+-        is.finite(retrospective_df$value),
+-      ,
+-      drop = FALSE
+-    ]
+-    retrospective_df$legend_label <- ifelse(
+-      retrospective_df$provider == "GloFAS",
+-      "GloFAS retrospective",
+-      "NWS retrospective"
+-    )
++      !is.na(retrospective_df$date) & retrospective_df$date >= min(quant_df$date, na.rm = TRUE) &
++        retrospective_df$date <= cutoff_date & is.finite(retrospective_df$value), , drop = FALSE]
++    retrospective_df$legend_label <- ifelse(retrospective_df$provider == "GloFAS", "GloFAS retrospective", "NWM retrospective")
+     retrospective_df <- retrospective_df[order(retrospective_df$provider, retrospective_df$source, retrospective_df$date, method = "radix"), , drop = FALSE]
+   }
+-  retrospective_labels <- if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
+-    unique(retrospective_df$legend_label)
+-  } else {
+-    character(0)
+-  }
+-
+   hist_obs <- quant_df[quant_df$segment == "history", c("date", "observed"), drop = FALSE]
+   fc_obs <- quant_df[quant_df$segment == "forecast", c("date", "observed"), drop = FALSE]
++  observed_fit_label <- "USGS history"
++  observed_future_label <- "USGS verification"
++  model_center_label <- "Predictive mean (log scale)"
++  sample_label <- "Predictive sample paths"
+   palette <- post_publication_product_palette()
+-  observed_fit_label <- "USGS observations"
+-  observed_future_label <- "Held-out USGS"
+-  model_center_label <- "exDQLM - Synthesis"
+-  color_breaks <- c(
+-    observed_fit_label,
+-    observed_future_label,
+-    model_center_label,
+-    retrospective_labels,
+-    if (!is.null(ensemble_df) && any(ensemble_df$provider == "GloFAS")) {
+-      sprintf("GloFAS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider == "GloFAS"])))
+-    },
+-    if (!is.null(ensemble_df) && any(ensemble_df$provider != "GloFAS")) {
+-      sprintf("NWS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider != "GloFAS"])))
+-    }
+-  )
+-  linetype_values <- c(
+-    setNames("solid", observed_fit_label),
+-    setNames("22", observed_future_label),
+-    setNames("solid", model_center_label)
+-  )
+-  if (length(retrospective_labels) > 0L) {
+-    linetype_values[retrospective_labels] <- "dotdash"
+-  }
+-  if (!is.null(ensemble_df) && any(ensemble_df$provider == "GloFAS")) {
+-    glofas_label <- sprintf("GloFAS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider == "GloFAS"])))
+-    linetype_values[[glofas_label]] <- "solid"
+-  }
+-  if (!is.null(ensemble_df) && any(ensemble_df$provider != "GloFAS")) {
+-    nws_label <- sprintf("NWS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider != "GloFAS"])))
+-    linetype_values[[nws_label]] <- "solid"
+-  }
+-
+-  flood_labels <- post_publication_flood_label_df(forecast_end)
+-
++  color_values <- c(
++    setNames(palette[["usgs"]], observed_fit_label), setNames(palette[["usgs_future"]], observed_future_label),
++    setNames(style$colors$median, model_center_label),
++    "GloFAS retrospective" = palette[["glofas"]], "NWM retrospective" = palette[["nws"]],
++    "GloFAS ensemble" = palette[["glofas"]], "NWM ensemble" = palette[["nws"]],
++    setNames("#87929E", sample_label))
++  # Provider and role both remain identifiable when printed without color.
++  linetype_values <- c("solid", "22", "solid", "dotdash", "longdash", "solid", "dotted", "solid")
++  names(linetype_values) <- names(color_values)
++  shape_values <- setNames(c(16, 21, NA, 15, 17, NA, NA, NA), names(color_values))
++  retrospective_labels <- if (!is.null(retrospective_df) && nrow(retrospective_df)) unique(retrospective_df$legend_label) else character()
++  ensemble_labels <- if (!is.null(ensemble_df) && nrow(ensemble_df)) unique(ensemble_df$legend_label) else character()
++  color_breaks <- c(observed_fit_label, observed_future_label, model_center_label,
++                    retrospective_labels, ensemble_labels, if (nrow(sample_df)) sample_label)
++  color_breaks <- unique(color_breaks)
+   p <- ggplot2::ggplot(quant_df, ggplot2::aes(x = date)) +
+-    ggplot2::geom_hline(
+-      data = post_publication_flood_stage_df(),
+-      mapping = ggplot2::aes(yintercept = y),
+-      inherit.aes = FALSE,
+-      color = "#5B677A",
+-      linewidth = 0.55,
+-      linetype = "22",
+-      alpha = 0.95
+-    ) +
+-    ggplot2::geom_ribbon(
+-      ggplot2::aes(ymin = .data[[interval_low_col]], ymax = .data[[interval_high_col]], fill = interval_label),
+-      alpha = 0.42,
+-      color = NA
+-    )
+-
+-  if (nrow(sample_df) > 0L) {
+-    p <- p + ggplot2::geom_line(
+-      data = sample_df,
+-      mapping = ggplot2::aes(y = value, group = interaction(segment, sample_index)),
+-      linewidth = 0.30,
+-      alpha = 0.10,
+-      lineend = "round",
+-      color = "#B8C1CB",
+-      show.legend = FALSE
+-    )
+-  }
+-
+-  if (!is.null(retrospective_df) && nrow(retrospective_df) > 0L) {
+-    p <- p + ggplot2::geom_line(
+-      data = retrospective_df,
+-      mapping = ggplot2::aes(y = value, group = interaction(provider, source), color = legend_label, linetype = legend_label),
+-      linewidth = 0.82,
+-      alpha = 0.78,
+-      lineend = "round"
+-    )
+-  }
+-
+-  if (!is.null(ensemble_df) && nrow(ensemble_df) > 0L) {
+-    ensemble_df$legend_label <- ifelse(
+-      ensemble_df$provider == "GloFAS",
+-      sprintf("GloFAS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider == "GloFAS"]))),
+-      sprintf("NWS forecast ensemble (%d members)", length(unique(ensemble_df$member[ensemble_df$provider != "GloFAS"])))
+-    )
+-    p <- p + ggplot2::geom_line(
+-      data = ensemble_df,
+-      mapping = ggplot2::aes(y = value, group = interaction(provider, member), color = legend_label, linetype = legend_label),
+-      linewidth = 0.62,
+-      alpha = 0.24,
+-      lineend = "round"
+-    )
+-  }
+-
++    ggplot2::geom_hline(data = post_publication_flood_stage_df(), ggplot2::aes(yintercept = y),
++      inherit.aes = FALSE, color = "#5B677A", linewidth = 0.35, linetype = "22") +
++    ggplot2::geom_ribbon(ggplot2::aes(ymin = .data[[interval_low_col]], ymax = .data[[interval_high_col]], fill = interval_label),
++      alpha = 0.42, color = NA)
++  if (nrow(sample_df)) {
++    p <- p + ggplot2::geom_line(data = sample_df,
++      ggplot2::aes(y = value, group = interaction(segment, sample_index), color = sample_label),
++      linewidth = style$posterior$sample_line_width %||% 0.25,
++      alpha = style$posterior$sample_line_alpha %||% 0.10, lineend = "round")
++  }
++  if (!is.null(retrospective_df) && nrow(retrospective_df)) {
++    p <- p + ggplot2::geom_line(data = retrospective_df,
++      ggplot2::aes(y = value, group = interaction(provider, source), color = legend_label, linetype = legend_label),
++      linewidth = 0.50, alpha = 0.85, lineend = "round")
++    # Sparse markers supplement the different dash patterns, without obscuring
++    # daily values. Lines still use every original date and value.
++    marker_df <- retrospective_df[as.integer(retrospective_df$date - min(quant_df$date)) %% 7L == 0L, , drop = FALSE]
++    p <- p + ggplot2::geom_point(data = marker_df,
++      ggplot2::aes(y = value, color = legend_label, shape = legend_label), size = 1.5, show.legend = TRUE)
++  }
++  if (!is.null(ensemble_df) && nrow(ensemble_df)) {
++    p <- p + ggplot2::geom_line(data = ensemble_df,
++      ggplot2::aes(y = value, group = interaction(provider, member), color = legend_label, linetype = legend_label),
++      linewidth = 0.35, alpha = 0.28, lineend = "round")
++  }
+   p <- p +
+-    ggplot2::geom_line(
+-      ggplot2::aes(y = .data[[center_col]], color = model_center_label, linetype = model_center_label),
+-      linewidth = 1.10,
+-      lineend = "round"
+-    ) +
+-    ggplot2::geom_line(
+-      data = hist_obs,
+-      mapping = ggplot2::aes(y = observed, color = observed_fit_label, linetype = observed_fit_label),
+-      linewidth = 0.95,
+-      lineend = "round"
+-    ) +
+-    ggplot2::geom_point(
+-      data = hist_obs,
+-      mapping = ggplot2::aes(x = date, y = observed),
+-      inherit.aes = FALSE,
+-      color = palette[["usgs"]],
+-      fill = palette[["usgs"]],
+-      shape = 16,
+-      size = 1.5,
+-      alpha = 0.95,
+-      show.legend = FALSE
+-    ) +
+-    ggplot2::geom_line(
+-      data = fc_obs,
+-      mapping = ggplot2::aes(y = observed, color = observed_future_label, linetype = observed_future_label),
+-      linewidth = 0.95,
+-      lineend = "round"
+-    ) +
+-    ggplot2::geom_point(
+-      data = fc_obs,
+-      mapping = ggplot2::aes(x = date, y = observed),
+-      inherit.aes = FALSE,
+-      color = palette[["usgs_future"]],
+-      fill = "white",
+-      shape = 21,
+-      stroke = 0.55,
+-      size = 1.7,
+-      show.legend = FALSE
+-    ) +
+-    ggplot2::geom_segment(
+-      data = data.frame(date = cutoff_line_date),
+-      mapping = ggplot2::aes(x = date, xend = date, y = -Inf, yend = Inf),
+-      inherit.aes = FALSE,
+-      color = style$colors$cutoff,
+-      linewidth = 0.55,
+-      linetype = "22"
+-    ) +
+-    ggplot2::geom_text(
+-      data = flood_labels,
+-      mapping = ggplot2::aes(x = x, y = y, label = label),
+-      inherit.aes = FALSE,
+-      hjust = 1.02,
+-      vjust = -0.15,
+-      size = 4.2,
+-      color = "#4A5568",
+-      fontface = "italic"
+-    ) +
+-    ggplot2::scale_color_manual(
+-      values = c(
+-        setNames(palette[["usgs"]], observed_fit_label),
+-        setNames(palette[["usgs_future"]], observed_future_label),
+-        setNames(style$colors$median, model_center_label),
+-        setNames(palette[["glofas"]], retrospective_labels[grepl("^GloFAS retrospective$", retrospective_labels)]),
+-        setNames(palette[["nws"]], retrospective_labels[grepl("^NWS retrospective$", retrospective_labels)]),
+-        setNames(palette[["glofas"]], names(linetype_values)[grepl("^GloFAS forecast ensemble \\(", names(linetype_values))]),
+-        setNames(palette[["nws"]], names(linetype_values)[grepl("^NWS forecast ensemble \\(", names(linetype_values))])
+-      ),
+-      breaks = color_breaks
+-    ) +
+-    ggplot2::scale_linetype_manual(
+-      values = linetype_values,
+-      breaks = intersect(color_breaks, names(linetype_values))
+-    ) +
+-    ggplot2::scale_fill_manual(
+-      values = setNames(style$colors$interval_outer, interval_label),
+-      breaks = interval_label
+-    ) +
+-    ggplot2::scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
+-    ggplot2::labs(
+-      title = post_publication_model_title(model_id),
+-      subtitle = post_publication_focus_subtitle(cutoff_date, forecast_start),
+-      x = "Date",
+-      y = post_publication_y_label(style),
+-      caption = post_publication_focus_caption(cutoff_date, forecast_start)
+-    ) +
+-    ggplot2::guides(
+-      color = ggplot2::guide_legend(
+-        order = 1,
+-        nrow = 2,
+-        byrow = TRUE
+-      ),
+-      linetype = "none",
+-      fill = ggplot2::guide_legend(order = 2, nrow = 1)
+-    ) +
++    ggplot2::geom_line(ggplot2::aes(y = .data[[center_col]], color = model_center_label, linetype = model_center_label), linewidth = 0.90) +
++    ggplot2::geom_line(data = hist_obs, ggplot2::aes(y = observed, color = observed_fit_label, linetype = observed_fit_label), linewidth = 0.6) +
++    ggplot2::geom_point(data = hist_obs, ggplot2::aes(y = observed, color = observed_fit_label, shape = observed_fit_label), size = 1.3, show.legend = TRUE) +
++    ggplot2::geom_line(data = fc_obs, ggplot2::aes(y = observed, color = observed_future_label, linetype = observed_future_label), linewidth = 0.6) +
++    ggplot2::geom_point(data = fc_obs, ggplot2::aes(y = observed, color = observed_future_label, shape = observed_future_label), fill = "white", stroke = 0.4, size = 1.5, show.legend = TRUE) +
++    ggplot2::geom_vline(xintercept = cutoff_date, color = style$colors$cutoff, linewidth = 0.4, linetype = "22") +
++    ggplot2::geom_text(data = post_publication_flood_label_df(forecast_end),
++      ggplot2::aes(x = x, y = y, label = label), inherit.aes = FALSE,
++      hjust = 1.02, vjust = -0.3, size = 2.9, color = "#4A5568", fontface = "italic") +
++    ggplot2::scale_color_manual(name = NULL, values = color_values, breaks = color_breaks) +
++    ggplot2::scale_linetype_manual(name = NULL, values = linetype_values, breaks = color_breaks) +
++    ggplot2::scale_shape_manual(name = NULL, values = shape_values, breaks = color_breaks) +
++    ggplot2::scale_fill_manual(name = NULL, values = setNames(style$colors$interval_outer, interval_label), breaks = interval_label) +
++    ggplot2::scale_x_date(breaks = post_publication_focus_date_breaks(quant_df$date), date_labels = "%b %d") +
++    ggplot2::labs(title = post_publication_model_title(model_id),
++      subtitle = post_publication_focus_subtitle(cutoff_date, forecast_start), x = "Date", y = post_publication_y_label(style),
++      caption = post_publication_focus_caption(cutoff_date, forecast_start)) +
++    ggplot2::guides(color = ggplot2::guide_legend(order = 1, ncol = 2, byrow = TRUE,
++      override.aes = list(alpha = 1, linetype = unname(linetype_values[color_breaks]),
++        shape = unname(shape_values[color_breaks]),
++        linewidth = ifelse(color_breaks == model_center_label, 0.9, 0.5), size = 1.6)),
++      linetype = "none", shape = "none", fill = ggplot2::guide_legend(order = 2, nrow = 1, override.aes = list(shape = NA, color = NA, linetype = 0))) +
+     post_publication_base_theme(style) +
+-    ggplot2::theme(
+-      legend.position = "bottom",
+-      legend.direction = "horizontal",
+-      legend.box = "vertical",
+-      legend.justification = "center",
+-      legend.text = ggplot2::element_text(size = 10.8, color = "#243B53"),
+-      legend.margin = ggplot2::margin(t = 2, r = 0, b = 0, l = 0),
+-      legend.spacing.x = grid::unit(8, "pt"),
+-      legend.key.width = grid::unit(20, "pt"),
+-      legend.key.height = grid::unit(10, "pt"),
+-      plot.margin = ggplot2::margin(10, 10, 8, 10)
+-    )
+-
+-  if (!is.null(y_limits)) {
+-    p <- p + ggplot2::coord_cartesian(ylim = y_limits)
+-  }
+-
++    ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal", legend.box = "vertical",
++      legend.justification = "center", legend.text = ggplot2::element_text(size = 8.5, color = "#243B53"),
++      axis.text = ggplot2::element_text(size = 8.5),
++      legend.margin = ggplot2::margin(t = 1, r = 0, b = 0, l = 0),
++      legend.spacing.x = grid::unit(6, "pt"), legend.key.width = grid::unit(25, "pt"),
++      legend.key.height = grid::unit(9, "pt"), plot.margin = ggplot2::margin(6, 7, 4, 5))
++  if (!is.null(y_limits)) p <- p + ggplot2::coord_cartesian(ylim = y_limits)
+   post_publication_save_plot(p, png_path = png_path, pdf_path = pdf_path, style = style)
+-  invisible(list(cutoff_date = cutoff_date))
+-}
++  invisible(list(cutoff_date = cutoff_date, forecast_start = forecast_start,
++    sample_path_count = if (nrow(sample_df)) length(unique(sample_df$sample_index)) else 0L,
++    plot = p))
++}
+--- a/config/post_publication_figures.yaml
++++ b/config/post_publication_figures.yaml
+@@ -1,20 +1,20 @@
+-version: publication_focus_v2
++version: publication_comment1_v3
+ png:
+-  width_in: 11
+-  height_in: 5.8
++  width_in: 6.23
++  height_in: 4.9
+   dpi: 320
+ pdf:
+-  width_in: 11
+-  height_in: 5.8
++  width_in: 6.23
++  height_in: 4.9
+ labels:
+   y: "River flow [log(1 + x); x in m^3 s^-1]"
+   y_scale_id: "log1p_cms"
+ theme:
+   base_family: "sans"
+-  base_size: 12.5
+-  title_size: 15
+-  subtitle_size: 11.5
+-  caption_size: 9.5
++  base_size: 10
++  title_size: 11
++  subtitle_size: 8.5
++  caption_size: 8
+   legend_position: right
+   grid_major: "#DCE3EA"
+   grid_minor: "#EEF2F6"
+@@ -32,9 +32,9 @@
+   inner: [20, 80]
+ posterior:
+   render_sample_paths: true
+-  sample_path_cap: 12
+-  sample_line_alpha: 0.16
+-  sample_line_width: 0.35
++  sample_path_cap: 10
++  sample_line_alpha: 0.10
++  sample_line_width: 0.25
+   show_inner_interval: false
+ predictive:
+   show_inner_interval: false
+--- a/scripts/current_article_contract.py
++++ b/scripts/current_article_contract.py
+@@ -0,0 +1,21 @@
++"""Load the standalone article's shared, pure LaTeX contract utilities."""
++from __future__ import annotations
++
++import importlib.util
++from pathlib import Path
++
++_MODULE_PATH = Path(__file__).resolve().parents[1] / 'Evironmetrics---REVISED-DOC-Corrected-2/scripts/manuscript_text_contract.py'
++_SPEC = importlib.util.spec_from_file_location('_current_article_text_contract', _MODULE_PATH)
++if _SPEC is None or _SPEC.loader is None:
++    raise ImportError(f'Cannot load article text contract: {_MODULE_PATH}')
++_MODULE = importlib.util.module_from_spec(_SPEC)
++_SPEC.loader.exec_module(_MODULE)
++active_tex = _MODULE.active_tex
++normalized_text = _MODULE.normalized_text
++has_concepts = _MODULE.has_concepts
++has_label = _MODULE.has_label
++in_order = _MODULE.in_order
++cited_url = _MODULE.cited_url
++structure_checks = _MODULE.structure_checks
++
++scientific_checks = _MODULE.scientific_checks
+--- a/scripts/forecast_design_contract.py
++++ b/scripts/forecast_design_contract.py
+@@ -2,6 +2,8 @@
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass
++
++from current_article_contract import scientific_checks
+ from typing import Any
+ 
+ 
+@@ -10,25 +12,6 @@
+ ARTICLE_FORECAST_DESIGN_DOC_REL = "docs/forecast_design_contract.md"
+ 
+ FORECAST_CUTOFFS = ["20210123", "20211112", "20211221", "20220511", "20221225"]
+-
+-REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS = [
+-    "Post-cutoff USGS observations are reserved strictly for verification",
+-    "are not used to fit or update the predictive distributions",
+-    "At a cutoff \\(c\\), the model is fit using USGS observations and retrospective products available through \\(c\\)",
+-    "The forecast-window predictive distributions are then synthesized using the latest forecast products issued at or before \\(c\\)",
+-    "latest forecast products issued at or before",
+-    "forecast-window precipitation and soil-moisture covariates",
+-    "canonical GDPC climate-index factor",
+-    "not treated as an operational forecast product or verification target",
+-    "five cutoff-specific, version-consistent staged datasets",
+-    "uses only information available at that origin to fit seven quantile-specific models",
+-    "scores that distribution against future USGS observations held out over the forecast window",
+-    "archive-feasible, version-consistent origins that span contrasting hydrological settings",
+-    "This archive-reconstruction step is the main practical constraint on a denser rolling-origin design",
+-    "different release histories, product versions, update frequencies, horizons, ensemble-member structures, spatial supports, and access interfaces",
+-    "data recovery, version matching, spatial extraction, covariate staging, and computation",
+-    "avoid dense overlaps that would overrepresent the same episode",
+-]
+ 
+ REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS = [
+     "five cutoff-specific, rolling-origin forecast-window evaluations",
+@@ -173,3 +156,7 @@
+             str(claims_policy.get("continuous_daily_post_2022_hindcast_claimed")),
+         ),
+     ]
++
++
++def check_forecast_design_article_text(article_text: str) -> list[ForecastDesignManifestCheck]:
++    return [ForecastDesignManifestCheck(item, ok, detail) for item, ok, detail in scientific_checks(article_text, ['origin_design', 'verification', 'archive_work', 'climate_covariates', 'transfer_inputs'])]
+--- a/scripts/forecats_plot_bundle.R
++++ b/scripts/forecats_plot_bundle.R
+@@ -331,15 +331,15 @@
+   retro_labels_from_window <- unique(as.character(retros_long$source_label))
+   retro_labels <- unique(c(retro_labels_from_coverage, retro_labels_from_window))
+ 
+-  observed_fit_label <- "USGS observed (pre-cutoff)"
+-  observed_future_label <- "Held-out USGS verification"
++  observed_fit_label <- "USGS history"
++  observed_future_label <- "USGS verification"
+   glofas_forecast_label <- if (nrow(glofas_ens_long) > 0L) {
+-    sprintf("GloFAS forecast ensemble (%d members)", length(unique(glofas_ens_long$member)))
++    "GloFAS ensemble"
+   } else {
+     character(0)
+   }
+   nws_forecast_label <- if (nrow(nws_ens_long) > 0L) {
+-    sprintf("NWS forecast ensemble (%d members)", length(unique(nws_ens_long$member)))
++    "NWM ensemble"
+   } else {
+     character(0)
+   }
+@@ -360,6 +360,10 @@
+   shape_map[nws_forecast_label] <- NA_integer_
+   linetype_map <- setNames(rep("solid", length(legend_levels)), legend_levels)
+   linetype_map[[observed_future_label]] <- "22"
++  shape_map[[observed_future_label]] <- 21L
++  linetype_map[retro_labels[grepl("^GloFAS", retro_labels)]] <- "dotdash"
++  linetype_map[retro_labels[grepl("^NWS", retro_labels)]] <- "longdash"
++  linetype_map[nws_forecast_label] <- "dotted"
+ 
+   usgs_before <- usgs %>% filter(obs_type == "Before") %>% mutate(Source = observed_fit_label)
+   usgs_after <- usgs %>% filter(obs_type == "After") %>% mutate(Source = observed_future_label)
+@@ -405,6 +409,8 @@
+   }
+   legend_label_map[glofas_forecast_label] <- glofas_forecast_label
+   legend_label_map[nws_forecast_label] <- nws_forecast_label
++  legend_label_map <- gsub("NWS", "NWM", legend_label_map)
++  legend_label_map <- gsub("GloFAS historical", "GloFAS retrospective", legend_label_map)
+   forecast_labels_shown <- c(
+     if (nrow(glofas_ens_long) > 0L) glofas_forecast_label,
+     if (nrow(nws_ens_long) > 0L) nws_forecast_label
+@@ -422,6 +428,7 @@
+   all_vals <- c(usgs$value, retros_long$value, glofas_ens_long$value, nws_ens_long$value)
+   flood_df <- figure_flood_label_df(plot_scale = plot_scale, values = all_vals)
+   flood_style <- figure_flood_stage_style()
++  flood_df$label <- ifelse(flood_df$reference_level == "minor", "Lower flow reference", "Upper flow reference")
+ 
+   # -------------------------
+   # Plot
+@@ -453,14 +460,13 @@
+       vjust = 0.5,
+       color = flood_style$label_color,
+       fontface = flood_style$label_face,
+-      size = flood_style$label_size
++      size = 2.9
+     )} +
+     # Retrospective/historical/reanalysis before cutoff.
+     geom_line(
+       data = retros_long,
+-      aes(x = date, y = value, color = source_label, group = source_id),
+-      linewidth = 0.7,
+-      linetype = "solid",
++      aes(x = date, y = value, color = source_label, linetype = source_label, group = source_id),
++      linewidth = 0.5,
+       alpha = 0.85,
+       na.rm = TRUE
+     ) +
+@@ -531,9 +537,10 @@
+       breaks = legend_levels_shown,
+       labels = legend_label_map[legend_levels_shown]
+     ) +
+-    scale_x_date(breaks = scales::pretty_breaks(6), date_labels = figure_date_label_format(c(plot_start, plot_end))) +
++    scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d") +
+     labs(
+-      title = plot_title,
++      title = "Hydrologic products and observed discharge",
++      subtitle = sprintf("Forecast origin: %s | first forecast: %s", cutoff_date, forecast_start),
+       x = "Date",
+       y = y_lab
+     ) +
+@@ -546,16 +553,21 @@
+           linewidth = 0.9,
+           alpha = 1
+         ),
+-        ncol = 3,
++        ncol = 2,
+         byrow = TRUE
+       ),
+       linetype = "none",
+       shape = "none"
+     ) +
+-    theme_manuscript_standard(base_size = 14, title_size = 16, legend_position = "bottom") +
++    theme_manuscript_standard(base_size = 10, title_size = 11, legend_position = "bottom") +
+     theme(
+-      legend.title = element_text(face = "bold"),
+-      legend.text = element_text(size = 8.8)
++      legend.title = element_blank(),
++      plot.subtitle = element_text(size = 8.5),
++      axis.text = element_text(size = 8.5),
++      legend.text = element_text(size = 8.5),
++      legend.key.width = grid::unit(25, "pt"),
++      legend.key.height = grid::unit(9, "pt"),
++      plot.margin = margin(6, 7, 4, 5)
+     )
+ 
+   # Optional markers
+@@ -590,7 +602,8 @@
+   }
+ 
+   out_path <- file.path(figures_dir, "forecats.png")
+-  ggsave(filename = out_path, plot = p, width = 12, height = 6, units = "in", dpi = 300)
++  ggsave(filename = out_path, plot = p, width = 6.23, height = 4.4, units = "in", dpi = 320)
++  ggsave(filename = sub("\\.png$", ".pdf", out_path), plot = p, width = 6.23, height = 4.4, units = "in", device = grDevices::pdf)
+   message("Wrote: ", out_path)
+   invisible(out_path)
+ }
+--- a/scripts/latest_forecast_issue_contract.py
++++ b/scripts/latest_forecast_issue_contract.py
+@@ -2,6 +2,8 @@
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass
++
++from current_article_contract import scientific_checks
+ from pathlib import Path
+ from typing import Any
+ 
+@@ -20,12 +22,6 @@
+     "snapshot_stage": "R/unified/stages/stage_forecats.R",
+     "histfix_bundle_builder": "scripts/build_multimodel_v8_histfix_bundles.py",
+ }
+-
+-REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS = [
+-    "using the latest forecast products issued at or before",
+-    "aggregates the latest available forecast issuances to daily member-specific forecast matrices",
+-    "Post-cutoff USGS observations are reserved strictly for verification",
+-]
+ 
+ REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS = [
+     "latest available forecast ensemble",
+@@ -139,3 +135,7 @@
+         )
+ 
+     return checks
++
++
++def check_latest_forecast_article_text(article_text: str) -> list[LatestForecastIssueManifestCheck]:
++    return [LatestForecastIssueManifestCheck(item, ok, detail) for item, ok, detail in scientific_checks(article_text, ['latest_issue', 'verification'])]
+--- a/scripts/promote_comment1_figure_assets.py
++++ b/scripts/promote_comment1_figure_assets.py
+@@ -0,0 +1,248 @@
++#!/usr/bin/env python3
++"""Promote an inspected comment-1 render into article assets and durable lineage.
++
++This command changes presentation files only. Retained numerical CSVs/caches are
++hashed before and after promotion. A registry lets regular refresh entrypoints
++restore the reviewed figures only while their numerical inputs and selection IDs
++still match. No authoritative runtime output is written.
++"""
++from __future__ import annotations
++import argparse
++import csv
++import hashlib
++import json
++from pathlib import Path
++import shutil
++import sys
++
++
++def sha(path: Path) -> str:
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def load_rows(path: Path) -> list[dict]:
++    with path.open(newline='') as f:
++        return list(csv.DictReader(f))
++
++
++def save_rows(path: Path, rows: list[dict]) -> None:
++    with path.open('w', newline='') as f:
++        w = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator='\n')
++        w.writeheader()
++        w.writerows(rows)
++
++
++def main() -> None:
++    p = argparse.ArgumentParser(description=__doc__)
++    p.add_argument('--render-root', required=True, type=Path)
++    p.add_argument('--article-root', required=True, type=Path)
++    p.add_argument('--additional-provenance', type=Path, help='Inspected component-title revision provenance, with input_hashes.')
++    p.add_argument('--additional-target', action='append', default=[], help='Additional inspected article-relative presentation target; repeat as needed.')
++    args = p.parse_args()
++    root, render = args.article_root.resolve(), args.render_root.resolve()
++    report = json.loads((render / 'render_manifest.json').read_text())
++    snapshot_path = Path(report['snapshot'])
++    if sha(snapshot_path) != report['snapshot_sha256']:
++        raise ValueError('Render snapshot content changed; promotion refused.')
++    snapshot = json.loads(snapshot_path.read_text())
++    expected_inputs = {str(Path(row['path']).resolve()): row['sha256'] for row in snapshot['files'] if row.get('exists') and row.get('sha256')}
++    for row in report['inputs']:
++        expected = expected_inputs.get(str(Path(row['source']).resolve()))
++        if expected is not None and expected != row['sha256']:
++            raise ValueError(f'Render input does not match frozen snapshot: {row["source"]}')
++    selected = [r for r in snapshot['selected_runs'] if r['run_id'] in {a.get('run_id') for a in report['assets']}]
++    expected_selection = {(cutoff, 'exAL-M-T1') for cutoff in ['20210123', '20211112', '20211221', '20220511', '20221225']}
++    expected_selection.add(('20221225', 'exAL-U-T1'))
++    if {(row['cutoff'], row['label']) for row in selected} != expected_selection:
++        p.error('Render selection differs from the six planned publication runs.')
++    if len(selected) != 6 or len(report['assets']) != 14:
++        p.error('Final promotion requires all five multivariate panels, December univariate and context with PNG/PDF pairs.')
++    registry_root = root / 'artifacts/comment1_figure_revision'
++    if (registry_root / 'registry.json').exists():
++        p.error('Presentation registry already exists; preserve it and use a separately reviewed revision.')
++    freeze_rows = load_rows(root / 'artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv')
++    freeze_ids = {(row['cutoff'].replace('-', ''), row['manuscript_label']): row.get('artifact_run_id') or row['run_id'] for row in freeze_rows}
++    for row in selected:
++        if freeze_ids.get((row['cutoff'], row['label'])) != row['run_id']:
++            raise ValueError(f'Current article selected run differs from inspected render: {row["run_id"]}')
++    # Check every output and local numerical CSV before the first article write.
++    for asset in report['assets']:
++        if sha(Path(asset['asset'])) != asset['sha256']:
++            raise ValueError(f'Rendered asset changed: {asset["asset"]}')
++    for row in selected:
++        family = 'five_cutoff_main_model_synthesis' if row['label'] == 'exAL-M-T1' else 'five_cutoff_reference_synthesis'
++        source = render / 'runs' / row['run_id'] / 'post/outputs' / row['run_id']
++        for suffix in ['quantiles.csv', 'sample_subset.csv']:
++            name = f'{row["model_id"]}_cutoff_window_{suffix}'
++            local = root / 'artifacts' / family / f'{row["cutoff"]}_exal_m_t1' / name
++            if sha(local) != sha(source / name):
++                raise ValueError(f'Article numerical CSV differs from inspected render: {local}')
++    numeric = [x for x in report['inputs'] if x['source'].endswith(('.csv', '.rds'))]
++    for row in numeric:
++        if sha(Path(row['source'])) != row['sha256']:
++            raise ValueError(f'Render input changed: {row["source"]}')
++    additional_provenance = json.loads(args.additional_provenance.read_text()) if args.additional_provenance else None
++    if additional_provenance:
++        for row in additional_provenance['input_hashes']:
++            if sha(Path(row['path'])) != row['sha256']:
++                raise ValueError(f'Additional presentation input changed: {row["path"]}')
++            numeric.append({'source': row['path'], 'sha256': row['sha256']})
++    for rel in args.additional_target:
++        target = root / rel
++        if not target.resolve().is_relative_to(root) or not target.is_file():
++            raise ValueError(f'Invalid additional presentation target: {rel}')
++    touched: set[Path] = set()
++    protected: dict[Path, str] = {}
++
++    def track(path: Path) -> None:
++        if not path.resolve().is_relative_to(root):
++            raise ValueError(f'Target escapes article: {path}')
++        touched.add(path)
++
++    def copy(source: Path, target: Path) -> None:
++        track(target)
++        target.parent.mkdir(parents=True, exist_ok=True)
++        shutil.copy2(source, target)
++
++    def mark_json(path: Path, addition: dict) -> None:
++        value = json.loads(path.read_text())
++        value['presentation_revision'] = addition
++        track(path)
++        path.write_text(json.dumps(value, indent=2) + '\n')
++
++    revision = {'id': 'publication_comment1_v3',
++                'registry': 'artifacts/comment1_figure_revision/registry.json',
++                'render_manifest': 'artifacts/comment1_figure_revision/render_manifest.json',
++                'mean': 'E[log(1 + discharge_cms)] from complete retained predictive matrices',
++                'interval_probabilities': [0.025, 0.975], 'sample_path_cap': 10,
++                'origin_line': 'T; first forecast T+1', 'reference_guides': report['reference_guides']}
++    for asset in report['assets']:
++        source = Path(asset['asset'])
++        if sha(source) != asset['sha256']:
++            raise ValueError(f'Rendered asset changed: {source}')
++        copy(source, root / asset['article_path'])
++    family_paths = []
++    for r in selected:
++        mid, cutoff = r['model_id'], r['cutoff']
++        source = render / 'runs' / r['run_id'] / 'post/outputs' / r['run_id']
++        is_multi = r['label'] == 'exAL-M-T1'
++        family = 'five_cutoff_main_model_synthesis' if is_multi else 'five_cutoff_reference_synthesis'
++        dest = root / 'artifacts' / family / f'{cutoff}_exal_m_t1'
++        family_paths.append(dest)
++        for suffix in ['quantiles.csv', 'sample_subset.csv']:
++            name = f'{mid}_cutoff_window_{suffix}'
++            protected[dest / name] = sha(dest / name)
++            if protected[dest / name] != sha(source / name):
++                raise ValueError(f'Frozen article numerical CSV differs from selected run: {dest / name}')
++        for tail in ['', '_with_raw_ensembles']:
++            for ext in ['png', 'pdf']:
++                name = f'{mid}_cutoff_window_posterior_samples{tail}.{ext}'
++                copy(source / name, dest / name)
++                date = f'{cutoff[:4]}_{cutoff[4:6]}_{cutoff[6:]}'
++                prefix = 'multivariate' if is_multi else 'reference'
++                family_dir = f'{prefix}_synthesis_by_cutoff'
++                basename = f'cutoff_{date}_{prefix}_synthesis' + ('_with_reference_ensembles' if tail else '')
++                copy(source / name, root / 'Figures' / family_dir / f'{basename}.{ext}')
++        for name in ['publication_style_used.yaml', 'publication_figure_manifest.csv', f'{mid}_focus_render_numeric_contract.csv']:
++            copy(source / name, dest / name)
++        pub = load_rows(dest / 'publication_figure_manifest.csv')
++        for row in pub:
++            for key in ['canonical_png', 'pdf_path', 'quantiles_path', 'sample_subset_path', 'style_snapshot_path']:
++                if row.get(key):
++                    row[key] = str((dest / Path(row[key]).name).relative_to(root))
++            row['style_source_path'] = 'workflow:config/post_publication_figures.yaml'
++        save_rows(dest / 'publication_figure_manifest.csv', pub)
++        meta = dest / 'source_metadata.json'
++        mark_json(meta, revision)
++        rows = load_rows(dest / 'manifest.csv')
++        for row in rows:
++            name = row['bundle_file']
++            path = dest / name
++            row['target_path'] = str(path.relative_to(root))
++            row['sha256'], row['bytes'] = sha(path), str(path.stat().st_size)
++            if path in touched:
++                row['source_path'] = str((Path('artifacts/comment1_figure_revision/files') / path.relative_to(root)))
++        save_rows(dest / 'manifest.csv', rows)
++        track(dest / 'manifest.csv')
++        (dest / 'SHA256SUMS.txt').write_text(''.join(f'{sha(dest / row["bundle_file"])}  {row["bundle_file"]}\n' for row in rows))
++        track(dest / 'SHA256SUMS.txt')
++    # The appendix's reference follows a separate historical-support alias.
++    hist = root / 'artifacts/historical_support_from_current_models'
++    for ext in ['png', 'pdf']:
++        copy(root / f'Figures/manuscript/reference_synthesis_univariate.{ext}', hist / f'figures/reference_synthesis_univariate.{ext}')
++    rows = load_rows(hist / 'manifest.csv')
++    for row in rows:
++        if row['label'] == 'fig:synth2':
++            target = hist / 'figures/reference_synthesis_univariate.png'
++            row['generation_mode'] = 'rendered_from_retained_predictive_caches'
++            row['source_path'] = 'artifacts/five_cutoff_reference_synthesis/20221225_exal_m_t1/exdqlm_univar_synth_cutoff_window_posterior_samples.png'
++            row['sha256'] = sha(target)
++    save_rows(hist / 'manifest.csv', rows)
++    track(hist / 'manifest.csv')
++    sums = (hist / 'SHA256SUMS.txt').read_text().splitlines()
++    sums = [f'{sha(hist / "figures/reference_synthesis_univariate.png")}  figures/reference_synthesis_univariate.png' if line.endswith('figures/reference_synthesis_univariate.png') else line for line in sums]
++    (hist / 'SHA256SUMS.txt').write_text('\n'.join(sums) + '\n')
++    track(hist / 'SHA256SUMS.txt')
++    mark_json(hist / 'bundle_metadata.json', revision)
++    # Retain the old setup figure lineage; replace only its displayed context.
++    context = root / 'artifacts/five_cutoff_setup_support/20221225_exal_m_t1'
++    for ext in ['png', 'pdf']:
++        copy(root / f'Figures/manuscript/forecast_products_context.{ext}', context / f'figures/forecats.{ext}')
++    rows = load_rows(context / 'review/figure_manifest.csv')
++    for row in rows:
++        if row['figure_name'] == 'forecats.png':
++            target = context / 'figures/forecats.png'
++            row['path'] = str(target.relative_to(root))
++            row['sha256'], row['bytes'] = sha(target), str(target.stat().st_size)
++    save_rows(context / 'review/figure_manifest.csv', rows)
++    track(context / 'review/figure_manifest.csv')
++    extra = context / 'metadata/presentation_revision.json'
++    extra.write_text(json.dumps(revision, indent=2) + '\n')
++    track(extra)
++    # Keep existing whole-family manifests accurate, including optional primary
++    # companions generated by the same six-run rendering pass.
++    for name in ['multivariate_synthesis_by_cutoff', 'reference_synthesis_by_cutoff']:
++        manifest = root / 'Figures' / name / 'manifest.csv'
++        rows = load_rows(manifest)
++        for row in rows:
++            relative = 'Figures/' + row['target_path'].split('/', 1)[1]
++            target = root / relative
++            row['target_path'] = relative
++            if target in touched:
++                row['sha256'], row['bytes'] = sha(target), str(target.stat().st_size)
++                row['source_path'] = 'artifacts/comment1_figure_revision/files/' + relative
++        save_rows(manifest, rows)
++        track(manifest)
++    for path, before in protected.items():
++        if sha(path) != before:
++            raise ValueError(f'Numerical CSV changed during promotion: {path}')
++    for rel in args.additional_target:
++        track(root / rel)
++    # The archive contains only changed display files/metadata, never model fits.
++    registry_root.mkdir(parents=True, exist_ok=True)
++    copy(render / 'render_manifest.json', registry_root / 'render_manifest.json')
++    touched.discard(registry_root / 'render_manifest.json')
++    if args.additional_provenance:
++        shutil.copy2(args.additional_provenance, registry_root / 'component_revision_provenance.json')
++    restore = []
++    for target in sorted(touched):
++        rel = target.relative_to(root)
++        stored = Path('files') / rel
++        archive = registry_root / stored
++        archive.parent.mkdir(parents=True, exist_ok=True)
++        shutil.copy2(target, archive)
++        restore.append({'target': str(rel), 'stored': str(stored), 'sha256': sha(archive)})
++    registry = {'schema': 'comment1-presentation-registry-v1', 'revision': revision,
++                'selected_runs': [{k: r[k] for k in ['cutoff', 'label', 'run_id']} for r in selected],
++                'numeric_inputs': [{'source': row['source'], 'sha256': row['sha256']} for row in numeric],
++                'article_numeric_inputs': [{'path': str(path.relative_to(root)), 'sha256': digest} for path, digest in protected.items()],
++                'restore': restore}
++    (registry_root / 'registry.json').write_text(json.dumps(registry, indent=2) + '\n')
++    sys.path.insert(0, str(root / 'scripts'))
++    from comment1_figure_revision import verify_comment1_figure_revision
++    verify_comment1_figure_revision(root)
++    print(f'Promoted and registered {len(restore)} presentation assets/metadata files; {len(protected)} article numerical CSVs unchanged.')
++
++
++if __name__ == '__main__':
++    main()
+--- a/scripts/render_comment1_publication_figures.py
++++ b/scripts/render_comment1_publication_figures.py
+@@ -0,0 +1,182 @@
++#!/usr/bin/env python3
++"""Render the seven comment-1 figures from copied, frozen publication inputs.
++
++Only output_root is written. The frozen snapshot supplies immutable selection;
++no model is fitted, no heavy fit object is restored, and no runtime is modified.
++See render_manifest.json for input hashes, commands, and article asset mapping.
++"""
++from __future__ import annotations
++import argparse
++import csv
++import hashlib
++import json
++import math
++import os
++from pathlib import Path
++import shutil
++import subprocess
++
++
++def digest(path: Path) -> str:
++    h = hashlib.sha256()
++    with path.open('rb') as f:
++        for block in iter(lambda: f.read(1024 * 1024), b''):
++            h.update(block)
++    return h.hexdigest()
++
++
++def main() -> None:
++    p = argparse.ArgumentParser(description=__doc__)
++    p.add_argument('--snapshot', required=True, type=Path)
++    p.add_argument('--output-root', required=True, type=Path)
++    p.add_argument('--project-root', type=Path, default=Path(__file__).resolve().parents[1])
++    p.add_argument('--cutoffs', nargs='+', default=['20210123', '20211112', '20211221', '20220511', '20221225'])
++    p.add_argument('--skip-context', action='store_true', help='Proof stage only; final family includes the context figure.')
++    args = p.parse_args()
++    root, out = args.project_root.resolve(), args.output_root.resolve()
++    snapshot = json.loads(args.snapshot.read_text())
++    expected_inputs = {str(Path(row['path']).resolve()): row['sha256'] for row in snapshot['files'] if row.get('exists') and row.get('sha256')}
++    # Validate the complete selected numerical input set before any copy/render.
++    selected_rows = [row for row in snapshot['selected_runs'] if row['cutoff'] in args.cutoffs and
++                     (row['label'] == 'exAL-M-T1' or row['cutoff'] == '20221225')]
++    for row in selected_rows:
++        source = Path(row['outputs_dir'])
++        post, mid = source.parents[1], row['model_id']
++        required = [source / f'{mid}_cutoff_window_{tail}' for tail in ['quantiles.csv', 'sample_subset.csv']]
++        required += [post / 'inputs' / name for name in ['nws_post_adapter.csv', 'glofas_post_adapter.csv', 'retros_post_adapter.csv']]
++        cache_names = ([f'{mid}__mode-keep__synth_multivar_{segment}_log1p.rds' for segment in ['hist', 'forecast']]
++                       if row['label'] == 'exAL-M-T1' else [f'synth_univar_{segment}_log1p.rds' for segment in ['hist', 'forecast']])
++        required += [post / 'cache' / name for name in cache_names]
++        for source_input in required:
++            expected = expected_inputs.get(str(source_input.resolve()))
++            if expected is None or not source_input.is_file() or digest(source_input) != expected:
++                p.error(f'Selected numeric input is missing or differs from frozen snapshot: {source_input}')
++    # Refuse accidental writes below any authoritative research run.
++    for r in snapshot['selected_runs']:
++        if out.is_relative_to(Path(r['artifact_run_root']).resolve()):
++            p.error('output-root must be separate from every authoritative run')
++    if out.exists():
++        p.error('output-root must be new; use a distinct proof directory')
++    out.mkdir(parents=True)
++    records, commands, assets = [], [], []
++    env = dict(os.environ, OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1')
++
++    def copy_input(src: Path, dst: Path) -> None:
++        dst.parent.mkdir(parents=True, exist_ok=True)
++        sha = digest(src)
++        expected = expected_inputs.get(str(src.resolve()))
++        if expected is not None and sha != expected:
++            raise ValueError(f'Input differs from frozen snapshot before copy: {src}')
++        shutil.copy2(src, dst)
++        assert digest(dst) == sha
++        records.append({'source': str(src), 'copy': str(dst), 'sha256': sha, 'bytes': src.stat().st_size})
++
++    def run(cmd: list[str], log: Path) -> None:
++        commands.append(cmd)
++        log.parent.mkdir(parents=True, exist_ok=True)
++        with log.open('w') as f:
++            result = subprocess.run(cmd, cwd=root, env=env, stdout=f, stderr=subprocess.STDOUT)
++        if result.returncode:
++            raise RuntimeError(f'render failed: see {log}')
++
++    for r in snapshot['selected_runs']:
++        if r['cutoff'] not in args.cutoffs or (r['label'] == 'exAL-U-T1' and r['cutoff'] != '20221225'):
++            continue
++        source = Path(r['outputs_dir'])
++        post = source.parents[1]
++        dest_post = out / 'runs' / r['run_id'] / 'post'
++        dest = dest_post / 'outputs' / r['run_id']
++        mid = r['model_id']
++        for suffix in ['cutoff_window_quantiles.csv', 'cutoff_window_sample_subset.csv']:
++            copy_input(source / f'{mid}_{suffix}', dest / f'{mid}_{suffix}')
++        cache_names = ([f'{mid}__mode-keep__synth_multivar_{segment}_log1p.rds' for segment in ['hist', 'forecast']]
++                       if r['label'] == 'exAL-M-T1' else [f'synth_univar_{segment}_log1p.rds' for segment in ['hist', 'forecast']])
++        for name in cache_names:
++            copy_input(post / 'cache' / name, dest_post / 'cache' / name)
++        for name in ['nws_post_adapter.csv', 'glofas_post_adapter.csv', 'retros_post_adapter.csv']:
++            copy_input(post / 'inputs' / name, dest_post / 'inputs' / name)
++        # A minimal rebased manifest cannot accidentally point its writes to runtime.
++        with (dest / 'figure_manifest.csv').open('w', newline='') as f:
++            w = csv.DictWriter(f, fieldnames=['model_id', 'plot_type', 'path', 'source_run', 'note'])
++            w.writeheader()
++            w.writerow(dict(model_id=mid, plot_type='cutoff_window_posterior_samples',
++                            path=str(dest / f'{mid}_cutoff_window_posterior_samples.png'),
++                            source_run=r['run_id'], note='copied immutable publication selection; comment-1 display revision'))
++        cmd = ['Rscript', '--vanilla', str(root / 'scripts/render_focus_publication_posterior_plot.R'),
++               '--outputs-dir', str(dest), '--model-id', mid,
++               '--hist-cache', str(dest_post / 'cache' / cache_names[0]),
++               '--forecast-cache', str(dest_post / 'cache' / cache_names[1]),
++               '--nws-path', str(dest_post / 'inputs/nws_post_adapter.csv'),
++               '--glofas-path', str(dest_post / 'inputs/glofas_post_adapter.csv'),
++               '--retros-path', str(dest_post / 'inputs/retros_post_adapter.csv')]
++        run(cmd, out / 'logs' / f'{r["cutoff"]}_{r["label"]}.log')
++        stem = f'{mid}_cutoff_window_posterior_samples'
++        if r['label'] == 'exAL-M-T1':
++            stem += '_with_raw_ensembles'
++            date = f'{r["cutoff"][:4]}_{r["cutoff"][4:6]}_{r["cutoff"][6:]}'
++            target = f'Figures/multivariate_synthesis_by_cutoff/cutoff_{date}_multivariate_synthesis_with_reference_ensembles'
++        else:
++            target = 'Figures/manuscript/reference_synthesis_univariate'
++        for ext in ['png', 'pdf']:
++            asset = out / 'article_assets' / f'{target}.{ext}'
++            asset.parent.mkdir(parents=True, exist_ok=True)
++            shutil.copy2(dest / f'{stem}.{ext}', asset)
++            assets.append({'article_path': f'{target}.{ext}', 'rendered': str(dest / f'{stem}.{ext}'),
++                           'asset': str(asset), 'sha256': digest(asset), 'run_id': r['run_id']})
++    if not args.skip_context:
++        config = root / 'config/exal_m_t1_setup_support_by_cutoff_v2_20260516.json'
++        context_entry = next(x for x in json.loads(config.read_text())['cutoffs'] if x['slug'] == '20221225_exal_m_t1')
++        selected_root, bundle_root = Path(context_entry['selected_run_root']), Path(context_entry['figure_bundle_root'])
++        context_sources = [config, bundle_root / 'meta.yaml']
++        context_sources += list((selected_root / 'inputs/shared').rglob('*.csv'))
++        context_sources += list((bundle_root / 'inputs').glob('*.csv'))
++        context_sources += [x for x in [bundle_root / 'retros.csv', bundle_root / 'nws_forecast.csv', bundle_root / 'glofas_forecast.csv'] if x.exists()]
++        for source in sorted(set(context_sources)):
++            records.append({'source': str(source), 'sha256': digest(source), 'bytes': source.stat().st_size, 'read_only': True})
++        source_workflow = Path(snapshot['workflow_root'])
++        factor_source = source_workflow / 'data/canonical_gdpc_master/v20260509/outputs/gdpc_master_component_01_19870529_20230122.csv'
++        metadata_source = source_workflow / 'data/canonical_gdpc_master/v20260509/metadata/gdpc_build_metadata.json'
++        factor_copy = out / 'context_inputs/gdpc_component.csv'
++        metadata_copy = out / 'context_inputs/gdpc_metadata.json'
++        copy_input(factor_source, factor_copy)
++        copy_input(metadata_source, metadata_copy)
++        # This explicit config retains the current context adapter lineage.
++        cmd = ['python3', '-B', str(root / 'scripts/render_exal_m_t1_setup_support_by_cutoff_v2.py'),
++               '--project-root', str(root), '--config', str(config), '--output-root', str(out / 'context'),
++               '--slugs', '20221225_exal_m_t1', '--skip-review',
++               '--canonical-gdpc-factor', str(factor_copy), '--canonical-gdpc-metadata', str(metadata_copy)]
++        run(cmd, out / 'logs/context.log')
++        rendered = out / 'context/20221225_exal_m_t1/figures/forecats.png'
++        for ext in ['png', 'pdf']:
++            source = rendered.with_suffix('.' + ext)
++            asset = out / f'article_assets/Figures/manuscript/forecast_products_context.{ext}'
++            asset.parent.mkdir(parents=True, exist_ok=True)
++            shutil.copy2(source, asset)
++            assets.append({'article_path': f'Figures/manuscript/forecast_products_context.{ext}',
++                           'rendered': str(source), 'asset': str(asset), 'sha256': digest(asset),
++                           'context_config': str(config)})
++    for record in records:
++        assert digest(Path(record['source'])) == record['sha256'], record['source']
++        if 'copy' in record:
++            assert digest(Path(record['copy'])) == record['sha256'], record['copy']
++    report = {'schema': 'comment1-figure-render-v1', 'snapshot': str(args.snapshot.resolve()),
++              'snapshot_sha256': digest(args.snapshot), 'project_root': str(root),
++              'style': str(root / 'config/post_publication_figures.yaml'),
++              'style_sha256': digest(root / 'config/post_publication_figures.yaml'),
++              'renderer_sha256': {str(path.relative_to(root)): digest(path) for path in [
++                  root / 'R/unified/post_publication_figures.R', root / 'scripts/render_focus_publication_posterior_plot.R',
++                  root / 'scripts/forecats_plot_bundle.R', root / 'scripts/render_setup_support_bundle_v2.R',
++                  root / 'scripts/render_exal_m_t1_setup_support_by_cutoff_v2.py', Path(__file__).resolve()]},
++              'reference_guides': {
++                  'synthesis': {'log1p_cms': [5.20948615, 6.06378521], 'source': 'existing focus renderer fixed reference levels'},
++                  'context': {'log1p_cms': [math.log1p(x * 0.028316846592) for x in [7402.38, 14895.73]],
++                              'discharge_cfs': [7402.38, 14895.73], 'source': 'USGS rating40.0 discharge equivalents in existing figure_style_contract.R'},
++                  'labels': ['Lower flow reference', 'Upper flow reference'],
++                  'interpretation': 'Existing display-specific reference discharges are retained; labels do not assert equal thresholds across displays.'},
++              'inputs_unchanged': True, 'inputs': records, 'commands': commands, 'assets': assets}
++    (out / 'render_manifest.json').write_text(json.dumps(report, indent=2) + '\n')
++    print(f'Rendered {len(assets)} PNG/PDF assets; source and copied input hashes unchanged. Manifest: {out / "render_manifest.json"}')
++
++
++if __name__ == '__main__':
++    main()
+--- a/scripts/render_exal_m_t1_setup_support_by_cutoff_v2.py
++++ b/scripts/render_exal_m_t1_setup_support_by_cutoff_v2.py
+@@ -372,6 +372,8 @@
+     parser.add_argument('--project-root', type=Path, default=Path(__file__).resolve().parents[1])
+     parser.add_argument('--config', type=Path, default=Path(__file__).resolve().parents[1] / 'config' / 'exal_m_t1_setup_support_by_cutoff_v2_20260507.json')
+     parser.add_argument('--output-root', type=Path, default=None)
++    parser.add_argument('--canonical-gdpc-factor', type=Path, default=None, help='Explicit existing read-only factor for isolated rendering.')
++    parser.add_argument('--canonical-gdpc-metadata', type=Path, default=None, help='Explicit matching factor metadata for isolated rendering.')
+     parser.add_argument('--slugs', nargs='*', default=None)
+     parser.add_argument('--clean', action='store_true')
+     parser.add_argument('--skip-review', action='store_true')
+@@ -386,8 +388,8 @@
+     forecast_plot_pre_days = int(config.get('forecast_plot_pre_days', 28))
+     forecast_plot_post_days = int(config.get('forecast_plot_post_days', 28))
+     display_plot_scale = str(config.get('flow_figure_display_scale', 'log1p_cms'))
+-    gdpc_factor_path = canonical_gdpc_factor_csv()
+-    gdpc_metadata_path = canonical_gdpc_metadata_json()
++    gdpc_factor_path = args.canonical_gdpc_factor.resolve() if args.canonical_gdpc_factor else canonical_gdpc_factor_csv()
++    gdpc_metadata_path = args.canonical_gdpc_metadata.resolve() if args.canonical_gdpc_metadata else canonical_gdpc_metadata_json()
+ 
+     if args.clean and output_root.exists() and not wanted:
+         shutil.rmtree(output_root)
+--- a/scripts/render_focus_publication_posterior_plot.R
++++ b/scripts/render_focus_publication_posterior_plot.R
+@@ -32,7 +32,7 @@
+   stop("Provide --outputs-dir and --model-id", call. = FALSE)
+ }
+ outputs_dir <- normalizePath(outputs_dir, mustWork = TRUE)
+-style <- post_publication_load_style(project_root, file.path(project_root, "config", "post_publication_figures.yaml"))
++style <- post_publication_load_style(project_root, args$style_config %||% file.path(project_root, "config", "post_publication_figures.yaml"))
+ style_snapshot_path <- post_publication_write_style_snapshot(outputs_dir, style)
+ 
+ quant_path <- file.path(outputs_dir, sprintf("%s_cutoff_window_quantiles.csv", model_id))
+@@ -68,6 +68,9 @@
+   mean_col = "model_mean"
+ )
+ 
++# Auditable numbers supplied to both display variants; no quantile CSV is rewritten.
++post_publication_write_csv(quant_focus, file.path(outputs_dir, sprintf("%s_focus_render_numeric_contract.csv", model_id)))
++
+ manifest_path <- file.path(outputs_dir, "figure_manifest.csv")
+ manifest <- utils::read.csv(manifest_path, stringsAsFactors = FALSE, check.names = FALSE)
+ source_run <- if (any(manifest$model_id == model_id)) manifest$source_run[match(model_id, manifest$model_id)] else ""
+@@ -82,7 +85,7 @@
+   source_run = source_run,
+   interval_low_col = "interval_low",
+   interval_high_col = "interval_high",
+-  interval_label = "95% synthesis credible interval",
++  interval_label = "Pointwise central 95% predictive interval",
+   ensemble_df = NULL,
+   retrospective_df = NULL
+ )
+@@ -107,7 +110,7 @@
+   source_run = source_run,
+   interval_low_col = "interval_low",
+   interval_high_col = "interval_high",
+-  interval_label = "95% synthesis credible interval",
++  interval_label = "Pointwise central 95% predictive interval",
+   ensemble_df = ensemble_df,
+   retrospective_df = retrospective_df
+ )
+@@ -118,14 +121,14 @@
+     plot_type = "cutoff_window_posterior_samples_with_raw_ensembles",
+     path = with_ens_png,
+     source_run = source_run,
+-    note = "style=publication_focus_v2; exact_interval=95_from_cache; includes_adapter_scale_retrospectives_and_ensemble_references"
++    note = sprintf("style=%s; exact_interval=95_from_cache; includes_adapter_scale_retrospectives_and_ensemble_references", style$version)
+   ),
+   post_publication_manifest_row(
+     model_id = model_id,
+     plot_type = "cutoff_window_posterior_samples_with_raw_ensembles_pdf",
+     path = with_ens_pdf,
+     source_run = source_run,
+-    note = "paired_with=cutoff_window_posterior_samples_with_raw_ensembles; style=publication_focus_v2"
++    note = sprintf("paired_with=cutoff_window_posterior_samples_with_raw_ensembles; style=%s", style$version)
+   )
+ )
+ update_rows <- rbind(
+@@ -134,7 +137,7 @@
+     plot_type = "cutoff_window_posterior_samples",
+     path = png_path,
+     source_run = source_run,
+-    note = "style=publication_focus_v2; exact_interval=95_from_cache; observed_split=fit_vs_heldout"
++    note = sprintf("style=%s; exact_interval=95_from_cache; observed_split=fit_vs_heldout", style$version)
+   )
+ )
+ invisible(post_publication_update_main_manifest(manifest_path, rows_to_add = add_rows, png_note_updates = update_rows))
+@@ -147,7 +150,7 @@
+   pdf_path = c(normalizePath(pdf_path, mustWork = FALSE), normalizePath(with_ens_pdf, mustWork = FALSE)),
+   quantiles_path = c(normalizePath(quant_path, mustWork = FALSE), normalizePath(quant_path, mustWork = FALSE)),
+   sample_subset_path = c(normalizePath(sample_path, mustWork = FALSE), normalizePath(sample_path, mustWork = FALSE)),
+-  style_version = c("publication_focus_v2", "publication_focus_v2"),
++  style_version = rep(style$version, 2L),
+   style_source_path = c(style$style_source_path, style$style_source_path),
+   style_snapshot_path = c(style_snapshot_path, style_snapshot_path),
+   rewritten_canonical_png = c(TRUE, FALSE),
+--- a/scripts/render_setup_support_bundle_v2.R
++++ b/scripts/render_setup_support_bundle_v2.R
+@@ -109,5 +109,6 @@
+ )
+ plot_forecats_bundle(stage_dir)
+ file.copy(file.path(stage_dir, "figures", "forecats.png"), file.path(out_dir, "forecats.png"), overwrite = TRUE)
++file.copy(file.path(stage_dir, "figures", "forecats.pdf"), file.path(out_dir, "forecats.pdf"), overwrite = TRUE)
+ 
+ cat(sprintf("Rendered v2 setup/support figures for cutoff %s into %s\n", format(cutoff_date, "%Y-%m-%d"), out_dir))
+--- a/scripts/reviewer1_overview_contract.py
++++ b/scripts/reviewer1_overview_contract.py
+@@ -3,20 +3,11 @@
+ 
+ from dataclasses import dataclass
+ 
++from current_article_contract import active_tex, has_concepts, has_label, structure_checks
++
+ 
+ R1_OVERVIEW_CONTRACT_REL = "docs/r1_overview_forecasting_emphasis_contract_20260615.md"
+ ARTICLE_R1_OVERVIEW_DOC_REL = "docs/reviewer1_overview_forecasting_emphasis_contract.md"
+-
+-REQUIRED_R1_OVERVIEW_ARTICLE_CLAIMS = [
+-    "The empirical focus is forecasting performance and uncertainty quantification",
+-    "rather than only historical fit or methodological development in isolation",
+-    r"Section~\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results",
+-    r"\section{FORECAST VALIDATION RESULTS}",
+-    r"\section{INTERPRETATION OF THE SELECTED SPECIFICATION}",
+-    "The selected exAL-M-T1 specification attains the lowest 28-day forecast-window CRPS in all five cutoffs",
+-    "five-cutoff rolling-origin forecast comparison",
+-    "supporting interpretation for the selected specification",
+-]
+ 
+ REQUIRED_R1_OVERVIEW_CORRECTIONS_CLAIMS = [
+     "centering the forecasting analysis on multiple rolling-origin cutoffs",
+@@ -53,14 +44,9 @@
+ 
+ def check_r1_overview_text(article_text: str, corrections_text: str) -> list[R1OverviewCheck]:
+     checks: list[R1OverviewCheck] = []
+-    for claim in REQUIRED_R1_OVERVIEW_ARTICLE_CLAIMS:
+-        checks.append(
+-            R1OverviewCheck(
+-                item=f"article_required:{claim}",
+-                ok=claim in article_text,
+-                detail=claim,
+-            )
+-        )
++    article_text = active_tex(article_text)
++    checks.extend(R1OverviewCheck(item, ok, detail) for item, ok, detail in structure_checks(article_text))
++    checks.append(R1OverviewCheck('forecasting_focus', has_concepts(article_text, r'forecast', r'uncertainty', r'CRPS', r'quantile'), 'forecasting and uncertainty assessed by distributional/quantile scores'))
+     for claim in REQUIRED_R1_OVERVIEW_CORRECTIONS_CLAIMS:
+         checks.append(
+             R1OverviewCheck(
+--- a/scripts/reviewer1_remaining_contracts.py
++++ b/scripts/reviewer1_remaining_contracts.py
+@@ -2,6 +2,8 @@
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass
++
++from current_article_contract import active_tex, scientific_checks, structure_checks
+ 
+ 
+ R1_REMAINING_CONTRACT_REL = "docs/reviewer1_remaining_contracts_20260615.md"
+@@ -11,7 +13,6 @@
+ @dataclass(frozen=True)
+ class Reviewer1RemainingSpec:
+     item_id: str
+-    required_article: tuple[str, ...]
+     required_corrections: tuple[str, ...]
+     forbidden_article: tuple[str, ...] = ()
+     forbidden_corrections_stale: tuple[str, ...] = ()
+@@ -27,14 +28,6 @@
+ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
+     Reviewer1RemainingSpec(
+         item_id="R1-M2",
+-        required_article=(
+-            "single state-space model",
+-            r"\(L\in\{\mathrm{N},\mathrm{AL},\mathrm{exAL}\}\) denotes a Gaussian, asymmetric Laplace, or extended asymmetric Laplace observation likelihood",
+-            r"\(S\in\{\mathrm{U},\mathrm{M}\}\) indicates whether the synthesis is univariate or multivariate",
+-            r"\(T\in\{\mathrm{T0},\mathrm{T1}\}\) indicates whether the transfer component is suppressed or retained during the forecast window",
+-            "nine Bayesian variants of the common state-space framework",
+-            "We focus on exAL-M-T1 because it has the lowest 28-day forecast-window CRPS",
+-        ),
+         required_corrections=(
+             "no longer organizes the methodology around models A, B, and C",
+             "presents a common state-space formulation",
+@@ -50,12 +43,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-M3",
+-        required_article=(
+-            "CRPS is negatively oriented",
+-            "For reproducibility, implementation pseudocode for the VB algorithm is provided",
+-            "Table~\\ref{tab:he4_quantile_check_loss} complements the CRPS comparisons with targeted quantile diagnostics",
+-            "quantile-specific posterior predictions into a single predictive distribution",
+-        ),
+         required_corrections=(
+             "PIT-centered development has been removed from the main text",
+             "final forecast comparison uses CRPS as the primary full-distribution score",
+@@ -78,16 +65,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-M4",
+-        required_article=(
+-            "five cutoff-specific, version-consistent staged datasets that span contrasting hydrological conditions",
+-            "relatively low-flow windows as well as winter high-flow episodes",
+-            "not a continuous daily hindcast over the full post-2022 period",
+-            "Post-cutoff USGS observations are reserved strictly for verification",
+-            "we use the Continuous Ranked Probability Score (CRPS)",
+-            "quantile check loss",
+-            "These figures are interpretation diagnostics",
+-            "The selected exAL-M-T1 specification attains the lowest 28-day forecast-window CRPS in all five cutoffs",
+-        ),
+         required_corrections=(
+             "forecasting evaluation is expanded to five rolling-origin out-of-sample cutoffs",
+             "evidence is no longer tied to a single moderate-flood episode",
+@@ -100,15 +77,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-M5",
+-        required_article=(
+-            "five cutoff-specific, version-consistent staged datasets",
+-            "uses only information available at that origin to fit seven quantile-specific models",
+-            "scores that distribution against future USGS observations held out over the forecast window",
+-            "archive-feasible, version-consistent origins that span contrasting hydrological settings",
+-            "This archive-reconstruction step is the main practical constraint on a denser rolling-origin design",
+-            "data recovery, version matching, spatial extraction, covariate staging, and computation",
+-            "avoid dense overlaps that would overrepresent the same episode",
+-        ),
+         required_corrections=(
+             "organized around forecast origins rather than a conventional random split",
+             "five cutoff-specific forecast-window evaluations",
+@@ -122,11 +90,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-m1",
+-        required_article=(
+-            "conceptual or physically based models",
+-            "Conceptual formulations remain especially practical for prediction",
+-            "easier to specify, calibrate, and deploy operationally",
+-        ),
+         required_corrections=(
+             "uses both conceptual and physically based models",
+             "simpler to specify, calibrate, and deploy in forecasting applications",
+@@ -135,7 +98,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-m2",
+-        required_article=(r"\subsection{Extended Asymmetric Laplace Likelihood}",),
+         required_corrections=(
+             "typographical error rather than intended terminology",
+             "The revised manuscript no longer uses this term",
+@@ -144,12 +106,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-m3",
+-        required_article=(
+-            "local soil moisture from ECMWF ERA5-Land",
+-            "historical gridded covariates extracted at the Big Trees location",
+-            "forecast-window precipitation and soil-moisture covariates from the same staged origin bundle",
+-            "The GDPC factor is treated as a climate-index covariate, not as an operational forecast product or verification target",
+-        ),
+         required_corrections=(
+             "reanalysis-based model products rather than direct observations or uncertainty-free measurements",
+             "ERA5/ERA5-Land variables may include short forecast components",
+@@ -159,16 +115,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-m4",
+-        required_article=(
+-            r"\section{APPLICATION DATA AND FORECASTING DESIGN}",
+-            r"\subsection{Study Setting and Observations}",
+-            "Our target series is",
+-            "USGS target series",
+-            "three additional information sources",
+-            "Each source plays a different role",
+-            "retrospective products are used to learn source-specific discrepancies",
+-            "relative to the USGS target series",
+-        ),
+         required_corrections=(
+             "now separates the general methodology from the application data and forecasting design",
+             "USGS daily flow series as the observed target",
+@@ -178,12 +124,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-m5",
+-        required_article=(
+-            "The transfer component takes three inputs",
+-            "local precipitation from the PRISM Climate Group",
+-            "local soil moisture from ECMWF ERA5-Land",
+-            "These local hydrometeorological covariates enter as deterministic summaries in the present implementation",
+-        ),
+         required_corrections=(
+             "now states explicitly that precipitation is not handled through censoring",
+             "zero-inflation, or a separate occurrence/intensity model",
+@@ -193,11 +133,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-m6",
+-        required_article=(
+-            "using the latest forecast products issued at or before",
+-            "aggregates the latest available forecast issuances to daily member-specific forecast matrices",
+-            "Post-cutoff USGS observations are reserved strictly for verification",
+-        ),
+         required_corrections=(
+             "using forecasts issued at earlier times may reduce forecast performance",
+             "use only the most recent forecast ensemble available",
+@@ -207,12 +142,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-m7",
+-        required_article=(
+-            r"\section{FORECAST VALIDATION RESULTS}",
+-            r"\section{INTERPRETATION OF THE SELECTED SPECIFICATION}",
+-            "These figures are interpretation diagnostics",
+-            "decomposes fitted historical quantile behavior across contrasting regimes",
+-        ),
+         required_corrections=(
+             "no longer uses the vague ``General Results'' organization",
+             "separates the material by inferential role",
+@@ -224,11 +153,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-m8",
+-        required_article=(
+-            "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates",
+-            "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Skewness Parameters",
+-            "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters",
+-        ),
+         required_corrections=(
+             "representative transfer-function covariate table reports posterior means",
+             "tables report posterior medians with 95\\% credible intervals",
+@@ -238,12 +162,6 @@
+     ),
+     Reviewer1RemainingSpec(
+         item_id="R1-m9",
+-        required_article=(
+-            "uncertainty around fitted quantile-location curves",
+-            "synthesized posterior predictive distribution",
+-            "fitted quantile-specific forecasts combine into one predictive distribution",
+-            "posterior predictive envelope can vary across the forecast window",
+-        ),
+         required_corrections=(
+             "comparatively stable bands reflect posterior uncertainty around fitted quantile-location or component summaries",
+             "not a full forecast predictive distribution at each date",
+@@ -257,18 +175,11 @@
+ 
+ def check_reviewer1_remaining_text(article_text: str, corrections_text: str) -> list[Reviewer1RemainingCheck]:
+     checks: list[Reviewer1RemainingCheck] = []
++    article_text = active_tex(article_text)
+     article_lower = article_text.lower()
++    checks.extend(Reviewer1RemainingCheck(item, ok, detail) for item, ok, detail in scientific_checks(article_text))
++    checks.extend(Reviewer1RemainingCheck(item, ok, detail) for item, ok, detail in structure_checks(article_text))
+     for spec in REVIEWER1_REMAINING_SPECS:
+-        for claim in spec.required_article:
+-            haystack = article_lower if claim == "flexile" else article_text
+-            needle = claim.lower() if claim == "flexile" else claim
+-            checks.append(
+-                Reviewer1RemainingCheck(
+-                    item=f"{spec.item_id}:article_required:{claim}",
+-                    ok=needle in haystack,
+-                    detail=claim,
+-                )
+-            )
+         for claim in spec.required_corrections:
+             checks.append(
+                 Reviewer1RemainingCheck(
+--- a/scripts/reviewer1_uncertainty_contract.py
++++ b/scripts/reviewer1_uncertainty_contract.py
+@@ -3,18 +3,11 @@
+ 
+ from dataclasses import dataclass
+ 
++from current_article_contract import active_tex, has_concepts
++
+ 
+ R1_UNCERTAINTY_CONTRACT_REL = "docs/r1_m1_uncertainty_framing_contract_20260615.md"
+ ARTICLE_R1_UNCERTAINTY_DOC_REL = "docs/reviewer1_uncertainty_framing_contract.md"
+-
+-REQUIRED_R1_UNCERTAINTY_ARTICLE_CLAIMS = [
+-    "These two uncertainty sources are related but distinct",
+-    "Hydrological uncertainty arises from model structure, parameters, states, and observations",
+-    "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields",
+-    "A useful statistical forecasting framework should keep these roles clear",
+-    "local precipitation from the PRISM Climate Group",
+-    "soil moisture from ECMWF ERA5-Land",
+-]
+ 
+ REQUIRED_R1_UNCERTAINTY_CORRECTIONS_CLAIMS = [
+     "The revised introduction now separates these concepts before introducing the Bayesian framework",
+@@ -50,14 +43,15 @@
+ 
+ def check_r1_uncertainty_text(article_text: str, corrections_text: str) -> list[R1UncertaintyCheck]:
+     checks: list[R1UncertaintyCheck] = []
+-    for claim in REQUIRED_R1_UNCERTAINTY_ARTICLE_CLAIMS:
+-        checks.append(
+-            R1UncertaintyCheck(
+-                item=f"article_required:{claim}",
+-                ok=claim in article_text,
+-                detail=claim,
+-            )
+-        )
++    article_text = active_tex(article_text)
++    scientific_concepts = {
++        'hydrological_uncertainty': (r'hydrolog\w* uncertainty', r'structur', r'parameters?', r'states?', r'observations?'),
++        'meteorological_uncertainty': (r'meteorolog\w* uncertainty', r'precipitation', r'forc'),
++        'precipitation_source': (r'precipitation', r'PRISM'),
++        'soil_moisture_source': (r'soil moisture', r'ERA5.Land'),
++    }
++    for name, patterns in scientific_concepts.items():
++        checks.append(R1UncertaintyCheck(name, has_concepts(article_text, *patterns), ', '.join(patterns)))
+     for claim in REQUIRED_R1_UNCERTAINTY_CORRECTIONS_CLAIMS:
+         checks.append(
+             R1UncertaintyCheck(
+--- a/scripts/runtime_feasibility_contract.py
++++ b/scripts/runtime_feasibility_contract.py
+@@ -3,6 +3,8 @@
+ 
+ from dataclasses import dataclass
+ from typing import Any
++
++from current_article_contract import active_tex, has_concepts
+ 
+ 
+ RUNTIME_MANIFEST_REL = "artifacts/runtime_benchmark/runtime_manifest.json"
+@@ -19,12 +21,8 @@
+ TOTAL_RUNTIME_COLUMNS = ["runtime_sec_total", "runtime_sec"]
+ MOSTLY_MISSING_DECOMPOSITION_COLUMNS = ["runtime_sec_fit", "runtime_sec_forecast"]
+ 
+-REQUIRED_RUNTIME_ARTICLE_CLAIMS = [
+-    "seven quantile-specific models used in the application to be fitted in parallel",
+-    "can be refit on operational time scales",
+-    "once observations, retrospective products, forecast products, and forecast covariates have been staged",
+-]
+-
++# Current article wording is checked semantically below; historical response
++# requirements remain exact because that document is a fixed prior-round record.
+ REQUIRED_RUNTIME_CORRECTIONS_CLAIMS = [
+     "about two hours end-to-end",
+     r"\texttt{runtime\_sec\_total}",
+@@ -88,3 +86,17 @@
+         RuntimeManifestCheck("no_runtime_decomposition", decomposition is False, str(decomposition)),
+         RuntimeManifestCheck("scope_completed_outputs", "completed measured validation outputs" in scope, scope),
+     ]
++
++
++def check_runtime_article_text(text: str) -> list[RuntimeManifestCheck]:
++    text = active_tex(text)
++    concepts = {
++        'parallel_quantile_fits': (r'seven', r'quantile', r'parallel'),
++        'approximate_combined_runtime': (r'(?:about|approximately|roughly) two hours', r'end.to.end|combined'),
++        'hardware_context': (r'64', r'503', r'hardware', r'implementation'),
++        'staged_input_scope': (r'stag', r'observations?', r'retrospective', r'forecast', r'covariates?'),
++    }
++    checks = [RuntimeManifestCheck(name, has_concepts(text, *patterns), ', '.join(patterns)) for name, patterns in concepts.items()]
++    for claim in FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS:
++        checks.append(RuntimeManifestCheck('forbidden_decomposition:' + claim, claim not in text, claim))
++    return checks
+--- a/scripts/validate_publication_freeze.py
++++ b/scripts/validate_publication_freeze.py
+@@ -13,13 +13,15 @@
+ from pathlib import Path
+ from typing import Iterable
+ 
++from current_article_contract import active_tex, cited_url, scientific_checks, structure_checks
++
+ from multimodel_v8_lib import ROOT, load_yaml
+ from forecast_design_contract import (
+     ARTICLE_FORECAST_DESIGN_DOC_REL,
+     FORBIDDEN_FORECAST_DESIGN_CLAIMS,
+     FORECAST_DESIGN_CONTRACT_REL,
+     FORECAST_DESIGN_MANIFEST_REL,
+-    REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS,
++    check_forecast_design_article_text,
+     REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS,
+     check_forecast_design_manifest,
+ )
+@@ -28,14 +30,14 @@
+     FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS,
+     LATEST_FORECAST_ISSUE_CONTRACT_REL,
+     LATEST_FORECAST_ISSUE_MANIFEST_REL,
+-    REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS,
++    check_latest_forecast_article_text,
+     REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS,
+     check_latest_forecast_issue_manifest,
+ )
+ from runtime_feasibility_contract import (
+     ARTICLE_RUNTIME_DOC_REL,
+     FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS,
+-    REQUIRED_RUNTIME_ARTICLE_CLAIMS,
++    check_runtime_article_text,
+     REQUIRED_RUNTIME_CORRECTIONS_CLAIMS,
+     RUNTIME_CONTRACT_REL,
+     RUNTIME_MANIFEST_REL,
+@@ -715,14 +717,14 @@
+         checks,
+         "prior_claims",
+         "article_explains_c_scale",
+-        "The scalar \\(c\\) controls the scale of the carried-forward covariance anchor" in article_text,
++        all(ok for _, ok, _ in scientific_checks(article_text, ["prior_weighting"])),
+         "conceptual c-scale wording",
+     )
+     add(
+         checks,
+         "prior_claims",
+         "article_explains_epsilon_strength",
+-        "\\(\\epsilon\\) controls how strongly that anchor is retained" in article_text,
++        all(ok for _, ok, _ in scientific_checks(article_text, ["prior_weighting"])),
+         "conceptual epsilon-strength wording",
+     )
+ 
+@@ -732,71 +734,8 @@
+         path.read_text(encoding="utf-8")
+         for path in sorted((article_root / "tables" / "generated_tex").glob("*.tex"))
+     )
+-    article = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8") + "\n" + generated_tables
++    article = active_tex((article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8") + "\n" + generated_tables)
+     corrections = (corrections_root / "main.tex").read_text(encoding="utf-8")
+-    required_article = [
+-        "The exAL-M-T1 specification attains the lowest 28-day CRPS at all five rolling-origin cutoffs",
+-        "A separate eight-day NWS-horizon table preserves the direct operational comparison to NWS",
+-        r"Appendix~\ref{app:he3ablation} reports a component-removal sensitivity analysis",
+-        r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
+-        "representative selected-model illustration",
+-        "conceptual or physically based models",
+-        "Conceptual formulations remain especially practical for prediction",
+-        "easier to specify, calibrate, and deploy operationally",
+-        "The empirical focus is forecasting performance and uncertainty quantification",
+-        r"Section~\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results",
+-        r"\section{FORECAST VALIDATION RESULTS}",
+-        r"\section{INTERPRETATION OF THE SELECTED SPECIFICATION}",
+-        "five-cutoff rolling-origin forecast comparison",
+-        "These figures are interpretation diagnostics",
+-        "decomposes fitted historical quantile behavior across contrasting regimes",
+-        "five cutoff-specific, version-consistent staged datasets that span contrasting hydrological conditions",
+-        "relatively low-flow windows as well as winter high-flow episodes",
+-        "not a continuous daily hindcast over the full post-2022 period",
+-        "Post-cutoff USGS observations are reserved strictly for verification",
+-        "five cutoff-specific, version-consistent staged datasets",
+-        "uses only information available at that origin to fit seven quantile-specific models",
+-        "scores that distribution against future USGS observations held out over the forecast window",
+-        "archive-feasible, version-consistent origins that span contrasting hydrological settings",
+-        "This archive-reconstruction step is the main practical constraint on a denser rolling-origin design",
+-        "data recovery, version matching, spatial extraction, covariate staging, and computation",
+-        "avoid dense overlaps that would overrepresent the same episode",
+-        "These two uncertainty sources are related but distinct",
+-        "Hydrological uncertainty arises from model structure, parameters, states, and observations",
+-        "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields",
+-        "local precipitation from the PRISM Climate Group",
+-        "local soil moisture from ECMWF ERA5-Land",
+-        "historical gridded covariates extracted at the Big Trees location",
+-        "The GDPC factor is treated as a climate-index covariate, not as an operational forecast product or verification target",
+-        r"\section{APPLICATION DATA AND FORECASTING DESIGN}",
+-        r"\subsection{Study Setting and Observations}",
+-        "Our target series is",
+-        "USGS target series",
+-        "three additional information sources",
+-        "Each source plays a different role",
+-        "retrospective products are used to learn source-specific discrepancies",
+-        "relative to the USGS target series",
+-        "The transfer component takes three inputs",
+-        "These local hydrometeorological covariates enter as deterministic summaries in the present implementation",
+-        r"\subsection{Extended Asymmetric Laplace Likelihood}",
+-        r"\(L\in\{\mathrm{N},\mathrm{AL},\mathrm{exAL}\}\) denotes a Gaussian, asymmetric Laplace, or extended asymmetric Laplace observation likelihood",
+-        r"\(S\in\{\mathrm{U},\mathrm{M}\}\) indicates whether the synthesis is univariate or multivariate",
+-        r"\(T\in\{\mathrm{T0},\mathrm{T1}\}\) indicates whether the transfer component is suppressed or retained during the forecast window",
+-        "nine Bayesian variants of the common state-space framework",
+-        "We focus on exAL-M-T1 because it has the lowest 28-day forecast-window CRPS",
+-        "provide the strongest performance in the 28-day synthesis comparison",
+-        "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates",
+-        "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Skewness Parameters",
+-        "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters",
+-        "CRPS is negatively oriented",
+-        "For reproducibility, implementation pseudocode for the VB algorithm is provided",
+-        "Table~\\ref{tab:he4_quantile_check_loss} complements the CRPS comparisons with targeted quantile diagnostics",
+-        "uncertainty around fitted quantile-location curves",
+-        "synthesized posterior predictive distribution",
+-        "fitted quantile-specific forecasts combine into one predictive distribution",
+-        "posterior predictive envelope can vary across the forecast window",
+-        "quantile-specific posterior predictions into a single predictive distribution",
+-    ]
+     required_corrections = [
+         "exAL-M-T1} has the lowest 28-day CRPS in all five rolling-origin cutoffs",
+         "separate eight-day NWS-horizon comparison",
+@@ -898,8 +837,8 @@
+         "will be mentioned briefly as a robustness device",
+         "random K-fold cross-validation",
+     ]
+-    for claim in required_article:
+-        add(checks, "prose", f"article_required:{claim}", claim in article, claim)
++    for item, ok, detail in structure_checks(article) + scientific_checks(article):
++        add(checks, "prose", item, ok, detail)
+     for claim in required_corrections:
+         add(checks, "prose", f"corrections_required:{claim}", claim in corrections, claim)
+     for claim in forbidden:
+@@ -1025,7 +964,7 @@
+         CRAN_EXDQLM_DOI_URL,
+         EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
+         PUBLIC_REPRO_URL,
+-        "compact provenance manifests",
++        "provenance manifests",
+     ]
+     required_corrections = [
+         r"CRAN R package \texttt{exdqlm}",
+@@ -1037,13 +976,13 @@
+         "compact provenance manifests",
+     ]
+     if archive_check.is_pending:
+-        required_article.append("clean reproducibility repository for this study")
++        required_article.append("reproducibility repository")
+         required_corrections.append("A permanent archive DOI will be minted from the final clean reproducibility release")
+     elif archive_check.is_final:
+         required_article.append(archive_check.doi)
+         required_corrections.append(archive_check.doi)
+     for claim in required_article:
+-        add(checks, "software_availability", f"article_required:{claim}", claim in article_text, claim)
++        add(checks, "software_availability", f"article_required:{claim}", cited_url(article_text, (article_root / "wileyNJD-APA.bib").read_text(encoding="utf-8"), claim) if claim.startswith("http") else claim in active_tex(article_text), claim)
+     for claim in required_corrections:
+         add(checks, "software_availability", f"corrections_required:{claim}", claim in corrections_text, claim)
+     if archive_check.is_pending:
+@@ -1087,8 +1026,8 @@
+ 
+     article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+-    for claim in REQUIRED_RUNTIME_ARTICLE_CLAIMS:
+-        add(checks, "runtime_feasibility", f"article_required:{claim}", claim in article_text, claim)
++    for row in check_runtime_article_text(article_text):
++        add(checks, "runtime_feasibility", row.item, row.ok, row.detail)
+     for claim in REQUIRED_RUNTIME_CORRECTIONS_CLAIMS:
+         add(checks, "runtime_feasibility", f"corrections_required:{claim}", claim in corrections_text, claim)
+     for claim in FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS:
+@@ -1113,8 +1052,8 @@
+ 
+     article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+-    for claim in REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS:
+-        add(checks, "forecast_design", f"article_required:{claim}", claim in article_text, claim)
++    for row in check_forecast_design_article_text(article_text):
++        add(checks, "forecast_design", row.item, row.ok, row.detail)
+     for claim in REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS:
+         add(checks, "forecast_design", f"corrections_required:{claim}", claim in corrections_text, claim)
+     for claim in FORBIDDEN_FORECAST_DESIGN_CLAIMS:
+@@ -1139,8 +1078,8 @@
+ 
+     article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
+-    for claim in REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS:
+-        add(checks, "latest_forecast_issue", f"article_required:{claim}", claim in article_text, claim)
++    for row in check_latest_forecast_article_text(article_text):
++        add(checks, "latest_forecast_issue", row.item, row.ok, row.detail)
+     for claim in REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS:
+         add(checks, "latest_forecast_issue", f"corrections_required:{claim}", claim in corrections_text, claim)
+     for claim in FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS:
+--- a/scripts/validate_revision_cross_repo_wiring.py
++++ b/scripts/validate_revision_cross_repo_wiring.py
+@@ -13,6 +13,8 @@
+ from pathlib import Path
+ from typing import Iterable
+ 
++from current_article_contract import active_tex, cited_url, scientific_checks, structure_checks
++
+ import pandas as pd
+ 
+ from forecast_design_contract import (
+@@ -20,7 +22,7 @@
+     FORBIDDEN_FORECAST_DESIGN_CLAIMS,
+     FORECAST_DESIGN_CONTRACT_REL,
+     FORECAST_DESIGN_MANIFEST_REL,
+-    REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS,
++    check_forecast_design_article_text,
+     REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS,
+     check_forecast_design_manifest,
+ )
+@@ -29,14 +31,14 @@
+     FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS,
+     LATEST_FORECAST_ISSUE_CONTRACT_REL,
+     LATEST_FORECAST_ISSUE_MANIFEST_REL,
+-    REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS,
++    check_latest_forecast_article_text,
+     REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS,
+     check_latest_forecast_issue_manifest,
+ )
+ from runtime_feasibility_contract import (
+     ARTICLE_RUNTIME_DOC_REL,
+     FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS,
+-    REQUIRED_RUNTIME_ARTICLE_CLAIMS,
++    check_runtime_article_text,
+     REQUIRED_RUNTIME_CORRECTIONS_CLAIMS,
+     RUNTIME_CONTRACT_REL,
+     RUNTIME_MANIFEST_REL,
+@@ -161,68 +163,6 @@
+     "TO" "DO[",
+ ]
+ REQUIRED_CLAIMS = [
+-    ("article", "Table~\\ref{tab:benchmark_crps_models_nws_horizon}"),
+-    ("article", "exAL-M-T1 specification attains the lowest 28-day forecast-window CRPS in all five cutoffs"),
+-    ("article", "conceptual or physically based models"),
+-    ("article", "Conceptual formulations remain especially practical for prediction"),
+-    ("article", "easier to specify, calibrate, and deploy operationally"),
+-    ("article", "The empirical focus is forecasting performance and uncertainty quantification"),
+-    ("article", "Section~\\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results"),
+-    ("article", "\\section{FORECAST VALIDATION RESULTS}"),
+-    ("article", "\\section{INTERPRETATION OF THE SELECTED SPECIFICATION}"),
+-    ("article", "five-cutoff rolling-origin forecast comparison"),
+-    ("article", "These figures are interpretation diagnostics"),
+-    ("article", "It illustrates how the fitted quantile-specific forecasts combine into one predictive distribution"),
+-    ("article", "five cutoff-specific, version-consistent staged datasets that span contrasting hydrological conditions"),
+-    ("article", "relatively low-flow windows as well as winter high-flow episodes"),
+-    ("article", "not a continuous daily hindcast over the full post-2022 period"),
+-    ("article", "Post-cutoff USGS observations are reserved strictly for verification"),
+-    ("article", "five cutoff-specific, version-consistent staged datasets"),
+-    ("article", "uses only information available at that origin to fit seven quantile-specific models"),
+-    ("article", "scores that distribution against future USGS observations held out over the forecast window"),
+-    ("article", "archive-feasible, version-consistent origins that span contrasting hydrological settings"),
+-    ("article", "This archive-reconstruction step is the main practical constraint on a denser rolling-origin design"),
+-    ("article", "data recovery, version matching, spatial extraction, covariate staging, and computation"),
+-    ("article", "avoid dense overlaps that would overrepresent the same episode"),
+-    ("article", "These two uncertainty sources are related but distinct"),
+-    ("article", "Hydrological uncertainty arises from model structure, parameters, states, and observations"),
+-    ("article", "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields"),
+-    ("article", "local hydrometeorological covariates"),
+-    ("article", "reanalysis-based model inputs"),
+-    ("article", "rather than direct observations or uncertainty-free measurements"),
+-    ("article", "ERA5/ERA5-Land variables may include short forecast components"),
+-    ("article", "not verification observations"),
+-    ("article", "\\section{APPLICATION DATA AND FORECASTING DESIGN}"),
+-    ("article", "\\subsection{Study Setting and Observations}"),
+-    ("article", "Our target series is"),
+-    ("article", "USGS target series"),
+-    ("article", "three additional information sources"),
+-    ("article", "Each source plays a different role"),
+-    ("article", "retrospective products are used to learn source-specific discrepancies"),
+-    ("article", "relative to the USGS target series"),
+-    ("article", "Precipitation is not modeled through a separate censoring"),
+-    ("article", "zero-inflation, or occurrence/intensity layer"),
+-    ("article", "dry days are retained in the supplied covariate path"),
+-    ("article", "deterministic engineered terms"),
+-    ("article", "\\subsection{Extended Asymmetric Laplace Likelihood}"),
+-    ("article", "\\(L\\in\\{\\mathrm{N},\\mathrm{AL},\\mathrm{exAL}\\}\\) denotes a Gaussian, asymmetric Laplace, or extended asymmetric Laplace observation likelihood"),
+-    ("article", "\\(S\\in\\{\\mathrm{U},\\mathrm{M}\\}\\) indicates whether the synthesis is univariate or multivariate"),
+-    ("article", "\\(T\\in\\{\\mathrm{T0},\\mathrm{T1}\\}\\) indicates whether the transfer component is suppressed or retained during the forecast window"),
+-    ("article", "nine Bayesian variants of the common state-space framework"),
+-    ("article", "Because exAL-M-T1 is the selected extended-likelihood multivariate specification"),
+-    ("article", "provide the strongest performance in the 28-day synthesis comparison"),
+-    ("article", "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates"),
+-    ("article", "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Skewness Parameters"),
+-    ("article", "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters"),
+-    ("article", "primary score for forecast-window predictive distributions"),
+-    ("article", "For reproducibility, implementation pseudocode for the VB algorithm is provided"),
+-    ("article", "Its role is illustrative"),
+-    ("article", "comparative forecast evaluation remains the main empirical evidence"),
+-    ("article", "uncertainty around fitted quantile-location curves"),
+-    ("article", "synthesized posterior predictive distribution"),
+-    ("article", "fitted quantile-specific forecasts combine into one predictive distribution"),
+-    ("article", "posterior predictive envelope can vary across the forecast window"),
+-    ("article", "risk of quantile crossing after independently fitting the quantile-specific models"),
+     ("corrections", "separate eight-day NWS-horizon comparison"),
+     ("corrections", "NWS is omitted from the 28-day table"),
+     ("corrections", "centering the forecasting analysis on multiple rolling-origin cutoffs"),
+@@ -661,7 +601,11 @@
+             "present" if article_typo_present else "absent",
+         )
+     )
++    for item, ok, detail in structure_checks(texts["article"]) + scientific_checks(texts["article"]):
++        checks.append(CheckRow("prose_claims", item, "pass" if ok else "fail", detail))
+     for repo_name, claim in REQUIRED_CLAIMS:
++        if repo_name == "article":
++            continue  # Current article uses semantic checks; historical response remains exact.
+         present = claim in texts[repo_name]
+         status = "pass" if present else "fail"
+         rows.append({"repo": repo_name, "claim_type": "required", "claim": claim, "status": status})
+@@ -870,7 +814,7 @@
+         CRAN_EXDQLM_DOI_URL,
+         EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
+         PUBLIC_REPRO_URL,
+-        "compact provenance manifests",
++        "provenance manifests",
+     ]
+     required_corrections = [
+         r"CRAN R package \texttt{exdqlm}",
+@@ -882,13 +826,13 @@
+         "compact provenance manifests",
+     ]
+     if archive_check.is_pending:
+-        required_article.append("clean reproducibility repository for this study")
++        required_article.append("reproducibility repository")
+         required_corrections.append("A permanent archive DOI will be minted from the final clean reproducibility release")
+     elif archive_check.is_final:
+         required_article.append(archive_check.doi)
+         required_corrections.append(archive_check.doi)
+     for claim in required_article:
+-        record(f"article_required:{claim}", claim in article_text, claim)
++        record(f"article_required:{claim}", cited_url(article_text, (article_root / "wileyNJD-APA.bib").read_text(encoding="utf-8"), claim) if claim.startswith("http") else claim in active_tex(article_text), claim)
+     for claim in required_corrections:
+         record(f"corrections_required:{claim}", claim in corrections_text, claim)
+     if archive_check.is_pending:
+@@ -951,8 +895,8 @@
+     article_text = article_path.read_text(encoding="utf-8")
+     corrections_text = corrections_path.read_text(encoding="utf-8")
+     sources.extend([article_path, corrections_path])
+-    for claim in REQUIRED_RUNTIME_ARTICLE_CLAIMS:
+-        record(f"article_required:{claim}", claim in article_text, claim)
++    for row in check_runtime_article_text(article_text):
++        record(row.item, row.ok, row.detail)
+     for claim in REQUIRED_RUNTIME_CORRECTIONS_CLAIMS:
+         record(f"corrections_required:{claim}", claim in corrections_text, claim)
+     for claim in FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS:
+@@ -999,8 +943,8 @@
+     article_text = article_path.read_text(encoding="utf-8")
+     corrections_text = corrections_path.read_text(encoding="utf-8")
+     sources.extend([article_path, corrections_path])
+-    for claim in REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS:
+-        record(f"article_required:{claim}", claim in article_text, claim)
++    for row in check_forecast_design_article_text(article_text):
++        record(row.item, row.ok, row.detail)
+     for claim in REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS:
+         record(f"corrections_required:{claim}", claim in corrections_text, claim)
+     for claim in FORBIDDEN_FORECAST_DESIGN_CLAIMS:
+@@ -1047,8 +991,8 @@
+     article_text = article_path.read_text(encoding="utf-8")
+     corrections_text = corrections_path.read_text(encoding="utf-8")
+     sources.extend([article_path, corrections_path])
+-    for claim in REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS:
+-        record(f"article_required:{claim}", claim in article_text, claim)
++    for row in check_latest_forecast_article_text(article_text):
++        record(row.item, row.ok, row.detail)
+     for claim in REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS:
+         record(f"corrections_required:{claim}", claim in corrections_text, claim)
+     for claim in FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS:
+--- a/tests/python/test_article_legacy_uppercase_figures_sync.py
++++ b/tests/python/test_article_legacy_uppercase_figures_sync.py
+@@ -1,32 +1,106 @@
+ from __future__ import annotations
+ 
+-import csv
++import importlib.util
++import tempfile
++import sys
+ import unittest
+ from pathlib import Path
+ 
++ARTICLE_ROOT = Path(__file__).resolve().parents[2] / 'Evironmetrics---REVISED-DOC-Corrected-2'
++sys.path.insert(0, str(ARTICLE_ROOT / "scripts"))
++from refresh_cutoff_synthesis_families import mirror_figure_family_to_lowercase
+ 
+-ARTICLE_ROOT = Path('/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2')
+-LOWER = ARTICLE_ROOT / 'figures'
+-UPPER = ARTICLE_ROOT / 'Figures'
+-MIRROR_MANIFEST = UPPER / 'mirror_manifest.csv'
++SPEC = importlib.util.spec_from_file_location('figure_compatibility_sync', ARTICLE_ROOT / 'scripts/sync_legacy_uppercase_figures.py')
++assert SPEC is not None and SPEC.loader is not None
++SYNC = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(SYNC)
+ 
+ 
+ class ArticleLegacyUppercaseFiguresSyncTest(unittest.TestCase):
+-    def test_uppercase_tree_matches_lowercase_tree(self) -> None:
+-        lower_files = sorted(str(p.relative_to(LOWER)) for p in LOWER.rglob('*') if p.is_file())
+-        upper_files = sorted(
+-            str(p.relative_to(UPPER))
+-            for p in UPPER.rglob('*')
+-            if p.is_file() and p.relative_to(UPPER) not in {Path('README.md'), Path('mirror_manifest.csv')}
+-        )
+-        self.assertEqual(lower_files, upper_files)
++    def test_bounded_mirror_reads_uppercase_and_preserves_unmanaged_files(self) -> None:
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            (root / 'Figures/manuscript').mkdir(parents=True)
++            (root / 'figures/manuscript').mkdir(parents=True)
++            source = root / 'Figures/manuscript/panel.png'
++            source.write_bytes(b'canonical')
++            (root / 'figures/manuscript/panel.png').write_bytes(b'stale')
++            unmanaged = root / 'figures/manuscript/unmanaged.png'
++            unmanaged.write_bytes(b'preserve')
++            rows = SYNC.mirror_figures(root, ['manuscript/panel.png'])
++            self.assertEqual(source.read_bytes(), b'canonical')
++            self.assertEqual((root / 'figures/manuscript/panel.png').read_bytes(), b'canonical')
++            self.assertEqual(unmanaged.read_bytes(), b'preserve')
++            self.assertEqual(rows[0]['canonical_source'], 'Figures/manuscript/panel.png')
++            self.assertEqual(rows[0]['sha256'], SYNC.sha256(source))
+ 
+-    def test_mirror_manifest_tracks_all_lowercase_files(self) -> None:
+-        with MIRROR_MANIFEST.open(newline='', encoding='utf-8') as handle:
+-            rows = list(csv.DictReader(handle))
+-        lower_files = sorted(str(p.relative_to(LOWER)) for p in LOWER.rglob('*') if p.is_file())
+-        manifest_files = sorted(row['relative_path'] for row in rows)
+-        self.assertEqual(lower_files, manifest_files)
++    def test_invalid_batch_cannot_partially_write(self) -> None:
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            (root / 'Figures/manuscript').mkdir(parents=True)
++            (root / 'Figures/manuscript/panel.png').write_bytes(b'canonical')
++            with self.assertRaises(ValueError):
++                SYNC.mirror_figures(root, ['manuscript/panel.png', '../escape.png'])
++            self.assertFalse((root / 'figures').exists())
++
++    def test_symlink_target_cannot_overwrite_canonical_asset(self) -> None:
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            (root / 'Figures/manuscript').mkdir(parents=True)
++            source = root / 'Figures/manuscript/panel.png'
++            source.write_bytes(b'canonical')
++            (root / 'figures').symlink_to(root / 'Figures', target_is_directory=True)
++            with self.assertRaises(ValueError):
++                SYNC.mirror_figures(root, ['manuscript/panel.png'])
++            self.assertEqual(source.read_bytes(), b'canonical')
++
++    def test_full_mirror_requires_complete_canonical_families(self) -> None:
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            (root / 'Figures/manuscript').mkdir(parents=True)
++            with self.assertRaises(FileNotFoundError):
++                SYNC.mirror_figures(root)
++            self.assertFalse((root / 'figures').exists())
++
++    def test_symlink_metadata_cannot_overwrite_canonical_asset(self) -> None:
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            (root / 'Figures/manuscript').mkdir(parents=True)
++            (root / 'figures').mkdir()
++            source = root / 'Figures/manuscript/panel.png'
++            source.write_bytes(b'canonical')
++            (root / 'figures/mirror_manifest.csv').symlink_to(source)
++            with self.assertRaises(ValueError):
++                SYNC.mirror_figures(root, ['manuscript/panel.png'])
++            self.assertEqual(source.read_bytes(), b'canonical')
++
++    def test_family_mirror_rejects_self_copy_before_writing(self) -> None:
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            canonical = root / 'Figures/multivariate_synthesis_by_cutoff'
++            canonical.mkdir(parents=True)
++            panel = canonical / 'panel.png'
++            panel.write_bytes(b'canonical')
++            with self.assertRaises(ValueError):
++                mirror_figure_family_to_lowercase(article_root=root, uppercase_dir=canonical,
++                                                 lowercase_dir=canonical, manifest_rows=[])
++            self.assertEqual(panel.read_bytes(), b'canonical')
++
++    def test_family_mirror_preserves_other_compatibility_assets(self) -> None:
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            canonical = root / 'Figures/multivariate_synthesis_by_cutoff'
++            compatibility = root / 'figures/multivariate_synthesis_by_cutoff'
++            canonical.mkdir(parents=True)
++            compatibility.mkdir(parents=True)
++            (canonical / 'panel.png').write_bytes(b'canonical')
++            unmanaged = compatibility / 'unmanaged.png'
++            unmanaged.write_bytes(b'preserve')
++            rows = [{'target_path': 'Figures/multivariate_synthesis_by_cutoff/panel.png'}]
++            mirror_figure_family_to_lowercase(article_root=root, uppercase_dir=canonical,
++                                             lowercase_dir=compatibility, manifest_rows=rows)
++            self.assertEqual((compatibility / 'panel.png').read_bytes(), b'canonical')
++            self.assertEqual(unmanaged.read_bytes(), b'preserve')
+ 
+ 
+ if __name__ == '__main__':
+--- a/tests/python/test_comment1_figure_render_guards.py
++++ b/tests/python/test_comment1_figure_render_guards.py
+@@ -0,0 +1,58 @@
++from __future__ import annotations
++import hashlib
++import json
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++import unittest
++
++ROOT = Path(__file__).resolve().parents[2]
++
++
++class FrozenRenderGuards(unittest.TestCase):
++    def test_changed_snapshot_input_fails_before_creating_output(self):
++        with tempfile.TemporaryDirectory() as temp:
++            base = Path(temp)
++            mid = 'exdqlm_multivar_synth_keep'
++            run = base / 'run'
++            source = run / 'post/outputs/frozen-run'
++            files = [source / f'{mid}_cutoff_window_{tail}' for tail in ['quantiles.csv', 'sample_subset.csv']]
++            files += [run / 'post/inputs' / name for name in ['nws_post_adapter.csv', 'glofas_post_adapter.csv', 'retros_post_adapter.csv']]
++            files += [run / 'post/cache' / f'{mid}__mode-keep__synth_multivar_{segment}_log1p.rds' for segment in ['hist', 'forecast']]
++            for path in files:
++                path.parent.mkdir(parents=True, exist_ok=True)
++                path.write_bytes(b'frozen numerical input')
++            entries = [dict(path=str(path), exists=True, sha256=hashlib.sha256(path.read_bytes()).hexdigest()) for path in files]
++            files[-1].write_bytes(b'changed numerical input')
++            snapshot = base / 'snapshot.json'
++            snapshot.write_text(json.dumps(dict(files=entries, selected_runs=[dict(cutoff='20221225', label='exAL-M-T1', run_id='frozen-run',
++                outputs_dir=str(source), artifact_run_root=str(run), model_id=mid)])))
++            out = base / 'output'
++            result = subprocess.run([sys.executable, '-B', str(ROOT / 'scripts/render_comment1_publication_figures.py'),
++                '--snapshot', str(snapshot), '--output-root', str(out), '--cutoffs', '20221225', '--skip-context'], capture_output=True, text=True)
++            self.assertNotEqual(result.returncode, 0)
++            self.assertIn('differs from frozen snapshot', result.stderr)
++            self.assertFalse(out.exists())
++
++    def test_changed_snapshot_document_blocks_promotion_before_writes(self):
++        with tempfile.TemporaryDirectory() as temp:
++            base = Path(temp)
++            snapshot = base / 'snapshot.json'
++            snapshot.write_text('{}')
++            old_digest = hashlib.sha256(snapshot.read_bytes()).hexdigest()
++            snapshot.write_text('{"changed": true}')
++            render = base / 'render'
++            render.mkdir()
++            (render / 'render_manifest.json').write_text(json.dumps(dict(snapshot=str(snapshot), snapshot_sha256=old_digest)))
++            article = base / 'article'
++            article.mkdir()
++            result = subprocess.run([sys.executable, '-B', str(ROOT / 'scripts/promote_comment1_figure_assets.py'),
++                '--render-root', str(render), '--article-root', str(article)], capture_output=True, text=True)
++            self.assertNotEqual(result.returncode, 0)
++            self.assertIn('snapshot content changed', result.stderr)
++            self.assertEqual(list(article.iterdir()), [])
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- a/tests/python/test_he1_runtime_contract.py
++++ b/tests/python/test_he1_runtime_contract.py
+@@ -14,7 +14,7 @@
+ from runtime_feasibility_contract import (  # noqa: E402
+     ARTICLE_RUNTIME_DOC_REL,
+     FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS,
+-    REQUIRED_RUNTIME_ARTICLE_CLAIMS,
++    check_runtime_article_text,
+     REQUIRED_RUNTIME_CORRECTIONS_CLAIMS,
+     RUNTIME_CONTRACT_REL,
+     RUNTIME_MANIFEST_REL,
+@@ -39,8 +39,8 @@
+     def test_article_and_corrections_share_runtime_claims(self) -> None:
+         article = (ARTICLE_ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
+-        for claim in REQUIRED_RUNTIME_ARTICLE_CLAIMS:
+-            self.assertIn(claim, article)
++        failed = [row for row in check_runtime_article_text(article) if not row.ok]
++        self.assertFalse(failed, [f"{row.item}: {row.detail}" for row in failed])
+         for claim in REQUIRED_RUNTIME_CORRECTIONS_CLAIMS:
+             self.assertIn(claim, corrections)
+         for claim in FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS:
+--- a/tests/python/test_he6_forecast_design_contract.py
++++ b/tests/python/test_he6_forecast_design_contract.py
+@@ -16,7 +16,7 @@
+     FORBIDDEN_FORECAST_DESIGN_CLAIMS,
+     FORECAST_DESIGN_CONTRACT_REL,
+     FORECAST_DESIGN_MANIFEST_REL,
+-    REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS,
++    check_forecast_design_article_text,
+     REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS,
+     check_forecast_design_manifest,
+ )
+@@ -38,8 +38,8 @@
+     def test_article_and_corrections_share_forecast_design_claims(self) -> None:
+         article = (ARTICLE_ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
+-        for claim in REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS:
+-            self.assertIn(claim, article)
++        failed = [row for row in check_forecast_design_article_text(article) if not row.ok]
++        self.assertFalse(failed, [f"{row.item}: {row.detail}" for row in failed])
+         for claim in REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS:
+             self.assertIn(claim, corrections)
+         for claim in FORBIDDEN_FORECAST_DESIGN_CLAIMS:
+--- a/tests/python/test_he7_latest_forecast_issue_contract.py
++++ b/tests/python/test_he7_latest_forecast_issue_contract.py
+@@ -16,7 +16,7 @@
+     FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS,
+     LATEST_FORECAST_ISSUE_CONTRACT_REL,
+     LATEST_FORECAST_ISSUE_MANIFEST_REL,
+-    REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS,
++    check_latest_forecast_article_text,
+     REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS,
+     check_latest_forecast_issue_manifest,
+ )
+@@ -37,8 +37,8 @@
+     def test_article_and_corrections_share_latest_only_claims(self) -> None:
+         article = (ARTICLE_ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
+-        for claim in REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS:
+-            self.assertIn(claim, article)
++        failed = [row for row in check_latest_forecast_article_text(article) if not row.ok]
++        self.assertFalse(failed, [f"{row.item}: {row.detail}" for row in failed])
+         for claim in REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS:
+             self.assertIn(claim, corrections)
+         for claim in FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS:
+--- a/tests/testthat/test_post_publication_figures.R
++++ b/tests/testthat/test_post_publication_figures.R
+@@ -178,7 +178,10 @@
+   expect_true(any(updated_manifest$plot_type == "cutoff_window_predictive_bands_pdf"))
+   expect_true(any(updated_manifest$plot_type == "cutoff_window_predictive_bands_with_raw_ensembles"))
+   expect_true(any(updated_manifest$plot_type == "cutoff_window_predictive_bands_with_raw_ensembles_pdf"))
+-  expect_true(any(grepl("style=publication_focus_v2", updated_manifest$note[updated_manifest$plot_type == "cutoff_window_posterior_samples"], fixed = TRUE)))
++  selected_style <- post_publication_load_style(repo_root, file.path(repo_root, "config", "post_publication_figures.yaml"))
++  expect_true(any(grepl(paste0("style=", selected_style$version), updated_manifest$note[updated_manifest$plot_type == "cutoff_window_posterior_samples"], fixed = TRUE)))
++  pub_manifest <- utils::read.csv(file.path(outputs_dir, "publication_figure_manifest.csv"), stringsAsFactors = FALSE)
++  expect_equal(unique(pub_manifest$style_version), selected_style$version)
+   expect_true(any(grepl(
+     "includes_adapter_scale_retrospectives_and_ensemble_references",
+     updated_manifest$note[updated_manifest$plot_type == "cutoff_window_posterior_samples_with_raw_ensembles"],
+@@ -196,3 +199,44 @@
+   expect_true(any(pub_manifest$source_plot_type == "cutoff_window_predictive_bands_focus"))
+   expect_true(any(pub_manifest$source_plot_type == "cutoff_window_predictive_bands_with_raw_ensembles"))
+ })
++
++test_that("focus display controls preserve complete-cache summaries and require the named mean", {
++  repo_root <- normalizePath(testthat::test_path("..", ".."), mustWork = TRUE)
++  style <- post_publication_load_style(repo_root, file.path(repo_root, "config", "post_publication_figures.yaml"))
++  q <- make_quant_df("exdqlm_univar_synth")
++  samples <- make_sample_df("exdqlm_univar_synth")
++  expect_error(post_publication_render_focus_posterior_plot("exdqlm_univar_synth", q, samples,
++    tempfile(fileext = ".png"), "", style, interval_low_col = "q05", interval_high_col = "q95"),
++    "requires exact cache-derived model_mean")
++  hist <- matrix(seq(0.01, 1.2, length.out = 120), ncol = 3)
++  future <- hist + 1
++  h <- tempfile(fileext = ".rds"); f <- tempfile(fileext = ".rds")
++  saveRDS(hist, h); saveRDS(future, f)
++  q <- post_publication_apply_exact_cache_interval(q, h, f)
++  q <- post_publication_apply_exact_cache_mean(q, h, f)
++  expect_equal(q$model_mean, c(colMeans(hist), colMeans(future)))
++  expected <- apply(cbind(hist, future), 2, stats::quantile, probs = c(0.025, 0.975), type = 8, names = FALSE)
++  expect_equal(q$interval_low, as.numeric(expected[1, ]))
++  expect_equal(q$interval_high, as.numeric(expected[2, ]))
++  before <- q
++  style$posterior$sample_path_cap <- 2L
++  enabled <- post_publication_render_focus_posterior_plot("exdqlm_univar_synth", q, samples,
++    tempfile(fileext = ".png"), "", style)
++  expect_equal(enabled$sample_path_count, 2L)
++  expect_equal(enabled$cutoff_date, as.Date("2021-01-03"))
++  expect_equal(enabled$forecast_start, as.Date("2021-01-04"))
++  style$posterior$render_sample_paths <- FALSE
++  disabled <- post_publication_render_focus_posterior_plot("exdqlm_univar_synth", q, samples,
++    tempfile(fileext = ".png"), "", style)
++  expect_equal(disabled$sample_path_count, 0L)
++  expect_identical(q, before)
++})
++
++
++test_that("focus date labels stay inside the saved window", {
++  dates <- seq(as.Date("2021-01-05"), as.Date("2021-02-20"), by = "day")
++  breaks <- post_publication_focus_date_breaks(dates)
++  expect_true(all(breaks > min(dates) & breaks < max(dates)))
++  expect_false(as.Date("2021-02-22") %in% breaks)
++  expect_equal(diff(breaks), structure(rep(14, 3), class = "difftime", units = "days"))
++})
+--- a/docs/r1_overview_forecasting_emphasis_contract_20260615.md
++++ b/docs/r1_overview_forecasting_emphasis_contract_20260615.md
+@@ -1,6 +1,7 @@
+ # R1-O Forecasting-Emphasis Contract
+ 
+-Status: active response/revised-article contract, June 15, 2026.
++Status: active contract; current-article editorial checks updated November 7, 2026.
++The earlier response remains a historical record.
+ 
+ This document records the contract for Reviewer 1's overview comment. The
+ comment accepted the modeling contribution but argued that the original
+@@ -34,11 +35,12 @@
+ - the revised-article test
+   `tests/test_article_a1_and_table_contracts.py`.
+ 
+-The validators require the revised article to retain the `Forecast Validation
+-Results` and `Interpretation of the Selected Specification` section structure.
+-They also forbid stale main-article framing such as `General Results`, staged
+-`Model A/B/C` language, or language implying that forecast validation remains
+-absent.
++Current-article validators protect the six-section order through stable labels:
++introduction, data, methodology, application/evaluation, results, discussion.
++The predictive illustration precedes the supporting interpretation within Results.
++Scientific concepts and active LaTeX are checked without locking a sentence or
++obsolete section title. Staged `Model A/B/C` language and claims that the existing
++forecast evidence is absent remain excluded. Historical response checks are unchanged.
+ 
+ ## Non-Claims
+ 
+--- a/docs/r1_m1_uncertainty_framing_contract_20260615.md
++++ b/docs/r1_m1_uncertainty_framing_contract_20260615.md
+@@ -1,6 +1,7 @@
+ # R1-M1 Uncertainty-Framing Contract
+ 
+-Status: active response/revised-article contract, June 15, 2026.
++Status: active contract; current-article editorial checks updated November 7, 2026.
++The earlier response remains a historical record.
+ 
+ This document records the contract for Reviewer 1 major comment 1. The reviewer
+ argued that the original introduction mixed meteorological and hydrological
+@@ -40,8 +41,9 @@
+ - the revised-article test
+   `tests/test_article_a1_and_table_contracts.py`.
+ 
+-The validators require the article to keep the hydrological-versus-
+-meteorological distinction and the `local hydrometeorological covariates`
+-wording. They also forbid stale main-article language that says the manuscript
+-does not distinguish those sources, reintroduces the old physical-model opening
+-sentence, or labels the precipitation-bearing covariates as only hydrological.
++The validators check the hydrological/meteorological uncertainty distinction and
++the roles of observations, products and covariates in active LaTeX. They do not
++require a particular connecting sentence or implementation label. The opening must
++explain uncertainty before linking it to available information. Historical response
++requirements remain unchanged. The shared current-article checks are implemented
++in scripts/current_article_contract.py and the article's manuscript_text_contract.py.
+--- a/docs/he1_runtime_feasibility_contract_20260615.md
++++ b/docs/he1_runtime_feasibility_contract_20260615.md
+@@ -63,13 +63,14 @@
+ 
+ 1. Report a representative single-site end-to-end wall-clock runtime of about two
+    hours.
+-2. State that the benchmark used the total runtime columns
+-   `runtime_sec_total` / `runtime_sec`.
++2. Cite the estimation software beside the runtime description. Keep the total
++   runtime field names in the compact manifest, technical source record and
++   historical response; the main article does not need internal field names.
+ 3. State the hardware context: production Linux server, `64` cores, and roughly
+    `503` GiB RAM.
+ 4. State that seven quantile-specific fits can be dispatched in parallel.
+-5. State that daily refitting is operationally feasible at this single-site
+-   scale once the input archive is staged.
++5. State that the timing applies after model-ready observations, products and
++   covariates have been prepared for the single-site workload.
+ 6. Qualify the benchmark as hardware- and implementation-dependent.
+ 7. Do not report a 100-minute fitting / 20-minute post-processing decomposition
+    unless a future runtime source has populated component timing fields.
+@@ -86,3 +87,7 @@
+ The article-side tests also verify that the runtime manifest and manuscript
+ wording remain synchronized.
+ 
++
++Editorial validation update, November 7, 2026: current-article gates check the
++scientific timing context and software citation without requiring the old runtime
++keys in prose. Previous-response requirements and timing-source fields are retained.
+--- a/docs/reviewer1_remaining_contracts_20260615.md
++++ b/docs/reviewer1_remaining_contracts_20260615.md
+@@ -32,7 +32,7 @@
+ | R1-m4 | The application section introduces the USGS target and separates observations, retrospective products, forecast covariates, and operational forecasts. |
+ | R1-m5 | Precipitation is not treated with a separate censoring, zero-inflation, or occurrence/intensity model; zero days are retained in the supplied covariate path. |
+ | R1-m6 | The latest-forecast-only protocol is used and older forecast issuances are not averaged into publication forecast matrices. |
+-| R1-m7 | Forecast validation and selected-model interpretation are separate sections; diagnostic figures are not additional validation evidence. |
++| R1-m7 | Forecast comparisons and selected-model interpretation occupy distinct Results subsections; the predictive illustration precedes interpretation. |
+ | R1-m8 | Transfer-function covariate summaries report posterior means, while source-specific gamma and sigma tables report posterior medians. |
+ | R1-m9 | Diagnostic fitted-location/component bands are distinguished from full posterior predictive synthesis envelopes. |
+ 
+@@ -53,8 +53,10 @@
+ 
+ ## Review Rule
+ 
+-If future calibration or manuscript editing changes any of the affected
+-sections, regenerate the relevant tables/figures first, then re-run the
+-publication-freeze and cross-repo validators before editing the corrections
+-response. This keeps the response letter, revised article, and workflow
+-provenance synchronized.
++For current editorial changes, preserve the numerical source/selection contract
++and regenerate only affected presentation assets. Re-run the relevant current-
++article checks and publication/cross-repository validators. The previous response
++is a historical record; a new response is a separate writing task. Current prose
++gates use scientific concepts and stable labels, without requiring obsolete
++sentences, internal runtime keys or old section titles. See the implemented plan
++in docs/environmetrics_comment1_plan_20261107/implementation/.

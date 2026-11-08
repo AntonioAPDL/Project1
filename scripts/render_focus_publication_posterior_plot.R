@@ -32,7 +32,7 @@ if (!nzchar(outputs_dir) || !nzchar(model_id)) {
   stop("Provide --outputs-dir and --model-id", call. = FALSE)
 }
 outputs_dir <- normalizePath(outputs_dir, mustWork = TRUE)
-style <- post_publication_load_style(project_root, file.path(project_root, "config", "post_publication_figures.yaml"))
+style <- post_publication_load_style(project_root, args$style_config %||% file.path(project_root, "config", "post_publication_figures.yaml"))
 style_snapshot_path <- post_publication_write_style_snapshot(outputs_dir, style)
 
 quant_path <- file.path(outputs_dir, sprintf("%s_cutoff_window_quantiles.csv", model_id))
@@ -68,6 +68,9 @@ quant_focus <- post_publication_apply_exact_cache_mean(
   mean_col = "model_mean"
 )
 
+# Auditable numbers supplied to both display variants; no quantile CSV is rewritten.
+post_publication_write_csv(quant_focus, file.path(outputs_dir, sprintf("%s_focus_render_numeric_contract.csv", model_id)))
+
 manifest_path <- file.path(outputs_dir, "figure_manifest.csv")
 manifest <- utils::read.csv(manifest_path, stringsAsFactors = FALSE, check.names = FALSE)
 source_run <- if (any(manifest$model_id == model_id)) manifest$source_run[match(model_id, manifest$model_id)] else ""
@@ -82,7 +85,7 @@ post_publication_render_focus_posterior_plot(
   source_run = source_run,
   interval_low_col = "interval_low",
   interval_high_col = "interval_high",
-  interval_label = "95% synthesis credible interval",
+  interval_label = "Pointwise central 95% predictive interval",
   ensemble_df = NULL,
   retrospective_df = NULL
 )
@@ -107,7 +110,7 @@ post_publication_render_focus_posterior_plot(
   source_run = source_run,
   interval_low_col = "interval_low",
   interval_high_col = "interval_high",
-  interval_label = "95% synthesis credible interval",
+  interval_label = "Pointwise central 95% predictive interval",
   ensemble_df = ensemble_df,
   retrospective_df = retrospective_df
 )
@@ -118,14 +121,14 @@ add_rows <- rbind(
     plot_type = "cutoff_window_posterior_samples_with_raw_ensembles",
     path = with_ens_png,
     source_run = source_run,
-    note = "style=publication_focus_v2; exact_interval=95_from_cache; includes_adapter_scale_retrospectives_and_ensemble_references"
+    note = sprintf("style=%s; exact_interval=95_from_cache; includes_adapter_scale_retrospectives_and_ensemble_references", style$version)
   ),
   post_publication_manifest_row(
     model_id = model_id,
     plot_type = "cutoff_window_posterior_samples_with_raw_ensembles_pdf",
     path = with_ens_pdf,
     source_run = source_run,
-    note = "paired_with=cutoff_window_posterior_samples_with_raw_ensembles; style=publication_focus_v2"
+    note = sprintf("paired_with=cutoff_window_posterior_samples_with_raw_ensembles; style=%s", style$version)
   )
 )
 update_rows <- rbind(
@@ -134,7 +137,7 @@ update_rows <- rbind(
     plot_type = "cutoff_window_posterior_samples",
     path = png_path,
     source_run = source_run,
-    note = "style=publication_focus_v2; exact_interval=95_from_cache; observed_split=fit_vs_heldout"
+    note = sprintf("style=%s; exact_interval=95_from_cache; observed_split=fit_vs_heldout", style$version)
   )
 )
 invisible(post_publication_update_main_manifest(manifest_path, rows_to_add = add_rows, png_note_updates = update_rows))
@@ -147,7 +150,7 @@ pub_rows <- data.frame(
   pdf_path = c(normalizePath(pdf_path, mustWork = FALSE), normalizePath(with_ens_pdf, mustWork = FALSE)),
   quantiles_path = c(normalizePath(quant_path, mustWork = FALSE), normalizePath(quant_path, mustWork = FALSE)),
   sample_subset_path = c(normalizePath(sample_path, mustWork = FALSE), normalizePath(sample_path, mustWork = FALSE)),
-  style_version = c("publication_focus_v2", "publication_focus_v2"),
+  style_version = rep(style$version, 2L),
   style_source_path = c(style$style_source_path, style$style_source_path),
   style_snapshot_path = c(style_snapshot_path, style_snapshot_path),
   rewritten_canonical_png = c(TRUE, FALSE),

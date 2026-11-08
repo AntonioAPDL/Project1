@@ -13,13 +13,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+from current_article_contract import active_tex, cited_url, scientific_checks, structure_checks
+
 from multimodel_v8_lib import ROOT, load_yaml
 from forecast_design_contract import (
     ARTICLE_FORECAST_DESIGN_DOC_REL,
     FORBIDDEN_FORECAST_DESIGN_CLAIMS,
     FORECAST_DESIGN_CONTRACT_REL,
     FORECAST_DESIGN_MANIFEST_REL,
-    REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS,
+    check_forecast_design_article_text,
     REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS,
     check_forecast_design_manifest,
 )
@@ -28,14 +30,14 @@ from latest_forecast_issue_contract import (
     FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS,
     LATEST_FORECAST_ISSUE_CONTRACT_REL,
     LATEST_FORECAST_ISSUE_MANIFEST_REL,
-    REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS,
+    check_latest_forecast_article_text,
     REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS,
     check_latest_forecast_issue_manifest,
 )
 from runtime_feasibility_contract import (
     ARTICLE_RUNTIME_DOC_REL,
     FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS,
-    REQUIRED_RUNTIME_ARTICLE_CLAIMS,
+    check_runtime_article_text,
     REQUIRED_RUNTIME_CORRECTIONS_CLAIMS,
     RUNTIME_CONTRACT_REL,
     RUNTIME_MANIFEST_REL,
@@ -715,14 +717,14 @@ def check_prior_claim_contract(article_root: Path, corrections_root: Path, check
         checks,
         "prior_claims",
         "article_explains_c_scale",
-        "The scalar \\(c\\) controls the scale of the carried-forward covariance anchor" in article_text,
+        all(ok for _, ok, _ in scientific_checks(article_text, ["prior_weighting"])),
         "conceptual c-scale wording",
     )
     add(
         checks,
         "prior_claims",
         "article_explains_epsilon_strength",
-        "\\(\\epsilon\\) controls how strongly that anchor is retained" in article_text,
+        all(ok for _, ok, _ in scientific_checks(article_text, ["prior_weighting"])),
         "conceptual epsilon-strength wording",
     )
 
@@ -732,71 +734,8 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         path.read_text(encoding="utf-8")
         for path in sorted((article_root / "tables" / "generated_tex").glob("*.tex"))
     )
-    article = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8") + "\n" + generated_tables
+    article = active_tex((article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8") + "\n" + generated_tables)
     corrections = (corrections_root / "main.tex").read_text(encoding="utf-8")
-    required_article = [
-        "The exAL-M-T1 specification attains the lowest 28-day CRPS at all five rolling-origin cutoffs",
-        "A separate eight-day NWS-horizon table preserves the direct operational comparison to NWS",
-        r"Appendix~\ref{app:he3ablation} reports a component-removal sensitivity analysis",
-        r"noH3} refers to the retained noninteger frequency \(1/6.8068493\)",
-        "representative selected-model illustration",
-        "conceptual or physically based models",
-        "Conceptual formulations remain especially practical for prediction",
-        "easier to specify, calibrate, and deploy operationally",
-        "The empirical focus is forecasting performance and uncertainty quantification",
-        r"Section~\ref{sec:forecastvalidation} reports the out-of-sample forecast validation results",
-        r"\section{FORECAST VALIDATION RESULTS}",
-        r"\section{INTERPRETATION OF THE SELECTED SPECIFICATION}",
-        "five-cutoff rolling-origin forecast comparison",
-        "These figures are interpretation diagnostics",
-        "decomposes fitted historical quantile behavior across contrasting regimes",
-        "five cutoff-specific, version-consistent staged datasets that span contrasting hydrological conditions",
-        "relatively low-flow windows as well as winter high-flow episodes",
-        "not a continuous daily hindcast over the full post-2022 period",
-        "Post-cutoff USGS observations are reserved strictly for verification",
-        "five cutoff-specific, version-consistent staged datasets",
-        "uses only information available at that origin to fit seven quantile-specific models",
-        "scores that distribution against future USGS observations held out over the forecast window",
-        "archive-feasible, version-consistent origins that span contrasting hydrological settings",
-        "This archive-reconstruction step is the main practical constraint on a denser rolling-origin design",
-        "data recovery, version matching, spatial extraction, covariate staging, and computation",
-        "avoid dense overlaps that would overrepresent the same episode",
-        "These two uncertainty sources are related but distinct",
-        "Hydrological uncertainty arises from model structure, parameters, states, and observations",
-        "meteorological uncertainty enters through imperfect precipitation and related atmospheric forcing fields",
-        "local precipitation from the PRISM Climate Group",
-        "local soil moisture from ECMWF ERA5-Land",
-        "historical gridded covariates extracted at the Big Trees location",
-        "The GDPC factor is treated as a climate-index covariate, not as an operational forecast product or verification target",
-        r"\section{APPLICATION DATA AND FORECASTING DESIGN}",
-        r"\subsection{Study Setting and Observations}",
-        "Our target series is",
-        "USGS target series",
-        "three additional information sources",
-        "Each source plays a different role",
-        "retrospective products are used to learn source-specific discrepancies",
-        "relative to the USGS target series",
-        "The transfer component takes three inputs",
-        "These local hydrometeorological covariates enter as deterministic summaries in the present implementation",
-        r"\subsection{Extended Asymmetric Laplace Likelihood}",
-        r"\(L\in\{\mathrm{N},\mathrm{AL},\mathrm{exAL}\}\) denotes a Gaussian, asymmetric Laplace, or extended asymmetric Laplace observation likelihood",
-        r"\(S\in\{\mathrm{U},\mathrm{M}\}\) indicates whether the synthesis is univariate or multivariate",
-        r"\(T\in\{\mathrm{T0},\mathrm{T1}\}\) indicates whether the transfer component is suppressed or retained during the forecast window",
-        "nine Bayesian variants of the common state-space framework",
-        "We focus on exAL-M-T1 because it has the lowest 28-day forecast-window CRPS",
-        "provide the strongest performance in the 28-day synthesis comparison",
-        "Selected Posterior Means and 95\\% Credible Intervals for Transfer-Function Covariates",
-        "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Skewness Parameters",
-        "Posterior Medians and 95\\% Credible Intervals for the Source-Specific Scale Parameters",
-        "CRPS is negatively oriented",
-        "For reproducibility, implementation pseudocode for the VB algorithm is provided",
-        "Table~\\ref{tab:he4_quantile_check_loss} complements the CRPS comparisons with targeted quantile diagnostics",
-        "uncertainty around fitted quantile-location curves",
-        "synthesized posterior predictive distribution",
-        "fitted quantile-specific forecasts combine into one predictive distribution",
-        "posterior predictive envelope can vary across the forecast window",
-        "quantile-specific posterior predictions into a single predictive distribution",
-    ]
     required_corrections = [
         "exAL-M-T1} has the lowest 28-day CRPS in all five rolling-origin cutoffs",
         "separate eight-day NWS-horizon comparison",
@@ -898,8 +837,8 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "will be mentioned briefly as a robustness device",
         "random K-fold cross-validation",
     ]
-    for claim in required_article:
-        add(checks, "prose", f"article_required:{claim}", claim in article, claim)
+    for item, ok, detail in structure_checks(article) + scientific_checks(article):
+        add(checks, "prose", item, ok, detail)
     for claim in required_corrections:
         add(checks, "prose", f"corrections_required:{claim}", claim in corrections, claim)
     for claim in forbidden:
@@ -1025,7 +964,7 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         CRAN_EXDQLM_DOI_URL,
         EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
         PUBLIC_REPRO_URL,
-        "compact provenance manifests",
+        "provenance manifests",
     ]
     required_corrections = [
         r"CRAN R package \texttt{exdqlm}",
@@ -1037,13 +976,13 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         "compact provenance manifests",
     ]
     if archive_check.is_pending:
-        required_article.append("clean reproducibility repository for this study")
+        required_article.append("reproducibility repository")
         required_corrections.append("A permanent archive DOI will be minted from the final clean reproducibility release")
     elif archive_check.is_final:
         required_article.append(archive_check.doi)
         required_corrections.append(archive_check.doi)
     for claim in required_article:
-        add(checks, "software_availability", f"article_required:{claim}", claim in article_text, claim)
+        add(checks, "software_availability", f"article_required:{claim}", cited_url(article_text, (article_root / "wileyNJD-APA.bib").read_text(encoding="utf-8"), claim) if claim.startswith("http") else claim in active_tex(article_text), claim)
     for claim in required_corrections:
         add(checks, "software_availability", f"corrections_required:{claim}", claim in corrections_text, claim)
     if archive_check.is_pending:
@@ -1087,8 +1026,8 @@ def check_runtime_feasibility(workflow_root: Path, article_root: Path, correctio
 
     article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
-    for claim in REQUIRED_RUNTIME_ARTICLE_CLAIMS:
-        add(checks, "runtime_feasibility", f"article_required:{claim}", claim in article_text, claim)
+    for row in check_runtime_article_text(article_text):
+        add(checks, "runtime_feasibility", row.item, row.ok, row.detail)
     for claim in REQUIRED_RUNTIME_CORRECTIONS_CLAIMS:
         add(checks, "runtime_feasibility", f"corrections_required:{claim}", claim in corrections_text, claim)
     for claim in FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS:
@@ -1113,8 +1052,8 @@ def check_forecast_design(workflow_root: Path, article_root: Path, corrections_r
 
     article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
-    for claim in REQUIRED_FORECAST_DESIGN_ARTICLE_CLAIMS:
-        add(checks, "forecast_design", f"article_required:{claim}", claim in article_text, claim)
+    for row in check_forecast_design_article_text(article_text):
+        add(checks, "forecast_design", row.item, row.ok, row.detail)
     for claim in REQUIRED_FORECAST_DESIGN_CORRECTIONS_CLAIMS:
         add(checks, "forecast_design", f"corrections_required:{claim}", claim in corrections_text, claim)
     for claim in FORBIDDEN_FORECAST_DESIGN_CLAIMS:
@@ -1139,8 +1078,8 @@ def check_latest_forecast_issue(workflow_root: Path, article_root: Path, correct
 
     article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
-    for claim in REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS:
-        add(checks, "latest_forecast_issue", f"article_required:{claim}", claim in article_text, claim)
+    for row in check_latest_forecast_article_text(article_text):
+        add(checks, "latest_forecast_issue", row.item, row.ok, row.detail)
     for claim in REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS:
         add(checks, "latest_forecast_issue", f"corrections_required:{claim}", claim in corrections_text, claim)
     for claim in FORBIDDEN_LATEST_FORECAST_ARTICLE_CLAIMS:

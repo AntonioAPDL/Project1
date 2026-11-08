@@ -1,0 +1,439 @@
+Reviewer comment 1: investigation and proposed revision plan
+November 7, 2026
+
+Decision proposed for review
+
+Undertake one integrated editorial revision of the manuscript's architecture,
+explanations, notation, citations, figures and typesetting. The intended reader is
+a statistical scientist familiar with regression and basic Bayesian ideas who
+does not already know this hydrological application, the exAL model or the project
+history. A successful revision lets that reader follow the problem, information
+roles, model, computation, predictive output and results in that order.
+
+This plan addresses major comment 1 only. The other substantive referee comments
+remain separate work items. It does not propose changing fitted models, forecast
+values, scoring definitions, parameter selection or empirical conclusions.
+
+The article has not been edited during this investigation. The accompanying small
+typography PDFs demonstrate fixes in isolation using the actual Wiley class.
+
+Evidence base
+
+Current manuscript: Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex,
+825 lines, article HEAD 1272bfc. Its current compiled PDF is 30 pages, dated
+August 17, 2026. main.tex is only the Overleaf input wrapper. main.pdf and output.pdf
+are older builds and must not be used as the baseline for this revision.
+
+The investigation covered the full manuscript, compiled PDF and auxiliary labels,
+bibliography, generated tables and their builder, seven relevant figure images,
+active figure renderers, asset manifests, relevant editorial history and tests.
+All manuscript line numbers below refer to the current wileyNJD-APA.tex baseline.
+
+Assessment of the referee's six examples
+
+A. Opening and response-driven prose: confirmed.
+   At line 76, information changes into uncertainty sources without an explicit
+   logical bridge. The runtime field names at 246 have no useful software referent.
+   Contrasts at 84 and repeated qualifications elsewhere refer implicitly to old
+   objections. The repair is a connected explanation of the scientific task and
+   direct statements of what the model does. Preserve necessary scientific
+   distinctions, such as fitted-quantile uncertainty versus predictive uncertainty.
+
+B. Order of definitions and motivations: justified, with two qualifications.
+   The exAL definition at 105 legitimately needs a quantile-dependent admissible
+   skewness interval. Its complete root formulas and augmentation representation
+   are excessive before the scientific model is clear. Keep the domain in one
+   sentence and move the algebra to a computational appendix.
+   Line 343 already attributes the multi-year period to exploratory spectral
+   analysis. The problem is an insufficiently documented selection rationale and
+   the separation of rationale, equations and later interpretation, not complete
+   absence of a rationale. Locate the original spectral diagnostic if available;
+   otherwise describe the component as an exploratory specification without
+   inventing a physical mechanism or selection evidence.
+
+C. Citation coverage: confirmed imbalance, not absence of all data citations.
+   The generic Bayesian sentence at 80 has nine references. Section 3 already
+   cites several data sources and methods. Reassign references to specific claims,
+   strengthen exact product citations and correct bibliography metadata. Do not
+   add citations simply to equalize counts between sections.
+
+D. Figure legends: confirmed.
+   The current Figure 1 combines color, linetype and markers in its legend.
+   Figure 8 and A1-A5 use solid color swatches even where the plotted series are
+   dashed or marked. Some source pairs also share linetypes, so showing existing
+   dashes in the legend alone would not fully solve the problem.
+
+E. Accents, whitespace and decimal appearance: all reproduced.
+   - The compiled PDF displays El NiÃśo and PeÃśa. The local build uses the 2017
+     LaTeX format with no explicit UTF-8 input decoding. Adding inputenc with utf8
+     in the isolated fixture restores Niño and Peña without changing fonts.
+   - WileyNJD-v2.cls:530,532 and 3249-3250 include an en-space in the definitions
+     of the figure/table numbers. The .aux file therefore stores labels such as
+     {8\kern .5em }, producing (Figure 8 ). This is not fixed by deleting ordinary
+     spaces from Figure~\ref commands. Override the number definitions in the
+     manuscript layer for both main text and appendices; keep caption spacing
+     separately controlled.
+   - Table 4 means are correctly stored as -0.00198 etc. siunitx's default decimal
+     digit grouping displays -0.001 98. Disable grouping while preserving the
+     numerical values and five-decimal precision. The isolated fixture verifies
+     that \sisetup{group-digits=false} fixes this.
+
+F. Acronyms: confirmed inconsistencies.
+   VB needs a conventional first-use definition; MCMC and MFVB are repeatedly
+   expanded. NWM and NOAA PSL need consistent introduction. The climate-index
+   paragraph defines many abbreviations that do not recur. Abstract and main text
+   should define necessary abbreviations independently; this appropriate repetition
+   must not be mistaken for inconsistent use within the main text.
+
+The deeper organizational problems
+
+1. Mathematical machinery precedes the scientific target. Line 105 immediately
+   introduces bounds, a mixture and auxiliary functions; the response and source
+   relationships follow at 111-153.
+2. The model is displayed twice in the main text: expanded scientific equations
+   at 113-149, then a compact construction at 155-206 with new states, selectors
+   and block matrices. Keep one readable scientific formulation in the main text.
+3. Contributions are listed with computation first at 82. Introduce source-aware
+   correction first, predictive synthesis across quantiles second, and the inference
+   adaptation supporting computation third. Preserve the existing scientific claims.
+4. Posterior computation follows development history: MCMC first, then the actual
+   reported VB method and a generic tutorial. Explain the reported fitting method
+   first; move detailed MCMC and generic derivation to technical material.
+5. Scores appear before data, while competing models and fitted quantiles are
+   defined only at the start of results. Move the full design before the results.
+6. The principal predictive illustration is separated from forecast tables by
+   covariate coefficients and three historical-component figures. Bring the
+   predictive illustration forward and subordinate historical decomposition.
+7. Synthesis refers to combining source information and to constructing one
+   distribution from separate quantile fits. Explain those as distinct stages.
+8. Internal terms such as quantile lane, staged bundle, canonical factor, selected
+   output authority, filename compatibility and horizon contract interrupt the
+   scientific narrative. Use scientific terms; keep implementation identifiers in
+   reproducibility documentation where needed.
+
+Recommended article architecture
+
+1. Introduction
+   Five paragraph functions: forecasting need and uncertainty; information roles;
+   relevant methodological background and focused gap; contributions in scientific
+   order; application scope and roadmap. Rewrite as a continuous argument.
+
+2. Forecasting setting and data
+   2.1 Study site, response, measurement units and transformation.
+   2.2 Information sources and roles, summarized in one compact table.
+   2.3 Extraction, daily alignment and relevant product distinctions.
+   Define forecast origin and show the current context figure here.
+   Keep this a concise problem specification, not a retrieval manual.
+
+3. Bayesian correction and predictive synthesis
+   3.1 Modeling target and brief exAL likelihood: location as target quantile,
+       scale, skewness and one sentence on admissible support.
+   3.2 Source-aware observation equations and state evolution. Explain each
+       component's role before displaying its equation.
+   3.3 Prior structure and dynamic adaptation.
+   3.4 Posterior computation: model-specific VB overview and practical workflow.
+   3.5 Predictive synthesis across separately fitted quantile models.
+   Place full augmentation and compact matrix construction in the appendix.
+
+4. Application specification and evaluation methods
+   4.1 Level, annual/semiannual and multi-year components: rationale then definitions.
+   4.2 Transfer features and numerical settings, with a concise settings table.
+   4.3 Origins, two forecast horizons, comparison variants and fitted quantiles.
+   4.4 Scores and aggregation definitions, preserving their current computation.
+   Move the current variant definitions from the results into a small mapping table.
+
+5. Results
+   5.1 Representative predictive output, explicitly identified as an illustration.
+   5.2 Comparative results over 28 days and the common eight-day horizon.
+   5.3 Quantile-specific results.
+   5.4 Brief supporting interpretation, only where needed for the main argument.
+   Historical-regime and long-cycle displays can move largely to supplementary
+   material. Retain their useful content without making readers pass through it
+   before seeing the delivered forecast.
+
+6. Discussion and conclusions
+   Connect the stated scientific task to the presented evidence, practical meaning
+   and focused future work. Avoid repeating each coefficient sign and caption.
+
+Appendices
+   Compact state-space matrix construction and detailed notation; exAL augmentation;
+   detailed priors and algorithms; supporting historical decomposition; parameter
+   tables; remaining forecast-origin panels. Use stable labels during all moves.
+
+This structure moves the essential information roles before the model while keeping
+application-specific settings after the framework they instantiate. Moving the
+entire existing application section ahead of methods would leave another dependency
+problem because it contains model choices that have not yet been defined.
+
+Notation and terminology decisions
+
+Create a short terminology/notation sheet before rewriting. It should establish:
+   - forecast origin as the primary term, with cutoff defined once as its synonym;
+   - observed discharge, retrospective product, forecast ensemble and covariate
+     as distinct roles;
+   - source correction versus predictive synthesis across quantiles;
+   - quantile-location credible interval versus posterior predictive interval;
+   - exAL for the likelihood, exDQLM for the extended dynamic quantile model, and
+     exdqlm for the software package; preserve the existing model-variant labels;
+   - necessary independent acronym definitions in abstract and main text, followed
+     by consistent use; remove unused climate-index abbreviations from prose.
+
+Limit symbolic changes to genuine collisions and explain each on introduction.
+   - Replace the absolute uppercase-matrix/lowercase-vector convention at 100:
+     F_t and E_2 are vectors. State dimensions explicitly instead.
+   - Distinguish retrospective z_t^j, augmentation variables and synthesized draws.
+   - Separate the skewness support bound L from the quantile-grid count L.
+   - Separate Gaussian augmentation noise from the forecast-covariance weight.
+   - Rename the appendix observation offset currently called M_t, which conflicts
+     with the transition matrix. Separate lambda persistence from local augmentation
+     variance labels, and scalar augmentation means from the full latent state eta.
+   - Explain p_0 = tau_l for the lth quantile-specific fit.
+   - Reconcile statements of gamma's admissible support.
+
+One specification transcription needs explicit verification during this editorial
+work: the printed rotation matrix at 344-356 uses raw 1,2,1/6.8068493 as angular
+arguments without explaining conversion to daily radians. The workflow calls
+seasMod with season_period=363.5854 and those frequency multipliers; the package
+function computes w=h*2*pi/p. Document the existing daily conversion and actual
+constants. Do not silently replace the fitted period by 365 or 365.25.
+Evidence: R/unified/families/exdqlm_multivar_structure.R:152,177;
+/data/muscat_data/jaguir26/exdqlm/R/seasMod.R:23.
+
+Citation-to-claim revision
+
+Replace the nine-reference generic Bayesian sentence with short, claim-specific
+background. Retain Duan et al. for hydrologic Bayesian model averaging, Yumnam et al.
+for quantile-based precipitation-product merging where relevant, and McAlinn/West
+for dynamic forecast calibration/combination. Specialized spatial, solar, financial
+and decision-synthesis references belong only where their specific ideas are used.
+Do not imply that this construction is identical to formal Bayesian predictive
+synthesis. Du et al. concerns ensemble generation, so move it to that context if
+retained. This is attribution repair, not a new benchmark or novelty claim.
+
+Correct verified bibliography errors in the source .bib:
+   - duan2006bma: final journal year 2007, not 2006.
+   - johnson2023bayesian: Matthew C. Johnson, not Michael C. Johnson.
+   - aastveit2022quantifying: Knut Are Aastveit, not Knut Anton; reconcile online
+     year 2022 with final volume 41(2), 2023.
+   - ecmwf: the monthly-averaged title/generic ERA5 link does not identify the
+     ERA5-Land series described in the text. Cite the actual dataset and its
+     data-description article.
+
+For the data section, attach exact source citations to gauge identity/daily means,
+PRISM, ERA5-Land, GEFS, GloFAS products, NWM products, NOAA climate indices and GDPC.
+Support site-specific assertions such as natural flow/minimal human intervention,
+or omit those assertions if unnecessary and not documented. Provide the complete
+climate-index inventory in a table or supplement. A study-specific spectral choice
+needs its own existing evidence, not an unrelated external citation.
+
+Primary sources checked for these decisions include:
+https://escholarship.org/uc/item/8q4423c1
+https://www.sciencedirect.com/science/article/pii/S0022169421012567
+https://arxiv.org/abs/1601.07463
+https://arxiv.org/abs/1803.01984
+https://doi.org/10.1080/07350015.2022.2039159
+https://repository.library.noaa.gov/view/noaa/17722
+https://essd.copernicus.org/articles/13/4349/2021/
+https://psl.noaa.gov/data/climateindices/list/
+https://www.jstatsoft.org/article/view/v092c02
+
+Figure revision: exact scope and evidence
+
+Use stable labels because article reorganization will change displayed numbering.
+Current Figure 1 = fig:ensembles; Figure 8 = fig:synth1; A1 = fig:synth2;
+A2-A5 = fig:synthsupport_20210123, _20211112, _20211221, _20220511.
+
+Figure 1's legend override is in scripts/forecats_plot_bundle.R:540. Synthesis
+legends suppress linetypes and markers in R/unified/post_publication_figures.R:
+1457,1541,1558,1615. The five multivariate PNGs were rendered June 23; later renderer
+changes were reflected in A1 but not those five panels. Their titles, center labels,
+forecast shading and origin-line conventions consequently differ. Regenerate the
+complete publication family together from retained output caches.
+
+The captions at 477,578,587,596,605 describe seven displayed quantile curves.
+The focus renderer instead draws unlabeled faint predictive sample paths and source
+references, a predictive mean and an interval. Correct this mismatch deliberately.
+Recommended publication display: predictive mean and central 95% interval, observed
+and verification series, and the relevant source references. Remove unlabeled faint
+sample paths and their misleading quantile-curve descriptions. The seven fitted
+levels remain specified in methods. A sparse quantile illustration can be separate
+if needed; it should not crowd the existing 58 possible forecast-member lines.
+
+Use one semantic style map, with readable, full-opacity legend keys:
+   USGS observations: green solid line, filled circles.
+   USGS verification: red dashed line, hollow circles.
+   Synthesized predictive mean: heavier dark-magenta solid line.
+   GloFAS retrospective: orange dotdash, sparse squares.
+   NWM retrospective: purple long dash, sparse triangles.
+   GloFAS forecast members: orange thin solid lines.
+   NWM forecast members: purple thin dotted lines.
+   Central 95% predictive interval: light ribbon with its own fill key.
+
+Keep low opacity for ensemble paths in the plot, full opacity in legend keys, and
+merge color/line/marker keys for each semantic series. Use semantic identifiers
+internally instead of matching long labels containing changing member counts.
+State that the plotted mean is on the log1p discharge scale. Use a vertical line at
+the forecast origin T and name the first forecast day T+1 in the caption. Keep the
+convention identical across the full family. Standardize current-rating discharge
+reference labels and their concise explanatory caption sentence. Preserve common
+y-axis limits for cutoff comparison, except for explicitly labeled optional zooms.
+
+Font sizes must be assessed in the article, not by pixel dimensions. Synthesis
+PNGs are 3520x1856 at an 11-inch source width, embedded at 450pt: their 10.8pt
+legend font becomes about 6.1pt. Figure 1's 8.8pt legend becomes about 4.6pt.
+Render near the actual 6.23-inch inclusion width, or compensate source fonts so
+all ticks, labels and legend entries are at least 8pt at the final size. Prefer
+short labels and several compact legend rows. Export vector PDF with PNG.
+
+Match prose to visible summaries. Replace the circular synthesized-center language
+with synthesized predictive mean. Recheck the statement at 481 about upper curves
+reaching the major-stage reference against the actual chosen display, and retain
+only a literal description supported by the plotted values.
+
+Reliable figure implementation path
+
+1. Record hashes of cached predictive matrices, quantile CSVs and input adapters.
+   Keep the existing exact 2.5%/97.5% cache-derived endpoints and cache-derived
+   mean; do not substitute the general plot helper's different default interval.
+2. Update the semantic style and focus renderers in the current unified workflow,
+   plus the bundle-native context renderer. Bump the figure style version.
+3. Render one December 2022 multivariate panel and the univariate reference to an
+   isolated destination. Check color, grayscale, final-size labels and captions.
+4. Regenerate all five multivariate panels and the December 2022 univariate panel
+   from saved post-stage artifacts. Their required compact caches are present.
+   scripts/render_publication_post_figures.R --run-dir expects the post/outputs/
+   directory containing figure_manifest.csv, not the top-level run directory.
+5. Regenerate the context figure using scripts/forecats_plot_bundle.R through the
+   v2 setup-support path. Avoid legacy notebook and linearized figure generators.
+6. Promote using the existing article refresh/manifest path, including cutoff
+   synthesis families and the historical-support copy of fig:synth2. Synchronize
+   legacy figure-tree mirrors and update generated manifest/hash metadata.
+7. Confirm numerical matrices and source CSV hashes remain unchanged. This work
+   requires rendering, not model fitting or forecast recomputation.
+
+Proposed prose direction: examples for review
+
+Opening paragraph:
+"River-flow forecasts support flood preparedness, drought monitoring, reservoir
+operations, and water-supply planning. Their uncertainty reflects both uncertain
+meteorological forcing and imperfect descriptions of hydrological processes.
+Precipitation forecasts provide uncertain future inputs, while hydrological models
+introduce uncertainty through their structure, parameters, and evolving states.
+Statistical post-processing uses available observations and forecast products to
+construct predictive distributions that account for these sources."
+
+Model overview:
+"For each target quantile, a shared latent river-flow process combines a local
+level, periodic components, and a covariate-driven adjustment. The USGS observation
+channel measures this target process. Each external product has an additional
+dynamic discrepancy representing systematic departures from the gauge series.
+Retrospective products inform these discrepancies over the historical period, and
+forecast ensemble members enter the corresponding source channels over the
+forecast window. Separate quantile-specific fits are subsequently combined into
+one monotone predictive distribution."
+
+Runtime paragraph:
+"The reported analysis uses the study workflow built around the exdqlm package.
+Fitting the seven quantile-specific models in parallel and constructing the
+predictive distributions required about two hours on the reference Linux server,
+which has 64 cores and 503 GiB of RAM. This is a combined fitting-and-prediction
+time; the available records do not support separate timings for those stages.
+Runtime depends on the hardware, historical length and state dimension."
+
+These examples specify the intended clarity and order. They are not yet manuscript
+replacements. The final prose should cite the corresponding sources and preserve
+all technical qualifications that affect the scientific meaning.
+
+Implementation phases after plan acceptance
+
+Phase 1: structural rewrite.
+   Create the six-section skeleton; move the essential data roles early; retain
+   one model presentation; relocate matrix/augmentation details; move model variants
+   and scoring before results; bring predictive output ahead of historical panels.
+   Deliver a reviewable TeX diff and current-to-proposed section/figure mapping.
+
+Phase 2: scientific exposition and notation.
+   Rewrite the abstract/introduction, transitions, inference overview and conclusions;
+   apply the terminology sheet; add a compact notation and source-role table; place
+   motivations next to choices; clarify daily rotation units and feature definitions.
+   Resolve ambiguous statistic names and remove unnecessary process history.
+
+Phase 3: references and typography.
+   Apply the claim/citation map, bibliography corrections and acronym convention.
+   Install manuscript-level UTF-8, clean number labels and decimal-grouping settings.
+   Use \hypersetup{hidelinks} for a clean review PDF while retaining live links.
+   Keep the vendor class unchanged. Rebuild the bibliography and all references.
+
+Phase 4: figures and caption alignment.
+   Implement the shared style, inspect two proof panels, regenerate the full family
+   from existing outputs, update all affected captions and promote assets normally.
+
+Phase 5: objective checks and a full reading pass.
+   Compile from scratch, inspect the PDF at reading size and in grayscale, verify
+   references/citations, verify numerical invariants, and review the argument from
+   beginning to end as a new reader. Deliver the revised PDF and a short completed
+   checklist mapping every part of referee comment 1 to its final location.
+
+Tests and validators that must be revised as part of implementation
+
+Several legacy text assertions freeze the wording now criticized:
+   scripts/reviewer1_uncertainty_contract.py:11 requires the exact
+   "These two uncertainty sources" construction.
+   scripts/reviewer1_overview_contract.py:12 requires the exact "rather than only
+   historical fit or methodological development in isolation" phrase and fixes
+   the current results/interpretation section headings.
+   scripts/runtime_feasibility_contract.py:30 and the article's
+   tests/test_article_a1_and_table_contracts.py:79 require the internal runtime
+   field names to occur in the main manuscript.
+
+Revise those checks to preserve the intended scientific distinctions and actual
+artifact links while allowing the new organization and wording. This is necessary
+to prevent a later validator-driven refresh from restoring the rejected prose.
+Preserve all numerical/provenance checks. Do not add tests that require the new
+paragraphs word-for-word or equate automated checks with readable scientific prose.
+The previous-round response letter remains a historical record; a new completed
+comment-1 change log should refer to the new review rather than silently rewriting
+the history of that earlier response.
+
+Acceptance criteria for completion
+
+The manuscript is ready to mark comment 1 addressed when:
+   1. A reader can identify the response, external channels, covariates, correction
+      mechanism, fitted quantiles, synthesis output and evaluation layout without
+      repository context or prior review correspondence.
+   2. Each major object has a purpose before its technical definition; one main-text
+      model formulation carries the scientific explanation.
+   3. Terms, acronyms and symbols have a consistent meaning and first-use definition.
+   4. Every material factual/method claim has an appropriate nearby source or a clear
+      statement of study-specific evidence; citation clusters have a specific role.
+   5. Figure and table references resolve, have no embedded trailing spacing, and
+      remain linked correctly after renumbering. Main and appendix labels both pass.
+   6. Accents render correctly and survive PDF text extraction; Table 4 decimals
+      display continuously with unchanged values and precision.
+   7. Every figure legend reproduces actual styles; source identities remain clear
+      in grayscale; labels are readable at the final size; captions name actual
+      visible statistics and interval types; axes and origin conventions agree.
+   8. Numerical source files, fitted objects and scores are unchanged by the editorial
+      revision; only presentation assets and their generated metadata change.
+   9. LaTeX/BibTeX compilation, figure paths, output lineage and applicable existing
+      repository checks pass. A human reading pass remains a required final check.
+
+Typography proof results already obtained
+
+Both fixtures compiled successfully twice using the actual article class and
+installed siunitx. The baseline reproduces El NiÃśo, PeÃśa, -0.001 98,
+(Figure 1 ) and (Figure A1 ). The candidate yields El Niño, Peña, -0.00198,
+(Figure 1) and (Figure A1), with unpadded numeric labels in its .aux file.
+The sources and PDFs are included beside this plan. These proofs establish the
+mechanical fixes; they are not a substitute for compiling the revised full article.
+Build the article and proofs from the article directory: the workflow root contains
+a minimal fallback siunitx.sty that is not the real numerical-formatting package.
+The inspected article build and these proofs used the installed siunitx v2.7k.
+
+Review boundary
+
+The proposed architecture, main/appendix allocation and figure simplification are
+the main editorial decisions to accept before implementation. The next action is
+the structural TeX revision, followed by the remaining phases above. This document
+and the isolated proofs are the current deliverables; no manuscript or renderer
+changes have been made in this planning pass.

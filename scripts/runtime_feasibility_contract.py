@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from current_article_contract import active_tex, has_concepts
+
 
 RUNTIME_MANIFEST_REL = "artifacts/runtime_benchmark/runtime_manifest.json"
 RUNTIME_CONTRACT_REL = "docs/he1_runtime_feasibility_contract_20260615.md"
@@ -19,12 +21,8 @@ RUNTIME_INTERFACE_REL = "interfaces/exdqlm_dqlm_dynamic_fitforecast_v2_shared_in
 TOTAL_RUNTIME_COLUMNS = ["runtime_sec_total", "runtime_sec"]
 MOSTLY_MISSING_DECOMPOSITION_COLUMNS = ["runtime_sec_fit", "runtime_sec_forecast"]
 
-REQUIRED_RUNTIME_ARTICLE_CLAIMS = [
-    "seven quantile-specific models used in the application to be fitted in parallel",
-    "can be refit on operational time scales",
-    "once observations, retrospective products, forecast products, and forecast covariates have been staged",
-]
-
+# Current article wording is checked semantically below; historical response
+# requirements remain exact because that document is a fixed prior-round record.
 REQUIRED_RUNTIME_CORRECTIONS_CLAIMS = [
     "about two hours end-to-end",
     r"\texttt{runtime\_sec\_total}",
@@ -88,3 +86,17 @@ def check_runtime_manifest(data: dict[str, Any]) -> list[RuntimeManifestCheck]:
         RuntimeManifestCheck("no_runtime_decomposition", decomposition is False, str(decomposition)),
         RuntimeManifestCheck("scope_completed_outputs", "completed measured validation outputs" in scope, scope),
     ]
+
+
+def check_runtime_article_text(text: str) -> list[RuntimeManifestCheck]:
+    text = active_tex(text)
+    concepts = {
+        'parallel_quantile_fits': (r'seven', r'quantile', r'parallel'),
+        'approximate_combined_runtime': (r'(?:about|approximately|roughly) two hours', r'end.to.end|combined'),
+        'hardware_context': (r'64', r'503', r'hardware', r'implementation'),
+        'staged_input_scope': (r'stag', r'observations?', r'retrospective', r'forecast', r'covariates?'),
+    }
+    checks = [RuntimeManifestCheck(name, has_concepts(text, *patterns), ', '.join(patterns)) for name, patterns in concepts.items()]
+    for claim in FORBIDDEN_RUNTIME_DECOMPOSITION_CLAIMS:
+        checks.append(RuntimeManifestCheck('forbidden_decomposition:' + claim, claim not in text, claim))
+    return checks

@@ -1,2 +1,9 @@
 *.ipynb filter=nbstripout
 *.ipynb diff=ipynb
+
+# Raw editorial proof logs and historical diffs retain captured whitespace.
+# Keep normal whitespace checks for manuscript, code and authored documentation.
+docs/environmetrics_comment1_plan_20261107/**/*.diff -whitespace
+docs/environmetrics_comment1_plan_20261107/**/*.aux -whitespace
+docs/environmetrics_comment1_plan_20261107/**/*.log -whitespace
+docs/environmetrics_comment1_plan_20261107/**/pdfinfo.txt -whitespace

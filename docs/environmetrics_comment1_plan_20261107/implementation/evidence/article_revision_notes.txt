@@ -1,0 +1,217 @@
+Comment 1 manuscript implementation notes
+November 7, 2026, America/Los_Angeles
+
+Scope and authoring location
+
+Edited only the isolated article's wileyNJD-APA.tex and wileyNJD-APA.bib.
+All reported numerical results and all generated table fragments were retained.
+Thirteen original figure identities and all original generated table input identities
+remain in the source. All active original labels are preserved. The sole label
+removed by a raw-text regex is subsec:vb, which was an inactive commented label.
+No old rejected wording was hidden in comments to satisfy a contract.
+
+Reviewable records
+
+article_before.tex: exact source before this author's changes.
+article_movement_first.tex and article_movement_first.diff: mechanical movement
+snapshot before the connected-prose rewrite.
+article_revision.diff: baseline-to-revised source diff.
+article_source_checks.json: stable identities and structure checks.
+article_agent_build/: isolated LaTeX/BibTeX builds, extracted text and selected
+page proofs. Root performs the final integrated build with regenerated assets.
+
+Final architecture
+
+1 Introduction: uncertainty enters as a decision-relevant forecasting problem;
+conceptual/physically based hydrological models motivate source information;
+claim-specific combination background replaces the nine-citation generic sentence;
+contributions follow correction, quantile synthesis, then computation.
+2 Forecasting setting and data: target, units, transformation, role table, sources,
+spatial/daily alignment, versions, and forecast origin before mathematical details.
+3 Bayesian correction and predictive synthesis: short interpreted exAL likelihood,
+one expanded scientific state-space model, minimal stacked-state/channel bridge,
+concise priors, actual reported VB approach, and predictive synthesis.
+4 Application specification and evaluation: component motivation then daily rotation
+units, actual engineered features and scaling, settings, origins, variants and scores.
+5 Results: predictive illustration first, comparative/quantile scores, then component
+and historical interpretation. All historical panels retained in the main text.
+6 Discussion and conclusions: compact link between scientific task, comparative
+findings, interpretation and focused extensions; repeated coefficient signs removed.
+
+Technical relocation preserves dependencies
+
+The main-text eta state, q dimension and channel set J0 remain before priors.
+The full selectors, block transitions and compact equations are in Appendix B.1.
+ExAL skewness endpoint roots, A/B/C functions and augmentation are in B.2.
+Forecast-covariance algebra is in B.3. Laplace--Delta formulas are in B.4.
+The original A1--A5 supporting figure numbering is preserved by putting the
+technical appendix after the existing supporting-material appendix. Algorithm
+references point to the relocated definitions using stable labels.
+
+Notation and exposition changes
+
+F_t and E_2 are explicitly vectors; bold symbols can represent vectors or matrices.
+Skewness bounds L_gamma/U_gamma do not collide with the number L of fitted levels.
+The augmentation uses u and Gaussian noise e, distinguishing retrospective z and
+the covariance-prior weight epsilon. The algorithms use v=sigma*u explicitly.
+Synthesized output is written Y-tilde, and p0=tau_l is stated for each fit.
+The algorithm-local offset M_t becomes b_t to separate it from transition M_t.
+Local truncated-normal variance lambda becomes ell; scalar eta becomes a_{s,t}.
+MCMC, mean-field VB, ELBO, VB-LD and CDF are defined at their use. Necessary
+abstract/main abbreviations are defined independently. Unused climate-index
+acronyms were removed; NWM and NOAA Physical Sciences Laboratory are identified.
+Internal runtime keys and workflow terms were replaced by scientific descriptions;
+combined timing, prepared-input dependence, hardware and scaling remain explicit.
+
+Verified existing model settings, described without altering fits
+
+Daily seasonal frequencies are omega_a=2*pi*h_a/P, with P=363.5854 days and
+h=(1,2,1/6.8068493). Periods are approximately 363.59,181.79,2474.87 days;
+the last is about 6.78 Gregorian years or 81.3 months. The manuscript's earlier
+6.81-year interpretation confused a multiplier with elapsed calendar time.
+Root verified selected-run structure settings and the historical source revision;
+no claim is made that a retained full saved transition matrix was recovered.
+The slow component is described conservatively as an exploratory modeling choice,
+without claiming a uniquely identified spectral peak or a physical mechanism.
+
+The selected design has twelve predictors: precipitation, soil moisture, GDPC,
+squared precipitation, squared soil moisture, their interaction, and one/two/three-
+day lags of each of precipitation and soil moisture. Each engineered predictor is
+divided by its historical SD without centering. Root verified selected metadata
+and shared_input_helpers.R:652--668. With two external families, the latent
+state dimension is 3*7+12+1=34. Base-input coefficient signs are described as
+individual transfer terms, not total covariate or causal effects.
+
+Actual predictive-synthesis explanation
+
+R/environmetrics/02_helpers_core.R:852--912 calls the package synthesis entrypoint.
+The inspected package source exdqlm/R/exdqlm_synthesize_from_draws.R:35--200
+orders quantile anchors, shifts each fit's predictive draws, blends the adjusted
+quantile FUNCTIONS between fitted probabilities, uses the extreme fits' functions
+in the tails, rearranges the dense grid, and evaluates the result at Uniform draws.
+The prior manuscript said anchor interpolation and deterministic r/(R+1) draws;
+the revision explains the actual core construction and random inverse-CDF sampling.
+The CRPS quadrature grid remains r/(R+1), as separately defined in scoring.
+
+Limited implementation evidence: the currently inspected package source initializes
+its grid to zero and uses strict interior-interval comparisons, so exact interior
+grid points equal to fitted probabilities are not explicitly filled by that loop.
+The scientific formula states the between-level blend; an unsupported sentence
+claiming a continuous-limit assignment at exact fitted probabilities was omitted.
+This source observation does not establish which code version produced archived
+publication output. Neither outputs nor package/source algorithms were changed,
+and this editorial revision does not certify complete numerical implementation.
+
+Verified appendix transcription repairs
+
+These manuscript-only repairs were explicitly reviewed with root. Given v=sigma*u,
+the conditional Gaussian observation variance is B*sigma*v, hence the MCMC
+observation covariance is Diag(B vector * sigma vector * v vector), rather than
+the old dimensionally malformed product of vectors and a diagonal matrix.
+The positive-truncated-normal underlying variance is the reciprocal of
+1+C^2*gamma^2*sigma/(B*v); the old MCMC display omitted this reciprocal.
+The second argument of N+ is now explicitly identified as this Gaussian variance.
+The package's exdqlmISVB.R:192--200 confirms the reciprocal update.
+
+For VB filtering, Gaussian information uses pi_tj=<1/(B_j*sigma_j*v_tj)> and
+the offset b_tj=<offset/(B_j*sigma_j*v_tj)>/pi_tj. Observation covariance is
+Diag(pi^-1). This preserves the joint scale/skewness moments instead of replacing
+all products with separate means. The inspected exdqlmLDVB.R:653--655 uses
+ex.q=(E.invb.inv.sigma*E.inv.uts)^(-1) and its equivalent weighted ex.f.
+The main computation paragraph now describes groups of cyclic updates, avoiding
+a claim that its paragraph order is the literal software execution order.
+No estimation code, fits, samples, scores or selected identities were changed.
+
+Captions and display decisions
+
+All six synthesis captions identify exact pointwise central 95% predictive
+intervals and means on log(1+x), not fitted-quantile credible bands or raw-flow
+means. Ten thin traces are predictive sample traces, not the seven fitted quantiles.
+Origin T and first forecast T+1 are explicit. Main synthesis references are
+approximately182/429m3/s; supporting captions link to these. Context rating
+references retain their own source-based levels. Captions no longer claim
+identical thresholds across differently sourced historical/context/synthesis plots.
+Historical credible intervals remain identified as quantile-location/component
+uncertainty. Historical evidence remains after the forecast results, not ahead.
+
+Typography and manuscript layer
+
+Explicit UTF-8 decoding plus robust TeX name accents restore Niño/Peña.
+Main and appendix figure/table counter definitions omit the vendor's embedded
+enspace, with caption label spacing separately set to quad.
+siunitx group-digits=false preserves all five decimals without spurious grouping.
+Uppercase Figures/ is the sole manuscript graphic path; stable asset names remain.
+Hidelinks removes distracting printed green link borders.
+Ordinary figure environments replace figure* in the one-column class, and section
+float barriers retain figures with their scientific section. Placement is relaxed
+with !htbp to permit efficient page packing. Final integrated layout is reviewed
+by root after the figure family is regenerated.
+
+The unpublished template 'How to cite' block falsely specified Environmetrics
+volume XX and pages1--20. Its manuscript command is removed and printjnlcitation
+is suppressed locally. Vendor class unchanged. This also removes its overwide
+13pt frame. The remaining large maketitle warning is the vendor abstract-background
+box's counted width; showbox diagnostics demonstrate its gray background and
+actual text have proper page placement. A separate 6.46pt baseline vertical-box
+warning persists in the title-page machinery. Root visually checks the final PDF.
+
+Citation purposes and verified metadata
+
+Duan etal.: hydrological Bayesian model averaging; corrected journal year2007,
+'hydrologic' title, DOI10.1016/j.advwatres.2006.11.014.
+Primary source: https://www.sciencedirect.com/science/article/abs/pii/S030917080600220X
+Yumnam etal.: quantile merging of precipitation products (existing metadata/key).
+McAlinn/West: dynamic combination of predictive distributions, without equating
+the proposed model with formal BPS (existing metadata/key).
+Barata etal./Wang-Blei: dynamic quantile inference and Laplace--Delta computation.
+USGS: precise target station and daily discharge location.
+ERA5-Land: replaced unrelated monthly-average citation with the hourly dataset
+DOI10.24381/cds.e2161bac and added the2021 land-reanalysis paper.
+Primary dataset: https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land
+Primary paper: https://essd.copernicus.org/articles/13/4349/2021/
+GloFAS: added2020 product paper, DOI10.5194/essd-12-2043-2020.
+Primary paper: https://essd.copernicus.org/articles/12/2043/2020/index.html
+GDPC/NOAA indices/PRISM/NWM references remain adjacent to actual data/method roles.
+Johnson's author corrected from Michael to Matthew C. (unused entry retained).
+Primary source: https://arxiv.org/abs/1803.01984
+Aastveit's author corrected Knut Anton to Knut Are; final issue year2023, volume41,
+issue2, pp523--537 (unused entry retained; key unchanged).
+Primary journal article copy: https://biopen.bi.no/bi-xmlui/bitstream/handle/11250/3067797/Quantifying%2BTime%2BVarying%2BForecast%2BUncertainty%2Band%2BRisk%2Bfor%2Bthe%2BReal%2BPrice%2Bof%2BOil.pdf?sequence=1
+No citation-count quota was used, and unused bibliography entries were not pruned.
+
+Completion boundary
+
+Root integrates assets, runs current-article contracts and numerical invariants,
+builds until labels stabilize, and performs the final color/grayscale PDF review.
+This author did not modify external repositories or the historical response.
+
+Final cited-reference corrections after the PDF reading pass
+
+Cosgrove2024: corrected the49-author list from publisher-deposited Crossref
+metadata, independently matched to the primary Wiley article. This repairs
+incorrect given names and removes the literal bibliography author "others".
+Primary: https://onlinelibrary.wiley.com/doi/10.1111/1752-1688.13184
+Demargne: corrected all12author names, final issue2014,95(1),79--98; stable
+key demargne2013science is retained. Metadata was matched to the primary
+NOAA-hosted full article and publisher-deposited Crossref DOI record.
+Primary: https://hdsc.nws.noaa.gov/pub/hdsc/data/papers/articles/HRL_Pubs_PDF_May12_2009/New_Scans_December_2013/HEFS_BAMS_Jan2014.pdf
+Metadata snapshots: cosgrove_verified_crossref.json,demargne_verified_crossref.json.
+Barlow1972: corrected author order to Barlow,Bartholomew,Bremner,Brunk; the
+old GoogleBooks URL identified a DTIC report/contributor record, not the Wiley
+book edition, and was removed. Publisher's own book-review metadata confirms
+book author order: https://onlinelibrary.wiley.com/doi/10.1111/j.1467-9574.1973.tb00228.x
+Prado2021: edition is numeric2 for correct APA '2nd ed.' formatting, and an
+extraneous publication-history/subject note was removed. Chernozhukov DOI
+normalized to a bare DOI. USGS rating URL moved from an escaped nested note
+into its URL field, preserving the retrieval date and exact query parameters.
+No unused entries were mass-looked-up, and no citation keys were renamed.
+
+Final historical-component caption correction
+
+Root verified that render_component_80month uses median_500 from the
+authoritative_component_summary.csv. Its fig:80_components caption now says
+posterior medians and95%credible intervals. No asset or numerical changes.
+The dry/wet latent-quantile locations are Gaussian, so their posterior means
+and medians coincide; their existing posterior-mean wording remains accurate.
+
+Root final PDF reading removed the remaining publisher-catalog note from the Prado book entry (publication/subject catalog prose). Edition, authors, title, year, publisher and DOI are unchanged.

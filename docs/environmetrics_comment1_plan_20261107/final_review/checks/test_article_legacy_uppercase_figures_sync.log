@@ -1,0 +1,12 @@
+test_bounded_mirror_reads_uppercase_and_preserves_unmanaged_files (test_article_legacy_uppercase_figures_sync.ArticleLegacyUppercaseFiguresSyncTest) ... ok
+test_family_mirror_preserves_other_compatibility_assets (test_article_legacy_uppercase_figures_sync.ArticleLegacyUppercaseFiguresSyncTest) ... ok
+test_family_mirror_rejects_self_copy_before_writing (test_article_legacy_uppercase_figures_sync.ArticleLegacyUppercaseFiguresSyncTest) ... ok
+test_full_mirror_requires_complete_canonical_families (test_article_legacy_uppercase_figures_sync.ArticleLegacyUppercaseFiguresSyncTest) ... ok
+test_invalid_batch_cannot_partially_write (test_article_legacy_uppercase_figures_sync.ArticleLegacyUppercaseFiguresSyncTest) ... ok
+test_symlink_metadata_cannot_overwrite_canonical_asset (test_article_legacy_uppercase_figures_sync.ArticleLegacyUppercaseFiguresSyncTest) ... ok
+test_symlink_target_cannot_overwrite_canonical_asset (test_article_legacy_uppercase_figures_sync.ArticleLegacyUppercaseFiguresSyncTest) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.753s
+
+OK

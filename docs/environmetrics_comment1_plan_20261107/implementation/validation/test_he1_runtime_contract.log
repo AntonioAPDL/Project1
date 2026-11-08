@@ -1,0 +1,8 @@
+test_article_and_corrections_share_runtime_claims (test_he1_runtime_contract.HE1RuntimeContractTests) ... ok
+test_runtime_docs_exist (test_he1_runtime_contract.HE1RuntimeContractTests) ... ok
+test_runtime_manifest_records_conservative_contract (test_he1_runtime_contract.HE1RuntimeContractTests) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.042s
+
+OK

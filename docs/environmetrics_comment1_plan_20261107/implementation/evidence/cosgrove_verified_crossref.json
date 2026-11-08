@@ -1,0 +1,814 @@
+{
+  "title": [
+    "NOAA's National Water Model: Advancing operational hydrology through continental\u2010scale modeling"
+  ],
+  "author": [
+    {
+      "ORCID": "https://orcid.org/0000-0002-3921-0553",
+      "authenticated-orcid": false,
+      "given": "Brian",
+      "family": "Cosgrove",
+      "sequence": "first",
+      "affiliation": [
+        {
+          "name": "Office of Water Prediction NOAA National Weather Service  Silver Spring Maryland USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "David",
+      "family": "Gochis",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Airborne Snow Observatories, Inc.  Mammoth Lakes California USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Trey",
+      "family": "Flowers",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "National Water Center NOAA National Weather Service, Office of Water Prediction  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Aubrey",
+      "family": "Dugger",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Fred",
+      "family": "Ogden",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "National Water Center NOAA National Weather Service, Office of Water Prediction  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Tom",
+      "family": "Graziano",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Office of Water Prediction NOAA National Weather Service  Silver Spring Maryland USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Ed",
+      "family": "Clark",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "National Water Center NOAA National Weather Service, Office of Water Prediction  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Ryan",
+      "family": "Cabell",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Nick",
+      "family": "Casiday",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "National Water Center NOAA National Weather Service, Office of Water Prediction  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Zhengtao",
+      "family": "Cui",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Lynker  Silver Spring Maryland USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Kelley",
+      "family": "Eicher",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "University of Minnesota  Minneapolis Minnesota USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "ORCID": "https://orcid.org/0000-0002-5059-4703",
+      "authenticated-orcid": false,
+      "given": "Greg",
+      "family": "Fall",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Office of Water Prediction NOAA National Weather Service  Chanhassen Minnesota USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Xia",
+      "family": "Feng",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Cooperative Institute for Research to Operations in Hydrology  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Katelyn",
+      "family": "Fitzgerald",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Nels",
+      "family": "Frazier",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Lynker  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Camaron",
+      "family": "George",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Cooperative Institute for Research to Operations in Hydrology  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Rich",
+      "family": "Gibbs",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Cooperative Institute for Research to Operations in Hydrology  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "ORCID": "https://orcid.org/0000-0002-5259-0968",
+      "authenticated-orcid": false,
+      "given": "Liliana",
+      "family": "Hernandez",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Lynker  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Donald",
+      "family": "Johnson",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "National Water Center NOAA National Weather Service, Office of Water Prediction  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Ryan",
+      "family": "Jones",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "National Water Center NOAA National Weather Service, Office of Water Prediction  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Logan",
+      "family": "Karsten",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Airborne Snow Observatories, Inc.  Mammoth Lakes California USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Henok",
+      "family": "Kefelegn",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Lynker  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "David",
+      "family": "Kitzmiller",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Office of Water Prediction NOAA National Weather Service  Silver Spring Maryland USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Haksu",
+      "family": "Lee",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Lynker  Silver Spring Maryland USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Yuqiong",
+      "family": "Liu",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Lynker  Silver Spring Maryland USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Hassan",
+      "family": "Mashriqui",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Office of Water Prediction NOAA National Weather Service  Silver Spring Maryland USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "David",
+      "family": "Mattern",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Lynker  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Alyssa",
+      "family": "McCluskey",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "James L.",
+      "family": "McCreight",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Cooperative Programs for the Advancement of Earth System Science (CPAESS), University Corporation for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Rachel",
+      "family": "McDaniel",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "National Water Center NOAA National Weather Service, Office of Water Prediction  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Alemayehu",
+      "family": "Midekisa",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Cooperative Institute for Research to Operations in Hydrology  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Andy",
+      "family": "Newman",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Linlin",
+      "family": "Pan",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Cham",
+      "family": "Pham",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Office of Water Prediction NOAA National Weather Service  Silver Spring Maryland USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Arezoo",
+      "family": "RafieeiNasab",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Roy",
+      "family": "Rasmussen",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Laura",
+      "family": "Read",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Mehdi",
+      "family": "Rezaeianzadeh",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Lynker  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Fernando",
+      "family": "Salas",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "National Water Center NOAA National Weather Service, Office of Water Prediction  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Dina",
+      "family": "Sang",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Cooperative Institute for Research to Operations in Hydrology  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "ORCID": "https://orcid.org/0000-0002-5537-7775",
+      "authenticated-orcid": false,
+      "given": "Kevin",
+      "family": "Sampson",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Tim",
+      "family": "Schneider",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "ORCID": "https://orcid.org/0000-0002-5338-8112",
+      "authenticated-orcid": false,
+      "given": "Qi",
+      "family": "Shi",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Lynker  Tuscaloosa Alabama USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Gautam",
+      "family": "Sood",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Office of Water Prediction NOAA National Weather Service  Silver Spring Maryland USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Andy",
+      "family": "Wood",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Wanru",
+      "family": "Wu",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Office of Water Prediction NOAA National Weather Service  Silver Spring Maryland USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "David",
+      "family": "Yates",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Wei",
+      "family": "Yu",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Yongxin",
+      "family": "Zhang",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Research Applications Lab NSF National Center for Atmospheric Research  Boulder Colorado USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    }
+  ],
+  "published": {
+    "date-parts": [
+      [
+        2024,
+        1,
+        12
+      ]
+    ]
+  },
+  "volume": "60",
+  "issue": "2",
+  "page": "247-272",
+  "DOI": "10.1111/1752-1688.13184"
+}

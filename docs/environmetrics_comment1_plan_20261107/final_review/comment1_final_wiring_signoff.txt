@@ -1,0 +1,27 @@
+Final read-only comment-1 wiring signoff
+
+PASS: all 105 registry stored files exist, match their hashes, and are eligible
+for Git tracking after anchoring the optional mirror ignore to /figures/.
+All 105 current restoration targets also match the reviewed hashes.
+
+PASS: publication registry and all thirteen manuscript figure includes validate.
+Fresh comparison against the original preparation snapshot reports no protected
+file changes, no numeric table-cell changes, and unchanged ten selected runs.
+No missing or unstable required input is present.
+
+PASS: current workflow modified/untracked paths outside the comment-1 plan
+package and separately excluded rejection-audit directory belong to the recorded
+comment-1 promotion allowlist plus the new bounded .gitignore audit exception.
+No unrelated pending inclusion was identified. Current article follow-up changes
+are editorial notes, source labels, canonical-tree documentation and the scoped
+Git ignore fix. Generator/table notes agree. Both repositories pass diff checks.
+
+PASS: the workflow .gitignore exception now makes the intended checklist/task
+CSVs and final snapshot eligible for tracking. Keep the separate rejection-audit
+directory unstaged. The review PDF is intentionally ignored; Overleaf can compile
+the tracked article sources. Update final delivery hashes against the new
+post-review build before completing the commit record.
+
+Evidence: /tmp/comment1_final_wiring_release_snapshot.json
+
+No remaining packaging or source-wiring blocker identified.

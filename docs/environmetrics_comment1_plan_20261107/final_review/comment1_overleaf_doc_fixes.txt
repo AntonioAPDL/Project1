@@ -1,0 +1,15 @@
+Comment-1 Overleaf/readiness check and targeted documentation repairs
+
+Only the following article files were edited by final_overleaf_readiness:
+1. docs/article_repository_structure.md: dated the current editorial update; state that uppercase Figures/ is the compile authority and lowercase figures/ is an optional local mirror; replaced a numeric forecast-context reference with stable fig:ensembles.
+2. docs/figure_table_provenance.md: added current six-section organization and presentation-registry note; replaced stale benchmark Table 1 and component Figure A1 references with labels; corrected current policy/current locked-state references so forecast comparisons and historical interpretation are both in Results, while gamma/sigma remain appendix support; clarified that current presentation hashes come from the reviewed registry. Dated authority records and numeric/source identities were preserved.
+3. docs/exal_m_t1_artifact_run_map.md: recorded editorial-reference check date; described representative Results role via fig:synth1; replaced benchmark Table 1 target with its generated TeX path.
+4. MANUSCRIPT_ASSET_MANIFEST.json: replaced the common-horizon table note's stale Table 1 wording with tab:benchmark_crps_models; all paths, labels, source identities and numeric fields are unchanged.
+
+Validation
+- git diff --check passed.
+- scripts/comment1_figure_revision.py --check passed: 105 files validated after all four edits.
+- A minimal isolated compile package was assembled at /tmp/comment1_overleaf_minimal_zystfts1/source from manuscript main/source/Bib/vendor TeX files, generated TeX tables, and exactly the 13 used PNGs. Every compile dependency is already tracked and unignored. No workflow/runtime data were copied.
+- Build /tmp/comment1_overleaf_minimal_zystfts1/build/clean_clone.pdf passed: 33 pages, four LaTeX passes, stable labels, zero unresolved citations/references, zero BibTeX warnings, one overfull hbox and one overfull vbox. Complete source hashes and package list are in that build's build_summary.json and adjacent package_manifest.json. This is a source-dependency proof, not a remote Overleaf execution.
+- An initial packaging blocker was reported to root: unanchored .gitignore figures/ rule ignores six nested presentation-registry files. Root owns its repair and staging verification.
+- Narrow pending-file filename and token-pattern scans found no private-key/token-like material and no >50MB pending file. No credentials printed.

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from current_article_contract import scientific_checks
 from pathlib import Path
 from typing import Any
 
@@ -20,12 +22,6 @@ REQUIRED_LATEST_FORECAST_CODE_EVIDENCE = {
     "snapshot_stage": "R/unified/stages/stage_forecats.R",
     "histfix_bundle_builder": "scripts/build_multimodel_v8_histfix_bundles.py",
 }
-
-REQUIRED_LATEST_FORECAST_ARTICLE_CLAIMS = [
-    "using the latest forecast products issued at or before",
-    "aggregates the latest available forecast issuances to daily member-specific forecast matrices",
-    "Post-cutoff USGS observations are reserved strictly for verification",
-]
 
 REQUIRED_LATEST_FORECAST_CORRECTIONS_CLAIMS = [
     "latest available forecast ensemble",
@@ -139,3 +135,7 @@ def check_latest_forecast_issue_manifest(
         )
 
     return checks
+
+
+def check_latest_forecast_article_text(article_text: str) -> list[LatestForecastIssueManifestCheck]:
+    return [LatestForecastIssueManifestCheck(item, ok, detail) for item, ok, detail in scientific_checks(article_text, ['latest_issue', 'verification'])]

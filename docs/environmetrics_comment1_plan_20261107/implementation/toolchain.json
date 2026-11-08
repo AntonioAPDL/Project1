@@ -1,0 +1,23 @@
+{
+  "python3": {
+    "executable": "/home/jaguir26/python39/bin/python3",
+    "version": "Python 3.9.9"
+  },
+  "Rscript": {
+    "executable": "/usr/bin/Rscript",
+    "version": "Rscript (R) version 4.5.3 (2026-03-11)"
+  },
+  "pdflatex": {
+    "executable": "/usr/bin/pdflatex",
+    "version": "pdfTeX 3.14159265-2.6-1.40.19 (TeX Live 2018)"
+  },
+  "bibtex": {
+    "executable": "/usr/bin/bibtex",
+    "version": "BibTeX 0.99d (TeX Live 2018)"
+  },
+  "pdftotext": {
+    "executable": "/usr/bin/pdftotext",
+    "version": "pdftotext version 20.11.0"
+  },
+  "R_packages": " ggplot2 testthat     yaml   exdqlm \n \"4.0.3\"  \"3.3.2\" \"2.3.12\"  \"0.4.0\" \n"
+}

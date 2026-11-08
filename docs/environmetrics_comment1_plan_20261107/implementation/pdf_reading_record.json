@@ -1,0 +1,14 @@
+{
+  "pdf_sha256": "1093075292cea44f5242627f10b5e47dffd68fb344e23b419433f5655c77d465",
+  "pages": 33,
+  "reviewed": [
+    "All33page layout sheets; readingorder acrossdata/model/evaluation/results/appendices.",
+    "Maintext data/notation/computation/synthesis explanations and all figure captions.",
+    "Representative color/grayscale synthesis and context at final inclusion width.",
+    "Every synthesis origin for clipped labels; Januaryplotcorrected and inspected again.",
+    "Covariate decimal table and final bibliography/accents; zero Unicode replacement characters.",
+    "Longcycle component posterior-median caption and daily/calendar period units."
+  ],
+  "retained_layout_warnings": "One vendor abstract bookkeeping hbox and one inheritedtitle vbox; no visible text overflow.",
+  "evidence_limits": "Source-version and spectral/matrix limits recorded in model_description_evidence.json and article_revision_notes.txt."
+}

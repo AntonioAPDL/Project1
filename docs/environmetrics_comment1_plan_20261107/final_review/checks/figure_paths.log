@@ -1,0 +1,14 @@
+Validated manuscript figure paths:
+  - site_context_usgs.png -> Figures/manuscript/site_context_usgs.png
+  - covariate_context_precip_soil_gdpc.png -> Figures/manuscript/covariate_context_precip_soil_gdpc.png
+  - retrospective_products_context.png -> Figures/manuscript/retrospective_products_context.png
+  - forecast_products_context.png -> Figures/manuscript/forecast_products_context.png
+  - cutoff_2022_12_25_multivariate_synthesis_with_reference_ensembles.png -> Figures/multivariate_synthesis_by_cutoff/cutoff_2022_12_25_multivariate_synthesis_with_reference_ensembles.png
+  - historical_summary_dry_period.png -> Figures/manuscript/historical_summary_dry_period.png
+  - historical_summary_wet_period.png -> Figures/manuscript/historical_summary_wet_period.png
+  - historical_component_80month.png -> Figures/manuscript/historical_component_80month.png
+  - reference_synthesis_univariate.png -> Figures/manuscript/reference_synthesis_univariate.png
+  - cutoff_2021_01_23_multivariate_synthesis_with_reference_ensembles.png -> Figures/multivariate_synthesis_by_cutoff/cutoff_2021_01_23_multivariate_synthesis_with_reference_ensembles.png
+  - cutoff_2021_11_12_multivariate_synthesis_with_reference_ensembles.png -> Figures/multivariate_synthesis_by_cutoff/cutoff_2021_11_12_multivariate_synthesis_with_reference_ensembles.png
+  - cutoff_2021_12_21_multivariate_synthesis_with_reference_ensembles.png -> Figures/multivariate_synthesis_by_cutoff/cutoff_2021_12_21_multivariate_synthesis_with_reference_ensembles.png
+  - cutoff_2022_05_11_multivariate_synthesis_with_reference_ensembles.png -> Figures/multivariate_synthesis_by_cutoff/cutoff_2022_05_11_multivariate_synthesis_with_reference_ensembles.png

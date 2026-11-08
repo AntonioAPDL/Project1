@@ -1,0 +1,103 @@
+{
+  "snapshot_local": "2026-11-07T20:39:50.488992-08:00",
+  "timezone": "America/Los_Angeles",
+  "project1_actual_worker_count": 0,
+  "other_project_R_count": 6,
+  "matrix_evidence": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_p5_production_20260606/control/publication_relaunch_matrix/matrix_status.csv",
+    "mtime_local": "2026-11-07T20:36:24.414381-08:00",
+    "rows": [
+      {
+        "cutoff": "20210123",
+        "phase": "report",
+        "status": "pass",
+        "finished_at": "2026-06-06T19:41:10Z",
+        "note": "closed"
+      },
+      {
+        "cutoff": "20211112",
+        "phase": "report",
+        "status": "pass",
+        "finished_at": "2026-06-06T19:46:54Z",
+        "note": "closed"
+      },
+      {
+        "cutoff": "20211221",
+        "phase": "report",
+        "status": "pass",
+        "finished_at": "2026-06-06T21:59:18Z",
+        "note": "closed"
+      },
+      {
+        "cutoff": "20220511",
+        "phase": "report",
+        "status": "pass",
+        "finished_at": "2026-06-06T22:06:07Z",
+        "note": "closed"
+      },
+      {
+        "cutoff": "20221225",
+        "phase": "report",
+        "status": "pass",
+        "finished_at": "2026-06-07T00:16:09Z",
+        "note": "closed"
+      }
+    ],
+    "interpretation": "All five rows closed/report/pass from June; recent status-file mtime is monitor rewrite activity, not proof of live fitting."
+  },
+  "resources": {
+    "logical_cpu_count": 64,
+    "affinity_cpu_count": 64,
+    "loadavg": "6.58 6.51 6.45 8/1662 99023",
+    "memory": {
+      "MemTotal": "527782024 kB",
+      "MemAvailable": "496695860 kB"
+    },
+    "data_free_GiB": 65.06,
+    "data_total_GiB": 915.69
+  },
+  "lazy_source_evidence": [
+    {
+      "path": "scripts/run_multimodel_v8_queue.py",
+      "lines": "357-368",
+      "observation": "Queue launches later shell/R subprocesses with cwd=ROOT, so new workers read current files."
+    },
+    {
+      "path": "R/unified/stages/stage_post.R",
+      "lines": "5-15, 711-722, 740-755",
+      "observation": "Post stage sources helpers when invoked and then starts scripts/run_environmetrics_figures.R with config path from repo; early R source load is not a guarantee that later stages retain an old version."
+    },
+    {
+      "path": "scripts/run_environmetrics_figures.R",
+      "lines": "29, 471, 477-488",
+      "observation": "ENV_PROJECT_ROOT selects current helper paths; post modules and publication renderer sourced by fresh subprocess."
+    },
+    {
+      "path": "scripts/render_publication_post_figures.R",
+      "lines": "26-40, 63-79",
+      "observation": "Standalone render entrypoint loads helper/style from cwd and writes to supplied outputs_dir. --run-dir expects post/outputs directory containing figure_manifest.csv; default rewrite_canonical is TRUE."
+    }
+  ],
+  "future_gates": {
+    "G0": "Before editorial implementation: recheck status, document baseline hashes/HEADs, create isolated two-repo worktrees and review chosen structure.",
+    "G1": "Before first proof render: confirm copied inputs and target manifest use staging paths; source data read-only; numerical input hash baseline complete.",
+    "G2": "Before full figure batch: two proof panels pass final-size and grayscale human review; one-render resource measurement acceptable.",
+    "G3": "Before merge/promotion: no active Project1 source readers touching changed paths, source artifacts stable, exact numerical inputs unchanged, article and mirrors compiled/validated against one staging manifest."
+  },
+  "project1_monitors": [
+    {
+      "pid": 2426842,
+      "ppid": 1,
+      "comm": "bash",
+      "started_local": "2026-06-06T10:31:33.359017-07:00",
+      "classification": "project1_old_self_matching_monitor"
+    },
+    {
+      "pid": 2479902,
+      "ppid": 1,
+      "comm": "bash",
+      "started_local": "2026-06-06T14:00:47.559017-07:00",
+      "classification": "project1_old_self_matching_monitor"
+    }
+  ]
+}

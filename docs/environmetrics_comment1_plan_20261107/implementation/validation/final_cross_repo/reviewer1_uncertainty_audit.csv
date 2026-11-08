@@ -1,0 +1,21 @@
+item,status,detail
+workflow_contract_doc_exists,pass,docs/r1_m1_uncertainty_framing_contract_20260615.md
+hydrological_uncertainty,pass,"hydrolog\w* uncertainty, structur, parameters?, states?, observations?"
+meteorological_uncertainty,pass,"meteorolog\w* uncertainty, precipitation, forc"
+precipitation_source,pass,"precipitation, PRISM"
+soil_moisture_source,pass,"soil moisture, ERA5.Land"
+corrections_required:The revised introduction now separates these concepts before introducing the Bayesian framework,pass,The revised introduction now separates these concepts before introducing the Bayesian framework
+"corrections_required:hydrological uncertainty with river-system structure, parameters, states, and observations",pass,"hydrological uncertainty with river-system structure, parameters, states, and observations"
+corrections_required:meteorological uncertainty with precipitation and atmospheric forcing fields,pass,meteorological uncertainty with precipitation and atmospheric forcing fields
+corrections_required:shortened the discussion of atmospheric ensemble-generation details,pass,shortened the discussion of atmospheric ensemble-generation details
+corrections_required:using available forecast and retrospective products to produce calibrated predictive distributions,pass,using available forecast and retrospective products to produce calibrated predictive distributions
+article_forbidden:does not currently distinguish meteorological and hydrological uncertainty,pass,does not currently distinguish meteorological and hydrological uncertainty
+article_forbidden:Hydrological predictions are often produced using physical models,pass,Hydrological predictions are often produced using physical models
+article_forbidden:local hydrological covariates,pass,local hydrological covariates
+article_forbidden:meteorological and hydrological concepts are mixed,pass,meteorological and hydrological concepts are mixed
+article_forbidden:under-dispersion in ensembles and perturbation methods,pass,under-dispersion in ensembles and perturbation methods
+corrections_forbidden_stale:we will reorganize the introduction,pass,we will reorganize the introduction
+corrections_forbidden_stale:we will separate meteorological,pass,we will separate meteorological
+corrections_forbidden_stale:we will distinguish meteorological,pass,we will distinguish meteorological
+corrections_forbidden_stale:we will shorten the discussion,pass,we will shorten the discussion
+corrections_forbidden_stale:will introduce the Bayesian framework after separating,pass,will introduce the Bayesian framework after separating

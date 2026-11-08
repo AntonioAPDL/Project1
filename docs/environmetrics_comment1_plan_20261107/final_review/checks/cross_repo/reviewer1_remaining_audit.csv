@@ -1,0 +1,107 @@
+item,status,detail
+workflow_contract_doc_exists,pass,docs/reviewer1_remaining_contracts_20260615.md
+variants,pass,"Gaussian, asymmetric Laplace, univariate, multivariate, transfer, nine, exAL.M.T1"
+scores,pass,"CRPS, negatively oriented|lower.{0,70}better|smaller.{0,70}better, quantile, check loss"
+synthesis,pass,"quantile.specific, predictive distribution, interpolat, point mass"
+origin_design,pass,"five, rolling.origin|forecast origins?, low.flow, high.flow|winter, version, archiv"
+verification,pass,"USGS, verification, forecast (?:window|horizon)|forecast.window"
+archive_work,pass,"archiv, version, spatial, covariate, overlap"
+physical_models,pass,"conceptual, physically based, calibrat, practical|operational"
+likelihood,pass,"extended asymmetric laplace, quantile, scale, skewness"
+climate_covariates,pass,"ERA5.Land, PRISM, climate.index, GDPC|generalized dynamic principal component, Big Trees"
+data_roles,pass,"USGS, target, retrospective, discrepanc, forecast product, covariate"
+transfer_inputs,pass,"precipitation, soil moisture|soil.moisture, climate.index, transfer"
+latest_issue,pass,"latest|most recent, issu, daily, member, GloFAS, NWS"
+historical_interpretation,pass,"historical, interpret, quantile, contrasting|dry|wet"
+table_estimands,pass,"posterior means, posterior medians, credible intervals, skewness, scale parameters"
+uncertainty_estimands,pass,"fitted quantile|quantile.location, credible, predictive distribution, predictive interval|predictive envelope"
+runtime,pass,"(?:about|approximately|roughly) two hours, 64, 503, parallel, stag, hardware, implementation"
+prior_weighting,pass,"epsilon, anchor, scale, covariance, carries|carried|carry"
+label:sec:introduction,pass,sec:introduction
+label:sec:data,pass,sec:data
+label:sec:methodology,pass,sec:methodology
+label:sec:evaluation,pass,sec:evaluation
+label:sec:forecastvalidation,pass,sec:forecastvalidation
+label:sec5,pass,sec5
+six_section_order,pass,introduction/data/method/evaluation/results/discussion
+scoring_before_results,pass,evaluation precedes results
+illustration_before_interpretation,pass,forecast illustration precedes historical interpretation
+appendix_matrix,pass,full matrix construction in appendix
+appendix_augmentation,pass,likelihood augmentation in appendix
+forecast_evidence,pass,"five origins, distributional/quantile scores, illustrative forecast"
+"R1-M2:corrections_required:no longer organizes the methodology around models A, B, and C",pass,"no longer organizes the methodology around models A, B, and C"
+R1-M2:corrections_required:presents a common state-space formulation,pass,presents a common state-space formulation
+R1-M2:corrections_required:Section 4 identifies the models in terms of \(L\)-\(S\)-\(T\) labels,pass,Section 4 identifies the models in terms of \(L\)-\(S\)-\(T\) labels
+"R1-M2:corrections_required:likelihood family, source set, and forecast-window transfer treatment",pass,"likelihood family, source set, and forecast-window transfer treatment"
+R1-M2:corrections_required:selected \texttt{exAL-M-T1} specification,pass,selected \texttt{exAL-M-T1} specification
+R1-M2:article_forbidden:Model A,pass,Model A
+R1-M2:article_forbidden:Model B,pass,Model B
+R1-M2:article_forbidden:Model C,pass,Model C
+R1-M2:article_forbidden:General Results,pass,General Results
+R1-M2:corrections_forbidden_stale:we will present the final forecasting specification,pass,we will present the final forecasting specification
+R1-M2:corrections_forbidden_stale:We will also revise the opening of the results section,pass,We will also revise the opening of the results section
+R1-M3:corrections_required:PIT-centered development has been removed from the main text,pass,PIT-centered development has been removed from the main text
+R1-M3:corrections_required:final forecast comparison uses CRPS as the primary full-distribution score,pass,final forecast comparison uses CRPS as the primary full-distribution score
+R1-M3:corrections_required:targeted quantile check loss as the quantile-level diagnostic,pass,targeted quantile check loss as the quantile-level diagnostic
+R1-M3:corrections_required:retained a compact posterior predictive synthesis subsection,pass,retained a compact posterior predictive synthesis subsection
+R1-M3:corrections_required:Quantile crossing is no longer developed as a separate procedure in the main text,pass,Quantile crossing is no longer developed as a separate procedure in the main text
+R1-M3:corrections_required:Details about the MCMC and VB algorithms are provided in the Appendix,pass,Details about the MCMC and VB algorithms are provided in the Appendix
+R1-M3:article_forbidden:PITs are described in detail,pass,PITs are described in detail
+R1-M3:article_forbidden:two-step method,pass,two-step method
+R1-M3:article_forbidden:resolve quantile crossing,pass,resolve quantile crossing
+R1-M3:article_forbidden:Posterior Predictive Synthesis part,pass,Posterior Predictive Synthesis part
+R1-M3:corrections_forbidden_stale:we will simplify the presentation substantially,pass,we will simplify the presentation substantially
+R1-M3:corrections_forbidden_stale:we will remove the detailed PIT development,pass,we will remove the detailed PIT development
+R1-M3:corrections_forbidden_stale:we will reduce intermediate derivational detail,pass,we will reduce intermediate derivational detail
+R1-M4:corrections_required:forecasting evaluation is expanded to five rolling-origin out-of-sample cutoffs,pass,forecasting evaluation is expanded to five rolling-origin out-of-sample cutoffs
+R1-M4:corrections_required:evidence is no longer tied to a single moderate-flood episode,pass,evidence is no longer tied to a single moderate-flood episode
+R1-M4:corrections_required:not presented as a continuous 2023-present hindcast,pass,not presented as a continuous 2023-present hindcast
+R1-M4:corrections_required:representative selected-model illustration at one forecast origin,pass,representative selected-model illustration at one forecast origin
+R1-M4:corrections_required:validation evidence is the multi-cutoff CRPS and check-loss tables,pass,validation evidence is the multi-cutoff CRPS and check-loss tables
+R1-M4:corrections_required:selected-model diagnostics,pass,selected-model diagnostics
+R1-M4:article_forbidden:only one short forecast has been evaluated,pass,only one short forecast has been evaluated
+R1-M5:corrections_required:organized around forecast origins rather than a conventional random split,pass,organized around forecast origins rather than a conventional random split
+R1-M5:corrections_required:five cutoff-specific forecast-window evaluations,pass,five cutoff-specific forecast-window evaluations
+R1-M5:corrections_required:post-cutoff USGS observations are used only for verification,pass,post-cutoff USGS observations are used only for verification
+R1-M5:corrections_required:archive reconstruction step before any model can be fit,pass,archive reconstruction step before any model can be fit
+R1-M5:corrections_required:rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode,pass,rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode
+R1-M5:corrections_required:pre-cutoff observational window,pass,pre-cutoff observational window
+R1-M5:corrections_required:fixed calibrated specification,pass,fixed calibrated specification
+R1-M5:article_forbidden:random K-fold cross-validation,pass,random K-fold cross-validation
+R1-m1:corrections_required:uses both conceptual and physically based models,pass,uses both conceptual and physically based models
+"R1-m1:corrections_required:simpler to specify, calibrate, and deploy in forecasting applications",pass,"simpler to specify, calibrate, and deploy in forecasting applications"
+R1-m1:article_forbidden:Hydrological predictions are often produced using physical models,pass,Hydrological predictions are often produced using physical models
+R1-m2:corrections_required:typographical error rather than intended terminology,pass,typographical error rather than intended terminology
+R1-m2:corrections_required:The revised manuscript no longer uses this term,pass,The revised manuscript no longer uses this term
+R1-m2:article_forbidden:flexile,pass,flexile
+R1-m3:corrections_required:reanalysis-based model products rather than direct observations or uncertainty-free measurements,pass,reanalysis-based model products rather than direct observations or uncertainty-free measurements
+R1-m3:corrections_required:ERA5/ERA5-Land variables may include short forecast components,pass,ERA5/ERA5-Land variables may include short forecast components
+R1-m3:corrections_required:precipitation is from PRISM and ERA5-Land enters as the soil-moisture covariate,pass,precipitation is from PRISM and ERA5-Land enters as the soil-moisture covariate
+R1-m3:corrections_required:external covariates rather than verification observations,pass,external covariates rather than verification observations
+R1-m4:corrections_required:now separates the general methodology from the application data and forecasting design,pass,now separates the general methodology from the application data and forecasting design
+R1-m4:corrections_required:USGS daily flow series as the observed target,pass,USGS daily flow series as the observed target
+"R1-m4:corrections_required:distinguishes forecast covariates, retrospective products, and operational forecast products",pass,"distinguishes forecast covariates, retrospective products, and operational forecast products"
+R1-m4:corrections_required:external historical inputs used to learn source-specific discrepancies relative to the USGS target,pass,external historical inputs used to learn source-specific discrepancies relative to the USGS target
+R1-m5:corrections_required:now states explicitly that precipitation is not handled through censoring,pass,now states explicitly that precipitation is not handled through censoring
+"R1-m5:corrections_required:zero-inflation, or a separate occurrence/intensity model",pass,"zero-inflation, or a separate occurrence/intensity model"
+R1-m5:corrections_required:zero-precipitation days are retained in the supplied covariate path,pass,zero-precipitation days are retained in the supplied covariate path
+R1-m5:corrections_required:precipitation intermittency enters through the transfer component,pass,precipitation intermittency enters through the transfer component
+R1-m6:corrections_required:using forecasts issued at earlier times may reduce forecast performance,pass,using forecasts issued at earlier times may reduce forecast performance
+R1-m6:corrections_required:use only the most recent forecast ensemble available,pass,use only the most recent forecast ensemble available
+R1-m6:corrections_required:latest-forecast-only protocol,pass,latest-forecast-only protocol
+R1-m6:article_forbidden:weighted combination of prior forecasts,pass,weighted combination of prior forecasts
+R1-m7:corrections_required:no longer uses the vague ``General Results'' organization,pass,no longer uses the vague ``General Results'' organization
+R1-m7:corrections_required:separates the material by inferential role,pass,separates the material by inferential role
+R1-m7:corrections_required:Forecast Validation Results,pass,Forecast Validation Results
+R1-m7:corrections_required:Interpretation of the Selected Specification,pass,Interpretation of the Selected Specification
+R1-m7:corrections_required:selected-model diagnostics are separated from the forecast-validation tables,pass,selected-model diagnostics are separated from the forecast-validation tables
+R1-m7:article_forbidden:General Results,pass,General Results
+R1-m8:corrections_required:representative transfer-function covariate table reports posterior means,pass,representative transfer-function covariate table reports posterior means
+R1-m8:corrections_required:tables report posterior medians with 95\% credible intervals,pass,tables report posterior medians with 95\% credible intervals
+R1-m8:corrections_required:table-specific export contract,pass,table-specific export contract
+R1-m8:article_forbidden:Posterior Means and 95\% Credible Intervals for the Source-Specific,pass,Posterior Means and 95\% Credible Intervals for the Source-Specific
+R1-m9:corrections_required:comparatively stable bands reflect posterior uncertainty around fitted quantile-location or component summaries,pass,comparatively stable bands reflect posterior uncertainty around fitted quantile-location or component summaries
+R1-m9:corrections_required:not a full forecast predictive distribution at each date,pass,not a full forecast predictive distribution at each date
+R1-m9:corrections_required:representative single-cutoff posterior predictive distribution,pass,representative single-cutoff posterior predictive distribution
+R1-m9:corrections_required:forecast-window inputs change,pass,forecast-window inputs change
+R1-m9:corrections_required:expanded multi-cutoff CRPS and quantile-diagnostic tables remain the forecast-validation evidence,pass,expanded multi-cutoff CRPS and quantile-diagnostic tables remain the forecast-validation evidence

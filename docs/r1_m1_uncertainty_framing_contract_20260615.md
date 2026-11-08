@@ -1,6 +1,7 @@
 # R1-M1 Uncertainty-Framing Contract
 
-Status: active response/revised-article contract, June 15, 2026.
+Status: active contract; current-article editorial checks updated November 7, 2026.
+The earlier response remains a historical record.
 
 This document records the contract for Reviewer 1 major comment 1. The reviewer
 argued that the original introduction mixed meteorological and hydrological
@@ -40,8 +41,9 @@ The contract is enforced by:
 - the revised-article test
   `tests/test_article_a1_and_table_contracts.py`.
 
-The validators require the article to keep the hydrological-versus-
-meteorological distinction and the `local hydrometeorological covariates`
-wording. They also forbid stale main-article language that says the manuscript
-does not distinguish those sources, reintroduces the old physical-model opening
-sentence, or labels the precipitation-bearing covariates as only hydrological.
+The validators check the hydrological/meteorological uncertainty distinction and
+the roles of observations, products and covariates in active LaTeX. They do not
+require a particular connecting sentence or implementation label. The opening must
+explain uncertainty before linking it to available information. Historical response
+requirements remain unchanged. The shared current-article checks are implemented
+in scripts/current_article_contract.py and the article's manuscript_text_contract.py.

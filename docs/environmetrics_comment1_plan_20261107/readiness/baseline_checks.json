@@ -1,0 +1,143 @@
+{
+  "captured_local": "2026-11-07T20:50:59.571049-08:00",
+  "tests": 38,
+  "passed": 33,
+  "failures": 5,
+  "checks": [
+    {
+      "name": "overview",
+      "cmd": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_r1_overview_contract.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 1,
+      "seconds": 0.492,
+      "tail": [
+        "Ran 2 tests in 0.002s",
+        "",
+        "FAILED (failures=1)"
+      ],
+      "tests": 2,
+      "failures": 1,
+      "cause": "Article-side reviewer1 overview documentation path is absent; content assertion passes."
+    },
+    {
+      "name": "uncertainty",
+      "cmd": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_r1_m1_uncertainty_contract.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 1,
+      "seconds": 1.006,
+      "tail": [
+        "Ran 2 tests in 0.002s",
+        "",
+        "FAILED (failures=1)"
+      ],
+      "tests": 2,
+      "failures": 1,
+      "cause": "Article-side uncertainty documentation path is absent; content assertion passes."
+    },
+    {
+      "name": "runtime",
+      "cmd": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_he1_runtime_contract.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "seconds": 0.119,
+      "tail": [
+        "Ran 3 tests in 0.002s",
+        "",
+        "OK"
+      ],
+      "tests": 3,
+      "failures": 0,
+      "cause": "All runtime contract tests pass."
+    },
+    {
+      "name": "article_contracts",
+      "cmd": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "Evironmetrics---REVISED-DOC-Corrected-2/tests",
+        "-p",
+        "test_article_a1_and_table_contracts.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 1,
+      "seconds": 0.125,
+      "tail": [
+        "Ran 29 tests in 0.032s",
+        "",
+        "FAILED (failures=1)"
+      ],
+      "tests": 29,
+      "failures": 1,
+      "cause": "Software-availability check requires a literal repository URL in manuscript source; manuscript references the repository via a bibliography citation."
+    },
+    {
+      "name": "legacy_figure_mirror",
+      "tests": 2,
+      "failures": 2,
+      "returncode": 1,
+      "cmd": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_article_legacy_uppercase_figures_sync.py",
+        "-v"
+      ],
+      "cause": "Tests assume complete lowercase canonical tree; current canonical manuscript assets resolve under uppercase Figures/."
+    },
+    {
+      "name": "figure_paths",
+      "includes": 13,
+      "unresolved": 0,
+      "returncode": 0,
+      "cmd": [
+        "python3",
+        "Evironmetrics---REVISED-DOC-Corrected-2/scripts/validate_manuscript_figure_paths.py"
+      ],
+      "cause": "All current includegraphics paths resolve to uppercase canonical assets."
+    }
+  ],
+  "scope": "Baseline observations only; no existing test was edited or bypassed."
+}
