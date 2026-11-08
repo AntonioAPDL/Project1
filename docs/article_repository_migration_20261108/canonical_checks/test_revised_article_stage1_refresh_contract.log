@@ -1,0 +1,13 @@
+test_article_layout_exposes_cutoff_wide_synthesis_dirs (test_revised_article_stage1_refresh_contract.RevisedArticleStage1RefreshContractTests) ... ok
+test_benchmark_table_note_and_freeze_contract_match_final_nine_family_promotion (test_revised_article_stage1_refresh_contract.RevisedArticleStage1RefreshContractTests) ... ok
+test_figure_polish_audit_contract_references_cutoff_wide_synthesis_manifests (test_revised_article_stage1_refresh_contract.RevisedArticleStage1RefreshContractTests) ... ok
+test_generated_benchmark_table_carries_promoted_family_crps_values (test_revised_article_stage1_refresh_contract.RevisedArticleStage1RefreshContractTests) ... ok
+test_historical_support_refresh_supports_retained_support_contract (test_revised_article_stage1_refresh_contract.RevisedArticleStage1RefreshContractTests) ... ok
+test_manuscript_asset_manifest_points_selected_model_note_to_corrected_relaunch (test_revised_article_stage1_refresh_contract.RevisedArticleStage1RefreshContractTests) ... ok
+test_refresh_entrypoint_wires_cutoff_synthesis_refresh_and_corrected_runtime_roots (test_revised_article_stage1_refresh_contract.RevisedArticleStage1RefreshContractTests) ... ok
+test_selected_output_replay_retains_rdata_on_post_failure (test_revised_article_stage1_refresh_contract.RevisedArticleStage1RefreshContractTests) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.002s
+
+OK

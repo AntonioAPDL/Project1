@@ -1,0 +1,34 @@
+test_benchmark_tables_separate_28_day_and_nws_common_horizons (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_component_analysis_gallery_is_analysis_only (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_cutoff_appendix_uses_multivariate_synthesis_overlays (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_figure_a1_render_metadata_records_contract_and_periods (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_figure_a1_renderer_uses_samplewise_component_contract (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_forecast_design_manifest_and_text_are_wired (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_generated_table_builder_uses_single_five_decimal_policy (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_generated_table_decimal_cells_have_five_places (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_he3_ablation_tables_separate_28_day_and_nws_common_horizons (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_latest_forecast_issue_manifest_and_text_are_wired (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_overleaf_bundle_excludes_large_compact_support_data (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_posterior_table_center_policy_matches_export_contract (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_reviewer1_conceptual_model_practicality_is_wired (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_reviewer1_era5_reanalysis_uncertainty_is_wired (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_reviewer1_expanded_forecast_evidence_is_wired (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_reviewer1_fair_forecast_assessment_is_wired (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_reviewer1_figure_variance_explanation_and_lineage_are_wired (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_reviewer1_flexile_typo_is_absent_from_article (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_reviewer1_math_detail_is_streamlined (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_reviewer1_model_formulation_links_to_results (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_reviewer1_overview_forecasting_emphasis_is_wired (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_reviewer1_uncertainty_sources_are_distinguished (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_reviewer1_usgs_target_and_data_roles_are_wired (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_runtime_benchmark_manifest_and_text_are_wired (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_selected_model_quantile_figures_use_current_rating_references (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_selected_prior_and_discount_text_are_manifest_backed (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_selected_support_manifest_records_current_rdata_rebuild (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_software_availability_manifest_and_text_are_wired (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+test_submission_repo_points_to_clean_reproducibility_bundle (test_article_a1_and_table_contracts.ArticleA1AndTableContractTests) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 0.549s
+
+OK

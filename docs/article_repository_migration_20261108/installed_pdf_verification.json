@@ -1,0 +1,16 @@
+{
+  "corrected3": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/wileyNJD-APA.pdf",
+    "sha256": "77cc223402d3d9bd35c02a6acfdcde7f2700f2771cf72737cde683202d3d6cc5",
+    "bytes": 13955184,
+    "pages": 42,
+    "git_ignored": true
+  },
+  "submitted": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.pdf",
+    "sha256": "88bab7fb221a239c1a3b9df27fd3b2b172c293c377428f7986616ad701a913a5",
+    "bytes": 15422846,
+    "pages": 30,
+    "git_ignored": true
+  }
+}

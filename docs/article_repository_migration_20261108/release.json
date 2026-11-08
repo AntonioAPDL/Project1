@@ -1,6 +1,6 @@
 {
   "schema": "article_repository_migration_v1",
-  "status": "VERIFIED_AWAITING_PROMOTION",
+  "status": "COMPLETE",
   "submitted_baseline": "1272bfc10442a28add5a4c74ff641e9b9a8e9666",
   "submitted_tree": "35b2c6d2af808a09618ad7365474826e0bf928fd",
   "old_source_commit": "32ab28b6c709bf001456090751edb413ae747a7b",
@@ -31,5 +31,17 @@
   "no_fits": true,
   "no_new_draws": true,
   "historical_evidence_unchanged": true,
-  "legacy_validator_limitations": "migration_binding_notes.json"
+  "legacy_validator_limitations": "migration_binding_notes.json",
+  "completed_utc": "2026-11-08T23:26:04.642516+00:00",
+  "new_main_commit": "5e99e62fb6700bc85cf6cfcae9d1444962aaee5e",
+  "restored_archive_main_commit": "fb58225c4ae1f730301ce3864e98ae4db2d9febf",
+  "workflow_implementation_commit": "bde6f2d7b8e349843c59b2e9e558c79b0396b474",
+  "canonical_checks": "canonical_checks/summary.json",
+  "published_repository_verification": "published_repository_verification.json",
+  "canonical_restored_verification": "canonical_restored_verification.json",
+  "canonical_migrated_verification": "canonical_migrated_verification.json",
+  "installed_pdf_verification": "installed_pdf_verification.json",
+  "canonical_historical_evidence_preservation": "canonical_historical_evidence_preservation.json",
+  "final_documentation_commit": "Metadata-only closeout follows the pinned workflow implementation; see Git history.",
+  "history_rewritten": false
 }

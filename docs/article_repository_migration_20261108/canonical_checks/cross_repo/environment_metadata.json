@@ -1,0 +1,42 @@
+{
+  "timestamp_utc": "2026-11-08T23:25:07.058949+00:00",
+  "argv": [
+    "--workflow-root",
+    "/data/muscat_data/jaguir26/project1_ucsc_phd",
+    "--article-root",
+    "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+    "--corrections-root",
+    "/data/muscat_data/jaguir26/Corrections---Project-1",
+    "--output-dir",
+    "/tmp/corrected3_migration_20261108/canonical_checks/cross_repo",
+    "--check-only",
+    "--strict"
+  ],
+  "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+  "python": "3.9.9 (main, Jan 16 2025, 15:50:23) \n[GCC 8.5.0 20210514 (Red Hat 8.5.0-22)]",
+  "repos": {
+    "workflow": {
+      "path": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "branch": "main",
+      "commit": "bde6f2d7b8e349843c59b2e9e558c79b0396b474",
+      "status_short": "?? docs/environmetrics_rejection_audit_20261107/"
+    },
+    "article": {
+      "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "branch": "main",
+      "commit": "5e99e62fb6700bc85cf6cfcae9d1444962aaee5e",
+      "status_short": ""
+    },
+    "corrections": {
+      "path": "/data/muscat_data/jaguir26/Corrections---Project-1",
+      "branch": "main",
+      "commit": "b1ceeb610d20f8287e4ca44e146c9cfdbcda1ee6",
+      "status_short": ""
+    }
+  },
+  "source_file_count": 85,
+  "checks": {
+    "total": 595,
+    "failed": 0
+  }
+}

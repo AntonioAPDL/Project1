@@ -1,0 +1,8 @@
+test_article_and_corrections_share_forecast_design_claims (test_he6_forecast_design_contract.HE6ForecastDesignContractTests) ... ok
+test_docs_exist (test_he6_forecast_design_contract.HE6ForecastDesignContractTests) ... ok
+test_manifest_records_out_of_sample_contract (test_he6_forecast_design_contract.HE6ForecastDesignContractTests) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.052s
+
+OK

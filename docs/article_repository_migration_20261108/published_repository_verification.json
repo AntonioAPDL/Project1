@@ -1,0 +1,64 @@
+{
+  "schema": "article_repository_promotion_v1",
+  "created_utc": "2026-11-08T23:25:22.482889+00:00",
+  "repositories": {
+    "corrected3": {
+      "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "head": "5e99e62fb6700bc85cf6cfcae9d1444962aaee5e",
+      "remote_main": "5e99e62fb6700bc85cf6cfcae9d1444962aaee5e",
+      "branch": "main",
+      "tracked_clean": true,
+      "tree": "15aa28b7fbaea66423a8cf940969a1b4c81d7c06",
+      "origins": [
+        "origin\thttps://github.com/AntonioAPDL/Evironmetrics----Corrected-3.git (fetch)",
+        "origin\thttps://github.com/AntonioAPDL/Evironmetrics----Corrected-3.git (push)"
+      ],
+      "verified": true
+    },
+    "corrected2": {
+      "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+      "head": "fb58225c4ae1f730301ce3864e98ae4db2d9febf",
+      "remote_main": "fb58225c4ae1f730301ce3864e98ae4db2d9febf",
+      "branch": "main",
+      "tracked_clean": true,
+      "tree": "35b2c6d2af808a09618ad7365474826e0bf928fd",
+      "origins": [
+        "clean_source\t/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected (fetch)",
+        "clean_source\t/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected (push)",
+        "origin\thttps://github.com/AntonioAPDL/Evironmetrics---REVISED-DOC-Corrected-2.git (fetch) [blob:none]",
+        "origin\thttps://github.com/AntonioAPDL/Evironmetrics---REVISED-DOC-Corrected-2.git (push)"
+      ],
+      "verified": true
+    },
+    "workflow": {
+      "path": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "head": "bde6f2d7b8e349843c59b2e9e558c79b0396b474",
+      "remote_main": "bde6f2d7b8e349843c59b2e9e558c79b0396b474",
+      "branch": "main",
+      "tracked_clean": true,
+      "tree": "9120fb2c736aafbceac3279ef8a6bfb4fa8f9bd1",
+      "origins": [
+        "origin\tgit@github.com:AntonioAPDL/Project1.git (fetch)",
+        "origin\tgit@github.com:AntonioAPDL/Project1.git (push)"
+      ],
+      "verified": true
+    }
+  },
+  "protected_repositories": {
+    "Corrections---Project-1": {
+      "head": "b1ceeb610d20f8287e4ca44e146c9cfdbcda1ee6",
+      "clean": true,
+      "unchanged": true
+    },
+    "san-lorenzo-exdqlm-reproducibility": {
+      "head": "a8797b804271b46c62bd04dab7dba6b84a10ab7d",
+      "clean": true,
+      "unchanged": true
+    }
+  },
+  "nested_article_repositories_not_parent_tracked": true,
+  "history_rewrites": false,
+  "overleaf_operations": [],
+  "model_fits_started": false,
+  "jobs_stopped": false
+}

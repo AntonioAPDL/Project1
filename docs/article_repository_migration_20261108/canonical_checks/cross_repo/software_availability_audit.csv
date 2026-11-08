@@ -1,0 +1,66 @@
+item,status,detail
+manifest_exists,pass,artifacts/software_availability/software_availability_manifest.json
+schema_version,pass,revision_software_availability_v1
+cran_package_url,pass,https://CRAN.R-project.org/package=exdqlm
+cran_package_doi,pass,https://doi.org/10.32614/CRAN.package.exdqlm
+cran_version_recorded,pass,1.1.0
+cran_publication_date_recorded,pass,2026-07-09
+software_paper_arxiv_url,pass,https://arxiv.org/abs/2607.22760
+software_paper_arxiv_doi,pass,https://doi.org/10.48550/arXiv.2607.22760
+software_paper_bibtex_key,pass,deleon2026exdqlm
+workflow_public_url,pass,https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility
+workflow_release_readiness_manifest,pass,"{""citation"": ""CITATION.cff"", ""license_notice"": ""LICENSE"", ""readme"": ""README.md"", ""validation_script"": ""scripts/validate_public_repository.py""}"
+article_public_url,pass,https://github.com/AntonioAPDL/Evironmetrics---REVISED-DOC-Corrected-2
+corrections_public_url,pass,https://github.com/AntonioAPDL/Corrections---Project-1
+archive_status_coherent,pass,workflow archive DOI is pending final release
+static_commit_policy,pass,A tracked manifest cannot reliably store its own current commit SHA because that SHA changes when the manifest is committed.
+workflow_contract_doc_exists,pass,repro/run/REVISION_SOFTWARE_REPRODUCIBILITY_CONTRACT_20260615.md
+article_contract_doc_exists,pass,docs/software_availability_contract.md
+workflow_release_readiness_exists:README.md,pass,README.md
+workflow_release_readiness_exists:CITATION.cff,pass,CITATION.cff
+workflow_release_readiness_exists:RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md,pass,RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md
+workflow_release_readiness_exists:docs/workflow_archive_readiness_20260615.md,pass,docs/workflow_archive_readiness_20260615.md
+readme_names_public_repro_repo,pass,README.md
+readme_names_cran_package,pass,README.md
+readme_names_contract,pass,README.md
+readme_archive_pending,pass,README.md
+citation_pending_version,pass,CITATION.cff
+citation_no_workflow_doi_field,pass,CITATION.cff
+citation_names_public_repro_repo,pass,CITATION.cff
+release_notes_archive_pending,pass,RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md
+archive_checklist_license_gate,pass,docs/workflow_archive_readiness_20260615.md
+archive_checklist_final_doi_gate,pass,docs/workflow_archive_readiness_20260615.md
+article_required:CRAN R package \texttt{exdqlm},pass,CRAN R package \texttt{exdqlm}
+article_required:version 1.1.0,pass,version 1.1.0
+article_required:https://CRAN.R-project.org/package=exdqlm,pass,https://CRAN.R-project.org/package=exdqlm
+article_required:https://doi.org/10.32614/CRAN.package.exdqlm,pass,https://doi.org/10.32614/CRAN.package.exdqlm
+article_required:deleon2026exdqlm,pass,deleon2026exdqlm
+article_required:https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility,pass,https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility
+article_required:provenance manifests,pass,provenance manifests
+article_required:reproducibility repository,pass,reproducibility repository
+corrections_required:CRAN R package \texttt{exdqlm},pass,CRAN R package \texttt{exdqlm}
+corrections_required:version 1.1.0,pass,version 1.1.0
+corrections_required:https://CRAN.R-project.org/package=exdqlm,pass,https://CRAN.R-project.org/package=exdqlm
+corrections_required:https://doi.org/10.32614/CRAN.package.exdqlm,pass,https://doi.org/10.32614/CRAN.package.exdqlm
+corrections_required:https://doi.org/10.48550/arXiv.2607.22760,pass,https://doi.org/10.48550/arXiv.2607.22760
+corrections_required:https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility,pass,https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility
+corrections_required:compact provenance manifests,pass,compact provenance manifests
+corrections_required:A permanent archive DOI will be minted from the final clean reproducibility release,pass,A permanent archive DOI will be minted from the final clean reproducibility release
+article_no_premature_archive_claim:workflow repository has been archived,pass,workflow repository has been archived
+corrections_no_premature_archive_claim:workflow repository has been archived,pass,workflow repository has been archived
+workflow_no_premature_archive_claim:README.md:workflow repository has been archived,pass,workflow repository has been archived
+workflow_no_premature_archive_claim:CITATION.cff:workflow repository has been archived,pass,workflow repository has been archived
+workflow_no_premature_archive_claim:RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md:workflow repository has been archived,pass,workflow repository has been archived
+workflow_no_premature_archive_claim:docs/workflow_archive_readiness_20260615.md:workflow repository has been archived,pass,workflow repository has been archived
+article_no_premature_archive_claim:workflow has been archived,pass,workflow has been archived
+corrections_no_premature_archive_claim:workflow has been archived,pass,workflow has been archived
+workflow_no_premature_archive_claim:README.md:workflow has been archived,pass,workflow has been archived
+workflow_no_premature_archive_claim:CITATION.cff:workflow has been archived,pass,workflow has been archived
+workflow_no_premature_archive_claim:RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md:workflow has been archived,pass,workflow has been archived
+workflow_no_premature_archive_claim:docs/workflow_archive_readiness_20260615.md:workflow has been archived,pass,workflow has been archived
+article_no_premature_archive_claim:archived workflow DOI,pass,archived workflow DOI
+corrections_no_premature_archive_claim:archived workflow DOI,pass,archived workflow DOI
+workflow_no_premature_archive_claim:README.md:archived workflow DOI,pass,archived workflow DOI
+workflow_no_premature_archive_claim:CITATION.cff:archived workflow DOI,pass,archived workflow DOI
+workflow_no_premature_archive_claim:RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md:archived workflow DOI,pass,archived workflow DOI
+workflow_no_premature_archive_claim:docs/workflow_archive_readiness_20260615.md:archived workflow DOI,pass,archived workflow DOI

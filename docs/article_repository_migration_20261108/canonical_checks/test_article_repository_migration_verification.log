@@ -1,0 +1,19 @@
+test_cat_file_checks_payload_and_rejects_truncation_or_wrong_object_digest (test_article_repository_migration_verification.MigrationContentVerificationTests) ... ok
+test_duplicate_inventory_paths_are_rejected (test_article_repository_migration_verification.MigrationContentVerificationTests) ... ok
+test_filesystem_comparison_detects_missing_and_tampered_tracked_files (test_article_repository_migration_verification.MigrationContentVerificationTests) ... ok
+test_missing_and_unexpected_paths_do_not_cancel_at_equal_counts (test_article_repository_migration_verification.MigrationContentVerificationTests) ... ok
+test_mode_exception_is_exact_path_and_direction_and_never_allows_content_change (test_article_repository_migration_verification.MigrationContentVerificationTests) ... ok
+test_modified_content_fails_even_with_matching_counts_and_sizes (test_article_repository_migration_verification.MigrationContentVerificationTests) ... ok
+test_portability_exception_requires_exact_path_hashes_sizes_and_direction (test_article_repository_migration_verification.MigrationContentVerificationTests) ... ok
+test_portability_profile_is_opt_in_and_never_applies_to_restoration (test_article_repository_migration_verification.MigrationContentVerificationTests) ... ok
+test_symlink_target_is_hashed_without_reading_external_content (test_article_repository_migration_verification.MigrationContentVerificationTests) ... ok
+test_tree_parser_keeps_tabbed_paths_and_rejects_gitlinks_or_unsafe_paths (test_article_repository_migration_verification.MigrationContentVerificationTests) ... ok
+test_hard_reset_is_rejected_by_required_history_and_dirty_index_is_rejected (test_article_repository_migration_verification.MigrationRepositoryIdentityTests) ... ok
+test_origin_normalization_accepts_ssh_https_equivalence_not_repository_substitution (test_article_repository_migration_verification.MigrationRepositoryIdentityTests) ... ok
+test_restoration_scope_covers_added_changed_and_unchanged_paths_without_mutations (test_article_repository_migration_verification.MigrationRepositoryIdentityTests) ... ok
+test_wrong_origin_or_branch_is_a_failure_even_if_contents_could_match (test_article_repository_migration_verification.MigrationRepositoryIdentityTests) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.010s
+
+OK

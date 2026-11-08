@@ -1,0 +1,41 @@
+{
+  "failed_checks": 0,
+  "metadata": {
+    "argv": [
+      "--workflow-root",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "--article-root",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "--corrections-root",
+      "/data/muscat_data/jaguir26/Corrections---Project-1",
+      "--he3-runtime-root",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625",
+      "--report-dir",
+      "/tmp/corrected3_migration_20261108/canonical_checks/publication_freeze"
+    ],
+    "he3_runtime_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625",
+    "repos": {
+      "article": {
+        "branch": "main",
+        "head": "5e99e62",
+        "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+        "status_short": ""
+      },
+      "corrections": {
+        "branch": "main",
+        "head": "b1ceeb6",
+        "path": "/data/muscat_data/jaguir26/Corrections---Project-1",
+        "status_short": ""
+      },
+      "workflow": {
+        "branch": "main",
+        "head": "bde6f2d",
+        "path": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+        "status_short": "?? docs/environmetrics_rejection_audit_20261107/"
+      }
+    },
+    "timestamp_utc": "2026-11-08T23:25:05.498378+00:00"
+  },
+  "status": "pass",
+  "total_checks": 684
+}

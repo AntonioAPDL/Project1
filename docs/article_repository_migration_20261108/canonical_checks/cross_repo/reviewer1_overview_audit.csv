@@ -1,0 +1,31 @@
+item,status,detail
+workflow_contract_doc_exists,pass,docs/r1_overview_forecasting_emphasis_contract_20260615.md
+label:sec:introduction,pass,sec:introduction
+label:sec:data,pass,sec:data
+label:sec:methodology,pass,sec:methodology
+label:sec:evaluation,pass,sec:evaluation
+label:sec:forecastvalidation,pass,sec:forecastvalidation
+label:sec5,pass,sec5
+six_section_order,pass,introduction/data/method/evaluation/results/discussion
+scoring_before_results,pass,evaluation precedes results
+illustration_before_interpretation,pass,forecast illustration precedes historical interpretation
+appendix_matrix,pass,full matrix construction in appendix
+appendix_augmentation,pass,likelihood augmentation in appendix
+forecast_evidence,pass,"five origins, distributional/quantile scores, illustrative forecast"
+forecasting_focus,pass,forecasting and uncertainty assessed by distributional/quantile scores
+corrections_required:centering the forecasting analysis on multiple rolling-origin cutoffs,pass,centering the forecasting analysis on multiple rolling-origin cutoffs
+corrections_required:comparing the proposed method against simpler Bayesian alternatives and raw forecast products,pass,comparing the proposed method against simpler Bayesian alternatives and raw forecast products
+corrections_required:reporting both CRPS and targeted quantile diagnostics,pass,reporting both CRPS and targeted quantile diagnostics
+corrections_required:supported by rolling-origin forecast evaluation and selected-model interpretation,pass,supported by rolling-origin forecast evaluation and selected-model interpretation
+corrections_required:rather than treating dynamic discrepancy correction alone as the central novelty,pass,rather than treating dynamic discrepancy correction alone as the central novelty
+article_forbidden:General Results,pass,General Results
+article_forbidden:Model A,pass,Model A
+article_forbidden:Model B,pass,Model B
+article_forbidden:Model C,pass,Model C
+article_forbidden:current A/B/C presentation,pass,current A/B/C presentation
+article_forbidden:forecasting component is limited,pass,forecasting component is limited
+article_forbidden:robust forecast evaluation is absent,pass,robust forecast evaluation is absent
+corrections_forbidden_stale:we will center the forecasting analysis,pass,we will center the forecasting analysis
+corrections_forbidden_stale:we will revise how the contribution is stated,pass,we will revise how the contribution is stated
+corrections_forbidden_stale:we will present the contribution,pass,we will present the contribution
+corrections_forbidden_stale:will add forecast validation,pass,will add forecast validation

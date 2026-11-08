@@ -1,0 +1,8 @@
+test_article_audit_summary_records_passed_full_history_refresh (test_exal_m_t1_setup_support_fullhistory_contract.ExalMT1SetupSupportFullhistoryContractTest) ... ok
+test_config_uses_full_history_for_all_cutoffs (test_exal_m_t1_setup_support_fullhistory_contract.ExalMT1SetupSupportFullhistoryContractTest) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.033s
+
+OK
+/tmp/tmp9hi4fhmx/article_figure_lineage_audit_20260516

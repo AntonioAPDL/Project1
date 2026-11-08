@@ -1,0 +1,8 @@
+test_all_remaining_item_ids_are_covered_once (test_reviewer1_remaining_contracts.Reviewer1RemainingContractTests) ... ok
+test_article_generated_tables_and_corrections_preserve_remaining_contract (test_reviewer1_remaining_contracts.Reviewer1RemainingContractTests) ... ok
+test_docs_exist (test_reviewer1_remaining_contracts.Reviewer1RemainingContractTests) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.337s
+
+OK

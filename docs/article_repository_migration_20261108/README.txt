@@ -7,14 +7,21 @@ AntonioAPDL/Evironmetrics---REVISED-DOC-Corrected-2 retains the submitted articl
 contents through a new restoration commit, preserving all historical commits.
 No operation is performed in the existing Overleaf project.
 
+Completed: both article main branches and the active workflow implementation
+are published and remotely verified. The canonical-layout release gate passes
+172 Python tests and 248 R assertions with no unexpected skips. See release.json,
+published_repository_verification.json and canonical_checks/summary.json.
+
 Pinned identities
 
 Submitted baseline: 1272bfc10442a28add5a4c74ff641e9b9a8e9666
 Submitted tree: 35b2c6d2af808a09618ad7365474826e0bf928fd
 Complete revised source: 32ab28b6c709bf001456090751edb413ae747a7b
 Corrected-3 initial Overleaf import: 80ac992f4ea1b3feda90add7f3b4dd00451f84a4
-Corrected-3 revised candidate: d02c17fa91dd6d64db8ed9166acdb1155488954a
-Corrected-2 restoration candidate: fb58225c4ae1f730301ce3864e98ae4db2d9febf
+Corrected-3 exact transplant: d02c17fa91dd6d64db8ed9166acdb1155488954a
+Corrected-3 published main: 5e99e62fb6700bc85cf6cfcae9d1444962aaee5e
+Corrected-2 restored main: fb58225c4ae1f730301ce3864e98ae4db2d9febf
+Workflow routing implementation: bde6f2d7b8e349843c59b2e9e558c79b0396b474
 
 Corrected-3's initial import has the same 440 file contents as the submitted
 baseline. Its script permission normalization is explicitly accounted for.
@@ -61,6 +68,13 @@ NO_REFIT_REPORTING_DIR, NO_REFIT_RESULT_DIR and NO_REFIT_SYNTHESIS_DIR to tests.
 Missing required datasets and unexpected skipped checks fail the release gate.
 Older dated campaign run_checks.py files remain frozen historical evidence;
 the new combined runner is the supported active verification command.
+
+The preserved component-audit source also retains its historical default.
+When invoking that audit directly from the workflow root, select the new article
+explicitly and choose a fresh output directory:
+  python3 -B scripts/audit_comment2_component_diagnostics.py --article-root Evironmetrics----Corrected-3 --output-dir /tmp/NEW_component_audit
+This reads saved evidence and does not fit models. Its archived source bytes
+remain unchanged.
 
 Verification design
 

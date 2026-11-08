@@ -1,0 +1,14 @@
+[
+  {
+    "manifest": "docs/environmetrics_no_refit_plan_20261107/package_manifest.json",
+    "manifest_sha256": "105b54fcef510b6ce380c32f505f71a7f641df559ce8fcc3adb9ac8981bb944d",
+    "file_count": 51,
+    "all_unchanged": true
+  },
+  {
+    "manifest": "docs/environmetrics_no_refit_revision_20261108/execution_manifest.json",
+    "manifest_sha256": "c5696ec02dfaa028b0100ae1403b2c1432f384bbe0ba9464a16807e75a88c88f",
+    "file_count": 94,
+    "all_unchanged": true
+  }
+]

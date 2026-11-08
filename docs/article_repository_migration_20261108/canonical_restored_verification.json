@@ -1,0 +1,40 @@
+{
+  "allowed_content_changes": {},
+  "allowed_mode_changes": {},
+  "comparison": {
+    "accepted_content_changes": [],
+    "accepted_mode_changes": [],
+    "all_source_blob_contents_preserved": true,
+    "candidate_commit": "fb58225c4ae1f730301ce3864e98ae4db2d9febf",
+    "candidate_file_count": 440,
+    "candidate_tree": "35b2c6d2af808a09618ad7365474826e0bf928fd",
+    "changed_contents": [],
+    "missing_paths": [],
+    "source_commit": "1272bfc10442a28add5a4c74ff641e9b9a8e9666",
+    "source_file_count": 440,
+    "source_tree": "35b2c6d2af808a09618ad7365474826e0bf928fd",
+    "status": "PASS",
+    "unapproved_content_changes": [],
+    "unapproved_mode_changes": [],
+    "unexpected_paths": []
+  },
+  "expected_file_count": 440,
+  "expected_source_total_blob_bytes": 106709049,
+  "expected_total_blob_bytes": 106709049,
+  "guards": [],
+  "profile": "restored",
+  "references_or_working_files_modified": false,
+  "repository_state": {
+    "ancestor_verified": true,
+    "branch": "main",
+    "clean_tracked": true,
+    "errors": [],
+    "head": "fb58225c4ae1f730301ce3864e98ae4db2d9febf",
+    "origin": "https://github.com/AntonioAPDL/Evironmetrics---REVISED-DOC-Corrected-2.git",
+    "repository": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+    "required_ancestor": "32ab28b6c709bf001456090751edb413ae747a7b",
+    "status": "PASS",
+    "untracked_and_ignored_files": "outside this tracked-state check; never deleted by this verifier"
+  },
+  "status": "PASS"
+}

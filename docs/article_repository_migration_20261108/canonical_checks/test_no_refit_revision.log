@@ -1,0 +1,18 @@
+test_bad_skill_rejected (test_no_refit_revision.RevisionTests) ... ok
+test_deterministic_adjustment_rejected (test_no_refit_revision.RevisionTests) ... ok
+test_dropped_case_rejected_without_hash_gate (test_no_refit_revision.RevisionTests) ... ok
+test_duplicate_score_rejected (test_no_refit_revision.RevisionTests) ... ok
+test_input_hash_tamper_rejected (test_no_refit_revision.RevisionTests) ... ok
+test_inverse_scale_tie_preserves_declared_event (test_no_refit_revision.RevisionTests) ... ok
+test_old_table_edit_rejected (test_no_refit_revision.RevisionTests) ... ok
+test_release_tables_and_hashes (test_no_refit_revision.RevisionTests) ... ok
+test_target_date_rejected (test_no_refit_revision.RevisionTests) ... ok
+test_wrong_hit_event_rejected (test_no_refit_revision.RevisionTests) ... ok
+test_wrong_interval_partition_rejected (test_no_refit_revision.RevisionTests) ... ok
+test_wrong_interval_score_rejected (test_no_refit_revision.RevisionTests) ... ok
+test_wrong_mean_rejected (test_no_refit_revision.RevisionTests) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 13.467s
+
+OK
