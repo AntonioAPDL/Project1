@@ -1,0 +1,38 @@
+{
+  "scope": "Referee major comment2 implementation complete with explicit fitting-evidence limits",
+  "baseline_methods": [
+    "CLIM-SEASONAL",
+    "PERSISTENCE",
+    "EMOS-GLOFAS"
+  ],
+  "new_per_time_scores": 420,
+  "original_per_time_scores_unchanged": 1440,
+  "baseline_fits": 140,
+  "converged_baseline_optimizer_starts": 560,
+  "diagnostic_runs": 70,
+  "diagnostic_fits": 400,
+  "diagnostic_stopping_counts": {
+    "converged": 16,
+    "budget_limited": 314,
+    "unknown": 70
+  },
+  "python_tests": 82,
+  "r_assertions": 87,
+  "publication_freeze_checks": 684,
+  "cross_repo_checks": 576,
+  "all_checks_passed": true,
+  "pdf_pages": 37,
+  "pdf_sha256": "e4653c2ddd11232f1755092fcf288d03e3d40364c57ae0b411c0175db63828dd",
+  "protected_original_article_assets": 155,
+  "original_protected_files_unchanged": 200,
+  "original_numeric_rows": 100,
+  "original_numeric_cells": 587,
+  "original_selected_identities_unchanged": 10,
+  "reviewed_figure_restoration_targets_unchanged": 105,
+  "source_build_inputs": 40,
+  "main_quantile_crpss": {
+    "8": 0.5896657643313913,
+    "28": 0.6860134856393572
+  },
+  "limit": "Component contrasts remain fixed-policy sensitivities; the audit does not establish the best achievable performance of independently retuned/converged reductions."
+}

@@ -1,0 +1,41 @@
+{
+  "failed_checks": 0,
+  "metadata": {
+    "argv": [
+      "--workflow-root",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "--article-root",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+      "--corrections-root",
+      "/data/muscat_data/jaguir26/Corrections---Project-1",
+      "--he3-runtime-root",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625",
+      "--report-dir",
+      "/tmp/comment2_handoff_checks_20261107/existing_contracts/publication_freeze"
+    ],
+    "he3_runtime_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625",
+    "repos": {
+      "article": {
+        "branch": "main",
+        "head": "373bed4",
+        "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+        "status_short": "M artifacts/comment2_revision/README.txt\n M artifacts/comment2_revision/manifest.json\n M docs/comment2_revision.txt\n M tests/test_comment2_revision.py\n M wileyNJD-APA.tex"
+      },
+      "corrections": {
+        "branch": "main",
+        "head": "b1ceeb6",
+        "path": "/data/muscat_data/jaguir26/Corrections---Project-1",
+        "status_short": ""
+      },
+      "workflow": {
+        "branch": "main",
+        "head": "f0c83ab",
+        "path": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+        "status_short": "M .gitattributes\n M .gitignore\n M DISC_Optimal_Synth_Ranges_W_transfer_forecast.r\n?? config/comment2_external_baselines.json\n?? docs/environmetrics_comment2_revision_20261107/\n?? docs/environmetrics_rejection_audit_20261107/\n?? scripts/audit_comment2_component_diagnostics.py\n?? scripts/build_comment2_external_baselines.R\n?? tests/python/test_comment2_component_diagnostics.py\n?? tests/testthat/test_comment2_external_baselines.R"
+      }
+    },
+    "timestamp_utc": "2026-11-08T07:40:26.021266+00:00"
+  },
+  "status": "pass",
+  "total_checks": 684
+}

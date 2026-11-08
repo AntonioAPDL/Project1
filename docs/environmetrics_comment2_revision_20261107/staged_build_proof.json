@@ -1,0 +1,16 @@
+{
+  "index_tree": "91c8014297274f4b8f867868c221f78490bb4840",
+  "staged_file_count": 643,
+  "all_staged_files_match_materialized_copy": true,
+  "copy": "/tmp/comment2_handoff_index_20261107",
+  "passed": true,
+  "build_input_count": 40,
+  "all_build_inputs_equal": true,
+  "extracted_text_equal": true,
+  "auxiliary_labels_equal": true,
+  "build_passed": true,
+  "pages": 37,
+  "source_pdf_sha256": "e4653c2ddd11232f1755092fcf288d03e3d40364c57ae0b411c0175db63828dd",
+  "staged_pdf_sha256": "9987feb396c6891c351153a9c9f53e623b8f07b823792427b1ba1121cf647fd5",
+  "note": "PDF metadata may differ; exact staged files, build inputs, extracted text and labels match."
+}

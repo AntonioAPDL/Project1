@@ -1,0 +1,56 @@
+This is BibTeX, Version 0.99d (TeX Live 2018)
+Capacity: max_strings=100000, hash_size=100000, hash_prime=85009
+The top-level auxiliary file: comment2_handoff.aux
+The style file: WileyNJD-APA.bst
+Reallocated glb_str_ptr (elt_size=4) to 20 items from 10.
+Reallocated global_strs (elt_size=20001) to 20 items from 10.
+Reallocated glb_str_end (elt_size=4) to 20 items from 10.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated wiz_functions (elt_size=4) to 9000 items from 6000.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Database file #1: wileyNJD-APA.bib
+apacite.bst [2013/07/21 v6.03 APA bibliography style]
+You've used 36 entries,
+            6949 wiz_defined-function locations,
+            1517 strings with 20553 characters,
+and the built_in function-call counts, 73779 in all, are:
+= -- 8869
+> -- 662
+< -- 3674
++ -- 3816
+- -- 83
+* -- 4962
+:= -- 13615
+add.period$ -- 144
+call.type$ -- 36
+change.case$ -- 622
+chr.to.int$ -- 0
+cite$ -- 72
+duplicate$ -- 2141
+empty$ -- 2878
+format.name$ -- 1180
+if$ -- 13755
+int.to.chr$ -- 0
+int.to.str$ -- 112
+missing$ -- 0
+newline$ -- 1011
+num.names$ -- 290
+pop$ -- 1390
+preamble$ -- 1
+purify$ -- 143
+quote$ -- 0
+skip$ -- 4258
+stack$ -- 0
+substring$ -- 4127
+swap$ -- 1214
+text.length$ -- 82
+text.prefix$ -- 0
+top$ -- 1
+type$ -- 2944
+warning$ -- 0
+while$ -- 411
+width$ -- 0
+write$ -- 1286

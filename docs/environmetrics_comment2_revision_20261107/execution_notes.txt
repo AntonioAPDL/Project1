@@ -1,0 +1,22 @@
+Execution notes and excluded preparation attempts
+
+The d=100 numerical upper bound was reached in the first Nov2021 training fit.
+The model form and training rule were retained; optimizer coordinate scaling and
+a wider inactive numerical safety bound were chosen using training evidence.
+No forecast-score comparison selected these changes.
+
+A preparation execution completed its calculations but then exited unsuccessfully
+while its source file was being edited. That process is not release evidence.
+A clean source-frozen execution and portable replay, both exit0, are the release
+basis. Final run_manifest.json binds exact code/config hashes. Numerical results
+agree across those final runs; parameter-reporting columns changed relative to
+the earlier preparation as independently documented.
+
+The first full contract run exposed new skill cells using fewer than five decimal
+places. The generator was corrected to follow the existing precision policy;
+the old precision test was retained unchanged. Point-2 table font sizes were also
+set explicitly after inspecting the actual vendor typesetting.
+
+The final numerical comparison remains the reported current fits. Diagnostic
+uncertainty is reported directly; no exploratory new fitting campaign or model
+replacement was used to obtain a preferred result.

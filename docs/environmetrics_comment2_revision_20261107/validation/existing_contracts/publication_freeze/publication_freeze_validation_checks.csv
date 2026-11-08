@@ -1,0 +1,685 @@
+family,item,status,detail
+he2_selective,overlay_active,pass,overlay active flag
+he2_selective,overlay_replacement_count,pass,24 replacements
+he2_selective,overlay_replacement_type_counts,pass,"{""selected_exal_keep_refresh"": 3, ""table1_targeted_repair"": 11, ""univariate_scale_repair"": 10}"
+he2_selective,overlay_table1_repair_count,pass,11 Table 1 repairs
+he2_selective,overlay_univar_scale_repair_count,pass,10 univariate scale repairs
+he2_selective,overlay_selected_exal_keep_count,pass,3 selected exAL-M-T1 rows
+he2_selective,overlay_mentions_selective_policy,pass,publication_note records selective policy
+he2_selective,manifest_row_count,pass,45 rows
+he2_selective,targeted_repair_count,pass,11 targeted rows
+he2_selective,univar_scale_repair_count,pass,10 repaired univariate rows
+he2_selective,selected_exal_keep_count,pass,3 selected exAL-M-T1 rows
+he2_selective,targeted_rows_match_overlay,pass,manifest=11 overlay=11
+he2_selective,univar_scale_repair_rows_match_overlay,pass,manifest=10 overlay=10
+he2_selective,selected_exal_rows_match_overlay,pass,manifest=3 overlay=3
+he2_selective,20210123:N-M-T1:present,pass,fallback row present
+he2_selective,20210123:N-M-T1:not_targeted_repair,pass,ndlm_publication_promotion_20260607:canonical_bundle_promoted
+he2_selective,20210123:N-M-T1:fallback_crps,pass,3.214902350267
+he2_selective,20221225:N-M-T1:present,pass,fallback row present
+he2_selective,20221225:N-M-T1:not_targeted_repair,pass,ndlm_publication_promotion_20260607:canonical_bundle_promoted
+he2_selective,20221225:N-M-T1:fallback_crps,pass,3.888629088728
+he2_selective,20221225:exAL-M-T0:present,pass,fallback row present
+he2_selective,20221225:exAL-M-T0:not_targeted_repair,pass,exdqlm_multivar_drop_current_relaunch_q50repair_20260602:canonical_bundle_promoted
+he2_selective,20221225:exAL-M-T0:fallback_crps,pass,1.211319149395
+he3_authority,winner_cutoff_set,pass,"20210123,20211112,20211221,20220511,20221225"
+he3_authority,matrix_dir_exists,pass,/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625/control/he3_exdqlm_ablation_current_authority_v1
+he3_authority,matrix_row_count,pass,30 rows
+he3_authority,matrix_all_pass,pass,"{""pass"": 30}"
+he3_authority,variant_balance,pass,"{""full"": 5, ""noH1"": 5, ""noH2"": 5, ""noH3"": 5, ""noTF"": 5, ""noTrend"": 5}"
+he3_authority,runtime_wide_row_count,pass,30 rows
+he3_authority,article_wide_row_count,pass,30 rows
+he3_authority,20210123:full_source_run,pass,multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+he3_authority,20210123:full_grid_spec,pass,c04_eps365
+he3_authority,20210123:full_crps_matches_winner,pass,01/23/2021 full=0.139708854848
+he3_authority,20210123:synthesis_current_manifest_row,pass,current HE2 exAL-M-T1 row
+he3_authority,20210123:synthesis_run_id,pass,multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+he3_authority,20210123:synthesis_grid,pass,exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner
+he3_authority,20210123:synthesis_lineage,pass,exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner
+he3_authority,20211112:full_source_run,pass,multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+he3_authority,20211112:full_grid_spec,pass,c04_eps365
+he3_authority,20211112:full_crps_matches_winner,pass,11/12/2021 full=0.047236350141
+he3_authority,20211112:synthesis_current_manifest_row,pass,current HE2 exAL-M-T1 row
+he3_authority,20211112:synthesis_run_id,pass,multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+he3_authority,20211112:synthesis_grid,pass,exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner
+he3_authority,20211112:synthesis_lineage,pass,exdqlm_multivar_keep_canonical_grid_20260524:authoritative_winner
+he3_authority,20211221:full_source_run,pass,multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep
+he3_authority,20211221:full_grid_spec,pass,he2partial20260623
+he3_authority,20211221:full_crps_matches_winner,pass,12/21/2021 full=0.260446600895
+he3_authority,20211221:synthesis_current_manifest_row,pass,current HE2 exAL-M-T1 row
+he3_authority,20211221:synthesis_run_id,pass,multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep
+he3_authority,20211221:synthesis_grid,pass,20260510_publication_shared_r01
+he3_authority,20211221:synthesis_lineage,pass,exdqlm_multivar_keep_partial_authority_refresh_20260623:clean_replay
+he3_authority,20220511:full_source_run,pass,multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep
+he3_authority,20220511:full_grid_spec,pass,he2partial20260623
+he3_authority,20220511:full_crps_matches_winner,pass,05/11/2022 full=0.022728178320
+he3_authority,20220511:synthesis_current_manifest_row,pass,current HE2 exAL-M-T1 row
+he3_authority,20220511:synthesis_run_id,pass,multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep
+he3_authority,20220511:synthesis_grid,pass,20260510_publication_shared_r01
+he3_authority,20220511:synthesis_lineage,pass,exdqlm_multivar_keep_partial_authority_refresh_20260623:clean_replay
+he3_authority,20221225:full_source_run,pass,multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep
+he3_authority,20221225:full_grid_spec,pass,he2partial20260623
+he3_authority,20221225:full_crps_matches_winner,pass,12/25/2022 full=0.538055484746
+he3_authority,20221225:synthesis_current_manifest_row,pass,current HE2 exAL-M-T1 row
+he3_authority,20221225:synthesis_run_id,pass,multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep
+he3_authority,20221225:synthesis_grid,pass,20260510_publication_shared_r01
+he3_authority,20221225:synthesis_lineage,pass,exdqlm_multivar_keep_partial_authority_refresh_20260623:clean_replay
+he3_authority,20210123:full:article_artifact_matches_runtime,pass,runtime=0.1397088548478634 article=0.1397088548478634
+he3_authority,20210123:noTrend:article_artifact_matches_runtime,pass,runtime=1.0515922245361908 article=1.0515922245361908
+he3_authority,20210123:noTF:article_artifact_matches_runtime,pass,runtime=1.7360957277723663 article=1.7360957277723663
+he3_authority,20210123:noH1:article_artifact_matches_runtime,pass,runtime=1.2786086911429622 article=1.2786086911429622
+he3_authority,20210123:noH2:article_artifact_matches_runtime,pass,runtime=0.7268957470858982 article=0.7268957470858982
+he3_authority,20210123:noH3:article_artifact_matches_runtime,pass,runtime=1.0828143384638242 article=1.0828143384638242
+he3_authority,20211112:full:article_artifact_matches_runtime,pass,runtime=0.0472363501409808 article=0.0472363501409808
+he3_authority,20211112:noTrend:article_artifact_matches_runtime,pass,runtime=0.7234272298091396 article=0.7234272298091396
+he3_authority,20211112:noTF:article_artifact_matches_runtime,pass,runtime=1.7140899592218874 article=1.7140899592218874
+he3_authority,20211112:noH1:article_artifact_matches_runtime,pass,runtime=1.601420047530022 article=1.601420047530022
+he3_authority,20211112:noH2:article_artifact_matches_runtime,pass,runtime=1.046992391360837 article=1.046992391360837
+he3_authority,20211112:noH3:article_artifact_matches_runtime,pass,runtime=1.0356247764306286 article=1.0356247764306286
+he3_authority,20211221:full:article_artifact_matches_runtime,pass,runtime=0.2604466008954304 article=0.2604466008954304
+he3_authority,20211221:noTrend:article_artifact_matches_runtime,pass,runtime=2.517482779589605 article=2.517482779589605
+he3_authority,20211221:noTF:article_artifact_matches_runtime,pass,runtime=2.3286287601077307 article=2.3286287601077307
+he3_authority,20211221:noH1:article_artifact_matches_runtime,pass,runtime=2.8301725629702927 article=2.8301725629702927
+he3_authority,20211221:noH2:article_artifact_matches_runtime,pass,runtime=2.9651285847201554 article=2.9651285847201554
+he3_authority,20211221:noH3:article_artifact_matches_runtime,pass,runtime=2.5833284975705157 article=2.5833284975705157
+he3_authority,20220511:full:article_artifact_matches_runtime,pass,runtime=0.0227281783203013 article=0.0227281783203013
+he3_authority,20220511:noTrend:article_artifact_matches_runtime,pass,runtime=0.532566307871066 article=0.532566307871066
+he3_authority,20220511:noTF:article_artifact_matches_runtime,pass,runtime=2.4770299350386957 article=2.4770299350386957
+he3_authority,20220511:noH1:article_artifact_matches_runtime,pass,runtime=1.0995628278823844 article=1.0995628278823844
+he3_authority,20220511:noH2:article_artifact_matches_runtime,pass,runtime=0.9119294552158368 article=0.9119294552158368
+he3_authority,20220511:noH3:article_artifact_matches_runtime,pass,runtime=0.6864168874285019 article=0.6864168874285019
+he3_authority,20221225:full:article_artifact_matches_runtime,pass,runtime=0.5380554847458453 article=0.5380554847458453
+he3_authority,20221225:noTrend:article_artifact_matches_runtime,pass,runtime=4.058806917025602 article=4.058806917025602
+he3_authority,20221225:noTF:article_artifact_matches_runtime,pass,runtime=2.172796766136764 article=2.172796766136764
+he3_authority,20221225:noH1:article_artifact_matches_runtime,pass,runtime=4.458873044706468 article=4.458873044706468
+he3_authority,20221225:noH2:article_artifact_matches_runtime,pass,runtime=4.647085049293147 article=4.647085049293147
+he3_authority,20221225:noH3:article_artifact_matches_runtime,pass,runtime=4.438785209617708 article=4.438785209617708
+he3_authority,article_table_excludes_nws_28day,pass,NWS omitted from 28-day HE3 table
+he3_authority,corrections_table_excludes_nws_28day,pass,NWS omitted from 28-day HE3 response table
+he3_authority,article_nws_horizon_includes_nws,pass,NWS included in eight-day HE3 table
+he3_authority,corrections_nws_horizon_includes_nws,pass,NWS included in eight-day HE3 response table
+he3_authority,article_table:exAL-M-T1 (full),pass,five-decimal rendered values
+he3_authority,corrections_table:exAL-M-T1 (full),pass,five-decimal rendered values
+he3_authority,article_nws_horizon_table:exAL-M-T1 (full),pass,eight-day rendered values
+he3_authority,corrections_nws_horizon_table:exAL-M-T1 (full),pass,eight-day rendered values
+he3_authority,article_table:exAL-M-T1-noTrend,pass,five-decimal rendered values
+he3_authority,corrections_table:exAL-M-T1-noTrend,pass,five-decimal rendered values
+he3_authority,article_nws_horizon_table:exAL-M-T1-noTrend,pass,eight-day rendered values
+he3_authority,corrections_nws_horizon_table:exAL-M-T1-noTrend,pass,eight-day rendered values
+he3_authority,article_table:exAL-M-noTF,pass,five-decimal rendered values
+he3_authority,corrections_table:exAL-M-noTF,pass,five-decimal rendered values
+he3_authority,article_nws_horizon_table:exAL-M-noTF,pass,eight-day rendered values
+he3_authority,corrections_nws_horizon_table:exAL-M-noTF,pass,eight-day rendered values
+he3_authority,article_table:exAL-M-T1-noH1,pass,five-decimal rendered values
+he3_authority,corrections_table:exAL-M-T1-noH1,pass,five-decimal rendered values
+he3_authority,article_nws_horizon_table:exAL-M-T1-noH1,pass,eight-day rendered values
+he3_authority,corrections_nws_horizon_table:exAL-M-T1-noH1,pass,eight-day rendered values
+he3_authority,article_table:exAL-M-T1-noH2,pass,five-decimal rendered values
+he3_authority,corrections_table:exAL-M-T1-noH2,pass,five-decimal rendered values
+he3_authority,article_nws_horizon_table:exAL-M-T1-noH2,pass,eight-day rendered values
+he3_authority,corrections_nws_horizon_table:exAL-M-T1-noH2,pass,eight-day rendered values
+he3_authority,article_table:exAL-M-T1-noH3,pass,five-decimal rendered values
+he3_authority,corrections_table:exAL-M-T1-noH3,pass,five-decimal rendered values
+he3_authority,article_nws_horizon_table:exAL-M-T1-noH3,pass,eight-day rendered values
+he3_authority,corrections_nws_horizon_table:exAL-M-T1-noH3,pass,eight-day rendered values
+he4_sync,selection_row_count,pass,20 rows
+he4_sync,selection_source_mode,pass,he2-publication-manifest
+he4_sync,selection_crps_crosscheck,pass,max=1.11e-16
+he4_sync,corrections_contains_article_rows,pass,HE4 rows synced into corrections wrapper
+figure_lineage,fig:synth1:manifest_entry,pass,manifest entry
+figure_lineage,fig:synth1:current_model_flag,pass,True
+figure_lineage,fig:synth1:source_class,pass,current_selected_model_representative
+figure_lineage,fig:synth1:source_exists,pass,artifacts/five_cutoff_main_model_synthesis/20221225_exal_m_t1/exdqlm_multivar_synth_keep_cutoff_window_posterior_samples_with_raw_ensembles.png
+figure_lineage,fig:synth1:manuscript_exists,pass,Figures/multivariate_synthesis_by_cutoff/cutoff_2022_12_25_multivariate_synthesis_with_reference_ensembles.png
+figure_lineage,fig:synth1:selected_authority_note,pass,"Authoritative 2022-12-25 exAL-M-T1 clean HE2 publication replay from the five-cutoff main-model synthesis family, with retrospective and forecast-product reference overlays."
+figure_lineage,fig:dry_quantile:manifest_entry,pass,manifest entry
+figure_lineage,fig:dry_quantile:current_model_flag,pass,True
+figure_lineage,fig:dry_quantile:source_class,pass,current_selected_model_representative
+figure_lineage,fig:dry_quantile:source_exists,pass,artifacts/representative_selected_model_2022_12_25/authoritative_support/figures/selected_model_quantile_dry_period.png
+figure_lineage,fig:dry_quantile:manuscript_exists,pass,Figures/manuscript/historical_summary_dry_period.png
+figure_lineage,fig:dry_quantile:selected_authority_note,pass,Rendered from the same 2022-12-25 selected exAL-M-T1 output authority as the synthesis figure.
+figure_lineage,fig:80_components:manifest_entry,pass,manifest entry
+figure_lineage,fig:80_components:current_model_flag,pass,True
+figure_lineage,fig:80_components:source_class,pass,current_selected_model_representative
+figure_lineage,fig:80_components:source_exists,pass,artifacts/representative_selected_model_2022_12_25/authoritative_support/figures/selected_model_component_80month.png
+figure_lineage,fig:80_components:manuscript_exists,pass,Figures/manuscript/historical_component_80month.png
+figure_lineage,fig:80_components:selected_authority_note,pass,Rendered from the same 2022-12-25 selected exAL-M-T1 output authority using raw state component 6 only; plus/minus-trend variants are analysis-only diagnostics.
+figure_lineage,fig:rainy_quantile:manifest_entry,pass,manifest entry
+figure_lineage,fig:rainy_quantile:current_model_flag,pass,True
+figure_lineage,fig:rainy_quantile:source_class,pass,current_selected_model_representative
+figure_lineage,fig:rainy_quantile:source_exists,pass,artifacts/representative_selected_model_2022_12_25/authoritative_support/figures/selected_model_quantile_wet_period.png
+figure_lineage,fig:rainy_quantile:manuscript_exists,pass,Figures/manuscript/historical_summary_wet_period.png
+figure_lineage,fig:rainy_quantile:selected_authority_note,pass,Rendered from the same 2022-12-25 selected exAL-M-T1 output authority as the synthesis figure.
+figure_lineage,representative_bundle_run,pass,multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep_authoritative_rdata_retained_current_20260623
+figure_lineage,support_readme_same_authority,pass,authoritative support README
+prior_claims,selected_exal_row_count,pass,5 rows
+prior_claims,20210123:forecast_cov_has_epsilon,pass,multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+prior_claims,20210123:forecast_cov_has_c_factor,pass,multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+prior_claims,20210123:epsilon_positive,pass,365.0
+prior_claims,20210123:c_factor_is_one,pass,1.0
+prior_claims,20211112:forecast_cov_has_epsilon,pass,multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+prior_claims,20211112:forecast_cov_has_c_factor,pass,multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep
+prior_claims,20211112:epsilon_positive,pass,365.0
+prior_claims,20211112:c_factor_is_one,pass,1.0
+prior_claims,20211221:forecast_cov_has_epsilon,pass,multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep
+prior_claims,20211221:forecast_cov_has_c_factor,pass,multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep
+prior_claims,20211221:epsilon_positive,pass,30.0
+prior_claims,20211221:c_factor_is_one,pass,1.0
+prior_claims,20220511:forecast_cov_has_epsilon,pass,multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep
+prior_claims,20220511:forecast_cov_has_c_factor,pass,multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep
+prior_claims,20220511:epsilon_positive,pass,1.0
+prior_claims,20220511:c_factor_is_one,pass,1.0
+prior_claims,20221225:forecast_cov_has_epsilon,pass,multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep
+prior_claims,20221225:forecast_cov_has_c_factor,pass,multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep
+prior_claims,20221225:epsilon_positive,pass,1.0
+prior_claims,20221225:c_factor_is_one,pass,1.0
+prior_claims,epsilon_values_manifest_backed,pass,"365,365,30,1,1"
+prior_claims,article_forbidden:c\s*=\s*10\^2,pass,c\s*=\s*10\^2
+prior_claims,corrections_forbidden:c\s*=\s*10\^2,pass,c\s*=\s*10\^2
+prior_claims,article_forbidden:c\s*=\s*10\^\{2\},pass,c\s*=\s*10\^\{2\}
+prior_claims,corrections_forbidden:c\s*=\s*10\^\{2\},pass,c\s*=\s*10\^\{2\}
+prior_claims,article_forbidden:c\s*=\s*10\$\^\{2\}\$,pass,c\s*=\s*10\$\^\{2\}\$
+prior_claims,corrections_forbidden:c\s*=\s*10\$\^\{2\}\$,pass,c\s*=\s*10\$\^\{2\}\$
+prior_claims,article_explains_c_scale,pass,conceptual c-scale wording
+prior_claims,article_explains_epsilon_strength,pass,conceptual epsilon-strength wording
+prose,label:sec:introduction,pass,sec:introduction
+prose,label:sec:data,pass,sec:data
+prose,label:sec:methodology,pass,sec:methodology
+prose,label:sec:evaluation,pass,sec:evaluation
+prose,label:sec:forecastvalidation,pass,sec:forecastvalidation
+prose,label:sec5,pass,sec5
+prose,six_section_order,pass,introduction/data/method/evaluation/results/discussion
+prose,scoring_before_results,pass,evaluation precedes results
+prose,illustration_before_interpretation,pass,forecast illustration precedes historical interpretation
+prose,appendix_matrix,pass,full matrix construction in appendix
+prose,appendix_augmentation,pass,likelihood augmentation in appendix
+prose,forecast_evidence,pass,"five origins, distributional/quantile scores, illustrative forecast"
+prose,variants,pass,"Gaussian, asymmetric Laplace, univariate, multivariate, transfer, nine, exAL.M.T1"
+prose,scores,pass,"CRPS, negatively oriented|lower.{0,70}better|smaller.{0,70}better, quantile, check loss"
+prose,synthesis,pass,"quantile.specific, predictive distribution, interpolat, point mass"
+prose,origin_design,pass,"five, rolling.origin|forecast origins?, low.flow, high.flow|winter, version, archiv"
+prose,verification,pass,"USGS, verification, forecast (?:window|horizon)|forecast.window"
+prose,archive_work,pass,"archiv, version, spatial, covariate, overlap"
+prose,physical_models,pass,"conceptual, physically based, calibrat, practical|operational"
+prose,likelihood,pass,"extended asymmetric laplace, quantile, scale, skewness"
+prose,climate_covariates,pass,"ERA5.Land, PRISM, climate.index, GDPC|generalized dynamic principal component, Big Trees"
+prose,data_roles,pass,"USGS, target, retrospective, discrepanc, forecast product, covariate"
+prose,transfer_inputs,pass,"precipitation, soil moisture|soil.moisture, climate.index, transfer"
+prose,latest_issue,pass,"latest|most recent, issu, daily, member, GloFAS, NWS"
+prose,historical_interpretation,pass,"historical, interpret, quantile, contrasting|dry|wet"
+prose,table_estimands,pass,"posterior means, posterior medians, credible intervals, skewness, scale parameters"
+prose,uncertainty_estimands,pass,"fitted quantile|quantile.location, credible, predictive distribution, predictive interval|predictive envelope"
+prose,runtime,pass,"(?:about|approximately|roughly) two hours, 64, 503, parallel, stag, hardware, implementation"
+prose,prior_weighting,pass,"epsilon, anchor, scale, covariance, carries|carried|carry"
+prose,corrections_required:exAL-M-T1} has the lowest 28-day CRPS in all five rolling-origin cutoffs,pass,exAL-M-T1} has the lowest 28-day CRPS in all five rolling-origin cutoffs
+prose,corrections_required:separate eight-day NWS-horizon comparison,pass,separate eight-day NWS-horizon comparison
+prose,corrections_required:Because this is a sensitivity analysis rather than a primary benchmark comparison,pass,Because this is a sensitivity analysis rather than a primary benchmark comparison
+prose,corrections_required:The appendix sensitivity analysis uses the same selected specification,pass,The appendix sensitivity analysis uses the same selected specification
+prose,corrections_required:noH3} refers to the retained noninteger frequency \(1/6.8068493\),pass,noH3} refers to the retained noninteger frequency \(1/6.8068493\)
+prose,corrections_required:while removing one structural component at a time,pass,while removing one structural component at a time
+prose,corrections_required:This fixed sensitivity design assesses whether the retained trend,pass,This fixed sensitivity design assesses whether the retained trend
+prose,corrections_required:centering the forecasting analysis on multiple rolling-origin cutoffs,pass,centering the forecasting analysis on multiple rolling-origin cutoffs
+prose,corrections_required:supported by rolling-origin forecast evaluation and selected-model interpretation,pass,supported by rolling-origin forecast evaluation and selected-model interpretation
+prose,corrections_required:rather than treating dynamic discrepancy correction alone as the central novelty,pass,rather than treating dynamic discrepancy correction alone as the central novelty
+prose,corrections_required:forecasting evaluation is expanded to five rolling-origin out-of-sample cutoffs,pass,forecasting evaluation is expanded to five rolling-origin out-of-sample cutoffs
+prose,corrections_required:evidence is no longer tied to a single moderate-flood episode,pass,evidence is no longer tied to a single moderate-flood episode
+prose,corrections_required:not presented as a continuous 2023-present hindcast,pass,not presented as a continuous 2023-present hindcast
+prose,corrections_required:representative selected-model illustration at one forecast origin,pass,representative selected-model illustration at one forecast origin
+prose,corrections_required:validation evidence is the multi-cutoff CRPS and check-loss tables,pass,validation evidence is the multi-cutoff CRPS and check-loss tables
+prose,corrections_required:selected-model diagnostics,pass,selected-model diagnostics
+prose,corrections_required:organized around forecast origins rather than a conventional random split,pass,organized around forecast origins rather than a conventional random split
+prose,corrections_required:five cutoff-specific forecast-window evaluations,pass,five cutoff-specific forecast-window evaluations
+prose,corrections_required:post-cutoff USGS observations are used only for verification,pass,post-cutoff USGS observations are used only for verification
+prose,corrections_required:archive reconstruction step before any model can be fit,pass,archive reconstruction step before any model can be fit
+prose,corrections_required:rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode,pass,rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode
+prose,corrections_required:pre-cutoff observational window,pass,pre-cutoff observational window
+prose,corrections_required:fixed calibrated specification,pass,fixed calibrated specification
+prose,corrections_required:The revised introduction now broadens this statement,pass,The revised introduction now broadens this statement
+prose,corrections_required:uses both conceptual and physically based models,pass,uses both conceptual and physically based models
+prose,"corrections_required:simpler to specify, calibrate, and deploy in forecasting applications",pass,"simpler to specify, calibrate, and deploy in forecasting applications"
+prose,corrections_required:typographical error rather than intended terminology,pass,typographical error rather than intended terminology
+prose,corrections_required:The revised manuscript no longer uses this term,pass,The revised manuscript no longer uses this term
+prose,corrections_required:reanalysis-based model products rather than direct observations or uncertainty-free measurements,pass,reanalysis-based model products rather than direct observations or uncertainty-free measurements
+prose,corrections_required:ERA5/ERA5-Land variables may include short forecast components,pass,ERA5/ERA5-Land variables may include short forecast components
+prose,corrections_required:precipitation is from PRISM and ERA5-Land enters as the soil-moisture covariate,pass,precipitation is from PRISM and ERA5-Land enters as the soil-moisture covariate
+prose,corrections_required:external covariates rather than verification observations,pass,external covariates rather than verification observations
+prose,corrections_required:now separates the general methodology from the application data and forecasting design,pass,now separates the general methodology from the application data and forecasting design
+prose,corrections_required:USGS daily flow series as the observed target,pass,USGS daily flow series as the observed target
+prose,"corrections_required:distinguishes forecast covariates, retrospective products, and operational forecast products",pass,"distinguishes forecast covariates, retrospective products, and operational forecast products"
+prose,corrections_required:external historical inputs used to learn source-specific discrepancies relative to the USGS target,pass,external historical inputs used to learn source-specific discrepancies relative to the USGS target
+prose,corrections_required:now states explicitly that precipitation is not handled through censoring,pass,now states explicitly that precipitation is not handled through censoring
+prose,"corrections_required:zero-inflation, or a separate occurrence/intensity model",pass,"zero-inflation, or a separate occurrence/intensity model"
+prose,corrections_required:zero-precipitation days are retained in the supplied covariate path,pass,zero-precipitation days are retained in the supplied covariate path
+prose,corrections_required:precipitation intermittency enters through the transfer component,pass,precipitation intermittency enters through the transfer component
+prose,corrections_required:no longer uses the vague ``General Results'' organization,pass,no longer uses the vague ``General Results'' organization
+prose,corrections_required:separates the material by inferential role,pass,separates the material by inferential role
+prose,corrections_required:Forecast Validation Results,pass,Forecast Validation Results
+prose,corrections_required:Interpretation of the Selected Specification,pass,Interpretation of the Selected Specification
+prose,corrections_required:selected-model diagnostics are separated from the forecast-validation tables,pass,selected-model diagnostics are separated from the forecast-validation tables
+prose,corrections_required:representative transfer-function covariate table reports posterior means,pass,representative transfer-function covariate table reports posterior means
+prose,corrections_required:tables report posterior medians with 95\% credible intervals,pass,tables report posterior medians with 95\% credible intervals
+prose,corrections_required:table-specific export contract,pass,table-specific export contract
+prose,corrections_required:The revised introduction now separates these concepts before introducing the Bayesian framework,pass,The revised introduction now separates these concepts before introducing the Bayesian framework
+prose,"corrections_required:hydrological uncertainty with river-system structure, parameters, states, and observations",pass,"hydrological uncertainty with river-system structure, parameters, states, and observations"
+prose,corrections_required:meteorological uncertainty with precipitation and atmospheric forcing fields,pass,meteorological uncertainty with precipitation and atmospheric forcing fields
+prose,corrections_required:using available forecast and retrospective products to produce calibrated predictive distributions,pass,using available forecast and retrospective products to produce calibrated predictive distributions
+prose,"corrections_required:no longer organizes the methodology around models A, B, and C",pass,"no longer organizes the methodology around models A, B, and C"
+prose,corrections_required:presents a common state-space formulation,pass,presents a common state-space formulation
+prose,corrections_required:Section 4 identifies the models in terms of \(L\)-\(S\)-\(T\) labels,pass,Section 4 identifies the models in terms of \(L\)-\(S\)-\(T\) labels
+prose,"corrections_required:likelihood family, source set, and forecast-window transfer treatment",pass,"likelihood family, source set, and forecast-window transfer treatment"
+prose,corrections_required:selected \texttt{exAL-M-T1} specification,pass,selected \texttt{exAL-M-T1} specification
+prose,corrections_required:PIT-centered development has been removed from the main text,pass,PIT-centered development has been removed from the main text
+prose,corrections_required:final forecast comparison uses CRPS as the primary full-distribution score,pass,final forecast comparison uses CRPS as the primary full-distribution score
+prose,corrections_required:targeted quantile check loss as the quantile-level diagnostic,pass,targeted quantile check loss as the quantile-level diagnostic
+prose,corrections_required:retained a compact posterior predictive synthesis subsection,pass,retained a compact posterior predictive synthesis subsection
+prose,corrections_required:posterior uncertainty around fitted quantile-location or component summaries,pass,posterior uncertainty around fitted quantile-location or component summaries
+prose,corrections_required:full forecast predictive distribution at each date,pass,full forecast predictive distribution at each date
+prose,corrections_required:representative single-cutoff posterior predictive distribution,pass,representative single-cutoff posterior predictive distribution
+prose,corrections_required:forecast-window inputs change,pass,forecast-window inputs change
+prose,corrections_required:Quantile crossing is no longer developed as a separate procedure in the main text,pass,Quantile crossing is no longer developed as a separate procedure in the main text
+prose,corrections_required:Details about the MCMC and VB algorithms are provided in the Appendix,pass,Details about the MCMC and VB algorithms are provided in the Appendix
+prose,article_forbidden:best-performing model in all five cutoffs,pass,best-performing model in all five cutoffs
+prose,corrections_forbidden:best-performing model in all five cutoffs,pass,best-performing model in all five cutoffs
+prose,article_forbidden:lowest forecast-window CRPS in every case,pass,lowest forecast-window CRPS in every case
+prose,corrections_forbidden:lowest forecast-window CRPS in every case,pass,lowest forecast-window CRPS in every case
+prose,article_forbidden:do uniformly dominate the operational baseline,pass,do uniformly dominate the operational baseline
+prose,corrections_forbidden:do uniformly dominate the operational baseline,pass,do uniformly dominate the operational baseline
+prose,article_forbidden:raw NWS forecast product has the lowest CRPS overall,pass,raw NWS forecast product has the lowest CRPS overall
+prose,corrections_forbidden:raw NWS forecast product has the lowest CRPS overall,pass,raw NWS forecast product has the lowest CRPS overall
+prose,article_forbidden:raw NWS forecast product has the lowest CRPS in the table,pass,raw NWS forecast product has the lowest CRPS in the table
+prose,corrections_forbidden:raw NWS forecast product has the lowest CRPS in the table,pass,raw NWS forecast product has the lowest CRPS in the table
+prose,article_forbidden:the full model remains best across all five ablation comparisons,pass,the full model remains best across all five ablation comparisons
+prose,corrections_forbidden:the full model remains best across all five ablation comparisons,pass,the full model remains best across all five ablation comparisons
+prose,article_forbidden:full model remains the best ablation configuration,pass,full model remains the best ablation configuration
+prose,corrections_forbidden:full model remains the best ablation configuration,pass,full model remains the best ablation configuration
+prose,article_forbidden:the main contribution will be presented,pass,the main contribution will be presented
+prose,corrections_forbidden:the main contribution will be presented,pass,the main contribution will be presented
+prose,article_forbidden:does not currently distinguish meteorological and hydrological uncertainty,pass,does not currently distinguish meteorological and hydrological uncertainty
+prose,corrections_forbidden:does not currently distinguish meteorological and hydrological uncertainty,pass,does not currently distinguish meteorological and hydrological uncertainty
+prose,article_forbidden:we will reorganize the introduction,pass,we will reorganize the introduction
+prose,corrections_forbidden:we will reorganize the introduction,pass,we will reorganize the introduction
+prose,article_forbidden:we will broaden it,pass,we will broaden it
+prose,corrections_forbidden:we will broaden it,pass,we will broaden it
+prose,article_forbidden:we will correct it,pass,we will correct it
+prose,corrections_forbidden:we will correct it,pass,we will correct it
+prose,article_forbidden:we will replace the deterministic language,pass,we will replace the deterministic language
+prose,corrections_forbidden:we will replace the deterministic language,pass,we will replace the deterministic language
+prose,article_forbidden:we will state earlier and more explicitly,pass,we will state earlier and more explicitly
+prose,corrections_forbidden:we will state earlier and more explicitly,pass,we will state earlier and more explicitly
+prose,article_forbidden:we will reorganize the application material,pass,we will reorganize the application material
+prose,corrections_forbidden:we will reorganize the application material,pass,we will reorganize the application material
+prose,article_forbidden:We will make this explicit in the revised manuscript,pass,We will make this explicit in the revised manuscript
+prose,corrections_forbidden:We will make this explicit in the revised manuscript,pass,We will make this explicit in the revised manuscript
+prose,article_forbidden:We agree that the current organization of Section 3 is not clear enough,pass,We agree that the current organization of Section 3 is not clear enough
+prose,corrections_forbidden:We agree that the current organization of Section 3 is not clear enough,pass,We agree that the current organization of Section 3 is not clear enough
+prose,article_forbidden:we will replace vague headings,pass,we will replace vague headings
+prose,corrections_forbidden:we will replace vague headings,pass,we will replace vague headings
+prose,"article_forbidden:This will separate setup, historical behavior, and forecasting evidence more clearly",pass,"This will separate setup, historical behavior, and forecasting evidence more clearly"
+prose,"corrections_forbidden:This will separate setup, historical behavior, and forecasting evidence more clearly",pass,"This will separate setup, historical behavior, and forecasting evidence more clearly"
+prose,article_forbidden:The original labeling of Tables 1 and 2 was inconsistent: the entries reported there are posterior medians,pass,The original labeling of Tables 1 and 2 was inconsistent: the entries reported there are posterior medians
+prose,corrections_forbidden:The original labeling of Tables 1 and 2 was inconsistent: the entries reported there are posterior medians,pass,The original labeling of Tables 1 and 2 was inconsistent: the entries reported there are posterior medians
+prose,article_forbidden:Posterior Means and 95\% Credible Intervals for the Source-Specific,pass,Posterior Means and 95\% Credible Intervals for the Source-Specific
+prose,corrections_forbidden:Posterior Means and 95\% Credible Intervals for the Source-Specific,pass,Posterior Means and 95\% Credible Intervals for the Source-Specific
+prose,article_forbidden:local hydrological covariates,pass,local hydrological covariates
+prose,corrections_forbidden:local hydrological covariates,pass,local hydrological covariates
+prose,article_forbidden:current A/B/C presentation does not make the connection,pass,current A/B/C presentation does not make the connection
+prose,corrections_forbidden:current A/B/C presentation does not make the connection,pass,current A/B/C presentation does not make the connection
+prose,article_forbidden:we will present the final forecasting specification,pass,we will present the final forecasting specification
+prose,corrections_forbidden:we will present the final forecasting specification,pass,we will present the final forecasting specification
+prose,article_forbidden:We will also revise the opening of the results section,pass,We will also revise the opening of the results section
+prose,corrections_forbidden:We will also revise the opening of the results section,pass,We will also revise the opening of the results section
+prose,article_forbidden:we will simplify the presentation substantially,pass,we will simplify the presentation substantially
+prose,corrections_forbidden:we will simplify the presentation substantially,pass,we will simplify the presentation substantially
+prose,article_forbidden:we will remove the detailed PIT development,pass,we will remove the detailed PIT development
+prose,corrections_forbidden:we will remove the detailed PIT development,pass,we will remove the detailed PIT development
+prose,article_forbidden:we will reduce intermediate derivational detail,pass,we will reduce intermediate derivational detail
+prose,corrections_forbidden:we will reduce intermediate derivational detail,pass,we will reduce intermediate derivational detail
+prose,article_forbidden:will be mentioned briefly as a robustness device,pass,will be mentioned briefly as a robustness device
+prose,corrections_forbidden:will be mentioned briefly as a robustness device,pass,will be mentioned briefly as a robustness device
+prose,article_forbidden:random K-fold cross-validation,pass,random K-fold cross-validation
+prose,corrections_forbidden:random K-fold cross-validation,pass,random K-fold cross-validation
+prose,article_forbidden:flexile,pass,flexile
+forecast_design,manifest_exists,pass,artifacts/forecast_design/forecast_design_manifest.json
+forecast_design,schema_version,pass,he6_forecast_design_v1
+forecast_design,cutoff_count,pass,"['20210123', '20211112', '20211221', '20220511', '20221225']"
+forecast_design,held_out_target,pass,post_cutoff_usgs_only
+forecast_design,fit_inputs_through_cutoff,pass,"['usgs_through_cutoff', 'retrospective_products_through_cutoff']"
+forecast_design,fair_assessment_cross_validation_analogue,pass,"{'cross_validation_analogue': 'time_ordered_rolling_origin_folds', 'fold_unit': 'forecast_origin_cutoff', 'dense_overlapping_origins_claimed': False, 'dense_origin_policy': 'not_used_because_archive_version_constraints_and_overlapping_windows_can_overrepresent_the_same_hydrological_episode', 'fold_construction_note': 'each retained origin requires reconstructing a version-consistent bundle of observations, retrospective products, issued forecast products, and forecast-window covariates from evolving operational archives', 'computational_resource_note': 'a denser origin grid would require substantially more data recovery, version matching, spatial extraction, covariate staging, model fitting, and posterior predictive synthesis', 'origin_selection_rationale': 'archive-feasible version-consistent origins spanning contrasting hydrological settings without repeatedly evaluating similar forecast windows', 'source_complexity_note': 'forecast-validation inputs differ by release history, product version, update frequency, forecast horizon, ensemble-member structure, spatial support, and access interface'}"
+forecast_design,no_dense_overlapping_origin_claim,pass,False
+forecast_design,fold_construction_records_archive_reconstruction,pass,"each retained origin requires reconstructing a version-consistent bundle of observations, retrospective products, issued forecast products, and forecast-window covariates from evolving operational archives"
+forecast_design,source_complexity_records_versioning_and_access,pass,"forecast-validation inputs differ by release history, product version, update frequency, forecast horizon, ensemble-member structure, spatial support, and access interface"
+forecast_design,dense_origin_resource_note,pass,"a denser origin grid would require substantially more data recovery, version matching, spatial extraction, covariate staging, model fitting, and posterior predictive synthesis"
+forecast_design,forecast_products_timing,pass,latest_issued_at_or_before_cutoff
+forecast_design,forecast_products_issue_selection_manifest,pass,artifacts/latest_forecast_issue/latest_forecast_issue_manifest.json
+forecast_design,local_forecast_window_covariates,pass,"names=['precipitation', 'soil_moisture'], role=forecast_window_transfer_covariates"
+forecast_design,gdpc_not_forecast_product,pass,"{'workflow_slot': 'PCA', 'canonical_name': 'GDPC1', 'role': 'deterministic_climate_index_covariate', 'operational_forecast_product': False, 'verification_target': False, 'source_policy': 'canonical_master_factor_sliced_to_cutoff_specific_bundle'}"
+forecast_design,no_usgs_leakage_policy,pass,False
+forecast_design,gdpc_claims_policy,pass,False
+forecast_design,no_continuous_dense_hindcast_claim,pass,False
+forecast_design,workflow_contract_doc,pass,docs/he6_out_of_sample_forecast_design_contract_20260615.md
+forecast_design,article_contract_doc,pass,docs/forecast_design_contract.md
+forecast_design,origin_design,pass,"five, rolling.origin|forecast origins?, low.flow, high.flow|winter, version, archiv"
+forecast_design,verification,pass,"USGS, verification, forecast (?:window|horizon)|forecast.window"
+forecast_design,archive_work,pass,"archiv, version, spatial, covariate, overlap"
+forecast_design,climate_covariates,pass,"ERA5.Land, PRISM, climate.index, GDPC|generalized dynamic principal component, Big Trees"
+forecast_design,transfer_inputs,pass,"precipitation, soil moisture|soil.moisture, climate.index, transfer"
+forecast_design,"corrections_required:five cutoff-specific, rolling-origin forecast-window evaluations",pass,"five cutoff-specific, rolling-origin forecast-window evaluations"
+forecast_design,corrections_required:The model is fit using only observations and retrospective information available through \(\textbf{c}\),pass,The model is fit using only observations and retrospective information available through \(\textbf{c}\)
+forecast_design,corrections_required:Forecasts are then generated over the post-cutoff forecast window using the latest forecast products issued at or before \(\textbf{c}\),pass,Forecasts are then generated over the post-cutoff forecast window using the latest forecast products issued at or before \(\textbf{c}\)
+forecast_design,corrections_required:seven quantile-specific fits at each cutoff,pass,seven quantile-specific fits at each cutoff
+forecast_design,corrections_required:Post-cutoff USGS observations remain verification only,pass,Post-cutoff USGS observations remain verification only
+forecast_design,corrections_required:forecast-window precipitation and soil-moisture covariates,pass,forecast-window precipitation and soil-moisture covariates
+forecast_design,corrections_required:canonical GDPC climate-index covariate,pass,canonical GDPC climate-index covariate
+forecast_design,corrections_required:not treated as an operational forecast product,pass,not treated as an operational forecast product
+forecast_design,corrections_required:archive-feasible and version-consistent,pass,archive-feasible and version-consistent
+forecast_design,corrections_required:five cutoff-specific forecast-window evaluations,pass,five cutoff-specific forecast-window evaluations
+forecast_design,corrections_required:post-cutoff USGS observations are used only for verification,pass,post-cutoff USGS observations are used only for verification
+forecast_design,corrections_required:A new fold is not obtained by shifting an index in a fixed rectangular dataset,pass,A new fold is not obtained by shifting an index in a fixed rectangular dataset
+forecast_design,corrections_required:archive-reconstruction campaign,pass,archive-reconstruction campaign
+forecast_design,corrections_required:rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode,pass,rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode
+forecast_design,corrections_required:pre-cutoff observational window,pass,pre-cutoff observational window
+forecast_design,corrections_required:fixed calibrated specification,pass,fixed calibrated specification
+forecast_design,article_forbidden:post-cutoff USGS observations are used to fit,pass,post-cutoff USGS observations are used to fit
+forecast_design,corrections_forbidden:post-cutoff USGS observations are used to fit,pass,post-cutoff USGS observations are used to fit
+forecast_design,article_forbidden:forecast-window USGS observations are used to fit,pass,forecast-window USGS observations are used to fit
+forecast_design,corrections_forbidden:forecast-window USGS observations are used to fit,pass,forecast-window USGS observations are used to fit
+forecast_design,"article_forbidden:the model is fit using only information available through \(\textbf{c}\): observed discharge up to \(\textbf{c}\), retrospective/historical products available at \(\textbf{c}\), and forecast products issued at or before \(\textbf{c}\)",pass,"the model is fit using only information available through \(\textbf{c}\): observed discharge up to \(\textbf{c}\), retrospective/historical products available at \(\textbf{c}\), and forecast products issued at or before \(\textbf{c}\)"
+forecast_design,"corrections_forbidden:the model is fit using only information available through \(\textbf{c}\): observed discharge up to \(\textbf{c}\), retrospective/historical products available at \(\textbf{c}\), and forecast products issued at or before \(\textbf{c}\)",pass,"the model is fit using only information available through \(\textbf{c}\): observed discharge up to \(\textbf{c}\), retrospective/historical products available at \(\textbf{c}\), and forecast products issued at or before \(\textbf{c}\)"
+forecast_design,article_forbidden:the model is fit using forecast products issued at or before,pass,the model is fit using forecast products issued at or before
+forecast_design,corrections_forbidden:the model is fit using forecast products issued at or before,pass,the model is fit using forecast products issued at or before
+forecast_design,article_forbidden:forecast products issued at or before \(\textbf{c}\). Post-cutoff USGS observations remain verification only,pass,forecast products issued at or before \(\textbf{c}\). Post-cutoff USGS observations remain verification only
+forecast_design,corrections_forbidden:forecast products issued at or before \(\textbf{c}\). Post-cutoff USGS observations remain verification only,pass,forecast products issued at or before \(\textbf{c}\). Post-cutoff USGS observations remain verification only
+forecast_design,article_forbidden:GDPC forecast product,pass,GDPC forecast product
+forecast_design,corrections_forbidden:GDPC forecast product,pass,GDPC forecast product
+forecast_design,article_forbidden:PCA forecast product,pass,PCA forecast product
+forecast_design,corrections_forbidden:PCA forecast product,pass,PCA forecast product
+forecast_design,article_forbidden:post-cutoff USGS observations enter fitting,pass,post-cutoff USGS observations enter fitting
+forecast_design,corrections_forbidden:post-cutoff USGS observations enter fitting,pass,post-cutoff USGS observations enter fitting
+forecast_design,article_forbidden:random K-fold cross-validation,pass,random K-fold cross-validation
+forecast_design,corrections_forbidden:random K-fold cross-validation,pass,random K-fold cross-validation
+forecast_design,article_forbidden:continuous daily post-2022 hindcast,pass,continuous daily post-2022 hindcast
+forecast_design,corrections_forbidden:continuous daily post-2022 hindcast,pass,continuous daily post-2022 hindcast
+latest_forecast_issue,manifest_exists,pass,artifacts/latest_forecast_issue/latest_forecast_issue_manifest.json
+latest_forecast_issue,schema_version,pass,he7_latest_forecast_issue_v1
+latest_forecast_issue,cutoff_set,pass,"['20210123', '20211112', '20211221', '20220511', '20221225']"
+latest_forecast_issue,publication_protocol,pass,"{'name': 'latest_forecast_only', 'publication_weighting_scheme': 'latest', 'forecast_window_policy': 'forecast_products_issued_at_or_before_cutoff_only', 'cross_issue_weighting_used': False, 'legacy_weighted_daily_filenames_are_aliases': True}"
+latest_forecast_issue,no_cross_issue_weighting,pass,"protocol=False, claims=True"
+latest_forecast_issue,legacy_alias_policy,pass,True
+latest_forecast_issue,glofas_issue_rule,pass,"{'issue_frequency': 'daily', 'selection_rule': 'issue_date_equals_cutoff', 'cache_pattern': 'forecast_cache/glofas/issue_date=<cutoff>/glofas_members.csv', 'member_count': 51}"
+latest_forecast_issue,nws_issue_rule,pass,"{'issue_frequency': 'hourly', 'availability_rule': 'issue_datetime_at_or_before_cutoff_day', 'selection_rule': 'latest_issue_datetime_per_target_hour_member_then_daily_mean', 'cache_pattern': 'forecast_cache/nws/cutoff_date=<cutoff>/nws_members.csv', 'member_count': 7}"
+latest_forecast_issue,member_counts,pass,"glofas=51, nws=7"
+latest_forecast_issue,code_evidence_paths,pass,"{'nws_extractor': 'scripts/forecats_extract_nws_batch.py', 'glofas_extractor': 'scripts/forecats_extract_glofas_batch.py', 'batch_driver': 'scripts/forecats_batch.R', 'batch_config': 'config/forecats_batch.site=11160500.single_retro_policy_pre1080.yaml', 'snapshot_stage': 'R/unified/stages/stage_forecats.R', 'histfix_bundle_builder': 'scripts/build_multimodel_v8_histfix_bundles.py'}"
+latest_forecast_issue,code_evidence_files_exist,pass,all manifest code-evidence paths exist
+latest_forecast_issue,workflow_contract_doc,pass,docs/he7_latest_forecast_issue_contract_20260615.md
+latest_forecast_issue,article_contract_doc,pass,docs/latest_forecast_issue_contract.md
+latest_forecast_issue,latest_issue,pass,"latest|most recent, issu, daily, member, GloFAS, NWS"
+latest_forecast_issue,verification,pass,"USGS, verification, forecast (?:window|horizon)|forecast.window"
+latest_forecast_issue,corrections_required:latest available forecast ensemble,pass,latest available forecast ensemble
+latest_forecast_issue,corrections_required:rather than combining earlier issuances,pass,rather than combining earlier issuances
+latest_forecast_issue,corrections_required:using forecasts issued at earlier times may reduce forecast performance,pass,using forecasts issued at earlier times may reduce forecast performance
+latest_forecast_issue,corrections_required:reported publication matrices do not average older issuances,pass,reported publication matrices do not average older issuances
+latest_forecast_issue,corrections_required:historical workflow file names retain older descriptive labels,pass,historical workflow file names retain older descriptive labels
+latest_forecast_issue,article_forbidden:weighted combination of prior forecasts,pass,weighted combination of prior forecasts
+latest_forecast_issue,article_forbidden:lagged forecasts are weighted,pass,lagged forecasts are weighted
+latest_forecast_issue,article_forbidden:combining earlier issuances,pass,combining earlier issuances
+latest_forecast_issue,article_forbidden:older forecast issuances are averaged,pass,older forecast issuances are averaged
+reviewer1_overview,workflow_contract_doc,pass,docs/r1_overview_forecasting_emphasis_contract_20260615.md
+reviewer1_overview,label:sec:introduction,pass,sec:introduction
+reviewer1_overview,label:sec:data,pass,sec:data
+reviewer1_overview,label:sec:methodology,pass,sec:methodology
+reviewer1_overview,label:sec:evaluation,pass,sec:evaluation
+reviewer1_overview,label:sec:forecastvalidation,pass,sec:forecastvalidation
+reviewer1_overview,label:sec5,pass,sec5
+reviewer1_overview,six_section_order,pass,introduction/data/method/evaluation/results/discussion
+reviewer1_overview,scoring_before_results,pass,evaluation precedes results
+reviewer1_overview,illustration_before_interpretation,pass,forecast illustration precedes historical interpretation
+reviewer1_overview,appendix_matrix,pass,full matrix construction in appendix
+reviewer1_overview,appendix_augmentation,pass,likelihood augmentation in appendix
+reviewer1_overview,forecast_evidence,pass,"five origins, distributional/quantile scores, illustrative forecast"
+reviewer1_overview,forecasting_focus,pass,forecasting and uncertainty assessed by distributional/quantile scores
+reviewer1_overview,corrections_required:centering the forecasting analysis on multiple rolling-origin cutoffs,pass,centering the forecasting analysis on multiple rolling-origin cutoffs
+reviewer1_overview,corrections_required:comparing the proposed method against simpler Bayesian alternatives and raw forecast products,pass,comparing the proposed method against simpler Bayesian alternatives and raw forecast products
+reviewer1_overview,corrections_required:reporting both CRPS and targeted quantile diagnostics,pass,reporting both CRPS and targeted quantile diagnostics
+reviewer1_overview,corrections_required:supported by rolling-origin forecast evaluation and selected-model interpretation,pass,supported by rolling-origin forecast evaluation and selected-model interpretation
+reviewer1_overview,corrections_required:rather than treating dynamic discrepancy correction alone as the central novelty,pass,rather than treating dynamic discrepancy correction alone as the central novelty
+reviewer1_overview,article_forbidden:General Results,pass,General Results
+reviewer1_overview,article_forbidden:Model A,pass,Model A
+reviewer1_overview,article_forbidden:Model B,pass,Model B
+reviewer1_overview,article_forbidden:Model C,pass,Model C
+reviewer1_overview,article_forbidden:current A/B/C presentation,pass,current A/B/C presentation
+reviewer1_overview,article_forbidden:forecasting component is limited,pass,forecasting component is limited
+reviewer1_overview,article_forbidden:robust forecast evaluation is absent,pass,robust forecast evaluation is absent
+reviewer1_overview,corrections_forbidden_stale:we will center the forecasting analysis,pass,we will center the forecasting analysis
+reviewer1_overview,corrections_forbidden_stale:we will revise how the contribution is stated,pass,we will revise how the contribution is stated
+reviewer1_overview,corrections_forbidden_stale:we will present the contribution,pass,we will present the contribution
+reviewer1_overview,corrections_forbidden_stale:will add forecast validation,pass,will add forecast validation
+reviewer1_uncertainty,workflow_contract_doc,pass,docs/r1_m1_uncertainty_framing_contract_20260615.md
+reviewer1_uncertainty,hydrological_uncertainty,pass,"hydrolog\w* uncertainty, structur, parameters?, states?, observations?"
+reviewer1_uncertainty,meteorological_uncertainty,pass,"meteorolog\w* uncertainty, precipitation, forc"
+reviewer1_uncertainty,precipitation_source,pass,"precipitation, PRISM"
+reviewer1_uncertainty,soil_moisture_source,pass,"soil moisture, ERA5.Land"
+reviewer1_uncertainty,corrections_required:The revised introduction now separates these concepts before introducing the Bayesian framework,pass,The revised introduction now separates these concepts before introducing the Bayesian framework
+reviewer1_uncertainty,"corrections_required:hydrological uncertainty with river-system structure, parameters, states, and observations",pass,"hydrological uncertainty with river-system structure, parameters, states, and observations"
+reviewer1_uncertainty,corrections_required:meteorological uncertainty with precipitation and atmospheric forcing fields,pass,meteorological uncertainty with precipitation and atmospheric forcing fields
+reviewer1_uncertainty,corrections_required:shortened the discussion of atmospheric ensemble-generation details,pass,shortened the discussion of atmospheric ensemble-generation details
+reviewer1_uncertainty,corrections_required:using available forecast and retrospective products to produce calibrated predictive distributions,pass,using available forecast and retrospective products to produce calibrated predictive distributions
+reviewer1_uncertainty,article_forbidden:does not currently distinguish meteorological and hydrological uncertainty,pass,does not currently distinguish meteorological and hydrological uncertainty
+reviewer1_uncertainty,article_forbidden:Hydrological predictions are often produced using physical models,pass,Hydrological predictions are often produced using physical models
+reviewer1_uncertainty,article_forbidden:local hydrological covariates,pass,local hydrological covariates
+reviewer1_uncertainty,article_forbidden:meteorological and hydrological concepts are mixed,pass,meteorological and hydrological concepts are mixed
+reviewer1_uncertainty,article_forbidden:under-dispersion in ensembles and perturbation methods,pass,under-dispersion in ensembles and perturbation methods
+reviewer1_uncertainty,corrections_forbidden_stale:we will reorganize the introduction,pass,we will reorganize the introduction
+reviewer1_uncertainty,corrections_forbidden_stale:we will separate meteorological,pass,we will separate meteorological
+reviewer1_uncertainty,corrections_forbidden_stale:we will distinguish meteorological,pass,we will distinguish meteorological
+reviewer1_uncertainty,corrections_forbidden_stale:we will shorten the discussion,pass,we will shorten the discussion
+reviewer1_uncertainty,corrections_forbidden_stale:will introduce the Bayesian framework after separating,pass,will introduce the Bayesian framework after separating
+reviewer1_remaining,workflow_contract_doc,pass,docs/reviewer1_remaining_contracts_20260615.md
+reviewer1_remaining,variants,pass,"Gaussian, asymmetric Laplace, univariate, multivariate, transfer, nine, exAL.M.T1"
+reviewer1_remaining,scores,pass,"CRPS, negatively oriented|lower.{0,70}better|smaller.{0,70}better, quantile, check loss"
+reviewer1_remaining,synthesis,pass,"quantile.specific, predictive distribution, interpolat, point mass"
+reviewer1_remaining,origin_design,pass,"five, rolling.origin|forecast origins?, low.flow, high.flow|winter, version, archiv"
+reviewer1_remaining,verification,pass,"USGS, verification, forecast (?:window|horizon)|forecast.window"
+reviewer1_remaining,archive_work,pass,"archiv, version, spatial, covariate, overlap"
+reviewer1_remaining,physical_models,pass,"conceptual, physically based, calibrat, practical|operational"
+reviewer1_remaining,likelihood,pass,"extended asymmetric laplace, quantile, scale, skewness"
+reviewer1_remaining,climate_covariates,pass,"ERA5.Land, PRISM, climate.index, GDPC|generalized dynamic principal component, Big Trees"
+reviewer1_remaining,data_roles,pass,"USGS, target, retrospective, discrepanc, forecast product, covariate"
+reviewer1_remaining,transfer_inputs,pass,"precipitation, soil moisture|soil.moisture, climate.index, transfer"
+reviewer1_remaining,latest_issue,pass,"latest|most recent, issu, daily, member, GloFAS, NWS"
+reviewer1_remaining,historical_interpretation,pass,"historical, interpret, quantile, contrasting|dry|wet"
+reviewer1_remaining,table_estimands,pass,"posterior means, posterior medians, credible intervals, skewness, scale parameters"
+reviewer1_remaining,uncertainty_estimands,pass,"fitted quantile|quantile.location, credible, predictive distribution, predictive interval|predictive envelope"
+reviewer1_remaining,runtime,pass,"(?:about|approximately|roughly) two hours, 64, 503, parallel, stag, hardware, implementation"
+reviewer1_remaining,prior_weighting,pass,"epsilon, anchor, scale, covariance, carries|carried|carry"
+reviewer1_remaining,label:sec:introduction,pass,sec:introduction
+reviewer1_remaining,label:sec:data,pass,sec:data
+reviewer1_remaining,label:sec:methodology,pass,sec:methodology
+reviewer1_remaining,label:sec:evaluation,pass,sec:evaluation
+reviewer1_remaining,label:sec:forecastvalidation,pass,sec:forecastvalidation
+reviewer1_remaining,label:sec5,pass,sec5
+reviewer1_remaining,six_section_order,pass,introduction/data/method/evaluation/results/discussion
+reviewer1_remaining,scoring_before_results,pass,evaluation precedes results
+reviewer1_remaining,illustration_before_interpretation,pass,forecast illustration precedes historical interpretation
+reviewer1_remaining,appendix_matrix,pass,full matrix construction in appendix
+reviewer1_remaining,appendix_augmentation,pass,likelihood augmentation in appendix
+reviewer1_remaining,forecast_evidence,pass,"five origins, distributional/quantile scores, illustrative forecast"
+reviewer1_remaining,"R1-M2:corrections_required:no longer organizes the methodology around models A, B, and C",pass,"no longer organizes the methodology around models A, B, and C"
+reviewer1_remaining,R1-M2:corrections_required:presents a common state-space formulation,pass,presents a common state-space formulation
+reviewer1_remaining,R1-M2:corrections_required:Section 4 identifies the models in terms of \(L\)-\(S\)-\(T\) labels,pass,Section 4 identifies the models in terms of \(L\)-\(S\)-\(T\) labels
+reviewer1_remaining,"R1-M2:corrections_required:likelihood family, source set, and forecast-window transfer treatment",pass,"likelihood family, source set, and forecast-window transfer treatment"
+reviewer1_remaining,R1-M2:corrections_required:selected \texttt{exAL-M-T1} specification,pass,selected \texttt{exAL-M-T1} specification
+reviewer1_remaining,R1-M2:article_forbidden:Model A,pass,Model A
+reviewer1_remaining,R1-M2:article_forbidden:Model B,pass,Model B
+reviewer1_remaining,R1-M2:article_forbidden:Model C,pass,Model C
+reviewer1_remaining,R1-M2:article_forbidden:General Results,pass,General Results
+reviewer1_remaining,R1-M2:corrections_forbidden_stale:we will present the final forecasting specification,pass,we will present the final forecasting specification
+reviewer1_remaining,R1-M2:corrections_forbidden_stale:We will also revise the opening of the results section,pass,We will also revise the opening of the results section
+reviewer1_remaining,R1-M3:corrections_required:PIT-centered development has been removed from the main text,pass,PIT-centered development has been removed from the main text
+reviewer1_remaining,R1-M3:corrections_required:final forecast comparison uses CRPS as the primary full-distribution score,pass,final forecast comparison uses CRPS as the primary full-distribution score
+reviewer1_remaining,R1-M3:corrections_required:targeted quantile check loss as the quantile-level diagnostic,pass,targeted quantile check loss as the quantile-level diagnostic
+reviewer1_remaining,R1-M3:corrections_required:retained a compact posterior predictive synthesis subsection,pass,retained a compact posterior predictive synthesis subsection
+reviewer1_remaining,R1-M3:corrections_required:Quantile crossing is no longer developed as a separate procedure in the main text,pass,Quantile crossing is no longer developed as a separate procedure in the main text
+reviewer1_remaining,R1-M3:corrections_required:Details about the MCMC and VB algorithms are provided in the Appendix,pass,Details about the MCMC and VB algorithms are provided in the Appendix
+reviewer1_remaining,R1-M3:article_forbidden:PITs are described in detail,pass,PITs are described in detail
+reviewer1_remaining,R1-M3:article_forbidden:two-step method,pass,two-step method
+reviewer1_remaining,R1-M3:article_forbidden:resolve quantile crossing,pass,resolve quantile crossing
+reviewer1_remaining,R1-M3:article_forbidden:Posterior Predictive Synthesis part,pass,Posterior Predictive Synthesis part
+reviewer1_remaining,R1-M3:corrections_forbidden_stale:we will simplify the presentation substantially,pass,we will simplify the presentation substantially
+reviewer1_remaining,R1-M3:corrections_forbidden_stale:we will remove the detailed PIT development,pass,we will remove the detailed PIT development
+reviewer1_remaining,R1-M3:corrections_forbidden_stale:we will reduce intermediate derivational detail,pass,we will reduce intermediate derivational detail
+reviewer1_remaining,R1-M4:corrections_required:forecasting evaluation is expanded to five rolling-origin out-of-sample cutoffs,pass,forecasting evaluation is expanded to five rolling-origin out-of-sample cutoffs
+reviewer1_remaining,R1-M4:corrections_required:evidence is no longer tied to a single moderate-flood episode,pass,evidence is no longer tied to a single moderate-flood episode
+reviewer1_remaining,R1-M4:corrections_required:not presented as a continuous 2023-present hindcast,pass,not presented as a continuous 2023-present hindcast
+reviewer1_remaining,R1-M4:corrections_required:representative selected-model illustration at one forecast origin,pass,representative selected-model illustration at one forecast origin
+reviewer1_remaining,R1-M4:corrections_required:validation evidence is the multi-cutoff CRPS and check-loss tables,pass,validation evidence is the multi-cutoff CRPS and check-loss tables
+reviewer1_remaining,R1-M4:corrections_required:selected-model diagnostics,pass,selected-model diagnostics
+reviewer1_remaining,R1-M4:article_forbidden:only one short forecast has been evaluated,pass,only one short forecast has been evaluated
+reviewer1_remaining,R1-M5:corrections_required:organized around forecast origins rather than a conventional random split,pass,organized around forecast origins rather than a conventional random split
+reviewer1_remaining,R1-M5:corrections_required:five cutoff-specific forecast-window evaluations,pass,five cutoff-specific forecast-window evaluations
+reviewer1_remaining,R1-M5:corrections_required:post-cutoff USGS observations are used only for verification,pass,post-cutoff USGS observations are used only for verification
+reviewer1_remaining,R1-M5:corrections_required:archive reconstruction step before any model can be fit,pass,archive reconstruction step before any model can be fit
+reviewer1_remaining,R1-M5:corrections_required:rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode,pass,rather than a dense set of overlapping windows that would repeatedly score the same hydrological episode
+reviewer1_remaining,R1-M5:corrections_required:pre-cutoff observational window,pass,pre-cutoff observational window
+reviewer1_remaining,R1-M5:corrections_required:fixed calibrated specification,pass,fixed calibrated specification
+reviewer1_remaining,R1-M5:article_forbidden:random K-fold cross-validation,pass,random K-fold cross-validation
+reviewer1_remaining,R1-m1:corrections_required:uses both conceptual and physically based models,pass,uses both conceptual and physically based models
+reviewer1_remaining,"R1-m1:corrections_required:simpler to specify, calibrate, and deploy in forecasting applications",pass,"simpler to specify, calibrate, and deploy in forecasting applications"
+reviewer1_remaining,R1-m1:article_forbidden:Hydrological predictions are often produced using physical models,pass,Hydrological predictions are often produced using physical models
+reviewer1_remaining,R1-m2:corrections_required:typographical error rather than intended terminology,pass,typographical error rather than intended terminology
+reviewer1_remaining,R1-m2:corrections_required:The revised manuscript no longer uses this term,pass,The revised manuscript no longer uses this term
+reviewer1_remaining,R1-m2:article_forbidden:flexile,pass,flexile
+reviewer1_remaining,R1-m3:corrections_required:reanalysis-based model products rather than direct observations or uncertainty-free measurements,pass,reanalysis-based model products rather than direct observations or uncertainty-free measurements
+reviewer1_remaining,R1-m3:corrections_required:ERA5/ERA5-Land variables may include short forecast components,pass,ERA5/ERA5-Land variables may include short forecast components
+reviewer1_remaining,R1-m3:corrections_required:precipitation is from PRISM and ERA5-Land enters as the soil-moisture covariate,pass,precipitation is from PRISM and ERA5-Land enters as the soil-moisture covariate
+reviewer1_remaining,R1-m3:corrections_required:external covariates rather than verification observations,pass,external covariates rather than verification observations
+reviewer1_remaining,R1-m4:corrections_required:now separates the general methodology from the application data and forecasting design,pass,now separates the general methodology from the application data and forecasting design
+reviewer1_remaining,R1-m4:corrections_required:USGS daily flow series as the observed target,pass,USGS daily flow series as the observed target
+reviewer1_remaining,"R1-m4:corrections_required:distinguishes forecast covariates, retrospective products, and operational forecast products",pass,"distinguishes forecast covariates, retrospective products, and operational forecast products"
+reviewer1_remaining,R1-m4:corrections_required:external historical inputs used to learn source-specific discrepancies relative to the USGS target,pass,external historical inputs used to learn source-specific discrepancies relative to the USGS target
+reviewer1_remaining,R1-m5:corrections_required:now states explicitly that precipitation is not handled through censoring,pass,now states explicitly that precipitation is not handled through censoring
+reviewer1_remaining,"R1-m5:corrections_required:zero-inflation, or a separate occurrence/intensity model",pass,"zero-inflation, or a separate occurrence/intensity model"
+reviewer1_remaining,R1-m5:corrections_required:zero-precipitation days are retained in the supplied covariate path,pass,zero-precipitation days are retained in the supplied covariate path
+reviewer1_remaining,R1-m5:corrections_required:precipitation intermittency enters through the transfer component,pass,precipitation intermittency enters through the transfer component
+reviewer1_remaining,R1-m6:corrections_required:using forecasts issued at earlier times may reduce forecast performance,pass,using forecasts issued at earlier times may reduce forecast performance
+reviewer1_remaining,R1-m6:corrections_required:use only the most recent forecast ensemble available,pass,use only the most recent forecast ensemble available
+reviewer1_remaining,R1-m6:corrections_required:latest-forecast-only protocol,pass,latest-forecast-only protocol
+reviewer1_remaining,R1-m6:article_forbidden:weighted combination of prior forecasts,pass,weighted combination of prior forecasts
+reviewer1_remaining,R1-m7:corrections_required:no longer uses the vague ``General Results'' organization,pass,no longer uses the vague ``General Results'' organization
+reviewer1_remaining,R1-m7:corrections_required:separates the material by inferential role,pass,separates the material by inferential role
+reviewer1_remaining,R1-m7:corrections_required:Forecast Validation Results,pass,Forecast Validation Results
+reviewer1_remaining,R1-m7:corrections_required:Interpretation of the Selected Specification,pass,Interpretation of the Selected Specification
+reviewer1_remaining,R1-m7:corrections_required:selected-model diagnostics are separated from the forecast-validation tables,pass,selected-model diagnostics are separated from the forecast-validation tables
+reviewer1_remaining,R1-m7:article_forbidden:General Results,pass,General Results
+reviewer1_remaining,R1-m8:corrections_required:representative transfer-function covariate table reports posterior means,pass,representative transfer-function covariate table reports posterior means
+reviewer1_remaining,R1-m8:corrections_required:tables report posterior medians with 95\% credible intervals,pass,tables report posterior medians with 95\% credible intervals
+reviewer1_remaining,R1-m8:corrections_required:table-specific export contract,pass,table-specific export contract
+reviewer1_remaining,R1-m8:article_forbidden:Posterior Means and 95\% Credible Intervals for the Source-Specific,pass,Posterior Means and 95\% Credible Intervals for the Source-Specific
+reviewer1_remaining,R1-m9:corrections_required:comparatively stable bands reflect posterior uncertainty around fitted quantile-location or component summaries,pass,comparatively stable bands reflect posterior uncertainty around fitted quantile-location or component summaries
+reviewer1_remaining,R1-m9:corrections_required:not a full forecast predictive distribution at each date,pass,not a full forecast predictive distribution at each date
+reviewer1_remaining,R1-m9:corrections_required:representative single-cutoff posterior predictive distribution,pass,representative single-cutoff posterior predictive distribution
+reviewer1_remaining,R1-m9:corrections_required:forecast-window inputs change,pass,forecast-window inputs change
+reviewer1_remaining,R1-m9:corrections_required:expanded multi-cutoff CRPS and quantile-diagnostic tables remain the forecast-validation evidence,pass,expanded multi-cutoff CRPS and quantile-diagnostic tables remain the forecast-validation evidence
+runtime_feasibility,manifest_exists,pass,artifacts/runtime_benchmark/runtime_manifest.json
+runtime_feasibility,schema_version,pass,he1_runtime_benchmark_v1
+runtime_feasibility,source_root,pass,/data/jaguir26/local/src/exdqlm__wt__shared_fitforecast_v2_1p0p0/validation/fitforecast_v2/runs/20260515_exdqlm_dqlm_dynamic_fitforecast_v2_orchestrated_3500202605200353075941
+runtime_feasibility,interface_csv_relative_path,pass,interfaces/exdqlm_dqlm_dynamic_fitforecast_v2_shared_interface.csv
+runtime_feasibility,interface_shape,pass,1620 x 127
+runtime_feasibility,interface_status,pass,all 1620 interface rows are done
+runtime_feasibility,total_runtime_columns,pass,"['runtime_sec_total', 'runtime_sec']"
+runtime_feasibility,decomposition_columns_marked_missing,pass,"['runtime_sec_fit', 'runtime_sec_forecast']"
+runtime_feasibility,planned_counts,pass,"planned=72, done=54, pending=18"
+runtime_feasibility,runtime_hours,pass,2.0
+runtime_feasibility,hardware_context,pass,"cores=64, memory_gib=503"
+runtime_feasibility,no_runtime_decomposition,pass,False
+runtime_feasibility,scope_completed_outputs,pass,representative end-to-end timing for completed measured validation outputs
+runtime_feasibility,workflow_contract_doc,pass,docs/he1_runtime_feasibility_contract_20260615.md
+runtime_feasibility,article_contract_doc,pass,docs/runtime_benchmark_contract.md
+runtime_feasibility,parallel_quantile_fits,pass,"seven, quantile, parallel"
+runtime_feasibility,approximate_combined_runtime,pass,"(?:about|approximately|roughly) two hours, end.to.end|combined"
+runtime_feasibility,hardware_context,pass,"64, 503, hardware, implementation"
+runtime_feasibility,staged_input_scope,pass,"stag, observations?, retrospective, forecast, covariates?"
+runtime_feasibility,forbidden_decomposition:100 minutes for fitting,pass,100 minutes for fitting
+runtime_feasibility,forbidden_decomposition:100 minutes for fit,pass,100 minutes for fit
+runtime_feasibility,forbidden_decomposition:20 minutes for post-processing,pass,20 minutes for post-processing
+runtime_feasibility,forbidden_decomposition:20 minutes for postprocessing,pass,20 minutes for postprocessing
+runtime_feasibility,forbidden_decomposition:runtime_sec_fit and runtime_sec_forecast were used,pass,runtime_sec_fit and runtime_sec_forecast were used
+runtime_feasibility,corrections_required:about two hours end-to-end,pass,about two hours end-to-end
+runtime_feasibility,corrections_required:\texttt{runtime\_sec\_total},pass,\texttt{runtime\_sec\_total}
+runtime_feasibility,corrections_required:\texttt{runtime\_sec},pass,\texttt{runtime\_sec}
+runtime_feasibility,corrections_required:do not support a reliable decomposition between model fitting and forecasting/post-processing,pass,do not support a reliable decomposition between model fitting and forecasting/post-processing
+runtime_feasibility,article_forbidden:100 minutes for fitting,pass,100 minutes for fitting
+runtime_feasibility,corrections_forbidden:100 minutes for fitting,pass,100 minutes for fitting
+runtime_feasibility,article_forbidden:100 minutes for fit,pass,100 minutes for fit
+runtime_feasibility,corrections_forbidden:100 minutes for fit,pass,100 minutes for fit
+runtime_feasibility,article_forbidden:20 minutes for post-processing,pass,20 minutes for post-processing
+runtime_feasibility,corrections_forbidden:20 minutes for post-processing,pass,20 minutes for post-processing
+runtime_feasibility,article_forbidden:20 minutes for postprocessing,pass,20 minutes for postprocessing
+runtime_feasibility,corrections_forbidden:20 minutes for postprocessing,pass,20 minutes for postprocessing
+runtime_feasibility,article_forbidden:runtime_sec_fit and runtime_sec_forecast were used,pass,runtime_sec_fit and runtime_sec_forecast were used
+runtime_feasibility,corrections_forbidden:runtime_sec_fit and runtime_sec_forecast were used,pass,runtime_sec_fit and runtime_sec_forecast were used
+software_availability,manifest_exists,pass,artifacts/software_availability/software_availability_manifest.json
+software_availability,schema_version,pass,revision_software_availability_v1
+software_availability,cran_package_url,pass,https://CRAN.R-project.org/package=exdqlm
+software_availability,cran_package_doi,pass,https://doi.org/10.32614/CRAN.package.exdqlm
+software_availability,cran_version_recorded,pass,1.1.0
+software_availability,cran_publication_date_recorded,pass,2026-07-09
+software_availability,software_paper_arxiv_url,pass,https://arxiv.org/abs/2607.22760
+software_availability,software_paper_arxiv_doi,pass,https://doi.org/10.48550/arXiv.2607.22760
+software_availability,software_paper_bibtex_key,pass,deleon2026exdqlm
+software_availability,workflow_url,pass,https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility
+software_availability,workflow_release_readiness_manifest,pass,"{""citation"": ""CITATION.cff"", ""license_notice"": ""LICENSE"", ""readme"": ""README.md"", ""validation_script"": ""scripts/validate_public_repository.py""}"
+software_availability,workflow_contract_doc,pass,repro/run/REVISION_SOFTWARE_REPRODUCIBILITY_CONTRACT_20260615.md
+software_availability,article_contract_doc,pass,docs/software_availability_contract.md
+software_availability,article_repo_url,pass,https://github.com/AntonioAPDL/Evironmetrics---REVISED-DOC-Corrected-2
+software_availability,corrections_repo_url,pass,https://github.com/AntonioAPDL/Corrections---Project-1
+software_availability,archive_status_coherent,pass,workflow archive DOI is pending final release
+software_availability,static_commit_policy,pass,A tracked manifest cannot reliably store its own current commit SHA because that SHA changes when the manifest is committed.
+software_availability,workflow_release_readiness_exists:README.md,pass,README.md
+software_availability,workflow_release_readiness_exists:CITATION.cff,pass,CITATION.cff
+software_availability,workflow_release_readiness_exists:RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md,pass,RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md
+software_availability,workflow_release_readiness_exists:docs/workflow_archive_readiness_20260615.md,pass,docs/workflow_archive_readiness_20260615.md
+software_availability,workflow_remote_configured,pass,git@github.com:AntonioAPDL/Project1.git
+software_availability,readme_names_public_repro_repo,pass,README.md
+software_availability,readme_names_cran_package,pass,README.md
+software_availability,readme_names_contract,pass,README.md
+software_availability,readme_archive_pending,pass,README.md
+software_availability,citation_pending_version,pass,CITATION.cff
+software_availability,citation_no_workflow_doi_field,pass,CITATION.cff
+software_availability,citation_names_public_repro_repo,pass,CITATION.cff
+software_availability,release_notes_archive_pending,pass,RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md
+software_availability,archive_checklist_license_gate,pass,docs/workflow_archive_readiness_20260615.md
+software_availability,archive_checklist_final_doi_gate,pass,docs/workflow_archive_readiness_20260615.md
+software_availability,article_required:CRAN R package \texttt{exdqlm},pass,CRAN R package \texttt{exdqlm}
+software_availability,article_required:version 1.1.0,pass,version 1.1.0
+software_availability,article_required:https://CRAN.R-project.org/package=exdqlm,pass,https://CRAN.R-project.org/package=exdqlm
+software_availability,article_required:https://doi.org/10.32614/CRAN.package.exdqlm,pass,https://doi.org/10.32614/CRAN.package.exdqlm
+software_availability,article_required:deleon2026exdqlm,pass,deleon2026exdqlm
+software_availability,article_required:https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility,pass,https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility
+software_availability,article_required:provenance manifests,pass,provenance manifests
+software_availability,article_required:reproducibility repository,pass,reproducibility repository
+software_availability,corrections_required:CRAN R package \texttt{exdqlm},pass,CRAN R package \texttt{exdqlm}
+software_availability,corrections_required:version 1.1.0,pass,version 1.1.0
+software_availability,corrections_required:https://CRAN.R-project.org/package=exdqlm,pass,https://CRAN.R-project.org/package=exdqlm
+software_availability,corrections_required:https://doi.org/10.32614/CRAN.package.exdqlm,pass,https://doi.org/10.32614/CRAN.package.exdqlm
+software_availability,corrections_required:https://doi.org/10.48550/arXiv.2607.22760,pass,https://doi.org/10.48550/arXiv.2607.22760
+software_availability,corrections_required:https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility,pass,https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility
+software_availability,corrections_required:compact provenance manifests,pass,compact provenance manifests
+software_availability,corrections_required:A permanent archive DOI will be minted from the final clean reproducibility release,pass,A permanent archive DOI will be minted from the final clean reproducibility release
+software_availability,article_no_premature_archive_claim:workflow repository has been archived,pass,workflow repository has been archived
+software_availability,corrections_no_premature_archive_claim:workflow repository has been archived,pass,workflow repository has been archived
+software_availability,workflow_no_premature_archive_claim:README.md:workflow repository has been archived,pass,workflow repository has been archived
+software_availability,workflow_no_premature_archive_claim:CITATION.cff:workflow repository has been archived,pass,workflow repository has been archived
+software_availability,workflow_no_premature_archive_claim:RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md:workflow repository has been archived,pass,workflow repository has been archived
+software_availability,workflow_no_premature_archive_claim:docs/workflow_archive_readiness_20260615.md:workflow repository has been archived,pass,workflow repository has been archived
+software_availability,article_no_premature_archive_claim:workflow has been archived,pass,workflow has been archived
+software_availability,corrections_no_premature_archive_claim:workflow has been archived,pass,workflow has been archived
+software_availability,workflow_no_premature_archive_claim:README.md:workflow has been archived,pass,workflow has been archived
+software_availability,workflow_no_premature_archive_claim:CITATION.cff:workflow has been archived,pass,workflow has been archived
+software_availability,workflow_no_premature_archive_claim:RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md:workflow has been archived,pass,workflow has been archived
+software_availability,workflow_no_premature_archive_claim:docs/workflow_archive_readiness_20260615.md:workflow has been archived,pass,workflow has been archived
+software_availability,article_no_premature_archive_claim:archived workflow DOI,pass,archived workflow DOI
+software_availability,corrections_no_premature_archive_claim:archived workflow DOI,pass,archived workflow DOI
+software_availability,workflow_no_premature_archive_claim:README.md:archived workflow DOI,pass,archived workflow DOI
+software_availability,workflow_no_premature_archive_claim:CITATION.cff:archived workflow DOI,pass,archived workflow DOI
+software_availability,workflow_no_premature_archive_claim:RELEASE_NOTES_PENDING_FINAL_ARCHIVE.md:archived workflow DOI,pass,archived workflow DOI
+software_availability,workflow_no_premature_archive_claim:docs/workflow_archive_readiness_20260615.md:archived workflow DOI,pass,archived workflow DOI

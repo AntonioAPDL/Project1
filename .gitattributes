@@ -7,3 +7,8 @@ docs/environmetrics_comment1_plan_20261107/**/*.diff -whitespace
 docs/environmetrics_comment1_plan_20261107/**/*.aux -whitespace
 docs/environmetrics_comment1_plan_20261107/**/*.log -whitespace
 docs/environmetrics_comment1_plan_20261107/**/pdfinfo.txt -whitespace
+
+# Preserve raw point-2 build/command evidence without normalizing captured output.
+docs/environmetrics_comment2_revision_20261107/**/*.log -whitespace
+docs/environmetrics_comment2_revision_20261107/**/*.aux -whitespace
+docs/environmetrics_comment2_revision_20261107/**/pdfinfo.txt -whitespace

@@ -1,0 +1,15 @@
+Final independent read-only signoff after availability/replay-path corrections
+
+APPROVED for referee major comment 2 handoff. No material omission or packaging
+error remains. The contribution, comparison roles, qualified component/fitting
+evidence, all three external references, matching-case CRPSS and origin/horizon
+practitioner interpretation address the requested clauses. Availability correctly
+distinguishes original public quantile-model materials from the accompanying
+manuscript bundle. Displayed commands resolve to actual packaged scripts; default
+portable configuration resolves inside reproduce/. Updated README/manifest hashes
+agree, and isolated replay demonstrates exact numerical identity.
+
+Reviewer: independent editorial collaborator, final_comment1_editorial.
+No files were modified by the reviewer. Final integrated checks: 82 Python tests
+and 87 R assertions passed; 37-page build with stable references and no BibTeX
+warnings. Review performed on final staged source before the follow-up commit.

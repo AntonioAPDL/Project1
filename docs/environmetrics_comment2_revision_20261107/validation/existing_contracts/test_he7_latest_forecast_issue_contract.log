@@ -1,0 +1,9 @@
+test_article_and_corrections_share_latest_only_claims (test_he7_latest_forecast_issue_contract.HE7LatestForecastIssueContractTests) ... ok
+test_docs_exist (test_he7_latest_forecast_issue_contract.HE7LatestForecastIssueContractTests) ... ok
+test_future_bundle_writers_record_alias_policy (test_he7_latest_forecast_issue_contract.HE7LatestForecastIssueContractTests) ... ok
+test_manifest_records_latest_only_contract (test_he7_latest_forecast_issue_contract.HE7LatestForecastIssueContractTests) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.035s
+
+OK

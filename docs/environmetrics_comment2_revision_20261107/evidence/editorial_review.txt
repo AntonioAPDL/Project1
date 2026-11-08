@@ -1,0 +1,25 @@
+Comment 2 editorial implementation proof notes
+
+Owned files: wileyNJD-APA.tex; wileyNJD-APA.bib; docs/comment2_revision.txt.
+Six main numbered sections and existing stable labels preserved. No original table, figure, cache, model fit, or numerical script was edited by this worker.
+
+Independent result checks: existing matched likelihood/source/transfer counts read directly from generated tables; noTF and noTrend/noH semantics checked against current ablation configuration and model construction. Saved diagnostic figures checked from release audit and May 2022 fitted-location CSV. New external values checked against accepted baseline aggregate/by-origin CSV.
+
+Baseline release accepted by parent: /tmp/comment2_external_baselines_20261107_release. All real table includes now exist.
+
+Integrated proof: /tmp/comment2_editorial_proof_20261107/comment2_editorial_proof.pdf. pdflatex/BibTeX plus two resolution passes succeeded; zero undefined citations/references; 36 pages before final abstract edit. Existing class frontmatter warnings remain at maketitle (one horizontal box, one vertical box); no new table overflow.
+
+Visual proof found Wiley class small command is 5pt (class line 1344). Confirmed root generator and all 3 new tables now use explicit 8.5pt body text and 8pt notes. Inspection images: /tmp/comment2_editorial_table_page-22.png and-23.png. Final proof/build by root must confirm larger table fonts.
+
+Abstract final 166 words. Official Environmetrics limit 200 words verified from https://www.onlinelibrary.wiley.com/page/journal/1099095X/homepage/forauthors.html . New result sentence scopes aggregate 68.6% and 59.0% mean CRPS reductions versus seasonal climatology, plus origin/convergence interpretation qualification.
+
+Primary sources verified:
+https://sites.stat.washington.edu/raftery/Research/PDF/gneiting2005.pdf
+https://academic.oup.com/jrsssa/article/173/2/371/7077664
+https://doi.org/10.1002/2014WR016473
+https://www.educate.elsevier.com/book/details/9780128158234
+
+Final owned-file hashes:
+dafb4456a6dd65d580b61e098f3322a77b9ba4ac02087436c94bd88d8b1df821  wileyNJD-APA.tex
+88f2576aa066e06e9bbe7ee62de8453746cfae346880d354e7f196e0240b88ee  wileyNJD-APA.bib
+c77db616cccb3061f2ed19b6378cd67752cbe1e1194379fde7197ddfeef74f4e  docs/comment2_revision.txt

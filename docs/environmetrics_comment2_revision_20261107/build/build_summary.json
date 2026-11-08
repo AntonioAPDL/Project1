@@ -1,0 +1,134 @@
+{
+  "article_root": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+  "output_directory": "/tmp/comment2_handoff_build_20261107",
+  "pdf": "/tmp/comment2_handoff_build_20261107/comment2_handoff.pdf",
+  "pdf_sha256": "e4653c2ddd11232f1755092fcf288d03e3d40364c57ae0b411c0175db63828dd",
+  "text_sha256": "626b992701fbfa9ab38011ba8c217519672aa3a7d659688a8c90e278b6c34441",
+  "pages": 37,
+  "latex_passes": 4,
+  "auxiliary_labels_stable": true,
+  "unresolved_citations_or_references": [],
+  "bibtex_warnings": [],
+  "overfull_horizontal_boxes": 1,
+  "overfull_vertical_boxes": 1,
+  "sources_unchanged_during_build": true,
+  "source_hashes": {
+    "Figures/manuscript/covariate_context_precip_soil_gdpc.png": "a450b7fa331403f61ea0af951dc1bdf65fab1e4d471c8f89b26cc72d89b9ad03",
+    "Figures/manuscript/forecast_products_context.png": "66fe558104bdc7b8a08a9c5085f3470ccdfb900a6d155fb408d912b86f08ead7",
+    "Figures/manuscript/historical_component_80month.png": "276821de7836c9c4fe6b29dab781420fa24f02fdc1c11da33bf78360ba5d9774",
+    "Figures/manuscript/historical_summary_dry_period.png": "5e89ea1cd49566adfd8b27cef10723d4babf834178ae8e770bef3996e5e57a78",
+    "Figures/manuscript/historical_summary_wet_period.png": "c81b3cc77c9a230ac1bfa94430a4820e8046b3eb1bdf730a76de2a624a5f18c4",
+    "Figures/manuscript/reference_synthesis_univariate.png": "ca4661c1ac0c97f8e1ea04e1862d759904c9cb2eefe916e4b79f5727d2af18cd",
+    "Figures/manuscript/retrospective_products_context.png": "a670b1de369c4a576c9d9221eec27f83e78bbdf00db88419a714efa2bf5de16e",
+    "Figures/manuscript/site_context_usgs.png": "eeef68672852e4a5362455147b84212ca5bd28d02f9774bb40bdc2a495dc8d8c",
+    "Figures/multivariate_synthesis_by_cutoff/cutoff_2021_01_23_multivariate_synthesis_with_reference_ensembles.png": "e8d0e0973ad7453c205f947d5afa40092cfa6ba55f41c3553625b8b127edbe84",
+    "Figures/multivariate_synthesis_by_cutoff/cutoff_2021_11_12_multivariate_synthesis_with_reference_ensembles.png": "36a99a446c0b61b7d23cbdfc773ea36979f582ed3488181d9d184f3b16044c55",
+    "Figures/multivariate_synthesis_by_cutoff/cutoff_2021_12_21_multivariate_synthesis_with_reference_ensembles.png": "64b84b5de118d1584c35a60b0cb401cf0c9afce6d173f91fb2e10aa2ae0aa1f5",
+    "Figures/multivariate_synthesis_by_cutoff/cutoff_2022_05_11_multivariate_synthesis_with_reference_ensembles.png": "8cbb423612001ded6d3df6a9e7fd99013b0aaedc4fd9940008983bfb8aaba167",
+    "Figures/multivariate_synthesis_by_cutoff/cutoff_2022_12_25_multivariate_synthesis_with_reference_ensembles.png": "0e7e44311a1a4eb82113cb30bc9383f631f86b7a45af07fa9b54608149ed46bb",
+    "WileyNJD-APA.bst": "237c3b81013630af8236b7a4ea8d6c4e22b2c15fba1ccb30c26d3a2f581962c5",
+    "WileyNJD-v2.cls": "5d8faf972becd3cf1d9b0b28397e9f22b23d583673e58a74bb90cc7af1e94f3e",
+    "tables/generated_tex/appendix_gamma_rows.tex": "ce56bfbec21258c93cd40900d0d52abaf13c380762e8c323b80c675c6d2415f5",
+    "tables/generated_tex/appendix_gamma_summary_table.tex": "f2b5126ce287f345fcad65a7ee0ae0a8de0cbebf11f1e6d64a55ad5bc1f838ce",
+    "tables/generated_tex/appendix_sigma_rows.tex": "74d3a56eb88568831a57dea49321525cfa2eb0e079fb60c30933a88d4d022fd1",
+    "tables/generated_tex/appendix_sigma_summary_table.tex": "ef37607041715f5be344b7b1f10273a69a6b2af7ecb5ee1b5e077367383a0833",
+    "tables/generated_tex/benchmark_crps_bayesian_rows.tex": "508c946ed97cd957ed3288b1b6339d7810c818237e2f3da5802e315dd0970de4",
+    "tables/generated_tex/benchmark_crps_body.tex": "3ec0a6c8247889c5adb5172dba17994ca03225097a308ea29ef4670e16de8e06",
+    "tables/generated_tex/benchmark_crps_main_table.tex": "5e900a2d2f07acf18fdc0f1e9d8a98b37211671365a5c15c2c169f8aa45e458f",
+    "tables/generated_tex/benchmark_crps_nws_horizon_bayesian_rows.tex": "90ce1f900502ff3499fc58e308532b71dadabf2ccc21c82366a1a9ec811c2da5",
+    "tables/generated_tex/benchmark_crps_nws_horizon_body.tex": "da630fac715d99c6845db5a58a6a6b4719ed69af903fc97bcbe0a5ab17316509",
+    "tables/generated_tex/benchmark_crps_nws_horizon_raw_rows.tex": "14255cd346c40cc01a08ba6adef3c9a81017454e3680568bd0f048a8f1734bf8",
+    "tables/generated_tex/benchmark_crps_nws_horizon_table.tex": "3ae0060696390bd1599aaf470fa6482d36c8601755ca6c8951d2001363287b1d",
+    "tables/generated_tex/benchmark_crps_raw_rows.tex": "f66da07f3ee33386af803f4bbed2db10a4e9e7d6c478908ec35e1e292fa1880a",
+    "tables/generated_tex/comment2_external_by_origin_table.tex": "19c0a284588b50b9fdd2d3cbafbdad576578ab510117fc7b80a442cc9d57c325",
+    "tables/generated_tex/comment2_external_comparison_table.tex": "537d237ca84e103dd6a34e77086dac977755a3d15550fe6c42a6952e9dd302a4",
+    "tables/generated_tex/comment2_fit_diagnostic_table.tex": "77af8f2bc1b8a52a2654d690f282e9e8326c2c35e7ef030e98fc8a5204cb1f00",
+    "tables/generated_tex/he3_ablation_crps_body.tex": "8cd9e704bc174f1548c1edb686040c8e38ce1d0c4086526a8abac78517a5a1f2",
+    "tables/generated_tex/he3_ablation_crps_main_table.tex": "7dc7849baac8e43d3f8b3690d28fa7efc9bdb8fc9e90a36e8ef43e55c2125f3c",
+    "tables/generated_tex/he3_ablation_crps_nws_horizon_body.tex": "bad7106a70036b6e9bc43702a73d930f75b879abdbf8cd9c575ed206d009b136",
+    "tables/generated_tex/he3_ablation_crps_nws_horizon_table.tex": "69e6346034c677ef876c0a871b09badd7d79b254fab75f3f69ea690cd31fe4b1",
+    "tables/generated_tex/he4_quantile_check_loss_main_table.tex": "ab36cc17f290ab6141ea2cc9a2620e1622cbed624cbdbc879de630b8e45fa222",
+    "tables/generated_tex/he4_quantile_check_loss_rows.tex": "3fb43c745ffadcc7189deddcaee741eb18f04e90f6c2e806c4f0a061b0062919",
+    "tables/generated_tex/representative_covariate_effects_rows.tex": "6f95a29c886c24e30d8963c7c96b4f5fc2edafe55d94ebbac7cd3056882a77a2",
+    "tables/generated_tex/representative_covariate_effects_table.tex": "39a85e0b27479cedf3189a95e8ce449b04728b4e6cbe9cf979b410ca9c641c17",
+    "wileyNJD-APA.bib": "88f2576aa066e06e9bbe7ee62de8453746cfae346880d354e7f196e0240b88ee",
+    "wileyNJD-APA.tex": "773cba47f950d1e8fa3013cec9c73b0bcd17a577738fb68ad3f6e2ed84365969"
+  },
+  "commands": [
+    {
+      "argv": [
+        "pdflatex",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "-jobname=comment2_handoff",
+        "-output-directory=/tmp/comment2_handoff_build_20261107",
+        "wileyNJD-APA.tex"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+      "log": "latex-pass-1.stdout.txt"
+    },
+    {
+      "argv": [
+        "bibtex",
+        "comment2_handoff"
+      ],
+      "cwd": "/tmp/comment2_handoff_build_20261107",
+      "log": "bibtex.stdout.txt"
+    },
+    {
+      "argv": [
+        "pdflatex",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "-jobname=comment2_handoff",
+        "-output-directory=/tmp/comment2_handoff_build_20261107",
+        "wileyNJD-APA.tex"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+      "log": "latex-pass-2.stdout.txt"
+    },
+    {
+      "argv": [
+        "pdflatex",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "-jobname=comment2_handoff",
+        "-output-directory=/tmp/comment2_handoff_build_20261107",
+        "wileyNJD-APA.tex"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+      "log": "latex-pass-3.stdout.txt"
+    },
+    {
+      "argv": [
+        "pdflatex",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "-jobname=comment2_handoff",
+        "-output-directory=/tmp/comment2_handoff_build_20261107",
+        "wileyNJD-APA.tex"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+      "log": "latex-pass-4.stdout.txt"
+    },
+    {
+      "argv": [
+        "pdfinfo",
+        "/tmp/comment2_handoff_build_20261107/comment2_handoff.pdf"
+      ],
+      "cwd": "/tmp/comment2_handoff_build_20261107",
+      "log": "pdfinfo.txt"
+    },
+    {
+      "argv": [
+        "pdftotext",
+        "-layout",
+        "/tmp/comment2_handoff_build_20261107/comment2_handoff.pdf",
+        "/tmp/comment2_handoff_build_20261107/comment2_handoff.txt"
+      ],
+      "cwd": "/tmp/comment2_handoff_build_20261107",
+      "log": "pdftotext.stdout.txt"
+    }
+  ],
+  "passed": true
+}

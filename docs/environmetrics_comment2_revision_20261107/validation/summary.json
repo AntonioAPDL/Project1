@@ -1,0 +1,100 @@
+{
+  "created_utc": "2026-11-08T07:40:35.573769+00:00",
+  "commands": [
+    {
+      "name": "existing_contracts",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/environmetrics_comment1_plan_20261107/implementation/run_checks.py",
+        "--report-dir",
+        "/tmp/comment2_handoff_checks_20261107/existing_contracts"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "python_tests": 0
+    },
+    {
+      "name": "component_diagnostic_tests",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_comment2_component_diagnostics.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "python_tests": 10
+    },
+    {
+      "name": "article_integration_tests",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/tests",
+        "-p",
+        "test_comment2_revision.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "python_tests": 11
+    },
+    {
+      "name": "external_baseline_tests",
+      "argv": [
+        "Rscript",
+        "--vanilla",
+        "-e",
+        "testthat::test_file(\"tests/testthat/test_comment2_external_baselines.R\", reporter=\"summary\", stop_on_failure=TRUE, stop_on_warning=TRUE)"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "python_tests": 0
+    },
+    {
+      "name": "point2_bundle_and_tables",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/comment2_revision.py",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "python_tests": 0
+    },
+    {
+      "name": "point2_preservation",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/environmetrics_comment1_plan_20261107/readiness/audit_readiness.py",
+        "--compare",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/environmetrics_comment2_revision_20261107/preparation/baseline_snapshot.json",
+        "--out",
+        "/tmp/comment2_handoff_checks_20261107/preservation.json"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "python_tests": 0
+    }
+  ],
+  "python_tests": 82,
+  "r_assertions": [
+    48,
+    39
+  ],
+  "code_archive_matches": true,
+  "all_passed": true
+}

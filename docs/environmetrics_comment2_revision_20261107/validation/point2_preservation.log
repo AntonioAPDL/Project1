@@ -1,0 +1,29 @@
+{
+  "out": "/tmp/comment2_handoff_checks_20261107/preservation.json",
+  "counts": {
+    "files": 346,
+    "protected": 216,
+    "missing": 0,
+    "missing_required": 0,
+    "unstable": 0,
+    "hashed_bytes": 63865775,
+    "selected_runs": 10,
+    "includes": 13,
+    "unresolved_includes": 0
+  },
+  "comparison": {
+    "protected_file_changes": [],
+    "presentation_or_source_changes": [
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/MANUSCRIPT_ASSET_MANIFEST.json",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/artifacts/artifact_inventory.csv",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/article_repo_layout.py",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_all_generated_assets.py",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.bib",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.pdf",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex"
+    ],
+    "table_numeric_cell_changes": [],
+    "selected_runs_changed": false,
+    "protected_invariants_unchanged": true
+  }
+}

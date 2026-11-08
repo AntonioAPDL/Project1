@@ -1,0 +1,346 @@
+{
+  "snapshot_local": "2026-11-07T23:40:30.603649-08:00",
+  "workflow_root": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+  "commands": [
+    {
+      "name": "test_r1_overview_contract",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_r1_overview_contract.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/test_r1_overview_contract.log",
+      "unittest_count": 2
+    },
+    {
+      "name": "test_r1_m1_uncertainty_contract",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_r1_m1_uncertainty_contract.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/test_r1_m1_uncertainty_contract.log",
+      "unittest_count": 2
+    },
+    {
+      "name": "test_he1_runtime_contract",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_he1_runtime_contract.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/test_he1_runtime_contract.log",
+      "unittest_count": 3
+    },
+    {
+      "name": "test_he6_forecast_design_contract",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_he6_forecast_design_contract.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/test_he6_forecast_design_contract.log",
+      "unittest_count": 3
+    },
+    {
+      "name": "test_he7_latest_forecast_issue_contract",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_he7_latest_forecast_issue_contract.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/test_he7_latest_forecast_issue_contract.log",
+      "unittest_count": 4
+    },
+    {
+      "name": "test_reviewer1_remaining_contracts",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_reviewer1_remaining_contracts.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/test_reviewer1_remaining_contracts.log",
+      "unittest_count": 3
+    },
+    {
+      "name": "test_article_legacy_uppercase_figures_sync",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_article_legacy_uppercase_figures_sync.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/test_article_legacy_uppercase_figures_sync.log",
+      "unittest_count": 7
+    },
+    {
+      "name": "test_comment1_figure_render_guards",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_comment1_figure_render_guards.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/test_comment1_figure_render_guards.log",
+      "unittest_count": 2
+    },
+    {
+      "name": "test_article_a1_and_table_contracts",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/tests",
+        "-p",
+        "test_article_a1_and_table_contracts.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/test_article_a1_and_table_contracts.log",
+      "unittest_count": 29
+    },
+    {
+      "name": "test_manuscript_text_contract",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/tests",
+        "-p",
+        "test_manuscript_text_contract.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/test_manuscript_text_contract.log",
+      "unittest_count": 2
+    },
+    {
+      "name": "test_comment1_figure_revision",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/tests",
+        "-p",
+        "test_comment1_figure_revision.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/test_comment1_figure_revision.log",
+      "unittest_count": 4
+    },
+    {
+      "name": "r_publication_figures",
+      "argv": [
+        "Rscript",
+        "--vanilla",
+        "-e",
+        "testthat::test_file(\"tests/testthat/test_post_publication_figures.R\", reporter=\"summary\", stop_on_failure=TRUE, stop_on_warning=TRUE)"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/r_publication_figures.log",
+      "unittest_count": null
+    },
+    {
+      "name": "figure_paths",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/validate_manuscript_figure_paths.py",
+        "--article-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/figure_paths.log",
+      "unittest_count": null
+    },
+    {
+      "name": "presentation_registry",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/comment1_figure_revision.py",
+        "--article-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/presentation_registry.log",
+      "unittest_count": null
+    },
+    {
+      "name": "output_lineage",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/validate_authoritative_output_lineage.py",
+        "--article-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+        "--corrections-root",
+        "/data/muscat_data/jaguir26/Corrections---Project-1",
+        "--report-dir",
+        "/tmp/comment2_handoff_checks_20261107/existing_contracts/lineage"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/output_lineage.log",
+      "unittest_count": null
+    },
+    {
+      "name": "publication_freeze",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/scripts/validate_publication_freeze.py",
+        "--workflow-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd",
+        "--article-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+        "--corrections-root",
+        "/data/muscat_data/jaguir26/Corrections---Project-1",
+        "--he3-runtime-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625",
+        "--report-dir",
+        "/tmp/comment2_handoff_checks_20261107/existing_contracts/publication_freeze"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/publication_freeze.log",
+      "unittest_count": null
+    },
+    {
+      "name": "cross_repo_wiring",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/scripts/validate_revision_cross_repo_wiring.py",
+        "--workflow-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd",
+        "--article-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+        "--corrections-root",
+        "/data/muscat_data/jaguir26/Corrections---Project-1",
+        "--output-dir",
+        "/tmp/comment2_handoff_checks_20261107/existing_contracts/cross_repo",
+        "--check-only",
+        "--strict"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/cross_repo_wiring.log",
+      "unittest_count": null
+    },
+    {
+      "name": "numerical_invariants",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/environmetrics_comment1_plan_20261107/readiness/audit_readiness.py",
+        "--workflow-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd",
+        "--article-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+        "--response-root",
+        "/data/muscat_data/jaguir26/Corrections---Project-1",
+        "--public-root",
+        "/data/muscat_data/jaguir26/san-lorenzo-exdqlm-reproducibility",
+        "--compare",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/environmetrics_comment1_plan_20261107/readiness/baseline_snapshot.json",
+        "--out",
+        "/tmp/comment2_handoff_checks_20261107/existing_contracts/invariant_snapshot.json"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "log": "/tmp/comment2_handoff_checks_20261107/existing_contracts/numerical_invariants.log",
+      "unittest_count": null
+    }
+  ],
+  "python_tests": 61,
+  "failed_commands": [],
+  "all_passed": true
+}

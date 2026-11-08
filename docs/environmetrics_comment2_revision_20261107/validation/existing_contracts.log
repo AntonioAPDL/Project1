@@ -1,0 +1,23 @@
+test_r1_overview_contract: PASS
+test_r1_m1_uncertainty_contract: PASS
+test_he1_runtime_contract: PASS
+test_he6_forecast_design_contract: PASS
+test_he7_latest_forecast_issue_contract: PASS
+test_reviewer1_remaining_contracts: PASS
+test_article_legacy_uppercase_figures_sync: PASS
+test_comment1_figure_render_guards: PASS
+test_article_a1_and_table_contracts: PASS
+test_manuscript_text_contract: PASS
+test_comment1_figure_revision: PASS
+r_publication_figures: PASS
+figure_paths: PASS
+presentation_registry: PASS
+output_lineage: PASS
+publication_freeze: PASS
+cross_repo_wiring: PASS
+numerical_invariants: PASS
+{
+  "python_tests": 61,
+  "failed_commands": [],
+  "all_passed": true
+}

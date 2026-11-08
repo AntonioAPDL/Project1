@@ -1,0 +1,118 @@
+Referee major comment 2: implemented revision and final review
+
+The work adds the missing external comparisons and a reproducible audit of the
+existing component evidence. All original model results and the completed
+six-section structure remain fixed. The refined plan, execution decisions and
+justified departures are documented alongside this report.
+
+Scientific contribution and component interpretation
+
+The introduction distinguishes dynamic source correction within the quantile
+state-space model from the separate synthesis across fitted quantiles and the
+adapted computation. A compact comparison map explains intended model roles and
+which contrasts are available. T0 and noTF are explicitly different. Structural
+removals are interpreted as sensitivities under inherited fitting settings.
+
+The saved-fit audit covers 45 original benchmark runs and 25 reduced runs, with
+400 individual fits. Sixteen have recorded/reconstructed criterion satisfaction,
+314 reach their iteration budgets without established joint convergence, and
+70 lack sufficient recorded joint criteria. Of the 175 reduced-model fits,174
+are budget-limited; all 35 full-reference fits are also budget-limited. Some weak
+Gaussian fits meet their criteria. Thus fitting status alone does not separate
+good and poor scores. The text reports the large forecast-location mismatch in
+the May 2022 transfer-free median fit, and explicitly leaves unresolved how fully
+converged, independently retuned reduced models would compare.
+
+The historical unconditional convergence phrase is not treated as evidence. The
+future status message now reports the actual stopping reason. A parsed-expression
+comparison confirms every other R expression is identical: numerical loops,
+stopping criteria, fitting policies and sampling behavior are unchanged.
+
+External references and practical findings
+
+Seasonal climatology, deterministic persistence, and an established GloFAS
+truncated-normal EMOS comparator were computed from existing local data. The
+fixed training rules use only eligible paired observations, respect product
+families and retain 143--364 cases per lead. All 140 fits and 560 optimizer starts
+converge, with inactive artificial bounds and maximum scaled projected gradient
+5.99e-6. Four verified primary references support EMOS and forecast verification.
+
+The three added methods supply 420 new per-time scores. The 1440 existing scores
+are imported unchanged. The selected quantile model's pooled CRPSS is 0.68601
+at 28 days and 0.58967 at 8 days, equivalent to 68.6% and 59.0% mean-score reductions
+relative to seasonal climatology. EMOS has lower CRPS in May 2022 at both horizons;
+raw NWS remains competitive at the shorter horizon; seasonal climatology beats
+EMOS at November 2021. These exceptions are retained in Results and Discussion.
+
+Reproducibility and integration
+
+The compact input bundle includes USGS history, forecast mean/variance features,
+verification targets, exact old score rows and the unchanged evaluation scorer.
+An isolated execution with intentionally unavailable raw-data and article paths
+reproduces every numerical output and predictive grid byte for byte. Frozen
+code/config hashes match the executed release. An independent review recomputed
+all 420 added scores from saved predictive grids (maximum difference 2.78e-17),
+checked all 38,738 training pairs, and compared analytic CRPS on actual training
+cases with the established implementation (maximum difference 2.22e-15).
+All 1,232 original baseline source hashes and 897 diagnostic source hashes were
+checked unchanged.
+
+The article exports three additional generated tables and a comparison-role
+map. Dedicated checks verify data hashes, 155 protected original article assets,
+score arithmetic, dates, skill ratios, optimizer evidence and exact diagnostic
+run identities. The standard refresh calls the dedicated table builder. A
+versioned README template preserves reviewed compile/figure guidance during
+future inventory generation. The publisher's small font was found to be 5pt;
+new table bodies are explicitly 8.5pt, notes 8pt. All scores and skills retain the
+existing five-decimal policy; the original precision test was not weakened.
+
+Validation and rendered review
+
+82 Python tests and 87 R assertions passed. All 684 publication-freeze and 576
+strict cross-repository checks passed. All 200 previously protected numerical
+files, ten selected identities, 100 original numeric rows and 587 extracted
+numbers remain unchanged. The 105 reviewed presentation targets validate, and
+all 13 image includes resolve. Every original figure and generated numerical
+TeX table is byte-identical.
+
+The reviewed PDF is 37 pages, with four LaTeX passes, stable labels, no unresolved
+references/citations and no BibTeX warnings. It retains one inherited abstract
+horizontal-box and one inherited vertical-box warning, with no visible overflow.
+All pages were checked for layout; new method/comparison sections and all three
+new tables were inspected at readable resolution. The two-line appendix score
+cells preserve full precision without reducing font size.
+
+The build uses 40 checked source/table/image inputs. The ignored local review
+PDF is Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.pdf. The exact 643-file staged
+article package was separately compiled: all 40 build inputs, extracted text
+and labels match the reviewed source. The article source commit is
+2583ee41c1367e65d4d71ed36cf280a4f555a513. Commit and remote-main
+verification are reported at handoff; article_commit.json records the source. The earlier-response and public reproduction repositories remain
+unchanged. No existing research job was stopped, restarted or redirected.
+
+Limits of this completed implementation
+
+The work supplies the requested comparators, diagnostics, skill context and
+qualified interpretation. It does not establish independent optimality of every
+reduced model. Remaining uncertainty about their convergence and best attainable
+performance is visible in the article and clause checklist. This is a limitation
+of the current evidence, not a new numerical replacement or an unreported claim
+that the scientific question has been settled.
+
+Read and reproduce
+
+refined_plan_and_decisions.txt: accepted plan refined against current evidence.
+departures.csv and execution_notes.txt: actual refinements and excluded attempts.
+clause_checklist.csv: reviewer requests to final stable labels/pages.
+completion_summary.json: machine-readable results, counts and PDF hash.
+validation/: executed checks, commands and preservation snapshots.
+build/: final build hashes, labels and bibliography/LaTeX evidence.
+evidence/: independent reviews and expression/source/replay verification.
+
+Repeat checks in a fresh directory:
+  python3 -B docs/environmetrics_comment2_revision_20261107/run_checks.py \
+    --report-dir /tmp/NEW_comment2_checks
+Article-local validation:
+  python3 -B scripts/comment2_revision.py --check
+Portable replay is documented in artifacts/comment2_revision/README.txt in the
+article repository. It uses one process and fixed numerical-library threads.

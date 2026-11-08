@@ -6506,8 +6506,22 @@ if (gamsig_update_iters < DISC_GAMSIG_MIN_UPDATE_ITERS) {
 run.time = tictoc::toc(quiet = TRUE)
 ########################
 if (verbose) {
-  cat(sprintf("VB converged: %s iterations, %s seconds", 
-              iter, round(run.time$toc - run.time$tic, 3)), "\n")
+  # FLAG is cleared only when every configured stopping criterion is satisfied.
+  # Reaching max_iter still permits the existing guarded sampling path; report
+  # that stop honestly without changing the numerical loop or its safeguards.
+  vb_report_stop_reason <- if (!isTRUE(FLAG)) {
+    "convergence_criteria_satisfied"
+  } else if (iter >= max_iter) {
+    "iteration_budget_reached"
+  } else {
+    "stopped_without_recorded_convergence"
+  }
+  cat(sprintf(
+    "[vb_fit_end] p0=%s converged=%s iterations_completed=%d max_iter=%d convergence_reason=%s elapsed_sec=%.3f\n",
+    as.character(p0), ifelse(!isTRUE(FLAG), "true", "false"),
+    as.integer(iter), as.integer(max_iter), vb_report_stop_reason,
+    round(run.time$toc - run.time$tic, 3)
+  ))
 }
 
 print(c(n.samp))

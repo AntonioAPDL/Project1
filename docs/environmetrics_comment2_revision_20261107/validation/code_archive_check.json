@@ -1,0 +1,17 @@
+{
+  "scripts/build_comment2_external_baselines.R": {
+    "live_sha256": "b8630dd9e553db17795bb5cb95655b593dfce2287a668476678f0ab2555cb483",
+    "archived_sha256": "b8630dd9e553db17795bb5cb95655b593dfce2287a668476678f0ab2555cb483",
+    "equal": true
+  },
+  "config/comment2_external_baselines.json": {
+    "live_sha256": "879a6c6147882079fb9ee21d018bb4dc6fb6359893914b5fd34e9a9095a48950",
+    "archived_sha256": "879a6c6147882079fb9ee21d018bb4dc6fb6359893914b5fd34e9a9095a48950",
+    "equal": true
+  },
+  "scripts/audit_comment2_component_diagnostics.py": {
+    "live_sha256": "ead37a0102be312be30a0ba63b42e34b9896293dd16bb1b6d9185e8a46c1be5d",
+    "archived_sha256": "ead37a0102be312be30a0ba63b42e34b9896293dd16bb1b6d9185e8a46c1be5d",
+    "equal": true
+  }
+}

@@ -1,0 +1,86 @@
+Refined point-2 implementation plan and decision record
+November 7, 2026
+
+Authority and scope
+Current workflow main f0c83ab and article main dd7855d are the starting sources.
+The accepted point-1 six-section structure and every existing fitted result,
+selected identity, numerical table fragment and reviewed figure remain fixed.
+Only referee major comment 2 is implemented here. No main-model fitting campaign
+or broad asset refresh is required. Current process inspection found no Project1
+fit; six unrelated Q-DESN R workers are left untouched. New baseline computation
+uses one process with numerical-library thread counts fixed to one.
+
+Why the preceding plan needs these refinements
+1. Existing fit output is rich enough for an audit; removed .RData are unnecessary.
+A provenance PASS and a terminal 'VB converged' message cannot establish numerical
+convergence. One saved May-2022/noTF median fit explicitly fails its terminal
+convergence flags at the iteration budget despite that message. Other weak
+Gaussian fits report convergence. Diagnosis must be case-specific.
+2. T0 suppresses forecast transfer; noTF removes covariates/transfer from the reduced
+model. Structural removal also affects corresponding discrepancy blocks. An
+explicit comparison-role map prevents overinterpreting these distinct contrasts.
+3. The local GloFAS archive has 1176 daily issuances with 28 leads and 51 members,
+matching the selected article forecasts. A version-compatible 365-day paired
+training design has 143--364 observations per lead. This supports a small published
+EMOS comparator without downloading a new archive. A complete NWS training archive
+has not been verified, so NWS calibration is not a dependency.
+4. Deterministic 2000-point quantile representations support exact replay and match
+the nominal selected synthesis size. Reporting uses the unchanged quantile CRPS
+implementation; analytic truncated-normal CRPS is a clearly separate training
+objective/accuracy check. Existing scores are imported without recomputation.
+5. Compact curated features and USGS history allow external-baseline replay without
+absolute server paths. New score artifacts and tables stay separate from the
+existing publication-authority machinery.
+6. Additional main-model fits would address diagnostic ambiguity only if necessary
+for a specific scientific conclusion. The planned deliverable can instead report
+that ambiguity and narrow the conclusion. No unconditional rerun is justified.
+
+Execution order and gates
+A. Freeze source heads, exact original table values, selected identities, protected
+inputs, figure hashes and observed processes. Gate: original result sources exist.
+B. Implement and run the saved-diagnostic audit across45 benchmark and25 reduced
+runs, classifying genuine convergence, iteration-budget limits, guard/freeze status
+and missing evidence separately. Inspect terminal trace changes and predictive
+location/distribution behavior. Correct only the misleading future status wording;
+keep numerical iteration/stopping behavior unchanged. Gate: reproducible source
+lineage and no inferred convergence from successful execution alone.
+C. Implement fixed seasonal empirical climatology (historical start1987-05-29,
+calendar window +/-15days and explicit leap policy), point-mass persistence, and
+lead-specific truncated-normal EMOS on log1p(cms). Transform individual forecast
+members before calculating mean/variance. Fit only eligible prior paired cases
+with a fixed365-day, product-family-compatible rule; select multistart optima using
+training scores alone. Gate: adequate training cases, finite nonnegative variance,
+recorded optimizer convergence, and held-out outcomes absent from the fit objective.
+D. Freeze curated feature/history inputs, config/code/data hashes, parameters,
+predictions and per-time scores. Replay from a fresh compact input bundle. Compute
+origin/horizon and pooled CRPSS as1-aggregate(methodCRPS)/aggregate(climatologyCRPS).
+Gate: persistence identity, matched targets/units, exact unchanged imported scores,
+repeatable predictions and no averaging of daily skill ratios.
+E. Integrate new artifacts through dedicated article table generation and a manifest
+contract, preserving original generated tables. Add a compact main external-table,
+origin detail and diagnostic summary in the appendix. Retain all current panels.
+Update contribution, comparison semantics and practitioner conclusions from actual
+new evidence, including exceptions and uncertainty. Gate: every headline claim
+maps to data and no universal component-necessity/algorithm-superiority inference.
+F. Run meaningful unit/integration and existing bounded article/workflow checks,
+verify all original protected hashes/values, compile the manuscript to stable
+labels, inspect new/affected pages, and build from exactly staged source. Record
+all commands, environments, outcomes and deviations. Commit, merge and push the
+reviewed point-2 changes to main using the existing authorized repository workflow,
+then verify remote heads. Earlier-response/public repositories remain unchanged.
+
+Planned outputs
+Workflow: external-baseline config/builder/tests; diagnostic audit/parser/tests;
+reporting-only terminal-message fix; bounded end-to-end validation and this audit
+package with executed evidence, clause checklist and justified departures.
+Article: compact baseline/diagnostic artifacts and provenance; dedicated generator
+and validator with meaningful corruption tests; new generated tables and verified
+citations; revised method/results/discussion paragraphs and comment2 revision note.
+
+Acceptance
+Each reviewer request has a concrete location and an evidence source. All three
+external comparators and skill results are reported, regardless of their ranking.
+Large reduced-model losses have supported explanations or explicit unresolved
+causes; fixed-policy ablations are not treated as independent optimally retuned
+component effects. All original numbers/identities/figures are unchanged. New
+baseline execution and article export can be reproduced from recorded inputs.
