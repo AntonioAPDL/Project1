@@ -1,6 +1,6 @@
 {
   "schema": "no_refit_execution_outcomes_v1",
-  "status": "IMPLEMENTED_AWAITING_VERIFIED_RELEASE",
+  "status": "COMPLETE_WITH_DOCUMENTED_OPTIONAL_OMISSIONS",
   "plan": "docs/environmetrics_no_refit_plan_20261107/refinement_20261108/IMPLEMENTATION_PLAN.txt",
   "current_results_authoritative": true,
   "no_new_fits": true,
@@ -256,7 +256,7 @@
         "8",
         "minor1"
       ],
-      "status": "VERIFYING_RELEASE",
+      "status": "COMPLETE",
       "evidence": [
         "checks/summary.json",
         "staged_source_verification.json",

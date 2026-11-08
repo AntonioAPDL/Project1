@@ -109,3 +109,12 @@ case archive, observation and covariance conventions, computational budget and
 acceptance criteria. Distinguish numerical accuracy from forecast improvement.
 The existing provenance and case contracts can then identify result changes
 without repeating the editorial and saved-output work completed here.
+
+Released implementation
+
+The reviewed article commit is 32ab28b6c709bf001456090751edb413ae747a7b.
+The workflow implementation commit is 40780c6b5a85eb7f2bd56a2a81ce210278c7cf8e.
+Both were fast-forwarded to main, pushed, and verified against their remotes.
+release.json and implementation_remote_verification.json record the paired
+identities. A final documentation-only commit closes these execution ledgers;
+it does not change the implementation or the reviewed article tree.

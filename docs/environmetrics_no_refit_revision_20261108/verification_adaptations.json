@@ -1,0 +1,8 @@
+{
+  "review_worktrees": "Separate article/workflow worktrees; production fit-stage files and research jobs untouched.",
+  "preceding_check_path_resolution": "Initial review-worktree checks could not find sibling correction/public/runtime locations. Read-only symlinks outside both worktrees supplied the same existing sources; the original check code and expectations were unchanged. Final full check run passes.",
+  "original_untracked_plan": "Before main fast-forward, all52 original planning-file bytes were compared with the committed copy, backed up across filesystems and hash-verified. The tracked main copy has identical content. The unrelated rejection audit remains untouched.",
+  "preservation": "All155 C2-protected publication files and the complete C2 evidence bundle retain original bytes.",
+  "raw_evidence_whitespace": "Scoped Git attributes preserve captured logs, session output and dated plan evidence without normalizing their checksummed bytes.",
+  "retained_vendor_warnings": "The two title-page box warnings are unchanged from the reviewed template behavior; no unresolved citations, references or new authored-layout overflow remains."
+}

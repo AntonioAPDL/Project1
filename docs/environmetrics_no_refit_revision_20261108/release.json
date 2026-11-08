@@ -1,5 +1,5 @@
 {
-  "status": "REVIEWED_AWAITING_REMOTE_PROMOTION",
+  "status": "COMPLETE",
   "article_commit": "32ab28b6c709bf001456090751edb413ae747a7b",
   "article_tree": "571dda459c2fab4c2411d96461d5c7722468a936",
   "workflow_base": "f69d4c8ac144f405b3535c4d8c8015cc8af9e2db",
@@ -9,5 +9,13 @@
   "validation_summary": "docs/environmetrics_no_refit_revision_20261108/verification_summary.json",
   "no_new_fits": true,
   "no_new_draws": true,
-  "no_baseline_training": true
+  "no_baseline_training": true,
+  "completed_utc": "2026-11-08T08:55:34.961742+00:00",
+  "workflow_implementation_commit": "40780c6b5a85eb7f2bd56a2a81ce210278c7cf8e",
+  "article_remote_main_verified": "32ab28b6c709bf001456090751edb413ae747a7b",
+  "workflow_implementation_remote_main_verified": "40780c6b5a85eb7f2bd56a2a81ce210278c7cf8e",
+  "remote_verification_record": "implementation_remote_verification.json",
+  "final_documentation_commit_scope": "Closes task/release ledgers only; implementation source and reviewed article tree unchanged.",
+  "article_url": "https://github.com/AntonioAPDL/Evironmetrics---REVISED-DOC-Corrected-2/commit/32ab28b6c709bf001456090751edb413ae747a7b",
+  "workflow_implementation_url": "https://github.com/AntonioAPDL/Project1/commit/40780c6b5a85eb7f2bd56a2a81ce210278c7cf8e"
 }

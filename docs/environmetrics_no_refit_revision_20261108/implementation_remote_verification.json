@@ -1,0 +1,12 @@
+{
+  "article": {
+    "local_main": "32ab28b6c709bf001456090751edb413ae747a7b",
+    "remote_main": "32ab28b6c709bf001456090751edb413ae747a7b",
+    "equal": true
+  },
+  "workflow": {
+    "local_main": "40780c6b5a85eb7f2bd56a2a81ce210278c7cf8e",
+    "remote_main": "40780c6b5a85eb7f2bd56a2a81ce210278c7cf8e",
+    "equal": true
+  }
+}
