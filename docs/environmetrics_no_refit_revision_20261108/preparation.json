@@ -1,0 +1,10 @@
+{
+  "original_workflow": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+  "original_article": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+  "workflow_worktree": "/tmp/no_refit_revision_20261108/workflow",
+  "article_worktree": "/tmp/no_refit_revision_20261108/article",
+  "workflow_base": "f69d4c8ac144f405b3535c4d8c8015cc8af9e2db",
+  "article_base": "2583ee41c1367e65d4d71ed36cf280a4f555a513",
+  "existing_plan_files_copied": 52,
+  "no_model_jobs_launched": true
+}

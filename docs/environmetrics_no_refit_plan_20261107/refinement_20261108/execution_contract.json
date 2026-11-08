@@ -1,0 +1,640 @@
+{
+  "schema_version": 2,
+  "status": "PROPOSED_NOT_IMPLEMENTED",
+  "authority": {
+    "article_commit": "2583ee41c1367e65d4d71ed36cf280a4f555a513",
+    "workflow_commit": "f69d4c8ac144f405b3535c4d8c8015cc8af9e2db",
+    "if_main_advances": "Review differences and rebind authority; never discard other work or auto-promote new fit outputs."
+  },
+  "prohibited_in_this_phase": [
+    "new model fits",
+    "baseline retraining",
+    "new posterior simulations or predictive resimulation",
+    "inference-likelihood edits applied to selected runs",
+    "overwriting original predictions/scores/figures",
+    "generic full-stage postprocessing",
+    "executing broad article refresh",
+    "data-dependent selection of favorable origins or estimator cells"
+  ],
+  "input_policy": {
+    "immutable_copy": true,
+    "hash_before_and_after_copy": true,
+    "input_selection": "publication manifest artifact_run_root, with documented run_root fallback only when declared",
+    "source_files_readonly": true,
+    "prediction_value_multiplicity_preserved": true,
+    "unexpected_missing_or_nonfinite": "BLOCKED_REQUIRED_INPUT",
+    "structural_NWS_after_lead8": "NOT_APPLICABLE_HORIZON; no forecast rows",
+    "default_partial_member_policy": "not enabled for audited complete inputs",
+    "newly_completed_job_output": "not auto-selected"
+  },
+  "representation_policy": [
+    {
+      "method_family": "AL/exAL six variants",
+      "objects": 30,
+      "kind": "model_inversecdf_mc",
+      "n_values": 2000,
+      "exact_ecdf": true,
+      "iid_adjustment": "model_mc_conditional_curve"
+    },
+    {
+      "method_family": "N-U-T1",
+      "objects": 5,
+      "kind": "model_marginal_mc",
+      "n_values": 64,
+      "exact_ecdf": true,
+      "iid_adjustment": "model_mc_recorded_generator"
+    },
+    {
+      "method_family": "N-M-T0/N-M-T1",
+      "objects": 10,
+      "kind": "model_marginal_mc",
+      "n_values": 48,
+      "exact_ecdf": true,
+      "iid_adjustment": "model_mc_recorded_generator"
+    },
+    {
+      "method_family": "RAW-GLOFAS",
+      "objects": 5,
+      "kind": "physical_ensemble",
+      "n_values": 51,
+      "available_leads": 28,
+      "exact_ecdf": true,
+      "iid_adjustment": "physical_ensemble_iid_assumption_only"
+    },
+    {
+      "method_family": "RAW-NWS",
+      "objects": 5,
+      "kind": "physical_ensemble",
+      "n_values": 7,
+      "available_leads": 8,
+      "exact_ecdf": true,
+      "iid_adjustment": "physical_ensemble_iid_assumption_only"
+    },
+    {
+      "method_family": "CLIM-SEASONAL/EMOS-GLOFAS",
+      "objects": 10,
+      "kind": "deterministic_quantile_grid",
+      "n_values": 2000,
+      "probability_rule": "k/2001, k=1,...,2000",
+      "exact_ecdf": true,
+      "iid_adjustment": null,
+      "adjustment_status": "not_applicable_deterministic_grid"
+    },
+    {
+      "method_family": "PERSISTENCE",
+      "objects": 5,
+      "kind": "point_mass",
+      "stored_values": 2000,
+      "distinct_forecast_outcomes": 1,
+      "exact_ecdf": "absolute error",
+      "iid_adjustment": null,
+      "adjustment_status": "not_applicable_point_mass"
+    }
+  ],
+  "score_policy": {
+    "original": "preserve old quantile-grid scores and skill with original identity",
+    "primary_new": "ecdf_crps_saved_representation",
+    "ecdf_formula": "A-D/m^2, A=mean_i(abs(x_i-y)), D=sum_i<j(abs(x_i-x_j))",
+    "sensitivity": "iid_adjusted_pairwise_crps",
+    "sensitivity_formula": "A-D/(m*(m-1)); only eligible random-sample interpretations and m>1",
+    "legacy_identity": "original_grid=ecdf+D/(m^2*(m+1))",
+    "skill_required": "1-mean_exact_ecdf(method)/mean_exact_ecdf(frozen_climatology_grid), same dates/scale",
+    "skill_sensitivity": "No adjusted-CRPSS column in this phase",
+    "zero_reference": "UNDEFINED_ZERO_REFERENCE, not infinity",
+    "analytic_reference_changes": "separate optional representation, not replacement of primary frozen grid"
+  },
+  "quantile_policy": {
+    "existing_HE4_targets": "preserve frozen per-day predicted_quantile values for four principal competitors",
+    "selected_multivariate_figure": "R type8; demonstrated .05-.95 parity and figure .025/.975 contract",
+    "other_stochastic_model_new_quantiles": "R type8, explicitly new diagnostic convention",
+    "new_raw_or_deterministic_grid_quantiles": "empirical generalized inverse/R type1",
+    "persistence": "constant point mass",
+    "strict_hit": "y<q",
+    "weak_hit": "y<=q",
+    "tie": "y==q on frozen numeric values; no tolerance-based rounding",
+    "tie_identity": "n_weak=n_strict+n_tie",
+    "discrete_quantile_interpretation": "P(Y<q_tau)<=tau<=P(Y<=q_tau); report both rates and counts",
+    "interval_partition": [
+      "y<lower",
+      "lower<=y<=upper",
+      "y>upper"
+    ],
+    "interval_probabilities": [
+      0.025,
+      0.975
+    ],
+    "interval_score": "width+2/alpha*(lower-y)*I(y<lower)+2/alpha*(y-upper)*I(y>upper), alpha=.05",
+    "target_levels": [
+      0.05,
+      0.2,
+      0.35,
+      0.5,
+      0.65,
+      0.8,
+      0.95
+    ],
+    "no_naive_independent_day_tests": true
+  },
+  "scale_policy": {
+    "scales": [
+      "log1p_cms",
+      "discharge_cms"
+    ],
+    "distribution_values": "expm1 each original value once; no clipping or winsorization",
+    "declared_quantiles_and_limits": "expm1 of authoritative log-scale quantile/limits; do not silently recompute interpolated quantiles after transform",
+    "original_scale_mean": "mean(expm1(values))",
+    "figure_linked_events": "compare on unchanged log-scale event to preserve published endpoints and avoid numerical inverse-transform ambiguity",
+    "nonfinite_transform": "BLOCKED_REQUIRED_INPUT",
+    "unmodified_support": true
+  },
+  "tolerances": {
+    "exact_no_tolerance": [
+      "hashes",
+      "run/model/date keys",
+      "member counts",
+      "boolean events/partitions",
+      "nominal probabilities",
+      "case sets",
+      "source availability"
+    ],
+    "legacy_log_score_absolute": 1e-12,
+    "selected_type8_parity_absolute": 1e-12,
+    "new_log_score_agreement": {
+      "absolute": 1e-12,
+      "relative": 1e-12
+    },
+    "new_discharge_score_agreement": {
+      "absolute": 1e-10,
+      "relative": 1e-12
+    },
+    "rule": "abs(a-b)<=atol+rtol*max(abs(a),abs(b)); never accepts nonfinite data",
+    "display": "unrounded values stored; round scores only for display; do not decide equality from printed rounding"
+  },
+  "schemas": [
+    {
+      "file": "observations.csv",
+      "rows": 140,
+      "key": [
+        "site_id",
+        "origin_date",
+        "lead_day"
+      ],
+      "required": [
+        "observation_case_id",
+        "target_date",
+        "observed_log1p_cms",
+        "observed_discharge_cms",
+        "truth_source_sha256"
+      ],
+      "invariant": "target_date=origin_date+lead_day"
+    },
+    {
+      "file": "representations.csv",
+      "rows": 70,
+      "key": [
+        "representation_id"
+      ],
+      "required": [
+        "model_id",
+        "origin_date",
+        "source_run_id",
+        "original_source_path",
+        "input_snapshot_relpath",
+        "source_sha256",
+        "representation_kind",
+        "source_scale",
+        "available_leads",
+        "n_values_nominal",
+        "n_random_draws",
+        "grid_probability_rule",
+        "generator_evidence_id",
+        "adjustment_status"
+      ]
+    },
+    {
+      "file": "forecast_cases.csv",
+      "rows": 1860,
+      "key": [
+        "representation_id",
+        "observation_case_id"
+      ],
+      "required": [
+        "lead_day",
+        "target_date",
+        "n_values_nominal",
+        "n_values_finite",
+        "availability_status"
+      ]
+    },
+    {
+      "file": "scores_per_case.csv",
+      "rows": 3720,
+      "key": [
+        "representation_id",
+        "observation_case_id",
+        "score_scale"
+      ],
+      "required": [
+        "original_grid_formula_score",
+        "is_original_published_score",
+        "exact_ecdf_crps",
+        "iid_adjusted_crps",
+        "adjustment_status",
+        "median_absolute_error",
+        "source_id"
+      ]
+    },
+    {
+      "file": "quantiles_per_case.csv",
+      "rows": 26040,
+      "key": [
+        "representation_id",
+        "observation_case_id",
+        "score_scale",
+        "tau",
+        "quantile_definition"
+      ],
+      "required": [
+        "quantile_value",
+        "quantile_source",
+        "hit_strict",
+        "hit_weak",
+        "is_exact_tie",
+        "check_loss"
+      ],
+      "invariant": "one canonical target quantile definition per method-case-level; optional alternative roles separate"
+    },
+    {
+      "file": "intervals_per_case.csv",
+      "rows": 3720,
+      "key": [
+        "representation_id",
+        "observation_case_id",
+        "score_scale",
+        "interval_definition"
+      ],
+      "required": [
+        "nominal_coverage",
+        "lower_probability",
+        "upper_probability",
+        "lower",
+        "upper",
+        "lower_miss",
+        "inside",
+        "upper_miss",
+        "width",
+        "interval_score"
+      ],
+      "invariant": "one canonical95% interval per method-case; figure-reconciliation metadata separate"
+    },
+    {
+      "file": "summary_by_origin_horizon.csv",
+      "rows": 270,
+      "key": [
+        "model_id",
+        "origin_date",
+        "horizon_days",
+        "score_scale"
+      ],
+      "required": [
+        "n_expected_cases",
+        "n_valid_cases",
+        "mean_original_grid_score",
+        "mean_exact_ecdf_crps",
+        "mean_iid_adjusted_crps",
+        "adjustment_status",
+        "ecdf_crpss",
+        "comparison_case_set_id",
+        "climatology_representation_id"
+      ]
+    },
+    {
+      "file": "summary_pooled.csv",
+      "rows": 54,
+      "key": [
+        "model_id",
+        "horizon_days",
+        "score_scale"
+      ],
+      "required": [
+        "n_expected_cases",
+        "n_valid_cases",
+        "mean_exact_ecdf_crps",
+        "ecdf_crpss",
+        "comparison_case_set_id"
+      ]
+    },
+    {
+      "file": "calibration_summary.csv",
+      "rows": 2268,
+      "key": [
+        "model_id",
+        "origin_or_pool",
+        "horizon_days",
+        "score_scale",
+        "tau",
+        "quantile_definition"
+      ],
+      "required": [
+        "n_expected",
+        "n_valid",
+        "n_strict",
+        "n_weak",
+        "n_tie",
+        "rate_strict",
+        "rate_weak",
+        "nominal_tau",
+        "case_set_id"
+      ]
+    },
+    {
+      "file": "interval_summary.csv",
+      "rows": 324,
+      "key": [
+        "model_id",
+        "origin_or_pool",
+        "horizon_days",
+        "score_scale",
+        "interval_definition"
+      ],
+      "required": [
+        "n_expected",
+        "n_valid",
+        "n_lower_miss",
+        "n_inside",
+        "n_upper_miss",
+        "empirical_coverage",
+        "mean_width",
+        "mean_interval_score",
+        "case_set_id"
+      ]
+    },
+    {
+      "file": "source_lead_diagnostics.csv",
+      "rows": 360,
+      "key": [
+        "source_id",
+        "origin_date",
+        "lead_day",
+        "score_scale"
+      ],
+      "required": [
+        "target_date",
+        "n_members",
+        "observed",
+        "ensemble_mean",
+        "ensemble_median",
+        "ensemble_sd",
+        "mean_error",
+        "absolute_mean_error",
+        "mean_member_absolute_error"
+      ],
+      "interpretation": "descriptive raw-product behavior, not a new fitted lead-error model"
+    },
+    {
+      "file": "source_lead_summary.csv",
+      "rows": 72,
+      "key": [
+        "source_id",
+        "lead_day",
+        "score_scale"
+      ],
+      "required": [
+        "n_origins",
+        "mean_error",
+        "mean_absolute_error",
+        "mean_ensemble_sd"
+      ],
+      "interpretation": "five origins per available lead; no naive independent-day uncertainty"
+    }
+  ],
+  "metadata_contract": {
+    "feature_dictionary_rows": 12,
+    "existing_endpoint_summary_rows": 27,
+    "unexported_state_indices": [
+      32,
+      33,
+      34
+    ],
+    "existing_available_state_indices": [
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ],
+    "displayed_base_state_indices": [
+      23,
+      24,
+      25
+    ],
+    "source_numeric_strings_preserved": true,
+    "required_fields": [
+      "original_row_key",
+      "original_label",
+      "feature_index",
+      "actual_feature_name",
+      "state_index",
+      "run_id",
+      "time_index",
+      "state_date",
+      "quantile",
+      "center_kind",
+      "center",
+      "lower",
+      "upper",
+      "source_sha256",
+      "export_scale_factor",
+      "availability_status"
+    ],
+    "scope": "representative selected coefficient table; no universal fixed state layout assumed for other families"
+  },
+  "protected_article_policy": {
+    "old_table_wrapper_bytes": "preserve",
+    "old_numeric_row_bytes": "preserve",
+    "old_tables_generated_manifest": "preserve tables/generated_tex/manifest.csv",
+    "approximation_caption_default": "adjacent source-text explanation and cross-references; existing wrappers remain",
+    "new_wrapper_if_required": "new versioned filename, same stable label/old rows, old file retained; deliberate manifest/test update with numerical protection intact",
+    "new_settings_display": "exact Decimal input to integer-coefficient scientific expressions; no loss from score-table5decimal convention",
+    "new_table_manifest": "dedicated no-refit manifest"
+  },
+  "optional_precision_gates": [
+    {
+      "id": "G13.1",
+      "name": "provenance",
+      "require": "selected run/input/exporter/source snapshot and exact generation phase identified"
+    },
+    {
+      "id": "G13.2",
+      "name": "source_mapping",
+      "require": "historical rows,forecast lists,member updates and savedlabels explicitly agree"
+    },
+    {
+      "id": "G13.3",
+      "name": "update_phase",
+      "require": "QQQ and compared moments belong to the same update, or restrict to directly applied saved values with proven labels"
+    },
+    {
+      "id": "G13.4",
+      "name": "array_semantics",
+      "require": "quantile/source/lead/member IDs complete; all included variances finite positive"
+    },
+    {
+      "id": "G13.5",
+      "name": "meaning",
+      "require": "sum_i1/Q is conditional working-fit precision, not posterior mixture weight,causal influence or independent member count"
+    },
+    {
+      "id": "G13.6",
+      "name": "scope",
+      "require": "representative-only evidence stays representative-only"
+    }
+  ],
+  "task_outcomes": [
+    "COMPLETE",
+    "OPTIONAL_SKIPPED_SOURCE_CONTRACT",
+    "OPTIONAL_SKIPPED_MISSING_COVARIANCE",
+    "OPTIONAL_SKIPPED_SCOPE",
+    "BLOCKED_REQUIRED_INPUT",
+    "DEFERRED_NEW_INFERENCE"
+  ],
+  "formulation_outcomes": [
+    "FORMULATION_SCOPE_VERIFIED",
+    "FORMULATION_SCOPED_WITH_OPEN_STEPS",
+    "FORMULATION_REQUIRES_TARGET_DECISION"
+  ],
+  "release_gates": [
+    {
+      "id": "R0",
+      "require": "authority reviewed and immutable source snapshot complete"
+    },
+    {
+      "id": "R1",
+      "require": "isolated branches/worktrees,new bounded output directory,no fit-stage side effects"
+    },
+    {
+      "id": "R2",
+      "require": "each task has explicit completion/skip/block/defer status; optional omissions remove includes cleanly"
+    },
+    {
+      "id": "R3",
+      "require": "old scores/predictions/coefficients/figures and protectedfile hashes unchanged; new estimator identities separate"
+    },
+    {
+      "id": "R4",
+      "require": "reviewer resolution accurately distinguishes reporting/assessment from untested empirical claims"
+    },
+    {
+      "id": "R5",
+      "require": "article sources,new generatedassets and inventories agree; no blank future results or dangling references"
+    },
+    {
+      "id": "R6",
+      "require": "meaningful new tests and existing preservation checks pass; stable PDF visually inspected; exact stagedtree built"
+    },
+    {
+      "id": "R7",
+      "require": "reviewed commits crosslinked and promoted to main under authorization; local/remote SHAs verified; no force-push"
+    }
+  ],
+  "resources": {
+    "workers": 1,
+    "numerical_library_threads": 1,
+    "core_compressed_input_approx_bytes": 20000000,
+    "optional_raw_cube_approx_bytes": 87000000,
+    "optional_precision_csv_approx_bytes": 50000000,
+    "algorithm": "O(m log m) sorting per case; no m-by-m pairwise arrays in production",
+    "runtime": "measure actual runtime; no promised or unmeasured fit-time estimate",
+    "optional_discovery_scope": "listed selected roots and declared exports only; no broad disk-recovery search"
+  },
+  "proposed_paths": {
+    "workflow_builder": "scripts/build_no_refit_review_diagnostics.R",
+    "workflow_pure_helpers": "R/environmetrics/no_refit_review_helpers.R",
+    "workflow_config": "config/no_refit_review_diagnostics.json",
+    "workflow_R_tests": "tests/testthat/test_no_refit_review_diagnostics.R",
+    "workflow_contract_tests": "tests/python/test_no_refit_revision_contract.py",
+    "article_bundle": "artifacts/no_refit_revision",
+    "article_builder": "scripts/no_refit_revision.py",
+    "article_refresh": "scripts/refresh_no_refit_revision.py",
+    "article_tests": "tests/test_no_refit_revision.py",
+    "article_new_manifest": "tables/generated_tex/no_refit_revision_manifest.json",
+    "article_new_score_include": "tables/generated_tex/no_refit_score_comparison_table.tex",
+    "article_new_calibration_include": "tables/generated_tex/no_refit_calibration_summary_table.tex",
+    "article_new_settings_include": "tables/generated_tex/no_refit_reference_settings_table.tex",
+    "article_new_sensitivity_include": "tables/generated_tex/no_refit_score_sensitivity_table.tex",
+    "article_new_origin_include": "tables/generated_tex/no_refit_origin_diagnostics_table.tex",
+    "article_new_reliability_plot": "Figures/manuscript/no_refit_quantile_reliability.png",
+    "article_new_doc": "docs/no_refit_revision.txt",
+    "execution_evidence": "docs/environmetrics_no_refit_revision_EXECUTION_DATE"
+  },
+  "existing_paths_to_update_in_future": [
+    "Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex",
+    "Evironmetrics---REVISED-DOC-Corrected-2/MANUSCRIPT_ASSET_MANIFEST.json",
+    "Evironmetrics---REVISED-DOC-Corrected-2/scripts/article_repo_layout.py",
+    "Evironmetrics---REVISED-DOC-Corrected-2/artifacts/artifact_inventory.csv",
+    "Evironmetrics---REVISED-DOC-Corrected-2/docs/article_readme_template.txt",
+    "Evironmetrics---REVISED-DOC-Corrected-2/README.md",
+    "R/environmetrics/40_figures_multivar_only.R"
+  ],
+  "bounded_version_control_exceptions": "If needed, add scoped ignore/attribute exceptions for the declared new artifact/evidence subtree only; validate all checksummed files from an exact staged checkout.",
+  "driver_contract": {
+    "workflow_cli": [
+      "Rscript",
+      "--vanilla",
+      "scripts/build_no_refit_review_diagnostics.R",
+      "--inputs-manifest",
+      "FROZEN_INPUT_MANIFEST",
+      "--output-dir",
+      "NEW_OUTPUT_DIRECTORY"
+    ],
+    "article_check_cli": [
+      "python3",
+      "-B",
+      "scripts/no_refit_revision.py",
+      "--check"
+    ],
+    "one_pass_products": [
+      "N06",
+      "N07",
+      "N08",
+      "N09b"
+    ],
+    "article_portable_replay": "use input_snapshot_relpath inside bundle; original absolute runtime path is provenance only",
+    "article_check_readonly": true,
+    "article_generator_write_scope": "only declared new includes/artifacts after all input/protection checks",
+    "full_refresh_invocation": false,
+    "implementation_not_yet_present": true
+  },
+  "figure_policy": {
+    "primary_scope": "selected model and key references; show horizons distinctly; exhaustive model/origin counts in tables/bundle",
+    "original_includes_retained": true,
+    "new_line_styles": "color plus distinguishable line types/markers consistent with completed editorial revision",
+    "table_body_pt": 8.5,
+    "table_notes_pt": 8,
+    "old13includes": "preserve original13 sources; validate all additional includes independently rather than weaken old source protection"
+  },
+  "coefficient_diagnostic_repair": {
+    "required_part": "N11a source-only historical-index fix and regression",
+    "file": "R/environmetrics/40_figures_multivar_only.R",
+    "helper": "safe_diag_sd",
+    "fix_contract": "select actual hist_idx for historical coefficient variance; keep correctly prefix-indexed forecast uses compatible",
+    "tests": [
+      "late window distinct from first31",
+      "noncontiguous valid indices",
+      "bounds/length behavior"
+    ],
+    "optional_part": "N11b regenerate only from proven saved late-time covariance/draws",
+    "if_absent": "OPTIONAL_SKIPPED_MISSING_COVARIANCE",
+    "main_parameter_table_affected": false
+  },
+  "sampler_scope_task": {
+    "required": "N12a target/formulation scope audit and accurate text",
+    "conditional": "N12b complete-formulation corrections only with derivation evidence",
+    "empirical_request": "DEFERRED_NEW_INFERENCE; no same-target accuracy claim",
+    "full_sampler_implementation_required_for_this_release": false
+  }
+}

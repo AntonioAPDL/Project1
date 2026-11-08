@@ -305,3 +305,9 @@ flowMC_old/
 # Bounded reviewer-comment-2 plan, checklists and executed audit evidence.
 !/docs/environmetrics_comment2_revision_20261107/
 !/docs/environmetrics_comment2_revision_20261107/**
+
+# Bounded saved-output revision plan and executed verification evidence.
+!/docs/environmetrics_no_refit_plan_20261107/
+!/docs/environmetrics_no_refit_plan_20261107/**
+!/docs/environmetrics_no_refit_revision_20261108/
+!/docs/environmetrics_no_refit_revision_20261108/**

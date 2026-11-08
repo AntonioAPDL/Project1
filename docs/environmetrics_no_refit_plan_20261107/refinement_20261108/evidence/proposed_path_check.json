@@ -1,0 +1,70 @@
+{
+  "workflow_builder": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/scripts/build_no_refit_review_diagnostics.R",
+    "exists_before_implementation": false
+  },
+  "workflow_pure_helpers": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/R/environmetrics/no_refit_review_helpers.R",
+    "exists_before_implementation": false
+  },
+  "workflow_config": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/config/no_refit_review_diagnostics.json",
+    "exists_before_implementation": false
+  },
+  "workflow_R_tests": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/tests/testthat/test_no_refit_review_diagnostics.R",
+    "exists_before_implementation": false
+  },
+  "workflow_contract_tests": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/tests/python/test_no_refit_revision_contract.py",
+    "exists_before_implementation": false
+  },
+  "article_bundle": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/artifacts/no_refit_revision",
+    "exists_before_implementation": false
+  },
+  "article_builder": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/no_refit_revision.py",
+    "exists_before_implementation": false
+  },
+  "article_refresh": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/scripts/refresh_no_refit_revision.py",
+    "exists_before_implementation": false
+  },
+  "article_tests": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/tests/test_no_refit_revision.py",
+    "exists_before_implementation": false
+  },
+  "article_new_manifest": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/no_refit_revision_manifest.json",
+    "exists_before_implementation": false
+  },
+  "article_new_score_include": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/no_refit_score_comparison_table.tex",
+    "exists_before_implementation": false
+  },
+  "article_new_calibration_include": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/no_refit_calibration_summary_table.tex",
+    "exists_before_implementation": false
+  },
+  "article_new_settings_include": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/no_refit_reference_settings_table.tex",
+    "exists_before_implementation": false
+  },
+  "article_new_sensitivity_include": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/no_refit_score_sensitivity_table.tex",
+    "exists_before_implementation": false
+  },
+  "article_new_origin_include": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/tables/generated_tex/no_refit_origin_diagnostics_table.tex",
+    "exists_before_implementation": false
+  },
+  "article_new_reliability_plot": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/Figures/manuscript/no_refit_quantile_reliability.png",
+    "exists_before_implementation": false
+  },
+  "article_new_doc": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2/docs/no_refit_revision.txt",
+    "exists_before_implementation": false
+  }
+}

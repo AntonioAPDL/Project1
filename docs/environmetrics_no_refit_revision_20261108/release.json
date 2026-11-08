@@ -1,0 +1,13 @@
+{
+  "status": "REVIEWED_AWAITING_REMOTE_PROMOTION",
+  "article_commit": "32ab28b6c709bf001456090751edb413ae747a7b",
+  "article_tree": "571dda459c2fab4c2411d96461d5c7722468a936",
+  "workflow_base": "f69d4c8ac144f405b3535c4d8c8015cc8af9e2db",
+  "article_base": "2583ee41c1367e65d4d71ed36cf280a4f555a513",
+  "implementation_plan": "docs/environmetrics_no_refit_plan_20261107/refinement_20261108/IMPLEMENTATION_PLAN.txt",
+  "execution_summary": "docs/environmetrics_no_refit_revision_20261108/IMPLEMENTATION_AND_REVIEW.txt",
+  "validation_summary": "docs/environmetrics_no_refit_revision_20261108/verification_summary.json",
+  "no_new_fits": true,
+  "no_new_draws": true,
+  "no_baseline_training": true
+}

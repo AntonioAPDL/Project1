@@ -1,0 +1,16 @@
+{
+  "all_passed": true,
+  "python_tests": 106,
+  "r_assertions": 244,
+  "deterministic_conditional_identity_checks": 9,
+  "independent_score_cases": 3720,
+  "direct_pairwise_sensitivity_cases": 22,
+  "original_publication_assets_preserved": 155,
+  "original_daily_score_max_error": 2.6367796834847468e-15,
+  "selected_figure_quantile_max_error": 4.884981308350689e-15,
+  "selected_run_identities_unchanged": true,
+  "original_table_numeric_cells_unchanged": true,
+  "portable_numerical_csvs_identical": 14,
+  "portable_png_identical": true,
+  "portable_external_runtime_reads": 0
+}

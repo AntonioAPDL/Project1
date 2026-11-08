@@ -1,0 +1,77 @@
+{
+  "status": "ADOPTED_FOR_PROPOSED_PLAN_ONLY",
+  "decisions": [
+    {
+      "id": "D01",
+      "decision": "Keep current scope and17 stable taskIDs",
+      "justification": "Full preflight finds existing plan not implemented; same authority and all prior evidence intact.",
+      "effect": "No duplicate campaign or arbitrary new research objective."
+    },
+    {
+      "id": "D02",
+      "decision": "Choose exactECDF as common new comparison; keep original scores separate",
+      "justification": "Original numericalgrid differs from ECDF and methods have different representation semantics.",
+      "effect": "Coherent primary skill with frozenECDFclimatology; explicit Ferro sensitivity, no adjustedCRPSS."
+    },
+    {
+      "id": "D03",
+      "decision": "Include Gaussian48/64 in qualified stochastic-generator sensitivity",
+      "justification": "Source traces show actualNormal/inverse-Gamma generation, not deterministic quadrature.",
+      "effect": "No artificial resampling to2000; not a claim of exactposterior accuracy."
+    },
+    {
+      "id": "D04",
+      "decision": "Scope type8 proof to selected figure family; retain HE4 authority",
+      "justification": "Old plan could be read as universal type8 export provenance,which was not established.",
+      "effect": "Role-specific quantile definitions and inverse-transform event convention."
+    },
+    {
+      "id": "D05",
+      "decision": "Use adjacent interpretation prose with preserved wrappers",
+      "justification": "C2 protection covers full captions/notes and oldgeneratedmanifest, not only numbers.",
+      "effect": "No hash-contract edits; new files/manifest for derived additions."
+    },
+    {
+      "id": "D06",
+      "decision": "Validate12feature dictionary and27available summaries before interpretation",
+      "justification": "State23:31 exporter is incomplete;32:34 notexported and extra scaling differs slightly.",
+      "effect": "No invented missing intervals or unscaled-state labels; mainbase values unchanged."
+    },
+    {
+      "id": "D07",
+      "decision": "Make N11a source-only indexing repair required,N11b regeneration optional",
+      "justification": "A definite deterministicdiagnostic defect is distinct from missing covariance needed to rebuild bands.",
+      "effect": "Known extraction defect fixed without refit; optional display cannot block article."
+    },
+    {
+      "id": "D08",
+      "decision": "Split N09 andN12 mandatory/conditional subparts",
+      "justification": "Precision contracts and complete sampler derivation are notprerequisites for supported exposition/count/rawdiagnostics.",
+      "effect": "Explicit complete/skip/block/defer outcomes; no unbounded optional task."
+    },
+    {
+      "id": "D09",
+      "decision": "Specify onecase registry and a single nofit data pass",
+      "justification": "All70representations and1860cases are available; repeated workers or resimulation add no evidence.",
+      "effect": "Deterministic outputs, missingness/tie/scale/tolerance rules declared before results."
+    },
+    {
+      "id": "D10",
+      "decision": "Use dedicated article generator/refresh and portable bundle",
+      "justification": "Broadrefresh invokes support regeneration requiring absent/heavy fittedobjects.",
+      "effect": "Newmanifest/layout/inventory/template wiring with protected oldmanifest untouched."
+    },
+    {
+      "id": "D11",
+      "decision": "Refer to stablelabels, not previous report numbering",
+      "justification": "Current proof coefficienttable is7; oldreport calledit4.",
+      "effect": "Automatic renumbering stays correct; no new hardcoded table numbers in article."
+    },
+    {
+      "id": "D12",
+      "decision": "Reuse successful replay; recheck only plan integrity and changed decisioncontracts now",
+      "justification": "No model/source changes since preceding audit; existing45cache1260score proof alreadypassed.",
+      "effect": "Avoid redundant runs and reserve modeljobs for later authorized phase."
+    }
+  ]
+}

@@ -1,0 +1,288 @@
+Targeted C4/C6 decisions for the existing no-refit plan
+Read-only refinement, 2026-11-08. No production tools, refits, new diagnostics,
+source changes, or repetition of the completed 45-cache replay.
+
+The plan is methodologically sound. The genuine remaining gaps are executable
+decisions: Gaussian adjustment applicability, which baseline representation is
+canonical, concrete case/output keys, missingness and tie rules, and tolerances.
+These refinements belong in N04-N08 acceptance contracts, not another campaign.
+
+1. Decide the score estimand before implementing N07
+
+Use TWO separately identified views, preserving the old score unchanged:
+
+PRIMARY NEW VIEW: exact CRPS of each saved finite predictive representation,
+called ecdf_crps_saved_representation. This applies to every method. For the
+external deterministic inverse-CDF grids, their equal-weight finite distribution
+is explicitly the representation being evaluated. It is not claimed to be the
+analytic EMOS distribution or full seasonal empirical CDF. This is a complete,
+coherent comparison without refitting or RNG generation.
+
+SENSITIVITY VIEW: Ferro's iid-based pairwise estimator where random-sample
+semantics are relevant, with applicability/assumption flags. Do not call all
+entries universally fair, infer independence of physical members, or manufacture
+a correction for deterministic grid points. Retain both estimators side by side.
+
+Representation/applicability table:
+
+AL/exAL six variants, 30 model-origin objects
+  Saved values: 2,000 stochastic inverse-CDF marginal draws, sometimes sorted.
+  Exact saved-ECDF score: YES.
+  iid-based sensitivity: YES, conditional on constructed predictive quantile
+  curve. Sorting does not change the pairwise score or the unordered sample.
+  Status: model_mc_conditional_curve.
+
+N-U-T1, five objects
+  Saved values: 64 stochastic predictive values per lead.
+  Exact saved-ECDF score: YES.
+  iid-based sensitivity: YES under the implemented working-model simulation
+  interpretation. These are not deterministic quantile-grid points.
+  Status: model_mc_recorded_generator.
+
+N-M-T0 and N-M-T1, ten objects
+  Saved values: 48 stochastic predictive values per lead.
+  Exact saved-ECDF score: YES.
+  iid-based sensitivity: YES under the implemented working-posterior simulation
+  interpretation. Use the actual 48 values; do not replace counts with 2,000,
+  repeat/interpolate members, or add new draws to normalize sizes.
+  Status: model_mc_recorded_generator.
+
+RAW-GLOFAS and RAW-NWS, ten objects
+  Saved values: 51 physical members over 28 leads / seven over eight leads.
+  Exact saved-ECDF score: YES.
+  iid-based sensitivity: YES AS AN EXPLICIT ASSUMPTION-BASED SENSITIVITY ONLY.
+  The iid unbiasedness assertion is not established for the physical ensemble.
+  Status: physical_ensemble_iid_assumption_only.
+
+CLIM-SEASONAL and EMOS-GLOFAS, ten objects
+  Saved values: 2,000 deterministic inverse-CDF values, p=k/2001.
+  Exact saved-ECDF score: YES, with deterministic-grid representation label.
+  iid-based sensitivity: NO. Store null with status
+  not_applicable_deterministic_grid, not a zero or a disguised unadjusted score.
+
+PERSISTENCE, five objects
+  Saved representation: a point mass repeated 2,000 times for score compatibility.
+  Exact score: absolute error. The repetition is not 2,000 random draws and is
+  not 2,000 distinct outcomes. Keep original rows/weights for legacy parity.
+  iid-based sensitivity column: null, status not_applicable_point_mass; report
+  the exact absolute-error result in the common primary view.
+
+Gaussian source basis for this decision, without rereading fit objects:
+- R/unified/families/ndlm_main/08_vb_cavi_exact.R:879-887 draws Normal latent
+  means;922-927 draws inverse-Gamma scales. The other theory implementation
+  has the corresponding draws at03_vb_updates.R:1305-1324.
+- N-U-T1 source ndlm_univar/03_filter_forecast_fit.R:234-271 uses Normal and
+  chi-square draws;379-405 specifies the64-draw fallback/state/scale objects.
+  Its direct Student-t predictive simulator is408-413, but DO NOT assert that
+  this unused direct object is the published cache: it is distinct from the
+  postprocessor's forecast cache construction.
+- The delivered post cache uses40_figures_ndlm_only.R:22-31,103-168 to select
+  or construct stochastic latent means, then helpers_core.R:577-601 pairs
+  scale samples with independent Normal observation noise and transforms.
+  Fairness here concerns Monte Carlo evaluation of that implemented generator,
+  not proof that its implied posterior is exact or that parameter intervals
+  are calibrated. Those claims do not follow from the adjustment.
+- The existing replay inventory independently records all five N-U-T1 as64x28
+  and the other ten Gaussian cases as48x28 on log_cms_plus1.
+
+This resolves the current plan's open-ended instruction to treat Gaussian
+generation provenance explicitly: include them, label the conditional simulation
+interpretation, and retain source/version identity in the representation registry.
+If a later archival-version check finds a specific mismatch, change that row's
+applicability status explicitly; do not silently omit the entire Gaussian family.
+
+CRPSS decision:
+Make exact-ECDF CRPSS the required new skill comparison for ALL methods, using
+the same frozen CLIM-SEASONAL grid representation, date set and scale. Preserve
+existing legacy CRPSS separately. The Ferro sensitivity need not have its own
+CRPSS column to answer C4. This avoids a fictitious iid correction to deterministic
+climatology solely to make estimator names match. If later adding an adjusted
+skill score, use an explicitly known-distribution CRPS for the baseline and explain
+the common distribution-level estimand; do not reuse its old grid-quadrature score.
+
+Analytic EMOS and full seasonal empirical-distribution scores remain OPTIONAL,
+separate representation IDs. Adding them is unnecessary for closure of C4/C6
+and should not move the primary reference halfway through implementation.
+
+2. Canonical registry and output contract
+
+There are14 methods: nine fitted variants, two raw products, three references.
+There are70 model-origin objects. Thirteen methods have140 cases each; NWS has40.
+Thus the canonical forecast-case registry has1,860 rows per scale, not a padded
+14x140 full cube. There are140 unique origin/lead/target observation cases.
+
+Suggested minimal outputs, with a schema version and deterministic sort order:
+
+observations.csv (140 rows)
+  observation_case_id,site_id,origin_date,lead_day,target_date,
+  observed_log1p_cms,observed_discharge_cms,truth_source_sha256.
+  Key=(site_id,origin_date,lead_day). Enforce target_date=origin_date+lead_day.
+
+representations.csv (70 rows)
+  representation_id,model_id,origin_date,source_run_id,source_file,
+  source_sha256,representation_kind,source_scale,available_leads,
+  n_values_nominal,n_random_draws,grid_probability_rule,
+  equal_weight_definition,generator_source/version,
+  adjustment_status,adjustment_assumption.
+  Kind values: model_inversecdf_mc/model_marginal_mc/physical_ensemble/
+  deterministic_quantile_grid/point_mass. Preserve duplicate values and their
+  weights. Number of unique values is a diagnostic, not effective ensemble size.
+
+forecast_cases.csv (1,860 rows)
+  representation_id,observation_case_id,lead_day,target_date,
+  n_values_nominal,n_values_finite,availability_status.
+  Key=(representation_id,observation_case_id).
+
+scores_per_case.csv (3,720 rows if both scales)
+  representation_id,observation_case_id,score_scale,legacy_grid_score,
+  exact_ecdf_crps,iid_adjusted_crps,adjustment_status,
+  absolute_error_of_declared_median,source_id.
+  Key=(representation_id,observation_case_id,score_scale).
+  The raw-scale legacy_grid_score is a new application of the old formula,
+  not an original published value; metadata must distinguish this.
+
+quantiles_per_case.csv
+  representation_id,observation_case_id,score_scale,tau,
+  quantile_value,quantile_definition,quantile_source,
+  hit_strict,hit_weak,is_exact_tie,check_loss.
+  Quantile_source distinguishes existing_HE4_export/saved_matrix/
+  existing_external_summary/outer_anchor or optional fitted-location diagnostic.
+  Do not conflate latent-location rows with final predictive-distribution rows.
+
+intervals_per_case.csv
+  representation_id,observation_case_id,score_scale,nominal_coverage,
+  lower_probability,upper_probability,lower,upper,interval_definition,
+  lower_miss,inside,upper_miss,width,interval_score.
+
+summary_by_origin_horizon.csv
+  model_id,origin_date,horizon_days,score_scale,representation_kind,
+  n_expected_cases,n_valid_cases,mean_legacy_score,mean_ecdf_crps,
+  mean_adjusted_crps,adjustment_status,ecdf_crpss,
+  comparison_case_set_id,climatology_representation_id.
+  Required comparisons: all14methods over8days;13methods over28days.
+  This gives135 method-origin-horizon rows per scale,270 for both scales.
+  Aggregate summaries average daily scores over the declared matched cases.
+
+calibration_summary.csv
+  model_id,origin_or_pool,horizon_days,score_scale,tau,quantile_definition,
+  n_expected,n_valid,n_strict,n_weak,n_tie,rate_strict,rate_weak,
+  nominal_tau,case_set_id. Intervals get analogous counts and mean widths/scores.
+  Preserve origin-specific detail before pooling; use descriptive pooled results.
+
+verification.json plus immutable input hashes, status/applicability reasons,
+schema versions, environment, actual runtime and generated-output checksums.
+Store unrounded numerical outputs; round only display tables. A score tie in
+rounded print is not evidence of equality and must not decide boldfacing/ranks.
+
+3. Missing members and absent horizons
+
+Current frozen data are complete. Default RELEASE POLICY should therefore be
+fail closed: any unexpected nonfinite draw/member, missing observation, wrong
+date, duplicate case or count different from the audited64/48/2000/51/7 is an
+input-integrity failure, not permission to silently subset or impute.
+
+Structural NWS unavailability beyond lead8 is not seven missing members at
+leads9-28. It is not_applicable_horizon: no forecast-case rows there, and the
+28day NWS table cell is absent/not applicable. Common eight-day comparisons
+use exactly the same40 targets for every method. All28day rows use exactly140.
+
+A generic scorer may support m=1 exactECDF=absolute_error, but iid adjustment
+must return not_applicable_insufficient_values. That generic edge-case unit test
+does not authorize accepting a corrupted current seven-member forecast with one
+remaining value. Likewise preserve ties/duplicate members; never deduplicate.
+If a future allowed partial-member policy is wanted, specify it in a new contract
+with actual m and paired case sets; it is unnecessary for this release.
+
+4. Decisive calibration and interval conventions
+
+Quantile calibration primary outputs should use the existing HE4 final predictive
+quantiles for the four principal competitors. This preserves the delivered values.
+For other model forecasts, declare R type8 sample quantiles consistently as a NEW
+diagnostic convention. Do not assert type8 generated every old univariate export
+without checking: the completed proof established type8 parity for the selected
+multivariate figure family, while the existing HE4 rows remain direct authority.
+
+For deterministic references, preserve existing type1/generalized-inverse grid
+quantiles from the comment2 summary or compute the same type1 values. For raw
+ensembles, use an explicitly identified empirical inverse-CDF/type1 convention
+for new distribution-calibration diagnostics. If a raw figure historically uses
+another interpolation type, treat a figure-reconciliation row as a distinct
+interval_definition instead of replacing the calibrated representation silently.
+Persistence's quantiles all equal its point mass.
+
+Required quantile event definitions:
+  hit_strict=1[y<q_tau]; hit_weak=1[y<=q_tau]; exact_tie=1[y==q_tau].
+Use exact comparisons on the frozen numeric values. Do not collapse nearby but
+unequal numbers into ties with a generic numerical tolerance. An optional
+near_tie diagnostic may be separate and must not change events or scores.
+Counts satisfy n_weak=n_strict+n_tie. For discrete forecasts the population
+quantile property is P(Y<q_tau)<=tau<=P(Y<=q_tau); do not claim both empirical
+rates must equal tau, especially for persistence or tied empirical grids.
+No random tie-breaking/RNG is necessary. Show both rates and counts.
+
+For the requested displayed95% ribbon, compute R type8.025/.975 limits from
+the exact source matrices, matching current figure generation. Event partition:
+  lower_miss=1[y<lower]; inside=1[lower<=y<=upper]; upper_miss=1[y>upper].
+This is a CLOSED central interval. Exact endpoint ties count inside; the three
+counts partition n_valid. Width=upper-lower. For alpha=.05, proper interval score:
+  width+(2/alpha)*(lower-y)*1[y<lower]+(2/alpha)*(y-upper)*1[y>upper].
+Do not call the .05/.95 range a95% interval or a latent-state credible band a
+held-out predictive interval. The small48/64 Monte Carlo sizes also affect tail
+quantile precision; finite-count correction of CRPS does not remove that fact.
+
+Original-scale convention should be explicit and minimal:
+- Distribution scores: apply expm1 to EACH existing sample/grid value once.
+- Preserve the displayed interval event by inverse-transforming its existing
+  log-scale endpoints. Use interval_definition=inverse_of_log_type8_figure_band.
+- For published targeted quantile losses, inverse-transform each authoritative
+  existing log-scale q_tau; mark quantile_definition=inverse_of_source_quantile.
+  This honors current fitted outputs. Recomputing type8 after nonlinear
+  transformation is a separate optional diagnostic, not the same estimate.
+- Means use mean(expm1(values)), never expm1(mean(values)).
+No silently added truncation, winsorization or density-family substitution.
+
+5. Acceptance tolerances and stopping rules
+
+Exact checks: SHA256 identity, selected run/model/date keys, integer counts,
+availability statuses, expected case sets, nominal probabilities, and boolean
+event partitions. These have no numerical tolerance.
+
+Legacy replay: retain existing per-case absolute tolerance1e-12 on log scale.
+Selected type8 quantile-export parity: absolute tolerance1e-12 on log scale.
+These are already far looser than observed floating-point differences.
+
+New score identities and trusted-reference agreement:
+  abs(a-b)<=1e-12+1e-12*max(abs(a),abs(b)) on log1p scale.
+  abs(a-b)<=1e-10+1e-12*max(abs(a),abs(b)) on discharge scale.
+Use independent pairwise toy formulas and sorted implementations, plus a trusted
+library. Huge but finite current raw-scale values make a universal1e-12 ABSOLUTE
+tolerance inappropriate. No tolerance can authorize nonfinite values or changed
+forecasts. Test ties, point masses, two members,48/64/2000 counts, and scale changes.
+
+Summary/CRPSS: recompute from unrounded per-case values and exact case-set joins,
+with the same absolute-plus-relative tolerances. Require positive climatology
+mean before dividing; otherwise status=undefined_zero_reference, not an infinity.
+Ranks must come from the declared same estimator/scale/cases, never a selected
+combination of the best cells from different methods.
+
+Inverse-transform safety: all inputs finite; validate units and expm1 inputs;
+fail on overflow/nonfinite outputs. Do not require log1p(expm1(z)) to agree at
+1e-12 absolute for deeply negative z: subtraction near -1 can lose precision.
+Compare against the prescribed transformation, and use unchanged log-scale
+events for the figure-linked coverage reconciliation.
+
+6. Reviewer4 closure criterion
+
+The no-fit phase can complete the requested ANALYSIS: actual sample counts,
+precise legacy estimator definition, exact-ECDF comparison, appropriately labeled
+finite-sample adjustment sensitivity including the small Gaussian samples,
+paired eight-day NWS results, and the factual discussion of why joint synthesis
+need not dominate its strongest input. It must report any estimator-dependent
+changes in ordering, even inconvenient ones.
+
+Use closure wording such as 'requested score-method and sample-size sensitivity
+completed under stated ensemble interpretations'. Do not say 'all scores now
+fair' or 'ensemble dependence removed'. If a result changes substantially, the
+article discussion should say so; that is an outcome of the requested audit,
+not automatic authorization to alter the fits. Stronger dependence-model claims
+remain outside what a scalar score correction establishes.

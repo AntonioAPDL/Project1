@@ -1,0 +1,146 @@
+{
+  "created_utc": "2026-11-08T08:47:06.416725+00:00",
+  "workflow_root": "/tmp/no_refit_revision_20261108/workflow",
+  "article_root": "/tmp/no_refit_revision_20261108/article",
+  "commands": [
+    {
+      "name": "article_saved_output_release",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/tmp/no_refit_revision_20261108/article/scripts/no_refit_revision.py",
+        "--check"
+      ],
+      "cwd": "/tmp/no_refit_revision_20261108/workflow",
+      "returncode": 0,
+      "python_tests": null
+    },
+    {
+      "name": "article_saved_output_tests",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/tmp/no_refit_revision_20261108/article/tests",
+        "-p",
+        "test_no_refit_revision.py",
+        "-v"
+      ],
+      "cwd": "/tmp/no_refit_revision_20261108/workflow",
+      "returncode": 0,
+      "python_tests": 13
+    },
+    {
+      "name": "metadata_tests",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_no_refit_reporting_metadata.py",
+        "-v"
+      ],
+      "cwd": "/tmp/no_refit_revision_20261108/workflow",
+      "returncode": 0,
+      "python_tests": 11
+    },
+    {
+      "name": "test_no_refit_review_diagnostics.R",
+      "argv": [
+        "Rscript",
+        "--vanilla",
+        "-e",
+        "testthat::test_file(\"tests/testthat/test_no_refit_review_diagnostics.R\", reporter=\"summary\", stop_on_failure=TRUE, stop_on_warning=TRUE)"
+      ],
+      "cwd": "/tmp/no_refit_revision_20261108/workflow",
+      "returncode": 0,
+      "python_tests": null
+    },
+    {
+      "name": "test_no_refit_diagnostic_indices.R",
+      "argv": [
+        "Rscript",
+        "--vanilla",
+        "-e",
+        "testthat::test_file(\"tests/testthat/test_no_refit_diagnostic_indices.R\", reporter=\"summary\", stop_on_failure=TRUE, stop_on_warning=TRUE)"
+      ],
+      "cwd": "/tmp/no_refit_revision_20261108/workflow",
+      "returncode": 0,
+      "python_tests": null
+    },
+    {
+      "name": "test_no_refit_synthesis_diagnostics.R",
+      "argv": [
+        "Rscript",
+        "--vanilla",
+        "-e",
+        "testthat::test_file(\"tests/testthat/test_no_refit_synthesis_diagnostics.R\", reporter=\"summary\", stop_on_failure=TRUE, stop_on_warning=TRUE)"
+      ],
+      "cwd": "/tmp/no_refit_revision_20261108/workflow",
+      "returncode": 0,
+      "python_tests": null
+    },
+    {
+      "name": "metadata_bundle",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/tmp/no_refit_revision_20261108/article/artifacts/no_refit_revision/reporting/inputs/build_no_refit_reporting_metadata.py",
+        "--output-dir",
+        "/tmp/no_refit_revision_20261108/article/artifacts/no_refit_revision/reporting",
+        "--check"
+      ],
+      "cwd": "/tmp/no_refit_revision_20261108/workflow",
+      "returncode": 0,
+      "python_tests": null
+    },
+    {
+      "name": "conditional_identities",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/tmp/no_refit_revision_20261108/article/artifacts/no_refit_revision/inference_scope/verify_conditional_identities.py"
+      ],
+      "cwd": "/tmp/no_refit_revision_20261108/workflow",
+      "returncode": 0,
+      "python_tests": null
+    },
+    {
+      "name": "synthesis_bundle",
+      "argv": [
+        "Rscript",
+        "--vanilla",
+        "/tmp/no_refit_revision_20261108/article/artifacts/no_refit_revision/synthesis_diagnostics/reproduce/build_no_refit_synthesis_diagnostics.R",
+        "--check",
+        "--output-dir",
+        "/tmp/no_refit_revision_20261108/article/artifacts/no_refit_revision/synthesis_diagnostics"
+      ],
+      "cwd": "/tmp/no_refit_revision_20261108/workflow",
+      "returncode": 0,
+      "python_tests": null
+    },
+    {
+      "name": "preceding_revision_contracts",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/tmp/no_refit_revision_20261108/workflow/docs/environmetrics_comment2_revision_20261107/run_checks.py",
+        "--workflow-root",
+        "/tmp/no_refit_revision_20261108/workflow",
+        "--report-dir",
+        "/tmp/no_refit_full_checks_20261108/preceding_revision_contracts"
+      ],
+      "cwd": "/tmp/no_refit_revision_20261108/workflow",
+      "returncode": 0,
+      "python_tests": null
+    }
+  ],
+  "all_passed": true
+}

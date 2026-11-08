@@ -1,0 +1,63 @@
+{
+  "status": "PASSED",
+  "script_sha256": "9c56f79526f6d9a2306f7f76be3c03e89563b228b4b61954dabbaf108f4e5b67",
+  "package": {
+    "name": "scoringRules",
+    "version": "1.1.3",
+    "method": "edf",
+    "public_arguments": ["y", "dat", "method", "w", "bw", "num_int", "show_messages"],
+    "namespace_function": "crps_edf",
+    "implementation_body_sha256": "2d1527e896fdcab155b3f474e141e2c8a18d7b91b4a53a39085075c2c19772dc",
+    "implementation_description": "Exact EDF CRPS through sorted values and midpoint quantile weights (i-.5)/m; no kernel smoothing"
+  },
+  "exact_ecdf_cases": 3720,
+  "ecdf_errors": {
+    "discharge_cms": {
+      "cases": 1860,
+      "max_absolute_error": 0.0010986328125,
+      "max_relative_error": 4.1785445339060166e-15,
+      "max_tolerance_fraction": 0.0041737506074673242
+    },
+    "log1p_cms": {
+      "cases": 1860,
+      "max_absolute_error": 1.7763568394002505e-15,
+      "max_relative_error": 9.4510260910551657e-16,
+      "max_tolerance_fraction": 0.00039073397114562858
+    }
+  },
+  "direct_adjusted_pairwise_cases": 22,
+  "adjusted_errors": {
+    "discharge_cms": {
+      "cases": 11,
+      "max_absolute_error": 1.1368683772161603e-13,
+      "max_relative_error": 2.6577131116629383e-15,
+      "max_tolerance_fraction": 0.00079625908712659761
+    },
+    "log1p_cms": {
+      "cases": 11,
+      "max_absolute_error": 2.7755575615628914e-17,
+      "max_relative_error": 3.0907556967419531e-16,
+      "max_tolerance_fraction": 2.4410438566992843e-05
+    }
+  },
+  "tolerances": {
+    "log1p_cms": {
+      "absolute": 9.9999999999999998e-13,
+      "relative": 9.9999999999999998e-13
+    },
+    "discharge_cms": {
+      "absolute": 1e-10,
+      "relative": 9.9999999999999998e-13
+    },
+    "criterion": "abs(a-b)<=atol+rtol*max(abs(a),abs(b))"
+  },
+  "frozen_files_checked": 77,
+  "changed_files": 0,
+  "input_hashes_unchanged": true,
+  "random_state_unchanged": true,
+  "no_fit_or_forecast_generation": true,
+  "production_helpers_called": false,
+  "input_manifest_sha256": "97ad1f3d578df45289c557449945b71d6ef23b0b10c2dc1f4e3e30f889058478",
+  "derived_score_file_sha256": "87bd104fa0803723f6334ce81485a65d5bb5be8e8357b40833999e40f4c7964a",
+  "elapsed_seconds": 3.1609999999999996
+}

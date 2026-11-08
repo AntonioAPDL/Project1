@@ -1,0 +1,20 @@
+Title:          
+Subject:        
+Keywords:       
+Author:         
+Creator:        LaTeX with hyperref package
+Producer:       pdfTeX-1.40.19
+CreationDate:   Sun Nov  8 00:49:18 2026 PST
+ModDate:        Sun Nov  8 00:49:18 2026 PST
+Tagged:         no
+UserProperties: no
+Suspects:       no
+Form:           none
+JavaScript:     no
+Pages:          42
+Encrypted:      no
+Page size:      595.276 x 782.362 pts
+Page rot:       0
+File size:      13955184 bytes
+Optimized:      no
+PDF version:    1.5

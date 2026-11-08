@@ -535,10 +535,20 @@ infer_transfer_layout_q50 <- function(theta_obj, p_hint = NA_integer_) {
   out
 }
 
-safe_diag_sd <- function(cube_arr, idx, n_time) {
+safe_diag_sd <- function(cube_arr, idx, n_time, time_indices = NULL) {
   out <- rep(NA_real_, n_time)
   if (!is.array(cube_arr) || length(dim(cube_arr)) != 3L || n_time <= 0L) return(out)
   if (idx < 1L || idx > dim(cube_arr)[1] || idx > dim(cube_arr)[2]) return(out)
+  if (!is.null(time_indices)) {
+    # A historical display window can start long after the first stored time.
+    if (length(time_indices) != n_time || any(!is.finite(time_indices)) ||
+        any(time_indices != as.integer(time_indices)) ||
+        any(time_indices < 1L | time_indices > dim(cube_arr)[3])) {
+      stop("time_indices must contain n_time valid covariance time indices", call. = FALSE)
+    }
+    vv <- as.numeric(cube_arr[idx, idx, as.integer(time_indices)])
+    return(sqrt(pmax(vv, 0)))
+  }
   t_use <- min(n_time, dim(cube_arr)[3])
   if (t_use <= 0L) return(out)
   vv <- as.numeric(cube_arr[idx, idx, seq_len(t_use)])
@@ -810,7 +820,7 @@ build_transfer_state_window_q50 <- function(pre_days = 30L) {
     for (k in seq_len(psi_count)) {
       if (psi_hist_idx[k] <= nrow(sm_hist)) {
         psi_hist_mean[k, ] <- as.numeric(sm_hist[psi_hist_idx[k], hist_idx])
-        psi_hist_sd[k, ] <- safe_diag_sd(sC_hist, psi_hist_idx[k], n_hist)
+        psi_hist_sd[k, ] <- safe_diag_sd(sC_hist, psi_hist_idx[k], n_hist, time_indices = hist_idx)
       }
     }
   }

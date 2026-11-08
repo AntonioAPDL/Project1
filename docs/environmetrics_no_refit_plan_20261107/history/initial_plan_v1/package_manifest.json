@@ -1,0 +1,106 @@
+{
+  "scope": "No-refit audit and proposed plan only",
+  "files": [
+    {
+      "path": "PLAN.txt",
+      "bytes": 23202,
+      "sha256": "f834db7dc1a8e04e62bc48b028d195f22584fedc861baf02d7c445f749696579"
+    },
+    {
+      "path": "README.txt",
+      "bytes": 1250,
+      "sha256": "b1f69c3c58c6284d860e91c16020218b1604645346e4580e68a05cdbc5aa39e8"
+    },
+    {
+      "path": "REPLAY.txt",
+      "bytes": 1126,
+      "sha256": "d1c3556897af20101494338917f16c63b46b39f65e47ddf0996e21bf70116a6d"
+    },
+    {
+      "path": "audit_handoff.json",
+      "bytes": 848,
+      "sha256": "e0c985584ddd936d1dff8297bccae427741bec381afdc0a1dd170fb5133dfc9e"
+    },
+    {
+      "path": "evidence/authority_snapshot.json",
+      "bytes": 1837,
+      "sha256": "fc689d1a9d2a42abad3e7ce8b3370a491c002e533069106514cf7d45d0ae364f"
+    },
+    {
+      "path": "evidence/configured_settings_inventory.json",
+      "bytes": 49393,
+      "sha256": "aef958fc5058402ac4d27c5bb49ccc1fcb7b1812f3c980424654e30cccc63d90"
+    },
+    {
+      "path": "evidence/current_comment2_bundle_check.txt",
+      "bytes": 300,
+      "sha256": "565db963251f21d8ccbc36881c762350194d74846f98a7f189871279a7592b4f"
+    },
+    {
+      "path": "evidence/effects_settings_audit.txt",
+      "bytes": 23837,
+      "sha256": "97a9c585b1f29899ae1468938b821d1aa534970cbfc3e61b66572336138c6ccc"
+    },
+    {
+      "path": "evidence/independent_audit_verification.json",
+      "bytes": 432,
+      "sha256": "b2cbdc7397d21bdadcfa790c6660bbd78b093f3afdf4522d74ae1ad5978b7d93"
+    },
+    {
+      "path": "evidence/independent_plan_reviews.txt",
+      "bytes": 960,
+      "sha256": "9c845b8987f262bacab6acad69e5ea1e91fbefa23552eae67a281b24af969c8a"
+    },
+    {
+      "path": "evidence/model_inference_audit.txt",
+      "bytes": 21157,
+      "sha256": "2ae7b2d32197870f1344ef3f7f9b416a82758c70ed704ac8e840ff61b6afd1c6"
+    },
+    {
+      "path": "evidence/replay_scoring_artifact_inventory.json",
+      "bytes": 64635,
+      "sha256": "642b80d56557797f279c1092267ef71fc2b619401eec5c2f69761aaf79a6e567"
+    },
+    {
+      "path": "evidence/replay_session_info.txt",
+      "bytes": 768,
+      "sha256": "b87738951387e270d10efbc55af7f421b7b1088fb610a820813ee20f941e01f2"
+    },
+    {
+      "path": "evidence/scoring_artifact_inventory.json",
+      "bytes": 50227,
+      "sha256": "affa03e0e5b58c460dbae5d3fe309e83585ea0a05bc10335d3a52f29aeca9d79"
+    },
+    {
+      "path": "evidence/scoring_calibration_audit.txt",
+      "bytes": 27982,
+      "sha256": "fb80484a85c901e13e2800e7adcbf557e567c99fc257c71c321797cfc2ca50ce"
+    },
+    {
+      "path": "references.txt",
+      "bytes": 1611,
+      "sha256": "dc1e602672291e0fa5892efc153437ce22cd3d5646e9d5e27f561adf32413d0c"
+    },
+    {
+      "path": "replay_existing_scores.R",
+      "bytes": 10078,
+      "sha256": "7483c7109d73ab101d7c0e40163f729c0fe7740ca680ff1d162bba03bdd59699"
+    },
+    {
+      "path": "reviewer_matrix.json",
+      "bytes": 3937,
+      "sha256": "a1c88cb653c1641e1c5d65b07eff15bce0feb0566176912e819eb3793144bf65"
+    },
+    {
+      "path": "source_locations.json",
+      "bytes": 3874,
+      "sha256": "a29137c7bd485199f1399f8226b8300c8549d0f48d5df8487cb932ac529a3527"
+    },
+    {
+      "path": "task_register.json",
+      "bytes": 12400,
+      "sha256": "fbf0099817994a20538064bf7ccde8263b95d1a369ae29aa58350667a6d3e86d"
+    }
+  ],
+  "self_excluded": true
+}

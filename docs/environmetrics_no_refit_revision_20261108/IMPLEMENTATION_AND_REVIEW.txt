@@ -1,0 +1,111 @@
+Implementation of the saved-output revision — November 8, 2026
+
+This is the execution record for the approved plan in
+docs/environmetrics_no_refit_plan_20261107/refinement_20261108/.
+The preceding plan and its 52-file checksum package are retained as dated
+planning evidence, without rewriting its historical PROPOSED statuses.
+task_outcomes.json records the execution disposition of each stable task ID.
+
+The implementation uses isolated branches/worktrees in the workflow and article
+repositories. Existing selected fits and original numerical assets remain the
+authority. Nothing runs a fitting/post-stage launcher, retrains a baseline,
+creates posterior samples, changes selected predictions, or promotes a newly
+completed research job. Local preflight found no active Project1 R fit; unrelated
+research processes were left alone. This observation is local to this host.
+
+Deliverables and deviations justified by inspection
+
+1. Freeze and common case registry
+   All 45 selected benchmark representations plus raw products and the three
+   existing references are snapshotted compactly. The result covers 14 methods,
+   70 representations, 140 observation dates and 1,860 forecast cases. Core
+   derivation runs once, on one thread, and records source hashes before/after.
+   Unexpected missing cases, nonfinite values and incorrect dates fail closed.
+
+2. Exact settings and interpretation
+   The 45 configuration records include exact effective/default settings.
+   A five-origin appendix table uses integer-coefficient expressions so a
+   near-one discount is never displayed as one. The 12-feature dictionary and
+   27 existing endpoint summaries retain original numeric strings; there are
+   no invented state-32-to-34 interval records. Main coefficient rows are
+   unchanged and are interpreted as conditional terminal-state feature loadings.
+
+3. Scoring and predictive uncertainty
+   New exact ECDF scores, qualified iid pairwise sensitivities, target-quantile
+   reliability, 95% interval coverage/width/score and original-discharge scores
+   share one registry. The original quantile-grid scores are preserved under
+   their old definition. Deterministic grids and point masses do not receive
+   a fabricated adjusted score. Skill always uses matching exact-ECDF seasonal
+   climatology and matching dates/scale. Strict/weak/tie events are distinct.
+
+   Original-scale event membership is inherited from the log limits; a true
+   discrete tie remains a tie despite last-bit inverse-transform rounding.
+   Original-scale scores still transform each value individually. Extreme and
+   negative stored support is retained and audited, without silent clipping.
+
+4. Likelihood, computation and optional evidence
+   The article explains conditional member independence, shared-state induced
+   dependence, source availability and the shared observation-scale assumption.
+   Raw errors/spreads are descriptive lead summaries, not tests of a new model.
+   Conditional-sampling displays are scoped to verified historical identities.
+   Nine deterministic checks establish those identities, not sampler convergence
+   or empirical VB accuracy. The full matching-posterior experiment remains
+   later work and is not advertised as completed.
+
+   Required diagnostic-index extraction is repaired and tested on time-varying
+   covariance. Optional historical bands are skipped because the necessary
+   late-window covariance exports are unavailable. Optional precision shares
+   are skipped because provenance/source/phase gates are unresolved. Neither
+   omission blocks required reporting or leads to unsupported numerical claims.
+
+   Optional N14 uses saved cubes only to extract compact own-fit predictive
+   anchors. Isotonic projection and final delivered quantiles are different
+   roles. Seven anchors do not define a full pre-synthesis predictive law, so
+   no pre-synthesis CRPS or posterior-path crossing probability is invented.
+
+5. Article integration
+   The six main sections and original C1/C2 tables/figures remain. Five new table
+   files contain six floats: a compact score table and calibration table in the
+   main text, exact settings, full-method score sensitivity, discharge scores
+   and origin-specific coverage in the appendix. This packaging avoids an
+   unreadable all-origin/all-scale wide table; unrounded full details remain
+   machine-readable. A line-type/shape/color reliability plot is also added.
+
+   Old table wrappers/captions and tables/generated_tex/manifest.csv stay
+   protected byte-for-byte. Approximation/estimand explanations sit beside
+   their includes. New files have a dedicated manifest/generator/refresh path;
+   the broad legacy refresh is not run. No contract is weakened to accept an
+   unexpected source or result change.
+
+6. Verification and release
+   New mathematical, metadata, corruption and time-index checks supplement
+   existing C1/C2 checks. Isolated numerical replay needs only article inputs
+   and reproduce/; all result CSVs and the PNG reproduce byte-for-byte, with
+   file-access evidence that original runtime inputs are not read. Independent
+   pairwise and scoringRules comparisons verify the new scores. Existing
+   numerical invariants, selected IDs and protected-file hashes remain checked.
+
+   A compiled proof is reviewed for new tables, calibration plot, revised
+   interpretation and historical algorithm scope. The exact staged article is
+   materialized and built before commit/main promotion. Final release metadata
+   links both commits and verifies remote main. Required tests must pass before
+   promotion; optional omissions are explicit and not called empirical closure.
+
+Main findings now reflected in the article
+
+Selected exact-ECDF log CRPS is 0.20156 (28 days) and 0.29919 (eight days),
+with skill 0.68602 and 0.58965. The model's 95% predictive coverage is 123/140
+and 29/40. AL-M-T1 is wider and has better interval scores over both horizons.
+At eight days the discharge-scale ranking reverses: raw NWS 6.63303 is lower
+than selected 7.49362. The selected 28-day discharge score is 6.26885.
+These findings qualify performance directly rather than being hidden in audits.
+
+Experiments remaining after this revision
+
+The full VB/MCMC accuracy comparison, alternative member-dependence/lead-scale
+likelihoods, retuned dynamics/priors and converged component-removal experiments
+require new inference. Before running them, freeze a matching statistical target,
+case archive, observation and covariance conventions, computational budget and
+acceptance criteria. Distinguish numerical accuracy from forecast improvement.
+The existing provenance and case contracts can then identify result changes
+without repeating the editorial and saved-output work completed here.

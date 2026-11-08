@@ -1,0 +1,56 @@
+{
+  "scope": "Current-result reporting and assessment only; not blanket empirical closure",
+  "reviewer_rows": [
+    {
+      "comment": "2",
+      "reporting_and_existing_output_work": "COMPLETE",
+      "original_plan_disposition": "Already implemented with stated limits",
+      "later_or_conditional": "Independent retuning/convergence experiments only if stronger component conclusions are needed."
+    },
+    {
+      "comment": "3",
+      "reporting_and_existing_output_work": "COMPLETE",
+      "original_plan_disposition": "Reporting now; empirical re-estimation later",
+      "later_or_conditional": "A changed calibration, retuning or dynamic specification requires a separate experiment."
+    },
+    {
+      "comment": "4",
+      "reporting_and_existing_output_work": "COMPLETE",
+      "original_plan_disposition": "Requested rescoring feasible without refit",
+      "later_or_conditional": "Dependence-model changes or new posterior generation if a different forecast is desired."
+    },
+    {
+      "comment": "5",
+      "reporting_and_existing_output_work": "COMPLETE",
+      "original_plan_disposition": "Explanation and existing-output diagnostics now; model alternatives later",
+      "later_or_conditional": "Different member weights, residual dependence or explicit lead-scale law need new inference.",
+      "optional_precision_diagnostic": "OPTIONAL_SKIPPED_SOURCE_CONTRACT"
+    },
+    {
+      "comment": "6",
+      "reporting_and_existing_output_work": "COMPLETE",
+      "original_plan_disposition": "Requested assessment feasible without refit",
+      "later_or_conditional": "New tail models, additional origins or a refit response to findings require later work."
+    },
+    {
+      "comment": "7",
+      "reporting_and_existing_output_work": "COMPLETE",
+      "original_plan_disposition": "Labels and mathematical exposition now; accuracy experiment later",
+      "later_or_conditional": "Genuine matching-target MCMC and any comparison-specific VB refit require new computation.",
+      "empirical_posterior_accuracy_comparison": "DEFERRED_NEW_INFERENCE"
+    },
+    {
+      "comment": "8",
+      "reporting_and_existing_output_work": "COMPLETE",
+      "original_plan_disposition": "Reviewer-permitted interpretation correction feasible without refit",
+      "later_or_conditional": "Optional physical-response uncertainty needs recoverable joint covariance; causal identification is not asserted.",
+      "optional_historical_band_regeneration": "OPTIONAL_SKIPPED_MISSING_COVARIANCE"
+    },
+    {
+      "comment": "minor1",
+      "reporting_and_existing_output_work": "COMPLETE",
+      "original_plan_disposition": "Fully addressable by reporting",
+      "later_or_conditional": "No refit needed to report already used settings."
+    }
+  ]
+}

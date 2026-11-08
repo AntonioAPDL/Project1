@@ -1,0 +1,62 @@
+{
+  "created_utc": "2026-11-08T07:53:48.434523+00:00",
+  "workflow_commit": "f69d4c8ac144f405b3535c4d8c8015cc8af9e2db",
+  "article_commit": "2583ee41c1367e65d4d71ed36cf280a4f555a513",
+  "authoritative_publication_rows": 45,
+  "models": [
+    "AL-M-T0",
+    "AL-M-T1",
+    "AL-U-T1",
+    "N-M-T0",
+    "N-M-T1",
+    "N-U-T1",
+    "exAL-M-T0",
+    "exAL-M-T1",
+    "exAL-U-T1"
+  ],
+  "origins": [
+    "20210123",
+    "20211112",
+    "20211221",
+    "20220511",
+    "20221225"
+  ],
+  "article_status_before_audit": "",
+  "source_files": [
+    {
+      "path": "wileyNJD-APA.tex",
+      "bytes": 96106,
+      "sha256": "773cba47f950d1e8fa3013cec9c73b0bcd17a577738fb68ad3f6e2ed84365969"
+    },
+    {
+      "path": "wileyNJD-APA.bib",
+      "bytes": 38802,
+      "sha256": "88f2576aa066e06e9bbe7ee62de8453746cfae346880d354e7f196e0240b88ee"
+    },
+    {
+      "path": "MANUSCRIPT_ASSET_MANIFEST.json",
+      "bytes": 15514,
+      "sha256": "ad06190c207f049ca9033bc92f15b954cad98c9582cdd77f49aaf6d0598fa5c7"
+    },
+    {
+      "path": "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv",
+      "bytes": 192529,
+      "sha256": "c2f7cfe3dbfd030a814308e280749093c92d39c9a33c299b3c8d802d82cedeb4"
+    },
+    {
+      "path": "artifacts/he4_quantile_check_loss_current_publication/he4_quantile_check_loss_per_day.csv",
+      "bytes": 1567957,
+      "sha256": "a95f224ecd77fe25b48d05d601fa4f271b6eacac39403a8dd8e135b2ee79fab8"
+    },
+    {
+      "path": "artifacts/representative_selected_model_2022_12_25/covariate_effects_summary.csv",
+      "bytes": 2970,
+      "sha256": "0601b6d18cc5e1caa2c5366fad520f8877b64f92ab2bdcc1007a2ca62e8d1bb1"
+    },
+    {
+      "path": "artifacts/comment2_revision/manifest.json",
+      "bytes": 32177,
+      "sha256": "50d9fe9e82b26e7b6a5de91d338a1638a21faea181b1030cc477c242ac9248c1"
+    }
+  ]
+}

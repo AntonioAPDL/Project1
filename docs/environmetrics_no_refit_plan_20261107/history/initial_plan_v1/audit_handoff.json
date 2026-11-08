@@ -1,0 +1,23 @@
+{
+  "created_utc": "2026-11-08T08:05:54.421480+00:00",
+  "scope": "Audit and proposed plan only",
+  "workflow_commit_unchanged": "f69d4c8ac144f405b3535c4d8c8015cc8af9e2db",
+  "article_commit_unchanged": "2583ee41c1367e65d4d71ed36cf280a4f555a513",
+  "article_working_tree_clean": true,
+  "existing_workflow_tracked_files_unchanged": true,
+  "original_authority_source_hashes_verified": 7,
+  "selected_predictive_cache_hashes_verified": 45,
+  "original_daily_scores_replayed": 1260,
+  "max_score_replay_error": 4.440892098500626e-16,
+  "selected_state_config_matches": 45,
+  "proposed_tasks": 17,
+  "dependency_graph_valid": true,
+  "manuscript_or_model_implementation": false,
+  "new_fits": false,
+  "new_posterior_simulations": false,
+  "independent_review_domains": [
+    "scoring/calibration",
+    "effects/settings",
+    "model/inference"
+  ]
+}

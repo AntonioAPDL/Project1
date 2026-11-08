@@ -1,0 +1,63 @@
+{
+  "phase": "AUDIT_AND_PROPOSED_PLAN_ONLY",
+  "current_fitted_results_authoritative": true,
+  "manuscript_implementation_performed": false,
+  "reviewer_rows": [
+    {
+      "comment": "2",
+      "disposition": "Already implemented with stated limits",
+      "do_now": "Reuse existing external baselines, skill and 400-fit audit; align any new verification tables.",
+      "later_or_conditional": "Independent retuning/convergence experiments only if stronger component conclusions are needed.",
+      "completion_evidence": "Completed C2 bundle; no baseline training repeated."
+    },
+    {
+      "comment": "3",
+      "disposition": "Reporting now; empirical re-estimation later",
+      "do_now": "Report exact current dynamic/prior settings and their applicability.",
+      "later_or_conditional": "A changed calibration, retuning or dynamic specification requires a separate experiment.",
+      "completion_evidence": "Complete settings inventory; no new validation claim from prose alone."
+    },
+    {
+      "comment": "4",
+      "disposition": "Requested rescoring feasible without refit",
+      "do_now": "Actual sample counts, exact ECDF CRPS, qualified random-sample sensitivity and short-horizon interpretation.",
+      "later_or_conditional": "Dependence-model changes or new posterior generation if a different forecast is desired.",
+      "completion_evidence": "45 prediction caches reproduce 1260 old daily scores; deterministic-grid methods handled separately."
+    },
+    {
+      "comment": "5",
+      "disposition": "Explanation and existing-output diagnostics now; model alternatives later",
+      "do_now": "Working-likelihood/covariance explanation, source counts and descriptive lead diagnostics; gated precision audit.",
+      "later_or_conditional": "Different member weights, residual dependence or explicit lead-scale law need new inference.",
+      "completion_evidence": "Source-index and historical-provenance checks precede precision interpretation."
+    },
+    {
+      "comment": "6",
+      "disposition": "Requested assessment feasible without refit",
+      "do_now": "Quantile reliability, actual95% coverage/widths, original-scale scores, pre/post synthesis distinction and tail documentation.",
+      "later_or_conditional": "New tail models, additional origins or a refit response to findings require later work.",
+      "completion_evidence": "Saved matrices, HE4 rows, raw products and external references exist; outcomes not assumed."
+    },
+    {
+      "comment": "7",
+      "disposition": "Labels and mathematical exposition now; accuracy experiment later",
+      "do_now": "Approximate-VB labels, interval estimands, correct classification of samples/traces, MCMC formulation audit and future protocol.",
+      "later_or_conditional": "Genuine matching-target MCMC and any comparison-specific VB refit require new computation.",
+      "completion_evidence": "No matching authoritative MCMC chain located; Gaussian models and VB draws are not substitutes."
+    },
+    {
+      "comment": "8",
+      "disposition": "Reviewer-permitted interpretation correction feasible without refit",
+      "do_now": "Conditional dynamic feature-loadings interpretation, endpoint/scaling labels, corrected derived metadata.",
+      "later_or_conditional": "Optional physical-response uncertainty needs recoverable joint covariance; causal identification is not asserted.",
+      "completion_evidence": "Main base-feature table correctly mapped; extra metadata and optional window bands treated separately."
+    },
+    {
+      "comment": "minor1",
+      "disposition": "Fully addressable by reporting",
+      "do_now": "Exact model-origin numeric discounts, multiplier/effective distinction and quantile applicability.",
+      "later_or_conditional": "No refit needed to report already used settings.",
+      "completion_evidence": "All45 manifest state dictionaries match selected resolved configs."
+    }
+  ]
+}

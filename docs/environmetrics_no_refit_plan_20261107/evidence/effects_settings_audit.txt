@@ -1,0 +1,249 @@
+READ-ONLY NO-REFIT AUDIT: MAJOR COMMENT 8, MINOR COMMENT 1, AND C2 STATUS
+Current article main: 2583ee4. No sources/artifacts modified and no fits launched.
+
+1. MAJOR COMMENT 8 CAN BE SUBSTANTIALLY RESOLVED WITHOUT REFITTING
+Reviewer explicitly permits tempering the interpretation instead of a physical
+causal justification. Current article already begins this work at tex449:
+base coefficient signs cannot summarize a feature vector containing nonlinear
+and lagged terms. Finish this narrower route, preserving numerical results.
+
+The stated equation is correct: zeta_t = lambda*zeta_(t-1) + x_t'psi_(t-1)
+plus state noise (tex203-214); psi_t is a random walk (tex208-211). Implemented
+transition loads current x_t into the previous coefficient state at DISC source
+1741-1746. Consequently a Table4 coefficient is a dynamic transfer-feature
+loading, not a static regression slope, a total rainfall response, an isolated
+physical mechanism, or a causal effect. Table endpoint index=12995 equals T
+for December25,2022; the displayed draws are psi_T for quantile-specific VB
+fits at p=.05,.50,.95. At equation t=T the coefficient used is psi_(T-1), and
+psi_T drives the next state transition. Caption should identify the terminal
+historical-index state, not imply an average over all history.
+
+A clean replacement paragraph should say:
+- coefficients are conditional adjustments within a model that also has source
+  channels, discrepancies, level/seasonality, and correlated engineered inputs;
+- retrospective hydrological products already contain responses to atmospheric
+  forcing; an additional conditional adjustment need not have the sign of a
+  basin's unconditional rainfall-flow relationship;
+- a negative linear precipitation loading does not imply rain lowers total flow;
+- complete nonlinear/current/lagged contributions and autoregressive memory
+  determine the model's adjustment, and no causal interpretation is claimed;
+- intervals quantify uncertainty under the stated approximate fitted model.
+Do not assert source redundancy causes a particular sign: that would require
+additional evidence. Do not compare absolute PPT/SOIL/climate coefficients as
+physical importance measures. No need to invent a physical negative response.
+
+Helpful mathematical explanation (can be a short note): conditional on a state
+path and neglecting innovations, zeta_t=lambda^h*zeta_(t-h)+sum over r=0..h-1
+of lambda^r*x_(t-r)'psi_(t-r-1). Thus explicit feature lags and transfer memory
+both matter. At lambda=.97 the purely mathematical impulse half-life is about
+22.76days; this is not an estimated basin residence time. The limit 1/(1-lambda)
+is valid only for frozen coefficients and a constant scalar input, not as a
+physical total effect. Prefer the recurrence over unnecessary physical metrics.
+
+For a physical precipitation perturbation, all corresponding square, interaction,
+and later lag features must change consistently. If g_t=P_t*beta_P/s_P +
+P_t^2*beta_PP/s_PP + P_t*S_t*beta_PS/s_PS + ..., then its instantaneous derivative
+is beta_P/s_P + 2*P_t*beta_PP/s_PP + S_t*beta_PS/s_PS, before lag propagation.
+This formula can be stated without estimates. Estimating derivative credible
+bands requires joint coefficient uncertainty and raw-feature scaling metadata;
+marginal 95% endpoints cannot be summed into valid joint uncertainty.
+
+Completion criteria C8:
+- stable subsection/table label retained but heading/caption identify transfer
+  feature loadings or conditional transfer coefficients;
+- define final time index, standardized predictor unit, VB-based uncertainty;
+- explicitly distinguish conditional loading, complete adjustment, and causal
+  response; no unsupported physical interpretation or relative-importance claim;
+- any derived figure/table tied to correct feature order and same run identity;
+- no model-fitting or score changes required.
+
+2. CURRENT TABLE4 PROVENANCE: DO NOT MISIDENTIFY LEGACY CODE AS AUTHORITY
+Article MANUSCRIPT_ASSET_MANIFEST tab:components_23_31 points to
+artifacts/representative_selected_model_2022_12_25/covariate_effects_summary.csv.
+Article builder build_generated_table_includes.py197-213 selects three valid
+base features and formats the saved means/intervals, without re-estimation.
+The current fast exporter is R/environmetrics/40_figures_smoke_fast.R1560-1610,
+called2710-2722. It reads samp.theta_{5,50,95}_exAL_synth_DISC$samp_theta at
+[component,TT,] and uses empirical .025/.975 quantiles and mean. This is
+independent of the q50 Gaussian window-diagnostic exporter described below.
+
+The fast exporter multiplies samples by SDs of the post design CSV (1573-1598).
+I checked that 12995row CSV (2.46MB): base PPT/SOIL/PCA SDs are 1 to floating
+precision, so current displayed base values are effectively loadings for one
+historical-SD feature unit. They are not raw-mm, raw-soil-volume, or raw-index
+slopes. The legacy 40_figures.R8535-8548 path alone is not proof of a scaling
+error in the current article. Preserve all nine current Table4 numeric cells
+and interval endpoints until a separately documented derived correction exists.
+
+The design constructor is R/disc_w/03_covariates_standardize.R178-205 and
+R/unified/families/shared_input_helpers.R458-530. Historical-SD scaling without
+centering is the article's stated design. The checked fit metadata orders:
+1PPT,2SOIL,3PCA,4PPT_sq,5SOIL_sq,6PPT_x_SOIL,7PPT_lag1,8PPT_lag2,9PPT_lag3,
+10SOIL_lag1,11SOIL_lag2,12SOIL_lag3. Core=21,zeta=22,psi=23..34.
+
+A REAL METADATA PROBLEM exists in non-displayed rows of the saved coefficient
+CSV: generic post_component_to_covariate mapping at 02_helpers_core.R1575-1587
+labels state26 'Intercept' though it is PPT_sq; states27..31 labelled Lag1..5
+actually correspond to SOIL_sq,interaction,PPT_lag1..3. Last three soil lags
+are omitted from the hardcoded23:31 exporter. These incorrect extra rows do
+not enter the current base-only Table4. A no-fit fix should create a VERSIONED
+corrected metadata/derived export from feature_index plus state layout, retaining
+original source CSV and SHA. Three main rows can retain existing numeric values;
+a full12-feature endpoint supplement is optional, conditional on recoverable
+existing draws/covariances, and must not manufacture missing SOIL-lag intervals.
+Raw-unit conversions require verified per-feature raw SD/unit mapping, currently
+not explicit in the article-local coefficient metadata. Treat as a gate, not as
+an already validated conversion.
+
+3. REAL DIAGNOSTIC-ONLY INDEXING BUG: CODE FIX NO-FIT; REGENERATION CONDITIONAL
+40_figures_multivar_only.R638-642 sets hist_idx=TT-30:TT (31days). Line812
+selects coefficient means at those late indices, but line813 requests
+safe_diag_sd(sC_hist,index,n_hist=31). Helper538-546 returns slices1:31, so
+historical coefficient bands combine late means with early variances. Definitive
+code-index proof; source repair/test does not require any model fit. Correct
+extraction should take actual hist_idx (or full returned vector indexed hist_idx),
+with a synthetic cube whose variances differ by time to prevent regression.
+
+Existing matching clean-replay and retained-copy CSVs are byte-identical:
+multivar_transfer_coefficients_window_q50.csv SHA
+f01210d7c77062458603850a697ec4f8e4f05d87cd86ab22fc25d78fe3fe69cd.
+Day0 psi03 mean=-.00131565499515402, Gaussian endpoints[-.00195857828383223,
+-.000672731706475807]; Table4 draw-based endpoints[-.00137015864674693,
+-.00126099645725280] around-.00131520915389746. The inconsistency is not
+evidence that the main table is wrong: the diagnostic uses wrong time-indexed
+covariance. Do not replace current article intervals using these window bands.
+
+I inventoried small CSVs and predictive/location caches in the selected Dec2022
+run and its retained-copy path without loading binary state files. The existing
+q50 coefficient CSV supplies all12 coefficient means for day_rel=-30..28, but
+historical bands have this indexing defect. Transfer_state_window_q50.csv has
+aggregate zeta/trend/discrepancy/location bands from correct tt indexing (line724
+for zeta and safe_linear_sd for projections), so these existing aggregate bands
+can be reused after provenance checks. It contains59days; coefCSV708=12*59.
+Full coefficient covariance/late historical diagonal arrays are not exposed in
+the checked small CSVs. vb_theta_cutoff_window.csv contains only theta.exps and
+state RMS; vb_theta_field_summary.csv is a distributional summary, not per-state
+covariance. Predictive caches and marginal location caches do not identify full
+coefficient covariance. No current .RData/.rda files were found under the two
+checked run roots (names suggesting retention do not establish file existence).
+Therefore: code repair is definite no-fit; numerical historical-band regeneration
+is artifact-conditional. If arrays/draws cannot be recovered elsewhere, omit this
+optional coefficient-window uncertainty figure, retain endpoint Table4, and use
+existing aggregate transfer summaries rather than claim reconstruction from CIs.
+
+4. MINOR1 IS FULLY FIXABLE BY REPORTING NUMERIC SETTINGS
+tex299 still says 'high, near-one', without numbers. Current reference is not
+one universal discount profile. Selected HE2manifest45rows contains exact
+state_evolution_json and prior_json. I checked every state dictionary against
+its actual resolved_config.yaml:45/45 exactmatches,zero mismatches. All configs
+list .05,.20,.35,.50,.65,.80,.95, but Gaussian rows do not represent seven
+independent quantile fits. Multivariate stage dispatcher1203-1225 passes common
+state config values within each run to quantile workers; no per-quantile state
+discount override is used in that shown mapping. Final inventory should still
+bind each actual fit/quantile identity, not expand Gaussian rows as seven fits.
+
+Recommended main text: compact5origin table for exAL-M-T1 listing trend,
+3seasonal,discrepancy multiplier,transfer,effect discounts,lambda,epsilon,c.
+Supplement: machine-readable45model-origin settings table plus run/config SHA
+and actual quantile applicability; optionally print grouped identical profiles.
+Values across all reported rows range .9988 through .99999999; reporting only
+'.9999' would round materially distinct values to the same number. Use exact
+recorded decimals or1-d representation with sufficient precision.
+
+Source implementation nuance: DISC_Optimal...r1646-1648 multiplies df_discrep
+by each shared component's df. Therefore call df_discrep a multiplier and report
+effective discrepancy discounts as products, or report effective values directly
+with formula. Do not label the scalar multiplier as every discrepancy component's
+actual discount. Transfer and effect factors are separate at1751-1752.
+
+lambda=.97 for all45runs; selected exAL-M-T1 epsilon byorigin=365,365,30,1,1;
+c=1for all5. tex303 reports representative epsilon=c=1correctly, but not all
+origins. Gaussian prior has a distinct forecast_cov specification (dof_offset4,
+epsilon null,jitter1e-8,scale_mult1); univariate rows may lack forecast_cov.
+Do not assign an exAL epsilon default to those rows. Configured null/missing must
+be distinguished from an evaluated effective default; a reporting ledger should
+resolve actual adapter behavior before displaying effective epsilon for N rows.
+
+5. C2 ALREADY IMPLEMENTED; DON'T REPEAT FITS OR RELAUNCH BASELINES
+Current article has contribution/comparison-role clarification, three external
+references, CRPSS, aggregate+per-origin tables, and saved-fit audit. Package
+completion_summary confirms82Python/87R,684freeze/576cross-repo checks;400
+saved fits audited. Keep exact original scores and baseline artifacts. Existing
+baselines have already been computed; reformatting/updating verification metrics
+should read sealed outputs, never silently trigger140new baseline fits. C2
+has explicit conditional component sensitivity interpretation (not independently
+retuned optimum claims); preserve it. No C1 restructuring needed.
+
+6. RECOMMENDED NO-FIT PATCH ORDER
+A.Freeze current article/source scores/assets/run IDs and source hashes; define
+   no-fit command allowlist and derived-output namespace; existing numerical
+   results remain authoritative unless an explicitly proved postprocessing error
+   needs a separately documented derived correction.
+B.Report numeric settings (minor1) and exact coefficient estimands (C8), with
+   metadata-driven feature labels, state index, standardized units, final time,
+   conditional interpretation. Preserve original source exports.
+C.Fix/test the optional diagnostic covariance indexing in source; inspect whether
+   needed arrays exist, regenerate only if source evidence is recoverable. Do
+   not make this optional repair block the essential C8 prose clarification.
+D.Reuse existing aggregate transfer paths/mean coefficient diagnostics only when
+   helpful; avoid adding uncertainty derived from marginal endpoints or claiming
+   empirical identifiability from model labels.
+E.Perform table-generator/metadata/score-hash tests, existing C1/C2 integrity
+   gates, full manuscript compile/reference check and visual proof; update a
+   clause-by-clause ledger separating complete text/reporting fixes from later
+   empirical model experiments.
+
+Remaining not settled by these no-fit edits: causal identification is not an
+objective of current fitted model; no prose can establish it. Full independent
+posterior-approximation accuracy requires the requested comparison experiment.
+No-fit convergence records diagnose existing evidence, not a demonstration that
+retuned/reduced competitors achieved their best possible fit. Those remain later
+fitting work, while C8's explicitly offered tempering route and minor1 can be
+finished now without refitting.
+
+EXACT45-CASE STATE/PRIOR INVENTORY (whitelisted numeric fields only)
+20210123 | N-U-T1 | state={"df_covs":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"S0":1,"n0":20}
+20210123 | N-M-T0 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.99999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"dof_offset":4,"epsilon":null,"jitter":1e-08,"scale_mult":1.0}}
+20210123 | N-M-T1 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"dof_offset":4,"epsilon":null,"jitter":1e-08,"scale_mult":1.0}}
+20210123 | AL-U-T1 | state={"df_covs":0.9999999,"df_s1":0.99999,"df_s2":0.99999,"df_s67":0.99999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={}
+20210123 | AL-M-T0 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.99999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20210123 | AL-M-T1 | state={"df_covs":0.99999,"df_discrep":0.999,"df_s1":0.999,"df_s2":0.999,"df_s67":0.9995,"df_t":0.9995,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20210123 | exAL-U-T1 | state={"df_covs":0.9999999,"df_s1":0.99999,"df_s2":0.99999,"df_s67":0.99999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={}
+20210123 | exAL-M-T0 | state={"df_covs":0.9999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20210123 | exAL-M-T1 | state={"df_covs":0.99999,"df_discrep":0.999,"df_s1":0.999,"df_s2":0.999,"df_s67":0.9995,"df_t":0.9995,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20211112 | N-U-T1 | state={"df_covs":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"S0":1,"n0":20}
+20211112 | N-M-T0 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"dof_offset":4,"epsilon":null,"jitter":1e-08,"scale_mult":1.0}}
+20211112 | N-M-T1 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"dof_offset":4,"epsilon":null,"jitter":1e-08,"scale_mult":1.0}}
+20211112 | AL-U-T1 | state={"df_covs":0.9999999,"df_s1":0.99999,"df_s2":0.99999,"df_s67":0.99999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={}
+20211112 | AL-M-T0 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.99999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20211112 | AL-M-T1 | state={"df_covs":0.99999,"df_discrep":0.999,"df_s1":0.999,"df_s2":0.999,"df_s67":0.9995,"df_t":0.9995,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20211112 | exAL-U-T1 | state={"df_covs":0.9999999,"df_s1":0.99999,"df_s2":0.99999,"df_s67":0.99999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={}
+20211112 | exAL-M-T0 | state={"df_covs":0.9999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20211112 | exAL-M-T1 | state={"df_covs":0.99999,"df_discrep":0.999,"df_s1":0.999,"df_s2":0.999,"df_s67":0.9995,"df_t":0.9995,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20211221 | N-U-T1 | state={"df_covs":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"S0":1,"n0":20}
+20211221 | N-M-T0 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"dof_offset":4,"epsilon":null,"jitter":1e-08,"scale_mult":1.0}}
+20211221 | N-M-T1 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.99999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"dof_offset":4,"epsilon":null,"jitter":1e-08,"scale_mult":1.0}}
+20211221 | AL-U-T1 | state={"df_covs":0.9999999,"df_s1":0.99999,"df_s2":0.99999,"df_s67":0.99999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={}
+20211221 | AL-M-T0 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.99999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20211221 | AL-M-T1 | state={"df_covs":0.99999,"df_discrep":0.999,"df_s1":0.9995,"df_s2":0.9995,"df_s67":0.9995,"df_t":0.99995,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":30.0}}
+20211221 | exAL-U-T1 | state={"df_covs":0.9999999,"df_s1":0.99999,"df_s2":0.99999,"df_s67":0.99999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={}
+20211221 | exAL-M-T0 | state={"df_covs":0.9999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20211221 | exAL-M-T1 | state={"df_covs":0.9999999,"df_discrep":0.999,"df_s1":0.9995,"df_s2":0.9995,"df_s67":0.9995,"df_t":0.999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":30.0}}
+20220511 | N-U-T1 | state={"df_covs":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"S0":1,"n0":20}
+20220511 | N-M-T0 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"dof_offset":4,"epsilon":null,"jitter":1e-08,"scale_mult":1.0}}
+20220511 | N-M-T1 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"dof_offset":4,"epsilon":null,"jitter":1e-08,"scale_mult":1.0}}
+20220511 | AL-U-T1 | state={"df_covs":0.9999999,"df_s1":0.99999,"df_s2":0.99999,"df_s67":0.99999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={}
+20220511 | AL-M-T0 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.99999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20220511 | AL-M-T1 | state={"df_covs":0.9999999,"df_discrep":0.9999999,"df_s1":0.9999999,"df_s2":0.9999999,"df_s67":0.9999999,"df_t":0.9999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20220511 | exAL-U-T1 | state={"df_covs":0.9999999,"df_s1":0.99999,"df_s2":0.99999,"df_s67":0.99999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={}
+20220511 | exAL-M-T0 | state={"df_covs":0.9999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20220511 | exAL-M-T1 | state={"df_covs":0.999999,"df_discrep":0.999,"df_s1":0.9995,"df_s2":0.9995,"df_s67":0.9995,"df_t":0.9999999,"df_trans":0.999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":1.0}}
+20221225 | N-U-T1 | state={"df_covs":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"S0":1,"n0":20}
+20221225 | N-M-T0 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"dof_offset":4,"epsilon":null,"jitter":1e-08,"scale_mult":1.0}}
+20221225 | N-M-T1 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"dof_offset":4,"epsilon":null,"jitter":1e-08,"scale_mult":1.0}}
+20221225 | AL-U-T1 | state={"df_covs":0.9999999,"df_s1":0.99999,"df_s2":0.99999,"df_s67":0.99999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={}
+20221225 | AL-M-T0 | state={"df_covs":0.99999999,"df_discrep":0.99999999,"df_s1":0.99999999,"df_s2":0.99999999,"df_s67":0.99999999,"df_t":0.99999999,"df_trans":0.99999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":365.0}}
+20221225 | AL-M-T1 | state={"df_covs":0.99999,"df_discrep":0.9988,"df_s1":0.9993,"df_s2":0.9993,"df_s67":0.9995,"df_t":0.9999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":30.0}}
+20221225 | exAL-U-T1 | state={"df_covs":0.9999999,"df_s1":0.99999,"df_s2":0.99999,"df_s67":0.99999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={}
+20221225 | exAL-M-T0 | state={"df_covs":0.9999999,"df_discrep":0.99999,"df_s1":0.99999,"df_s2":0.99999,"df_s67":0.99999,"df_t":0.99999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":30.0}}
+20221225 | exAL-M-T1 | state={"df_covs":0.9999999,"df_discrep":0.999,"df_s1":0.9995,"df_s2":0.9995,"df_s67":0.9999,"df_t":0.999999,"df_trans":0.9999999,"lambda":0.97} | prior={"forecast_cov":{"c_factor":1.0,"epsilon":1.0}}

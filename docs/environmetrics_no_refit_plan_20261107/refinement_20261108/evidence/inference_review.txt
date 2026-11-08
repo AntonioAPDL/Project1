@@ -1,0 +1,87 @@
+NO-REFIT PLAN REFINEMENT: C5 / C7 DECISIONS AND EXECUTION GATES
+Prepared as planning-only specialist review. No repository edits, inference, or fit-object reads.
+Baseline article:2583ee41c1367e65d4d71ed36cf280a4f555a513.
+Baseline workflow:f69d4c8ac144f405b3535c4d8c8015cc8af9e2db.
+These are explicit decisions to add to existing PLAN/task register, not a replacement audit.
+
+1. Separate required delivery from optional evidence
+
+Required, feasible now:
+N03:Correct approximation labels and interval estimands; distinguish VB draws, optimization traces, posterior predictive realizations, and hypothetical MCMC chains. Retain all parameter table numbers.
+N09a:Describe the intended member-level working likelihood, source availability, shared source observation-scale specification, dynamic state covariance, and exact empirical scope. Generate the count/lead table from frozen adapters.
+N09b:Use frozen raw forecasts/verification to describe source error and spread by origin/lead, with the actual denominators. This is an existing-output calculation and does not depend on source-precision interpretation.
+N12a:Prepare the target-coherence/formulation inventory and identify whether each displayed conditional applies to the stated complete target, a historical subproblem, or a conditional building block. This audit outcome is required; successful construction of a new validated sampler is not.
+
+Optional, must not block required delivery:
+N13:Representative saved-precision diagnostics, only after the source/phase/provenance gate below passes. Omission with a reason is a successful bounded outcome, not a failed paper revision.
+N12b:Mathematical repairs to a complete sampling formulation, only if they can be derived/proved within the existing model's target. Proof and target accounting are necessary; editing indexes/counts alone does not validate it. If the full derivation cannot be completed without new inferential decisions, do not extend the advertised algorithm; retain only verified scope or remove the unverified completeness claim, document the gap outside the article, and defer executable same-target comparison.
+
+Later computation, never launched in this phase:
+Changed member weighting/dependence, changed lead-dependent observation laws, parameter covariance/curvature reconstruction unavailable in existing exports, fresh VB starts, and genuine MCMC accuracy comparisons. No fixed-posterior reweighting, sample replacement, or additional VB draw generation is a substitute for these experiments.
+
+2. N03 concrete acceptance criteria
+
+- One estimand ledger has one row per article summary family:gamma/sigma by source and quantile; displayed base-feature coefficients; historical latent quantile/state bands; forecast observation predictive bands. Include source file/hash, mathematical quantity, scale/transform, time support, central statistic, endpoints, and approximation origin.
+- Coefficient rows use means at historical endpointT, with representative T=2022-12-25,index12995. Gamma/sigma rows use medians. Endpoints remain2.5th/97.5th percentiles of the existing approximate draws. No invented uncertainty enlargement or numeric replacement.
+- Methods state VB/LD approximation once clearly; parameter table notes and relevant captions consistently distinguish approximate credible bands from predictive intervals. No language claims exact posterior calibration, variance correction, or empirical underdispersion for these fits.
+- The current400-fit stopping audit is reused unchanged. No new Rhat/chainESS is computed on optimizer iterates; no claim that finite predictions or optimizer convergence establishes VB accuracy.
+- A document scan plus scientific review finds no implication that the published application has a same-target MCMC result. Absence of that comparison is tracked explicitly in the reviewer ledger.
+- Byte/numeric checks prove all existing table values and original plot data remain unchanged.
+
+Stop/recover:N03 may correct wording even when complete raw parameter draws are absent; never regenerate them implicitly. If an interval's source/estimand cannot be established, stop interpretation of that interval and record the missing evidence. Preserve the original artifact and revise only defensible wording; do not invent a new estimand for an unchanged number.
+
+3. N09 concrete acceptance criteria
+
+- The likelihood paragraph refers to conditional residual independence. It does not assert independent marginal member predictions, equal per-source weights, an exact51:7 weight ratio, or empirical validation of independence.
+- It distinguishes shared observation-scale parameters from state covariance and varying predictive uncertainty. Describe intended channel parameter sharing without claiming a verified computational source-weight formula beyond the source contract.
+- The count table is reproducibly derived from the selected forecast adapters, with source/member/lead/date IDs, declared product family/version and observed missingness. Its51/7 and28/8 summaries match actual selected inputs.
+- Lead-wise error/spread outputs identify scale, verification date, origin, lead, source, available members and number of origins summarized. Do not manufacture independent-replicate uncertainty from5origins. Nonlinear effects and differing historical/forecast support are acknowledged when comparing their descriptive summaries.
+- Main text is concise. Large descriptive tables belong to appendix or companion artifacts. These are information about the current evaluated fits/inputs, not an empirical comparison of unfit alternatives.
+
+Stop/recover:an optional precision gate failure does not block the count table or raw error/spread diagnostics. If date/scale/model identity fails for one output, reject that derived output and repair only its reader/alignment; no fallback to another run and no fitting. A persistently missing input produces a transparent incomplete diagnostic status, not a silently reduced case set.
+
+4. N13 source-precision gate: all conditions required before interpretation
+
+G13.1 Provenance:bind the exact selected input, generating source snapshot, audit exporter source, CSV hash, run/quantile identity and generation timestamp/phase. A path name or a manifest commit alone is not proof that a current local formula reproduces a saved computation.
+G13.2 Source map:derive the historical-channel rows and forecast-list order from their constructors and saved labels. Verify the exact mapping at the Gaussian pseudo-observation construction, augmentation updates, parameter updates, sampler/exporter, and saved forecast block. No assumed+1 shift or posthoc relabeling passes this test.
+G13.3 Update phase:establish which iteration/state update the saved QQQ entries represent and whether saved augmentation/channel moments come from that same phase. Terminal moments can be newer than the last state update or refreshed during sampling. Therefore a mismatch between QQQ and moments does not alone identify a formula/index defect. Comparisons must use phase-matched values, or restrict interpretation to directly stored applied precision values with proven observation labels.
+G13.4 Array semantics:for each accepted source/quantile/lead, member IDs and dimensions match the actual forecast matrix and retained output; every included conditional variance is positive/finite. Check duplicates, missing cells, source availability boundaries, and quantile IDs. The representative expected complete layout is7quantiles*(51*28+7*8)members/leads for each quantity. Do not quietly omit failed cells.
+G13.5 Mathematical meaning:define P_j,k=sum_i 1/Q_j,i,k for the stored conditional Gaussian pseudo-observation variance. It is conditional observation information in that recorded update, not a posterior mixture weight, marginal influence measure, independent sample count, or general learned source reliability.
+G13.6 Scope:report only the representative run if that is the only contract-complete export. Do not extrapolate its precision allocation to all5origins or all model variants.
+
+If anyG13 condition fails or remains unknown, outcome=OPTIONAL_SKIPPED_SOURCE_CONTRACT; include the source hashes and precise unresolved condition in companion evidence only; do not publish numerical precision shares. Do not edit the model's source indexing or overwrite forecasts in this phase. Any confirmed change needed in the inferential calculation receives a separate later-experiment identity. Current numerical results remain frozen, and this gate does not manufacture a historical-error or no-error claim.
+
+5. N12 target-coherence gate: a mathematical audit is not a sampler validation
+
+Prepare an explicit table mapping the displayed model to sampling conditionals:
+- Observed gauge channels, retrospective channels and every forecast member/lead; complete active observation index set and counts.
+- Historical and forecast state coordinates, selectors, transitions, start/end dimensions, and proper initial distribution.
+- Each source's scale/skewness priors, support, transformed-coordinate Jacobians and augmented latent variables.
+- All uncertain evolution covariances and their prior/update policy; any deterministic or data-adaptive discount/evolution construction must be stated consistently.
+- Conditioning/updated unknowns for each proposed step, including complete forecast-member multiplicities and forecast latent updates.
+- Gamma proposals/acceptance ratio and latent-state trajectory draw, rather than a list of incomplete conditional labels.
+
+For any corrected displayed kernel, verify its log density against the joint target algebraically or with a small deterministic conditional-density check under fixed legal inputs. Such checks may be future implementation tests, but no empirical posterior run is authorized. A correct kernel is necessary, not sufficient for a valid ergodic chain or accurate approximation.
+
+Allowed outcomes:
+FORMULATION_SCOPE_VERIFIED:all advertised conditionals match the clearly stated target or explicitly delimited subproblem; no performance claim.
+FORMULATION_SCOPED_WITH_OPEN_STEPS:retain only proved statements and label their limited scope; future complete sampling construction/implementation remains separate.
+FORMULATION_REQUIRES_TARGET_DECISION:defer unresolved blocks; no assertion of an executable full-model MCMC algorithm or empirical VB accuracy.
+
+All three can coexist with a completed no-refit editorial phase if the article states only the corresponding supported scope. The reviewer ledger must retain EMPIRICAL_COMPARISON_REQUIRES_NEW_POSTERIOR_RUN forC7. An empty comparison table or anticipated result must never enter the article.
+
+Future experiment contract minimum:prespecified origin/quantile and complete state dimension (34for the representative model,not31);same data/priors/likelihood and unknowns; sampler correctness evidence;multiple dispersed chains;rankRhat,bulk/tailESS andMCSE, including interval endpoints;means,SD ratios andquantiles for prespecified marginals;runtime/memory;clearly delimited full-history versus reduced-history experiment. Matching only inputs while fixing unknown quantities at VB estimates does not establish a same-target comparison.
+
+6. Reversible execution/release gates
+
+R0 Authority lock:read-only resolve bothbaseline commitIDs and clean tracked status before work. If either main has advanced, review the diff and create an updated baseline manifest; never reset/discard new work to force the old baseline. The expected output hash ledger freezes selected fit/output and baseline comparison artifacts.
+R1 Isolation:make changes on dedicated review branches or isolated worktrees in bothrepositories, with generated outputs written only to a new revision bundle. Existing selected fit roots and original article artifacts stay read-only. Entry points permit only frozen-object readers and bounded deterministic diagnostic calculations; no all-stages launcher, model fitter or baseline-training import is reachable.
+R2 Independent classification:each task yields COMPLETE,OPTIONAL_SKIPPED_[reason],BLOCKED_REQUIRED_INPUT,orDEFERRED_NEW_INFERENCE, plus evidence. Optional skips remove dependent optional figure/table includes cleanly and cannot turn into hidden rerun requests. Required source-input failures pause only their dependent artifact or interpretation.
+R3 Numeric preservation:before integrating prose, compare original coefficients, original scores/predictions, figure identities and selected source hashes. Fresh metrics may differ by estimator and must carry a new identity; they never overwrite the legacy values. A mismatch blocks release until understood; do not weaken tolerances/tests to preserve a preferred conclusion.
+R4 Scientific closure:the clause ledger callsC5 only its actual resolution (explanation/descriptive evidence,alternatives nottested), andC7 only approximation/estimand/formulation exposition (numerical comparison pending). A completed no-refit release is not synonymous with empirical closure of all comments.
+R5 Integrated source:maintext,appendix,table notes and generated captions agree; optional absent diagnostics have no dangling includes; all new artifacts have exactsource hashes and claims point to the actual experiment/representation. No internal job plan or speculative finding is inserted into article prose.
+R6 Exact reviewed source:run bounded existing preservation/wiringtests and meaningful tests for new derivations/metadata;compile and inspect affectedpages;buildfromthe exact stagedtree andrecordits hashes,environmentandPDFidentity. Do notrequire all-page visualredesign or redundant fullmodel tests.
+R7 Promotion:review the stageddiff;commit eachrepo with cross-linked article/workflow IDs and evidencebundle path;fast-forward/merge to main;push only the reviewed commits under user authorization;verifyremoteSHAs equal local. A release-note correction never rewritesold fit evidence. Rollback uses revert/newrevision branches or removes the newgenerated includes;never deleteold results or forcepush.
+
+Recommended register refinement:
+SplitN09 into unconditional editorial/count task plus independent descriptive summary task;splitN12 into required target/scope audit and conditional complete-formulation correction;giveN13 an explicit SKIP outcome and no required downstream dependency. AddG13 andR0–R7 as machine-readable acceptance records. ExistingN15 must depend only on required delivered scope,not optional precision or an as-yet-unimplemented completeMCMC sampler.

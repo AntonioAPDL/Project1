@@ -1,0 +1,10 @@
+{
+  "created_utc": "2026-11-08T08:08:25.220301+00:00",
+  "existing_plan_files_verified": 20,
+  "workflow_commit": "f69d4c8ac144f405b3535c4d8c8015cc8af9e2db",
+  "article_commit": "2583ee41c1367e65d4d71ed36cf280a4f555a513",
+  "local_project_R_processes": [],
+  "other_R_process_count": 6,
+  "processes_changed": false,
+  "scope_limit": "Local observable same-user processes only; this is not a remote scheduler inventory."
+}

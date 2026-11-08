@@ -1,0 +1,389 @@
+{
+  "status": "PROPOSED_NOT_IMPLEMENTED",
+  "resource_policy": {
+    "new_fits": false,
+    "new_posterior_simulations": false,
+    "new_baseline_training": false,
+    "workers": 1,
+    "fit_stage_or_broad_post_stage": false,
+    "original_predictions_overwrite": false,
+    "expected_core_compressed_input_bytes_approx": 20000000,
+    "optional_raw_quantile_cube_bytes_approx": 87000000
+  },
+  "tasks": [
+    {
+      "id": "N00",
+      "reviewer_comments": [
+        "2",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "minor1"
+      ],
+      "title": "Freeze compact selected-result inputs and authority",
+      "cost_class": "bounded I/O",
+      "depends_on": [],
+      "proposed_outputs": [
+        "manifest-bound forecast/target/raw/reference snapshot",
+        "source and original-output SHA256 ledger"
+      ],
+      "acceptance": "All45 run identities match authority;1260 old scores replay within1e-12; original files unchanged.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N01",
+      "reviewer_comments": [
+        "3",
+        "minor1"
+      ],
+      "title": "Publish exact configured and effective numerical settings",
+      "cost_class": "reporting",
+      "depends_on": [
+        "N00"
+      ],
+      "proposed_outputs": [
+        "45-case machine-readable settings table",
+        "compact5-origin reference table",
+        "units/default/applicability notes"
+      ],
+      "acceptance": "Selected config hashes; discrepancy effective-factor formula; no premature default substitution; exact near-one precision.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N02",
+      "reviewer_comments": [
+        "8"
+      ],
+      "title": "Clarify coefficient estimand and conditional dynamic interpretation",
+      "cost_class": "editorial",
+      "depends_on": [
+        "N00"
+      ],
+      "proposed_outputs": [
+        "revised coefficient paragraph/caption",
+        "terminal-state,scale and lag interpretation"
+      ],
+      "acceptance": "Preserve displayed values; state psi_T at T=12995 (2022-12-25); no total physical or causal response claim.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N03",
+      "reviewer_comments": [
+        "7"
+      ],
+      "title": "Label approximate uncertainty and distinguish inference objects",
+      "cost_class": "editorial",
+      "depends_on": [
+        "N00"
+      ],
+      "proposed_outputs": [
+        "approximate-VB interval notes",
+        "estimand/center/source dictionary",
+        "accurate computation explanation"
+      ],
+      "acceptance": "VB draws are not chains; parameter and predictive intervals distinguished; no fabricated accuracy experiment.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N04",
+      "reviewer_comments": [
+        "4",
+        "6"
+      ],
+      "title": "Document synthesis counts, quantile conventions and outer tails",
+      "cost_class": "reporting",
+      "depends_on": [
+        "N00"
+      ],
+      "proposed_outputs": [
+        "sample-count table",
+        "synthesis/tail settings description"
+      ],
+      "acceptance": "R/S/M distinct; Gaussian64/48; type8 figure contract; deterministic external grids identified; no fitted.025/.975 claim.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N05",
+      "reviewer_comments": [
+        "4",
+        "6"
+      ],
+      "title": "Build standalone reader and shared verification case registry",
+      "cost_class": "no-fit postprocessing",
+      "depends_on": [
+        "N00"
+      ],
+      "proposed_outputs": [
+        "new versioned diagnostic input registry",
+        "safe input reader",
+        "explicit origin/date/lead/scale records"
+      ],
+      "acceptance": "One core; compact caches only; no fit/post-stage/training invocation; no source overwrite or RNG regeneration.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N06",
+      "reviewer_comments": [
+        "6"
+      ],
+      "title": "Calculate predictive quantile and interval calibration",
+      "cost_class": "no-fit postprocessing",
+      "depends_on": [
+        "N04",
+        "N05"
+      ],
+      "proposed_outputs": [
+        "per-case interval endpoints/hits/widths",
+        "quantile hit counts/rates/ties",
+        "origin/horizon/pooled summary",
+        "reliability figure"
+      ],
+      "acceptance": "All140/40 relevant target dates; type8 reproduces figure; n/numerator recorded; no naive independent-day significance claim.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N07",
+      "reviewer_comments": [
+        "4"
+      ],
+      "title": "Add exact-ECDF scores and qualified finite-sample sensitivity",
+      "cost_class": "no-fit postprocessing",
+      "depends_on": [
+        "N04",
+        "N05"
+      ],
+      "proposed_outputs": [
+        "per-case legacy/exact/applicable-adjusted score ledger",
+        "8/28day summary",
+        "score-specific CRPSS and comparison table"
+      ],
+      "acceptance": "Independent pairwise/sorted identity checks; deterministic grid not given iid correction; methods/denominators/cases matched; no ranking selected in advance.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N08",
+      "reviewer_comments": [
+        "6"
+      ],
+      "title": "Add original-discharge-scale validation from current forecasts",
+      "cost_class": "no-fit postprocessing",
+      "depends_on": [
+        "N05",
+        "N07"
+      ],
+      "proposed_outputs": [
+        "original-scale distribution scores and quantile losses",
+        "point errors/width summaries",
+        "unit/support audit"
+      ],
+      "acceptance": "expm1 applied once to values; correct original-scale mean; explicit interpolation convention; no silent clipping; all variants retained.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N09",
+      "reviewer_comments": [
+        "5"
+      ],
+      "title": "Explain member likelihood, evolving covariance and available information",
+      "cost_class": "editorial and small summaries",
+      "depends_on": [
+        "N00"
+      ],
+      "proposed_outputs": [
+        "working-likelihood paragraph",
+        "source/member/lead count table",
+        "descriptive lead error/spread summary"
+      ],
+      "acceptance": "Conditional residual and shared-state covariance distinguished; no exact51:7 weight assertion; no untested alternative-model claim.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N10",
+      "reviewer_comments": [
+        "8"
+      ],
+      "title": "Create feature-metadata-driven corrected derived labels",
+      "cost_class": "metadata/source repair",
+      "depends_on": [
+        "N00",
+        "N02"
+      ],
+      "proposed_outputs": [
+        "versioned corrected9-state derived metadata",
+        "actual12-feature state dictionary",
+        "future exporter label repair"
+      ],
+      "acceptance": "Current23-25 rows unchanged; distinguish unavailable32-34 draws; retain original CSV hashes and avoid hardcoded labels across layouts.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N11",
+      "reviewer_comments": [
+        "8",
+        "7"
+      ],
+      "title": "Repair optional historical-window covariance indexing",
+      "cost_class": "source-only repair; reconstruction conditional",
+      "depends_on": [
+        "N00"
+      ],
+      "proposed_outputs": [
+        "time-index-aware extraction helper",
+        "small time-varying covariance regression case",
+        "artifact-recovery decision record"
+      ],
+      "acceptance": "Actual TT-30:TT used; main Table4 untouched; regenerate bands only from proven saved covariance/draws; otherwise omit optional display.",
+      "optional": true,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N12",
+      "reviewer_comments": [
+        "7",
+        "5"
+      ],
+      "title": "Audit MCMC mathematical exposition against stated member likelihood",
+      "cost_class": "mathematical editorial audit",
+      "depends_on": [
+        "N03",
+        "N09"
+      ],
+      "proposed_outputs": [
+        "explicit multiplicity/forecast-window notation",
+        "future matching-target contract and report schema"
+      ],
+      "acceptance": "No claim of tested executable sampler; count/update formulas match target; empirical accuracy table absent until actual experiment.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N13",
+      "reviewer_comments": [
+        "5"
+      ],
+      "title": "Evaluate representative saved member-precision diagnostics",
+      "cost_class": "optional no-fit diagnostic",
+      "depends_on": [
+        "N00",
+        "N09"
+      ],
+      "proposed_outputs": [
+        "source-row/list/snapshot alignment check",
+        "representative source/lead precision-share summary or explicit skip record"
+      ],
+      "acceptance": "Provenance verified before interpretation; no full5-origin claim from one export; no effective sample size or changed posterior weights.",
+      "optional": true,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N14",
+      "reviewer_comments": [
+        "6"
+      ],
+      "title": "Optionally compare own-fit anchors and final synthesis",
+      "cost_class": "optional no-fit diagnostic",
+      "depends_on": [
+        "N04",
+        "N05",
+        "N06"
+      ],
+      "proposed_outputs": [
+        "pre/post anchor and crossing/calibration summary"
+      ],
+      "acceptance": "Use frozen raw cubes/location caches; distinguish latent location,predictive anchor and final distribution; no unsupported reconstruction.",
+      "optional": true,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N15",
+      "reviewer_comments": [
+        "2",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "minor1"
+      ],
+      "title": "Integrate tested findings into existing article structure",
+      "cost_class": "editorial and artifact wiring",
+      "depends_on": [
+        "N01",
+        "N02",
+        "N03",
+        "N04",
+        "N06",
+        "N07",
+        "N08",
+        "N09",
+        "N10",
+        "N12"
+      ],
+      "proposed_outputs": [
+        "generated new tables/figures and source manifests",
+        "concise main-text updates",
+        "appendix detail",
+        "reviewer-clause completion ledger"
+      ],
+      "acceptance": "Preserve C1/C2 and original result lineage; retain inconvenient findings; optional diagnostics do not block essential edits; no internal planning prose in article.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    },
+    {
+      "id": "N16",
+      "reviewer_comments": [
+        "2",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "minor1"
+      ],
+      "title": "Verify and release exact reviewed source",
+      "cost_class": "validation/build",
+      "depends_on": [
+        "N15"
+      ],
+      "proposed_outputs": [
+        "new diagnostic tests",
+        "existing preservation check evidence",
+        "stable compiled PDF and visual proof",
+        "exact staged-source build/remote verification"
+      ],
+      "acceptance": "No weakened contracts; original immutable assets verified; labels/citations stable; optional omissions documented; only then commit and promote reviewed changes.",
+      "optional": false,
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "refitting_allowed": false
+    }
+  ]
+}

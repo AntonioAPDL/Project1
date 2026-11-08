@@ -1,0 +1,110 @@
+[
+  {
+    "finding": "existing_scorer",
+    "path": "R/environmetrics/02_helpers_core.R",
+    "line": 1858,
+    "interpretation": "s/(m+1) check-loss grid; old score authority"
+  },
+  {
+    "finding": "coefficient_metadata_mapping",
+    "path": "R/environmetrics/02_helpers_core.R",
+    "line": 1575,
+    "interpretation": "Obsolete extra-row names; base23-25 valid"
+  },
+  {
+    "finding": "actual_main_coefficient_export",
+    "path": "R/environmetrics/40_figures_smoke_fast.R",
+    "line": 1560,
+    "interpretation": "Current endpoint draw summaries, independent of optional window bands"
+  },
+  {
+    "finding": "optional_window_sd_helper",
+    "path": "R/environmetrics/40_figures_multivar_only.R",
+    "line": 538,
+    "interpretation": "Selects first n_time covariance slices"
+  },
+  {
+    "finding": "optional_window_sd_call",
+    "path": "R/environmetrics/40_figures_multivar_only.R",
+    "line": 812,
+    "interpretation": "Late historical means paired with helper first slices"
+  },
+  {
+    "finding": "effective_discrepancy_discount",
+    "path": "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r",
+    "line": 1647,
+    "interpretation": "Discrepancy factor multiplies component discount"
+  },
+  {
+    "finding": "transfer_transition",
+    "path": "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r",
+    "line": 1741,
+    "interpretation": "Dynamic feature input loads previous coefficient state"
+  },
+  {
+    "finding": "forecast_conditional_variance",
+    "path": "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r",
+    "line": 5444,
+    "interpretation": "Diagonal conditional member residual variances"
+  },
+  {
+    "finding": "forecast_source_updates",
+    "path": "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r",
+    "line": 5905,
+    "interpretation": "Source-index/forecast-list alignment must be verified"
+  },
+  {
+    "finding": "shared_state_predictive_covariance",
+    "path": "DISC_kalman_synth_transfer_forecast.cpp",
+    "line": 1272,
+    "interpretation": "State-induced predictive covariance plus observation variance"
+  },
+  {
+    "finding": "approximate_factor_samples",
+    "path": "DISC_Optimal_Synth_Ranges_W_transfer_forecast.r",
+    "line": 7014,
+    "interpretation": "Post-fit LD/Gaussian factor samples, not MCMC"
+  },
+  {
+    "finding": "approximate_state_samples",
+    "path": "sampling_exal.cpp",
+    "line": 455,
+    "interpretation": "Fitted Gaussian marginal draws, not exact-posterior chain"
+  },
+  {
+    "finding": "figure_quantile_convention",
+    "path": "R/unified/post_publication_figures.R",
+    "line": 865,
+    "interpretation": "Published type8 interval/quantile export"
+  },
+  {
+    "finding": "settings_missing_from_article",
+    "path": "Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex",
+    "line": 299,
+    "interpretation": "Near-one description needs actual values"
+  },
+  {
+    "finding": "coefficient_current_interpretation",
+    "path": "Evironmetrics---REVISED-DOC-Corrected-2/wileyNJD-APA.tex",
+    "line": 449,
+    "interpretation": "Existing conditional-feature caveat can be completed"
+  },
+  {
+    "finding": "parameter_table_source",
+    "path": "Evironmetrics---REVISED-DOC-Corrected-2/artifacts/representative_selected_model_2022_12_25/covariate_effects_summary.csv",
+    "line": 1,
+    "interpretation": "Original displayed base-feature values remain authoritative"
+  },
+  {
+    "finding": "quantile_perday_source",
+    "path": "Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he4_quantile_check_loss_current_publication/he4_quantile_check_loss_per_day.csv",
+    "line": 1,
+    "interpretation": "3920 existing rows permit rate calculation"
+  },
+  {
+    "finding": "quantile_synthesis_uniform_draws",
+    "path": "/data/muscat_data/jaguir26/exdqlm/R/exdqlm_synthesize_from_draws.R",
+    "line": 159,
+    "interpretation": "Random inverseCDF draws conditional on constructed curve"
+  }
+]

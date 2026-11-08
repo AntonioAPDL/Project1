@@ -1,0 +1,42 @@
+{
+  "timestamp_utc": "2026-11-08T08:46:58.515217+00:00",
+  "argv": [
+    "--workflow-root",
+    "/tmp/no_refit_revision_20261108/workflow",
+    "--article-root",
+    "/tmp/no_refit_revision_20261108/workflow/Evironmetrics---REVISED-DOC-Corrected-2",
+    "--corrections-root",
+    "/tmp/no_refit_revision_20261108/Corrections---Project-1",
+    "--output-dir",
+    "/tmp/no_refit_full_checks_20261108/preceding_revision_contracts/existing_contracts/cross_repo",
+    "--check-only",
+    "--strict"
+  ],
+  "cwd": "/tmp/no_refit_revision_20261108/workflow",
+  "python": "3.9.9 (main, Jan 16 2025, 15:50:23) \n[GCC 8.5.0 20210514 (Red Hat 8.5.0-22)]",
+  "repos": {
+    "workflow": {
+      "path": "/tmp/no_refit_revision_20261108/workflow",
+      "branch": "revision/no-refit-review-20261108",
+      "commit": "f69d4c8ac144f405b3535c4d8c8015cc8af9e2db",
+      "status_short": "M .gitattributes\n M .gitignore\n M R/environmetrics/40_figures_multivar_only.R\n?? Evironmetrics---REVISED-DOC-Corrected-2\n?? R/environmetrics/no_refit_review_helpers.R\n?? config/no_refit_review_diagnostics.json\n?? docs/environmetrics_no_refit_plan_20261107/\n?? docs/environmetrics_no_refit_revision_20261108/\n?? scripts/build_no_refit_reporting_metadata.py\n?? scripts/build_no_refit_review_diagnostics.R\n?? scripts/build_no_refit_synthesis_diagnostics.R\n?? tests/python/test_no_refit_reporting_metadata.py\n?? tests/testthat/test_no_refit_diagnostic_indices.R\n?? tests/testthat/test_no_refit_review_diagnostics.R\n?? tests/testthat/test_no_refit_synthesis_diagnostics.R"
+    },
+    "article": {
+      "path": "/tmp/no_refit_revision_20261108/article",
+      "branch": "revision/no-refit-review-20261108",
+      "commit": "2583ee41c1367e65d4d71ed36cf280a4f555a513",
+      "status_short": "M .gitattributes\n M .gitignore\n M MANUSCRIPT_ASSET_MANIFEST.json\n M README.md\n M artifacts/README.md\n M artifacts/artifact_inventory.csv\n M docs/article_readme_template.txt\n M scripts/article_repo_layout.py\n M scripts/build_generated_asset_index.py\n M wileyNJD-APA.bib\n M wileyNJD-APA.tex\n?? Figures/manuscript/no_refit_quantile_reliability.png\n?? artifacts/no_refit_revision/\n?? docs/no_refit_inference_scope.txt\n?? docs/no_refit_revision.txt\n?? scripts/no_refit_revision.py\n?? scripts/refresh_no_refit_revision.py\n?? tables/generated_tex/no_refit_calibration_summary_table.tex\n?? tables/generated_tex/no_refit_origin_diagnostics_table.tex\n?? tables/generated_tex/no_refit_reference_settings_table.tex\n?? tables/generated_tex/no_refit_score_comparison_table.tex\n?? tables/generated_tex/no_refit_score_sensitivity_table.tex\n?? tests/test_no_refit_revision.py"
+    },
+    "corrections": {
+      "path": "/data/muscat_data/jaguir26/Corrections---Project-1",
+      "branch": "main",
+      "commit": "b1ceeb610d20f8287e4ca44e146c9cfdbcda1ee6",
+      "status_short": ""
+    }
+  },
+  "source_file_count": 85,
+  "checks": {
+    "total": 595,
+    "failed": 0
+  }
+}

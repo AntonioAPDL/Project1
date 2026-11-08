@@ -1,0 +1,1179 @@
+{
+  "description": "Whitelisted existing settings; 45 state dictionaries checked against selected configs. Null/missing defaults still require adapter-level interpretation before a publication table.",
+  "rows": [
+    {
+      "origin": "20210123",
+      "model": "N-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "S0": 1,
+        "n0": 20
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20210123_v8_he2pubgdpc1r1_ndlm_univar_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/runs/multimodel_20210123_v8_he2pubgdpc1r1_ndlm_univar_keep/resolved_config.yaml",
+      "resolved_config_sha256": "2e6df02db656285e9a28cfa8a00d56a4f5193926e29f00935e32a68695cdd398",
+      "model_config_section": "models.ndlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20210123",
+      "model": "N-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.99999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "dof_offset": 4,
+          "epsilon": null,
+          "jitter": 1e-08,
+          "scale_mult": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20210123_v8_he2tbl1fix20260612_ndlm_main_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs/multimodel_20210123_v8_he2tbl1fix20260612_ndlm_main_drop/resolved_config.yaml",
+      "resolved_config_sha256": "007c38382cf100c5a342e4bed46d03f980f86ad71749505ccbead7a53cd9823c",
+      "model_config_section": "models.ndlm_main",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20210123",
+      "model": "N-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "dof_offset": 4,
+          "epsilon": null,
+          "jitter": 1e-08,
+          "scale_mult": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20210123_v8_he2pubgdpc1r1_ndlm_main_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/runs/multimodel_20210123_v8_he2pubgdpc1r1_ndlm_main_keep/resolved_config.yaml",
+      "resolved_config_sha256": "454938ca22007d2645b169e4990bc3268c0616f52295d43069434b3a3a78ba31",
+      "model_config_section": "models.ndlm_main",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20210123",
+      "model": "AL-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_s1": 0.99999,
+        "df_s2": 0.99999,
+        "df_s67": 0.99999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {},
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20210123_v8_he2pubgdpc1r1_dqlm_univar_al",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_scale_repair_20260629/runs/multimodel_20210123_v8_he2pubgdpc1r1_dqlm_univar_al/resolved_config.yaml",
+      "resolved_config_sha256": "d8acc52b298a33ed2ae7b8a78d5ca52080da180484929c9c1cd2d15dc66dbc20",
+      "model_config_section": "models.exdqlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20210123",
+      "model": "AL-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.99999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20210123_v8_he2pubgdpc1r1_dqlm_multivar_al_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_p5_production_20260606/runs/multimodel_20210123_v8_he2pubgdpc1r1_dqlm_multivar_al_drop/resolved_config.yaml",
+      "resolved_config_sha256": "5397b039b45c3f1064ff7e109785012d041717d812566228f7b1219cd0d7d804",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20210123",
+      "model": "AL-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999,
+        "df_discrep": 0.999,
+        "df_s1": 0.999,
+        "df_s2": 0.999,
+        "df_s67": 0.9995,
+        "df_t": 0.9995,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20210123_v8_he2grid_c04_eps365_dqlm_multivar_al_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602/runs/multimodel_20210123_v8_he2grid_c04_eps365_dqlm_multivar_al_keep/resolved_config.yaml",
+      "resolved_config_sha256": "4c966af71dbf521596b2fc0a76e4bf0b0f71a30b5f59e7003c0c93ff7fae1ad7",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20210123",
+      "model": "exAL-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_s1": 0.99999,
+        "df_s2": 0.99999,
+        "df_s67": 0.99999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {},
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20210123_v8_he2pubgdpc1r1_exdqlm_univar",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_scale_repair_20260629/runs/multimodel_20210123_v8_he2pubgdpc1r1_exdqlm_univar/resolved_config.yaml",
+      "resolved_config_sha256": "ab38dd357e464d1453c39ec7f79bead15b9ffd8debd278c36715edf177a86445",
+      "model_config_section": "models.exdqlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20210123",
+      "model": "exAL-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20210123_v8_he2tbl1fix20260612_exdqlm_multivar_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs/multimodel_20210123_v8_he2tbl1fix20260612_exdqlm_multivar_drop/resolved_config.yaml",
+      "resolved_config_sha256": "d31b673ebae3fde42ef6fe786b664b043a4d9509525e249f1ea468908332b7e6",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20210123",
+      "model": "exAL-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999,
+        "df_discrep": 0.999,
+        "df_s1": 0.999,
+        "df_s2": 0.999,
+        "df_s67": 0.9995,
+        "df_t": 0.9995,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep/resolved_config.yaml",
+      "resolved_config_sha256": "ce7caf509fdf12d15f161a8bf1956ddf35b73a77776dc2fa815d87d4e23dcb77",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211112",
+      "model": "N-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "S0": 1,
+        "n0": 20
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211112_v8_he2pubgdpc1r1_ndlm_univar_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/runs/multimodel_20211112_v8_he2pubgdpc1r1_ndlm_univar_keep/resolved_config.yaml",
+      "resolved_config_sha256": "d106e4fa98b68ef647333539c3b7331b0eceb4a7f5fd13cd95d62735522df14c",
+      "model_config_section": "models.ndlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211112",
+      "model": "N-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "dof_offset": 4,
+          "epsilon": null,
+          "jitter": 1e-08,
+          "scale_mult": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211112_v8_he2pubgdpc1r1_ndlm_main_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/runs/multimodel_20211112_v8_he2pubgdpc1r1_ndlm_main_drop/resolved_config.yaml",
+      "resolved_config_sha256": "4805c02adbebdb4d286b5d01740ee87994e2db25f34eb8805db0c445ba6e6d76",
+      "model_config_section": "models.ndlm_main",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211112",
+      "model": "N-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "dof_offset": 4,
+          "epsilon": null,
+          "jitter": 1e-08,
+          "scale_mult": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211112_v8_he2pubgdpc1r1_ndlm_main_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/runs/multimodel_20211112_v8_he2pubgdpc1r1_ndlm_main_keep/resolved_config.yaml",
+      "resolved_config_sha256": "e2b52e4d65b616205bfc098936f714514ce3538e1487765a6b837f0cf3fe298b",
+      "model_config_section": "models.ndlm_main",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211112",
+      "model": "AL-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_s1": 0.99999,
+        "df_s2": 0.99999,
+        "df_s67": 0.99999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {},
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211112_v8_he2pubgdpc1r1_dqlm_univar_al",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_scale_repair_20260629/runs/multimodel_20211112_v8_he2pubgdpc1r1_dqlm_univar_al/resolved_config.yaml",
+      "resolved_config_sha256": "e802e47f637aa3554f4021cb6ecec6fc81ebcb556e434e7faaae4e5a35d6c1bd",
+      "model_config_section": "models.exdqlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211112",
+      "model": "AL-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.99999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211112_v8_he2pubgdpc1r1_dqlm_multivar_al_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_p5_production_20260606/runs/multimodel_20211112_v8_he2pubgdpc1r1_dqlm_multivar_al_drop/resolved_config.yaml",
+      "resolved_config_sha256": "acc681dbb0d4040930127eabd036273769ddf9f72b0f955b8cfa16eed6836752",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211112",
+      "model": "AL-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999,
+        "df_discrep": 0.999,
+        "df_s1": 0.999,
+        "df_s2": 0.999,
+        "df_s67": 0.9995,
+        "df_t": 0.9995,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211112_v8_he2grid_c04_eps365_dqlm_multivar_al_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602/runs/multimodel_20211112_v8_he2grid_c04_eps365_dqlm_multivar_al_keep/resolved_config.yaml",
+      "resolved_config_sha256": "50c09e33d6d496c464d50bd06aff52dfc5b2020253ef2fe348c4d391752a85c3",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211112",
+      "model": "exAL-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_s1": 0.99999,
+        "df_s2": 0.99999,
+        "df_s67": 0.99999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {},
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211112_v8_he2pubgdpc1r1_exdqlm_univar",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_scale_repair_20260629/runs/multimodel_20211112_v8_he2pubgdpc1r1_exdqlm_univar/resolved_config.yaml",
+      "resolved_config_sha256": "3fe1e8d0e60cd8e63a4856262b83870f2558ffee4bbc0d4dee7ccd3a6e741244",
+      "model_config_section": "models.exdqlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211112",
+      "model": "exAL-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211112_v8_he2tbl1fix20260612_exdqlm_multivar_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs/multimodel_20211112_v8_he2tbl1fix20260612_exdqlm_multivar_drop/resolved_config.yaml",
+      "resolved_config_sha256": "24d98108a81dfff38823d3b901d501e2634773ccb04bd250e1afb5f65fa1f2a6",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211112",
+      "model": "exAL-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999,
+        "df_discrep": 0.999,
+        "df_s1": 0.999,
+        "df_s2": 0.999,
+        "df_s67": 0.9995,
+        "df_t": 0.9995,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep/resolved_config.yaml",
+      "resolved_config_sha256": "c474ecb8dc1184c6bcb8057a78d4f2a7a7457bb0d4b7076f5f22d2840f6be9d9",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211221",
+      "model": "N-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "S0": 1,
+        "n0": 20
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211221_v8_he2tbl1fix20260612_ndlm_univar_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs/multimodel_20211221_v8_he2tbl1fix20260612_ndlm_univar_keep/resolved_config.yaml",
+      "resolved_config_sha256": "7b7e68d1ec38d5bffe20d58f3a18c0a8b3b14d5a2a6c113bc6be5ac6b354c315",
+      "model_config_section": "models.ndlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211221",
+      "model": "N-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "dof_offset": 4,
+          "epsilon": null,
+          "jitter": 1e-08,
+          "scale_mult": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211221_v8_he2pubgdpc1r1_ndlm_main_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/runs/multimodel_20211221_v8_he2pubgdpc1r1_ndlm_main_drop/resolved_config.yaml",
+      "resolved_config_sha256": "de9d76e9c3bcabc2c58729a2d5ec389b0019e2d5cdae72331212ed2bfdc58f37",
+      "model_config_section": "models.ndlm_main",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211221",
+      "model": "N-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.99999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "dof_offset": 4,
+          "epsilon": null,
+          "jitter": 1e-08,
+          "scale_mult": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211221_v8_he2tbl1fix20260612_ndlm_main_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs/multimodel_20211221_v8_he2tbl1fix20260612_ndlm_main_keep/resolved_config.yaml",
+      "resolved_config_sha256": "d47b3a162439ef628871fc4e42f1cf9098074982317f5ea1aafad1d038ffee43",
+      "model_config_section": "models.ndlm_main",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211221",
+      "model": "AL-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_s1": 0.99999,
+        "df_s2": 0.99999,
+        "df_s67": 0.99999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {},
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211221_v8_he2pubgdpc1r1_dqlm_univar_al",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_scale_repair_20260629/runs/multimodel_20211221_v8_he2pubgdpc1r1_dqlm_univar_al/resolved_config.yaml",
+      "resolved_config_sha256": "49ddc0da40ef5781e4e1d4531677b3f41420cc0a045ded0a20c2eaa3667a66fa",
+      "model_config_section": "models.exdqlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211221",
+      "model": "AL-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.99999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211221_v8_he2pubgdpc1r1_dqlm_multivar_al_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_drop_p5_production_20260606/runs/multimodel_20211221_v8_he2pubgdpc1r1_dqlm_multivar_al_drop/resolved_config.yaml",
+      "resolved_config_sha256": "75afa8f25d2995da4198958dc8e97b94ca92e7c378b95ec6ae135d53184eda19",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211221",
+      "model": "AL-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999,
+        "df_discrep": 0.999,
+        "df_s1": 0.9995,
+        "df_s2": 0.9995,
+        "df_s67": 0.9995,
+        "df_t": 0.99995,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 30.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211221_v8_he2grid_c03_eps030_dqlm_multivar_al_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602/runs/multimodel_20211221_v8_he2grid_c03_eps030_dqlm_multivar_al_keep/resolved_config.yaml",
+      "resolved_config_sha256": "6e10be3d68ac193c358a7b65fcc569c5bc23a703c0e473757e276a22823d0529",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211221",
+      "model": "exAL-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_s1": 0.99999,
+        "df_s2": 0.99999,
+        "df_s67": 0.99999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {},
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211221_v8_he2pubgdpc1r1_exdqlm_univar",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_scale_repair_20260629/runs/multimodel_20211221_v8_he2pubgdpc1r1_exdqlm_univar/resolved_config.yaml",
+      "resolved_config_sha256": "3e2c29b3b2e432126913318c64397a5262027cfc4ea2dfa1af163525a0657c12",
+      "model_config_section": "models.exdqlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211221",
+      "model": "exAL-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211221_v8_he2tbl1fix20260612_exdqlm_multivar_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs/multimodel_20211221_v8_he2tbl1fix20260612_exdqlm_multivar_drop/resolved_config.yaml",
+      "resolved_config_sha256": "c3920e71517d011ee589e531bd5557c0446bf15fea76dee719b9f117cf68dd7d",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20211221",
+      "model": "exAL-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_discrep": 0.999,
+        "df_s1": 0.9995,
+        "df_s2": 0.9995,
+        "df_s67": 0.9995,
+        "df_t": 0.999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 30.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep/resolved_config.yaml",
+      "resolved_config_sha256": "ab07d5bc057e7cc17976eb8d5af0ab711b23056c3a0904e2ff6a748659e18e70",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20220511",
+      "model": "N-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "S0": 1,
+        "n0": 20
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20220511_v8_he2pubgdpc1r1_ndlm_univar_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/runs/multimodel_20220511_v8_he2pubgdpc1r1_ndlm_univar_keep/resolved_config.yaml",
+      "resolved_config_sha256": "52384b013e1d9ddf41f82572cdaa01b921fd6b4b59f3c3ed4dae760b55302421",
+      "model_config_section": "models.ndlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20220511",
+      "model": "N-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "dof_offset": 4,
+          "epsilon": null,
+          "jitter": 1e-08,
+          "scale_mult": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20220511_v8_he2pubgdpc1r1_ndlm_main_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/runs/multimodel_20220511_v8_he2pubgdpc1r1_ndlm_main_drop/resolved_config.yaml",
+      "resolved_config_sha256": "6edafc4cdfd5aef37982832a56af3f208268b5aa4d5b765da2aceba4ab5ee309",
+      "model_config_section": "models.ndlm_main",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20220511",
+      "model": "N-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "dof_offset": 4,
+          "epsilon": null,
+          "jitter": 1e-08,
+          "scale_mult": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20220511_v8_he2pubgdpc1r1_ndlm_main_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/runs/multimodel_20220511_v8_he2pubgdpc1r1_ndlm_main_keep/resolved_config.yaml",
+      "resolved_config_sha256": "3f7811b4ba0d1ac8dd0ed1c088cb10e8707e1f88a1404870c5fc60dda09e8703",
+      "model_config_section": "models.ndlm_main",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20220511",
+      "model": "AL-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_s1": 0.99999,
+        "df_s2": 0.99999,
+        "df_s67": 0.99999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {},
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20220511_v8_he2pubgdpc1r1_dqlm_univar_al",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_scale_repair_20260629/runs/multimodel_20220511_v8_he2pubgdpc1r1_dqlm_univar_al/resolved_config.yaml",
+      "resolved_config_sha256": "b898cad2d5695b93907eacf73ca65135db9ede6b0fa14f0a09d8372f8734404e",
+      "model_config_section": "models.exdqlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20220511",
+      "model": "AL-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.99999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs/multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_drop/resolved_config.yaml",
+      "resolved_config_sha256": "ab1dd3e0518de773ed377340573c562ddf996e98243e6879083838bfaafaf2bb",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20220511",
+      "model": "AL-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_discrep": 0.9999999,
+        "df_s1": 0.9999999,
+        "df_s2": 0.9999999,
+        "df_s67": 0.9999999,
+        "df_t": 0.9999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs/multimodel_20220511_v8_he2tbl1fix20260612_dqlm_multivar_al_keep/resolved_config.yaml",
+      "resolved_config_sha256": "e8d43ff57920d43df5a092aac593345fcb1dd68728c4a605a2dbe89680a50e6a",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20220511",
+      "model": "exAL-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_s1": 0.99999,
+        "df_s2": 0.99999,
+        "df_s67": 0.99999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {},
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20220511_v8_he2pubgdpc1r1_exdqlm_univar",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_scale_repair_20260629/runs/multimodel_20220511_v8_he2pubgdpc1r1_exdqlm_univar/resolved_config.yaml",
+      "resolved_config_sha256": "241e35a65cb455d876136a11739a157c39cf3e6e88af143014326c5ff4a26600",
+      "model_config_section": "models.exdqlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20220511",
+      "model": "exAL-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20220511_v8_he2tbl1fix20260612_exdqlm_multivar_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs/multimodel_20220511_v8_he2tbl1fix20260612_exdqlm_multivar_drop/resolved_config.yaml",
+      "resolved_config_sha256": "a6103a0a01696c97709f9804749681af2486faf439bcc334f6274be839e421af",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20220511",
+      "model": "exAL-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.999999,
+        "df_discrep": 0.999,
+        "df_s1": 0.9995,
+        "df_s2": 0.9995,
+        "df_s67": 0.9995,
+        "df_t": 0.9999999,
+        "df_trans": 0.999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep/resolved_config.yaml",
+      "resolved_config_sha256": "06c5bbe438e01d33395e5c423f9c9690c352e52fe9587501afd4e595753feca0",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20221225",
+      "model": "N-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "S0": 1,
+        "n0": 20
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20221225_v8_he2tbl1fix20260612_ndlm_univar_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs/multimodel_20221225_v8_he2tbl1fix20260612_ndlm_univar_keep/resolved_config.yaml",
+      "resolved_config_sha256": "95d2beef12d8c4f0bf78f44007fb4ec85948905496eda44be43b9d661bd0ec4f",
+      "model_config_section": "models.ndlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20221225",
+      "model": "N-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "dof_offset": 4,
+          "epsilon": null,
+          "jitter": 1e-08,
+          "scale_mult": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20221225_v8_he2pubgdpc1r1_ndlm_main_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/runs/multimodel_20221225_v8_he2pubgdpc1r1_ndlm_main_drop/resolved_config.yaml",
+      "resolved_config_sha256": "d4d81c83a1d01a9b778cd32c4d0063261c2b8cfd5a9d3f2ed804423b669ffabc",
+      "model_config_section": "models.ndlm_main",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20221225",
+      "model": "N-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "dof_offset": 4,
+          "epsilon": null,
+          "jitter": 1e-08,
+          "scale_mult": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20221225_v8_he2pubgdpc1r1_ndlm_main_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_bayesian_publication_relaunch_wave_a_ndlm_promotion_20260607/runs/multimodel_20221225_v8_he2pubgdpc1r1_ndlm_main_keep/resolved_config.yaml",
+      "resolved_config_sha256": "2efd6bcdfee21cac11e626f5aa97697f0bad853de2e89b6d3149d6ca81fef482",
+      "model_config_section": "models.ndlm_main",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20221225",
+      "model": "AL-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_s1": 0.99999,
+        "df_s2": 0.99999,
+        "df_s67": 0.99999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {},
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20221225_v8_he2pubgdpc1r1_dqlm_univar_al",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_scale_repair_20260629/runs/multimodel_20221225_v8_he2pubgdpc1r1_dqlm_univar_al/resolved_config.yaml",
+      "resolved_config_sha256": "0c98d29798bd5b5feba0f52973c93208212dfc9b1c6c8ee6d683a6475938939f",
+      "model_config_section": "models.exdqlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20221225",
+      "model": "AL-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.99999999,
+        "df_discrep": 0.99999999,
+        "df_s1": 0.99999999,
+        "df_s2": 0.99999999,
+        "df_s67": 0.99999999,
+        "df_t": 0.99999999,
+        "df_trans": 0.99999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 365.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20221225_v8_he2tbl1fix20260612_dqlm_multivar_al_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_table1_targeted_repair_20260612/runs/multimodel_20221225_v8_he2tbl1fix20260612_dqlm_multivar_al_drop/resolved_config.yaml",
+      "resolved_config_sha256": "8825c991afb6624c325fb7f202abb7b107466badc92d0f50750e8da3d32c3eac",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20221225",
+      "model": "AL-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.99999,
+        "df_discrep": 0.9988,
+        "df_s1": 0.9993,
+        "df_s2": 0.9993,
+        "df_s67": 0.9995,
+        "df_t": 0.9999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 30.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20221225_v8_he2grid_c05_eps030_dqlm_multivar_al_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_dqlm_multivar_al_keep_from_exal_winners_20260602/runs/multimodel_20221225_v8_he2grid_c05_eps030_dqlm_multivar_al_keep/resolved_config.yaml",
+      "resolved_config_sha256": "7ab7f97fe80632ae47a1cdb30d6bed3ac6bdec47489cd626bb8164fc23eebcbc",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20221225",
+      "model": "exAL-U-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_s1": 0.99999,
+        "df_s2": 0.99999,
+        "df_s67": 0.99999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {},
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_univar",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_univar_al_exal_scale_repair_20260629/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_univar/resolved_config.yaml",
+      "resolved_config_sha256": "4b12b13871caeb12c80b8f535e329cc9022146e885661b95c43b10fcf36c6d54",
+      "model_config_section": "models.exdqlm_univar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20221225",
+      "model": "exAL-M-T0",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_discrep": 0.99999,
+        "df_s1": 0.99999,
+        "df_s2": 0.99999,
+        "df_s67": 0.99999,
+        "df_t": 0.99999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 30.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_drop",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_drop_current_relaunch_q50repair_20260602/runs/multimodel_20221225_v8_he2pubgdpc1r1_exdqlm_multivar_drop/resolved_config.yaml",
+      "resolved_config_sha256": "8b3e2d2e35d51c6f1ac09079d4d4fe457276131c4a1eb6dd1d2447a5dea8d191",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    },
+    {
+      "origin": "20221225",
+      "model": "exAL-M-T1",
+      "configured_state_evolution": {
+        "df_covs": 0.9999999,
+        "df_discrep": 0.999,
+        "df_s1": 0.9995,
+        "df_s2": 0.9995,
+        "df_s67": 0.9999,
+        "df_t": 0.999999,
+        "df_trans": 0.9999999,
+        "lambda": 0.97
+      },
+      "configured_prior": {
+        "forecast_cov": {
+          "c_factor": 1.0,
+          "epsilon": 1.0
+        }
+      },
+      "status": "existing configuration inventory; not a new specification",
+      "defaults_resolved_for_publication": false,
+      "run_id": "multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep",
+      "resolved_config_path": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep/resolved_config.yaml",
+      "resolved_config_sha256": "9d0c4319cb5558fd09f13a149894af53f2b7f3a8d35f71ba4c6b1c956f4a5e26",
+      "model_config_section": "models.exdqlm_multivar",
+      "state_manifest_config_exact_match": true
+    }
+  ],
+  "publication_manifest": "Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv",
+  "publication_manifest_sha256": "c2f7cfe3dbfd030a814308e280749093c92d39c9a33c299b3c8d802d82cedeb4",
+  "state_dictionary_matches": 45,
+  "state_dictionary_mismatches": 0
+}

@@ -1,0 +1,5 @@
+Command executed read-only from article directory:
+python3 -B scripts/comment2_revision.py --check
+Exit status:0
+Validated point-2 source hashes, preserved assets, comparisons, skill and fit evidence; three tables match.
+This is validation of the existing completed revision, not baseline refitting.

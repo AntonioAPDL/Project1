@@ -1,0 +1,273 @@
+{
+  "schema": "no_refit_execution_outcomes_v1",
+  "status": "IMPLEMENTED_AWAITING_VERIFIED_RELEASE",
+  "plan": "docs/environmetrics_no_refit_plan_20261107/refinement_20261108/IMPLEMENTATION_PLAN.txt",
+  "current_results_authoritative": true,
+  "no_new_fits": true,
+  "no_new_draws": true,
+  "no_baseline_training": true,
+  "tasks": [
+    {
+      "id": "N00",
+      "title": "Freeze compact selected-result inputs and authority",
+      "reviewer_comments": [
+        "2",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "minor1"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:artifacts/no_refit_revision/inputs/manifest.json",
+        "preparation.json",
+        "checks/preceding_revision_contracts/point2_preservation.log"
+      ]
+    },
+    {
+      "id": "N01",
+      "title": "Publish exact configured and effective numerical settings",
+      "reviewer_comments": [
+        "3",
+        "minor1"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:artifacts/no_refit_revision/reporting/configured_settings.csv",
+        "article:artifacts/no_refit_revision/reporting/reference_settings.csv",
+        "article:tables/generated_tex/no_refit_reference_settings_table.tex"
+      ]
+    },
+    {
+      "id": "N10",
+      "title": "Create feature-metadata-driven corrected derived labels",
+      "reviewer_comments": [
+        "8"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:artifacts/no_refit_revision/reporting/feature_state_dictionary.csv",
+        "article:artifacts/no_refit_revision/reporting/corrected_endpoint_summaries.csv",
+        "article:artifacts/no_refit_revision/reporting/inputs/source_scope_proof.json"
+      ]
+    },
+    {
+      "id": "N02",
+      "title": "Clarify coefficient estimand and conditional dynamic interpretation",
+      "reviewer_comments": [
+        "8"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:wileyNJD-APA.tex#CovariateEffects",
+        "article:artifacts/no_refit_revision/reporting/parameter_estimands.csv"
+      ]
+    },
+    {
+      "id": "N03",
+      "title": "Label approximate uncertainty and distinguish inference objects",
+      "reviewer_comments": [
+        "7"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:wileyNJD-APA.tex#SupportingInterpretation",
+        "article:artifacts/no_refit_revision/reporting/parameter_estimands.csv",
+        "article:docs/no_refit_inference_scope.txt"
+      ]
+    },
+    {
+      "id": "N04",
+      "title": "Document synthesis counts, quantile conventions and outer tails",
+      "reviewer_comments": [
+        "4",
+        "6"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:artifacts/no_refit_revision/results/representations.csv",
+        "article:wileyNJD-APA.tex#PosteriorPredictiveSynthesisAcrossQuantiles"
+      ]
+    },
+    {
+      "id": "N05",
+      "title": "Build standalone reader and shared verification case registry",
+      "reviewer_comments": [
+        "4",
+        "6"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:artifacts/no_refit_revision/results/observations.csv",
+        "article:artifacts/no_refit_revision/results/representations.csv",
+        "article:artifacts/no_refit_revision/results/forecast_cases.csv"
+      ]
+    },
+    {
+      "id": "N06",
+      "title": "Calculate predictive quantile and interval calibration",
+      "reviewer_comments": [
+        "6"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:artifacts/no_refit_revision/results/quantiles_per_case.csv",
+        "article:artifacts/no_refit_revision/results/intervals_per_case.csv",
+        "article:artifacts/no_refit_revision/results/calibration_summary.csv",
+        "article:artifacts/no_refit_revision/results/interval_summary.csv"
+      ]
+    },
+    {
+      "id": "N07",
+      "title": "Add exact-ECDF scores and qualified finite-sample sensitivity",
+      "reviewer_comments": [
+        "4"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:artifacts/no_refit_revision/results/scores_per_case.csv",
+        "article:artifacts/no_refit_revision/results/summary_pooled.csv",
+        "independent_scoring/REPORT.txt"
+      ]
+    },
+    {
+      "id": "N08",
+      "title": "Add original-discharge-scale validation from current forecasts",
+      "reviewer_comments": [
+        "6"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:artifacts/no_refit_revision/results/scores_per_case.csv",
+        "article:artifacts/no_refit_revision/results/support_audit.csv",
+        "article:tables/generated_tex/no_refit_origin_diagnostics_table.tex"
+      ]
+    },
+    {
+      "id": "N09",
+      "title": "Explain member likelihood, evolving covariance and available information",
+      "reviewer_comments": [
+        "5"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:artifacts/no_refit_revision/results/source_lead_diagnostics.csv",
+        "article:artifacts/no_refit_revision/results/source_lead_summary.csv",
+        "article:wileyNJD-APA.tex#working_likelihood"
+      ],
+      "subtasks": {
+        "N09a": "COMPLETE",
+        "N09b": "COMPLETE"
+      }
+    },
+    {
+      "id": "N11",
+      "title": "Repair diagnostic indexing; gate optional band regeneration",
+      "reviewer_comments": [
+        "8",
+        "7"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "workflow:R/environmetrics/40_figures_multivar_only.R",
+        "checks/test_no_refit_diagnostic_indices.R.log",
+        "article:artifacts/no_refit_revision/reporting/source_gates.json"
+      ],
+      "subtasks": {
+        "N11a": "COMPLETE",
+        "N11b": "OPTIONAL_SKIPPED_MISSING_COVARIANCE"
+      }
+    },
+    {
+      "id": "N12",
+      "title": "Audit MCMC mathematical exposition against stated member likelihood",
+      "reviewer_comments": [
+        "7",
+        "5"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:artifacts/no_refit_revision/inference_scope/scope_audit.json",
+        "article:artifacts/no_refit_revision/inference_scope/conditional_identity_verification.json",
+        "article:docs/no_refit_inference_scope.txt"
+      ],
+      "outcome": "FORMULATION_SCOPED_WITH_OPEN_STEPS",
+      "subtasks": {
+        "N12a": "COMPLETE",
+        "N12b": "DEFERRED_NEW_INFERENCE"
+      },
+      "limitation": "Historical conditional identities verified; no tested full-model sampler or empirical VB/MCMC comparison."
+    },
+    {
+      "id": "N13",
+      "title": "Evaluate representative saved member-precision diagnostics",
+      "reviewer_comments": [
+        "5"
+      ],
+      "status": "OPTIONAL_SKIPPED_SOURCE_CONTRACT",
+      "evidence": [
+        "article:artifacts/no_refit_revision/inference_scope/precision_gate_ledger.json"
+      ]
+    },
+    {
+      "id": "N14",
+      "title": "Optionally compare own-fit anchors and final synthesis",
+      "reviewer_comments": [
+        "6"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:artifacts/no_refit_revision/synthesis_diagnostics/manifest.json",
+        "n14_execution_verification.json",
+        "checks/test_no_refit_synthesis_diagnostics.R.log"
+      ]
+    },
+    {
+      "id": "N15",
+      "title": "Integrate tested findings into existing article structure",
+      "reviewer_comments": [
+        "2",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "minor1"
+      ],
+      "status": "COMPLETE",
+      "evidence": [
+        "article:MANUSCRIPT_ASSET_MANIFEST.json",
+        "article:scripts/no_refit_revision.py",
+        "article:scripts/refresh_no_refit_revision.py",
+        "article:docs/no_refit_revision.txt"
+      ]
+    },
+    {
+      "id": "N16",
+      "title": "Verify and release exact reviewed source",
+      "reviewer_comments": [
+        "2",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "minor1"
+      ],
+      "status": "VERIFYING_RELEASE",
+      "evidence": [
+        "checks/summary.json",
+        "staged_source_verification.json",
+        "proof/build_summary.json",
+        "release.json"
+      ]
+    }
+  ],
+  "empirical_requests_still_requiring_new_inference": [
+    "Matching-target posterior accuracy comparison",
+    "Alternative residual member-dependence and lead-scale likelihoods",
+    "Retuned dynamic/prior sensitivities and independently converged component-removal experiments"
+  ]
+}

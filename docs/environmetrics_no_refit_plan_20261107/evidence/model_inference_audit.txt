@@ -1,0 +1,120 @@
+READ-ONLY NO-REFIT AUDIT: REVIEWER COMMENTS 5 AND 7
+Audit date: 2026-11-07/08 local session; workspace /data/muscat_data/jaguir26/project1_ucsc_phd.
+Article: Evironmetrics---REVISED-DOC-Corrected-2, current main 2583ee4.
+Scope: planning only. No article/source/config edits, model executions, posterior runs, or RData/RDS reads. Current selected numerical results remain the authority.
+
+BOTTOM LINE
+Comment 5 is partially addressable now: accurately document the working likelihood, state precisely what varies through the forecast window, quantify recorded member availability and source precision, and describe existing lead-wise residual/spread behavior. These changes improve transparency but cannot validate a different dependence/weight/lead-scale model. Changing those assumptions needs new inference.
+Comment 7 can be addressed now only at the level of honest approximation labels, clear estimands, existing optimization evidence, source inventory, and a fully specified comparison protocol. A genuine same-target MCMC-versus-VB accuracy comparison requires new posterior computation. No matching MCMC chain has been located in the authoritative sources.
+
+COMMENT 5: EXACT REQUEST AND JUSTIFICATION
+The referee questions (a) 51 GloFAS versus 7 NWS conditionally independent member observations and implied information weighting, and (b) use of a common retrospective/forecast discrepancy and scale specification without explicit lead dependence. The concern about the observation residual assumptions is justified. It should not be paraphrased as proof that member observations are marginally independent or that the entire forecast variance/state is frozen.
+
+Current manuscript evidence:
+- wileyNJD-APA.tex:174–190 defines source/member/lead indexes and the independent exAL working observation channels. The forecast equation reuses sigma^j and gamma^j, with no k subscript or channel-normalizing power.
+- tex:199–216 propagates source discrepancy states through T+Kmax. These are dynamic states, not constant offsets copied unchanged at every lead.
+- tex:238,709–715 specifies adaptive forecast state-evolution covariance and an anchor at the cutoff. This is a separate covariance from the exAL observation scale.
+- tex:139 records 51 and 7 members and source-specific horizon availability. tex:309 uses eight common daily NWS leads and 28 GloFAS leads.
+
+Current implementation evidence:
+- R/disc_w/04_ensemble_bookkeeping.R:18–35 builds member matrices and derives num_mem and ranges from their actual dimensions.
+- DISC_Optimal_Synth_Ranges_W_transfer_forecast.r:5905–5949 cycles separately through every forecast member's augmentation update.
+- Same file:2601–2613 includes nn + k_forecast*num_mem_j in the shared channel scale/skewness objective and sums both retrospective and forecast member terms. At5972–6000 the shared source nonconjugate factor is updated with both histories and member matrices. Thus it is a COMMON observation parameterization estimated jointly, not literally historical scale numbers frozen before all forecast assimilation.
+- Same file:5444–5457 creates diagonal conditional forecast observation variance matrices QQQ_forecast. No member residual covariance or 1/I_j likelihood normalization is present there.
+- Actual compiled kernel is DISC_kalman_synth_transfer_forecast.cpp (entrypoint sources it at r:47). Its1271–1285 forms q=expanded(H' R H)+ex_q, and repeats state loadings for member channels. The integrated predictive covariance includes covariance through shared uncertain states, while conditional residual covariance remains diagonal.
+
+Consequences for correct prose:
+1. State that member residuals are conditionally independent working likelihood contributions given the shared state/augmentation; do not assert empirical independence.
+2. Nominal member counts contribute to information, but they do not produce an exact51:7 source weight: source scales/skewness and member augmentation precisions differ.
+3. A common source sigma/gamma does not imply constant total predictive uncertainty; states, innovations, member-specific factors, and source availability change by lead.
+4. Describe common retrospective/issued-forecast discrepancy structure as a parsimonious transfer assumption. It is defensible as an explicitly stated model simplification; existing results alone do not establish it is harmless.
+
+Additional implementation verification gate (unresolved, no result-error conclusion):
+The current entrypoint forecast FFF/QQQ loop uses nonconjugate moment row[j] with forecast list[[j]] at5430–5434 (and seed5215–5216), while the later forecast-member augmentation and channel parameter updates use source row[j] with list[[j-1]] for j=2..J+1. This looks inconsistent under the documented USGS=1/GloFAS=2/NWS=3 map, but current source must first be matched to each actual run snapshot/terminal export before attributing it to authoritative historical fits. Add a small no-fit synthetic source-label/precision contract audit and inspect existing CSV mappings. Do not silently repair it or change published numerical results. If confirmed in selected-fit code, correcting the inferential calculation belongs to the later rerun queue; source precision summaries must describe actual fitted contributions rather than assert intended channel mapping without verification.
+
+No-refit deliverables for C5:
+A. A short main-text paragraph beside the forecast likelihood, with one explicit formula L_j,k=product_i f_j(y_j,i,k | mu_j,k,sigma_j,gamma_j) and no implied empirical independence proof.
+B. A compact source/lead table: retrospective count, available member count, forecast leads, product family/version and observation-scale convention. Derive counts from frozen adapters, not hard-coded article text.
+C. Existing-fit information audit where saved exports permit: at fixed fitted parameters, sum member precisions 1/QQQ_diag by source/lead/quantile; report source shares and member-level range. This is diagnostic information in the working fit, not an effective sample-size estimate and not a reweighted forecast.
+D. Descriptive lead-wise raw-member bias/absolute error, ensemble spread, and forecast-mean error against saved verification, with per-origin display and transparent counts. With only5origins these do not estimate robust lead-error laws; do not fit a new scale model and label it validation.
+E. Compare retrospective and issued-product behavior descriptively with source/version and seasonal support made explicit. Do not imply differently supported historical and5-origin residual sets are exchangeable controlled experiments.
+F. A future-experiment specification, source hashes and candidate config templates, isolated from the frozen publication calculation.
+
+Available direct CSV evidence:
+The representative article bundle_metadata.json points to runtime_run_root:
+/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_authoritative_rdata_retention_current_20260623/runs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep_authoritative_rdata_retained_current_20260623
+Its runtime_output_root/vb_latent_component_audit/vb_forecast_latent_pseudodata_window.csv exists (49,545,444bytes). Columns include q,date,day_rel,source_index,source,quantity,member_index,value. It has62,328rows =7quantiles*(51*28+7*8)*6quantities; quantities are E_s,E_s2,E_u,E_inv_u,FFF,QQQ_diag. Thus representative source precision diagnostics require no full fit object.
+Canonical selected output roots for20211221,20220511,20221225 contain historical-only vb_latent_pseudodata_cutoff_window.csv. Do not promise complete five-origin forecast precision tables from these historical-only exports. First inventory exact per-origin export availability; absence is not a reason to launch inference.
+
+Future fitting needed for C5:
+- Compare frozen default member likelihood to a prespecified normalized/tempered likelihood and/or source-balanced fixed member aggregation. Reweighting fixed posterior samples is not automatically a valid refit substitute.
+- An explicit member-correlation model changes the likelihood and inference.
+- A lead-dependent observation scale/discrepancy law changes inference. Estimate it on a sufficiently sized historical forecast archive or use prespecified sensitivity values; do not estimate a complex lead law from5origins alone.
+- Implement each candidate consistently in all state, augmentation, scale/skewness and objective updates, not just the state Gaussian step. New forecasts and score tables must carry separate candidate identities.
+- A cheap pilot with one origin/median quantile verifies correctness and resources; it cannot close predictive sensitivity for the seven-quantile synthesized distribution. Full7quantiles/all5origins follows only after pilot success.
+
+C5 acceptance criteria before any refits:
+All likelihood formulas match implemented member counting and conditional covariance; no accidental claim of a fixed numerical51:7 weight or frozen total forecast uncertainty; every descriptive diagnostic traces to an existing saved output; original score/prediction hashes unchanged; no claim that alternative dependence or lead models were tested.
+
+COMMENT 7: ACTUAL INFERENCE AND EXISTING EVIDENCE
+Current manuscript:
+- tex:243–247 correctly says all reported fits use VB and names Gaussian state smoothing and channel-specific Laplace–Delta factors.
+- tex:733 says factorization separates state trajectory, augmentation and channel factors, retaining scale–skewness dependence within each channel's Laplace factor. It is not complete factorization of every coordinate.
+- tex:247 and appendix Algorithms1–2 present an alternative MCMC formulation, which can be misunderstood as an implemented/validated alternative used in this application.
+- tex:443–451 and generated tables call the parameter bands95%credible intervals without consistently making their VB approximation explicit.
+
+Implementation source distinguishing samples from chains:
+- DISC_Optimal...r:5397 starts deterministic VB coordinate updates; r:6607–6618 starts the post-fit n.samp sampling phase.
+- r:7014–7024 draws Gaussian samples in unconstrained scale/skewness coordinates using the LD covariance and transforms sigma by exp and gamma through a bounded logistic map. These are approximate variational-factor draws, not a Metropolis/Gibbs posterior chain.
+- sampling_exal.cpp:455–484 constructs state sample marginals using sm(:,t)+chol(sC(:,:,t))*normal noise. It loops through dates and draws. These are draws from fitted Gaussian state marginals, not an independent exact posterior sampler.
+- Existing seq.gamma/seq.sigma/elbo traces and their plots describe VB optimization iterates; do not apply Rhat or chain ESS to them.
+- Existing Gaussian benchmark estimates a different likelihood/model. Its finite/converged result cannot establish VB accuracy for exAL.
+- LD_vs_IS.r:535–620 implements an importance-sampling variational nonconjugate coordinate update. Comparing it to LD can study that approximation within a different VB calculation, but is not a full-posterior MCMC comparison and would itself require new calculation.
+- testing_crps.ipynb contains an unrelated two-parameter CRPS-induced Metropolis sampler, not this state-space posterior.
+- flowMC_old is generic library/test code; create_gif.py uses a toy sampler. No authoritative same-target chain, chain identifier, burn-in metadata, Rhat or MCMC ESS output was found in selected fit/post sources or article manifests.
+- repro/UNIFIED_MULTIMODEL_WORKFLOW_TRACKER.md:380 explicitly records NDLM implementation scope as VB only, with MCMC left for future work.
+
+Precise current credible-interval estimands:
+- Gamma and sigma article appendix tables are source-by-quantile summaries from existing approximate factor draws: center is MEDIAN; endpoints are2.5th and97.5th percentiles. Code R/environmetrics/40_figures.R:2818–2855; export R/environmetrics/02_helpers_core.R:1594–1641.
+- Transfer coefficient table center is MEAN; endpoints are2.5th and97.5th empirical percentiles of rescaled coefficient-state draws at the final HISTORICAL index T. For representative case the exported time_index12995 is2022-12-25, confirmed timestamps.csv spans1987-05-29..2022-12-25. It is not a time-averaged effect or central interval for future discharge. Code full figures:8535–8574; fast export actual helper:40_figures_smoke_fast.R:1560–1605, including multiplication by feature SDs; core export:1686–1710.
+- These parameter credible intervals differ from pointwise posterior predictive ribbons, which add observation variation and synthesis; they also differ from Gaussian fitted-location bands in saved multivar_forecast_window_q50_summary.csv. Coverage of observed flow cannot validate parameter interval calibration.
+- Existing column mapping23..31 includes generic Intercept/Lag1..Lag5 labels while the actual nine-feature design includes squares/interactions and lags; the complete design dictionary should be reconciled under comment8 before describing effects. Do not change old numeric values to relabel an estimand silently.
+
+Existing diagnostics usable without fitting:
+- Already completed C2 audit:70runs,400fits,314budget-limited,16criterion-supported/reconstructed stops,70unknown. It distinguishes finite forecasts from numerical convergence. Reuse it; do not duplicate a new incompatible classifier.
+- Representative retained-current runtime output has vb_trace_long.csv(5.2MB), vb_theta_cutoff_window.csv(2.47MB), vb_gamsig_final_values.csv, component and field summaries, terminal health and optimization-progress CSV/logs. Final nonconjugate export contains E.gam,V.gam,E.sigma,V.sig and needed transformed moment summaries, not the complete LD Hessian/covariance matrix.
+- Most canonical selected-run roots have no full .RData files now. The special retained-current named root also currently has zero .RData/.rda files by filename/stat inventory. Keep that distinction clear: its compact exports survive even though the name says retained. Do not invoke post-only helpers that secretly require removed fit objects.
+- Mean/variance positivity and final/late-iteration stability may be summarized from CSV. Full curvature, cross-factor covariance, fresh starts, posterior precision Monte Carlo errors, or exact parameter draw reconstruction are conditional on locating the corresponding existing compact data; do not promise them from quantile-only tables.
+
+No-refit deliverables for C7:
+A. Explicitly call all relevant parameter intervals approximate95%VB credible intervals, and note their fixed specification / mean-field and LD approximation status in one concise methods paragraph and consistent table notes. Keep values exactly.
+B. Add an estimand-and-center dictionary (quantity,state index/date,scale,transform,center,endpoints,input source) for main coefficient and appendix sigma/gamma tables.
+C. Clarify that the MCMC appendix is a sampling construction, not an empirical accuracy result. Audit its member-index contractions against the main likelihood: currently tex:737 compresses source/member vectors, but sigma update779–781 counts onlyT and displayed s updates are historical-only. Make vector multiplicities and applicable window explicit without implying executable validated sampler completion.
+D. Reuse C2 stopping/stability evidence as evidence of the computation performed, with an explicit separation between optimizer convergence and approximation accuracy. No claim that narrow intervals prove bias, and no claim that long records alone certify them.
+E. A file-level inventory marking existing VB draws/summaries, hypothetical sampler formulation, unrelated sampler experiments and missing same-target chain artifacts.
+F. Prepare a matched experiment contract and report/table schema now. The empirical table remains absent until it has real draws; avoid empty placeholder results in the article.
+
+Smallest scientifically valid future C7 experiment:
+1. Prespecify one existing representative cutoff(December25,2022) and target quantile0.5, since it is directly tied to the interpretation table. Keep the actual exAL likelihood, all active sources/members,the complete recorded state dimension(34coordinates for this representative fit), priors, input values, discount/evolution policy, augmentation convention and observation-scale convention. Do not fix gamma=0 or remove sources to make the test easy and present it as equivalence for the full model.
+2. First complete a target-density/member-multiplicity/evolution-covariance contract. The MCMC formulation must integrate/sample the same unknowns VB approximates; fixing an uncertain covariance or scale at its VB estimate changes the target and must be labeled a conditional diagnostic.
+3. Validate the sampler code on a small synthetic state-space example, including a known Gaussian/conditional-Gaussian case and log-density/conditional-kernel checks. No scientific fit can substitute for sampler correctness.
+4. Prefer the full historical window of the existing representative fit if feasible; VB results can then be reused only if exact source/provenance and convergence target are matched. If a shorter continuous window is needed, explicitly define a separate accuracy experiment and refit BOTHVB and MCMC to it with the same proper initial prior; such a comparison is useful but is not a direct full-history validation.
+5. Use at least4dispersed chains with adaptation separated from retained draws. Determine run lengths by chain diagnostics/Monte Carlo precision rather than an arbitrary guaranteed short run. Record rank-normalized/folded split Rhat<1.01, bulk/tail ESS>400 for reported key marginals, and MCSEs for mean,SD and interval endpoints. Extend or report failure when criteria are not met.
+6. Compare all channel scale/skewness parameters, the three main transfer coefficients atT, and selected flow/discrepancy state contrasts atT and leads1,7,14,28: means standardized by MCMCSD, SD ratios,2.5/50/97.5percentiles, correlations where relevant, and posterior predictive quantiles from the single target model. Include runtime/memory with hardware and chain counts. Do not interpret a single-quantile posterior comparison as validation of all seven-quantile synthesis behavior.
+7. A median case establishes one local accuracy comparison. Add q0.05or0.95 only if the first study or claims require checking tail-specific nonconjugacy. Do not declare all quantile intervals calibrated from one case.
+
+C7 acceptance criteria before any refits:
+All intervals have correct approximate labels/estimands, reproducibility inputs point to real surviving data, all sampling/traces are correctly classified, and the paper makes no empirical MCMC accuracy claim. C7's numerical accuracy request remains deliberately pending until a matching posterior experiment is performed. Increasing draws from VB reduces Monte Carlo noise but cannot repair mean-field bias; neither optimization convergence nor predictive calibration proves parameter posterior accuracy.
+
+PRIMARY SOURCES FOR METHODS / PROTOCOL (verified by browser)
+Blei,Kucukelbir,McAuliffe(2017),Variational Inference:A Review for Statisticians,JASA112(518),859–877,doi10.1080/01621459.2017.1285773:
+https://www.cs.columbia.edu/~blei/papers/BleiKucukelbirMcAuliffe2017.pdf
+Supports separating variational approximation accuracy from sampling Monte Carlo error and caution about mean-field posterior variance.
+Vehtari,Gelman,Simpson,Carpenter,Burkner(2021),Rank-Normalization,Folding,and Localization:An Improved Rhat for Assessing Convergence of MCMC,BayesianAnalysis16(2),667–718,doi10.1214/20-BA1221:
+https://sites.stat.columbia.edu/gelman/research/published/Vehtari_etal_2020_rhat_ess.pdf
+Authors' reproducible online appendix:
+https://avehtari.github.io/rhat_ess/rhat_ess.html
+Supports rank-based Rhat, bulk/tail ESS and explicit quantile-specific Monte Carlo diagnostics. These are criteria for a future actual Markov chain, not VB optimization iterates.
+
+FOLLOW-UP SOURCE MAPPING / PLAN REVIEW
+Read PLAN.txt independently: its C5/C7 distinction between immediate exposition/diagnostics and later new inference is approved. Current list order and full source-row order are unambiguous: ensemble list=(GloFAS,NWS) with orderpreserved, historical Y rows=(USGS,GloFAS,NWS3.0), gamsig arrays haveJ+1rows, and no row-name remapping was found. The current forecast pseudo-data loop's row[j]/list[[j]] pairing is therefore not explained by a different ordering. The representative retained-output manifest records clean commitbbabbb873a46b8055816f6a7cf7265e3dc4c71a9, whose stored script has the same construction. No claim about numerical impact or allselected-run history follows from this source inspection. Preserve the plan's private source/provenance gate and do not turn it into an unsupported public error statement or automatic replacement of current results. The actual representative model hasp=7,ppx=13,q=3*7+13=34states; a previous draft's31count confused a truncated coefficient-export range with full state dimension and is corrected here.

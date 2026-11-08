@@ -1,0 +1,252 @@
+Refined implementation plan for the revision using existing fitted results
+November 8, 2026 — planning only; no manuscript implementation has started
+
+The existing plan is present and its proposed article changes are not implemented.
+This refinement keeps its 17 stable task IDs and scientific scope, and resolves
+the remaining execution choices. Use this file with execution_contract.json and
+the parent task_register.json. The earlier PLAN.txt remains the detailed audit
+background. A complete, checksummed copy of the initial package is in
+history/initial_plan_v1/; decisions.json records the justified refinements.
+
+1. Current state and authority
+
+The article remains at 2583ee41c1367e65d4d71ed36cf280a4f555a513 and the workflow
+at f69d4c8ac144f405b3535c4d8c8015cc8af9e2db. Tracked working files are unchanged.
+All 20 checksummed files in the preceding planning package passed inspection.
+The existing 45-cache / 1,260-score replay and 45-configuration comparisons
+remain valid evidence; a redundant full replay was unnecessary in this pass.
+No local Project1 R fitting process was observed in the recorded process check.
+Other research processes were left untouched. This is a local observation,
+not a statement about an external scheduler.
+
+Existing selected fits, prediction values, original scores, external references,
+and reviewed figures remain fixed. New metrics receive their own names and
+provenance. Newly completed research jobs, if any, do not automatically replace
+selected runs or enter these calculations.
+
+Implementation should use dedicated review branches or isolated worktrees for
+both independent repositories. Worktrees must receive explicit paths to the
+selected runtime inputs. No fitting-stage source file used by a running job is
+edited in place, and no model/forecast is regenerated. Only a verified final
+revision is promoted to main after review.
+
+2. The required deliverable
+
+Deliver a polished article based on the current results, with:
+- exact numerical settings and correct parameter-summary interpretation;
+- explicit uncertainty and synthesis descriptions;
+- distribution-score and sample-size analyses from saved predictions;
+- quantile reliability, actual 95% predictive coverage, and discharge-scale
+  verification, including unfavorable findings;
+- a precise explanation of the member-level working likelihood and descriptive
+  information about its inputs;
+- generated artifacts, reproducibility records, tests and a rendered proof.
+
+Complete reporting/assessment is distinct from testing a new model. The reviewer
+ledger must retain the numerical VB/MCMC comparison and alternative-likelihood
+experiments as later work. The article receives no placeholder result table or
+internal account of the implementation campaign.
+
+3. Fix the score and quantile policies before computing new results
+
+Preserve the original quantile-grid score and its existing skill values. The
+required new common comparison is exact ECDF CRPS of every saved finite predictive
+representation, with exact-ECDF climatology scores on the same cases and scale
+for its CRPSS. The frozen deterministic baseline grids are the reference
+representations in this comparison. Analytic EMOS or a differently weighted
+climatological distribution is not silently substituted midway through the work.
+
+Add a separate iid-based pairwise-score sensitivity for the 30 stochastic AL/exAL
+objects, 15 stochastic Gaussian objects, and ten raw physical-ensemble objects.
+Gaussian sample sizes are 64 or 48, not 2,000. Their interpretation concerns the
+implemented predictive generator, not an assertion of exact posterior inference.
+Physical-member iid behavior is an explicit working assumption for this
+sensitivity. No universal independence or fairness claim follows.
+
+Deterministic climatology/EMOS grids and the persistence point mass get an
+explicit not-applicable status in the adjusted-score column, never zero or an
+unlabeled unadjusted replacement. Do not add an adjusted CRPSS column in this
+phase. Exact-ECDF CRPSS already gives a coherent skill comparison for every method.
+Do not regenerate draws, repeat Gaussian values, deduplicate members, or thin
+everything to seven values to manufacture equal ensemble sizes.
+
+Quantile definitions are role-specific:
+- Preserve the existing HE4 target quantiles for the four principal competitors.
+  They are the authoritative delivered values for those targeted diagnostics.
+- The demonstrated type-8 reproduction applies to the selected multivariate
+  figure family. Use type 8 for its displayed 95% ribbon and record that proof.
+- For other stochastic model summaries newly derived from matrices, explicitly
+  declare type 8 as a new diagnostic convention; do not claim it generated every
+  earlier export.
+- Use the empirical generalized inverse/type 1 for new raw-ensemble and
+  deterministic-grid distribution quantiles. Persistence stays a point mass.
+- Keep fitted latent locations, own-fit anchors and final synthesized quantiles
+  as separate mathematical objects and separate record types.
+
+For original-scale coverage and targeted losses, inverse-transform the declared
+log-scale quantiles/limits. This preserves the existing forecast event. Transform
+each saved draw separately for distribution scores and means. Recomputing
+interpolated quantiles after the nonlinear transform is not the same convention
+and is unnecessary for this release. No clipping, new tail family or extra
+posterior draw generation enters the primary calculations.
+
+4. Freeze one compact input bundle and use one case registry
+
+N00 must bind source hashes and selected identities, then copy the needed small
+inputs into a new immutable bundle. Verify hashes before and after copying. An
+actively changing input is a stop condition for that input, not permission to
+replace it with another run. Continue independent reporting work while resolving
+any required input problem.
+
+The canonical dimensions are:
+- 14 methods and 70 method-origin representations;
+- 140 unique observation cases;
+- 1,860 available forecast cases without a scale column;
+- 3,720 score and interval rows for two scales;
+- 26,040 targeted-quantile rows for seven probabilities and two scales;
+- 270 origin/horizon summary rows for two scales.
+
+All methods have eight-day comparisons; 13 have 28-day comparisons. NWS has no
+forecast rows at leads 9-28. That is structural unavailability, not a partially
+missing 28-day forecast. The current inputs are complete; unexpected missing
+members, nonfinite values, wrong dates, duplicate keys or changed counts fail
+validation. Do not impute, silently subset, or reduce a comparison denominator.
+Ties/duplicate predictions retain their original weights.
+
+Record strict hits y<q, weak hits y<=q, and exact ties y==q; use no numerical
+tolerance to turn nearby observations into ties. A closed 95% interval uses
+y<lower, lower<=y<=upper, y>upper as an exact partition. Include counts, widths
+and interval scores. Discrete forecasts need not have both strict and weak hit
+rates equal to the nominal probability. Five origins do not justify treating
+every day as an independent replicate for significance claims.
+
+N05 builds this registry once. N06-N08 are logical products of a single
+deterministic pass through it, rather than three separate resimulation or
+postprocessing campaigns. Keep per-case outputs unrounded. Round only display
+tables and derive all summaries/skill ratios from the unrounded case records.
+
+5. Implement the editorial and metadata work with protected-file constraints
+
+The existing C2 preservation manifest hashes entire old table files, including
+their captions/notes, and the old generated-table manifest. Changing only a
+caption still breaks that contract. The default route is to keep those files
+byte-identical and place clear approximation/estimand prose beside their current
+includes in wileyNJD-APA.tex. Keep the original include paths and stable labels.
+If a separately approved self-contained new wrapper becomes necessary, generate
+it under a new name, preserve the old file and values, and prove its source/body
+identity; do not rewrite preservation hashes to make a changed file pass.
+
+Use stable labels, not the report's former table numbers. The current coefficient
+table is tab:components_23_31, Table 7 in the current proof. The source skewness
+and scale tables are tab:gamma_sigma_intervals1/2, currently A5/A6. They will
+renumber naturally if additions require it.
+
+N10 produces a 12-feature/state dictionary and 27 relabeled available endpoint
+summary records, not 36 invented records. States 23-31 have existing exports at
+three probabilities. States 32-34 have no corresponding exported intervals and
+must say unavailable. Preserve every numeric source string and source hash.
+Record original labels, corrected feature identity, terminal state/date,
+quantile, center/endpoints, and export-scaling convention. The three displayed
+base-feature scale factors equal one to numerical precision; some extra lag
+export factors differ slightly. Do not relabel every extra number as an unscaled
+state coefficient without verifying its multiplier.
+
+Validate this dictionary before finalizing N02/N03 interpretation. Describe
+conditional dynamic feature loadings, not physical causal effects or historical
+average slopes. Keep current displayed values. Approximate VB parameter intervals,
+latent-state bands and observation predictive intervals have separate estimands.
+
+N01 reports exact selected settings and adapter-resolved defaults, distinguishing
+missing/not-applicable values from computed defaults. Use exact decimal arithmetic
+and integer-coefficient expressions such as 1-5*10^(-4) when appropriate. A
+dedicated generator avoids rounding near-one discounts to one and preserves the
+existing five-decimal policy for score/parameter tables. Explain discrepancy
+multipliers and effective component discounts separately.
+
+N11a repairs the independently established historical-index extraction defect
+on the isolated code branch and tests it with time-varying synthetic covariance.
+This changes diagnostic extraction only. N11b is optional regeneration: if the
+necessary late-time covariance/draw source is absent in the listed selected
+exports, record OPTIONAL_SKIPPED_MISSING_COVARIANCE and omit the optional bands.
+Do not let that absence block the source repair or the supported coefficient
+interpretation. Do not replace current parameter intervals with defective bands.
+
+6. Keep model-assumption explanations deliverable and optional work bounded
+
+N09a explains the conditional working likelihood, source/member availability,
+shared observation-scale specification, and evolving state-induced uncertainty.
+N09b calculates descriptive raw-product error/spread from the common case registry.
+Neither depends on recovering source precision or fitting an alternative model.
+
+N13 precision reporting is optional and requires all six provenance/source/phase/
+dimension/meaning/scope gates in execution_contract.json. The saved pseudo-data
+variances and terminal moment exports may represent different update phases.
+An unmatched numerical comparison cannot establish a computation error or a valid
+influence measure. If any gate remains unresolved, record
+OPTIONAL_SKIPPED_SOURCE_CONTRACT and publish no precision-share table. Preserve
+the frozen outputs and keep the question in companion evidence. No inference
+code/indexing change is applied to the selected model in this phase.
+
+N12a is a required target/scope audit of the MCMC exposition. State exactly which
+equations describe the full target, a conditional block, or a schematic proposal.
+N12b complete-formulation repairs are conditional on actual derivation. Index
+edits alone do not prove a valid sampler. A bounded outcome that scopes the text
+to verified statements is acceptable; a new tested full-model sampler is not a
+prerequisite for the no-refit editorial release. Empirical C7 closure still needs
+the later posterior comparison.
+
+N14 optional pre/post-synthesis diagnostics run only after the core verification
+passes and only from the existing small forecast cubes. They do not expand into
+new distribution families, fitted tails or additional origins.
+
+7. Wire a dedicated path and retain a reproducible release
+
+Proposed workflow entrypoint:
+  scripts/build_no_refit_review_diagnostics.R
+with an explicit frozen-input manifest and new output directory. It may read
+saved objects and derive statistics only. It must not source whole model modules,
+call fit/post-stage launchers, import a baseline trainer, or create new draws.
+Use one process/thread and sorted O(m log m) scores. Record actual runtime,
+environment, input/output hashes and phase statuses.
+
+Proposed article entrypoint:
+  scripts/no_refit_revision.py --check
+and a default generation mode that writes only declared new includes/artifacts.
+The CLI names here are a specification; these programs are not implemented yet.
+The article input bundle must support regeneration without absolute runtime paths.
+Update MANUSCRIPT_ASSET_MANIFEST.json, article_repo_layout.py, artifact inventory,
+and docs/article_readme_template.txt for the new artifacts. Keep the protected
+tables/generated_tex/manifest.csv unchanged; use a new dedicated manifest.
+
+Provide a dedicated refresh_no_refit_revision.py command. Do not execute the
+broad refresh_all_generated_assets.py workflow in this phase: it reaches support
+rebuilds that depend on removed or heavy fit objects. Adding a future standalone
+hook is not permission to run those unrelated steps. A clean article checkout
+must contain the new summaries, reproducibility metadata and generated includes;
+any omitted optional diagnostic must have no dangling include.
+
+N15 integrates only checked findings into the existing six-section article.
+Use a compact main summary/reliability figure, with full method/origin detail in
+appendices and the bundle. New figures use readable line types plus color; table
+bodies/notes retain the reviewed readable font sizes. Keep original figures and
+numeric includes fixed. Do not fill the article with implementation status notes.
+
+N16 verifies exact identities/counts and declared numerical tolerances, new
+mathematical/metadata regression cases, existing preservation checks, stable
+citations/references and the affected rendered pages. Build from the exact staged
+source before promotion. Cross-link the two final commits and verify local/remote
+main SHAs only when implementation and review are complete. Do not force-push or
+rewrite old result evidence. If main advances, review the diff and update the
+authority record instead of resetting other work.
+
+8. Decision and completion record
+
+Each task ends COMPLETE, OPTIONAL_SKIPPED_[reason], BLOCKED_REQUIRED_INPUT,
+or DEFERRED_NEW_INFERENCE, with evidence. Optional failures never silently launch
+refits. Required input failures pause only dependent calculations. Mark the
+no-refit revision complete only when its required deliverables and release gates
+pass; do not label every empirical referee request resolved.
+
+This is ready for a separate implementation decision. No proposed program,
+derived metric table, article edit, fit, baseline retraining or posterior-method
+comparison has been executed in this planning refinement.

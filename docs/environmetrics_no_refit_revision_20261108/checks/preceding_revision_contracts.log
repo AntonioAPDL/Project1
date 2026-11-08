@@ -1,0 +1,15 @@
+existing_contracts: PASS
+component_diagnostic_tests: PASS
+article_integration_tests: PASS
+external_baseline_tests: PASS
+point2_bundle_and_tables: PASS
+point2_preservation: PASS
+{
+  "python_tests": 82,
+  "r_assertions": [
+    48,
+    39
+  ],
+  "code_archive_matches": true,
+  "all_passed": true
+}

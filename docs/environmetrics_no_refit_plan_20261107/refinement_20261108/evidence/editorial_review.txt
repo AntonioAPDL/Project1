@@ -1,0 +1,148 @@
+SECOND-PASS EDITORIAL / DERIVED-CONTRACT DECISIONS
+Planning only; no repo edits, fitting or simulation. Read PLAN.txt and task_register.json.
+
+1. Minimal manuscript edits
+- wileyNJD-APA.tex299: replace near-one-only assertion with exact-settings table
+  pointer, noting component/origin specificity and discrepancy multiplier meaning.
+  Existing methods, six-section order, equation and labels stay.
+- tex295 and449: identify historical-SD scaling/no centering, psi_T at terminal
+  historical date/index12995, conditional dynamic loadings, nonlinear/lag terms,
+  transfer persistence and source conditioning. State no total/causal response.
+- A short global parameter-interval sentence near tex441/443 can state approximate
+  VB credible intervals and mean versus median center policy, shared acrossTable4
+  and appendices. Empirical factor/state draw quantiles are distinct from final
+  predictive intervals. This avoids changing all frozen caption wrappers.
+- N02's existing paragraph/caption output is over-specific as a dependency:
+  reviewer C8 permits tempered conclusions and does not require replacing a caption.
+  Prefer adjacent self-contained prose while retaining table caption and rows.
+
+2. Material preservation conflict and safe solution
+C2 artifacts/comment2_revision/manifest.json preserved_files hashes complete
+representative_covariate_effects_table.tex, gamma/sigma wrappers, all numeric row
+fragments and tables/generated_tex/manifest.csv. comment2_revision.py70-73
+validates these bytes. Caption/note-only edits inside protected wrappers fail
+existing C2 validation even when numeric cells are identical. Do not change old
+C2 hashes to make them pass. Best minimal route is adjacent prose, as above.
+If new notes genuinely need table placement, a NEW versioned wrapper may input
+unchanged existing row fragments, use stable table label, and have updated note.
+Point article include and MANUSCRIPT_ASSET_MANIFEST table_tex_path to newwrapper;
+keep oldwrapper as immutable source evidence. Do not include both wrappers inPDF.
+Source_class and first source path should continue identifying representative
+selected-model coefficient CSV, so existing lineage validation243-268 resolves
+same authoritative run. Additional derived dictionary sources follow it or are
+separately declared. New wrapper is a presentation view, not new numerical fit.
+
+3. Separate self-contained C8 derived contracts
+A) 12-row feature dictionary: schema/version, origin, selected run identity,
+state layout p=7,J=2,core21,zeta22,feature_index1..12,state_index23..34,
+actual feature_name, source_feature_metadata_SHA, scale/units description,
+summary_availability. Metadata order must be authoritative, not a new hardcode.
+Features: PPT,SOIL,PCA,PPT_sq,SOIL_sq,PPT_x_SOIL,PPT_lag1,PPT_lag2,PPT_lag3,
+SOIL_lag1,SOIL_lag2,SOIL_lag3. Every index unique and contiguous; dimension34.
+B) Existing-summary derived view: exactly27rows (9availablefeatures*3quantiles),
+not fabricated36. Include original CSV rowkey/obsolete label, resolvedstateindex,
+actualfeatureindex/name,original center/q2_5/q97_5 values as preserved source
+strings,quantile/time_index12995,sourceCSV_SHA,exporter identity,scaling provenance.
+No numeric inference or new coefficient estimates. Missing32..34 means unavailable,
+not zero; label-only output cannot reconstruct their posterior summary.
+C) Export scaling: current fast exporter multiplies state draws by SDs of already
+scaled postdesign columns. Base3 SDs=1 to numerical precision, but extra PPTlag
+SDs are approximately .999964,.999929,.999893. Thus extra relabelled summary
+values need documented multiplier and cannot simply be declared exact raw psi.
+Raw physical-unit derivative conversion remains gated on verified raw-feature
+SD/unit mapping; unitSD ofpostdesign does not supply rawunits.
+D) Manifest contains source hashes, derived hashes, schema version, selection,
+checks and NO_FIT status; write only new derived directory. Keep original endpoint
+CSV,original erroneous extra labels and hashes unchanged as historical evidence.
+
+4. Future exporter source repair: keep compatibility separate
+Workflow actual exporter: R/environmetrics/40_figures_smoke_fast.R1560-1610,
+called2710-2722. Generic mapper:02_helpers_core.R1575-1587; writer1686-1743.
+Do not globally change this old mapper in a way that silently reinterprets old
+snapshot rows or breaks old API. Add metadata-aware path/new version, preserving
+old interface when metadata absent; fail rather than use generic labels for a
+new full12 design. Future path uses layout-derived indices and actualfeatureorder,
+with explicit scaling convention. It need not run during the current reporting
+revision. Current artifact27rows remain source; no source exporter regeneration.
+Unit gates: base23..25 unchanged; nonlinear labels correct; last3 availability
+explicit; alternatep/J/order layout not hardcoded; duplicate/missing/unknownstates
+fail; valid source27values unchanged; provenance/path traversal/hashmismatch fail.
+Existing tests/testthat/test_post_posterior_table_exports.R100-146 expects legacy
+8-column schema and base3 output; retain that API test and add new contract tests
+rather than overwrite legacy expectations.
+
+5. Optional diagnostic bug: minimal source and artifact contract
+R/environmetrics/40_figures_multivar_only.R538-546 safe_diag_sd returns prefix1:n.
+Caller813 requests31prefix while means812 usehist_idx=TT-30:TT. Caller724 zeta
+reads tt correctly. Forecast uses its own segment indexing; don't broadenrepair.
+Implement explicit time_indices helper/argument at defectivecall, preservingall
+othercall semantics. Pure helper test should use covariancecube with differing
+per-time diag and a non-prefixlatewindow; also1time,bounds,invalidindex and
+outputlength tests. Load only pure definitions in tests, never sourceplotmodule
+with side effects. Either place helper in importable utility module or ASTload
+just named functions from existing file without executing top-levelfigure code.
+No correction to original CSV/bands in place. Record sourcefix and sourceSHA.
+If needed covariance recovered, derived replacementCSV records exactsource,
+originaldiagnosticSHA,actualindices,correctedintervals; verify meansunchanged.
+Otherwise record artifact-unavailable and omitoptionalwindowuncertaintyplot;
+existing endpoint baseTable4 remainsindependent. Aggregatezeta summaries use
+actualtime and need not be reconstructed. No marginalCI-based jointbands.
+
+6. Exact settings and precision without breaking five-decimal contracts
+Existing article test_article_a1_and_table_contracts.py591-605 scans EVERY
+*.tex in tables/generated_tex with ampersands and requires decimal tokens5digits.
+Builder test500-510 asserts DISPLAY_DIGITS=5 in legacy builder. Keep this policy
+for old scores/parameter rows. A separate exact-settings renderer can express
+near-one values as exact mathematics:1-10^{-7},1-5*10^{-4},1-12*10^{-4}; lambda
+97/100 (or prose .97 outside ampersandtablelines),eps365/30/1,c1. Compute from
+Decimal string arithmetic,not binaryfloatrounding; parse display back and assert
+exact equality to source values. Effective discrepancy factors may be products
+of exact expressions. No need broad precision-test exemptions or formatting
+oldsettingsas1.00000. Transpose compact reference table:componentrows,fiveorigin
+columns,not12parameter columns. Full45cases remainCSV+JSON/sourceSHA ledger.
+Null/missing/notapplicable/effectiveadapterdefault separate,as PLAN already says.
+
+7. New generator wiring
+Use one dedicated bounded no-refit script with --check to validate and compare
+outputs, defaultwritingonlynewversionedderivedartifacts+newtableincludes.
+Do not add newtable rows into protected tables/generated_tex/manifest.csv.
+Give new outputs their own manifest/buildmetadata. Add filenamekeys to
+scripts/article_repo_layout.py TABLE_TEX_FILENAMES and add table entries to
+MANUSCRIPT_ASSET_MANIFEST.json, with selected-source identities and labels.
+Generic build_article_asset_review_report.py103-112 already iterates manifests,
+but its hardcoded table_number labels around64 are stale. Avoid adding more
+hardcodes; read actualcompiledaux numbers for current review oromitnumber until
+build. Validate sources separately from derivedpresentationpaths.
+
+scripts/refresh_all_generated_assets.py currently calls broad model-support
+refreshes requiring unavailablefullfitobjects beforeoldtablebuilder/C2validation.
+Do not use it as no-refit executionentrypoint. A dedicated no-fit refresh should
+call newbuilder/checker and needed bounded assetindex/build commands only.
+Optionally register newbuilder after comment2_revision in broadrefresh so future
+fullrefresh preservesnewassets; do not invoke broadrefresh now. Provecheckcommand
+never invokestraining,fit,postorbroadrefresh stages.
+
+README.md is generated verbatim from docs/article_readme_template.txt by
+build_generated_asset_index.py134-136. Update template and regenerateREADME;
+manualREADME-only instructions will disappear. Register newartifactdescription
+in its ARTIFACT_DESCRIPTIONS map and artifactinventory. Existing READMEtest
+requires oldC1/C2guidance preserved; add no-fitcommands and remaintainboth.
+Existing tableREADME says every numericcellfixed5; exactsettings usemath and
+newtable-specific notes,so explainprecisionbyquantity without changingoldrows.
+
+8. Sequencing refinements to task_register
+N10 should have dictionary/provenance stage before final N02integration; N02prose
+can draftinparallel,but finalsource/estimandclaim should dependonN10dictionary
+validation. Split dictionary-onlyN10a from optional sourceexporterN10b; noexport
+regenerationneeded. N11 optional must not enter mandatory N15dependencychain.
+N01rendering dependsonguaranteed Decimal precision + adapterdefaultreconciliation.
+N03 adjacent uncertaintyprose avoids protectedwrappercollision. N16should check
+old155assetsplusnewderivednumericcontracts,not rebasetheoldhashledger.
+Articleintegration should have explicit choice adjacentprose vs newwrapperbefore
+editing, so a correct scienceedit doesn't accidentally failpreservation late.
+
+Acceptance: current original numericalassets/sources immutable; newdictionary12,
+existingderivedsummary27,absentstatesnotinvented; Table4base valuesidentical;
+exactsettingsroundtrip; oldC1/C2checks pass; newsourcehelpertestshowslateindices;
+optionalartifacts stopcleanly; newtableincludes+manifest+READMEreproduce; full
+PDFreferences stable; no broadpost/newfits/newposterior simulation anywhere.

@@ -1,0 +1,354 @@
+Plan for completing the remaining corrections using existing fitted results
+Audit prepared November 7-8, 2026
+
+The recommended immediate phase is a publication-quality reporting and
+verification revision using the current selected fits. It can complete the
+requested scoring and calibration calculations, the numerical-settings report,
+and the permitted correction to coefficient interpretation. It can substantially
+improve the explanation of ensemble assumptions and variational uncertainty.
+It cannot establish the performance of an untested likelihood or supply an
+MCMC comparison without new posterior computation. These distinctions determine
+the work order and the reviewer-resolution labels below.
+
+This document proposes the work. The manuscript has not been edited in this
+turn, and no fitting or new posterior simulation has been performed.
+
+1. What is already authoritative and what the audit established
+
+The current article source is commit 2583ee41c1367e65d4d71ed36cf280a4f555a513.
+The workflow source is f69d4c8ac144f405b3535c4d8c8015cc8af9e2db. The completed
+six-section organization and comment-2 revision remain the starting point.
+Comment 2 already supplies climatology, persistence, EMOS, climatology-relative
+skill, component-comparison roles, and a 400-fit diagnostic audit. It does not
+need another baseline-fitting campaign.
+
+The principal new finding is that all 45 authoritative forecast prediction
+matrices survive: nine specifications at five origins. Together they occupy
+12,404,426 bytes. All matrices contain finite values and 28 forecast leads.
+Their existing scorer reproduces all 1,260 original daily benchmark scores,
+with maximum absolute discrepancy 4.44e-16. All 45 prediction-file hashes were
+independently rechecked. The machine-readable inventory records exact paths,
+identities, dates, dimensions, units, hashes, and replay errors.
+
+The retained predictive sample counts differ across model families:
+- AL/exAL: 30 matrices, each 2,000 draws by 28 leads.
+- Gaussian N-U-T1: five matrices, each 64 draws by 28 leads.
+- Gaussian N-M-T0 and N-M-T1: ten matrices, each 48 draws by 28 leads.
+- Raw products: 51 GloFAS members over 28 leads; seven NWS members over eight.
+- Existing external references: 2,000 deterministic quantile-grid values per
+  date, for each of the three methods. These are not random simulation draws.
+
+The raw-product adapters, 140 verification dates, 15 external-reference
+prediction matrices, and existing per-day quantile-score rows also survive.
+The latter contain 3,920 rows for four principal quantile-synthesis competitors,
+seven probabilities, five origins, and 28 days. Additional forecast-only raw
+quantile cubes survive for all 30 AL/exAL cases, about 87 MB compressed in total.
+Their use is optional for detailed pre/post-synthesis comparisons.
+
+There are enough compact objects for verification without reopening fitted
+state objects. Conversely, full fit RData are not present in the checked
+authoritative roots. A generic post-only workflow is therefore not an acceptable
+substitute for a dedicated reader of the surviving artifacts.
+
+Current fits and source exports remain immutable evidence. New metrics are
+versioned calculations from those fits; they are not new fits. Their results
+must be reported even if a ranking changes. Existing numerical tables stay
+traceable to their original estimator and scale. No current forecast is silently
+clipped, regenerated, retuned, or replaced to obtain a preferred outcome.
+
+2. Reviewer-by-reviewer disposition
+
+Comment 2: retain the completed contribution, comparisons, and interpretation.
+Reuse the three already computed external references and the saved-fit audit.
+The unresolved question of independently optimized reduced models belongs to
+later fitting work; no further retuning is needed for the present revision.
+New verification methods must use the same reference forecasts, rather than
+trigger their fitting entrypoint again.
+
+Comment 3: the current specification values can be documented completely now.
+This includes the numerical settings table described under minor comment 1.
+A new calibration/re-estimation policy or a changed fitted seasonal/dynamic
+specification needs a separate experiment. Reporting current settings does not
+demonstrate the outcome of such an experiment. No additional design-validation
+claim should be manufactured from a prose correction.
+
+Comment 4: the requested score-method and ensemble-size analysis can be
+performed now from the saved distributions. Report actual predictive counts,
+compute exact empirical-distribution CRPS, and add a separately identified
+Ferro-style sensitivity where its random-sample interpretation applies. Explain
+the short-horizon exceptions and why the fitted synthesis is not an oracle that
+must equal or beat its best input. No model refit is needed for these tasks.
+The adjustment does not validate arbitrary dependence between physical members.
+
+Comment 5: the assumptions can be stated precisely, and useful diagnostics can
+be added now. Explain conditional residual independence, member contributions,
+source availability, and the shared observation-scale parameterization. States
+and predictive covariance evolve over the forecast window; a shared source
+scale does not imply fixed total predictive uncertainty. Nominal member counts
+also do not imply an exact 51:7 information ratio. Descriptive lead-wise error
+and spread calculations are available. A representative source-precision audit
+is possible after its source-label/provenance checks. Alternative dependence,
+weighting, or lead-dependent observation models require new inference.
+
+Comment 6: the requested assessment is feasible now. Compute below-quantile
+proportions, actual central 95% predictive-interval coverage, widths, and scores
+on the original discharge scale. Explain tail construction from the outer fitted
+predictive distributions. Distinguish fitted locations, synthesis anchors, and
+final predictive quantiles. Assessing calibration does not require first fitting
+a calibrated replacement. New tail fits, parameter changes, additional origins,
+or a model repair motivated by the diagnostics are subsequent experiments.
+
+Comment 7: approximation labels, interval estimands, the mathematical exposition,
+and an accurate account of existing computation can be corrected now. A genuine
+VB-versus-MCMC accuracy comparison cannot: no matching authoritative chain was
+located. Existing samples come from fitted variational factors, and optimization
+traces are not Markov chains. The Gaussian benchmark estimates a different
+likelihood. These objects must not be presented as the requested comparison.
+
+Comment 8: the reviewer explicitly permits tempering the conclusions. That route
+can be completed now. Identify the displayed coefficients as conditional dynamic
+transfer-feature loadings at the terminal historical date, state their units and
+approximate uncertainty, and remove unsupported physical/causal interpretation.
+The three displayed base-feature rows are correctly mapped and retain their
+values. A full nonlinear physical-response analysis is unnecessary for this
+permitted resolution and would need additional joint uncertainty information.
+
+Minor comment 1: fully addressable now. The 45 manifest state-setting dictionaries
+match all 45 selected resolved configurations. Report exact values and
+applicability, rather than only saying that discounts are near one. Distinguish
+the discrepancy multiplier from each effective discrepancy discount. Do not round
+all factors to 1.00000 or assign one representative profile to every origin.
+
+3. Execute the immediate phase in this order
+
+A. Freeze a compact verification input bundle before editing results prose.
+Resolve each selected artifact_run_root through the publication manifest. Freeze
+the 45 small prediction matrices, dates, raw member adapters, verification rows,
+existing external predictions, and necessary quantile/settings metadata. Record
+hashes, schema, scale, sample-generation semantics, source versions, and exact
+model-origin identities. Preserve original source files and current figure/table
+hashes. Fail on missing or mismatched sources; never fall back to an unselected
+run. The present audit has already proved score parity for all 45 matrices.
+
+B. Make the reporting corrections that need no new verification numbers.
+Build an exact settings ledger for 45 model-origin cases, with quantile
+applicability and adapter-resolved defaults. A compact five-origin reference
+view can appear in an appendix, with a concise main-text pointer. For example,
+the reference epsilon values are 365, 365, 30, 1, 1; c=1 at all five origins.
+Lambda is 0.97 throughout the 45 cases. Values vary by model and origin.
+Use exact decimals or mathematically exact notation such as 1-10^(-7) where
+needed; the five-decimal score-table convention must not erase these settings.
+
+Complete the coefficient explanation and its table note. The transition is
+zeta_t = lambda*zeta_(t-1) + x_t'psi_(t-1) + innovation. The displayed coefficient
+state is psi_T at December 25, 2022, index 12995, not a historical average or an
+unconditional precipitation response. Current base-feature scaling is by a
+historical standard deviation without centering; checked post-design SDs equal
+one to numerical precision. Explain nonlinear inputs, feature lags, persistence,
+and conditioning on source channels. Do not invent a physical negative-rainfall
+mechanism or claim that source redundancy alone proves the sign's cause.
+
+Label parameter intervals consistently as approximate VB credible intervals.
+State that coefficient centers are means, gamma/sigma centers are medians, and
+endpoints are empirical 2.5th/97.5th percentiles of the corresponding approximate
+factor/state draws. Keep parameter intervals separate from observation predictive
+intervals. Reuse the existing convergence evidence; convergence alone does not
+establish approximation accuracy. State what the MCMC formulation represents
+without implying an application comparison that has not been conducted.
+
+C. Correct derived metadata before using it for further interpretation.
+The main coefficient table uses valid states 23-25. Extra rows in its underlying
+export use obsolete generic labels: state 26 is PPT_sq, not Intercept; subsequent
+features are similarly shifted, and three soil-lag coefficient states were not
+exported. Create a versioned corrected dictionary/export from actual feature
+order and state layout. Retain original CSV hashes. A label repair cannot recover
+missing coefficient draws or fabricate their intervals. The existing displayed
+rows keep all their numerical values.
+
+There is also an independently verified indexing defect in the optional
+coefficient-window diagnostic: late-history means are paired with variances from
+the first 31 historical times. Fix the extraction helper to use the actual time
+indices, with a small regression case whose variances differ over time. This
+does not affect the current main coefficient table, which uses another exporter.
+Regenerating the affected historical bands is conditional on finding the saved
+late-time covariances/draws; they were not located in the checked small exports.
+If they remain unavailable, omit that optional diagnostic uncertainty display.
+Use existing validated endpoint and aggregate transfer summaries where useful.
+Do not make this optional figure a dependency of the essential comment-8 edit.
+
+D. Add one standalone, deterministic verification pipeline using frozen inputs.
+It must not invoke fitting, full-stage postprocessing, or baseline training.
+Read one compact matrix at a time; use one CPU/thread; write only a new versioned
+output bundle. Core compressed input I/O is under roughly 20 MB. Optional raw
+quantile cubes add about 87 MB. Sorting-based scores avoid quadratic pairwise
+matrices. Actual runtime should be measured; there is no basis for another
+hours-long model-fitting campaign for these calculations.
+
+Use one common observation/date/model registry for the following outputs:
+
+Quantile reliability: for each origin, model, horizon, and probability, record
+the valid denominator, counts below/below-or-equal, tie count, empirical rates,
+and nominal level. Start with the four principal competitors using the existing
+3,920 per-day rows. Extend to the other available distributions consistently.
+Provide origin-specific detail before pooling 140 dates over 28-day windows or
+40 dates over eight-day windows. A day within a window is not automatically an
+independent replicate. Avoid strong calibration tests based on naive binomial
+standard errors or a five-origin bootstrap. Show counts and descriptive rates.
+
+Predictive intervals: recover .025/.975 quantiles from the full saved matrices.
+The published figure/export convention uses R quantile type 8; it reproduces the
+selected exported quantiles to 4.9e-15. Type 7 can differ and must not be substituted
+silently. Record lower misses, coverage, upper misses, interval width, and a proper
+interval score. The seven exported .05-.95 quantiles define a central 90% range,
+not the requested 95% ribbon. Reconcile the representative ribbon with its exact
+saved source. Historical fitted bands are not held-out predictive coverage.
+
+Scoring: preserve the current estimator as a named legacy calculation, then
+derive the exact empirical-distribution score and applicable random-sample
+sensitivity from the original saved values. For m values x_i, define
+A = mean_i |x_i-y| and D = sum_(i<j) |x_i-x_j|. Exact ECDF CRPS is A-D/m^2;
+the iid-Ferro estimator is A-D/[m(m-1)] for m>1. The implemented s/(m+1)
+quantile-grid score differs from ECDF CRPS by D/[m^2(m+1)]. Thus its correction
+must be derived from the values, not applied to the old scalar scores blindly.
+This algebra was independently checked on finite examples, including ties.
+
+The AL/exAL synthesis actually uses random Uniform inverse-CDF draws conditional
+on its constructed curve; subsequent sorting does not change CRPS. Existing
+external references use deterministic quantile grids. Handle them accordingly.
+Treat physical-member dependence and Gaussian-generation provenance explicitly
+when labeling the Ferro sensitivity. Do not call an adjustment a universal
+solution to member dependence. Exact ECDF scores remain available for every
+retained finite representation. If analytic EMOS or full empirical climatology
+scores are additionally used, identify their distribution representation.
+
+Compute new score-specific CRPSS only from matching numerator/denominator
+estimators, cases, scale, and reference representation. Never combine a corrected
+numerator with the old climatology score. NWS comparisons remain eight days.
+Audit the full set of available methods rather than selecting favorable origins.
+
+Original discharge scale: invert each saved prediction with expm1, once, and
+score the same cases in m^3/s. Means require mean(expm1(draws)), not expm1 of the
+log-scale mean. Record the quantile interpolation convention when transforming
+intervals. For figure-linked coverage, inverse-transform the already computed
+log-scale limits; this preserves the displayed event. Recomputing interpolated
+sample quantiles after transforming draws can give slightly different limits
+and must be identified as a separate convention. Add original-scale CRPS,
+targeted losses, and appropriate point errors
+alongside retained log-scale results. The present arrays are finite and their
+largest log prediction is about 34.06, so exponentiation does not overflow here.
+Nevertheless enforce finite-value/unit checks. Preserve the current distribution's
+support; do not silently clamp or winsorize forecasts. Any such postprocessing
+would be a separate specified sensitivity, not the unchanged forecast.
+
+Tail explanation: document the actual seven anchors, isotonic adjustment,
+adjacent empirical-quantile blending, 1,001-point rearrangement grid, endpoint
+rules, and 2,000 inverse-CDF draws. Below .05/above .95 the outer predictive
+distributions supply tails. Reported 95% intervals are therefore not directly
+fitted .025/.975 quantile models. State what the finite-grid/marginal-time
+construction supports without claiming general return-level validation.
+
+E. Add the ensemble-assumption material proportionately.
+Place a concise working-likelihood explanation beside the existing equations.
+Clarify conditional residual covariance versus covariance induced by shared
+uncertain states. Build the source/member/lead count table from frozen adapters.
+Use descriptive per-origin error/spread-by-lead summaries, with actual sample
+counts. Five origins do not identify a robust new lead-error law.
+
+The representative 62,328-row forecast augmentation/pseudo-observation CSV can
+support precision summaries without fit objects. Before interpreting it, verify
+source labels, row/list indexing, recorded moments, and equality to its selected
+source snapshot. This is an implementation/provenance gate, not an established
+historical-result error. Do not change the frozen fit on the basis of an
+unresolved source-index contract. Report representative-only precision evidence
+as such; full five-origin exports were not established. The calculation is a
+working-fit precision share, not an effective independent-member count.
+
+F. Integrate only results that have passed the common verification gates.
+Keep the current six-section structure. Make the main article read as a completed
+scientific account: methods, actual findings, and supported interpretation. Put
+large origin/model tables, exact settings, and provenance in appendices/bundles.
+Keep planning notes, operational file fields, and future job lists in companion
+documentation. Do not insert blank future-results tables or claim that a planned
+comparison has already verified the method.
+
+Use generated includes and explicit artifact manifests for each new table or
+figure. Extend the current refresh wiring and versioned README template without
+invoking broad workflows that need deleted fit objects. Retain original numeric
+assets and their score identities. Update result wording only from calculated
+evidence; a changed ordering on a new estimator/scale must remain visible.
+
+4. Verification and completion gates
+
+- Frozen model-origin identities, original score/figure/table hashes, and current
+  baseline artifacts remain unchanged. Recheck input hashes after computation.
+- Existing score replay agrees within 1e-12 on all 1,260 benchmark daily values;
+  current observed discrepancy is below 5e-16.
+- Scores match independent pairwise/sorted formulations on small examples and a
+  trusted implementation. Cover ties, unequal member counts, missing-member
+  status, and the point-mass=absolute-error identity. Do not silently drop cases.
+- Every calibration row contains its numerator, denominator, nominal probability,
+  horizon, date set, quantile type, and tie convention. The displayed 95% bands
+  reconcile with the full saved predictive matrices.
+- Original-scale inversion and units are explicit; no hidden clipping or ranking
+  selection; CRPSS uses matched methods/denominators.
+- Numeric settings and coefficient labels trace to selected configurations and
+  actual state/feature layout. Distinguish null, not applicable, and an effective
+  adapter default. Preserve exact near-one values.
+- C5 precision interpretation passes source-index/provenance checks; optional
+  diagnostic reconstruction stops cleanly when required covariance is absent.
+- No optimization trace is called a chain, and no predictive-coverage result is
+  offered as evidence of exact parameter-posterior accuracy.
+- Run existing bounded C1/C2 and publication-preservation checks after changes;
+  add meaningful tests for new scoring, date/scale alignment, feature labeling,
+  and the genuine historical-index defect. Do not weaken old contracts to pass.
+- Compile to stable references/citations, inspect affected PDF pages and tables,
+  build from the exact staged source, and record source hashes/environment/runtime.
+  Only the reviewed revision should then be committed and promoted to main.
+
+5. What remains for later computation
+
+Keep a separate experiment register with no launch during this phase:
+- Re-estimation/retuning under a changed dynamic or calibration specification.
+- Independently optimized reduced-model comparisons if stronger component claims
+  are desired beyond the already qualified sensitivities.
+- Member-dependence, likelihood-weighting, and lead-dependent observation-model
+  alternatives. Changes must reach all corresponding state, augmentation,
+  scale/skewness, and objective updates, with a small correctness pilot first.
+- A genuine same-target VB/MCMC comparison. Specify one representative origin
+  and median quantile, matching sources, member multiplicities, priors, evolution
+  policy, unknown quantities, and inputs. Establish the target and validate the
+  sampler before timing a research run. A shorter-history study requires both
+  methods on that same shorter target and cannot validate the full-history fit.
+  Use multiple dispersed chains, rank-based Rhat, bulk/tail ESS, and Monte Carlo
+  precision for reported intervals; no guaranteed short runtime is asserted.
+- New fitted tail levels/families, additional verification origins, or a
+  recalibration/refit response to observed diagnostic shortcomings, if needed.
+- Rebuilding optional coefficient-window uncertainty only if its covariance/draw
+  source can be recovered; otherwise it stays omitted. This is an artifact gate,
+  not an automatic reason for refitting the full study.
+
+Before that later campaign, refresh the evidence inventory and decide which
+experiments answer still-open clauses. Do not automatically rerun everything.
+The immediate phase will already have supplied publication-quality explanations,
+the missing low-cost verification, and precise boundaries for the remaining work.
+
+6. Evidence and methodological basis
+
+evidence/authority_snapshot.json records source commits and current file hashes.
+evidence/scoring_artifact_inventory.json records all 45 retained predictions and
+their original-score replay. The three specialist reports record file/line
+evidence for scoring/calibration, model/inference, and effects/settings. The
+source_locations.json index provides direct locations for key findings.
+
+Ferro (2014), doi:10.1002/qj.2270, motivates random-sample adjusted scores and
+explicitly treats limitations under member dependence. Zamo and Naveau (2018),
+doi:10.1007/s11004-017-9709-7, distinguish random-sample and quantile-set CRPS
+estimation. Official scoringrules estimator documentation supplies independent
+ECDF/fair formulations. The legacy-score identity above is a direct algebraic
+derivation checked here, not a quotation from those papers.
+
+Blei, Kucukelbir, and McAuliffe (2017), doi:10.1080/01621459.2017.1285773,
+support separating variational approximation from Monte Carlo error. Vehtari
+et al. (2021), doi:10.1214/20-BA1221, support the future chain diagnostics.
+Verified primary URLs are retained in references.txt. These sources motivate
+method choices; they do not validate this article's current empirical results.

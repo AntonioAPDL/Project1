@@ -1,0 +1,30 @@
+Primary methodological sources checked during this audit
+
+Ferro (2014). Fair scores for ensemble forecasts.
+Quarterly Journal of the Royal Meteorological Society 140(683), 1917-1923.
+https://rmets.onlinelibrary.wiley.com/doi/abs/10.1002/qj.2270
+
+Zamo and Naveau (2018). Estimation of the Continuous Ranked Probability Score
+with Limited Information and Applications to Ensemble Weather Forecasts.
+Mathematical Geosciences 50, 209-234.
+https://link.springer.com/article/10.1007/s11004-017-9709-7
+
+Official scoringrules documentation, ensemble estimator definitions.
+https://scoringrules.readthedocs.io/en/latest/crps_estimators.html
+
+Gneiting and Raftery (2007). Strictly Proper Scoring Rules, Prediction,
+and Estimation. Journal of the American Statistical Association 102, 359-378.
+https://sites.stat.washington.edu/raftery/Research/PDF/Gneiting2007jasa.pdf
+
+Blei, Kucukelbir, and McAuliffe (2017). Variational Inference: A Review for
+Statisticians. Journal of the American Statistical Association 112, 859-877.
+https://www.cs.columbia.edu/~blei/papers/BleiKucukelbirMcAuliffe2017.pdf
+
+Vehtari et al. (2021). Rank-Normalization, Folding, and Localization:
+An Improved Rhat for Assessing Convergence of MCMC. Bayesian Analysis 16, 667-718.
+https://sites.stat.columbia.edu/gelman/research/published/Vehtari_etal_2020_rhat_ess.pdf
+https://avehtari.github.io/rhat_ess/rhat_ess.html
+
+The first five sources were checked by the root audit or primary-source browser
+results; the Vehtari paper and reproducible appendix were checked by the inference
+auditor. No text is quoted verbatim from these sources in the plan.

@@ -1,0 +1,34 @@
+Independent scoring verification: PASSED
+
+The installed scoringRules 1.1.3 crps_sample(method="edf") was inspected locally.
+Its exact empirical-distribution implementation uses midpoint quantile weights;
+the production implementation uses a sorted pairwise-spread identity. The
+independent script neither sources nor calls production diagnostic helpers.
+
+All 3,720 cases were checked: 1,860 on each scale, covering every saved method,
+origin and valid lead. Maximum absolute differences are 1.77636e-15 on log1p
+scale and 0.0010986328125 on discharge scale. The latter occurs for a very large
+finite score (283850745565.04297, N-M-T1, origin
+2021-01-23, lead 6); maximum relative discrepancy
+across discharge cases is only 4.17854e-15. All cases meet the prespecified
+absolute-plus-relative tolerances, without changing or excluding any forecast.
+
+An additional direct quadratic pairwise calculation checked the adjusted score
+for all eleven eligible methods at the first origin/lead, on both scales:
+22 real-data checks, all passed. These checks validate the implemented formula;
+they do not establish independent physical members or exact model inference.
+
+Seventy-seven frozen input/score paths have identical hashes before and after.
+The RNG state is unchanged. No fit, training, predictive resimulation or source
+write occurred. Audit runtime: 3.161 seconds.
+
+Reproduction, from the workflow repository:
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 Rscript --vanilla \
+  docs/environmetrics_no_refit_revision_20261108/independent_scoring/verify_exact_crps.R \
+  --bundle-root /path/to/article/artifacts/no_refit_revision \
+  --output-dir /tmp/NEW_INDEPENDENT_SCORE_CHECK
+
+The output directory must be fresh. The script, report.json, per-case comparison
+CSV, direct-pairwise CSV, unchanged-hash ledger and sessionInfo accompany this
+record. The JSON records exact tolerances, package implementation hash and script
+hash. No sealed computational bundle files were changed by this audit.

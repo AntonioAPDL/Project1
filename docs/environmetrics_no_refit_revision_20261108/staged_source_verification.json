@@ -1,0 +1,18 @@
+{
+  "status": "PASSED",
+  "staged_article_tree": "571dda459c2fab4c2411d96461d5c7722468a936",
+  "materialized_index": "/tmp/no_refit_staged_article_20261108",
+  "staged_release_check": "PASS",
+  "staged_previous_release_check": "PASS",
+  "staged_build": "proof/build_summary.json",
+  "source_hashes_match_reviewed_worktree": true,
+  "rendered_text_identical_to_reviewed_candidate": true,
+  "pdf_sha256": "291e974b01b8f968b4bb2266f240ed8a31d0f703c31036ec063bf7cec85853aa",
+  "pages": 42,
+  "unresolved_references_or_citations": [],
+  "unchanged_vendor_title_page_box_warnings": {
+    "horizontal": 1,
+    "vertical": 1
+  },
+  "authored_table_and_figure_layout_review": "Readability, captions, units and complete rows checked in rendered proof"
+}

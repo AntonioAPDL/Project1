@@ -1,0 +1,7 @@
+test_article_and_corrections_preserve_uncertainty_framing (test_r1_m1_uncertainty_contract.R1M1UncertaintyContractTests) ... ok
+test_docs_exist (test_r1_m1_uncertainty_contract.R1M1UncertaintyContractTests) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.048s
+
+OK

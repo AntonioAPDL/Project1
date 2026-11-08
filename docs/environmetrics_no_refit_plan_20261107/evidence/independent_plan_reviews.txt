@@ -1,0 +1,17 @@
+Independent reviews of the proposed PLAN.txt
+
+Scoring/calibration auditor: approved C4/C6, no material errors or overclaims.
+Refinement incorporated: distinguish inverse-transformed plotted interval limits
+from newly interpolated quantiles after a nonlinear transformation.
+
+Effects/settings auditor: approved C8, minor1, metadata and indexing plan.
+Main coefficient-table values remain valid; optional covariance-dependent
+regeneration is correctly conditional. Exactsettings/default semantics required.
+
+Inference auditor: approved C5/C7 distinction between present reporting and later
+new inference. Source-label consistency stays a private verification gate. The
+specialist report was corrected to 34 state coordinates for the representative
+model; the plan itself did not assert the earlier incorrect count.
+
+All reviewers were read-only with respect to repository files and fits.
+Final report contents were reconciled by the root auditor before handoff.

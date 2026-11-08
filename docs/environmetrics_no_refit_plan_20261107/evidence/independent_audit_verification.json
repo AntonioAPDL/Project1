@@ -1,0 +1,11 @@
+{
+  "prediction_file_hashes_rechecked": 45,
+  "prediction_total_bytes": 12404426,
+  "score_replay_cases": 1260,
+  "max_existing_daily_score_replay_error": 4.440892098500626e-16,
+  "independent_estimator_identity_cases": 4,
+  "max_identity_error": 1.3877787807814457e-16,
+  "diagnostic_index_bug_independently_read": true,
+  "main_table_export_independent_of_diagnostic_bug": true,
+  "new_models_or_diagnostics_implemented": false
+}

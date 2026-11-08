@@ -1,0 +1,13 @@
+{
+  "extraction_runtime_seconds": 19.184,
+  "portable_replay_runtime_seconds": 14.123,
+  "numerical_products_byte_identical": true,
+  "new_draws": false,
+  "source_cube_count": 30,
+  "source_cube_bytes": 86588044,
+  "new_fits": false,
+  "source_snapshot_sha256": "689f1c56deb67d482210cbcf962fea660ccf743ec18bfabee22892b4d44e8978",
+  "final_frozen_source_extraction_runtime_seconds": 18.642,
+  "all_13_packaged_files_byte_identical_from_frozen_source": true,
+  "R_test_assertions": 21
+}

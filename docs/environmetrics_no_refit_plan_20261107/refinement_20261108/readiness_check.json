@@ -1,0 +1,21 @@
+{
+  "created_utc": "2026-11-08T08:23:32.075681+00:00",
+  "status": "REFINED_PLAN_READY_NOT_IMPLEMENTED",
+  "current_article_commit": "2583ee41c1367e65d4d71ed36cf280a4f555a513",
+  "current_workflow_commit": "f69d4c8ac144f405b3535c4d8c8015cc8af9e2db",
+  "original_plan_snapshot": "history/initial_plan_v1",
+  "tracked_article_and_workflow_sources_unchanged": true,
+  "article_working_tree_clean": true,
+  "all_original_C2_protected_files_hash_verified": 155,
+  "stable_task_ids": 17,
+  "dependency_graph_valid": true,
+  "schema_count_invariants_passed": true,
+  "proposed_code_and_artifact_paths_absent": true,
+  "independent_domain_approvals": 3,
+  "new_fits": false,
+  "new_posterior_simulations": false,
+  "new_verification_metrics_calculated": false,
+  "old_score_replay_repeated_in_this_refinement": false,
+  "original_replay_evidence_reused": "45 caches /1260 daily scores; max discrepancy4.44e-16",
+  "new_main_claims_or_results": false
+}

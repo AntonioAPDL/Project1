@@ -12,3 +12,11 @@ docs/environmetrics_comment1_plan_20261107/**/pdfinfo.txt -whitespace
 docs/environmetrics_comment2_revision_20261107/**/*.log -whitespace
 docs/environmetrics_comment2_revision_20261107/**/*.aux -whitespace
 docs/environmetrics_comment2_revision_20261107/**/pdfinfo.txt -whitespace
+
+# Captured saved-output planning and execution evidence retains source bytes.
+docs/environmetrics_no_refit_plan_20261107/** -whitespace
+docs/environmetrics_no_refit_revision_20261108/**/*.log -whitespace
+docs/environmetrics_no_refit_revision_20261108/**/*.aux -whitespace
+docs/environmetrics_no_refit_revision_20261108/**/pdfinfo.txt -whitespace
+docs/environmetrics_no_refit_revision_20261108/**/*.stdout.txt -whitespace
+docs/environmetrics_no_refit_revision_20261108/**/session_info.txt -whitespace
