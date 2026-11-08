@@ -4,9 +4,13 @@ import os
 import unittest
 from pathlib import Path
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from article_repository_binding import active_article_root
+
 
 ROOT = Path(__file__).resolve().parents[2]
-ARTICLE_ROOT = ROOT / "Evironmetrics---REVISED-DOC-Corrected-2"
+ARTICLE_ROOT = active_article_root(ROOT)
 CORRECTIONS_ROOT = Path("/data/muscat_data/jaguir26/Corrections---Project-1")
 os.sys.path.insert(0, str(ROOT / "scripts"))
 

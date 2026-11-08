@@ -41,7 +41,18 @@ n14_crossings <- function(quantiles) {
   c(n_crossings = sum(gap < 0), max_negative_gap = min(c(0, gap)))
 }
 
-n14_extract <- function(article, output) {
+n14_workflow_root <- function(workflow = NULL, script = NULL) {
+  if (is.null(workflow)) {
+    n14_require(!is.null(script), "Extraction requires --workflow-root or an executable script path")
+    workflow <- file.path(dirname(script), "..")
+  }
+  workflow <- normalizePath(workflow, mustWork = TRUE)
+  n14_require(file.exists(file.path(workflow, "R/environmetrics/02_helpers_core.R")),
+              "Extraction workflow source root is unavailable")
+  workflow
+}
+
+n14_extract <- function(article, output, workflow_root) {
   core <- file.path(article, "artifacts/no_refit_revision")
   manifest <- n14_read(file.path(article, "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv"))
   selected <- manifest[manifest$manuscript_label %in% n14_models, , drop = FALSE]
@@ -144,7 +155,7 @@ n14_extract <- function(article, output) {
                 original_scale_rule = "expm1 of declared log-scale quantiles and observed values; no clipping",
                 source_files = lapply(c("R/environmetrics/02_helpers_core.R", "R/environmetrics/30_univariate_and_misc.R",
                                        "R/environmetrics/40_figures_smoke_fast.R", "R/environmetrics/utils_data.R"),
-                                      function(x) list(path = x, sha256 = n14_hash(file.path(dirname(article), "workflow", x)))),
+                                      function(x) list(path = x, sha256 = n14_hash(file.path(workflow_root, x)))),
                 core_quantile_sha256 = n14_hash(file.path(core, "results/quantiles_per_case.csv")),
                 published_manifest_sha256 = n14_hash(file.path(article, "artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv"))),
            file.path(input_dir, "source_evidence.json"))
@@ -251,7 +262,10 @@ n14_main <- function(arguments = commandArgs(TRUE)) {
   dir.create(output, recursive = TRUE)
   if (is.null(inputs)) {
     n14_require(!is.null(article), "Extraction requires --article-root")
-    n14_extract(normalizePath(article), output)
+    script_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+    script_path <- if (length(script_arg)) sub("^--file=", "", script_arg[[1L]]) else NULL
+    workflow <- n14_workflow_root(arg("--workflow-root"), script_path)
+    n14_extract(normalizePath(article), output, workflow)
     inputs <- file.path(output, "inputs")
   } else {
     dir.create(file.path(output, "inputs"))

@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "restored_index_tree": "35b2c6d2af808a09618ad7365474826e0bf928fd",
+  "expected_baseline_tree": "35b2c6d2af808a09618ad7365474826e0bf928fd",
+  "summary": "457 files changed, 901 insertions(+), 182146 deletions(-)",
+  "original_main_unchanged": true
+}

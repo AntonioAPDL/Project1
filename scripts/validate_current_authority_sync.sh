@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT="${WORKFLOW_ROOT:-/data/muscat_data/jaguir26/project1_ucsc_phd}"
-ARTICLE_ROOT="${ARTICLE_ROOT:-$ROOT/Evironmetrics---REVISED-DOC-Corrected-2}"
+ARTICLE_ROOT="${ARTICLE_ROOT:-$(python3 "$ROOT/scripts/article_repository_binding.py" --workflow-root "$ROOT")}"
+export ENVIRONMETRICS_ARTICLE_ROOT="$ARTICLE_ROOT"
 CORRECTIONS_ROOT="${CORRECTIONS_ROOT:-/data/muscat_data/jaguir26/Corrections---Project-1}"
 PUBLIC_REPRO_ROOT="${PUBLIC_REPRO_ROOT:-/data/muscat_data/jaguir26/san-lorenzo-exdqlm-reproducibility}"
 
@@ -51,8 +52,8 @@ require_file "$PUBLIC_REPRO_ROOT/scripts/validate_public_repository.py"
 section "Workflow Validators"
 cd "$ROOT"
 python3 scripts/validate_he2_exal_keep_partial_screen_promotion.py
-python3 scripts/validate_publication_freeze.py
-python3 scripts/validate_revision_cross_repo_wiring.py
+python3 scripts/validate_publication_freeze.py --article-root "$ARTICLE_ROOT"
+python3 scripts/validate_revision_cross_repo_wiring.py --article-root "$ARTICLE_ROOT"
 pytest -q \
   tests/python/test_publication_freeze_validation.py \
   tests/python/test_revised_article_stage1_refresh_contract.py \
@@ -103,6 +104,7 @@ if rg -n --hidden -S \
 fi
 
 if [[ "$run_compile" -eq 1 ]]; then
+  python3 "$ROOT/scripts/article_repository_binding.py" --workflow-root "$ROOT" --article-root "$ARTICLE_ROOT" --check-write-target >/dev/null
   section "Compile Article"
   cd "$ARTICLE_ROOT"
   pdflatex -interaction=nonstopmode -halt-on-error wileyNJD-APA.tex

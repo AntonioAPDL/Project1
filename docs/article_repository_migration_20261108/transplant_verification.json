@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "source": "32ab28b6c709bf001456090751edb413ae747a7b",
+  "destination_commit": "d02c17fa91dd6d64db8ed9166acdb1155488954a",
+  "file_count": 792,
+  "bytes": 162142808,
+  "identical_all_file_contents": true,
+  "original_overleaf_import_preserved": true,
+  "mode_exceptions": [
+    {
+      "path": "scripts/check_wiley_submission_requirements.py",
+      "source": "100755",
+      "destination": "100644"
+    }
+  ],
+  "commit_mapping": [
+    {
+      "destination_commit": "897b1440cdf64677696ce841cb7cc7ebb30d1c0b",
+      "source_commit": "dd7855dfe821074ba526308d6a4891ee2b269a7d"
+    },
+    {
+      "destination_commit": "fbe34143610d469fb217eadac676f2a64db3c044",
+      "source_commit": "373bed4a580e18bbc2b33e1ebe26649b009168b1"
+    },
+    {
+      "destination_commit": "c986243d3316b08a652e9db8afd4b3f566630c1b",
+      "source_commit": "2583ee41c1367e65d4d71ed36cf280a4f555a513"
+    },
+    {
+      "destination_commit": "d02c17fa91dd6d64db8ed9166acdb1155488954a",
+      "source_commit": "32ab28b6c709bf001456090751edb413ae747a7b"
+    }
+  ]
+}

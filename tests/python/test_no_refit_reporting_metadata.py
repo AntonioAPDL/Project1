@@ -14,12 +14,15 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts'))
+from article_repository_binding import active_article_root
+
 SCRIPT = ROOT / 'scripts/build_no_refit_reporting_metadata.py'
 spec = importlib.util.spec_from_file_location('no_refit_reporting_metadata', SCRIPT)
 reporting = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(reporting)
 REPORT = Path(os.environ.get('NO_REFIT_REPORTING_DIR', str(
-    ROOT.parent / 'article/artifacts/no_refit_revision/reporting')))
+    active_article_root(ROOT) / 'artifacts/no_refit_revision/reporting')))
 
 
 def rows(data):

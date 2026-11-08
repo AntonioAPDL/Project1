@@ -1,0 +1,22 @@
+test_audit_script_confirms_inheritance_and_runtime_hashes (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_build_and_validate_direct_source_rows_from_publication_manifest (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_build_and_validate_support_focused_refresh_override (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_build_matrix_creates_expected_rows_and_variant_configs (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_finish_gate_builds_outputs_and_cleans_completed_matrix (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_finish_gate_refuses_incomplete_queue_without_wait (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_multivar_legacy_output_suffix_tracks_no_tf_contract (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_no_tf_drop_fit_still_saves_when_post_objective_disabled (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_no_trend_block_diag_helper_accepts_vector_ff (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_queue_signal_handler_ignores_sighup_and_terminates_on_sigterm (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_runtime_input_audit_accepts_canonical_numeric_adapter_precision_only (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_sync_ablation_tables_updates_article_and_corrections_outputs (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+test_validator_passes_for_fresh_matrix (test_he3_exdqlm_ablation_tooling.He3ToolingTests) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 35.641s
+
+OK
+/tmp/he3_ablation_q2ujzm5m/article/tables/generated_tex/he3_ablation_crps_main_table.tex
+/tmp/he3_ablation_q2ujzm5m/article/tables/generated_tex/he3_ablation_crps_nws_horizon_table.tex
+/tmp/he3_ablation_q2ujzm5m/corrections/tables/generated_tex/he3_ablation_crps_response_table.tex
+/tmp/he3_ablation_q2ujzm5m/corrections/tables/generated_tex/he3_ablation_crps_nws_horizon_response_table.tex

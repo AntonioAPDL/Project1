@@ -7,6 +7,19 @@ stopifnot(!is.na(script_path))
 helper_env <- new.env(parent = globalenv())
 source(script_path, local = helper_env)
 
+test_that("first extraction resolves workflow sources independently of the article checkout", {
+  root <- tempfile("workflow_binding_")
+  dir.create(file.path(root, "scripts"), recursive = TRUE)
+  dir.create(file.path(root, "R/environmetrics"), recursive = TRUE)
+  writeLines("# frozen source fixture", file.path(root, "R/environmetrics/02_helpers_core.R"))
+  expected <- normalizePath(root)
+  expect_identical(helper_env$n14_workflow_root(root, "/unrelated/article/scripts/export.R"), expected)
+  expect_identical(helper_env$n14_workflow_root(script = file.path(root, "scripts/export.R")), expected)
+  expect_error(helper_env$n14_workflow_root(), "requires --workflow-root")
+  expect_error(helper_env$n14_workflow_root(tempdir()), "source root is unavailable")
+  unlink(root, recursive = TRUE)
+})
+
 test_that("own predictive anchors use each fit's target and declared type7", {
   cube <- array(0, c(3L, 4L, 2L))
   cube[1L, , 1L] <- 0:3
@@ -43,9 +56,10 @@ test_that("quantile loss respects asymmetry and exact ties", {
 test_that("the final bundle preserves role/type and unsupported tails", {
   bundle <- Sys.getenv("NO_REFIT_SYNTHESIS_DIR", "")
   if (!nzchar(bundle)) {
-    roots <- c("../article/artifacts/no_refit_revision/synthesis_diagnostics",
-               "../../../article/artifacts/no_refit_revision/synthesis_diagnostics")
-    bundle <- roots[dir.exists(roots)][1L]
+    workflow <- normalizePath(file.path(dirname(script_path), ".."))
+    binding <- jsonlite::read_json(file.path(workflow, "config/article_repository_binding.json"))
+    article <- Sys.getenv(binding$root_override_environment, file.path(workflow, binding$active_article_directory))
+    bundle <- file.path(article, "artifacts/no_refit_revision/synthesis_diagnostics")
   }
   skip_if(is.na(bundle) || !file.exists(file.path(bundle, "manifest.json")), "Bundle not supplied")
   inputs <- helper_env$n14_read(file.path(bundle, "inputs/anchors.csv"))

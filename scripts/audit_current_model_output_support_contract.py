@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from article_repository_binding import active_article_root
+
 import json
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected-2'
+DEFAULT_ARTICLE_ROOT = active_article_root(ROOT)
 DEFAULT_MULTIVAR_RUN_ROOT = Path(
     '/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/'
     'multimodel_v8_he2_exdqlm_multivar_keep_all_cutoffs_sharedspec_20260516/'

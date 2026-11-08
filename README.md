@@ -13,6 +13,19 @@ generated from this workspace by
 
 ## Reproducibility Contract
 
+The active article checkout is now `Evironmetrics----Corrected-3/`, linked to
+`https://github.com/AntonioAPDL/Evironmetrics----Corrected-3`.
+`Evironmetrics---REVISED-DOC-Corrected-2/` preserves the submitted snapshot.
+The active binding is `config/article_repository_binding.json`; publication
+writers verify the destination repository before changing article assets.
+
+Use `python3 -B scripts/article_repository_binding.py --check-write-target` to
+verify the active checkout, and
+`python3 -B docs/article_repository_migration_20261108/run_checks.py --report-dir /tmp/NEW_article_checks`
+for the combined article checks. The older dated campaign wrappers remain
+historical execution evidence. Migration identities, verification and usage are
+documented in `docs/article_repository_migration_20261108/README.txt`.
+
 The current revision uses a three-layer software and reproducibility contract:
 
 1. Reusable estimation routines are provided by the CRAN R package `exdqlm`

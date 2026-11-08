@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from article_repository_binding import active_article_root
+
 import argparse
 from dataclasses import dataclass
 from datetime import datetime
@@ -28,8 +30,7 @@ OUTPUT_DIR_DEFAULT = (
     / "he4_quantile_check_loss"
 )
 HE2_PUBLICATION_MANIFEST_DEFAULT = (
-    ROOT
-    / "Evironmetrics---REVISED-DOC-Corrected-2"
+    active_article_root(ROOT)
     / "artifacts"
     / "he2_publication_freeze"
     / "he2_bayesian_publication_manifest.csv"

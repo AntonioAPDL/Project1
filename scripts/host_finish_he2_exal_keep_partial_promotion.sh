@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="/data/muscat_data/jaguir26/project1_ucsc_phd"
-ARTICLE_ROOT="$ROOT/Evironmetrics---REVISED-DOC-Corrected-2"
+ARTICLE_ROOT="$(python3 "$ROOT/scripts/article_repository_binding.py" --workflow-root "$ROOT")"
 CORRECTIONS_ROOT="/data/muscat_data/jaguir26/Corrections---Project-1"
 TEMPLATE="$ROOT/config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_partial_authority_refresh_20260623.template.yaml"
 REPORT_DIR="$ROOT/reports/he2_exal_keep_partial_screen_promotion_20260623"
@@ -127,6 +127,7 @@ promote_clean() {
 }
 
 sync_articles() {
+  python3 "$ROOT/scripts/article_repository_binding.py" --workflow-root "$ROOT" --article-root "$ARTICLE_ROOT" --check-write-target >/dev/null
   python3 scripts/build_he2_bayesian_publication_manifest.py
   python3 scripts/build_he2_publication_parity_gate.py
   python3 "$ARTICLE_ROOT/scripts/refresh_he2_manifest_snapshot.py" \
@@ -143,6 +144,7 @@ sync_articles() {
 }
 
 validate_all() {
+  python3 "$ROOT/scripts/article_repository_binding.py" --workflow-root "$ROOT" --article-root "$ARTICLE_ROOT" --check-write-target >/dev/null
   python3 -m unittest \
     tests.python.test_he2_exal_keep_partial_screen_promotion \
     tests.python.test_he2_bayesian_publication_manifest -v
@@ -165,6 +167,7 @@ validate_all() {
 }
 
 commit_all() {
+  python3 "$ROOT/scripts/article_repository_binding.py" --workflow-root "$ROOT" --article-root "$ARTICLE_ROOT" --check-write-target >/dev/null
   git add \
     config/he2_bayesian_publication_relaunch_exdqlm_multivar_keep_partial_authority_refresh_20260623.template.yaml \
     config/he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml \

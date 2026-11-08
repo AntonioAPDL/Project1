@@ -1,0 +1,63 @@
+{
+  "allowed_mode_changes": {
+    "scripts/check_wiley_submission_requirements.py": [
+      "100755",
+      "100644"
+    ]
+  },
+  "comparison": {
+    "accepted_mode_changes": [
+      {
+        "candidate_mode": "100644",
+        "path": "scripts/check_wiley_submission_requirements.py",
+        "source_mode": "100755"
+      }
+    ],
+    "all_source_blob_contents_preserved": true,
+    "candidate_commit": "d02c17fa91dd6d64db8ed9166acdb1155488954a",
+    "candidate_file_count": 792,
+    "candidate_tree": "2967e8eec742aebeadc98fa64ce554d20a795538",
+    "changed_contents": [],
+    "missing_paths": [],
+    "source_commit": "32ab28b6c709bf001456090751edb413ae747a7b",
+    "source_file_count": 792,
+    "source_tree": "571dda459c2fab4c2411d96461d5c7722468a936",
+    "status": "PASS",
+    "unapproved_mode_changes": [],
+    "unexpected_paths": []
+  },
+  "expected_file_count": 792,
+  "expected_total_blob_bytes": 162142808,
+  "guards": [],
+  "profile": "migrated",
+  "references_or_working_files_modified": false,
+  "repository_state": {
+    "ancestor_verified": true,
+    "branch": "migration/rejection-corrections-20261108",
+    "clean_tracked": true,
+    "errors": [],
+    "head": "d02c17fa91dd6d64db8ed9166acdb1155488954a",
+    "origin": "https://github.com/AntonioAPDL/Evironmetrics----Corrected-3.git",
+    "repository": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+    "required_ancestor": "80ac992f4ea1b3feda90add7f3b4dd00451f84a4",
+    "status": "PASS",
+    "untracked_and_ignored_files": "outside this tracked-state check; never deleted by this verifier"
+  },
+  "status": "PASS",
+  "verifier_sha256": "e933b7ec6a61e3318c08f6be4e44b58b3fd40906189eca5210f70e5e728ecb5d",
+  "working_tree_verification": {
+    "accepted_mode_changes": [],
+    "all_source_blob_contents_preserved": true,
+    "candidate_commit": "WORKING_TREE",
+    "candidate_file_count": 792,
+    "candidate_tree": null,
+    "changed_contents": [],
+    "missing_paths": [],
+    "source_commit": "d02c17fa91dd6d64db8ed9166acdb1155488954a",
+    "source_file_count": 792,
+    "source_tree": "2967e8eec742aebeadc98fa64ce554d20a795538",
+    "status": "PASS",
+    "unapproved_mode_changes": [],
+    "unexpected_paths": []
+  }
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "manifest": "docs/environmetrics_no_refit_plan_20261107/package_manifest.json",
+    "file_count": 51,
+    "all_unchanged": true
+  },
+  {
+    "manifest": "docs/environmetrics_no_refit_revision_20261108/execution_manifest.json",
+    "file_count": 94,
+    "all_unchanged": true
+  }
+]

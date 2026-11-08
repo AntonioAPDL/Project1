@@ -1,0 +1,48 @@
+Corrected-3 migration: independent native and portable verification PASSED
+
+Article checked:
+/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3
+
+The native comment1_figure_revision.py --check, comment2_revision.py --check and
+no_refit_revision.py --check all exited0. Their captured logs accompany report.json.
+
+The archived core numerical builder ran from a fresh empty working directory,
+using the new clone's bundled input manifest. All14 numerical CSVs and the
+reliability PNG are byte-identical to the new clone's sealed results. The replay
+validated70 representations,1860 forecast cases,3720 scores,26040 targeted
+quantile records and all other contracted counts. Wall time:
+16.160seconds. Per-file SHA256 and row counts
+are recorded in results/report.json.
+
+The separate compact synthesis checksum check passed. Its replay used only
+bundled compact anchors/observations, not first-extraction mode. All5 resulting
+CSV files are byte-identical to the bound release:5880 anchor rows and35280
+role/scale rows. Wall time:13.528seconds.
+The replay metadata retains the earlier extraction's cube-byte count as source
+provenance; it is not a claim that this compact replay reopened those cubes.
+No fitting, baseline training or new posterior/predictive draw generation ran.
+
+All792 article source/asset files remain hash-identical before and after these
+checks. The optional generated root proof PDF is excluded from that source-tree
+check. The40 common editable LaTeX/BibTeX/class/style files match the reviewed
+Corrected-2 article byte-for-byte, including the UTF8 root wileyNJD-APA.tex.
+
+Objective Overleaf-related filesystem observations:
+-792 source/asset files, excluding Git metadata, caches and the root proof PDF.
+-162,142,808logical bytes in those files.
+-Largest single file:6,664,829bytes,
+ artifacts/no_refit_revision/synthesis_diagnostics/per_case.csv.
+-Root manuscript and its editable LaTeX sources are present and preserved.
+
+These observations establish local source/artifact preservation and successful
+relocation of reproducibility entrypoints. No Overleaf UI or synchronization
+operation was available or tested; no inability to sync is asserted.
+
+Reproduce from the workflow root with a fresh evidence output directory:
+python3 -B docs/article_repository_migration_20261108/portable_verification/verify_migrated_replays.py \
+  --article /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3 \
+  --reviewed-article /data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2 \
+  --output-dir /tmp/NEW_corrected3_verification
+
+The script writes replay products only to fresh /tmp directories and its explicit
+evidence destination. Neither article checkout nor Git metadata was edited.

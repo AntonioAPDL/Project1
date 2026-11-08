@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "baseline": "1272bfc10442a28add5a4c74ff641e9b9a8e9666",
+  "destination_initial": "80ac992f4ea1b3feda90add7f3b4dd00451f84a4",
+  "file_count": 440,
+  "bytes": 106709049,
+  "identical_blob_paths": true,
+  "mode_exceptions": [
+    {
+      "path": "scripts/check_wiley_submission_requirements.py",
+      "baseline": "100755",
+      "new": "100644"
+    }
+  ]
+}

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from article_repository_binding import active_article_root
+
 import csv
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected-2'
+ARTICLE_ROOT = active_article_root(ROOT)
 OUT_DIR = ROOT / 'reports' / 'he2_revised_doc_rewire_audit_20260517'
 
 

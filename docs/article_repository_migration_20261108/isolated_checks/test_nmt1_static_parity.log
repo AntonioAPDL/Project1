@@ -1,0 +1,14 @@
+test_date_range_mismatch_fails_even_with_equal_values (test_nmt1_static_parity.Nmt1StaticParityTests) ... ok
+test_harmonic_indices_normalize_to_canonical_values (test_nmt1_static_parity.Nmt1StaticParityTests) ... ok
+test_literal_three_is_not_the_third_harmonic_value (test_nmt1_static_parity.Nmt1StaticParityTests) ... ok
+test_not_comparable_fields_include_exal_latents (test_nmt1_static_parity.Nmt1StaticParityTests) ... ok
+test_numeric_equivalent_csv_formatting_mismatch_passes (test_nmt1_static_parity.Nmt1StaticParityTests) ... ok
+test_run_root_from_score_path (test_nmt1_static_parity.Nmt1StaticParityTests) ... ok
+test_schema_mismatch_fails (test_nmt1_static_parity.Nmt1StaticParityTests) ... ok
+test_spec_comparison_classifies_discount_difference_as_documented (test_nmt1_static_parity.Nmt1StaticParityTests) ... ok
+test_transfer_covariate_normalization_ignores_decorator_fields (test_nmt1_static_parity.Nmt1StaticParityTests) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.041s
+
+OK

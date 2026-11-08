@@ -6,7 +6,11 @@ import sys
 import unittest
 from pathlib import Path
 
-ARTICLE_ROOT = Path(__file__).resolve().parents[2] / 'Evironmetrics---REVISED-DOC-Corrected-2'
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from article_repository_binding import active_article_root
+
+ARTICLE_ROOT = active_article_root(Path(__file__).resolve().parents[2])
 sys.path.insert(0, str(ARTICLE_ROOT / "scripts"))
 from refresh_cutoff_synthesis_families import mirror_figure_family_to_lowercase
 

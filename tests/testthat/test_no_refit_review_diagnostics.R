@@ -140,7 +140,9 @@ test_that("CSV numeric precision and inverse-interval convention are explicit", 
 })
 
 test_that("sealed outputs have matched cases, proper applicability and exact counts", {
-  result <- Sys.getenv("NO_REFIT_RESULT_DIR", file.path(workflow, "Evironmetrics---REVISED-DOC-Corrected-2/artifacts/no_refit_revision/results"))
+  binding <- jsonlite::read_json(file.path(workflow, "config/article_repository_binding.json"))
+  article <- Sys.getenv(binding$root_override_environment, file.path(workflow, binding$active_article_directory))
+  result <- Sys.getenv("NO_REFIT_RESULT_DIR", file.path(article, "artifacts/no_refit_revision/results"))
   skip_if_not(file.exists(file.path(result, "scores_per_case.csv")), "Set NO_REFIT_RESULT_DIR to a derived result bundle")
   scores <- nrf_read_csv(file.path(result, "scores_per_case.csv"))
   means <- nrf_read_csv(file.path(result, "summary_by_origin_horizon.csv"))

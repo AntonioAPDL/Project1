@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from article_repository_binding import active_article_root, assert_article_write_target
+
 import argparse
 import csv
 import json
@@ -184,7 +186,8 @@ def ensure_audit(matrix_dir: Path, report_dir: Path, force: bool, log: list[str]
 
 def ensure_article_sync(matrix_dir: Path, metadata: dict[str, Any], force: bool, log: list[str]) -> None:
     sync_cfg = metadata.get("article_sync", {})
-    article_root = Path(str(sync_cfg.get("article_root", ROOT / "Evironmetrics---REVISED-DOC-Corrected-2"))).resolve()
+    article_root = Path(str(sync_cfg.get("article_root", active_article_root(ROOT)))).resolve()
+    article_root = assert_article_write_target(article_root, ROOT)
     corrections_root = Path(str(sync_cfg.get("corrections_root", ROOT.parent / "Corrections---Project-1"))).resolve()
     if force or not files_exist(article_root, ARTICLE_FILES):
         cmd = [
@@ -259,7 +262,7 @@ def verify_audit(report_dir: Path) -> dict[str, Any]:
 
 def verify_article_sync(metadata: dict[str, Any]) -> dict[str, Any]:
     sync_cfg = metadata.get("article_sync", {})
-    article_root = Path(str(sync_cfg.get("article_root", ROOT / "Evironmetrics---REVISED-DOC-Corrected-2"))).resolve()
+    article_root = Path(str(sync_cfg.get("article_root", active_article_root(ROOT)))).resolve()
     corrections_root = Path(str(sync_cfg.get("corrections_root", ROOT.parent / "Corrections---Project-1"))).resolve()
     missing = [str(article_root / rel_path) for rel_path in ARTICLE_FILES if not (article_root / rel_path).exists()]
     if missing:
@@ -393,7 +396,7 @@ def main() -> int:
             if files_exist(report_dir, SUMMARY_FILES + AUDIT_FILES) and (
                 not article_sync_enabled(metadata, args.no_sync)
                 or files_exist(
-                    Path(str(metadata.get("article_sync", {}).get("article_root", ROOT / "Evironmetrics---REVISED-DOC-Corrected-2"))),
+                    Path(str(metadata.get("article_sync", {}).get("article_root", active_article_root(ROOT)))),
                     ARTICLE_FILES,
                 )
             ):

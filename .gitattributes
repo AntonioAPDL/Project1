@@ -20,3 +20,11 @@ docs/environmetrics_no_refit_revision_20261108/**/*.aux -whitespace
 docs/environmetrics_no_refit_revision_20261108/**/pdfinfo.txt -whitespace
 docs/environmetrics_no_refit_revision_20261108/**/*.stdout.txt -whitespace
 docs/environmetrics_no_refit_revision_20261108/**/session_info.txt -whitespace
+
+# Captured migration command/build output retains its checksummed source bytes.
+docs/article_repository_migration_20261108/**/*.log -whitespace
+docs/article_repository_migration_20261108/**/*.aux -whitespace
+docs/article_repository_migration_20261108/**/*.stdout.txt -whitespace
+docs/article_repository_migration_20261108/**/session_info.txt -whitespace
+docs/article_repository_migration_20261108/**/pdfinfo.txt -whitespace
+docs/article_repository_migration_20261108/portable_verification/results/*.csv -whitespace

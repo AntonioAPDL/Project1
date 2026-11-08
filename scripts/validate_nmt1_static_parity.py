@@ -8,6 +8,8 @@ the frozen run-local input bundles, and the resolved configuration files.
 
 from __future__ import annotations
 
+from article_repository_binding import active_article_root
+
 import argparse
 import csv
 import hashlib
@@ -21,7 +23,7 @@ import yaml
 
 
 REPO_ROOT = Path("/data/muscat_data/jaguir26/project1_ucsc_phd")
-ARTICLE_ROOT = REPO_ROOT / "Evironmetrics---REVISED-DOC-Corrected-2"
+ARTICLE_ROOT = active_article_root()
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "reports" / "nmt1_static_parity_audit_20260625"
 BENCHMARK_CSV = ARTICLE_ROOT / "tables" / "generated_tex" / "benchmark_crps_horizon_summary.csv"
 RETAINED_EXDQLM_ROOT = Path(

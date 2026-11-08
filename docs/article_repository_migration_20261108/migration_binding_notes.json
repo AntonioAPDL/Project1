@@ -1,0 +1,17 @@
+{
+  "pre_migration_workflow": "ValueError: authoritative winners must cover ['20210123', '20211112', '20211221', '20220511', '20221225'] in order; observed=[]",
+  "migration_workflow": "ValueError: authoritative winners must cover ['20210123', '20211112', '20211221', '20220511', '20221225'] in order; observed=[]",
+  "source_config_identity": {
+    "docs/authoritative_selected_outputs/he2_exal_m_t1_representative_20221225.yaml": {
+      "pre_sha256": "1793c2e861c1dd6ee37aaa070c202b134e2d7d2019a63069099a4c209c78a498",
+      "current_sha256": "1793c2e861c1dd6ee37aaa070c202b134e2d7d2019a63069099a4c209c78a498"
+    },
+    "config/he2_publication_manifest_replacement_overlay_current_authority_20260623.yaml": {
+      "pre_sha256": "6d6ef32976c150010b3f36367dc26eafc95e3796e5ceb1520556fc5aaf0d7ca8",
+      "current_sha256": "6d6ef32976c150010b3f36367dc26eafc95e3796e5ceb1520556fc5aaf0d7ca8"
+    }
+  },
+  "limitation": "Legacy representative-authority validator expects a five-row winners schema, while its unchanged authority configuration points to an active replacements-schema overlay. Both original and migrated workflow code fail before inspecting article content. No authority/configuration records were rewritten.",
+  "active_validation": "Current publication_freeze, revision_cross_repo_wiring, and dedicated preserved no_refit/C1/C2 gates remain the active authority validations. The legacy selected-authority validator remains fail-closed and is not counted as passing.",
+  "changed_test_contracts": "Benchmark test retains frozen manifest/source classification, software test accepts an actually cited bibliography URL, and lineage test regenerates an ignored report into a temporary directory and checks the four current support figures instead of an obsolete aggregate count."
+}

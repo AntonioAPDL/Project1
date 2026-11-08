@@ -6,9 +6,14 @@ import os
 import unittest
 from pathlib import Path
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from article_repository_binding import active_article_root
+from current_article_contract import cited_url, has_concepts
+
 
 ROOT = Path(__file__).resolve().parents[2]
-ARTICLE_ROOT = ROOT / "Evironmetrics---REVISED-DOC-Corrected-2"
+ARTICLE_ROOT = active_article_root(ROOT)
 CORRECTIONS_ROOT = Path("/data/muscat_data/jaguir26/Corrections---Project-1")
 os.sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -87,19 +92,20 @@ class SoftwareAvailabilityContractTests(unittest.TestCase):
 
     def test_manuscript_and_corrections_share_he5_contract(self) -> None:
         article = (ARTICLE_ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+        bibliography = (ARTICLE_ROOT / "wileyNJD-APA.bib").read_text(encoding="utf-8")
         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
         for text in [article, corrections]:
             self.assertIn(r"CRAN R package \texttt{exdqlm}", text)
             self.assertIn(f"version {CRAN_EXDQLM_VERSION}", text)
             self.assertIn(CRAN_EXDQLM_URL, text)
             self.assertIn(CRAN_EXDQLM_DOI_URL, text)
-            self.assertIn(PUBLIC_REPRO_URL, text)
-            self.assertIn("compact provenance manifests", text)
+            self.assertTrue(cited_url(text, bibliography if text == article else '', PUBLIC_REPRO_URL))
+            self.assertTrue(has_concepts(text, r'provenance manifests'))
             self.assertNotIn("workflow repository has been archived", text)
             self.assertNotIn("archived workflow DOI", text)
         self.assertIn(EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY, article)
         self.assertIn(EXDQLM_SOFTWARE_PAPER_DOI_URL, corrections)
-        self.assertIn("clean reproducibility repository for this study", article)
+        self.assertTrue(has_concepts(article, r'public reproducibility repository', r'staged inputs', r'workflow code'))
         self.assertIn("A permanent archive DOI will be minted from the final clean reproducibility release", corrections)
 
     def test_canonical_runbook_keeps_selected_diagnostics_tied_to_selected_output(self) -> None:

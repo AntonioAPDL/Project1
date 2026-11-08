@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from article_repository_binding import active_article_root
+
 import csv
 import json
 from dataclasses import dataclass
@@ -8,7 +10,7 @@ from pathlib import Path
 from statistics import median
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTICLE_ROOT = ROOT / 'Evironmetrics---REVISED-DOC-Corrected-2'
+ARTICLE_ROOT = active_article_root(ROOT)
 RUNTIME_ROOT = ROOT.parent / 'project1_ucsc_phd_runtime'
 REPORT_DIR = ROOT / 'reports' / 'he2_exal_revised_doc_audit_20260517'
 

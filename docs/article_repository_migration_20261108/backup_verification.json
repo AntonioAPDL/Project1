@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "files": [
+    {
+      "file": "corrected2_submitted_1272bfc.tar.gz",
+      "bytes": 93177701,
+      "sha256": "f8a243d6fd128653d1de823cd0fa4a1e2385913a485fa0067ab17a252d1deaee",
+      "verified_git_blob_count": 440
+    },
+    {
+      "file": "corrected2_revised_32ab28b.tar.gz",
+      "bytes": 122955433,
+      "sha256": "2c082cdf2bca221b99ec80f8b550233c9ef17ac9da32f76cb55558411dc96bee",
+      "verified_git_blob_count": 792
+    },
+    {
+      "file": "corrected2_local_revised_manuscript.pdf",
+      "bytes": 13955184,
+      "sha256": "291e974b01b8f968b4bb2266f240ed8a31d0f703c31036ec063bf7cec85853aa"
+    }
+  ]
+}

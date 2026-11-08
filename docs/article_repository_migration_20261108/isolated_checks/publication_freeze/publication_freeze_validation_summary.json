@@ -1,0 +1,41 @@
+{
+  "failed_checks": 0,
+  "metadata": {
+    "argv": [
+      "--workflow-root",
+      "/tmp/corrected3_migration_20261108/workflow",
+      "--article-root",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "--corrections-root",
+      "/data/muscat_data/jaguir26/Corrections---Project-1",
+      "--he3-runtime-root",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625",
+      "--report-dir",
+      "/tmp/corrected3_migration_20261108/final_isolated_checks/publication_freeze"
+    ],
+    "he3_runtime_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625",
+    "repos": {
+      "article": {
+        "branch": "migration/rejection-corrections-20261108",
+        "head": "5e99e62",
+        "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+        "status_short": ""
+      },
+      "corrections": {
+        "branch": "main",
+        "head": "b1ceeb6",
+        "path": "/data/muscat_data/jaguir26/Corrections---Project-1",
+        "status_short": ""
+      },
+      "workflow": {
+        "branch": "migration/corrected3-20261108",
+        "head": "1977125",
+        "path": "/tmp/corrected3_migration_20261108/workflow",
+        "status_short": "M .gitattributes\n M .gitignore\n M README.md\n M docs/current_authority_refresh_runbook.md\n M scripts/audit_current_model_output_support_contract.py\n M scripts/audit_environmetrics_submission_readiness.py\n M scripts/build_he2_crps_table_readiness_audit.py\n M scripts/build_he2_exal_keep_output_quality_audit.py\n M scripts/build_he2_exal_revised_doc_audit.py\n M scripts/build_he2_master_workflow_audit_tracker.py\n M scripts/build_he2_revised_doc_rewire_audit.py\n M scripts/build_he4_quantile_check_loss_tables.py\n M scripts/build_no_refit_synthesis_diagnostics.R\n M scripts/complete_historical_support_refresh_when_ready.sh\n M scripts/current_article_contract.py\n M scripts/export_san_lorenzo_exdqlm_reproducibility.py\n M scripts/finalize_he3_exdqlm_ablation.py\n M scripts/host_finish_he2_exal_keep_partial_promotion.sh\n M scripts/sync_he3_ablation_article_tables.py\n M scripts/validate_current_authority_sync.sh\n M scripts/validate_he2_selected_output_authority.py\n M scripts/validate_nmt1_static_parity.py\n M scripts/validate_publication_freeze.py\n M scripts/validate_revision_cross_repo_wiring.py\n M tests/python/test_article_asset_review_benchmark_source.py\n M tests/python/test_article_legacy_uppercase_figures_sync.py\n M tests/python/test_exal_m_t1_setup_support_fullhistory_contract.py\n M tests/python/test_he1_runtime_contract.py\n M tests/python/test_he2_selected_output_authority.py\n M tests/python/test_he3_exdqlm_ablation_tooling.py\n M tests/python/test_he6_forecast_design_contract.py\n M tests/python/test_he7_latest_forecast_issue_contract.py\n M tests/python/test_nmt1_static_parity.py\n M tests/python/test_no_refit_reporting_metadata.py\n M tests/python/test_r1_m1_uncertainty_contract.py\n M tests/python/test_r1_overview_contract.py\n M tests/python/test_reviewer1_remaining_contracts.py\n M tests/python/test_revised_article_stage1_refresh_contract.py\n M tests/python/test_software_availability_contract.py\n M tests/testthat/test_no_refit_review_diagnostics.R\n M tests/testthat/test_no_refit_synthesis_diagnostics.R\n?? Evironmetrics---REVISED-DOC-Corrected-2\n?? config/article_repository_binding.json\n?? docs/article_repository_migration_20261108/\n?? scripts/article_repository_binding.py\n?? tests/python/test_article_repository_binding.py\n?? tests/python/test_article_repository_migration_verification.py"
+      }
+    },
+    "timestamp_utc": "2026-11-08T23:16:36.566978+00:00"
+  },
+  "status": "pass",
+  "total_checks": 684
+}

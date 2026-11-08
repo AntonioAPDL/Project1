@@ -6,9 +6,9 @@ from pathlib import Path
 import unittest
 
 
-SCRIPT_PATH = Path(
-    "/data/muscat_data/jaguir26/project1_ucsc_phd/scripts/validate_nmt1_static_parity.py"
-)
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts'))
+SCRIPT_PATH = ROOT / 'scripts/validate_nmt1_static_parity.py'
 
 
 def load_module():

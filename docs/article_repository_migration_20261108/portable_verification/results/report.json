@@ -1,0 +1,523 @@
+{
+  "status": "PASSED",
+  "article_root": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+  "native_checks": [
+    {
+      "name": "comment1_check",
+      "command": [
+        "python3",
+        "-B",
+        "scripts/comment1_figure_revision.py",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "exit_code": 0,
+      "elapsed_seconds": 0.5237204600125551,
+      "output_log": "comment1_check.log"
+    },
+    {
+      "name": "comment2_check",
+      "command": [
+        "python3",
+        "-B",
+        "scripts/comment2_revision.py",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "exit_code": 0,
+      "elapsed_seconds": 0.39067477360367775,
+      "output_log": "comment2_check.log"
+    },
+    {
+      "name": "no_refit_check",
+      "command": [
+        "python3",
+        "-B",
+        "scripts/no_refit_revision.py",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "exit_code": 0,
+      "elapsed_seconds": 2.7481642477214336,
+      "output_log": "no_refit_check.log"
+    }
+  ],
+  "core_replay": {
+    "name": "core_portable_replay",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/artifacts/no_refit_revision/reproduce/scripts/build_no_refit_review_diagnostics.R",
+      "--inputs-manifest",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/artifacts/no_refit_revision/inputs/manifest.json",
+      "--output-dir",
+      "/tmp/corrected3_portable_replay_v2ehgmjn/core_replay"
+    ],
+    "cwd": "/tmp/corrected3_portable_replay_v2ehgmjn/empty",
+    "exit_code": 0,
+    "elapsed_seconds": 16.16022096388042,
+    "output_log": "core_portable_replay.log"
+  },
+  "core_results_byte_identical": [
+    {
+      "file": "calibration_summary.csv",
+      "bytes": 432848,
+      "sha256": "2f72fcfda105e412ef5f32bef8249a28200161c1c8475d3d73cd033c704d1d6a"
+    },
+    {
+      "file": "forecast_cases.csv",
+      "bytes": 183066,
+      "sha256": "f9f98d45e65641e2abaed2b81f254260fe5927b5f55060a7182b66c8f5f87ad3"
+    },
+    {
+      "file": "interval_summary.csv",
+      "bytes": 50911,
+      "sha256": "e83066c9c2dbdb40b0d3ad6dc147d5599b25da49158556be7ee2eaa9e55659c2"
+    },
+    {
+      "file": "intervals_per_case.csv",
+      "bytes": 1149629,
+      "sha256": "06c4c457229a615d07cd3b561a65cbb6acfb8626f0924952d349313b7b3b7849"
+    },
+    {
+      "file": "legacy_parity.csv",
+      "bytes": 229638,
+      "sha256": "228dd0c24f00b1afecdc27a4bee29c7314bcdd1d00d9a2a96b4abb7a383caea1"
+    },
+    {
+      "file": "no_refit_quantile_reliability.png",
+      "bytes": 178157,
+      "sha256": "c0097bd2684b17565c328871d08c3b0ee7117cf2be3d5fb9833906f885e8d4e6"
+    },
+    {
+      "file": "observations.csv",
+      "bytes": 22976,
+      "sha256": "5df63b1c0b5a31d0802252f7ac6aad8547050428e3539ae12cdf31a8039adb3d"
+    },
+    {
+      "file": "quantiles_per_case.csv",
+      "bytes": 6548325,
+      "sha256": "89cd970b95e77280ef1e96622c8298f1fe484a43d043970f8f314a7b27b4413b"
+    },
+    {
+      "file": "representations.csv",
+      "bytes": 43439,
+      "sha256": "948d46e27c40ca00ab19e5bfdabbb15cab75d6987d336455675c7aef56a73e31"
+    },
+    {
+      "file": "scores_per_case.csv",
+      "bytes": 1303068,
+      "sha256": "87bd104fa0803723f6334ce81485a65d5bb5be8e8357b40833999e40f4c7964a"
+    },
+    {
+      "file": "source_lead_diagnostics.csv",
+      "bytes": 73214,
+      "sha256": "fa96be487c7a39e0f44b973d41d6f271feeb61df75406f70a06d0ae897f0fa47"
+    },
+    {
+      "file": "source_lead_summary.csv",
+      "bytes": 7006,
+      "sha256": "0d0a164f2fef3441a7a1aa2adecc6b89d5a3d3aa67015b87b95e3c2ece904d78"
+    },
+    {
+      "file": "summary_by_origin_horizon.csv",
+      "bytes": 73926,
+      "sha256": "a9aae533af9763f295a5c436deb94ee579f35d6e48866859f7bc4becc7f6200d"
+    },
+    {
+      "file": "summary_pooled.csv",
+      "bytes": 15352,
+      "sha256": "aa60a0808af1685bb7f1294641be474123d6d9b0aaa76182d82670b81bdcb431"
+    },
+    {
+      "file": "support_audit.csv",
+      "bytes": 6856,
+      "sha256": "856f5cae223957d18b821cbd610d229b184625efd391444a004a347e3687f809"
+    }
+  ],
+  "core_replay_verification": {
+    "schema_version": 1,
+    "status": "VALIDATED",
+    "input_manifest_sha256": "97ad1f3d578df45289c557449945b71d6ef23b0b10c2dc1f4e3e30f889058478",
+    "executed_source_sha256": {
+      "builder": "c624319b667200ce3060327369eb496451f49e223bf023c058384364c63cae16",
+      "helpers": "cea8250b537127692a05f9d79cb992e486396bc44e5aafc40581f4952441a900",
+      "config": "25546503a67b9e188df6cf6c20b52429fe3a08c83d4d36ae654409c69436a109"
+    },
+    "source_hashes_verified_after": true,
+    "no_model_fits": true,
+    "no_baseline_training": true,
+    "no_random_generation": true,
+    "workers": 1,
+    "library_threads": 1,
+    "row_counts": {
+      "observations": 140,
+      "representations": 70,
+      "forecast_cases": 1860,
+      "scores_per_case": 3720,
+      "quantiles_per_case": 26040,
+      "intervals_per_case": 3720,
+      "summary_by_origin_horizon": 270,
+      "summary_pooled": 54,
+      "calibration_summary": 2268,
+      "interval_summary": 324,
+      "source_lead_diagnostics": 360,
+      "source_lead_summary": 72,
+      "support_audit": 70,
+      "legacy_parity": 1860
+    },
+    "original_helper_max_absolute_error": 2.6367796834847468e-15,
+    "selected_figure_quantile_max_absolute_error": 4.884981308350689e-15,
+    "original_score_max_absolute_error": 2.6367796834847468e-15,
+    "primary_score": "ecdf_crps_saved_representation",
+    "qualified_sensitivity": "iid_adjusted_pairwise_crps_with_applicability_status",
+    "adjusted_skill_reported": false,
+    "event_definition": "strict/weak exact ties; closed interval; inverse-scale events inherited from log limits",
+    "packages": [
+      {
+        "name": "jsonlite",
+        "version": "2.0.0"
+      },
+      {
+        "name": "digest",
+        "version": "0.6.39"
+      },
+      {
+        "name": "ggplot2",
+        "version": "4.0.3"
+      }
+    ],
+    "R_version": "4.5.3",
+    "elapsed_seconds": 14.468
+  },
+  "synthesis_checksum_check": {
+    "name": "synthesis_checksum_check",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/artifacts/no_refit_revision/synthesis_diagnostics/reproduce/build_no_refit_synthesis_diagnostics.R",
+      "--output-dir",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/artifacts/no_refit_revision/synthesis_diagnostics",
+      "--check"
+    ],
+    "cwd": "/tmp/corrected3_portable_replay_v2ehgmjn/empty",
+    "exit_code": 0,
+    "elapsed_seconds": 0.48825205862522125,
+    "output_log": "synthesis_checksum_check.log"
+  },
+  "synthesis_compact_replay": {
+    "name": "synthesis_compact_replay",
+    "command": [
+      "Rscript",
+      "--vanilla",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/artifacts/no_refit_revision/synthesis_diagnostics/reproduce/build_no_refit_synthesis_diagnostics.R",
+      "--inputs-dir",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/artifacts/no_refit_revision/synthesis_diagnostics/inputs",
+      "--output-dir",
+      "/tmp/corrected3_portable_replay_v2ehgmjn/synthesis_replay"
+    ],
+    "cwd": "/tmp/corrected3_portable_replay_v2ehgmjn/empty",
+    "exit_code": 0,
+    "elapsed_seconds": 13.528317289426923,
+    "output_log": "synthesis_compact_replay.log"
+  },
+  "synthesis_results_byte_identical": [
+    {
+      "file": "crossing_summary.csv",
+      "bytes": 774,
+      "sha256": "fb7efbd67b67f5abbd1b03b4182c0237729d9215a358e90d1478859d4bb58ed0"
+    },
+    {
+      "file": "crossings_per_case.csv",
+      "bytes": 201005,
+      "sha256": "5dec47b216d152f92b9b948c3d7a69834de8e12c3e152efa39f68b3f96aabb77"
+    },
+    {
+      "file": "per_case.csv",
+      "bytes": 6664829,
+      "sha256": "c8928362061a799e5cc0e4a404c1a9cf68e46dc4be51c7e9e3462621396eb18a"
+    },
+    {
+      "file": "summary_by_origin_horizon.csv",
+      "bytes": 375001,
+      "sha256": "a11ad71d8aa29dc64004e3763e9f101213e78f1d4b0bacb9017de2028e11b376"
+    },
+    {
+      "file": "summary_pooled.csv",
+      "bytes": 78884,
+      "sha256": "ef6e587c96e29d852100900f4d9417cc3c1eaf8eb21cab5d133d2f50bfea056f"
+    }
+  ],
+  "synthesis_replay_verification": {
+    "status": "COMPLETE",
+    "new_fits": false,
+    "new_draws": false,
+    "source_objects": "predictive cubes only",
+    "anchor_rows": 5880,
+    "per_case_rows": 35280,
+    "raw_cube_bytes_hashed": 86588044,
+    "negative_final_log_representations": 10,
+    "negative_values_clipped": 0,
+    "pre_synthesis_CRPS": "not_defined_or_computed; own-fit anchors do not define a single predictive distribution"
+  },
+  "article_files_rechecked": 792,
+  "changed_article_files": [],
+  "tree_inventory_sha256": "01ca148f17d1cfd829a1036133b17cb996ef9e72002819fde8e72513fef71bd6",
+  "latex_source_files_identical_to_reviewed_article": [
+    {
+      "file": "NJDapacite.sty",
+      "bytes": 72212,
+      "sha256": "7617cfbb3a1c1fc084c9d4612d9544cff74316d12a452bc42abac6d2df755dde"
+    },
+    {
+      "file": "WileyNJD-APA.bst",
+      "bytes": 141089,
+      "sha256": "237c3b81013630af8236b7a4ea8d6c4e22b2c15fba1ccb30c26d3a2f581962c5"
+    },
+    {
+      "file": "WileyNJD-v2.cls",
+      "bytes": 109242,
+      "sha256": "5d8faf972becd3cf1d9b0b28397e9f22b23d583673e58a74bb90cc7af1e94f3e"
+    },
+    {
+      "file": "artifacts/he3_exdqlm_ablation_authoritative/he3_table_rows.tex",
+      "bytes": 1614,
+      "sha256": "78f29e34952d05a3683d06a86c47eb1c5c11b6626ba49b590347e202872eadd3"
+    },
+    {
+      "file": "artifacts/he4_quantile_check_loss_current_publication/he4_main_table.tex",
+      "bytes": 3148,
+      "sha256": "b2f4457d3a7cfe81c8fd5cf95e5298493def7084fa8b128130d3fe2a72662678"
+    },
+    {
+      "file": "artifacts/he4_quantile_check_loss_current_publication/he4_table_rows.tex",
+      "bytes": 2281,
+      "sha256": "3fb43c745ffadcc7189deddcaee741eb18f04e90f6c2e806c4f0a061b0062919"
+    },
+    {
+      "file": "artifacts/representative_selected_model_2022_12_25/covariate_effects_summary.tex",
+      "bytes": 1359,
+      "sha256": "9ac3de926f6fde9df72f4063b133a7bc36c8c62311b40143109523db0aa4460b"
+    },
+    {
+      "file": "artifacts/representative_selected_model_2022_12_25/gamma_summary.tex",
+      "bytes": 1015,
+      "sha256": "64be98f18ca6500796215b0d3d781a3f2468d2e8edb891465f5a2183aa742084"
+    },
+    {
+      "file": "artifacts/representative_selected_model_2022_12_25/sigma_summary.tex",
+      "bytes": 976,
+      "sha256": "4181fa80e4e4cc35e218615f9df0b26f2d90bf9d85c2e9ab35baaffdb7b8a173"
+    },
+    {
+      "file": "main.tex",
+      "bytes": 168,
+      "sha256": "1a04a26be336b351a1fb2b4660aa65a95ee1cd1219d0b56809c5432b9d53e7b7"
+    },
+    {
+      "file": "tables/generated_tex/appendix_gamma_rows.tex",
+      "bytes": 809,
+      "sha256": "ce56bfbec21258c93cd40900d0d52abaf13c380762e8c323b80c675c6d2415f5"
+    },
+    {
+      "file": "tables/generated_tex/appendix_gamma_summary_table.tex",
+      "bytes": 2045,
+      "sha256": "f2b5126ce287f345fcad65a7ee0ae0a8de0cbebf11f1e6d64a55ad5bc1f838ce"
+    },
+    {
+      "file": "tables/generated_tex/appendix_sigma_rows.tex",
+      "bytes": 770,
+      "sha256": "74d3a56eb88568831a57dea49321525cfa2eb0e079fb60c30933a88d4d022fd1"
+    },
+    {
+      "file": "tables/generated_tex/appendix_sigma_summary_table.tex",
+      "bytes": 1881,
+      "sha256": "ef37607041715f5be344b7b1f10273a69a6b2af7ecb5ee1b5e077367383a0833"
+    },
+    {
+      "file": "tables/generated_tex/benchmark_crps_bayesian_rows.tex",
+      "bytes": 597,
+      "sha256": "508c946ed97cd957ed3288b1b6339d7810c818237e2f3da5802e315dd0970de4"
+    },
+    {
+      "file": "tables/generated_tex/benchmark_crps_body.tex",
+      "bytes": 784,
+      "sha256": "3ec0a6c8247889c5adb5172dba17994ca03225097a308ea29ef4670e16de8e06"
+    },
+    {
+      "file": "tables/generated_tex/benchmark_crps_main_table.tex",
+      "bytes": 1395,
+      "sha256": "5e900a2d2f07acf18fdc0f1e9d8a98b37211671365a5c15c2c169f8aa45e458f"
+    },
+    {
+      "file": "tables/generated_tex/benchmark_crps_nws_horizon_bayesian_rows.tex",
+      "bytes": 579,
+      "sha256": "90ce1f900502ff3499fc58e308532b71dadabf2ccc21c82366a1a9ec811c2da5"
+    },
+    {
+      "file": "tables/generated_tex/benchmark_crps_nws_horizon_body.tex",
+      "bytes": 845,
+      "sha256": "da630fac715d99c6845db5a58a6a6b4719ed69af903fc97bcbe0a5ab17316509"
+    },
+    {
+      "file": "tables/generated_tex/benchmark_crps_nws_horizon_raw_rows.tex",
+      "bytes": 143,
+      "sha256": "14255cd346c40cc01a08ba6adef3c9a81017454e3680568bd0f048a8f1734bf8"
+    },
+    {
+      "file": "tables/generated_tex/benchmark_crps_nws_horizon_table.tex",
+      "bytes": 1741,
+      "sha256": "3ae0060696390bd1599aaf470fa6482d36c8601755ca6c8951d2001363287b1d"
+    },
+    {
+      "file": "tables/generated_tex/benchmark_crps_raw_rows.tex",
+      "bytes": 64,
+      "sha256": "f66da07f3ee33386af803f4bbed2db10a4e9e7d6c478908ec35e1e292fa1880a"
+    },
+    {
+      "file": "tables/generated_tex/comment2_external_by_origin_table.tex",
+      "bytes": 3453,
+      "sha256": "19c0a284588b50b9fdd2d3cbafbdad576578ab510117fc7b80a442cc9d57c325"
+    },
+    {
+      "file": "tables/generated_tex/comment2_external_comparison_table.tex",
+      "bytes": 1283,
+      "sha256": "537d237ca84e103dd6a34e77086dac977755a3d15550fe6c42a6952e9dd302a4"
+    },
+    {
+      "file": "tables/generated_tex/comment2_fit_diagnostic_table.tex",
+      "bytes": 1476,
+      "sha256": "77af8f2bc1b8a52a2654d690f282e9e8326c2c35e7ef030e98fc8a5204cb1f00"
+    },
+    {
+      "file": "tables/generated_tex/he3_ablation_crps_body.tex",
+      "bytes": 609,
+      "sha256": "8cd9e704bc174f1548c1edb686040c8e38ce1d0c4086526a8abac78517a5a1f2"
+    },
+    {
+      "file": "tables/generated_tex/he3_ablation_crps_main_table.tex",
+      "bytes": 1373,
+      "sha256": "7dc7849baac8e43d3f8b3690d28fa7efc9bdb8fc9e90a36e8ef43e55c2125f3c"
+    },
+    {
+      "file": "tables/generated_tex/he3_ablation_crps_nws_horizon_body.tex",
+      "bytes": 670,
+      "sha256": "bad7106a70036b6e9bc43702a73d930f75b879abdbf8cd9c575ed206d009b136"
+    },
+    {
+      "file": "tables/generated_tex/he3_ablation_crps_nws_horizon_table.tex",
+      "bytes": 1419,
+      "sha256": "69e6346034c677ef876c0a871b09badd7d79b254fab75f3f69ea690cd31fe4b1"
+    },
+    {
+      "file": "tables/generated_tex/he4_quantile_check_loss_main_table.tex",
+      "bytes": 3086,
+      "sha256": "ab36cc17f290ab6141ea2cc9a2620e1622cbed624cbdbc879de630b8e45fa222"
+    },
+    {
+      "file": "tables/generated_tex/he4_quantile_check_loss_rows.tex",
+      "bytes": 2281,
+      "sha256": "3fb43c745ffadcc7189deddcaee741eb18f04e90f6c2e806c4f0a061b0062919"
+    },
+    {
+      "file": "tables/generated_tex/no_refit_calibration_summary_table.tex",
+      "bytes": 1674,
+      "sha256": "c2b3d1ff94d23e3b5795d2644d62ae3c57ef09983dc04cdd493ad99a1a971619"
+    },
+    {
+      "file": "tables/generated_tex/no_refit_origin_diagnostics_table.tex",
+      "bytes": 4009,
+      "sha256": "197e1eb94188e21506770ed446fb8f7353252b525e1fa202435db73733fbf687"
+    },
+    {
+      "file": "tables/generated_tex/no_refit_reference_settings_table.tex",
+      "bytes": 1556,
+      "sha256": "3849c3aa49e1ead755eca73064c6c17784a8aba8ce4a37347f1efcc68d21ac20"
+    },
+    {
+      "file": "tables/generated_tex/no_refit_score_comparison_table.tex",
+      "bytes": 1332,
+      "sha256": "7acba1ba5c7a041ead76bdec3b5f67df91e48cd7f4200b2d955e939dd7a52066"
+    },
+    {
+      "file": "tables/generated_tex/no_refit_score_sensitivity_table.tex",
+      "bytes": 1708,
+      "sha256": "39d8775e1c553721f22d78b654527ac0ab0e8dd73bef831f9ddcd33ff150408b"
+    },
+    {
+      "file": "tables/generated_tex/representative_covariate_effects_rows.tex",
+      "bytes": 532,
+      "sha256": "6f95a29c886c24e30d8963c7c96b4f5fc2edafe55d94ebbac7cd3056882a77a2"
+    },
+    {
+      "file": "tables/generated_tex/representative_covariate_effects_table.tex",
+      "bytes": 1340,
+      "sha256": "39a85e0b27479cedf3189a95e8ce449b04728b4e6cbe9cf979b410ca9c641c17"
+    },
+    {
+      "file": "wileyNJD-APA.bib",
+      "bytes": 39782,
+      "sha256": "1ba2b05ef445bc6c3893c4636f0d49384589ed0f501320f0e3e5ac94c03ef05e"
+    },
+    {
+      "file": "wileyNJD-APA.tex",
+      "bytes": 108778,
+      "sha256": "a8a6f6264700bf19d1952259580f49b1d288500cdb3e8b7dc91896ad7f4061da"
+    }
+  ],
+  "overleaf_objective_observations": {
+    "file_count_excluding_git_cache_and_root_proof_pdf": 792,
+    "total_logical_bytes": 162142808,
+    "largest_files": [
+      {
+        "file": "artifacts/no_refit_revision/synthesis_diagnostics/per_case.csv",
+        "bytes": 6664829
+      },
+      {
+        "file": "artifacts/no_refit_revision/results/quantiles_per_case.csv",
+        "bytes": 6548325
+      },
+      {
+        "file": "Figures/manuscript/historical_summary_wet_period.png",
+        "bytes": 2108802
+      },
+      {
+        "file": "artifacts/representative_selected_model_2022_12_25/authoritative_support/figures/selected_model_quantile_wet_period.png",
+        "bytes": 2108802
+      },
+      {
+        "file": "artifacts/no_refit_revision/synthesis_diagnostics/inputs/anchors.csv",
+        "bytes": 2078999
+      },
+      {
+        "file": "Figures/manuscript/covariate_context_precip_soil_gdpc.png",
+        "bytes": 2062646
+      },
+      {
+        "file": "artifacts/five_cutoff_setup_support/20221225_exal_m_t1/figures/precip_soilmoisture_climatePC1_faceted_labeled.png",
+        "bytes": 2062646
+      },
+      {
+        "file": "artifacts/five_cutoff_setup_support/20220511_exal_m_t1/figures/precip_soilmoisture_climatePC1_faceted_labeled.png",
+        "bytes": 2058165
+      },
+      {
+        "file": "artifacts/five_cutoff_setup_support/20210123_exal_m_t1/figures/retrospective_log_discharge_plot_faceted.png",
+        "bytes": 2052571
+      },
+      {
+        "file": "artifacts/five_cutoff_setup_support/20211221_exal_m_t1/figures/precip_soilmoisture_climatePC1_faceted_labeled.png",
+        "bytes": 2051613
+      }
+    ],
+    "main_tex_present_utf8": true,
+    "main_tex_sha256": "a8a6f6264700bf19d1952259580f49b1d288500cdb3e8b7dc91896ad7f4061da",
+    "latex_source_count_compared": 40,
+    "excluded_generated_root_pdf": "wileyNJD-APA.pdf",
+    "synchronization_tested": false,
+    "limitation": "Filesystem checks establish source and artifact portability; no Overleaf UI or synchronization operation was available or tested."
+  },
+  "temporary_replay_directory": "/tmp/corrected3_portable_replay_v2ehgmjn",
+  "no_fits_new_draws_or_training": true,
+  "script_sha256": "a3fb4e43d6228418ad11b7ef8bf7ce703e8d4257c59c24e63529b417ae88d953"
+}

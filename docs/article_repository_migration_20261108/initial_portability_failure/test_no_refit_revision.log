@@ -1,0 +1,14 @@
+ERROR
+
+======================================================================
+ERROR: setUpClass (test_no_refit_revision.RevisionTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/tests/test_no_refit_revision.py", line 30, in setUpClass
+    os.link(ROOT/rel,dest)
+OSError: [Errno 18] Invalid cross-device link: '/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/tables/generated_tex/benchmark_crps_body.tex' -> '/tmp/no_refit_revision_tests_b589cae4/tables/generated_tex/benchmark_crps_body.tex'
+
+----------------------------------------------------------------------
+Ran 0 tests in 0.002s
+
+FAILED (errors=1)

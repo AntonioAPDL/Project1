@@ -1,0 +1,39 @@
+item,status,detail
+manifest_exists,pass,artifacts/runtime_benchmark/runtime_manifest.json
+schema_version,pass,he1_runtime_benchmark_v1
+source_root,pass,/data/jaguir26/local/src/exdqlm__wt__shared_fitforecast_v2_1p0p0/validation/fitforecast_v2/runs/20260515_exdqlm_dqlm_dynamic_fitforecast_v2_orchestrated_3500202605200353075941
+interface_csv_relative_path,pass,interfaces/exdqlm_dqlm_dynamic_fitforecast_v2_shared_interface.csv
+interface_shape,pass,1620 x 127
+interface_status,pass,all 1620 interface rows are done
+total_runtime_columns,pass,"['runtime_sec_total', 'runtime_sec']"
+decomposition_columns_marked_missing,pass,"['runtime_sec_fit', 'runtime_sec_forecast']"
+planned_counts,pass,"planned=72, done=54, pending=18"
+runtime_hours,pass,2.0
+hardware_context,pass,"cores=64, memory_gib=503"
+no_runtime_decomposition,pass,False
+scope_completed_outputs,pass,representative end-to-end timing for completed measured validation outputs
+workflow_contract_doc_exists,pass,docs/he1_runtime_feasibility_contract_20260615.md
+article_contract_doc_exists,pass,docs/runtime_benchmark_contract.md
+parallel_quantile_fits,pass,"seven, quantile, parallel"
+approximate_combined_runtime,pass,"(?:about|approximately|roughly) two hours, end.to.end|combined"
+hardware_context,pass,"64, 503, hardware, implementation"
+staged_input_scope,pass,"stag, observations?, retrospective, forecast, covariates?"
+forbidden_decomposition:100 minutes for fitting,pass,100 minutes for fitting
+forbidden_decomposition:100 minutes for fit,pass,100 minutes for fit
+forbidden_decomposition:20 minutes for post-processing,pass,20 minutes for post-processing
+forbidden_decomposition:20 minutes for postprocessing,pass,20 minutes for postprocessing
+forbidden_decomposition:runtime_sec_fit and runtime_sec_forecast were used,pass,runtime_sec_fit and runtime_sec_forecast were used
+corrections_required:about two hours end-to-end,pass,about two hours end-to-end
+corrections_required:\texttt{runtime\_sec\_total},pass,\texttt{runtime\_sec\_total}
+corrections_required:\texttt{runtime\_sec},pass,\texttt{runtime\_sec}
+corrections_required:do not support a reliable decomposition between model fitting and forecasting/post-processing,pass,do not support a reliable decomposition between model fitting and forecasting/post-processing
+article_forbidden:100 minutes for fitting,pass,100 minutes for fitting
+corrections_forbidden:100 minutes for fitting,pass,100 minutes for fitting
+article_forbidden:100 minutes for fit,pass,100 minutes for fit
+corrections_forbidden:100 minutes for fit,pass,100 minutes for fit
+article_forbidden:20 minutes for post-processing,pass,20 minutes for post-processing
+corrections_forbidden:20 minutes for post-processing,pass,20 minutes for post-processing
+article_forbidden:20 minutes for postprocessing,pass,20 minutes for postprocessing
+corrections_forbidden:20 minutes for postprocessing,pass,20 minutes for postprocessing
+article_forbidden:runtime_sec_fit and runtime_sec_forecast were used,pass,runtime_sec_fit and runtime_sec_forecast were used
+corrections_forbidden:runtime_sec_fit and runtime_sec_forecast were used,pass,runtime_sec_fit and runtime_sec_forecast were used

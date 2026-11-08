@@ -1,0 +1,16 @@
+[
+  {
+    "target": "active",
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+    "returncode": 0,
+    "expected_behavior": "accepted",
+    "diagnostic": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3"
+  },
+  {
+    "target": "archive",
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2",
+    "returncode": 1,
+    "expected_behavior": "rejected before publication writes",
+    "diagnostic": "ValueError: The submitted article archive is not an active publication write target"
+  }
+]

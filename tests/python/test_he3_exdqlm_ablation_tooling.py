@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 import yaml
@@ -833,16 +834,20 @@ cat(unified_resolve_exdqlm_multivar_legacy_output_suffix(cfg, default = "DISC"))
             encoding="utf-8",
         )
 
-        self.run_script(
-            "python3",
-            "scripts/sync_he3_ablation_article_tables.py",
+        # Exercise table generation on isolated fixtures. Repository identity
+        # rejection is covered separately by test_article_repository_binding.
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import sync_he3_ablation_article_tables as sync
+        with patch.object(sync, "assert_article_write_target", return_value=article_root), patch.object(sys, "argv", [
+            str(ROOT / "scripts/sync_he3_ablation_article_tables.py"),
             "--matrix-dir",
             str(matrix_dir),
             "--article-root",
             str(article_root),
             "--corrections-root",
             str(corrections_root),
-        )
+        ]):
+            self.assertEqual(sync.main(), 0)
 
         table_text = (article_root / "tables" / "generated_tex" / "he3_ablation_crps_main_table.tex").read_text(
             encoding="utf-8"

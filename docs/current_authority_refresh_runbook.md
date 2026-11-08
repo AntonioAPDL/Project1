@@ -17,9 +17,9 @@ The current source of truth is:
 - workflow manifest builder:
   `scripts/build_he2_bayesian_publication_manifest.py`
 - article freeze:
-  `Evironmetrics---REVISED-DOC-Corrected-2/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv`
+  `Evironmetrics----Corrected-3/artifacts/he2_publication_freeze/he2_bayesian_publication_manifest.csv`
 - article run map:
-  `Evironmetrics---REVISED-DOC-Corrected-2/docs/exal_m_t1_artifact_run_map.md`
+  `Evironmetrics----Corrected-3/docs/exal_m_t1_artifact_run_map.md`
 - corrections response tables:
   `/data/muscat_data/jaguir26/Corrections---Project-1/tables/generated_tex/`
 
@@ -85,7 +85,7 @@ python3 scripts/build_he2_publication_parity_gate.py
 Refresh the article-side HE2 freeze:
 
 ```bash
-ARTICLE_ROOT=/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics---REVISED-DOC-Corrected-2
+ARTICLE_ROOT=/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3
 
 python3 "$ARTICLE_ROOT/scripts/refresh_he2_manifest_snapshot.py" \
   --article-root "$ARTICLE_ROOT" \

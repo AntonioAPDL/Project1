@@ -1,0 +1,5 @@
+{
+  "scope": "Same-user local processes with explicit publication-script paths; no global scheduler claim",
+  "potential_publication_writers": [],
+  "processes_stopped": []
+}

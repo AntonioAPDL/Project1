@@ -1,0 +1,32 @@
+{
+  "scripts/build_comment2_external_baselines.R": {
+    "live": "b8630dd9e553db17795bb5cb95655b593dfce2287a668476678f0ab2555cb483",
+    "frozen": "b8630dd9e553db17795bb5cb95655b593dfce2287a668476678f0ab2555cb483",
+    "equal": true
+  },
+  "config/comment2_external_baselines.json": {
+    "live": "879a6c6147882079fb9ee21d018bb4dc6fb6359893914b5fd34e9a9095a48950",
+    "frozen": "879a6c6147882079fb9ee21d018bb4dc6fb6359893914b5fd34e9a9095a48950",
+    "equal": true
+  },
+  "scripts/audit_comment2_component_diagnostics.py": {
+    "live": "ead37a0102be312be30a0ba63b42e34b9896293dd16bb1b6d9185e8a46c1be5d",
+    "frozen": "ead37a0102be312be30a0ba63b42e34b9896293dd16bb1b6d9185e8a46c1be5d",
+    "equal": true
+  },
+  "scripts/build_no_refit_review_diagnostics.R": {
+    "live": "c624319b667200ce3060327369eb496451f49e223bf023c058384364c63cae16",
+    "frozen": "c624319b667200ce3060327369eb496451f49e223bf023c058384364c63cae16",
+    "equal": true
+  },
+  "R/environmetrics/no_refit_review_helpers.R": {
+    "live": "cea8250b537127692a05f9d79cb992e486396bc44e5aafc40581f4952441a900",
+    "frozen": "cea8250b537127692a05f9d79cb992e486396bc44e5aafc40581f4952441a900",
+    "equal": true
+  },
+  "config/no_refit_review_diagnostics.json": {
+    "live": "25546503a67b9e188df6cf6c20b52429fe3a08c83d4d36ae654409c69436a109",
+    "frozen": "25546503a67b9e188df6cf6c20b52429fe3a08c83d4d36ae654409c69436a109",
+    "equal": true
+  }
+}

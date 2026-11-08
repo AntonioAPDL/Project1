@@ -4,7 +4,9 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-_MODULE_PATH = Path(__file__).resolve().parents[1] / 'Evironmetrics---REVISED-DOC-Corrected-2/scripts/manuscript_text_contract.py'
+from article_repository_binding import active_article_root
+
+_MODULE_PATH = active_article_root() / 'scripts/manuscript_text_contract.py'
 _SPEC = importlib.util.spec_from_file_location('_current_article_text_contract', _MODULE_PATH)
 if _SPEC is None or _SPEC.loader is None:
     raise ImportError(f'Cannot load article text contract: {_MODULE_PATH}')

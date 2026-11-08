@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from article_repository_binding import active_article_root
+
 import argparse
 import json
 import sys
@@ -11,7 +13,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_AUTHORITY = ROOT / "docs" / "authoritative_selected_outputs" / "he2_exal_m_t1_representative_20221225.yaml"
-DEFAULT_ARTICLE_ROOT = ROOT / "Evironmetrics---REVISED-DOC-Corrected-2"
+DEFAULT_ARTICLE_ROOT = active_article_root(ROOT)
 
 sys.path.insert(0, str(ROOT / "scripts"))
 from he2_exdqlm_keep_authoritative import load_authoritative_spec  # noqa: E402

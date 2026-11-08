@@ -9,6 +9,8 @@ modify runtime artifacts.
 
 from __future__ import annotations
 
+from article_repository_binding import active_article_root
+
 import argparse
 import datetime as dt
 import os
@@ -21,7 +23,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTICLE_ROOT = ROOT / "Evironmetrics---REVISED-DOC-Corrected-2"
+ARTICLE_ROOT = active_article_root(ROOT)
 CORRECTIONS_ROOT = Path("/data/muscat_data/jaguir26/Corrections---Project-1")
 PUBLIC_REPRO_ROOT = ROOT.parent / "san-lorenzo-exdqlm-reproducibility"
 

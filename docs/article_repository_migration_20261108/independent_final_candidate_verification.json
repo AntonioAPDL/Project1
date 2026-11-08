@@ -1,0 +1,102 @@
+{
+  "status": "PASS",
+  "profile": "migrated",
+  "guards": [],
+  "comparison": {
+    "status": "PASS",
+    "source_commit": "32ab28b6c709bf001456090751edb413ae747a7b",
+    "source_tree": "571dda459c2fab4c2411d96461d5c7722468a936",
+    "candidate_commit": "5e99e62fb6700bc85cf6cfcae9d1444962aaee5e",
+    "candidate_tree": "15aa28b7fbaea66423a8cf940969a1b4c81d7c06",
+    "source_file_count": 792,
+    "candidate_file_count": 792,
+    "missing_paths": [],
+    "unexpected_paths": [],
+    "changed_contents": [
+      {
+        "path": "tests/test_no_refit_revision.py",
+        "source_sha256": "cbeeaee1297273dba5aab588f98c6ea61b44604c95c0ef9aeaecda86b7410730",
+        "candidate_sha256": "c1dc35ed7c6f79117398b370b67b216adcf4d65ab8cbb47e408bd319229eebaf",
+        "source_bytes": 5065,
+        "candidate_bytes": 5249
+      }
+    ],
+    "unapproved_content_changes": [],
+    "accepted_content_changes": [
+      {
+        "path": "tests/test_no_refit_revision.py",
+        "source_sha256": "cbeeaee1297273dba5aab588f98c6ea61b44604c95c0ef9aeaecda86b7410730",
+        "candidate_sha256": "c1dc35ed7c6f79117398b370b67b216adcf4d65ab8cbb47e408bd319229eebaf",
+        "source_bytes": 5065,
+        "candidate_bytes": 5249
+      }
+    ],
+    "unapproved_mode_changes": [],
+    "accepted_mode_changes": [
+      {
+        "path": "scripts/check_wiley_submission_requirements.py",
+        "source_mode": "100755",
+        "candidate_mode": "100644"
+      }
+    ],
+    "all_source_blob_contents_preserved": false
+  },
+  "repository_state": {
+    "status": "PASS",
+    "repository": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+    "origin": "https://github.com/AntonioAPDL/Evironmetrics----Corrected-3.git",
+    "branch": "migration/rejection-corrections-20261108",
+    "head": "5e99e62fb6700bc85cf6cfcae9d1444962aaee5e",
+    "clean_tracked": true,
+    "required_ancestor": "80ac992f4ea1b3feda90add7f3b4dd00451f84a4",
+    "ancestor_verified": true,
+    "errors": [],
+    "untracked_and_ignored_files": "outside this tracked-state check; never deleted by this verifier"
+  },
+  "expected_file_count": 792,
+  "expected_total_blob_bytes": 162142992,
+  "expected_source_total_blob_bytes": 162142808,
+  "allowed_mode_changes": {
+    "scripts/check_wiley_submission_requirements.py": [
+      "100755",
+      "100644"
+    ]
+  },
+  "allowed_content_changes": {
+    "tests/test_no_refit_revision.py": {
+      "source_sha256": "cbeeaee1297273dba5aab588f98c6ea61b44604c95c0ef9aeaecda86b7410730",
+      "source_bytes": 5065,
+      "candidate_sha256": "c1dc35ed7c6f79117398b370b67b216adcf4d65ab8cbb47e408bd319229eebaf",
+      "candidate_bytes": 5249,
+      "scope": "test fixture creation only: EXDEV hard-link fallback to copy2"
+    }
+  },
+  "references_or_working_files_modified": false,
+  "working_tree_verification": {
+    "status": "PASS",
+    "source_commit": "5e99e62fb6700bc85cf6cfcae9d1444962aaee5e",
+    "source_tree": "15aa28b7fbaea66423a8cf940969a1b4c81d7c06",
+    "candidate_commit": "WORKING_TREE",
+    "candidate_tree": null,
+    "source_file_count": 792,
+    "candidate_file_count": 792,
+    "missing_paths": [],
+    "unexpected_paths": [],
+    "changed_contents": [],
+    "unapproved_content_changes": [],
+    "accepted_content_changes": [],
+    "unapproved_mode_changes": [],
+    "accepted_mode_changes": [],
+    "all_source_blob_contents_preserved": true
+  },
+  "verifier_sha256": "bbf6ef2af6af761f9480880c20f2f859384fcc798cb4c0394a0b0736df840501",
+  "expected_candidate_commit": "5e99e62fb6700bc85cf6cfcae9d1444962aaee5e",
+  "candidate_commit_matches_expected": true,
+  "unchanged_source_content_file_count": 791,
+  "portability_patch_review": {
+    "status": "PASS",
+    "scope": "Only tests/test_no_refit_revision.py changed from the exact transplant; hard-link EXDEV falls back to shutil.copy2 and other OSError values are re-raised.",
+    "manuscript_and_frozen_evidence_contents_unchanged": true,
+    "original_exact_transplant_report": "independent_migrated_verification.json"
+  }
+}

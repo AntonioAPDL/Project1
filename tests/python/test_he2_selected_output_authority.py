@@ -6,6 +6,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from article_repository_binding import active_article_root
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -16,7 +20,7 @@ from validate_he2_selected_output_authority import DEFAULT_AUTHORITY, validate_a
 
 class HE2SelectedOutputAuthorityTests(unittest.TestCase):
     def test_current_authority_matches_winner_manifest_and_article_bundle(self) -> None:
-        rows = validate_authority(DEFAULT_AUTHORITY, ROOT / "Evironmetrics---REVISED-DOC-Corrected-2")
+        rows = validate_authority(DEFAULT_AUTHORITY, active_article_root(ROOT))
         failures = [row for row in rows if row["status"] != "PASS"]
         self.assertEqual(failures, [])
 

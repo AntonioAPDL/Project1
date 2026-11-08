@@ -9,6 +9,8 @@ large local research artifacts.
 
 from __future__ import annotations
 
+from article_repository_binding import active_article_root
+
 import argparse
 import csv
 import hashlib
@@ -25,7 +27,6 @@ import yaml
 
 REPO_NAME = "san-lorenzo-exdqlm-reproducibility"
 PUBLIC_URL = f"https://github.com/AntonioAPDL/{REPO_NAME}"
-ARTICLE_DIR_NAME = "Evironmetrics---REVISED-DOC-Corrected-2"
 SHARED_INPUT_BUNDLE = "multimodel_v8_he2_publication_shared_inputs_20260510"
 
 FORBIDDEN_SUFFIXES = {
@@ -1708,14 +1709,14 @@ def main() -> int:
     workflow = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workflow-root", type=Path, default=workflow)
-    parser.add_argument("--article-root", type=Path, default=workflow / ARTICLE_DIR_NAME)
+    parser.add_argument("--article-root", type=Path)
     parser.add_argument("--runtime-root", type=Path, default=workflow.parent / "project1_ucsc_phd_runtime")
     parser.add_argument("--destination", type=Path, default=workflow.parent / REPO_NAME)
     args = parser.parse_args()
 
     roots = Roots(
         workflow=args.workflow_root.resolve(),
-        article=args.article_root.resolve(),
+        article=active_article_root(args.workflow_root, args.article_root),
         runtime=args.runtime_root.resolve(),
         destination=args.destination.resolve(),
     )

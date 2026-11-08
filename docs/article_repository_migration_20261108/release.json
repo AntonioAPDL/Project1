@@ -1,0 +1,35 @@
+{
+  "schema": "article_repository_migration_v1",
+  "status": "VERIFIED_AWAITING_PROMOTION",
+  "submitted_baseline": "1272bfc10442a28add5a4c74ff641e9b9a8e9666",
+  "submitted_tree": "35b2c6d2af808a09618ad7365474826e0bf928fd",
+  "old_source_commit": "32ab28b6c709bf001456090751edb413ae747a7b",
+  "new_import_commit": "80ac992f4ea1b3feda90add7f3b4dd00451f84a4",
+  "revised_transplant_commit": "d02c17fa91dd6d64db8ed9166acdb1155488954a",
+  "new_candidate_commit": "5e99e62fb6700bc85cf6cfcae9d1444962aaee5e",
+  "old_restoration_commit": "fb58225c4ae1f730301ce3864e98ae4db2d9febf",
+  "expected_new_origin": "https://github.com/AntonioAPDL/Evironmetrics----Corrected-3.git",
+  "expected_archive_origin": "https://github.com/AntonioAPDL/Evironmetrics---REVISED-DOC-Corrected-2.git",
+  "revised_file_count": 792,
+  "submitted_file_count": 440,
+  "portability_only_test_change": "portability_adjustment.json",
+  "python_migration_gate_tests": 172,
+  "r_assertions": 248,
+  "unexpected_skips": 0,
+  "proofs": {
+    "corrected3": {
+      "sha256": "77cc223402d3d9bd35c02a6acfdcde7f2700f2771cf72737cde683202d3d6cc5",
+      "bytes": 13955184
+    },
+    "submitted": {
+      "sha256": "88bab7fb221a239c1a3b9df27fd3b2b172c293c377428f7986616ad701a913a5",
+      "bytes": 15422846
+    }
+  },
+  "old_overleaf_actions": [],
+  "new_overleaf_sync": "Not operated; GitHub target confirmed by user, no connected Overleaf UI tool",
+  "no_fits": true,
+  "no_new_draws": true,
+  "historical_evidence_unchanged": true,
+  "legacy_validator_limitations": "migration_binding_notes.json"
+}

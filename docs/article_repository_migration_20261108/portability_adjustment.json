@@ -1,0 +1,9 @@
+{
+  "path": "tests/test_no_refit_revision.py",
+  "source_sha256": "cbeeaee1297273dba5aab588f98c6ea61b44604c95c0ef9aeaecda86b7410730",
+  "new_sha256": "c1dc35ed7c6f79117398b370b67b216adcf4d65ab8cbb47e408bd319229eebaf",
+  "source_bytes": 5065,
+  "new_bytes": 5249,
+  "reason": "A canonical /data checkout and /tmp test fixture are on different filesystems. Fall back to independent copies only for EXDEV; other link errors remain failures.",
+  "scientific_article_or_evidence_changed": false
+}

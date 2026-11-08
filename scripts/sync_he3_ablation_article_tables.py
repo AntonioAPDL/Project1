@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from article_repository_binding import active_article_root, assert_article_write_target
+
 import argparse
 import csv
 import json
@@ -61,7 +63,7 @@ DISPLAY_DIGITS = 5
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Sync completed HE3 component-removal sensitivity tables into the article repos.")
     parser.add_argument("--matrix-dir", type=Path, required=True)
-    parser.add_argument("--article-root", type=Path, default=ROOT / "Evironmetrics---REVISED-DOC-Corrected-2")
+    parser.add_argument("--article-root", type=Path, default=active_article_root(ROOT))
     parser.add_argument("--corrections-root", type=Path, default=ROOT.parent / "Corrections---Project-1")
     return parser.parse_args()
 
@@ -473,6 +475,7 @@ def write_corrections_outputs(corrections_root: Path, corrections_block: str, nw
 
 def main() -> int:
     args = parse_args()
+    args.article_root = assert_article_write_target(args.article_root, ROOT)
     he3, report_dir, _metadata = load_he3_long(args.matrix_dir.resolve())
     long_raw_values, long_raw_source_rows = load_raw_values(
         args.article_root.resolve(),

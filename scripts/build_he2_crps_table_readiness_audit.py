@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from article_repository_binding import active_article_root
+
 import csv
 import json
 from pathlib import Path
@@ -11,7 +13,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 PUBLICATION_MANIFEST = ROOT / 'reports' / 'he2_publication_manifest' / 'he2_bayesian_publication_manifest.csv'
 PUBLICATION_PARITY = ROOT / 'reports' / 'he2_publication_manifest' / 'he2_publication_parity_gate_summary.json'
-ARTICLE_MANIFEST = ROOT / 'Evironmetrics---REVISED-DOC-Corrected-2' / 'MANUSCRIPT_ASSET_MANIFEST.json'
+ARTICLE_MANIFEST = active_article_root(ROOT) / 'MANUSCRIPT_ASSET_MANIFEST.json'
 
 
 def read_json(path: Path):

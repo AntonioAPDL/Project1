@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from article_repository_binding import active_article_root
+
 import argparse
 import csv
 import json
@@ -1164,7 +1166,7 @@ def render_summary(checks: list[Check], metadata: dict[str, object]) -> str:
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Validate the current cross-repo publication freeze.")
     ap.add_argument("--workflow-root", type=Path, default=ROOT)
-    ap.add_argument("--article-root", type=Path, default=ROOT / "Evironmetrics---REVISED-DOC-Corrected-2")
+    ap.add_argument("--article-root", type=Path, default=active_article_root(ROOT))
     ap.add_argument("--corrections-root", type=Path, default=Path("/data/muscat_data/jaguir26/Corrections---Project-1"))
     ap.add_argument(
         "--he3-runtime-root",
