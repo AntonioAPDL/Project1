@@ -173,12 +173,12 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
 )
 
 
-def check_reviewer1_remaining_text(article_text: str, corrections_text: str, supplement_text: str | None = None) -> list[Reviewer1RemainingCheck]:
+def check_reviewer1_remaining_text(article_text: str, corrections_text: str, appendix_text: str | None = None) -> list[Reviewer1RemainingCheck]:
     checks: list[Reviewer1RemainingCheck] = []
     article_text = active_tex(article_text)
     article_lower = article_text.lower()
-    scoped = (publication_text_checks(article_text, supplement_text)
-              if supplement_text is not None else
+    scoped = (publication_text_checks(article_text, appendix_text)
+              if appendix_text is not None else
               structure_checks(article_text) + scientific_checks(article_text))
     checks.extend(Reviewer1RemainingCheck(item, ok, detail) for item, ok, detail in scoped)
     for spec in REVIEWER1_REMAINING_SPECS:

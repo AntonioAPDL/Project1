@@ -1,0 +1,83 @@
+{
+  "one_documentclass": true,
+  "one_title": true,
+  "one_maketitle": true,
+  "one_bibliography": true,
+  "appendix_is_included": true,
+  "active_text_no_separate_support_wording": true,
+  "no_reference_errors": true,
+  "labels": {
+    "app:datahistories": {
+      "number": "A",
+      "page": 12
+    },
+    "app:extras": {
+      "number": "B",
+      "page": 14
+    },
+    "app:stateconstruction": {
+      "number": "C",
+      "page": 24
+    },
+    "app:vbupdates": {
+      "number": "D",
+      "page": 27
+    },
+    "fig:covariates": {
+      "number": "A1",
+      "page": 13
+    },
+    "fig:retrospectives": {
+      "number": "A2",
+      "page": 14
+    },
+    "tab:crps_all_origins": {
+      "number": "B1",
+      "page": 15
+    },
+    "tab:component_comparison": {
+      "number": "B2",
+      "page": 16
+    },
+    "tab:fitting_status": {
+      "number": "B3",
+      "page": 16
+    },
+    "tab:quantile_check_loss": {
+      "number": "B4",
+      "page": 17
+    },
+    "tab:exact_score_sensitivity": {
+      "number": "B5",
+      "page": 18
+    },
+    "tab:discharge_scale_scores": {
+      "number": "B6",
+      "page": 19
+    },
+    "tab:origin_interval_coverage": {
+      "number": "B7",
+      "page": 20
+    },
+    "tab:components_23_31": {
+      "number": "B8",
+      "page": 21
+    },
+    "fig:forecast_origins_2021_early": {
+      "number": "B1",
+      "page": 22
+    },
+    "fig:forecast_origins_2021_2022": {
+      "number": "B2",
+      "page": 23
+    },
+    "alg:Alg3": {
+      "number": "D1",
+      "page": 28
+    },
+    "alg:Alg4": {
+      "number": "D2",
+      "page": 29
+    }
+  }
+}

@@ -1,0 +1,43 @@
+INTEGRATED APPENDICES: COMPLETED VALIDATION
+
+The user requested appendices within the article. The previous compact scientific
+content now appears in one 31-page article, including Appendices A--D
+and one bibliography. The preceding main-plus-support package totaled 33 pages.
+The earlier pre-compression article had 44 pages. Results and scientific scope
+are unchanged. All eleven tables, seven figures and two algorithms remain.
+
+Wiley's native appendix environment includes appendices.tex from wileyNJD-APA.tex.
+The old independent document root was replaced by the appendix fragment. A--D
+section references, tables B1--B8, figures A1--A2/B1--B2, algorithms D1--D2 and
+appendix equation numbers use ordinary local labels and unique PDF destinations.
+The selector definition points to C.5. The fitting alias shares subsection B.2's
+anchor. In Overleaf keep wileyNJD-APA.tex as the selected main document.
+
+Validation passed: 253 distinct Python tests,
+248 R assertions, retained numerical/presentation replays, inventory
+ownership, 41 compiled PDF checks and live Overleaf ancestry.
+There are no skipped tests, undefined references/citations, BibTeX warnings or
+duplicate labels/destinations. Four LaTeX passes produced stable labels. The two
+existing publisher-title box warnings remain confined to maketitle; no body
+box warning was found. Appendix boundary and algorithm pages were inspected.
+
+The ordered mathematical expressions are unchanged: 133 in the main body and
+215 in appendices. The calibration table's full tabular block is byte-identical;
+only its note now links to C.3. All other numerical tables, figures, source inputs
+and frozen scientific records are byte-identical. All implementation files were
+unchanged throughout the final validation. The submitted Corrected-2 archive,
+corrections repository and public reproducibility repository remain unchanged.
+
+An initial proof check exposed a checker boundary bug: Poppler includes the
+sentence period in the link text C.5. The PDF link was correct. The checker now
+accepts punctuation while distinguishing C.5 from C.5.1. The final full gate was
+rerun cleanly and passed. Historical plans/releases are retained unchanged.
+
+Reproduce from the workflow repository:
+python3 -B docs/article_appendix_integration_20261109/run_checks.py --report-dir /tmp/NEW_appendix_release_check
+
+Full final run: /tmp/appendix_integration_release_gate_20261109
+Committed summaries, the baseline identities, preservation script and PDF-link
+validator are in this directory. Source/PDF hashes are in proof_summary.json and
+the article's docs/appendix_integration_release.json. PDFs remain local outputs.
+The article merge identity and pull request are recorded in release.json.

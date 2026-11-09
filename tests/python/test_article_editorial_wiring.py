@@ -76,7 +76,7 @@ class EditorialWiringTests(unittest.TestCase):
             ('tab:he3_ablation_crps', 'he3_ablation_crps_main_table.tex', 28),
             ('tab:he3_ablation_crps_nws_horizon', 'he3_ablation_crps_nws_horizon_table.tex', 8),
         ):
-            active = active_table_path(ARTICLE, label, document='si')
+            active = active_table_path(ARTICLE, label, document='main', scope='appendix')
             historical = ARTICLE / 'tables/generated_tex' / filename
             self.assertEqual(active.parent.name, 'compact_publication')
             expected = parse_flat_tex(historical)
@@ -85,7 +85,7 @@ class EditorialWiringTests(unittest.TestCase):
             for method, values in expected.items():
                 self.assertEqual(observed.get(method), values, (label, horizon, method))
             with self.assertRaisesRegex(ValueError, 'submitted asset|document|ownership|belongs'):
-                active_table_path(ARTICLE, label, document='main')
+                active_table_path(ARTICLE, label, document='main', scope='main')
 
     def test_duplicate_method_horizon_cannot_be_silently_overwritten(self):
         with tempfile.TemporaryDirectory() as tmp:

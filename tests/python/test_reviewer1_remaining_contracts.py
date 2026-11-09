@@ -52,7 +52,7 @@ class Reviewer1RemainingContractTests(unittest.TestCase):
         views = publication_views(ARTICLE_ROOT)
         article = views["main"]
         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
-        failed = [row for row in check_reviewer1_remaining_text(article, corrections, views["si"]) if not row.ok]
+        failed = [row for row in check_reviewer1_remaining_text(article, corrections, views["appendix"]) if not row.ok]
         self.assertFalse(failed, [f"{row.item}: {row.detail}" for row in failed])
 
 

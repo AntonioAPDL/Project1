@@ -1,0 +1,23 @@
+{
+  "source_changes": [],
+  "table_numeric_row_changes": [],
+  "scientific_records_unchanged": true,
+  "hash_deltas": {
+    "scripts/compact_publication.py": {
+      "before": "f2800e81136a8b548d86f3c534b44b95ddabc800d46842d275f3e1835c186b3f",
+      "after": "2569e2c4de30611731e8d7ce512374e4ca54035f9da27317890db37c02a523d7"
+    },
+    "tests/test_compact_publication.py": {
+      "before": "ede7e9904fefd4e8823934fdfe81c9aaa9262b5920e4072548d6310a2252fc8d",
+      "after": "3a1b967f9ccf1c26942a4eed7d7da87f4a0bc84fa1650424d87380cf314ce592"
+    },
+    "artifacts/compact_publication/manifest.json": {
+      "before": "e5d15d28574595675f5f280a311d255c26d8229e497fbb02f5824bd2a3366442",
+      "after": "120d8c1d52acf24a87049bc658d8cd5b740e3bb3cc7e42a83a19a5d32dd9dde1"
+    },
+    "tables/compact_publication/main_calibration.tex": {
+      "before": "ccd28e0967d7997b7523eede5cd64973416cc50d03c8b0536e6e265de3864d14",
+      "after": "b1b5b8f83c9fb6a7a306781ad597da95c66c2de13449da5da64f6ca1045b2d27"
+    }
+  }
+}

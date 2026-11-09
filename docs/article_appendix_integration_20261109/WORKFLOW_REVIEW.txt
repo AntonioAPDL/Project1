@@ -1,0 +1,11 @@
+INDEPENDENT WORKFLOW REVIEW
+
+The migrated workflow reads the actual single include graph and requests appendix
+assets by their logical scope. The HE2/HE3 expected numerical matrices, five-origin
+order, horizon rules, 1e-12/display tolerances and duplicate-row checks are intact.
+Main-only obligations cannot be met by appendix text. The ownership test rejects
+appendix evidence requested as main-body evidence. No blocking findings.
+
+The companion independent proof review preceded two final reference corrections:
+the stacked-selector reference now points to C.5 and the fitting-diagnostics alias
+shares the B.2 subsection anchor. The final reproducible gate rechecks both.
