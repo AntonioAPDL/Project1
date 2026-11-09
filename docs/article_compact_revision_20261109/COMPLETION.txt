@@ -1,0 +1,32 @@
+COMPACT PUBLICATION RELEASE
+
+Implemented the approved plan. The main article has 14 pages and the supporting
+information has 19, giving 33 combined pages instead of 44: a 25% reduction.
+The main paper has six sections, three tables and three figures. Supporting
+information has eight tables, four figures and two variational Bayes algorithms.
+
+All 249 distinct Python tests and 248 R assertions pass without skips. Original
+numerical and source checks, historical presentation replay and compact regeneration
+pass. Both documents compile independently; all eight numbered supplement references
+match compiled labels. Committed source hashes match the reviewed PDFs. The only
+post-gate source edit removed two trailing spaces; new independent builds produce
+identical extracted PDF text. Publisher title-box warnings were inspected; no body,
+table or algorithm overflow was found. No model fit or forecast rerun was started.
+
+The article is merged into Corrected-3 main at e103cc9 through pull request 1.
+Its merge tree matches reviewed commit 8e34210 exactly and preserves the prior
+Overleaf history. A local dispatcher outside the synchronized working tree preserves
+existing hooks and checks live Overleaf ancestry. Generated-table recovery covers
+the new presentation paths.
+
+The submitted Corrected-2 archive, historical response and public reproducibility
+repositories remain unchanged. Original numerical inputs, tables, figures, model
+code and recorded settings are unchanged. Optional displays remain in Git.
+
+In Overleaf, pull GitHub main from AntonioAPDL/Evironmetrics----Corrected-3. Keep
+wileyNJD-APA.tex as the main document. Select supporting_information.tex to compile
+and export the independent supplement. Local review PDFs are not versioned.
+
+See release.json for exact hashes and commits, and contract_migration.txt for the
+justified presentation fallbacks. FINAL_PLAN.txt identifies the approved plan;
+the copied planning reports remain a historical pre-implementation audit.

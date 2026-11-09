@@ -1,0 +1,37 @@
+SCHOLARLY COMPRESSION DISPOSITION AND SCIENTIFIC RETENTION
+November 9, 2026 project revision; edited only wileyNJD-APA.tex and supporting_information.tex.
+
+Main retained six sections with four results subsections. Protected component observation and evolution equations retain their original formula bodies. Initial/channel priors, p/m/q dimensions, covariate vector/scaling, periods, seven probabilities, lambda calibration and epsilon/c settings remain. Near-one discount sentence is verbatim. Conditional-model, posterior-predictive and synthesized predictive quantiles remain distinguished. The actual synthesis equations, outer-tail convention and marginal-in-time scope remain in main.
+
+Main section treatment:
+- Introduction: four purposeful paragraphs; explicit hydrological/meteorological uncertainty distinction, closest methods and three contributions.
+- Data: two subsections; target units/transform/record, product identities/roles, member/lead counts. Information-role table removed after incorporating its distinctions in prose. Detailed versions/extraction and climate-index names moved to SI.
+- Method: component equations retained; duplicate equation paraphrases consolidated. Priors remain. Actual VB factors and precision/offset/LaplaceDelta descriptions remain main, full formulas SI. No historical-sampling promotional references remain.
+- Evaluation: covariates/numerical settings, five exact origins, source alignment, nine variants and nonfactorial scope, benchmark training/eligibility, quantile-grid CRPS/CRPSS and interval-score formulas retained. Comparison-question table replaced by concise questions. Exact-score algebra and empirical-quantile conventions SI.
+- Results: representative source-context synthesis; 14-method aggregate table; 4x7 pooled check-loss table; nine-method calibration table; reliability figure. Main preserves every-origin AL/exAL source/transfer findings, Gaussian counterexample, eight-day winners, EMOS May exception, climatology November exception, exact-score sensitivity, discharge-scale reversal/extreme tails, synthesis crossing/loss effects, December coverage failures, and fit limitations.
+- Discussion: substantive takeaways and limits without repeating every result. Required declarations, public reproducibility repository, package/version/URL/DOI and practical archive requirements retained.
+
+Main displays:
+Keep site_context_usgs.png; representative cutoff20221225 synthesis including raw sources; reliability image.
+Drop separate source-context image because sourcecontext remains in representative synthesis and text retains product horizons.
+Three main tables: all14 aggregate, pooledquantileloss, unchanged nine-methodcalibrationcells with independent-SI descriptive note.
+
+SI order/table numbers:
+S1 complete originCRPS matrix; S2 components bothhorizons; S3 groupedfitstatus; S4 fulloriginquantileloss; S5 exact/independentdraw sensitivity; S6 dischargescale; S7 origincoverage; S8 coefficientgrid.
+Four SI figures: two original historical-input rasters, and two two-case forecast composites. Two historical pages retained to preserve readable dates/units; no forcedfive-axisreplot from missing compactdata.
+SI has independent title/authors/summary, acronymdefinitions, Snumberedlabels and ownbibliography. No cross-documentauxreferences.
+
+Removed from submitted reading, retained original evidence files in repo:
+- Shape/scale parameter inventories: no retained numericclaim depends on them; scale/skewnessroles stilldefined.
+- Historical drought/wet/slow-cycle illustrations and univariate synthesis illustration: omitted dependent descriptiveclaims; modelcomponents and forecastcomparisons remain.
+- Historical-only conditionalMCMCdisplays: notusedfor reported summaries. GIGdensityconvention transplanted intoaugmentation beforedeletion; actual VBalgorithms retained; posterioraccuracyqualification remainsmain.
+
+SI technical retention:
+Local state/source/member/lead definitions; rotation matrices; selectors/stacking/active-dimension restrictions; full exALdomain/A/B/C/augmentation; GIG(p,a,b) density and truncatedNormalvariance convention; forecastIW dimensions/mean weights; channeljointLaplaceDelta and factorization conditionalonevolutioncovariances; source/member counts; exactGIG/truncatednormal update equations and ordering; expectedprecision/weightedoffset; Gaussianfilter/smoother recursions; initialization/ELBO/stopping/iterationlimits; synthesis/scores/quantileconventions and EMOSoptimization.
+Added algebraic clarification: smoother lagcovariance expression and expansion of expectedinnovationouterproduct; no new fittedsetting or algorithm claim. Removed unverified transformationJacobian implementation sentence during audit.
+
+Prose accounting:
+Same approximate regex applied to baseline and revision (headings/captions/tablebodies/math/citations removed) gives 7115 -> 3902 ordinary-prose tokens, a 45.2% reduction. Counts differ slightly from original audit7112/7124 due parser details. Planning5100-5500 was a budget, notminimum; no padding added to meet it. Combinedpagination remainsprimaryproof: firstpreliminary main14+SI18=32pages, with finalproof delegatedroot.
+
+Validation:
+Both document local-reference checks pass: main34labels12references4Texfiles;SI34labels21references9Texfiles. All required main declarations present. First proofs main14/SI18, bodytables/mathnooverfullboxes; only existing Wiley maketitle abstractbox warnings. Final fresh independent builds and integrated numerical/source contracts belong to root release.

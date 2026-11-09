@@ -1,0 +1,331 @@
+READ-ONLY IMPLEMENTATION-READINESS REVIEW: MAIN ARTICLE + SUPPORTING INFORMATION
+Prepared November 8, 2026, America/Los_Angeles. Planning only.
+
+Scope and observed state
+------------------------
+Article inspected: Corrected-3, commit
+0cf6d99e3d1c59afaec9db4137e80a65eb1d5cd0; its worktree was clean.
+Workflow inspected: Project1, commit
+b9e1fa8169836093d71b306c81efb2fea9413965; its pre-existing untracked
+docs/environmetrics_rejection_audit_20261107/ was not touched.
+Existing plan: /tmp/environmetrics_readability_plan_20261108/PLAN.txt.
+No article/workflow files, Git state, fitted objects, or numerical artifacts were
+changed. No revised paper was built. This record is the sole output of this task.
+
+Live-remote clarification supplied by the parent audit: origin/main is now
+b2e0b82e9e65d6e9bbd09daa0a4b54d6f04546d0, two commits ahead of the local article.
+The four differences are mode-only changes 100755 -> 100644, with identical blobs:
+.githooks/pre-push and the three sealed renderer copies render_exal_m_t1_setup_
+support_by_cutoff_v2.py, render_focus_publication_posterior_plot.R, and
+render_setup_support_bundle_v2.R under
+artifacts/comment1_figure_revision/renderer_sources/scripts/. Thus the manuscript
+content baseline remains valid, but remote-state reconciliation is a prerequisite.
+No mode repair or fetch into the canonical repository was performed for this task.
+
+DECISION
+--------
+The content-reduction plan is implementable from saved material. Its main missing
+prerequisite is an explicit two-document reading-package contract. Establish that
+contract and test its fixtures BEFORE moving appendix assets, rather than leaving
+two-root validation to the former Stage 6. Otherwise the existing single-root
+checks will fail valid moves and, in a few places, pass checks on unused material.
+This infrastructure is small but necessary. Do not redesign statistical generators
+or loosen source-value comparisons to make the editorial split pass.
+
+1. RECOMMENDED DOCUMENT ARCHITECTURE
+----------------------------------
+Keep wileyNJD-APA.tex as the main root, preserving the existing Overleaf default.
+Add supporting_information.tex as a second independent root in the SAME repository.
+Both compile from repository root. The SI is not input into the main document.
+Use the current Wiley class in each document initially, avoiding simultaneous
+layout changes. Keep journal layout changes separate from the content decision.
+Each root has its own title/front matter, local labels, bibliography invocation and
+output job. Use the existing wileyNJD-APA.bib in both documents: each BibTeX job
+selects its own cited entries, which supplies independent reference lists without
+duplicating and desynchronizing bibliographic records.
+
+Use explicit independent SI counter formatting: S1, S2, ... for sections, tables,
+figures, equations and algorithms as appropriate; SI page numbers may be S1, S2,
+... if the chosen class handles them cleanly. Keep numerical cross-references
+local. Do not extend the existing A/B/C/D appendix counter resets mechanically.
+Check hyperref destinations/algorithm counter behavior in the first SI proof.
+
+Minimal source organization is preferable: two roots and their actual table
+fragments are sufficient. Split technical sections into shared-root-relative
+input files only when useful for maintainability. If common preamble definitions
+are extracted, use a small braced input file tracked by the dependency collector.
+Do not build one large conditional root with hidden main/SI modes: the current
+static include parser cannot interpret conditional TeX branches reliably.
+
+Cross-document references: prefer descriptive references such as "Supporting
+Information, Numerical details of predictive synthesis" or a named table/section.
+These are readable and independent of the other document's auxiliary files.
+Use ordinary ref/eqref only within its own document. No xr/externaldocument import
+of a locally existing main.aux or SI.aux; no requirement to build the other paper
+first; no checked-in stale aux files. If exact cross-document S-numbers prove
+necessary, introduce a small explicit reference registry, then validate each entry
+against the compiled labels in both fresh builds. Do not hide cross-document refs
+behind unvalidated hardcoded numbers or shell-escape generation.
+
+Overleaf needs one selected main root at a time. Keep its default as
+wileyNJD-APA.tex; selecting supporting_information.tex should independently build
+SI. Document this operation and export two PDFs. Do not introduce a custom
+latexmkrc that secretly compiles a second root on every main-paper compile.
+No claim that a GitHub push automatically changes the selected Overleaf root.
+
+2. PUBLICATION INVENTORY AND ACTIVE DEPENDENCIES
+----------------------------------------------
+Current MANUSCRIPT_ASSET_MANIFEST.json mixes scientific lineage with the fact that
+all 15 presentation fragments/16 generated tables are included in one manuscript.
+After revision some displays are main, some SI and some repository-only. Record
+that disposition explicitly, with stable evidence identity, actual target root,
+output TeX/graphic path, input sources and derivative recipe. Many original
+displays contribute to one composite; do not fake a one-old-label/one-new-file map.
+
+Recommended small documents/publication inventory (filename to finalize once):
+  documents: main entry; SI entry; bibliography; class/style dependencies.
+  submitted assets: label, document, path, scientific role, source hashes/keys.
+  retained evidence: original asset IDs/paths and keep/merge/SI/repository status.
+Keep old source paths/lineage in the existing asset manifest where compatible.
+Add a bounded reading-package inventory rather than replacing the historical
+source manifest with a large schema migration. Define which inventory is the
+authoritative active-publication list, and test that no contradictory duplicate
+assignment remains. The old manifest can still inventory retained evidence;
+existence in it must never mean "readers receive this display".
+
+Compute two separate actual include graphs. An asset assigned to main must be
+reachable from main; an asset assigned to SI must be reachable from SI; a
+repository-only asset must be absent from both. Validate exact root ownership of
+labels and reference targets, not just file existence. Check for missing assets,
+duplicate labels, unused declared submitted assets and included undeclared assets.
+For nested figure fragments use the common root graphicspath and actual include
+resolution. Ordinary root-relative inputs are the current TeX convention.
+
+3. EXACT IMPLEMENTATION IMPACT: ARTICLE REPOSITORY
+-------------------------------------------------
+scripts/manuscript_text_contract.py
+  included_tex_paths(root, entry=...) already accepts an entry and rejects missing
+  files/out-of-root paths. Preserve that safety. Add entry selection to
+  manuscript_with_includes, and expose explicit per-document plus submitted-union
+  views. Do not make every caller silently read the union: main self-containment
+  must still be tested against main alone.
+  structure_checks currently requires appendix_matrix/appendix_augmentation and
+  illustration_before_interpretation in one string. Split into main structure and
+  SI technical-retention checks. Keep six scientific main sections and scoring
+  before results; allow merged results subsections and compact interpretation.
+  scientific_checks currently requires historical_interpretation and table_estimands
+  including source-specific medians. Those are presentation conditions for the
+  optional historical/shape/scale exhibits, not invariants of the method. Replace
+  them with checks conditional on retained exhibits; preserve credible-versus-
+  predictive definitions and exact estimands for the coefficient table retained
+  in SI. Runtime hardware can move to SI while a brief timing sentence stays main.
+
+scripts/build_manuscript_review.py
+  collect_source_files(article) and build(article, output, job) assume one fixed
+  entry, and the LaTeX command hardcodes wileyNJD-APA.tex. Add an explicit entry
+  parameter/CLI, preserving the old default for backward compatibility. Collect
+  active sources for that root and its figures, with the shared bibliography and
+  class/BST. Use -recorder and inspect repository-local .fls inputs to guard a new
+  shared local preamble/style input escaping the static source inventory.
+  Keep fresh output directories, separate BibTeX jobs, source-before/after hashes,
+  label stability, zero unresolved citations/references, and PDF/text identity.
+  Add a bounded package wrapper that builds both roots independently and reports
+  main/SI/combined pages. It must fail if either build fails. Distinguish TeX errors
+  from reviewable box warnings; review actual overflow rather than simply counting.
+
+scripts/validate_manuscript_figure_paths.py
+  --tex-path already exists, but main() scans only the selected root text, not its
+  actual nested includes. Reuse the include graph for BOTH roots, with one root
+  graphicspath and safety checks. parse_includegraphics/resolve_include can remain
+  small helpers; verify the local-input/output paths against actual compiler inputs.
+
+scripts/check_wiley_submission_requirements.py
+  MAIN_TEX and collect_tex_files() are fixed to main. Accept root selection and
+  apply title/authors/citation/label checks to SI, main required declarations only
+  to main. Presently it tests only uncited figure/table labels; add undefined-ref
+  and duplicate-label detection. Named cross-document references need an explicit
+  supported form if used, and must not count arbitrary repo files as targets.
+
+New bounded presentation code (proposed filenames):
+  scripts/compact_publication.py; tables/compact_publication/;
+  Figures/manuscript/compact_*.png or PDF; artifacts/compact_publication/.
+  Generate pooled losses/merged score matrices/composite plots from archived
+  full-precision summaries only. Record each recipe, source hash and scientific
+  key; validate all inputs before writing outputs. --check must be read-only and
+  must reject stale/mismatched outputs. Keep original old tables/images.
+  Keep the existing editorial_revision.py and refresh_editorial_revision.py
+  intact as historical deterministic presentation replay. Do not edit their
+  fifteen-file/1,496-token preservation proof to permit intended deletions.
+  The new refresh command checks the old retained sources and then only its own
+  outputs; a full historical asset refresh must not be necessary for this revision.
+
+tests/test_editorial_integration.py
+  Preserve the include safety and active-file hashing fixtures. Replace assertions
+  "all15 active", "all16 labels", "all presentation files hashed" and mandatory
+  long-cycle figure inclusion with per-document inventory assertions. Old15-output
+  generation tests stay valid as historical-replay checks, but they cease being
+  assertions that those displays must remain submitted.
+
+tests/test_article_a1_and_table_contracts.py
+  table_input() is already manifest-based, but many tests read main source alone.
+  Replace mandatory four individual forecast figures/appendix labels with four-case
+  scientific panel coverage in SI and exact saved-summary equality. Replace
+  mandatory appendix MCMC section with repository retention plus the retained SI
+  VB computation. Keep all frozen source/caption/decimal/estimand checks on old
+  retained tables as source checks, then test new display cells by key separately.
+  Component-sensitivity assertions should follow the submitted SI input, not demand
+  a literal Appendix ref or main text include before/after appendix.
+
+tests/test_manuscript_text_contract.py
+  Extend comment/include/reference safety tests to independent roots, SI-only
+  concept omission from main, unused-file noncoverage and duplicate labels.
+New package tests should cover bad keys, duplicate/missing daily cases, wrong
+  horizon, wrong interval columns, missing origin, and intentional rounded-input
+  corruption. Do not require an exact word count or one exact sentence.
+
+README.md AND docs/article_readme_template.txt
+  Both need the same update: currently the template still describes
+  tables/generated_tex as the included tables. Document active new presentation
+  locations, two-root builds, bounded generation/check commands and PDF identities.
+  Updating only README is transient because build_generated_asset_index.py
+  overwrites it from that template.
+
+scripts/merge_overleaf_branch_preserving_generated_assets.py
+  Existing protected prefixes include artifacts/, figures/, Figures/ and
+  tables/generated_tex/, but omit tables/editorial_revision/ and the proposed new
+  presentation directory. Add only these new generated directories to the narrow
+  protected set and test classification; do not broadly protect every .tex file.
+  Otherwise generated-table deletions could be mistaken for user-authored source
+  changes during a later Overleaf branch recovery. Keep the current fresh-remote
+  ancestry pre-push guard and never bypass/force it.
+
+4. EXACT IMPLEMENTATION IMPACT: WORKFLOW REPOSITORY
+--------------------------------------------------
+scripts/current_article_contract.py
+  Export new document-aware views; make active_table_path(root,label,document=...)
+  verify ownership/reachability of the declared submitted display. The current
+  function insists on main reachability, rejecting legitimate SI moves.
+  Keep canonical_method_label's explicit five-name alias map and stable method IDs.
+
+scripts/validate_publication_freeze.py
+  check_prose, check_prior_claim_contract, check_runtime_feasibility,
+  check_reviewer1_overview, check_reviewer1_uncertainty, check_reviewer1_remaining:
+  distinguish main requirements from SI requirements and whole submitted-package
+  requirements. Several functions still read wileyNJD-APA.tex directly while others
+  read include unions. Make that distinction explicit, not an accidental difference.
+  check_selected_figures currently checks metadata/files for four original displays,
+  even if they are no longer included. Retain lineage checks on original evidence,
+  and add active submitted-figure proof separately. Do not demand retired exhibits.
+  check_he3_authority currently parses two main-reachable tables: adapt to combined
+  SI table/panels while keeping every variant/origin/horizon equality.
+  check_he4_sync compares frozen row fragments to the response wrapper; preserve
+  that archived synchronization check, but do not treat it as validation of the
+  new pooled table. The latter needs independent full-precision daily aggregation.
+
+scripts/validate_revision_cross_repo_wiring.py
+  audit_manifest_paths currently verifies file existence and only main's literal
+  inputs, which is insufficient for submitted reachability. Audit both actual
+  graphs and distinguish evidence paths from submitted-display paths.
+  audit_prose_claims and the audit_reviewer1_* / audit_runtime_* functions need the
+  same scope partition as the freeze validator.
+  main() currently compares exact old rectangular HE2/HE3/HE4 tables. Preserve
+  build_he2_expected/build_he3_expected/build_he4_expected, tolerances and scientific
+  key sets; adapt the observed-table extraction to the declared new SI panels and
+  merged external matrix. Do not simply remove calls to compare_table because the
+  former table filenames disappear.
+  Avoid a naive dict parser silently overwriting duplicate method rows across
+  horizon panels; key rows by method/origin/horizon and reject duplicates.
+
+scripts/reviewer1_overview_contract.py and scripts/reviewer1_remaining_contracts.py
+  They call single-text structure/scientific checks. Introduce explicit per-document
+  inputs or a publication-view adapter with declared scope for each requirement.
+  Historical response documents stay historical; do not rewrite them or their
+  required response claims merely because current display locations change.
+  In particular, old response statements about historical algorithm appendices can
+  remain archived while current SI retention is independently specified.
+
+tests/python/test_article_editorial_wiring.py
+  Preserve numeric-source tamper failures; change main-only lookup and old path
+  assertions to explicit new display/ SI lookups. Add fixtures proving a table
+  left in the repository cannot satisfy an SI table requirement, and vice versa.
+tests/python/test_r1_overview_contract.py,
+tests/python/test_reviewer1_remaining_contracts.py,
+tests/python/test_he1_runtime_contract.py,
+tests/python/test_software_availability_contract.py,
+tests/python/test_r1_m1_uncertainty_contract.py:
+  Re-scope source readers where main-only assumptions conflict with approved
+  technical relocation; keep main obligations main. Do not globally broaden to
+  every repo TeX file or silence tests by checking only the manuscript title.
+
+docs/article_editorial_revision_20261109/run_checks.py and its baseline.json
+  Treat as historical release evidence. Its old ALLOWED_EXISTING_CHANGES list and
+  one-proof build are specific to that release. Create a NEW bounded revision
+  execution record/gate pinned to 0cf6d99, rather than editing and resealing the
+  old report. Reuse pure helpers/legacy numeric gates; keep the existing 203 Python
+  and 248 R evidence as the prior baseline, not a guaranteed future test count.
+  docs/article_repository_migration_20261108/run_checks.py also contains a fixed
+  test selection and archive comparisons: call retained checks in the new gate,
+  documenting exactly which presentation-contract assertions were replaced.
+
+5. SCIENTIFIC ASSERTIONS THAT MUST NOT BE WEAKENED
+------------------------------------------------
+Stable origin/method/lead/horizon identities and counts; five complete origins;
+all model variants and component removals; correct raw-source horizon eligibility;
+full-precision daily loss aggregation; zero duplicate/omitted aggregation cases;
+exact table values up to the existing declared display rounding; preserved scores,
+calibration numerators/denominators and poor-case exceptions; recorded fitting
+categories including exceptions/unknowns; correct interval_low/interval_high (the
+95% bounds) rather than q05/q95; all forecast dates, observations, means and bands;
+transformed/discharge units and score orientations; mean/median/credible/predictive
+estimands; retained technical equations and notation identities; unchanged archived
+source hashes, saved fits and original generator outputs.
+
+The old all-numerical-tokens-identical proof remains valid for replaying the OLD
+editorial outputs. It is not the right acceptance test for new intentionally merged
+and removed displays. The new proof is a scientific-key reconciliation plus exact
+aggregation, along with a disposition ledger for every removed presentation row.
+Every scientific row still required for interpreting a comparison remains accessible
+in submitted main/SI; optional parameter inventories may be repository-only as planned.
+
+6. CORRECTED PREREQUISITE ORDER AND ACCEPTANCE GATES
+--------------------------------------------------
+0. Recheck the live origin/default/Overleaf tips, preserve their history in an
+   isolated implementation checkout and reconcile the four accidental mode changes
+   before beginning manuscript edits. Preserve identical sealed file contents and
+   restore their recorded executable modes. Verify .githooks/pre-push is executable
+   and configured; run the Python ancestry checker explicitly as a release gate,
+   independently of automatic hook execution. A hook that Overleaf can strip of
+   its executable bit must not be the sole protection. If installing a stable local
+   dispatcher in common Git metadata outside the Overleaf-synced tree, preserve
+   existing hooks and document installation; keep this a bounded prerequisite,
+   not a new broad CI project. Re-pin the approved content/mode baseline after this
+   reconciliation. No history rewriting or force push is needed.
+A. Freeze baseline source/PDF and define per-claim/per-exhibit disposition. Pin all
+   saved numerical inputs and enumerate intended sources of the new summaries.
+B. BEFORE moving content, define the two-root inventory and fixture tests for
+   independent build/hash/reference scopes. Prove missing/unused assets fail.
+   Adapt pure validation interfaces, without weakening scientific comparisons.
+C. Edit prose in place; first-use/definition audit and a proof measure genuine
+   savings independent of appendix relocation.
+D. Derive compact tables and figures into new bounded output paths. Validate all
+   data by keys and group counts before choosing them as active assets.
+E. Split/reduce technical support, assemble SI with independent references and
+   numeration; apply the approved asset map; update local/cross-document references.
+F. Build main and SI from a fresh staged source copy into distinct empty outputs.
+   Build SI without main aux, main without SI aux, and both orders if any shared
+   compile behavior remains. Clean builds must not depend on an ignored canonical
+   PDF, old bbl/aux, or absolute local paths. Verify all cited keys in each bbl.
+G. Run original numerical/provenance checks plus new package/source/aggregation
+   checks. Require all new submitted figures/tables to be actually reachable and
+   cited. Inspect final print-size labels, sparse pages, float order, and boxes.
+H. Record main/reference pages, SI/reference pages and combined pages separately,
+   consistent ordinary-prose counts, display counts, data contracts, PDF/source
+   hashes, modified old contract rationale and any accepted layout exceptions.
+   Only then review/commit/merge/push, using the existing live Overleaf guard.
+
+The preferred page budget remains conditional: legible evidence and complete
+scientific explanation take priority over the lower numerical target. Moving an
+unchanged table to SI is not a combined-package saving. New SI front matter and
+its independently selected references are real offsets that must be measured.
+
+END: planning record only; no implementation authorized by this audit.

@@ -1,0 +1,48 @@
+COMPACT-PACKAGE CHECK MIGRATION
+
+Unchanged: original scientific source identities; HE2/HE3/HE4 expected matrices,
+method/origin/horizon keys and five-decimal comparison tolerances; all original
+presentation generators and 15-file/1496-number source replay; saved-fit counts,
+calibration events, benchmark eligibility; historical response and release records.
+
+Changed presentation obligations:
+- Fifteen included table fragments in one root -> separate main/SI actual graphs.
+  Archived outputs retain their old replay checks; new displays are checked by
+  scientific keys against their committed source summaries.
+- HE2 two main tables -> SI all-method table with explicit horizon panels.
+  Both legacy expected matrices remain compared, with no duplicate overwrite;
+  the additional benchmark rows are independently checked by compact replay.
+- HE3 two tables -> one SI table with both horizons and all75scientific keys.
+- HE4 full main grid -> full SI grid plus full-precision daily pooled main summary.
+- Four individual additional-origin figures -> two two-panel SI figures. All47
+  dates per origin, means, observations and exact95% endpoints are checked.
+- Mandatory historical sampling display -> retained original source plus submitted
+  GIG convention, augmentation and actual VB precision/offset/update algorithms.
+- Mandatory source-median inventories/historical illustrations -> repository
+  retention; their unneeded interpretation is removed. Coefficient estimands and
+  all numerical/parameter-uncertainty qualifications remain submitted.
+- Main-only runtime hardware -> main timing and submitted SI hardware/scope;
+  model/data/forecast design, overview, uncertainty framing and availability
+  remain main-paper obligations.
+
+New negative tests reject wrong document ownership, unused-file false coverage,
+wrong label-to-source binding, missing/duplicate origins or method/horizon rows,
+formatted duplicate rows, loss-case omissions, wrong score scales/skills, thinned
+forecast dates and90%/95% bound substitution, stale outputs and source edits.
+Local hook tests preserve pre-existing hooks/stdin and reject unowned installation
+paths; the guard operates outside the Overleaf-synchronized working tree.
+
+No checks are skipped, and historical response requirements are unchanged.
+
+Approved presentation fallbacks used:
+- Both readable history images keep separate pages; no unverified numeric export.
+- Both actual VB algorithm displays remain, preserving notation/update ordering.
+- SI retains the compact stacked laws so its technical account reads independently.
+- Combined length governs: main14pages plusSI19, rather than forcing the anticipated
+  17--19/13--15 distribution. Mainprose~3920vs7115on the same approximate method;
+  independent review found no need to restore duplicate prose to meet a word quota.
+
+Numbered cross-document table references use an explicit eight-entry registry.
+The package checker validates ownership; independent build verification compares
+each number with the compiled SI label, without importing auxiliary files into
+either document. Local review PDFs remain outside version control.

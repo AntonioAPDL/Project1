@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from article_repository_binding import active_article_root
-from current_article_contract import manuscript_with_includes
+from current_article_contract import publication_views
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -49,9 +49,10 @@ class Reviewer1RemainingContractTests(unittest.TestCase):
         self.assertEqual(len(observed), len(expected))
 
     def test_article_generated_tables_and_corrections_preserve_remaining_contract(self) -> None:
-        article = manuscript_with_includes(ARTICLE_ROOT)
+        views = publication_views(ARTICLE_ROOT)
+        article = views["main"]
         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
-        failed = [row for row in check_reviewer1_remaining_text(article, corrections) if not row.ok]
+        failed = [row for row in check_reviewer1_remaining_text(article, corrections, views["si"]) if not row.ok]
         self.assertFalse(failed, [f"{row.item}: {row.detail}" for row in failed])
 
 

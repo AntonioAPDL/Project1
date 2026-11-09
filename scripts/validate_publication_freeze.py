@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-from current_article_contract import canonical_method_label, active_table_path, active_tex, cited_url, scientific_checks, structure_checks, manuscript_with_includes
+from current_article_contract import canonical_method_label, active_table_path, active_tex, cited_url, scientific_checks, structure_checks, manuscript_with_includes, publication_views, publication_checks, horizon_table_rows
 
 from multimodel_v8_lib import ROOT, load_yaml
 from forecast_design_contract import (
@@ -203,18 +203,21 @@ def parse_flat_tex(path: Path, expected_numeric_cells: int = 5) -> dict[str, lis
     rows: dict[str, list[float]] = {}
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
-        if "&" not in line or line.startswith("\\") or "\\multicolumn" in line:
+        if "&" not in line or line.startswith("%") or "\\multicolumn" in line:
             continue
         parts = [part.strip() for part in line.rstrip("\\").split("&")]
         if len(parts) != expected_numeric_cells + 1:
             continue
         label = canonical_method_label(strip_tex(parts[0]))
-        if label in {"Ablation model", "Model", "Model label"}:
+        if label in {"Method", "Ablation model", "Model", "Model label"}:
             continue
         try:
-            rows[label] = [parse_numeric(cell) for cell in parts[1:]]
+            values = [parse_numeric(cell) for cell in parts[1:]]
         except ValueError:
             continue
+        if label in rows:
+            raise ValueError(f"Duplicate rendered method row: {label}")
+        rows[label] = values
     return rows
 
 
@@ -534,9 +537,9 @@ def check_he3_authoritative(
             f"runtime={runtime_row.get('mean_crps')} article={article_row.get('mean_crps') if article_row else 'missing'}",
         )
 
-    article_table = parse_flat_tex(active_table_path(article_root, "tab:he3_ablation_crps"))
+    article_table = horizon_table_rows(active_table_path(article_root, "tab:he3_ablation_crps", document="si"), 28)
     corrections_table = parse_flat_tex(corrections_root / "tables/generated_tex/he3_ablation_crps_response_table.tex")
-    article_nws_table = parse_flat_tex(active_table_path(article_root, "tab:he3_ablation_crps_nws_horizon"))
+    article_nws_table = horizon_table_rows(active_table_path(article_root, "tab:he3_ablation_crps_nws_horizon", document="si"), 8)
     corrections_nws_table = parse_flat_tex(corrections_root / "tables/generated_tex/he3_ablation_crps_nws_horizon_response_table.tex")
     add(checks, "he3_authority", "article_table_excludes_nws_28day", "RAW-NWS" not in article_table, "NWS omitted from 28-day HE3 table")
     add(checks, "he3_authority", "corrections_table_excludes_nws_28day", "RAW-NWS" not in corrections_table, "NWS omitted from 28-day HE3 response table")
@@ -705,7 +708,7 @@ def check_prior_claim_contract(article_root: Path, corrections_root: Path, check
         ",".join(f"{value:g}" for value in epsilon_values),
     )
 
-    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    article_text = publication_views(article_root)["union"]
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
     stale_c_patterns = [
         r"c\s*=\s*10\^2",
@@ -732,7 +735,7 @@ def check_prior_claim_contract(article_root: Path, corrections_root: Path, check
 
 
 def check_prose(article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
-    article = active_tex(manuscript_with_includes(article_root))
+    article = active_tex(publication_views(article_root)["union"])
     corrections = (corrections_root / "main.tex").read_text(encoding="utf-8")
     required_corrections = [
         "exAL-M-T1} has the lowest 28-day CRPS in all five rolling-origin cutoffs",
@@ -835,7 +838,7 @@ def check_prose(article_root: Path, corrections_root: Path, checks: list[Check])
         "will be mentioned briefly as a robustness device",
         "random K-fold cross-validation",
     ]
-    for item, ok, detail in structure_checks(article) + scientific_checks(article):
+    for item, ok, detail in publication_checks(article_root):
         add(checks, "prose", item, ok, detail)
     for claim in required_corrections:
         add(checks, "prose", f"corrections_required:{claim}", claim in corrections, claim)
@@ -953,7 +956,7 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
         add(checks, "software_availability", "archive_checklist_license_gate", "Workflow repository license is confirmed by the authors" in checklist_text, WORKFLOW_ARCHIVE_READINESS_REL)
         add(checks, "software_availability", "archive_checklist_final_doi_gate", "Final workflow release is archived with a permanent DOI" in checklist_text, WORKFLOW_ARCHIVE_READINESS_REL)
 
-    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    article_text = publication_views(article_root)["main"]
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
     required_article = [
         r"R package \texttt{exdqlm}",
@@ -1024,7 +1027,7 @@ def check_runtime_feasibility(workflow_root: Path, article_root: Path, correctio
     add(checks, "runtime_feasibility", "workflow_contract_doc", workflow_doc.exists(), RUNTIME_CONTRACT_REL)
     add(checks, "runtime_feasibility", "article_contract_doc", article_doc.exists(), ARTICLE_RUNTIME_DOC_REL)
 
-    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    article_text = publication_views(article_root)["union"]
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
     for row in check_runtime_article_text(article_text):
         add(checks, "runtime_feasibility", row.item, row.ok, row.detail)
@@ -1050,7 +1053,7 @@ def check_forecast_design(workflow_root: Path, article_root: Path, corrections_r
     add(checks, "forecast_design", "workflow_contract_doc", workflow_doc.exists(), FORECAST_DESIGN_CONTRACT_REL)
     add(checks, "forecast_design", "article_contract_doc", article_doc.exists(), ARTICLE_FORECAST_DESIGN_DOC_REL)
 
-    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    article_text = publication_views(article_root)["main"]
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
     for row in check_forecast_design_article_text(article_text):
         add(checks, "forecast_design", row.item, row.ok, row.detail)
@@ -1076,7 +1079,7 @@ def check_latest_forecast_issue(workflow_root: Path, article_root: Path, correct
     add(checks, "latest_forecast_issue", "workflow_contract_doc", workflow_doc.exists(), LATEST_FORECAST_ISSUE_CONTRACT_REL)
     add(checks, "latest_forecast_issue", "article_contract_doc", article_doc.exists(), ARTICLE_LATEST_FORECAST_ISSUE_DOC_REL)
 
-    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    article_text = publication_views(article_root)["main"]
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
     for row in check_latest_forecast_article_text(article_text):
         add(checks, "latest_forecast_issue", row.item, row.ok, row.detail)
@@ -1090,9 +1093,9 @@ def check_reviewer1_overview(workflow_root: Path, article_root: Path, correction
     workflow_doc = workflow_root / R1_OVERVIEW_CONTRACT_REL
     add(checks, "reviewer1_overview", "workflow_contract_doc", workflow_doc.exists(), R1_OVERVIEW_CONTRACT_REL)
 
-    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    article_text = publication_views(article_root)["union"]
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
-    for row in check_r1_overview_text(article_text, corrections_text):
+    for row in check_r1_overview_text(publication_views(article_root)["main"], corrections_text):
         add(checks, "reviewer1_overview", row.item, row.ok, row.detail)
 
 
@@ -1100,9 +1103,9 @@ def check_reviewer1_uncertainty(workflow_root: Path, article_root: Path, correct
     workflow_doc = workflow_root / R1_UNCERTAINTY_CONTRACT_REL
     add(checks, "reviewer1_uncertainty", "workflow_contract_doc", workflow_doc.exists(), R1_UNCERTAINTY_CONTRACT_REL)
 
-    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+    article_text = publication_views(article_root)["union"]
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
-    for row in check_r1_uncertainty_text(article_text, corrections_text):
+    for row in check_r1_uncertainty_text(publication_views(article_root)["main"], corrections_text):
         add(checks, "reviewer1_uncertainty", row.item, row.ok, row.detail)
 
 
@@ -1110,9 +1113,9 @@ def check_reviewer1_remaining(workflow_root: Path, article_root: Path, correctio
     workflow_doc = workflow_root / R1_REMAINING_CONTRACT_REL
     add(checks, "reviewer1_remaining", "workflow_contract_doc", workflow_doc.exists(), R1_REMAINING_CONTRACT_REL)
 
-    article_text = manuscript_with_includes(article_root)
+    article_text = publication_views(article_root)["main"]
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
-    for row in check_reviewer1_remaining_text(article_text, corrections_text):
+    for row in check_reviewer1_remaining_text(article_text, corrections_text, publication_views(article_root)["si"]):
         add(checks, "reviewer1_remaining", row.item, row.ok, row.detail)
 
 

@@ -1,0 +1,143 @@
+{
+  "created_utc": "2026-11-09T02:17:55.890277+00:00",
+  "article_root": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+  "commands": [
+    {
+      "name": "existing_scientific_gate",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/article_repository_migration_20261108/run_checks.py",
+        "--report-dir",
+        "/tmp/compact_publication_release_sealed_20261109/scientific"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "article_tests",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "workflow_compact_wiring",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_article_editorial_wiring.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "retained_editorial_replay",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/scripts/refresh_editorial_revision.py",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "compact_display_replay",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/scripts/compact_publication.py",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "publication_package",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/scripts/publication_package.py",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "independent_proofs",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/scripts/publication_package.py",
+        "--build-dir",
+        "/tmp/compact_publication_release_sealed_20261109/proofs"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "live_overleaf_ancestry",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/scripts/check_overleaf_sync.py"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    }
+  ],
+  "unique_python_test_ids": 249,
+  "source_preservation": {
+    "baseline_commit": "b2e0b82e9e65d6e9bbd09daa0a4b54d6f04546d0",
+    "baseline_file_count": 827,
+    "changed_existing_files": [
+      ".gitignore",
+      "README.md",
+      "docs/article_readme_template.txt",
+      "scripts/build_manuscript_review.py",
+      "scripts/check_wiley_submission_requirements.py",
+      "scripts/manuscript_text_contract.py",
+      "scripts/merge_overleaf_branch_preserving_generated_assets.py",
+      "scripts/validate_manuscript_figure_paths.py",
+      "tests/test_article_a1_and_table_contracts.py",
+      "tests/test_editorial_integration.py",
+      "tests/test_manuscript_text_contract.py",
+      "wileyNJD-APA.tex"
+    ],
+    "missing": [],
+    "unexpected_content_changes": [],
+    "unexpected_modes": [],
+    "snapshot_sha256": "74eafe6bb26b4735f6165eb4b2275ccb171bbd8cfd1b0280bf13a4dacf976605",
+    "passed": true
+  },
+  "sources_unchanged_during_validation": true,
+  "implementation_file_count": 1334,
+  "implementation_unchanged_during_validation": true,
+  "passed": true
+}

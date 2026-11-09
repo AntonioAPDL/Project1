@@ -1,0 +1,331 @@
+READ-ONLY SOURCE READINESS AND NUMERICAL PRESERVATION REVIEW
+November 8, 2026 (America/Los_Angeles)
+Active article: Evironmetrics----Corrected-3
+Reviewed commit: 0cf6d99e3d1c59afaec9db4137e80a65eb1d5cd0
+Scope: refine the proposed compression plan; no implementation or repository writes.
+
+CONCLUSION
+
+The numerical-table compression and four supporting forecast redraws can be made
+from compact CSV files already in the article repository. They do not require
+model objects, predictive-cache reads, new draws, new forecasts, or fitting. A
+single existing CSV already holds the complete S1 matrix, which is safer than
+joining values parsed from three TeX tables. The plan should explicitly retain
+all methods and both horizons in S1/S5, preserve different score conventions, and
+use the saved exact 95% endpoints rather than the seven-quantile CSV for redraws.
+The one conditional item is a fully redrawn five-axis historical-input figure:
+the article setup bundle visibly contains the existing raster figures and
+metadata, rather than a compact numeric plot-input CSV. Its preferred first
+attempt should combine the two existing readable displays with a shared caption;
+retain two pages if this does not fit legibly. A numeric redraw would first need
+a separately justified, narrow export of the existing plotting data, not a
+broader regeneration command.
+
+1. AUTHORITATIVE INPUT CONTRACTS
+
+All relative paths below are inside the active article. Preserve these files
+byte-for-byte and record SHA256 checksums in the future presentation manifest.
+
+S1: artifacts/comment2_revision/external_baselines/by_origin_horizon.csv
+  135 rows; unique key (cutoff_date, model, integer horizon_days).
+  Dates: 2021-01-23, 2021-11-12, 2021-12-21, 2022-05-11, 2022-12-25.
+  Fields: cutoff_date, model, horizon_days, n_valid, mean_crps,
+          mean_climatology_crps, crpss.
+  65 rows at 28 days: 13 methods x five origins.
+  70 rows at eight days: 14 methods x five origins.
+  Nine Bayesian methods: N-U-T1, N-M-T0, N-M-T1, AL-U-T1, AL-M-T0,
+    AL-M-T1, exAL-U-T1, exAL-M-T0, exAL-M-T1.
+  Other methods: CLIM-SEASONAL, PERSISTENCE, RAW-GLOFAS, RAW-NWS,
+    EMOS-GLOFAS. RAW-NWS has only the eight-day rows.
+  All existing 105 main-matrix entries from
+    tables/generated_tex/benchmark_crps_horizon_summary.csv agree with this CSV;
+    maximum absolute difference is 8.881784197001252e-16.
+  Therefore directly select/render this already unified authority. There is no
+  need to join TeX, infer absent cells, or read source paths pointing to runtime
+  directories. The existing comment2_revision.py validator already checks
+  complete keys, actual cases, origin dates, daily means and pooled skill.
+
+S1/main aggregate table:
+  artifacts/comment2_revision/external_baselines/aggregate.csv
+  27 unique (model, horizon_days) rows; 13 methods at 28 days and 14 at eight.
+  Preferred refined main table: all 14 archived methods, retaining both
+    mean_crps and crpss columns for each horizon. There are 27 available
+    method/horizon rows; RAW-NWS has no 28-day result.
+  The existing seven-method subset is CLIM-SEASONAL, PERSISTENCE, RAW-GLOFAS,
+    RAW-NWS, EMOS-GLOFAS, AL-M-T1 and exAL-M-T1. Preserve every current cell
+    from this subset. The seven additional methods are already archived in
+    aggregate.csv: N-U-T1, N-M-T0, N-M-T1, AL-U-T1, AL-M-T0, exAL-U-T1 and
+    exAL-M-T0. No new score computation is required.
+  This expansion supports the main discussion of component comparisons without
+    requiring readers to consult SI for every aggregate result. Use exact
+    mean_crps/crpss row parity with aggregate.csv and retain the quantile-grid
+    integration convention. Show RAW-NWS 28-day cells as unavailable, not zero.
+  This is a justified refinement of the previous seven-row main-table plan;
+    the fuller aggregate display remains much smaller than per-origin matrices.
+
+New pooled MAIN quantile table / original full grid retained in SI:
+  artifacts/he4_quantile_check_loss_current_publication/
+    he4_quantile_check_loss_per_day.csv
+  3,920 unique (cutoff, forecast_date, manuscript_label, tau) rows.
+  Four methods x five origins x 28 dates x seven probabilities.
+  Methods: AL-M-T1, AL-U-T1, exAL-M-T1, exAL-U-T1.
+  Probabilities: .05, .20, .35, .50, .65, .80, .95.
+  score_scale is consistently log_cms_plus1.
+  Exactly 140 (origin, method, probability) groups contain all 28 dates
+    origin+1 through origin+28; all model/probability records share the same
+    observed value at each target date.
+  Exactly 28 pooled (method, probability) groups contain 140 losses each.
+  Aggregate the existing check_loss column only; do not replace it with a
+  different quantile convention from calibration_summary.csv.
+  As a read-only invariant, stored losses exactly satisfy
+    (observed-predicted_quantile)*(tau-I[observed<predicted_quantile]).
+  Mean values (probabilities in the order above):
+    AL-M-T1:
+      .0427629252659 .114087802368 .159843945958 .180532018565
+      .131945238834 .104456058495 .0542921525144
+    AL-U-T1:
+      .0531509173985 .163413145634 .256165223634 .324722413567
+      .392417381377 .448992670955 .460903217004
+    exAL-M-T1:
+      .0305674011721 .0792747081511 .112648613444 .145528056320
+      .152610833381 .109759529499 .0558211486500
+    exAL-U-T1:
+      .0498538528151 .159448086911 .257895469931 .325635339063
+      .386711748343 .439201911103 .456311500017
+  Lowest four lower/central losses: exAL-M-T1; lowest three upper losses:
+    AL-M-T1. Five-decimal rendering preserves these differences.
+  State that values are mean daily check loss pooled over 140 cases. They are
+  not counts of origin wins, a seven-point CRPS approximation, or an eight-day
+  comparison. Equal origin counts make the average of the five full-precision
+  origin means equal the daily pooled mean; using daily saved losses is clearer.
+
+S2 component removal:
+  tables/generated_tex/he3_ablation_crps_horizon_summary.csv
+  75 unique (row_label, cutoff, horizon_days) entries: 35 at28d and40 at8d.
+  Actual rows: RAW-GLOFAS, RAW-NWS (8d only), exAL-M-T1 (full),
+    exAL-M-T1-noTrend, exAL-M-noTF, exAL-M-T1-noH1/-noH2/-noH3.
+  Use integer horizons and normalized YYYYMMDD origins as keys. Keep full and
+  noTF distinct; noTF is not the main-table T0 comparison.
+  A two-panel table with shared notes is supported directly by this CSV.
+  Optional economy: omit duplicated raw-product rows from S2 only after S1 is
+  complete and cite their S1 location in S2's note. Retain the full model and
+  all five reductions in both panels. Keeping the two short baseline rows is
+  also acceptable if it materially improves standalone interpretation.
+
+S3 stopping evidence:
+  artifacts/comment2_revision/component_diagnostics/fit_ledger.csv
+  artifacts/comment2_revision/component_diagnostics/run_ledger.csv
+  400 unique (study, cutoff, label, quantile) fit records; 70 model runs.
+  These are sufficient for grouped counts; raw external logs need not be reread.
+  The current status counts are 16 converged,314 iteration-limited,70 unknown.
+  No fit has another stopping-status category, so the all-zero Other column
+  can be omitted with an exact check that it is zero, not a filter hiding rows.
+
+S5 exact-score / skill / independent-draw sensitivity:
+  artifacts/no_refit_revision/results/summary_pooled.csv
+  54 total rows on two scales; select score_scale=log1p_cms only.
+  27 unique (model_id,score_scale,horizon_days) rows, again13methods at28d and
+  14 at8d. n_valid_cases=n_expected_cases=140 or40 respectively.
+  Use mean_exact_ecdf_crps, ecdf_crpss and mean_iid_adjusted_crps. The union
+  of existing A5/A6 is all14 methods, not just the nine rows in current A5.
+  Keep absent NWS28d and inapplicable adjustments unavailable, not zero.
+  For applicable adjustments, preserve adjustment_status/representation_kind
+  provenance in the presentation manifest even if condensed in the paper note.
+  Missing adjustment categories: deterministic grids (climatology,EMOS),
+    point mass (persistence). Physical-ensemble adjustments remain sensitivity
+    calculations under independence assumptions, not a replacement main score.
+  Re-averaging saved scores_per_case.csv reproduces exact and applicable
+  adjusted pooled values with maximum absolute difference8.9e-16.
+  The six-numeric-column table is feasible numerically, conditional visually.
+  Preferred readable fallback: one table object with a28d and an8d panel,
+    three numeric columns per panel (exactCRPS,CRPSS,adjustedCRPS).
+  Do not introduce adjusted skill. Do not use main quantile-grid climatology
+  denominators to recompute exact empirical skill. For example the28d main
+  climatology is .64218 when rounded, whereas exact empirical is .64197.
+  Distinct conventions are intentional existing sensitivity comparisons and
+  must remain labelled, even if their numerical differences appear small.
+
+Other retained tables:
+  S6 discharge-scale rows come from the same summary_pooled.csv with
+    score_scale=discharge_cms; do not combine withlog1p rows.
+  S7 origin-specific coverage comes from results/interval_summary.csv;
+    retained coverage includes origin/horizon/scale/interval-level keys.
+  Main calibration and S7 intervals remain95%, not the90% q05--q95 span.
+  S8 terminal coefficient table remains the current corrected/approximately
+    variational summary; retain its estimand/date/scaling and source aliases.
+
+2. PRECISE FIVE-GROUP FITTING TABLE
+
+A compact count table can reduce14 specification rows to5 scientifically
+explicit groups, while preserving400fits,70runs and the exception:
+
+  Group                                Runs Fits Converged Limit Unknown
+  Three Gaussian configurations          15   15        15     0       0
+  Two univariate AL/exAL configurations   10   70         0     0      70
+  Four multivariate quantile configs     20  140         0   140       0
+  noH1 component reduction                5   35         1    34       0
+  Other four component reductions        20  140         0   140       0
+  Total                                  70  400        16   314      70
+
+Explicit group members belong in one shared note:
+  Gaussian: N-U-T1,N-M-T0,N-M-T1.
+  Univariate: AL-U-T1,exAL-U-T1.
+  Multivariate: AL-M-T0,AL-M-T1,exAL-M-T0,exAL-M-T1.
+  Other reductions: noTrend,noTF,noH2,noH3.
+The noH1 exception is the January23,2021 median (.50) fit. Main/SI must still
+state that all35 full-reference exAL-M-T1 quantile fits are iteration-limited.
+Keep unknown separate from failure and the existing threeAL-M-T0 held-update
+qualification. Counts are evidence of recorded stopping, not predictive validity.
+A separate Runs column is optional; its values are useful audit evidence but
+can remain in the note if five numeric columns are too wide.
+
+3. FOUR SUPPORTING FORECAST FIGURES: STRONG READINESS
+
+Source for each origin:
+  artifacts/five_cutoff_main_model_synthesis/{origin}_exal_m_t1/
+    exdqlm_multivar_synth_keep_focus_render_numeric_contract.csv
+Origins with supporting redraws:20210123,20211112,20211221,20220511.
+Representative main origin:20221225 (retain its existing source context).
+
+Every source contains47 unique dates:19 historical dates,28 forecast dates.
+Columns: model_id,date,segment,observed,q05,q20,q35,q50,q65,q80,q95,
+         interval_low,interval_high,model_mean.
+All required values are finite, dates chronological, and
+  interval_low <=q05 <=q95 <=interval_high on every row.
+The archived focus-contract endpoints agree with calibration-table95% endpoints
+on all140 forecast dates across allfive origins within5.33e-15. Therefore they
+provide the correct existing2.5%/97.5% bounds for mean+band+observations redraws.
+
+Important correction to a possible implementation shortcut:
+  *_cutoff_window_quantiles.csv and no_refit_revision/inputs/figure_quantiles/
+  hold q05--q95 only. They CANNOT alone recreate the95% band or predictive mean.
+  Do not relabel q05/q95 as95%; do not derive a mean from seven quantiles.
+Use the focus_render_numeric_contract CSV for both required quantities.
+
+Forecast misses that supporting redraws must preserve:
+  Jan2021: one lower miss,February10.
+  Nov2021: no misses.
+  Dec2021: seven upper misses,December22--25 and27--29.
+  May2022: no misses.
+The retained representative December2022 plot has nine misses. Preserve it
+and its evidence; compression must not replace the representative plot with a
+visually easier origin or crop the forecast peaks.
+
+Preferred composition:
+  First SI figure:January2021 andNovember2021.
+  Second SI figure:December2021 andMay2022.
+  Two statistical panels per page, shared legend, panel letters, exact origins,
+  all19history+28forecast dates, observation markers and model mean,95% shading,
+  a clear origin line, correct transformed-discharge axis/unit and concise note.
+  Omit draw traces and raw overlays only in these supporting redraws; original
+  full images remain repository assets and main still gives source context.
+  Use line style/markers in addition to color. Keep panel-specific yscales if
+  needed to display May's narrow range; label them explicitly rather than imply
+  identical vertical scales. Do not force a shared y-axis that erases May detail.
+  No smoothing, date-thinning, clipping, or changing the19-day context window
+  merely to hit a page budget. A cropped axis must never remove verification.
+  Keep the95% label in the shared caption and source conventions in SI methods.
+
+4. HISTORICAL INPUT COMPOSITE: CONDITIONAL READINESS
+
+Existing active inputs are high-resolution PNGs:
+  Figures/manuscript/covariate_context_precip_soil_gdpc.png10800x7200;
+  Figures/manuscript/retrospective_products_context.png10800x7200.
+Their source copies and provenance are in the representative setup-support
+bundle. That bundle contains figures and metadata, not a numeric plotting table.
+
+The plan should not promise a fully redrawn one-page five-axis figure on the
+same readiness basis as the forecast CSV redraws. First assemble the two existing
+displays with one caption, preserving allfive axes, units, labels, dates and
+source coverage. Both current images have3:2aspect ratio, so stacking at450pt
+width costs600pt pluscaption/panel labels; fitting one page is a real layout
+constraint. Trimming verified blank outer margins is acceptable; cutting axis
+labels or reducing final labels below legibility is not.
+
+If two images cannot fit legibly, retain two pages. A full numeric redraw would
+need a bounded frozen export of exactly the previously plotted values and a
+five-axis equality check. That extra source work should be separately assessed,
+not bundled into an expensive or broad regeneration step. The page-saving plan
+should treat the one-page history composite as optional, not a release condition.
+
+5. KEY, ROUNDING AND PRESENTATION RULES
+
+Use original method IDs internally and a one-to-one display-label map:
+  RAW-GLOFAS->GloFAS;RAW-NWS->NWS;CLIM-SEASONAL->Seasonal climatology;
+  PERSISTENCE->Persistence;EMOS-GLOFAS->GloFAS EMOS.
+Normalize dates from ISO/compact strings into actualdate objects at input, not
+substring-matching labels. Cast horizon to integer, tau to an explicit allowed
+numeric set. Reject duplicate keys, unexpected methods/origins/scales, missing
+required cases or accidental extra rows before rendering.
+
+Compute aggregates from full precision and round only the finaldisplay once.
+Retain five decimals initially to avoid mixing presentation precision changes
+with scientific/exhibit changes. Never compute skill from rounded CRPS cells or
+mean the five origin-specific CRPSS values: pooled skill is1-pooledCRPS divided
+by pooledclimatologyCRPS on the same cases. For pooled quantile losses, aggregate
+140daily savedlosses at eachtau. Do not pool across probabilities or horizons.
+
+S1 two horizon panels have13 and14rows, not14complete rows inboth. NWS28d should
+be explicitly unavailable if a fixed14-rowlayout is preferred. Use a concise
+shared model key limited to labels present in that table. Essential table-local
+scale,denominator,horizon and score-method notes remain even when definitions
+also appear inmain/SI. Shared notes should replace duplicatednotes, not remove
+interpretability.
+
+6. SAFER DEPENDENCY ORDER FOR FUTURE IMPLEMENTATION
+
+A. Freeze original sources/commit/source hashes and existing proof; enumerate each
+   retained claim and its destination, including adverse/horizon-specific findings.
+B. Prose compression first, preserve scientificdefinitions andessentialsettings.
+C. Build new bounded presentation tables from theCSV authorities above. Keep old
+   generated_tables/generators/manifests unchanged, rather than relaxing their
+   existing1496-token preservation contract to accommodate deliberate rowremoval.
+D. Materialize newfigures using numeric focuscontracts; append provenance showing
+   every plotted statistic anddate. Keep historycomposite conditional asabove.
+E. Assemble independently readablemain andSI, then update active-asset coverage,
+   reachable-file hashing andscientific checks forboth roots.
+F. Validate tables by retainedscientificcell keys/fullprecision aggregates, not
+   totalnumeric-token equality. Validateplots by layer/source equality and misses.
+G. Compileboth documents independently; inspectdisplaylabels, type sizes, sparse
+   pages, bounds andcross-document references. Onlythen adjustfloat/layoutchoices.
+H. Confirm current sourcefilesunchanged and oldresults preserved; record actual
+   word/page/exhibitcounts, limitations andtarget shortfall iflegibility demands.
+I. Existingancestry/pushguard remains a finalseparate gitgate afterapproval.
+
+A dedicated command for this presentation layer should import only the named
+compact inputs, emit newtable/figureoutputs andvalidationmanifests, and offer
+read-only --check mode. It must not call refresh_all_generated_assets.py or any
+model or baseline-fitting entrypoint. Allvalue-source gatesremain active.
+
+7. ACCEPTANCE TESTS FOR THE IMPLEMENTATION PLAN
+
+S1: exact135key coverage; old105scoreparity withinexistingnumeric tolerance;
+    no unexpectedNWS28d values; fivecorrectorigins; origin-specificmeansunchanged;
+    retainedfullnine-model comparisons andGaussian/8day counterexamples.
+Main aggregate: all 14 archived methods and 27 available method/horizon rows;
+    exact mean_crps/crpss parity with aggregate.csv, with the current seven-method
+    subset preserved and seven additional archived methods shown. RAW-NWS
+    28-day cells remain unavailable. Preserve the quantile-grid convention;
+    pooled skill is a ratio of pooled scores, not a mean of origin-specific skill.
+Main quantile:3920sourcekeys;140per(method,tau); dailydate/observationmatching;
+    exact28aggregates within1e-12; correctfourlower/threeupper minima;
+    full140origin-levelcells remain reachable inSI.
+S2:75sourcekeys preservedor explicitdeduplicatedbaseline rule; allsixmodelrows
+    xfiveoriginsxtwohorizons retained; full/referenceIDsnot conflated.
+S3: all400fits assignedexactlyonce; groupcounts16/314/70;70runs covered;
+    noH1Januarymedianexception andfullreference35limitfact visible.
+S5:27logscalekeys;14-methodunion; exactCRPS+correctexactskill+applicableadjusted
+    values; missingnessreason retained; no adjustedskill; originalscaleseparate.
+Forecasts:47rowsperorigin; exactfourorigincoverage; everydate/observation/mean/
+    lower/upper equalsfocuscontract withinCSVprecision; all140forecastbounds
+    matchsavedcalibration; supportingmisscounts1/0/7/0 remain; finalgraphicslegible.
+History:fiveaxes,datecoverage,units andsourceidentitiesretained; onepageconditional.
+Wholepackage: no change tofittedresults/rawscoreinputs; sourcehashesunchanged;
+    no unresolvedcitations/labels;main andSI each readable independently;
+    allessentialtablesandfigures actuallyincluded inoneofthose documents;
+    originalremovedexhibits remain inthe repository; pagebudget neveroverrides
+    adversefindings, precisionofdefinition orreadabletype.
+
+No manuscript files, datasets, figures, tables, tests, branches, commits or remotes
+were changed during this source-readiness review. Only this planning record was
+written under/tmp/environmetrics_readability_refinement_20261108/.

@@ -1,0 +1,199 @@
+INDEPENDENT EDITORIAL AND SCIENTIFIC-RETENTION REVIEW
+Planning only; November 8, 2026, America/Los_Angeles.
+
+Authority: Corrected-3 HEAD 0cf6d99e3d1c59afaec9db4137e80a65eb1d5cd0.
+Read: preceding PLAN.txt, current complete main/appendix source, active score,
+calibration and diagnostic tables, saved quantile-grid aggregate.csv, original
+referee report, and actual representative synthesis image. The working tree was
+clean when checked. No article files, fits, Git objects or remotes changed.
+
+DECISION
+
+The previous plan is well directed but should not be implemented literally in
+three respects. (1) The seven-row external comparison would leave source/transfer
+and Gaussian comparisons without any main numerical display. Expand the SAME
+main score/skill table to all 14 methods rather than adding a fourth table or
+removing the compact quantile table. (2) Deleting historical sampling displays
+requires transplanting the GIG convention and removing live algorithm references.
+(3) Use 30--34 combined pages as a conservative design range; 28--32 is a
+conditional stretch outcome. Article economy is the goal, not a numerical quota.
+
+1. RESOLVED MAIN EXHIBIT CHOICE
+
+Preferred three main tables:
+T1 All 14 methods, mean CRPS and climatology-relative skill, both horizons. Group
+   rows into external references and Bayesian configurations; no new parameters,
+   score definitions or fitted predictions. This adds seven rows to the previous
+   seven-row proposal, usually a modest cost, and makes poor Gaussian and T0
+   performance visible alongside source/transfer gains. It directly supports the
+   contribution discussion and referee 2(i).
+T2 Four quantile configurations x seven target probabilities, pooled 28-day check
+   loss from saved full-precision daily losses. Explicitly label the 140-case,
+   28-day scope. Retain AL-M-T1 upper-tail advantages and do not describe pooled
+   minima as an origin-specific win count.
+T3 The nine-row interval coverage/width/score table, both horizons, as proposed.
+
+Feasibility verified: artifacts/comment2_revision/external_baselines/aggregate.csv
+has 27 method/horizon rows for exactly 14 methods (RAW-NWS only eight days), with
+140 or 40 matched verification cases. All requested quantile-grid CRPS and CRPSS
+values are already present at full precision. This is a presentation change,
+not a new scoring calculation. Never substitute the distinct exact-score table
+for this source. Retain all origin-specific CRPS matrices in SI and cite them
+immediately for every-origin and origin-exception claims. The aggregate table
+alone cannot prove every-origin statements.
+
+If 14 rows are not legible in the existing layout: first remove needless column
+repetition and tune row grouping; next use two horizon panels within the SAME
+logical table. A fourth short main table for component comparisons is preferable
+to concealing the Gaussian/T0 results or deleting targeted quantile evidence. Do
+not enforce exactly three tables as an unconditional requirement.
+
+2. WHICH CUTS ARE SCIENTIFICALLY SAFE
+
+High-confidence edits:
+- Remove the information-role and comparison-question tables only after all
+  distinct information is retained beside its first use in concise prose.
+- Delete duplicate equation paraphrases, narrative tours of tables, generic
+  promotional sentences and repeated data catalogues.
+- Move the full coefficient grid to SI with the conditional interpretation,
+  terminal date, covariate scaling and approximate uncertainty retained in main.
+- Merge unique per-origin benchmark cells into the full model-comparison matrix.
+  CRPSS derivable from retained CRPS/climatology need not occupy another matrix.
+- Remove optional univariate and dry/wet/slow-cycle illustrations from submitted
+  PDFs if their associated claims/tours are also removed. Forecast comparisons,
+  structural model specification and exploratory slow-cycle rationale survive.
+- Remove source-specific skewness/scale inventories from submitted PDFs if their
+  original evidence remains findable in the repository and no retained statement
+  depends on their numeric values. Keep these parameters and their roles defined.
+- Remove historical MCMC algorithm displays because they are explicitly historical
+  conditional blocks and do not produce the reported application summaries.
+
+These last two omissions must not be described as resolving posterior-accuracy
+questions. The main text must still say that all reported summaries use VB and
+that accuracy against a full-model simulation comparison has not been assessed.
+The narrow-interval and factorization qualification remains with retained
+coefficient interpretation/SI. A compression ledger should record why each
+removed display is peripheral, without adding a defensive paragraph to the paper.
+
+Conditional edits:
+- Drop separate source-context Figure2 only with raw-product context preserved
+  in the representative synthesis. Inspection of the current Figure3 verifies
+  gauge history, verification, retrospective sources, issued ensembles and origin
+  are already present. Source-horizon availability must stay in Section2/caption.
+  Thus this particular deletion is now supported, not merely hypothetical.
+- Pool the main quantile table only from the archived daily full-precision losses;
+  keep the origin-specific table in SI and preserve upper-tail exceptions.
+- Fit two additional forecast cases on one page only by redrawing retained numeric
+  means/bands/observations, not shrinking existing tall images. The exact 2.5/97.5
+  interval_low/high fields are required. Four origins and all misses remain.
+- Combine five historical axes only when each unit/date/series key stays legible.
+- Consolidate exact-score and independent-draw sensitivity tables only if each
+  score definition and applicability code remains clear. Two horizon panels are
+  preferred over a cramped six-number-column display if width fails.
+- Remove a standalone abbreviation list only after checking first-use definitions
+  independently in abstract, main, SI and caption/table keys.
+
+3. MINIMUM SCIENTIFIC MAIN TEXT
+
+Keep the question/gap/contribution; gauge target and physical/transformed scale;
+source roles and 28/8-day availability; observation and component-evolution laws;
+quantile-location versus integrated predictive-quantile versus synthesis
+interpretation; source conditional-independence/shared-parameter assumptions;
+state dimensions and component rationale; prior families and qualitative discount
+sentence; VB factorization and distinctive joint scale/skewness approximation;
+synthesis steps and tail convention; evaluation origins/sample counts, benchmark
+training/eligibility rules and score/calibration definitions; numerical positive
+and adverse findings; component-fitting qualifications and practical takeaway.
+
+Model definition must not be replaced by only the compact stacked state or a
+list of component names. Conversely, long matrix layouts need not remain main.
+The six-section argument can be retained. In Results, four sections work if the
+coefficient paragraph is absorbed into the component-interpretation subsection;
+allow five sections if the combined subsection becomes hard to navigate.
+
+Do not define once so aggressively that readers must repeatedly travel between
+documents. Main and SI each need their own first-use definitions. Tables and
+figures retain a short local key for actual rows/curves, but need not explain
+N or T0 in a display whose rows contain neither. This is how to cut the doubled
+notes without sacrificing independent interpretability.
+
+4. MINIMUM COMPUTATIONAL SI; A CRITICAL DELETION DEPENDENCY
+
+The explicit GIG convention currently occurs in the introduction of Appendix C:
+GIG(p,a,b) proportional to x^(p-1) exp[-(a*x+b/x)/2], x>0.
+Deleting C without moving this convention leaves the VB augmentation update
+undefined. Move it to the retained augmentation/VB preamble. Remove Alg3's
+reference to Alg1 and Alg4's reference to Alg2. Remove the main promotional
+reference to historical Algorithms1/2, preserving the VB-accuracy qualification.
+
+Retain:
+- augmentation domain and A/B/C definitions, v=sigma*u convention and positive
+  truncated-normal variance convention;
+- the full factorization, expected precision and precision-weighted offset;
+- the GIG and truncated-normal parameter formulas, including update iteration
+  ordering and required moments;
+- joint channel scale/skewness Laplace mode/curvature and Delta formulas;
+- source/member stacking and summation counts for the forecast contribution;
+- selectors, active-state restrictions, transition mapping and covariance-prior
+  dimensions/formula;
+- initialization, stopping criteria, iteration-limit interpretation, historical
+  versus forecast scope;
+- the numerical synthesis/empirical-quantile conventions.
+
+Standard Gaussian filtering/smoothing recursions can be stated once or cited,
+but the custom expected precision/offset cannot be cited away. The required
+smoothed cross-time moments must remain evaluable for the forecast innovation
+covariance formula. Do not silently rename the historical-only display a complete
+joint algorithm. Consolidation changes presentation, not the inference target,
+factorization, optimizer, conventions or numeric settings.
+
+5. THREE-TIER IMPLEMENTATION CONTRACT (FUTURE APPROVAL ONLY)
+
+Tier1 mandatory, low uncertainty:
+Baseline source/results preservation and claim-to-evidence map; concise prose;
+remove duplicated explanatory tables; remove optional historical/univariate
+exhibits and source-parameter inventories with dependent prose; remove historical
+MCMC displays with GIG/cross-reference repairs; full 14-method main score table;
+retain calibration and contribution claims with explicit evidence/qualification.
+
+Tier2 conditional, proof/source gates:
+Pooled compact quantile table, merged SI matrices, grouped stopping-status table,
+shared-note tables, five-axis history composite, two-case-per-page redraws,
+three-main-figure layout, independent SI split. Each has source-cell equality,
+claim coverage and legibility gates. If a gate fails, preserve the longer readable
+version rather than changing or dropping the scientific evidence.
+
+Tier3 fallback/optional:
+Four main tables or four main figures; two pages for data histories; extra pages
+for unique VB mathematics; a slightly longer SI rather than dense numeric panels.
+Only after genuine content savings should local float placement be improved.
+No vendor-class changes, smaller body type, reduced margins, negative-space tricks
+or deletion of necessary caveats to meet the page target.
+
+6. STAGING AND STOPPING
+
+A. Authority inventory and frozen source/output hashes, preservation exclusions,
+   current claims/exhibits map, actual main/SI roots and acceptance thresholds.
+B. Prose-only reduction with figure/table positions unchanged; measure and proof.
+C. Table/disposition pass, full 14-method main table and compact loss summary;
+   test retained scientific-key cells and full-precision aggregations.
+D. Figure composites/redraws and technical algorithm consolidation; inspect at
+   actual final printed size and verify every retained date/band/mean/observation.
+E. Independent SI assembly with title/authors, one short guide, local definitions,
+   coherent S-labels and own references; account for duplicate-reference overhead.
+F. Two-root include-aware checks/builds, cross-document links and metadata;
+   every surviving claim has a main/SI evidence destination. Repo-only material
+   cannot satisfy a check for submitted reader evidence.
+G. Only then float/pagination tuning and independent main/SI reading; all values,
+   qualifiers, citations and labels checked. Report actual counts, not promises.
+
+Adopt 30--34 combined publisher-proof pages as a conservative preferred range,
+with 28--32 conditional on Tier2 success. Main16--18 plus SI12--14 is still only
+a budget. An initial 33--37-page pass is plausible but not an implementation
+failure. Accept readable evidence and method completeness over a hard lower
+number. Report main pages including references, SI pages including references,
+combined pages and ordinary-prose counts separately. Moving a display to SI alone
+is zero combined-page saving. A self-contained supplement may introduce reference
+and definition overhead. Do not add best-case saving estimates together.
+
+No article implementation or publication action was performed in this review.

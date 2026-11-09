@@ -1,0 +1,17 @@
+FINAL IMPLEMENTATION PLAN — authorized November 8, 2026
+
+The approved refined plan is PLAN_REFINED.txt. Implement its content and numerical
+contracts, with no change in fitted results. Live implementation baseline is
+Corrected-3 b2e0b82e9e65d6e9bbd09daa0a4b54d6f04546d0, which preserves the latest
+Overleaf merge and has identical source contents to the audited 0cf6d99. Restore
+the four mode-only differences and independently run the ancestry check at release.
+
+Implementation ownership: main/SI exposition; bounded presentation generation;
+document-aware article validation; workflow/source validation and release. Establish
+the document interfaces before integrating relocated material. Compile roots
+independently, reconcile every submitted numerical cell and forecast summary,
+inspect final pages, then merge normally and push both repositories.
+
+Any departure from the approved inventory or budget must be explained in the
+completion record. Retain the submitted Corrected-2 archive. New model runs do
+not change this editorial baseline.

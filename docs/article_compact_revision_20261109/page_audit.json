@@ -1,0 +1,1193 @@
+{
+  "baseline": {
+    "pdf_path": "/tmp/article_editorial_revision_20261109/previous_canonical_article.pdf",
+    "sha256": "261319e9a529cfb8c35b4aa5d19b9662112e251d05c990f43c2f91e5504df248",
+    "pdf_whitespace_tokens": 17115,
+    "page_count": 40,
+    "parts": [
+      {
+        "name": "Main including statements",
+        "start_page": 1,
+        "end_page": 22,
+        "page_count": 22,
+        "pdf_whitespace_tokens": 10512
+      },
+      {
+        "name": "Appendix A",
+        "start_page": 23,
+        "end_page": 32,
+        "page_count": 10,
+        "pdf_whitespace_tokens": 2833
+      },
+      {
+        "name": "Appendix B",
+        "start_page": 33,
+        "end_page": 34,
+        "page_count": 2,
+        "pdf_whitespace_tokens": 1208
+      },
+      {
+        "name": "Appendices C and D algorithm pages",
+        "start_page": 35,
+        "end_page": 38,
+        "page_count": 4,
+        "pdf_whitespace_tokens": 1493
+      },
+      {
+        "name": "References",
+        "start_page": 39,
+        "end_page": 40,
+        "page_count": 2,
+        "pdf_whitespace_tokens": 1069
+      }
+    ],
+    "pages": [
+      {
+        "page": 1,
+        "pdf_whitespace_tokens": 340,
+        "bbox_word_count": 326,
+        "bbox_line_count": 46,
+        "body_text_y_min": 71.01,
+        "body_text_y_max": 689.33,
+        "first_lines": [
+          "Received Date Month Year;    Revised Date Month Year;   Accepted Date Month Year",
+          "DOI: xxx/xxxx",
+          "RESEARCH ARTICLE"
+        ]
+      },
+      {
+        "page": 2,
+        "pdf_whitespace_tokens": 756,
+        "bbox_word_count": 752,
+        "bbox_line_count": 52,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 720.95,
+        "first_lines": [
+          "2                                                                                                                      De Leon ET AL.",
+          "atmospheric forcing. These sources interact as uncertain weather inputs propagate through a hydrological system (Tarek, Arse-",
+          "nault, Brissette, & Martel 2021; Thiboult, Anctil, & Boucher 2016). A statistical forecasting method must therefore connect"
+        ]
+      },
+      {
+        "page": 3,
+        "pdf_whitespace_tokens": 318,
+        "bbox_word_count": 314,
+        "bbox_line_count": 40,
+        "body_text_y_min": 292.16,
+        "body_text_y_max": 710.25,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                         3",
+          "FIGURE 1 Observed USGS daily water flow on the log(1+\ud835\udc65) scale, with \ud835\udc65 measured in m3 /s, May 29, 1987 through December",
+          "25, 2022. Horizontal dashed lines show approximate current-rating discharge equivalents of the current NWS minor and major"
+        ]
+      },
+      {
+        "page": 4,
+        "pdf_whitespace_tokens": 398,
+        "bbox_word_count": 395,
+        "bbox_line_count": 26,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 721.88,
+        "first_lines": [
+          "4                                                                                                                      De Leon ET AL.",
+          "intensity model. ERA5-Land supplies a reanalysis-based land-state covariate with uncertainty, while USGS discharge supplies",
+          "the verification target."
+        ]
+      },
+      {
+        "page": 5,
+        "pdf_whitespace_tokens": 153,
+        "bbox_word_count": 149,
+        "bbox_line_count": 13,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 567.73,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                 5",
+          "all providing medium-range forecasts for up to 28 days. The products differ in source, forecast horizon, and update pattern. The",
+          "model accommodates these differences through source-specific channels and lead-time availability."
+        ]
+      },
+      {
+        "page": 6,
+        "pdf_whitespace_tokens": 293,
+        "bbox_word_count": 301,
+        "bbox_line_count": 22,
+        "body_text_y_min": 386.17,
+        "body_text_y_max": 679.14,
+        "first_lines": [
+          "6                                                                                                                      De Leon ET AL.",
+          "FIGURE 4 Information available around the December 25, 2022 forecast origin, spanning November 27, 2022 through Jan-",
+          "uary 22, 2023 on the log(1 + \ud835\udc65) scale with \ud835\udc65 in m3 /s. Before the origin, the panel shows USGS observations and the NWS"
+        ]
+      },
+      {
+        "page": 7,
+        "pdf_whitespace_tokens": 852,
+        "bbox_word_count": 950,
+        "bbox_line_count": 92,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 720.89,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                      7",
+          "3.2       State-Space Model Specification",
+          "For a fixed target quantile \ud835\udc5d0 , we use a state-space model for the transformed discharge log(1 + \ud835\udc65). Its latent process spans the"
+        ]
+      },
+      {
+        "page": 8,
+        "pdf_whitespace_tokens": 658,
+        "bbox_word_count": 681,
+        "bbox_line_count": 54,
+        "body_text_y_min": 55.86,
+        "body_text_y_max": 694.17,
+        "first_lines": [
+          "8                                                                                                                           De Leon ET AL.",
+          "where \ud835\udf19\ud835\udc60 and \ud835\udf08 \ud835\udc60 denote the scale and degrees of freedom hyperparameters, respectively. For the channel-specific scale",
+          "parameters, we use inverse-gamma priors,"
+        ]
+      },
+      {
+        "page": 9,
+        "pdf_whitespace_tokens": 718,
+        "bbox_word_count": 770,
+        "bbox_line_count": 66,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 710.58,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                        9",
+          "adj",
+          "Each fit\u2019s draws are shifted by \ud835\udc5a\u2217\ud835\udcc1,\ud835\udc61 \u2212 \ud835\udc5e\ud835\udcc1,\ud835\udc61 . Write \ud835\udc44\ud835\udcc1,\ud835\udc61 for the empirical quantile function of the shifted draws. For \ud835\udf0f\ud835\udcc1 < \ud835\udc62 < \ud835\udf0f\ud835\udcc1+1 ,"
+        ]
+      },
+      {
+        "page": 10,
+        "pdf_whitespace_tokens": 748,
+        "bbox_word_count": 743,
+        "bbox_line_count": 51,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 719.91,
+        "first_lines": [
+          "10                                                                                                                       De Leon ET AL.",
+          "The discount factors for the trend, seasonal, discrepancy, transfer, and covariate-effect states were set close to one, giving",
+          "nearly static evolution while allowing gradual adaptation."
+        ]
+      },
+      {
+        "page": 11,
+        "pdf_whitespace_tokens": 602,
+        "bbox_word_count": 620,
+        "bbox_line_count": 76,
+        "body_text_y_min": 59.48,
+        "body_text_y_max": 693.63,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                       11",
+          "TABLE 2     Questions addressed by the internal comparisons.",
+          "Modeling role                   Reported comparison                           Interpretation"
+        ]
+      },
+      {
+        "page": 12,
+        "pdf_whitespace_tokens": 715,
+        "bbox_word_count": 739,
+        "bbox_line_count": 64,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 725.76,
+        "first_lines": [
+          "12                                                                                                                    De Leon ET AL.",
+          "sample values. Then",
+          "(           )"
+        ]
+      },
+      {
+        "page": 13,
+        "pdf_whitespace_tokens": 247,
+        "bbox_word_count": 244,
+        "bbox_line_count": 20,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 715.46,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                    13",
+          "extreme tails. Comparisons use 140 verification cases over 28 days or 40 over eight days, always with complete matching dates.",
+          "The five origins support descriptive calibration comparisons; successive daily cases are not treated as independent replicates for"
+        ]
+      },
+      {
+        "page": 14,
+        "pdf_whitespace_tokens": 507,
+        "bbox_word_count": 502,
+        "bbox_line_count": 100,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 725.76,
+        "first_lines": [
+          "14                                                                                                                    De Leon ET AL.",
+          "The ribbon is a pointwise predictive interval, not an interval for a fitted quantile location. Appendix Figure A1 gives the corre-",
+          "sponding univariate reference, which retains transfer covariates and excludes the external source channels. Appendix Figures A2,"
+        ]
+      },
+      {
+        "page": 15,
+        "pdf_whitespace_tokens": 433,
+        "bbox_word_count": 429,
+        "bbox_line_count": 138,
+        "body_text_y_min": 59.48,
+        "body_text_y_max": 717.57,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                     15",
+          "TABLE 4 Mean CRPS over the common eight-day NWS forecast horizon. Lower values are better; bold indicates the lowest",
+          "CRPS within each cutoff column."
+        ]
+      },
+      {
+        "page": 16,
+        "pdf_whitespace_tokens": 412,
+        "bbox_word_count": 408,
+        "bbox_line_count": 191,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 694.8,
+        "first_lines": [
+          "16                                                                                                                   De Leon ET AL.",
+          "5.4       Quantile-Specific Forecast Performance",
+          "Table 6 complements the CRPS comparisons with targeted quantile diagnostics based on check loss at the fitted quantile levels."
+        ]
+      },
+      {
+        "page": 17,
+        "pdf_whitespace_tokens": 506,
+        "bbox_word_count": 501,
+        "bbox_line_count": 136,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 722.87,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                 17",
+          "5.5       Distribution-Score Sensitivity and Calibration",
+          "The exact empirical-distribution scores in Table 7 retain the aggregate transformed-scale ordering of the principal competitors."
+        ]
+      },
+      {
+        "page": 18,
+        "pdf_whitespace_tokens": 358,
+        "bbox_word_count": 357,
+        "bbox_line_count": 26,
+        "body_text_y_min": 360.25,
+        "body_text_y_max": 704.74,
+        "first_lines": [
+          "18                                                                                                                         De Leon ET AL.",
+          "FIGURE 6 Empirical quantile reliability across the five forecast origins, separately for eight-day and 28-day horizons. Curves",
+          "show the frequency of observations at or below each delivered predictive quantile for exAL-M-T1 and the raw-product, EMOS"
+        ]
+      },
+      {
+        "page": 19,
+        "pdf_whitespace_tokens": 496,
+        "bbox_word_count": 493,
+        "bbox_line_count": 72,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 725.76,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                    19",
+          "5.7       Supporting Interpretation",
+          "The following summaries describe the reference exAL-M-T1 fit at December 25, 2022. Parameter intervals and historical latent-"
+        ]
+      },
+      {
+        "page": 20,
+        "pdf_whitespace_tokens": 196,
+        "bbox_word_count": 191,
+        "bbox_line_count": 14,
+        "body_text_y_min": 293.6,
+        "body_text_y_max": 725.28,
+        "first_lines": [
+          "20                                                                                                                  De Leon ET AL.",
+          "FIGURE 7 Posterior mean and approximate 95% VB credible intervals of river-flow quantiles during the dry period (2012\u2013",
+          "2016), estimated from the exAL-M-T1 model at the December 25, 2022 origin. Shown are the 5th (red), 50th (green), and 95th"
+        ]
+      },
+      {
+        "page": 21,
+        "pdf_whitespace_tokens": 401,
+        "bbox_word_count": 396,
+        "bbox_line_count": 30,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 724.96,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                21",
+          "as defined in Subsection 4.1. The component is broadly aligned across the three quantiles and varies over multi-year dry and",
+          "wet phases in the historical record, illustrating how the selected state-space model separates long-cycle behavior from trend,"
+        ]
+      },
+      {
+        "page": 22,
+        "pdf_whitespace_tokens": 405,
+        "bbox_word_count": 406,
+        "bbox_line_count": 36,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 689.24,
+        "first_lines": [
+          "22                                                                                                                     De Leon ET AL.",
+          "discharge scale. Calibration, sharpness, forecast horizon and scoring scale address different practical aspects of prediction. The",
+          "member-level likelihood additionally assumes conditional residual independence and a shared source scale across leads; the"
+        ]
+      },
+      {
+        "page": 23,
+        "pdf_whitespace_tokens": 359,
+        "bbox_word_count": 357,
+        "bbox_line_count": 124,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 706.49,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                 23",
+          "APPENDIX",
+          "A SUPPLEMENTARY PARAMETER SUMMARIES AND ILLUSTRATIONS"
+        ]
+      },
+      {
+        "page": 24,
+        "pdf_whitespace_tokens": 552,
+        "bbox_word_count": 547,
+        "bbox_line_count": 122,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 673.5,
+        "first_lines": [
+          "24                                                                                                                            De Leon ET AL.",
+          "The full reference model has lower CRPS than each reduced model at all five origins over both horizons. All reduced-model",
+          "scores also exceed the raw GloFAS reference. This is evidence that the selected configuration is sensitive to structural removal"
+        ]
+      },
+      {
+        "page": 25,
+        "pdf_whitespace_tokens": 413,
+        "bbox_word_count": 408,
+        "bbox_line_count": 175,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 725.76,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                   25",
+          "A.3 External References by Forecast Origin",
+          "Table A4 gives the origin-specific scores and climatology-relative skill underlying the aggregate comparison. It retains the eight-"
+        ]
+      },
+      {
+        "page": 26,
+        "pdf_whitespace_tokens": 392,
+        "bbox_word_count": 392,
+        "bbox_line_count": 164,
+        "body_text_y_min": 59.48,
+        "body_text_y_max": 647.74,
+        "first_lines": [
+          "26                                                                                                                         De Leon ET AL.",
+          "TABLE A5 Finite-sample score sensitivity for all saved predictive repre-",
+          "sentations."
+        ]
+      },
+      {
+        "page": 27,
+        "pdf_whitespace_tokens": 396,
+        "bbox_word_count": 393,
+        "bbox_line_count": 239,
+        "body_text_y_min": 73.91,
+        "body_text_y_max": 711.17,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                              27",
+          "TABLE A7         Predictive 95% interval coverage by origin and horizon.",
+          "Method         Jan 2021 Nov 2021 Dec 2021 May 2022 Dec 2022"
+        ]
+      },
+      {
+        "page": 28,
+        "pdf_whitespace_tokens": 271,
+        "bbox_word_count": 269,
+        "bbox_line_count": 93,
+        "body_text_y_min": 61.35,
+        "body_text_y_max": 719.96,
+        "first_lines": [
+          "28                                                                                                                    De Leon ET AL.",
+          "TABLE A9 Posterior Medians and 95% Credible Intervals for the Source-Specific Scale Parameters \ud835\udf0e\ud835\udc57 (\ud835\udf0f) at the Representative",
+          "December 25, 2022 Cutoff"
+        ]
+      },
+      {
+        "page": 29,
+        "pdf_whitespace_tokens": 112,
+        "bbox_word_count": 107,
+        "bbox_line_count": 8,
+        "body_text_y_min": 534.97,
+        "body_text_y_max": 609.06,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                  29",
+          "FIGURE A2 Predictive synthesis panel for the January 23, 2021 cutoff under the selected exAL-M-T1 specification. Observed",
+          "USGS measurements before the origin are shown in green, and held-out USGS verification after the origin is shown in red. The"
+        ]
+      },
+      {
+        "page": 30,
+        "pdf_whitespace_tokens": 113,
+        "bbox_word_count": 108,
+        "bbox_line_count": 8,
+        "body_text_y_min": 534.97,
+        "body_text_y_max": 609.06,
+        "first_lines": [
+          "30                                                                                                                    De Leon ET AL.",
+          "FIGURE A3 Predictive synthesis panel for the November 12, 2021 cutoff under the selected exAL-M-T1 specification.",
+          "Observed USGS measurements before the origin are shown in green, and held-out USGS verification after the origin is shown"
+        ]
+      },
+      {
+        "page": 31,
+        "pdf_whitespace_tokens": 113,
+        "bbox_word_count": 108,
+        "bbox_line_count": 8,
+        "body_text_y_min": 534.97,
+        "body_text_y_max": 609.06,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                  31",
+          "FIGURE A4 Predictive synthesis panel for the December 21, 2021 cutoff under the selected exAL-M-T1 specification.",
+          "Observed USGS measurements before the origin are shown in green, and held-out USGS verification after the origin is shown"
+        ]
+      },
+      {
+        "page": 32,
+        "pdf_whitespace_tokens": 112,
+        "bbox_word_count": 107,
+        "bbox_line_count": 8,
+        "body_text_y_min": 534.97,
+        "body_text_y_max": 609.06,
+        "first_lines": [
+          "32                                                                                                                    De Leon ET AL.",
+          "FIGURE A5 Predictive synthesis panel for the May 11, 2022 cutoff under the selected exAL-M-T1 specification. Observed",
+          "USGS measurements before the origin are shown in green, and held-out USGS verification after the origin is shown in red. The"
+        ]
+      },
+      {
+        "page": 33,
+        "pdf_whitespace_tokens": 680,
+        "bbox_word_count": 824,
+        "bbox_line_count": 126,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 708.59,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                                                        33",
+          "B STATE-SPACE CONSTRUCTION AND COMPUTATIONAL DETAILS",
+          "B.1 Stacked States and Selectors"
+        ]
+      },
+      {
+        "page": 34,
+        "pdf_whitespace_tokens": 528,
+        "bbox_word_count": 565,
+        "bbox_line_count": 48,
+        "body_text_y_min": 56.83,
+        "body_text_y_max": 573.79,
+        "first_lines": [
+          "34                                                                                                                       De Leon ET AL.",
+          "The algorithms use \ud835\udc63 = \ud835\udf0e\ud835\udc62, so the conditional Gaussian variance is \ud835\udc35(\ud835\udefe; \ud835\udc5d0 )\ud835\udf0e\ud835\udc63. The second argument of \ue23a + in the algorithms",
+          "is the underlying Gaussian variance. This separates the augmentation variables from the retrospective products \ud835\udc67\ud835\udc57\ud835\udc61 , and the"
+        ]
+      },
+      {
+        "page": 35,
+        "pdf_whitespace_tokens": 404,
+        "bbox_word_count": 500,
+        "bbox_line_count": 103,
+        "body_text_y_min": 145.56,
+        "body_text_y_max": 635.6,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                         35",
+          "Algorithm 1 Historical-window conditional sampling updates",
+          "Notation:"
+        ]
+      },
+      {
+        "page": 36,
+        "pdf_whitespace_tokens": 319,
+        "bbox_word_count": 407,
+        "bbox_line_count": 60,
+        "body_text_y_min": 170.37,
+        "body_text_y_max": 610.79,
+        "first_lines": [
+          "36                                                                                                                            De Leon ET AL.",
+          "Algorithm 2 Historical-window forward filtering and backward sampling (FFBS)",
+          "Notation:"
+        ]
+      },
+      {
+        "page": 37,
+        "pdf_whitespace_tokens": 478,
+        "bbox_word_count": 568,
+        "bbox_line_count": 103,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 652.02,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                    37",
+          "D VARIATIONAL BAYES ALGORITHMS",
+          "Algorithms 3 and 4 display the historical-window coordinate updates and Gaussian state recursions. In the forecast window, an"
+        ]
+      },
+      {
+        "page": 38,
+        "pdf_whitespace_tokens": 292,
+        "bbox_word_count": 390,
+        "bbox_line_count": 58,
+        "body_text_y_min": 145.37,
+        "body_text_y_max": 635.79,
+        "first_lines": [
+          "38                                                                                                                            De Leon ET AL.",
+          "Algorithm 4 VB-Filtering and VB-Smoothing",
+          "Notation:"
+        ]
+      },
+      {
+        "page": 39,
+        "pdf_whitespace_tokens": 579,
+        "bbox_word_count": 575,
+        "bbox_line_count": 52,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 716.72,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                  39",
+          "References",
+          "Barata, R., Prado, R., & Sans\u00f3, B. (2022). Fast inference for time-varying quantiles via flexible dynamic models with application"
+        ]
+      },
+      {
+        "page": 40,
+        "pdf_whitespace_tokens": 490,
+        "bbox_word_count": 486,
+        "bbox_line_count": 44,
+        "body_text_y_min": 57.45,
+        "body_text_y_max": 599.38,
+        "first_lines": [
+          "40                                                                                                                   De Leon ET AL.",
+          "data/climateindices/list/ National Oceanic and Atmospheric Administration. Retrieved November 14, 2024.",
+          "Pe\u00f1a, D., Smucler, E., & Yohai, V. J. (2020). gdpc: An R package for generalized dynamic principal components. Journal"
+        ]
+      }
+    ],
+    "table_note_source_whitespace_tokens": 705,
+    "table_include_count": 15,
+    "explicit_clearpage_count": 3,
+    "explicit_FloatBarrier_count": 0
+  },
+  "current": {
+    "pdf_path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/wileyNJD-APA.pdf",
+    "sha256": "1a988e156182e94afd13f019003222d61c826a25c35babbeb79a50269d738bd7",
+    "pdf_whitespace_tokens": 18651,
+    "page_count": 44,
+    "parts": [
+      {
+        "name": "Main including statements",
+        "start_page": 1,
+        "end_page": 20,
+        "page_count": 20,
+        "pdf_whitespace_tokens": 10274
+      },
+      {
+        "name": "Appendix A",
+        "start_page": 21,
+        "end_page": 35,
+        "page_count": 15,
+        "pdf_whitespace_tokens": 3907
+      },
+      {
+        "name": "Appendix B",
+        "start_page": 36,
+        "end_page": 38,
+        "page_count": 3,
+        "pdf_whitespace_tokens": 1870
+      },
+      {
+        "name": "Appendices C and D algorithm pages",
+        "start_page": 39,
+        "end_page": 42,
+        "page_count": 4,
+        "pdf_whitespace_tokens": 1508
+      },
+      {
+        "name": "References",
+        "start_page": 43,
+        "end_page": 44,
+        "page_count": 2,
+        "pdf_whitespace_tokens": 1092
+      }
+    ],
+    "pages": [
+      {
+        "page": 1,
+        "pdf_whitespace_tokens": 350,
+        "bbox_word_count": 350,
+        "bbox_line_count": 43,
+        "body_text_y_min": 71.01,
+        "body_text_y_max": 700.39,
+        "first_lines": [
+          "RESEARCH ARTICLE",
+          "Bayesian Quantile-Based Correction and Synthesis of Hydrologic",
+          "Products"
+        ]
+      },
+      {
+        "page": 2,
+        "pdf_whitespace_tokens": 724,
+        "bbox_word_count": 721,
+        "bbox_line_count": 50,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 694.95,
+        "first_lines": [
+          "2                                                                                                                    De Leon ET AL.",
+          "the available hydrological and meteorological information to a predictive distribution that describes both routine conditions and",
+          "the tails relevant to floods and droughts."
+        ]
+      },
+      {
+        "page": 3,
+        "pdf_whitespace_tokens": 311,
+        "bbox_word_count": 307,
+        "bbox_line_count": 40,
+        "body_text_y_min": 292.16,
+        "body_text_y_max": 710.25,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                        3",
+          "FIGURE 1 Observed USGS daily water flow on the log(1+\ud835\udc65) scale, with \ud835\udc65 measured in m3 /s, May 29, 1987 through December",
+          "25, 2022. Horizontal dashed lines show approximate current-rating discharge equivalents of the current NWS minor and major"
+        ]
+      },
+      {
+        "page": 4,
+        "pdf_whitespace_tokens": 494,
+        "bbox_word_count": 489,
+        "bbox_line_count": 32,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 458.06,
+        "first_lines": [
+          "4                                                                                                                       De Leon ET AL.",
+          "including dry days; there is no separate precipitation occurrence or intensity model. ERA5-Land supplies a reanalysis-based",
+          "land-state covariate with uncertainty, while USGS discharge supplies the verification target."
+        ]
+      },
+      {
+        "page": 5,
+        "pdf_whitespace_tokens": 348,
+        "bbox_word_count": 356,
+        "bbox_line_count": 25,
+        "body_text_y_min": 386.17,
+        "body_text_y_max": 718.14,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                        5",
+          "FIGURE 2 Information available around the December 25, 2022 forecast origin, spanning November 27, 2022 through Jan-",
+          "uary 22, 2023 on the log(1 + \ud835\udc65) scale with \ud835\udc65 in m3 /s. Before the origin, the panel shows USGS observations and the NWS"
+        ]
+      },
+      {
+        "page": 6,
+        "pdf_whitespace_tokens": 889,
+        "bbox_word_count": 993,
+        "bbox_line_count": 91,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 685.56,
+        "first_lines": [
+          "6                                                                                                                             De Leon ET AL.",
+          "3.2     State-Space Model Specification",
+          "For a fixed target quantile \ud835\udc5d0 , we use a state-space model for the transformed discharge log(1 + \ud835\udc65). Its latent process spans"
+        ]
+      },
+      {
+        "page": 7,
+        "pdf_whitespace_tokens": 676,
+        "bbox_word_count": 706,
+        "bbox_line_count": 58,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 724.99,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                          7",
+          "3.3       Prior Specification and Discounting",
+          "To complete the model we specify prior distributions for the initial states, the scale, and skewness parameters. Following Barata"
+        ]
+      },
+      {
+        "page": 8,
+        "pdf_whitespace_tokens": 749,
+        "bbox_word_count": 783,
+        "bbox_line_count": 64,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 716.74,
+        "first_lines": [
+          "8                                                                                                                           De Leon ET AL.",
+          "adj",
+          "Each fit\u2019s draws are shifted by \ud835\udc5a\u2217\ud835\udcc1,\ud835\udc61 \u2212 \ud835\udc5e\ud835\udcc1,\ud835\udc61 . Write \ud835\udc44\ud835\udcc1,\ud835\udc61 for the empirical quantile function of the shifted draws. For \ud835\udf0f\ud835\udcc1 < \ud835\udc62 < \ud835\udf0f\ud835\udcc1+1 ,"
+        ]
+      },
+      {
+        "page": 9,
+        "pdf_whitespace_tokens": 720,
+        "bbox_word_count": 715,
+        "bbox_line_count": 50,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 721.75,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                         9",
+          "For the forecast-window covariance prior, the parameter \ud835\udf16 controls the prior weight assigned to the covariance structure",
+          "learned before the cutoff. Smaller values give less prior weight to the pre-cutoff covariance and allow greater adaptation during"
+        ]
+      },
+      {
+        "page": 10,
+        "pdf_whitespace_tokens": 634,
+        "bbox_word_count": 660,
+        "bbox_line_count": 80,
+        "body_text_y_min": 59.48,
+        "body_text_y_max": 711.64,
+        "first_lines": [
+          "10                                                                                                                         De Leon ET AL.",
+          "TABLE 2       Questions addressed by comparisons among Bayesian model specifications.",
+          "Modeling role                  Reported comparison                         Interpretation"
+        ]
+      },
+      {
+        "page": 11,
+        "pdf_whitespace_tokens": 607,
+        "bbox_word_count": 621,
+        "bbox_line_count": 51,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 632.23,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                   11",
+          "To give these scores a reference point, we also report the CRPS skill score (CRPSS) relative to seasonal climatology (Wilks",
+          "2019),"
+        ]
+      },
+      {
+        "page": 12,
+        "pdf_whitespace_tokens": 254,
+        "bbox_word_count": 251,
+        "bbox_line_count": 20,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 690.13,
+        "first_lines": [
+          "12                                                                                                                      De Leon ET AL.",
+          "5     RESULTS",
+          "5.1     Predictive Synthesis Illustration"
+        ]
+      },
+      {
+        "page": 13,
+        "pdf_whitespace_tokens": 532,
+        "bbox_word_count": 528,
+        "bbox_line_count": 101,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 723.14,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                  13",
+          "5.2       Comparative Forecast Performance",
+          "Table 3 reports mean 28-day forecast-window CRPS. The multivariate rows use all available source channels, including NWS"
+        ]
+      },
+      {
+        "page": 14,
+        "pdf_whitespace_tokens": 455,
+        "bbox_word_count": 452,
+        "bbox_line_count": 139,
+        "body_text_y_min": 59.48,
+        "body_text_y_max": 718.42,
+        "first_lines": [
+          "14                                                                                                                             De Leon ET AL.",
+          "TABLE 4 Mean continuous ranked probability score (CRPS) over the common forecast leads 1\u20138. Bold identifies the lowest",
+          "score in each origin column."
+        ]
+      },
+      {
+        "page": 15,
+        "pdf_whitespace_tokens": 457,
+        "bbox_word_count": 454,
+        "bbox_line_count": 193,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 718.22,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                  15",
+          "The selected quantile model improves on all three benchmark forecasts at the other four origins. Seasonal climatology itself",
+          "outperforms EMOS-GLOFAS in November 2021, including 28-day scores of 0.09588 versus 0.24060. Thus an established"
+        ]
+      },
+      {
+        "page": 16,
+        "pdf_whitespace_tokens": 590,
+        "bbox_word_count": 588,
+        "bbox_line_count": 96,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 675.97,
+        "first_lines": [
+          "16                                                                                                                               De Leon ET AL.",
+          "For exAL-M-T1, the predictive quantiles from individual fits cross on 61 of the 140 forecast dates; neither their isotonic",
+          "projection nor the final synthesized quantiles cross. The mean check loss averaged over the seven probabilities decreases from"
+        ]
+      },
+      {
+        "page": 17,
+        "pdf_whitespace_tokens": 345,
+        "bbox_word_count": 340,
+        "bbox_line_count": 27,
+        "body_text_y_min": 360.25,
+        "body_text_y_max": 711.24,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                      17",
+          "FIGURE 4 Empirical quantile reliability across the five forecast origins, separately for eight-day and 28-day horizons. Curves",
+          "show the frequency of observations at or below each predictive quantile for exAL-M-T1 and the raw-product, EMOS and seasonal"
+        ]
+      },
+      {
+        "page": 18,
+        "pdf_whitespace_tokens": 450,
+        "bbox_word_count": 449,
+        "bbox_line_count": 67,
+        "body_text_y_min": 57.28,
+        "body_text_y_max": 685.01,
+        "first_lines": [
+          "18                                                                                                                        De Leon ET AL.",
+          "can omit posterior dependence (Blei, Kucukelbir, & McAuliffe 2017); neither a narrow interval nor the predictive-coverage anal-",
+          "ysis establishes exact parameter-posterior calibration. Observation predictive intervals additionally include observation variation"
+        ]
+      },
+      {
+        "page": 19,
+        "pdf_whitespace_tokens": 481,
+        "bbox_word_count": 476,
+        "bbox_line_count": 40,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 664.1,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                  19",
+          "6      DISCUSSION AND CONCLUSIONS",
+          "The proposed framework links gauge observations, retrospective products, and forecast ensembles through a dynamic quantile"
+        ]
+      },
+      {
+        "page": 20,
+        "pdf_whitespace_tokens": 208,
+        "bbox_word_count": 207,
+        "bbox_line_count": 17,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 300.49,
+        "first_lines": [
+          "20                                                                                                                     De Leon ET AL.",
+          "DATA AVAILABILITY STATEMENT",
+          "The analysis data, statistical code, numerical results, and data-source documentation for the quantile-model analysis are avail-"
+        ]
+      },
+      {
+        "page": 21,
+        "pdf_whitespace_tokens": 287,
+        "bbox_word_count": 287,
+        "bbox_line_count": 22,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 725.76,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                        21",
+          "APPENDIX",
+          "A SUPPLEMENTARY DATA, RESULTS, AND INTERPRETATION"
+        ]
+      },
+      {
+        "page": 22,
+        "pdf_whitespace_tokens": 321,
+        "bbox_word_count": 317,
+        "bbox_line_count": 22,
+        "body_text_y_min": 368.32,
+        "body_text_y_max": 652.47,
+        "first_lines": [
+          "22                                                                                                                         De Leon ET AL.",
+          "FIGURE A2 GloFAS and NWS retrospective discharge series over their available historical coverage for the December 25,",
+          "2022 origin, May 29, 1987 through December 25, 2022. Displayed flow values use the log(1 + \ud835\udc65) scale with \ud835\udc65 in m3 /s."
+        ]
+      },
+      {
+        "page": 23,
+        "pdf_whitespace_tokens": 419,
+        "bbox_word_count": 422,
+        "bbox_line_count": 127,
+        "body_text_y_min": 59.48,
+        "body_text_y_max": 725.61,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                    23",
+          "TABLE A1 Component-removal sensitivity of the exAL-M-T1 specification: mean CRPS over forecast leads 1\u201328. Bold",
+          "identifies the lowest score among the full and reduced models in each origin column."
+        ]
+      },
+      {
+        "page": 24,
+        "pdf_whitespace_tokens": 480,
+        "bbox_word_count": 476,
+        "bbox_line_count": 263,
+        "body_text_y_min": 62.93,
+        "body_text_y_max": 720.12,
+        "first_lines": [
+          "24                                                                                                           De Leon ET AL.",
+          "TABLE A3 Stopping classifications for the model-comparison and",
+          "component-removal fits."
+        ]
+      },
+      {
+        "page": 25,
+        "pdf_whitespace_tokens": 461,
+        "bbox_word_count": 458,
+        "bbox_line_count": 147,
+        "body_text_y_min": 59.48,
+        "body_text_y_max": 677.98,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                 25",
+          "TABLE A5 Exact empirical-distribution CRPS and skill relative to sea-",
+          "sonal climatology."
+        ]
+      },
+      {
+        "page": 26,
+        "pdf_whitespace_tokens": 218,
+        "bbox_word_count": 218,
+        "bbox_line_count": 83,
+        "body_text_y_min": 262.18,
+        "body_text_y_max": 522.49,
+        "first_lines": [
+          "26                                                                                                         De Leon ET AL.",
+          "TABLE A7        Exact empirical-distribution forecast scores on the discharge scale.",
+          "Method                28-day CRPS 28-day CRPSS      8-day CRPS   8-day CRPSS"
+        ]
+      },
+      {
+        "page": 27,
+        "pdf_whitespace_tokens": 448,
+        "bbox_word_count": 447,
+        "bbox_line_count": 243,
+        "body_text_y_min": 61.89,
+        "body_text_y_max": 721.16,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                               27",
+          "TABLE A8 Central 95% observation predictive interval coverage by",
+          "origin and horizon."
+        ]
+      },
+      {
+        "page": 28,
+        "pdf_whitespace_tokens": 163,
+        "bbox_word_count": 162,
+        "bbox_line_count": 88,
+        "body_text_y_min": 282.41,
+        "body_text_y_max": 499.38,
+        "first_lines": [
+          "28                                                                                                                         De Leon ET AL.",
+          "TABLE A10 Approximate variational posterior medians and central 95% credible intervals for source-specific scale \ud835\udf0e \ud835\udc60 (\ud835\udc5d0 ) at",
+          "December 25, 2022."
+        ]
+      },
+      {
+        "page": 29,
+        "pdf_whitespace_tokens": 334,
+        "bbox_word_count": 330,
+        "bbox_line_count": 24,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 655.5,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                 29",
+          "A.7 Historical Components Across Hydrological Regimes",
+          "To illustrate how the model behaves across contrasting hydrological conditions, we show posterior quantile dynamics for the"
+        ]
+      },
+      {
+        "page": 30,
+        "pdf_whitespace_tokens": 138,
+        "bbox_word_count": 134,
+        "bbox_line_count": 10,
+        "body_text_y_min": 293.58,
+        "body_text_y_max": 651.72,
+        "first_lines": [
+          "30                                                                                                                De Leon ET AL.",
+          "FIGURE A4 Posterior mean and approximate 95% VB credible intervals of conditional river-flow quantiles on the log(1 + \ud835\udc65)",
+          "scale, with \ud835\udc65 in m3 /s, during the wet period (2017\u20132019), estimated from the exAL-M-T1 model at the December 25, 2022 origin."
+        ]
+      },
+      {
+        "page": 31,
+        "pdf_whitespace_tokens": 188,
+        "bbox_word_count": 184,
+        "bbox_line_count": 12,
+        "body_text_y_min": 420.72,
+        "body_text_y_max": 576.31,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                  31",
+          "FIGURE A6 Univariate transfer-active predictive distribution for river flow on the log(1 + \ud835\udc65) scale, with \ud835\udc65 measured in m3 /s,",
+          "at the December 25, 2022 forecast origin. Observed measurements before the origin are shown in green, and held-out USGS"
+        ]
+      },
+      {
+        "page": 32,
+        "pdf_whitespace_tokens": 112,
+        "bbox_word_count": 107,
+        "bbox_line_count": 8,
+        "body_text_y_min": 534.97,
+        "body_text_y_max": 609.06,
+        "first_lines": [
+          "32                                                                                                                    De Leon ET AL.",
+          "FIGURE A7 Predictive synthesis panel for the January 23, 2021 cutoff under the selected exAL-M-T1 specification. Observed",
+          "USGS measurements before the origin are shown in green, and held-out USGS verification after the origin is shown in red. The"
+        ]
+      },
+      {
+        "page": 33,
+        "pdf_whitespace_tokens": 113,
+        "bbox_word_count": 108,
+        "bbox_line_count": 8,
+        "body_text_y_min": 534.97,
+        "body_text_y_max": 609.06,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                  33",
+          "FIGURE A8 Predictive synthesis panel for the November 12, 2021 cutoff under the selected exAL-M-T1 specification.",
+          "Observed USGS measurements before the origin are shown in green, and held-out USGS verification after the origin is shown"
+        ]
+      },
+      {
+        "page": 34,
+        "pdf_whitespace_tokens": 113,
+        "bbox_word_count": 108,
+        "bbox_line_count": 8,
+        "body_text_y_min": 534.97,
+        "body_text_y_max": 609.06,
+        "first_lines": [
+          "34                                                                                                                    De Leon ET AL.",
+          "FIGURE A9 Predictive synthesis panel for the December 21, 2021 cutoff under the selected exAL-M-T1 specification.",
+          "Observed USGS measurements before the origin are shown in green, and held-out USGS verification after the origin is shown"
+        ]
+      },
+      {
+        "page": 35,
+        "pdf_whitespace_tokens": 112,
+        "bbox_word_count": 107,
+        "bbox_line_count": 8,
+        "body_text_y_min": 534.97,
+        "body_text_y_max": 609.06,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                  35",
+          "FIGURE A10 Predictive synthesis panel for the May 11, 2022 cutoff under the selected exAL-M-T1 specification. Observed",
+          "USGS measurements before the origin are shown in green, and held-out USGS verification after the origin is shown in red. The"
+        ]
+      },
+      {
+        "page": 36,
+        "pdf_whitespace_tokens": 600,
+        "bbox_word_count": 623,
+        "bbox_line_count": 51,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 680.4,
+        "first_lines": [
+          "36                                                                                                                        De Leon ET AL.",
+          "B STATE-SPACE CONSTRUCTION AND COMPUTATIONAL DETAILS",
+          "B.1 Computing Time"
+        ]
+      },
+      {
+        "page": 37,
+        "pdf_whitespace_tokens": 732,
+        "bbox_word_count": 878,
+        "bbox_line_count": 131,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 722.68,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                                                               37",
+          "B.5 Stacked States and Selectors",
+          "For the stacked state in Subsection 3.2, define"
+        ]
+      },
+      {
+        "page": 38,
+        "pdf_whitespace_tokens": 538,
+        "bbox_word_count": 573,
+        "bbox_line_count": 49,
+        "body_text_y_min": 56.83,
+        "body_text_y_max": 586.79,
+        "first_lines": [
+          "38                                                                                                                       De Leon ET AL.",
+          "The algorithms use \ud835\udc63 = \ud835\udf0e\ud835\udc62, so the conditional Gaussian variance is \ud835\udc35(\ud835\udefe; \ud835\udc5d0 )\ud835\udf0e\ud835\udc63. The second argument of \ue23a + in the algorithms",
+          "is the underlying Gaussian variance. This separates the augmentation variables from the retrospective products \ud835\udc67\ud835\udc57\ud835\udc61 , and the"
+        ]
+      },
+      {
+        "page": 39,
+        "pdf_whitespace_tokens": 401,
+        "bbox_word_count": 504,
+        "bbox_line_count": 102,
+        "body_text_y_min": 145.87,
+        "body_text_y_max": 635.29,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                         39",
+          "Algorithm 1 Historical-window conditional sampling updates",
+          "Notation:"
+        ]
+      },
+      {
+        "page": 40,
+        "pdf_whitespace_tokens": 319,
+        "bbox_word_count": 407,
+        "bbox_line_count": 60,
+        "body_text_y_min": 170.37,
+        "body_text_y_max": 610.79,
+        "first_lines": [
+          "40                                                                                                                            De Leon ET AL.",
+          "Algorithm 2 Historical-window forward filtering and backward sampling (FFBS)",
+          "Notation:"
+        ]
+      },
+      {
+        "page": 41,
+        "pdf_whitespace_tokens": 480,
+        "bbox_word_count": 570,
+        "bbox_line_count": 103,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 652.02,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                    41",
+          "D VARIATIONAL BAYES ALGORITHMS",
+          "Algorithms 3 and 4 display the historical-window coordinate updates and Gaussian state recursions. In the forecast window, an"
+        ]
+      },
+      {
+        "page": 42,
+        "pdf_whitespace_tokens": 308,
+        "bbox_word_count": 409,
+        "bbox_line_count": 61,
+        "body_text_y_min": 132.37,
+        "body_text_y_max": 648.79,
+        "first_lines": [
+          "42                                                                                                                            De Leon ET AL.",
+          "Algorithm 4 VB-Filtering and VB-Smoothing",
+          "Notation:"
+        ]
+      },
+      {
+        "page": 43,
+        "pdf_whitespace_tokens": 579,
+        "bbox_word_count": 574,
+        "bbox_line_count": 52,
+        "body_text_y_min": 57.29,
+        "body_text_y_max": 716.69,
+        "first_lines": [
+          "De Leon ET AL.                                                                                                                  43",
+          "References",
+          "Barata, R., Prado, R., & Sans\u00f3, B. (2022). Fast inference for time-varying quantiles via flexible dynamic models with application"
+        ]
+      },
+      {
+        "page": 44,
+        "pdf_whitespace_tokens": 513,
+        "bbox_word_count": 510,
+        "bbox_line_count": 46,
+        "body_text_y_min": 57.45,
+        "body_text_y_max": 625.38,
+        "first_lines": [
+          "44                                                                                                                   De Leon ET AL.",
+          "Retrieved August 5, 2026, from https://www.cnrfc.noaa.gov/obsRiver_hc.php?id=BTEC1.",
+          "NOAA Physical Sciences Laboratory. (n.d.). Climate indices: List and descriptions. Retrieved from https://psl.noaa.gov/"
+        ]
+      }
+    ],
+    "table_note_source_whitespace_tokens": 1372,
+    "table_include_count": 15,
+    "explicit_clearpage_count": 3,
+    "explicit_FloatBarrier_count": 1
+  },
+  "method": "pdftotext -layout whitespace tokens; these include headings, running headers, equations, table cells, captions, citations and references and are not a journal prose word count. Bounding-box word/line counts come from pdftotext -bbox-layout XML; word splitting differs for math. y coordinates in PDF points from top; body filter45<yMin<745 excludes most running heads. Table-note source whitespace counts include TeX notation and measure relative wording expansion only."
+}

@@ -1,0 +1,738 @@
+READABILITY AND LENGTH REDUCTION: REFINED PLAN, VERSION 2
+Prepared November 8, 2026 (America/Los_Angeles). Planning and read-only audit only.
+Supersedes PLAN_v1_unchanged.txt on the explicitly documented decisions below.
+
+DECISION
+
+Retain the six-section scientific argument, shorten its ordinary prose by about
+one quarter, prefer three main tables and three main figures, and
+replace the attached appendix catalogue with a shorter, independently readable
+Supporting Information document. Remove genuinely secondary material from the
+submitted reading package while retaining its original files in the repository.
+Do not count a transfer to Supporting Information as a reduction in total length.
+
+Reviewed scientific content: Corrected-3 commit
+0cf6d99e3d1c59afaec9db4137e80a65eb1d5cd0 and its identical 44-page PDF.
+Live GitHub main is b2e0b82e9e65d6e9bbd09daa0a4b54d6f04546d0, two
+commits ahead. A read-only comparison confirms identical file contents, with four
+executable-mode changes only. The content audit remains applicable; reconcile
+that metadata/history before implementing, as specified in Stage 0 below.
+No manuscript, figure, table, model, canonical Git ref or remote is changed by this
+audit. Planning records and a temporary bare remote-inspection repository are only
+in /tmp/environmetrics_readability_refinement_20261108/. The canonical local
+article remains clean at 0cf6d99. The submitted Corrected-2 archive remains untouched.
+
+
+VERSION-2 DECISION RECORD
+
+Retained from v1: six main sections; economical prose; three preferred main tables;
+three preferred main figures with representative source context; complete per-origin
+and adverse evidence in SI; optional inventories/illustrations retained in repo;
+independent SI; original numerical files unchanged; no fits or new forecast scores.
+
+Changes justified by this audit:
+R0. Live remote differs by four executable bits; reconcile history/modes first.
+R1. Expand Main Table 1 from seven to all 14 methods so main component comparisons
+    have direct numerical evidence. Use already saved quantile-grid scores/skills.
+R2. Use the unified CSVs directly; preserve metric/scale keys, NWS missingness and
+    the exact-versus-grid distinction. No scientific joins of TeX are needed.
+R3. Establish two-document scope before relocation; add deterministic regeneration
+    and active-document coverage before claiming a split is validated.
+R4. Preserve the generalized inverse-Gaussian (GIG) parameterization and distinctive
+    variational Bayes (VB) formulas before cutting the historical algorithms or
+    citing standard Gaussian recursions.
+R5. Treat the five-axis history composite as optional; no compact plot-data bundle
+    is available in the article for an immediate numeric redraw. Keep two pages if
+    needed. Four forecast redraws DO have exact compact numerical inputs.
+R6. Use a 30--34 combined-page planning range; pursue 28--32 only after proof.
+R7. Fix README/template and generated-asset classification together so later refresh
+    or Overleaf recovery does not silently undo the new presentation.
+
+Independent findings are in sources_review.txt, wiring_review.txt and
+editorial_review.txt. The code-path and check-migration specification is in
+wiring_review.txt; exact data keys/columns/row counts are in sources_review.txt. The unchanged v1 plan is archived alongside this document.
+The current audit creates planning records only; all repairs and edits are pending.
+
+1. WHAT THE AUDIT ESTABLISHED
+
+Current physical document:
+  Main article and declarations: pages 1--20, 20 pages.
+  Appendix A, supporting data/results/interpretation: 21--35, 15 pages.
+  Appendix B, technical construction: principally 36--38, 3 pages.
+  Appendix C/D algorithm displays: 39--42, 4 pages.
+  References: 43--44, 2 pages.
+  Total: 44 pages; main including references: 22 pages.
+The Appendix C introduction begins near the bottom of page 38; the page ranges
+above account for physical pages rather than perfectly disjoint section text.
+
+The preceding 40-page proof had 22 main/declaration pages, 10 Appendix A pages,
+2 Appendix B pages, 4 algorithm pages and 2 reference pages. The main article
+therefore already shortened by two pages. The four-page net increase came from
+six more appendix pages, offset by the shorter main article.
+
+The present submission contains 18 tables (8 main, 10 appendix), 14 figures
+(4 main, 10 appendix) and four algorithm displays. Four additional-origin figures
+alone occupy four pages, 32--35. Pages 26 and 28 are sparse table-only pages.
+Page 20 contains only the tail of the availability statements.
+
+Across the 15 included table fragments, table-note source tokens increased from
+705 to 1,372 in the last revision. Many notes explain model labels absent from
+their own rows. This does not justify removing essential table definitions; it
+identifies opportunities to remove irrelevant keys and use shared notes for
+actual multi-panel tables. Captions expanded only slightly, 1,387 to 1,410 source
+tokens across figures, tables and algorithms.
+
+The main article has approximately 7,124 ordinary-prose tokens, excluding abstract,
+headings, math, figure/table bodies and captions, references and most TeX commands.
+The target is 5,100--5,500 on the SAME approximate counting method, centered near
+5,300. These are editing budgets, not a submission word count. PDF-extracted
+tokens include symbols and table values and must not be compared to prose counts.
+
+Detailed measurements and provenance are in page_audit.txt and page_audit.json;
+main_prose_audit.txt and exhibit_appendix_audit.txt record independent readings.
+
+2. JOURNAL BASIS AND EDITORIAL STANDARD
+
+The current indexed Environmetrics Author Guidelines advise no more than 40 total
+initial-manuscript pages, including abstract, references, tables, figures and
+legends, and encourage separate self-contained Supporting Information for
+ancillary technical details and secondary displays. The same guidance permits
+Free Format submission. Its detailed presentation section describes a 12-point,
+double-spaced manuscript. Therefore the present publisher-style proof is not a
+universal submission-page conversion. Check the final chosen submission format;
+report both main and supporting-document lengths. The supplement needs its own
+title, authors, definitions and cited-reference list.
+Sources checked for this plan:
+https://www.onlinelibrary.wiley.com/page/journal/1099095X/homepage/forauthors.html
+https://onlinelibrary.wiley.com/page/journal/1099095x/homepage/guide.htm
+Direct opening was unavailable; the official pages were available through their
+indexed search text. Recheck journal instructions at the eventual submission.
+
+Editorial decision rule for each paragraph or exhibit:
+  Does it establish the problem/contribution, specify the method, define the
+  evaluation, substantiate a finding, or qualify the interpretation?
+Keep it in main if it is needed to follow that argument. Put detailed evidence in
+Supporting Information when an informed reader can follow the main argument
+without it. Retain optional inventories and illustrations in the repository.
+Delete repeated explanation. Preserve the source and meaning of retained results.
+
+Use one principal location for each definition and result. Introduce necessary
+symbols before use. Keep the short local restatement that makes a table or figure
+independently interpretable. Present a numerical result in a table and explain
+its scientific implication in prose; do not narrate every cell. Compress repeated
+qualifications without removing the qualification attached to the relevant claim.
+
+3. PROTECTED SCIENTIFIC CONTENT
+
+Retain in the main article:
+- The environmental question and methodological contribution, with appropriate
+  comparisons to existing correction/combination approaches.
+- The gauge target, transformed scale/units, information roles, forecast origins,
+  source horizons and verification target.
+- The working likelihood and the distinct latent trend/seasonal, source discrepancy
+  and transfer components, including their observation and evolution equations.
+- The distinction between conditional model quantiles, individual predictive
+  quantiles and the synthesized predictive distribution.
+- The VB approximation, what is approximated, the synthesis construction, tail
+  convention and the limits of the posterior-accuracy evidence.
+- The actual nine model configurations, their label meanings and comparison scope.
+- External benchmarks, the actual score convention, sample sizes and the qualified
+  ensemble-size sensitivity, quantitative calibration and discharge-scale findings.
+- Horizon-specific exceptions, the fitting limitations affecting component claims,
+  and conditional interpretation of the covariate coefficients.
+
+All existing fitted values, archived losses, settings and numerical findings remain
+authoritative. The qualitative near-one discount sentence remains verbatim. This
+compression is not a change to the statistical experiment or numerical choices.
+No expensive model work is required for any preferred action below.
+
+4. MAIN ARTICLE: EVERY SECTION AND SUBSECTION
+
+Front matter
+Abstract, line 63: retain a self-contained summary, the actual contribution, both
+horizons, skill/coverage findings and a brief qualification. The present 171 words
+are already economical; target 150--170 if a natural cut is available. Replace
+long agency-name sequences with a plain description of the data products rather
+than introduce undefined acronyms. Do not cut the calibration finding to save a line.
+Abbreviations block, line 70: omit the stand-alone block if journal requirements
+allow; each acronym already has an inline introduction. First verify main and
+abstract independently. This is a minor saving, not a major length intervention.
+
+1. Introduction, line 73 (562 prose tokens; target 400--440)
+Keep four purposeful paragraphs: environmental/statistical problem; the nearest
+existing approaches and precise gap; the three linked contributions; application
+and short roadmap. Source-role explanations now occur in paragraphs 2, 3 and 4,
+then again in data and method. Keep the detailed roles in data/model only. Remove
+repeated formulations of correction versus synthesis; the contribution paragraph
+should state that distinction once. Shorten the sentence-by-sentence section tour
+to one sentence. Retain references supporting actual methodological statements.
+Do not turn the introduction into a catalogue of sources or review responses.
+
+2. Forecasting Setting and Data (710; target 430--500)
+2.1 Study Setting and Observations, line 89: retain station, dates, 12,995 daily
+observations, unit conversion and log(1+x). Reduce the second generic motivation
+paragraph; flood/drought motivation already appears in the introduction. Keep the
+long-record figure as context. Replace information-role Table 1 with approximately
+40--60 words integrated into data exposition; no unique numeric result is lost.
+
+2.2 External Data Sources and Forecast Covariates, line 121: retain source identity,
+the three base covariates, the meaning of the GDPC summary, the retrospective versus
+issued-product roles, member counts and actual scored lead availability. Move the
+full climate-index name list, spatial-resolution/extraction inventory and detailed
+version descriptions into one compact supporting data paragraph. Preserve a clear
+main reference to that documentation. Do not repeat full agency expansions after
+their first main-text definition. Keep the lag/nonlinear covariate specification in
+4.1 instead of describing the same expanded vector here.
+
+2.3 Forecast-Origin Information, line 137: merge this short subsection into 2.2.
+The separate raw-product context figure substantially overlaps the representative
+synthesis illustration. Remove that figure ONLY while retaining raw-product
+context in the main synthesis illustration and retaining the concise source/lead
+availability explanation. Thus the preferred main document has three figures.
+If the retained synthesis cannot convey its source context legibly, keep the
+context figure as a fourth figure rather than remove necessary information.
+
+3. Bayesian Correction and Predictive Synthesis (1,564; target 1,220--1,320)
+Opening, line 150: keep the distinction among conditional, predictive and synthesized
+quantiles. State vector/matrix conventions briefly. Delete a second narrative tour
+of the full construction if the same tour appears in the introduction.
+
+3.1 Quantile Likelihood, line 155: keep this already short subsection. Retain the
+quantile interpretation of location, scale/skewness roles and admissible skewness
+domain, with the augmentation derivation in SI. Compress only the final transition
+sentence; the distribution is integral to the contribution.
+
+3.2 State-Space Model Specification, line 160: KEEP the explicit observation and
+component-evolution equations in main. Keep transformed-observation definitions,
+source/member/lead indices, dimensions and the transfer contribution to the target
+quantile. Following the equations, combine the two explanatory paragraphs that
+currently restate each equation into one component-role paragraph. Define the full
+stacked state once. Keep conditional residual independence, shared source scale
+and the lead-time interpretation in one concise assumptions paragraph. Detailed
+selector vectors/block matrices belong in SI; do not substitute a dense stacked
+model for the readable main component equations.
+
+3.3 Prior Specification and Discounting, line 216: retain the distributions and
+interpretation of evolution discounting. Combine short prior displays into a tidy
+aligned group where legibility permits; remove repeated prose explaining which
+blocks the already defined initial state contains. Keep the compact prior-weight
+interpretation once; SI supplies its full dimensions/formula. Numerical choices
+stay as currently stated. Do not reduce type size or change a mathematical target.
+
+3.4 Posterior Computation, line 231: retain the factorization, Gaussian state update,
+augmentation updates, joint scale/skewness Laplace--Delta approximation and stopping
+criteria. Explain the methodological difference from the cited earlier approach
+once. Keep the posterior-accuracy qualification, package reference and one timing
+sentence. Remove the promotional reference to unused historical sampling displays
+when those displays leave the submitted package. Put standard Gaussian recursion
+details in the compact supporting computation section, not another main tutorial.
+
+3.5 Posterior Predictive Synthesis Across Quantiles, line 242: retain the isotonic
+projection, shift, interpolation and rearrangement equations; these define the
+method. Keep 2,000 predictive values and the outer-tail rule. State the conditional
+versus predictive distinction and the marginal-in-time scope once. Grid size and
+sample-quantile interpolation conventions remain in SI. Remove repeated tail
+explanations elsewhere, retaining correct interval labels in local captions.
+
+4. Application Specification and Evaluation (1,993; target 1,450--1,550)
+4.1 Dynamic Components and Numerical Settings, line 271: keep p=7, m=12, q=34, the
+12 covariates, their standardization and the exploratory status of the slow cycle.
+Avoid repeating exact periods already given beside the supporting rotation matrix;
+main needs the interpretable periods and a reference. Remove generic statements
+that these components permit persistence or nonlinear adjustment once that follows
+from the model. Keep current numerical settings intact. This subsection is not a
+place to obtain savings by silently deleting specification details.
+
+4.2 Forecast Origins and Product Alignment, line 288: give the five exact origins
+once, the two evaluation horizons, the actual hourly-to-daily/issuance rule, and
+verification design. Refer to the source roles already defined in Section 2. Remove
+repeated gauge/retrospective/forecast role explanations and repeated archive-needs
+lists; one appropriate archive statement remains in the discussion/SI.
+
+4.3 Comparison Specifications, line 294: retain the actual nine configurations,
+N/AL/exAL, U/M and T0/T1 meanings, and the non-factorial/inherited-settings scope.
+Delete comparison-question Table 2: its four rows duplicate this prose. Summarize
+the three comparison questions in a sentence. Define the fitting-status assessment
+briefly; report its outcomes in Results and SI, without repeating all qualifications
+here. Keep the distinction between forecast transfer removal and structural removal.
+
+4.4 External Forecasting References, line 323: retain climatology construction,
+persistence point mass and EMOS location/variance equations. Preserve the training
+window, version compatibility, eligible-case rule and minimum cases. The optimizer
+mechanics stay in SI. Remove broad statements about each comparator's practical role
+once the mathematical definitions make that role clear.
+
+4.5 Predictive Scoring by CRPS, line 336: make this the primary scoring definition:
+CRPS, check loss, the actual quantile-grid calculation, orientation and CRPSS. Explain
+matching cases, horizons and averaging once. Retain the distinction between sampled
+values, raw ensembles and deterministic benchmark quantile grids. Remove repetitions
+of the transformed scale already in the data and local table notes. Move ancillary
+exact-score algebra and finite-size correction details to one SI subsection; retain
+an explicit main account of what those sensitivity checks assess.
+
+4.6 Distribution Scores and Predictive Calibration, line 366: consolidate repeated
+numerical scoring explanations with 4.5. Keep unequal draw/member counts, the
+independent-draw qualification, reliability/ties, coverage, interval width/score,
+inverse transformation and the 140/40 verification counts. Detailed empirical-quantile
+conventions and algebra belong together in SI. Preserve the warning against treating
+successive cases as independent replicates. A merged 'Scoring and Calibration'
+subsection is acceptable if clearly separated paragraphs remain easy to navigate.
+
+5. Results (1,639; target 1,150--1,250)
+Reduce seven subsections plus two subsubsections to four substantive subsections:
+forecast illustration; distributional performance; quantile performance/calibration;
+component comparisons and interpretation. Preserve stable conceptual cross-references.
+
+5.1 Predictive Synthesis Illustration, line 388: keep the December 2022 illustration,
+its raw-product context, observed outcomes and 95% band. A short interpretation
+should identify what the plot illustrates; do not narrate every line/color already
+in the caption. Keep observation predictive uncertainty distinct from parameter
+uncertainty. Give one reference to the four other origins in SI, replacing the
+four-item reference list and the univariate-illustration reference.
+
+5.2 Comparative Forecast Performance, line 403: move the full nine-variant per-origin
+matrices to SI. Keep explicit main findings on AL/exAL source inclusion, forecast
+transfer, the Gaussian counterexample and the mixed eight-day ordering. Cite the
+full SI comparison immediately. Do not infer universal component gains or hide poor
+variants behind an aggregate-only table.
+
+5.3 Comparison with External Forecasting References, line 416: merge with 5.2. Expand
+the existing external comparison to ALL FOURTEEN methods as MAIN TABLE 1, retaining
+both horizons and both CRPS/skill columns from the existing aggregate.csv. This
+keeps the nine Bayesian configurations and all five external/raw references visible
+in the main numerical display, at the cost of seven additional rows. NWS has no
+28-day score. Preserve main statements and SI evidence for origin-specific claims. Prose explains the magnitude and the important exceptions:
+NWS short-horizon advantages and EMOS outperforming the reference in May 2022.
+Retain representative concrete values, not a repeated list of every score/skill
+pair. The complete per-origin scores appear in one combined SI matrix.
+
+5.4 Quantile-Specific Forecast Performance, line 425: replace the 140-cell main table
+with MAIN TABLE 2: AL-M-T1, AL-U-T1, exAL-M-T1 and exAL-U-T1 at all seven
+probabilities, pooled over the same 140 daily cases. Keep the full origin-specific table in SI. This is deterministic
+aggregation of archived losses, not a new fit or new forecast scoring exercise.
+Retain crossing counts and pre/post synthesis loss evidence. The pooled table
+must be interpreted as pooled loss, not as the number of origin-specific wins.
+Existing full-precision values show exAL-M-T1 lowest at .05/.20/.35/.50, whereas
+AL-M-T1 is lowest at .65/.80/.95. Preserve that upper-tail qualification.
+
+5.5 Distribution-Score Sensitivity and Calibration, line 435: combine with 5.4 in
+one 'Quantile Performance and Calibration' subsection. Keep MAIN TABLE 3, the
+nine-method coverage/width/interval-score table, and the two-horizon reliability
+figure. These assess different things and both remain. Preserve 123/140 and 29/40
+coverage, the two December failures, wider AL intervals, and the discharge-scale
+ordering reversal. Condense the exact-score sensitivity to a short statement with
+an SI reference. Do not repeat the same coverage numbers in the conclusion.
+
+5.6 Component Sensitivity and Fitting Evidence, line 457: retain one compact
+paragraph on component-removal comparisons and one on the fitting evidence,
+including the full-reference limitation. Keep a representative numerical mismatch
+only if it helps explain why the component claim is limited. Full origin-specific
+scores and classified fitting evidence remain in SI. Remove sentences restating
+'not independent necessity' at several successive locations.
+
+5.7 Supporting Interpretation opening, line 464: remove the separate introductory
+subsection and its roadmap to source-parameter inventories. Place the uncertainty
+qualification with the first relevant parameter interpretation instead.
+5.7.1 Covariate Effects, line 471: move the full coefficient table to SI. Retain an
+approximately 80--100-word main paragraph explaining the negative precipitation
+coefficient conditionally, the terminal state/date and scaling, autoregressive
+transfer role and noncausal interpretation. Its approximate uncertainty remains
+explicit; do not read an isolated coefficient as the total rainfall effect.
+5.7.2 Historical Components, line 479: remove from the submitted narrative along
+with the optional historical-component illustrations. Those plots describe fitted
+historical allocation; the full forecasting/component evidence already remains.
+Retain the model's seasonal construction and exploratory rationale in methods/SI.
+
+6. Discussion and Conclusions, line 483 (424; target 290--330)
+Use three paragraphs: statistical contribution and main practical result; the
+important horizon/calibration/scale/fitting qualifications and their implications;
+a short, prioritized future-work paragraph. Remove the second tour of all methods
+and benchmarks and the second listing of numerical findings. Retain the practical
+message: compare simple references and a single-product correction at the relevant
+horizon, and examine calibration and fitting along with aggregate CRPS.
+
+Declarations and availability, lines 496--515 (232; target 145--175)
+Acknowledgments, funding and conflicts: retain required facts, compact prose only.
+Data availability: one short paragraph with dataset/code/result location and source
+citation; do not repeat the full source catalogue.
+Code availability: retain the package identity/version, public link/DOI and study
+code reference. The generic new-basin preparation/large-archive list duplicates the
+data/evaluation/discussion and can be replaced by one concise sentence there.
+Keep required statement headings. Natural shortening may remove the isolated
+availability tail page; do not guarantee that layout outcome in advance.
+
+References
+Keep citations needed for claims, data, definitions and methods; do not prune relevant
+sources merely to save pages. Move SI-only references to the independent SI reference
+list; duplicate a reference across documents when each independently cites it.
+Avoid long uncited reference inventories. The two-document package may need a small
+reference-list overhead, which is included in the page-budget contingency.
+
+5. ALL EXHIBITS: PREFERRED DISPOSITION
+
+Main tables, current numbering
+  Table 1 information roles: delete table; retain roles in 40--60 words.
+  Table 2 comparison questions: delete table; retain actual comparison definitions.
+  Tables 3/4, all-variant CRPS by origin/horizon: keep all results in combined SI S1.
+  Table 5, aggregate external comparisons: expand as Main Table 1, all 14 methods
+     using the same full-precision quantile-grid aggregate source; no new scoring.
+  Table 6, full quantile-loss grid: retain full grid in SI; new pooled Main Table 2.
+  Table 7, predictive coverage/width/score: retain as Main Table 3, nine rows.
+  Table 8, terminal covariate coefficients: move to SI, keep main interpretation.
+
+Appendix tables, current numbering
+  A1/A2 component removals: combine in one SI table with two horizon panels.
+  A3 convergence classifications: retain an economical SI table. A five-group
+     version can preserve every fit count with explicit group membership and the
+     single converged-reduction exception; omit the all-zero 'Other' column.
+     Do not turn unavailable evidence into numerical failure or erase limitations.
+  A4 external references by origin: merge its unique climatology/persistence/EMOS
+     rows with the all-variant origin table S1. Remove duplicated method/origin
+     CRPS cells. Origin-specific skill is algebraically redundant once the CRPS
+     and climatology row are present; retain full original skill values in repo.
+     Keep aggregate CRPSS in Main Table 1.
+  A5 exact empirical scores and A6 independent-draw sensitivity: combine into one
+     SI table with CRPS, skill and adjusted CRPS under each horizon. Exact-score
+     columns need appear once. Keep inapplicable adjustments as unavailable and
+     the independence qualification. A six-numeric-column layout is conditional
+     on readable typography; if too wide, use two clearly labelled panels.
+  A7 discharge-scale scores: retain complete SI table; distinct scientific scale.
+  A8 coverage by origin: retain SI, with origin heterogeneity visible.
+  A9/A10 skewness/scale inventories: omit from submitted PDFs; keep original tables
+     and marginals in the repository. The methods still specify these parameters,
+     and the retained coefficient summary/main text still states VB uncertainty
+     limitations. Remove manuscript prose that exists only to tour these inventories.
+
+Proposed SI table inventory (eight table objects, some multi-panel)
+  S1 all methods by origin, both horizons (merge current main3/4 and appendixA4).
+  S2 component-removal scores, both horizons (merge A1/A2).
+  S3 compact fitting-status classification (from A3).
+  S4 complete origin-specific quantile check losses (current main6).
+  S5 exact score/skill and independent-draw sensitivity (merge A5/A6).
+  S6 discharge-scale comparison (A7).
+  S7 coverage by origin (A8).
+  S8 terminal covariate coefficients (current main8).
+There are then 3 main plus 8 SI table objects, compared with 18 now. Table-object
+counts describe the preferred design; multi-panel rows still need space. If a
+retained table cannot fit legibly, use clearly labelled horizon panels or a further
+table rather than reduce type or omit required methods. Three tables is a preference,
+not an acceptance test.
+
+Figures, current numbering
+  Main Figure 1, long gauge history: keep; concise units/period/reference caption.
+  Main Figure 2, raw-product context: drop only because retained Main Figure 3
+     supplies raw-product context and Section 2 defines availability.
+  Main Figure 3, representative synthesis: retain as Main Figure 2; keep raw-product
+     context here. A simpler main version would require retaining the separate
+     source-context figure as a fourth figure, so it is not the preferred first pass.
+  Main Figure 4, reliability: retain as Main Figure 3; it is essential calibration
+     evidence, distinct from interval coverage. Keep a legible method key.
+  A1 covariates/A2 retrospective histories: a conditional SI composite with two labelled
+     groups containing FIVE axes in total: three covariates and two products. Use
+     a common date axis where appropriate; preserve units/source identity. Allow
+     two pages if five readable axes cannot fit one page.
+  A3 dry/A4 wet/A5 slow component: repo-only, with their nonessential interpretation
+     removed from the submitted narrative. No loss of scored forecasting evidence.
+  A6 univariate synthesis: repo-only; its quantitative comparison already remains.
+  A7--A10 other forecast origins: preserve all four cases in TWO SI composite
+     figures/pages, two vertically stacked statistical panels per page, common
+     legend and caption. Retain every event, date, observation, mean and 95% bound.
+     Use mean+band+observations+origin; omit redundant raw overlays and connected
+     marginal draw traces from these SI panels. Full original figures remain in repo.
+     Do not just shrink the tall existing raster with its repeated title/footer.
+
+The preferred inventory is 3 main figure objects and 3 SI composite figures. The SI
+groups the two existing data-history displays and all four additional forecast
+cases. These are figure/group counts: the reliability and data-history displays
+already contain multiple axes, so a simple count of statistical panels is misleading.
+If two-per-page redraws fail legibility, retain more SI pages; never crop verification
+peaks or suppress the December cases to meet a budget.
+
+6. EVERY CURRENT APPENDIX SUBSECTION
+
+A.1 Historical Covariates and Retrospective Products: SI data section. One compact
+source/extraction/index inventory plus a legible five-axis history presentation.
+The current article bundles rasters/metadata, not compact numeric plot inputs;
+try a typeset pairing of the unmodified displays and retain two pages if necessary. Keep data
+preparation sufficiently specified; discard repeated provider prose.
+A.2 Component-Removal Sensitivity: SI comparison section. Two horizon panels and a
+brief interpretation. Keep the reference settings and fitting scope beside results.
+A.3 Numerical Convergence Assessment: SI with compact grouped classifications and
+precise exceptions. Combine repeated definitions of stopping categories; retain the
+underlying fit-level records and distinguish recorded/unknown evidence.
+A.4 External References by Origin: no independent duplicate table/subsection; absorb
+its unique benchmark rows into S1 and keep the major origin exceptions in main.
+A.5 Additional Distribution Checks: SI scoring/calibration section. Merge A5/A6,
+retain discharge-scale and origin-coverage tables. The exact/adjusted formulas and
+quantile conventions have one canonical technical location.
+A.6 Source-Specific Shape and Scale Parameters: remove section and its two typeset
+inventories from submitted PDFs; original evidence remains available in repo.
+A.7 Historical Components: remove section and three optional illustrations from
+submitted PDFs; keep exact seasonal model construction in SI.
+A.8 Univariate Synthesis: remove section/display; comparisons already retain it.
+A.9 Remaining Forecast Origins: SI forecast illustration section; four cases in
+two two-panel figures with a shared explanation, rather than four repeated pages.
+
+B.1 Computing Time: merge its necessary hardware/timing-scope sentence with the
+supporting computation preamble; remove a stand-alone short subsection.
+B.2 Seasonal Rotations: keep compact exact construction, periods and dimensions.
+Define a single rotation template and apply it to the three frequencies. Do not
+repeat the main interpretation of level/seasonal components.
+B.3 Synthesis and Empirical Quantiles: keep 1,001 grid points, 2,000 values, endpoint
+and type-7/type-8/generalized-inverse conventions. Reference the main synthesis/tail
+construction instead of restating it. Present mappings compactly in prose or a short
+aligned definition, not a new large table.
+B.4 EMOS Optimization: one paragraph in numerical details, retaining constraints,
+initialization strategy and optimizer/convergence rule. Keep eligibility/training
+rules in main only; no duplicate benchmark tutorial.
+B.5 Stacked States and Selectors: refer to main eta/q definition; remove reprinted
+observation/evolution laws B1--B4. Keep transfer matrix, selectors, block transition/
+covariance matrices, active-source restriction and M_t definition. These are genuinely
+additional details, not a second model exposition.
+B.6 exAL Augmentation: keep the admissible domain, latent representation and A/B/C
+functions used by the VB equations. One clear note defines v=σu and truncated-normal
+variance convention. These definitions support the computation and cannot all be
+replaced with a generic citation.
+B.7 Forecast-Window Covariance Prior: retain full formula/dimensions once. Main gives
+its interpretation; SI need not repeat the full interpretative paragraph.
+B.8 Laplace--Delta Approximation: retain kernel, mode/curvature and second-order
+expectation formulas with precise unknown/density definitions. Merge with the compact
+VB update account and remove a second explanation of the same coordinate-ascent cycle.
+
+C. Historical MCMC Algorithms: remove the two algorithm displays from the submitted
+PDFs; retain the corrected technical note/code in repo. Before deletion, move the
+unique GIG density convention to retained augmentation/VB details and repair all
+dependencies on Algorithm 1/2. Preserve the actual application VB mathematics.
+These historical conditional identities are not the computation producing the
+application summaries or an empirical posterior comparison. Keep the main accuracy
+limitation; removing these displays does not supply new accuracy evidence.
+
+D. Variational Bayes Algorithms: retain the actual application computation in SI.
+Combine repeated notation and source definitions once. Use one coordinate-update
+algorithm plus the necessary Gaussian precision/offset and smoothing-moment formulas.
+Cite standard filtering/smoothing recursions or state them once; do not print the same
+full forward/backward machinery twice. Preserve non-conjugate update details,
+iteration conventions, convergence conditions and historical/forecast scope. If a
+readable combined display is longer, allow it more pages rather than omit the method.
+
+7. VERIFIED FEASIBILITY WITHOUT MODEL WORK
+
+Compact main quantile table:
+artifacts/he4_quantile_check_loss_current_publication/
+  he4_quantile_check_loss_per_day.csv: 3,920 stored loss rows.
+  he4_quantile_check_loss_long.csv: 140 stored origin-summary rows.
+There are 28 method/probability groups, each containing 140 daily cases. Audit
+aggregation of daily losses agrees with stored origin means to numerical precision.
+A future table must average full-precision stored losses with explicit daily-case
+weights. Never average the rounded five-decimal cells. Label its 28-day/140-case
+scope and retain all seven probabilities; archive the source hash and aggregation.
+
+Compact forecast illustrations:
+Every origin directory under artifacts/five_cutoff_main_model_synthesis/ contains
+47-row *_focus_render_numeric_contract.csv with date, segment, observed, model_mean,
+interval_low and interval_high. These supply the exact displayed 95% band and mean
+without reading model fits or generating new predictions. q05/q95 also appear in
+those files but are 90% limits, so they MUST NOT replace interval_low/interval_high.
+The retained per-origin plots can be redrawn directly from these summaries.
+
+The merged exact-score/skill/adjustment table can use full-precision fields in
+artifacts/no_refit_revision/results/summary_pooled.csv: all 14 methods and 27 valid
+method/horizon combinations on each scale. Use stored skills and unavailable
+adjustment codes directly, rather than reconstruct them from rounded scores.
+
+Main Table 1 is already supplied by aggregate.csv under artifacts/comment2_revision/
+external_baselines/: 27 available method/horizon rows, covering all 14 methods.
+S1 is supplied directly by by_origin_horizon.csv in that directory: 135 unique
+method/origin/horizon rows. All 105 cells in the current main variant matrices
+agree with that authority within existing numeric precision. Use these direct
+sources rather than a new join of rendered TeX or runtime results.
+
+The compact convergence table uses five disjoint groups from fit_ledger.csv:
+Gaussian configurations 15 fits (15 converged); univariate AL/exAL 70 (unknown);
+multivariate quantile configurations 140 (iteration limit); noH1 reductions 35
+(one converged, 34 limited); other reductions 140 (limited). These preserve
+400 fits in 70 runs, with totals 16 converged/314 limited/70 unknown. Name the
+January 2021 median noH1 exception and the full reference's 35 limited fits.
+
+Other tables reuse existing numerical cells with explicit method/origin/horizon
+keys. Grouped fitting counts are sums of existing classifications, with exact group
+membership and exceptions recorded. No scientific row is silently discarded.
+
+8. PAGE AND WORD BUDGETS; WHAT IS AND IS NOT SAVED
+
+Preferred planning target, SAME current publisher-style layout:
+  Main including references: 17--19 pages (currently 22).
+  Independently readable SI including its references: 13--15 pages.
+  Combined reader package: 30--34 pages (currently 44).
+These are a conditional design budget, not a measured result or journal page-count
+conversion. A lower-risk first content/display pass, including selected exhibit removals and
+consolidations, may yield 33--37 total pages. Prose editing alone is expected to
+save only about 2--3 pages.
+A 28--32 combined package is a conditional stretch outcome. The refined plan
+adds seven archived method rows to the main comparison, protects the full unique
+VB computation and allows two history-figure pages. Those requirements justify
+using 30--34 as the primary planning range. The actual proof determines the result.
+
+Approximate genuine savings, NOT additive guarantees:
+  Two explanatory tables: about 0.35--0.65 page.
+  Redundant raw-context figure: about 0.5--0.7 page.
+  Optional historical-component/univariate displays and associated text: 2--3 pages.
+  Skewness/scale inventories and associated text/float slack: about 1--1.5 pages.
+  Historical sampling displays: about 2 pages.
+  Four-origin redraw, four pages to two: about 2 pages.
+  Data-history composite: 0--1 page, conditional on a legible single page.
+  Main prose reduction and removal of repeated explanation: approximately 2--3 pages.
+  Shared notes, merged numeric tables and compact technical computation: further
+    possible savings, with substantial overlap with the preceding estimates.
+New pooled summaries, relocated full comparisons and independent SI references
+consume space. A transfer reduces main pages but yields ZERO combined saving until
+something is genuinely deleted, merged or rendered more economically. Record these
+offsets; do not sum the upper ends of the estimates or promise an exact final count.
+
+Central ordinary-prose budget (same approximate method):
+  Introduction: 562 -> about 420.
+  Data: 710 -> about 470.
+  Method: 1,564 -> about 1,260.
+  Application/evaluation: 1,993 -> about 1,500.
+  Results: 1,639 -> about 1,200.
+  Discussion: 424 -> about 310.
+  Statements: 232 -> about 150.
+  Total: 7,124 -> about 5,310, with acceptable range 5,100--5,500.
+Do not cut protected definitions or supporting evidence just to hit this budget.
+
+9. IMPLEMENTATION ORDER AND GATES IF APPROVED
+
+Stage 0. Reconcile live history and executable metadata in an isolated implementation
+checkout. Preserve b2e0b82 and any newer remote/Overleaf history; never reset to 0cf6d99
+or force-push. The current remote changed 100755 to 100644, with identical blobs, for
+.githooks/pre-push and three archived renderer copies under artifacts/comment1_
+figure_revision/renderer_sources/scripts/. Restore the recorded four modes without
+changing their contents. Verify configuration and run the Python ancestry checker
+explicitly at publication; automatic hook execution must not be the sole check.
+A small idempotent local dispatcher outside the Overleaf-synced working tree is a
+preferred durable installation when compatible with existing hooks. Preserve/chain
+existing hooks; do not introduce a broad CI redesign. No repair is performed now.
+Gate: remote history preserved, content baseline still pinned, four modes restored,
+ancestry validation independently callable, and clean intended implementation state.
+
+Stage 1. Freeze source/PDF and a claim/exhibit disposition map. Re-pin current Git
+identities, all numerical inputs and the actual two documents to be submitted.
+Use committed compact sources; newly completed fitting jobs do not automatically
+change this editorial baseline. Preserve every original generator, table, image,
+archived diagnostic and scientific manifest. Distinguish actual omissions from
+consolidations and relocations, with a destination and rationale for every old ID.
+Gate: each required definition/claim/adverse finding has a main or SI destination;
+repo-only material is ancillary to the remaining submitted claims.
+
+Stage 2. Establish the two-document reading/validation contract BEFORE relocation.
+During authorized implementation, add document-aware helper/build interfaces and
+minimal fixture tests before moving manuscript material. Keep wileyNJD-APA.tex the
+Overleaf main root; supporting_information.tex is an independently compiled SI root.
+Both use the existing bibliography, each with a separate BibTeX job/reference list.
+Prefer named cross-document references without importing auxiliary files. Any exact
+S-number references require a small validated registry. No stale checked-in aux files,
+hidden dual-build latexmk hooks or conditional TeX root that confuses include scanning.
+Define an authoritative PUBLICATION_PACKAGE.json for active main/SI documents and
+submitted assets, linked to retained scientific lineage. Explicitly distinguish old
+MANUSCRIPT_ASSET_MANIFEST evidence inventory from actual publication inclusion.
+Gate: main-only, SI-only and submitted-union views remain distinct; missing, unused,
+wrong-root and duplicate labels/assets fail. Main obligations cannot be satisfied
+solely by SI text. Scope-aware fixtures pass before content relocation begins.
+
+Stage 3. Shorten prose in place, in the six-section order. Use the section-by-section
+plan above. Remove duplicate definitions, repeated cell narration, long roadmaps and
+irrelevant note keys. Preserve current numerical settings, first-use notation,
+assumptions and substantive qualifications. First target a lower-risk 10--15% prose
+reduction, then approach the 5,100--5,500 budget only where clarity survives.
+Gate: a full read and unchanged-model proof show no new definition gap or detached
+claim; record real word/page change before combining it with display relocation.
+
+Stage 4. Generate new presentations from frozen compact inputs into NEW bounded paths.
+Keep tables/editorial_revision and its existing 15-file/1,496-token replay contract
+intact. A new layer, e.g. scripts/compact_publication.py with tables/compact_publication
+and artifacts/compact_publication, validates all inputs before promoting outputs.
+Its --check is read-only. It never calls broad asset/model/baseline refresh commands.
+Main Table 1 uses all 14 methods from aggregate.csv. S1 directly uses the already
+unified 135-row by_origin_horizon.csv; no TeX joins or runtime paths are necessary.
+Main quantile means use the stored check_loss column, full precision and exact case
+weights. S5 preserves all 14 methods, proper exact-score skill and unavailable
+adjustments. Five grouped fitting rows preserve all 400 fits and the exceptions.
+Gate: scientific-key coverage and source equality, no duplicate/missing cases,
+correct scale/score convention and stored skill, unchanged retained cells and exact
+aggregations. Do not relax the historical token-preservation check to accept edits.
+
+Stage 5. Prepare compact figures and apply approved exhibit dispositions.
+Retain raw-product context in the representative main synthesis before dropping its
+separate context figure. Four SI forecasts use the exact focus-render summaries;
+keep dates, means, observations and interval_low/high unchanged. Remove redundant
+raw overlays and connected marginal traces only in these SI redraws. Keep all misses.
+Two cases per page and a one-page history montage remain conditional on legibility;
+allow more pages rather than shrink labels or crop outcomes. Omit optional historical,
+univariate and parameter-inventory displays only with their dependent prose removed.
+Gate: correct source/bounds/event checks, all four cases present, final-size axes and
+line styles readable. If a conditional layout fails, use its declared fallback.
+
+Stage 6. Consolidate technical material and assemble independently readable SI.
+Move the GIG definition BEFORE removing C. Keep the augmentation, source/member
+precision and weighted offset, joint scale/skewness Laplace--Delta factor, iteration
+ordering, stopping criteria, forecast active-state mapping and covariance prior.
+Standard filtering/smoothing can be cited or printed once. Remove repeated main
+model laws from the stacked-state account. Use title/authors, a brief guide, local
+definitions, coherent S-numbering and independently selected references; no separate
+contents page is necessary. Repair every removed label and algorithm reference.
+Gate: each retained formula has its symbols/convention available; mathematical
+review confirms exposition changed without a new algorithm/target/accuracy claim.
+
+Stage 7. Connect active inventories, builds, validation and regeneration documentation.
+Extend current_article_contract and article helpers to accept explicit document scope.
+Update publication_freeze/cross_repo observed-table readers while preserving scientific
+expected values, tolerances and key sets. Preserve original source-replay checks.
+Migrate presentation-only assertions in a recorded old-check/new-check ledger.
+No abandoned file in repo may satisfy a requirement about submitted evidence.
+Update README AND docs/article_readme_template.txt so regeneration preserves instructions.
+Extend Overleaf generated-asset recovery protection narrowly to editorial_revision and
+new presentation paths; keep genuine TeX/Bib source edits eligible for review/merge.
+Gate: both actual include graphs, declared submitted assets, compiler inputs and
+reference scopes agree. New negative tests catch bad keys/scales/horizons, wrong
+interval columns, missing origins, altered means and unsubmitted-file false positives.
+
+Stage 8. Fresh two-document proofs and scoped validation.
+Build main alone without SI aux, SI alone without main aux, and the complete package
+from exact staged sources into fresh distinct output directories. Hash source inputs
+for each root; inspect repository-local compiler .fls inputs so style/preamble files
+cannot escape the inventory. Require stable labels and resolved citations/references.
+Run original numerical/source gates and focused presentation/aggregation checks, with
+no fits. The previous 203 Python/248 R checks are historical evidence; future counts
+follow the necessary assertions, not a quota. Only after content is settled adjust
+local float order, obsolete barriers or [p]-only placement. Keep the vendor class,
+body fonts and margins intact. Review actual boxes, sparse pages and printed labels.
+Gate: complete reader evidence and readable main/SI, validated data preservation,
+correct reference lists, and measured main/reference/SI/combined page/word counts.
+
+Stage 9. Final review and publication only after implementation approval.
+Archive the final disposition/claim map, input/output/PDF hashes, numerical-key proofs,
+contract-migration ledger, actual page changes and accepted layout exceptions. Read
+main and SI separately, then together. Preserve the submitted Corrected-2 archive.
+Recheck live main/Overleaf tips, invoke ancestry verification explicitly and verify
+hook installation/modes before any eventual merge/push. No history rewriting.
+No article implementation, commits, merges or pushes are authorized by this audit.
+
+Stopping rule
+Use 30--34 combined publisher-style pages as the primary planning range and
+28--32 as a conditional stretch. Accept a shorter outcome only if the protected scientific content,
+all adverse findings, cross-references and display legibility survive. Report actual
+counts in the chosen submission format rather than advertising transferred pages as
+content removed. The purpose is an economical statistical article, not an arbitrary
+minimum page count.
+
+10. WHAT THIS PLAN DOES NOT RECOMMEND
+
+Do not remove calibration/reliability to make the main model appear better.
+Do not remove poor model variants or difficult forecast origins from the evidence.
+Do not erase fitting/approximation limitations or reinterpret conditional coefficients.
+Do not move the entire scientific model into SI or eliminate the VB contribution.
+Do not replace every numeric table with a graph; exact scores/coverage remain useful.
+Do not cut citations required for data/method attribution merely for page savings.
+Do not call a supplement split alone a genuine reduction in total reading burden.
+
+No implementation, commits, merges or pushes were performed for this plan.
