@@ -1,0 +1,7 @@
+test_comments_cannot_satisfy_a_scientific_or_label_check (test_manuscript_text_contract.ManuscriptTextContractTests) ... ok
+test_repository_url_must_be_direct_or_in_a_cited_entry (test_manuscript_text_contract.ManuscriptTextContractTests) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK

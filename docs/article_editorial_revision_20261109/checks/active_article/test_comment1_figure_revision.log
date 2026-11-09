@@ -1,0 +1,9 @@
+test_reapplies_reviewed_display_without_altering_numeric_input (test_comment1_figure_revision.PresentationRevisionTests) ... ok
+test_refuses_changed_input_before_copying_any_display (test_comment1_figure_revision.PresentationRevisionTests) ... ok
+test_refuses_corrupted_archive_before_copying_any_display (test_comment1_figure_revision.PresentationRevisionTests) ... ok
+test_refuses_new_selection_or_untrusted_archive (test_comment1_figure_revision.PresentationRevisionTests) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.474s
+
+OK

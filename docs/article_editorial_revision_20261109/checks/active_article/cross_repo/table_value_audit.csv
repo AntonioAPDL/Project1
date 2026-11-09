@@ -1,0 +1,586 @@
+table,row_key,column,expected_rounded5,observed,abs_diff,status
+article_he2,RAW-GLOFAS,01/23/2021,0.40366,0.40366,0.00000000,pass
+article_he2,RAW-GLOFAS,11/12/2021,0.16957,0.16957,0.00000000,pass
+article_he2,RAW-GLOFAS,12/21/2021,0.68246,0.68246,0.00000000,pass
+article_he2,RAW-GLOFAS,05/11/2022,0.27227,0.27227,0.00000000,pass
+article_he2,RAW-GLOFAS,12/25/2022,1.56006,1.56006,0.00000000,pass
+article_he2,N-U-T1,01/23/2021,0.33592,0.33592,0.00000000,pass
+article_he2,N-U-T1,11/12/2021,0.17059,0.17059,0.00000000,pass
+article_he2,N-U-T1,12/21/2021,1.19344,1.19344,0.00000000,pass
+article_he2,N-U-T1,05/11/2022,0.15077,0.15077,0.00000000,pass
+article_he2,N-U-T1,12/25/2022,2.49968,2.49968,0.00000000,pass
+article_he2,N-M-T0,01/23/2021,1.84333,1.84333,0.00000000,pass
+article_he2,N-M-T0,11/12/2021,0.38023,0.38023,0.00000000,pass
+article_he2,N-M-T0,12/21/2021,0.65964,0.65964,0.00000000,pass
+article_he2,N-M-T0,05/11/2022,0.67014,0.67014,0.00000000,pass
+article_he2,N-M-T0,12/25/2022,0.64404,0.64404,0.00000000,pass
+article_he2,N-M-T1,01/23/2021,3.21490,3.21490,0.00000000,pass
+article_he2,N-M-T1,11/12/2021,0.89096,0.89096,0.00000000,pass
+article_he2,N-M-T1,12/21/2021,3.04362,3.04362,0.00000000,pass
+article_he2,N-M-T1,05/11/2022,0.86820,0.86820,0.00000000,pass
+article_he2,N-M-T1,12/25/2022,3.88863,3.88863,0.00000000,pass
+article_he2,AL-U-T1,01/23/2021,0.23107,0.23107,0.00000000,pass
+article_he2,AL-U-T1,11/12/2021,0.07795,0.07795,0.00000000,pass
+article_he2,AL-U-T1,12/21/2021,0.87049,0.87049,0.00000000,pass
+article_he2,AL-U-T1,05/11/2022,0.10506,0.10506,0.00000000,pass
+article_he2,AL-U-T1,12/25/2022,1.73376,1.73376,0.00000000,pass
+article_he2,AL-M-T0,01/23/2021,0.46798,0.46798,0.00000000,pass
+article_he2,AL-M-T0,11/12/2021,0.19990,0.19990,0.00000000,pass
+article_he2,AL-M-T0,12/21/2021,0.58668,0.58668,0.00000000,pass
+article_he2,AL-M-T0,05/11/2022,0.09940,0.09940,0.00000000,pass
+article_he2,AL-M-T0,12/25/2022,1.33703,1.33703,0.00000000,pass
+article_he2,AL-M-T1,01/23/2021,0.14592,0.14592,0.00000000,pass
+article_he2,AL-M-T1,11/12/2021,0.05551,0.05551,0.00000000,pass
+article_he2,AL-M-T1,12/21/2021,0.27775,0.27775,0.00000000,pass
+article_he2,AL-M-T1,05/11/2022,0.05467,0.05467,0.00000000,pass
+article_he2,AL-M-T1,12/25/2022,0.62764,0.62764,0.00000000,pass
+article_he2,exAL-U-T1,01/23/2021,0.21622,0.21622,0.00000000,pass
+article_he2,exAL-U-T1,11/12/2021,0.10194,0.10194,0.00000000,pass
+article_he2,exAL-U-T1,12/21/2021,0.83337,0.83337,0.00000000,pass
+article_he2,exAL-U-T1,05/11/2022,0.12452,0.12452,0.00000000,pass
+article_he2,exAL-U-T1,12/25/2022,1.70548,1.70548,0.00000000,pass
+article_he2,exAL-M-T0,01/23/2021,0.75682,0.75682,0.00000000,pass
+article_he2,exAL-M-T0,11/12/2021,1.72135,1.72135,0.00000000,pass
+article_he2,exAL-M-T0,12/21/2021,0.97762,0.97762,0.00000000,pass
+article_he2,exAL-M-T0,05/11/2022,1.02087,1.02087,0.00000000,pass
+article_he2,exAL-M-T0,12/25/2022,1.21132,1.21132,0.00000000,pass
+article_he2,exAL-M-T1,01/23/2021,0.13971,0.13971,0.00000000,pass
+article_he2,exAL-M-T1,11/12/2021,0.04724,0.04724,0.00000000,pass
+article_he2,exAL-M-T1,12/21/2021,0.26045,0.26045,0.00000000,pass
+article_he2,exAL-M-T1,05/11/2022,0.02273,0.02273,0.00000000,pass
+article_he2,exAL-M-T1,12/25/2022,0.53806,0.53806,0.00000000,pass
+article_he2_nws_horizon,RAW-GLOFAS,01/23/2021,0.57251,0.57251,0.00000000,pass
+article_he2_nws_horizon,RAW-GLOFAS,11/12/2021,0.20670,0.20670,0.00000000,pass
+article_he2_nws_horizon,RAW-GLOFAS,12/21/2021,1.29127,1.29127,0.00000000,pass
+article_he2_nws_horizon,RAW-GLOFAS,05/11/2022,0.32274,0.32274,0.00000000,pass
+article_he2_nws_horizon,RAW-GLOFAS,12/25/2022,1.48188,1.48188,0.00000000,pass
+article_he2_nws_horizon,RAW-NWS,01/23/2021,0.83037,0.83037,0.00000000,pass
+article_he2_nws_horizon,RAW-NWS,11/12/2021,1.37192,1.37192,0.00000000,pass
+article_he2_nws_horizon,RAW-NWS,12/21/2021,0.28118,0.28118,0.00000000,pass
+article_he2_nws_horizon,RAW-NWS,05/11/2022,0.28366,0.28366,0.00000000,pass
+article_he2_nws_horizon,RAW-NWS,12/25/2022,0.55680,0.55680,0.00000000,pass
+article_he2_nws_horizon,N-U-T1,01/23/2021,0.76838,0.76838,0.00000000,pass
+article_he2_nws_horizon,N-U-T1,11/12/2021,0.13732,0.13732,0.00000000,pass
+article_he2_nws_horizon,N-U-T1,12/21/2021,2.04040,2.04040,0.00000000,pass
+article_he2_nws_horizon,N-U-T1,05/11/2022,0.12611,0.12611,0.00000000,pass
+article_he2_nws_horizon,N-U-T1,12/25/2022,1.87805,1.87805,0.00000000,pass
+article_he2_nws_horizon,N-M-T0,01/23/2021,1.31032,1.31032,0.00000000,pass
+article_he2_nws_horizon,N-M-T0,11/12/2021,0.25581,0.25581,0.00000000,pass
+article_he2_nws_horizon,N-M-T0,12/21/2021,0.41461,0.41461,0.00000000,pass
+article_he2_nws_horizon,N-M-T0,05/11/2022,0.63732,0.63732,0.00000000,pass
+article_he2_nws_horizon,N-M-T0,12/25/2022,1.00096,1.00096,0.00000000,pass
+article_he2_nws_horizon,N-M-T1,01/23/2021,4.72798,4.72798,0.00000000,pass
+article_he2_nws_horizon,N-M-T1,11/12/2021,0.71930,0.71930,0.00000000,pass
+article_he2_nws_horizon,N-M-T1,12/21/2021,5.13027,5.13027,0.00000000,pass
+article_he2_nws_horizon,N-M-T1,05/11/2022,0.79737,0.79737,0.00000000,pass
+article_he2_nws_horizon,N-M-T1,12/25/2022,4.53177,4.53177,0.00000000,pass
+article_he2_nws_horizon,AL-U-T1,01/23/2021,0.18835,0.18835,0.00000000,pass
+article_he2_nws_horizon,AL-U-T1,11/12/2021,0.10367,0.10367,0.00000000,pass
+article_he2_nws_horizon,AL-U-T1,12/21/2021,0.75625,0.75625,0.00000000,pass
+article_he2_nws_horizon,AL-U-T1,05/11/2022,0.03599,0.03599,0.00000000,pass
+article_he2_nws_horizon,AL-U-T1,12/25/2022,0.62002,0.62002,0.00000000,pass
+article_he2_nws_horizon,AL-M-T0,01/23/2021,0.63929,0.63929,0.00000000,pass
+article_he2_nws_horizon,AL-M-T0,11/12/2021,0.16893,0.16893,0.00000000,pass
+article_he2_nws_horizon,AL-M-T0,12/21/2021,1.15588,1.15588,0.00000000,pass
+article_he2_nws_horizon,AL-M-T0,05/11/2022,0.09506,0.09506,0.00000000,pass
+article_he2_nws_horizon,AL-M-T0,12/25/2022,1.00922,1.00922,0.00000000,pass
+article_he2_nws_horizon,AL-M-T1,01/23/2021,0.23740,0.23740,0.00000000,pass
+article_he2_nws_horizon,AL-M-T1,11/12/2021,0.07170,0.07170,0.00000000,pass
+article_he2_nws_horizon,AL-M-T1,12/21/2021,0.56351,0.56351,0.00000000,pass
+article_he2_nws_horizon,AL-M-T1,05/11/2022,0.05867,0.05867,0.00000000,pass
+article_he2_nws_horizon,AL-M-T1,12/25/2022,0.61593,0.61593,0.00000000,pass
+article_he2_nws_horizon,exAL-U-T1,01/23/2021,0.18999,0.18999,0.00000000,pass
+article_he2_nws_horizon,exAL-U-T1,11/12/2021,0.11312,0.11312,0.00000000,pass
+article_he2_nws_horizon,exAL-U-T1,12/21/2021,0.77939,0.77939,0.00000000,pass
+article_he2_nws_horizon,exAL-U-T1,05/11/2022,0.04489,0.04489,0.00000000,pass
+article_he2_nws_horizon,exAL-U-T1,12/25/2022,0.62982,0.62982,0.00000000,pass
+article_he2_nws_horizon,exAL-M-T0,01/23/2021,0.94687,0.94687,0.00000000,pass
+article_he2_nws_horizon,exAL-M-T0,11/12/2021,1.69464,1.69464,0.00000000,pass
+article_he2_nws_horizon,exAL-M-T0,12/21/2021,0.69022,0.69022,0.00000000,pass
+article_he2_nws_horizon,exAL-M-T0,05/11/2022,1.02364,1.02364,0.00000000,pass
+article_he2_nws_horizon,exAL-M-T0,12/25/2022,1.31568,1.31568,0.00000000,pass
+article_he2_nws_horizon,exAL-M-T1,01/23/2021,0.22691,0.22691,0.00000000,pass
+article_he2_nws_horizon,exAL-M-T1,11/12/2021,0.05858,0.05858,0.00000000,pass
+article_he2_nws_horizon,exAL-M-T1,12/21/2021,0.59445,0.59445,0.00000000,pass
+article_he2_nws_horizon,exAL-M-T1,05/11/2022,0.02567,0.02567,0.00000000,pass
+article_he2_nws_horizon,exAL-M-T1,12/25/2022,0.59070,0.59070,0.00000000,pass
+corrections_he2,RAW-GLOFAS,01/23/2021,0.40366,0.40366,0.00000000,pass
+corrections_he2,RAW-GLOFAS,11/12/2021,0.16957,0.16957,0.00000000,pass
+corrections_he2,RAW-GLOFAS,12/21/2021,0.68246,0.68246,0.00000000,pass
+corrections_he2,RAW-GLOFAS,05/11/2022,0.27227,0.27227,0.00000000,pass
+corrections_he2,RAW-GLOFAS,12/25/2022,1.56006,1.56006,0.00000000,pass
+corrections_he2,N-U-T1,01/23/2021,0.33592,0.33592,0.00000000,pass
+corrections_he2,N-U-T1,11/12/2021,0.17059,0.17059,0.00000000,pass
+corrections_he2,N-U-T1,12/21/2021,1.19344,1.19344,0.00000000,pass
+corrections_he2,N-U-T1,05/11/2022,0.15077,0.15077,0.00000000,pass
+corrections_he2,N-U-T1,12/25/2022,2.49968,2.49968,0.00000000,pass
+corrections_he2,N-M-T0,01/23/2021,1.84333,1.84333,0.00000000,pass
+corrections_he2,N-M-T0,11/12/2021,0.38023,0.38023,0.00000000,pass
+corrections_he2,N-M-T0,12/21/2021,0.65964,0.65964,0.00000000,pass
+corrections_he2,N-M-T0,05/11/2022,0.67014,0.67014,0.00000000,pass
+corrections_he2,N-M-T0,12/25/2022,0.64404,0.64404,0.00000000,pass
+corrections_he2,N-M-T1,01/23/2021,3.21490,3.21490,0.00000000,pass
+corrections_he2,N-M-T1,11/12/2021,0.89096,0.89096,0.00000000,pass
+corrections_he2,N-M-T1,12/21/2021,3.04362,3.04362,0.00000000,pass
+corrections_he2,N-M-T1,05/11/2022,0.86820,0.86820,0.00000000,pass
+corrections_he2,N-M-T1,12/25/2022,3.88863,3.88863,0.00000000,pass
+corrections_he2,AL-U-T1,01/23/2021,0.23107,0.23107,0.00000000,pass
+corrections_he2,AL-U-T1,11/12/2021,0.07795,0.07795,0.00000000,pass
+corrections_he2,AL-U-T1,12/21/2021,0.87049,0.87049,0.00000000,pass
+corrections_he2,AL-U-T1,05/11/2022,0.10506,0.10506,0.00000000,pass
+corrections_he2,AL-U-T1,12/25/2022,1.73376,1.73376,0.00000000,pass
+corrections_he2,AL-M-T0,01/23/2021,0.46798,0.46798,0.00000000,pass
+corrections_he2,AL-M-T0,11/12/2021,0.19990,0.19990,0.00000000,pass
+corrections_he2,AL-M-T0,12/21/2021,0.58668,0.58668,0.00000000,pass
+corrections_he2,AL-M-T0,05/11/2022,0.09940,0.09940,0.00000000,pass
+corrections_he2,AL-M-T0,12/25/2022,1.33703,1.33703,0.00000000,pass
+corrections_he2,AL-M-T1,01/23/2021,0.14592,0.14592,0.00000000,pass
+corrections_he2,AL-M-T1,11/12/2021,0.05551,0.05551,0.00000000,pass
+corrections_he2,AL-M-T1,12/21/2021,0.27775,0.27775,0.00000000,pass
+corrections_he2,AL-M-T1,05/11/2022,0.05467,0.05467,0.00000000,pass
+corrections_he2,AL-M-T1,12/25/2022,0.62764,0.62764,0.00000000,pass
+corrections_he2,exAL-U-T1,01/23/2021,0.21622,0.21622,0.00000000,pass
+corrections_he2,exAL-U-T1,11/12/2021,0.10194,0.10194,0.00000000,pass
+corrections_he2,exAL-U-T1,12/21/2021,0.83337,0.83337,0.00000000,pass
+corrections_he2,exAL-U-T1,05/11/2022,0.12452,0.12452,0.00000000,pass
+corrections_he2,exAL-U-T1,12/25/2022,1.70548,1.70548,0.00000000,pass
+corrections_he2,exAL-M-T0,01/23/2021,0.75682,0.75682,0.00000000,pass
+corrections_he2,exAL-M-T0,11/12/2021,1.72135,1.72135,0.00000000,pass
+corrections_he2,exAL-M-T0,12/21/2021,0.97762,0.97762,0.00000000,pass
+corrections_he2,exAL-M-T0,05/11/2022,1.02087,1.02087,0.00000000,pass
+corrections_he2,exAL-M-T0,12/25/2022,1.21132,1.21132,0.00000000,pass
+corrections_he2,exAL-M-T1,01/23/2021,0.13971,0.13971,0.00000000,pass
+corrections_he2,exAL-M-T1,11/12/2021,0.04724,0.04724,0.00000000,pass
+corrections_he2,exAL-M-T1,12/21/2021,0.26045,0.26045,0.00000000,pass
+corrections_he2,exAL-M-T1,05/11/2022,0.02273,0.02273,0.00000000,pass
+corrections_he2,exAL-M-T1,12/25/2022,0.53806,0.53806,0.00000000,pass
+article_he3,exAL-M-T1 (full),01/23/2021,0.13971,0.13971,0.00000000,pass
+article_he3,exAL-M-T1 (full),11/12/2021,0.04724,0.04724,0.00000000,pass
+article_he3,exAL-M-T1 (full),12/21/2021,0.26045,0.26045,0.00000000,pass
+article_he3,exAL-M-T1 (full),05/11/2022,0.02273,0.02273,0.00000000,pass
+article_he3,exAL-M-T1 (full),12/25/2022,0.53806,0.53806,0.00000000,pass
+article_he3,exAL-M-T1-noTrend,01/23/2021,1.05159,1.05159,0.00000000,pass
+article_he3,exAL-M-T1-noTrend,11/12/2021,0.72343,0.72343,0.00000000,pass
+article_he3,exAL-M-T1-noTrend,12/21/2021,2.51748,2.51748,0.00000000,pass
+article_he3,exAL-M-T1-noTrend,05/11/2022,0.53257,0.53257,0.00000000,pass
+article_he3,exAL-M-T1-noTrend,12/25/2022,4.05881,4.05881,0.00000000,pass
+article_he3,exAL-M-noTF,01/23/2021,1.73610,1.73610,0.00000000,pass
+article_he3,exAL-M-noTF,11/12/2021,1.71409,1.71409,0.00000000,pass
+article_he3,exAL-M-noTF,12/21/2021,2.32863,2.32863,0.00000000,pass
+article_he3,exAL-M-noTF,05/11/2022,2.47703,2.47703,0.00000000,pass
+article_he3,exAL-M-noTF,12/25/2022,2.17280,2.17280,0.00000000,pass
+article_he3,exAL-M-T1-noH1,01/23/2021,1.27861,1.27861,0.00000000,pass
+article_he3,exAL-M-T1-noH1,11/12/2021,1.60142,1.60142,0.00000000,pass
+article_he3,exAL-M-T1-noH1,12/21/2021,2.83017,2.83017,0.00000000,pass
+article_he3,exAL-M-T1-noH1,05/11/2022,1.09956,1.09956,0.00000000,pass
+article_he3,exAL-M-T1-noH1,12/25/2022,4.45887,4.45887,0.00000000,pass
+article_he3,exAL-M-T1-noH2,01/23/2021,0.72690,0.72690,0.00000000,pass
+article_he3,exAL-M-T1-noH2,11/12/2021,1.04699,1.04699,0.00000000,pass
+article_he3,exAL-M-T1-noH2,12/21/2021,2.96513,2.96513,0.00000000,pass
+article_he3,exAL-M-T1-noH2,05/11/2022,0.91193,0.91193,0.00000000,pass
+article_he3,exAL-M-T1-noH2,12/25/2022,4.64709,4.64709,0.00000000,pass
+article_he3,exAL-M-T1-noH3,01/23/2021,1.08281,1.08281,0.00000000,pass
+article_he3,exAL-M-T1-noH3,11/12/2021,1.03562,1.03562,0.00000000,pass
+article_he3,exAL-M-T1-noH3,12/21/2021,2.58333,2.58333,0.00000000,pass
+article_he3,exAL-M-T1-noH3,05/11/2022,0.68642,0.68642,0.00000000,pass
+article_he3,exAL-M-T1-noH3,12/25/2022,4.43879,4.43879,0.00000000,pass
+article_he3,RAW-GLOFAS,01/23/2021,0.40366,0.40366,0.00000000,pass
+article_he3,RAW-GLOFAS,11/12/2021,0.16957,0.16957,0.00000000,pass
+article_he3,RAW-GLOFAS,12/21/2021,0.68246,0.68246,0.00000000,pass
+article_he3,RAW-GLOFAS,05/11/2022,0.27227,0.27227,0.00000000,pass
+article_he3,RAW-GLOFAS,12/25/2022,1.56006,1.56006,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1 (full),01/23/2021,0.22691,0.22691,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1 (full),11/12/2021,0.05858,0.05858,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1 (full),12/21/2021,0.59445,0.59445,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1 (full),05/11/2022,0.02567,0.02567,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1 (full),12/25/2022,0.59070,0.59070,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noTrend,01/23/2021,1.49490,1.49490,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noTrend,11/12/2021,0.77464,0.77464,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noTrend,12/21/2021,3.38697,3.38697,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noTrend,05/11/2022,0.64627,0.64627,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noTrend,12/25/2022,3.40333,3.40333,0.00000000,pass
+article_he3_nws_horizon,exAL-M-noTF,01/23/2021,1.79777,1.79777,0.00000000,pass
+article_he3_nws_horizon,exAL-M-noTF,11/12/2021,1.69066,1.69066,0.00000000,pass
+article_he3_nws_horizon,exAL-M-noTF,12/21/2021,2.18697,2.18697,0.00000000,pass
+article_he3_nws_horizon,exAL-M-noTF,05/11/2022,2.45857,2.45857,0.00000000,pass
+article_he3_nws_horizon,exAL-M-noTF,12/25/2022,2.30863,2.30863,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH1,01/23/2021,1.66963,1.66963,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH1,11/12/2021,1.69424,1.69424,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH1,12/21/2021,3.70227,3.70227,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH1,05/11/2022,1.14270,1.14270,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH1,12/25/2022,3.79228,3.79228,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH2,01/23/2021,1.11122,1.11122,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH2,11/12/2021,1.14286,1.14286,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH2,12/21/2021,3.80753,3.80753,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH2,05/11/2022,0.99851,0.99851,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH2,12/25/2022,3.92807,3.92807,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH3,01/23/2021,1.53419,1.53419,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH3,11/12/2021,1.09181,1.09181,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH3,12/21/2021,3.45450,3.45450,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH3,05/11/2022,0.78219,0.78219,0.00000000,pass
+article_he3_nws_horizon,exAL-M-T1-noH3,12/25/2022,3.75262,3.75262,0.00000000,pass
+article_he3_nws_horizon,RAW-GLOFAS,01/23/2021,0.57251,0.57251,0.00000000,pass
+article_he3_nws_horizon,RAW-GLOFAS,11/12/2021,0.20670,0.20670,0.00000000,pass
+article_he3_nws_horizon,RAW-GLOFAS,12/21/2021,1.29127,1.29127,0.00000000,pass
+article_he3_nws_horizon,RAW-GLOFAS,05/11/2022,0.32274,0.32274,0.00000000,pass
+article_he3_nws_horizon,RAW-GLOFAS,12/25/2022,1.48188,1.48188,0.00000000,pass
+article_he3_nws_horizon,RAW-NWS,01/23/2021,0.83037,0.83037,0.00000000,pass
+article_he3_nws_horizon,RAW-NWS,11/12/2021,1.37192,1.37192,0.00000000,pass
+article_he3_nws_horizon,RAW-NWS,12/21/2021,0.28118,0.28118,0.00000000,pass
+article_he3_nws_horizon,RAW-NWS,05/11/2022,0.28366,0.28366,0.00000000,pass
+article_he3_nws_horizon,RAW-NWS,12/25/2022,0.55680,0.55680,0.00000000,pass
+corrections_he3,exAL-M-T1 (full),01/23/2021,0.13971,0.13971,0.00000000,pass
+corrections_he3,exAL-M-T1 (full),11/12/2021,0.04724,0.04724,0.00000000,pass
+corrections_he3,exAL-M-T1 (full),12/21/2021,0.26045,0.26045,0.00000000,pass
+corrections_he3,exAL-M-T1 (full),05/11/2022,0.02273,0.02273,0.00000000,pass
+corrections_he3,exAL-M-T1 (full),12/25/2022,0.53806,0.53806,0.00000000,pass
+corrections_he3,exAL-M-T1-noTrend,01/23/2021,1.05159,1.05159,0.00000000,pass
+corrections_he3,exAL-M-T1-noTrend,11/12/2021,0.72343,0.72343,0.00000000,pass
+corrections_he3,exAL-M-T1-noTrend,12/21/2021,2.51748,2.51748,0.00000000,pass
+corrections_he3,exAL-M-T1-noTrend,05/11/2022,0.53257,0.53257,0.00000000,pass
+corrections_he3,exAL-M-T1-noTrend,12/25/2022,4.05881,4.05881,0.00000000,pass
+corrections_he3,exAL-M-noTF,01/23/2021,1.73610,1.73610,0.00000000,pass
+corrections_he3,exAL-M-noTF,11/12/2021,1.71409,1.71409,0.00000000,pass
+corrections_he3,exAL-M-noTF,12/21/2021,2.32863,2.32863,0.00000000,pass
+corrections_he3,exAL-M-noTF,05/11/2022,2.47703,2.47703,0.00000000,pass
+corrections_he3,exAL-M-noTF,12/25/2022,2.17280,2.17280,0.00000000,pass
+corrections_he3,exAL-M-T1-noH1,01/23/2021,1.27861,1.27861,0.00000000,pass
+corrections_he3,exAL-M-T1-noH1,11/12/2021,1.60142,1.60142,0.00000000,pass
+corrections_he3,exAL-M-T1-noH1,12/21/2021,2.83017,2.83017,0.00000000,pass
+corrections_he3,exAL-M-T1-noH1,05/11/2022,1.09956,1.09956,0.00000000,pass
+corrections_he3,exAL-M-T1-noH1,12/25/2022,4.45887,4.45887,0.00000000,pass
+corrections_he3,exAL-M-T1-noH2,01/23/2021,0.72690,0.72690,0.00000000,pass
+corrections_he3,exAL-M-T1-noH2,11/12/2021,1.04699,1.04699,0.00000000,pass
+corrections_he3,exAL-M-T1-noH2,12/21/2021,2.96513,2.96513,0.00000000,pass
+corrections_he3,exAL-M-T1-noH2,05/11/2022,0.91193,0.91193,0.00000000,pass
+corrections_he3,exAL-M-T1-noH2,12/25/2022,4.64709,4.64709,0.00000000,pass
+corrections_he3,exAL-M-T1-noH3,01/23/2021,1.08281,1.08281,0.00000000,pass
+corrections_he3,exAL-M-T1-noH3,11/12/2021,1.03562,1.03562,0.00000000,pass
+corrections_he3,exAL-M-T1-noH3,12/21/2021,2.58333,2.58333,0.00000000,pass
+corrections_he3,exAL-M-T1-noH3,05/11/2022,0.68642,0.68642,0.00000000,pass
+corrections_he3,exAL-M-T1-noH3,12/25/2022,4.43879,4.43879,0.00000000,pass
+corrections_he3,RAW-GLOFAS,01/23/2021,0.40366,0.40366,0.00000000,pass
+corrections_he3,RAW-GLOFAS,11/12/2021,0.16957,0.16957,0.00000000,pass
+corrections_he3,RAW-GLOFAS,12/21/2021,0.68246,0.68246,0.00000000,pass
+corrections_he3,RAW-GLOFAS,05/11/2022,0.27227,0.27227,0.00000000,pass
+corrections_he3,RAW-GLOFAS,12/25/2022,1.56006,1.56006,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1 (full),01/23/2021,0.22691,0.22691,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1 (full),11/12/2021,0.05858,0.05858,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1 (full),12/21/2021,0.59445,0.59445,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1 (full),05/11/2022,0.02567,0.02567,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1 (full),12/25/2022,0.59070,0.59070,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noTrend,01/23/2021,1.49490,1.49490,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noTrend,11/12/2021,0.77464,0.77464,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noTrend,12/21/2021,3.38697,3.38697,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noTrend,05/11/2022,0.64627,0.64627,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noTrend,12/25/2022,3.40333,3.40333,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-noTF,01/23/2021,1.79777,1.79777,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-noTF,11/12/2021,1.69066,1.69066,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-noTF,12/21/2021,2.18697,2.18697,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-noTF,05/11/2022,2.45857,2.45857,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-noTF,12/25/2022,2.30863,2.30863,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH1,01/23/2021,1.66963,1.66963,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH1,11/12/2021,1.69424,1.69424,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH1,12/21/2021,3.70227,3.70227,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH1,05/11/2022,1.14270,1.14270,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH1,12/25/2022,3.79228,3.79228,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH2,01/23/2021,1.11122,1.11122,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH2,11/12/2021,1.14286,1.14286,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH2,12/21/2021,3.80753,3.80753,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH2,05/11/2022,0.99851,0.99851,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH2,12/25/2022,3.92807,3.92807,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH3,01/23/2021,1.53419,1.53419,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH3,11/12/2021,1.09181,1.09181,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH3,12/21/2021,3.45450,3.45450,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH3,05/11/2022,0.78219,0.78219,0.00000000,pass
+corrections_he3_nws_horizon,exAL-M-T1-noH3,12/25/2022,3.75262,3.75262,0.00000000,pass
+corrections_he3_nws_horizon,RAW-GLOFAS,01/23/2021,0.57251,0.57251,0.00000000,pass
+corrections_he3_nws_horizon,RAW-GLOFAS,11/12/2021,0.20670,0.20670,0.00000000,pass
+corrections_he3_nws_horizon,RAW-GLOFAS,12/21/2021,1.29127,1.29127,0.00000000,pass
+corrections_he3_nws_horizon,RAW-GLOFAS,05/11/2022,0.32274,0.32274,0.00000000,pass
+corrections_he3_nws_horizon,RAW-GLOFAS,12/25/2022,1.48188,1.48188,0.00000000,pass
+corrections_he3_nws_horizon,RAW-NWS,01/23/2021,0.83037,0.83037,0.00000000,pass
+corrections_he3_nws_horizon,RAW-NWS,11/12/2021,1.37192,1.37192,0.00000000,pass
+corrections_he3_nws_horizon,RAW-NWS,12/21/2021,0.28118,0.28118,0.00000000,pass
+corrections_he3_nws_horizon,RAW-NWS,05/11/2022,0.28366,0.28366,0.00000000,pass
+corrections_he3_nws_horizon,RAW-NWS,12/25/2022,0.55680,0.55680,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-M-T1')",q0.05,0.02529,0.02529,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-M-T1')",q0.20,0.07061,0.07061,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-M-T1')",q0.35,0.09149,0.09149,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-M-T1')",q0.50,0.09407,0.09407,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-M-T1')",q0.65,0.08697,0.08697,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-M-T1')",q0.80,0.07165,0.07165,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-M-T1')",q0.95,0.03093,0.03093,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-M-T1')",q0.05,0.02894,0.02894,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-M-T1')",q0.20,0.07178,0.07178,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-M-T1')",q0.35,0.09341,0.09341,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-M-T1')",q0.50,0.09700,0.09700,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-M-T1')",q0.65,0.08931,0.08931,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-M-T1')",q0.80,0.06937,0.06937,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-M-T1')",q0.95,0.04116,0.04116,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-U-T1')",q0.05,0.03314,0.03314,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-U-T1')",q0.20,0.09434,0.09434,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-U-T1')",q0.35,0.12252,0.12252,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-U-T1')",q0.50,0.13140,0.13140,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-U-T1')",q0.65,0.13265,0.13265,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-U-T1')",q0.80,0.12867,0.12867,0.00000000,pass
+article_he4,"('01/23/2021', 'exAL-U-T1')",q0.95,0.10144,0.10144,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-U-T1')",q0.05,0.03150,0.03150,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-U-T1')",q0.20,0.08874,0.08874,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-U-T1')",q0.35,0.12511,0.12511,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-U-T1')",q0.50,0.13534,0.13534,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-U-T1')",q0.65,0.14456,0.14456,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-U-T1')",q0.80,0.14617,0.14617,0.00000000,pass
+article_he4,"('01/23/2021', 'AL-U-T1')",q0.95,0.12576,0.12576,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-M-T1')",q0.05,0.00943,0.00943,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-M-T1')",q0.20,0.02226,0.02226,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-M-T1')",q0.35,0.02164,0.02164,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-M-T1')",q0.50,0.03224,0.03224,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-M-T1')",q0.65,0.03659,0.03659,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-M-T1')",q0.80,0.02737,0.02737,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-M-T1')",q0.95,0.01267,0.01267,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-M-T1')",q0.05,0.01114,0.01114,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-M-T1')",q0.20,0.02242,0.02242,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-M-T1')",q0.35,0.02264,0.02264,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-M-T1')",q0.50,0.03547,0.03547,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-M-T1')",q0.65,0.03937,0.03937,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-M-T1')",q0.80,0.03394,0.03394,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-M-T1')",q0.95,0.02369,0.02369,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-U-T1')",q0.05,0.01110,0.01110,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-U-T1')",q0.20,0.02586,0.02586,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-U-T1')",q0.35,0.08966,0.08966,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-U-T1')",q0.50,0.09603,0.09603,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-U-T1')",q0.65,0.06947,0.06947,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-U-T1')",q0.80,0.04183,0.04183,0.00000000,pass
+article_he4,"('11/12/2021', 'exAL-U-T1')",q0.95,0.01279,0.01279,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-U-T1')",q0.05,0.01843,0.01843,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-U-T1')",q0.20,0.02075,0.02075,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-U-T1')",q0.35,0.07354,0.07354,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-U-T1')",q0.50,0.06746,0.06746,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-U-T1')",q0.65,0.04860,0.04860,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-U-T1')",q0.80,0.02874,0.02874,0.00000000,pass
+article_he4,"('11/12/2021', 'AL-U-T1')",q0.95,0.01018,0.01018,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-M-T1')",q0.05,0.02204,0.02204,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-M-T1')",q0.20,0.08243,0.08243,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-M-T1')",q0.35,0.13306,0.13306,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-M-T1')",q0.50,0.17423,0.17423,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-M-T1')",q0.65,0.21136,0.21136,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-M-T1')",q0.80,0.17833,0.17833,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-M-T1')",q0.95,0.08278,0.08278,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-M-T1')",q0.05,0.05594,0.05594,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-M-T1')",q0.20,0.10246,0.10246,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-M-T1')",q0.35,0.14994,0.14994,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-M-T1')",q0.50,0.17786,0.17786,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-M-T1')",q0.65,0.22531,0.22531,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-M-T1')",q0.80,0.17118,0.17118,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-M-T1')",q0.95,0.05205,0.05205,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-U-T1')",q0.05,0.06544,0.06544,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-U-T1')",q0.20,0.22311,0.22311,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-U-T1')",q0.35,0.33019,0.33019,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-U-T1')",q0.50,0.42750,0.42750,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-U-T1')",q0.65,0.54414,0.54414,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-U-T1')",q0.80,0.64406,0.64406,0.00000000,pass
+article_he4,"('12/21/2021', 'exAL-U-T1')",q0.95,0.67338,0.67338,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-U-T1')",q0.05,0.06384,0.06384,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-U-T1')",q0.20,0.23665,0.23665,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-U-T1')",q0.35,0.33938,0.33938,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-U-T1')",q0.50,0.45254,0.45254,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-U-T1')",q0.65,0.57593,0.57593,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-U-T1')",q0.80,0.67517,0.67517,0.00000000,pass
+article_he4,"('12/21/2021', 'AL-U-T1')",q0.95,0.68584,0.68584,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-M-T1')",q0.05,0.00754,0.00754,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-M-T1')",q0.20,0.00818,0.00818,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-M-T1')",q0.35,0.00784,0.00784,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-M-T1')",q0.50,0.01526,0.01526,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-M-T1')",q0.65,0.01387,0.01387,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-M-T1')",q0.80,0.01399,0.01399,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-M-T1')",q0.95,0.00904,0.00904,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-M-T1')",q0.05,0.01095,0.01095,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-M-T1')",q0.20,0.03552,0.03552,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-M-T1')",q0.35,0.03957,0.03957,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-M-T1')",q0.50,0.03433,0.03433,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-M-T1')",q0.65,0.02135,0.02135,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-M-T1')",q0.80,0.02730,0.02730,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-M-T1')",q0.95,0.01661,0.01661,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-U-T1')",q0.05,0.01852,0.01852,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-U-T1')",q0.20,0.04289,0.04289,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-U-T1')",q0.35,0.10852,0.10852,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-U-T1')",q0.50,0.10902,0.10902,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-U-T1')",q0.65,0.07885,0.07885,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-U-T1')",q0.80,0.04803,0.04803,0.00000000,pass
+article_he4,"('05/11/2022', 'exAL-U-T1')",q0.95,0.01501,0.01501,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-U-T1')",q0.05,0.03186,0.03186,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-U-T1')",q0.20,0.03619,0.03619,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-U-T1')",q0.35,0.09686,0.09686,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-U-T1')",q0.50,0.08487,0.08487,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-U-T1')",q0.65,0.06068,0.06068,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-U-T1')",q0.80,0.03675,0.03675,0.00000000,pass
+article_he4,"('05/11/2022', 'AL-U-T1')",q0.95,0.01363,0.01363,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-M-T1')",q0.05,0.08853,0.08853,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-M-T1')",q0.20,0.21289,0.21289,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-M-T1')",q0.35,0.30922,0.30922,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-M-T1')",q0.50,0.41184,0.41184,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-M-T1')",q0.65,0.41426,0.41426,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-M-T1')",q0.80,0.25746,0.25746,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-M-T1')",q0.95,0.14369,0.14369,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-M-T1')",q0.05,0.10685,0.10685,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-M-T1')",q0.20,0.33826,0.33826,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-M-T1')",q0.35,0.49367,0.49367,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-M-T1')",q0.50,0.55801,0.55801,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-M-T1')",q0.65,0.28439,0.28439,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-M-T1')",q0.80,0.22049,0.22049,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-M-T1')",q0.95,0.13795,0.13795,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-U-T1')",q0.05,0.12106,0.12106,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-U-T1')",q0.20,0.41104,0.41104,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-U-T1')",q0.35,0.63858,0.63858,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-U-T1')",q0.50,0.86423,0.86423,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-U-T1')",q0.65,1.10845,1.10845,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-U-T1')",q0.80,1.33342,1.33342,0.00000000,pass
+article_he4,"('12/25/2022', 'exAL-U-T1')",q0.95,1.47893,1.47893,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-U-T1')",q0.05,0.12012,0.12012,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-U-T1')",q0.20,0.43475,0.43475,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-U-T1')",q0.35,0.64594,0.64594,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-U-T1')",q0.50,0.88340,0.88340,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-U-T1')",q0.65,1.13232,1.13232,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-U-T1')",q0.80,1.35815,1.35815,0.00000000,pass
+article_he4,"('12/25/2022', 'AL-U-T1')",q0.95,1.46909,1.46909,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-M-T1')",q0.05,0.02529,0.02529,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-M-T1')",q0.20,0.07061,0.07061,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-M-T1')",q0.35,0.09149,0.09149,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-M-T1')",q0.50,0.09407,0.09407,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-M-T1')",q0.65,0.08697,0.08697,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-M-T1')",q0.80,0.07165,0.07165,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-M-T1')",q0.95,0.03093,0.03093,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-M-T1')",q0.05,0.02894,0.02894,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-M-T1')",q0.20,0.07178,0.07178,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-M-T1')",q0.35,0.09341,0.09341,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-M-T1')",q0.50,0.09700,0.09700,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-M-T1')",q0.65,0.08931,0.08931,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-M-T1')",q0.80,0.06937,0.06937,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-M-T1')",q0.95,0.04116,0.04116,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-U-T1')",q0.05,0.03314,0.03314,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-U-T1')",q0.20,0.09434,0.09434,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-U-T1')",q0.35,0.12252,0.12252,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-U-T1')",q0.50,0.13140,0.13140,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-U-T1')",q0.65,0.13265,0.13265,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-U-T1')",q0.80,0.12867,0.12867,0.00000000,pass
+corrections_he4,"('01/23/2021', 'exAL-U-T1')",q0.95,0.10144,0.10144,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-U-T1')",q0.05,0.03150,0.03150,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-U-T1')",q0.20,0.08874,0.08874,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-U-T1')",q0.35,0.12511,0.12511,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-U-T1')",q0.50,0.13534,0.13534,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-U-T1')",q0.65,0.14456,0.14456,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-U-T1')",q0.80,0.14617,0.14617,0.00000000,pass
+corrections_he4,"('01/23/2021', 'AL-U-T1')",q0.95,0.12576,0.12576,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-M-T1')",q0.05,0.00943,0.00943,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-M-T1')",q0.20,0.02226,0.02226,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-M-T1')",q0.35,0.02164,0.02164,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-M-T1')",q0.50,0.03224,0.03224,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-M-T1')",q0.65,0.03659,0.03659,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-M-T1')",q0.80,0.02737,0.02737,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-M-T1')",q0.95,0.01267,0.01267,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-M-T1')",q0.05,0.01114,0.01114,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-M-T1')",q0.20,0.02242,0.02242,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-M-T1')",q0.35,0.02264,0.02264,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-M-T1')",q0.50,0.03547,0.03547,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-M-T1')",q0.65,0.03937,0.03937,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-M-T1')",q0.80,0.03394,0.03394,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-M-T1')",q0.95,0.02369,0.02369,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-U-T1')",q0.05,0.01110,0.01110,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-U-T1')",q0.20,0.02586,0.02586,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-U-T1')",q0.35,0.08966,0.08966,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-U-T1')",q0.50,0.09603,0.09603,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-U-T1')",q0.65,0.06947,0.06947,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-U-T1')",q0.80,0.04183,0.04183,0.00000000,pass
+corrections_he4,"('11/12/2021', 'exAL-U-T1')",q0.95,0.01279,0.01279,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-U-T1')",q0.05,0.01843,0.01843,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-U-T1')",q0.20,0.02075,0.02075,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-U-T1')",q0.35,0.07354,0.07354,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-U-T1')",q0.50,0.06746,0.06746,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-U-T1')",q0.65,0.04860,0.04860,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-U-T1')",q0.80,0.02874,0.02874,0.00000000,pass
+corrections_he4,"('11/12/2021', 'AL-U-T1')",q0.95,0.01018,0.01018,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-M-T1')",q0.05,0.02204,0.02204,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-M-T1')",q0.20,0.08243,0.08243,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-M-T1')",q0.35,0.13306,0.13306,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-M-T1')",q0.50,0.17423,0.17423,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-M-T1')",q0.65,0.21136,0.21136,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-M-T1')",q0.80,0.17833,0.17833,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-M-T1')",q0.95,0.08278,0.08278,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-M-T1')",q0.05,0.05594,0.05594,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-M-T1')",q0.20,0.10246,0.10246,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-M-T1')",q0.35,0.14994,0.14994,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-M-T1')",q0.50,0.17786,0.17786,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-M-T1')",q0.65,0.22531,0.22531,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-M-T1')",q0.80,0.17118,0.17118,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-M-T1')",q0.95,0.05205,0.05205,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-U-T1')",q0.05,0.06544,0.06544,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-U-T1')",q0.20,0.22311,0.22311,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-U-T1')",q0.35,0.33019,0.33019,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-U-T1')",q0.50,0.42750,0.42750,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-U-T1')",q0.65,0.54414,0.54414,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-U-T1')",q0.80,0.64406,0.64406,0.00000000,pass
+corrections_he4,"('12/21/2021', 'exAL-U-T1')",q0.95,0.67338,0.67338,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-U-T1')",q0.05,0.06384,0.06384,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-U-T1')",q0.20,0.23665,0.23665,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-U-T1')",q0.35,0.33938,0.33938,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-U-T1')",q0.50,0.45254,0.45254,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-U-T1')",q0.65,0.57593,0.57593,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-U-T1')",q0.80,0.67517,0.67517,0.00000000,pass
+corrections_he4,"('12/21/2021', 'AL-U-T1')",q0.95,0.68584,0.68584,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-M-T1')",q0.05,0.00754,0.00754,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-M-T1')",q0.20,0.00818,0.00818,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-M-T1')",q0.35,0.00784,0.00784,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-M-T1')",q0.50,0.01526,0.01526,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-M-T1')",q0.65,0.01387,0.01387,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-M-T1')",q0.80,0.01399,0.01399,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-M-T1')",q0.95,0.00904,0.00904,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-M-T1')",q0.05,0.01095,0.01095,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-M-T1')",q0.20,0.03552,0.03552,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-M-T1')",q0.35,0.03957,0.03957,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-M-T1')",q0.50,0.03433,0.03433,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-M-T1')",q0.65,0.02135,0.02135,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-M-T1')",q0.80,0.02730,0.02730,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-M-T1')",q0.95,0.01661,0.01661,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-U-T1')",q0.05,0.01852,0.01852,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-U-T1')",q0.20,0.04289,0.04289,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-U-T1')",q0.35,0.10852,0.10852,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-U-T1')",q0.50,0.10902,0.10902,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-U-T1')",q0.65,0.07885,0.07885,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-U-T1')",q0.80,0.04803,0.04803,0.00000000,pass
+corrections_he4,"('05/11/2022', 'exAL-U-T1')",q0.95,0.01501,0.01501,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-U-T1')",q0.05,0.03186,0.03186,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-U-T1')",q0.20,0.03619,0.03619,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-U-T1')",q0.35,0.09686,0.09686,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-U-T1')",q0.50,0.08487,0.08487,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-U-T1')",q0.65,0.06068,0.06068,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-U-T1')",q0.80,0.03675,0.03675,0.00000000,pass
+corrections_he4,"('05/11/2022', 'AL-U-T1')",q0.95,0.01363,0.01363,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-M-T1')",q0.05,0.08853,0.08853,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-M-T1')",q0.20,0.21289,0.21289,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-M-T1')",q0.35,0.30922,0.30922,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-M-T1')",q0.50,0.41184,0.41184,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-M-T1')",q0.65,0.41426,0.41426,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-M-T1')",q0.80,0.25746,0.25746,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-M-T1')",q0.95,0.14369,0.14369,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-M-T1')",q0.05,0.10685,0.10685,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-M-T1')",q0.20,0.33826,0.33826,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-M-T1')",q0.35,0.49367,0.49367,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-M-T1')",q0.50,0.55801,0.55801,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-M-T1')",q0.65,0.28439,0.28439,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-M-T1')",q0.80,0.22049,0.22049,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-M-T1')",q0.95,0.13795,0.13795,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-U-T1')",q0.05,0.12106,0.12106,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-U-T1')",q0.20,0.41104,0.41104,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-U-T1')",q0.35,0.63858,0.63858,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-U-T1')",q0.50,0.86423,0.86423,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-U-T1')",q0.65,1.10845,1.10845,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-U-T1')",q0.80,1.33342,1.33342,0.00000000,pass
+corrections_he4,"('12/25/2022', 'exAL-U-T1')",q0.95,1.47893,1.47893,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-U-T1')",q0.05,0.12012,0.12012,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-U-T1')",q0.20,0.43475,0.43475,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-U-T1')",q0.35,0.64594,0.64594,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-U-T1')",q0.50,0.88340,0.88340,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-U-T1')",q0.65,1.13232,1.13232,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-U-T1')",q0.80,1.35815,1.35815,0.00000000,pass
+corrections_he4,"('12/25/2022', 'AL-U-T1')",q0.95,1.46909,1.46909,0.00000000,pass

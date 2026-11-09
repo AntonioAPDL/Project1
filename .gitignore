@@ -315,3 +315,7 @@ flowMC_old/
 # Bounded independent article-repository migration and verification evidence.
 !/docs/article_repository_migration_20261108/
 !/docs/article_repository_migration_20261108/**
+
+# Bounded scientific editorial revision and verification evidence.
+!/docs/article_editorial_revision_20261109/
+!/docs/article_editorial_revision_20261109/**

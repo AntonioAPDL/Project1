@@ -1,0 +1,29 @@
+test_all_asset_manifest_tables_are_actually_included (test_editorial_integration.ActiveArticleIntegrationTests) ... ok
+test_editorial_check_invokes_only_two_bounded_read_only_builders (test_editorial_integration.ActiveArticleIntegrationTests) ... ok
+test_editorial_refresh_stops_after_first_failure (test_editorial_integration.ActiveArticleIntegrationTests) ... ok
+test_review_hashes_cover_all_actual_included_presentation_files (test_editorial_integration.ActiveArticleIntegrationTests) ... ok
+test_duplicate_and_cyclic_includes_are_visited_once (test_editorial_integration.IncludeTraversalTests) ... ok
+test_missing_included_file_fails_closed (test_editorial_integration.IncludeTraversalTests) ... ok
+test_nested_actual_includes_are_traversed_and_comments_ignored (test_editorial_integration.IncludeTraversalTests) ... ok
+test_parent_directory_include_is_rejected (test_editorial_integration.IncludeTraversalTests) ... ok
+test_review_hash_sources_follow_active_table_not_unused_companion (test_editorial_integration.IncludeTraversalTests) ... ok
+test_symlink_outside_root_is_rejected (test_editorial_integration.IncludeTraversalTests) ... ok
+test_changed_caption_is_stale_even_if_cells_match (test_editorial_revision.EditorialTableTests) ... ok
+test_changed_precision_rejected (test_editorial_revision.EditorialTableTests) ... ok
+test_check_does_not_write_any_files (test_editorial_revision.EditorialTableTests) ... ok
+test_coverage_numerator_change_rejected (test_editorial_revision.EditorialTableTests) ... ok
+test_explicit_substitution_cannot_match_changed_source_silently (test_editorial_revision.EditorialTableTests) ... ok
+test_generator_is_reproducible_and_preserves_sources (test_editorial_revision.EditorialTableTests) ... ok
+test_release_has_all_fifteen_files_and_sixteen_labels (test_editorial_revision.EditorialTableTests) ... ok
+test_source_hash_change_rejected_before_generation (test_editorial_revision.EditorialTableTests) ... ok
+test_source_wording_change_cannot_silently_refresh_contract (test_editorial_revision.EditorialTableTests) ... ok
+test_stale_inventory_rejected (test_editorial_revision.EditorialTableTests) ... ok
+test_statistical_cell_change_rejected_independently_of_inventory (test_editorial_revision.EditorialTableTests) ... ok
+test_table_label_change_rejected (test_editorial_revision.EditorialTableTests) ... ok
+test_undeclared_method_label_rejected (test_editorial_revision.EditorialTableTests) ... ok
+test_unexpected_output_path_rejected (test_editorial_revision.EditorialTableTests) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.655s
+
+OK

@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-from current_article_contract import active_tex, cited_url, scientific_checks, structure_checks
+from current_article_contract import canonical_method_label, active_table_path, included_tex_paths, manuscript_with_includes, active_tex, cited_url, scientific_checks, structure_checks
 
 import pandas as pd
 
@@ -301,7 +301,7 @@ def parse_flat_table(path: Path, expected_numeric_cells: int) -> dict[str, list[
         parts = [part.strip() for part in line.rstrip("\\").split("&")]
         if len(parts) != expected_numeric_cells + 1:
             continue
-        label = strip_tex(parts[0])
+        label = canonical_method_label(strip_tex(parts[0]))
         if label in {"Model", "Model label", "Ablation model"}:
             continue
         try:
@@ -315,7 +315,7 @@ def parse_flat_table(path: Path, expected_numeric_cells: int) -> dict[str, list[
 def parse_panel_table(path: Path, expected_numeric_cells: int) -> dict[tuple[str, str], list[float]]:
     rows: dict[tuple[str, str], list[float]] = {}
     current_panel = ""
-    panel_re = re.compile(r"Cutoff\s+(\d{2}/\d{2}/\d{4})")
+    panel_re = re.compile(r"(?:Cutoff|Origin)\s+(\d{2}/\d{2}/\d{4})")
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         panel_match = panel_re.search(line)
@@ -327,7 +327,7 @@ def parse_panel_table(path: Path, expected_numeric_cells: int) -> dict[tuple[str
         parts = [part.strip() for part in line.rstrip("\\").split("&")]
         if len(parts) != expected_numeric_cells + 1:
             continue
-        label = strip_tex(parts[0])
+        label = canonical_method_label(strip_tex(parts[0]))
         if label in {"Model", "Model label", "Ablation model"}:
             continue
         try:
@@ -574,12 +574,8 @@ def audit_corrections_inputs(corrections_root: Path) -> tuple[list[CheckRow], li
 def audit_prose_claims(article_root: Path, corrections_root: Path) -> tuple[list[CheckRow], list[dict[str, object]]]:
     checks: list[CheckRow] = []
     rows: list[dict[str, object]] = []
-    generated_tables = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in sorted((article_root / "tables" / "generated_tex").glob("*.tex"))
-    )
     texts = {
-        "article": (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8") + "\n" + generated_tables,
+        "article": manuscript_with_includes(article_root),
         "corrections": (corrections_root / "main.tex").read_text(encoding="utf-8"),
     }
     for repo_name, text in texts.items():
@@ -699,9 +695,8 @@ def audit_reviewer1_remaining(
 
     article_path = article_root / "wileyNJD-APA.tex"
     corrections_path = corrections_root / "main.tex"
-    generated_table_paths = sorted((article_root / "tables" / "generated_tex").glob("*.tex"))
-    generated_tables = "\n".join(path.read_text(encoding="utf-8") for path in generated_table_paths)
-    article_text = article_path.read_text(encoding="utf-8") + "\n" + generated_tables
+    generated_table_paths = included_tex_paths(article_root)[1:]
+    article_text = manuscript_with_includes(article_root)
     corrections_text = corrections_path.read_text(encoding="utf-8")
     sources.extend([article_path, corrections_path, *generated_table_paths])
     for row in check_reviewer1_remaining_text(article_text, corrections_text):
@@ -810,13 +805,15 @@ def audit_software_availability(
     for path in [article_root / "wileyNJD-APA.tex", corrections_root / "main.tex"]:
         sources.append(path)
     required_article = [
-        r"CRAN R package \texttt{exdqlm}",
+        r"R package \texttt{exdqlm}",
         f"version {CRAN_EXDQLM_VERSION}",
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
         EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
         PUBLIC_REPRO_URL,
-        "provenance manifests",
+        "analysis data",
+        "statistical code",
+        "data-source documentation",
     ]
     required_corrections = [
         r"CRAN R package \texttt{exdqlm}",
@@ -1141,14 +1138,14 @@ def main(argv: Iterable[str] | None = None) -> int:
     he3_nws_horizon_expected = build_he3_expected(article_root, manifest, horizon_days=8, include_nws=True)
     he4_expected = build_he4_expected(article_root, manifest)
 
-    he2_article = parse_flat_table(article_root / "tables/generated_tex/benchmark_crps_main_table.tex", 5)
-    he2_nws_horizon_article = parse_flat_table(article_root / "tables/generated_tex/benchmark_crps_nws_horizon_table.tex", 5)
+    he2_article = parse_flat_table(active_table_path(article_root, "tab:benchmark_crps_models"), 5)
+    he2_nws_horizon_article = parse_flat_table(active_table_path(article_root, "tab:benchmark_crps_models_nws_horizon"), 5)
     he2_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he2_benchmark_crps_response_table.tex", 5)
-    he3_article = parse_flat_table(article_root / "tables/generated_tex/he3_ablation_crps_main_table.tex", 5)
-    he3_nws_horizon_article = parse_flat_table(article_root / "tables/generated_tex/he3_ablation_crps_nws_horizon_table.tex", 5)
+    he3_article = parse_flat_table(active_table_path(article_root, "tab:he3_ablation_crps"), 5)
+    he3_nws_horizon_article = parse_flat_table(active_table_path(article_root, "tab:he3_ablation_crps_nws_horizon"), 5)
     he3_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he3_ablation_crps_response_table.tex", 5)
     he3_nws_horizon_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he3_ablation_crps_nws_horizon_response_table.tex", 5)
-    he4_article = parse_panel_table(article_root / "tables/generated_tex/he4_quantile_check_loss_main_table.tex", 7)
+    he4_article = parse_panel_table(active_table_path(article_root, "tab:he4_quantile_check_loss"), 7)
     he4_corrections = parse_panel_table(corrections_root / "tables/generated_tex/he4_quantile_check_loss_response_table.tex", 7)
 
     cutoff_cols = [CUTOFF_DISPLAY[cutoff] for cutoff in CUTOFF_ORDER]

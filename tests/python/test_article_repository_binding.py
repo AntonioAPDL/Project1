@@ -161,7 +161,8 @@ class ArticleRepositoryBindingTests(unittest.TestCase):
         scripts = self.article / 'scripts'
         scripts.mkdir()
         exports = ('active_tex', 'normalized_text', 'has_concepts', 'has_label',
-                   'in_order', 'cited_url', 'structure_checks', 'scientific_checks')
+                   'in_order', 'cited_url', 'structure_checks', 'scientific_checks',
+                   'included_tex_paths', 'manuscript_with_includes')
         (scripts / 'manuscript_text_contract.py').write_text('\n'.join(
             f'def {name}(*args, **kwargs): return "active-parser"' for name in exports))
         archive = self.workflow / self.payload['submitted_archive_directory'] / 'scripts'

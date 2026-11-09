@@ -1,0 +1,19 @@
+test_cli_defaults_and_explicit_historical_reads_do_not_require_git (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_current_contract_imports_only_configured_active_parser (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_default_env_and_explicit_routing_have_defined_precedence (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_deployed_binding_is_exact_approved_repository (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_finalizer_rejects_sealed_submitted_target_without_rewriting_configuration (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_guard_accepts_equivalent_fetch_and_push_origins_without_mutation (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_invalid_binding_schema_and_child_paths_fail_closed (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_missing_active_checkout_never_falls_back_to_submitted_archive (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_publication_sync_checks_target_before_reading_or_writing_outputs (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_remote_errors_do_not_reveal_credentials (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_submitted_archive_is_rejected_even_with_override_before_git_reads (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_supported_remote_forms_identify_one_github_repository (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_workflow_git_ancestor_cannot_masquerade_as_article_repository (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+test_wrong_owner_fetch_push_or_additional_push_target_is_rejected (test_article_repository_binding.ArticleRepositoryBindingTests) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.507s
+
+OK

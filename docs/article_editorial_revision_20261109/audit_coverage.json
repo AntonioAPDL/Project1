@@ -1,0 +1,83 @@
+{
+  "scope": "Scientific editorial revision with existing numerical results retained.",
+  "article_baseline_commit": "d60d7652a56d7f151f49087bf44c476315427f96",
+  "reviewed_staged_tree": "dd75880b5ac1a8552502777277a5ab7ff1c733f2",
+  "source_lines": 1047,
+  "main_sections": [
+    "INTRODUCTION",
+    "FORECASTING SETTING AND DATA",
+    "BAYESIAN CORRECTION AND PREDICTIVE SYNTHESIS",
+    "APPLICATION SPECIFICATION AND EVALUATION",
+    "RESULTS",
+    "DISCUSSION AND CONCLUSIONS"
+  ],
+  "active_table_includes": [
+    "tables/editorial_revision/benchmark_crps_main_table.tex",
+    "tables/editorial_revision/benchmark_crps_nws_horizon_table.tex",
+    "tables/editorial_revision/comment2_external_comparison_table.tex",
+    "tables/editorial_revision/he4_quantile_check_loss_main_table.tex",
+    "tables/editorial_revision/no_refit_calibration_summary_table.tex",
+    "tables/editorial_revision/representative_covariate_effects_table.tex",
+    "tables/editorial_revision/he3_ablation_crps_main_table.tex",
+    "tables/editorial_revision/he3_ablation_crps_nws_horizon_table.tex",
+    "tables/editorial_revision/comment2_fit_diagnostic_table.tex",
+    "tables/editorial_revision/comment2_external_by_origin_table.tex",
+    "tables/editorial_revision/no_refit_score_comparison_table.tex",
+    "tables/editorial_revision/no_refit_score_sensitivity_table.tex",
+    "tables/editorial_revision/no_refit_origin_diagnostics_table.tex",
+    "tables/editorial_revision/appendix_gamma_summary_table.tex",
+    "tables/editorial_revision/appendix_sigma_summary_table.tex"
+  ],
+  "active_figures": [
+    "site_context_usgs.png",
+    "forecast_products_context.png",
+    "cutoff_2022_12_25_multivariate_synthesis_with_reference_ensembles.png",
+    "no_refit_quantile_reliability.png",
+    "covariate_context_precip_soil_gdpc.png",
+    "retrospective_products_context.png",
+    "historical_summary_dry_period.png",
+    "historical_summary_wet_period.png",
+    "editorial_long_cycle_component.png",
+    "reference_synthesis_univariate.png",
+    "cutoff_2021_01_23_multivariate_synthesis_with_reference_ensembles.png",
+    "cutoff_2021_11_12_multivariate_synthesis_with_reference_ensembles.png",
+    "cutoff_2021_12_21_multivariate_synthesis_with_reference_ensembles.png",
+    "cutoff_2022_05_11_multivariate_synthesis_with_reference_ensembles.png"
+  ],
+  "reviewed_areas": [
+    "Every main-text section and appendix subsection: argument, definitions, notation and scientific vocabulary.",
+    "All 15 active table fragments, 16 generated tables and two inline explanatory tables.",
+    "All 14 figures: axes, legends, units, captions, dates and visible clipping.",
+    "All four algorithm displays and their mathematical definitions.",
+    "Cited-reference wiring and metadata of revised bibliography entries.",
+    "Asset paths, retained numerical evidence and regeneration/check entrypoints."
+  ],
+  "independent_reviews": [
+    "Manuscript flow and scientific prose",
+    "Table presentation and numerical preservation",
+    "Mathematical notation and all figures"
+  ],
+  "primary_reference_checks": [
+    {
+      "item": "Wang and Blei (2013), published journal reference",
+      "url": "https://jmlr.csail.mit.edu/papers/v14/wang13b.html"
+    },
+    {
+      "item": "Hyndman and Fan (1996), sample-quantile conventions",
+      "url": "https://robjhyndman.com/publications/quantiles/"
+    },
+    {
+      "item": "R sample-quantile definitions",
+      "url": "https://stat.ethz.ch/R-manual/R-patched/library/stats/html/quantile.html"
+    }
+  ],
+  "latex_layout_review": {
+    "main_text_ends_page": 20,
+    "appendix_starts_page": 21,
+    "total_pages": 44,
+    "source_parameter_tables": "Stacked fitted-quantile header removes overflow without shrinking fonts; float barrier keeps source-parameter tables before historical component illustrations.",
+    "remaining_warnings": "One title-page horizontal and one title-page vertical box warning from the unmodified Wiley abstract/background layout; visible title, abstract, text and footer are contained. No warning suppression.",
+    "blank_pages": false,
+    "final_clarification": "Reliability-figure caption explicitly identifies the four comparator codes embedded in its legend."
+  }
+}

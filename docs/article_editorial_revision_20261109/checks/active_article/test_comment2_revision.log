@@ -1,0 +1,16 @@
+test_asset_index_refresh_preserves_reviewed_readme_guidance (test_comment2_revision.Comment2RevisionTests) ... ok
+test_documented_replay_commands_name_packaged_scripts (test_comment2_revision.Comment2RevisionTests) ... ok
+test_frozen_bundle_and_all_three_generated_tables_agree (test_comment2_revision.Comment2RevisionTests) ... ok
+test_manifest_cannot_reach_outside_article (test_comment2_revision.Comment2RevisionTests) ... ok
+test_rejects_baseline_training_with_post_origin_verification (test_comment2_revision.Comment2RevisionTests) ... ok
+test_rejects_changed_original_scores (test_comment2_revision.Comment2RevisionTests) ... ok
+test_rejects_invalid_predictive_support_even_if_resigned (test_comment2_revision.Comment2RevisionTests) ... ok
+test_rejects_missing_origin_despite_a_complete_pooled_summary (test_comment2_revision.Comment2RevisionTests) ... ok
+test_rejects_no_converged_external_optimizer_start (test_comment2_revision.Comment2RevisionTests) ... ok
+test_rejects_shifted_forecast_dates (test_comment2_revision.Comment2RevisionTests) ... ok
+test_rejects_skill_that_is_not_ratio_of_matching_scores (test_comment2_revision.Comment2RevisionTests) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 1.365s
+
+OK

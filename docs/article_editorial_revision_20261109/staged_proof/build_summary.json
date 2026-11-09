@@ -1,0 +1,127 @@
+{
+  "article_root": "/tmp/article_editorial_revision_20261109/staged_article_final",
+  "output_directory": "/tmp/article_editorial_revision_20261109/staged_final_proof",
+  "pdf": "/tmp/article_editorial_revision_20261109/staged_final_proof/editorial_review.pdf",
+  "pdf_sha256": "1a988e156182e94afd13f019003222d61c826a25c35babbeb79a50269d738bd7",
+  "text_sha256": "e26b9778e31b012a5abf4740ed37e324695bec504c0c88219d974d189ad56079",
+  "pages": 44,
+  "latex_passes": 4,
+  "auxiliary_labels_stable": true,
+  "unresolved_citations_or_references": [],
+  "bibtex_warnings": [],
+  "overfull_horizontal_boxes": 1,
+  "overfull_vertical_boxes": 1,
+  "sources_unchanged_during_build": true,
+  "source_hashes": {
+    "Figures/manuscript/covariate_context_precip_soil_gdpc.png": "a450b7fa331403f61ea0af951dc1bdf65fab1e4d471c8f89b26cc72d89b9ad03",
+    "Figures/manuscript/editorial_long_cycle_component.png": "4ece63c1d23ab5913395e2d9b63098c8587cc5ba4d51d90bc39995866373b97d",
+    "Figures/manuscript/forecast_products_context.png": "66fe558104bdc7b8a08a9c5085f3470ccdfb900a6d155fb408d912b86f08ead7",
+    "Figures/manuscript/historical_summary_dry_period.png": "5e89ea1cd49566adfd8b27cef10723d4babf834178ae8e770bef3996e5e57a78",
+    "Figures/manuscript/historical_summary_wet_period.png": "c81b3cc77c9a230ac1bfa94430a4820e8046b3eb1bdf730a76de2a624a5f18c4",
+    "Figures/manuscript/no_refit_quantile_reliability.png": "c0097bd2684b17565c328871d08c3b0ee7117cf2be3d5fb9833906f885e8d4e6",
+    "Figures/manuscript/reference_synthesis_univariate.png": "ca4661c1ac0c97f8e1ea04e1862d759904c9cb2eefe916e4b79f5727d2af18cd",
+    "Figures/manuscript/retrospective_products_context.png": "a670b1de369c4a576c9d9221eec27f83e78bbdf00db88419a714efa2bf5de16e",
+    "Figures/manuscript/site_context_usgs.png": "eeef68672852e4a5362455147b84212ca5bd28d02f9774bb40bdc2a495dc8d8c",
+    "Figures/multivariate_synthesis_by_cutoff/cutoff_2021_01_23_multivariate_synthesis_with_reference_ensembles.png": "e8d0e0973ad7453c205f947d5afa40092cfa6ba55f41c3553625b8b127edbe84",
+    "Figures/multivariate_synthesis_by_cutoff/cutoff_2021_11_12_multivariate_synthesis_with_reference_ensembles.png": "36a99a446c0b61b7d23cbdfc773ea36979f582ed3488181d9d184f3b16044c55",
+    "Figures/multivariate_synthesis_by_cutoff/cutoff_2021_12_21_multivariate_synthesis_with_reference_ensembles.png": "64b84b5de118d1584c35a60b0cb401cf0c9afce6d173f91fb2e10aa2ae0aa1f5",
+    "Figures/multivariate_synthesis_by_cutoff/cutoff_2022_05_11_multivariate_synthesis_with_reference_ensembles.png": "8cbb423612001ded6d3df6a9e7fd99013b0aaedc4fd9940008983bfb8aaba167",
+    "Figures/multivariate_synthesis_by_cutoff/cutoff_2022_12_25_multivariate_synthesis_with_reference_ensembles.png": "0e7e44311a1a4eb82113cb30bc9383f631f86b7a45af07fa9b54608149ed46bb",
+    "WileyNJD-APA.bst": "237c3b81013630af8236b7a4ea8d6c4e22b2c15fba1ccb30c26d3a2f581962c5",
+    "WileyNJD-v2.cls": "5d8faf972becd3cf1d9b0b28397e9f22b23d583673e58a74bb90cc7af1e94f3e",
+    "tables/editorial_revision/appendix_gamma_summary_table.tex": "3e5ea8e6400607e9caa732353dee3b302b76d02476be6a7db521a23139bd95a0",
+    "tables/editorial_revision/appendix_sigma_summary_table.tex": "9ffec6000ec243a2d65f1147c46dd5cc1e252681310d4108cfefec12bc6c8178",
+    "tables/editorial_revision/benchmark_crps_main_table.tex": "cb2ff382001dea8bcef276b7ca62f48d1ae07297b466aa9f2af5ba0892b16ffc",
+    "tables/editorial_revision/benchmark_crps_nws_horizon_table.tex": "218a30eaa29bddd2c3439f864df5ccb5307ce873d14d174bd846a595ac21ef23",
+    "tables/editorial_revision/comment2_external_by_origin_table.tex": "6597cb4b8c426792aee19797555ec8c9053eb479acaf002385636daf3b0cded4",
+    "tables/editorial_revision/comment2_external_comparison_table.tex": "cc5639955bd01b7ef4906be15bffe0cd1a94178ec5f17043a2cae606b6b1b8ee",
+    "tables/editorial_revision/comment2_fit_diagnostic_table.tex": "1820466c8d0d4c49920c458792fcbb05d8727d2befb0ba85a90df21131a77f70",
+    "tables/editorial_revision/he3_ablation_crps_main_table.tex": "25c5a927056393c45d8ac45ff959e11041e4a89d30c5462ada1cee0a36da6376",
+    "tables/editorial_revision/he3_ablation_crps_nws_horizon_table.tex": "4551e6fdcc84f548d9945ce3d918317595b28be178d98e5f19c97acecc56a2b8",
+    "tables/editorial_revision/he4_quantile_check_loss_main_table.tex": "43272b5d294de1f163b41ac0966a46cd38ecfb5379486e38afc94ce8f6d88fa0",
+    "tables/editorial_revision/no_refit_calibration_summary_table.tex": "f323d52dd61b8defbfb96447a85967dcce20666554b9fda146e081c896896b8b",
+    "tables/editorial_revision/no_refit_origin_diagnostics_table.tex": "4e8ccf55d4db64029d8218f8abb92c85136a3ba594f58d631c4e34664380cc80",
+    "tables/editorial_revision/no_refit_score_comparison_table.tex": "c96885a059972d1c6b6de2c29e362b61b20ca4b9790a1a75db6784df1ec3066e",
+    "tables/editorial_revision/no_refit_score_sensitivity_table.tex": "63d15a2ec53c47b055946c5510a75f9a3ce7e4c6593576bc1e93135150ecba86",
+    "tables/editorial_revision/representative_covariate_effects_table.tex": "66e0bc3a113e8df763e7b5eab49f0a9e07d3ae4cc2b526a82380c830849c66e9",
+    "wileyNJD-APA.bib": "7c517166cd3cd94006f50656fb9664c3f32bec892ffbc8b9cca2dbcef13ceb97",
+    "wileyNJD-APA.tex": "76046f1ba3526e64c03661db962e39b4ddc80d1a96f537daea5611e52e5f7090"
+  },
+  "commands": [
+    {
+      "argv": [
+        "pdflatex",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "-jobname=editorial_review",
+        "-output-directory=/tmp/article_editorial_revision_20261109/staged_final_proof",
+        "wileyNJD-APA.tex"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/staged_article_final",
+      "log": "latex-pass-1.stdout.txt"
+    },
+    {
+      "argv": [
+        "bibtex",
+        "editorial_review"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/staged_final_proof",
+      "log": "bibtex.stdout.txt"
+    },
+    {
+      "argv": [
+        "pdflatex",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "-jobname=editorial_review",
+        "-output-directory=/tmp/article_editorial_revision_20261109/staged_final_proof",
+        "wileyNJD-APA.tex"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/staged_article_final",
+      "log": "latex-pass-2.stdout.txt"
+    },
+    {
+      "argv": [
+        "pdflatex",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "-jobname=editorial_review",
+        "-output-directory=/tmp/article_editorial_revision_20261109/staged_final_proof",
+        "wileyNJD-APA.tex"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/staged_article_final",
+      "log": "latex-pass-3.stdout.txt"
+    },
+    {
+      "argv": [
+        "pdflatex",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "-jobname=editorial_review",
+        "-output-directory=/tmp/article_editorial_revision_20261109/staged_final_proof",
+        "wileyNJD-APA.tex"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/staged_article_final",
+      "log": "latex-pass-4.stdout.txt"
+    },
+    {
+      "argv": [
+        "pdfinfo",
+        "/tmp/article_editorial_revision_20261109/staged_final_proof/editorial_review.pdf"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/staged_final_proof",
+      "log": "pdfinfo.txt"
+    },
+    {
+      "argv": [
+        "pdftotext",
+        "-layout",
+        "/tmp/article_editorial_revision_20261109/staged_final_proof/editorial_review.pdf",
+        "/tmp/article_editorial_revision_20261109/staged_final_proof/editorial_review.txt"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/staged_final_proof",
+      "log": "pdftotext.stdout.txt"
+    }
+  ],
+  "passed": true
+}

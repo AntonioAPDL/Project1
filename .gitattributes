@@ -28,3 +28,9 @@ docs/article_repository_migration_20261108/**/*.stdout.txt -whitespace
 docs/article_repository_migration_20261108/**/session_info.txt -whitespace
 docs/article_repository_migration_20261108/**/pdfinfo.txt -whitespace
 docs/article_repository_migration_20261108/portable_verification/results/*.csv -whitespace
+
+# Preserve raw editorial build/check captures without altering their hashes.
+docs/article_editorial_revision_20261109/**/*.log -whitespace
+docs/article_editorial_revision_20261109/**/*.aux -whitespace
+docs/article_editorial_revision_20261109/**/*.stdout.txt -whitespace
+docs/article_editorial_revision_20261109/**/pdfinfo.txt -whitespace

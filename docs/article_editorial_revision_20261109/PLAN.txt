@@ -1,0 +1,84 @@
+Scientific editorial revision: refined plan and execution contract
+
+Scope
+The approved source-level audit covers the complete 1,004-line article at
+d60d7652a56d7f151f49087bf44c476315427f96, all 15 included table files
+(16 generated tables), captions, definitions and bibliography. This revision
+implements that plan without fitting, scoring new forecasts or replacing results.
+The existing six-section scientific narrative remains. The user's most recent
+qualitative discount description and availability wording remain in force.
+
+E00: Establish authority and isolate work
+Use independent article/workflow worktrees. Pin the complete article tree and all
+797 existing file identities in baseline.json. Verify live Overleaf branch ancestry
+before publication; preserve the restoration of the older submitted-article repo.
+Research fits and runtime outputs remain read-only and no jobs are interrupted.
+
+E01: Reader-facing terminology and definitions
+Replace revision chronology and internal software/storage vocabulary with the
+corresponding statistical quantities and procedures. Retain standard statistical
+terms. Distinguish conditional quantile locations, predictive quantiles from
+individual fits and synthesized predictive quantiles before their joint use.
+Define observation roles, symbols and abbreviations before needed. Explain the
+actual nine specifications without implying a twelve-cell factorial comparison.
+
+E02: Main text and appendix allocation
+Keep the scientific equations, inference/synthesis essentials, tail rule, sample
+counts, score definitions and qualifications, comparison results, reliability and
+coverage, conditional coefficient interpretation and convergence limits in main.
+Move full-history covariate and retrospective plots and three historical component
+illustrations to Appendix A. Move the pooled exact-score table with a main summary
+and reference. Move exact harmonic construction, numerical prediction conventions
+and optimizer mechanics to Appendix B. Preserve definition order and stable labels.
+
+E03: Reproducible table presentation
+Keep every original table, generator, numerical artifact and sealed manifest
+unchanged. Generate all 15 revised presentation files under tables/editorial_revision
+from exact checked original fragments, with independently compared numerical cell
+strings and row identities. Update only active table paths in the asset manifest.
+This refines the earlier proposal to edit existing generators: those sources and
+outputs are sealed historical evidence, and direct edits would break preservation.
+The new layer must reject changed sources, numeric alterations and stale captions.
+
+E04: Figure annotation
+Reproduce the existing long-cycle image from compact retained CSV summaries before
+altering its axis label. Bundle portable compact inputs and exact source identities.
+Publish a separately named derivative, preserving the original image and renderer.
+Require equality of all plotted numerical layers; no image painting or refitting.
+
+E05: Bounded notation review
+Verify source indexing, iteration conventions and channel-level conditional labels
+against the existing equations before correcting transcription/exposition. Describe
+unknown quantities separately from variational densities. State dimension conventions
+without inventing a new covariance law, parameterization or posterior algorithm.
+Any unsupported technical extension remains outside this editorial implementation.
+
+E06: References and self-contained captions
+Use the published Wang--Blei 2013 reference and a primary statistical reference for
+sample-quantile definitions. Preserve citation keys where feasible. Identify the
+estimand, score/response scale, horizon, model key, interval type and approximation
+in tables/captions. Leave repository directory navigation in repository documents.
+Suppress unassigned publisher-template metadata without modifying the vendor class.
+
+E07: Protect regeneration and active checks
+Provide one bounded article refresh/check command for new tables and the derivative
+figure. Avoid legacy broad refreshes. Adapt only presentation-bound assertions to
+active asset paths and scientific concepts; retain all numerical/source assertions.
+Extend publication validation to the new presentation where necessary, rather than
+counting validation of unused companion files as validation of included tables.
+
+E08: Verify, read and release
+Verify all baseline files: only the explicitly reviewed manuscript, bibliography,
+active inventory and necessary presentation-aware checks may change. Run old C1/C2
+and saved-output preservation, new table/figure checks and negative tests, active
+scientific/lineage/publication checks and manuscript build. Review affected pages
+and full reading flow. Confirm stable labels, resolved citations, unchanged numeric
+cells and plotted data, appropriate first-use definitions and standalone captions.
+Build from the exact staged source, record source/PDF hashes, commit and push only
+reviewed changes after the live Overleaf guard passes. Confirm remote main and then
+direct the user to synchronize the new Overleaf project before editing there.
+
+Completion record
+Record outcomes per E00--E08 with evidence and any narrowly justified deviation.
+Keep this planning/execution documentation outside the scientific manuscript.
+Do not present an editorial release as new empirical validation.

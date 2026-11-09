@@ -1,0 +1,107 @@
+{
+  "created_utc": "2026-11-09T01:03:34.255487+00:00",
+  "workflow_root": "/tmp/article_editorial_revision_20261109/workflow",
+  "article_root": "/tmp/article_editorial_revision_20261109/article",
+  "commands": [
+    {
+      "name": "active_article_gate",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/tmp/article_editorial_revision_20261109/workflow/docs/article_repository_migration_20261108/run_checks.py",
+        "--workflow-root",
+        "/tmp/article_editorial_revision_20261109/workflow",
+        "--article-root",
+        "/tmp/article_editorial_revision_20261109/article",
+        "--report-dir",
+        "/tmp/article_editorial_revision_20261109/final_verification/active_article",
+        "--corrections-root",
+        "/data/muscat_data/jaguir26/Corrections---Project-1",
+        "--public-root",
+        "/data/muscat_data/jaguir26/san-lorenzo-exdqlm-reproducibility",
+        "--he3-runtime-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/workflow",
+      "returncode": 0
+    },
+    {
+      "name": "editorial_table_and_integration_tests",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_editorial*.py",
+        "-v"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/article",
+      "returncode": 0
+    },
+    {
+      "name": "editorial_cross_repo_tests",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_article_editorial_wiring.py",
+        "-v"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/workflow",
+      "returncode": 0
+    },
+    {
+      "name": "editorial_refresh_check",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/tmp/article_editorial_revision_20261109/article/scripts/refresh_editorial_revision.py",
+        "--check"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/article",
+      "returncode": 0
+    },
+    {
+      "name": "review_build",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/tmp/article_editorial_revision_20261109/article/scripts/build_manuscript_review.py",
+        "--output-dir",
+        "/tmp/article_editorial_revision_20261109/final_verification/proof",
+        "--jobname",
+        "editorial_review"
+      ],
+      "cwd": "/tmp/article_editorial_revision_20261109/article",
+      "returncode": 0
+    }
+  ],
+  "baseline_preservation": {
+    "baseline_commit": "d60d7652a56d7f151f49087bf44c476315427f96",
+    "baseline_file_count": 797,
+    "changed_existing_files": [
+      "MANUSCRIPT_ASSET_MANIFEST.json",
+      "scripts/build_manuscript_review.py",
+      "scripts/manuscript_text_contract.py",
+      "tests/test_article_a1_and_table_contracts.py",
+      "wileyNJD-APA.bib",
+      "wileyNJD-APA.tex"
+    ],
+    "unchanged_existing_count": 791,
+    "current_baseline_content_sha256": "7ab84b56c89fdd44e26387b153830bcca8c3552e192ee8711e830e6117fd7966",
+    "missing": [],
+    "changed_modes": [],
+    "unexpected_changes": [],
+    "passed": true
+  },
+  "passed": true
+}

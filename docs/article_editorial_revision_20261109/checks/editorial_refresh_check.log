@@ -1,0 +1,2 @@
+{"table_files": 15, "labeled_tables": 16, "numeric_tokens_preserved": 1496, "status": "PASS"}
+PASS: 35088 retained summary rows; original image and all plotted layers reproduced exactly

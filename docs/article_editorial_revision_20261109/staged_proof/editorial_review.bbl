@@ -1,0 +1,1219 @@
+\begin{thebibliography}{}
+
+\bibitem [\protect \citeauthoryear {%
+Barata%
+, Prado%
+\BCBL {}\ \BBA {} Sans{\'o}%
+}{%
+Barata%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2022}}%
+}]{%
+barata2021_flex_quantile}
+\APACinsertmetastar {%
+barata2021_flex_quantile}%
+\begin{APACrefauthors}%
+Barata, R.%
+, Prado, R.%
+\BCBL {}\ \BBA {} Sans{\'o}, B.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2022}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {{Fast inference for time-varying quantiles via flexible
+  dynamic models with application to the characterization of atmospheric
+  rivers}} {{Fast inference for time-varying quantiles via flexible dynamic
+  models with application to the characterization of atmospheric
+  rivers}}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{The Annals of Applied Statistics}{16}{1}{247 -- 271}.
+\newblock
+\begin{APACrefDOI} 10.1214/21-AOAS1497 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Barlow%
+, Bartholomew%
+, Bremner%
+\BCBL {}\ \BBA {} Brunk%
+}{%
+Barlow%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {1972}}%
+}]{%
+barlow1972}
+\APACinsertmetastar {%
+barlow1972}%
+\begin{APACrefauthors}%
+Barlow, R\BPBI E.%
+, Bartholomew, D\BPBI J.%
+, Bremner, J\BPBI M.%
+\BCBL {}\ \BBA {} Brunk, H\BPBI D.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYear{1972}.
+\newblock
+\APACrefbtitle {Statistical Inference Under Order Restrictions: The Theory and
+  Application of Isotonic Regression} {Statistical inference under order
+  restrictions: The theory and application of isotonic regression}.
+\newblock
+\APACaddressPublisher{}{John Wiley \& Sons}.
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Blei%
+, Kucukelbir%
+\BCBL {}\ \BBA {} McAuliffe%
+}{%
+Blei%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2017}}%
+}]{%
+blei2017variational}
+\APACinsertmetastar {%
+blei2017variational}%
+\begin{APACrefauthors}%
+Blei, D\BPBI M.%
+, Kucukelbir, A.%
+\BCBL {}\ \BBA {} McAuliffe, J\BPBI D.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2017}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Variational Inference: A Review for Statisticians}
+  {Variational inference: A review for statisticians}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Journal of the American Statistical
+  Association}{112}{518}{859--877}.
+\newblock
+\begin{APACrefDOI} 10.1080/01621459.2017.1285773 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Chernozhukov%
+, Fern{\'a}ndez-Val%
+\BCBL {}\ \BBA {} Galichon%
+}{%
+Chernozhukov%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2010}}%
+}]{%
+chernozhukov2010}
+\APACinsertmetastar {%
+chernozhukov2010}%
+\begin{APACrefauthors}%
+Chernozhukov, V.%
+, Fern{\'a}ndez-Val, I.%
+\BCBL {}\ \BBA {} Galichon, A.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2010}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Quantile and Probability Curves Without Crossing}
+  {Quantile and probability curves without crossing}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Econometrica}{78}{3}{1093-1125}.
+\newblock
+\begin{APACrefDOI} 10.3982/ECTA7880 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Cosgrove%
+\ \protect \BOthers {.}}{%
+Cosgrove%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2024}}%
+}]{%
+cosgrove2024noaa}
+\APACinsertmetastar {%
+cosgrove2024noaa}%
+\begin{APACrefauthors}%
+Cosgrove, B.%
+, Gochis, D.%
+, Flowers, T.%
+, Dugger, A.%
+, Ogden, F.%
+, Graziano, T.%
+\BDBL {}Zhang, Y.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2024}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {{NOAA}'s {National Water Model}: Advancing Operational
+  Hydrology Through Continental-scale Modeling} {{NOAA}'s {National Water
+  Model}: Advancing operational hydrology through continental-scale
+  modeling}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Journal of the American Water Resources
+  Association}{60}{2}{247--272}.
+\newblock
+\begin{APACrefDOI} 10.1111/1752-1688.13184 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+De~Leon%
+, Barata%
+, Prado%
+\BCBL {}\ \BBA {} Sans{\'o}%
+}{%
+De~Leon%
+, Barata%
+\BCBL {}\ \protect \BOthers {.}}{%
+{\protect \APACyear {2026}}%
+}]{%
+deleon2026exdqlm}
+\APACinsertmetastar {%
+deleon2026exdqlm}%
+\begin{APACrefauthors}%
+De~Leon, A.%
+, Barata, R.%
+, Prado, R.%
+\BCBL {}\ \BBA {} Sans{\'o}, B.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2026}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {{exdqlm}: An {R} Package for Estimation and Analysis of
+  Flexible Dynamic Quantile Linear Models} {{exdqlm}: An {R} package for
+  estimation and analysis of flexible dynamic quantile linear models}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{arXiv preprint arXiv:2607.22760}{}{}{}.
+\newblock
+\begin{APACrefURL} \url{https://arxiv.org/abs/2607.22760} \end{APACrefURL}
+\newblock
+\begin{APACrefDOI} 10.48550/arXiv.2607.22760 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+De~Leon%
+, Prado%
+\BCBL {}\ \BBA {} Sans{\'o}%
+}{%
+De~Leon%
+, Prado%
+\BCBL {}\ \BBA {} Sans{\'o}%
+}{%
+{\protect \APACyear {2026}}%
+}]{%
+deleon2026sanlorenzo_reproducibility}
+\APACinsertmetastar {%
+deleon2026sanlorenzo_reproducibility}%
+\begin{APACrefauthors}%
+De~Leon, A.%
+, Prado, R.%
+\BCBL {}\ \BBA {} Sans{\'o}, B.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2026}{}{}.
+\newblock
+\APACrefbtitle {San Lorenzo {exDQLM} Reproducibility Repository.} {San lorenzo
+  {exDQLM} reproducibility repository.}
+\newblock
+\APAChowpublished {GitHub repository}.
+\newblock
+\begin{APACrefURL}
+  \url{https://github.com/AntonioAPDL/san-lorenzo-exdqlm-reproducibility}
+  \end{APACrefURL}
+\newblock
+\APACrefnote{Model-ready staged inputs, workflow code, manuscript-facing
+  outputs, and provenance manifests}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Demargne%
+\ \protect \BOthers {.}}{%
+Demargne%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2014}}%
+}]{%
+demargne2013science}
+\APACinsertmetastar {%
+demargne2013science}%
+\begin{APACrefauthors}%
+Demargne, J.%
+, Wu, L.%
+, Regonda, S\BPBI K.%
+, Brown, J\BPBI D.%
+, Lee, H.%
+, He, M.%
+\BDBL {}Zhu, Y.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2014}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {The Science of {NOAA}'s Operational Hydrologic Ensemble
+  Forecast Service} {The science of {NOAA}'s operational hydrologic ensemble
+  forecast service}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Bulletin of the American Meteorological
+  Society}{95}{1}{79--98}.
+\newblock
+\begin{APACrefDOI} 10.1175/bams-d-12-00081.1 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Duan%
+, Ajami%
+, Gao%
+\BCBL {}\ \BBA {} Sorooshian%
+}{%
+Duan%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2007}}%
+}]{%
+duan2006bma}
+\APACinsertmetastar {%
+duan2006bma}%
+\begin{APACrefauthors}%
+Duan, Q.%
+, Ajami, N\BPBI K.%
+, Gao, X.%
+\BCBL {}\ \BBA {} Sorooshian, S.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2007}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Multi-model Ensemble Hydrologic Prediction Using
+  {Bayesian Model Averaging}} {Multi-model ensemble hydrologic prediction using
+  {Bayesian Model Averaging}}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Advances in Water Resources}{30}{5}{1371--1386}.
+\newblock
+\begin{APACrefDOI} 10.1016/j.advwatres.2006.11.014 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Ferro%
+}{%
+Ferro%
+}{%
+{\protect \APACyear {2014}}%
+}]{%
+ferro2014fair}
+\APACinsertmetastar {%
+ferro2014fair}%
+\begin{APACrefauthors}%
+Ferro, C\BPBI A\BPBI T.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2014}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Fair scores for ensemble forecasts} {Fair scores for
+  ensemble forecasts}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Quarterly Journal of the Royal Meteorological
+  Society}{140}{683}{1917--1923}.
+\newblock
+\begin{APACrefDOI} 10.1002/qj.2270 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Gneiting%
+\ \BBA {} Raftery%
+}{%
+Gneiting%
+\ \BBA {} Raftery%
+}{%
+{\protect \APACyear {2007}}%
+}]{%
+gneiting2007strictly}
+\APACinsertmetastar {%
+gneiting2007strictly}%
+\begin{APACrefauthors}%
+Gneiting, T.%
+\BCBT {}\ \BBA {} Raftery, A\BPBI E.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2007}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Strictly Proper Scoring Rules, Prediction, and
+  Estimation} {Strictly proper scoring rules, prediction, and
+  estimation}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Journal of the American Statistical
+  Association}{102}{477}{359--378}.
+\newblock
+\begin{APACrefDOI} 10.1198/016214506000001437 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Gneiting%
+, Raftery%
+, Westveld%
+\BCBL {}\ \BBA {} Goldman%
+}{%
+Gneiting%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2005}}%
+}]{%
+gneiting2005emos}
+\APACinsertmetastar {%
+gneiting2005emos}%
+\begin{APACrefauthors}%
+Gneiting, T.%
+, Raftery, A\BPBI E.%
+, Westveld, A\BPBI H., III%
+\BCBL {}\ \BBA {} Goldman, T.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2005}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Calibrated Probabilistic Forecasting Using Ensemble
+  Model Output Statistics and Minimum {CRPS} Estimation} {Calibrated
+  probabilistic forecasting using ensemble model output statistics and minimum
+  {CRPS} estimation}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Monthly Weather Review}{133}{5}{1098--1118}.
+\newblock
+\begin{APACrefDOI} 10.1175/MWR2904.1 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Gon{\c{c}}alves%
+, Migon%
+\BCBL {}\ \BBA {} Bastos%
+}{%
+Gon{\c{c}}alves%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2020}}%
+}]{%
+goncalves}
+\APACinsertmetastar {%
+goncalves}%
+\begin{APACrefauthors}%
+Gon{\c{c}}alves, K\BPBI C\BPBI M.%
+, Migon, H\BPBI S.%
+\BCBL {}\ \BBA {} Bastos, L\BPBI S.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2020}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {{Dynamic Quantile Linear Models}: A {Bayesian} Approach}
+  {{Dynamic Quantile Linear Models}: A {Bayesian} approach}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Bayesian Analysis}{15}{2}{335 -- 362}.
+\newblock
+\begin{APACrefURL} \url{https://doi.org/10.1214/19-BA1156} \end{APACrefURL}
+\newblock
+\begin{APACrefDOI} 10.1214/19-BA1156 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Gourieroux%
+\ \BBA {} Jasiak%
+}{%
+Gourieroux%
+\ \BBA {} Jasiak%
+}{%
+{\protect \APACyear {2008}}%
+}]{%
+gourieroux2008dqlm}
+\APACinsertmetastar {%
+gourieroux2008dqlm}%
+\begin{APACrefauthors}%
+Gourieroux, C.%
+\BCBT {}\ \BBA {} Jasiak, J.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2008}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Dynamic Quantile Models} {Dynamic quantile
+  models}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Journal of Econometrics}{147}{1}{198--205}.
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Harrigan%
+\ \protect \BOthers {.}}{%
+Harrigan%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2020}}%
+}]{%
+harrigan2020glofas}
+\APACinsertmetastar {%
+harrigan2020glofas}%
+\begin{APACrefauthors}%
+Harrigan, S.%
+, Zsoter, E.%
+, Alfieri, L.%
+, Prudhomme, C.%
+, Salamon, P.%
+, Wetterhall, F.%
+\BDBL {}Pappenberger, F.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2020}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {{GloFAS-ERA5} Operational Global River Discharge
+  Reanalysis 1979--Present} {{GloFAS-ERA5} operational global river discharge
+  reanalysis 1979--present}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Earth System Science Data}{12}{}{2043--2060}.
+\newblock
+\begin{APACrefDOI} 10.5194/essd-12-2043-2020 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Hemri%
+, Lisniak%
+\BCBL {}\ \BBA {} Klein%
+}{%
+Hemri%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2015}}%
+}]{%
+hemri2015multivariate}
+\APACinsertmetastar {%
+hemri2015multivariate}%
+\begin{APACrefauthors}%
+Hemri, S.%
+, Lisniak, D.%
+\BCBL {}\ \BBA {} Klein, B.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2015}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Multivariate Postprocessing Techniques for Probabilistic
+  Hydrological Forecasting} {Multivariate postprocessing techniques for
+  probabilistic hydrological forecasting}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Water Resources Research}{51}{9}{7436--7451}.
+\newblock
+\begin{APACrefDOI} 10.1002/2014WR016473 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Hyndman%
+\ \BBA {} Fan%
+}{%
+Hyndman%
+\ \BBA {} Fan%
+}{%
+{\protect \APACyear {1996}}%
+}]{%
+hyndman1996sample}
+\APACinsertmetastar {%
+hyndman1996sample}%
+\begin{APACrefauthors}%
+Hyndman, R\BPBI J.%
+\BCBT {}\ \BBA {} Fan, Y.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{1996}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Sample Quantiles in Statistical Packages} {Sample
+  quantiles in statistical packages}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{The American Statistician}{50}{4}{361--365}.
+\newblock
+\begin{APACrefDOI} 10.1080/00031305.1996.10473566 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+McAlinn%
+\ \BBA {} West%
+}{%
+McAlinn%
+\ \BBA {} West%
+}{%
+{\protect \APACyear {2019}}%
+}]{%
+mcalinn2019dynamic}
+\APACinsertmetastar {%
+mcalinn2019dynamic}%
+\begin{APACrefauthors}%
+McAlinn, K.%
+\BCBT {}\ \BBA {} West, M.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2019}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {{Dynamic Bayesian Predictive Synthesis} in Time Series
+  Forecasting} {{Dynamic Bayesian Predictive Synthesis} in time series
+  forecasting}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Journal of Econometrics}{210}{1}{155--169}.
+\newblock
+\begin{APACrefDOI} 10.1016/j.jeconom.2018.11.010 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Mu{\~n}oz-Sabater%
+}{%
+Mu{\~n}oz-Sabater%
+}{%
+{\protect \APACyear {2019}}%
+}]{%
+ecmwf}
+\APACinsertmetastar {%
+ecmwf}%
+\begin{APACrefauthors}%
+Mu{\~n}oz-Sabater, J.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2019}{}{}.
+\newblock
+\APACrefbtitle {{ERA5-Land} Hourly Data from 1950 to Present.} {{ERA5-Land}
+  hourly data from 1950 to present.}
+\newblock
+\APACaddressPublisher{}{Copernicus Climate Change Service Climate Data Store}.
+\newblock
+\begin{APACrefURL}
+  \url{https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land}
+  \end{APACrefURL}
+\newblock
+\begin{APACrefDOI} 10.24381/cds.e2161bac \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Mu{\~n}oz-Sabater%
+\ \protect \BOthers {.}}{%
+Mu{\~n}oz-Sabater%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2021}}%
+}]{%
+munozsabater2021era5land}
+\APACinsertmetastar {%
+munozsabater2021era5land}%
+\begin{APACrefauthors}%
+Mu{\~n}oz-Sabater, J.%
+, Dutra, E.%
+, Agust{\'i}-Panareda, A.%
+, Albergel, C.%
+, Arduini, G.%
+, Balsamo, G.%
+\BDBL {}Th{\'e}paut, J\BHBI N.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2021}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {{ERA5-Land}: A State-of-the-Art Global Reanalysis
+  Dataset for Land Applications} {{ERA5-Land}: A state-of-the-art global
+  reanalysis dataset for land applications}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Earth System Science Data}{13}{}{4349--4383}.
+\newblock
+\begin{APACrefDOI} 10.5194/essd-13-4349-2021 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+{NOAA California Nevada River Forecast Center}%
+}{%
+{NOAA California Nevada River Forecast Center}%
+}{%
+{\protect \APACyear {2026}}%
+}]{%
+cnrfc_btec1}
+\APACinsertmetastar {%
+cnrfc_btec1}%
+\begin{APACrefauthors}%
+{NOAA California Nevada River Forecast Center}.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2026}{}{}.
+\newblock
+\APACrefbtitle {San Lorenzo River -- Big Trees ({BTEC1}) Observed River
+  Conditions.} {San lorenzo river -- big trees ({BTEC1}) observed river
+  conditions.}
+\newblock
+\APACrefnote{Retrieved August 5, 2026, from
+  \url{https://www.cnrfc.noaa.gov/obsRiver_hc.php?id=BTEC1}}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+{NOAA Physical Sciences Laboratory}%
+}{%
+{NOAA Physical Sciences Laboratory}%
+}{%
+{\protect \APACyear {{\protect \bibnodate {}}}}%
+}]{%
+noaa_climate_indices}
+\APACinsertmetastar {%
+noaa_climate_indices}%
+\begin{APACrefauthors}%
+{NOAA Physical Sciences Laboratory}.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{{\protect \bibnodate {}}}{}{}.
+\newblock
+\APACrefbtitle {Climate Indices: List and Descriptions.} {Climate indices: List
+  and descriptions.}
+\newblock
+\begin{APACrefURL} \url{https://psl.noaa.gov/data/climateindices/list/}
+  \end{APACrefURL}
+\newblock
+\APACrefnote{National Oceanic and Atmospheric Administration. Retrieved
+  November 14, 2024}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Pe{\~n}a%
+, Smucler%
+\BCBL {}\ \BBA {} Yohai%
+}{%
+Pe{\~n}a%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2020}}%
+}]{%
+JSSv092c02}
+\APACinsertmetastar {%
+JSSv092c02}%
+\begin{APACrefauthors}%
+Pe{\~n}a, D.%
+, Smucler, E.%
+\BCBL {}\ \BBA {} Yohai, V\BPBI J.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2020}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {gdpc: An {R} Package for Generalized Dynamic Principal
+  Components} {gdpc: An {R} package for generalized dynamic principal
+  components}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Journal of Statistical Software, Code
+  Snippets}{92}{2}{1–23}.
+\newblock
+\begin{APACrefURL}
+  \url{https://www.jstatsoft.org/index.php/jss/article/view/v092c02}
+  \end{APACrefURL}
+\newblock
+\begin{APACrefDOI} 10.18637/jss.v092.c02 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Prado%
+, Ferreira%
+\BCBL {}\ \BBA {} West%
+}{%
+Prado%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2021}}%
+}]{%
+prado2021time}
+\APACinsertmetastar {%
+prado2021time}%
+\begin{APACrefauthors}%
+Prado, R.%
+, Ferreira, M\BPBI A\BPBI R.%
+\BCBL {}\ \BBA {} West, M.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYear{2021}.
+\newblock
+\APACrefbtitle {Time Series: Modeling, Computation, and Inference} {Time
+  series: Modeling, computation, and inference}\ (\PrintOrdinal{2}\ \BEd).
+\newblock
+\APACaddressPublisher{New York}{Chapman and Hall/CRC}.
+\newblock
+\begin{APACrefDOI} 10.1201/9781351259422 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+{PRISM Climate Group}%
+}{%
+{PRISM Climate Group}%
+}{%
+{\protect \APACyear {2025}}%
+}]{%
+prism}
+\APACinsertmetastar {%
+prism}%
+\begin{APACrefauthors}%
+{PRISM Climate Group}.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2025}{}{}.
+\newblock
+\APACrefbtitle {{PRISM Climate Data}.} {{PRISM Climate Data}.}
+\newblock
+\APACrefnote{Retrieved from \url{https://prism.oregonstate.edu/}}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Siegert%
+\ \BBA {} Stephenson%
+}{%
+Siegert%
+\ \BBA {} Stephenson%
+}{%
+{\protect \APACyear {2019}}%
+}]{%
+siegert2019forecast}
+\APACinsertmetastar {%
+siegert2019forecast}%
+\begin{APACrefauthors}%
+Siegert, S.%
+\BCBT {}\ \BBA {} Stephenson, D\BPBI B.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2019}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Forecast Recalibration and Multimodel Combination}
+  {Forecast recalibration and multimodel combination}.{\BBCQ}
+\newblock
+\BIn{} A\BPBI W.~Robertson\ \BBA {} F.~Vitart\ (\BEDS), \APACrefbtitle
+  {Sub-Seasonal to Seasonal Prediction} {Sub-seasonal to seasonal prediction}\
+  (\BPGS\ 321--336).
+\newblock
+\APACaddressPublisher{}{Elsevier}.
+\newblock
+\begin{APACrefDOI} 10.1016/B978-0-12-811714-9.00015-2 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Sriram%
+, Ramamoorthi%
+\BCBL {}\ \BBA {} Ghosh%
+}{%
+Sriram%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2013}}%
+}]{%
+sriram2013theoretical}
+\APACinsertmetastar {%
+sriram2013theoretical}%
+\begin{APACrefauthors}%
+Sriram, K.%
+, Ramamoorthi, R\BPBI V.%
+\BCBL {}\ \BBA {} Ghosh, P.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2013}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Posterior Consistency of {Bayesian} Quantile Regression
+  Based on the Misspecified Asymmetric Laplace Density} {Posterior consistency
+  of {Bayesian} quantile regression based on the misspecified asymmetric
+  laplace density}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Bayesian Analysis}{8}{2}{479--504}.
+\newblock
+\begin{APACrefDOI} 10.1214/13-BA817 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Tarek%
+, Arsenault%
+, Brissette%
+\BCBL {}\ \BBA {} Martel%
+}{%
+Tarek%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2021}}%
+}]{%
+tarek2021daily}
+\APACinsertmetastar {%
+tarek2021daily}%
+\begin{APACrefauthors}%
+Tarek, M.%
+, Arsenault, R.%
+, Brissette, F.%
+\BCBL {}\ \BBA {} Martel, J\BHBI L.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2021}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Daily Streamflow Prediction in Ungauged Basins: An
+  Analysis of Common Regionalization Methods over the {African} Continent}
+  {Daily streamflow prediction in ungauged basins: An analysis of common
+  regionalization methods over the {African} continent}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Hydrological Sciences Journal}{66}{11}{1695--1711}.
+\newblock
+\begin{APACrefDOI} 10.1080/02626667.2021.1948046 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Thiboult%
+, Anctil%
+\BCBL {}\ \BBA {} Boucher%
+}{%
+Thiboult%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2016}}%
+}]{%
+thiboult2016accounting}
+\APACinsertmetastar {%
+thiboult2016accounting}%
+\begin{APACrefauthors}%
+Thiboult, A.%
+, Anctil, F.%
+\BCBL {}\ \BBA {} Boucher, M\BHBI A.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2016}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Accounting for Three Sources of Uncertainty in Ensemble
+  Hydrological Forecasting} {Accounting for three sources of uncertainty in
+  ensemble hydrological forecasting}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Hydrology and Earth System Sciences}{20}{}{1809--1825}.
+\newblock
+\begin{APACrefDOI} 10.5194/hess-20-1809-2016 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Thorarinsdottir%
+\ \BBA {} Gneiting%
+}{%
+Thorarinsdottir%
+\ \BBA {} Gneiting%
+}{%
+{\protect \APACyear {2010}}%
+}]{%
+thorarinsdottir2010emos}
+\APACinsertmetastar {%
+thorarinsdottir2010emos}%
+\begin{APACrefauthors}%
+Thorarinsdottir, T\BPBI L.%
+\BCBT {}\ \BBA {} Gneiting, T.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2010}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Probabilistic Forecasts of Wind Speed: Ensemble Model
+  Output Statistics by Using Heteroscedastic Censored Regression}
+  {Probabilistic forecasts of wind speed: Ensemble model output statistics by
+  using heteroscedastic censored regression}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Journal of the Royal Statistical Society: Series A
+  (Statistics in Society)}{173}{2}{371--388}.
+\newblock
+\begin{APACrefDOI} 10.1111/j.1467-985X.2009.00616.x \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+{U.S. Geological Survey}%
+}{%
+{U.S. Geological Survey}%
+}{%
+{\protect \APACyear {2026}}%
+{\protect \APACexlab {{\protect \BCnt {1}}}}}]{%
+usgs_daily_11160500}
+\APACinsertmetastar {%
+usgs_daily_11160500}%
+\begin{APACrefauthors}%
+{U.S. Geological Survey}.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2026{\protect \BCnt {1}}}{}{}.
+\newblock
+\APACrefbtitle {Daily Discharge for {USGS} 11160500, {San Lorenzo River at Big
+  Trees, CA}.} {Daily discharge for {USGS} 11160500, {San Lorenzo River at Big
+  Trees, CA}.}
+\newblock
+\APAChowpublished {National Water Information System}.
+\newblock
+\begin{APACrefURL}
+  \url{https://waterdata.usgs.gov/monitoring-location/USGS-11160500/}
+  \end{APACrefURL}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+{U.S. Geological Survey}%
+}{%
+{U.S. Geological Survey}%
+}{%
+{\protect \APACyear {2026}}%
+{\protect \APACexlab {{\protect \BCnt {2}}}}}]{%
+usgs_11160500_rating40}
+\APACinsertmetastar {%
+usgs_11160500_rating40}%
+\begin{APACrefauthors}%
+{U.S. Geological Survey}.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2026{\protect \BCnt {2}}}{}{}.
+\newblock
+\APACrefbtitle {Expanded Shift-Adjusted Stage--Discharge Rating Table for
+  {USGS} 11160500, Rating 40.0.} {Expanded shift-adjusted stage--discharge
+  rating table for {USGS} 11160500, rating 40.0.}
+\newblock
+\begin{APACrefURL}
+  \url{https://waterdata.usgs.gov/nwisweb/get_ratings?file_type=exsa&site_no=11160500}
+  \end{APACrefURL}
+\newblock
+\APACrefnote{Retrieved August 5, 2026}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Vannitsem%
+\ \protect \BOthers {.}}{%
+Vannitsem%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2021}}%
+}]{%
+vannitsem}
+\APACinsertmetastar {%
+vannitsem}%
+\begin{APACrefauthors}%
+Vannitsem, S.%
+, Bremnes, J\BPBI B.%
+, Demaeyer, J.%
+, Evans, G\BPBI R.%
+, Flowerdew, J.%
+, Hemri, S.%
+\BDBL {}Ylhaisi, J.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2021}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Statistical Postprocessing for Weather Forecasts:
+  Review, Challenges, and Avenues in a Big Data World} {Statistical
+  postprocessing for weather forecasts: Review, challenges, and avenues in a
+  big data world}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Bulletin of the American Meteorological
+  Society}{102}{3}{E681 - E699}.
+\newblock
+\begin{APACrefURL}
+  \url{https://journals.ametsoc.org/view/journals/bams/102/3/BAMS-D-19-0308.1.xml}
+  \end{APACrefURL}
+\newblock
+\begin{APACrefDOI} 10.1175/BAMS-D-19-0308.1 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+C.~Wang%
+\ \BBA {} Blei%
+}{%
+C.~Wang%
+\ \BBA {} Blei%
+}{%
+{\protect \APACyear {2013}}%
+}]{%
+wang2013nonconjugatevb}
+\APACinsertmetastar {%
+wang2013nonconjugatevb}%
+\begin{APACrefauthors}%
+Wang, C.%
+\BCBT {}\ \BBA {} Blei, D\BPBI M.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2013}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Variational Inference in Nonconjugate Models}
+  {Variational inference in nonconjugate models}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Journal of Machine Learning
+  Research}{14}{}{1005--1031}.
+\newblock
+\begin{APACrefURL} \url{https://jmlr.org/papers/v14/wang13b.html}
+  \end{APACrefURL}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+X.~Wang%
+, Hyndman%
+, Li%
+\BCBL {}\ \BBA {} Kang%
+}{%
+X.~Wang%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2022}}%
+}]{%
+wang2022forecastcombinations50yearreview}
+\APACinsertmetastar {%
+wang2022forecastcombinations50yearreview}%
+\begin{APACrefauthors}%
+Wang, X.%
+, Hyndman, R\BPBI J.%
+, Li, F.%
+\BCBL {}\ \BBA {} Kang, Y.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2022}{}{}.
+\newblock
+\APACrefbtitle {Forecast combinations: an over 50-year review.} {Forecast
+  combinations: an over 50-year review.}
+\newblock
+\begin{APACrefURL} \url{https://arxiv.org/abs/2205.04216} \end{APACrefURL}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Wilks%
+}{%
+Wilks%
+}{%
+{\protect \APACyear {2019}}%
+}]{%
+wilks2019statistical}
+\APACinsertmetastar {%
+wilks2019statistical}%
+\begin{APACrefauthors}%
+Wilks, D\BPBI S.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYear{2019}.
+\newblock
+\APACrefbtitle {Statistical Methods in the Atmospheric Sciences} {Statistical
+  methods in the atmospheric sciences}\ (\PrintOrdinal{4}\ \BEd).
+\newblock
+\APACaddressPublisher{}{Academic Press}.
+\newblock
+\begin{APACrefURL}
+  \url{https://www.educate.elsevier.com/book/details/9780128158234}
+  \end{APACrefURL}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Yan%
+, Zheng%
+\BCBL {}\ \BBA {} Kottas%
+}{%
+Yan%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2025}}%
+}]{%
+yan2025new}
+\APACinsertmetastar {%
+yan2025new}%
+\begin{APACrefauthors}%
+Yan, Y.%
+, Zheng, X.%
+\BCBL {}\ \BBA {} Kottas, A.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2025}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {A New Family of Error Distributions for {Bayesian}
+  Quantile Regression} {A new family of error distributions for {Bayesian}
+  quantile regression}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Bayesian Analysis}{}{}{1--29}.
+\newblock
+\begin{APACrefURL} \url{https://doi.org/10.1214/25-BA1507} \end{APACrefURL}
+\newblock
+\APACrefnote{Advance Publication}
+\newblock
+\begin{APACrefDOI} 10.1214/25-BA1507 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Yu%
+\ \BBA {} Moyeed%
+}{%
+Yu%
+\ \BBA {} Moyeed%
+}{%
+{\protect \APACyear {2001}}%
+}]{%
+yu2001bayesian}
+\APACinsertmetastar {%
+yu2001bayesian}%
+\begin{APACrefauthors}%
+Yu, K.%
+\BCBT {}\ \BBA {} Moyeed, R\BPBI A.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2001}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Bayesian Quantile Regression} {Bayesian quantile
+  regression}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Statistics \& Probability Letters}{54}{4}{437--447}.
+\newblock
+\begin{APACrefDOI} 10.1016/S0167-7152(01)00124-9 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Yumnam%
+, Guntu%
+, Rathinasamy%
+\BCBL {}\ \BBA {} Agarwal%
+}{%
+Yumnam%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2022}}%
+}]{%
+yumnam2022quantile}
+\APACinsertmetastar {%
+yumnam2022quantile}%
+\begin{APACrefauthors}%
+Yumnam, K.%
+, Guntu, R\BPBI K.%
+, Rathinasamy, M.%
+\BCBL {}\ \BBA {} Agarwal, A.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2022}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Quantile-Based {Bayesian} Model Averaging Approach
+  Towards Merging of Precipitation Products} {Quantile-based {Bayesian} model
+  averaging approach towards merging of precipitation products}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Journal of Hydrology}{604}{}{127206}.
+\newblock
+\begin{APACrefDOI} 10.1016/j.jhydrol.2021.127206 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Zamo%
+\ \BBA {} Naveau%
+}{%
+Zamo%
+\ \BBA {} Naveau%
+}{%
+{\protect \APACyear {2018}}%
+}]{%
+zamo2018crps}
+\APACinsertmetastar {%
+zamo2018crps}%
+\begin{APACrefauthors}%
+Zamo, M.%
+\BCBT {}\ \BBA {} Naveau, P.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2018}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Estimation of the Continuous Ranked Probability Score
+  with Limited Information and Applications to Ensemble Weather Forecasts}
+  {Estimation of the continuous ranked probability score with limited
+  information and applications to ensemble weather forecasts}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Mathematical Geosciences}{50}{}{209--234}.
+\newblock
+\begin{APACrefDOI} 10.1007/s11004-017-9709-7 \end{APACrefDOI}
+\PrintBackRefs{\CurrentBib}
+
+\end{thebibliography}

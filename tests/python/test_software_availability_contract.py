@@ -95,17 +95,17 @@ class SoftwareAvailabilityContractTests(unittest.TestCase):
         bibliography = (ARTICLE_ROOT / "wileyNJD-APA.bib").read_text(encoding="utf-8")
         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
         for text in [article, corrections]:
-            self.assertIn(r"CRAN R package \texttt{exdqlm}", text)
+            self.assertTrue(has_concepts(text, r'R package', r'exdqlm', r'CRAN'))
             self.assertIn(f"version {CRAN_EXDQLM_VERSION}", text)
             self.assertIn(CRAN_EXDQLM_URL, text)
             self.assertIn(CRAN_EXDQLM_DOI_URL, text)
             self.assertTrue(cited_url(text, bibliography if text == article else '', PUBLIC_REPRO_URL))
-            self.assertTrue(has_concepts(text, r'provenance manifests'))
             self.assertNotIn("workflow repository has been archived", text)
             self.assertNotIn("archived workflow DOI", text)
+        self.assertTrue(has_concepts(corrections, r'provenance manifests'))
         self.assertIn(EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY, article)
         self.assertIn(EXDQLM_SOFTWARE_PAPER_DOI_URL, corrections)
-        self.assertTrue(has_concepts(article, r'public reproducibility repository', r'staged inputs', r'workflow code'))
+        self.assertTrue(has_concepts(article, r'public reproducibility repository', r'analysis data', r'statistical code', r'data.source documentation'))
         self.assertIn("A permanent archive DOI will be minted from the final clean reproducibility release", corrections)
 
     def test_canonical_runbook_keeps_selected_diagnostics_tied_to_selected_output(self) -> None:

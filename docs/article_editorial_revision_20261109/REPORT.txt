@@ -1,0 +1,117 @@
+Scientific editorial revision: audit, implementation and release record
+
+The approved editorial work is implemented in Corrected-3. The six main sections
+now carry the data-to-model-to-evaluation argument, with supporting historical
+illustrations and detailed computational conventions in the appendices. Existing
+fitted results, settings, score values and substantive qualifications are retained.
+The submitted Corrected-2 archive is outside this revision.
+
+Plan followed and refinements
+
+E00. The complete 797-file article baseline and repository identities were pinned.
+     Article and workflow changes were prepared in independent worktrees. No model
+     fits, new predictive simulations, new scores or benchmark training were run.
+
+E01. The article distinguishes conditional model quantiles, predictive quantiles
+     from individual fits and synthesized predictive quantiles. It defines the
+     transformed observations before the observation equations, source channels,
+     multivariate/univariate configurations, dimensions and relevant abbreviations.
+     Internal revision/storage vocabulary was replaced with statistical exposition.
+     The nine actual configurations are described without implying a full factorial
+     experiment. The qualitative near-one discount sentence remains verbatim.
+
+E02. Main text retains scientific model equations, component roles, VB and synthesis
+     essentials, tails, evaluation definitions, sample counts, comparisons, coverage
+     and coefficient interpretation. Appendix A contains the full covariate and
+     retrospective histories, historical component illustrations and pooled exact-
+     score table. Appendix B contains exact rotations, empirical-quantile conventions,
+     numerical synthesis, EMOS optimization and computing-environment details.
+     Cross-references preserve the connections. A float barrier keeps source-
+     parameter tables before the historical-component subsection.
+
+E03. All 15 active table fragments (16 generated tables) have explicit captions,
+     scales, horizons, estimands and interval qualifications. Five reference labels
+     are mapped to readable names. Dates and model keys are explained where needed.
+     All 1,496 numeric tokens in the tabular bodies remain identical, including
+     signs, precision, row order and date labels. Original generated tables,
+     scientific artifacts and sealed historical manifests remain byte-identical.
+     Refined approach: a separate presentation generator with an explicit source
+     contract preserves the older reproduction evidence. It rejects changed source
+     bytes, numeric alterations, changed labels and undeclared presentation edits.
+     Stacking one header removes the source-skewness table's margin overflow.
+
+E04. The long-cycle plot has a reader-facing vertical-axis annotation. Its original
+     rendering was first reproduced byte-for-byte from retained summaries. All
+     35,088 summary rows, plotted numerical layers, coordinate limits and styles
+     remain equal. Pixel differences are confined to the axis annotation. Compact
+     inputs and renderer/environment identities accompany the derivative.
+
+E05. Bounded mathematical corrections repair a missing channel index, state-update
+     iteration labels and channel-wide conditional labels. Definitions distinguish
+     unknown quantities from variational densities and full from active state
+     dimensions. The forecast transition and smoothed-moment aliases are explicit.
+     No posterior target, covariance formula or inference algorithm was replaced.
+     Existing conditional identities were checked; they do not validate posterior
+     approximation accuracy. Details are in notation_review.json in the article.
+
+E06. Wang--Blei uses its published JMLR reference, and Hyndman--Fan supports the
+     empirical-quantile conventions. Citations resolve. Publisher-template dummy
+     dates/DOI are suppressed through public class interfaces. The abstract has
+     171 whitespace-delimited words. All 14 figures and 18 rendered tables were
+     reviewed; the reliability caption now identifies its embedded comparator codes.
+
+E07. A bounded article refresh/check command reproduces the new table presentation
+     and figure annotation. Active manuscript inputs, rather than unused companion
+     fragments, now drive dependency hashing and publication checks. Both numerical
+     validators read the active table paths and use an explicit five-name mapping.
+     Existing numerical/source assertions are retained. Negative tests cover altered
+     values, missing/outside includes, stale sources, wrong active paths and baseline
+     mutations. Test-fixture changes support the two new dependency-reader exports.
+
+E08. The full active-article gate and editorial tests pass. The final article was
+     materialized from the Git index and independently rebuilt and checked there.
+     Source identities and final PDF identity are recorded in release.json and
+     staged_proof/build_summary.json. All 791 existing files outside the six reviewed
+     manuscript/inventory/check files are unchanged, with no missing files or mode
+     changes. No existing scientific output or historical generator was resealed.
+
+PDF review
+
+The final proof has 44 pages, with the main article and availability statements
+ending on page 20 and Appendix A starting on page 21. Supporting material is
+retained rather than deleted. All citations and cross-references resolve, labels
+stabilize after four LaTeX passes, and BibTeX reports no warnings. There are no
+clipped figures or tables. One horizontal and one vertical title-page box warning
+remain from the unmodified Wiley abstract/background overlay. Visual inspection
+confirms all visible content is contained; the warnings were not suppressed.
+
+Evidence and reproduction
+
+PLAN.txt: approved execution contract and justified preservation refinement.
+baseline.json: exact original file modes/blobs and repository identities.
+audit_coverage.json: section/input/figure inventory and reference-review record.
+checks/: complete successful active-article and editorial verification outputs.
+staged_proof/: exact-source build summary and raw LaTeX/BibTeX logs (PDF installed
+  in the local article checkout rather than duplicated in this evidence package).
+release.json: final article/tree/PDF identities and publication checks.
+
+From the workflow repository, use a fresh directory under /tmp:
+  python3 -B docs/article_editorial_revision_20261109/run_checks.py \
+    --report-dir /tmp/editorial-review-new
+
+From the Corrected-3 article repository:
+  python3 -B scripts/refresh_editorial_revision.py --check
+  python3 -B scripts/build_manuscript_review.py \
+    --output-dir /tmp/editorial-proof-new --jobname editorial_review
+
+For an intentional presentation regeneration, omit --check from the bounded refresh
+command and then run it with --check. It uses only the retained, contracted inputs.
+Changes to the underlying numerical results require a separate reviewed update of
+that source contract; this editorial command does not adopt changed results silently.
+
+Release scope
+
+The release changes the GitHub-linked Corrected-3 source and records its validation
+in the workflow repository. It does not operate the Overleaf UI. Synchronize the new
+Overleaf project from its GitHub repository before making further Overleaf edits.
+The live Overleaf-branch ancestry guard remains enabled; no force-push is used.

@@ -1,0 +1,15 @@
+test_actual_r_reporting_block_distinguishes_criterion_and_budget_stops (test_comment2_component_diagnostics.SavedDiagnosticTests) ... ok
+test_audit_refuses_to_read_heavy_r_objects (test_comment2_component_diagnostics.SavedDiagnosticTests) ... ok
+test_final_criteria_can_converge_on_last_budget_iteration (test_comment2_component_diagnostics.SavedDiagnosticTests) ... ok
+test_frozen_zero_changes_do_not_manufacture_convergence (test_comment2_component_diagnostics.SavedDiagnosticTests) ... ok
+test_legacy_success_phrase_cannot_override_terminal_failed_criteria (test_comment2_component_diagnostics.SavedDiagnosticTests) ... ok
+test_missing_joint_criteria_remain_unknown_even_with_legacy_phrase (test_comment2_component_diagnostics.SavedDiagnosticTests) ... ok
+test_saved_ndlm_criterion_is_not_replaced_by_forecast_performance (test_comment2_component_diagnostics.SavedDiagnosticTests) ... ok
+test_source_hash_guard_detects_changed_saved_evidence (test_comment2_component_diagnostics.SavedDiagnosticTests) ... ok
+test_tail_excludes_initialization_planned_warmup_and_refrozen_rows (test_comment2_component_diagnostics.SavedDiagnosticTests) ... ok
+test_terminal_guard_and_historical_guard_are_distinct (test_comment2_component_diagnostics.SavedDiagnosticTests) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.612s
+
+OK

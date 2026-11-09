@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-from current_article_contract import active_tex, cited_url, scientific_checks, structure_checks
+from current_article_contract import canonical_method_label, active_table_path, active_tex, cited_url, scientific_checks, structure_checks, manuscript_with_includes
 
 from multimodel_v8_lib import ROOT, load_yaml
 from forecast_design_contract import (
@@ -208,7 +208,7 @@ def parse_flat_tex(path: Path, expected_numeric_cells: int = 5) -> dict[str, lis
         parts = [part.strip() for part in line.rstrip("\\").split("&")]
         if len(parts) != expected_numeric_cells + 1:
             continue
-        label = strip_tex(parts[0])
+        label = canonical_method_label(strip_tex(parts[0]))
         if label in {"Ablation model", "Model", "Model label"}:
             continue
         try:
@@ -534,9 +534,9 @@ def check_he3_authoritative(
             f"runtime={runtime_row.get('mean_crps')} article={article_row.get('mean_crps') if article_row else 'missing'}",
         )
 
-    article_table = parse_flat_tex(article_root / "tables/generated_tex/he3_ablation_crps_main_table.tex")
+    article_table = parse_flat_tex(active_table_path(article_root, "tab:he3_ablation_crps"))
     corrections_table = parse_flat_tex(corrections_root / "tables/generated_tex/he3_ablation_crps_response_table.tex")
-    article_nws_table = parse_flat_tex(article_root / "tables/generated_tex/he3_ablation_crps_nws_horizon_table.tex")
+    article_nws_table = parse_flat_tex(active_table_path(article_root, "tab:he3_ablation_crps_nws_horizon"))
     corrections_nws_table = parse_flat_tex(corrections_root / "tables/generated_tex/he3_ablation_crps_nws_horizon_response_table.tex")
     add(checks, "he3_authority", "article_table_excludes_nws_28day", "RAW-NWS" not in article_table, "NWS omitted from 28-day HE3 table")
     add(checks, "he3_authority", "corrections_table_excludes_nws_28day", "RAW-NWS" not in corrections_table, "NWS omitted from 28-day HE3 response table")
@@ -732,11 +732,7 @@ def check_prior_claim_contract(article_root: Path, corrections_root: Path, check
 
 
 def check_prose(article_root: Path, corrections_root: Path, checks: list[Check]) -> None:
-    generated_tables = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in sorted((article_root / "tables" / "generated_tex").glob("*.tex"))
-    )
-    article = active_tex((article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8") + "\n" + generated_tables)
+    article = active_tex(manuscript_with_includes(article_root))
     corrections = (corrections_root / "main.tex").read_text(encoding="utf-8")
     required_corrections = [
         "exAL-M-T1} has the lowest 28-day CRPS in all five rolling-origin cutoffs",
@@ -960,13 +956,15 @@ def check_software_availability(workflow_root: Path, article_root: Path, correct
     article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8")
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
     required_article = [
-        r"CRAN R package \texttt{exdqlm}",
+        r"R package \texttt{exdqlm}",
         f"version {CRAN_EXDQLM_VERSION}",
         CRAN_EXDQLM_URL,
         CRAN_EXDQLM_DOI_URL,
         EXDQLM_SOFTWARE_PAPER_BIBTEX_KEY,
         PUBLIC_REPRO_URL,
-        "provenance manifests",
+        "analysis data",
+        "statistical code",
+        "data-source documentation",
     ]
     required_corrections = [
         r"CRAN R package \texttt{exdqlm}",
@@ -1112,11 +1110,7 @@ def check_reviewer1_remaining(workflow_root: Path, article_root: Path, correctio
     workflow_doc = workflow_root / R1_REMAINING_CONTRACT_REL
     add(checks, "reviewer1_remaining", "workflow_contract_doc", workflow_doc.exists(), R1_REMAINING_CONTRACT_REL)
 
-    generated_tables = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in sorted((article_root / "tables" / "generated_tex").glob("*.tex"))
-    )
-    article_text = (article_root / "wileyNJD-APA.tex").read_text(encoding="utf-8") + "\n" + generated_tables
+    article_text = manuscript_with_includes(article_root)
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
     for row in check_reviewer1_remaining_text(article_text, corrections_text):
         add(checks, "reviewer1_remaining", row.item, row.ok, row.detail)

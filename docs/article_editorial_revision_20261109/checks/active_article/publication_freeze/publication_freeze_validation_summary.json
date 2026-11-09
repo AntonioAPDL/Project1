@@ -1,0 +1,41 @@
+{
+  "failed_checks": 0,
+  "metadata": {
+    "argv": [
+      "--workflow-root",
+      "/tmp/article_editorial_revision_20261109/workflow",
+      "--article-root",
+      "/tmp/article_editorial_revision_20261109/article",
+      "--corrections-root",
+      "/data/muscat_data/jaguir26/Corrections---Project-1",
+      "--he3-runtime-root",
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625",
+      "--report-dir",
+      "/tmp/article_editorial_revision_20261109/final_verification/active_article/publication_freeze"
+    ],
+    "he3_runtime_root": "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he3_exdqlm_ablation_current_authority_20260625",
+    "repos": {
+      "article": {
+        "branch": "revision/statistical-editorial-20261109",
+        "head": "d60d765",
+        "path": "/tmp/article_editorial_revision_20261109/article",
+        "status_short": "A  Figures/manuscript/editorial_long_cycle_component.png\nM  MANUSCRIPT_ASSET_MANIFEST.json\nA  artifacts/editorial_revision/figure_inputs/README.txt\nA  artifacts/editorial_revision/figure_inputs/long_cycle_component.csv.gz\nA  artifacts/editorial_revision/figure_inputs/long_cycle_source.json\nA  artifacts/editorial_revision/long_cycle_figure_manifest.json\nA  artifacts/editorial_revision/notation_review.json\nA  artifacts/editorial_revision/table_presentation_manifest.json\nA  artifacts/editorial_revision/table_source_contract.json\nA  docs/editorial_revision.txt\nM  scripts/build_manuscript_review.py\nA  scripts/editorial_long_cycle_figure.py\nA  scripts/editorial_revision.py\nM  scripts/manuscript_text_contract.py\nA  scripts/refresh_editorial_revision.py\nA  scripts/render_editorial_long_cycle_figure.R\nA  tables/editorial_revision/appendix_gamma_summary_table.tex\nA  tables/editorial_revision/appendix_sigma_summary_table.tex\nA  tables/editorial_revision/benchmark_crps_main_table.tex\nA  tables/editorial_revision/benchmark_crps_nws_horizon_table.tex\nA  tables/editorial_revision/comment2_external_by_origin_table.tex\nA  tables/editorial_revision/comment2_external_comparison_table.tex\nA  tables/editorial_revision/comment2_fit_diagnostic_table.tex\nA  tables/editorial_revision/he3_ablation_crps_main_table.tex\nA  tables/editorial_revision/he3_ablation_crps_nws_horizon_table.tex\nA  tables/editorial_revision/he4_quantile_check_loss_main_table.tex\nA  tables/editorial_revision/no_refit_calibration_summary_table.tex\nA  tables/editorial_revision/no_refit_origin_diagnostics_table.tex\nA  tables/editorial_revision/no_refit_score_comparison_table.tex\nA  tables/editorial_revision/no_refit_score_sensitivity_table.tex\nA  tables/editorial_revision/representative_covariate_effects_table.tex\nM  tests/test_article_a1_and_table_contracts.py\nA  tests/test_editorial_integration.py\nA  tests/test_editorial_revision.py\nM  wileyNJD-APA.bib\nM  wileyNJD-APA.tex"
+      },
+      "corrections": {
+        "branch": "main",
+        "head": "b1ceeb6",
+        "path": "/data/muscat_data/jaguir26/Corrections---Project-1",
+        "status_short": ""
+      },
+      "workflow": {
+        "branch": "revision/article-editorial-record-20261109",
+        "head": "df3adf6",
+        "path": "/tmp/article_editorial_revision_20261109/workflow",
+        "status_short": "M .gitattributes\n M .gitignore\n M scripts/current_article_contract.py\n M scripts/validate_publication_freeze.py\n M scripts/validate_revision_cross_repo_wiring.py\n M tests/python/test_article_repository_binding.py\n M tests/python/test_reviewer1_remaining_contracts.py\n M tests/python/test_software_availability_contract.py\n?? docs/article_editorial_revision_20261109/\n?? tests/python/test_article_editorial_wiring.py"
+      }
+    },
+    "timestamp_utc": "2026-11-09T01:02:59.946934+00:00"
+  },
+  "status": "pass",
+  "total_checks": 686
+}

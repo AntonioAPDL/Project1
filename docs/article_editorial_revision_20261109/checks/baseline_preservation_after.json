@@ -1,0 +1,18 @@
+{
+  "baseline_commit": "d60d7652a56d7f151f49087bf44c476315427f96",
+  "baseline_file_count": 797,
+  "changed_existing_files": [
+    "MANUSCRIPT_ASSET_MANIFEST.json",
+    "scripts/build_manuscript_review.py",
+    "scripts/manuscript_text_contract.py",
+    "tests/test_article_a1_and_table_contracts.py",
+    "wileyNJD-APA.bib",
+    "wileyNJD-APA.tex"
+  ],
+  "unchanged_existing_count": 791,
+  "current_baseline_content_sha256": "7ab84b56c89fdd44e26387b153830bcca8c3552e192ee8711e830e6117fd7966",
+  "missing": [],
+  "changed_modes": [],
+  "unexpected_changes": [],
+  "passed": true
+}

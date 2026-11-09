@@ -1,0 +1,11 @@
+{
+  "pdf": "/tmp/article_editorial_revision_20261109/final_verification/proof/editorial_review.pdf",
+  "pages": 44,
+  "latex_passes": 4,
+  "auxiliary_labels_stable": true,
+  "unresolved_citations_or_references": [],
+  "bibtex_warnings": [],
+  "overfull_horizontal_boxes": 1,
+  "overfull_vertical_boxes": 1,
+  "passed": true
+}

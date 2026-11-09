@@ -1,0 +1,116 @@
+{
+  "pdf": "/tmp/article_editorial_revision_20261109/proof_final/editorial_review.pdf",
+  "sha256": "858a764621e9f4e084e2180211f7345d678ae087b06abf5c9ef940fd36e6a0fc",
+  "figure_count": 14,
+  "review_scope": [
+    "embedded axis and legend labels",
+    "units and transformed scale",
+    "caption correspondence",
+    "readability and clipping"
+  ],
+  "figures": [
+    {
+      "figure": "1",
+      "page": 3,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "2",
+      "page": 5,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "3",
+      "page": 12,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "4",
+      "page": 17,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": "Add explicit key for CLIM-SEASONAL and other comparator codes in caption"
+    },
+    {
+      "figure": "A1",
+      "page": 21,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "A2",
+      "page": 22,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "A3",
+      "page": 29,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "A4",
+      "page": 30,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "A5",
+      "page": 30,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "A6",
+      "page": 31,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "A7",
+      "page": 32,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "A8",
+      "page": 33,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "A9",
+      "page": 34,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    },
+    {
+      "figure": "A10",
+      "page": 35,
+      "visual_layout": "PASS",
+      "caption_units_scale_correspondence": "PASS",
+      "remaining_clarification": null
+    }
+  ],
+  "numerical_inputs_modified": false,
+  "article_files_modified": false,
+  "recommendation": "Add a one-sentence Figure4 caption key: RAW-GLOFAS and RAW-NWS denote raw ensembles, EMOS-GLOFAS denotes GloFAS EMOS, and CLIM-SEASONAL denotes seasonal climatology. No other figure edits needed.",
+  "resolution": "The recommended comparator key was added to the final Figure 4 caption and visually checked in the staged final proof; all 14 figure image files have the same identities as in the reviewed proof.",
+  "final_pdf_sha256": "1a988e156182e94afd13f019003222d61c826a25c35babbeb79a50269d738bd7"
+}

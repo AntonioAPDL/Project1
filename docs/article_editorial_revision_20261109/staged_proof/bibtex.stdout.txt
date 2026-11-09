@@ -1,0 +1,5 @@
+This is BibTeX, Version 0.99d (TeX Live 2018)
+The top-level auxiliary file: editorial_review.aux
+The style file: WileyNJD-APA.bst
+Database file #1: wileyNJD-APA.bib
+apacite.bst [2013/07/21 v6.03 APA bibliography style]

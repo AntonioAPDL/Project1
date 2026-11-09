@@ -1,0 +1,11 @@
+test_archive_status_helper_accepts_only_coherent_states (test_software_availability_contract.SoftwareAvailabilityContractTests) ... ok
+test_article_software_manifest_records_public_contract (test_software_availability_contract.SoftwareAvailabilityContractTests) ... ok
+test_canonical_runbook_keeps_selected_diagnostics_tied_to_selected_output (test_software_availability_contract.SoftwareAvailabilityContractTests) ... ok
+test_contract_docs_exist_in_correct_repositories (test_software_availability_contract.SoftwareAvailabilityContractTests) ... ok
+test_manuscript_and_corrections_share_he5_contract (test_software_availability_contract.SoftwareAvailabilityContractTests) ... ok
+test_workflow_archive_readiness_files_do_not_overclaim (test_software_availability_contract.SoftwareAvailabilityContractTests) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.041s
+
+OK

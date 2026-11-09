@@ -1,0 +1,25 @@
+item,status,detail
+manifest_exists,pass,artifacts/latest_forecast_issue/latest_forecast_issue_manifest.json
+schema_version,pass,he7_latest_forecast_issue_v1
+cutoff_set,pass,"['20210123', '20211112', '20211221', '20220511', '20221225']"
+publication_protocol,pass,"{'name': 'latest_forecast_only', 'publication_weighting_scheme': 'latest', 'forecast_window_policy': 'forecast_products_issued_at_or_before_cutoff_only', 'cross_issue_weighting_used': False, 'legacy_weighted_daily_filenames_are_aliases': True}"
+no_cross_issue_weighting,pass,"protocol=False, claims=True"
+legacy_alias_policy,pass,True
+glofas_issue_rule,pass,"{'issue_frequency': 'daily', 'selection_rule': 'issue_date_equals_cutoff', 'cache_pattern': 'forecast_cache/glofas/issue_date=<cutoff>/glofas_members.csv', 'member_count': 51}"
+nws_issue_rule,pass,"{'issue_frequency': 'hourly', 'availability_rule': 'issue_datetime_at_or_before_cutoff_day', 'selection_rule': 'latest_issue_datetime_per_target_hour_member_then_daily_mean', 'cache_pattern': 'forecast_cache/nws/cutoff_date=<cutoff>/nws_members.csv', 'member_count': 7}"
+member_counts,pass,"glofas=51, nws=7"
+code_evidence_paths,pass,"{'nws_extractor': 'scripts/forecats_extract_nws_batch.py', 'glofas_extractor': 'scripts/forecats_extract_glofas_batch.py', 'batch_driver': 'scripts/forecats_batch.R', 'batch_config': 'config/forecats_batch.site=11160500.single_retro_policy_pre1080.yaml', 'snapshot_stage': 'R/unified/stages/stage_forecats.R', 'histfix_bundle_builder': 'scripts/build_multimodel_v8_histfix_bundles.py'}"
+code_evidence_files_exist,pass,all manifest code-evidence paths exist
+workflow_contract_doc_exists,pass,docs/he7_latest_forecast_issue_contract_20260615.md
+article_contract_doc_exists,pass,docs/latest_forecast_issue_contract.md
+latest_issue,pass,"latest|most recent, issu, daily, member, GloFAS, NWS"
+verification,pass,"USGS, verification, forecast (?:window|horizon)|forecast.window"
+corrections_required:latest available forecast ensemble,pass,latest available forecast ensemble
+corrections_required:rather than combining earlier issuances,pass,rather than combining earlier issuances
+corrections_required:using forecasts issued at earlier times may reduce forecast performance,pass,using forecasts issued at earlier times may reduce forecast performance
+corrections_required:reported publication matrices do not average older issuances,pass,reported publication matrices do not average older issuances
+corrections_required:historical workflow file names retain older descriptive labels,pass,historical workflow file names retain older descriptive labels
+article_forbidden:weighted combination of prior forecasts,pass,weighted combination of prior forecasts
+article_forbidden:lagged forecasts are weighted,pass,lagged forecasts are weighted
+article_forbidden:combining earlier issuances,pass,combining earlier issuances
+article_forbidden:older forecast issuances are averaged,pass,older forecast issuances are averaged

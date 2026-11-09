@@ -1,0 +1,443 @@
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex)
+ restricted \write18 enabled.
+entering extended mode
+(./wileyNJD-APA.tex
+LaTeX2e <2017-04-15>
+Babel <3.17> and hyphenation patterns for 3 language(s) loaded.
+(./WileyNJD-v2.cls
+Document Class: WileyNJD-v2 2017/06/23 v0.2 Standard LaTeX document class for J
+ournal
+(/usr/share/texlive/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2014/09/29 v1.4h Standard LaTeX document class
+(/usr/share/texlive/texmf-dist/tex/latex/base/fleqn.clo)
+(/usr/share/texlive/texmf-dist/tex/latex/base/size10.clo))
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphicx.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/keyval.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphics.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/trig.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/graphics.cfg)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-def/pdftex.def)))
+(/usr/share/texlive/texmf-dist/tex/latex/tools/multicol.sty)
+(/home/jaguir26/texmf/tex/latex/multirow/multirow.sty)
+(/home/jaguir26/texmf/tex/latex/sttools/cuted.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/oberdiek/ifpdf.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/url/url.sty)
+(/home/jaguir26/texmf/tex/latex/changepage/changepage.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/tools/calc.sty)
+(/home/jaguir26/texmf/tex/latex/xcolor/xcolor.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/color.cfg))
+(/home/jaguir26/texmf/tex/latex/float/float.sty)
+(/home/jaguir26/texmf/tex/latex/sttools/floatpag.sty)
+(/home/jaguir26/texmf/tex/latex/dblfloatfix/dblfloatfix.sty
+(/usr/share/texlive/texmf-dist/tex/latex/base/fixltx2e.sty
+
+Package fixltx2e Warning: fixltx2e is not required with releases after 2015
+(fixltx2e)                All fixes are now in the LaTeX kernel.
+(fixltx2e)                See the latexrelease package for details.
+
+)) (/usr/share/texlive/texmf-dist/tex/latex/graphics/rotating.sty
+(/usr/share/texlive/texmf-dist/tex/latex/base/ifthen.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/tools/longtable.sty)
+(/home/jaguir26/texmf/tex/generic/ulem/ulem.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/tools/enumerate.sty)
+(/home/jaguir26/texmf/tex/latex/soul/soul.sty)
+(/home/jaguir26/texmf/tex/latex/caption/caption.sty
+(/home/jaguir26/texmf/tex/latex/caption/caption3.sty)
+(/home/jaguir26/texmf/tex/latex/caption/ltcaption.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/hyperref.sty
+(/usr/share/texlive/texmf-dist/tex/generic/oberdiek/hobsub-hyperref.sty
+(/usr/share/texlive/texmf-dist/tex/generic/oberdiek/hobsub-generic.sty))
+(/usr/share/texlive/texmf-dist/tex/generic/ifxetex/ifxetex.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/oberdiek/auxhook.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/oberdiek/kvoptions.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/pd1enc.def)
+(/usr/share/texlive/texmf-dist/tex/latex/latexconfig/hyperref.cfg))
+
+Package hyperref Message: Driver (autodetected): hpdftex.
+
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/hpdftex.def
+(/usr/share/texlive/texmf-dist/tex/latex/oberdiek/rerunfilecheck.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/oberdiek/bookmark.sty
+(/usr/share/texlive/texmf-dist/tex/latex/oberdiek/bkm-pdftex.def))
+(/usr/share/texlive/texmf-dist/tex/latex/oberdiek/twoopt.sty)
+(/home/jaguir26/texmf/tex/latex/footmisc/footmisc.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/tools/tabularx.sty
+(/usr/share/texlive/texmf-dist/tex/latex/tools/array.sty))
+(/home/jaguir26/texmf/tex/latex/varwidth/varwidth.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/tools/dcolumn.sty)
+(/home/jaguir26/texmf/tex/latex/stix/stix.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/base/fontenc.sty
+(/usr/share/texlive/texmf-dist/tex/latex/base/t1enc.def))
+(/usr/share/texlive/texmf-dist/tex/latex/geometry/geometry.sty)
+(/home/jaguir26/texmf/tex/latex/eso-pic/showframe.sty
+(/home/jaguir26/texmf/tex/latex/eso-pic/eso-pic.sty)) (./NJDapacite.sty
+
+LaTeX Warning: You have requested package `NJDapacite',
+               but the package provides `apacite'.
+
+) (/usr/share/texlive/texmf-dist/tex/latex/natbib/natbib.sty)
+(/home/jaguir26/texmf/tex/latex/booktabs/booktabs.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?' option.
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amstext.sty
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsgen.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsbsy.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsopn.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/amscls/amsthm.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/algorithms/algorithm.sty)
+(/home/jaguir26/texmf/tex/latex/algorithmicx/algorithmicx.sty
+Document Style algorithmicx 1.2 - a greatly improved `algorithmic' style
+) (/home/jaguir26/texmf/tex/latex/algorithmicx/algpseudocode.sty
+Document Style - pseudocode environments for use with the `algorithmicx' style
+) (/home/jaguir26/texmf/tex/latex/listings/listings.sty
+(/home/jaguir26/texmf/tex/latex/listings/lstmisc.sty)
+(/home/jaguir26/texmf/tex/latex/listings/listings.cfg))
+(/usr/share/texlive/texmf-dist/tex/latex/base/alltt.sty)
+(/home/jaguir26/texmf/tex/latex/wrapfig/wrapfig.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/base/inputenc.sty
+(/usr/share/texlive/texmf-dist/tex/latex/base/utf8.def
+(/usr/share/texlive/texmf-dist/tex/latex/base/t1enc.dfu)
+(/usr/share/texlive/texmf-dist/tex/latex/base/ot1enc.dfu)
+(/usr/share/texlive/texmf-dist/tex/latex/base/omsenc.dfu)))
+(/home/jaguir26/texmf/tex/latex/siunitx/siunitx.sty
+(/home/jaguir26/texmf/tex/latex/l3kernel/expl3.sty
+(/home/jaguir26/texmf/tex/latex/l3kernel/expl3-code.tex)
+(/home/jaguir26/texmf/tex/latex/l3kernel/l3pdfmode.def))
+(/home/jaguir26/texmf/tex/latex/l3packages/xparse/xparse.sty)
+(/home/jaguir26/texmf/tex/latex/l3packages/l3keys2e/l3keys2e.sty)
+(/home/jaguir26/texmf/tex/latex/translator/translator.sty))
+(/home/jaguir26/texmf/tex/latex/caption/subcaption.sty)
+(/home/jaguir26/texmf/tex/latex/placeins/placeins.sty)
+(/home/jaguir26/texmf/tex/latex/threeparttable/threeparttable.sty)
+
+LaTeX Warning: Unused global option(s):
+    [APA,STIX1COL].
+
+
+(/tmp/article_editorial_revision_20261109/final_verification/proof/editorial_re
+view.aux) (/home/jaguir26/texmf/tex/latex/stix/ls1stix.fd)
+(/home/jaguir26/texmf/tex/latex/stix/ls2stix.fd)
+(/home/jaguir26/texmf/tex/latex/stix/t1stix.fd)
+(/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+) (/usr/share/texlive/texmf-dist/tex/latex/oberdiek/epstopdf-base.sty
+(/usr/share/texlive/texmf-dist/tex/latex/oberdiek/grfext.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg))
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/nameref.sty
+(/usr/share/texlive/texmf-dist/tex/generic/oberdiek/gettitlestring.sty))
+*geometry* driver: auto-detecting
+*geometry* detected driver: pdftex
+
+Package apacite Warning: Language definition file english.apc not found.
+
+(/usr/share/texlive/texmf-dist/tex/latex/base/ts1enc.dfu)
+(/home/jaguir26/texmf/tex/latex/translator/translator-basic-dictionary-English.
+dict) (/home/jaguir26/texmf/tex/latex/siunitx/siunitx-abbreviations.cfg)
+(/home/jaguir26/texmf/tex/latex/stix/ls1stixscr.fd)
+(/home/jaguir26/texmf/tex/latex/stix/ls2stixex.fd)
+(/home/jaguir26/texmf/tex/latex/stix/ls1stixfrak.fd)
+(/home/jaguir26/texmf/tex/latex/stix/ls1stixbb.fd)
+(/home/jaguir26/texmf/tex/latex/stix/ls2stixcal.fd)
+(/home/jaguir26/texmf/tex/latex/stix/ls1stixsf.fd)
+(/home/jaguir26/texmf/tex/latex/stix/ls2stixtt.fd)
+Overfull \hbox (346.99213pt too wide) in paragraph at lines 68--68
+[][] | || []|[][] 
+
+Package natbib Warning: Citation `thiboult2016accounting' on page 1 undefined o
+n input line 76.
+
+
+Package natbib Warning: Citation `tarek2021daily' on page 1 undefined on input 
+line 76.
+
+
+Package natbib Warning: Citation `thiboult2016accounting' on page 1 undefined o
+n input line 78.
+
+
+Package natbib Warning: Citation `demargne2013science' on page 1 undefined on i
+nput line 78.
+
+
+Package natbib Warning: Citation `demargne2013science' on page 1 undefined on i
+nput line 78.
+
+
+Overfull \vbox (3.66481pt too high) has occurred while \output is active
+Overfull \vbox (6.46347pt too high) has occurred while \output is active
+[1{/usr/share/texlive/texmf-dist/fonts/map/pdftex/updmap/pdftex.map}]
+
+Package natbib Warning: Citation `siegert2019forecast' on page 2 undefined on i
+nput line 80.
+
+
+Package natbib Warning: Citation `vannitsem' on page 2 undefined on input line 
+80.
+
+
+Package natbib Warning: Citation `wang2022forecastcombinations50yearreview' on 
+page 2 undefined on input line 80.
+
+
+Package natbib Warning: Citation `duan2006bma' on page 2 undefined on input lin
+e 80.
+
+
+Package natbib Warning: Citation `gneiting2005emos' on page 2 undefined on inpu
+t line 80.
+
+
+Package natbib Warning: Citation `hemri2015multivariate' on page 2 undefined on
+ input line 80.
+
+
+Package natbib Warning: Citation `yumnam2022quantile' on page 2 undefined on in
+put line 80.
+
+
+Package natbib Warning: Citation `mcalinn2019dynamic' on page 2 undefined on in
+put line 80.
+
+
+Package natbib Warning: Citation `gourieroux2008dqlm' on page 2 undefined on in
+put line 82.
+
+
+Package natbib Warning: Citation `goncalves' on page 2 undefined on input line 
+82.
+
+
+Package natbib Warning: Citation `barata2021_flex_quantile' on page 2 undefined
+ on input line 82.
+
+
+Package natbib Warning: Citation `wang2013nonconjugatevb' on page 2 undefined o
+n input line 82.
+
+
+Package natbib Warning: Citation `usgs_daily_11160500' on page 2 undefined on i
+nput line 91.
+
+
+Package natbib Warning: Citation `cnrfc_btec1' on page 2 undefined on input lin
+e 99.
+
+
+Package natbib Warning: Citation `usgs_11160500_rating40' on page 2 undefined o
+n input line 99.
+
+
+Package natbib Warning: Citation `cnrfc_btec1' on page 2 undefined on input lin
+e 99.
+
+
+Package natbib Warning: Citation `usgs_11160500_rating40' on page 2 undefined o
+n input line 99.
+
+
+Package natbib Warning: Citation `prism' on page 2 undefined on input line 123.
+
+
+
+Package natbib Warning: Citation `ecmwf' on page 2 undefined on input line 123.
+
+
+
+Package natbib Warning: Citation `munozsabater2021era5land' on page 2 undefined
+ on input line 123.
+
+[2]
+
+Package natbib Warning: Citation `noaa_climate_indices' on page 3 undefined on 
+input line 125.
+
+
+Package natbib Warning: Citation `JSSv092c02' on page 3 undefined on input line
+ 125.
+
+[3 <./Figures/manuscript/site_context_usgs.png (PNG copy)>]
+
+Package natbib Warning: Citation `cosgrove2024noaa' on page 4 undefined on inpu
+t line 129.
+
+
+Package natbib Warning: Citation `harrigan2020glofas' on page 4 undefined on in
+put line 129.
+
+
+Package natbib Warning: Citation `deleon2026sanlorenzo_reproducibility' on page
+ 4 undefined on input line 129.
+
+
+Package natbib Warning: Citation `deleon2026sanlorenzo_reproducibility' on page
+ 4 undefined on input line 131.
+
+[4]
+
+Package natbib Warning: Citation `yu2001bayesian' on page 5 undefined on input 
+line 158.
+
+
+Package natbib Warning: Citation `sriram2013theoretical' on page 5 undefined on
+ input line 158.
+
+
+Package natbib Warning: Citation `yan2025new' on page 5 undefined on input line
+ 158.
+
+[5 <./Figures/manuscript/forecast_products_context.png (PNG copy)>]
+
+Package natbib Warning: Citation `barata2021_flex_quantile' on page 6 undefined
+ on input line 219.
+
+[6]
+
+Package natbib Warning: Citation `prado2021time' on page 7 undefined on input l
+ine 229.
+
+
+Package natbib Warning: Citation `wang2013nonconjugatevb' on page 7 undefined o
+n input line 236.
+
+
+Package natbib Warning: Citation `barata2021_flex_quantile' on page 7 undefined
+ on input line 238.
+
+(/usr/share/texlive/texmf-dist/tex/latex/base/t1cmtt.fd)
+
+Package natbib Warning: Citation `deleon2026exdqlm' on page 7 undefined on inpu
+t line 240.
+
+
+Package natbib Warning: Citation `barlow1972' on page 7 undefined on input line
+ 247.
+
+[7]
+
+Package natbib Warning: Citation `chernozhukov2010' on page 8 undefined on inpu
+t line 259.
+
+[8] [9]
+
+Package natbib Warning: Citation `gneiting2005emos' on page 10 undefined on inp
+ut line 328.
+
+
+Package natbib Warning: Citation `thorarinsdottir2010emos' on page 10 undefined
+ on input line 328.
+
+
+Package natbib Warning: Citation `hemri2015multivariate' on page 10 undefined o
+n input line 328.
+
+
+Package natbib Warning: Citation `gneiting2007strictly' on page 10 undefined on
+ input line 339.
+
+
+Package natbib Warning: Citation `wilks2019statistical' on page 10 undefined on
+ input line 358.
+
+[10]
+
+Package natbib Warning: Citation `zamo2018crps' on page 11 undefined on input l
+ine 373.
+
+
+Package natbib Warning: Citation `ferro2014fair' on page 11 undefined on input 
+line 375.
+
+[11] [12 <./Figures/multivariate_synthesis_by_cutoff/cutoff_2022_12_25_multivar
+iate_synthesis_with_reference_ensembles.png (PNG copy)>]
+(./tables/editorial_revision/benchmark_crps_main_table.tex)
+(./tables/editorial_revision/benchmark_crps_nws_horizon_table.tex) [13]
+(./tables/editorial_revision/comment2_external_comparison_table.tex) [14]
+(./tables/editorial_revision/he4_quantile_check_loss_main_table.tex) [15]
+(./tables/editorial_revision/no_refit_calibration_summary_table.tex) [16]
+
+Package natbib Warning: Citation `blei2017variational' on page 17 undefined on 
+input line 467.
+
+[17 <./Figures/manuscript/no_refit_quantile_reliability.png (PNG copy)>]
+(./tables/editorial_revision/representative_covariate_effects_table.tex)
+[18]
+
+Package natbib Warning: Citation `deleon2026sanlorenzo_reproducibility' on page
+ 19 undefined on input line 510.
+
+[19]
+
+Package natbib Warning: Citation `deleon2026exdqlm' on page 20 undefined on inp
+ut line 514.
+
+[20] (./tables/editorial_revision/he3_ablation_crps_main_table.tex)
+(./tables/editorial_revision/he3_ablation_crps_nws_horizon_table.tex) [21 <./Fi
+gures/manuscript/covariate_context_precip_soil_gdpc.png (PNG copy)>]
+(./tables/editorial_revision/comment2_fit_diagnostic_table.tex
+Underfull \hbox (badness 2671) in paragraph at lines 27--27
+[]\T1/stix/b/n/10.03749 TABLE A3 |\T1/stix/m/n/10.03749 Stop-ping clas-si-fi-ca
+-tions for the model-comparison and
+) (./tables/editorial_revision/comment2_external_by_origin_table.tex [22 <./Fig
+ures/manuscript/retrospective_products_context.png (PNG copy)>])
+(./tables/editorial_revision/no_refit_score_comparison_table.tex)
+(./tables/editorial_revision/no_refit_score_sensitivity_table.tex)
+(./tables/editorial_revision/no_refit_origin_diagnostics_table.tex)
+(./tables/editorial_revision/appendix_gamma_summary_table.tex [23] [24])
+(./tables/editorial_revision/appendix_sigma_summary_table.tex) [25] [26]
+[27] [28] [29 <./Figures/manuscript/historical_summary_dry_period.png (PNG copy
+)>] [30 <./Figures/manuscript/historical_summary_wet_period.png (PNG copy)> <./
+Figures/manuscript/editorial_long_cycle_component.png (PNG copy)>] [31 <./Figur
+es/manuscript/reference_synthesis_univariate.png (PNG copy)>] [32 <./Figures/mu
+ltivariate_synthesis_by_cutoff/cutoff_2021_01_23_multivariate_synthesis_with_re
+ference_ensembles.png (PNG copy)>] [33 <./Figures/multivariate_synthesis_by_cut
+off/cutoff_2021_11_12_multivariate_synthesis_with_reference_ensembles.png (PNG 
+copy)>] [34 <./Figures/multivariate_synthesis_by_cutoff/cutoff_2021_12_21_multi
+variate_synthesis_with_reference_ensembles.png (PNG copy)>] [35 <./Figures/mult
+ivariate_synthesis_by_cutoff/cutoff_2022_05_11_multivariate_synthesis_with_refe
+rence_ensembles.png (PNG copy)>]
+
+Package natbib Warning: Citation `hyndman1996sample' on page 36 undefined on in
+put line 717.
+
+[36]
+
+Package natbib Warning: Citation `yan2025new' on page 37 undefined on input lin
+e 800.
+
+[37] [38] [39] [40] [41] [42]
+(/tmp/article_editorial_revision_20261109/final_verification/proof/editorial_re
+view.bbl [43]
+Underfull \hbox (badness 1377) in paragraph at lines 954--970
+[]\T1/stix/m/n/10.03749 U.S. Geo-log-i-cal Sur-vey.  (2026b).  \T1/stix/m/it/10
+.03749 Expanded shift-adjusted stage--discharge rat-ing table for USGS 11160500
+, rat-
+)
+
+Package natbib Warning: There were undefined citations.
+
+[44]
+(/tmp/article_editorial_revision_20261109/final_verification/proof/editorial_re
+view.aux
+
+Package natbib Warning: Citation(s) may have changed.
+(natbib)                Rerun to get citations correct.
+
+) )
+(see the transcript file for additional information){/home/jaguir26/texmf/fonts
+/enc/dvips/stix/stix-t1.enc}{/usr/share/texlive/texmf-dist/fonts/enc/dvips/cm-s
+uper/cm-super-t1.enc}</home/jaguir26/texmf/fonts/type1/public/stix/STIXGeneral-
+Bold.pfb></home/jaguir26/texmf/fonts/type1/public/stix/STIXGeneral-Italic.pfb><
+/home/jaguir26/texmf/fonts/type1/public/stix/STIXGeneral-Regular.pfb></usr/shar
+e/texlive/texmf-dist/fonts/type1/public/cm-super/sftt1000.pfb></home/jaguir26/t
+exmf/fonts/type1/public/stix/stix-mathbb.pfb></home/jaguir26/texmf/fonts/type1/
+public/stix/stix-mathcal.pfb></home/jaguir26/texmf/fonts/type1/public/stix/stix
+-mathex.pfb></home/jaguir26/texmf/fonts/type1/public/stix/stix-mathit-bold.pfb>
+</home/jaguir26/texmf/fonts/type1/public/stix/stix-mathit.pfb></home/jaguir26/t
+exmf/fonts/type1/public/stix/stix-mathrm-bold.pfb></home/jaguir26/texmf/fonts/t
+ype1/public/stix/stix-mathrm.pfb></home/jaguir26/texmf/fonts/type1/public/stix/
+stix-mathscr.pfb></home/jaguir26/texmf/fonts/type1/public/stix/stix-mathsf.pfb>
+
+Output written on /tmp/article_editorial_revision_20261109/final_verification/p
+roof/editorial_review.pdf (44 pages, 13976906 bytes).
+Transcript written on /tmp/article_editorial_revision_20261109/final_verificati
+on/proof/editorial_review.log.
