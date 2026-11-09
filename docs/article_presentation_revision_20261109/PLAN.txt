@@ -1,0 +1,160 @@
+ARTICLE PRESENTATION AND UNCERTAINTY REVISION: AUDITED IMPLEMENTATION PLAN
+
+Authorization and current state
+
+The user authorized implementing the consolidated nine-step plan after explicitly
+clarifying (1) retain main Table 3 and remove Appendix Table B3 with its discussion,
+and (2) several weeks denotes anticipated full-data MCMC computation, not software
+development. Article baseline: 30b2c5690521e1e89ea185ee8df2e83a6ef27282.
+Workflow baseline: 6487efd083b78b73de454af16c318c005b760b7c. Local and remote article
+main agree. The initial article tree is clean. The workflow has the user's existing
+untracked docs/environmetrics_rejection_audit_20261107/ folder, which is excluded
+from staging. No R/model process was running at the initial process audit.
+
+The previous full plan remains the basis. This record makes the implementation
+concrete and adds the dependencies found in the source audit. No real-data refits,
+new forecasts, new predictive draws, rescoring or simulation study are authorized
+for this editorial revision. Reported results and all seven figures are preserved.
+
+1. Preserve the baseline and work separately
+
+Record the committed Git blobs and modes before editing, along with the three
+protected repositories' HEAD/tree/status. Create matching feature branches in
+Corrected-3 and Project1. Preserve Corrected-2, the corrections repository and the
+public reproducibility repository. Keep dated historical release records unchanged.
+Current comments and release documentation will receive new files, not historical
+rewrites. The article remains one document with integrated Appendices A--D.
+
+2. Improve the methodological argument without adding repetition
+
+Rewrite existing abstract/introduction/conclusion paragraphs around three precise
+contributions: source correction through a shared dynamic quantile process with
+evolving source discrepancies and unequal horizons; synthesis of separate quantile
+fits into a complete nondecreasing marginal predictive quantile function including
+tails; and a joint non-conjugate scale--skewness VB-LD computation suited to the
+long daily record. Identify the existing methods being adapted and cite them.
+Do not introduce an unverified first-method claim, a new joint synthesis posterior,
+or an implication that noncrossing quantiles alone establish calibration.
+Connect the construction to the already reported 28-day gains and retain the
+specific short-horizon, upper-quantile and coverage comparisons. Do not attribute
+all improvements to an isolated computational or structural component.
+
+3. Explain computational feasibility precisely
+
+Use the author's anticipated several-week full-data MCMC cost explicitly as an
+estimate. The complexity justification is repeated latent trajectory, augmentation
+and non-conjugate parameter updates across seven quantile fits. Distinguish this
+from the documented approximate two-hour combined VB fitting and forecasting time
+under the Appendix C.1 hardware/parallelization conditions. A corresponding measured
+MCMC benchmark has not been performed. Do not invent a speed ratio, observed MCMC
+time, or hardware configuration for the estimate. Explain why the anticipated cost
+is impractical within daily forecast production and retain the explicit statement
+that variational posterior error has not been quantified against full-model MCMC.
+Record the author-provided estimate and its provenance in new release guidance.
+
+4. Explain uncertainty at its point of use
+
+Expand the coefficient discussion to distinguish parameter credible intervals
+from future-discharge predictive intervals, which incorporate state and observation
+variation and the stated cross-quantile synthesis. Explain possible approximation
+error from dependence omitted between variational blocks and local approximations;
+the current implementation retains joint state trajectories and joint within-channel
+scale/skewness approximations. Keep a brief conclusion reminder. Predictive coverage
+cannot establish parameter-posterior accuracy. Use concise prose, no new equations.
+
+5. Remove the specified display and associated classification narrative
+
+Delete the exact sentence beginning "Differences describe the fitted configurations".
+Remove recorded fit-status interpretation from Comparison Specifications, Component
+Sensitivity and Interpretation, and Discussion. Remove the B3 input and its two
+surrounding paragraphs in Appendix B.2. Rename its subsection Component-Removal
+Comparisons and remove the obsolete app:fitdiagnostics label. Remove the component
+comparison table's B3 note. Keep actual component definitions/numerical comparisons,
+main Table 3 and its discussion, all mathematical updates, and the algorithm's
+concise termination mechanics. Do not replace removal with a claim of convergence.
+
+Stop emitting si_fitting_status.tex in the active compact generator. Retain the
+physical archived file unchanged. Remove si_fitting_status from submitted_assets.
+The inventory currently marks the original comment2_fit_diagnostics table as
+merged into that asset: change this disposition to repository and remove its stale
+publication destination. Add an explicit repository-only disposition for the
+retained compact table. Retain both underlying ledgers and their numerical checks.
+This avoids breaking archive validation or erasing data while removing the display
+from both manuscript scopes.
+
+6. Complete table emphasis in the generator
+
+Use reusable grouping/direction logic rather than copying extremum calculations
+for each output. Compare existing unrounded values, use exact source decimal
+strings where available, preserve existing loss averages, bold genuine ties and
+exclude unavailable cells. Do not change numerical precision or recompute scores.
+
+Current table 1: minimum CRPS / maximum skill per column, preserve correct bolding.
+Table 2: minimum loss per probability, preserve correct bolding.
+Table 3: minimum interval score per horizon only; AL-M-T1 wins at 2.44957/2.81501.
+B1: minimum CRPS over all shown methods for each origin and horizon.
+B2: minimum CRPS over shown methods, including raw references, per origin/horizon.
+B3: remove from the submitted article; preserve archived file byte-for-byte.
+Old B4: minimum quantile loss per origin and probability.
+Old B5: minimum exact/adjusted CRPS, maximum skill per horizon and score column.
+Old B6: minimum discharge-scale CRPS and maximum skill per horizon.
+Old B7 coverage and B8 coefficients remain descriptive; widths alone have no winner.
+Update table notes to explain preference/grouping; do not imply significance.
+Remaining old B4--B8 become B3--B7 automatically. Main Table 3 stays numbered 3.
+Final counts: ten tables, seven figures and two algorithms.
+
+7. Describe prospective validation economically
+
+One compact discussion paragraph will propose controlled matching-target VB/MCMC
+comparisons, followed by identical synthesis, and separate assessment of posterior
+accuracy, predictive agreement and predictive coverage. These are future analyses,
+not current results. Parameter and predictive intervals should not be called
+equivalent. A finite simulation study cannot supply a universal guarantee.
+Keep the fuller protocol in current research/release documentation: manageable
+same-target calculations first, then all seven fits with identical synthesis;
+separate parameter/state posterior comparisons from predictive endpoint/width/score
+comparisons; independent repeated datasets for coverage with Monte Carlo precision;
+correct-model and deliberately misspecified scenarios distinguished. Reference
+prediction from MCMC followed by synthesis is not a single exact synthesis posterior.
+No simulation or MCMC computation starts during this revision.
+
+8. Wire, inspect and validate the new reading package
+
+Update active inventory, README/template and current compact/provenance guidance.
+The old PDF validator hardcodes the removed B3 table and old B4--B8 numbers. Add a
+new current validator that checks the ten active table labels, seven figure labels,
+appendix sections and algorithm destinations. Preserve all earlier validators.
+Distinguish Table B1/B2 from Figure B1/B2 using visible context, never destination
+pages as guesses. Require correct current numbering, actual local links, one
+bibliography, no undefined/duplicate references and no included removed display.
+
+A new preservation check will compare all existing mathematical expressions and
+all table tabular contents after stripping only bold markup/whitespace. Require
+scientific source CSVs, scientific_records.json, removed archived table, algorithms,
+all figures and historical releases to remain unchanged. Add focused tests for
+highlight direction, groups, precision/ties/missing cells and validation of changed
+appendix numbering. Run targeted tests during editing, then one comprehensive gate
+once settled: existing scientific checks and R assertions, all article tests,
+workflow wiring tests, current preservation/links, compact replay, unchanged figure
+replay, package check and one fresh complete PDF build. Record actual page count;
+keep class, margins and fonts unchanged. Inspect modified paragraphs, table pages
+and appendix numbering in the final PDF. Repeat checks only after relevant changes
+or failures. A new release record captures commands, hashes and outcomes.
+
+9. Publish the tested revision safely
+
+Check live Overleaf ancestry immediately before publication. Stage only explicit
+intended files. Commit/push feature branches and use expected-head normal PR merges.
+Verify each merged tree matches its tested feature tree. Refresh the local ignored
+complete PDF and record its source and PDF hashes. Publish the companion audit and
+execution record. Verify local/remote mains, clean article state and unchanged
+protected repositories; preserve the user's unrelated untracked audit folder.
+Overleaf's document root remains wileyNJD-APA.tex; no separate supplement is added.
+
+References for the prospective reasoning:
+Posterior prediction: https://mc-stan.org/docs/stan-users-guide/sampling-from-the-posterior-predictive-distribution.html
+Variational approximation assessment: https://proceedings.mlr.press/v80/yao18a.html
+Simulation-based calibration: https://arxiv.org/abs/1804.06788
+
+This file records the refined execution plan. Later completion/release files record
+what was actually implemented, verified and merged; estimates remain estimates.

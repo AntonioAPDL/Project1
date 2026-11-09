@@ -1,0 +1,10 @@
+test_ambiguous_visible_prefix_fails_instead_of_using_destination_to_guess (test_foundation_pdf_links.FoundationPdfLinkTests) ... ok
+test_correct_colliding_numbers_use_visible_exhibit_types (test_foundation_pdf_links.FoundationPdfLinkTests) ... ok
+test_figure_link_cannot_satisfy_a_missing_table_reference (test_foundation_pdf_links.FoundationPdfLinkTests) ... ok
+test_inline_formatting_and_hyperlinked_type_preserve_context (test_foundation_pdf_links.FoundationPdfLinkTests) ... ok
+test_swapped_figure_and_table_targets_fail_despite_valid_page_numbers (test_foundation_pdf_links.FoundationPdfLinkTests) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.002s
+
+OK

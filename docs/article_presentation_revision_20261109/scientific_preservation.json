@@ -1,0 +1,82 @@
+{
+  "baseline_commit": "30b2c5690521e1e89ea185ee8df2e83a6ef27282",
+  "mathematics": {
+    "main": {
+      "baseline_expression_count": 133,
+      "current_expression_count": 133,
+      "baseline_sha256": "9c47da9f9f2603e220cba3a77a0d820405dfddff796caf1a280815734e76a138",
+      "current_sha256": "9c47da9f9f2603e220cba3a77a0d820405dfddff796caf1a280815734e76a138",
+      "differences": [],
+      "passed": true
+    },
+    "appendix": {
+      "baseline_expression_count": 225,
+      "current_expression_count": 225,
+      "baseline_sha256": "9cb6330782030150fb6f9d7a6d6365b457a31d7a80c378ce715ea660a42c923e",
+      "current_sha256": "9cb6330782030150fb6f9d7a6d6365b457a31d7a80c378ce715ea660a42c923e",
+      "differences": [],
+      "passed": true
+    }
+  },
+  "tables": {
+    "tables/compact_publication/main_aggregate.tex": {
+      "baseline_sha256": "31267fb97b8c88d39f1bc642708e974e216231c0ed0c4a1e2c7e3368932b6c0c",
+      "current_sha256": "31267fb97b8c88d39f1bc642708e974e216231c0ed0c4a1e2c7e3368932b6c0c",
+      "passed": true
+    },
+    "tables/compact_publication/main_calibration.tex": {
+      "baseline_sha256": "fb9bfbd1d4a5ad3f12e87677f7ad99dbbd9981b6c8bfac463bf1d5f3c0168812",
+      "current_sha256": "fb9bfbd1d4a5ad3f12e87677f7ad99dbbd9981b6c8bfac463bf1d5f3c0168812",
+      "passed": true
+    },
+    "tables/compact_publication/main_quantile_loss.tex": {
+      "baseline_sha256": "7a5e84d92a803a77e2570568cb6e778d78ffe20f0afdefd54e568ca1d4cb2752",
+      "current_sha256": "7a5e84d92a803a77e2570568cb6e778d78ffe20f0afdefd54e568ca1d4cb2752",
+      "passed": true
+    },
+    "tables/compact_publication/si_component_comparison.tex": {
+      "baseline_sha256": "5cfb2d3387b41c64dc8e9cc8b1254af474b9762158c51f5150b2be13a7a9137c",
+      "current_sha256": "5cfb2d3387b41c64dc8e9cc8b1254af474b9762158c51f5150b2be13a7a9137c",
+      "passed": true
+    },
+    "tables/compact_publication/si_discharge_score.tex": {
+      "baseline_sha256": "a6ff21fdd9b3c3ea3d26d446bf474c6bd0ccc4a5767355abd8ae42061413ba15",
+      "current_sha256": "a6ff21fdd9b3c3ea3d26d446bf474c6bd0ccc4a5767355abd8ae42061413ba15",
+      "passed": true
+    },
+    "tables/compact_publication/si_exact_score_sensitivity.tex": {
+      "baseline_sha256": "b3b700833175b783ad459c66d9bdebbc795ee40e4d420afee408c4daac63a5a1",
+      "current_sha256": "b3b700833175b783ad459c66d9bdebbc795ee40e4d420afee408c4daac63a5a1",
+      "passed": true
+    },
+    "tables/compact_publication/si_fitting_status.tex": {
+      "baseline_sha256": "783d76d519bcb222abdbdd5a78f6208935fb6544a9e54b6f74cdd9fe36437f89",
+      "current_sha256": "783d76d519bcb222abdbdd5a78f6208935fb6544a9e54b6f74cdd9fe36437f89",
+      "passed": true
+    },
+    "tables/compact_publication/si_origin_coverage.tex": {
+      "baseline_sha256": "1fdc780cb21bf116d83d00c68c53feb0347c7a98aff17c3d6b9e14d01ed7df09",
+      "current_sha256": "1fdc780cb21bf116d83d00c68c53feb0347c7a98aff17c3d6b9e14d01ed7df09",
+      "passed": true
+    },
+    "tables/compact_publication/si_origin_crps.tex": {
+      "baseline_sha256": "873da7ce3fa3685fbe5ea31267aea790b826f9cd56cfe610b5d3546b0fe6bdf5",
+      "current_sha256": "873da7ce3fa3685fbe5ea31267aea790b826f9cd56cfe610b5d3546b0fe6bdf5",
+      "passed": true
+    },
+    "tables/compact_publication/si_quantile_loss.tex": {
+      "baseline_sha256": "20d12a84a8899adb11375e402abdfe7a29d421dbba8e5fc3e4a1a598323b748c",
+      "current_sha256": "20d12a84a8899adb11375e402abdfe7a29d421dbba8e5fc3e4a1a598323b748c",
+      "passed": true
+    },
+    "tables/editorial_revision/representative_covariate_effects_table.tex": {
+      "baseline_sha256": "f38152bb6bc0e2a3a5bcd273685b64f16ce8c4d004dfc47fd3b6329197350086",
+      "current_sha256": "f38152bb6bc0e2a3a5bcd273685b64f16ce8c4d004dfc47fd3b6329197350086",
+      "passed": true
+    }
+  },
+  "normalization": "Ordered mathematical expressions: whitespace/labels only. Complete tabular blocks: balanced bold wrappers and whitespace only.",
+  "algorithms_byte_identical": true,
+  "removed_table_archive_byte_identical": true,
+  "passed": true
+}

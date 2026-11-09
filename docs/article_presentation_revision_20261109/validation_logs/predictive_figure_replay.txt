@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "mode": "check",
+  "outputs": {
+    "Figures/manuscript/predictive_synthesis_2022_12_25.pdf": {
+      "sha256": "48fc5c19a82454783826f1750676c4461ec6e648f1d11fd44774dd8a76dba9eb",
+      "bytes": 55803
+    },
+    "Figures/manuscript/compact_forecasts_2021_early.pdf": {
+      "sha256": "e3b3794865990125124be1b5b84a80a6d0ba3b52c0ac97672e653a172429bb29",
+      "bytes": 66290
+    },
+    "Figures/manuscript/compact_forecasts_2021_2022.pdf": {
+      "sha256": "cd67a050c647cb204d59fc10a25214430d6befe801491fe7932fdb5dd54e870d",
+      "bytes": 70134
+    }
+  }
+}

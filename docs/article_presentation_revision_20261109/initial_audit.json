@@ -1,0 +1,10 @@
+{
+  "baseline_article": "30b2c5690521e1e89ea185ee8df2e83a6ef27282",
+  "baseline_workflow": "6487efd083b78b73de454af16c318c005b760b7c",
+  "initial_R_processes": [],
+  "model_jobs_started_by_this_revision": false,
+  "active_tables_before": 11,
+  "active_tables_after_planned": 10,
+  "figures_preserved": 7,
+  "algorithms_preserved": 2
+}
