@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from current_article_contract import active_tex, scientific_checks, structure_checks
+from current_article_contract import active_tex, scientific_checks, structure_checks, publication_text_checks
 
 
 R1_REMAINING_CONTRACT_REL = "docs/reviewer1_remaining_contracts_20260615.md"
@@ -173,12 +173,14 @@ REVIEWER1_REMAINING_SPECS: tuple[Reviewer1RemainingSpec, ...] = (
 )
 
 
-def check_reviewer1_remaining_text(article_text: str, corrections_text: str) -> list[Reviewer1RemainingCheck]:
+def check_reviewer1_remaining_text(article_text: str, corrections_text: str, supplement_text: str | None = None) -> list[Reviewer1RemainingCheck]:
     checks: list[Reviewer1RemainingCheck] = []
     article_text = active_tex(article_text)
     article_lower = article_text.lower()
-    checks.extend(Reviewer1RemainingCheck(item, ok, detail) for item, ok, detail in scientific_checks(article_text))
-    checks.extend(Reviewer1RemainingCheck(item, ok, detail) for item, ok, detail in structure_checks(article_text))
+    scoped = (publication_text_checks(article_text, supplement_text)
+              if supplement_text is not None else
+              structure_checks(article_text) + scientific_checks(article_text))
+    checks.extend(Reviewer1RemainingCheck(item, ok, detail) for item, ok, detail in scoped)
     for spec in REVIEWER1_REMAINING_SPECS:
         for claim in spec.required_corrections:
             checks.append(

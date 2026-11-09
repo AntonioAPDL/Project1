@@ -1,0 +1,23 @@
+{
+  "baseline_commit": "b2e0b82e9e65d6e9bbd09daa0a4b54d6f04546d0",
+  "baseline_file_count": 827,
+  "changed_existing_files": [
+    ".gitignore",
+    "README.md",
+    "docs/article_readme_template.txt",
+    "scripts/build_manuscript_review.py",
+    "scripts/check_wiley_submission_requirements.py",
+    "scripts/manuscript_text_contract.py",
+    "scripts/merge_overleaf_branch_preserving_generated_assets.py",
+    "scripts/validate_manuscript_figure_paths.py",
+    "tests/test_article_a1_and_table_contracts.py",
+    "tests/test_editorial_integration.py",
+    "tests/test_manuscript_text_contract.py",
+    "wileyNJD-APA.tex"
+  ],
+  "missing": [],
+  "unexpected_content_changes": [],
+  "unexpected_modes": [],
+  "snapshot_sha256": "74eafe6bb26b4735f6165eb4b2275ccb171bbd8cfd1b0280bf13a4dacf976605",
+  "passed": true
+}

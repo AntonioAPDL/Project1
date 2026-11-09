@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from article_repository_binding import active_article_root
+from current_article_contract import publication_views
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -41,7 +42,7 @@ class HE1RuntimeContractTests(unittest.TestCase):
         self.assertTrue((ARTICLE_ROOT / ARTICLE_RUNTIME_DOC_REL).exists())
 
     def test_article_and_corrections_share_runtime_claims(self) -> None:
-        article = (ARTICLE_ROOT / "wileyNJD-APA.tex").read_text(encoding="utf-8")
+        article = publication_views(ARTICLE_ROOT)["union"]
         corrections = (CORRECTIONS_ROOT / "main.tex").read_text(encoding="utf-8")
         failed = [row for row in check_runtime_article_text(article) if not row.ok]
         self.assertFalse(failed, [f"{row.item}: {row.detail}" for row in failed])

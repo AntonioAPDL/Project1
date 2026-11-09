@@ -1,0 +1,115 @@
+{
+  "created_utc": "2026-11-09T02:23:10.730230+00:00",
+  "article_repository": "AntonioAPDL/Evironmetrics----Corrected-3",
+  "article_commit": "e103cc990c7fc3bca426276caeec8749b0d5feec",
+  "article_tree": "df26730da65bab86e9b6d2806d18ec5b564b0c19",
+  "article_feature_commit": "8e34210c31846b36dc980d0eeac05d767ae53b68",
+  "article_pull_request": "https://github.com/AntonioAPDL/Evironmetrics----Corrected-3/pull/1",
+  "article_merged": true,
+  "article_main_clean": true,
+  "article_sources_match_reviewed_proofs": true,
+  "unique_python_tests": 249,
+  "r_assertions": 248,
+  "all_required_checks_passed": true,
+  "pages": {
+    "main": 14,
+    "si": 19
+  },
+  "combined_pages": 33,
+  "previous_combined_pages": 44,
+  "original_model_results_unchanged": true,
+  "cross_document_references": {
+    "passed": true,
+    "errors": [],
+    "registered_count": 8
+  },
+  "source_preservation": {
+    "baseline_commit": "b2e0b82e9e65d6e9bbd09daa0a4b54d6f04546d0",
+    "baseline_file_count": 827,
+    "changed_existing_files": [
+      ".gitignore",
+      "README.md",
+      "docs/article_readme_template.txt",
+      "scripts/build_manuscript_review.py",
+      "scripts/check_wiley_submission_requirements.py",
+      "scripts/manuscript_text_contract.py",
+      "scripts/merge_overleaf_branch_preserving_generated_assets.py",
+      "scripts/validate_manuscript_figure_paths.py",
+      "tests/test_article_a1_and_table_contracts.py",
+      "tests/test_editorial_integration.py",
+      "tests/test_manuscript_text_contract.py",
+      "wileyNJD-APA.tex"
+    ],
+    "missing": [],
+    "unexpected_content_changes": [],
+    "unexpected_modes": [],
+    "snapshot_sha256": "74eafe6bb26b4735f6165eb4b2275ccb171bbd8cfd1b0280bf13a4dacf976605",
+    "passed": true
+  },
+  "protected_repositories": {
+    "Evironmetrics---REVISED-DOC-Corrected-2": {
+      "head": "fb58225c4ae1f730301ce3864e98ae4db2d9febf",
+      "tree": "35b2c6d2af808a09618ad7365474826e0bf928fd",
+      "status": ""
+    },
+    "Corrections---Project-1": {
+      "head": "b1ceeb610d20f8287e4ca44e146c9cfdbcda1ee6",
+      "tree": "dbe081e393b2c86af166b18eb4c0d61c6d307eee",
+      "status": ""
+    },
+    "san-lorenzo-exdqlm-reproducibility": {
+      "head": "a8797b804271b46c62bd04dab7dba6b84a10ab7d",
+      "tree": "60f42661893dded43eff0500aff221f36510bd4f",
+      "status": ""
+    }
+  },
+  "post_validation_source_changes": {
+    "files": [
+      "article:supporting_information.tex"
+    ],
+    "description": "Two trailing spaces removed from SI algorithm lines; both documents rebuilt, compiled SI cross-references verified and extracted PDF text remains identical to the inspected proof."
+  },
+  "pdfs": {
+    "main": {
+      "local_path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/wileyNJD-APA.pdf",
+      "sha256": "a143604417ab5d4b755531e20740fa9ad1b75d2ff879f93c8e282e457fff30ae",
+      "source_hashes": {
+        "Figures/manuscript/no_refit_quantile_reliability.png": "c0097bd2684b17565c328871d08c3b0ee7117cf2be3d5fb9833906f885e8d4e6",
+        "Figures/manuscript/site_context_usgs.png": "eeef68672852e4a5362455147b84212ca5bd28d02f9774bb40bdc2a495dc8d8c",
+        "Figures/multivariate_synthesis_by_cutoff/cutoff_2022_12_25_multivariate_synthesis_with_reference_ensembles.png": "0e7e44311a1a4eb82113cb30bc9383f631f86b7a45af07fa9b54608149ed46bb",
+        "NJDapacite.sty": "7617cfbb3a1c1fc084c9d4612d9544cff74316d12a452bc42abac6d2df755dde",
+        "WileyNJD-APA.bst": "237c3b81013630af8236b7a4ea8d6c4e22b2c15fba1ccb30c26d3a2f581962c5",
+        "WileyNJD-v2.cls": "5d8faf972becd3cf1d9b0b28397e9f22b23d583673e58a74bb90cc7af1e94f3e",
+        "tables/compact_publication/main_aggregate.tex": "188d865eb984ae240b100a764d194d7f1d1dc063346a7b596bacc0f57ed5b8be",
+        "tables/compact_publication/main_calibration.tex": "ccd28e0967d7997b7523eede5cd64973416cc50d03c8b0536e6e265de3864d14",
+        "tables/compact_publication/main_quantile_loss.tex": "7c1a3c228a745a4c1770eac7f3aa70b7333395b6ef750b2c4deacfbdd667a5b7",
+        "wileyNJD-APA.bib": "7c517166cd3cd94006f50656fb9664c3f32bec892ffbc8b9cca2dbcef13ceb97",
+        "wileyNJD-APA.tex": "a6227b4e314798c498f8321fdd63d22a33c51c99afd20bd80353bf2b9a643304"
+      }
+    },
+    "si": {
+      "local_path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/supporting_information.pdf",
+      "sha256": "7ebdac46c296b0c26e9027adc7df5c9362e4627cbc5966dd99e20c1c986835dd",
+      "source_hashes": {
+        "Figures/manuscript/compact_forecasts_2021_2022.pdf": "d311096bcdfa1bef9c0a51610532099866cb9db027850a6bbd81f19846753064",
+        "Figures/manuscript/compact_forecasts_2021_early.pdf": "b3935f66399973730b928519528b5eee141e3beffb3e939b960a46a949a44dd6",
+        "Figures/manuscript/covariate_context_precip_soil_gdpc.png": "a450b7fa331403f61ea0af951dc1bdf65fab1e4d471c8f89b26cc72d89b9ad03",
+        "Figures/manuscript/retrospective_products_context.png": "a670b1de369c4a576c9d9221eec27f83e78bbdf00db88419a714efa2bf5de16e",
+        "NJDapacite.sty": "7617cfbb3a1c1fc084c9d4612d9544cff74316d12a452bc42abac6d2df755dde",
+        "WileyNJD-APA.bst": "237c3b81013630af8236b7a4ea8d6c4e22b2c15fba1ccb30c26d3a2f581962c5",
+        "WileyNJD-v2.cls": "5d8faf972becd3cf1d9b0b28397e9f22b23d583673e58a74bb90cc7af1e94f3e",
+        "supporting_information.tex": "7e4aa7adfee9558f1441aeb30e98f05f5d6efd96ab1fd654653340669b45ded4",
+        "tables/compact_publication/si_component_comparison.tex": "564aacd5e5f31eed03683ca7c88df29c6aaa35851151ac4dbe165c368f1f293d",
+        "tables/compact_publication/si_discharge_score.tex": "91c68daf25bd2a976116599af2dcdf65299532b872f3177cefb510a8d22d265b",
+        "tables/compact_publication/si_exact_score_sensitivity.tex": "a78056df64a098956d1a16de667c86418718d1cbafd58311b7391cc6f99cd25a",
+        "tables/compact_publication/si_fitting_status.tex": "36b535d4f6d33b6e150bee8a6b3a017d54600df953dd421d0ad30f0602996159",
+        "tables/compact_publication/si_origin_coverage.tex": "c0ccc537cdaf5c76d0acf07111fc96a45b5815115eda5dcfcd868c17b90e2def",
+        "tables/compact_publication/si_origin_crps.tex": "467a5c5f14be487bce2963ce9811950555ca4c8302e37fb15ff89b52310fb112",
+        "tables/compact_publication/si_quantile_loss.tex": "a9e662b0539cc402247e4ebc07fe52743d3e8bb70a5ec14521dc0076ef163141",
+        "tables/editorial_revision/representative_covariate_effects_table.tex": "66e0bc3a113e8df763e7b5eab49f0a9e07d3ae4cc2b526a82380c830849c66e9",
+        "wileyNJD-APA.bib": "7c517166cd3cd94006f50656fb9664c3f32bec892ffbc8b9cca2dbcef13ceb97"
+      }
+    }
+  },
+  "workflow_publication": "Recorded by the containing workflow commit/merge; execution command is run_checks.py in this directory."
+}

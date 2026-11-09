@@ -1,0 +1,17 @@
+OFFICIAL JOURNAL GUIDANCE RECHECK
+Checked November 8, 2026 (America/Los_Angeles) through indexed official Wiley text.
+Direct open failed, so no claim of a successful live-page render is made.
+
+https://www.onlinelibrary.wiley.com/page/journal/1099095X/homepage/forauthors.html
+Current indexed Author Guidelines support Free Format initial submission, recommend
+an initial manuscript no longer than 40 total pages, and encourage separate
+self-contained supporting documents with title, author list and their own cited
+references. Detailed presentation guidance describes 12-point, double-spaced text.
+The 44-page current publisher-style PDF is therefore a fixed editing baseline,
+not a demonstrated conversion to that submission format. Measure both documents
+and recheck the destination journal's instructions at submission.
+
+https://onlinelibrary.wiley.com/page/journal/1099095x/homepage/guide.htm
+An older official guideline page supports the same 40-page and independent-SI
+principles but uses older portal instructions. Prefer current Author Guidelines
+for submission details. No new format change is proposed during this audit.

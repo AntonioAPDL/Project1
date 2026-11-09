@@ -1,0 +1,118 @@
+READ-ONLY PAGINATION AUDIT FOR A COMPACT REVISION
+
+Scope and identities
+Current Corrected-3 HEAD: 0cf6d99e3d1c59afaec9db4137e80a65eb1d5cd0.
+Current local PDF: Evironmetrics----Corrected-3/wileyNJD-APA.pdf, 44 pages.
+Baseline source: d60d7652a56d7f151f49087bf44c476315427f96.
+Baseline retained proof: /tmp/article_editorial_revision_20261109/previous_canonical_article.pdf, 40 pages.
+No source files, models, Git branches or results were modified in this audit. Diagnostic files only are written under /tmp/environmetrics_readability_plan_20261108/.
+
+Measured finding
+The preceding revision reduced the MAIN article from 22 to 20 pages, including statements but excluding references. The net growth of the full PDF is in supporting material: Appendix A rose from 10 to 15 pages and Appendix B from 2 to 3. Four algorithm pages and two reference pages are unchanged in page count. Therefore 'the main article grew by four pages' would be incorrect.
+
+                         Baseline                Current
+Main and statements      pp1-22: 22 pages         pp1-20: 20 pages
+Appendix A               pp23-32: 10 pages        pp21-35: 15 pages
+Appendix B               pp33-34: 2 pages         pp36-38: 3 pages
+Algorithm display pages  pp35-38: 4 pages         pp39-42: 4 pages
+References               pp39-40: 2 pages         pp43-44: 2 pages
+Total                    40                      44
+Note: Appendix C heading/prose actually begins near the foot of current p38; the two C algorithm displays are pp39-40. Thus treating B and C as strictly disjoint text sections by page has this boundary qualification.
+
+Token measurements and limitations
+Using pdftotext -layout, splitting on form feed for pages and whitespace for tokens:
+                              Baseline    Current   Difference
+Entire PDF                    17,115      18,651     +1,536
+Main and statements           10,512      10,274       -238
+Appendix A                     2,833       3,907     +1,074
+Appendix B shared boundary     1,208       1,870       +662
+Algorithm display pages        1,493       1,508        +15
+References                     1,069       1,092        +23
+These are extraction tokens including mathematical symbols, numerical table cells, captions, headings, running heads and references. They are NOT a submission word count or a prose-only word count. Mathematical tokens depend on PDF extraction. The differences help locate expansion; they do not determine page savings.
+
+Source table-note text expanded from 705 to 1,372 whitespace-delimited tokens (+667). All 15 included table files were inspected at both Git revisions. TeX syntax counts as text in this relative source measure. Caption source tokens grew only 1,387 to 1,410 across all 36 captions (14 figure, 18 table, 4 algorithm). Thus prolonged notes, not a large increase in captions, account for a substantial share of added explanation. Many notes repeatedly decode model labels, the transformed scale, lead windows and case counts. Keep local units, statistic/uncertainty meaning and exceptional denominator information; centralize common definitions within a genuinely shared multi-panel display or a clearly signposted supplementary preamble. Do not strip essential meaning merely to shorten notes.
+
+Current page inventory
+1    Title, 171-word summary, abbreviations, start of introduction.
+2    Introduction and start of data section.
+3    Figure1 (USGS history), Table1 (information roles), data discussion.
+4    Covariate/product detail and forecast-origin exposition; text ends at about y458.
+5    Figure2 (forecast context), start of model section.
+6    Model equations and state explanation.
+7-8  Priors, computation, synthesis, application settings.
+9    Application alignment, model-comparison definitions.
+10   Table2 (comparison questions), external references, scoring definitions.
+11   Scoring/calibration definitions; text ends around y632.
+12   Results opening, Figure3 (representative synthesis).
+13   Table3 (28-day configuration CRPS), performance discussion.
+14   Table4 (eight-day CRPS), Table5 (pooled external comparisons).
+15   Quantile results and full five-origin Table6 (quantile losses).
+16   Calibration/sensitivity results and Table7 (coverage/width/interval score).
+17   Figure4 (reliability), component-sensitivity and interpretation introduction.
+18   Table8 (coefficient summaries), interpretation.
+19   Discussion, acknowledgments, funding, conflicts.
+20   Data/code availability only, 208 extraction tokens; body ends at y300.
+21   Appendix A introduction, historical covariates FigureA1, sensitivity introduction.
+22   Historical retrospective FigureA2; numerical convergence discussion.
+23   Component sensitivity TablesA1-A2; external/distribution supplementary introductions.
+24   Fitting classification TableA3; external per-origin TableA4.
+25   Exact empirical score TableA5; adjustment sensitivity TableA6; shape/scale introduction.
+26   TableA7 (discharge-scale scores) alone, occupies about y262-523.
+27   TableA8 (per-origin coverage), TableA9 (shape posterior summaries).
+28   TableA10 (scale posterior summaries) alone, occupies about y282-499.
+29   Dry-period FigureA3, historical interpretation, univariate subsection introduction.
+30   Wet-period FigureA4 and long-cycle FigureA5.
+31   Univariate synthesis FigureA6 plus introduction to remaining origins.
+32   FigureA7, January2021 synthesis; 112 extraction tokens.
+33   FigureA8, November2021 synthesis; 113 tokens.
+34   FigureA9, December2021 synthesis; 113 tokens.
+35   FigureA10, May2022 synthesis; 112 tokens.
+36   B.1-B.4 computing time, seasonal construction, synthesis numerics, EMOS optimization.
+37   B.5 stacked states and selectors; B.6 augmentation starts.
+38   B.6-B.8 augmentation/covariance/Laplace-Delta; C sampling introduction at foot.
+39   Algorithm1, historical conditional sampling.
+40   Algorithm2, historical FFBS.
+41   AppendixD introduction and Algorithm3, VB coordinate updates.
+42   Algorithm4, VB filtering/smoothing.
+43-44 References.
+The main currently contains eight tables and four figures; Appendix A contains ten tables and ten figures, followed by four algorithm displays in C/D.
+
+Physical layout diagnosis
+The unmodified Wiley STIX1COL class uses 10bp main type and 13bp baselines. Several generated tables already use 8.5pt type with 8pt notes. Font and margin reduction is not an appropriate primary remedy. pdfinfo gives a 595.276 x782.362pt page. Typical body text spans approximately y57-y725. Running heads sit near y38.
+
+1. Current p20 contains availability statements only. Approximately 425pt of potential body area remains below the final text. A clearer and shorter main body/statement block could eliminate this tail page, but a dedicated supplement should still begin cleanly on its own first page. Removing a clearpage alone is not a dependable net content reduction.
+2. Current pp26 and28 are centered float pages containing respectively about261pt and217pt of table text. They are visibly sparse, especially p28. The explicit FloatBarrier immediately after the shape/scale tables drains a long table queue before historical figures. This barrier did not exist at baseline. Local float reordering/consolidation should be tested after decisions about which tables remain. Do not globally weaken placement constraints before inspecting the proof.
+3. Both revisions contain three explicit clearpage commands (before appendix, between sampling and VB appendices, before bibliography). The new FloatBarrier is the additional hard float drain. The section-scoped placeins package also creates automatic barriers at section boundaries. Appendix A is one large section, so its subsection headings can precede the actual queued display by one or more pages.
+4. The Wiley class sets floatpagefraction and dblfloatpagefraction to .95, topfraction .921, with24pt default float/text spacing. Combined with late barriers, multiple large floats and [p]-only figures, this explains delayed and subsequently isolated pages. Do not edit the journal class or reduce body typography. Prefer removing redundant displays, then using explicit logical multi-panel floats and preserving local order. Any limited float-placement intervention requires visual proof review.
+5. Four remaining-origin forecasts occupy pp32-35, one per page. Each raster is1993x1568, rendered450pt wide and about354pt tall, plus a roughly110-word caption. Its tall aspect ratio includes a large repeated title, date subtitle, nine-entry legend and footer. The statistical panel itself could be rendered more economically with a common legend. Simply shrinking four complete raster images to fit a2x2 page risks unreadable labels. Conservative recommendation: two horizontal panels per supplementary page, same numeric layers, common legend, shared scale/interval definition, separate date identifiers. Four-to-two pages is a plausible design objective, not a verified saving until compiled.
+6. Main Figures1-4 and Appendix FiguresA1-A6 are often given the same450pt width despite different roles/aspect ratios. Resize by purpose only after a legibility check. The dry and wet figures can share a caption/legend. The long-cycle panel is less central to the forecasting contribution and can remain available in the repository if omitted from the short supplement.
+7. Main Table1 and Table2 reproduce short taxonomies already given in adjacent prose. Replacing each with a compact paragraph can save both display area and duplicated explanation. Their information roles and model labels must remain accessible before the mathematical model and results.
+8. Full quantile Table6 is a genuine140-cell origin/probability result display, not suitable for deletion of all evidence. A compact main summary plus a full supplementary table is reasonable. A transfer saves MAIN pages but not combined pages; compacting its caption and avoiding repeated model-code notes yields genuine combined reduction.
+9. Appendix A exact transformed-score, adjusted-score, physical-scale-score and per-origin tables have different purposes, but overlap in rows and notes. Keep the physical-scale and per-origin calibration evidence accessible. Prefer one concise score-sensitivity note plus a machine-readable complete table rather than every matrix rendered separately if the detailed matrix does not support a distinct claim. Do not count removal of repeated columns and simple relocation as independent savings.
+10. Gamma and sigma tables span about one to one-and-a-half pages together, including the sparse final page. They do not enter a main quantitative inference beyond approximate parameter interpretation; omitting their typeset versions while preserving the machine-readable results is a reasonable candidate. Historical sampling algorithms similarly occupy two pages although the reported application uses VB. Retain a clear citation to the sampler implementation/derivation; preserve the VB algorithm and model definitions needed to assess the claimed computational method.
+
+Conservative targets and uncertainty
+Starting point:22 pages of main+references,22 pages of appendix material.
+A redesigned main with3 tables and3 figures, shortened role/comparison exposition, a compact quantile summary and a reduced interpretation section could plausibly reach16-18 pages INCLUDING references. This is a target requiring approximately4-6 pages reduction in the current main+reference count; it cannot be asserted achieved from a word estimate alone.
+A supplement retaining essential diagnostic evidence, two pages of additional forecast panels, full targeted quantile details, and technical augmentation/VB derivations is more conservatively10-12 pages. Eight-to-ten pages is an ambitious stretch if technical material and supporting tables remain fully readable.
+A conservative combined target is26-30 pages;24-28 is a stretch design target that should be accepted only after actual compilation. A separate main/supplement is justified by reader hierarchy, not by presenting transferred pages as deleted. Report BOTH main and combined counts after implementation.
+
+Candidate changes with approximate non-additive bounds:
+- Historical sampling algorithm displays moved out of typeset supplement: around2 pages of genuine reduction.
+- Source-specific shape/scale typeset tables omitted: around1-1.5 pages; may also release float slack already counted elsewhere.
+- Four additional forecast figures redesigned as two pages: around2 pages, subject to label legibility.
+- Historical covariate/retrospective context combined or pared down: around0.5-1 page.
+- Historical dry/wet panels combined and long-cycle figure omitted: around0.5-1 page.
+- Repeated table notes, duplicate sensitivity displays and surrounding text shortened: around1-2 pages, depending on float repacking and retained tables.
+- B plus VB technical material currently occupies about5 pages;3-4 pages may be plausible after notation consolidation, removing repeated observation/transition equations and merging algorithm notation. A2-3 page technical target is aggressive if complete computational derivation and both VB algorithms are retained.
+These overlap. Subtract pages added to the supplement by main-to-supplement transfers before stating a combined saving.
+
+Suggested validation for an eventual authorized implementation
+Record main words, main+reference pages, supplementary words/pages, total pages, float count, minimum printed figure label size and all statement/claim-to-evidence links. Use an unchanged first proof as control. Compile after the prose pass, after the display pass, and after supplement separation; compare counts and inspect any sparse/overflow page. Preserve units, actual posterior uncertainty definitions, evaluation denominators, fitting limitations, interval calibration and score-scale distinctions. Do not remove reviewer-required substantive evidence just to hit a target. Do not change the journal class, margins or font size. No fitting or new scientific scores are needed for the editorial interventions described here.
+
+Reproduction of measured inventory
+pdftotext -layout CURRENT.pdf -  (split on form feed and whitespace).
+pdftotext -bbox-layout CURRENT.pdf -  (parse XHTML page/line/word boxes).
+pdfinfo CURRENT.pdf; pdfimages -list CURRENT.pdf; pdffonts CURRENT.pdf.
+git show d60d765:wileyNJD-APA.tex; git show HEAD:wileyNJD-APA.tex.
+Read the15 active table includes at each revision, extract tablenotes environments and count whitespace tokens. Exact machine-readable measurements and PDF SHA256s are in page_audit.json.

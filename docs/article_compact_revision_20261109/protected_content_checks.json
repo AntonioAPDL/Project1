@@ -1,0 +1,14 @@
+{
+  "main_component_equations_exact": true,
+  "protected_discount_sentence_exact": true,
+  "main_six_numbered_sections": true,
+  "main_tables": 3,
+  "main_figures": 3,
+  "si_tables": 8,
+  "si_figures": 4,
+  "si_vb_algorithms": 2,
+  "no_historical_sampling_display": true,
+  "si_local_gig_density": true,
+  "prose_baseline": 7115,
+  "prose_final": 3920
+}

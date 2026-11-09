@@ -9,7 +9,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from article_repository_binding import active_article_root
-from current_article_contract import active_table_path, canonical_method_label
+from current_article_contract import active_table_path, canonical_method_label, horizon_table_rows
 from validate_publication_freeze import parse_flat_tex
 from validate_revision_cross_repo_wiring import parse_flat_table, parse_panel_table
 
@@ -69,19 +69,47 @@ class EditorialWiringTests(unittest.TestCase):
             self.assertEqual(canonical_method_label(identity), identity)
         self.assertEqual(canonical_method_label('unrecognized method'), 'unrecognized method')
 
-    def test_both_validators_read_unchanged_numbers_from_active_flat_tables(self):
-        for label, filename in (
-            ('tab:benchmark_crps_models', 'benchmark_crps_main_table.tex'),
-            ('tab:benchmark_crps_models_nws_horizon', 'benchmark_crps_nws_horizon_table.tex'),
-            ('tab:he3_ablation_crps', 'he3_ablation_crps_main_table.tex'),
-            ('tab:he3_ablation_crps_nws_horizon', 'he3_ablation_crps_nws_horizon_table.tex'),
+    def test_compact_panels_preserve_every_original_scientific_row(self):
+        for label, filename, horizon in (
+            ('tab:benchmark_crps_models', 'benchmark_crps_main_table.tex', 28),
+            ('tab:benchmark_crps_models_nws_horizon', 'benchmark_crps_nws_horizon_table.tex', 8),
+            ('tab:he3_ablation_crps', 'he3_ablation_crps_main_table.tex', 28),
+            ('tab:he3_ablation_crps_nws_horizon', 'he3_ablation_crps_nws_horizon_table.tex', 8),
         ):
-            active = active_table_path(ARTICLE, label)
+            active = active_table_path(ARTICLE, label, document='si')
             historical = ARTICLE / 'tables/generated_tex' / filename
-            self.assertEqual(active.parent.name, 'editorial_revision')
-            self.assertTrue(parse_flat_tex(active))
-            self.assertEqual(parse_flat_tex(active), parse_flat_tex(historical))
-            self.assertEqual(parse_flat_table(active, 5), parse_flat_table(historical, 5))
+            self.assertEqual(active.parent.name, 'compact_publication')
+            expected = parse_flat_tex(historical)
+            observed = horizon_table_rows(active, horizon)
+            self.assertTrue(expected)
+            for method, values in expected.items():
+                self.assertEqual(observed.get(method), values, (label, horizon, method))
+            with self.assertRaisesRegex(ValueError, 'submitted asset|document|ownership|belongs'):
+                active_table_path(ARTICLE, label, document='main')
+
+    def test_duplicate_method_horizon_cannot_be_silently_overwritten(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'table.tex'
+            row = 'AL-M-T1 & 0.10 & 0.20 & 0.30 & 0.40 & 0.50 ' + chr(92)*2 + '\n'
+            path.write_text('% horizon_days=28\n' + row + row)
+            with self.assertRaisesRegex(ValueError, 'Duplicate'):
+                horizon_table_rows(path, 28)
+
+    def test_styled_duplicate_rows_cannot_bypass_the_parser(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'table.tex'
+            values = ' & 0.10 & 0.20 & 0.30 & 0.40 & 0.50 ' + chr(92)*2 + '\n'
+            rows = 'AL-M-T1' + values + r'\texttt{AL-M-T1}' + values
+            path.write_text('% horizon_days=28\n' + rows)
+            with self.assertRaisesRegex(ValueError, 'Duplicate'):
+                horizon_table_rows(path, 28)
+            path.write_text(rows)
+            for parser in (parse_flat_tex, lambda p: parse_flat_table(p, 5)):
+                with self.assertRaisesRegex(ValueError, 'Duplicate'):
+                    parser(path)
+            path.write_text('% Origin 01/23/2021\n' + rows)
+            with self.assertRaisesRegex(ValueError, 'Duplicate'):
+                parse_panel_table(path, 5)
 
     def test_origin_heading_change_preserves_all_quantile_panel_values(self):
         active = active_table_path(ARTICLE, 'tab:he4_quantile_check_loss')
