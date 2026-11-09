@@ -537,9 +537,9 @@ def check_he3_authoritative(
             f"runtime={runtime_row.get('mean_crps')} article={article_row.get('mean_crps') if article_row else 'missing'}",
         )
 
-    article_table = horizon_table_rows(active_table_path(article_root, "tab:he3_ablation_crps", document="si"), 28)
+    article_table = horizon_table_rows(active_table_path(article_root, "tab:he3_ablation_crps", document="main", scope="appendix"), 28)
     corrections_table = parse_flat_tex(corrections_root / "tables/generated_tex/he3_ablation_crps_response_table.tex")
-    article_nws_table = horizon_table_rows(active_table_path(article_root, "tab:he3_ablation_crps_nws_horizon", document="si"), 8)
+    article_nws_table = horizon_table_rows(active_table_path(article_root, "tab:he3_ablation_crps_nws_horizon", document="main", scope="appendix"), 8)
     corrections_nws_table = parse_flat_tex(corrections_root / "tables/generated_tex/he3_ablation_crps_nws_horizon_response_table.tex")
     add(checks, "he3_authority", "article_table_excludes_nws_28day", "RAW-NWS" not in article_table, "NWS omitted from 28-day HE3 table")
     add(checks, "he3_authority", "corrections_table_excludes_nws_28day", "RAW-NWS" not in corrections_table, "NWS omitted from 28-day HE3 response table")
@@ -1115,7 +1115,7 @@ def check_reviewer1_remaining(workflow_root: Path, article_root: Path, correctio
 
     article_text = publication_views(article_root)["main"]
     corrections_text = (corrections_root / "main.tex").read_text(encoding="utf-8")
-    for row in check_reviewer1_remaining_text(article_text, corrections_text, publication_views(article_root)["si"]):
+    for row in check_reviewer1_remaining_text(article_text, corrections_text, publication_views(article_root)["appendix"]):
         add(checks, "reviewer1_remaining", row.item, row.ok, row.detail)
 
 

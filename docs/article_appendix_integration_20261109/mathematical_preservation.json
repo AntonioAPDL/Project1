@@ -1,0 +1,31 @@
+{
+  "created_utc": "2026-11-09T05:10:11.481853+00:00",
+  "article_root": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+  "baseline_file": "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/article_appendix_integration_20261109/baseline.json",
+  "baseline_commit": "e103cc990c7fc3bca426276caeec8749b0d5feec",
+  "normalization": "Remove whitespace and label commands only; preserve ordered expressions and all other characters",
+  "main_math": {
+    "baseline_expression_count": 133,
+    "current_expression_count": 133,
+    "baseline_sha256": "aaf358e5a3770d8c4717862d533d046d9d32d48c6d451cb401893829a056c1fb",
+    "current_sha256": "aaf358e5a3770d8c4717862d533d046d9d32d48c6d451cb401893829a056c1fb",
+    "differences": [],
+    "passed": true
+  },
+  "appendix_math": {
+    "baseline_expression_count": 215,
+    "current_expression_count": 215,
+    "baseline_sha256": "fbfbbb8671b06d27341dcbe23f96427384accce525fa4eb29f6445617b600e71",
+    "current_sha256": "fbfbbb8671b06d27341dcbe23f96427384accce525fa4eb29f6445617b600e71",
+    "differences": [],
+    "passed": true
+  },
+  "calibration_table": {
+    "path": "tables/compact_publication/main_calibration.tex",
+    "comparison": "Complete tabular block, byte-identical; note outside block excluded",
+    "baseline_sha256": "e2b538b0aac23ec00d8d9fd6651d172321bf13d91160f99decd72717bf59d6dd",
+    "current_sha256": "e2b538b0aac23ec00d8d9fd6651d172321bf13d91160f99decd72717bf59d6dd",
+    "passed": true
+  },
+  "passed": true
+}

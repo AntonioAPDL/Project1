@@ -1,0 +1,28 @@
+INTEGRATE COMPACT SUPPORTING MATERIAL AS ARTICLE APPENDICES
+
+The user's preference supersedes the previous separate-supplement architecture.
+Keep the compact scientific content and results, but submit one article PDF.
+
+Use the existing Wiley appendix environment before the single bibliography.
+Extract the former supporting body into appendices.tex, an included fragment.
+Appendices A--D cover data histories, detailed results, technical construction
+and variational Bayes algorithms. Preserve all eleven tables, seven figures,
+two algorithms and scientific results; remove only duplicate supplement front
+matter and its separate bibliography. Keep the main six-section argument.
+
+Replace supplement prose and manually typed S-numbers with ordinary local
+references to appendix section, table, figure and algorithm labels. Number
+appendix displays by their appendix letter and check unique PDF destinations.
+Use one bibliography and one selected Overleaf root, wileyNJD-APA.tex.
+
+Update the active inventory and source checks for one physical root and two
+logical scopes: main body and appendices. Main-only requirements cannot be
+satisfied solely by appendix text. Retained unused files cannot count as evidence.
+Preserve frozen numerical generators and inputs. Only the compact calibration
+note needs a caption-reference edit; every numerical cell must remain identical.
+
+Run scoped ownership/reference and scientific-preservation tests, the existing
+numerical gate, compact regeneration and a clean one-document build. Inspect
+appendix numbering and PDF links. Record source/PDF hashes and measured pages.
+Preserve original submitted Corrected-2 and prior Overleaf history. Commit and
+merge through normal pull requests in Corrected-3 and the companion workflow.

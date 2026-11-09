@@ -1,0 +1,28 @@
+{
+  "baseline_commit": "e103cc990c7fc3bca426276caeec8749b0d5feec",
+  "baseline_file_count": 850,
+  "changed_existing_files": [
+    ".gitignore",
+    "PUBLICATION_PACKAGE.json",
+    "README.md",
+    "artifacts/compact_publication/manifest.json",
+    "docs/article_readme_template.txt",
+    "docs/compact_publication.txt",
+    "scripts/build_manuscript_review.py",
+    "scripts/check_wiley_submission_requirements.py",
+    "scripts/compact_publication.py",
+    "scripts/manuscript_text_contract.py",
+    "scripts/publication_package.py",
+    "tables/compact_publication/main_calibration.tex",
+    "tests/test_article_a1_and_table_contracts.py",
+    "tests/test_compact_publication.py",
+    "tests/test_editorial_integration.py",
+    "tests/test_manuscript_text_contract.py",
+    "wileyNJD-APA.tex"
+  ],
+  "missing": [],
+  "unexpected_content_changes": [],
+  "unexpected_modes": [],
+  "snapshot_sha256": "d5fc83b6a4b7f9b83512bd1c8a98ba36e4818eb7de78e606e10e0d3a9a4c8f56",
+  "passed": true
+}

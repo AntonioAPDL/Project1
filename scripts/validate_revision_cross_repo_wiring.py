@@ -541,7 +541,7 @@ def audit_manifest_paths(article_root: Path, manifest: dict) -> tuple[list[Check
                 if key in item:
                     add_row(f"{section_name}:{key}", label, item[key])
 
-    for tex_path in sorted(set(included_tex_paths(article_root) + included_tex_paths(article_root, "supporting_information.tex"))):
+    for tex_path in included_tex_paths(article_root):
         if tex_path.exists():
             source_paths.append(tex_path)
             for rel_input in re.findall(r"\\input\{([^}]+)\}", tex_path.read_text(encoding="utf-8")):
@@ -699,11 +699,11 @@ def audit_reviewer1_remaining(
 
     article_path = article_root / "wileyNJD-APA.tex"
     corrections_path = corrections_root / "main.tex"
-    generated_table_paths = sorted(set(included_tex_paths(article_root)[1:] + included_tex_paths(article_root, "supporting_information.tex")))
+    generated_table_paths = included_tex_paths(article_root)[1:]
     article_text = publication_views(article_root)["main"]
     corrections_text = corrections_path.read_text(encoding="utf-8")
     sources.extend([article_path, corrections_path, *generated_table_paths])
-    for row in check_reviewer1_remaining_text(article_text, corrections_text, publication_views(article_root)["si"]):
+    for row in check_reviewer1_remaining_text(article_text, corrections_text, publication_views(article_root)["appendix"]):
         record(row.item, row.ok, row.detail)
 
     return checks, rows, sources
@@ -1142,11 +1142,11 @@ def main(argv: Iterable[str] | None = None) -> int:
     he3_nws_horizon_expected = build_he3_expected(article_root, manifest, horizon_days=8, include_nws=True)
     he4_expected = build_he4_expected(article_root, manifest)
 
-    he2_article = {key: values for key, values in horizon_table_rows(active_table_path(article_root, "tab:benchmark_crps_models", document="si"), 28).items() if key in he2_expected}
-    he2_nws_horizon_article = {key: values for key, values in horizon_table_rows(active_table_path(article_root, "tab:benchmark_crps_models_nws_horizon", document="si"), 8).items() if key in he2_nws_horizon_expected}
+    he2_article = {key: values for key, values in horizon_table_rows(active_table_path(article_root, "tab:benchmark_crps_models", document="main", scope="appendix"), 28).items() if key in he2_expected}
+    he2_nws_horizon_article = {key: values for key, values in horizon_table_rows(active_table_path(article_root, "tab:benchmark_crps_models_nws_horizon", document="main", scope="appendix"), 8).items() if key in he2_nws_horizon_expected}
     he2_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he2_benchmark_crps_response_table.tex", 5)
-    he3_article = {key: values for key, values in horizon_table_rows(active_table_path(article_root, "tab:he3_ablation_crps", document="si"), 28).items() if key in he3_expected}
-    he3_nws_horizon_article = {key: values for key, values in horizon_table_rows(active_table_path(article_root, "tab:he3_ablation_crps_nws_horizon", document="si"), 8).items() if key in he3_nws_horizon_expected}
+    he3_article = {key: values for key, values in horizon_table_rows(active_table_path(article_root, "tab:he3_ablation_crps", document="main", scope="appendix"), 28).items() if key in he3_expected}
+    he3_nws_horizon_article = {key: values for key, values in horizon_table_rows(active_table_path(article_root, "tab:he3_ablation_crps_nws_horizon", document="main", scope="appendix"), 8).items() if key in he3_nws_horizon_expected}
     he3_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he3_ablation_crps_response_table.tex", 5)
     he3_nws_horizon_corrections = parse_flat_table(corrections_root / "tables/generated_tex/he3_ablation_crps_nws_horizon_response_table.tex", 5)
     he4_article = parse_panel_table(active_table_path(article_root, "tab:he4_quantile_check_loss"), 7)

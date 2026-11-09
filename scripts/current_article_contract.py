@@ -48,7 +48,7 @@ TABLE_ALIASES = {
 }
 
 
-def active_table_path(article_root: Path, label: str, document: str | None = None) -> Path:
+def active_table_path(article_root: Path, label: str, document: str | None = None, scope: str | None = None) -> Path:
     import json
     root = Path(article_root).resolve()
     if (root / 'PUBLICATION_PACKAGE.json').is_file():
@@ -57,7 +57,7 @@ def active_table_path(article_root: Path, label: str, document: str | None = Non
         import sys
         sys.path.insert(0, str(root / 'scripts'))
         from publication_package import submitted_asset_path
-        return submitted_asset_path(root, TABLE_ALIASES.get(label, label), document=document)
+        return submitted_asset_path(root, TABLE_ALIASES.get(label, label), document=document, scope=scope)
     manifest = json.loads((root / 'MANUSCRIPT_ASSET_MANIFEST.json').read_text())
     path = (root / manifest['tables'][label]['table_tex_path']).resolve()
     if not path.is_relative_to(root) or path not in included_tex_paths(root):

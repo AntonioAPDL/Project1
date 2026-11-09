@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-11-09T05:14:51.205274+00:00",
+  "article_repository": "AntonioAPDL/Evironmetrics----Corrected-3",
+  "article_pull_request": "https://github.com/AntonioAPDL/Evironmetrics----Corrected-3/pull/2",
+  "article_feature_commit": "706c0aa2f0246f4b826b2c1b48479ad520390c38",
+  "article_merged_main_commit": "e50b6478806da8f27cff41ce77dd54860720b8fd",
+  "article_tree": "885eda4b5be4905a7ce8c0607857d03b22d2ff78",
+  "workflow_baseline_commit": "ccf98e9991790a853e6843cd7d29b32cd9bfc968",
+  "validation_report_directory": "/tmp/appendix_integration_release_gate_20261109",
+  "validation_summary": "validation_summary.json",
+  "proof_summary": "proof_summary.json",
+  "checked_implementation_files_unchanged": 1330,
+  "complete_article_local_pdf": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/wileyNJD-APA.pdf",
+  "pdf_sha256": "51852b5ea73a09aadd3729bd5a0adf3247a4126cb479aac24ac52b3eeb175fdc",
+  "pages": 31,
+  "distinct_python_tests": 253,
+  "r_assertions": 248,
+  "compiled_pdf_checks": 41,
+  "overleaf_main_document": "wileyNJD-APA.tex",
+  "note": "This record is committed in the companion workflow PR. Its containing Git commit gives the workflow identity. The merged article tree equals the tested feature tree."
+}
