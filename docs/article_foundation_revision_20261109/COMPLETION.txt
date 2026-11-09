@@ -1,0 +1,35 @@
+IMPLEMENTATION COMPLETE; RELEASE VALIDATED
+
+The six author corrections and consistent Figures 2/B1/B2 are implemented.
+The article remains 31 pages with integrated Appendices A--D, one
+bibliography, eleven tables, seven figures and two algorithms.
+
+Final full gate: /tmp/article_foundation_release_gate_20261109
+All commands passed, with 288 distinct Python test identities,
+248 R assertions, and 43 compiled PDF checks. No unexplained skips.
+All original scientific sources and all reported numerical results are preserved.
+The implementation was unchanged during checking. The independent fresh proofs
+used identical source hashes and produced identical extracted text. The single
+PDF source/asset hashes and proof hash are in the article release JSON.
+
+Exact current PDF SHA256: 371c8721b6b91eefb225c7900c32849dd446bc6b63c8320c7dc2558a189e0467
+A local ignored copy is Evironmetrics----Corrected-3/wileyNJD-APA.pdf.
+The final sources are ready to commit and publish by ordinary PR merges; the
+subsequent release record supplies article commit/merge/PR identities.
+
+Reproduce the full check with a NEW /tmp destination:
+python3 -B docs/article_foundation_revision_20261109/run_checks.py --report-dir /tmp/NEW_foundation_release
+
+Validation summaries and top-level logs are retained here. The first gate's
+sole issue was the historical check's ambiguous Figure/Table B1/B2 matching;
+its original reports are retained. The current contextual wrapper and five
+regression tests fix that diagnosis without altering the manuscript or the
+historical validator. See DECISIONS.txt for the reviewed implementation choices.
+
+ARTICLE PUBLISHED
+
+Article PR 3 merged as 30b2c5690521e1e89ea185ee8df2e83a6ef27282.
+Local article main equals origin/main; its tree equals the tested feature tree.
+Current source/PDF hashes match the release record. Protected repositories
+remain unchanged. RELEASE.json records these checks. The containing workflow
+commit publishes this companion execution record.

@@ -1,0 +1,73 @@
+IMPLEMENTATION DECISIONS AND REVIEW
+
+The approved plan is retained in ../article_foundation_revision_plan_20261109/.
+This release starts from remote article main 0f72f3d9, which contains the latest
+Overleaf merge. Its content matches the preceding e50b647 release; four lost
+executable modes are restored without changing their blobs. The installed
+Overleaf ancestry dispatcher remains in .git, outside the synchronized tree.
+
+The six corrections follow the plan. A second independent manuscript review
+verified the numerical comparisons and exceptions. The optional refinement
+"over both horizons" was retained for the May EMOS comparison. The abstract
+retains its principal numerical skill and coverage results. The discussion
+states measured improvements, with the specific upper-quantile, coverage,
+short-horizon and discharge-scale exceptions needed to interpret them.
+
+The WIS explanation corrects the pasted notes' normalization. For S ranked
+values, the existing 2/S sum of check losses pairs into interval scores; only
+odd S has a median term. Both parities and tied values were tested with exact
+arithmetic. An independent set of 49 scenarios also matched the unchanged
+archived R scorer. No result was rescored for publication. Mathematical review
+records every allowed replacement/insertion explicitly, tied to a fingerprint
+of the original expression sequence. All other original expressions and all
+Table 1 numerical rows must match. Historical validation scripts are unchanged.
+
+The VB motivation uses the documented representative combined fit/forecast
+time and its stated hardware/preparation conditions. There is no measured
+full-model MCMC benchmark, so no weeks/months estimate or speed ratio is stated.
+The manuscript distinguishes predictive evaluation from approximation error.
+The scalar calibration description uses the author's gauge-only clarification;
+we do not infer a likelihood or claim a newly reconstructed calibration run.
+
+The compact generator previously also wrote B1/B2. It now owns tables and the
+scientific record only; the dedicated predictive generator owns all three
+related current PDFs. This removes conflicting writers while preserving the
+older scientific assets and legacy PNG refresh destinations. Portable display
+inputs are selected by the exact run identity in each saved main-model metadata
+file, not by a broad registry search that also includes other model families.
+No predictive cache or model fitting entry point is used for these figures.
+
+The production PDF device is Cairo to embed fonts; a fixed-width CreationDate
+normalization removes only volatile metadata. Independent fresh exports must
+match before promotion. The R wrapper additionally checks actual built plot
+coordinates against saved means and exact interval endpoints, and checks the
+selected trace groups. Layout and full-article checks determine the final page
+count; fonts, class and margins are preserved.
+
+Primary methodological references verified on 2026-11-09 UTC:
+Bracher et al. (2021), https://doi.org/10.1371/journal.pcbi.1008618
+Wang and Blei (2013), https://jmlr.csail.mit.edu/papers/v14/wang13b.html
+
+No refits, new forecasts, new predictive draws or new score outputs are part
+of this release. The submitted Corrected-2 archive, corrections repository and
+public reproducibility repository are protected by recorded HEAD/tree/status
+checks. The user's unrelated untracked audit folder is excluded from staging.
+
+FINAL PROOF REVIEW
+
+The first complete fresh proof is 31 pages, matching the baseline. Independent
+read-only review checked abstract, computation, scalar calibration, scoring,
+Table 1, discussion and the appendix WIS derivation. Root separately inspected
+Figures 2/B1/B2 on pages 8/22/23 at final article placement. Legends, inset,
+captions, common scale and all layers are readable without clipping. The one
+horizontal and one vertical first-page class warning match the baseline exactly
+(346.99213pt and 6.46347pt); no new overfull box is introduced.
+
+The first full gate passed all scientific, replay, test, build and ancestry
+checks. Its historical PDF-link checker incorrectly classified the new caption's
+"Figures B1 and B2" as Table B1/B2 because the visible numbers coincide. The
+current release adds a context-aware wrapper with focused collision tests;
+the historical checker remains byte-identical. The wrapper retains all other
+historical checks and requires correct destinations for both kinds. A fresh
+full gate is required after this validator correction. The original failed run
+is retained under /tmp/article_foundation_final_gate_20261109/ for diagnosis.

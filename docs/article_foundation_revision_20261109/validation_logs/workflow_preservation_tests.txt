@@ -1,0 +1,10 @@
+test_bold_formatting_preserves_numbers_and_missing_cells (test_foundation_preservation.FoundationPreservationTests) ... ok
+test_full_check_rejects_an_unreviewed_change_outside_an_approved_replacement (test_foundation_preservation.FoundationPreservationTests) ... ok
+test_incorrect_baseline_and_overlapping_or_misidentified_positions_fail (test_foundation_preservation.FoundationPreservationTests) ... ok
+test_missing_or_duplicate_methods_cannot_pass_the_table_check (test_foundation_preservation.FoundationPreservationTests) ... ok
+test_reviewed_replacement_and_insertion_preserve_other_expressions (test_foundation_preservation.FoundationPreservationTests) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.048s
+
+OK

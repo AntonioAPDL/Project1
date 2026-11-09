@@ -1,0 +1,64 @@
+{
+  "baseline_commit": "0f72f3d9ab2c18a55859d2515fc9c0131a67a22c",
+  "main": {
+    "baseline_sha256": "aaf358e5a3770d8c4717862d533d046d9d32d48c6d451cb401893829a056c1fb",
+    "changes": [
+      {
+        "start": 54,
+        "stop": 55,
+        "before": [
+          "\\[\\boldsymbol\\eta_t'=[\\boldsymbol\\theta_t',\\(\\boldsymbol\\delta_t^1)',\\ldots,(\\boldsymbol\\delta_t^J)',\\\\zeta_t,\\\\boldsymbol\\psi_t'],\\qquadq=(J+1)p+m+1.\\]"
+        ],
+        "after": [
+          "\\[\\boldsymbol\\eta_t'=[\\boldsymbol\\theta_t',\\(\\boldsymbol\\delta_t^1)',\\ldots,(\\boldsymbol\\delta_t^J)',\\\\zeta_t,\\\\boldsymbol\\psi_t'],\\qquadq=(J+1)\\cdotp+m+1.\\]"
+        ],
+        "reason": "Make the existing state-dimension product explicit; the dimension and all operands are unchanged."
+      },
+      {
+        "start": 89,
+        "stop": 90,
+        "before": [
+          "$q=3(7)+12+1=34$"
+        ],
+        "after": [
+          "$q=3\\cdot7+12+1=34$"
+        ],
+        "reason": "Make the existing state-dimension product explicit; the dimension and all operands are unchanged."
+      }
+    ]
+  },
+  "appendix": {
+    "baseline_sha256": "fbfbbb8671b06d27341dcbe23f96427384accce525fa4eb29f6445617b600e71",
+    "changes": [
+      {
+        "start": 38,
+        "stop": 38,
+        "before": [],
+        "after": [
+          "\\(C_S=(2/S)\\sum_{s=1}^S\\rho_{s/(S+1)}(y-x_{(s)})\\)",
+          "\\(K=\\lfloorS/2\\rfloor\\)",
+          "\\(\\alpha_k=2k/(S+1)\\)",
+          "\\(l_k=x_{(k)}\\)",
+          "\\(u_k=x_{(S+1-k)}\\)",
+          "\\(k=1,\\ldots,K\\)",
+          "\\(\\alpha\\)",
+          "\\[\\mathrm{IS}_{\\alpha}(l,u;y)=(u-l)+\\frac2\\alpha(l-y)\\mathbf1(y<l)+\\frac2\\alpha(y-u)\\mathbf1(y>u).\\]",
+          "\\[\\rho_{\\alpha_k/2}(y-l_k)+\\rho_{1-\\alpha_k/2}(y-u_k)=\\frac{\\alpha_k}{2}\\mathrm{IS}_{\\alpha_k}(l_k,u_k;y).\\]",
+          "\\[C_S=\\begin{cases}\\displaystyle\\frac1K\\sum_{k=1}^K\\frac{\\alpha_k}{2}\\mathrm{IS}_{\\alpha_k}(l_k,u_k;y),&S=2K,\\\\[6pt]\\displaystyle\\frac{\\tfrac12|y-x_{(K+1)}|+\\sum_{k=1}^K\\tfrac{\\alpha_k}{2}\\mathrm{IS}_{\\alpha_k}(l_k,u_k;y)}{K+\\tfrac12},&S=2K+1.\\end{cases}\\]"
+        ],
+        "reason": "Add the rank-paired interval-score identity, with separate even/odd normalizations, for the existing quantile-grid score. Reviewed algebraically and independently against the archived scorer; no score definition or reported value changes."
+      },
+      {
+        "start": 65,
+        "stop": 66,
+        "before": [
+          "\\(q=(J+1)p+m+1\\)"
+        ],
+        "after": [
+          "\\(q=(J+1)\\cdotp+m+1\\)"
+        ],
+        "reason": "Make the existing state-dimension product explicit in the computational appendix, consistently with the main text."
+      }
+    ]
+  }
+}

@@ -1,0 +1,51 @@
+test_r1_overview_contract: PASS
+test_r1_m1_uncertainty_contract: PASS
+test_he1_runtime_contract: PASS
+test_he6_forecast_design_contract: PASS
+test_he7_latest_forecast_issue_contract: PASS
+test_reviewer1_remaining_contracts: PASS
+test_article_legacy_uppercase_figures_sync: PASS
+test_comment1_figure_render_guards: PASS
+test_comment2_component_diagnostics: PASS
+test_no_refit_reporting_metadata: PASS
+test_article_repository_binding: PASS
+test_article_repository_migration_verification: PASS
+test_article_asset_review_benchmark_source: PASS
+test_exal_m_t1_setup_support_fullhistory_contract: PASS
+test_revised_article_stage1_refresh_contract: PASS
+test_software_availability_contract: PASS
+test_he3_exdqlm_ablation_tooling: PASS
+test_nmt1_static_parity: PASS
+test_article_a1_and_table_contracts: PASS
+test_manuscript_text_contract: PASS
+test_comment1_figure_revision: PASS
+test_comment2_revision: PASS
+test_no_refit_revision: PASS
+test_post_publication_figures.R: PASS
+test_comment2_external_baselines.R: PASS
+test_no_refit_review_diagnostics.R: PASS
+test_no_refit_diagnostic_indices.R: PASS
+test_no_refit_synthesis_diagnostics.R: PASS
+comment1_figure_revision.py: PASS
+comment2_revision.py: PASS
+no_refit_revision.py: PASS
+figure_paths: PASS
+output_lineage: PASS
+publication_freeze: PASS
+cross_repo_wiring: PASS
+comment1_preservation: PASS
+comment2_preservation: PASS
+metadata_bundle: PASS
+conditional_identities: PASS
+synthesis_bundle: PASS
+{
+  "python_tests": 185,
+  "r_assertions": {
+    "test_post_publication_figures.R": 48,
+    "test_comment2_external_baselines.R": 39,
+    "test_no_refit_review_diagnostics.R": 121,
+    "test_no_refit_diagnostic_indices.R": 15,
+    "test_no_refit_synthesis_diagnostics.R": 25
+  },
+  "all_passed": true
+}

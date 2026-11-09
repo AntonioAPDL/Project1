@@ -1,0 +1,3 @@
+ARTICLE FOUNDATION REVISION
+
+Authorized by the user after review of docs/article_foundation_revision_plan_20261109/PLAN.txt. Implement its six author corrections and consistent Figures 2/B1/B2 using the approved saved results. Preserve historical plans, evidence and release records. The detailed plan remains a dated planning snapshot; this directory records execution.

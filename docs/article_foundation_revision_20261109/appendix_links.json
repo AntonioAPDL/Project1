@@ -1,0 +1,802 @@
+{
+  "schema_version": 2,
+  "proof_dir": "/tmp/article_foundation_release_gate_20261109/proofs/main",
+  "stem": "main",
+  "checks": [
+    {
+      "check": "unique_auxiliary_labels",
+      "passed": true,
+      "details": []
+    },
+    {
+      "check": "no_undefined_or_duplicate_destinations",
+      "passed": true,
+      "details": []
+    },
+    {
+      "check": "label:app:datahistories",
+      "passed": true,
+      "details": {
+        "expected_number": "A",
+        "observed": {
+          "number": "A",
+          "page": 12,
+          "title": "Data Sources and Historical Inputs",
+          "anchor": "Appendix.1.A"
+        }
+      }
+    },
+    {
+      "check": "label:app:extras",
+      "passed": true,
+      "details": {
+        "expected_number": "B",
+        "observed": {
+          "number": "B",
+          "page": 14,
+          "title": "Additional Forecast Results",
+          "anchor": "Appendix.1.B"
+        }
+      }
+    },
+    {
+      "check": "label:app:stateconstruction",
+      "passed": true,
+      "details": {
+        "expected_number": "C",
+        "observed": {
+          "number": "C",
+          "page": 24,
+          "title": "State-Space Construction and Computational Details",
+          "anchor": "Appendix.1.C"
+        }
+      }
+    },
+    {
+      "check": "label:app:vbupdates",
+      "passed": true,
+      "details": {
+        "expected_number": "D",
+        "observed": {
+          "number": "D",
+          "page": 27,
+          "title": "Variational Bayes Updates",
+          "anchor": "Appendix.1.D"
+        }
+      }
+    },
+    {
+      "check": "label:tab:crps_all_origins",
+      "passed": true,
+      "details": {
+        "expected_number": "B1",
+        "observed": {
+          "number": "B1",
+          "page": 15,
+          "title": "Mean quantile-grid CRPS by forecast origin and horizon.\\relax ",
+          "anchor": "table.caption.13"
+        }
+      }
+    },
+    {
+      "check": "label:tab:component_comparison",
+      "passed": true,
+      "details": {
+        "expected_number": "B2",
+        "observed": {
+          "number": "B2",
+          "page": 16,
+          "title": "Mean CRPS for the full exAL-M-T1 model and component-removal comparisons.\\relax ",
+          "anchor": "table.caption.15"
+        }
+      }
+    },
+    {
+      "check": "label:tab:fitting_status",
+      "passed": true,
+      "details": {
+        "expected_number": "B3",
+        "observed": {
+          "number": "B3",
+          "page": 16,
+          "title": "Recorded stopping classifications for the comparison fits.\\relax ",
+          "anchor": "table.caption.17"
+        }
+      }
+    },
+    {
+      "check": "label:tab:quantile_check_loss",
+      "passed": true,
+      "details": {
+        "expected_number": "B4",
+        "observed": {
+          "number": "B4",
+          "page": 17,
+          "title": "Mean daily quantile check loss by forecast origin and probability.\\relax ",
+          "anchor": "table.caption.19"
+        }
+      }
+    },
+    {
+      "check": "label:tab:exact_score_sensitivity",
+      "passed": true,
+      "details": {
+        "expected_number": "B5",
+        "observed": {
+          "number": "B5",
+          "page": 18,
+          "title": "Exact empirical-distribution scores and independent-draw sensitivity.\\relax ",
+          "anchor": "table.caption.21"
+        }
+      }
+    },
+    {
+      "check": "label:tab:discharge_scale_scores",
+      "passed": true,
+      "details": {
+        "expected_number": "B6",
+        "observed": {
+          "number": "B6",
+          "page": 19,
+          "title": "Exact empirical-distribution forecast scores on the discharge scale.\\relax ",
+          "anchor": "table.caption.23"
+        }
+      }
+    },
+    {
+      "check": "label:tab:origin_interval_coverage",
+      "passed": true,
+      "details": {
+        "expected_number": "B7",
+        "observed": {
+          "number": "B7",
+          "page": 20,
+          "title": "Central 95\\% observation predictive interval coverage by origin and horizon.\\relax ",
+          "anchor": "table.caption.25"
+        }
+      }
+    },
+    {
+      "check": "label:tab:components_23_31",
+      "passed": true,
+      "details": {
+        "expected_number": "B8",
+        "observed": {
+          "number": "B8",
+          "page": 21,
+          "title": "Approximate variational posterior means and central 95\\% credible intervals for transfer coefficients at December 25, 2022.\\relax ",
+          "anchor": "table.caption.27"
+        }
+      }
+    },
+    {
+      "check": "label:fig:covariates",
+      "passed": true,
+      "details": {
+        "expected_number": "A1",
+        "observed": {
+          "number": "A1",
+          "page": 13,
+          "title": "Historical daily precipitation (mm), soil moisture (m$^3$/m$^3$) and first GDPC score, May 29, 1987 through December 25, 2022.\\relax ",
+          "anchor": "figure.caption.10"
+        }
+      }
+    },
+    {
+      "check": "label:fig:retrospectives",
+      "passed": true,
+      "details": {
+        "expected_number": "A2",
+        "observed": {
+          "number": "A2",
+          "page": 14,
+          "title": "GloFAS and NWS retrospective discharge over available coverage for the December 25, 2022 origin. Values are on the $\\log (1+x)$ scale with $x$ in m$^3$/s; the displayed record spans May 29, 1987 through December 25, 2022.\\relax ",
+          "anchor": "figure.caption.11"
+        }
+      }
+    },
+    {
+      "check": "label:fig:forecast_origins_2021_early",
+      "passed": true,
+      "details": {
+        "expected_number": "B1",
+        "observed": {
+          "number": "B1",
+          "page": 22,
+          "title": "Reference exAL-M-T1 predictions at January 23 and November 12, 2021, on the $\\log (1+x)$ scale, $x$ in m$^3$/s. Colors, symbols, sample traces and pointwise central 95\\% intervals match Figure~\\ref {fig:synth1}, with one shared legend and the common vertical range -0.1 to 6.5. The vertical line marks the origin $T$ and the first target is $T+1$.\\relax ",
+          "anchor": "figure.caption.28"
+        }
+      }
+    },
+    {
+      "check": "label:fig:forecast_origins_2021_2022",
+      "passed": true,
+      "details": {
+        "expected_number": "B2",
+        "observed": {
+          "number": "B2",
+          "page": 23,
+          "title": "Reference exAL-M-T1 predictions at December 21, 2021 and May 11, 2022. Graphical conventions and the common vertical scale match Figures~\\ref {fig:synth1} and \\ref {fig:forecast_origins_2021_early}. The labeled May inset displays the same predictions and source products over the range 0--1.3 to show low-flow variation.\\relax ",
+          "anchor": "figure.caption.29"
+        }
+      }
+    },
+    {
+      "check": "label:alg:Alg3",
+      "passed": true,
+      "details": {
+        "expected_number": "D1",
+        "observed": {
+          "number": "D1",
+          "page": 28,
+          "title": "Historical-window variational Bayes (VB) coordinate updates\\relax ",
+          "anchor": "algorithm.appendix.D.1"
+        }
+      }
+    },
+    {
+      "check": "label:alg:Alg4",
+      "passed": true,
+      "details": {
+        "expected_number": "D2",
+        "observed": {
+          "number": "D2",
+          "page": 29,
+          "title": "VB-Filtering and VB-Smoothing\\relax ",
+          "anchor": "algorithm.appendix.D.2"
+        }
+      }
+    },
+    {
+      "check": "four_appendix_sections",
+      "passed": true,
+      "details": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    },
+    {
+      "check": "fitting_subsection_anchor",
+      "passed": true,
+      "details": {
+        "fitting": {
+          "number": "B.2",
+          "page": 14,
+          "title": "Component-Removal Comparisons and Fitting Evidence",
+          "anchor": "subsection.1.B.2"
+        },
+        "component_subsection": {
+          "number": "B.2",
+          "page": 14,
+          "title": "Component-Removal Comparisons and Fitting Evidence",
+          "anchor": "subsection.1.B.2"
+        }
+      }
+    },
+    {
+      "check": "selector_subsection_anchor",
+      "passed": true,
+      "details": {
+        "number": "C.5",
+        "page": 25,
+        "title": "Stacked States and Selectors",
+        "anchor": "subsection.1.C.5"
+      }
+    },
+    {
+      "check": "one_bibliography",
+      "passed": true,
+      "details": {
+        "reference_headings": 1
+      }
+    },
+    {
+      "check": "no_separate_support_heading",
+      "passed": true,
+      "details": "A single article includes its appendices."
+    },
+    {
+      "check": "complete_pdf_page_extraction",
+      "passed": true,
+      "details": {
+        "xml_pages": 31,
+        "pdf_pages": 31
+      }
+    },
+    {
+      "check": "internal_link_pages_exist",
+      "passed": true,
+      "details": []
+    },
+    {
+      "check": "main_table_link:tab:fitting_status",
+      "passed": true,
+      "details": {
+        "label": "tab:fitting_status",
+        "expected_target_page": 16,
+        "links": [
+          {
+            "source_page": 10,
+            "target_page": 16,
+            "text": "B3"
+          }
+        ]
+      }
+    },
+    {
+      "check": "main_table_link:tab:quantile_check_loss",
+      "passed": true,
+      "details": {
+        "label": "tab:quantile_check_loss",
+        "expected_target_page": 17,
+        "links": [
+          {
+            "source_page": 9,
+            "target_page": 17,
+            "text": "B4"
+          }
+        ]
+      }
+    },
+    {
+      "check": "main_table_link:tab:exact_score_sensitivity",
+      "passed": true,
+      "details": {
+        "label": "tab:exact_score_sensitivity",
+        "expected_target_page": 18,
+        "links": [
+          {
+            "source_page": 9,
+            "target_page": 18,
+            "text": "B5)."
+          }
+        ]
+      }
+    },
+    {
+      "check": "main_table_link:tab:discharge_scale_scores",
+      "passed": true,
+      "details": {
+        "label": "tab:discharge_scale_scores",
+        "expected_target_page": 19,
+        "links": [
+          {
+            "source_page": 9,
+            "target_page": 19,
+            "text": "B6),"
+          }
+        ]
+      }
+    },
+    {
+      "check": "main_table_link:tab:origin_interval_coverage",
+      "passed": true,
+      "details": {
+        "label": "tab:origin_interval_coverage",
+        "expected_target_page": 20,
+        "links": [
+          {
+            "source_page": 10,
+            "target_page": 20,
+            "text": "B7)."
+          }
+        ]
+      }
+    },
+    {
+      "check": "main_table_link:tab:components_23_31",
+      "passed": true,
+      "details": {
+        "label": "tab:components_23_31",
+        "expected_target_page": 21,
+        "links": [
+          {
+            "source_page": 10,
+            "target_page": 21,
+            "text": "B8"
+          }
+        ]
+      }
+    },
+    {
+      "check": "main_technical_link:app:stackedstates",
+      "passed": true,
+      "details": {
+        "label": "app:stackedstates",
+        "expected_target_page": 25,
+        "links": [
+          {
+            "source_page": 4,
+            "target_page": 25,
+            "text": "C.5"
+          }
+        ]
+      }
+    },
+    {
+      "check": "main_technical_link:app:vbupdates",
+      "passed": true,
+      "details": {
+        "label": "app:vbupdates",
+        "expected_target_page": 27,
+        "links": [
+          {
+            "source_page": 4,
+            "target_page": 27,
+            "text": "D"
+          }
+        ]
+      }
+    },
+    {
+      "check": "algorithm_introduction_link:alg:Alg3",
+      "passed": true,
+      "details": {
+        "label": "alg:Alg3",
+        "expected_target_page": 28,
+        "links": [
+          {
+            "source_page": 27,
+            "target_page": 28,
+            "text": "D1"
+          },
+          {
+            "source_page": 27,
+            "target_page": 28,
+            "text": "D1"
+          }
+        ]
+      }
+    },
+    {
+      "check": "algorithm_introduction_link:alg:Alg4",
+      "passed": true,
+      "details": {
+        "label": "alg:Alg4",
+        "expected_target_page": 29,
+        "links": [
+          {
+            "source_page": 27,
+            "target_page": 29,
+            "text": "D2."
+          },
+          {
+            "source_page": 27,
+            "target_page": 29,
+            "text": "D2"
+          }
+        ]
+      }
+    },
+    {
+      "check": "filtering_selector_link",
+      "passed": true,
+      "details": {
+        "label": "app:stackedstates",
+        "expected_target_page": 25,
+        "links": [
+          {
+            "source_page": 29,
+            "target_page": 25,
+            "text": "C.5."
+          }
+        ]
+      }
+    },
+    {
+      "check": "inputs_unchanged",
+      "passed": true,
+      "details": "The PDF, auxiliary labels and LaTeX log are unchanged by validation."
+    },
+    {
+      "check": "main_table_link:tab:crps_all_origins",
+      "passed": true,
+      "details": {
+        "label": "tab:crps_all_origins",
+        "expected_target_page": 15,
+        "links": [
+          {
+            "source_page": 8,
+            "target_page": 15,
+            "number": "B1",
+            "kind": "table",
+            "text": "B1",
+            "context": "and 0.391; persistence has negative skill at both horizons. Raw NWS is scored only over its eight available daily leads. Table B1"
+          }
+        ],
+        "ambiguous_links": []
+      }
+    },
+    {
+      "check": "main_table_link:tab:component_comparison",
+      "passed": true,
+      "details": {
+        "label": "tab:component_comparison",
+        "expected_target_page": 16,
+        "links": [
+          {
+            "source_page": 10,
+            "target_page": 16,
+            "number": "B2",
+            "kind": "table",
+            "text": "B2).",
+            "context": "horizons (Table B2). However, 174/175 reduced-model quantile fits and all 35 full-reference fits reach iteration limits with-"
+          }
+        ],
+        "ambiguous_links": []
+      }
+    },
+    {
+      "check": "main_figure_link:fig:forecast_origins_2021_early",
+      "passed": true,
+      "details": {
+        "label": "fig:forecast_origins_2021_early",
+        "expected_target_page": 22,
+        "links": [
+          {
+            "source_page": 8,
+            "target_page": 22,
+            "number": "B1",
+            "kind": "figure",
+            "text": "B1",
+            "context": "Figures B1 and B2 use the same conventions and vertical scale."
+          }
+        ],
+        "ambiguous_links": []
+      }
+    },
+    {
+      "check": "main_figure_link:fig:forecast_origins_2021_2022",
+      "passed": true,
+      "details": {
+        "label": "fig:forecast_origins_2021_2022",
+        "expected_target_page": 23,
+        "links": [
+          {
+            "source_page": 8,
+            "target_page": 23,
+            "number": "B2",
+            "kind": "figure",
+            "text": "B2",
+            "context": "Figures B1 and B2 use the same conventions and vertical scale."
+          }
+        ],
+        "ambiguous_links": []
+      }
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "pdfinfo",
+        "/tmp/article_foundation_release_gate_20261109/proofs/main/main.pdf"
+      ],
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "pdftotext",
+        "-layout",
+        "/tmp/article_foundation_release_gate_20261109/proofs/main/main.pdf",
+        "-"
+      ],
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "pdftohtml",
+        "-xml",
+        "-hidden",
+        "-i",
+        "-enc",
+        "UTF-8",
+        "/tmp/article_foundation_release_gate_20261109/proofs/main/main.pdf",
+        "/tmp/appendix_links_cvue0h6i/links.xml"
+      ],
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "pdftohtml",
+        "-xml",
+        "-hidden",
+        "-i",
+        "-enc",
+        "UTF-8",
+        "/tmp/article_foundation_release_gate_20261109/proofs/main/main.pdf",
+        "/tmp/foundation_pdf_links_fyubaxfg/links.xml"
+      ],
+      "returncode": 0,
+      "stderr": ""
+    }
+  ],
+  "input_sha256": {
+    "pdf": "371c8721b6b91eefb225c7900c32849dd446bc6b63c8320c7dc2558a189e0467",
+    "aux": "510aa94ea8cc33375b21a80bc2a58f989d135fc3926e8f1277ad60f1d5bc4c93",
+    "log": "a6faf9976d4b519e409a0af3b1b6e580a596638a577f4e34f2a9c0f7d1de85a5"
+  },
+  "labels": {
+    "app:datahistories": {
+      "number": "A",
+      "page": 12,
+      "title": "Data Sources and Historical Inputs",
+      "anchor": "Appendix.1.A"
+    },
+    "app:extras": {
+      "number": "B",
+      "page": 14,
+      "title": "Additional Forecast Results",
+      "anchor": "Appendix.1.B"
+    },
+    "app:stateconstruction": {
+      "number": "C",
+      "page": 24,
+      "title": "State-Space Construction and Computational Details",
+      "anchor": "Appendix.1.C"
+    },
+    "app:vbupdates": {
+      "number": "D",
+      "page": 27,
+      "title": "Variational Bayes Updates",
+      "anchor": "Appendix.1.D"
+    },
+    "tab:crps_all_origins": {
+      "number": "B1",
+      "page": 15,
+      "title": "Mean quantile-grid CRPS by forecast origin and horizon.\\relax ",
+      "anchor": "table.caption.13"
+    },
+    "tab:component_comparison": {
+      "number": "B2",
+      "page": 16,
+      "title": "Mean CRPS for the full exAL-M-T1 model and component-removal comparisons.\\relax ",
+      "anchor": "table.caption.15"
+    },
+    "tab:fitting_status": {
+      "number": "B3",
+      "page": 16,
+      "title": "Recorded stopping classifications for the comparison fits.\\relax ",
+      "anchor": "table.caption.17"
+    },
+    "tab:quantile_check_loss": {
+      "number": "B4",
+      "page": 17,
+      "title": "Mean daily quantile check loss by forecast origin and probability.\\relax ",
+      "anchor": "table.caption.19"
+    },
+    "tab:exact_score_sensitivity": {
+      "number": "B5",
+      "page": 18,
+      "title": "Exact empirical-distribution scores and independent-draw sensitivity.\\relax ",
+      "anchor": "table.caption.21"
+    },
+    "tab:discharge_scale_scores": {
+      "number": "B6",
+      "page": 19,
+      "title": "Exact empirical-distribution forecast scores on the discharge scale.\\relax ",
+      "anchor": "table.caption.23"
+    },
+    "tab:origin_interval_coverage": {
+      "number": "B7",
+      "page": 20,
+      "title": "Central 95\\% observation predictive interval coverage by origin and horizon.\\relax ",
+      "anchor": "table.caption.25"
+    },
+    "tab:components_23_31": {
+      "number": "B8",
+      "page": 21,
+      "title": "Approximate variational posterior means and central 95\\% credible intervals for transfer coefficients at December 25, 2022.\\relax ",
+      "anchor": "table.caption.27"
+    },
+    "fig:covariates": {
+      "number": "A1",
+      "page": 13,
+      "title": "Historical daily precipitation (mm), soil moisture (m$^3$/m$^3$) and first GDPC score, May 29, 1987 through December 25, 2022.\\relax ",
+      "anchor": "figure.caption.10"
+    },
+    "fig:retrospectives": {
+      "number": "A2",
+      "page": 14,
+      "title": "GloFAS and NWS retrospective discharge over available coverage for the December 25, 2022 origin. Values are on the $\\log (1+x)$ scale with $x$ in m$^3$/s; the displayed record spans May 29, 1987 through December 25, 2022.\\relax ",
+      "anchor": "figure.caption.11"
+    },
+    "fig:forecast_origins_2021_early": {
+      "number": "B1",
+      "page": 22,
+      "title": "Reference exAL-M-T1 predictions at January 23 and November 12, 2021, on the $\\log (1+x)$ scale, $x$ in m$^3$/s. Colors, symbols, sample traces and pointwise central 95\\% intervals match Figure~\\ref {fig:synth1}, with one shared legend and the common vertical range -0.1 to 6.5. The vertical line marks the origin $T$ and the first target is $T+1$.\\relax ",
+      "anchor": "figure.caption.28"
+    },
+    "fig:forecast_origins_2021_2022": {
+      "number": "B2",
+      "page": 23,
+      "title": "Reference exAL-M-T1 predictions at December 21, 2021 and May 11, 2022. Graphical conventions and the common vertical scale match Figures~\\ref {fig:synth1} and \\ref {fig:forecast_origins_2021_early}. The labeled May inset displays the same predictions and source products over the range 0--1.3 to show low-flow variation.\\relax ",
+      "anchor": "figure.caption.29"
+    },
+    "alg:Alg3": {
+      "number": "D1",
+      "page": 28,
+      "title": "Historical-window variational Bayes (VB) coordinate updates\\relax ",
+      "anchor": "algorithm.appendix.D.1"
+    },
+    "alg:Alg4": {
+      "number": "D2",
+      "page": 29,
+      "title": "VB-Filtering and VB-Smoothing\\relax ",
+      "anchor": "algorithm.appendix.D.2"
+    },
+    "app:stackedstates": {
+      "number": "C.5",
+      "page": 25,
+      "title": "Stacked States and Selectors",
+      "anchor": "subsection.1.C.5"
+    },
+    "app:he3ablation": {
+      "number": "B.2",
+      "page": 14,
+      "title": "Component-Removal Comparisons and Fitting Evidence",
+      "anchor": "subsection.1.B.2"
+    },
+    "app:fitdiagnostics": {
+      "number": "B.2",
+      "page": 14,
+      "title": "Component-Removal Comparisons and Fitting Evidence",
+      "anchor": "subsection.1.B.2"
+    }
+  },
+  "page_count": 31,
+  "internal_link_count": 153,
+  "main_reference_page_range": [
+    1,
+    11
+  ],
+  "passed": true,
+  "failed_checks": [],
+  "historical_checks_replaced": [
+    {
+      "check": "main_table_link:tab:crps_all_origins",
+      "passed": false,
+      "details": {
+        "label": "tab:crps_all_origins",
+        "expected_target_page": 15,
+        "links": [
+          {
+            "source_page": 8,
+            "target_page": 22,
+            "text": "B1"
+          },
+          {
+            "source_page": 8,
+            "target_page": 15,
+            "text": "B1"
+          }
+        ]
+      }
+    },
+    {
+      "check": "main_table_link:tab:component_comparison",
+      "passed": false,
+      "details": {
+        "label": "tab:component_comparison",
+        "expected_target_page": 16,
+        "links": [
+          {
+            "source_page": 8,
+            "target_page": 23,
+            "text": "B2"
+          },
+          {
+            "source_page": 10,
+            "target_page": 16,
+            "text": "B2)."
+          }
+        ]
+      }
+    }
+  ],
+  "historical_validator": "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/article_appendix_integration_20261109/check_pdf_links.py"
+}

@@ -1,0 +1,247 @@
+{
+  "status": "planning_only_not_implemented",
+  "created_utc": "2026-11-09T06:12:11.064219+00:00",
+  "client_local_date": "2026-11-08",
+  "article": {
+    "path": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+    "local_main": "e50b6478806da8f27cff41ce77dd54860720b8fd",
+    "remote_main": "0f72f3d9ab2c18a55859d2515fc9c0131a67a22c",
+    "future_implementation_base": "0f72f3d9ab2c18a55859d2515fc9c0131a67a22c",
+    "working_tree_status": "",
+    "tracked_content_identical_between_heads": true,
+    "mode_only_changes": [
+      {
+        "path": ".githooks/pre-push",
+        "local_mode": "100755",
+        "remote_mode": "100644",
+        "unchanged_blob": "0cd2a52dc6b766b2bd2b16a50c8e2b16895dde48"
+      },
+      {
+        "path": "artifacts/comment1_figure_revision/renderer_sources/scripts/render_exal_m_t1_setup_support_by_cutoff_v2.py",
+        "local_mode": "100755",
+        "remote_mode": "100644",
+        "unchanged_blob": "f5de28799e4e45d59bb2a42f8569801175cc176a"
+      },
+      {
+        "path": "artifacts/comment1_figure_revision/renderer_sources/scripts/render_focus_publication_posterior_plot.R",
+        "local_mode": "100755",
+        "remote_mode": "100644",
+        "unchanged_blob": "05c069523aafc817357d5445500edabef31278d5"
+      },
+      {
+        "path": "artifacts/comment1_figure_revision/renderer_sources/scripts/render_setup_support_bundle_v2.R",
+        "local_mode": "100755",
+        "remote_mode": "100644",
+        "unchanged_blob": "7d5164cbee12e71a780ba469516b8b5b77c23dab"
+      }
+    ],
+    "baseline_pages": 31,
+    "complete_pdf_sha256": "51852b5ea73a09aadd3729bd5a0adf3247a4126cb479aac24ac52b3eeb175fdc",
+    "pdf_source_hashes_still_match": true
+  },
+  "workflow": {
+    "local_main": "4c5919f339f568b46d36c146f6cbbd117d8a79b0",
+    "remote_main": "4c5919f339f568b46d36c146f6cbbd117d8a79b0"
+  },
+  "unchanged_compact_scientific_sources": [
+    {
+      "path": "artifacts/comment2_revision/component_diagnostics/fit_ledger.csv",
+      "rows": 400,
+      "sha256": "4e9e637642c6af8de339c1b77ab1bff68e2a0be86b4a423704f64407b9f6ca48"
+    },
+    {
+      "path": "artifacts/comment2_revision/component_diagnostics/run_ledger.csv",
+      "rows": 70,
+      "sha256": "c0bb9dac1a04b0af37761eff14d959a199d8e81ed85f5b3659e092d986955677"
+    },
+    {
+      "path": "artifacts/comment2_revision/external_baselines/aggregate.csv",
+      "rows": 27,
+      "sha256": "75036a845ed97f1ba7011d28c1ffc78c5a6299252b549d642cf51425ea64aa29"
+    },
+    {
+      "path": "artifacts/comment2_revision/external_baselines/by_origin_horizon.csv",
+      "rows": 135,
+      "sha256": "0c79d3aef9553fc3360aaf6120f9b2755dba59b3fa933b561aa687a2ba870b29"
+    },
+    {
+      "path": "artifacts/five_cutoff_main_model_synthesis/20210123_exal_m_t1/exdqlm_multivar_synth_keep_focus_render_numeric_contract.csv",
+      "rows": 47,
+      "sha256": "9c707a73577066f814bae1e8b609c4198cd0b6cb392f5077be0cddb3178858f6"
+    },
+    {
+      "path": "artifacts/five_cutoff_main_model_synthesis/20211112_exal_m_t1/exdqlm_multivar_synth_keep_focus_render_numeric_contract.csv",
+      "rows": 47,
+      "sha256": "a9dabe6dfb3f2c49eefa5646841fcd3d9c2adf50f00e30e454839da154cad34a"
+    },
+    {
+      "path": "artifacts/five_cutoff_main_model_synthesis/20211221_exal_m_t1/exdqlm_multivar_synth_keep_focus_render_numeric_contract.csv",
+      "rows": 47,
+      "sha256": "da0bcbffa03a65173dc79219cc6daf9f2bda21c99d86ee0fb5e40fac54370b91"
+    },
+    {
+      "path": "artifacts/five_cutoff_main_model_synthesis/20220511_exal_m_t1/exdqlm_multivar_synth_keep_focus_render_numeric_contract.csv",
+      "rows": 47,
+      "sha256": "5ef5b38fe9f001822df72d26568c1e1f2e2ccb5bdb4027ac640591ffe73e6125"
+    },
+    {
+      "path": "artifacts/five_cutoff_main_model_synthesis/20221225_exal_m_t1/exdqlm_multivar_synth_keep_focus_render_numeric_contract.csv",
+      "rows": 47,
+      "sha256": "d19e60cb3f5af7daf8da136bca68a92322059469085bffc8e7c13ce8c1790707"
+    },
+    {
+      "path": "artifacts/he4_quantile_check_loss_current_publication/he4_quantile_check_loss_per_day.csv",
+      "rows": 3920,
+      "sha256": "a95f224ecd77fe25b48d05d601fa4f271b6eacac39403a8dd8e135b2ee79fab8"
+    },
+    {
+      "path": "artifacts/no_refit_revision/results/interval_summary.csv",
+      "rows": 324,
+      "sha256": "e83066c9c2dbdb40b0d3ad6dc147d5599b25da49158556be7ee2eaa9e55659c2"
+    },
+    {
+      "path": "artifacts/no_refit_revision/results/intervals_per_case.csv",
+      "rows": 3720,
+      "sha256": "06c4c457229a615d07cd3b561a65cbb6acfb8626f0924952d349313b7b3b7849"
+    },
+    {
+      "path": "artifacts/no_refit_revision/results/summary_pooled.csv",
+      "rows": 54,
+      "sha256": "aa60a0808af1685bb7f1294641be474123d6d9b0aaa76182d82670b81bdcb431"
+    },
+    {
+      "path": "tables/generated_tex/he3_ablation_crps_horizon_summary.csv",
+      "rows": 75,
+      "sha256": "4a5ac1ef5923f5e2b57483461f6d0ccad2a6e03089c95e1abf9eef412725a656"
+    }
+  ],
+  "unchanged_scientific_records_sha256": "7f6f3755ce076d3a7e8b784dc4c048579efb586dabd3e463c5acb4708e45193c",
+  "saved_model_summary_shapes": {
+    "origins": 5,
+    "rows_per_origin": 47,
+    "historical_rows": 19,
+    "forecast_rows": 28,
+    "sample_rows_per_origin": 6016,
+    "saved_indices_per_origin": 128,
+    "display_indices": [
+      1,
+      221,
+      442,
+      662,
+      882,
+      1119,
+      1339,
+      1559,
+      1780,
+      2000
+    ]
+  },
+  "verified_external_figure_sources": {
+    "count": 15,
+    "selection_rule": "Exactly the run_id in each saved main-model source_metadata.json; the broader old registry also contains unrelated reference-model adapters.",
+    "all_present_and_recorded_sha256_match": true,
+    "files": {
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep/post/inputs/nws_post_adapter.csv": {
+        "sha256": "8baca2c08a8eb1ee1450a524a769cbeb02061b7930a23bec90f6a11ca0d81f65",
+        "bytes": 1213
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep/post/inputs/glofas_post_adapter.csv": {
+        "sha256": "37bee46c61daad9b8fc7d3e81c4974cbf4daf93d189a51840c2093ad209ead34",
+        "bytes": 25566
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20210123_v8_he2grid_c04_eps365_exdqlm_multivar_keep/post/inputs/retros_post_adapter.csv": {
+        "sha256": "b2c4ab07b6ed8c69043123da2453996b9b21a03ee3bfb72af7b3c175738147ec",
+        "bytes": 817911
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep/post/inputs/nws_post_adapter.csv": {
+        "sha256": "0011e7f9a5e7c071925e9dc7a4459c94a7001f87db76701b69964c317dcaa37c",
+        "bytes": 1149
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep/post/inputs/glofas_post_adapter.csv": {
+        "sha256": "6334fde5595c42afbbd8e437e94b2ba4a8f011d7ca77cef4b5024b3575fa284f",
+        "bytes": 26594
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_epsilon_discount_grid_20260524/runs/multimodel_20211112_v8_he2grid_c04_eps365_exdqlm_multivar_keep/post/inputs/retros_post_adapter.csv": {
+        "sha256": "66fafe750849e850822d119e96946024ea7e642e0c257bc0b2ab5f57e3d22527",
+        "bytes": 832095
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep/post/inputs/nws_post_adapter.csv": {
+        "sha256": "c9aaffb44fff1c0746302b8e3537d3e413feb6dc9de9009f6b750de0bb61978e",
+        "bytes": 1146
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep/post/inputs/glofas_post_adapter.csv": {
+        "sha256": "872e6696c22365c134a25963f93ce1e8daa6f9005d17020cca62d1a444a433fe",
+        "bytes": 25424
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20211221_v8_he2partial20260623_exdqlm_multivar_keep/post/inputs/retros_post_adapter.csv": {
+        "sha256": "5eb973ed4ab71d6cce3b27eea3dddeaafb0731f2f39171b1929289072a735215",
+        "bytes": 827429
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep/post/inputs/nws_post_adapter.csv": {
+        "sha256": "4650ae190f1dc4691d464fbe272ee86e3b1c1c4d7b873ffed2c33b0fbcecc0c9",
+        "bytes": 1197
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep/post/inputs/glofas_post_adapter.csv": {
+        "sha256": "c6dc89b02792eeb84b1049a3e3c3f743ca555d038fabeb2f99040f1b07ebc51b",
+        "bytes": 25311
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20220511_v8_he2partial20260623_exdqlm_multivar_keep/post/inputs/retros_post_adapter.csv": {
+        "sha256": "a40ea8c4ab8a9dd3ab7a5a1b5d0f466fe9ab9077e72b5b28c5aaec52e11cf417",
+        "bytes": 836700
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep/post/inputs/nws_post_adapter.csv": {
+        "sha256": "368aec1eacb777e289f61bead46c2058a808bf12ceaeaa947695d37de47ced6e",
+        "bytes": 1150
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep/post/inputs/glofas_post_adapter.csv": {
+        "sha256": "55e8313e256a26940328d0c99faf15f13ad254dc362460cfc7b2ce66bc46063f",
+        "bytes": 25298
+      },
+      "/data/muscat_data/jaguir26/project1_ucsc_phd_runtime/multimodel_v8_he2_exdqlm_multivar_keep_partial_authority_refresh_20260623/runs/multimodel_20221225_v8_he2partial20260623_exdqlm_multivar_keep/post/inputs/retros_post_adapter.csv": {
+        "sha256": "6b9a415b3029021a609621cded2af62c34d03e662761f72674f797e7c312b6ca",
+        "bytes": 858576
+      }
+    }
+  },
+  "wis_identity_evidence": {
+    "path": "wis_identity_evidence.json",
+    "sha256": "4748090fe39415d0f4a581ff5896baa12f44782590e7b35ed65f08d0b1b40d52",
+    "exact_arithmetic_checks": 35,
+    "all_passed": true
+  },
+  "plot_environment_available": {
+    "R": "4.5.3",
+    "ggplot2": "4.0.3",
+    "patchwork": "1.3.2",
+    "yaml": "2.3.12",
+    "pdf_timestamp_option": true,
+    "production_font_embedding_and_repeatability": "not_yet_proved; verify in the future scratch proof"
+  },
+  "implementation_readiness": {
+    "fits_required": false,
+    "new_scores_required": false,
+    "plot_source_inputs_missing": false,
+    "lambda_provenance": "Use the author-provided gauge-only clarification; original standalone driver not located; no inferred likelihood or invented replay.",
+    "layout_and_final_pdf_device": "Design specified; prove final placement, font handling and repeatability after implementation is authorized."
+  },
+  "plan_only_changes": [
+    "PLAN.txt",
+    "audit_evidence.json",
+    "wis_identity_evidence.json"
+  ],
+  "execution_status": {
+    "article_source_edited": false,
+    "code_edited": false,
+    "production_figures_edited": false,
+    "jobs_launched": false,
+    "commits_or_pushes_made": false
+  },
+  "plan_sha256": "185bc2583d03c628209b3756870b42c64dade0d5b7d5df870af83916f6f895b2",
+  "independent_plan_review": {
+    "passed": true,
+    "completed_utc": "2026-11-09T06:18:06.855362+00:00",
+    "blocking_findings": [],
+    "sequencing_improvement_applied": "Preview Table 1 in temporary space until generator ownership is transferred; only then regenerate publication outputs.",
+    "scope": "Read-only review of this plan and evidence; no implementation."
+  }
+}
