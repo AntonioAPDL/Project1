@@ -1,0 +1,44 @@
+IMPLEMENTATION AUDIT AND DIAGNOSTIC DECISIONS
+
+The approved consolidated plan is implemented in PLAN.txt. The baseline records
+current article main and all committed source blobs/modes. The existing user audit
+folder is outside the staging scope. No model jobs were active at the initial audit.
+
+Three contributions remain distinct and tied to the existing empirical results.
+The several-week MCMC statement is explicitly an author expectation of full-data
+computation, as clarified by the user; the repository does not contain a matching
+observed benchmark. The documented combined two-hour VB time retains its hardware
+and parallelization conditions. Parameter credible intervals and predictive intervals
+have separate targets; future controlled comparisons are prospective, with no
+simulation result or universal equivalence guarantee claimed.
+
+The former Appendix B3 is removed from both submitted scopes, with the original
+and compact tables marked repository-only. The physical compact table, all data
+ledgers and all validation of those ledgers are retained. The compact generator
+ceases to own/emit that output. This is a presentation change, not data deletion.
+All eleven physical table blocks (including the retired table and coefficient
+summary) retain their numerical content after removing only bold markup/whitespace.
+The existing mathematical expression sequences and algorithm text are unchanged.
+
+The source audit found a required active-inventory dependency: the original
+comment2_fit_diagnostics entry pointed to the removed publication asset. Its
+disposition now records repository-only retention, together with an explicit
+archive entry for the compact table. The publication validator supports this
+without a schema change. New current PDF checks derive display numbers from the
+actual reachable article and inventory rather than stale historical numbering.
+
+Initial comprehensive validation diagnosed two real test/validator assumptions:
+(1) an old cutoff-figure test assumed every additional retained artifact was a
+forecast figure; it now tests its named figure family while a separate test
+requires both diagnostic tables to be repository-only and main Table 3 submitted;
+(2) a PDF link check did not carry an explicit Table/Figure reference type across
+an adjacent wrapped 'and B5' continuation. A contextual continuation rule and
+regression tests address this without using destination pages to infer type.
+Historical validators and release records remain unchanged.
+
+The first proof contained 32 pages because a longer abstract/introduction pushed
+two data lines onto the Figure 1 page and moved the following section by one
+page. Economical wording is being reviewed to restore the original reading
+layout without changing class, margins, font sizes or figures. Final measured
+pagination and proof review belong in the completion record. Initial failure
+reports are retained alongside final evidence; they are not presented as passes.

@@ -1,0 +1,19 @@
+test_ambiguous_reference_fails_without_destination_guessing (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_caption_page_disagrees_with_aux_and_link_target (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_correct_colliding_numbers_and_renumbered_b3_are_accepted (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_duplicate_definition_and_scope_mismatch_fail (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_figure_link_cannot_satisfy_a_missing_table_reference (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_inline_formats_and_hyperlinked_type_keep_visible_context (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_missing_retained_table_definition_fails (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_new_numbering_follows_reachable_source_not_inventory_order (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_obsolete_number_cannot_pass_as_known_reference (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_stale_removed_label_reference_or_display_fails (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_unrelated_prose_and_sentence_boundary_prevent_type_inheritance (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_wrapped_coordinated_tables_and_figures_keep_visible_type (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_wrapped_reference_cannot_inherit_across_pages_columns_or_large_gap (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+test_wrong_table_and_figure_destinations_fail (test_presentation_pdf_links.PresentationPdfLinkTests) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.006s
+
+OK

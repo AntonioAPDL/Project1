@@ -1,0 +1,84 @@
+PROSPECTIVE APPROXIMATION ASSESSMENT: NOT IMPLEMENTED IN THIS REVISION
+
+Purpose
+
+Quantify posterior approximation error, predictive differences and interval coverage
+as three separate questions. Parameter credible intervals and future-observation
+predictive intervals have different targets; neither their equality nor general
+calibration is a goal that finite simulations can establish. This protocol does
+not describe existing experiments or authorize new fitting during the present
+editorial release.
+
+A. Establish a comparable reference target
+
+Specify one quantile-specific generative model with likelihood, state evolution,
+priors, known covariates and data dimensions explicitly. Verify that VB and the
+reference simulation target that same model, including any covariance treatment.
+Begin with a tractable Gaussian/state calculation or reduced quantile model whose
+conditional calculations can be checked independently; then add source discrepancies,
+transfer and non-conjugate scale/skewness. Use one manageable record before scaling.
+Assess independent reference chains and Monte Carlo precision before treating their
+summaries as an accurate reference. A comparison of different likelihoods or priors
+would conflate approximation error with model differences.
+
+B. Assess parameter and state approximation
+
+Compare posterior means, standard deviations, selected dependence summaries and
+credible-interval endpoints. Use matching datasets, model settings and quantile
+levels, including median and tail levels. Examine scale/skewness domains, weakly
+identified cases and strong dependence between variational blocks. Retained joint
+state trajectories and within-channel scale/skewness factors should not be described
+as fully independent parameter approximations. Report reference simulation error
+alongside VB differences.
+
+C. Assess prediction and synthesis separately
+
+Compare one-fit predictive distributions first: means, lower/upper quantiles,
+interval widths/endpoints and proper scores. Then fit all seven probabilities on
+common controlled datasets and apply exactly the same shifts, interpolation,
+outer-tail construction and rearrangement to both sets of predictive draws.
+Hold numerical grids, score definitions and Monte Carlo precision comparable.
+Call the result MCMC-based reference synthesis, not the exact posterior of a
+single joint synthesis model. The article's construction supplies marginal
+predictions and does not define joint temporal sample trajectories.
+
+D. Assess calibration across independent datasets
+
+For a matching prior-predictive generative model, simulation-based calibration
+can diagnose computational inaccuracies. For repeated fixed-parameter scenarios,
+report parameter coverage and future-observation predictive coverage separately.
+Quantile-specific working models and the synthesized prediction procedure need
+their own clearly specified assessment targets; do not assume seven different
+working likelihoods constitute a single data-generating model. Start with correctly
+specified scenarios and distinguish later deliberate misspecification scenarios.
+Include tail/skewness stress cases and multiple prediction horizons/nominal levels.
+
+Choose replication counts after a small pilot using uncertainty in the target
+summaries, rather than a convenient round number. Independent datasets are the
+replication units; successive forecast dates within a dataset remain dependent.
+At 95 percent probability the binomial standard error across 100 independent
+Bernoulli repetitions is about 0.022 and across 400 about 0.011. More elaborate
+within-dataset summaries require uncertainty calculations that respect that design.
+Any practical agreement tolerance should be stated before evaluating results,
+with Monte Carlo error small enough to interpret it.
+
+E. Runtime and reporting
+
+The author anticipates several weeks for full-data MCMC computation. The present
+repository does not contain a matched measured MCMC benchmark. Future reduced
+reference runs can record hardware, chains, parallelization, data size and useful
+sampling precision to inform a separately labeled runtime extrapolation. Do not
+assume linear extrapolation if mixing deteriorates with record length or dimension.
+The current approximately two-hour VB result is a documented combined fitting/
+forecasting benchmark under Appendix C.1 conditions, not a separated fit-only time.
+
+Preserve seeds, generating parameters, model specifications, exact software versions,
+reference diagnostics, runtime records, individual-replication results and scripts.
+Publish actual simulation findings only after these computations have been performed
+and reviewed. Finite studies describe accuracy in the assessed settings; theoretical
+guarantees would require a separate result under explicit assumptions.
+
+Primary methodological references:
+https://mc-stan.org/docs/stan-users-guide/sampling-from-the-posterior-predictive-distribution.html
+https://proceedings.mlr.press/v80/yao18a.html
+https://arxiv.org/abs/1804.06788

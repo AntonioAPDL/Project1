@@ -1,0 +1,62 @@
+{
+  "created_utc": "2026-11-09T08:01:13.967856+00:00",
+  "article": {
+    "repository": "AntonioAPDL/Evironmetrics----Corrected-3",
+    "pull_request": "https://github.com/AntonioAPDL/Evironmetrics----Corrected-3/pull/4",
+    "feature_commit": "4de0540edc01461d29e84048c7d49d4fd70a125a",
+    "merge_commit": "1749ed7cd0aa70c9cefb3b6dc8b05c113b8ef413",
+    "tested_and_merged_tree": "baf53d6782cc19ff0dccbbb2541ed953c01767b8",
+    "local_main_matches_origin_main": true,
+    "working_tree_clean": true
+  },
+  "workflow": {
+    "repository": "AntonioAPDL/Project1",
+    "base_commit": "6487efd083b78b73de454af16c318c005b760b7c",
+    "branch": "editorial/article-presentation-20261109",
+    "identity": "The containing commit identifies the companion workflow release."
+  },
+  "validation": {
+    "passed": true,
+    "unique_python_test_ids": 318,
+    "r_assertions": {
+      "test_post_publication_figures.R": 48,
+      "test_comment2_external_baselines.R": 39,
+      "test_no_refit_review_diagnostics.R": 121,
+      "test_no_refit_diagnostic_indices.R": 15,
+      "test_no_refit_synthesis_diagnostics.R": 25
+    },
+    "r_assertions_total": 248,
+    "compiled_pdf_checks": 79,
+    "scientific_sources_preserved": true,
+    "implementation_unchanged_during_validation": true,
+    "protected_repositories_unchanged": true,
+    "independent_layout_and_final_proofs_same_sources_and_text": true
+  },
+  "pdf": {
+    "pages": 31,
+    "pdf_sha256": "f4030687746f5c891614419a7b30e1808d2072711e218c014d8658cddc7f0b62",
+    "text_sha256": "a2da38ddd3472888ba68ffa610c72c8261be458bd427ec33dd273375916783d6"
+  },
+  "protected_repositories": {
+    "Evironmetrics---REVISED-DOC-Corrected-2": {
+      "head": "fb58225c4ae1f730301ce3864e98ae4db2d9febf",
+      "tree": "35b2c6d2af808a09618ad7365474826e0bf928fd",
+      "status": "",
+      "unchanged": true
+    },
+    "Corrections---Project-1": {
+      "head": "b1ceeb610d20f8287e4ca44e146c9cfdbcda1ee6",
+      "tree": "dbe081e393b2c86af166b18eb4c0d61c6d307eee",
+      "status": "",
+      "unchanged": true
+    },
+    "san-lorenzo-exdqlm-reproducibility": {
+      "head": "a8797b804271b46c62bd04dab7dba6b84a10ab7d",
+      "tree": "60f42661893dded43eff0500aff221f36510bd4f",
+      "status": "",
+      "unchanged": true
+    }
+  },
+  "overleaf_main_document": "wileyNJD-APA.tex",
+  "note": "Article merged by normal expected-head PR merge after live Overleaf ancestry check. Merged tree equals tested feature tree. No force push or protected-repository changes."
+}

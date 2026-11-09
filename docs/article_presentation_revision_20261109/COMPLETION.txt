@@ -1,0 +1,38 @@
+VALIDATED PRESENTATION REVISION
+
+All agreed editorial changes are implemented. The article has 31 pages,
+ten submitted tables, seven unchanged figures and two unchanged algorithms.
+Main Table 3 is retained with its two minimum interval scores visibly bold.
+The former stopping-classification table and its discussion are removed from the
+submitted article; retained appendix tables renumber, so Table B3 now reports
+origin-specific quantile loss. Archived data and the old table remain unchanged.
+
+Final gate: /tmp/article_presentation_final_gate_20261109
+All checks pass: 318 distinct Python test identities,
+248 R assertions, 79 compiled-PDF checks, no unexplained skips.
+All original mathematical expressions, numerical table blocks and scientific
+sources are preserved. All figures and algorithm text are byte-identical.
+Final source hashes and proof hash are in docs/presentation_revision_release.json.
+PDF SHA256: f4030687746f5c891614419a7b30e1808d2072711e218c014d8658cddc7f0b62
+The independent layout and final proofs use identical source hashes and have
+identical extracted text. Read-only visual review found no clipping or overlap.
+
+The anticipated full-data MCMC cost is explicitly an author estimate. The matching
+full-model comparison remains unperformed. The future simulation study is stated
+prospectively; no fits, forecasts, new draws, rescoring or simulations were started.
+
+Reproduce with a fresh destination:
+python3 -B docs/article_presentation_revision_20261109/run_checks.py --report-dir /tmp/NEW_presentation_release
+
+The first gate diagnosed an old archive-type assumption and a wrapped-reference
+parser limitation. Original reports are retained; DECISIONS.txt explains their
+correction and the prose compaction that restored 31 pages without layout changes.
+The new release record will identify the tested article commit and normal PR merge.
+
+ARTICLE PUBLISHED
+
+Article PR4 merged as 1749ed7cd0aa70c9cefb3b6dc8b05c113b8ef413.
+Local article main equals origin/main and the merged tree matches the tested
+feature tree. Source/PDF hashes and unchanged protected repositories verified.
+RELEASE.json records publication; its containing workflow commit publishes
+this companion execution record.

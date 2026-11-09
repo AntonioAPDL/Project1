@@ -1,0 +1,84 @@
+{
+  "source_inputs": 14,
+  "source_pins_and_rows_unchanged": true,
+  "scientific_records_unchanged": true,
+  "scientific_records_sha256": "7f6f3755ce076d3a7e8b784dc4c048579efb586dabd3e463c5acb4708e45193c",
+  "fitting_table_archive_unchanged": true,
+  "fitting_table_archive_sha256": "36b535d4f6d33b6e150bee8a6b3a017d54600df953dd421d0ad30f0602996159",
+  "all_table_numerical_rows_unchanged_after_unwrapping_bold": true,
+  "table_evidence": {
+    "tables/compact_publication/si_exact_score_sensitivity.tex": {
+      "numerical_rows_unchanged": true,
+      "active": true,
+      "bold_cells": 6,
+      "sha256": "cbc7d930b014eff30795f7a294f39ba7a4db1d6a6ba26280f6c2bf27e426583b",
+      "byte_identical": false
+    },
+    "tables/compact_publication/main_quantile_loss.tex": {
+      "numerical_rows_unchanged": true,
+      "active": true,
+      "bold_cells": 7,
+      "sha256": "7c1a3c228a745a4c1770eac7f3aa70b7333395b6ef750b2c4deacfbdd667a5b7",
+      "byte_identical": true
+    },
+    "tables/compact_publication/si_fitting_status.tex": {
+      "numerical_rows_unchanged": true,
+      "active": false,
+      "bold_cells": 0,
+      "sha256": "36b535d4f6d33b6e150bee8a6b3a017d54600df953dd421d0ad30f0602996159",
+      "byte_identical": true
+    },
+    "tables/compact_publication/si_discharge_score.tex": {
+      "numerical_rows_unchanged": true,
+      "active": true,
+      "bold_cells": 4,
+      "sha256": "cefddc0abfb2a78f058ced16ae3a28c155c158616494e12c710dbcd833d9af80",
+      "byte_identical": false
+    },
+    "tables/compact_publication/si_origin_crps.tex": {
+      "numerical_rows_unchanged": true,
+      "active": true,
+      "bold_cells": 10,
+      "sha256": "7788901838b02db4605c4bd9fc3fae8f98b4e53882df09a0de6f115e81483bb4",
+      "byte_identical": false
+    },
+    "tables/compact_publication/si_component_comparison.tex": {
+      "numerical_rows_unchanged": true,
+      "active": true,
+      "bold_cells": 10,
+      "sha256": "e30b9dd76cfe68320f8128a4d9bd746747a8c4addd43b1db4e86f9494351e266",
+      "byte_identical": false
+    },
+    "tables/compact_publication/si_quantile_loss.tex": {
+      "numerical_rows_unchanged": true,
+      "active": true,
+      "bold_cells": 35,
+      "sha256": "ce21351a8de288d20e3df4c769bda7ec5379bb7b2674d69b853dd680865c289d",
+      "byte_identical": false
+    },
+    "tables/compact_publication/si_origin_coverage.tex": {
+      "numerical_rows_unchanged": true,
+      "active": true,
+      "bold_cells": 0,
+      "sha256": "c0ccc537cdaf5c76d0acf07111fc96a45b5815115eda5dcfcd868c17b90e2def",
+      "byte_identical": true
+    },
+    "tables/compact_publication/main_calibration.tex": {
+      "numerical_rows_unchanged": true,
+      "active": true,
+      "bold_cells": 2,
+      "sha256": "104f62fbed21cd05724a87d7d1b73943a66469d3df8b0ded001e2d5f9da95838",
+      "byte_identical": false
+    },
+    "tables/compact_publication/main_aggregate.tex": {
+      "numerical_rows_unchanged": true,
+      "active": true,
+      "bold_cells": 4,
+      "sha256": "794bd770af9e8628513f70943cd7f991535673f7905edcc793ecacc0a979f991",
+      "byte_identical": true
+    }
+  },
+  "active_table_count": 9,
+  "tests_passed": 28,
+  "readonly_replay_passed": true
+}

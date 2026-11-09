@@ -1,0 +1,11 @@
+test_bold_unwrap_preserves_nested_scientific_notation (test_presentation_preservation.PresentationPreservationTests) ... ok
+test_changed_number_or_missing_entry_remains_detectable (test_presentation_preservation.PresentationPreservationTests) ... ok
+test_math_reformatting_is_allowed_but_changed_value_is_not (test_presentation_preservation.PresentationPreservationTests) ... ok
+test_row_deletion_and_duplication_cannot_pass (test_presentation_preservation.PresentationPreservationTests) ... ok
+test_starred_coefficient_table_keeps_estimates_and_intervals (test_presentation_preservation.PresentationPreservationTests) ... ok
+test_unbalanced_bold_or_duplicate_blocks_fail (test_presentation_preservation.PresentationPreservationTests) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.001s
+
+OK
