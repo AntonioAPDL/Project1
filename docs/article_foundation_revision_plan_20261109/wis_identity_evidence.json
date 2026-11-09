@@ -1,0 +1,225 @@
+{
+  "tested_sizes": [
+    2,
+    3,
+    7,
+    48,
+    51,
+    64,
+    2000
+  ],
+  "exact_fraction_checks": 35,
+  "all_passed": true,
+  "checks": [
+    {
+      "n": 2,
+      "y": "-7",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 2,
+      "y": "0",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 2,
+      "y": "1/3",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 2,
+      "y": "3",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 2,
+      "y": "1000",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 3,
+      "y": "-7",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 3,
+      "y": "0",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 3,
+      "y": "1/3",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 3,
+      "y": "3",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 3,
+      "y": "1000",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 7,
+      "y": "-7",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 7,
+      "y": "0",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 7,
+      "y": "1/3",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 7,
+      "y": "3",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 7,
+      "y": "1000",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 48,
+      "y": "-7",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 48,
+      "y": "0",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 48,
+      "y": "1/3",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 48,
+      "y": "3",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 48,
+      "y": "1000",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 51,
+      "y": "-7",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 51,
+      "y": "0",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 51,
+      "y": "1/3",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 51,
+      "y": "3",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 51,
+      "y": "1000",
+      "exact_equal": true,
+      "parity": "standard_WIS"
+    },
+    {
+      "n": 64,
+      "y": "-7",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 64,
+      "y": "0",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 64,
+      "y": "1/3",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 64,
+      "y": "3",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 64,
+      "y": "1000",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 2000,
+      "y": "-7",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 2000,
+      "y": "0",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 2000,
+      "y": "1/3",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 2000,
+      "y": "3",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    },
+    {
+      "n": 2000,
+      "y": "1000",
+      "exact_equal": true,
+      "parity": "interval_only_normalization"
+    }
+  ]
+}

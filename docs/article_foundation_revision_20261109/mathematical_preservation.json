@@ -1,0 +1,23 @@
+{
+  "baseline_commit": "0f72f3d9ab2c18a55859d2515fc9c0131a67a22c",
+  "mathematics": {
+    "main": {
+      "baseline_expressions": 133,
+      "current_expressions": 133,
+      "explicit_reviewed_changes": 2,
+      "expected_sha256": "9c47da9f9f2603e220cba3a77a0d820405dfddff796caf1a280815734e76a138",
+      "actual_sha256": "9c47da9f9f2603e220cba3a77a0d820405dfddff796caf1a280815734e76a138",
+      "passed": true
+    },
+    "appendix": {
+      "baseline_expressions": 215,
+      "current_expressions": 225,
+      "explicit_reviewed_changes": 2,
+      "expected_sha256": "9cb6330782030150fb6f9d7a6d6365b457a31d7a80c378ce715ea660a42c923e",
+      "actual_sha256": "9cb6330782030150fb6f9d7a6d6365b457a31d7a80c378ce715ea660a42c923e",
+      "passed": true
+    }
+  },
+  "aggregate_table_numerical_rows_preserved": true,
+  "passed": true
+}

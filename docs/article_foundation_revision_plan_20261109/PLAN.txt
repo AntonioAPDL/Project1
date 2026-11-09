@@ -1,0 +1,411 @@
+REFINED ARTICLE FOUNDATION PLAN
+Planning audit completed November 8, 2026, America/Los_Angeles.
+Status: proposal only. No article, code, production figure, fit or score changed.
+
+PURPOSE AND CURRENT STATE
+
+Implement the author's six requested corrections and make Figures B1/B2 match
+Figure 2, using the existing approved results. Preserve the six main sections,
+integrated Appendices A--D, one bibliography, eleven tables, seven figures and
+two algorithms. The reviewed complete article currently has 31 pages.
+
+The local article is at e50b6478806da8f27cff41ce77dd54860720b8fd. A read-only
+fetch found remote main at 0f72f3d9ab2c18a55859d2515fc9c0131a67a22c. The newer
+Overleaf merge changes four executable modes only; every tracked file's content
+is identical. Future implementation must preserve that newer history. Workflow
+main and origin/main are 4c5919f339f568b46d36c146f6cbbd117d8a79b0.
+
+None of the six new corrections has landed: the requested abstract/conclusion
+sentences, implicit products and calibration wording remain; no WIS explanation
+or Bracher entry has been added; Table 1 lacks the requested highlighting;
+Figures B1/B2 retain the earlier blue, simplified presentation.
+
+audit_evidence.json records the heads, mode differences, fourteen unchanged
+scientific input hashes, fifteen verified source-product adapter hashes, saved
+sample/date counts and current PDF identity. The local PDF and all recorded
+inputs still match the last reviewed complete release. The accompanying
+wis_identity_evidence.json preserves 35 exact-arithmetic identity checks.
+
+This work is independent of completion of any running fits. Do not substitute
+newly completed results into this bounded revision. A later numerical revision
+can use its own reviewed baseline and provenance.
+
+WHAT CHANGES FROM THE PREVIOUS PLAN, AND WHY
+
+1. Start from the actual remote head, including the latest Overleaf history.
+   During implementation, restore only the four known executable modes to
+   their earlier values. Preserve the stable guard dispatcher in Git metadata.
+2. Use a dedicated figure generator and manifest, rather than adding R and
+   source-product inputs to the compact table generator. Each output has one
+   owner; the fourteen-input numerical guard and scientific_records.json stay
+   unchanged. The new release gate coordinates the two checks; an additional
+   general-purpose orchestration script is unnecessary.
+3. Use the author's gauge-only calibration clarification as author-provided
+   methodological provenance. The unavailable historical driver does not block
+   the revision. Do not infer an undocumented likelihood or claim a replay.
+4. Make the WIS relationship explicitly about saved ordered values assigned
+   rank levels s/(S+1), not about the seven fitted model probabilities. Preserve
+   the odd/even distinction and the separate exact empirical-CRPS calculation.
+5. Reuse the archived R panel function and explicitly validated saved style.
+   Its automatic scratch writes, nonmatching default style and old full driver
+   are identified below, so they cannot silently change published material.
+6. Require a scratch layout/device proof before settling final dimensions or
+   claiming font embedding and byte-identical PDF regeneration. Keep the page
+   target without shrinking fonts or necessary scientific qualifications.
+7. Preserve legacy asset-writing helpers. A blind change from their PNG target
+   to the new submitted PDF could cause a legacy refresh to copy PNG bytes to
+   a PDF filename. Current submission paths belong in PUBLICATION_PACKAGE.json.
+8. Preserve historical validation gates. Add a new bounded preservation check
+   for the exact approved mathematical additions and notation replacements.
+
+SCIENTIFIC AND EDITORIAL DECISIONS
+
+A. Abstract
+
+Use the author's intended contribution statements, polished as:
+
+  Our proposed predictive synthesis approach combines separately fitted quantile
+  models into a nondecreasing predictive quantile function.
+
+  For our implementation of the extended dynamic quantile linear model, we
+  develop a variational Bayes (VB) computation using Laplace--Delta
+  approximations for the non-conjugate scale and skewness parameters.
+
+The second statement identifies the model-specific computational development;
+the underlying Laplace/Delta methods retain their existing attribution. Remove
+the two requested final abstract sentences about eight-day scale-dependent
+rankings and component convergence. Retain the reported gains and coverage.
+Keep substantive qualifications in their existing results/discussion context.
+Replace current wording rather than appending another contribution paragraph.
+
+Files: wileyNJD-APA.tex, with a final consistency reading of the introduction.
+Acceptance: both contributions explicit, requested deletions complete, numerical
+results unchanged, no unsupported claim of posterior approximation validation.
+
+B. Dimension notation
+
+Use q=(J+1)\cdot p+m+1 in Section 3.2 and Appendix C.5, and
+q=3\cdot7+12+1=34 in Section 4.1. These three exact notation replacements
+preserve the mathematics. No state dimensions, matrix definitions or model
+specifications change.
+
+Files: wileyNJD-APA.tex and appendices.tex.
+Acceptance: all three definitions agree; every other old expression is preserved
+unless it belongs to an explicitly reviewed new WIS explanation.
+
+C. Computational motivation and gauge-only calibration
+
+Section 3.4 should briefly connect the intended daily updating cycle to repeated
+inference over long state trajectories, observation-level augmentation and
+non-conjugate parameters across seven quantile models. Retain the representative
+approximately two-hour combined fitting-and-forecasting time. Do not invent a
+weeks/months MCMC duration, a measured speed ratio, a timing decomposition or an
+operational service guarantee.
+
+Suggested replacement direction:
+
+  Repeated forecast production requires distributional updates as new
+  observations and products become available. Full posterior simulation for
+  this long daily record would entail repeated updates of latent trajectories,
+  augmentation variables and non-conjugate parameters across seven quantile
+  models. We use parallel VB computation; the representative combined fitting
+  and forecasting time is approximately two hours under the conditions in
+  Appendix C.1. A matching full-model MCMC comparison has not been performed,
+  so the predictive assessments do not quantify variational posterior error.
+
+Appendix C.1 retains hardware (64 cores, approximately 503 GiB), independent
+quantile parallelism, input-preparation exclusion, hardware/implementation
+dependence and lack of separate fit/forecast timings. The runtime manifest is
+the source for the existing representative claim; its original raw interface
+CSV was not available for independent re-summarization in this audit. Smaller
+MCMC comparisons in the neighboring software article concern other models and
+data and cannot establish runtime for this application.
+
+For Section 4.1, use the author's clarification that the preliminary calibration
+used the gauge series alone. Distinguish the scalar parameter being varied from
+both the model's state dimension and the multivariate model receiving its value.
+
+  A preliminary calibration of the scalar transfer-persistence parameter used
+  the gauge series alone. [Retain the documented grid, pre-origin scoring
+  criterion and date.] The resulting value was held fixed across quantiles
+  and origins in the multivariate reference specification.
+
+Remove the current clause implying the calibration itself used the multivariate
+reference. Retain the existing grid, median-quantile CRPS criterion, December
+2022 pre-origin window and lambda=0.97 unless the author changes those details.
+Do not invent a particular univariate likelihood/state construction. Record the
+author's clarification in the revision notes, not in the article's narrative.
+The original standalone calibration driver was not located; do not claim it was
+reconstructed, rerun or independently verified.
+
+Files: wileyNJD-APA.tex; appendices.tex C.1 only for timing consistency if needed.
+Evidence: docs/runtime_benchmark_contract.md and
+artifacts/runtime_benchmark/runtime_manifest.json.
+Acceptance: runtime scope consistent in abstract/method/appendix; calibration
+data and receiving model clearly distinguished; one concise approximation limit.
+
+D. WIS explanation
+
+The saved scorer sorts predictive values x_(s) and evaluates
+  C_S = (2/S) sum_s rho_{s/(S+1)}(y-x_(s)).
+For K=floor(S/2), alpha_k=2k/(S+1), l_k=x_(k), u_k=x_(S+1-k), pairing gives
+  rho_{alpha_k/2}(y-l_k)+rho_{1-alpha_k/2}(y-u_k)
+    = (alpha_k/2) IS_{alpha_k}(l_k,u_k;y).
+For S=2K, C_S=(1/K) sum_k (alpha_k/2) IS_{alpha_k}; there is no median term.
+For S=2K+1, C_S=[0.5|y-x_(K+1)|+sum_k (alpha_k/2) IS_{alpha_k}]/(K+0.5).
+
+The odd form is conventional median-inclusive WIS. The even form is the
+corresponding normalized weighted sum of interval scores. The principal
+2,000-value representations and Gaussian 48/64-value representations are even;
+raw GloFAS/NWS have 51/seven values. The interval levels therefore depend on S.
+Use the central order statistic directly, avoiding a new median symbol m that
+would overload existing article notation. This concerns the assigned rank grid,
+not just the seven quantile-specific fits,
+and does not turn the grid approximation into exact empirical-distribution CRPS.
+
+Section 4.5 needs one qualified sentence defining weighted interval score (WIS),
+with a reference to existing Appendix C.3 for normalization. Put the short
+paired-loss identity and odd/even forms in C.3, before its existing empirical
+CRPS discussion. Do not create another subsection, scoring table or score CSV.
+
+Use Bracher et al. (2021), Evaluating Epidemic Forecasts in an Interval Format,
+PLOS Computational Biology 17(2):e1008618,
+https://doi.org/10.1371/journal.pcbi.1008618 . Its 2022 correction changes
+illustrative values/figures, not these definitions. With the usual normalization
+WIS approximates CRPS, not twice CRPS. Alpha is excluded tail probability;
+central endpoints are q_(alpha/2), q_(1-alpha/2). Do not import the long metric
+tables from the personal notes or score predictions against a new replicate.
+
+Files: wileyNJD-APA.tex, appendices.tex, wileyNJD-APA.bib.
+Acceptance: independent odd/even algebra checks at actual representation sizes,
+ties, point masses and observations inside/outside intervals; observed y remains
+the verification target; current scorer and all score artifacts byte-identical.
+
+E. Table 1
+
+Edit compact_publication.py::render_tables, not its generated TeX. Bold minimum
+CRPS and maximum CRPSS per horizon, using the full-precision input before display
+rounding. Preserve genuine ties; do not create ties merely from rounded text.
+Ignore missing cells. All four present winners are exAL-M-T1:
+0.20164, 0.68601, 0.29926, 0.58967.
+Note: Bold indicates the lowest CRPS or highest CRPSS in each column.
+
+Files: scripts/compact_publication.py, tables/compact_publication/main_aggregate.tex,
+its current generation manifest and focused tests.
+Acceptance: unchanged numerical cells and scientific records; tests for both
+directions, true ties, rounded near-ties, negative skill columns and NWS dashes.
+Do not extend highlighting to unrelated calibration quantities.
+
+F. Discussion and model case
+
+Replace the discussion with a compact argument of approximately its current
+length: methodological contributions, principal measured gains, concrete
+exceptions, and the already pertinent approximation/calibration considerations.
+Remove the exact requested sentence about five contrasting cases/another basin.
+Scope new empirical statements to the reported San Lorenzo comparisons.
+
+Verified percentage reductions in pooled transformed-scale CRPS:
+  comparator                 28 days     eight days
+  seasonal climatology       68.6%       59.0%
+  raw GloFAS                 67.4%       61.4%
+  GloFAS EMOS                55.9%       32.7%
+  AL-M-T1                    13.2%        3.3%
+Use only two or three contrasts in prose; existing tables provide the rest.
+
+The strongest case is the 28-day distributional comparison. The reference beats
+every other Bayesian variant at each origin and EMOS at four of five origins.
+Its aggregate 28-day advantage also persists on the discharge scale. Attribute
+the measured results to the fitted configurations; do not claim independent
+causal proof for each component, statistical significance, universal superiority,
+or universal upper-tail improvement.
+
+Keep specific counterexamples immediately beside the gains: May 2022 favors
+EMOS; the two winter eight-day origins favor raw NWS; AL-M-T1 has smaller pooled
+upper-quantile losses, better interval coverage and a lower aggregate eight-day
+discharge-scale score than exAL-M-T1. Existing calibration and computational
+qualifications belong in the body, stated once rather than repeated throughout.
+
+File: wileyNJD-APA.tex. Evidence: aggregate.csv, by_origin_horizon.csv,
+summary_pooled.csv and existing quantile-loss/calibration summaries.
+Acceptance: every comparative statement identifies horizon, scale and comparator;
+percentage arithmetic uses existing full-precision summaries; no new scoring.
+
+G. Figures 2, B1 and B2
+
+Use one bounded panel function and shared style across all five origins.
+  Figure 2: December 25, 2022.
+  Figure B1: January 23 and November 12, 2021.
+  Figure B2: December 21, 2021 and May 11, 2022.
+Keep the two stacked appendix panels, one legend per figure and current labels.
+
+Reuse the frozen function post_publication_render_focus_posterior_plot in
+artifacts/comment1_figure_revision/renderer_sources/R/unified/post_publication_figures.R:1378.
+Its hash is e6c45ef094aabe8cb4cdd996a2ce849b968da5a25b588d5a97c9c5820ae1e155.
+Its arguments accept the saved summary, sample, ensemble and retrospective data.
+It constructs the plot and returns a ggplot object, but also writes an obligatory
+PNG/PDF pair. Send those intermediate files into a fresh temporary directory.
+Do not run the old full focus-render driver: it reads predictive caches and
+rewrites numerical contracts/manifests unnecessarily.
+
+Require an explicit style derived from the saved publication_comment1_v3 YAML.
+The fallback style differs in dimensions, transparency and sample count. Keep
+the original palette/symbols: green history, red open-circle verification,
+maroon mean, pink central 95% band, orange GloFAS, purple NWM, thin gray traces.
+NWM is already defined in Section 2; retain its existing plot key and explain
+the NWS product family in the shared caption. Use short exAL-M-T1 panel titles
+and consistent predictive-sample-trace terminology. Do not repeat large legends
+or full titles in both panels, and do not stack screenshots of old plots.
+
+Saved inputs per origin already present in the article:
+  exdqlm_multivar_synth_keep_focus_render_numeric_contract.csv: 47 rows.
+  exdqlm_multivar_synth_keep_cutoff_window_sample_subset.csv: 128*47 rows.
+Both reside in artifacts/five_cutoff_main_model_synthesis/<origin>_exal_m_t1/.
+Use model_mean, interval_low and interval_high directly. Do not reconstruct
+summaries from seven quantiles, displayed sample traces or full predictive caches.
+Select exactly the existing ten indices, numerically sorted:
+1,221,442,662,882,1119,1339,1559,1780,2000.
+Preserve (segment,sample_index) grouping and all T-18,...,T,T+1,...,T+28 dates.
+
+Add a small portable display bundle for the fifteen source-product inputs:
+five complete 28-row/51-member GloFAS files; five eight-row/seven-member NWS
+files; and the nineteen relevant retrospective rows per origin. Source these
+from each main model's exact saved source_metadata.json run_id, matched to the
+old renderer registry hash. The broader registry also includes reference-model
+adapters; a broad glob is not an acceptable selection rule. All fifteen required
+main-model sources exist and match their recorded hashes. Adapter values are
+already log1p_cms: never transform again. Preserve their original numerical
+precision, fields and members; record extraction dates/rules and both original
+and extracted hashes. Normal regeneration must use article-local files only.
+The bounded bundle is approximately 140 KB; no large fit/cache copy is needed.
+
+Use common primary y limits -0.1 to 6.5. Checked all-layer bounds across the five
+origins are -0.0896685 to 5.36438, with the upper reference guide at 6.06378521.
+A clearly labeled May detail inset from 0 to 1.3 contains all May layers, whose
+maximum is 1.20834. The inset derives from the same May plot, with no legend.
+Clear both inherited y-limit fields before constructing the base plot, then add
+the intended coordinate limits. Do not truncate values, drop dates or join the
+historical and forecast trace segments.
+
+Initial geometry to prove after authorization: Figure 2 about 6.23*4.9 inches;
+each appendix pair about 6.23*7.2 inches. Inspect at actual 450-point placement.
+Check the May inset, grayscale source identification, labels, guides, legends
+and page fit before accepting the geometry. Target two appendix figure pages;
+do not force the 31-page total by reducing font sizes or margins.
+
+Use a dedicated figure driver/R wrapper/shared style and new manifest owning
+exactly three active vector PDFs. Add a new manuscript Figure 2 PDF, retaining
+the original scientific PNG/PDF archive. Replace the current B1/B2 PDFs at their
+existing paths. Remove only those two PDF outputs and their obsolete plotting
+claim from compact_publication.py/manifest; keep its fourteen scientific inputs,
+source checks, table ownership and scientific_records.json byte-identical.
+The new release gate runs both generators' checks and rejects overlapping output
+ownership. No separate generic coordinator is required.
+
+Current R 4.5.3, ggplot2 4.0.3, patchwork 1.3.2 and yaml 2.3.12 are available.
+R's PDF device supports timestamp=FALSE, but that alone does not establish font
+embedding or exact repeatability. The scratch proof must inspect fonts and test
+two independently generated final PDFs. Choose a documented device/font path
+that satisfies publication requirements and repeatability. If volatile metadata
+normalization is necessary, limit it to explicitly identified metadata; compare
+the rendered content and full input hashes independently. Record environment,
+locale, fonts/device, final file hashes and any normalized comparison hashes.
+Changes in plotting software require explicit review, not automatic rebaselining.
+
+Planned file responsibilities:
+  new scripts/predictive_synthesis_figures.py and bounded R wrapper;
+  new config/predictive_synthesis_figures.yaml;
+  new artifacts/predictive_synthesis_figures/ inputs and manifest;
+  new Figures/manuscript/predictive_synthesis_2022_12_25.pdf;
+  existing B1/B2 output PDFs, main include/caption and appendix captions;
+  PUBLICATION_PACKAGE.json and current generation/provenance documentation;
+  compact generator/manifest, focused tests, README and its source template.
+Audit consumers before changing path helpers. Preserve legacy PNG-writing layout
+helpers and MANUSCRIPT_ASSET_MANIFEST.json. New submitted paths are resolved
+through the current publication inventory and dedicated figure manifest.
+
+EXECUTION ORDER AND EXIT CONDITIONS -- ONLY AFTER IMPLEMENTATION IS AUTHORIZED
+
+Stage 0: Baseline and history
+Fetch both repositories again; inspect any intervening content changes. Begin
+the article branch from current remote main. Snapshot sources, scientific CSVs,
+scientific_records.json, original figures, bibliography and protected repositories.
+Restore only the four known executable modes to their earlier 100755 values:
+.githooks/pre-push; and renderer_sources/scripts/render_focus_publication_posterior_plot.R,
+render_setup_support_bundle_v2.R, render_exal_m_t1_setup_support_by_cutoff_v2.py
+under artifacts/comment1_figure_revision/. Preserve the metadata hook dispatcher.
+Exit: correct baseline/history, narrow allowlist, authoritative inputs pinned.
+
+Stage 1: Bounded scientific exposition and table formatting
+Apply A--F and review contribution/qualification balance. Preview the generated
+Table 1 in a temporary directory; do not yet invoke the compact generator in
+write mode, because it still owns B1/B2 until Stage 3. Add the verified
+bibliography entry and exact reviewed WIS blocks.
+Exit: requested wording changes complete; every number/scorer unchanged;
+all existing math preserved except the three notation changes and approved
+new explanation blocks, including their new inline symbols.
+
+Stage 2: Portable inputs and scratch figure proof
+Bundle the fifteen verified input extracts; add the bounded shared renderer.
+Prove all layers, selected traces, providers/horizons, exact 95% endpoints,
+legend and scale behavior. Test layout and final device/fonts in temporary
+directories. Do not promote a partial set of figures on a validation failure.
+Exit: three inspectable PDFs, portable inputs, repeatable export, readable pages.
+
+Stage 3: Integration and focused verification
+Transfer output ownership without overlapping writers, then regenerate the
+published compact tables and dedicated figures. Update the current inventory,
+generation records and documentation. Keep original evidence/old releases intact.
+Add focused tests for WIS parity/ties, highlighting direction/precision, missing
+or corrupt plot inputs, date/member completeness, trace selection, numerical
+layers, no double transformation, disjoint ownership and read-only checks.
+Do not write tests that merely demand the new prose word for word.
+Exit: all checks use actual submitted assets; a clean clone can render using
+only article-local display inputs; --check changes no source/published output.
+
+Stage 4: One final comprehensive verification
+Use a new release gate based on the current baseline. Retain historical gates
+unchanged. Reuse existing scientific validation, complete article tests, compact
+table replay, new figure replay, package/figure-path checks and live ancestry.
+Explicitly verify the three dimension replacements and reviewed WIS additions;
+compare all remaining old mathematical expressions unchanged. Do not globally
+strip multiplication symbols or whitelist every expression in Appendix C.3.
+Compare Table 1 numbers after removing presentation markup only. Preserve all
+fourteen scientific CSVs, original scientific figures and scientific records.
+Add active-figure lineage to the original saved numerical contracts and new
+portable input manifest; keep the original registry and lineage checks intact.
+Build one clean article PDF with stable references and one bibliography. Reuse
+the compiled appendix-link checks and inspect all three revised figures in place.
+Confirm eleven tables, seven figures and two algorithms; record measured pages.
+Exit: final inputs unchanged during checking, all required checks pass without
+unexplained skips, readable figure pages, verified citations/labels, source/PDF
+hashes recorded. Run targeted checks while editing; run the full gate once when
+the changes settle, repeating only if a subsequent change or failure requires it.
+
+Stage 5: Reviewable release
+Record the final changes, reason for departures from this plan, source/output
+hashes, plotting environment, logs, PDF hash and merge identities in a new release
+record. Fetch/recheck live Overleaf history immediately before merging. Use
+normal commits, pushes and expected-head pull-request merges; verify merged
+trees match the tested content. Keep the original submitted Corrected-2 and
+other protected repositories unchanged. Do not stage the user's unrelated audit
+folder. Update the local complete PDF and documentation only for the verified
+merged source. No force push or historical record rewrite is part of the plan.
+
+AUTHORITATIVE REFERENCES AND LOCAL EVIDENCE
+
+Current article: Evironmetrics----Corrected-3/wileyNJD-APA.tex and appendices.tex.
+Current inventory: Evironmetrics----Corrected-3/PUBLICATION_PACKAGE.json.
+Original scorer: artifacts/no_refit_revision/inputs/original_score_functions.R.
+Table source: artifacts/comment2_revision/external_baselines/aggregate.csv.
+Other comparisons: by_origin_horizon.csv, results/summary_pooled.csv and the
+existing quantile-loss/interval summaries under the article artifact bundles.
+Timing: docs/runtime_benchmark_contract.md and its recorded runtime manifest.
+Current complete release: docs/article_appendix_integration_20261109/ in workflow.
+WIS: Bracher et al. (2021), DOI 10.1371/journal.pcbi.1008618.
+Nonconjugate approximation: Wang and Blei (2013), JMLR 14:1005--1031,
+https://jmlr.csail.mit.edu/papers/v14/wang13b.html .
+
+All changes described in the execution stages are proposals. This planning turn
+created only this plan, its audit evidence and a copy of the earlier arithmetic
+evidence. It did not edit article sources, code or figures, run model jobs, or
+create/push/merge commits.

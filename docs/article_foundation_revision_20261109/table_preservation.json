@@ -1,0 +1,22 @@
+{
+  "changed_generated_files": [
+    "tables/compact_publication/main_aggregate.tex",
+    "artifacts/compact_publication/manifest.json"
+  ],
+  "scientific_inputs": 14,
+  "source_inventory_and_hashes_unchanged": true,
+  "scientific_records_sha256": "7f6f3755ce076d3a7e8b784dc4c048579efb586dabd3e463c5acb4708e45193c",
+  "all_other_compact_table_bytes_unchanged": true,
+  "table_1_numeric_rows_unchanged_after_unwrapping_bold": true,
+  "tests": {
+    "compact_publication": 19,
+    "wis_identity": 4,
+    "exact_grid_scenarios": 49,
+    "pairing_identity_scenarios": 30,
+    "r_archived_scorer_scenarios": 49
+  },
+  "figure_outputs_removed_from_compact_ownership": [
+    "Figures/manuscript/compact_forecasts_2021_2022.pdf",
+    "Figures/manuscript/compact_forecasts_2021_early.pdf"
+  ]
+}

@@ -1,0 +1,1 @@
+Overleaf sync guard: main includes all 1 live Overleaf branch(es).

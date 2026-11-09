@@ -1,0 +1,40 @@
+{
+  "passed": true,
+  "errors": [],
+  "documents": {
+    "main": {
+      "entry": "wileyNJD-APA.tex",
+      "tex_paths": [
+        "appendices.tex",
+        "tables/compact_publication/main_aggregate.tex",
+        "tables/compact_publication/main_calibration.tex",
+        "tables/compact_publication/main_quantile_loss.tex",
+        "tables/compact_publication/si_component_comparison.tex",
+        "tables/compact_publication/si_discharge_score.tex",
+        "tables/compact_publication/si_exact_score_sensitivity.tex",
+        "tables/compact_publication/si_fitting_status.tex",
+        "tables/compact_publication/si_origin_coverage.tex",
+        "tables/compact_publication/si_origin_crps.tex",
+        "tables/compact_publication/si_quantile_loss.tex",
+        "tables/editorial_revision/representative_covariate_effects_table.tex",
+        "wileyNJD-APA.tex"
+      ],
+      "figure_paths": [
+        "Figures/manuscript/compact_forecasts_2021_2022.pdf",
+        "Figures/manuscript/compact_forecasts_2021_early.pdf",
+        "Figures/manuscript/covariate_context_precip_soil_gdpc.png",
+        "Figures/manuscript/no_refit_quantile_reliability.png",
+        "Figures/manuscript/predictive_synthesis_2022_12_25.pdf",
+        "Figures/manuscript/retrospective_products_context.png",
+        "Figures/manuscript/site_context_usgs.png"
+      ],
+      "labels": 69,
+      "scope_labels": {
+        "main": 34,
+        "appendix": 35
+      }
+    }
+  },
+  "submitted_assets": 18,
+  "retained_evidence": 26
+}

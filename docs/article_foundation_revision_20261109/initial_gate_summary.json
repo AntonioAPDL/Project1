@@ -1,0 +1,225 @@
+{
+  "created_utc": "2026-11-09T06:34:46.629897+00:00",
+  "article_root": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+  "commands": [
+    {
+      "name": "mathematical_preservation",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/article_foundation_revision_20261109/check_math_preservation.py",
+        "--article-root",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+        "--report",
+        "/tmp/article_foundation_final_gate_20261109/mathematical_preservation.json"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "existing_scientific_gate",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/article_repository_migration_20261108/run_checks.py",
+        "--report-dir",
+        "/tmp/article_foundation_final_gate_20261109/scientific"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "article_tests",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "workflow_compact_wiring",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_article_editorial_wiring.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "workflow_preservation_tests",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/python",
+        "-p",
+        "test_foundation_preservation.py",
+        "-v"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "retained_editorial_replay",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/scripts/refresh_editorial_revision.py",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "compact_display_replay",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/scripts/compact_publication.py",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "predictive_figure_replay",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/scripts/predictive_synthesis_figures.py",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "publication_package",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/scripts/publication_package.py",
+        "--check"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "independent_proofs",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/scripts/publication_package.py",
+        "--build-dir",
+        "/tmp/article_foundation_final_gate_20261109/proofs"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    },
+    {
+      "name": "compiled_appendix_links",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/docs/article_appendix_integration_20261109/check_pdf_links.py",
+        "--proof-dir",
+        "/tmp/article_foundation_final_gate_20261109/proofs/main",
+        "--report",
+        "/tmp/article_foundation_final_gate_20261109/appendix_links.json"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd",
+      "returncode": 1,
+      "unexpected_skip": false
+    },
+    {
+      "name": "live_overleaf_ancestry",
+      "argv": [
+        "/home/jaguir26/python39/bin/python3",
+        "-B",
+        "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3/scripts/check_overleaf_sync.py"
+      ],
+      "cwd": "/data/muscat_data/jaguir26/project1_ucsc_phd/Evironmetrics----Corrected-3",
+      "returncode": 0,
+      "unexpected_skip": false
+    }
+  ],
+  "unique_python_test_ids": 283,
+  "source_preservation": {
+    "baseline_commit": "0f72f3d9ab2c18a55859d2515fc9c0131a67a22c",
+    "baseline_file_count": 851,
+    "changed_existing_files": [
+      "Figures/manuscript/compact_forecasts_2021_2022.pdf",
+      "Figures/manuscript/compact_forecasts_2021_early.pdf",
+      "PUBLICATION_PACKAGE.json",
+      "README.md",
+      "appendices.tex",
+      "artifacts/compact_publication/manifest.json",
+      "docs/article_readme_template.txt",
+      "docs/compact_publication.txt",
+      "docs/figure_table_provenance.md",
+      "scripts/compact_publication.py",
+      "tables/compact_publication/main_aggregate.tex",
+      "tests/test_compact_publication.py",
+      "wileyNJD-APA.bib",
+      "wileyNJD-APA.tex"
+    ],
+    "missing": [],
+    "unexpected_content_changes": [],
+    "unexpected_modes": [],
+    "snapshot_sha256": "b29d8fdb9db12bd655ba8e8dd14d2ea3ef680fe7ec3e8d23a3bb0fdb7e378cb6",
+    "passed": true
+  },
+  "protected_repositories": {
+    "Evironmetrics---REVISED-DOC-Corrected-2": {
+      "head": "fb58225c4ae1f730301ce3864e98ae4db2d9febf",
+      "tree": "35b2c6d2af808a09618ad7365474826e0bf928fd",
+      "status": "",
+      "unchanged": true
+    },
+    "Corrections---Project-1": {
+      "head": "b1ceeb610d20f8287e4ca44e146c9cfdbcda1ee6",
+      "tree": "dbe081e393b2c86af166b18eb4c0d61c6d307eee",
+      "status": "",
+      "unchanged": true
+    },
+    "san-lorenzo-exdqlm-reproducibility": {
+      "head": "a8797b804271b46c62bd04dab7dba6b84a10ab7d",
+      "tree": "60f42661893dded43eff0500aff221f36510bd4f",
+      "status": "",
+      "unchanged": true
+    }
+  },
+  "sources_unchanged_during_validation": true,
+  "implementation_file_count": 1353,
+  "implementation_unchanged_during_validation": true,
+  "passed": false
+}
